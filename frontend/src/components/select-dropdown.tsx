@@ -18,6 +18,7 @@ interface SelectDropdownProps {
   disabled?: boolean
   className?: string
   isControlled?: boolean
+  'data-testid'?: string
 }
 
 export function SelectDropdown({
@@ -29,6 +30,7 @@ export function SelectDropdown({
   disabled,
   className = '',
   isControlled = false,
+  'data-testid': dataTestId,
 }: SelectDropdownProps) {
   const defaultState = isControlled
     ? { value: defaultValue, onValueChange }
@@ -36,7 +38,7 @@ export function SelectDropdown({
   return (
     <Select {...defaultState}>
       <FormControl>
-        <SelectTrigger disabled={disabled} className={cn(className)}>
+        <SelectTrigger disabled={disabled} className={cn(className)} data-testid={dataTestId}>
           <SelectValue placeholder={placeholder ?? 'Select'} />
         </SelectTrigger>
       </FormControl>

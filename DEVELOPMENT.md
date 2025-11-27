@@ -174,7 +174,12 @@ When introducing a new provider channel, keep backend and frontend changes align
    - For Anthropic-compatible APIs, use `anthropic.NewOutboundTransformerWithConfig` with the appropriate platform type (e.g., `anthropic.PlatformDoubao`)
    - For OpenAI-compatible APIs, reuse the existing `openai.NewOutboundTransformerWithConfig`
 
-3. **Sync the frontend schema and presentation** – update the following files to support the new channel type:
+3. **Register provider metadata** – declare how the new channel maps to providers so the UI can drive the provider/API format workflow:@frontend/src/features/channels/data/config_providers.ts#1-198
+   - Add or extend an entry in [frontend/src/features/channels/data/config_providers.ts](frontend/src/features/channels/data/config_providers.ts) with the provider key, icon, badge color, and the ordered `channelTypes` array (from most-preferred API format to fallback types)
+   - If you introduce a brand-new provider key, also add `channels.providers.<provider>` translations in both locale files (see step 5)
+   - Keep the helper functions (`getProviderFromChannelType`, `getApiFormatsForProvider`, `getChannelTypeForApiFormat`) working by ensuring every channel type listed exists in `CHANNEL_CONFIGS`
+
+4. **Sync the frontend schema and presentation** – update the following files to support the new channel type:
    - Append the enum value to the Zod schema in [frontend/src/features/channels/data/schema.ts](frontend/src/features/channels/data/schema.ts)@frontend/src/features/channels/data/schema.ts#3-30
    - Add channel configuration to [frontend/src/features/channels/data/constants.ts](frontend/src/features/channels/data/constants.ts) including:
      - `channelType`: The channel type identifier
@@ -185,7 +190,9 @@ When introducing a new provider channel, keep backend and frontend changes align
      - `icon`: Icon component from `@lobehub/icons` package@frontend/src/features/channels/data/constants.ts#17-168
    - The channels list page automatically uses the configuration from constants.ts, so no changes to [frontend/src/features/channels/components/channels-columns.tsx](frontend/src/features/channels/components/channels-columns.tsx) are needed
 
-4. **Add internationalization** – add translation keys for the new channel type in both [frontend/src/locales/en.json](frontend/src/locales/en.json) and [frontend/src/locales/zh.json](frontend/src/locales/zh.json) under `channels.types` section. The key should match the channel type exactly and the value should be the display name (typically in the format "Provider (Format)", e.g., "Doubao (Anthropic)").@frontend/src/locales/en.json#566-593@frontend/src/locales/zh.json#593-620
+5. **Add internationalization** – add translation keys for both provider- and channel-level entries in [frontend/src/locales/en.json](frontend/src/locales/en.json) and [frontend/src/locales/zh.json](frontend/src/locales/zh.json):@frontend/src/locales/en.json#566-593@frontend/src/locales/zh.json#593-620
+   - Under `channels.types`, add the new channel type key. The value should be the display name (typically formatted as "Provider (Format)", e.g., "Doubao (Anthropic)")
+   - Under `channels.providers`, ensure the provider key added in step 3 exists with the proper display name
 
 ### Commit Convention
 
@@ -365,7 +372,13 @@ golangci-lint run -v
 2. **在业务层构造 Transformer**——在 `ChannelService.buildChannel` 的 switch 中为新枚举返回合适的 outbound transformer，必要时在 `internal/llm/transformer` 下实现新的 transformer。@internal/server/biz/channel.go#172-356
    - 对于 Anthropic 兼容的 API，使用 `anthropic.NewOutboundTransformerWithConfig` 并指定合适的平台类型（例如 `anthropic.PlatformDoubao`）
    - 对于 OpenAI 兼容的 API，复用已有的 `openai.NewOutboundTransformerWithConfig`
-3. **同步前端的 schema 与展示**——更新以下文件以支持新的渠道类型：
+
+3. **注册 Provider 元数据**——为新渠道声明其 Provider 映射，以驱动 UI 的 Provider / API Format 流程：@frontend/src/features/channels/data/config_providers.ts#1-198
+   - 在 [frontend/src/features/channels/data/config_providers.ts](frontend/src/features/channels/data/config_providers.ts) 添加或扩展 Provider 配置，包含 provider key、图标、徽章颜色以及按偏好顺序排列的 `channelTypes`（主格式在前，降级在后）
+   - 若新增了全新的 provider key，需要在步骤 5 中的多语言文件里补充 `channels.providers.<provider>` 翻译
+   - 确保 `channelTypes` 中引用的渠道都已经在 `CHANNEL_CONFIGS` 中存在，以保证 `getProviderFromChannelType`、`getApiFormatsForProvider`、`getChannelTypeForApiFormat` 正常工作
+
+4. **同步前端的 schema 与展示**——更新以下文件以支持新的渠道类型：
    - 将枚举值加入 [frontend/src/features/channels/data/schema.ts](frontend/src/features/channels/data/schema.ts) 的 Zod schema@frontend/src/features/channels/data/schema.ts#3-30
    - 在 [frontend/src/features/channels/data/constants.ts](frontend/src/features/channels/data/constants.ts) 中添加渠道配置，包括：
      - `channelType`: 渠道类型标识符
@@ -376,7 +389,9 @@ golangci-lint run -v
      - `icon`: 从 `@lobehub/icons` 包导入的图标组件@frontend/src/features/channels/data/constants.ts#17-168
    - 渠道列表页面会自动使用 constants.ts 中的配置，因此无需修改 [frontend/src/features/channels/components/channels-columns.tsx](frontend/src/features/channels/components/channels-columns.tsx)
 
-4. **添加国际化**——在 [frontend/src/locales/en.json](frontend/src/locales/en.json) 和 [frontend/src/locales/zh.json](frontend/src/locales/zh.json) 的 `channels.types` 部分为新渠道类型添加翻译键。键名必须与渠道类型完全匹配，值应为显示名称（通常格式为"提供商 (格式)"，例如 "Doubao (Anthropic)"）。@frontend/src/locales/en.json#566-593@frontend/src/locales/zh.json#593-620
+5. **添加国际化**——在 [frontend/src/locales/en.json](frontend/src/locales/en.json) 和 [frontend/src/locales/zh.json](frontend/src/locales/zh.json) 中同时补充渠道与 Provider 相关的翻译：@frontend/src/locales/en.json#566-593@frontend/src/locales/zh.json#593-620
+   - 在 `channels.types` 下新增渠道类型，取值通常为 “Provider (Format)” 格式，例如 “Doubao (Anthropic)”
+   - 在 `channels.providers` 下补充步骤 3 中新增的 provider key 的显示名称
 
 ### 提交规范
 

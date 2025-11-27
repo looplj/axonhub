@@ -10,7 +10,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import LongText from '@/components/long-text'
 import { useChannels } from '../context/channels-context'
 import { useTestChannel } from '../data/channels'
-import { CHANNEL_CONFIGS } from '../data/constants'
+import { CHANNEL_CONFIGS } from '../data/config_channels'
 import { Channel, ChannelType } from '../data/schema'
 import { DataTableColumnHeader } from './data-table-column-header'
 import { DataTableRowActions } from './data-table-row-actions'

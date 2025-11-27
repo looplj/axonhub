@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -10,16 +10,21 @@ import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { Form, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Textarea } from '@/components/ui/textarea'
 import { AutoCompleteSelect } from '@/components/auto-complete-select'
 import { SelectDropdown } from '@/components/select-dropdown'
 import { useCreateChannel, useUpdateChannel, useFetchModels, useBulkCreateChannels } from '../data/channels'
-import { getDefaultBaseURL, getDefaultModels } from '../data/constants'
-import { CHANNEL_CONFIGS } from '../data/constants'
-import { Channel, ChannelType, createChannelInputSchema, updateChannelInputSchema } from '../data/schema'
+import { getDefaultBaseURL, getDefaultModels, CHANNEL_CONFIGS, OPENAI_CHAT_COMPLETIONS } from '../data/config_channels'
+import {
+  PROVIDER_CONFIGS,
+  getProviderFromChannelType,
+  getApiFormatsForProvider,
+  getChannelTypeForApiFormat,
+} from '../data/config_providers'
+import { Channel, ChannelType, ApiFormat, createChannelInputSchema, updateChannelInputSchema } from '../data/schema'
 
 interface Props {
   currentRow?: Channel
@@ -39,18 +44,72 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
   const [selectedDefaultModels, setSelectedDefaultModels] = useState<string[]>([])
   const [fetchedModels, setFetchedModels] = useState<string[]>([])
   const [useFetchedModels, setUseFetchedModels] = useState(false)
+  const providerRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
-  const channelTypes = useMemo(
+  // Provider-based selection state
+  const [selectedProvider, setSelectedProvider] = useState<string>(() => {
+    if (currentRow) {
+      return getProviderFromChannelType(currentRow.type) || 'openai'
+    }
+    return 'openai'
+  })
+  const [selectedApiFormat, setSelectedApiFormat] = useState<ApiFormat>(() => {
+    if (currentRow) {
+      return CHANNEL_CONFIGS[currentRow.type]?.apiFormat || 'openai/chat_completions'
+    }
+    return 'openai/chat_completions'
+  })
+
+  useEffect(() => {
+    if (!isEdit || !currentRow) return
+
+    const provider = getProviderFromChannelType(currentRow.type) || 'openai'
+    setSelectedProvider(provider)
+    const apiFormat = CHANNEL_CONFIGS[currentRow.type]?.apiFormat || OPENAI_CHAT_COMPLETIONS
+    setSelectedApiFormat(apiFormat)
+  }, [isEdit, currentRow])
+
+  useEffect(() => {
+    if (!open || !isEdit) return
+
+    const frame = requestAnimationFrame(() => {
+      const target = providerRefs.current[selectedProvider]
+      target?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    })
+
+    return () => cancelAnimationFrame(frame)
+  }, [open, isEdit, selectedProvider])
+
+  // Get available providers (excluding fake types)
+  const availableProviders = useMemo(
     () =>
-      Object.keys(CHANNEL_CONFIGS).map((type) => ({
-        value: type,
-        label: t(`channels.types.${type}`),
-      })),
+      Object.entries(PROVIDER_CONFIGS)
+        .filter(([, config]) => {
+          // Filter out providers that only have fake types
+          const nonFakeTypes = config.channelTypes.filter((t) => !t.endsWith('_fake'))
+          return nonFakeTypes.length > 0
+        })
+        .map(([key, config]) => ({
+          key,
+          label: t(`channels.providers.${key}`),
+          icon: config.icon,
+          channelTypes: config.channelTypes.filter((t) => !t.endsWith('_fake')),
+        })),
     [t]
   )
 
-  // Filter out fake types for new channels, but keep them for editing existing channels
-  const availableChannelTypes = isEdit ? channelTypes : channelTypes.filter((type) => !type.value.endsWith('_fake'))
+  // Get available API formats for selected provider
+  const availableApiFormats = useMemo(() => {
+    return getApiFormatsForProvider(selectedProvider)
+  }, [selectedProvider])
+
+  // Determine the actual channel type based on provider and API format
+  const derivedChannelType = useMemo(() => {
+    if (isEdit && currentRow) {
+      return currentRow.type
+    }
+    return getChannelTypeForApiFormat(selectedProvider, selectedApiFormat) || 'openai'
+  }, [isEdit, currentRow, selectedProvider, selectedApiFormat])
 
   const formSchema = isEdit ? updateChannelInputSchema : createChannelInputSchema
 
@@ -59,50 +118,100 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
     defaultValues:
       isEdit && currentRow
         ? {
-          type: currentRow.type,
-          baseURL: currentRow.baseURL,
-          name: currentRow.name,
-          supportedModels: currentRow.supportedModels,
-          defaultTestModel: currentRow.defaultTestModel,
-          credentials: {
-            apiKey: '', // credentials字段是敏感字段，不从API返回
-            aws: {
-              accessKeyID: '',
-              secretAccessKey: '',
-              region: '',
+            baseURL: currentRow.baseURL,
+            name: currentRow.name,
+            supportedModels: currentRow.supportedModels,
+            defaultTestModel: currentRow.defaultTestModel,
+            credentials: {
+              apiKey: '', // credentials字段是敏感字段，不从API返回
+              aws: {
+                accessKeyID: '',
+                secretAccessKey: '',
+                region: '',
+              },
+              gcp: {
+                region: '',
+                projectID: '',
+                jsonData: '',
+              },
             },
-            gcp: {
-              region: '',
-              projectID: '',
-              jsonData: '',
-            },
-          },
-        }
+          }
         : {
-          type: 'openai',
-          baseURL: getDefaultBaseURL('openai'),
-          name: '',
-          credentials: {
-            apiKey: '',
-            aws: {
-              accessKeyID: '',
-              secretAccessKey: '',
-              region: '',
+            type: derivedChannelType,
+            baseURL: getDefaultBaseURL(derivedChannelType),
+            name: '',
+            credentials: {
+              apiKey: '',
+              aws: {
+                accessKeyID: '',
+                secretAccessKey: '',
+                region: '',
+              },
+              gcp: {
+                region: '',
+                projectID: '',
+                jsonData: '',
+              },
             },
-            gcp: {
-              region: '',
-              projectID: '',
-              jsonData: '',
-            },
+            supportedModels: [],
+            defaultTestModel: '',
           },
-          supportedModels: [],
-          defaultTestModel: '',
-        },
   })
 
   const selectedType = form.watch('type') as ChannelType | undefined
-  const selectedChannelConfig = selectedType ? CHANNEL_CONFIGS[selectedType] : undefined
-  const selectedApiFormat = selectedChannelConfig?.apiFormat
+
+  // Sync form type when provider or API format changes (only for create mode)
+  const handleProviderChange = useCallback(
+    (provider: string) => {
+      if (isEdit) return
+      setSelectedProvider(provider)
+      const formats = getApiFormatsForProvider(provider)
+      // Default to first available format
+      const newFormat = formats[0] || 'openai/chat_completions'
+      setSelectedApiFormat(newFormat)
+      const newChannelType = getChannelTypeForApiFormat(provider, newFormat)
+      if (newChannelType) {
+        form.setValue('type', newChannelType)
+        const baseURL = getDefaultBaseURL(newChannelType)
+        if (baseURL) {
+          form.setValue('baseURL', baseURL)
+        }
+        // Reset models when provider changes
+        setSupportedModels([])
+        setFetchedModels([])
+        setUseFetchedModels(false)
+      }
+    },
+    [isEdit, form]
+  )
+
+  const handleApiFormatChange = useCallback(
+    (format: ApiFormat) => {
+      if (isEdit) return
+      setSelectedApiFormat(format)
+      const newChannelType = getChannelTypeForApiFormat(selectedProvider, format)
+      if (newChannelType) {
+        form.setValue('type', newChannelType)
+        const baseURL = getDefaultBaseURL(newChannelType)
+        if (baseURL) {
+          form.setValue('baseURL', baseURL)
+        }
+        // Reset models when API format changes
+        setSupportedModels([])
+        setFetchedModels([])
+        setUseFetchedModels(false)
+      }
+    },
+    [isEdit, selectedProvider, form]
+  )
+
+  useEffect(() => {
+    if (isEdit) return
+    if (!availableApiFormats.includes(selectedApiFormat)) {
+      const fallbackFormat = availableApiFormats[0] || OPENAI_CHAT_COMPLETIONS
+      handleApiFormatChange(fallbackFormat)
+    }
+  }, [availableApiFormats, selectedApiFormat, handleApiFormatChange, isEdit])
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
@@ -264,102 +373,111 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
           setSelectedDefaultModels([])
           setFetchedModels([])
           setUseFetchedModels(false)
+          // Reset provider and API format state
+          if (currentRow) {
+            setSelectedProvider(getProviderFromChannelType(currentRow.type) || 'openai')
+            setSelectedApiFormat(CHANNEL_CONFIGS[currentRow.type]?.apiFormat || OPENAI_CHAT_COMPLETIONS)
+          } else {
+            setSelectedProvider('openai')
+            setSelectedApiFormat(OPENAI_CHAT_COMPLETIONS)
+          }
         }
         onOpenChange(state)
       }}
     >
-      <DialogContent className='max-h-[90vh] sm:max-w-4xl flex flex-col'>
-        <DialogHeader className='text-left flex-shrink-0'>
+      <DialogContent className='flex max-h-[90vh] flex-col sm:max-w-4xl'>
+        <DialogHeader className='flex-shrink-0 text-left'>
           <DialogTitle>{isEdit ? t('channels.dialogs.edit.title') : t('channels.dialogs.create.title')}</DialogTitle>
           <DialogDescription>
             {isEdit ? t('channels.dialogs.edit.description') : t('channels.dialogs.create.description')}
           </DialogDescription>
         </DialogHeader>
-        <div className='flex-1 min-h-0 overflow-y-auto -mr-4 pr-4 py-1'>
+        <div className='-mr-4 min-h-0 flex-1 overflow-y-auto py-1 pr-4'>
           <Form {...form}>
             <form id='channel-form' onSubmit={form.handleSubmit(onSubmit)} className='space-y-6 p-0.5'>
-              {/* Type Selection - Left Side */}
+              {/* Provider Selection - Left Side */}
               <div className='flex gap-6'>
                 <div className='w-80 flex-shrink-0'>
-                  <FormField
-                    control={form.control}
-                    name='type'
-                    disabled={isEdit}
-                    render={({ field }) => (
-                      <FormItem className='space-y-2'>
-                        <FormLabel className='text-base font-semibold'>{t('channels.dialogs.fields.type.label')}</FormLabel>
-                        <FormControl>
-                          <div className='overflow-y-auto max-h-[500px] pr-2'>
-                            <RadioGroup
-                              value={field.value}
-                              onValueChange={(value) => {
-                                field.onChange(value)
-                                // Auto-fill base URL when type changes (only for new channels)
-                                if (!isEdit) {
-                                  const baseURL = getDefaultBaseURL(value as any)
-                                  if (baseURL) {
-                                    form.setValue('baseURL', baseURL)
-                                  }
-                                }
+                  <FormItem className='space-y-2'>
+                    <FormLabel className='text-base font-semibold'>{t('channels.dialogs.fields.provider.label')}</FormLabel>
+                    <div className={`max-h-[500px] overflow-y-auto pr-2 ${isEdit ? 'cursor-not-allowed opacity-60' : ''}`}>
+                      <RadioGroup value={selectedProvider} onValueChange={handleProviderChange} disabled={isEdit} className='space-y-2'>
+                        {availableProviders.map((provider) => {
+                          const Icon = provider.icon
+                          const isSelected = provider.key === selectedProvider
+                          return (
+                            <div
+                              key={provider.key}
+                              ref={(el) => {
+                                providerRefs.current[provider.key] = el
                               }}
-                              disabled={isEdit}
-                              className='space-y-2'
+                              className={`flex items-center space-x-3 rounded-lg border p-3 transition-colors ${
+                                isEdit
+                                  ? isSelected
+                                    ? 'cursor-not-allowed border-primary bg-muted/80 shadow-sm'
+                                    : 'cursor-not-allowed opacity-60'
+                                  : `${isSelected ? 'border-primary bg-accent/40 shadow-sm' : ''} hover:bg-accent/50`
+                              }`}
                             >
-                              {availableChannelTypes.map((type) => {
-                                const config = CHANNEL_CONFIGS[type.value as ChannelType]
-                                const Icon = config?.icon
-                                return (
-                                  <div key={type.value} className='flex items-center space-x-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors'>
-                                    <RadioGroupItem value={type.value} id={type.value} disabled={isEdit} data-testid={`channel-type-${type.value}`} />
-                                    {Icon && <Icon size={20} className='flex-shrink-0' />}
-                                    <FormLabel htmlFor={type.value} className='flex-1 cursor-pointer font-normal'>
-                                      {type.label}
-                                    </FormLabel>
-                                  </div>
-                                )
-                              })}
-                            </RadioGroup>
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                              <RadioGroupItem
+                                value={provider.key}
+                                id={`provider-${provider.key}`}
+                                disabled={isEdit}
+                                data-testid={`provider-${provider.key}`}
+                              />
+                              {Icon && <Icon size={20} className='flex-shrink-0' />}
+                              <FormLabel htmlFor={`provider-${provider.key}`} className='flex-1 cursor-pointer font-normal'>
+                                {provider.label}
+                              </FormLabel>
+                            </div>
+                          )
+                        })}
+                      </RadioGroup>
+                    </div>
+                  </FormItem>
+                  {/* Hidden field to keep form type in sync */}
+                  <FormField control={form.control} name='type' render={() => <input type='hidden' />} />
                 </div>
 
                 {/* Right Side - Form Fields */}
-                <div className='flex-1 space-y-4'>
-
-                  {/* API Format as proper form field */}
-                  {selectedApiFormat && (
-                    <FormItem className='grid grid-cols-8 items-start space-y-0 gap-x-6 gap-y-1'>
-                      <FormLabel className='col-span-2 pt-2 text-right font-medium'>
-                        {t('channels.dialogs.fields.apiFormat.label')}
-                      </FormLabel>
-                      <Badge variant='outline' className='text-sm'>
-                        {selectedApiFormat}
-                      </Badge>
-                    </FormItem>
-                  )}
+                <div className='flex-1 space-y-6'>
+                  <FormItem className='grid grid-cols-8 items-start gap-x-6'>
+                    <FormLabel className='col-span-2 pt-2 text-right font-medium'>{t('channels.dialogs.fields.apiFormat.label')}</FormLabel>
+                    <div className='col-span-6 space-y-1'>
+                      <SelectDropdown
+                        defaultValue={selectedApiFormat}
+                        onValueChange={(value) => handleApiFormatChange(value as ApiFormat)}
+                        disabled={isEdit}
+                        placeholder={t('channels.dialogs.fields.apiFormat.placeholder')}
+                        data-testid='api-format-select'
+                        isControlled={true}
+                        items={availableApiFormats.map((format) => ({
+                          value: format,
+                          label: format,
+                        }))}
+                      />
+                      {isEdit && (
+                        <p className='text-muted-foreground mt-1 text-xs'>{t('channels.dialogs.fields.apiFormat.editDisabled')}</p>
+                      )}
+                    </div>
+                  </FormItem>
 
                   <FormField
                     control={form.control}
                     name='name'
                     render={({ field, fieldState }) => (
-                      <FormItem className='grid grid-cols-8 items-start space-y-0 gap-x-6 gap-y-1'>
+                      <FormItem className='grid grid-cols-8 items-start gap-x-6'>
                         <FormLabel className='col-span-2 pt-2 text-right font-medium'>{t('channels.dialogs.fields.name.label')}</FormLabel>
-                        <FormControl>
+                        <div className='col-span-6 space-y-1'>
                           <Input
                             placeholder={t('channels.dialogs.fields.name.placeholder')}
-                            className='col-span-6'
                             autoComplete='off'
                             aria-invalid={!!fieldState.error}
+                            data-testid='channel-name-input'
                             {...field}
                           />
-                        </FormControl>
-                        <div className='col-span-6 col-start-3 min-h-[1.25rem]'>
-                          <FormMessage />
                         </div>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -368,20 +486,20 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                     control={form.control}
                     name='baseURL'
                     render={({ field, fieldState }) => (
-                      <FormItem className='grid grid-cols-8 items-start space-y-0 gap-x-6 gap-y-1'>
-                        <FormLabel className='col-span-2 pt-2 text-right font-medium'>{t('channels.dialogs.fields.baseURL.label')}</FormLabel>
-                        <FormControl>
+                      <FormItem className='grid grid-cols-8 items-start gap-x-6'>
+                        <FormLabel className='col-span-2 pt-2 text-right font-medium'>
+                          {t('channels.dialogs.fields.baseURL.label')}
+                        </FormLabel>
+                        <div className='col-span-6 space-y-1'>
                           <Input
                             placeholder={t('channels.dialogs.fields.baseURL.placeholder')}
-                            className='col-span-6'
                             autoComplete='off'
                             aria-invalid={!!fieldState.error}
+                            data-testid='channel-base-url-input'
                             {...field}
                           />
-                        </FormControl>
-                        <div className='col-span-6 col-start-3 min-h-[1.25rem]'>
-                          <FormMessage />
                         </div>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -391,9 +509,11 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                       control={form.control}
                       name='credentials.apiKey'
                       render={({ field, fieldState }) => (
-                        <FormItem className='grid grid-cols-8 items-start space-y-0 gap-x-6 gap-y-1'>
-                          <FormLabel className='col-span-2 pt-2 text-right font-medium'>{t('channels.dialogs.fields.apiKey.label')}</FormLabel>
-                          <FormControl>
+                        <FormItem className='grid grid-cols-8 items-start gap-x-6'>
+                          <FormLabel className='col-span-2 pt-2 text-right font-medium'>
+                            {t('channels.dialogs.fields.apiKey.label')}
+                          </FormLabel>
+                          <div className='col-span-6 space-y-1'>
                             {isEdit ? (
                               <Input
                                 type='password'
@@ -401,26 +521,24 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                                 className='col-span-6'
                                 autoComplete='off'
                                 aria-invalid={!!fieldState.error}
+                                data-testid='channel-api-key-input'
                                 {...field}
                               />
                             ) : (
-                              <Textarea
-                                placeholder={t('channels.dialogs.fields.apiKey.placeholder')}
-                                className='col-span-6 min-h-[80px] resize-y font-mono text-sm'
-                                autoComplete='off'
-                                aria-invalid={!!fieldState.error}
-                                {...field}
-                              />
+                              <>
+                                <Textarea
+                                  placeholder={t('channels.dialogs.fields.apiKey.placeholder')}
+                                  className='col-span-6 min-h-[80px] resize-y font-mono text-sm'
+                                  autoComplete='off'
+                                  aria-invalid={!!fieldState.error}
+                                  data-testid='channel-api-key-input'
+                                  {...field}
+                                />
+                                <p className='text-muted-foreground text-xs'>{t('channels.dialogs.fields.apiKey.multiLineHint')}</p>
+                              </>
                             )}
-                          </FormControl>
-                          {!isEdit && (
-                            <p className='text-muted-foreground col-span-6 col-start-3 text-xs'>
-                              {t('channels.dialogs.fields.apiKey.multiLineHint')}
-                            </p>
-                          )}
-                          <div className='col-span-6 col-start-3 min-h-[1.25rem]'>
-                            <FormMessage />
                           </div>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -432,11 +550,11 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                         control={form.control}
                         name='credentials.aws.accessKeyID'
                         render={({ field, fieldState }) => (
-                          <FormItem className='grid grid-cols-8 items-start space-y-0 gap-x-6 gap-y-1'>
+                          <FormItem className='grid grid-cols-8 items-start gap-x-6'>
                             <FormLabel className='col-span-2 pt-2 text-right font-medium'>
                               {t('channels.dialogs.fields.awsAccessKeyID.label')}
                             </FormLabel>
-                            <FormControl>
+                            <div className='col-span-6 space-y-1'>
                               <Input
                                 type='password'
                                 placeholder={t('channels.dialogs.fields.awsAccessKeyID.placeholder')}
@@ -445,10 +563,8 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                                 aria-invalid={!!fieldState.error}
                                 {...field}
                               />
-                            </FormControl>
-                            <div className='col-span-6 col-start-3 min-h-[1.25rem]'>
-                              <FormMessage />
                             </div>
+                            <FormMessage />
                           </FormItem>
                         )}
                       />
@@ -457,11 +573,11 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                         control={form.control}
                         name='credentials.aws.secretAccessKey'
                         render={({ field, fieldState }) => (
-                          <FormItem className='grid grid-cols-8 items-start space-y-0 gap-x-6 gap-y-1'>
+                          <FormItem className='grid grid-cols-8 items-start gap-x-6'>
                             <FormLabel className='col-span-2 pt-2 text-right font-medium'>
                               {t('channels.dialogs.fields.awsSecretAccessKey.label')}
                             </FormLabel>
-                            <FormControl>
+                            <div className='col-span-6 space-y-1'>
                               <Input
                                 type='password'
                                 placeholder={t('channels.dialogs.fields.awsSecretAccessKey.placeholder')}
@@ -470,10 +586,8 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                                 aria-invalid={!!fieldState.error}
                                 {...field}
                               />
-                            </FormControl>
-                            <div className='col-span-6 col-start-3 min-h-[1.25rem]'>
-                              <FormMessage />
                             </div>
+                            <FormMessage />
                           </FormItem>
                         )}
                       />
@@ -482,11 +596,11 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                         control={form.control}
                         name='credentials.aws.region'
                         render={({ field, fieldState }) => (
-                          <FormItem className='grid grid-cols-8 items-start space-y-0 gap-x-6 gap-y-1'>
+                          <FormItem className='grid grid-cols-8 items-start gap-x-6'>
                             <FormLabel className='col-span-2 pt-2 text-right font-medium'>
                               {t('channels.dialogs.fields.awsRegion.label')}
                             </FormLabel>
-                            <FormControl>
+                            <div className='col-span-6 space-y-1'>
                               <Input
                                 placeholder={t('channels.dialogs.fields.awsRegion.placeholder')}
                                 className='col-span-6'
@@ -494,10 +608,8 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                                 aria-invalid={!!fieldState.error}
                                 {...field}
                               />
-                            </FormControl>
-                            <div className='col-span-6 col-start-3 min-h-[1.25rem]'>
-                              <FormMessage />
                             </div>
+                            <FormMessage />
                           </FormItem>
                         )}
                       />
@@ -510,11 +622,11 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                         control={form.control}
                         name='credentials.gcp.region'
                         render={({ field, fieldState }) => (
-                          <FormItem className='grid grid-cols-8 items-start space-y-0 gap-x-6 gap-y-1'>
+                          <FormItem className='grid grid-cols-8 items-start gap-x-6'>
                             <FormLabel className='col-span-2 pt-2 text-right font-medium'>
                               {t('channels.dialogs.fields.gcpRegion.label')}
                             </FormLabel>
-                            <FormControl>
+                            <div className='col-span-6 space-y-1'>
                               <Input
                                 placeholder={t('channels.dialogs.fields.gcpRegion.placeholder')}
                                 className='col-span-6'
@@ -522,10 +634,8 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                                 aria-invalid={!!fieldState.error}
                                 {...field}
                               />
-                            </FormControl>
-                            <div className='col-span-6 col-start-3 min-h-[1.25rem]'>
-                              <FormMessage />
                             </div>
+                            <FormMessage />
                           </FormItem>
                         )}
                       />
@@ -534,11 +644,11 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                         control={form.control}
                         name='credentials.gcp.projectID'
                         render={({ field, fieldState }) => (
-                          <FormItem className='grid grid-cols-8 items-start space-y-0 gap-x-6 gap-y-1'>
+                          <FormItem className='grid grid-cols-8 items-start gap-x-6'>
                             <FormLabel className='col-span-2 pt-2 text-right font-medium'>
                               {t('channels.dialogs.fields.gcpProjectID.label')}
                             </FormLabel>
-                            <FormControl>
+                            <div className='col-span-6 space-y-1'>
                               <Input
                                 placeholder={t('channels.dialogs.fields.gcpProjectID.placeholder')}
                                 className='col-span-6'
@@ -546,10 +656,8 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                                 aria-invalid={!!fieldState.error}
                                 {...field}
                               />
-                            </FormControl>
-                            <div className='col-span-6 col-start-3 min-h-[1.25rem]'>
-                              <FormMessage />
                             </div>
+                            <FormMessage />
                           </FormItem>
                         )}
                       />
@@ -558,11 +666,11 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                         control={form.control}
                         name='credentials.gcp.jsonData'
                         render={({ field, fieldState }) => (
-                          <FormItem className='grid grid-cols-8 items-start space-y-0 gap-x-6 gap-y-1'>
+                          <FormItem className='grid grid-cols-8 items-start gap-x-6'>
                             <FormLabel className='col-span-2 pt-2 text-right font-medium'>
                               {t('channels.dialogs.fields.gcpJsonData.label')}
                             </FormLabel>
-                            <FormControl>
+                            <div className='col-span-6 space-y-1'>
                               <Textarea
                                 placeholder={`{
   "type": "service_account",
@@ -581,17 +689,15 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                                 aria-invalid={!!fieldState.error}
                                 {...field}
                               />
-                            </FormControl>
-                            <div className='col-span-6 col-start-3 min-h-[1.25rem]'>
-                              <FormMessage />
                             </div>
+                            <FormMessage />
                           </FormItem>
                         )}
                       />
                     </>
                   )}
 
-                  <div className='grid grid-cols-8 items-start space-y-0 gap-x-6 gap-y-1'>
+                  <div className='grid grid-cols-8 items-start gap-x-6'>
                     <FormLabel className='col-span-2 pt-2 text-right font-medium'>
                       {t('channels.dialogs.fields.supportedModels.label')}
                     </FormLabel>
@@ -716,11 +822,11 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                     control={form.control}
                     name='defaultTestModel'
                     render={({ field }) => (
-                      <FormItem className='grid grid-cols-8 items-start space-y-0 gap-x-6 gap-y-1'>
+                      <FormItem className='grid grid-cols-8 items-start gap-x-6'>
                         <FormLabel className='col-span-2 pt-2 text-right font-medium'>
                           {t('channels.dialogs.fields.defaultTestModel.label')}
                         </FormLabel>
-                        <FormControl>
+                        <div className='col-span-6 space-y-1'>
                           <SelectDropdown
                             defaultValue={field.value}
                             onValueChange={field.onChange}
@@ -729,11 +835,10 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                             className='col-span-6'
                             disabled={supportedModels.length === 0}
                             isControlled={true}
+                            data-testid='default-test-model-select'
                           />
-                        </FormControl>
-                        <div className='col-span-6 col-start-3 min-h-[1.25rem]'>
-                          <FormMessage />
                         </div>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -747,6 +852,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
             type='submit'
             form='channel-form'
             disabled={createChannel.isPending || updateChannel.isPending || supportedModels.length === 0}
+            data-testid='channel-submit-button'
           >
             {createChannel.isPending || updateChannel.isPending
               ? isEdit
