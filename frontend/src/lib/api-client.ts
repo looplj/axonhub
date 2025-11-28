@@ -60,7 +60,10 @@ export async function apiRequest<T>(endpoint: string, options: ApiRequestOptions
         if (errorData.message) {
           errorMessage = errorData.message
         } else if (errorData.error) {
-          errorMessage = errorData.error
+          errorMessage =
+            typeof errorData.error === 'string'
+              ? errorData.error
+              : errorData.error?.message || errorMessage
         }
       } catch {
         // If response is not JSON, use status text
