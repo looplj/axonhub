@@ -6,6 +6,16 @@ This document describes the load balancing system for channel selection in AxonH
 
 After channels are selected based on model compatibility, they are sorted using a load balancing system that considers multiple factors to determine the optimal order for attempting requests.
 
+### Animated Demonstration
+
+The load balancing flow now has an accompanying SVG animation (`load-balancing.svg`) that visualizes how requests move between AxonHub and backend channels while their **Score** and progress bars fluctuate in real time. Open the file directly or embed it in documentation sites to see:
+
+- Channel A degrading and recovering, with its score oscillating between 95 → 80 → 45 → 60 while the bar shrinks and regrows
+- Channel B absorbing extra load when Channel A degrades, showing 65 → 33 → 65 score transitions
+- Channel C remaining in error cooldown with a pulsing score between 20 → 18 → 10 → 12 → 15
+
+![Load-balancing animation](./load-balancing.svg)
+
 ## Architecture
 
 ### Core Components
