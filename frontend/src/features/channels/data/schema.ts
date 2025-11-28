@@ -220,6 +220,7 @@ export const updateChannelInputSchema = z
           .optional(),
       })
       .optional(),
+    orderingWeight: z.number().optional(),
   })
   .superRefine((data, ctx) => {
     // 如果是 anthropic_aws 类型且提供了 credentials，AWS 字段必填（字段级报错）

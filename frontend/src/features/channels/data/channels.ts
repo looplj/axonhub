@@ -418,14 +418,24 @@ export function useChannels(
 }
 
 // Use this hook to query channels with pagination and filtering
+export type ChannelOrderField =
+  | 'CREATED_AT'
+  | 'UPDATED_AT'
+  | 'ORDERING_WEIGHT'
+  | 'NAME'
+  | 'STATUS'
+
 export function useQueryChannels(
   variables?: {
     first?: number
     after?: string
     before?: string
     last?: number
-    orderBy?: { field: 'CREATED_AT' | 'ORDERING_WEIGHT'; direction: 'ASC' | 'DESC' }
     where?: Record<string, unknown>
+    orderBy?: {
+      field: ChannelOrderField
+      direction: 'ASC' | 'DESC'
+    }
     hasTag?: string
     model?: string
   },
@@ -438,7 +448,16 @@ export function useQueryChannels(
 
   return useQuery({
     enabled: !options?.disableAutoFetch,
-    queryKey: ['channels', variables],
+    queryKey: [
+      'channels',
+      variables?.where,
+      variables?.orderBy?.field,
+      variables?.orderBy?.direction,
+      variables?.hasTag,
+      variables?.model,
+      variables?.after,
+      variables?.before,
+    ],
     queryFn: async () => {
       try {
         const data = await graphqlRequest<{ queryChannels: ChannelConnection }>(QUERY_CHANNELS_QUERY, { input: variables })

@@ -43,6 +43,8 @@ interface DataTableProps {
   selectedTypeTab?: string
   showErrorOnly?: boolean
   onExitErrorOnlyMode?: () => void
+  sorting: SortingState
+  onSortingChange: (updater: SortingState | ((prev: SortingState) => SortingState)) => void
   onNextPage: () => void
   onPreviousPage: () => void
   onPageSizeChange: (pageSize: number) => void
@@ -67,6 +69,8 @@ export function ChannelsTable({
   modelFilter,
   selectedTypeTab = 'all',
   showErrorOnly,
+  sorting,
+  onSortingChange,
   onExitErrorOnlyMode,
   onNextPage,
   onPreviousPage,
@@ -84,7 +88,6 @@ export function ChannelsTable({
     tags: false, // Hide tags column by default but keep it for filtering
   })
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-  const [sorting, setSorting] = useState<SortingState>([])
 
   // Sync server state to local column filters using useEffect
   useEffect(() => {
@@ -163,7 +166,7 @@ export function ChannelsTable({
     enableRowSelection: true,
     getRowId: (row) => row.id,
     onRowSelectionChange: setRowSelection,
-    onSortingChange: setSorting,
+    onSortingChange,
     onColumnFiltersChange: handleColumnFiltersChange,
     onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),

@@ -14,6 +14,7 @@ import { ChannelsOverrideDialog } from './channels-override-dialog'
 import { ChannelsProxyDialog } from './channels-proxy-dialog'
 import { ChannelsStatusDialog } from './channels-status-dialog'
 import { ChannelsTestDialog } from './channels-test-dialog'
+import { ChannelsWeightDialog } from './channels-weight-dialog'
 
 export function ChannelsDialogs() {
   const { open, setOpen, currentRow, setCurrentRow } = useChannels()
@@ -163,7 +164,7 @@ export function ChannelsDialogs() {
           <ChannelsTestDialog
             key={`channel-test-${currentRow.id}`}
             open={open === 'test'}
-            onOpenChange={(isOpen) => {
+            onOpenChange={(isOpen: boolean) => {
               if (isOpen) {
                 setOpen('test')
               } else {
@@ -181,6 +182,21 @@ export function ChannelsDialogs() {
             open={open === 'errorResolved'}
             onOpenChange={(isOpen) => {
               if (!isOpen) {
+                setOpen(null)
+                setTimeout(() => {
+                  setCurrentRow(null)
+                }, 500)
+              }
+            }}
+          />
+
+          <ChannelsWeightDialog
+            key={`channel-weight-${currentRow.id}`}
+            open={open === 'weight'}
+            onOpenChange={(isOpen) => {
+              if (isOpen) {
+                setOpen('weight')
+              } else {
                 setOpen(null)
                 setTimeout(() => {
                   setCurrentRow(null)

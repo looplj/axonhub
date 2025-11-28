@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, memo, useCallback } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -11,11 +11,11 @@ import {
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical } from 'lucide-react'
+import { GripVertical, ArrowUpToLine, ArrowDownToLine } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import {
   Dialog,
   DialogContent,
@@ -28,16 +28,70 @@ import { Separator } from '@/components/ui/separator'
 import { useAllChannelsForOrdering, useBulkUpdateChannelOrdering } from '../data/channels'
 import { ChannelOrderingItem } from '../data/schema'
 
+const WEIGHT_PRECISION = 4
+const MIN_WEIGHT = 0
+const MAX_WEIGHT = 100
+
+const formatWeight = (value: number) => Number(value.toFixed(WEIGHT_PRECISION))
+
+const clampWeight = (value: number) => formatWeight(Math.min(MAX_WEIGHT, Math.max(MIN_WEIGHT, value)))
+
+const calculateRelativeWeight = (prev?: number, next?: number) => {
+  if (prev == null && next == null) {
+    return clampWeight(1)
+  }
+  if (prev == null) {
+    return clampWeight((next ?? 0) + 1)
+  }
+  if (next == null) {
+    return clampWeight(prev - 1)
+  }
+  if (prev === next) {
+    return clampWeight(prev)
+  }
+  return clampWeight(next + (prev - next) / 2)
+}
+
 interface ChannelOrderingItemProps {
   channel: ChannelOrderingItem
   orderingWeight: number
   index: number
   total: number
+  onMoveToTop: (index: number) => void
+  onMoveToBottom: (index: number) => void
+  onWeightChange: (id: string, weight: number) => void
 }
 
-function ChannelOrderingItemComponent({ channel, orderingWeight, index, total }: ChannelOrderingItemProps) {
+const ChannelOrderingItemComponent = memo(function ChannelOrderingItemComponent({
+  channel,
+  orderingWeight,
+  index,
+  total,
+  onMoveToTop,
+  onMoveToBottom,
+  onWeightChange,
+}: ChannelOrderingItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: channel.id })
   const { t } = useTranslation()
+  const [localWeight, setLocalWeight] = useState(orderingWeight.toString())
+
+  useEffect(() => {
+    setLocalWeight(orderingWeight.toString())
+  }, [orderingWeight])
+
+  const handleWeightBlur = () => {
+    if (localWeight.trim() === '') {
+      setLocalWeight(orderingWeight.toString())
+      return
+    }
+
+    const val = Number(localWeight)
+    if (!Number.isNaN(val) && val !== orderingWeight) {
+      onWeightChange(channel.id, val)
+    } else {
+      setLocalWeight(orderingWeight.toString())
+    }
+  }
 
   const getTypeDisplayName = (type: string) => {
     const typeKey = `channels.types.${type}` as const
@@ -78,72 +132,97 @@ function ChannelOrderingItemComponent({ channel, orderingWeight, index, total }:
   }
 
   return (
-    <Card
+    <div
       ref={setNodeRef}
       style={style}
-      className={`group border-muted/50 hover:border-muted bg-card transition-all duration-200 hover:shadow-md ${
-        isDragging ? 'ring-primary/20 shadow-lg ring-2' : ''
+      className={`group flex items-center gap-2 rounded-md border bg-card p-1 hover:shadow-sm ${
+        isDragging ? 'relative z-50 shadow-xl ring-2 ring-primary/20' : 'hover:border-primary/20'
       }`}
     >
-      <CardContent className='p-1.5'>
-        <div className='flex items-center gap-2'>
-          {/* Drag Handle */}
-          <div
-            className='flex min-w-[70px] cursor-grab items-center gap-2 active:cursor-grabbing'
-            {...attributes}
-            {...listeners}
-          >
-            <GripVertical
-              className={`text-muted-foreground h-3 w-3 transition-all ${
-                isDragging ? 'text-primary' : 'opacity-40 group-hover:opacity-70'
-              }`}
-            />
-            <div className='text-muted-foreground min-w-[40px] text-center font-mono text-xs whitespace-nowrap'>
-              {index + 1}/{total}
-            </div>
-          </div>
+      {/* Drag Handle */}
+      <div
+        className='flex min-w-[40px] cursor-grab items-center gap-1 px-1 text-muted-foreground hover:text-foreground active:cursor-grabbing'
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className='h-3.5 w-3.5' />
+        <span className='w-[20px] text-center font-mono text-[10px]'>{index + 1}</span>
+      </div>
 
-          {/* Channel Info */}
-          <div className='min-w-0 flex-1'>
-            <div className='flex items-center gap-1.5'>
-              <h3 className='text-foreground truncate text-xs leading-tight font-medium'>{channel.name}</h3>
-              <Badge variant='outline' className={`h-4 border px-1 text-xs ${getTypeColor(channel.type)}`}>
-                {getTypeDisplayName(channel.type)}
-              </Badge>
-              <Badge variant='outline' className={`h-4 border px-1 text-xs ${getStatusColor(channel.status)}`}>
-                {t(`channels.status.${channel.status}`)}
-              </Badge>
-            </div>
-            <div className='text-muted-foreground bg-muted/20 truncate rounded px-1 py-0.5 font-mono text-xs leading-tight'>
-              {channel.baseURL}
-            </div>
-          </div>
-
-          {/* Priority and Controls */}
-          <div className='flex items-center gap-1'>
-            {/* Priority Display */}
-            <div className='flex flex-col items-center'>
-              <div className='text-muted-foreground text-xs leading-tight font-medium'>
-                {t('channels.dialogs.bulkOrdering.orderingWeight')}
-              </div>
-              <div className='bg-primary/10 text-primary rounded border px-1.5 py-0.5 font-mono text-xs font-bold'>
-                {orderingWeight}
-              </div>
-            </div>
-
-            {/* Drag Status Indicator */}
-            {isDragging && (
-              <div className='flex flex-col items-center'>
-                <div className='text-primary text-xs leading-tight font-medium'>{t('common.dragging', 'Dragging')}</div>
-                <div className='bg-primary h-1.5 w-1.5 animate-pulse rounded-full'></div>
-              </div>
-            )}
+      {/* Channel Info - Single Line Optimized */}
+      <div className='flex min-w-0 flex-1 items-center gap-2'>
+        <div className='flex min-w-0 items-center gap-1.5'>
+          <span className='truncate text-sm font-medium'>{channel.name}</span>
+          <div className='flex flex-shrink-0 gap-1'>
+            <Badge variant='outline' className={`h-3.5 px-1 text-[10px] font-normal ${getTypeColor(channel.type)}`}>
+              {getTypeDisplayName(channel.type)}
+            </Badge>
+            <Badge variant='outline' className={`h-3.5 px-1 text-[10px] font-normal ${getStatusColor(channel.status)}`}>
+              {t(`channels.status.${channel.status}`)}
+            </Badge>
           </div>
         </div>
-      </CardContent>
-    </Card>
+        
+        <div className='hidden flex-1 items-center gap-2 sm:flex'>
+          <div className='h-3 w-[1px] bg-border' />
+          <span className='truncate font-mono text-[10px] text-muted-foreground opacity-70'>
+            {channel.baseURL}
+          </span>
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className='flex items-center gap-1 pr-1'>
+        <div className='hidden items-center gap-1.5 rounded bg-muted/30 px-1.5 py-0.5 sm:flex'>
+          <span className='text-[10px] text-muted-foreground'>
+            {t('channels.dialogs.bulkOrdering.orderingWeight')}
+          </span>
+          <Input
+            type='number'
+            inputMode='decimal'
+            step='any'
+            min={MIN_WEIGHT}
+            max={MAX_WEIGHT}
+            className='h-6 w-16 px-1 text-center text-xs'
+            value={localWeight}
+            onChange={(e) => setLocalWeight(e.target.value)}
+            onBlur={handleWeightBlur}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.currentTarget.blur()
+              }
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          />
+        </div>
+
+        <div className='flex items-center gap-0.5'>
+          <Button
+            variant='ghost'
+            size='icon'
+            className='h-6 w-6 text-muted-foreground hover:text-foreground'
+            onClick={() => onMoveToTop(index)}
+            disabled={index === 0}
+            title={t('common.moveToTop', 'Move to top')}
+          >
+            <ArrowUpToLine className='h-3.5 w-3.5' />
+          </Button>
+          <Button
+            variant='ghost'
+            size='icon'
+            className='h-6 w-6 text-muted-foreground hover:text-foreground'
+            onClick={() => onMoveToBottom(index)}
+            disabled={index === total - 1}
+            title={t('common.moveToBottom', 'Move to bottom')}
+          >
+            <ArrowDownToLine className='h-3.5 w-3.5' />
+          </Button>
+        </div>
+      </div>
+    </div>
   )
-}
+})
 
 interface ChannelsBulkOrderingDialogProps {
   open: boolean
@@ -171,7 +250,7 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
     if (channelsData?.edges) {
       const channels = channelsData.edges.map((edge, index) => ({
         channel: edge.node,
-        orderingWeight: edge.node.orderingWeight || channelsData.edges.length - index,
+        orderingWeight: clampWeight(edge.node.orderingWeight ?? channelsData.edges.length - index),
       }))
       // Sort by orderingWeight DESC (higher weight first)
       channels.sort((a, b) => b.orderingWeight - a.orderingWeight)
@@ -181,37 +260,93 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
   }, [channelsData])
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 10,
-      },
-    }),
+    useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   )
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event
 
-    if (active.id !== over?.id) {
-      setOrderedChannels((items) => {
-        const oldIndex = items.findIndex((item) => item.channel.id === active.id)
-        const newIndex = items.findIndex((item) => item.channel.id === over?.id)
-
-        const newItems = arrayMove(items, oldIndex, newIndex)
-
-        // Recalculate ordering weights based on new positions
-        const updatedItems = newItems.map((item, idx) => ({
-          ...item,
-          orderingWeight: newItems.length - idx,
-        }))
-
-        setHasChanges(true)
-        return updatedItems
-      })
+    if (!over || active.id === over.id) {
+      return
     }
-  }
+
+    setOrderedChannels((items) => {
+      const oldIndex = items.findIndex((item) => item.channel.id === active.id)
+      const newIndex = items.findIndex((item) => item.channel.id === over.id)
+
+      if (oldIndex === -1 || newIndex === -1) {
+        return items
+      }
+
+      const newItems = arrayMove(items, oldIndex, newIndex)
+      const prevWeight = newItems[newIndex - 1]?.orderingWeight
+      const nextWeight = newItems[newIndex + 1]?.orderingWeight
+
+      newItems[newIndex] = {
+        ...newItems[newIndex],
+        orderingWeight: calculateRelativeWeight(prevWeight, nextWeight),
+      }
+
+      setHasChanges(true)
+      return newItems
+    })
+  }, [])
+
+  const handleWeightChange = useCallback((id: string, weight: number) => {
+    const normalizedWeight = clampWeight(weight)
+    setOrderedChannels((items) => {
+      const newItems = items.map((item) =>
+        item.channel.id === id ? { ...item, orderingWeight: normalizedWeight } : item
+      )
+      // Sort by orderingWeight DESC (higher weight first)
+      // Maintain stable sort for equal weights? Javascript sort is stable.
+      newItems.sort((a, b) => b.orderingWeight - a.orderingWeight)
+      setHasChanges(true)
+      return newItems
+    })
+  }, [])
+
+  const handleMoveToTop = useCallback((index: number) => {
+    setOrderedChannels((items) => {
+      if (!items.length || index === 0) {
+        return items
+      }
+
+      const newItems = arrayMove(items, index, 0)
+      const nextWeight = newItems[1]?.orderingWeight
+
+      newItems[0] = {
+        ...newItems[0],
+        orderingWeight: calculateRelativeWeight(undefined, nextWeight),
+      }
+
+      setHasChanges(true)
+      return newItems
+    })
+  }, [])
+
+  const handleMoveToBottom = useCallback((index: number) => {
+    setOrderedChannels((items) => {
+      if (!items.length || index === items.length - 1) {
+        return items
+      }
+
+      const targetIndex = items.length - 1
+      const newItems = arrayMove(items, index, targetIndex)
+      const prevWeight = newItems[targetIndex - 1]?.orderingWeight
+
+      newItems[targetIndex] = {
+        ...newItems[targetIndex],
+        orderingWeight: calculateRelativeWeight(prevWeight, undefined),
+      }
+
+      setHasChanges(true)
+      return newItems
+    })
+  }, [])
 
   const handleSave = async () => {
     try {
@@ -236,7 +371,7 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
     if (channelsData?.edges) {
       const channels = channelsData.edges.map((edge, index) => ({
         channel: edge.node,
-        orderingWeight: edge.node.orderingWeight || channelsData.edges.length - index,
+        orderingWeight: clampWeight(edge.node.orderingWeight ?? channelsData.edges.length - index),
       }))
       channels.sort((a, b) => b.orderingWeight - a.orderingWeight)
       setOrderedChannels(channels)
@@ -311,6 +446,9 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
                         orderingWeight={item.orderingWeight}
                         index={index}
                         total={orderedChannels.length}
+                        onMoveToTop={handleMoveToTop}
+                        onMoveToBottom={handleMoveToBottom}
+                        onWeightChange={handleWeightChange}
                       />
                     ))}
                   </div>

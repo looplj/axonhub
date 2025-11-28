@@ -412,7 +412,8 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	mut := svc.entFromContext(ctx).Channel.UpdateOneID(id).
 		SetNillableBaseURL(input.BaseURL).
 		SetNillableName(input.Name).
-		SetNillableDefaultTestModel(input.DefaultTestModel)
+		SetNillableDefaultTestModel(input.DefaultTestModel).
+		SetNillableOrderingWeight(input.OrderingWeight)
 
 	if input.SupportedModels != nil {
 		mut.SetSupportedModels(input.SupportedModels)

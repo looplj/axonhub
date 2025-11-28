@@ -20,6 +20,7 @@ type ChannelsDialogType =
   | 'bulkEnable'
   | 'bulkDelete'
   | 'errorResolved'
+  | 'weight'
 
 interface ChannelsContextType {
   open: ChannelsDialogType | null
