@@ -1,0 +1,276 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 800 600" style="background-color: #1a1b26; font-family: 'Segoe UI', sans-serif;">
+  <defs>
+    <!-- Gradients -->
+    <linearGradient id="grad-lb" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7aa2f7;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3d59a1;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad-server" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#24283b;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1f2335;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad-bar-good" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#9ece6a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#73daca;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad-bar-warn" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#e0af68;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ff9e64;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad-bar-error" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#f7768e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#db4b4b;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Glow Filter -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background Grid -->
+  <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#292e42" stroke-width="1"/>
+  </pattern>
+  <rect width="800" height="600" fill="url(#grid)" />
+
+  <!-- Title -->
+  <text x="400" y="50" text-anchor="middle" fill="#c0caf5" font-size="24" font-weight="bold">Dynamic Load Balancing Strategies</text>
+  <text x="400" y="80" text-anchor="middle" fill="#565f89" font-size="14">Weight • RoundRobin • ErrorAware • ConnectionAware</text>
+
+  <!-- Incoming Requests Source -->
+  <g transform="translate(50, 300)">
+    <circle cx="0" cy="0" r="30" fill="#414868" stroke="#565f89" stroke-width="2" />
+    <text x="0" y="5" text-anchor="middle" fill="#c0caf5" font-size="12">Clients</text>
+  </g>
+
+  <!-- Load Balancer (Central Node) -->
+  <g transform="translate(300, 300)">
+    <rect x="-60" y="-60" width="120" height="120" rx="10" fill="url(#grad-lb)" filter="url(#glow)" stroke="#bb9af7" stroke-width="2" />
+    <text x="0" y="-10" text-anchor="middle" fill="#ffffff" font-size="16" font-weight="bold">AxonHub</text>
+    <text x="0" y="15" text-anchor="middle" fill="#c0caf5" font-size="12">Load Balancer</text>
+    <path d="M -40 40 L 40 40" stroke="#7dcfff" stroke-width="2" stroke-linecap="round" />
+    <circle cx="-40" cy="40" r="3" fill="#7dcfff">
+      <animate attributeName="cx" values="-40;40;-40" dur="2s" repeatCount="indefinite" />
+    </circle>
+  </g>
+
+  <!-- Paths from Source to LB -->
+  <path d="M 80 300 L 240 300" stroke="#565f89" stroke-width="2" stroke-dasharray="5,5">
+    <animate attributeName="stroke-dashoffset" from="10" to="0" dur="1s" repeatCount="indefinite" />
+  </path>
+
+  <!-- Backend Servers Group -->
+  <g transform="translate(600, 150)">
+    <!-- Server 1: High Weight, Healthy -> Degrading -> Recovering -->
+    <g id="server1" transform="translate(0, 0)">
+      <rect x="0" y="0" width="160" height="80" rx="5" fill="url(#grad-server)" stroke="#7aa2f7" stroke-width="2">
+        <animate attributeName="stroke" values="#7aa2f7;#7aa2f7;#e0af68;#f7768e;#e0af68;#7aa2f7" dur="12s" repeatCount="indefinite" />
+      </rect>
+      <text x="10" y="25" fill="#c0caf5" font-size="14" font-weight="bold">Channel A</text>
+      <text x="10" y="45" font-size="10">
+        <tspan id="channelAStatusText" fill="#9ece6a">● Healthy</tspan>
+      </text>
+      <animate href="#channelAStatusText" attributeName="fill" values="#9ece6a;#9ece6a;#e0af68;#f7768e;#e0af68;#9ece6a" dur="12s" repeatCount="indefinite" />
+      <animate href="#channelAStatusText" attributeName="textContent" values="● Healthy;● Healthy;● Degrading;● Error;● Recovering;● Healthy" dur="12s" repeatCount="indefinite" />
+      <text x="100" y="25" font-size="10">
+        <tspan fill="#7dcfff">W:</tspan>
+        <tspan id="channelAWeightValue" fill="#c0caf5" dx="3">100</tspan>
+      </text>
+      <animate href="#channelAWeightValue" attributeName="textContent" values="100;100;85;60;75;100" dur="12s" repeatCount="indefinite" />
+      <animate href="#channelAWeightValue" attributeName="fill" values="#c0caf5;#c0caf5;#e0af68;#f7768e;#e0af68;#c0caf5" dur="12s" repeatCount="indefinite" />
+      
+      <!-- Score Bar with Weight Reduction Animation -->
+      <rect x="10" y="60" width="140" height="6" fill="#1f2335" rx="3" />
+      <rect x="10" y="60" width="0" height="6" fill="#9ece6a" rx="3">
+        <animate attributeName="width" values="0;130;130;110;70;95;130;0" dur="12s" repeatCount="indefinite" />
+        <animate attributeName="fill" values="#9ece6a;#9ece6a;#9ece6a;#e0af68;#f7768e;#e0af68;#9ece6a;#9ece6a;#9ece6a" dur="12s" repeatCount="indefinite" />
+      </rect>
+      <text x="120" y="55" font-size="10" text-anchor="end">
+        <tspan id="channelAScoreLabel" fill="#73daca">Score:</tspan>
+      </text>
+      <animate href="#channelAScoreLabel" attributeName="fill" values="#73daca;#73daca;#73daca;#e0af68;#f7768e;#e0af68;#73daca;#73daca" dur="12s" repeatCount="indefinite" />
+      <text x="128" y="55" font-size="10" text-anchor="start" fill="#73daca" opacity="1">
+        95
+        <animate attributeName="opacity" values="1;1;1;0;0;0;1;1" dur="12s" repeatCount="indefinite" calcMode="discrete" />
+      </text>
+      <text x="128" y="55" font-size="10" text-anchor="start" fill="#e0af68" opacity="0">
+        80
+        <animate attributeName="opacity" values="0;0;0;1;0;0;0;0" dur="12s" repeatCount="indefinite" calcMode="discrete" />
+      </text>
+      <text x="128" y="55" font-size="10" text-anchor="start" fill="#f7768e" opacity="0">
+        45
+        <animate attributeName="opacity" values="0;0;0;0;1;0;0;0" dur="12s" repeatCount="indefinite" calcMode="discrete" />
+      </text>
+      <text x="128" y="55" font-size="10" text-anchor="start" fill="#e0af68" opacity="0">
+        60
+        <animate attributeName="opacity" values="0;0;0;0;0;1;0;0" dur="12s" repeatCount="indefinite" calcMode="discrete" />
+      </text>
+      
+      <!-- Error Indicator for Channel A -->
+      <g opacity="0">
+        <animate attributeName="opacity" values="0;0;0;1;1;0" dur="12s" repeatCount="indefinite" />
+        <circle cx="145" cy="25" r="8" fill="#f7768e" stroke="#db4b4b" stroke-width="1">
+          <animate attributeName="r" values="8;10;8" dur="0.5s" begin="6s;9s" repeatCount="indefinite" />
+        </circle>
+        <text x="145" y="29" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="bold">!</text>
+      </g>
+    </g>
+
+    <!-- Server 2: Medium Weight, Moderate Load -->
+    <g id="server2" transform="translate(0, 120)">
+      <rect x="0" y="0" width="160" height="80" rx="5" fill="url(#grad-server)" stroke="#bb9af7" stroke-width="2" />
+      <text x="10" y="25" fill="#c0caf5" font-size="14" font-weight="bold">Channel B</text>
+      <text x="10" y="45" fill="#e0af68" font-size="10">● Busy</text>
+      <text x="100" y="25" fill="#565f89" font-size="10">W: 80</text>
+      
+      <!-- Score Bar -->
+      <rect x="10" y="60" width="140" height="6" fill="#1f2335" rx="3" />
+      <rect x="10" y="60" width="0" height="6" fill="url(#grad-bar-warn)" rx="3">
+        <animate attributeName="width" values="0;80;80;40;80;80;0" dur="6s" repeatCount="indefinite" />
+      </rect>
+      <text x="120" y="55" font-size="10" text-anchor="end">
+        <tspan id="channelBScoreLabel" fill="#e0af68">Score:</tspan>
+      </text>
+      <animate href="#channelBScoreLabel" attributeName="fill" values="#e0af68;#e0af68;#e0af68;#f7768e;#e0af68;#e0af68;#e0af68" dur="6s" repeatCount="indefinite" />
+      <text x="128" y="55" font-size="10" text-anchor="start" fill="#e0af68" opacity="1">
+        65
+        <animate attributeName="opacity" values="1;1;1;0;1;1;0" dur="6s" repeatCount="indefinite" calcMode="discrete" />
+      </text>
+      <text x="128" y="55" font-size="10" text-anchor="start" fill="#f7768e" opacity="0">
+        33
+        <animate attributeName="opacity" values="0;0;0;1;0;0;0" dur="6s" repeatCount="indefinite" calcMode="discrete" />
+      </text>
+    </g>
+
+    <!-- Server 3: High Weight, Error Penalty -->
+    <g id="server3" transform="translate(0, 240)">
+      <rect x="0" y="0" width="160" height="80" rx="5" fill="url(#grad-server)" stroke="#f7768e" stroke-width="2" />
+      <text x="10" y="25" fill="#c0caf5" font-size="14" font-weight="bold">Channel C</text>
+      <text x="10" y="45" fill="#f7768e" font-size="10">● Error (Cooldown)</text>
+      <text x="100" y="25" fill="#565f89" font-size="10">W: 100</text>
+      
+      <!-- Score Bar -->
+      <rect x="10" y="60" width="140" height="6" fill="#1f2335" rx="3" />
+      <rect x="10" y="60" width="0" height="6" fill="url(#grad-bar-error)" rx="3">
+        <animate attributeName="width" values="0;30;30;30;30;30;0" dur="6s" repeatCount="indefinite" />
+      </rect>
+      <text x="120" y="55" font-size="10" text-anchor="end">
+        <tspan id="channelCScoreLabel" fill="#f7768e">Score:</tspan>
+      </text>
+      <animate href="#channelCScoreLabel" attributeName="fill" values="#f7768e;#f7768e;#db4b4b;#db4b4b;#db4b4b;#f7768e;#f7768e" dur="6s" repeatCount="indefinite" />
+      <text x="128" y="55" font-size="10" text-anchor="start" fill="#f7768e" opacity="1">
+        20
+        <animate attributeName="opacity" values="1;1;0;0;0;0;1" dur="6s" repeatCount="indefinite" calcMode="discrete" />
+      </text>
+      <text x="128" y="55" font-size="10" text-anchor="start" fill="#db4b4b" opacity="0">
+        18
+        <animate attributeName="opacity" values="0;0;1;0;0;0;0" dur="6s" repeatCount="indefinite" calcMode="discrete" />
+      </text>
+      <text x="128" y="55" font-size="10" text-anchor="start" fill="#db4b4b" opacity="0">
+        10
+        <animate attributeName="opacity" values="0;0;0;1;0;0;0" dur="6s" repeatCount="indefinite" calcMode="discrete" />
+      </text>
+      <text x="128" y="55" font-size="10" text-anchor="start" fill="#db4b4b" opacity="0">
+        12
+        <animate attributeName="opacity" values="0;0;0;0;1;0;0" dur="6s" repeatCount="indefinite" calcMode="discrete" />
+      </text>
+      <text x="128" y="55" font-size="10" text-anchor="start" fill="#f7768e" opacity="0">
+        15
+        <animate attributeName="opacity" values="0;0;0;0;0;1;0" dur="6s" repeatCount="indefinite" calcMode="discrete" />
+      </text>
+    </g>
+  </g>
+
+  <!-- Connection Lines -->
+  <path d="M 360 300 C 480 300, 480 190, 600 190" fill="none" stroke="#3b4261" stroke-width="2" />
+  <path d="M 360 300 C 480 300, 480 310, 600 310" fill="none" stroke="#3b4261" stroke-width="2" />
+  <path d="M 360 300 C 480 300, 480 430, 600 430" fill="none" stroke="#3b4261" stroke-width="2" />
+
+  <!-- Request Particle Animations -->
+  
+  <!-- Request 1: Goes to Server 1 (Best Score) -> Redirects when A degrades -->
+  <circle r="6" fill="#00e8c6" filter="url(#glow)">
+    <animateMotion dur="12s" repeatCount="indefinite" path="M 50 300 L 300 300" begin="0s" fill="freeze" keyPoints="0;1" keyTimes="0;0.3" calcMode="linear" />
+    <!-- Move to Server 1 initially, then redirect to Server 2 when A degrades -->
+    <animateMotion dur="12s" repeatCount="indefinite" path="M 300 300 C 480 300, 480 190, 600 190" begin="0s" keyPoints="0;1" keyTimes="0.5;0.7" calcMode="spline" keySplines="0.4 0 0.2 1" additive="sum" />
+    <!-- Redirect to Server 2 when Channel A has errors -->
+    <animateMotion dur="12s" repeatCount="indefinite" path="M 600 190 C 480 190, 480 310, 600 310" begin="0s" keyPoints="0;1" keyTimes="0.7;0.85" calcMode="spline" keySplines="0.4 0 0.2 1" additive="sum" />
+    <!-- Opacity to hide when restarting -->
+    <animate attributeName="opacity" values="1;1;1;1;0;0" keyTimes="0;0.7;0.85;0.9;0.91;1" dur="12s" repeatCount="indefinite" />
+  </circle>
+
+  <!-- Request 2: Goes to Server 2 (Gets more traffic when A degrades) -->
+  <circle r="6" fill="#ff9e64" filter="url(#glow)" opacity="0">
+    <animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;0.3;0.85;0.9;1" dur="12s" begin="3s" repeatCount="indefinite" />
+    <animateMotion dur="12s" repeatCount="indefinite" path="M 50 300 L 300 300" begin="3s" fill="freeze" keyPoints="0;1" keyTimes="0;0.3" calcMode="linear" />
+    <animateMotion dur="12s" repeatCount="indefinite" path="M 300 300 C 480 300, 480 310, 600 310" begin="3s" keyPoints="0;1" keyTimes="0.5;0.85" calcMode="spline" keySplines="0.4 0 0.2 1" additive="sum" />
+  </circle>
+
+  <!-- Request 3: Tries C, Fails (Low Score), Redirects to A when recovered -->
+  <circle r="6" fill="#7aa2f7" filter="url(#glow)" opacity="0">
+    <animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;0.3;0.85;0.9;1" dur="12s" begin="6s" repeatCount="indefinite" />
+    <animateMotion dur="12s" repeatCount="indefinite" path="M 50 300 L 300 300" begin="6s" fill="freeze" keyPoints="0;1" keyTimes="0;0.3" calcMode="linear" />
+    <!-- Try C first but fail -->
+    <animateMotion dur="12s" repeatCount="indefinite" path="M 300 300 C 480 300, 480 430, 600 430" begin="6s" keyPoints="0;0.5" keyTimes="0.5;0.65" calcMode="spline" keySplines="0.4 0 0.2 1" additive="sum" />
+    <!-- Redirect to A when it's recovered -->
+    <animateMotion dur="12s" repeatCount="indefinite" path="M 600 430 C 480 430, 480 190, 600 190" begin="6s" keyPoints="0;1" keyTimes="0.65;0.85" calcMode="spline" keySplines="0.4 0 0.2 1" additive="sum" />
+  </circle>
+
+  <!-- Request 4: Additional traffic to B during A's degradation -->
+  <circle r="6" fill="#bb9af7" filter="url(#glow)" opacity="0">
+    <animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;0.3;0.85;0.9;1" dur="12s" begin="9s" repeatCount="indefinite" />
+    <animateMotion dur="12s" repeatCount="indefinite" path="M 50 300 L 300 300" begin="9s" fill="freeze" keyPoints="0;1" keyTimes="0;0.3" calcMode="linear" />
+    <animateMotion dur="12s" repeatCount="indefinite" path="M 300 300 C 480 300, 480 310, 600 310" begin="9s" keyPoints="0;1" keyTimes="0.5;0.85" calcMode="spline" keySplines="0.4 0 0.2 1" additive="sum" />
+  </circle>
+
+  <!-- Status Indicators / Tooltips -->
+  <g transform="translate(600, 500)">
+     <text x="0" y="0" fill="#565f89" font-size="12">Strategy Factors:</text>
+     <rect x="0" y="10" width="10" height="10" fill="#9ece6a" rx="2" />
+     <text x="15" y="19" fill="#c0caf5" font-size="10">High Score (Weight + Success)</text>
+     
+     <rect x="0" y="30" width="10" height="10" fill="#e0af68" rx="2" />
+     <text x="15" y="39" fill="#c0caf5" font-size="10">Med Score (RoundRobin Decay)</text>
+     
+     <rect x="0" y="50" width="10" height="10" fill="#f7768e" rx="2" />
+     <text x="15" y="59" fill="#c0caf5" font-size="10">Low Score (Error Penalty)</text>
+  </g>
+
+  <!-- Processing Pulse on Servers -->
+  <!-- Channel A: Normal pulse, then error pulse, then recovery pulse -->
+  <circle cx="760" cy="190" r="5" fill="none" stroke="#9ece6a" stroke-width="2" opacity="0">
+    <animate attributeName="r" values="5;20" dur="1s" begin="3.6s;11.6s" repeatCount="indefinite" />
+    <animate attributeName="opacity" values="1;0" dur="1s" begin="3.6s;11.6s" repeatCount="indefinite" />
+    <animate attributeName="stroke" values="#9ece6a;#9ece6a;#f7768e;#e0af68;#9ece6a" dur="12s" repeatCount="indefinite" />
+  </circle>
+  
+  <!-- Error pulse for Channel A during degradation -->
+  <circle cx="760" cy="190" r="8" fill="none" stroke="#f7768e" stroke-width="3" opacity="0">
+    <animate attributeName="r" values="8;25" dur="1.5s" begin="6s;7.5s" repeatCount="indefinite" />
+    <animate attributeName="opacity" values="1;0" dur="1.5s" begin="6s;7.5s" repeatCount="indefinite" />
+  </circle>
+  
+  <!-- Channel B: Gets more pulses during A's degradation -->
+  <circle cx="760" cy="310" r="5" fill="none" stroke="#e0af68" stroke-width="2" opacity="0">
+    <animate attributeName="r" values="5;20" dur="1s" begin="5.6s;8.6s" repeatCount="indefinite" />
+    <animate attributeName="opacity" values="1;0" dur="1s" begin="5.6s;8.6s" repeatCount="indefinite" />
+  </circle>
+  
+  <!-- Additional pulse for Channel B during A's error period -->
+  <circle cx="760" cy="310" r="5" fill="none" stroke="#ff9e64" stroke-width="2" opacity="0">
+    <animate attributeName="r" values="5;15" dur="0.8s" begin="6.4s;7.2s" repeatCount="indefinite" />
+    <animate attributeName="opacity" values="1;0" dur="0.8s" begin="6.4s;7.2s" repeatCount="indefinite" />
+  </circle>
+
+  <!-- Channel C: Stays in error state -->
+  <circle cx="760" cy="430" r="5" fill="none" stroke="#f7768e" stroke-width="2" opacity="0">
+    <animate attributeName="r" values="5;15" dur="2s" begin="9.6s" repeatCount="indefinite" />
+    <animate attributeName="opacity" values="0.3;0" dur="2s" begin="9.6s" repeatCount="indefinite" />
+  </circle>
+
+</svg>
