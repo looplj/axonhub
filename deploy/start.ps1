@@ -42,13 +42,16 @@ function Check-Port([int]$port){
     $lines = netstat -ano | Select-String -Pattern ":$port\s" -ErrorAction SilentlyContinue
     if($lines){
       Write-Warn "Port $port is already in use"
-      Write-Info "Processes using port $port:"
+      Write-Info "Processes using port ${port}:"
       $lines | ForEach-Object { $_.Line } | Write-Host
       return $false
     }
   } catch {}
   return $true
 }
+
+$stdoutTempFile = Join-Path $env:TEMP ("axonhub-" + [guid]::NewGuid().ToString() + '-stdout.log')
+$stderrTempFile = Join-Path $env:TEMP ("axonhub-" + [guid]::NewGuid().ToString() + '-stderr.log')
 
 Write-Info 'Starting AxonHub...'
 
@@ -87,10 +90,11 @@ if(Test-Path $ConfigFile){ $ConfigArgs += @('--config', $ConfigFile) } else { Wr
 
 Write-Info 'Starting AxonHub process...'
 try {
-  $p = Start-Process -FilePath $BinaryPath -ArgumentList $ConfigArgs -RedirectStandardOutput $LogFile -RedirectStandardError $LogFile -PassThru -WindowStyle Hidden
+  $p = Start-Process -FilePath $BinaryPath -ArgumentList $ConfigArgs -RedirectStandardOutput $stdoutTempFile -RedirectStandardError $stderrTempFile -PassThru -WindowStyle Hidden
   Start-Sleep -Seconds 2
   if($p -and (Get-Process -Id $p.Id -ErrorAction SilentlyContinue)){
     $p.Id | Out-File -FilePath $PidFile -Encoding ascii -Force
+    Remove-Item -Force $stdoutTempFile,$stderrTempFile -ErrorAction SilentlyContinue
     Write-Success "AxonHub started successfully (PID: $($p.Id))"
     Write-Info 'Process information:'
     Write-Host "  • PID: $($p.Id)"
@@ -106,11 +110,21 @@ try {
       Write-Info 'Last few log lines:'
       Get-Content -Path $LogFile -Tail 20
     }
+    if(Test-Path $stdoutTempFile){
+      Write-Info 'Captured stdout:'
+      Get-Content -Path $stdoutTempFile -Tail 20
+    }
+    if(Test-Path $stderrTempFile){
+      Write-Info 'Captured stderr:'
+      Get-Content -Path $stderrTempFile -Tail 20
+    }
     if(Test-Path $PidFile){ Remove-Item -Force $PidFile -ErrorAction SilentlyContinue }
+    Remove-Item -Force $stdoutTempFile,$stderrTempFile -ErrorAction SilentlyContinue
     exit 1
   }
 } catch {
   Write-Err $_.Exception.Message
   if(Test-Path $PidFile){ Remove-Item -Force $PidFile -ErrorAction SilentlyContinue }
+  Remove-Item -Force $stdoutTempFile,$stderrTempFile -ErrorAction SilentlyContinue
   exit 1
 }
