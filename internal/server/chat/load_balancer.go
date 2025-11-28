@@ -13,6 +13,11 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
+// ChannelMetricsProvider provides channel performance metrics.
+type ChannelMetricsProvider interface {
+	GetChannelMetrics(ctx context.Context, channelID int) (*biz.AggregatedMetrics, error)
+}
+
 // LoadBalanceStrategy defines the interface for load balancing strategies.
 // Each strategy can score and sort channels based on different criteria.
 type LoadBalanceStrategy interface {
