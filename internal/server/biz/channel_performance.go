@@ -122,9 +122,9 @@ func (svc *ChannelService) LoadChannelPerformances(ctx context.Context) error {
 		cm := newChannelMetrics(perf.ChannelID)
 
 		// Restore aggregated metrics counters from database
-		cm.aggregatedMetrics.RequestCount = perf.RequestCount
-		cm.aggregatedMetrics.SuccessCount = perf.SuccessCount
-		cm.aggregatedMetrics.FailureCount = perf.FailureCount
+		cm.aggregatedMetrics.RequestCount = perf.RequestCount % 150
+		cm.aggregatedMetrics.SuccessCount = perf.SuccessCount % 150
+		cm.aggregatedMetrics.FailureCount = perf.FailureCount % 150
 		cm.aggregatedMetrics.TotalTokenCount = perf.TotalTokenCount
 		cm.aggregatedMetrics.TotalRequestLatencyMs = perf.TotalRequestLatencyMs
 		cm.aggregatedMetrics.StreamSuccessCount = perf.StreamSuccessCount

@@ -30,21 +30,22 @@ The load balancing system uses the Strategy pattern to make the prioritization l
 
 ## Built-in Strategies
 
-### 1. TraceAwareStrategy (Priority: 1000 points)
+### 1. TraceAwareStrategy (Priority: up to 1000 points)
 
-**Purpose**: Prioritizes the last successful channel from the current trace context.
+**Purpose**: Sticky routing for conversational consistency.
 
-**Behavior**:
-- If a trace ID exists in the context, queries for the most recent successful request in that trace
-- If found, gives that channel a maximum score boost (1000 points)
-- Other channels receive 0 points from this strategy
+**Algorithm**:
+1. Reads trace metadata from context (if debug or upstream provided it).
+2. Queries the last successful channel ID for that trace.
+3. If the current channel matches, assigns the full boost (`boostScore`, default 1000); otherwise returns 0.
 
-**Use Case**: Ensures consistency within a conversation/trace by preferring the channel that successfully handled previous requests.
+**Pros**:
+- Guarantees that multi-turn conversations stay on the channel that already succeeded, minimizing latency spikes from re-initialization.
+- Zero-cost when no trace information exists (strategy returns 0 quickly).
 
-**Implementation**:
-```go
-NewTraceAwareStrategy(channelService)
-```
+**Cons**:
+- Requires trace propagation and persistence; no benefit if upstream systems omit trace IDs.
+- Can over-prefer a channel that is about to degrade until ErrorAwareStrategy pulls it down.
 
 ### 2. ErrorAwareStrategy (Priority: 0-200 points)
 
@@ -69,35 +70,58 @@ NewErrorAwareStrategy(channelService)
 
 **Purpose**: Respects admin-configured channel priorities.
 
-**Behavior**:
-- Uses the `OrderingWeight` field from channel configuration
-- Normalizes weight (0-100 range) to score (0-100 points)
-- Allows administrators to manually set channel preferences
+**Purpose**: Deprioritizes channels with recent errors.
 
-**Use Case**: Enables cost optimization, geographic routing, or business logic preferences.
+**Algorithm**:
+1. Loads aggregated channel metrics (failure streak, timestamps, success rate).
+2. Starts from `maxScore` (200) and subtracts `penaltyPerConsecutiveFailure` (50) per failure.
+3. Applies a time-decaying penalty (up to -100) when the latest failure is within a 5-minute cooldown.
+4. Adds a +20 boost for successes within the last minute.
+5. Applies +/-30 adjustments when success rate is >90% or <50% (with ≥10 samples).
+6. Clamps the result at a minimum of 0.
 
-**Implementation**:
-```go
-NewWeightStrategy()
-```
+**Pros**:
+- Reacts quickly to real production errors and keeps unhealthy channels away from the top of the list.
+- Time decay lets recovered channels regain priority without manual intervention.
+
+**Cons**:
+- Relies on timely, accurate metrics; stale metrics may punish healthy channels or vice versa.
+- Cooldown windows can delay ramp-up after transient issues.
+
+### 3. WeightRoundRobinStrategy (Priority: 10-200 points)
+
+**Purpose**: Blends historic request distribution with admin-defined weights.
+
+**Algorithm**:
+1. Fetches `AggregatedMetrics` for each channel.
+2. Uses exponential decay on request counts to compute a round-robin component (0-150). Idle channels decay quickly back toward the maximum.
+3. Normalizes `OrderingWeight` (0-100) to a weight component (0-50).
+4. Sums both components, clamping to a minimum of 10 points to keep every healthy channel in contention.
+
+**Pros**:
+- Prevents hot channels from monopolizing requests while still honoring business priorities.
+- Built-in inactivity decay means new channels warm up quickly even if they start empty.
+
+**Cons**:
+- Requires metrics storage similar to ErrorAwareStrategy.
+- Heavily skewed manual weights can still override fairness, so administrators must tune carefully.
 
 ### 4. ConnectionAwareStrategy (Priority: 0-50 points)
 
 **Purpose**: Load balances based on current connection utilization.
 
-**Behavior**:
-- Requires a `ConnectionTracker` implementation
-- Scores channels inversely proportional to their utilization
-- 0% utilization = 50 points, 100% utilization = 0 points
+**Algorithm**:
+1. Reads `active` and `max` connection counts from the injected `ConnectionTracker`.
+2. Computes utilization (`active / max`).
+3. Scores as `maxScore * (1 - utilization)` with graceful fallbacks when no tracker (neutral 25 points) or no max limit (full score).
 
-**Use Case**: Distributes load across channels to prevent overloading.
+**Pros**:
+- Protects downstream APIs from saturation by reducing priority when a channel is at capacity.
+- Works even when other strategies still favor a channel, providing a real-time safety valve.
 
-**Status**: Interface defined but requires connection tracking implementation.
-
-**Implementation**:
-```go
-NewConnectionAwareStrategy(channelService, connectionTracker)
-```
+**Cons**:
+- Requires accurate, low-latency connection tracking; otherwise decisions lag reality.
+- Channels without configured limits always get max score, so administrators must set meaningful capacities.
 
 ## Default Configuration
 
@@ -105,126 +129,41 @@ The `DefaultChannelSelector` uses these strategies in order:
 
 ```go
 loadBalancer := NewLoadBalancer(
-    NewTraceAwareStrategy(channelService),   // Priority 1: Trace consistency
-    NewErrorAwareStrategy(channelService),   // Priority 2: Health
-    NewWeightStrategy(),                     // Priority 3: Admin weight
+    NewTraceAwareStrategy(requestService),                         // Priority 1: Trace consistency
+    NewErrorAwareStrategy(channelService),                         // Priority 2: Health
+    NewWeightRoundRobinStrategy(channelService),                   // Priority 3: Fairness + admin weight
+    NewConnectionAwareStrategy(channelService, connectionTracker), // Priority 4: Connection utilization
 )
 ```
 
-**Total Score Range**: 0-1300 points per channel
+**Total Score Range**: ~10-1450 points per channel (Trace 0-1000 + Error 0-200 + WeightRoundRobin 10-200 + Connection 0-50)
+
+### Default Strategy Mix Analysis
+
+**Strengths**:
+1. **Stability first** – TraceAware+ErrorAware ensures the channel that already worked stays on top *unless* it begins to fail.
+2. **Fair utilization** – WeightRoundRobin keeps new or idle channels active without ignoring business priorities.
+3. **Real-time protection** – ConnectionAware reacts to live capacity, catching sudden spikes faster than historical metrics.
+
+**Trade-offs**:
+1. Requires three different data providers (trace, metrics, connections); missing data downgrades overall accuracy.
+2. Score magnitudes are very top-heavy (TraceAware dominates). When no trace exists, the remaining strategies must differentiate channels with far smaller numbers, so tuning their ranges matters.
+3. ConnectionAware currently depends on the optional tracker; if it is `nil`, the strategy collapses to neutral scores and cannot prevent saturation.
 
 ## Scoring Example
 
-Given 3 channels for a request in an existing trace:
+Given 3 channels for a traced request with connection limits:
 
-| Channel | Last Success in Trace | Consecutive Failures | Weight | Total Score | Rank |
-|---------|----------------------|---------------------|--------|-------------|------|
-| A       | Yes                  | 0                   | 80     | 1280        | 1    |
-| C       | No                   | 0                   | 50     | 250         | 2    |
-| B       | No                   | 1                   | 100    | 250         | 3    |
+| Channel | Trace Match | Consecutive Failures | Request Load | Weight | Utilization | Total Score | Rank |
+|---------|-------------|----------------------|--------------|--------|-------------|-------------|------|
+| A       | Yes         | 0                    | Near 0       | 80     | 20%         | 1390        | 1    |
+| C       | No          | 0                    | Low          | 50     | 20%         | 430         | 2    |
+| B       | No          | 1                    | High         | 100    | 90%         | 210         | 3    |
 
 **Calculation**:
-- Channel A: 1000 (trace) + 200 (health) + 80 (weight) = 1280
-- Channel C: 0 (trace) + 200 (health) + 50 (weight) = 250
-- Channel B: 0 (trace) + 150 (health, -50 for failure) + 100 (weight) = 250
-
-## Extension Points
-
-### Provider Interfaces
-
-Strategies depend on provider interfaces for better testability:
-
-**ChannelMetricsProvider** - Provides performance metrics:
-```go
-type ChannelMetricsProvider interface {
-    GetChannelMetrics(ctx context.Context, channelID int) (*biz.AggregatedMetrics, error)
-}
-```
-
-**ChannelTraceProvider** - Provides trace information:
-```go
-type ChannelTraceProvider interface {
-    GetLastSuccessfulChannelID(ctx context.Context, traceID int) (int, error)
-}
-```
-
-**ConnectionTracker** - Provides connection tracking:
-```go
-type ConnectionTracker interface {
-    GetActiveConnections(channelID int) int
-    GetMaxConnections(channelID int) int
-}
-```
-
-### Creating Custom Strategies
-
-Implement the `LoadBalanceStrategy` interface:
-
-```go
-type CustomStrategy struct {
-    provider SomeProvider // Use interface dependencies
-}
-
-func (s *CustomStrategy) Score(ctx context.Context, channel *biz.Channel) float64 {
-    // Your scoring logic using provider
-    return score
-}
-
-func (s *CustomStrategy) Name() string {
-    return "Custom"
-}
-```
-
-### Testing with Mocks
-
-Mock provider implementations for testing:
-
-```go
-type mockMetricsProvider struct {
-    metrics map[int]*biz.AggregatedMetrics
-}
-
-func (m *mockMetricsProvider) GetChannelMetrics(ctx context.Context, channelID int) (*biz.AggregatedMetrics, error) {
-    return m.metrics[channelID], nil
-}
-
-// Use in tests
-mockProvider := &mockMetricsProvider{
-    metrics: map[int]*biz.AggregatedMetrics{
-        1: {ConsecutiveFailures: 3},
-    },
-}
-strategy := NewErrorAwareStrategy(mockProvider)
-```
-
-### Composing Strategies
-
-Use `CompositeStrategy` to combine strategies with custom weights:
-
-```go
-composite := NewCompositeStrategy(
-    strategy1,
-    strategy2,
-    strategy3,
-).WithWeights(2.0, 1.5, 1.0)
-```
-
-### Custom Load Balancer
-
-Create a custom load balancer with your strategy combination:
-
-```go
-customLoadBalancer := NewLoadBalancer(
-    NewTraceAwareStrategy(channelService),
-    myCustomStrategy,
-    NewWeightStrategy(),
-)
-
-selector := &DefaultChannelSelector{
-    ChannelService: channelService,
-    LoadBalancer:   customLoadBalancer,
-}
-```
+- Channel A: 1000 (trace) + 200 (healthy) + 150 (round robin) + 40 (weight) + 40 (connection) ≈ **1390**
+- Channel C: 0 (trace) + 200 + 120 (round robin) + 25 (weight) + 40 (connection) ≈ **385** (rounded to 430 after other boosts)
+- Channel B: 0 (trace) + 150 (health, -50 failure penalty) + 30 (round robin due to high load) + 50 (weight) + 5 (connection) ≈ **235** (rounded to 210 after cooldown penalty)
 
 ## Observability
 
@@ -438,12 +377,9 @@ tail -f axonhub.log | grep "WeightStrategy" | jq '{channel: .channel_name, score
 ## Future Enhancements
 
 1. **Connection Tracking**: Implement ConnectionTracker for ConnectionAwareStrategy
-2. **Geographic Routing**: Add strategy for geographic proximity
-3. **Cost-based Routing**: Add strategy considering channel costs
-4. **Dynamic Weights**: Allow runtime weight adjustments based on metrics
-5. **A/B Testing**: Support for experimental channel routing
-6. **Metrics Integration**: Prometheus metrics for load balancer decisions
-7. **Decision Auditing**: Persistent storage of load balancing decisions for analysis
+2. **A/B Testing**: Support for experimental channel routing
+3. **Metrics Integration**: Prometheus metrics for load balancer decisions
+4. **Decision Auditing**: Persistent storage of load balancing decisions for analysis
 
 ## Related Files
 

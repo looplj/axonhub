@@ -28,11 +28,11 @@ import { Separator } from '@/components/ui/separator'
 import { useAllChannelsForOrdering, useBulkUpdateChannelOrdering } from '../data/channels'
 import { ChannelOrderingItem } from '../data/schema'
 
-const WEIGHT_PRECISION = 4
+const WEIGHT_PRECISION = 0
 const MIN_WEIGHT = 0
 const MAX_WEIGHT = 100
 
-const formatWeight = (value: number) => Number(value.toFixed(WEIGHT_PRECISION))
+const formatWeight = (value: number) => Math.round(value)
 
 const clampWeight = (value: number) => formatWeight(Math.min(MAX_WEIGHT, Math.max(MIN_WEIGHT, value)))
 
@@ -49,7 +49,7 @@ const calculateRelativeWeight = (prev?: number, next?: number) => {
   if (prev === next) {
     return clampWeight(prev)
   }
-  return clampWeight(next + (prev - next) / 2)
+  return clampWeight(Math.floor((prev + next) / 2))
 }
 
 interface ChannelOrderingItemProps {
