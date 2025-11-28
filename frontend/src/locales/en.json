@@ -915,7 +915,8 @@
             "key": "Header Key",
             "value": "Header Value",
             "valuePlaceholder": "Use __AXONHUB_CLEAR__ to delete this header",
-            "addButton": "Add Header"
+            "addButton": "Add Header",
+            "sensitiveWarning": "This header may contain authentication credentials. Double-check before saving."
           }
         }
       },

@@ -314,8 +314,11 @@ func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*R
 		return nil, fmt.Errorf("failed to transform request: %w", err)
 	}
 
-	if request.RawRequest != nil && len(request.RawRequest.Headers) > 0 {
-		httpReq.Headers = httpclient.MergeHTTPHeaders(httpReq.Headers, request.RawRequest.Headers)
+	httpReq = httpclient.MergeInboundRequest(httpReq, request.RawRequest)
+
+	httpReq, err = httpclient.FinalizeAuthHeaders(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("invalid authentication config: %w", err)
 	}
 
 	// Apply raw request middlewares

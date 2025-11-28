@@ -935,15 +935,16 @@
           "title": "覆盖配置",
           "parameters": {
             "title": "覆盖请求体",
-            "description": "填写 JSON 以覆盖通过该渠道发送的请求体。使用 \"__AXONHUB_CLEAR__\" 作为值来从请求体中删除参数。"
+            "description": "提供 JSON 格式的覆盖配置，以定制通过此渠道发送的请求体。使用 \"__AXONHUB_CLEAR__\" 作为值可从请求体中移除参数。"
           },
           "headers": {
             "title": "覆盖请求头",
-            "description": "配置自定义 HTTP 请求头，将应用于通过该渠道发送的所有请求。",
-            "key": "请求头名称",
-            "value": "请求头值",
-            "valuePlaceholder": "使用 __AXONHUB_CLEAR__ 删除此请求头",
-            "addButton": "添加请求头"
+            "description": "配置自定义 HTTP 请求头，会应用到通过此渠道发送的所有请求。",
+            "key": "请求头 Key",
+            "value": "请求头 Value",
+            "valuePlaceholder": "使用 __AXONHUB_CLEAR__ 删除该请求头",
+            "addButton": "新增请求头",
+            "sensitiveWarning": "该请求头可能包含认证凭据，请谨慎设置。"
           }
         }
       },

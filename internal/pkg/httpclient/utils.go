@@ -46,25 +46,63 @@ func IsHTTPStatusCodeRetryable(statusCode int) bool {
 	return false // Non-error status codes don't need retrying
 }
 
-var BlockedHeaders = map[string]bool{
+// The client will handle the headers automatically.
+var blockedHeaders = map[string]bool{
 	"Content-Length":    true,
 	"Transfer-Encoding": true,
-	// The client will handle it automatically.
-	"Accept-Encoding": true,
-	"Authorization":   true,
-	"Api-Key":         true,
-	"X-Api-Key":       true,
-	"X-Api-Secret":    true,
-	"X-Api-Token":     true,
+	"Accept-Encoding":   true,
+	"Host":              true,
+}
+
+var sensitiveHeaders = map[string]bool{
+	"Authorization": true,
+	"Api-Key":       true,
+	"X-Api-Key":     true,
+	"X-Api-Secret":  true,
+	"X-Api-Token":   true,
+}
+
+func MergeInboundRequest(out, in *Request) *Request {
+	if in == nil || len(in.Headers) == 0 {
+		return out
+	}
+
+	out.Headers = MergeHTTPHeaders(out.Headers, in.Headers)
+
+	return out
+}
+
+// FinalizeAuthHeaders writes the auth config into headers and clears the in-memory auth field.
+func FinalizeAuthHeaders(req *Request) (*Request, error) {
+	if req.Auth == nil {
+		return req, nil
+	}
+
+	err := applyAuth(req.Headers, req.Auth)
+	if err != nil {
+		return nil, fmt.Errorf("failed to apply authentication: %w", err)
+	}
+
+	req.Auth = nil
+
+	return req, nil
 }
 
 // MergeHTTPHeaders merges the source headers into the destination headers if the key not present in the destination headers.
 // Blocked headers are not merged.
 func MergeHTTPHeaders(dest, src http.Header) http.Header {
 	for k, v := range src {
-		if _, ok := dest[k]; !ok && !BlockedHeaders[k] {
-			dest[k] = v
+		// Skip if the header is already present in the destination headers.
+		if _, ok := dest[k]; ok {
+			continue
 		}
+
+		// Skip if the header is blocked or sensitive.
+		if sensitiveHeaders[k] || blockedHeaders[k] {
+			continue
+		}
+
+		dest[k] = v
 	}
 
 	return dest

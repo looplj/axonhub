@@ -44,7 +44,7 @@ func TestMergeHTTPHeaders(t *testing.T) {
 		want http.Header
 	}{
 		{
-			name: "given src Authorization header, should not merge blocked header",
+			name: "given src Authorization header, should skip sensitive header",
 			dest: http.Header{
 				"Content-Type": []string{"application/json"},
 			},
@@ -87,7 +87,7 @@ func TestMergeHTTPHeaders(t *testing.T) {
 			},
 		},
 		{
-			name: "should block all security-related headers",
+			name: "should block transport-managed headers and skip sensitive ones",
 			dest: http.Header{
 				"Content-Type": []string{"application/json"},
 			},
