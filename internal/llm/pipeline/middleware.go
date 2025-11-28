@@ -52,8 +52,8 @@ func OnLlmRequest(name string, handler func(ctx context.Context, request *llm.Re
 
 func OnRawRequest(name string, handler func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error)) Middleware {
 	return &simpleMiddleware{
-		name:                   name,
-		outboundRequestHandler: handler,
+		name:                      name,
+		outboundRawRequestHandler: handler,
 	}
 }
 
@@ -61,7 +61,7 @@ type simpleMiddleware struct {
 	name                            string
 	inboundRequestHandler           func(ctx context.Context, request *llm.Request) (*llm.Request, error)
 	inboundRawResponseHandler       func(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error)
-	outboundRequestHandler          func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error)
+	outboundRawRequestHandler       func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error)
 	outboundRawResponseHandler      func(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error)
 	outboundRawStreamHandler        func(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error)
 	outboundRawErrorResponseHandler func(ctx context.Context, err error)
@@ -90,11 +90,11 @@ func (d *simpleMiddleware) OnInboundRawResponse(ctx context.Context, response *h
 }
 
 func (d *simpleMiddleware) OnOutboundRawRequest(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
-	if d.outboundRequestHandler == nil {
+	if d.outboundRawRequestHandler == nil {
 		return request, nil
 	}
 
-	return d.outboundRequestHandler(ctx, request)
+	return d.outboundRawRequestHandler(ctx, request)
 }
 
 func (d *simpleMiddleware) OnOutboundRawError(ctx context.Context, err error) {

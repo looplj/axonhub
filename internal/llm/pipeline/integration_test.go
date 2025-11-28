@@ -81,10 +81,9 @@ func TestPipeline_OpenAI_to_OpenAI(t *testing.T) {
 			require.Equal(t, http.MethodPost, request.Method)
 			require.Contains(t, request.URL, "/chat/completions")
 
-			// Verify auth configuration
-			require.NotNil(t, request.Auth)
-			require.Equal(t, "bearer", request.Auth.Type)
-			require.Equal(t, "test-api-key", request.Auth.APIKey)
+			// Verify auth headers are finalized (Auth field should be nil after FinalizeAuthHeaders)
+			require.Nil(t, request.Auth)
+			require.Equal(t, "Bearer test-api-key", request.Headers.Get("Authorization"))
 
 			responseBody, err := json.Marshal(mockResponse)
 			require.NoError(t, err)
@@ -182,11 +181,9 @@ func TestPipeline_OpenAI_to_Anthropic(t *testing.T) {
 			require.Contains(t, request.URL, "/v1/messages")
 			require.Equal(t, "2023-06-01", request.Headers.Get("Anthropic-Version"))
 
-			// Verify auth configuration
-			require.NotNil(t, request.Auth)
-			require.Equal(t, "api_key", request.Auth.Type)
-			require.Equal(t, "test-api-key", request.Auth.APIKey)
-			require.Equal(t, "X-API-Key", request.Auth.HeaderKey)
+			// Verify auth headers are finalized (Auth field should be nil after FinalizeAuthHeaders)
+			require.Nil(t, request.Auth)
+			require.Equal(t, "test-api-key", request.Headers.Get("X-Api-Key"))
 
 			responseBody, err := json.Marshal(mockAnthropicResponse)
 			require.NoError(t, err)
@@ -291,10 +288,9 @@ func TestPipeline_Anthropic_to_OpenAI(t *testing.T) {
 			require.Equal(t, http.MethodPost, request.Method)
 			require.Contains(t, request.URL, "/chat/completions")
 
-			// Verify auth configuration
-			require.NotNil(t, request.Auth)
-			require.Equal(t, "bearer", request.Auth.Type)
-			require.Equal(t, "test-api-key", request.Auth.APIKey)
+			// Verify auth headers are finalized (Auth field should be nil after FinalizeAuthHeaders)
+			require.Nil(t, request.Auth)
+			require.Equal(t, "Bearer test-api-key", request.Headers.Get("Authorization"))
 
 			responseBody, err := json.Marshal(mockOpenAIResponse)
 			require.NoError(t, err)
@@ -396,11 +392,9 @@ func TestPipeline_Anthropic_to_Anthropic(t *testing.T) {
 			require.Contains(t, request.URL, "/v1/messages")
 			require.Equal(t, "2023-06-01", request.Headers.Get("Anthropic-Version"))
 
-			// Verify auth configuration
-			require.NotNil(t, request.Auth)
-			require.Equal(t, "api_key", request.Auth.Type)
-			require.Equal(t, "test-api-key", request.Auth.APIKey)
-			require.Equal(t, "X-API-Key", request.Auth.HeaderKey)
+			// Verify auth headers are finalized (Auth field should be nil after FinalizeAuthHeaders)
+			require.Nil(t, request.Auth)
+			require.Equal(t, "test-api-key", request.Headers.Get("X-Api-Key"))
 
 			responseBody, err := json.Marshal(mockAnthropicResponse)
 			require.NoError(t, err)

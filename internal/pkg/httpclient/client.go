@@ -270,9 +270,12 @@ func (hc *HttpClient) buildHttpRequest(
 		httpReq.Header.Set("User-Agent", "axonhub/1.0")
 	}
 
-	// Apply authentication
+	for k := range blockedHeaders {
+		httpReq.Header.Del(k)
+	}
+
 	if request.Auth != nil {
-		err = hc.applyAuth(httpReq, request.Auth)
+		err = applyAuth(httpReq.Header, request.Auth)
 		if err != nil {
 			return nil, fmt.Errorf("failed to apply authentication: %w", err)
 		}
@@ -282,20 +285,20 @@ func (hc *HttpClient) buildHttpRequest(
 }
 
 // applyAuth applies authentication to the HTTP request.
-func (hc *HttpClient) applyAuth(req *http.Request, auth *AuthConfig) error {
+func applyAuth(headers http.Header, auth *AuthConfig) error {
 	switch auth.Type {
 	case "bearer":
 		if auth.APIKey == "" {
 			return fmt.Errorf("bearer token is required")
 		}
 
-		req.Header.Set("Authorization", "Bearer "+auth.APIKey)
+		headers.Set("Authorization", "Bearer "+auth.APIKey)
 	case "api_key":
 		if auth.HeaderKey == "" {
 			return fmt.Errorf("header key is required")
 		}
 
-		req.Header.Set(auth.HeaderKey, auth.APIKey)
+		headers.Set(auth.HeaderKey, auth.APIKey)
 	default:
 		return fmt.Errorf("unsupported auth type: %s", auth.Type)
 	}

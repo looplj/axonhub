@@ -37,10 +37,9 @@ func TestPipeline_Streaming_OpenAI_to_OpenAI(t *testing.T) {
 			require.Equal(t, http.MethodPost, request.Method)
 			require.Contains(t, request.URL, "/chat/completions")
 
-			// Verify auth configuration
-			require.NotNil(t, request.Auth)
-			require.Equal(t, "bearer", request.Auth.Type)
-			require.Equal(t, "test-api-key", request.Auth.APIKey)
+			// Verify auth headers are finalized
+			require.Nil(t, request.Auth)
+			require.Equal(t, "Bearer test-api-key", request.Headers.Get("Authorization"))
 
 			// Return mock stream
 			return streams.SliceStream(streamEvents), nil
@@ -137,11 +136,9 @@ func TestPipeline_Streaming_OpenAI_to_Anthropic(t *testing.T) {
 			require.Contains(t, request.URL, "/v1/messages")
 			require.Equal(t, "2023-06-01", request.Headers.Get("Anthropic-Version"))
 
-			// Verify auth configuration
-			require.NotNil(t, request.Auth)
-			require.Equal(t, "api_key", request.Auth.Type)
-			require.Equal(t, "test-api-key", request.Auth.APIKey)
-			require.Equal(t, "X-API-Key", request.Auth.HeaderKey)
+			// Verify auth headers are finalized
+			require.Nil(t, request.Auth)
+			require.Equal(t, "test-api-key", request.Headers.Get("X-Api-Key"))
 
 			// Return mock stream
 			return streams.SliceStream(streamEvents), nil
@@ -238,10 +235,9 @@ func TestPipeline_Streaming_Anthropic_to_OpenAI(t *testing.T) {
 			require.Equal(t, http.MethodPost, request.Method)
 			require.Contains(t, request.URL, "/chat/completions")
 
-			// Verify auth configuration
-			require.NotNil(t, request.Auth)
-			require.Equal(t, "bearer", request.Auth.Type)
-			require.Equal(t, "test-api-key", request.Auth.APIKey)
+			// Verify auth headers are finalized
+			require.Nil(t, request.Auth)
+			require.Equal(t, "Bearer test-api-key", request.Headers.Get("Authorization"))
 
 			// Return mock stream
 			return streams.SliceStream(streamEvents), nil
@@ -336,11 +332,9 @@ func TestPipeline_Streaming_Anthropic_to_Anthropic(t *testing.T) {
 			require.Contains(t, request.URL, "/v1/messages")
 			require.Equal(t, "2023-06-01", request.Headers.Get("Anthropic-Version"))
 
-			// Verify auth configuration
-			require.NotNil(t, request.Auth)
-			require.Equal(t, "api_key", request.Auth.Type)
-			require.Equal(t, "test-api-key", request.Auth.APIKey)
-			require.Equal(t, "X-API-Key", request.Auth.HeaderKey)
+			// Verify auth headers are finalized
+			require.Nil(t, request.Auth)
+			require.Equal(t, "test-api-key", request.Headers.Get("X-Api-Key"))
 
 			// Return mock stream
 			return streams.SliceStream(streamEvents), nil
@@ -350,7 +344,6 @@ func TestPipeline_Streaming_Anthropic_to_Anthropic(t *testing.T) {
 	// Create pipeline
 	factory := pipeline.NewFactory(executor)
 	pipeline := factory.Pipeline(inbound, outbound)
-
 	// Create test request (Anthropic format with streaming)
 	requestBody := map[string]interface{}{
 		"model":      "claude-3-sonnet-20240229",

@@ -19,18 +19,11 @@ interface Props {
   currentRow: Channel
 }
 
+const AUTH_HEADER_KEYS = ['authorization', 'proxy-authorization','x-api-key','x-api-secret','x-api-token']
+
 const overrideFormSchema = z.object({
   overrideHeaders: z.array(z.object({
-    key: z.string().min(1, 'Header key is required').refine(
-      (key) => {
-        const lowerKey = key.toLowerCase()
-        const forbiddenKeys = ['authorization', 'x-api-key', 'api-key', 'cookie', 'set-cookie']
-        return !forbiddenKeys.includes(lowerKey)
-      },
-      {
-        message: 'channels.validation.forbiddenHeader',
-      }
-    ),
+    key: z.string().min(1, 'Header key is required'),
     value: z.string(),
   })).optional(),
   overrideParameters: z
@@ -170,6 +163,8 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
               <CardContent className='space-y-3'>
                 {headers.map((header, index) => {
                   const fieldError = form.formState.errors.overrideHeaders?.[index]?.key
+                  const normalizedKey = header.key.trim().toLowerCase()
+                  const isAuthHeader = normalizedKey !== '' && AUTH_HEADER_KEYS.includes(normalizedKey)
                   return (
                     <div key={index} className='flex gap-3 items-start'>
                       <div className='flex-1 space-y-2'>
@@ -184,8 +179,10 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
                           onChange={(e) => updateHeader(index, 'key', e.target.value)}
                           className={`font-mono ${fieldError ? 'border-destructive' : ''}`}
                         />
-                        {fieldError?.message && (
-                          <p className='text-destructive text-sm'>{t(fieldError.message.toString())}</p>
+                        {isAuthHeader && (
+                          <p className='text-destructive text-sm' role='alert'>
+                            {t('channels.dialogs.settings.overrides.headers.sensitiveWarning')}
+                          </p>
                         )}
                       </div>
                       <div className='flex-1 space-y-2'>

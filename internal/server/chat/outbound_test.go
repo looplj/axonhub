@@ -985,7 +985,7 @@ func TestOverrideHeadersMiddleware_BlockedHeaders(t *testing.T) {
 		shouldBlock     []string
 	}{
 		{
-			name: "blocked headers should be ignored",
+			name: "transport headers are forwarded, sensitive allowed",
 			overrideHeaders: []objects.HeaderEntry{
 				{Key: "Content-Length", Value: "123"},
 				{Key: "Authorization", Value: "Bearer token"},
@@ -997,13 +997,15 @@ func TestOverrideHeadersMiddleware_BlockedHeaders(t *testing.T) {
 			},
 			expectedHeaders: http.Header{
 				"Content-Type":    []string{"application/json"},
+				"Content-Length":  []string{"123"},
 				"User-Agent":      []string{"CustomAgent"},
 				"X-Custom-Header": []string{"custom-value"},
+				"Authorization":   []string{"Bearer token"},
 			},
-			shouldBlock: []string{"Content-Length", "Authorization"},
+			shouldBlock: []string{},
 		},
 		{
-			name: "all blocked headers should be ignored",
+			name: "transport headers remain forwarded",
 			overrideHeaders: []objects.HeaderEntry{
 				{Key: "Content-Length", Value: "123"},
 				{Key: "Transfer-Encoding", Value: "chunked"},
@@ -1018,15 +1020,20 @@ func TestOverrideHeadersMiddleware_BlockedHeaders(t *testing.T) {
 				"Content-Type": []string{"application/json"},
 			},
 			expectedHeaders: http.Header{
-				"Content-Type": []string{"application/json"},
+				"Content-Type":      []string{"application/json"},
+				"Content-Length":    []string{"123"},
+				"Transfer-Encoding": []string{"chunked"},
+				"Accept-Encoding":   []string{"gzip"},
+				"Authorization":     []string{"Bearer token"},
+				"Api-Key":           []string{"secret"},
+				"X-Api-Key":         []string{"secret"},
+				"X-Api-Secret":      []string{"secret"},
+				"X-Api-Token":       []string{"secret"},
 			},
-			shouldBlock: []string{
-				"Content-Length", "Transfer-Encoding", "Accept-Encoding",
-				"Authorization", "Api-Key", "X-Api-Key", "X-Api-Secret", "X-Api-Token",
-			},
+			shouldBlock: []string{},
 		},
 		{
-			name: "mixed case blocked headers should be ignored",
+			name: "mixed case sensitive headers allowed",
 			overrideHeaders: []objects.HeaderEntry{
 				{Key: "authorization", Value: "Bearer token"},
 				{Key: "API-KEY", Value: "secret"},
@@ -1037,10 +1044,13 @@ func TestOverrideHeadersMiddleware_BlockedHeaders(t *testing.T) {
 				"Content-Type": []string{"application/json"},
 			},
 			expectedHeaders: http.Header{
-				"Content-Type": []string{"application/json"},
-				"Valid-Header": []string{"valid-value"},
+				"Content-Type":  []string{"application/json"},
+				"Valid-Header":  []string{"valid-value"},
+				"Authorization": []string{"Bearer token"},
+				"Api-Key":       []string{"secret"},
+				"X-Api-Key":     []string{"secret"},
 			},
-			shouldBlock: []string{"authorization", "API-KEY", "x-api-key"},
+			shouldBlock: []string{},
 		},
 	}
 

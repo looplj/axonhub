@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/textproto"
 	"strings"
 	"time"
 
@@ -263,8 +262,8 @@ func applyOverrideRequestHeaders(outbound *PersistentOutboundTransformer) pipeli
 			request.Headers = make(http.Header)
 		}
 
-		for _, header := range overrideHeaders {
-			if header.Key == "" {
+		for _, entry := range overrideHeaders {
+			if entry.Key == "" {
 				log.Warn(ctx, "empty header key ignored",
 					log.String("channel", channel.Name),
 					log.Int("channel_id", channel.ID),
@@ -273,29 +272,26 @@ func applyOverrideRequestHeaders(outbound *PersistentOutboundTransformer) pipeli
 				continue
 			}
 
-			if _, ok := httpclient.BlockedHeaders[textproto.CanonicalMIMEHeaderKey(header.Key)]; ok {
-				log.Warn(ctx, "blocked header key ignored",
+			// If value is __AXONHUB_CLEAR__, remove header.
+			if entry.Value == "__AXONHUB_CLEAR__" {
+				log.Debug(ctx, "cleared header",
 					log.String("channel", channel.Name),
 					log.Int("channel_id", channel.ID),
-					log.String("key", header.Key),
+					log.String("key", entry.Key),
 				)
 
+				request.Headers.Del(entry.Key)
+
 				continue
 			}
 
-			// If value is __AXONHUB_CLEAR__, remove header.
-			if header.Value == "__AXONHUB_CLEAR__" {
-				request.Headers.Del(header.Key)
-				continue
-			}
-
-			request.Headers.Set(header.Key, header.Value)
+			request.Headers.Set(entry.Key, entry.Value)
 
 			if log.DebugEnabled(ctx) {
-				log.Debug(ctx, "applied override header",
+				log.Debug(ctx, "overrided header",
 					log.String("channel", channel.Name),
-					log.String("key", header.Key),
-					log.String("value", header.Value),
+					log.String("key", entry.Key),
+					log.String("value", entry.Value),
 				)
 			}
 		}

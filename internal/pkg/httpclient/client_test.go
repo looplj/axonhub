@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"github.com/tmaxmax/go-sse"
 )
 
@@ -19,7 +20,7 @@ func TestHttpClientImpl_Do(t *testing.T) {
 		request        *Request
 		serverResponse func(w http.ResponseWriter, r *http.Request)
 		wantErr        bool
-		errReg         *regexp.Regexp
+		wantErrReg     *regexp.Regexp
 		validate       func(*Response) bool
 	}{
 		{
@@ -86,8 +87,8 @@ func TestHttpClientImpl_Do(t *testing.T) {
 				w.WriteHeader(http.StatusBadRequest)
 				w.Write([]byte(`{"error": "bad request"}`))
 			},
-			wantErr: true,
-			errReg:  regexp.MustCompile("POST - http://127.0.0.1:\\d+ with status 400 Bad Request"),
+			wantErr:    true,
+			wantErrReg: regexp.MustCompile("POST - http://127.0.0.1:\\d+ with status 400 Bad Request"),
 			validate: func(resp *Response) bool {
 				return resp == nil
 			},
@@ -110,27 +111,17 @@ func TestHttpClientImpl_Do(t *testing.T) {
 			result, err := client.Do(t.Context(), tt.request)
 
 			if tt.wantErr {
-				if err == nil {
-					t.Errorf("Do() expected error but got none")
-					return
-				}
+				require.Error(t, err)
 
-				if tt.errReg != nil && !tt.errReg.MatchString(err.Error()) {
-					t.Errorf("Do() error = %v, want error containing %v", err, tt.errReg)
+				if tt.wantErrReg != nil && !tt.wantErrReg.MatchString(err.Error()) {
+					t.Errorf("Do() error = %v, want error containing %v", err, tt.wantErrReg)
 				}
 
 				return
 			}
 
-			if err != nil {
-				t.Errorf("Do() unexpected error = %v", err)
-				return
-			}
-
-			if result == nil {
-				t.Errorf("Do() returned nil result")
-				return
-			}
+			require.NoError(t, err)
+			require.NotNil(t, result)
 
 			if tt.validate != nil && !tt.validate(result) {
 				t.Errorf("Do() validation failed for result: %+v", result)
@@ -141,12 +132,12 @@ func TestHttpClientImpl_Do(t *testing.T) {
 
 func TestHttpClientImpl_DoStream(t *testing.T) {
 	tests := []struct {
-		name           string
-		request        *Request
-		serverResponse func(w http.ResponseWriter, r *http.Request)
-		wantErr        bool
-		errContains    string
-		validate       func(stream interface{}) bool
+		name            string
+		request         *Request
+		serverResponse  func(w http.ResponseWriter, r *http.Request)
+		wantErr         bool
+		wantErrContains string
+		validate        func(stream interface{}) bool
 	}{
 		{
 			name: "successful streaming request",
@@ -232,27 +223,12 @@ func TestHttpClientImpl_DoStream(t *testing.T) {
 			result, err := client.DoStream(t.Context(), tt.request)
 
 			if tt.wantErr {
-				if err == nil {
-					t.Errorf("DoStream() expected error but got none")
-					return
-				}
-
-				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
-					t.Errorf("DoStream() error = %v, want error containing %v", err, tt.errContains)
-				}
-
+				require.ErrorContains(t, err, tt.wantErrContains)
 				return
 			}
 
-			if err != nil {
-				t.Errorf("DoStream() unexpected error = %v", err)
-				return
-			}
-
-			if result == nil {
-				t.Errorf("DoStream() returned nil result")
-				return
-			}
+			require.NoError(t, err)
+			require.NotNil(t, result)
 
 			if tt.validate != nil && !tt.validate(result) {
 				t.Errorf("DoStream() validation failed for result: %+v", result)
@@ -342,31 +318,12 @@ func TestHttpClientImpl_buildHttpRequest(t *testing.T) {
 			result, err := client.buildHttpRequest(t.Context(), tt.request)
 
 			if tt.wantErr {
-				if err == nil {
-					t.Errorf("buildHttpRequest() expected error but got none")
-					return
-				}
-
-				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
-					t.Errorf(
-						"buildHttpRequest() error = %v, want error containing %v",
-						err,
-						tt.errContains,
-					)
-				}
-
+				require.ErrorContains(t, err, tt.errContains)
 				return
 			}
 
-			if err != nil {
-				t.Errorf("buildHttpRequest() unexpected error = %v", err)
-				return
-			}
-
-			if result == nil {
-				t.Errorf("buildHttpRequest() returned nil result")
-				return
-			}
+			require.NoError(t, err)
+			require.NotNil(t, result)
 
 			if tt.validate != nil && !tt.validate(result) {
 				t.Errorf("buildHttpRequest() validation failed for result: %+v", result)
@@ -375,15 +332,13 @@ func TestHttpClientImpl_buildHttpRequest(t *testing.T) {
 	}
 }
 
-func TestHttpClientImpl_applyAuth(t *testing.T) {
-	client := &HttpClient{}
-
+func Test_applyAuth(t *testing.T) {
 	tests := []struct {
-		name        string
-		auth        *AuthConfig
-		wantErr     bool
-		errContains string
-		validate    func(*http.Request) bool
+		name          string
+		auth          *AuthConfig
+		wantErr       bool
+		wantErrString string
+		validate      func(*http.Request) bool
 	}{
 		{
 			name: "bearer auth",
@@ -413,8 +368,8 @@ func TestHttpClientImpl_applyAuth(t *testing.T) {
 			auth: &AuthConfig{
 				Type: "bearer",
 			},
-			wantErr:     true,
-			errContains: "bearer token is required",
+			wantErr:       true,
+			wantErrString: "bearer token is required",
 		},
 		{
 			name: "api_key auth without header key",
@@ -422,45 +377,30 @@ func TestHttpClientImpl_applyAuth(t *testing.T) {
 				Type:   "api_key",
 				APIKey: "test-key",
 			},
-			wantErr:     true,
-			errContains: "header key is required",
+			wantErr:       true,
+			wantErrString: "header key is required",
 		},
 		{
 			name: "unsupported auth type",
 			auth: &AuthConfig{
 				Type: "oauth",
 			},
-			wantErr:     true,
-			errContains: "unsupported auth type",
+			wantErr:       true,
+			wantErrString: "unsupported auth type",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req, _ := http.NewRequest(http.MethodPost, "https://example.com", nil)
-			err := client.applyAuth(req, tt.auth)
+			err := applyAuth(req.Header, tt.auth)
 
 			if tt.wantErr {
-				if err == nil {
-					t.Errorf("applyAuth() expected error but got none")
-					return
-				}
-
-				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
-					t.Errorf(
-						"applyAuth() error = %v, want error containing %v",
-						err,
-						tt.errContains,
-					)
-				}
-
+				require.ErrorContains(t, err, tt.wantErrString)
 				return
 			}
 
-			if err != nil {
-				t.Errorf("applyAuth() unexpected error = %v", err)
-				return
-			}
+			require.NoError(t, err)
 
 			if tt.validate != nil && !tt.validate(req) {
 				t.Errorf("applyAuth() validation failed for request: %+v", req.Header)
