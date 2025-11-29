@@ -6,6 +6,17 @@ AxonHub uses a flexible configuration system that supports both YAML configurati
 
 ## Configuration Methods
 
+### Configuration Priority
+
+AxonHub uses Viper for configuration management, which can read from multiple configuration sources and merges them together into one set of configuration keys and values. Viper uses the following precedence for merging (highest to lowest):
+
+1. **Environment variables** - System environment variables
+2. **Config files** - YAML configuration files
+3. **External key/value stores** - External configuration stores
+4. **Defaults** - Built-in default values
+
+This means that environment variables will override values in the configuration file, and command line flags will override environment variables.
+
 ### 1. YAML Configuration File
 
 Create a `config.yml` file:
@@ -180,24 +191,6 @@ metrics:
 - `AXONHUB_METRICS_EXPORTER_ENDPOINT`
 - `AXONHUB_METRICS_EXPORTER_INSECURE`
 
-### Dumper Configuration
-
-```yaml
-dumper:
-  enabled: false                 # Enable data dumping on errors
-  dump_path: "./dumps"          # Directory to dump data to
-  max_size: 100                 # Maximum size of dump files in MB
-  max_age: "24h"                # Maximum age of dump files to keep
-  max_backups: 10               # Maximum number of old dump files
-```
-
-**Environment Variables:**
-- `AXONHUB_DUMPER_ENABLED`
-- `AXONHUB_DUMPER_DUMP_PATH`
-- `AXONHUB_DUMPER_MAX_SIZE`
-- `AXONHUB_DUMPER_MAX_AGE`
-- `AXONHUB_DUMPER_MAX_BACKUPS`
-
 ### Garbage Collection Configuration
 
 ```yaml
@@ -269,36 +262,6 @@ metrics:
     insecure: false
 ```
 
-### High Availability Configuration
-
-```yaml
-server:
-  port: 8090
-  name: "AxonHub HA"
-  debug: false
-
-db:
-  dialect: "postgres"
-  dsn: "postgres://axonhub:password@postgres-ha:5432/axonhub?sslmode=disable"
-
-cache:
-  mode: "redis"
-  redis:
-    addr: "redis-cluster:6379"
-    password: "redis-password"
-    expiration: "30m"
-
-log:
-  level: "info"
-  encoding: "json"
-  output: "file"
-  file:
-    path: "/var/log/axonhub/axonhub.log"
-    max_size: 500
-    max_age: 30
-    max_backups: 10
-```
-
 ## Database Connection Strings
 
 ### SQLite
@@ -318,21 +281,6 @@ postgres://username:password@host:5432/database?sslmode=disable
 ```
 username:password@tcp(host:3306)/database?parseTime=true
 ```
-
-## Time Duration Format
-
-Time durations use Go's duration format:
-- `"30s"` - 30 seconds
-- `"5m"` - 5 minutes
-- `"1h"` - 1 hour
-- `"24h"` - 24 hours
-
-## Cron Expression Format
-
-Cron expressions use standard cron format:
-- `"0 2 * * *"` - Daily at 2:00 AM
-- `"0 3 * * 0"` - Weekly on Sunday at 3:00 AM
-- `"0 4 1 * *"` - Monthly on 1st day at 4:00 AM
 
 ## Best Practices
 

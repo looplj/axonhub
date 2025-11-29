@@ -33,6 +33,7 @@ AxonHub is an all-in-one AI development platform that provides unified API gatew
 1. [**Unified API**](docs/api-reference/unified-api.md): OpenAI- and Anthropic-compatible interface with automatic API translation lets you use one API format to access any supported model provider.
 2. [**Tracing / Threads**](docs/guides/tracing.md): Thread-aware tracing captures full request timelines for deep observability and faster debugging.
 3. [**Fine-grained Permission**](docs/guides/permissions.md): RBAC-based policies help teams govern access, usage, and data segregation precisely.
+4. [**Adaptive Load Balancing**](docs/guides/load-balance.md): Intelligent multi-strategy load balancing automatically selects optimal AI channels based on health, performance, and session consistency.
 
 ---
 

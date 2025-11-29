@@ -154,7 +154,7 @@ axonhub:
 axonhub:
   environment:
     - AXONHUB_DB_DIALECT=mysql
-    - AXONHUB_DB_DSN=user:pass@tcp(host:3306)/axonhub
+    - AXONHUB_DB_DSN=user:pass@tcp(host:3306)/axonhub?charset=utf8mb4&parseTime=True
 ```
 
 ## Environment Variables

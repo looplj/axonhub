@@ -1,5 +1,18 @@
 version: "0.4.1"
 
+# AxonHub Docker Compose Configuration
+#
+# CONFIGURATION OPTIONS:
+# 1. 环境变量 - 适用于敏感配置 (如数据库DSN、密码等)，优先级高于配置文件
+#    参考: https://github.com/looplj/axonhub/blob/main/docs/deployment/configuration.md#configuration-priority
+#
+# 2. 配置文件 - 适用于复杂配置 (如缓存、日志、监控等)
+#    创建 config.yml 文件并取消 volumes 配置的注释
+#    配置参考: https://github.com/looplj/axonhub/blob/main/docs/deployment/configuration.md
+#
+# 3. 简单部署 - 如果不需要复杂配置，可以注释掉 config 的 volumes 配置
+#    仅使用环境变量进行基本配置即可运行
+
 services:
   # PostgreSQL 数据库
   postgres:
@@ -27,14 +40,14 @@ services:
     image: looplj/axonhub:latest
     container_name: axonhub-app
     environment:
+      # 数据库配置可以通过环境变量设置，优先级高于配置文件
       AXONHUB_DB_DIALECT: postgres
       AXONHUB_DB_DSN: postgres://axonhub:${DB_PASSWORD:-axonhub_password}@postgres:5432/axonhub?sslmode=disable
-      AXONHUB_SERVER_PORT: 8090
-      AXONHUB_LOG_LEVEL: info
-      AXONHUB_LOG_ENCODING: json
     ports:
       - "8090:8090"
     volumes:
+      # 配置文件挂载 - 用于复杂配置，如缓存、日志、监控等
+      # 参考: https://github.com/looplj/axonhub/blob/main/docs/deployment/configuration.md
       - ./config.yml:/app/config.yml:ro
       # - axonhub_data:/data
     networks:
@@ -67,12 +80,11 @@ services:
   #   environment:
   #     AXONHUB_DB_DIALECT: sqlite3
   #     AXONHUB_DB_DSN: file:/data/axonhub.db?cache=shared&_fk=1
-  #     AXONHUB_SERVER_PORT: 8090
-  #     AXONHUB_LOG_LEVEL: info
-  #     AXONHUB_LOG_ENCODING: json
   #   ports:
   #     - "8090:8090"
   #   volumes:
+  #     # 配置文件挂载 - 用于复杂配置
+  #     # 参考: https://github.com/looplj/axonhub/blob/main/docs/deployment/configuration.md
   #     - ./config.yml:/app/config.yml:ro
   #     - ./data:/data
   #   restart: unless-stopped
@@ -91,11 +103,70 @@ services:
   #     retries: 3
   #     start_period: 40s
 
+  # MySQL 配置示例 (取消注释以使用 MySQL)
+  # 注意: 此服务与上面的 'axonhub' 服务冲突。请只启用其中一个。
+  # mysql:
+  #   image: mysql:8.0
+  #   container_name: axonhub-mysql
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-axonhub_root_password}
+  #     MYSQL_DATABASE: axonhub
+  #     MYSQL_USER: axonhub
+  #     MYSQL_PASSWORD: ${MYSQL_PASSWORD:-axonhub_password}
+  #   volumes:
+  #     - mysql_data:/var/lib/mysql
+  #   ports:
+  #     - "3306:3306"
+  #   networks:
+  #     - axonhub-network
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-axonhub_root_password}"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #
+  # # AxonHub 主服务 (MySQL 版本)
+  # # 注意: 取消注释此服务时，请注释掉上面的 PostgreSQL 版本 axonhub 服务
+  # axonhub-mysql:
+  #   image: looplj/axonhub:latest
+  #   container_name: axonhub-mysql-app
+  #   environment:
+  #     AXONHUB_DB_DIALECT: mysql
+  #     # DSN 格式参考: ${MYSQL_USER}:${MYSQL_PASSWORD}@tcp(mysql:3306)/${MYSQL_DATABASE}?charset=utf8mb4&parseTime=True&loc=Local
+  #     AXONHUB_DB_DSN: axonhub:${MYSQL_PASSWORD:-axonhub_password}@tcp(mysql:3306)/axonhub?charset=utf8mb4&parseTime=True&loc=Local
+  #   ports:
+  #     - "8090:8090"
+  #   volumes:
+  #     # 配置文件挂载 - 用于复杂配置
+  #     # 参考: https://github.com/looplj/axonhub/blob/main/docs/deployment/configuration.md
+  #     - ./config.yml:/app/config.yml:ro
+  #     # - axonhub_data:/data
+  #   networks:
+  #     - axonhub-network
+  #   depends_on:
+  #     mysql:
+  #       condition: service_healthy
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test:
+  #       [
+  #         "CMD",
+  #         "wget",
+  #         "--no-verbose",
+  #         "--tries=1",
+  #         "--spider",
+  #         "http://localhost:8090/health",
+  #       ]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 40s
+
 volumes:
   postgres_data:
+  mysql_data:
 
 networks:
   axonhub-network:
     driver: bridge
-
-

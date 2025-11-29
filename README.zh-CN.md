@@ -33,6 +33,7 @@ AxonHub 是一个 All-in-one AI 开发平台，提供统一的 API 网关、项�
 1. [**统一 API** Unified API](docs/unified-api.md)：兼容 OpenAI 与 Anthropic 的接口，配合转换管线实现模型互换与映射，无需改动现有代码。
 2. [**追踪 / 线程** Tracing / Threads](docs/traces.md)：线程级追踪实时记录完整调用链路，提升可观测性与问题定位效率。
 3. [**细粒度权限** Fine-grained Permission](docs/fine-grained-permission.md)：基于 RBAC 的权限策略，帮助团队精细管理访问控制、配额与数据隔离。
+4. [**自适应负载均衡** Adaptive Load Balancing](docs/guides/load-balance.md): 智能多策略负载均衡，自动选择最优 AI 通道，确保高可用性和最佳性能。
 
 ---
 
