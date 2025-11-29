@@ -66,6 +66,7 @@ func (Channel) Fields() []ent.Field {
 				"aihubmix",
 				"burncloud",
 				"modelscope",
+				"bailian",
 			).
 			Immutable(),
 		field.String("base_url").Optional(),

@@ -373,7 +373,7 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		channel.TypeDeepseek, channel.TypeMoonshot, channel.TypeLongcat, channel.TypeMinimax,
 		channel.TypeGeminiOpenai,
 		channel.TypePpio, channel.TypeSiliconflow, channel.TypeVolcengine,
-		channel.TypeVercel, channel.TypeAihubmix, channel.TypeBurncloud:
+		channel.TypeVercel, channel.TypeAihubmix, channel.TypeBurncloud, channel.TypeBailian:
 		transformer, err := openai.NewOutboundTransformerWithConfig(&openai.Config{
 			Type:    openai.PlatformOpenAI,
 			BaseURL: c.BaseURL,

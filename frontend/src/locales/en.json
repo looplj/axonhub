@@ -604,7 +604,8 @@
       "minimax_anthropic": "Minimax (Anthropic)",
       "aihubmix": "AiHubMix",
       "burncloud": "BurnCloud",
-      "modelscope": "ModelScope"
+      "modelscope": "ModelScope",
+      "bailian": "Bailian (OpenAI)"
     },
     "providers": {
       "openai": "OpenAI",
@@ -625,7 +626,8 @@
       "volcengine": "Volcengine",
       "aihubmix": "AiHubMix",
       "burncloud": "BurnCloud",
-      "modelscope": "ModelScope"
+      "modelscope": "ModelScope",
+      "bailian": "Bailian"
     },
     "actions": {
       "test": "Test",

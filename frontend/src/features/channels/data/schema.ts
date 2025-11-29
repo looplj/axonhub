@@ -36,6 +36,7 @@ export const channelTypeSchema = z.enum([
   'aihubmix',
   'burncloud',
   'modelscope',
+  'bailian',
 ])
 export type ChannelType = z.infer<typeof channelTypeSchema>
 
