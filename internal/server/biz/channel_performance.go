@@ -562,7 +562,12 @@ func (svc *ChannelService) startPerformanceProcess() {
 		case perf := <-svc.perfCh:
 			svc.RecordPerformance(context.Background(), perf)
 		case <-ticker.C:
-			svc.flushPerformanceMetrics(context.Background())
+			err := svc.Executors.ExecuteFunc(func(ctx context.Context) {
+				svc.flushPerformanceMetrics(ctx)
+			})
+			if err != nil {
+				log.Error(context.Background(), "failed to execute flush performance metrics", log.Cause(err))
+			}
 		}
 	}
 }
@@ -591,10 +596,7 @@ func (svc *ChannelService) flushPerformanceMetrics(ctx context.Context) {
 			continue
 		}
 
-		err := svc.Executors.ExecuteFunc(func(ctx context.Context) { svc.RecordMetrics(ctx, channelID, aggregatedMetrics) })
-		if err != nil {
-			log.Error(ctx, "failed to execute record metrics", log.Any("metric", aggregatedMetrics), log.Cause(err))
-		}
+		svc.RecordMetrics(ctx, channelID, aggregatedMetrics)
 	}
 }
 

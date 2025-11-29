@@ -125,7 +125,7 @@ func getDefaultBaseURL(config *Config) string {
 
 		return "https://us-central1-aiplatform.googleapis.com"
 	default:
-		return "https://api.anthropic.com"
+		return "https://api.anthropic.com/v1"
 	}
 }
 
@@ -247,6 +247,10 @@ func (t *OutboundTransformer) buildFullRequestURL(chatReq *llm.Request) (string,
 
 	default:
 		// Direct Anthropic API
+		if strings.HasSuffix(baseURL, "/v1") {
+			return baseURL + "/messages", nil
+		}
+
 		return baseURL + "/v1/messages", nil
 	}
 }

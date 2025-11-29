@@ -2,6 +2,22 @@ import { toast } from 'sonner'
 import { getTokenFromStorage, removeTokenFromStorage } from '@/stores/authStore'
 import i18n from '@/lib/i18n'
 
+export class GraphQLRequestError extends Error {
+  status?: number
+  isAuthError: boolean
+
+  constructor(message: string, options?: { status?: number; isAuthError?: boolean }) {
+    super(message)
+    this.name = 'GraphQLRequestError'
+    this.status = options?.status
+    this.isAuthError = Boolean(options?.isAuthError)
+  }
+}
+
+export function isAuthError(error: unknown): error is GraphQLRequestError {
+  return error instanceof GraphQLRequestError && error.isAuthError
+}
+
 // Utility function to extract the operation name from a GraphQL query string
 export function extractOperationName(query: string): string | undefined {
   // Remove leading whitespace and match the operation name from GraphQL query/mutation/subscription
@@ -42,26 +58,38 @@ export async function graphqlRequest<T>(
   // Extract operation name from the query for tracing
   const operationName = extractOperationName(query)
 
-  const response = await fetch(GRAPHQL_ENDPOINT, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      query,
-      variables,
-      operationName, // Add operation name for tracing
-    }),
-  })
+  let response: Response
 
-  // Handle 401 Unauthorized
-  if (response.status === 401) {
+  try {
+    response = await fetch(GRAPHQL_ENDPOINT, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        query,
+        variables,
+        operationName, // Add operation name for tracing
+      }),
+    })
+  } catch (error) {
+    throw new GraphQLRequestError('Network error', { status: undefined, isAuthError: false })
+  }
+
+  // Handle explicit auth failures
+  if (response.status === 401 || response.status === 403) {
     // Clear token and redirect to login
     removeTokenFromStorage()
     toast.error(i18n.t('common.errors.sessionExpiredSignIn'))
     window.location.href = '/sign-in'
-    throw new Error('Unauthorized')
+    throw new GraphQLRequestError('Unauthorized', { status: response.status, isAuthError: true })
   }
 
   const result = await response.json()
+
+  if (!response.ok) {
+    throw new GraphQLRequestError(result?.errors?.[0]?.message || 'Request failed', {
+      status: response.status,
+    })
+  }
 
   if (result.errors) {
     // Check for authentication errors
@@ -77,10 +105,10 @@ export async function graphqlRequest<T>(
       removeTokenFromStorage()
       toast.error(i18n.t('common.errors.sessionExpiredSignIn'))
       window.location.href = '/sign-in'
-      throw new Error('Unauthorized')
+      throw new GraphQLRequestError('Unauthorized', { status: 401, isAuthError: true })
     }
 
-    throw new Error(result.errors[0]?.message || 'GraphQL Error')
+    throw new GraphQLRequestError(result.errors[0]?.message || 'GraphQL Error')
   }
 
   return result.data
