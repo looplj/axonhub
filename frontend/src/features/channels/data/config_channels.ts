@@ -18,6 +18,7 @@ import {
   BurnCloud,
   Vercel,
   ModelScope,
+  Bailian,
 } from '@lobehub/icons'
 import { BURNCLOUD_DEFAULT_MODELS } from './burncloud-models'
 import { ApiFormat, ChannelType } from './schema'
@@ -78,7 +79,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
   },
   anthropic: {
     channelType: 'anthropic',
-    baseURL: 'https://api.anthropic.com/v1',
+    baseURL: 'https://api.anthropic.com',
     defaultModels: ['claude-opus-4-5', 'claude-sonnet-4-5'],
     apiFormat: ANTHROPIC_MESSAGES,
     color: 'bg-orange-100 text-orange-800 border-orange-200',
@@ -401,6 +402,18 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     apiFormat: OPENAI_CHAT_COMPLETIONS,
     color: 'bg-purple-100 text-purple-800 border-purple-200',
     icon: ModelScope,
+  },
+  bailian: {
+    channelType: 'bailian',
+    baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    defaultModels: [
+      'qwen-max-plus',
+      'qwen-turbo',
+      'qwen-max',
+    ],
+    apiFormat: OPENAI_CHAT_COMPLETIONS,
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    icon: Bailian,
   },
   anthropic_aws: {
     channelType: 'anthropic_aws',

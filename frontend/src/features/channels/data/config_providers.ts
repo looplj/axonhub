@@ -18,6 +18,7 @@ import {
   BurnCloud,
   Vercel,
   ModelScope,
+  Bailian,
 } from '@lobehub/icons'
 import { CHANNEL_CONFIGS } from './config_channels'
 import { ApiFormat, ChannelType } from './schema'
@@ -148,6 +149,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     icon: ModelScope,
     color: 'bg-purple-100 text-purple-800 border-purple-200',
     channelTypes: ['modelscope'],
+  },
+  bailian: {
+    provider: 'bailian',
+    icon: Bailian,
+    color: 'bg-green-100 text-green-800 border-green-200',
+    channelTypes: ['bailian'],
   },
 }
 

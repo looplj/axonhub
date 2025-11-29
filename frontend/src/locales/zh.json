@@ -631,7 +631,8 @@
       "minimax_anthropic": "Minimax (Anthropic)",
       "aihubmix": "AiHubMix",
       "burncloud": "BurnCloud",
-      "modelscope": "魔搭"
+      "modelscope": "魔搭",
+      "bailian": "百炼 (OpenAI)"
     },
     "providers": {
       "openai": "OpenAI",
@@ -652,7 +653,8 @@
       "volcengine": "火山引擎",
       "aihubmix": "AiHubMix",
       "burncloud": "BurnCloud",
-      "modelscope": "魔搭"
+      "modelscope": "魔搭",
+      "bailian": "百炼"
     },
     "actions": {
       "test": "测试",
