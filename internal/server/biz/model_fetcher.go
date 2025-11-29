@@ -145,7 +145,12 @@ func (f *ModelFetcher) prepareModelsEndpoint(channelType channel.Type, baseURL s
 	case channelType.IsAnthropic():
 		// Anthropic API
 		headers.Set("Anthropic-Version", "2023-06-01")
-		return baseURL + "/models", headers
+
+		if strings.HasSuffix(baseURL, "/v1") {
+			return baseURL + "/models", headers
+		}
+
+		return baseURL + "/v1/models", headers
 	case channelType == channel.TypeZhipuAnthropic || channelType == channel.TypeZaiAnthropic:
 		baseURL = strings.TrimSuffix(baseURL, "/anthropic")
 		return baseURL + "/paas/v4/models", headers
@@ -153,7 +158,11 @@ func (f *ModelFetcher) prepareModelsEndpoint(channelType channel.Type, baseURL s
 		baseURL = strings.TrimSuffix(baseURL, "/anthropic")
 		return baseURL + "/v1/models", headers
 	default:
-		return baseURL + "/models", headers
+		if strings.HasSuffix(baseURL, "/v1") {
+			return baseURL + "/models", headers
+		}
+
+		return baseURL + "/v1/models", headers
 	}
 }
 

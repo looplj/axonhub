@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useMe } from '@/features/auth/data/auth'
+import { isAuthError } from '@/gql/graphql'
 import { Skeleton } from '@/components/ui/skeleton'
 
 interface AuthGuardProps {
@@ -32,7 +33,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
   // Handle me query error (e.g., token expired)
   useEffect(() => {
-    if (meError && accessToken) {
+    if (meError && accessToken && isAuthError(meError)) {
       // Token might be expired, redirect to sign-in
       router.navigate({ to: '/sign-in' })
     }
