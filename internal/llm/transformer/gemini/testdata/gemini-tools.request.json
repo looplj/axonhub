@@ -1,0 +1,58 @@
+{
+  "contents": [
+    {
+      "parts": [
+        {
+          "text": "What is the weather in San Francisco, CA?"
+        }
+      ],
+      "role": "user"
+    }
+  ],
+  "tools": [
+    {
+      "functionDeclarations": [
+        {
+          "name": "get_coordinates",
+          "description": "Accepts a place as an address, then returns the latitude and longitude coordinates.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "location": {
+                "type": "string",
+                "description": "The location to look up."
+              }
+            },
+            "required": ["location"]
+          }
+        },
+        {
+          "name": "get_weather",
+          "description": "Get the weather at a specific location",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number",
+                "description": "The latitude of the location to check weather."
+              },
+              "long": {
+                "type": "number",
+                "description": "The longitude of the location to check weather."
+              },
+              "unit": {
+                "type": "string",
+                "description": "Unit for the output",
+                "enum": ["celsius", "fahrenheit"]
+              }
+            },
+            "required": ["lat", "long", "unit"]
+          }
+        }
+      ]
+    }
+  ],
+  "generationConfig": {
+    "maxOutputTokens": 1024
+  }
+}

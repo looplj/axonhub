@@ -374,7 +374,7 @@ func (svc *ChannelService) RecordMetrics(ctx context.Context, channelID int, met
 	avgStreamTokensPerSecond := metrics.CalculateAvgStreamTokensPerSecond()
 
 	// Ensure ChannelPerformance record exists
-	perf, err := svc.entFromContext(ctx).ChannelPerformance.Query().
+	perf, err := svc.db.ChannelPerformance.Query().
 		Where(channelperformance.ChannelID(channelID)).
 		First(ctx)
 	if err != nil {
@@ -383,7 +383,7 @@ func (svc *ChannelService) RecordMetrics(ctx context.Context, channelID int, met
 	}
 
 	// Update metrics with both calculated averages and raw counters
-	update := svc.entFromContext(ctx).ChannelPerformance.UpdateOneID(perf.ID).
+	update := svc.db.ChannelPerformance.UpdateOneID(perf.ID).
 		SetSuccessRate(int(successRate)).
 		SetAvgLatencyMs(int(avgLatencyMs)).
 		SetAvgTokenPerSecond(int(avgTokensPerSecond)).
@@ -426,7 +426,7 @@ func (svc *ChannelService) markChannelUnavailable(ctx context.Context, channelID
 
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
-	_, err := svc.entFromContext(ctx).Channel.UpdateOneID(channelID).
+	_, err := svc.db.Channel.UpdateOneID(channelID).
 		SetStatus(channel.StatusDisabled).
 		SetErrorMessage(deriveErrorMessage(errorStatusCode)).
 		Save(ctx)

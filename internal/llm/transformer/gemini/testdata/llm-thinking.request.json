@@ -1,0 +1,20 @@
+{
+  "model": "gemini-2.5-flash",
+  "max_tokens": 4096,
+  "reasoning_effort": "medium",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What is 25 * 47? Please show your reasoning."
+    },
+    {
+      "role": "assistant",
+      "content": "The answer is 1175.\n\nI calculated this by breaking down 47 into 40 + 7, then:\n- 25 × 40 = 1000\n- 25 × 7 = 175\n- 1000 + 175 = 1175",
+      "reasoning_content": "Let me calculate 25 * 47 step by step:\n25 * 47 = 25 * (40 + 7)\n= 25 * 40 + 25 * 7\n= 1000 + 175\n= 1175"
+    },
+    {
+      "role": "user",
+      "content": "Now multiply that result by 3"
+    }
+  ]
+}

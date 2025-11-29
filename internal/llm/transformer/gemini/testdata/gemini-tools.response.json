@@ -1,0 +1,32 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "I'll help you get the weather information for San Francisco, CA. Let me start by getting the coordinates."
+          },
+          {
+            "functionCall": {
+              "id": "call_001",
+              "name": "get_coordinates",
+              "args": {
+                "location": "San Francisco, CA"
+              }
+            }
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 50,
+    "candidatesTokenCount": 30,
+    "totalTokenCount": 80
+  },
+  "modelVersion": "gemini-2.5-flash",
+  "responseId": "tools-response-001"
+}

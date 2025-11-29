@@ -1,52 +1,17 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 
-	"github.com/looplj/axonhub/internal/contexts"
-	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer/anthropic"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
-	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/chat"
 )
-
-type AnthropicErrorHandler struct{}
-
-func (e *AnthropicErrorHandler) HandlerError(c *gin.Context, err error) {
-	// Get request ID from context
-	requestID := ""
-	if reqID, ok := contexts.GetRequestID(c.Request.Context()); ok {
-		requestID = reqID
-	}
-
-	if aErr, ok := xerrors.As[*httpclient.Error](err); ok {
-		c.JSON(aErr.StatusCode, json.RawMessage(aErr.Body))
-		return
-	}
-
-	if aErr, ok := xerrors.As[*llm.ResponseError](err); ok {
-		c.JSON(aErr.StatusCode, anthropic.AnthropicError{
-			StatusCode: aErr.StatusCode,
-			RequestID:  requestID,
-			Error:      anthropic.ErrorDetail{Type: aErr.Detail.Type, Message: aErr.Error()},
-		})
-
-		return
-	}
-
-	c.JSON(500, anthropic.AnthropicError{
-		StatusCode: 0,
-		RequestID:  requestID,
-		Error:      anthropic.ErrorDetail{Type: "internal_server_error", Message: "Internal server error"},
-	})
-}
 
 type AnthropicHandlersParams struct {
 	fx.In
@@ -60,12 +25,12 @@ type AnthropicHandlersParams struct {
 
 type AnthropicHandlers struct {
 	ChannelService         *biz.ChannelService
-	ChatCompletionHandlers *ChatCompletionSSEHandlers
+	ChatCompletionHandlers *ChatCompletionHandlers
 }
 
 func NewAnthropicHandlers(params AnthropicHandlersParams) *AnthropicHandlers {
 	return &AnthropicHandlers{
-		ChatCompletionHandlers: &ChatCompletionSSEHandlers{
+		ChatCompletionHandlers: &ChatCompletionHandlers{
 			ChatCompletionProcessor: chat.NewChatCompletionProcessor(
 				params.ChannelService,
 				params.RequestService,

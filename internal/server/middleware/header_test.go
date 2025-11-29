@@ -301,9 +301,9 @@ func TestExtractAPIKeyFromRequestSimple(t *testing.T) {
 }
 
 func TestDefaultAPIKeyConfig(t *testing.T) {
-	config := DefaultAPIKeyConfig()
+	config := defaultAPIKeyConfig()
 
-	expectedHeaders := []string{"Authorization", "X-API-Key", "X-Api-Key", "API-Key", "Api-Key"}
+	expectedHeaders := []string{"Authorization", "X-API-Key", "X-Api-Key", "API-Key", "Api-Key", "X-Goog-Api-Key", "X-Google-Api-Key"}
 	if len(config.Headers) != len(expectedHeaders) {
 		t.Errorf("expected %d headers, got %d", len(expectedHeaders), len(config.Headers))
 	}
@@ -340,7 +340,7 @@ func BenchmarkExtractAPIKeyFromRequest(b *testing.B) {
 	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Set("Authorization", "Bearer sk-1234567890abcdef")
 
-	config := DefaultAPIKeyConfig()
+	config := defaultAPIKeyConfig()
 
 	b.ResetTimer()
 

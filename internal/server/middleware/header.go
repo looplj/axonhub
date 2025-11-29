@@ -16,10 +16,12 @@ type APIKeyConfig struct {
 	AllowedPrefixes []string
 }
 
-// DefaultAPIKeyConfig 返回默认的 API key 配置.
-func DefaultAPIKeyConfig() *APIKeyConfig {
+var DefaultAPIKeyConfig = defaultAPIKeyConfig()
+
+// defaultAPIKeyConfig 返回默认的 API key 配置.
+func defaultAPIKeyConfig() *APIKeyConfig {
 	return &APIKeyConfig{
-		Headers:         []string{"Authorization", "X-API-Key", "X-Api-Key", "API-Key", "Api-Key"},
+		Headers:         []string{"Authorization", "X-API-Key", "X-Api-Key", "API-Key", "Api-Key", "X-Goog-Api-Key", "X-Google-Api-Key"},
 		RequireBearer:   false, // 改为不强制要求 Bearer
 		AllowedPrefixes: []string{"Bearer ", "Token ", "Api-Key ", "API-Key "},
 	}
@@ -49,7 +51,7 @@ func ExtractAPIKeyFromHeader(authHeader string) (string, error) {
 // ExtractAPIKeyFromRequest 从 HTTP 请求中提取 API key，支持多个 headers 和前缀.
 func ExtractAPIKeyFromRequest(r *http.Request, config *APIKeyConfig) (string, error) {
 	if config == nil {
-		config = DefaultAPIKeyConfig()
+		config = DefaultAPIKeyConfig
 	}
 
 	var lastError error

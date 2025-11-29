@@ -76,6 +76,7 @@ tmp/
 *.csv
 *.sqlite
 *.db
+*-journal
 
 *.code-workspace
 

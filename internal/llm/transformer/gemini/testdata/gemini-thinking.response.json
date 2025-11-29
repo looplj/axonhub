@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "I need to multiply 1175 by 3:\n1175 * 3 = (1000 + 175) * 3\n= 1000 * 3 + 175 * 3\n= 3000 + 525\n= 3525",
+            "thought": true
+          },
+          {
+            "text": "1175 × 3 = 3525"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 100,
+    "candidatesTokenCount": 50,
+    "totalTokenCount": 250,
+    "thoughtsTokenCount": 100
+  },
+  "modelVersion": "gemini-2.5-flash",
+  "responseId": "thinking-response-001"
+}

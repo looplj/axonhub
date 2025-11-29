@@ -1,0 +1,11 @@
+{
+  "model": "gemini-2.5-flash",
+  "max_tokens": 4096,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Output 1-20, 5 each line"
+    }
+  ],
+  "reasoning_effort": "low"
+}

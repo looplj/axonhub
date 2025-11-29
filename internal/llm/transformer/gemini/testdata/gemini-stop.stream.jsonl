@@ -1,0 +1,3 @@
+{"LastEventID":"","Type":"","Data":"{\"responseId\":\"resp-gemini-stop-1\",\"modelVersion\":\"gemini-2.0-flash\",\"candidates\":[{\"index\":0,\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Hello\"}]}}]}"}
+{"LastEventID":"","Type":"","Data":"{\"responseId\":\"resp-gemini-stop-1\",\"modelVersion\":\"gemini-2.0-flash\",\"candidates\":[{\"index\":0,\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\", \"}]}}]}"}
+{"LastEventID":"","Type":"","Data":"{\"responseId\":\"resp-gemini-stop-1\",\"modelVersion\":\"gemini-2.0-flash\",\"candidates\":[{\"index\":0,\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"world!\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":10,\"candidatesTokenCount\":5,\"totalTokenCount\":15}}"}

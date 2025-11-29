@@ -43,8 +43,12 @@ func GetDecoder(contentType string) (StreamDecoderFactory, bool) {
 // NewDefaultSSEDecoder creates a new default SSE decoder.
 func NewDefaultSSEDecoder(ctx context.Context, rc io.ReadCloser) StreamDecoder {
 	return &defaultSSEDecoder{
-		ctx:       ctx,
-		sseStream: sse.NewStream(rc),
+		ctx: ctx,
+		// sseStream: sse.NewStream(rc),
+		// 图片生成需要大量数据，设置最大事件大小
+		sseStream: sse.NewStreamWithConfig(rc, &sse.StreamConfig{
+			MaxEventSize: 16 * 1024 * 1024,
+		}),
 	}
 }
 
