@@ -118,6 +118,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
     defaultValues:
       isEdit && currentRow
         ? {
+            type: currentRow.type,
             baseURL: currentRow.baseURL,
             name: currentRow.name,
             supportedModels: currentRow.supportedModels,
@@ -222,7 +223,11 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
 
       if (isEdit && currentRow) {
         // For edit mode, only include credentials if user actually entered new values
-        const updateInput = { ...dataWithModels }
+        const updateInput = {
+          ...dataWithModels,
+          // type 不能更新
+          type: undefined,
+        }
 
         // Check if any credential fields have actual values
         const hasApiKey = values.credentials?.apiKey && values.credentials.apiKey.trim() !== ''
@@ -414,7 +419,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                               className={`flex items-center space-x-3 rounded-lg border p-3 transition-colors ${
                                 isEdit
                                   ? isSelected
-                                    ? 'cursor-not-allowed border-primary bg-muted/80 shadow-sm'
+                                    ? 'border-primary bg-muted/80 cursor-not-allowed shadow-sm'
                                     : 'cursor-not-allowed opacity-60'
                                   : `${isSelected ? 'border-primary bg-accent/40 shadow-sm' : ''} hover:bg-accent/50`
                               }`}
