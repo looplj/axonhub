@@ -24,20 +24,20 @@ func extractTextFromContent(content *Content) string {
 	return strings.Join(texts, "\n")
 }
 
-func extractTextFromLLMMessage(msg *llm.Message) string {
-	if msg.Content.Content != nil {
-		return *msg.Content.Content
+func extractPartsFromLLMMessage(msg *llm.Message) []*Part {
+	if msg.Content.Content != nil && *msg.Content.Content != "" {
+		return []*Part{{Text: *msg.Content.Content}}
 	}
 
-	var texts []string
+	var parts []*Part
 
 	for _, part := range msg.Content.MultipleContent {
-		if part.Type == "text" && part.Text != nil {
-			texts = append(texts, *part.Text)
+		if part.Type == "text" && part.Text != nil && *part.Text != "" {
+			parts = append(parts, &Part{Text: *part.Text})
 		}
 	}
 
-	return strings.Join(texts, "\n")
+	return parts
 }
 
 func convertGeminiRoleToLLMRole(role string) string {

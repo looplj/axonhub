@@ -100,9 +100,40 @@ func TestConvertLLMToGeminiRequest_Basic(t *testing.T) {
 			validate: func(t *testing.T, result *GenerateContentRequest) {
 				t.Helper()
 				require.NotNil(t, result.SystemInstruction)
-				require.Len(t, result.SystemInstruction.Parts, 1)
-				require.Contains(t, result.SystemInstruction.Parts[0].Text, "First instruction.")
-				require.Contains(t, result.SystemInstruction.Parts[0].Text, "Second instruction.")
+				require.Len(t, result.SystemInstruction.Parts, 2)
+				require.Equal(t, "First instruction.", result.SystemInstruction.Parts[0].Text)
+				require.Equal(t, "Second instruction.", result.SystemInstruction.Parts[1].Text)
+			},
+		},
+		{
+			name: "request with system message containing multiple content parts",
+			input: &llm.Request{
+				Messages: []llm.Message{
+					{
+						Role: "system",
+						Content: llm.MessageContent{
+							MultipleContent: []llm.MessageContentPart{
+								{Type: "text", Text: lo.ToPtr("Part A")},
+								{Type: "text", Text: lo.ToPtr("Part B")},
+								{Type: "text", Text: lo.ToPtr("Part C")},
+							},
+						},
+					},
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello!"),
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *GenerateContentRequest) {
+				t.Helper()
+				require.NotNil(t, result.SystemInstruction)
+				require.Len(t, result.SystemInstruction.Parts, 3)
+				require.Equal(t, "Part A", result.SystemInstruction.Parts[0].Text)
+				require.Equal(t, "Part B", result.SystemInstruction.Parts[1].Text)
+				require.Equal(t, "Part C", result.SystemInstruction.Parts[2].Text)
 			},
 		},
 		{
@@ -596,6 +627,7 @@ func TestConvertLLMToolMessageToGeminiContent(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    *llm.Message
+		req      *GenerateContentRequest
 		validate func(t *testing.T, result *Content)
 	}{
 		{
@@ -607,6 +639,7 @@ func TestConvertLLMToolMessageToGeminiContent(t *testing.T) {
 					Content: lo.ToPtr(`{"temperature": 72, "unit": "F"}`),
 				},
 			},
+			req: &GenerateContentRequest{},
 			validate: func(t *testing.T, result *Content) {
 				t.Helper()
 				require.Equal(t, "user", result.Role)
@@ -625,6 +658,7 @@ func TestConvertLLMToolMessageToGeminiContent(t *testing.T) {
 					Content: lo.ToPtr("Plain text result"),
 				},
 			},
+			req: &GenerateContentRequest{},
 			validate: func(t *testing.T, result *Content) {
 				t.Helper()
 				require.Equal(t, "user", result.Role)
@@ -642,6 +676,7 @@ func TestConvertLLMToolMessageToGeminiContent(t *testing.T) {
 					Content: lo.ToPtr(`{"result": "success"}`),
 				},
 			},
+			req: &GenerateContentRequest{},
 			validate: func(t *testing.T, result *Content) {
 				t.Helper()
 				require.Equal(t, "user", result.Role)
@@ -650,11 +685,101 @@ func TestConvertLLMToolMessageToGeminiContent(t *testing.T) {
 				require.Equal(t, "", result.Parts[0].FunctionResponse.ID)
 			},
 		},
+		{
+			name: "tool message with name from ToolCallName",
+			input: &llm.Message{
+				Role:         "tool",
+				ToolCallID:   lo.ToPtr("call_789"),
+				ToolCallName: lo.ToPtr("get_weather"),
+				Content: llm.MessageContent{
+					Content: lo.ToPtr(`{"temp": 25}`),
+				},
+			},
+			req: &GenerateContentRequest{},
+			validate: func(t *testing.T, result *Content) {
+				t.Helper()
+				require.Equal(t, "user", result.Role)
+				require.Len(t, result.Parts, 1)
+				require.NotNil(t, result.Parts[0].FunctionResponse)
+				require.Equal(t, "call_789", result.Parts[0].FunctionResponse.ID)
+				require.Equal(t, "get_weather", result.Parts[0].FunctionResponse.Name)
+			},
+		},
+		{
+			name: "tool message finds name from previous function call by ID",
+			input: &llm.Message{
+				Role:       "tool",
+				ToolCallID: lo.ToPtr("call_abc"),
+				Content: llm.MessageContent{
+					Content: lo.ToPtr(`{"result": "found"}`),
+				},
+			},
+			req: &GenerateContentRequest{
+				Contents: []*Content{
+					{
+						Role: "model",
+						Parts: []*Part{
+							{
+								FunctionCall: &FunctionCall{
+									ID:   "call_abc",
+									Name: "search_function",
+									Args: map[string]any{"query": "test"},
+								},
+							},
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *Content) {
+				t.Helper()
+				require.Equal(t, "user", result.Role)
+				require.Len(t, result.Parts, 1)
+				require.NotNil(t, result.Parts[0].FunctionResponse)
+				require.Equal(t, "call_abc", result.Parts[0].FunctionResponse.ID)
+				require.Equal(t, "search_function", result.Parts[0].FunctionResponse.Name)
+			},
+		},
+		{
+			name: "tool message with name priority - ToolCallName over lookup",
+			input: &llm.Message{
+				Role:         "tool",
+				ToolCallID:   lo.ToPtr("call_xyz"),
+				ToolCallName: lo.ToPtr("explicit_name"),
+				Content: llm.MessageContent{
+					Content: lo.ToPtr(`{"data": "value"}`),
+				},
+			},
+			req: &GenerateContentRequest{
+				Contents: []*Content{
+					{
+						Role: "model",
+						Parts: []*Part{
+							{
+								FunctionCall: &FunctionCall{
+									ID:   "call_xyz",
+									Name: "lookup_name",
+									Args: map[string]any{},
+								},
+							},
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *Content) {
+				t.Helper()
+				require.Equal(t, "user", result.Role)
+				require.Len(t, result.Parts, 1)
+				require.NotNil(t, result.Parts[0].FunctionResponse)
+				require.Equal(t, "call_xyz", result.Parts[0].FunctionResponse.ID)
+				// ToolCallName takes priority over lookup
+				require.Equal(t, "explicit_name", result.Parts[0].FunctionResponse.Name)
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertLLMToolMessageToGeminiContent(tt.input)
+			result := convertLLMToolResultToGeminiContent(tt.input, tt.req.Contents)
 			tt.validate(t, result)
 		})
 	}
@@ -1284,6 +1409,119 @@ func TestConvertGeminiToLLMResponse_EdgeCases(t *testing.T) {
 // =============================================================================
 // Helper Function Tests
 // =============================================================================
+
+func TestExtractPartsFromLLMMessage(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    *llm.Message
+		validate func(t *testing.T, result []*Part)
+	}{
+		{
+			name: "single text content",
+			input: &llm.Message{
+				Role: "system",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Hello world"),
+				},
+			},
+			validate: func(t *testing.T, result []*Part) {
+				t.Helper()
+				require.Len(t, result, 1)
+				require.Equal(t, "Hello world", result[0].Text)
+			},
+		},
+		{
+			name: "empty content returns empty parts",
+			input: &llm.Message{
+				Role: "system",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr(""),
+				},
+			},
+			validate: func(t *testing.T, result []*Part) {
+				t.Helper()
+				require.Empty(t, result)
+			},
+		},
+		{
+			name: "nil content returns empty parts",
+			input: &llm.Message{
+				Role:    "system",
+				Content: llm.MessageContent{},
+			},
+			validate: func(t *testing.T, result []*Part) {
+				t.Helper()
+				require.Empty(t, result)
+			},
+		},
+		{
+			name: "multiple content parts",
+			input: &llm.Message{
+				Role: "system",
+				Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{Type: "text", Text: lo.ToPtr("First part")},
+						{Type: "text", Text: lo.ToPtr("Second part")},
+						{Type: "text", Text: lo.ToPtr("Third part")},
+					},
+				},
+			},
+			validate: func(t *testing.T, result []*Part) {
+				t.Helper()
+				require.Len(t, result, 3)
+				require.Equal(t, "First part", result[0].Text)
+				require.Equal(t, "Second part", result[1].Text)
+				require.Equal(t, "Third part", result[2].Text)
+			},
+		},
+		{
+			name: "multiple content parts with empty text filtered out",
+			input: &llm.Message{
+				Role: "system",
+				Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{Type: "text", Text: lo.ToPtr("Valid part")},
+						{Type: "text", Text: lo.ToPtr("")},
+						{Type: "text", Text: nil},
+						{Type: "text", Text: lo.ToPtr("Another valid")},
+					},
+				},
+			},
+			validate: func(t *testing.T, result []*Part) {
+				t.Helper()
+				require.Len(t, result, 2)
+				require.Equal(t, "Valid part", result[0].Text)
+				require.Equal(t, "Another valid", result[1].Text)
+			},
+		},
+		{
+			name: "non-text types are ignored",
+			input: &llm.Message{
+				Role: "system",
+				Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{Type: "text", Text: lo.ToPtr("Text part")},
+						{Type: "image_url", ImageURL: &llm.ImageURL{URL: "http://example.com/img.jpg"}},
+						{Type: "text", Text: lo.ToPtr("Another text")},
+					},
+				},
+			},
+			validate: func(t *testing.T, result []*Part) {
+				t.Helper()
+				require.Len(t, result, 2)
+				require.Equal(t, "Text part", result[0].Text)
+				require.Equal(t, "Another text", result[1].Text)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := extractPartsFromLLMMessage(tt.input)
+			tt.validate(t, result)
+		})
+	}
+}
 
 func TestConvertImageURLToGeminiPart(t *testing.T) {
 	tests := []struct {

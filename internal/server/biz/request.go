@@ -753,7 +753,11 @@ func (s *RequestService) LoadRequestBody(ctx context.Context, req *ent.Request) 
 		return nil, fmt.Errorf("failed to load request body: %w", err)
 	}
 
-	return objects.JSONRawMessage(data), nil
+	if json.Valid(data) {
+		return objects.JSONRawMessage(data), nil
+	}
+
+	return xjson.EmptyJSONRawMessage, nil
 }
 
 // LoadResponseBody returns the request response body, loading from external storage when necessary.
@@ -785,7 +789,11 @@ func (s *RequestService) LoadResponseBody(ctx context.Context, req *ent.Request)
 		return req.ResponseBody, nil
 	}
 
-	return objects.JSONRawMessage(data), nil
+	if json.Valid(data) {
+		return objects.JSONRawMessage(data), nil
+	}
+
+	return xjson.EmptyJSONRawMessage, nil
 }
 
 // LoadResponseChunks returns the request response chunks, loading from external storage when necessary.
@@ -859,7 +867,11 @@ func (s *RequestService) LoadRequestExecutionRequestBody(ctx context.Context, ex
 		return exec.RequestBody, nil
 	}
 
-	return objects.JSONRawMessage(data), nil
+	if json.Valid(data) {
+		return objects.JSONRawMessage(data), nil
+	}
+
+	return xjson.EmptyJSONRawMessage, nil
 }
 
 // LoadRequestExecutionResponseBody returns the execution response body, loading from external storage when necessary.
@@ -891,7 +903,11 @@ func (s *RequestService) LoadRequestExecutionResponseBody(ctx context.Context, e
 		return exec.ResponseBody, nil
 	}
 
-	return objects.JSONRawMessage(data), nil
+	if json.Valid(data) {
+		return objects.JSONRawMessage(data), nil
+	}
+
+	return xjson.EmptyJSONRawMessage, nil
 }
 
 // LoadRequestExecutionResponseChunks returns the execution response chunks, loading from external storage when necessary.
@@ -923,17 +939,17 @@ func (s *RequestService) LoadRequestExecutionResponseChunks(ctx context.Context,
 		return exec.ResponseChunks, nil
 	}
 
-	if len(data) == 0 {
-		return []objects.JSONRawMessage{}, nil
+	if json.Valid(data) {
+		var chunks []objects.JSONRawMessage
+		if err := json.Unmarshal(data, &chunks); err != nil {
+			log.Warn(ctx, "Failed to unmarshal request execution response chunks", log.Cause(err), log.Int("execution_id", exec.ID))
+			return exec.ResponseChunks, nil
+		}
+
+		return chunks, nil
 	}
 
-	var chunks []objects.JSONRawMessage
-	if err := json.Unmarshal(data, &chunks); err != nil {
-		log.Warn(ctx, "Failed to unmarshal request execution response chunks", log.Cause(err), log.Int("execution_id", exec.ID))
-		return exec.ResponseChunks, nil
-	}
-
-	return chunks, nil
+	return []objects.JSONRawMessage{}, nil
 }
 
 func (s *RequestService) getDataStorage(ctx context.Context, dataStorageID int) (*ent.DataStorage, error) {
