@@ -466,3 +466,192 @@ func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
 
 	return stats, nil
 }
+
+// ModelTokenStats is the resolver for the modelTokenStats field.
+func (r *queryResolver) ModelTokenStats(ctx context.Context, models []string, period *string, date *string) (*ModelTokenStatsSummary, error) {
+	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	// Default values
+	periodStr := "day"
+	if period != nil {
+		periodStr = *period
+		if periodStr != "day" && periodStr != "week" && periodStr != "month" {
+			return nil, fmt.Errorf("invalid period parameter: must be 'day', 'week', or 'month'")
+		}
+	}
+
+	// Parse date or use current date
+	var targetDate time.Time
+	if date != nil {
+		var err error
+		targetDate, err = time.Parse("2006-01-02", *date)
+		if err != nil {
+			return nil, fmt.Errorf("invalid date format: must be YYYY-MM-DD")
+		}
+	} else {
+		targetDate = time.Now()
+	}
+
+	// Calculate time range based on period
+	var startDate, endDate time.Time
+	switch periodStr {
+	case "day":
+		startDate = time.Date(targetDate.Year(), targetDate.Month(), targetDate.Day(), 0, 0, 0, 0, targetDate.Location())
+		endDate = startDate.AddDate(0, 0, 1)
+	case "week":
+		// Start from Monday of the current week
+		weekday := int(targetDate.Weekday())
+		if weekday == 0 {
+			weekday = 7 // Sunday is 7, not 0
+		}
+		startDate = targetDate.AddDate(0, 0, -weekday+1)
+		startDate = time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, startDate.Location())
+		endDate = startDate.AddDate(0, 0, 7)
+	case "month":
+		startDate = time.Date(targetDate.Year(), targetDate.Month(), 1, 0, 0, 0, 0, targetDate.Location())
+		endDate = startDate.AddDate(0, 1, 0)
+	}
+
+	// Build query with filters
+	query := r.client.UsageLog.Query()
+
+	// Filter by date range
+	query = query.Where(usagelog.CreatedAtGTE(startDate), usagelog.CreatedAtLT(endDate))
+
+	// Filter by models if specified
+	if len(models) > 0 {
+		query = query.Where(usagelog.ModelIDIn(models...))
+	}
+
+	// Get current period statistics
+	type modelTokenSums struct {
+		ModelID      string `json:"model_id"`
+		ModelName    string `json:"model_name"`
+		InputTokens  int    `json:"input_tokens"`
+		OutputTokens int    `json:"output_tokens"`
+		CachedTokens int    `json:"cached_tokens"`
+	}
+
+	var currentStats []modelTokenSums
+	err := query.
+		Modify(func(s *sql.Selector) {
+			s.Select(
+				usagelog.FieldModelID,
+				sql.As(sql.Sum(usagelog.FieldPromptTokens), "input_tokens"),
+				sql.As(sql.Sum(usagelog.FieldCompletionTokens), "output_tokens"),
+				sql.As(sql.Sum(usagelog.FieldPromptCachedTokens), "cached_tokens"),
+			)
+			s.GroupBy(usagelog.FieldModelID)
+			s.OrderBy(sql.Desc("input_tokens"))
+		}).
+		Scan(ctx, &currentStats)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current period stats: %w", err)
+	}
+
+	// Build current period response
+	currentPeriod := make([]*ModelTokenStats, 0, len(currentStats))
+	for _, stat := range currentStats {
+		currentPeriod = append(currentPeriod, &ModelTokenStats{
+			ModelID:           stat.ModelID,
+			ModelName:         stat.ModelName,
+			TotalInputTokens:  stat.InputTokens,
+			TotalOutputTokens: stat.OutputTokens,
+			TotalCachedTokens: stat.CachedTokens,
+			TotalTokens:       stat.InputTokens + stat.OutputTokens,
+			Period:            periodStr,
+			Date:              targetDate.Format("2006-01-02"),
+		})
+	}
+
+	// Get trend data for the last 30 days
+	trendStartDate := time.Now().AddDate(0, 0, -30)
+	trendQuery := r.client.UsageLog.Query().
+		Where(usagelog.CreatedAtGTE(trendStartDate))
+
+	if len(models) > 0 {
+		trendQuery = trendQuery.Where(usagelog.ModelIDIn(models...))
+	}
+
+	// Get daily trends
+	type dailyModelStats struct {
+		Date         string `json:"date"`
+		ModelID      string `json:"model_id"`
+		InputTokens  int    `json:"input_tokens"`
+		OutputTokens int    `json:"output_tokens"`
+		CachedTokens int    `json:"cached_tokens"`
+	}
+
+	var trendStats []dailyModelStats
+	err = trendQuery.
+		Modify(func(s *sql.Selector) {
+			var dateExpr string
+			switch s.Dialect() {
+			case dialect.SQLite:
+				dateExpr = "substr(created_at, 1, 10)"
+			case dialect.MySQL:
+				dateExpr = "DATE_FORMAT(created_at, '%Y-%m-%d')"
+			case dialect.Postgres:
+				dateExpr = "to_char(created_at, 'YYYY-MM-DD')"
+			default:
+				dateExpr = "DATE(created_at)"
+			}
+
+			s.Select(
+				sql.As(dateExpr, "date"),
+				usagelog.FieldModelID,
+				sql.As(sql.Sum(usagelog.FieldPromptTokens), "input_tokens"),
+				sql.As(sql.Sum(usagelog.FieldCompletionTokens), "output_tokens"),
+				sql.As(sql.Sum(usagelog.FieldPromptCachedTokens), "cached_tokens"),
+			)
+			s.GroupBy(dateExpr, usagelog.FieldModelID)
+			s.OrderBy("date", usagelog.FieldModelID)
+		}).
+		Scan(ctx, &trendStats)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get trend stats: %w", err)
+	}
+
+	// Build trend response
+	trends := make([]*ModelTokenTrend, 0, len(trendStats))
+	modelSet := make(map[string]bool)
+	dateSet := make(map[string]bool)
+
+	for _, stat := range trendStats {
+		trends = append(trends, &ModelTokenTrend{
+			ModelID:      stat.ModelID,
+			ModelName:    stat.ModelID, // Using model ID as name for now
+			Date:         stat.Date,
+			InputTokens:  stat.InputTokens,
+			OutputTokens: stat.OutputTokens,
+			CachedTokens: stat.CachedTokens,
+			TotalTokens:  stat.InputTokens + stat.OutputTokens,
+		})
+		modelSet[stat.ModelID] = true
+		dateSet[stat.Date] = true
+	}
+
+	// Convert sets to slices
+	modelList := make([]string, 0, len(modelSet))
+	for model := range modelSet {
+		modelList = append(modelList, model)
+	}
+	sort.Strings(modelList)
+
+	dates := make([]string, 0, len(dateSet))
+	for date := range dateSet {
+		dates = append(dates, date)
+	}
+	sort.Strings(dates)
+
+	return &ModelTokenStatsSummary{
+		CurrentPeriod: currentPeriod,
+		Trends: &ModelTokenTrendData{
+			Trends: trends,
+			Models: modelList,
+			Dates:  dates,
+		},
+	}, nil
+}

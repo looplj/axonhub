@@ -49,6 +49,39 @@ type TokenStats {
   totalCachedTokensThisMonth: Int!
 }
 
+# Model-specific token statistics
+type ModelTokenStats {
+  modelId: String!
+  modelName: String!
+  totalInputTokens: Int!
+  totalOutputTokens: Int!
+  totalCachedTokens: Int!
+  totalTokens: Int!
+  period: String! # "day", "week", "month"
+  date: String! # ISO date format
+}
+
+type ModelTokenTrend {
+  modelId: String!
+  modelName: String!
+  date: String!
+  inputTokens: Int!
+  outputTokens: Int!
+  cachedTokens: Int!
+  totalTokens: Int!
+}
+
+type ModelTokenTrendData {
+  trends: [ModelTokenTrend!]!
+  models: [String!]!
+  dates: [String!]!
+}
+
+type ModelTokenStatsSummary {
+  currentPeriod: [ModelTokenStats!]!
+  trends: ModelTokenTrendData!
+}
+
 type TopRequestsProjects {
   projectId: ID!
   projectName: String!
@@ -64,4 +97,11 @@ extend type Query {
   dailyRequestStats(days: Int = 30): [DailyRequestStats!]!
   topRequestsProjects(limit: Int = 10): [TopRequestsProjects!]!
   tokenStats: TokenStats!
+
+  # Model-specific token statistics queries
+  modelTokenStats(
+    models: [String!]
+    period: String = "day" # "day", "week", "month"
+    date: String # ISO date format, defaults to today
+  ): ModelTokenStatsSummary!
 }

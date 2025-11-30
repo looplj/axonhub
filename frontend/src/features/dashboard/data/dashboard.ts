@@ -65,7 +65,43 @@ export const tokenStatsSchema = z.object({
   totalCachedTokensThisMonth: z.number(),
 })
 
+export const modelTokenStatsSchema = z.object({
+  modelId: z.string(),
+  modelName: z.string(),
+  totalInputTokens: z.number(),
+  totalOutputTokens: z.number(),
+  totalCachedTokens: z.number(),
+  totalTokens: z.number(),
+  period: z.string(),
+  date: z.string(),
+})
+
+export const modelTokenTrendSchema = z.object({
+  modelId: z.string(),
+  modelName: z.string(),
+  date: z.string(),
+  inputTokens: z.number(),
+  outputTokens: z.number(),
+  cachedTokens: z.number(),
+  totalTokens: z.number(),
+})
+
+export const modelTokenTrendDataSchema = z.object({
+  trends: z.array(modelTokenTrendSchema),
+  models: z.array(z.string()),
+  dates: z.array(z.string()),
+})
+
+export const modelTokenStatsSummarySchema = z.object({
+  currentPeriod: z.array(modelTokenStatsSchema),
+  trends: modelTokenTrendDataSchema,
+})
+
 export type TokenStats = z.infer<typeof tokenStatsSchema>
+export type ModelTokenStats = z.infer<typeof modelTokenStatsSchema>
+export type ModelTokenTrend = z.infer<typeof modelTokenTrendSchema>
+export type ModelTokenTrendData = z.infer<typeof modelTokenTrendDataSchema>
+export type ModelTokenStatsSummary = z.infer<typeof modelTokenStatsSummarySchema>
 
 // GraphQL queries
 const DASHBOARD_STATS_QUERY = `
@@ -147,6 +183,37 @@ const TOKEN_STATS_AGGR_QUERY = `
       totalInputTokensThisMonth
       totalOutputTokensThisMonth
       totalCachedTokensThisMonth
+    }
+  }
+`
+
+// Model-specific token statistics
+const MODEL_TOKEN_STATS_QUERY = `
+  query GetModelTokenStats($models: [String!], $period: String, $date: String) {
+    modelTokenStats(models: $models, period: $period, date: $date) {
+      currentPeriod {
+        modelId
+        modelName
+        totalInputTokens
+        totalOutputTokens
+        totalCachedTokens
+        totalTokens
+        period
+        date
+      }
+      trends {
+        trends {
+          modelId
+          modelName
+          date
+          inputTokens
+          outputTokens
+          cachedTokens
+          totalTokens
+        }
+        models
+        dates
+      }
     }
   }
 `
@@ -241,5 +308,20 @@ export function useTokenStats() {
       return tokenStatsSchema.parse(data.tokenStats)
     },
     refetchInterval: 300000, // Refetch every 5 minutes
+  })
+}
+
+export function useModelTokenStats(models?: string[], period?: string, date?: string) {
+  return useQuery({
+    queryKey: ['modelTokenStats', models, period, date],
+    queryFn: async () => {
+      const data = await graphqlRequest<{ modelTokenStats: ModelTokenStatsSummary }>(
+        MODEL_TOKEN_STATS_QUERY,
+        { models, period, date }
+      )
+      return modelTokenStatsSummarySchema.parse(data.modelTokenStats)
+    },
+    refetchInterval: 300000, // Refetch every 5 minutes
+    enabled: !!models && models.length > 0, // Only fetch when models are specified
   })
 }
