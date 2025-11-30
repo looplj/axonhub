@@ -80,7 +80,7 @@ export function TokenStatsCard() {
                 {t('dashboard.stats.modelDetails')}
               </Button>
             </DialogTrigger>
-            <DialogContent className='max-w-6xl max-h-[90vh] overflow-y-auto'>
+            <DialogContent className='sm:max-w-[90vw] max-w-[95vw] max-h-[90vh] overflow-y-auto'>
               <DialogHeader>
                 <DialogTitle>{t('dashboard.stats.modelTokenStats')}</DialogTitle>
                 <DialogDescription>
