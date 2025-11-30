@@ -19,6 +19,7 @@ type Handlers struct {
 	Graphql    *gql.GraphqlHandler
 	OpenAI     *api.OpenAIHandlers
 	Anthropic  *api.AnthropicHandlers
+	Gemini     *api.GeminiHandlers
 	AiSDK      *api.AiSDKHandlers
 	Playground *api.PlaygroundHandlers
 	System     *api.SystemHandlers
@@ -101,5 +102,10 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 	{
 		anthropicGroup.POST("/messages", handlers.Anthropic.CreateMessage)
 		anthropicGroup.GET("/models", handlers.Anthropic.ListModels)
+	}
+
+	geminiGroup := apiGroup.Group("/gemini/:gemini-api-version")
+	{
+		geminiGroup.POST("/models/*action", handlers.Gemini.GenerateContent)
 	}
 }

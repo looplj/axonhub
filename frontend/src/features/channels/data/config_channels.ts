@@ -25,6 +25,7 @@ import { ApiFormat, ChannelType } from './schema'
 
 export const OPENAI_CHAT_COMPLETIONS: ApiFormat = 'openai/chat_completions'
 export const ANTHROPIC_MESSAGES: ApiFormat = 'anthropic/messages'
+export const GEMINI_CONTENTS: ApiFormat = 'gemini/contents'
 
 /**
  * Channel configuration interface
@@ -90,6 +91,14 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai',
     defaultModels: ['gemini-2.5-pro', 'gemini-2.5-flash'],
     apiFormat: OPENAI_CHAT_COMPLETIONS,
+    color: 'bg-green-100 text-green-800 border-green-200',
+    icon: Google,
+  },
+  gemini: {
+    channelType: 'gemini',
+    baseURL: 'https://generativelanguage.googleapis.com/v1beta',
+    defaultModels: ['gemini-2.5-pro', 'gemini-2.5-flash'],
+    apiFormat: GEMINI_CONTENTS,
     color: 'bg-green-100 text-green-800 border-green-200',
     icon: Google,
   },

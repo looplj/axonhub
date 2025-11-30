@@ -49,7 +49,9 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 		AbstractService: &AbstractService{
 			db: params.Ent,
 		},
-		Executors:          params.Executor,
+		Executors: executors.NewPoolScheduleExecutor(
+			executors.WithMaxConcurrent(1),
+		),
 		channelPerfMetrics: make(map[int]*channelMetrics),
 		perfCh:             make(chan *PerformanceRecord, 1024),
 	}

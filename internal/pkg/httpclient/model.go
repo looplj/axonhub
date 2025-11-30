@@ -14,6 +14,7 @@ type Request struct {
 	// HTTP basics
 	Method      string      `json:"method"`
 	URL         string      `json:"url"`
+	Path        string      `json:"path"`
 	Headers     http.Header `json:"headers"`
 	ContentType string      `json:"content_type"`
 	Body        []byte      `json:"body,omitempty"`

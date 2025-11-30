@@ -23,13 +23,13 @@ type OpenAIHandlersParams struct {
 }
 
 type OpenAIHandlers struct {
-	ChatCompletionHandlers *ChatCompletionSSEHandlers
+	ChatCompletionHandlers *ChatCompletionHandlers
 	ChannelService         *biz.ChannelService
 }
 
 func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 	return &OpenAIHandlers{
-		ChatCompletionHandlers: &ChatCompletionSSEHandlers{
+		ChatCompletionHandlers: &ChatCompletionHandlers{
 			ChatCompletionProcessor: chat.NewChatCompletionProcessor(
 				params.ChannelService,
 				params.RequestService,

@@ -1,0 +1,24 @@
+{
+  "id": "thinking-response-001",
+  "object": "chat.completion",
+  "model": "gemini-2.5-flash",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "1175 × 3 = 3525",
+        "reasoning_content": "I need to multiply 1175 by 3:\n1175 * 3 = (1000 + 175) * 3\n= 1000 * 3 + 175 * 3\n= 3000 + 525\n= 3525"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 100,
+    "completion_tokens": 150,
+    "total_tokens": 250,
+    "completion_tokens_details": {
+      "reasoning_tokens": 100
+    }
+  }
+}

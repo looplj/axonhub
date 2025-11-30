@@ -86,24 +86,22 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		}, nil
 	}
 
-	// Determine the models endpoint and auth header based on channel type
 	modelsURL, authHeaders := f.prepareModelsEndpoint(channelType, input.BaseURL)
 
-	// Build HTTP request
 	req := &httpclient.Request{
 		Method:  http.MethodGet,
 		URL:     modelsURL,
 		Headers: authHeaders,
 	}
 
-	// For Anthropic, also add x-api-key header
 	if channelType.IsAnthropic() {
 		req.Headers.Set("X-Api-Key", apiKey)
+	} else if channelType.IsGemini() {
+		req.Headers.Set("X-Goog-Api-Key", apiKey)
 	} else {
 		req.Headers.Set("Authorization", "Bearer "+apiKey)
 	}
 
-	// Execute request
 	resp, err := f.httpClient.Do(ctx, req)
 	if err != nil {
 		return &FetchModelsResult{
@@ -119,7 +117,6 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		}, nil
 	}
 
-	// Parse response based on provider
 	models, err := f.parseModelsResponse(resp.Body)
 	if err != nil {
 		return &FetchModelsResult{
@@ -138,12 +135,10 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 func (f *ModelFetcher) prepareModelsEndpoint(channelType channel.Type, baseURL string) (string, http.Header) {
 	headers := make(http.Header)
 
-	// Ensure baseURL ends with /
 	baseURL = strings.TrimSuffix(baseURL, "/")
 
 	switch {
 	case channelType.IsAnthropic():
-		// Anthropic API
 		headers.Set("Anthropic-Version", "2023-06-01")
 
 		if strings.HasSuffix(baseURL, "/v1") {
@@ -156,7 +151,19 @@ func (f *ModelFetcher) prepareModelsEndpoint(channelType channel.Type, baseURL s
 		return baseURL + "/paas/v4/models", headers
 	case channelType.IsAnthropicLike():
 		baseURL = strings.TrimSuffix(baseURL, "/anthropic")
+		baseURL = strings.TrimSuffix(baseURL, "/claude")
+
 		return baseURL + "/v1/models", headers
+	case channelType.IsGemini():
+		if strings.HasSuffix(baseURL, "/v1beta") {
+			return baseURL + "/models", headers
+		}
+
+		if strings.HasSuffix(baseURL, "/v1") {
+			return baseURL + "/models", headers
+		}
+
+		return baseURL + "/v1beta/models", headers
 	default:
 		if strings.HasSuffix(baseURL, "/v1") {
 			return baseURL + "/models", headers
@@ -166,15 +173,29 @@ func (f *ModelFetcher) prepareModelsEndpoint(channelType channel.Type, baseURL s
 	}
 }
 
+type GeminiModelResponse struct {
+	Name string `json:"name"`
+}
+
 // parseModelsResponse parses the models response from the provider API.
 func (f *ModelFetcher) parseModelsResponse(body []byte) ([]objects.ModelIdentify, error) {
 	// Most providers use OpenAI-compatible format
 	var response struct {
-		Data []objects.ModelIdentify `json:"data"`
+		Data   []objects.ModelIdentify `json:"data"`
+		Models []GeminiModelResponse   `json:"models"`
 	}
 
 	if err := json.Unmarshal(body, &response); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	if len(response.Models) > 0 {
+		for _, model := range response.Models {
+			// remove "models/" prefix for gemini.
+			response.Data = append(response.Data, objects.ModelIdentify{
+				ID: strings.TrimPrefix(model.Name, "models/"),
+			})
+		}
 	}
 
 	return response.Data, nil

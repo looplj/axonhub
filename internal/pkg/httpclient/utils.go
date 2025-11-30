@@ -10,6 +10,7 @@ func ReadHTTPRequest(rawReq *http.Request) (*Request, error) {
 	req := &Request{
 		Method:     rawReq.Method,
 		URL:        rawReq.URL.String(),
+		Path:       rawReq.URL.Path,
 		Headers:    rawReq.Header,
 		Body:       nil,
 		Auth:       &AuthConfig{},
