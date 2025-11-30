@@ -90,22 +90,21 @@ func convertLLMToGeminiRequest(chatReq *llm.Request) *GenerateContentRequest {
 		switch msg.Role {
 		case "system":
 			// Collect system messages into system instruction
-			text := extractTextFromLLMMessage(&msg)
-			if text != "" {
+			parts := extractPartsFromLLMMessage(&msg)
+			if len(parts) > 0 {
 				if systemInstruction == nil {
 					systemInstruction = &Content{
-						Parts: []*Part{{Text: text}},
+						Parts: parts,
 					}
 				} else {
 					// Append to existing system instruction
-					existingText := extractTextFromContent(systemInstruction)
-					systemInstruction.Parts = []*Part{{Text: existingText + "\n" + text}}
+					systemInstruction.Parts = append(systemInstruction.Parts, parts...)
 				}
 			}
 
 		case "tool":
 			// Tool response - need to find the corresponding function call
-			content := convertLLMToolMessageToGeminiContent(&msg)
+			content := convertLLMToolResultToGeminiContent(&msg, contents)
 			if content != nil {
 				contents = append(contents, content)
 			}
@@ -210,8 +209,8 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 	return content
 }
 
-// convertLLMToolMessageToGeminiContent converts an LLM tool message to Gemini Content.
-func convertLLMToolMessageToGeminiContent(msg *llm.Message) *Content {
+// convertLLMToolResultToGeminiContent converts an LLM tool message to Gemini Content.
+func convertLLMToolResultToGeminiContent(msg *llm.Message, contents []*Content) *Content {
 	content := &Content{
 		Role: "user", // Function responses come from user role in Gemini
 	}
@@ -225,22 +224,34 @@ func convertLLMToolMessageToGeminiContent(msg *llm.Message) *Content {
 		responseData = map[string]any{"result": lo.FromPtrOr(msg.Content.Content, "")}
 	}
 
-	id := ""
-	if msg.ToolCallID != nil {
-		id = *msg.ToolCallID
+	fp := &FunctionResponse{
+		ID:       lo.FromPtr(msg.ToolCallID),
+		Name:     lo.FromPtr(msg.ToolCallName),
+		Response: responseData,
+	}
+
+	// Anthropic‘s tool result doesn't have name, so we need to find it by tool call id.
+	if fp.Name == "" && fp.ID != "" {
+		fp.Name = findToolNameByToolCallID(contents, fp.ID)
 	}
 
 	content.Parts = []*Part{
-		{
-			FunctionResponse: &FunctionResponse{
-				ID:       id,
-				Name:     lo.FromPtrOr(msg.ToolCallName, ""),
-				Response: responseData,
-			},
-		},
+		{FunctionResponse: fp},
 	}
 
 	return content
+}
+
+func findToolNameByToolCallID(contents []*Content, id string) string {
+	for _, content := range contents {
+		for _, part := range content.Parts {
+			if part.FunctionCall != nil && part.FunctionCall.ID == id {
+				return part.FunctionCall.Name
+			}
+		}
+	}
+
+	return ""
 }
 
 // convertGeminiToLLMResponse converts Gemini GenerateContentResponse to unified Response.
@@ -319,14 +330,20 @@ func convertGeminiCandidateToLLMChoice(candidate *Candidate, isStream bool) llm.
 
 			case part.FunctionCall != nil:
 				argsJSON, _ := json.Marshal(part.FunctionCall.Args)
-				toolCalls = append(toolCalls, llm.ToolCall{
+				tc := llm.ToolCall{
 					ID:   part.FunctionCall.ID,
 					Type: "function",
 					Function: llm.FunctionCall{
 						Name:      part.FunctionCall.Name,
 						Arguments: string(argsJSON),
 					},
-				})
+				}
+				// Gemini may response empty tool call ID.
+				if tc.ID == "" {
+					tc.ID = uuid.NewString()
+				}
+
+				toolCalls = append(toolCalls, tc)
 			}
 		}
 
