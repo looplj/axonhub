@@ -632,7 +632,7 @@
       "aihubmix": "AiHubMix",
       "burncloud": "BurnCloud",
       "modelscope": "魔搭",
-      "bailian": "百炼 (OpenAI)"
+      "bailian": "百炼"
     },
     "providers": {
       "openai": "OpenAI",
@@ -833,7 +833,13 @@
           "required": "请至少添加一个支持的模型",
           "defaultModelsLabel": "快速添加模型",
           "fetchedModelsLabel": "已获取的模型",
-          "largeListHint": "已获取 {{count}} 个模型。使用上方搜索查找特定模型。"
+          "largeListHint": "已获取 {{count}} 个模型。使用上方搜索查找特定模型。",
+          "showMore": "+{{count}} 个更多",
+          "searchPlaceholder": "搜索模型...",
+          "showAddedOnly": "仅显示已添加",
+          "added": "已添加",
+          "willRemove": "将移除",
+          "allModels": "全部模型 ({{count}})"
         },
         "defaultTestModel": {
           "label": "默认测试模型",
@@ -886,7 +892,11 @@
         "testing": "测试中...",
         "add": "添加",
         "addSelected": "添加选中",
-        "fetchModels": "获取模型"
+        "confirmSelection": "确定选中",
+        "fetchModels": "获取模型",
+        "selectAll": "全选",
+        "deselectAll": "取消全选",
+        "addSelectedCount": "确定选中 ({{count}})"
       },
 
       "status": {

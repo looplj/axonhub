@@ -805,7 +805,12 @@
           "required": "Please add at least one supported model",
           "defaultModelsLabel": "Quick Add Models",
           "fetchedModelsLabel": "Fetched Models",
-          "largeListHint": "Fetched {{count}} models. Use the search above to find specific models."
+          "largeListHint": "Fetched {{count}} models. Use the search above to find specific models.",
+          "showMore": "+{{count}} more",
+          "searchPlaceholder": "Search models...",
+          "showAddedOnly": "Show added only",
+          "added": "Added",
+          "allModels": "All Models ({{count}})"
         },
         "defaultTestModel": {
           "label": "Test Model",
@@ -858,7 +863,10 @@
         "testing": "Testing...",
         "add": "Add",
         "addSelected": "Add Selected",
-        "fetchModels": "Fetch Models"
+        "fetchModels": "Fetch Models",
+        "selectAll": "Select All",
+        "deselectAll": "Deselect All",
+        "addSelectedCount": "Add Selected ({{count}})"
       },
 
       "status": {
