@@ -659,7 +659,8 @@
     "actions": {
       "test": "测试",
       "settings": "设置",
-      "errorResolved": "错误已解决"
+      "errorResolved": "错误已解决",
+      "viewModels": "查看模型"
     },
     "errorBanner": {
       "message": "请注意，有 {{count}} 个渠道因为不可恢复的错误而被禁用",

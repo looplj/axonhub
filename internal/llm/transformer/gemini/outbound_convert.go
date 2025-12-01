@@ -9,10 +9,16 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/pkg/xjson"
 )
 
 // convertLLMToGeminiRequest converts unified Request to Gemini GenerateContentRequest.
 func convertLLMToGeminiRequest(chatReq *llm.Request) *GenerateContentRequest {
+	return convertLLMToGeminiRequestWithConfig(chatReq, nil)
+}
+
+// convertLLMToGeminiRequestWithConfig converts unified Request to Gemini GenerateContentRequest with config.
+func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *GenerateContentRequest {
 	req := &GenerateContentRequest{}
 
 	// Convert generation config
@@ -63,10 +69,19 @@ func convertLLMToGeminiRequest(chatReq *llm.Request) *GenerateContentRequest {
 	}
 
 	// Convert reasoning effort to thinking config
+	// Priority: ReasoningBudget > config mapping > default mapping
 	if chatReq.ReasoningEffort != "" {
+		var thinkingBudget int64
+		if chatReq.ReasoningBudget != nil {
+			thinkingBudget = *chatReq.ReasoningBudget
+		} else {
+			thinkingBudget = reasoningEffortToThinkingBudgetWithConfig(chatReq.ReasoningEffort, config)
+		}
+
 		gc.ThinkingConfig = &ThinkingConfig{
 			IncludeThoughts: true,
-			ThinkingBudget:  lo.ToPtr(reasoningEffortToThinkingBudget(chatReq.ReasoningEffort)),
+			// Gemini max thinking budget is 24576
+			ThinkingBudget: lo.ToPtr(min(thinkingBudget, 24576)),
 		}
 		hasGenerationConfig = true
 	}
@@ -125,10 +140,19 @@ func convertLLMToGeminiRequest(chatReq *llm.Request) *GenerateContentRequest {
 		functionDeclarations := make([]*FunctionDeclaration, 0, len(chatReq.Tools))
 		for _, tool := range chatReq.Tools {
 			if tool.Type == "function" {
+				params := tool.Function.Parameters
+
+				params, err := xjson.CleanSchema(params, "$schema", "additionalProperties")
+				if err != nil {
+					// ignore
+					params = tool.Function.Parameters
+				}
+				// println("params:", string(params))
+
 				fd := &FunctionDeclaration{
 					Name:        tool.Function.Name,
 					Description: tool.Function.Description,
-					Parameters:  tool.Function.Parameters,
+					Parameters:  params,
 				}
 				functionDeclarations = append(functionDeclarations, fd)
 			}

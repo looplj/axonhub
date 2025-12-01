@@ -31,9 +31,10 @@ interface Props {
   currentRow?: Channel
   open: boolean
   onOpenChange: (open: boolean) => void
+  showModelsPanel?: boolean
 }
 
-export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) {
+export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModelsPanel = false }: Props) {
   const { t } = useTranslation()
   const isEdit = !!currentRow
   const createChannel = useCreateChannel()
@@ -88,6 +89,13 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
 
     return () => cancelAnimationFrame(frame)
   }, [open, isEdit, selectedProvider])
+
+  // Auto-open supported models panel when showModelsPanel is true
+  useEffect(() => {
+    if (open && showModelsPanel && isEdit && currentRow && currentRow.supportedModels.length > 0) {
+      setShowSupportedModelsPanel(true)
+    }
+  }, [open, showModelsPanel, isEdit, currentRow])
 
   // Get available providers (excluding fake types)
   const availableProviders = useMemo(

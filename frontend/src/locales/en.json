@@ -632,7 +632,8 @@
     "actions": {
       "test": "Test",
       "settings": "Settings",
-      "errorResolved": "Error Resolved"
+      "errorResolved": "Error Resolved",
+      "viewModels": "View Models"
     },
     "errorBanner": {
       "message": "{{count}} channel(s) need attention for disabled due to unrecoverable errors",

@@ -153,8 +153,8 @@ AxonHub 可以在不改动现有 OpenAI 兼容客户端的前提下，为每一�
 |-------------|------------|---------------------|----------|
 | **OpenAI Chat Completions** | ✅ Done | 完全兼容 | Text, Image |
 | **Anthropic API** | ✅ Done | 完全支持 | Text |
+| **Gemini** | ✅ Done | 完全支持 | Text, Image |
 | **AI SDK** | ⚠️ Partial | 部分支持 | Text |
-| **Gemini** | 🔄 Todo | - | - |
 
 ---
 

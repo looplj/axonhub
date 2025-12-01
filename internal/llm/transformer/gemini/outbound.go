@@ -30,6 +30,9 @@ type Config struct {
 
 	// APIVersion is the API version to use.
 	APIVersion string `json:"api_version,omitempty"`
+
+	// ReasoningEffortToBudget maps reasoning effort levels to thinking budget tokens.
+	ReasoningEffortToBudget map[string]int64 `json:"reasoning_effort_to_budget,omitempty"`
 }
 
 // OutboundTransformer implements transformer.Outbound for Gemini format.

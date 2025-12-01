@@ -154,8 +154,8 @@ Learn more about how tracing works and how to integrate it in the [Tracing Guide
 | --------------------------- | ---------- | ------------------- | --------------- |
 | **OpenAI Chat Completions** | ✅ Done    | Fully compatible    | Text, Image     |
 | **Anthropic Messages**      | ✅ Done    | Fully supported     | Text            |
+| **Gemini**                  | ✅ Done    | Fully supported     | Text, Image     |
 | **AI SDK**                  | ⚠️ Partial | Partially supported | Text            |
-| **Gemini**                  | 🔄 Todo    | -    | - |
 
 **Key Feature**: Use OpenAI API to call Anthropic models, or Anthropic API to call OpenAI models - AxonHub handles automatic API translation!
 
@@ -333,6 +333,7 @@ AxonHub provides a unified API gateway that supports both OpenAI Chat Completion
 
 - **Use OpenAI API to call Anthropic models** - Keep using your OpenAI SDK while accessing Claude models
 - **Use Anthropic API to call OpenAI models** - Use Anthropic's native API format with GPT models
+- **Use Gemini API to call OpenAI models** - Use Gemini's native API format with GPT models
 - **Automatic API translation** - AxonHub handles format conversion automatically
 - **Zero code changes** - Your existing OpenAI or Anthropic client code continues to work
 

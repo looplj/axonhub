@@ -51,10 +51,11 @@ func convertGeminiToLLMRequest(geminiReq *GenerateContentRequest) (*llm.Request,
 			}
 		}
 
-		// Convert thinking config to reasoning effort
+		// Convert thinking config to reasoning effort and preserve budget
 		if gc.ThinkingConfig != nil && gc.ThinkingConfig.IncludeThoughts {
 			if gc.ThinkingConfig.ThinkingBudget != nil {
 				chatReq.ReasoningEffort = thinkingBudgetToReasoningEffort(*gc.ThinkingConfig.ThinkingBudget)
+				chatReq.ReasoningBudget = gc.ThinkingConfig.ThinkingBudget
 			} else {
 				chatReq.ReasoningEffort = "medium"
 			}

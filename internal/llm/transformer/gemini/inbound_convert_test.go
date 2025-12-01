@@ -219,6 +219,31 @@ func TestConvertGeminiToLLMRequest_Basic(t *testing.T) {
 				require.Equal(t, "medium", result.ReasoningEffort)
 			},
 		},
+		{
+			name: "request with thinking config and budget preservation",
+			input: &GenerateContentRequest{
+				Contents: []*Content{
+					{
+						Role: "user",
+						Parts: []*Part{
+							{Text: "Question"},
+						},
+					},
+				},
+				GenerationConfig: &GenerationConfig{
+					ThinkingConfig: &ThinkingConfig{
+						IncludeThoughts: true,
+						ThinkingBudget:  lo.ToPtr(int64(5000)),
+					},
+				},
+			},
+			validate: func(t *testing.T, result *llm.Request) {
+				t.Helper()
+				require.Equal(t, "medium", result.ReasoningEffort)
+				require.NotNil(t, result.ReasoningBudget)
+				require.Equal(t, int64(5000), *result.ReasoningBudget)
+			},
+		},
 	}
 
 	for _, tt := range tests {
