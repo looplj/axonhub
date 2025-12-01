@@ -1237,18 +1237,18 @@
       },
       "policy": {
         "title": "存储策略",
-        "description": "配置存储策略和数据清理设置",
+        "description": "配置存储策略和数据清理设置以管理数据保留和存储效率",
         "storeChunks": {
           "label": "存储响应块",
-          "description": "启用后，系统将在数据库中存储响应数据块，便于后续分析和处理"
+          "description": "启用后，系统将在数据库中存储响应数据块，便于后续分析和处理。这可以启用详细的请求跟踪和调试，但会增加存储使用量。"
         },
         "storeRequestBody": {
           "label": "存储请求体",
-          "description": "关闭后，将不保存原始请求体。"
+          "description": "关闭后，将不保存原始请求体。启用此功能可进行完整的请求审计和调试。禁用可减少存储使用量并提高隐私性。"
         },
         "storeResponseBody": {
           "label": "存储响应体",
-          "description": "关闭后，将不保存最终响应体。"
+          "description": "关闭后，将不保存最终响应体。启用此功能可进行完整的响应分析和调试。禁用可显著减少存储需求。"
         },
         "cleanupOptions": "清理选项",
         "cleanupDays": "清理周期",
@@ -1256,7 +1256,8 @@
         "resourceTypes": {
           "requests": "请求日志",
           "usage_logs": "用量日志"
-        }
+        },
+        "cleanupDescription": "在指定天数后自动移除旧数据，以管理存储增长并符合数据保留策略。"
       }
     },
     "general": {
@@ -1268,9 +1269,9 @@
         "description": "设置系统的品牌名称，将在界面中显示"
       },
       "brandLogo": {
-        "label": "品牌标志",
-        "upload": "上传标志",
-        "description": "上传正方形的PNG或JPEG标志（最大2MB）。标志将在系统界面中显示。",
+        "label": "品牌标识",
+        "upload": "上传标识",
+        "description": "上传正方形的PNG或JPEG标识（最大2MB）。标识将在系统界面中显示。",
         "invalidFormat": "请上传PNG或JPEG格式的图片文件。",
         "fileTooLarge": "文件大小必须小于2MB。",
         "notSquare": "请上传正方形图片（宽度等于高度）。"
@@ -1283,22 +1284,105 @@
     },
     "retry": {
       "title": "重试策略",
-      "description": "配置失败请求的自动重试行为",
+      "description": "配置失败请求的自动重试行为以提高系统可靠性",
       "enabled": {
         "label": "启用重试",
-        "description": "启用后，系统将自动重试失败的请求"
+        "description": "启用后，系统将自动重试失败的请求。这有助于在遇到临时网络问题或服务不可用时提高可靠性。"
       },
       "maxChannelRetries": {
         "label": "最大渠道重试次数",
-        "description": "跨不同渠道的最大重试次数 (0-10)"
+        "description": "跨不同渠道的最大重试次数 (0-10)。当某个渠道失败时，系统将尝试其他可用渠道，最多不超过此限制。较高的值可提高可靠性，但可能会增加延迟。"
       },
       "maxSingleChannelRetries": {
         "label": "单渠道最大重试次数",
-        "description": "同一渠道的最大重试次数 (0-5)"
+        "description": "同一渠道的最大重试次数 (0-5)。控制在同一渠道上重试的次数，然后切换到不同的渠道。对于临时故障很有用。"
       },
       "retryDelayMs": {
         "label": "重试延迟",
-        "description": "重试间隔时间，单位毫秒 (100-10000ms)"
+        "description": "重试间隔时间，单位毫秒 (100-10000ms)。较短的延迟提供更快的恢复速度，但可能会压倒 struggling 服务。较长的延迟给服务更多时间恢复。"
+      }
+    },
+    "onboarding": {
+      "title": "系统引导",
+      "description": "欢迎使用 AxonHub！让我们快速设置您的系统。",
+      "startTour": "开始引导",
+      "skipTour": "跳过引导",
+      "nextStep": "下一步",
+      "previousStep": "上一步",
+      "completeTour": "完成引导",
+      "steps": {
+        "welcome": {
+          "title": "欢迎使用 AxonHub！",
+          "description": "让我们配置您的系统设置以开始使用。本引导将帮助您设置品牌、重试策略和数据存储。"
+        },
+        "brandName": {
+          "title": "设置品牌名称",
+          "description": "输入您的组织或项目名称。这将整个界面中显示。"
+        },
+        "brandLogo": {
+          "title": "添加标识",
+          "description": "上传您的标识以自定义 AxonHub 的外观，使其符合您的组织形象。"
+        },
+        "retryPolicy": {
+          "title": "配置重试策略",
+          "description": "设置失败请求的自动重试行为以提高可靠性。"
+        },
+        "retryEnabled": {
+          "title": "启用/禁用重试",
+          "description": "开启或关闭重试功能。启用后，失败的请求将自动重试。"
+        },
+        "retryMaxRetries": {
+          "title": "最大重试次数",
+          "description": "设置失败请求的最大重试次数。较高的值可提高可靠性，但可能延迟失败通知。"
+        },
+        "retrySingleChannel": {
+          "title": "单渠道重试",
+          "description": "配置在同一渠道上重试的次数，然后才切换到其他渠道。对临时故障很有用。"
+        },
+        "retryDelay": {
+          "title": "重试延迟",
+          "description": "设置重试之间的延迟时间。较短的延迟提供更快的恢复，但可能会压倒 struggling 服务。"
+        },
+        "dataStorage": {
+          "title": "数据存储设置",
+          "description": "配置请求和响应详情数据的存储和管理方式，这对性能和合规性很重要。默认存储在数据库，您也可以配置其他存储后端。"
+        },
+        "storageEnabled": {
+          "title": "数据存储选项",
+          "description": "选择要存储的数据类型。您可以启用对数据块、请求正文和响应正文的存储。"
+        },
+        "storageChunks": {
+          "title": "存储数据块",
+          "description": "启用流式响应的数据块存储。这允许您查看部分响应并分析流式行为。"
+        },
+        "storageRequestBody": {
+          "title": "存储请求正文",
+          "description": "保存请求负载以进行调试和分析。这会增加存储使用量，但提供有价值的洞察。"
+        },
+        "storageResponseBody": {
+          "title": "存储响应正文",
+          "description": "保存响应负载以进行审计和分析。这会显著增加存储使用量，但提供完整的数据。"
+        },
+        "dataStorageSelection": {
+          "title": "数据存储后端",
+          "description": "为您的数据选择存储后端。不同的后端提供不同的性能和成本特性。"
+        },
+        "storageCleanup": {
+          "title": "数据清理策略",
+          "description": "设置自动清理规则以管理存储空间并符合数据保留策略。"
+        },
+        "storageCleanupRequests": {
+          "title": "请求数据清理",
+          "description": "配置请求数据的自动清理以管理存储空间并保持系统性能。"
+        },
+        "storageCleanupUsageLogs": {
+          "title": "使用日志清理",
+          "description": "设置使用日志的清理策略以符合数据保留要求并优化存储。"
+        },
+        "complete": {
+          "title": "设置完成！",
+          "description": "太好了！您的系统现已配置完成。您可以随时在系统设置页面中修改这些设置。"
+        }
       }
     },
     "buttons": {
@@ -1917,6 +2001,8 @@
       "operationFailed": "{{operation}}失败",
       "copyFailed": "复制到剪贴板失败。",
       "loadFailed": "加载数据失败",
+      "systemUpdateFailed": "系统设置更新失败",
+      "onboardingFailed": "引导完成失败",
       "userLoadFailed": "加载角色和权限失败",
       "userSaveFailed": "保存用户失败",
       "userDeleteFailed": "删除用户失败",
@@ -1943,7 +2029,8 @@
       "modelUpdated": "模型更新成功",
       "modelDeleted": "模型删除成功",
       "systemSettingsUpdated": "系统设置更新成功",
-      "systemUpdated": "系统设置更新成功"
+      "systemUpdated": "系统设置更新成功",
+      "onboardingCompleted": "引导完成成功"
     }
   },
   "initialization": {

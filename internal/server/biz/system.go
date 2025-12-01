@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"github.com/samber/lo"
@@ -55,6 +56,10 @@ const (
 	// SystemKeyDefaultDataStorage is the key used to store the default data storage ID.
 	// If not set, the primary data storage will be used.
 	SystemKeyDefaultDataStorage = "default_data_storage_id"
+
+	// SystemKeyOnboarded is the key used to store the onboarding status and version.
+	// The value is JSON-encoded OnboardingInfo struct.
+	SystemKeyOnboarded = "system_onboarded"
 )
 
 // StoragePolicy represents the storage policy configuration.
@@ -82,6 +87,16 @@ type RetryPolicy struct {
 	RetryDelayMs int `json:"retry_delay_ms"`
 	// Enabled controls whether retry policy is active
 	Enabled bool `json:"enabled"`
+}
+
+// OnboardingInfo represents the onboarding status and version information.
+type OnboardingInfo struct {
+	// Onboarded indicates whether the user has completed onboarding
+	Onboarded bool `json:"onboarded"`
+	// Version is the system version when onboarding was completed
+	Version string `json:"version"`
+	// CompletedAt is the timestamp when onboarding was completed
+	CompletedAt *time.Time `json:"completed_at,omitempty"`
 }
 
 type SystemServiceParams struct {
@@ -528,4 +543,72 @@ func (s *SystemService) Version(ctx context.Context) (string, error) {
 // SetVersion sets the system version.
 func (s *SystemService) SetVersion(ctx context.Context, version string) error {
 	return s.setSystemValue(ctx, SystemKeyVersion, version)
+}
+
+// OnboardingInfo retrieves the onboarding information from system settings.
+// Returns nil if not set.
+func (s *SystemService) OnboardingInfo(ctx context.Context) (*OnboardingInfo, error) {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	value, err := s.getSystemValue(ctx, SystemKeyOnboarded)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("failed to get onboarding info: %w", err)
+	}
+
+	var info OnboardingInfo
+	if err := json.Unmarshal([]byte(value), &info); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal onboarding info: %w", err)
+	}
+
+	return &info, nil
+}
+
+// SetOnboardingInfo sets the onboarding information.
+func (s *SystemService) SetOnboardingInfo(ctx context.Context, info *OnboardingInfo) error {
+	jsonBytes, err := json.Marshal(info)
+	if err != nil {
+		return fmt.Errorf("failed to marshal onboarding info: %w", err)
+	}
+
+	return s.setSystemValue(ctx, SystemKeyOnboarded, string(jsonBytes))
+}
+
+// IsOnboardingCompleted checks if onboarding has been completed for the current version.
+func (s *SystemService) IsOnboardingCompleted(ctx context.Context) (bool, error) {
+	info, err := s.OnboardingInfo(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	if info == nil || !info.Onboarded {
+		return false, nil
+	}
+
+	currentVersion, err := s.Version(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	// If onboarding was completed for a different version, it needs to be redone
+	return info.Version == currentVersion, nil
+}
+
+// CompleteOnboarding marks onboarding as completed for the current version.
+func (s *SystemService) CompleteOnboarding(ctx context.Context) error {
+	currentVersion, err := s.Version(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get current version: %w", err)
+	}
+
+	info := &OnboardingInfo{
+		Onboarded:   true,
+		Version:     currentVersion,
+		CompletedAt: lo.ToPtr(time.Now()),
+	}
+
+	return s.SetOnboardingInfo(ctx, info)
 }

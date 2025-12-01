@@ -65,7 +65,7 @@ export function RetrySettings() {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Enable/Disable Retry */}
-          <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between" id="retry-enabled-switch">
             <div className="space-y-0.5">
               <Label htmlFor="retry-enabled" className="text-base">
                 {t('system.retry.enabled.label')}
@@ -87,7 +87,7 @@ export function RetrySettings() {
           {formData.enabled && (
             <div className="space-y-4">
               {/* Max Channel Retries */}
-              <div className="space-y-2">
+              <div className="space-y-2" id="retry-max-retries">
                 <Label htmlFor="max-channel-retries">
                   {t('system.retry.maxChannelRetries.label')}
                 </Label>

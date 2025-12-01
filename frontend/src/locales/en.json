@@ -1207,18 +1207,18 @@
       },
       "policy": {
         "title": "Storage Policy",
-        "description": "Configure storage policies and data cleanup settings",
+        "description": "Configure storage policies and data cleanup settings to manage data retention and storage efficiency",
         "storeChunks": {
           "label": "Store Response Chunks",
-          "description": "When enabled, the system will store response data chunks in the database for subsequent analysis and processing"
+          "description": "When enabled, the system will store response data chunks in the database for subsequent analysis and processing. This enables detailed request tracing and debugging but increases storage usage."
         },
         "storeRequestBody": {
           "label": "Store Request Body",
-          "description": "If disabled, original request body will not be persisted."
+          "description": "If disabled, original request body will not be persisted. Enable this for complete request auditing and debugging. Disabling reduces storage usage and improves privacy."
         },
         "storeResponseBody": {
           "label": "Store Response Body",
-          "description": "If disabled, final response body will not be persisted."
+          "description": "If disabled, final response body will not be persisted. Enable this for complete response analysis and debugging. Disabling significantly reduces storage requirements."
         },
         "cleanupOptions": "Cleanup Options",
         "cleanupDays": "Cleanup after",
@@ -1226,7 +1226,8 @@
         "resourceTypes": {
           "requests": "Request Logs",
           "usage_logs": "Usage Logs"
-        }
+        },
+        "cleanupDescription": "Automatically remove old data after specified days to manage storage growth and comply with data retention policies."
       }
     },
     "general": {
@@ -1253,22 +1254,105 @@
     },
     "retry": {
       "title": "Retry Policy",
-      "description": "Configure automatic retry behavior for failed requests",
+      "description": "Configure automatic retry behavior for failed requests to improve system reliability",
       "enabled": {
         "label": "Enable Retry",
-        "description": "When enabled, the system will automatically retry failed requests"
+        "description": "When enabled, the system will automatically retry failed requests. This helps improve reliability when experiencing temporary network issues or service unavailability."
       },
       "maxChannelRetries": {
         "label": "Max Channel Retries",
-        "description": "Maximum number of times to retry across different channels (0-10)"
+        "description": "Maximum number of times to retry across different channels (0-10). When a channel fails, the system will try other available channels up to this limit. Higher values increase reliability but may increase latency."
       },
       "maxSingleChannelRetries": {
         "label": "Max Single Channel Retries",
-        "description": "Maximum number of times to retry on the same channel (0-5)"
+        "description": "Maximum number of times to retry on the same channel (0-5). Controls how many times to retry the same channel before switching to a different channel. Useful for temporary glitches."
       },
       "retryDelayMs": {
-        "label": "Retry Delay",
-        "description": "Delay between retry attempts in milliseconds (100-10000ms)"
+        "label": "Retry Delay (ms)",
+        "description": "Delay between retry attempts in milliseconds (100-10000ms). Shorter delays provide faster recovery but may overwhelm struggling services. Longer delays give services more time to recover."
+      }
+    },
+    "onboarding": {
+      "title": "System Onboarding",
+      "description": "Welcome to AxonHub! Let's set up your system with a quick tour.",
+      "startTour": "Start Onboarding Tour",
+      "skipTour": "Skip Tour",
+      "nextStep": "Next Step",
+      "previousStep": "Previous Step",
+      "completeTour": "Complete Tour",
+      "steps": {
+        "welcome": {
+          "title": "Welcome to AxonHub!",
+          "description": "Let's configure your system settings to get started. This tour will guide you through setting up your brand, retry policies, and data storage."
+        },
+        "brandName": {
+          "title": "Set Your Brand Name",
+          "description": "Enter your organization or project name. This will be displayed throughout the interface."
+        },
+        "brandLogo": {
+          "title": "Add Your Logo",
+          "description": "Upload your logo to customize the look and feel of AxonHub for your organization."
+        },
+        "retryPolicy": {
+          "title": "Configure Retry Policy",
+          "description": "Set up automatic retry behavior for failed requests to improve reliability."
+        },
+        "retryEnabled": {
+          "title": "Enable/Disable Retry",
+          "description": "Toggle retry functionality on or off. When enabled, failed requests will be automatically retried."
+        },
+        "retryMaxRetries": {
+          "title": "Maximum Retry Attempts",
+          "description": "Set the maximum number of retry attempts for failed requests. Higher values increase reliability but may delay failure notifications."
+        },
+        "retrySingleChannel": {
+          "title": "Single Channel Retries",
+          "description": "Configure how many times to retry on the same channel before switching. Useful for temporary glitches."
+        },
+        "retryDelay": {
+          "title": "Retry Delay",
+          "description": "Set the delay between retry attempts. Shorter delays provide faster recovery but may overwhelm struggling services."
+        },
+        "dataStorage": {
+          "title": "Data Storage Settings",
+          "description": "Configure how your data is stored and managed. This is important for performance and compliance."
+        },
+        "storageEnabled": {
+          "title": "Data Storage Options",
+          "description": "Choose what types of data to store. You can enable storage for chunks, request bodies, and response bodies."
+        },
+        "storageChunks": {
+          "title": "Store Chunks",
+          "description": "Enable chunk storage for streaming responses. This allows you to view partial responses and analyze streaming behavior."
+        },
+        "storageRequestBody": {
+          "title": "Store Request Bodies",
+          "description": "Save request payloads for debugging and analysis. This increases storage usage but provides valuable insights."
+        },
+        "storageResponseBody": {
+          "title": "Store Response Bodies",
+          "description": "Save response payloads for auditing and analysis. This significantly increases storage usage but provides complete data."
+        },
+        "dataStorageSelection": {
+          "title": "Data Storage Backend",
+          "description": "Choose the storage backend for the request and response data. Different backends offer different performance and cost characteristics. Default is database, you can also configure other storage backends."
+        },
+        "storageCleanup": {
+          "title": "Data Cleanup Policies",
+          "description": "Set up automatic cleanup rules to manage storage space and comply with data retention policies."
+        },
+        "storageCleanupRequests": {
+          "title": "Request Data Cleanup",
+          "description": "Configure automatic cleanup for request data to manage storage space and maintain system performance."
+        },
+        "storageCleanupUsageLogs": {
+          "title": "Usage Logs Cleanup",
+          "description": "Set up cleanup policies for usage logs to comply with data retention requirements and optimize storage."
+        },
+        "complete": {
+          "title": "Setup Complete!",
+          "description": "Great! Your system is now configured. You can always modify these settings later in the System Settings page."
+        }
       }
     },
     "buttons": {
@@ -1886,7 +1970,9 @@
       "validationFailed": "Validation failed: {{details}}",
       "operationFailed": "{{operation}} failed",
       "copyFailed": "Failed to copy to clipboard.",
-      "loadFailed": "Failed to load data"
+      "loadFailed": "Failed to load data",
+      "systemUpdateFailed": "Failed to update system settings",
+      "onboardingFailed": "Failed to complete onboarding"
     },
     "success": {
       "copiedToClipboard": "Copied to clipboard!",
@@ -1902,11 +1988,11 @@
       "signedOut": "Successfully signed out!",
       "userCreated": "User created successfully",
       "userUpdated": "User updated successfully",
-      "userDeleted": "User deleted successfully",
       "modelCreated": "Model created successfully",
       "modelUpdated": "Model updated successfully",
       "modelDeleted": "Model deleted successfully",
-      "systemUpdated": "System settings updated successfully"
+      "systemUpdated": "System settings updated successfully",
+      "onboardingCompleted": "Onboarding completed successfully"
     }
   },
   "initialization": {

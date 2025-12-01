@@ -41,6 +41,10 @@ type ChannelTypeCount struct {
 	Count int    `json:"count"`
 }
 
+type CompleteOnboardingInput struct {
+	Dummy *string `json:"dummy,omitempty"`
+}
+
 type CountChannelsByTypeInput struct {
 	// Filtering options for Channels returned from the connection.
 	StatusIn []channel.Status `json:"statusIn,omitempty"`

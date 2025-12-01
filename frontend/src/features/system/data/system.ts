@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { graphqlRequest } from '@/gql/graphql'
+import { tr } from 'date-fns/locale'
 import { toast } from 'sonner'
-import { useErrorHandler } from '@/hooks/use-error-handler'
 import i18n from '@/lib/i18n'
+import { useErrorHandler } from '@/hooks/use-error-handler'
 
 // GraphQL queries and mutations
 const BRAND_SETTINGS_QUERY = `
@@ -70,6 +71,22 @@ const UPDATE_DEFAULT_DATA_STORAGE_MUTATION = `
   }
 `
 
+const ONBOARDING_INFO_QUERY = `
+  query OnboardingInfo {
+    onboardingInfo {
+      onboarded
+      version
+      completedAt
+    }
+  }
+`
+
+const COMPLETE_ONBOARDING_MUTATION = `
+  mutation CompleteOnboarding($input: CompleteOnboardingInput!) {
+    completeOnboarding(input: $input)
+  }
+`
+
 // Types
 export interface BrandSettings {
   brandName?: string
@@ -125,20 +142,28 @@ export interface UpdateDefaultDataStorageInput {
   dataStorageID: string
 }
 
+export interface OnboardingInfo {
+  onboarded: boolean
+  version: string
+  completedAt?: string
+}
+
+export interface CompleteOnboardingInput {
+  dummy?: string
+}
+
 // Hooks
 export function useBrandSettings() {
   const { handleError } = useErrorHandler()
-  
+
   return useQuery({
     queryKey: ['brandSettings'],
     queryFn: async () => {
       try {
-        const data = await graphqlRequest<{ brandSettings: BrandSettings }>(
-          BRAND_SETTINGS_QUERY
-        )
+        const data = await graphqlRequest<{ brandSettings: BrandSettings }>(BRAND_SETTINGS_QUERY)
         return data.brandSettings
       } catch (error) {
-        handleError(error, '获取品牌设置')
+        handleError(error, i18n.t('common.errors.internalServerError'))
         throw error
       }
     },
@@ -147,17 +172,15 @@ export function useBrandSettings() {
 
 export function useStoragePolicy() {
   const { handleError } = useErrorHandler()
-  
+
   return useQuery({
     queryKey: ['storagePolicy'],
     queryFn: async () => {
       try {
-        const data = await graphqlRequest<{ storagePolicy: StoragePolicy }>(
-          STORAGE_POLICY_QUERY
-        )
+        const data = await graphqlRequest<{ storagePolicy: StoragePolicy }>(STORAGE_POLICY_QUERY)
         return data.storagePolicy
       } catch (error) {
-        handleError(error, '获取存储策略')
+        handleError(error, i18n.t('common.errors.internalServerError'))
         throw error
       }
     },
@@ -166,13 +189,10 @@ export function useStoragePolicy() {
 
 export function useUpdateBrandSettings() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: async (input: UpdateBrandSettingsInput) => {
-      const data = await graphqlRequest<{ updateBrandSettings: boolean }>(
-        UPDATE_BRAND_SETTINGS_MUTATION,
-        { input }
-      )
+      const data = await graphqlRequest<{ updateBrandSettings: boolean }>(UPDATE_BRAND_SETTINGS_MUTATION, { input })
       return data.updateBrandSettings
     },
     onSuccess: () => {
@@ -187,13 +207,10 @@ export function useUpdateBrandSettings() {
 
 export function useUpdateStoragePolicy() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: async (input: UpdateStoragePolicyInput) => {
-      const data = await graphqlRequest<{ updateStoragePolicy: boolean }>(
-        UPDATE_STORAGE_POLICY_MUTATION,
-        { input }
-      )
+      const data = await graphqlRequest<{ updateStoragePolicy: boolean }>(UPDATE_STORAGE_POLICY_MUTATION, { input })
       return data.updateStoragePolicy
     },
     onSuccess: () => {
@@ -208,17 +225,15 @@ export function useUpdateStoragePolicy() {
 
 export function useRetryPolicy() {
   const { handleError } = useErrorHandler()
-  
+
   return useQuery({
     queryKey: ['retryPolicy'],
     queryFn: async () => {
       try {
-        const data = await graphqlRequest<{ retryPolicy: RetryPolicy }>(
-          RETRY_POLICY_QUERY
-        )
+        const data = await graphqlRequest<{ retryPolicy: RetryPolicy }>(RETRY_POLICY_QUERY)
         return data.retryPolicy
       } catch (error) {
-        handleError(error, '获取重试策略')
+        handleError(error, i18n.t('common.errors.internalServerError'))
         throw error
       }
     },
@@ -227,13 +242,10 @@ export function useRetryPolicy() {
 
 export function useUpdateRetryPolicy() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: async (input: RetryPolicyInput) => {
-      const data = await graphqlRequest<{ updateRetryPolicy: boolean }>(
-        UPDATE_RETRY_POLICY_MUTATION,
-        { input }
-      )
+      const data = await graphqlRequest<{ updateRetryPolicy: boolean }>(UPDATE_RETRY_POLICY_MUTATION, { input })
       return data.updateRetryPolicy
     },
     onSuccess: () => {
@@ -248,17 +260,15 @@ export function useUpdateRetryPolicy() {
 
 export function useDefaultDataStorageID() {
   const { handleError } = useErrorHandler()
-  
+
   return useQuery({
     queryKey: ['defaultDataStorageID'],
     queryFn: async () => {
       try {
-        const data = await graphqlRequest<{ defaultDataStorageID: string | null }>(
-          DEFAULT_DATA_STORAGE_QUERY
-        )
+        const data = await graphqlRequest<{ defaultDataStorageID: string | null }>(DEFAULT_DATA_STORAGE_QUERY)
         return data.defaultDataStorageID
       } catch (error) {
-        handleError(error, '获取默认数据存储')
+        handleError(error, i18n.t('common.errors.internalServerError'))
         throw error
       }
     },
@@ -267,13 +277,10 @@ export function useDefaultDataStorageID() {
 
 export function useUpdateDefaultDataStorage() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: async (input: UpdateDefaultDataStorageInput) => {
-      const data = await graphqlRequest<{ updateDefaultDataStorage: boolean }>(
-        UPDATE_DEFAULT_DATA_STORAGE_MUTATION,
-        { input }
-      )
+      const data = await graphqlRequest<{ updateDefaultDataStorage: boolean }>(UPDATE_DEFAULT_DATA_STORAGE_MUTATION, { input })
       return data.updateDefaultDataStorage
     },
     onSuccess: () => {
@@ -282,6 +289,41 @@ export function useUpdateDefaultDataStorage() {
     },
     onError: () => {
       toast.error(i18n.t('common.errors.systemUpdateFailed'))
+    },
+  })
+}
+
+export function useOnboardingInfo() {
+  return useQuery({
+    queryKey: ['onboardingInfo'],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ onboardingInfo: OnboardingInfo | null }>(ONBOARDING_INFO_QUERY)
+        return data.onboardingInfo
+      } catch (error) {
+        return {
+          onboarded: true,
+          version: '',
+          completedAt: new Date().toISOString(),
+        }
+      }
+    },
+  })
+}
+
+export function useCompleteOnboarding() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (input?: CompleteOnboardingInput) => {
+      const data = await graphqlRequest<{ completeOnboarding: boolean }>(COMPLETE_ONBOARDING_MUTATION, { input: input || {} })
+      return data.completeOnboarding
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['onboardingInfo'] })
+    },
+    onError: () => {
+      toast.error(i18n.t('common.errors.onboardingFailed'))
     },
   })
 }

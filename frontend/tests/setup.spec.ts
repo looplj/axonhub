@@ -95,6 +95,24 @@ test.describe('System Setup', () => {
     await expect(page.url()).not.toContain('/sign-in')
     await expect(page.url()).not.toContain('/initialization')
 
+    // Handle onboarding dialog if it appears
+    console.log('Checking for onboarding dialog...')
+    try {
+      // Wait for potential onboarding dialog to appear (with a short timeout)
+      const skipButton = page.getByTestId('onboarding-skip-tour')
+      await skipButton.waitFor({ timeout: 5000 })
+      
+      // Click the skip button to dismiss onboarding
+      await skipButton.click()
+      console.log('Onboarding dialog skipped successfully')
+      
+      // Wait a moment for the dialog to close
+      await page.waitForTimeout(1000)
+    } catch (error) {
+      // No onboarding dialog appeared, which is fine
+      console.log('No onboarding dialog found or already handled')
+    }
+
     console.log(`Setup complete. Owner email: ${ownerEmail}`)
   })
 })
