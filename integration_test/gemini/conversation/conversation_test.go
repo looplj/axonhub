@@ -150,17 +150,27 @@ func TestConversationWithTools(t *testing.T) {
 
 	helper.ValidateChatResponse(t, response1, "Tool conversation first turn")
 
-	// Check for function calls
-	functionCalls := response1.Candidates[0].Content.Parts
-	if len(functionCalls) > 0 {
-		t.Logf("Function calls detected: %d", len(functionCalls))
+	// Process function calls in a loop until both tools are called
+	var toolResults []string
+	calledTools := make(map[string]bool)
 
-		// Process function calls
-		var toolResults []string
+	for len(calledTools) < 2 {
+		// Check for function calls in the response
+		functionCalls := response1.Candidates[0].Content.Parts
+		hasNewToolCalls := false
+
 		for _, part := range functionCalls {
 			if part.FunctionCall != nil {
+				hasNewToolCalls = true
+				toolName := part.FunctionCall.Name
+
+				// Skip if we've already processed this tool
+				if calledTools[toolName] {
+					continue
+				}
+
 				var result string
-				switch part.FunctionCall.Name {
+				switch toolName {
 				case "calculate":
 					args := part.FunctionCall.Args
 					calcResult := simulateCalculatorFunction(args)
@@ -173,18 +183,20 @@ func TestConversationWithTools(t *testing.T) {
 				}
 
 				toolResults = append(toolResults, result)
-				t.Logf("Function %s result: %s", part.FunctionCall.Name, result)
+				calledTools[toolName] = true
+				t.Logf("Function %s result: %s", toolName, result)
 
 				// Send function response back to chat
-				functionResponse := &genai.Part{
+				functionResponse := genai.Part{
 					FunctionResponse: &genai.FunctionResponse{
-						Name: part.FunctionCall.Name,
+						ID:   part.FunctionCall.ID,
+						Name: toolName,
 						Response: map[string]interface{}{
 							"result": result,
 						},
 					},
 				}
-				_, err = chat.SendMessage(ctx, *functionResponse)
+				response1, err = chat.SendMessage(ctx, functionResponse)
 				helper.AssertNoError(t, err, "Failed to send function response")
 			} else if part.Text != "" {
 				// Regular text response
@@ -192,24 +204,43 @@ func TestConversationWithTools(t *testing.T) {
 			}
 		}
 
-		// Second turn with tool results
-		question2 := "Based on that information, should I pack an umbrella?"
-		t.Logf("Question 2: %s", question2)
+		// If no new tool calls in this response and we haven't called both tools yet,
+		// prompt the model to use the remaining tools
+		if !hasNewToolCalls && len(calledTools) < 2 {
+			var remainingTools []string
+			if !calledTools["calculate"] {
+				remainingTools = append(remainingTools, "calculate")
+			}
+			if !calledTools["get_current_weather"] {
+				remainingTools = append(remainingTools, "get_current_weather")
+			}
 
-		response2, err := chat.SendMessage(ctx, genai.Part{Text: question2})
-		helper.AssertNoError(t, err, "Failed in tool conversation second turn")
+			prompt := fmt.Sprintf("Please use the %s tool(s) to help with my request about calculations and weather information.",
+				strings.Join(remainingTools, " and "))
+			t.Logf("Prompting for remaining tools: %s", prompt)
 
-		helper.ValidateChatResponse(t, response2, "Tool conversation second turn")
-
-		finalResponse := testutil.ExtractTextFromResponse(response2)
-		t.Logf("Final response: %s", finalResponse)
-
-		// Verify response incorporates tool results
-		if len(finalResponse) == 0 {
-			t.Error("Expected non-empty final response")
+			response1, err = chat.SendMessage(ctx, genai.Part{Text: prompt})
+			helper.AssertNoError(t, err, "Failed to prompt for remaining tools")
 		}
-	} else {
-		t.Logf("No function calls in first turn, continuing conversation normally")
+	}
+
+	t.Logf("All tools called successfully. Called tools: %v", calledTools)
+
+	// Second turn with tool results
+	question2 := "Based on that information, should I pack an umbrella?"
+	t.Logf("Question 2: %s", question2)
+
+	response2, err := chat.SendMessage(ctx, genai.Part{Text: question2})
+	helper.AssertNoError(t, err, "Failed in tool conversation second turn")
+
+	helper.ValidateChatResponse(t, response2, "Tool conversation second turn")
+
+	finalResponse := testutil.ExtractTextFromResponse(response2)
+	t.Logf("Final response: %s", finalResponse)
+
+	// Verify response incorporates tool results
+	if len(finalResponse) == 0 {
+		t.Error("Expected non-empty final response")
 	}
 }
 

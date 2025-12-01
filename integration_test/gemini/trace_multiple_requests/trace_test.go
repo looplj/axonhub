@@ -138,6 +138,7 @@ func TestSingleTraceMultipleCalls(t *testing.T) {
 
 					functionResponse := genai.Part{
 						FunctionResponse: &genai.FunctionResponse{
+							ID:   functionCall.FunctionCall.ID,
 							Name: functionCall.FunctionCall.Name,
 							Response: map[string]interface{}{
 								"result": resultStr,

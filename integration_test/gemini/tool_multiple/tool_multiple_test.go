@@ -134,6 +134,7 @@ func TestMultipleToolsSequential(t *testing.T) {
 					functionCall := toolResult["call"].(*genai.Part)
 					functionResponse := &genai.Part{
 						FunctionResponse: &genai.FunctionResponse{
+							ID:   functionCall.FunctionCall.ID,
 							Name: functionCall.FunctionCall.Name,
 							Response: map[string]interface{}{
 								"result": toolResult["result"],
@@ -287,6 +288,7 @@ func TestMultipleToolsParallel(t *testing.T) {
 					functionCall := toolResult["call"].(*genai.Part)
 					functionResponse := genai.Part{
 						FunctionResponse: &genai.FunctionResponse{
+							ID:   functionCall.FunctionCall.ID,
 							Name: functionCall.FunctionCall.Name,
 							Response: map[string]interface{}{
 								"result": toolResult["result"],
@@ -409,6 +411,7 @@ func TestMultipleToolsWithChat(t *testing.T) {
 						result := simulateWeatherFunction(functionCall.FunctionCall.Args)
 						functionResponse = genai.Part{
 							FunctionResponse: &genai.FunctionResponse{
+								ID:   functionCall.FunctionCall.ID,
 								Name: functionCall.FunctionCall.Name,
 								Response: map[string]interface{}{
 									"result": result,
@@ -419,6 +422,7 @@ func TestMultipleToolsWithChat(t *testing.T) {
 						calcResult := simulateCalculatorFunction(functionCall.FunctionCall.Args)
 						functionResponse = genai.Part{
 							FunctionResponse: &genai.FunctionResponse{
+								ID:   functionCall.FunctionCall.ID,
 								Name: functionCall.FunctionCall.Name,
 								Response: map[string]interface{}{
 									"result": calcResult,
@@ -428,6 +432,7 @@ func TestMultipleToolsWithChat(t *testing.T) {
 					default:
 						functionResponse = genai.Part{
 							FunctionResponse: &genai.FunctionResponse{
+								ID:   functionCall.FunctionCall.ID,
 								Name: functionCall.FunctionCall.Name,
 								Response: map[string]interface{}{
 									"result": "Unknown function",
@@ -537,6 +542,7 @@ func TestToolChoiceRequired(t *testing.T) {
 				// Continue conversation
 				functionResponse := &genai.Part{
 					FunctionResponse: &genai.FunctionResponse{
+						ID:   functionCall.FunctionCall.ID,
 						Name: functionCall.FunctionCall.Name,
 						Response: map[string]interface{}{
 							"result": result,

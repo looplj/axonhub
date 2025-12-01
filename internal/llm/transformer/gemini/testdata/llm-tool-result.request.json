@@ -1,0 +1,77 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": {
+        "content": "I need help with some calculations and weather information for my trip planning. What's 100 / 4 and what's the weather in Tokyo?"
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "content": "I'll help you with both calculations and weather information for your trip planning."
+      },
+      "tool_calls": [
+        {
+          "id": "call_00_IMEgeiAgajAZ47qX9hzSnjBP",
+          "type": "function",
+          "function": {
+            "name": "calculate",
+            "arguments": "{\"expression\":\"100 / 4\"}"
+          }
+        },
+        {
+          "id": "call_01_nyJz54P3fg9880GPr8O2QvER",
+          "type": "function",
+          "function": {
+            "name": "get_current_weather",
+            "arguments": "{\"location\":\"Tokyo\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_00_IMEgeiAgajAZ47qX9hzSnjBP",
+      "tool_call_name": "calculate",
+      "content": {
+        "content": "{\"result\":\"25\"}"
+      }
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "calculate",
+        "description": "Perform mathematical calculations",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "expression": {
+              "type": "string"
+            }
+          },
+          "required": ["expression"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_current_weather",
+        "description": "Get the current weather for a specified location",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "location": {
+              "type": "string"
+            }
+          },
+          "required": ["location"]
+        }
+      }
+    }
+  ],
+  "temperature": 0.7
+}

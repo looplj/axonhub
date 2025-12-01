@@ -1,0 +1,90 @@
+{
+  "contents": [
+    {
+      "parts": [
+        {
+          "text": "I need help with some calculations and weather information for my trip planning. What's 100 / 4 and what's the weather in Tokyo?"
+        }
+      ],
+      "role": "user"
+    },
+    {
+      "parts": [
+        {
+          "text": "I'll help you with both calculations and weather information for your trip planning."
+        },
+        {
+          "functionCall": {
+            "args": {
+              "expression": "100 / 4"
+            },
+            "id": "call_00_IMEgeiAgajAZ47qX9hzSnjBP",
+            "name": "calculate"
+          }
+        },
+        {
+          "functionCall": {
+            "args": {
+              "location": "Tokyo"
+            },
+            "id": "call_01_nyJz54P3fg9880GPr8O2QvER",
+            "name": "get_current_weather"
+          }
+        }
+      ],
+      "role": "model"
+    },
+    {
+      "parts": [
+        {
+          "functionResponse": {
+            "name": "calculate",
+            "response": {
+              "result": "25"
+            }
+          }
+        }
+      ],
+      "role": "user"
+    }
+  ],
+  "generationConfig": {
+    "temperature": 0.7
+  },
+  "tools": [
+    {
+      "functionDeclarations": [
+        {
+          "description": "Perform mathematical calculations",
+          "name": "calculate",
+          "parameters": {
+            "properties": {
+              "expression": {
+                "type": "STRING"
+              }
+            },
+            "required": ["expression"],
+            "type": "OBJECT"
+          }
+        }
+      ]
+    },
+    {
+      "functionDeclarations": [
+        {
+          "description": "Get the current weather for a specified location",
+          "name": "get_current_weather",
+          "parameters": {
+            "properties": {
+              "location": {
+                "type": "STRING"
+              }
+            },
+            "required": ["location"],
+            "type": "OBJECT"
+          }
+        }
+      ]
+    }
+  ]
+}
