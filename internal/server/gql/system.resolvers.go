@@ -62,6 +62,16 @@ func (r *mutationResolver) UpdateDefaultDataStorage(ctx context.Context, input U
 	return true, nil
 }
 
+// CompleteOnboarding is the resolver for the completeOnboarding field.
+func (r *mutationResolver) CompleteOnboarding(ctx context.Context, input CompleteOnboardingInput) (bool, error) {
+	err := r.systemService.CompleteOnboarding(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to complete onboarding: %w", err)
+	}
+
+	return true, nil
+}
+
 // SystemStatus is the resolver for the systemStatus field.
 func (r *queryResolver) SystemStatus(ctx context.Context) (*SystemStatus, error) {
 	isInitialized, err := r.systemService.IsInitialized(ctx)
@@ -119,4 +129,14 @@ func (r *queryResolver) DefaultDataStorageID(ctx context.Context) (*objects.GUID
 		Type: "DataStorage",
 		ID:   id,
 	}, nil
+}
+
+// OnboardingInfo is the resolver for the onboardingInfo field.
+func (r *queryResolver) OnboardingInfo(ctx context.Context) (*biz.OnboardingInfo, error) {
+	info, err := r.systemService.OnboardingInfo(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get onboarding info: %w", err)
+	}
+
+	return info, nil
 }

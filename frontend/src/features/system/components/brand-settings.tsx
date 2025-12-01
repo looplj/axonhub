@@ -169,6 +169,7 @@ export function BrandSettings() {
                 id='brand-logo'
               />
               <Button
+                id='brand-logo-upload'
                 type='button'
                 variant='outline'
                 onClick={() => fileInputRef.current?.click()}

@@ -170,7 +170,7 @@ func (h *SystemHandlers) GetFavicon(c *gin.Context) {
 		return
 	}
 
-	// 如果没有设置品牌标志，返回 404
+	// 如果没有设置品牌标识，返回 404
 	if brandLogo == "" {
 		c.Status(http.StatusNotFound)
 		return

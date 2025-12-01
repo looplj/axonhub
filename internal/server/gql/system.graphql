@@ -72,11 +72,22 @@ input UpdateDefaultDataStorageInput {
   dataStorageID: ID!
 }
 
+type OnboardingInfo {
+  onboarded: Boolean!
+  version: String!
+  completedAt: Time
+}
+
+input CompleteOnboardingInput {
+  dummy: String
+}
+
 extend type Mutation {
   updateBrandSettings(input: UpdateBrandSettingsInput!): Boolean!
   updateStoragePolicy(input: UpdateStoragePolicyInput!): Boolean!
   updateRetryPolicy(input: UpdateRetryPolicyInput!): Boolean!
   updateDefaultDataStorage(input: UpdateDefaultDataStorageInput!): Boolean!
+  completeOnboarding(input: CompleteOnboardingInput!): Boolean!
 }
 
 extend type Query {
@@ -85,4 +96,5 @@ extend type Query {
   storagePolicy: StoragePolicy!
   retryPolicy: RetryPolicy!
   defaultDataStorageID: ID
+  onboardingInfo: OnboardingInfo
 }

@@ -6,6 +6,7 @@ import { AppSidebar } from '@/components/layout/app-sidebar'
 import { AppHeader } from '@/components/layout/app-header'
 import SkipToMain from '@/components/skip-to-main'
 import { useSidebarData } from './sidebar'
+import { OnboardingProvider } from '@/features/onboarding'
 
 interface Props {
   children?: React.ReactNode
@@ -33,7 +34,9 @@ export function AuthenticatedLayout({ children }: Props) {
             'has-[main.fixed-main]:group-data-[scroll-locked=1]/body:h-svh'
           )}
         >
-          {children ? children : <Outlet />}
+          <OnboardingProvider>
+            {children ? children : <Outlet />}
+          </OnboardingProvider>
         </div>
       </div>
     </SidebarProvider>

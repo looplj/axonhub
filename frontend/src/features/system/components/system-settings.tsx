@@ -1,6 +1,5 @@
 'use client'
 
-import React from 'react'
 import { SystemSettingsTabs } from './tabs'
 
 // This component is kept for backward compatibility but is no longer used
