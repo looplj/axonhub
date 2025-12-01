@@ -59,6 +59,23 @@ export function ChannelsDialogs() {
             currentRow={currentRow}
           />
 
+          <ChannelsActionDialog
+            key={`channel-view-models-${currentRow.id}`}
+            open={open === 'viewModels'}
+            onOpenChange={(isOpen) => {
+              if (isOpen) {
+                setOpen('viewModels')
+              } else {
+                setOpen(null)
+                setTimeout(() => {
+                  setCurrentRow(null)
+                }, 500)
+              }
+            }}
+            currentRow={currentRow}
+            showModelsPanel={true}
+          />
+
           <ChannelsDeleteDialog
             key={`channel-delete-${currentRow.id}`}
             open={open === 'delete'}

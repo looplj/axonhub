@@ -269,7 +269,52 @@ func TestConvertLLMToGeminiRequest_Basic(t *testing.T) {
 				require.NotNil(t, result.GenerationConfig)
 				require.NotNil(t, result.GenerationConfig.ThinkingConfig)
 				require.True(t, result.GenerationConfig.ThinkingConfig.IncludeThoughts)
-				require.Equal(t, int64(32768), *result.GenerationConfig.ThinkingConfig.ThinkingBudget)
+				require.Equal(t, int64(24576), *result.GenerationConfig.ThinkingConfig.ThinkingBudget)
+			},
+		},
+		{
+			name: "request with reasoning effort and budget preservation",
+			input: &llm.Request{
+				ReasoningEffort: "medium",
+				ReasoningBudget: lo.ToPtr(int64(12000)),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Question with custom budget"),
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *GenerateContentRequest) {
+				t.Helper()
+				require.NotNil(t, result.GenerationConfig)
+				require.NotNil(t, result.GenerationConfig.ThinkingConfig)
+				require.True(t, result.GenerationConfig.ThinkingConfig.IncludeThoughts)
+				require.Equal(t, int64(12000), *result.GenerationConfig.ThinkingConfig.ThinkingBudget)
+			},
+		},
+		{
+			name: "request with reasoning effort and budget exceeding max",
+			input: &llm.Request{
+				ReasoningEffort: "high",
+				ReasoningBudget: lo.ToPtr(int64(50000)),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Question with large budget"),
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *GenerateContentRequest) {
+				t.Helper()
+				require.NotNil(t, result.GenerationConfig)
+				require.NotNil(t, result.GenerationConfig.ThinkingConfig)
+				require.True(t, result.GenerationConfig.ThinkingConfig.IncludeThoughts)
+				// Should be capped at 24576 (Gemini max)
+				require.Equal(t, int64(24576), *result.GenerationConfig.ThinkingConfig.ThinkingBudget)
 			},
 		},
 	}
@@ -1617,6 +1662,108 @@ func TestReasoningEffortToThinkingBudget(t *testing.T) {
 	for _, tt := range tests {
 		t.Run("effort_"+tt.effort, func(t *testing.T) {
 			result := reasoningEffortToThinkingBudget(tt.effort)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestReasoningEffortToThinkingBudgetWithConfig(t *testing.T) {
+	tests := []struct {
+		name     string
+		effort   string
+		config   *Config
+		expected int64
+	}{
+		{
+			name:     "low effort with no config",
+			effort:   "low",
+			config:   nil,
+			expected: 1024,
+		},
+		{
+			name:     "medium effort with no config",
+			effort:   "medium",
+			config:   nil,
+			expected: 8192,
+		},
+		{
+			name:     "high effort with no config",
+			effort:   "high",
+			config:   nil,
+			expected: 32768,
+		},
+		{
+			name:   "low effort with custom config",
+			effort: "low",
+			config: &Config{
+				ReasoningEffortToBudget: map[string]int64{
+					"low":    2000,
+					"medium": 9000,
+					"high":   35000,
+				},
+			},
+			expected: 2000,
+		},
+		{
+			name:   "medium effort with custom config",
+			effort: "medium",
+			config: &Config{
+				ReasoningEffortToBudget: map[string]int64{
+					"low":    2000,
+					"medium": 9000,
+					"high":   35000,
+				},
+			},
+			expected: 9000,
+		},
+		{
+			name:   "high effort with custom config",
+			effort: "high",
+			config: &Config{
+				ReasoningEffortToBudget: map[string]int64{
+					"low":    2000,
+					"medium": 9000,
+					"high":   35000,
+				},
+			},
+			expected: 35000,
+		},
+		{
+			name:   "unknown effort falls back to default",
+			effort: "unknown",
+			config: &Config{
+				ReasoningEffortToBudget: map[string]int64{
+					"low":    2000,
+					"medium": 9000,
+					"high":   35000,
+				},
+			},
+			expected: 8192, // default medium
+		},
+		{
+			name:   "effort not in config falls back to default",
+			effort: "medium",
+			config: &Config{
+				ReasoningEffortToBudget: map[string]int64{
+					"low":  2000,
+					"high": 35000,
+				},
+			},
+			expected: 8192, // default medium
+		},
+		{
+			name:   "empty config mapping",
+			effort: "high",
+			config: &Config{
+				ReasoningEffortToBudget: map[string]int64{},
+			},
+			expected: 32768, // default high
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := reasoningEffortToThinkingBudgetWithConfig(tt.effort, tt.config)
 			require.Equal(t, tt.expected, result)
 		})
 	}

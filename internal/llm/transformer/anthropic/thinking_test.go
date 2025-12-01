@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/llm"
@@ -125,6 +126,78 @@ func TestNoReasoningEffort(t *testing.T) {
 
 	if anthropicReq.Thinking != nil {
 		t.Errorf("Expected Thinking to be nil when ReasoningEffort is not set")
+	}
+}
+
+func TestReasoningBudgetPriority(t *testing.T) {
+	tests := []struct {
+		name            string
+		reasoningEffort string
+		reasoningBudget *int64
+		config          *Config
+		expectedBudget  int64
+	}{
+		{
+			name:            "reasoning budget takes priority over config mapping",
+			reasoningEffort: "medium",
+			reasoningBudget: lo.ToPtr(int64(25000)),
+			config: &Config{
+				ReasoningEffortToBudget: map[string]int64{
+					"medium": 15000,
+				},
+			},
+			expectedBudget: 25000,
+		},
+		{
+			name:            "reasoning budget takes priority over default mapping",
+			reasoningEffort: "high",
+			reasoningBudget: lo.ToPtr(int64(35000)),
+			config:          nil,
+			expectedBudget:  35000,
+		},
+		{
+			name:            "fallback to config mapping when reasoning budget is nil",
+			reasoningEffort: "low",
+			reasoningBudget: nil,
+			config: &Config{
+				ReasoningEffortToBudget: map[string]int64{
+					"low": 3000,
+				},
+			},
+			expectedBudget: 3000,
+		},
+		{
+			name:            "fallback to default mapping when reasoning budget is nil and no config",
+			reasoningEffort: "medium",
+			reasoningBudget: nil,
+			config:          nil,
+			expectedBudget:  15000,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			chatReq := &llm.Request{
+				Model:           "claude-3-sonnet-20240229",
+				ReasoningEffort: tt.reasoningEffort,
+				ReasoningBudget: tt.reasoningBudget,
+			}
+
+			anthropicReq := convertToAnthropicRequestWithConfig(chatReq, tt.config)
+
+			if anthropicReq.Thinking == nil {
+				t.Errorf("Expected Thinking to be non-nil")
+				return
+			}
+
+			if anthropicReq.Thinking.Type != "enabled" {
+				t.Errorf("Expected Thinking.Type to be enabled, got %s", anthropicReq.Thinking.Type)
+			}
+
+			if anthropicReq.Thinking.BudgetTokens != tt.expectedBudget {
+				t.Errorf("Expected Thinking.BudgetTokens to be %d, got %d", tt.expectedBudget, anthropicReq.Thinking.BudgetTokens)
+			}
+		})
 	}
 }
 
@@ -299,6 +372,19 @@ func TestInboundTransformer_ThinkingTransform(t *testing.T) {
 			// Check reasoning effort
 			if chatReq.ReasoningEffort != tt.expectedEffort {
 				t.Errorf("Expected ReasoningEffort to be %s, got %s", tt.expectedEffort, chatReq.ReasoningEffort)
+			}
+
+			// Check ReasoningBudget preservation for enabled thinking
+			if tt.anthropicReq.Thinking != nil && tt.anthropicReq.Thinking.Type == "enabled" {
+				if chatReq.ReasoningBudget == nil {
+					t.Errorf("Expected ReasoningBudget to be non-nil when thinking is enabled")
+				} else if *chatReq.ReasoningBudget != tt.anthropicReq.Thinking.BudgetTokens {
+					t.Errorf("Expected ReasoningBudget to be %d, got %d", tt.anthropicReq.Thinking.BudgetTokens, *chatReq.ReasoningBudget)
+				}
+			} else {
+				if chatReq.ReasoningBudget != nil {
+					t.Errorf("Expected ReasoningBudget to be nil when thinking is disabled or not present")
+				}
 			}
 
 			// Verify other fields are preserved

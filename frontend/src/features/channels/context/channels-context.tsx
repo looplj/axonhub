@@ -21,6 +21,7 @@ type ChannelsDialogType =
   | 'bulkDelete'
   | 'errorResolved'
   | 'weight'
+  | 'viewModels'
 
 interface ChannelsContextType {
   open: ChannelsDialogType | null

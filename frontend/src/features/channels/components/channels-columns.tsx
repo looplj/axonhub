@@ -2,6 +2,7 @@ import { format } from 'date-fns'
 import { ColumnDef, Row } from '@tanstack/react-table'
 import { IconPlayerPlay, IconChevronDown, IconAlertTriangle } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
+import { useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { formatDuration } from '@/utils/format-duration'
 import { Badge } from '@/components/ui/badge'
@@ -254,19 +255,34 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       accessorKey: 'supportedModels',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.supportedModels')} />,
       cell: ({ row }) => {
+        const channel = row.original
         const models = row.getValue('supportedModels') as string[]
+        const { setOpen, setCurrentRow } = useChannels()
+
+        const handleOpenModelsDialog = useCallback(() => {
+          setCurrentRow(channel)
+          setOpen('viewModels')
+        }, [channel, setCurrentRow, setOpen])
+
         return (
-          <div className='flex max-w-48 flex-wrap gap-1'>
-            {models.slice(0, 2).map((model) => (
-              <Badge key={model} variant='secondary' className='text-xs'>
-                {model}
-              </Badge>
-            ))}
-            {models.length > 2 && (
-              <Badge variant='secondary' className='text-xs'>
-                +{models.length - 2}
-              </Badge>
-            )}
+          <div className='flex items-center gap-2'>
+            <div className='flex max-w-48 flex-wrap gap-1'>
+              {models.slice(0, 2).map((model) => (
+                <Badge key={model} variant='secondary' className='text-xs'>
+                  {model}
+                </Badge>
+              ))}
+              {models.length > 2 && (
+                <Badge 
+                  variant='secondary' 
+                  className='text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors'
+                  onClick={handleOpenModelsDialog}
+                  title={t('channels.actions.viewModels')}
+                >
+                  +{models.length - 2}
+                </Badge>
+              )}
+            </div>
           </div>
         )
       },

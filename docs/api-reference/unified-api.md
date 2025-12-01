@@ -74,6 +74,37 @@ response = requests.post(
 print(response.json()["content"][0]["text"])
 ```
 
+### Gemini API
+
+AxonHub provides native support for the Gemini API, enabling access to Gemini's powerful multi-modal capabilities.
+
+**Endpoints:**
+- `POST /gemini/v1beta/models/{model}:generateContent` - Text and multi-modal content generation
+
+**Example Request:**
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8090/gemini/v1beta/models/gemini-pro:generateContent",
+    headers={
+        "Content-Type": "application/json",
+        "X-API-Key": "your-axonhub-api-key"
+    },
+    json={
+        "contents": [
+            {
+                "role": "user",
+                "parts": [
+                    {"text": "Hello, Gemini!"}
+                ]
+            }
+        ]
+    }
+)
+print(response.json()["candidates"][0]["content"]["parts"][0]["text"])
+```
+
 ## API Translation Capabilities
 
 AxonHub automatically translates between API formats, enabling these powerful scenarios:
@@ -108,19 +139,43 @@ response = requests.post(
 # AxonHub automatically translates Anthropic format → OpenAI format
 ```
 
-## Supported Providers
+### Use Gemini SDK with OpenAI Models
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8090/gemini/v1beta/models/gpt-4o:generateContent", # OpenAI model
+    headers={
+        "Content-Type": "application/json",
+        "X-API-Key": "your-axonhub-api-key"
+    },
+    json={
+        "contents": [
+            {
+                "role": "user",
+                "parts": [
+                    {"text": "Hello, GPT!"}
+                ]
+            }
+        ]
+    }
+)
+print(response.json()["candidates"][0]["content"]["parts"][0]["text"])
+# AxonHub automatically translates Gemini format → OpenAI format
+```
+
 
 | Provider               | Status     | Supported Models             | Compatible APIs |
 | ---------------------- | ---------- | ---------------------------- | --------------- |
-| **OpenAI**             | ✅ Done    | GPT-4, GPT-4o, GPT-5, etc.   | OpenAI, Anthropic |
-| **Anthropic**          | ✅ Done    | Claude 3.5, Claude 3.0, etc. | OpenAI, Anthropic |
-| **Zhipu AI**           | ✅ Done    | GLM-4.5, GLM-4.5-air, etc.   | OpenAI, Anthropic |
-| **Moonshot AI (Kimi)** | ✅ Done    | kimi-k2, etc.                | OpenAI, Anthropic |
-| **DeepSeek**           | ✅ Done    | DeepSeek-V3.1, etc.          | OpenAI, Anthropic |
-| **ByteDance Doubao**   | ✅ Done    | doubao-1.6, etc.             | OpenAI, Anthropic |
-| **Gemini**             | ✅ Done    | Gemini 2.5, etc.             | OpenAI, Anthropic |
-| **AWS Bedrock**        | 🔄 Testing | Claude on AWS                | OpenAI, Anthropic |
-| **Google Cloud**       | 🔄 Testing | Claude on GCP                | OpenAI, Anthropic |
+| **OpenAI**             | ✅ Done    | GPT-4, GPT-4o, GPT-5, etc.   | OpenAI, Anthropic, Gemini |
+| **Anthropic**          | ✅ Done    | Claude 3.5, Claude 3.0, etc. | OpenAI, Anthropic, Gemini |
+| **Zhipu AI**           | ✅ Done    | GLM-4.5, GLM-4.5-air, etc.   | OpenAI, Anthropic, Gemini |
+| **Moonshot AI (Kimi)** | ✅ Done    | kimi-k2, etc.                | OpenAI, Anthropic, Gemini |
+| **DeepSeek**           | ✅ Done    | DeepSeek-V3.1, etc.          | OpenAI, Anthropic, Gemini |
+| **ByteDance Doubao**   | ✅ Done    | doubao-1.6, etc.             | OpenAI, Anthropic, Gemini |
+| **Gemini**             | ✅ Done    | Gemini 2.5, etc.             | OpenAI, Anthropic, Gemini |
+| **AWS Bedrock**        | 🔄 Testing | Claude on AWS                | OpenAI, Anthropic, Gemini |
+| **Google Cloud**       | 🔄 Testing | Claude on GCP                | OpenAI, Anthropic, Gemini |
 
 ## Authentication
 
@@ -318,6 +373,44 @@ response = requests.post(
 print(response.json()["content"][0]["text"])
 ```
 
+### Gemini API
+
+AxonHub 原生支持 Gemini API，可访问 Gemini 强大的多模态功能。
+
+**端点：**
+- `POST /gemini/v1beta/models/{model}:generateContent` - 文本和多模态内容生成
+- `GET /gemini/v1beta/models` - 列出可用模型
+
+**示例请求：**
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8090/gemini/v1beta/models/gemini-pro:generateContent",
+    headers={
+        "Content-Type": "application/json",
+        "X-API-Key": "your-axonhub-api-key"
+    },
+    json={
+        "contents": [
+            {
+                "role": "user",
+                "parts": [
+                    {"text": "Hello, Gemini!"}
+                ]
+            }
+        ],
+        "safetySettings": [
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"}
+        ]
+    }
+)
+print(response.json()["candidates"][0]["content"]["parts"][0]["text"])
+```
+
 ## API 转换能力
 
 AxonHub 自动在 API 格式之间进行转换，实现以下强大场景：
@@ -352,6 +445,31 @@ response = requests.post(
 # AxonHub 自动转换 Anthropic 格式 → OpenAI 格式
 ```
 
+### 使用 Gemini SDK 调用 OpenAI 模型
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8090/gemini/v1beta/models/gpt-4o:generateContent", # OpenAI model
+    headers={
+        "Content-Type": "application/json",
+        "X-API-Key": "your-axonhub-api-key"
+    },
+    json={
+        "contents": [
+            {
+                "role": "user",
+                "parts": [
+                    {"text": "Hello, GPT!"}
+                ]
+            }
+        ]
+    }
+)
+print(response.json()["candidates"][0]["content"]["parts"][0]["text"])
+# AxonHub 自动转换 Gemini 格式 → OpenAI 格式
+```
+
 ## 支持的提供商
 
 | 提供商                   | 状态       | 支持模型示例                 | 兼容 API |
@@ -372,6 +490,7 @@ response = requests.post(
 
 - **OpenAI API**：使用 `Authorization: Bearer <your-api-key>` 头部
 - **Anthropic API**：使用 `X-API-Key: <your-api-key>` 头部
+- **Gemini API**：使用 `X-Goog-API-Key: <your-api-key>` 头部
 
 API 密钥通过 AxonHub 的 API 密钥管理系统进行管理，无论使用哪种 API 格式，都提供相同的权限。
 

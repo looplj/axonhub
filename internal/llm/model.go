@@ -159,6 +159,10 @@ type Request struct {
 	// Controls effort on reasoning for reasoning models. It can be set to "low", "medium", or "high".
 	ReasoningEffort string `json:"reasoning_effort,omitempty"`
 
+	// Reasoning budget for reasoning models.
+	// Help fields， will not be sent to the llm service.
+	ReasoningBudget *int64 `json:"-"`
+
 	// Specifies the processing type used for serving the request.
 	ServiceTier *string `json:"service_tier,omitempty"`
 

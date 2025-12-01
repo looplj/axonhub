@@ -46,10 +46,18 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 	}
 
 	// Convert ReasoningEffort to Thinking if present
+	// Priority: ReasoningBudget > config mapping > default mapping
 	if chatReq.ReasoningEffort != "" {
+		var budgetTokens int64
+		if chatReq.ReasoningBudget != nil {
+			budgetTokens = *chatReq.ReasoningBudget
+		} else {
+			budgetTokens = getThinkingBudgetTokensWithConfig(chatReq.ReasoningEffort, config)
+		}
+
 		req.Thinking = &Thinking{
 			Type:         "enabled",
-			BudgetTokens: getThinkingBudgetTokensWithConfig(chatReq.ReasoningEffort, config),
+			BudgetTokens: budgetTokens,
 		}
 	}
 

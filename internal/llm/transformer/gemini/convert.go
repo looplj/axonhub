@@ -233,17 +233,32 @@ func thinkingBudgetToReasoningEffort(budget int64) string {
 	}
 }
 
+// defaultReasoningEffortMapping returns the default mapping from ReasoningEffort to thinking budget tokens.
+var defaultGeminiReasoningEffortMapping = map[string]int64{
+	"low":    1024,
+	"medium": 8192,
+	"high":   32768,
+}
+
 func reasoningEffortToThinkingBudget(effort string) int64 {
-	switch effort {
-	case "low":
-		return 1024
-	case "medium":
-		return 8192
-	case "high":
-		return 32768
-	default:
-		return 8192
+	return reasoningEffortToThinkingBudgetWithConfig(effort, nil)
+}
+
+// reasoningEffortToThinkingBudgetWithConfig returns the thinking budget tokens for a given reasoning effort with config.
+func reasoningEffortToThinkingBudgetWithConfig(effort string, config *Config) int64 {
+	if config != nil && config.ReasoningEffortToBudget != nil {
+		if budget, exists := config.ReasoningEffortToBudget[effort]; exists {
+			return budget
+		}
 	}
+
+	// Fall back to default mapping
+	if budget, exists := defaultGeminiReasoningEffortMapping[effort]; exists {
+		return budget
+	}
+
+	// Default to medium if not found
+	return 8192
 }
 
 // convertToLLMUsage converts Gemini UsageMetadata to unified Usage format.

@@ -175,26 +175,28 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
           </div>
 
           {/* Scrollable Profiles Section */}
-          <div className='flex-1 overflow-y-auto py-1'>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleSubmit)} className='space-y-6 px-4'>
-                <div className='space-y-4'>
+          {profileFields.length > 0 && (
+            <div className='flex-1 overflow-y-auto py-1'>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(handleSubmit)} className='space-y-6 px-4'>
                   <div className='space-y-4'>
-                    {profileFields.map((profile, profileIndex) => (
-                      <ProfileCard
-                        key={profile.id}
-                        profileIndex={profileIndex}
-                        form={form}
-                        onRemove={() => removeProfileHandler(profileIndex)}
-                        canRemove={profileFields.length > 1}
-                        t={t}
-                      />
-                    ))}
+                    <div className='space-y-4'>
+                      {profileFields.map((profile, profileIndex) => (
+                        <ProfileCard
+                          key={profile.id}
+                          profileIndex={profileIndex}
+                          form={form}
+                          onRemove={() => removeProfileHandler(profileIndex)}
+                          canRemove={profileFields.length > 1}
+                          t={t}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              </form>
-            </Form>
-          </div>
+                </form>
+              </Form>
+            </div>
+          )}
 
           {/* Fixed Active Profile Section at Bottom */}
           <div className='bg-background shrink-0 border-t p-4'>
