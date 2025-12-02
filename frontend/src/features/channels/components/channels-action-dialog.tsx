@@ -345,10 +345,13 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
     }
 
     try {
+      // Only use the first API key when multiple keys are provided
+      const firstApiKey = isEdit ? undefined : (apiKey?.split('\n').map(key => key.trim()).filter(key => key.length > 0)[0] || '')
+
       const result = await fetchModels.mutateAsync({
         channelType,
         baseURL,
-        apiKey: isEdit ? undefined : apiKey,
+        apiKey: firstApiKey,
         channelID: isEdit ? currentRow?.id : undefined,
       })
 
