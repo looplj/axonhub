@@ -3,10 +3,13 @@ package gemini
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/pkg/xjson"
 )
 
 // convertGeminiToLLMRequest converts Gemini GenerateContentRequest to unified Request.
@@ -83,8 +86,8 @@ func convertGeminiToLLMRequest(geminiReq *GenerateContentRequest) (*llm.Request,
 	}
 
 	// Convert contents to messages
-	for _, content := range geminiReq.Contents {
-		msg, err := convertGeminiContentToLLMMessage(content)
+	for i, content := range geminiReq.Contents {
+		msg, err := convertGeminiContentToLLMMessage(content, geminiReq.Contents[:i])
 		if err != nil {
 			return nil, err
 		}
@@ -103,12 +106,22 @@ func convertGeminiToLLMRequest(geminiReq *GenerateContentRequest) (*llm.Request,
 		for _, tool := range geminiReq.Tools {
 			if tool.FunctionDeclarations != nil {
 				for _, fd := range tool.FunctionDeclarations {
+					parameters := fd.Parameters
+					// The gemini sdk use UPPER case for type, but the unified format use lower case.
+					parameters, err := xjson.Transform(parameters, func(s *jsonschema.Schema) {
+						s.Type = strings.ToLower(s.Type)
+					})
+					if err != nil {
+						// If transform failed, fallback to the original parameters.
+						parameters = fd.Parameters
+					}
+
 					llmTool := llm.Tool{
 						Type: "function",
 						Function: llm.Function{
 							Name:        fd.Name,
 							Description: fd.Description,
-							Parameters:  fd.Parameters,
+							Parameters:  parameters,
 						},
 					}
 					tools = append(tools, llmTool)
@@ -129,7 +142,7 @@ func convertGeminiToLLMRequest(geminiReq *GenerateContentRequest) (*llm.Request,
 }
 
 // convertGeminiContentToLLMMessage converts a Gemini Content to an LLM Message.
-func convertGeminiContentToLLMMessage(content *Content) (*llm.Message, error) {
+func convertGeminiContentToLLMMessage(content *Content, previousContents []*Content) (*llm.Message, error) {
 	if content == nil || len(content.Parts) == 0 {
 		return nil, nil
 	}
@@ -190,9 +203,15 @@ func convertGeminiContentToLLMMessage(content *Content) (*llm.Message, error) {
 			// Function response is a separate message in unified format
 			responseJSON, _ := json.Marshal(part.FunctionResponse.Response)
 
+			// If FunctionResponse ID is empty, find the matching function call ID from previous contents
+			functionResponseID := part.FunctionResponse.ID
+			if functionResponseID == "" {
+				functionResponseID = findMatchingFunctionCallID(part.FunctionResponse.Name, previousContents)
+			}
+
 			return &llm.Message{
 				Role:         "tool",
-				ToolCallID:   lo.ToPtr(part.FunctionResponse.ID),
+				ToolCallID:   lo.ToPtr(functionResponseID),
 				ToolCallName: lo.ToPtr(part.FunctionResponse.Name),
 				Content: llm.MessageContent{
 					Content: lo.ToPtr(string(responseJSON)),
@@ -330,4 +349,26 @@ func convertLLMChoiceToGeminiCandidate(choice *llm.Choice, isStream bool) *Candi
 	candidate.FinishReason = convertLLMFinishReasonToGemini(choice.FinishReason)
 
 	return candidate
+}
+
+// findMatchingFunctionCallID searches backwards through previous contents to find the last
+// function call with the given function name and returns its ID.
+func findMatchingFunctionCallID(functionName string, previousContents []*Content) string {
+	// Search from the end to the beginning to find the most recent matching function call
+	for i := len(previousContents) - 1; i >= 0; i-- {
+		content := previousContents[i]
+		if content == nil {
+			continue
+		}
+
+		// Look through all parts in this content in reverse order to find the most recent function call
+		for j := len(content.Parts) - 1; j >= 0; j-- {
+			part := content.Parts[j]
+			if part.FunctionCall != nil && part.FunctionCall.Name == functionName && part.FunctionCall.ID != "" {
+				return part.FunctionCall.ID
+			}
+		}
+	}
+
+	return ""
 }

@@ -605,7 +605,7 @@ func TestConvertGeminiContentToLLMMessage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := convertGeminiContentToLLMMessage(tt.input)
+			result, err := convertGeminiContentToLLMMessage(tt.input, nil)
 			require.NoError(t, err)
 			tt.validate(t, result)
 		})
@@ -893,6 +893,43 @@ func TestConvertGeminiToLLMRequest_Testdata(t *testing.T) {
 				require.Contains(t, *result.Messages[1].ReasoningContent, "25 * 47")
 				require.Equal(t, "user", result.Messages[2].Role)
 				require.Equal(t, "medium", result.ReasoningEffort)
+			},
+		},
+		{
+			name:       "tool result request",
+			geminiFile: "gemini-tool-result.request.json",
+			validateFunc: func(t *testing.T, result *llm.Request) {
+				t.Helper()
+				require.Len(t, result.Messages, 3)
+				require.Equal(t, "user", result.Messages[0].Role)
+				require.Equal(
+					t,
+					"I need help with some calculations and weather information for my trip planning. What's 100 / 4 and what's the weather in Tokyo?",
+					*result.Messages[0].Content.Content,
+				)
+
+				// Check assistant message with tool calls
+				require.Equal(t, "assistant", result.Messages[1].Role)
+				require.Equal(t, "I'll help you with both calculations and weather information for your trip planning.", *result.Messages[1].Content.Content)
+				require.Len(t, result.Messages[1].ToolCalls, 2)
+				require.Equal(t, "call_00_IMEgeiAgajAZ47qX9hzSnjBP", result.Messages[1].ToolCalls[0].ID)
+				require.Equal(t, "calculate", result.Messages[1].ToolCalls[0].Function.Name)
+				require.Equal(t, "call_01_nyJz54P3fg9880GPr8O2QvER", result.Messages[1].ToolCalls[1].ID)
+				require.Equal(t, "get_current_weather", result.Messages[1].ToolCalls[1].Function.Name)
+
+				// Check tool response message with ID completion
+				require.Equal(t, "tool", result.Messages[2].Role)
+				require.Equal(t, "call_00_IMEgeiAgajAZ47qX9hzSnjBP", *result.Messages[2].ToolCallID)
+				require.Equal(t, "calculate", *result.Messages[2].ToolCallName)
+				require.Contains(t, *result.Messages[2].Content.Content, "25")
+
+				// Check tools
+				require.Len(t, result.Tools, 2)
+				require.Equal(t, "calculate", result.Tools[0].Function.Name)
+				require.Equal(t, "get_current_weather", result.Tools[1].Function.Name)
+
+				// Check temperature
+				require.InDelta(t, 0.7, *result.Temperature, 0.01)
 			},
 		},
 	}

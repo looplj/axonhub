@@ -2,8 +2,10 @@ package xjson
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/stretchr/testify/require"
 )
 
@@ -404,4 +406,107 @@ func TestCleanSchema_NoFieldsToClear(t *testing.T) {
 func TestCleanSchema_NilSchemaInput(t *testing.T) {
 	_, err := CleanSchema(nil, "$schema")
 	require.Error(t, err)
+}
+
+func TestTransform_TypeToLowercase(t *testing.T) {
+	schema := `{
+		"type": "OBJECT",
+		"properties": {
+			"name": {"type": "STRING"},
+			"age": {"type": "INTEGER"},
+			"active": {"type": "BOOLEAN"}
+		},
+		"items": {
+			"type": "ARRAY",
+			"items": {"type": "NUMBER"}
+		},
+		"allOf": [
+			{"type": "STRING"},
+			{"type": "NULL"}
+		],
+		"definitions": {
+			"user": {"type": "OBJECT"}
+		}
+	}`
+
+	result, err := Transform([]byte(schema), func(s *jsonschema.Schema) {
+		s.Type = strings.ToLower(s.Type)
+	})
+	require.NoError(t, err)
+
+	var transformed map[string]any
+	require.NoError(t, json.Unmarshal(result, &transformed))
+
+	// Check main schema type
+	require.Equal(t, "object", transformed["type"])
+
+	// Check properties
+	props := transformed["properties"].(map[string]any)
+	require.Equal(t, "string", props["name"].(map[string]any)["type"])
+	require.Equal(t, "integer", props["age"].(map[string]any)["type"])
+	require.Equal(t, "boolean", props["active"].(map[string]any)["type"])
+
+	// Check items
+	items := transformed["items"].(map[string]any)
+	require.Equal(t, "array", items["type"])
+	require.Equal(t, "number", items["items"].(map[string]any)["type"])
+
+	// Check allOf
+	allOf := transformed["allOf"].([]any)
+	require.Equal(t, "string", allOf[0].(map[string]any)["type"])
+	require.Equal(t, "null", allOf[1].(map[string]any)["type"])
+
+	// Check definitions
+	defs := transformed["definitions"].(map[string]any)
+	require.Equal(t, "object", defs["user"].(map[string]any)["type"])
+}
+
+func TestTransform_InvalidJSON(t *testing.T) {
+	invalidSchema := `{"invalid": json}`
+
+	_, err := Transform([]byte(invalidSchema), func(s *jsonschema.Schema) {})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid character")
+}
+
+func TestTransform_NilInput(t *testing.T) {
+	_, err := Transform(nil, func(s *jsonschema.Schema) {})
+	require.Error(t, err)
+}
+
+func TestTransform_AddDescription(t *testing.T) {
+	schema := `{
+		"type": "object",
+		"properties": {
+			"name": {"type": "string"},
+			"address": {
+				"type": "object",
+				"properties": {
+					"city": {"type": "string"}
+				}
+			}
+		}
+	}`
+
+	result, err := Transform([]byte(schema), func(s *jsonschema.Schema) {
+		if s.Description == "" {
+			s.Description = "Auto-generated description"
+		}
+	})
+	require.NoError(t, err)
+
+	var transformed map[string]any
+	require.NoError(t, json.Unmarshal(result, &transformed))
+
+	// Check main schema
+	require.Equal(t, "Auto-generated description", transformed["description"])
+
+	// Check nested properties
+	props := transformed["properties"].(map[string]any)
+	require.Equal(t, "Auto-generated description", props["name"].(map[string]any)["description"])
+	require.Equal(t, "Auto-generated description", props["address"].(map[string]any)["description"])
+
+	// Check deeply nested
+	addressProps := props["address"].(map[string]any)["properties"].(map[string]any)
+	require.Equal(t, "Auto-generated description", addressProps["city"].(map[string]any)["description"])
 }

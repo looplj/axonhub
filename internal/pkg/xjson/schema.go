@@ -8,28 +8,75 @@ import (
 	"github.com/samber/lo"
 )
 
-func CleanSchema(rawSchema json.RawMessage, fields ...string) (json.RawMessage, error) {
+func Transform(rawSchema json.RawMessage, transform func(*jsonschema.Schema)) (json.RawMessage, error) {
 	var schema jsonschema.Schema
 	if err := json.Unmarshal(rawSchema, &schema); err != nil {
 		return nil, err
 	}
 
-	cleanSchemaRecursive(&schema, fields...)
+	transformSchemaRecursive(&schema, transform)
 
 	return json.Marshal(&schema)
 }
 
-// cleanSchemaRecursive recursively clears specified fields from a schema and all its sub-schemas.
-func cleanSchemaRecursive(schema *jsonschema.Schema, fields ...string) {
+func transformSchemaRecursive(schema *jsonschema.Schema, transform func(*jsonschema.Schema)) {
 	if schema == nil {
 		return
 	}
 
-	// Clear fields from the main schema
-	clearFieldsFromSchema(schema, fields...)
+	transform(schema)
 
-	// Recursively clean sub-schemas
-	cleanSubSchemas(schema, fields...)
+	// Recursively transform sub-schema fields
+	lo.ForEach([]*jsonschema.Schema{
+		schema.Items,
+		schema.AdditionalItems,
+		schema.Contains,
+		schema.Not,
+		schema.If,
+		schema.Then,
+		schema.Else,
+		schema.PropertyNames,
+		schema.UnevaluatedProperties,
+		schema.UnevaluatedItems,
+		schema.ContentSchema,
+	}, func(subSchema *jsonschema.Schema, _ int) {
+		transformSchemaRecursive(subSchema, transform)
+	})
+
+	// Transform schema slices
+	schemaSlices := [][]*jsonschema.Schema{
+		schema.PrefixItems,
+		schema.ItemsArray,
+		schema.AllOf,
+		schema.AnyOf,
+		schema.OneOf,
+	}
+	lo.ForEach(schemaSlices, func(schemas []*jsonschema.Schema, _ int) {
+		lo.ForEach(schemas, func(subSchema *jsonschema.Schema, _ int) {
+			transformSchemaRecursive(subSchema, transform)
+		})
+	})
+
+	// Transform schema maps
+	schemaMaps := []map[string]*jsonschema.Schema{
+		schema.Defs,
+		schema.Definitions,
+		schema.DependentSchemas,
+		schema.Properties,
+		schema.PatternProperties,
+		schema.DependencySchemas,
+	}
+	lo.ForEach(schemaMaps, func(schemaMap map[string]*jsonschema.Schema, _ int) {
+		lo.ForEach(lo.Values(schemaMap), func(subSchema *jsonschema.Schema, _ int) {
+			transformSchemaRecursive(subSchema, transform)
+		})
+	})
+}
+
+func CleanSchema(rawSchema json.RawMessage, fields ...string) (json.RawMessage, error) {
+	return Transform(rawSchema, func(schema *jsonschema.Schema) {
+		clearFieldsFromSchema(schema, fields...)
+	})
 }
 
 // clearFieldsFromSchema clears specified fields from a single schema.
@@ -89,57 +136,4 @@ func clearFieldsFromSchema(schema *jsonschema.Schema, fields ...string) {
 			}
 		}
 	}
-}
-
-// cleanSubSchemas recursively cleans all sub-schemas within a schema.
-func cleanSubSchemas(schema *jsonschema.Schema, fields ...string) {
-	if schema == nil {
-		return
-	}
-
-	// Clean all sub-schema fields
-	lo.ForEach([]*jsonschema.Schema{
-		schema.Items,
-		schema.AdditionalItems,
-		schema.Contains,
-		schema.Not,
-		schema.If,
-		schema.Then,
-		schema.Else,
-		schema.PropertyNames,
-		schema.UnevaluatedProperties,
-		schema.UnevaluatedItems,
-		schema.ContentSchema,
-	}, func(subSchema *jsonschema.Schema, _ int) {
-		cleanSchemaRecursive(subSchema, fields...)
-	})
-
-	// Clean schema slices
-	schemaSlices := [][]*jsonschema.Schema{
-		schema.PrefixItems,
-		schema.ItemsArray,
-		schema.AllOf,
-		schema.AnyOf,
-		schema.OneOf,
-	}
-	lo.ForEach(schemaSlices, func(schemas []*jsonschema.Schema, _ int) {
-		lo.ForEach(schemas, func(subSchema *jsonschema.Schema, _ int) {
-			cleanSchemaRecursive(subSchema, fields...)
-		})
-	})
-
-	// Clean schema maps
-	schemaMaps := []map[string]*jsonschema.Schema{
-		schema.Defs,
-		schema.Definitions,
-		schema.DependentSchemas,
-		schema.Properties,
-		schema.PatternProperties,
-		schema.DependencySchemas,
-	}
-	lo.ForEach(schemaMaps, func(schemaMap map[string]*jsonschema.Schema, _ int) {
-		lo.ForEach(lo.Values(schemaMap), func(subSchema *jsonschema.Schema, _ int) {
-			cleanSchemaRecursive(subSchema, fields...)
-		})
-	})
 }

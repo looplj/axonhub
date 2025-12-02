@@ -88,6 +88,7 @@ func TestSingleToolCall(t *testing.T) {
 							// Continue conversation with tool result
 							functionResponse := genai.Part{
 								FunctionResponse: &genai.FunctionResponse{
+									ID:   part.FunctionCall.ID,
 									Name: part.FunctionCall.Name,
 									Response: map[string]interface{}{
 										"result": weatherResult,
@@ -225,6 +226,7 @@ func TestCalculatorTool(t *testing.T) {
 							resultStr := fmt.Sprintf("%v", calcResult)
 							functionResponse := genai.Part{
 								FunctionResponse: &genai.FunctionResponse{
+									ID:   part.FunctionCall.ID,
 									Name: part.FunctionCall.Name,
 									Response: map[string]interface{}{
 										"result": resultStr,
@@ -354,6 +356,7 @@ func TestToolCallWithChat(t *testing.T) {
 							// Send function response back to chat
 							functionResponse := genai.Part{
 								FunctionResponse: &genai.FunctionResponse{
+									ID:   part.FunctionCall.ID,
 									Name: part.FunctionCall.Name,
 									Response: map[string]interface{}{
 										"result": weatherResult,

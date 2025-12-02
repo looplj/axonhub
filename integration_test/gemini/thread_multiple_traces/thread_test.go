@@ -165,6 +165,7 @@ func TestSingleThreadMultipleTraces(t *testing.T) {
 				// Send function response
 				functionResponse := genai.Part{
 					FunctionResponse: &genai.FunctionResponse{
+						ID:   functionCall.FunctionCall.ID,
 						Name: functionCall.FunctionCall.Name,
 						Response: map[string]interface{}{
 							"result": result,
