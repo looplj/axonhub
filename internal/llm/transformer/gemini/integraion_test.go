@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -21,6 +23,8 @@ func TestGeminiTransformers_Integration(t *testing.T) {
 
 	tests := []struct {
 		name               string
+		requestPath        string
+		requestQuery       url.Values
 		geminiRequestJSON  string
 		expectedModel      string
 		expectedMaxTokens  int64
@@ -28,7 +32,9 @@ func TestGeminiTransformers_Integration(t *testing.T) {
 		expectedModalities []string
 	}{
 		{
-			name: "simple text message",
+			name:         "simple text message",
+			requestPath:  "/v1beta/models/gemini-2.5-flash:generateContent",
+			requestQuery: url.Values{},
 			geminiRequestJSON: `{
 				"contents": [
 					{
@@ -47,7 +53,9 @@ func TestGeminiTransformers_Integration(t *testing.T) {
 			expectedPath:      "/v1beta/models/gemini-2.5-flash:generateContent",
 		},
 		{
-			name: "message with system instruction",
+			name:         "message with system instruction",
+			requestPath:  "/v1beta/models/gemini-2.5-flash:generateContent",
+			requestQuery: url.Values{},
 			geminiRequestJSON: `{
 				"systemInstruction": {
 					"parts": [
@@ -72,7 +80,9 @@ func TestGeminiTransformers_Integration(t *testing.T) {
 			expectedPath:      "/v1beta/models/gemini-2.5-flash:generateContent",
 		},
 		{
-			name: "message with modalities",
+			name:         "message with modalities",
+			requestPath:  "/v1beta/models/gemini-2.5-flash-image-preview:generateContent",
+			requestQuery: url.Values{},
 			geminiRequestJSON: `{
 				"contents": [
 					{
@@ -94,13 +104,35 @@ func TestGeminiTransformers_Integration(t *testing.T) {
 			expectedPath:       "/v1beta/models/gemini-2.5-flash-image-preview:generateContent",
 			expectedModalities: []string{"text", "image"},
 		},
+		{
+			name:         "streaming request with alt query",
+			requestPath:  "/v1beta/models/gemini-2.5-flash:streamGenerateContent",
+			requestQuery: url.Values{"alt": []string{"sse"}},
+			geminiRequestJSON: `{
+				"contents": [
+					{
+						"role": "user",
+						"parts": [
+							{"text": "Hello streaming!"}
+						]
+					}
+				],
+				"generationConfig": {
+					"maxOutputTokens": 512
+				}
+			}`,
+			expectedModel:     "gemini-2.5-flash",
+			expectedMaxTokens: 512,
+			expectedPath:      "/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Step 1: Transform Gemini request to LLM Request
 			httpReq := &httpclient.Request{
-				Path: tt.expectedPath,
+				Path:  tt.requestPath,
+				Query: tt.requestQuery,
 				Headers: http.Header{
 					"Content-Type": []string{"application/json"},
 				},
@@ -116,6 +148,12 @@ func TestGeminiTransformers_Integration(t *testing.T) {
 			require.Equal(t, tt.expectedMaxTokens, *chatReq.MaxTokens)
 			require.NotEmpty(t, chatReq.Messages)
 
+			// Verify streaming behavior based on request path
+			expectedStream := strings.Contains(tt.requestPath, "streamGenerateContent")
+
+			require.NotNil(t, chatReq.Stream)
+			require.Equal(t, expectedStream, *chatReq.Stream)
+
 			// Verify modalities if expected
 			if len(tt.expectedModalities) > 0 {
 				require.Equal(t, tt.expectedModalities, chatReq.Modalities)
@@ -129,6 +167,11 @@ func TestGeminiTransformers_Integration(t *testing.T) {
 			// Verify outbound request
 			require.Equal(t, http.MethodPost, outboundReq.Method)
 			require.Equal(t, "application/json", outboundReq.Headers.Get("Content-Type"))
+
+			// Verify the URL matches expected path
+			expectedURL := "https://generativelanguage.googleapis.com" + tt.expectedPath
+			require.Equal(t, expectedURL, outboundReq.URL)
+			require.Empty(t, tt.requestQuery.Get("alt"))
 
 			// Verify the outbound request body can be unmarshaled
 			var geminiReq GenerateContentRequest

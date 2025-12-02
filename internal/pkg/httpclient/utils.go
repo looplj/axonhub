@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 )
 
 func ReadHTTPRequest(rawReq *http.Request) (*Request, error) {
@@ -11,6 +12,7 @@ func ReadHTTPRequest(rawReq *http.Request) (*Request, error) {
 		Method:     rawReq.Method,
 		URL:        rawReq.URL.String(),
 		Path:       rawReq.URL.Path,
+		Query:      rawReq.URL.Query(),
 		Headers:    rawReq.Header,
 		Body:       nil,
 		Auth:       &AuthConfig{},
@@ -69,6 +71,19 @@ func MergeInboundRequest(out, in *Request) *Request {
 	}
 
 	out.Headers = MergeHTTPHeaders(out.Headers, in.Headers)
+
+	// Merge query parameters.
+	if len(in.Query) > 0 {
+		if out.Query == nil {
+			out.Query = make(url.Values)
+		}
+
+		for k, v := range in.Query {
+			if _, ok := out.Query[k]; !ok {
+				out.Query[k] = v
+			}
+		}
+	}
 
 	return out
 }

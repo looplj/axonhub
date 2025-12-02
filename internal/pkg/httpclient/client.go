@@ -281,6 +281,14 @@ func (hc *HttpClient) buildHttpRequest(
 		}
 	}
 
+	if len(request.Query) > 0 {
+		if httpReq.URL.RawQuery != "" {
+			httpReq.URL.RawQuery += "&"
+		}
+
+		httpReq.URL.RawQuery += request.Query.Encode()
+	}
+
 	return httpReq, nil
 }
 
