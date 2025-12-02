@@ -30,10 +30,10 @@ AxonHub 是一个 All-in-one AI 开发平台，提供统一的 API 网关、项�
 
 ### 核心特性 Core Features
 
-1. [**统一 API** Unified API](docs/unified-api.md)：兼容 OpenAI 与 Anthropic 的接口，配合转换管线实现模型互换与映射，无需改动现有代码。
-2. [**追踪 / 线程** Tracing / Threads](docs/traces.md)：线程级追踪实时记录完整调用链路，提升可观测性与问题定位效率。
-3. [**细粒度权限** Fine-grained Permission](docs/fine-grained-permission.md)：基于 RBAC 的权限策略，帮助团队精细管理访问控制、配额与数据隔离。
-4. [**自适应负载均衡** Adaptive Load Balancing](docs/guides/load-balance.md): 智能多策略负载均衡，自动选择最优 AI 通道，确保高可用性和最佳性能。
+1. [**统一 API** Unified API](docs/zh/api-reference/unified-api.md)：兼容 OpenAI 与 Anthropic 的接口，配合转换管线实现模型互换与映射，无需改动现有代码。
+2. [**追踪 / 线程** Tracing / Threads](docs/zh/guides/tracing.md)：线程级追踪实时记录完整调用链路，提升可观测性与问题定位效率。
+3. [**细粒度权限** Fine-grained Permission](docs/zh/guides/permissions.md)：基于 RBAC 的权限策略，帮助团队精细管理访问控制、配额与数据隔离。
+4. [**自适应负载均衡** Adaptive Load Balancing](docs/zh/guides/load-balance.md): 智能多策略负载均衡，自动选择最优 AI 通道，确保高可用性和最佳性能。
 
 ---
 
@@ -119,8 +119,8 @@ AxonHub 是一个 All-in-one AI 开发平台，提供统一的 API 网关、项�
 
 | API 类型 | 状态 | 描述 | 文档 |
 |---------|--------|-------------|--------|
-| **文本生成（Text Generation）** | ✅ Done | 对话交互接口 | [Unified API](docs/unified-api.md) |
-| **图片生成（Image Generation）** | ⚠️ Partial | 图片生成 | [Image Generations](docs/image-generations.md) |
+| **文本生成（Text Generation）** | ✅ Done | 对话交互接口 | [Unified API](docs/zh/api-reference/unified-api.md) |
+| **图片生成（Image Generation）** | ⚠️ Partial | 图片生成 | [Image Generation](docs/zh/api-reference/image-generation.md) |
 | **重排序（Rerank）** | 📝 Todo | 结果排序 | - |
 | **实时对话（Realtime）** | 📝 Todo | 实时对话功能 | - |
 | **嵌入（Embedding）** | 📝 Todo | 向量嵌入生成 | - |
@@ -145,7 +145,7 @@ AxonHub 可以在不改动现有 OpenAI 兼容客户端的前提下，为每一�
 - 将追踪与线程关联，串联整段会话的上下文
 - 捕获模型元数据、请求/响应片段以及耗时信息，便于快速定位问题
 
-了解更多工作原理与使用方式，请参阅 [Tracing Guide](docs/traces.md)。
+了解更多工作原理与使用方式，请参阅 [Tracing Guide](docs/zh/guides/tracing.md)。
 
 ### 🔧 接口格式支持 | API Format Support
 
@@ -389,7 +389,7 @@ settings:
 
 ### 4. Claude Code/Codex 使用 | Claude Code Integration
 
-关于如何在 Claude Code 与 Claude Codex 中配置与 AxonHub 的集成、排查常见问题以及结合模型配置文件工作流的最佳实践，请参阅专门的 [Claude Code & Codex 集成指南](docs/claude-code-integration.md)。
+关于如何在 Claude Code 与 Claude Codex 中配置与 AxonHub 的集成、排查常见问题以及结合模型配置文件工作流的最佳实践，请参阅专门的 [Claude Code & Codex 集成指南](docs/zh/guides/claude-code-integration.md)。
 
 该文档提供了环境变量示例、Codex 配置模板、模型配置文件说明以及工作流示例，帮助您快速完成接入。
 

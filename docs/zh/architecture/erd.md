@@ -1,8 +1,4 @@
-# AxonHub Entity Relationship Diagram (ERD)
-
-## Overview
-
-AxonHub implements a multi-level permission management architecture supporting both Global and Project levels. The system uses RBAC (Role-Based Access Control) model to manage user permissions, enabling fine-grained resource access control.
+# AxonHub 实体关系图 (ERD)
 
 ## 概述
 
