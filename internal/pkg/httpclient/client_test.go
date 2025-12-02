@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"regexp"
 	"strings"
 	"testing"
@@ -91,6 +92,34 @@ func TestHttpClientImpl_Do(t *testing.T) {
 			wantErrReg: regexp.MustCompile("POST - http://127.0.0.1:\\d+ with status 400 Bad Request"),
 			validate: func(resp *Response) bool {
 				return resp == nil
+			},
+		},
+		{
+			name: "request with query parameters",
+			request: &Request{
+				Method: http.MethodGet,
+				Query: url.Values{
+					"param1": []string{"value1"},
+					"param2": []string{"value2"},
+				},
+			},
+			serverResponse: func(w http.ResponseWriter, r *http.Request) {
+				// Verify query parameters
+				if r.URL.Query().Get("param1") != "value1" || r.URL.Query().Get("param2") != "value2" {
+					w.WriteHeader(http.StatusBadRequest)
+					w.Write([]byte(`{"error": "missing query parameters"}`))
+
+					return
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`{"query_params": "received"}`))
+			},
+			wantErr: false,
+			validate: func(resp *Response) bool {
+				return resp.StatusCode == http.StatusOK &&
+					string(resp.Body) == `{"query_params": "received"}`
 			},
 		},
 	}
@@ -310,6 +339,117 @@ func TestHttpClientImpl_buildHttpRequest(t *testing.T) {
 			},
 			wantErr:     true,
 			errContains: "",
+		},
+		{
+			name: "request with query parameters",
+			request: &Request{
+				Method: http.MethodGet,
+				URL:    "https://api.example.com/test",
+				Query: url.Values{
+					"param1": []string{"value1"},
+					"param2": []string{"value2"},
+				},
+			},
+			wantErr: false,
+			validate: func(req *http.Request) bool {
+				return req.Method == http.MethodGet &&
+					req.URL.String() == "https://api.example.com/test?param1=value1&param2=value2"
+			},
+		},
+		{
+			name: "request with query parameters and existing query in URL",
+			request: &Request{
+				Method: http.MethodGet,
+				URL:    "https://api.example.com/test?existing=param",
+				Query: url.Values{
+					"new1": []string{"value1"},
+					"new2": []string{"value2"},
+				},
+			},
+			wantErr: false,
+			validate: func(req *http.Request) bool {
+				return req.Method == http.MethodGet &&
+					req.URL.RawQuery == "existing=param&new1=value1&new2=value2"
+			},
+		},
+		{
+			name: "request with multiple values for same query parameter",
+			request: &Request{
+				Method: http.MethodGet,
+				URL:    "https://api.example.com/test",
+				Query: url.Values{
+					"tags":   []string{"tag1", "tag2", "tag3"},
+					"filter": []string{"active"},
+				},
+			},
+			wantErr: false,
+			validate: func(req *http.Request) bool {
+				return req.Method == http.MethodGet &&
+					req.URL.RawQuery == "filter=active&tags=tag1&tags=tag2&tags=tag3"
+			},
+		},
+		{
+			name: "request with empty query parameters",
+			request: &Request{
+				Method: http.MethodGet,
+				URL:    "https://api.example.com/test",
+				Query:  url.Values{},
+			},
+			wantErr: false,
+			validate: func(req *http.Request) bool {
+				return req.Method == http.MethodGet &&
+					req.URL.String() == "https://api.example.com/test"
+			},
+		},
+		{
+			name: "request with nil query parameters",
+			request: &Request{
+				Method: http.MethodGet,
+				URL:    "https://api.example.com/test",
+				Query:  nil,
+			},
+			wantErr: false,
+			validate: func(req *http.Request) bool {
+				return req.Method == http.MethodGet &&
+					req.URL.String() == "https://api.example.com/test"
+			},
+		},
+		{
+			name: "request with URL-encoded query parameters",
+			request: &Request{
+				Method: http.MethodGet,
+				URL:    "https://api.example.com/test",
+				Query: url.Values{
+					"search": []string{"hello world"},
+					"filter": []string{"status=active&priority=high"},
+				},
+			},
+			wantErr: false,
+			validate: func(req *http.Request) bool {
+				return req.Method == http.MethodGet &&
+					req.URL.RawQuery == "filter=status%3Dactive%26priority%3Dhigh&search=hello+world"
+			},
+		},
+		{
+			name: "request with query parameters and body",
+			request: &Request{
+				Method: http.MethodPost,
+				URL:    "https://api.example.com/test",
+				Query: url.Values{
+					"version": []string{"v1"},
+					"format":  []string{"json"},
+				},
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
+				},
+				Body: []byte(`{"data": "test"}`),
+			},
+			wantErr: false,
+			validate: func(req *http.Request) bool {
+				return req.Method == http.MethodPost &&
+					req.URL.RawQuery == "format=json&version=v1" &&
+					req.Header.Get("Content-Type") == "application/json"
+			},
 		},
 	}
 

@@ -34,19 +34,24 @@ func (t *InboundTransformer) APIFormat() llm.APIFormat {
 func extractRequestParams(httpReq *httpclient.Request) (string, bool, error) {
 	urlParts := strings.Split(httpReq.Path, "/")
 	if len(urlParts) < 1 {
-		return "", false, fmt.Errorf("%w: unsupported request URL: %s", ErrInvalidRequestURL, httpReq.URL)
+		return "", false, fmt.Errorf("%w: invalid request path: %s", ErrInvalidRequestURL, httpReq.Path)
 	}
 
 	suffix := urlParts[len(urlParts)-1]
 
 	suffixParts := strings.Split(suffix, ":")
 	if len(suffixParts) < 2 {
-		return "", false, fmt.Errorf("%w: unsupported request URL: %s", ErrInvalidRequestURL, httpReq.URL)
+		return "", false, fmt.Errorf("%w: invalid request path: %s", ErrInvalidRequestURL, httpReq.Path)
 	}
 
-	stream := suffixParts[1] == "streamGenerateContent"
-
-	return suffixParts[0], stream, nil
+	switch suffixParts[1] {
+	case "generateContent":
+		return suffixParts[0], false, nil
+	case "streamGenerateContent":
+		return suffixParts[0], true, nil
+	default:
+		return "", false, fmt.Errorf("%w: invalid request path: %s", ErrInvalidRequestURL, httpReq.Path)
+	}
 }
 
 // TransformRequest transforms Gemini HTTP request to unified Request format.
@@ -62,6 +67,11 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 	model, stream, err := extractRequestParams(httpReq)
 	if err != nil {
 		return nil, err
+	}
+
+	// We need to remove the alt query parameter to avoid passing through to the backend.
+	if len(httpReq.Query) > 0 {
+		httpReq.Query.Del("alt")
 	}
 
 	log.Debug(ctx, "extract gemini request params", log.String("model", model), log.Bool("stream", stream))
