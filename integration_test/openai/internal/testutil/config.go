@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/openai/openai-go/v3"
@@ -13,26 +14,43 @@ import (
 
 // Config holds configuration for tests
 type Config struct {
-	APIKey     string
-	BaseURL    string
-	TraceID    string
-	ThreadID   string
-	Timeout    time.Duration
-	MaxRetries int
-	Model      string // Default model for tests
+	APIKey        string
+	BaseURL       string
+	TraceID       string
+	ThreadID      string
+	Timeout       time.Duration
+	MaxRetries    int
+	Model         string // Default model for tests
+	DisableTrace  bool   // Disable trace ID generation
+	DisableThread bool   // Disable thread ID generation
 }
 
 // DefaultConfig returns a default configuration for tests
 func DefaultConfig() *Config {
-	return &Config{
-		APIKey:     getEnvOrDefault("TEST_AXONHUB_API_KEY", ""),
-		BaseURL:    getEnvOrDefault("TEST_OPENAI_BASE_URL", "http://localhost:8090/v1"),
-		TraceID:    getRandomTraceID(),
-		ThreadID:   getRandomThreadID(),
-		Timeout:    30 * time.Second,
-		MaxRetries: 3,
-		Model:      getEnvOrDefault("TEST_MODEL", "deepseek-chat"),
+	disableTrace := strings.EqualFold(getEnvOrDefault("TEST_DISABLE_TRACE", "false"), "true")
+	disableThread := strings.EqualFold(getEnvOrDefault("TEST_DISABLE_THREAD", "false"), "true")
+
+	config := &Config{
+		APIKey:        getEnvOrDefault("TEST_AXONHUB_API_KEY", ""),
+		BaseURL:       getEnvOrDefault("TEST_OPENAI_BASE_URL", "http://localhost:8090/v1"),
+		Timeout:       30 * time.Second,
+		MaxRetries:    3,
+		Model:         getEnvOrDefault("TEST_MODEL", "deepseek-chat"),
+		DisableTrace:  disableTrace,
+		DisableThread: disableThread,
 	}
+
+	// Only generate trace ID if not disabled
+	if !disableTrace {
+		config.TraceID = getRandomTraceID()
+	}
+
+	// Only generate thread ID if not disabled
+	if !disableThread {
+		config.ThreadID = getRandomThreadID()
+	}
+
+	return config
 }
 
 // NewClient creates a new OpenAI client with the given configuration
@@ -53,9 +71,13 @@ func (c *Config) NewClient() openai.Client {
 
 // WithHeaders creates a context with the configured headers
 func (c *Config) WithHeaders(ctx context.Context) context.Context {
-	// Add headers to context for request interception
-	ctx = context.WithValue(ctx, "trace_id", c.TraceID)
-	ctx = context.WithValue(ctx, "thread_id", c.ThreadID)
+	// Add headers to context for request interception only if not disabled
+	if !c.DisableTrace && c.TraceID != "" {
+		ctx = context.WithValue(ctx, "trace_id", c.TraceID)
+	}
+	if !c.DisableThread && c.ThreadID != "" {
+		ctx = context.WithValue(ctx, "thread_id", c.ThreadID)
+	}
 	return ctx
 }
 
@@ -84,10 +106,19 @@ func getRandomThreadID() string {
 
 // GetHeaders returns the standard headers used in axonhub
 func (c *Config) GetHeaders() map[string]string {
-	return map[string]string{
-		"AH-Trace-Id":  c.TraceID,
-		"AH-Thread-Id": c.ThreadID,
+	headers := make(map[string]string)
+
+	// Only add trace ID header if not disabled and trace ID exists
+	if !c.DisableTrace && c.TraceID != "" {
+		headers["AH-Trace-Id"] = c.TraceID
 	}
+
+	// Only add thread ID header if not disabled and thread ID exists
+	if !c.DisableThread && c.ThreadID != "" {
+		headers["AH-Thread-Id"] = c.ThreadID
+	}
+
+	return headers
 }
 
 // Helper functions
@@ -104,12 +135,17 @@ func (c *Config) ValidateConfig() error {
 	if c.APIKey == "" {
 		return fmt.Errorf("API key is required (set TEST_AXONHUB_API_KEY environment variable)")
 	}
-	if c.TraceID == "" {
+
+	// Only validate trace ID if not disabled
+	if !c.DisableTrace && c.TraceID == "" {
 		return fmt.Errorf("trace ID is required")
 	}
-	if c.ThreadID == "" {
+
+	// Only validate thread ID if not disabled
+	if !c.DisableThread && c.ThreadID == "" {
 		return fmt.Errorf("thread ID is required")
 	}
+
 	if c.Model == "" {
 		return fmt.Errorf("model is required (set TEST_MODEL environment variable)")
 	}

@@ -10,6 +10,15 @@ import (
 
 // ErrorAwareStrategy deprioritizes channels with recent errors.
 // Uses channel performance metrics to calculate a health score.
+//
+// This strategy only applies PENALTIES for errors, never boosts for success.
+// This ensures that the weighted round-robin distribution is not disrupted
+// by success-based boosts that would cause the "Matthew effect" (rich get richer).
+//
+// Penalties applied:
+//   - Consecutive failures: -50 per failure
+//   - Recent failure (within 5 min): up to -100, decreasing over time
+//   - Low success rate (<50%): -50
 type ErrorAwareStrategy struct {
 	metricsProvider ChannelMetricsProvider
 	// maxScore is the maximum score for a perfectly healthy channel (default: 200)
@@ -58,28 +67,12 @@ func (s *ErrorAwareStrategy) Score(ctx context.Context, channel *biz.Channel) fl
 		}
 	}
 
-	// Boost for channels with recent success
-	if metrics.LastSuccessAt != nil {
-		timeSinceSuccess := time.Since(*metrics.LastSuccessAt)
-		if timeSinceSuccess < 1*time.Minute {
-			// Recent success within 1 minute gets a small boost
-			boost := 20.0
-			score += boost
-		}
-	}
-
-	// Consider success rate (only if we have enough data)
-	if metrics.RequestCount >= 10 {
+	// Only apply penalty for very low success rate (indicates a problematic channel)
+	if metrics.RequestCount >= 5 {
 		successRate := metrics.CalculateSuccessRate()
-
-		// If success rate is very low, apply additional penalty
 		if successRate < 50 {
 			penalty := 50.0
 			score -= penalty
-		} else if successRate > 90 {
-			// High success rate gets a small boost
-			boost := 30.0
-			score += boost
 		}
 	}
 
@@ -163,35 +156,11 @@ func (s *ErrorAwareStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Ch
 		}
 	}
 
-	// Boost for channels with recent success
-	if metrics.LastSuccessAt != nil {
-		timeSinceSuccess := time.Since(*metrics.LastSuccessAt)
-		if timeSinceSuccess < 1*time.Minute {
-			// Recent success within 1 minute gets a small boost
-			boost := 20.0
-			score += boost
-			details["recent_success_boost"] = boost
-			log.Info(ctx, "ErrorAwareStrategy: applying recent success boost",
-				log.Int("channel_id", channel.ID),
-				log.String("channel_name", channel.Name),
-				log.Duration("time_since_success", timeSinceSuccess),
-				log.Float64("boost", boost),
-			)
-		} else {
-			log.Info(ctx, "ErrorAwareStrategy: success outside boost window",
-				log.Int("channel_id", channel.ID),
-				log.String("channel_name", channel.Name),
-				log.Duration("time_since_success", timeSinceSuccess),
-			)
-		}
-	}
-
-	// Consider success rate (only if we have enough data)
-	if metrics.RequestCount >= 10 {
+	// Only apply penalty for very low success rate (indicates a problematic channel)
+	if metrics.RequestCount >= 5 {
 		successRate := metrics.CalculateSuccessRate()
 		details["success_rate"] = successRate
 
-		// If success rate is very low, apply additional penalty
 		if successRate < 50 {
 			penalty := 50.0
 			score -= penalty
@@ -202,19 +171,8 @@ func (s *ErrorAwareStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Ch
 				log.Int64("success_rate", successRate),
 				log.Float64("penalty", penalty),
 			)
-		} else if successRate > 90 {
-			// High success rate gets a small boost
-			boost := 30.0
-			score += boost
-			details["high_success_rate_boost"] = boost
-			log.Info(ctx, "ErrorAwareStrategy: applying high success rate boost",
-				log.Int("channel_id", channel.ID),
-				log.String("channel_name", channel.Name),
-				log.Int64("success_rate", successRate),
-				log.Float64("boost", boost),
-			)
 		} else {
-			log.Info(ctx, "ErrorAwareStrategy: success rate in normal range",
+			log.Info(ctx, "ErrorAwareStrategy: success rate acceptable, no penalty",
 				log.Int("channel_id", channel.ID),
 				log.String("channel_name", channel.Name),
 				log.Int64("success_rate", successRate),

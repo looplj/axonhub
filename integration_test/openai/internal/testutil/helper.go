@@ -102,15 +102,21 @@ func (h *TestHelper) SetModel(model openai.ChatModel) {
 func CreateTestHelperWithNewTrace(t *testing.T, existingConfig *Config) *TestHelper {
 	t.Helper()
 
-	// Create a new config based on existing one but with new trace ID
+	// Create a new config based on existing one
 	newConfig := &Config{
-		APIKey:     existingConfig.APIKey,
-		BaseURL:    existingConfig.BaseURL,
-		TraceID:    getRandomTraceID(),      // Generate new trace ID
-		ThreadID:   existingConfig.ThreadID, // Keep same thread ID
-		Timeout:    existingConfig.Timeout,
-		MaxRetries: existingConfig.MaxRetries,
-		Model:      existingConfig.Model,
+		APIKey:        existingConfig.APIKey,
+		BaseURL:       existingConfig.BaseURL,
+		Timeout:       existingConfig.Timeout,
+		MaxRetries:    existingConfig.MaxRetries,
+		Model:         existingConfig.Model,
+		DisableTrace:  existingConfig.DisableTrace,
+		DisableThread: existingConfig.DisableThread,
+		ThreadID:      existingConfig.ThreadID, // Keep same thread ID
+	}
+
+	// Only generate new trace ID if not disabled
+	if !existingConfig.DisableTrace {
+		newConfig.TraceID = getRandomTraceID()
 	}
 
 	client := newConfig.NewClient()
