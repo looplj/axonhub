@@ -92,8 +92,10 @@ func TestStreamingWithTools(t *testing.T) {
 
 	ctx := helper.CreateTestContext()
 
-	// Question that might require tools
-	question := "What is 25 * 4 and what is the weather in Tokyo?"
+	// Question that encourages conversational response before tool usage
+	question := `Hello! I'm working on a math and geography project. Could you help me figure out what 25 multiplied by 4 equals? I'm also curious about the current weather conditions in Tokyo for my research. 
+
+Please first introduce yourself briefly and explain how you'll approach helping me with these questions, then use the available tools to get the precise answers I need.`
 
 	t.Logf("Sending streaming request with tools: %s", question)
 

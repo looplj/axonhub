@@ -2,8 +2,9 @@ import { format } from 'date-fns'
 import { DashboardIcon } from '@radix-ui/react-icons'
 import { useParams, useNavigate } from '@tanstack/react-router'
 import { zhCN, enUS } from 'date-fns/locale'
-import { Copy, Clock, Key, Database, ArrowLeft, FileText } from 'lucide-react'
+import { Copy, Clock, Key, Database, ArrowLeft, FileText, Layers } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useState, useCallback } from 'react'
 import { toast } from 'sonner'
 import { extractNumberID } from '@/lib/utils'
 import { usePaginationSearch } from '@/hooks/use-pagination-search'
@@ -12,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { JsonViewer } from '@/components/json-tree-view'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -25,6 +27,10 @@ export default function RequestDetailPage() {
   const navigate = useNavigate()
   const locale = i18n.language === 'zh' ? zhCN : enUS
   const { getSearchParams } = usePaginationSearch({ defaultPageSize: 20 })
+
+  const [showResponseChunks, setShowResponseChunks] = useState(false)
+  const [showExecutionChunks, setShowExecutionChunks] = useState(false)
+  const [selectedChunks, setSelectedChunks] = useState<any[]>([])
 
   const { data: request, isLoading } = useRequest(requestId)
   const { data: executions } = useRequestExecutions(requestId, {
@@ -41,6 +47,20 @@ export default function RequestDetailPage() {
     navigator.clipboard.writeText(text)
     toast.success(t('requests.actions.copy'))
   }
+
+  const showResponseChunksModal = useCallback(() => {
+    if (request?.responseChunks) {
+      setSelectedChunks(request.responseChunks)
+      setShowResponseChunks(true)
+    }
+  }, [request])
+
+  const showExecutionChunksModal = useCallback((chunks: any[]) => {
+    if (chunks && chunks.length > 0) {
+      setSelectedChunks(chunks)
+      setShowExecutionChunks(true)
+    }
+  }, [])
 
   const formatJson = (data: any) => {
     if (!data) return ''
@@ -327,16 +347,28 @@ export default function RequestDetailPage() {
                         <FileText className='text-primary h-4 w-4' />
                         {t('requests.columns.responseBody')}
                       </h4>
-                      <Button
-                        variant='outline'
-                        size='sm'
-                        onClick={() => copyToClipboard(formatJson(request.responseBody))}
-                        disabled={!request.responseBody}
-                        className='hover:bg-primary hover:text-primary-foreground disabled:opacity-50'
-                      >
-                        <Copy className='mr-2 h-4 w-4' />
-                        {t('requests.dialogs.jsonViewer.copy')}
-                      </Button>
+                      <div className='flex gap-2'>
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          onClick={showResponseChunksModal}
+                          disabled={!request?.responseChunks || request.responseChunks.length === 0}
+                          className='hover:bg-primary hover:text-primary-foreground disabled:opacity-50'
+                        >
+                          <Layers className='mr-2 h-4 w-4' />
+                          {t('requests.columns.responseChunks')}
+                        </Button>
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          onClick={() => copyToClipboard(formatJson(request.responseBody))}
+                          disabled={!request.responseBody}
+                          className='hover:bg-primary hover:text-primary-foreground disabled:opacity-50'
+                        >
+                          <Copy className='mr-2 h-4 w-4' />
+                          {t('requests.dialogs.jsonViewer.copy')}
+                        </Button>
+                      </div>
                     </div>
                     {request.responseBody ? (
                       <div className='bg-muted/20 h-[500px] w-full overflow-auto rounded-lg border p-4'>
@@ -441,15 +473,17 @@ export default function RequestDetailPage() {
                                       <FileText className='text-primary h-4 w-4' />
                                       {t('requests.columns.requestBody')}
                                     </span>
-                                    <Button
-                                      variant='outline'
-                                      size='sm'
-                                      onClick={() => copyToClipboard(formatJson(execution.requestBody))}
-                                      className='hover:bg-primary hover:text-primary-foreground'
-                                    >
-                                      <Copy className='mr-2 h-4 w-4' />
-                                      {t('requests.dialogs.jsonViewer.copy')}
-                                    </Button>
+                                    <div className='flex gap-2'>
+                                      <Button
+                                        variant='outline'
+                                        size='sm'
+                                        onClick={() => copyToClipboard(formatJson(execution.requestBody))}
+                                        className='hover:bg-primary hover:text-primary-foreground'
+                                      >
+                                        <Copy className='mr-2 h-4 w-4' />
+                                        {t('requests.dialogs.jsonViewer.copy')}
+                                      </Button>
+                                    </div>
                                   </div>
                                   <div className='bg-background h-64 w-full overflow-auto rounded-lg border p-3'>
                                     <JsonViewer
@@ -469,15 +503,28 @@ export default function RequestDetailPage() {
                                       <FileText className='text-primary h-4 w-4' />
                                       {t('requests.columns.responseBody')}
                                     </span>
-                                    <Button
-                                      variant='outline'
-                                      size='sm'
-                                      onClick={() => copyToClipboard(formatJson(execution.responseBody))}
-                                      className='hover:bg-primary hover:text-primary-foreground'
-                                    >
-                                      <Copy className='mr-2 h-4 w-4' />
-                                      {t('requests.dialogs.jsonViewer.copy')}
-                                    </Button>
+                                    <div className='flex gap-2'>
+                                      {execution.responseChunks && execution.responseChunks.length > 0 && (
+                                        <Button
+                                          variant='outline'
+                                          size='sm'
+                                          onClick={() => showExecutionChunksModal(execution.responseChunks)}
+                                          className='hover:bg-primary hover:text-primary-foreground'
+                                        >
+                                          <Layers className='mr-2 h-4 w-4' />
+                                          {t('requests.columns.responseChunks')}
+                                        </Button>
+                                      )}
+                                      <Button
+                                        variant='outline'
+                                        size='sm'
+                                        onClick={() => copyToClipboard(formatJson(execution.responseBody))}
+                                        className='hover:bg-primary hover:text-primary-foreground'
+                                      >
+                                        <Copy className='mr-2 h-4 w-4' />
+                                        {t('requests.dialogs.jsonViewer.copy')}
+                                      </Button>
+                                    </div>
                                   </div>
                                   <div className='bg-background h-64 w-full overflow-auto rounded-lg border p-3'>
                                     <JsonViewer
@@ -510,6 +557,90 @@ export default function RequestDetailPage() {
           </Card>
         </div>
       </Main>
+
+      {/* Response Chunks Modal */}
+      <Dialog open={showResponseChunks} onOpenChange={setShowResponseChunks}>
+        <DialogContent className='sm:max-w-4xl max-h-[80vh] flex flex-col'>
+          <DialogHeader>
+            <DialogTitle className='flex items-center gap-2'>
+              <Layers className='h-5 w-5' />
+              {t('requests.dialogs.jsonViewer.responseChunks')}
+            </DialogTitle>
+          </DialogHeader>
+          <div className='bg-muted/20 h-[400px] w-full overflow-auto rounded-lg border p-4'>
+            {selectedChunks.length > 0 ? (
+              <div className='space-y-4'>
+                {selectedChunks.map((chunk, index) => (
+                  <div key={index} className='bg-background rounded-lg border p-4'>
+                    <div className='flex items-start gap-4'>
+                      <div className='flex-shrink-0'>
+                        <span className='text-sm font-medium text-muted-foreground'>Chunk {index + 1}</span>
+                      </div>
+                      <div className='flex-1 min-w-0'>
+                        <JsonViewer
+                          data={chunk}
+                          rootName=''
+                          defaultExpanded={false}
+                          className='text-sm'
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className='flex h-full items-center justify-center'>
+                <div className='space-y-3 text-center'>
+                  <Layers className='text-muted-foreground mx-auto h-12 w-12' />
+                  <p className='text-muted-foreground text-base'>{t('requests.detail.noResponse')}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Execution Chunks Modal */}
+      <Dialog open={showExecutionChunks} onOpenChange={setShowExecutionChunks}>
+        <DialogContent className='sm:max-w-4xl max-h-[80vh] flex flex-col'>
+          <DialogHeader>
+            <DialogTitle className='flex items-center gap-2'>
+              <Layers className='h-5 w-5' />
+              {t('requests.dialogs.jsonViewer.responseChunks')}
+            </DialogTitle>
+          </DialogHeader>
+          <div className='bg-muted/20 h-[400px] w-full overflow-auto rounded-lg border p-4'>
+            {selectedChunks.length > 0 ? (
+              <div className='space-y-4'>
+                {selectedChunks.map((chunk, index) => (
+                  <div key={index} className='bg-background rounded-lg border p-4'>
+                    <div className='flex items-start gap-4'>
+                      <div className='flex-shrink-0'>
+                        <span className='text-sm font-medium text-muted-foreground'>Chunk {index + 1}</span>
+                      </div>
+                      <div className='flex-1 min-w-0'>
+                        <JsonViewer
+                          data={chunk}
+                          rootName=''
+                          defaultExpanded={false}
+                          className='text-sm'
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className='flex h-full items-center justify-center'>
+                <div className='space-y-3 text-center'>
+                  <Layers className='text-muted-foreground mx-auto h-12 w-12' />
+                  <p className='text-muted-foreground text-base'>{t('requests.detail.noResponse')}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

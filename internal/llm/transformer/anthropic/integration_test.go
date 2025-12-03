@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/internal/pkg/xjson"
 	"github.com/looplj/axonhub/internal/pkg/xtest"
 )
 
@@ -252,30 +253,8 @@ func TestTransformRequest_Integration(t *testing.T) {
 			err = json.Unmarshal(outboundReq.Body, &gotReq)
 			require.NoError(t, err)
 
-			// Custom comparator for json.RawMessage that compares semantic equality
-			jsonRawMessageComparer := cmp.Comparer(func(x, y json.RawMessage) bool {
-				if len(x) == 0 && len(y) == 0 {
-					return true
-				}
-
-				if len(x) == 0 || len(y) == 0 {
-					return false
-				}
-
-				var xVal, yVal interface{}
-				if err := json.Unmarshal(x, &xVal); err != nil {
-					return false
-				}
-
-				if err := json.Unmarshal(y, &yVal); err != nil {
-					return false
-				}
-
-				return cmp.Equal(xVal, yVal)
-			})
-
-			if !cmp.Equal(wantReq, gotReq, jsonRawMessageComparer) {
-				t.Errorf("wantReq != gotReq\n%s", cmp.Diff(wantReq, gotReq, jsonRawMessageComparer))
+			if !xjson.Equal(wantReq, gotReq) {
+				t.Errorf("wantReq != gotReq\n%s", cmp.Diff(wantReq, gotReq))
 			}
 		})
 	}
@@ -394,64 +373,65 @@ func TestAnthropicTransformers_StreamingIntegration(t *testing.T) {
 	require.Equal(t, int64(25), chatResp.Usage.OutputTokens)
 }
 
-func TestAnthropicMessageContent_EdgeCases(t *testing.T) {
+func TestTransformResponse_Integration(t *testing.T) {
+	inboundTransformer := NewInboundTransformer()
+	outboundTransformer, _ := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+
 	tests := []struct {
-		name    string
-		jsonStr string
-		isValid bool
+		name        string
+		requestFile string
 	}{
 		{
-			name:    "valid string",
-			jsonStr: `"Hello, world!"`,
-			isValid: true,
+			name:        "anthropic-tool.response.json",
+			requestFile: `anthropic-tool.response.json`,
 		},
 		{
-			name:    "valid array",
-			jsonStr: `[{"type": "text", "text": "Hello"}]`,
-			isValid: true,
+			name:        "anthropic-think.response.json",
+			requestFile: `anthropic-think.response.json`,
 		},
 		{
-			name:    "empty string",
-			jsonStr: `""`,
-			isValid: true,
-		},
-		{
-			name:    "empty array",
-			jsonStr: `[]`,
-			isValid: true,
-		},
-		{
-			name:    "null value",
-			jsonStr: `null`,
-			isValid: false,
-		},
-		{
-			name:    "number value",
-			jsonStr: `123`,
-			isValid: false,
-		},
-		{
-			name:    "boolean value",
-			jsonStr: `true`,
-			isValid: false,
-		},
-		{
-			name:    "object value",
-			jsonStr: `{"key": "value"}`,
-			isValid: false,
+			name:        "anthropic-tool2.response.json",
+			requestFile: `anthropic-tool2.response.json`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var content MessageContent
+			var wantMessage Message
 
-			err := json.Unmarshal([]byte(tt.jsonStr), &content)
+			err := xtest.LoadTestData(t, tt.requestFile, &wantMessage)
+			require.NoError(t, err)
 
-			if tt.isValid {
-				require.NoError(t, err)
-			} else {
-				require.Error(t, err)
+			var buf bytes.Buffer
+
+			encoder := json.NewEncoder(&buf)
+			encoder.SetEscapeHTML(false)
+
+			if err := encoder.Encode(wantMessage); err != nil {
+				t.Fatalf("failed to marshal tool result: %v", err)
+			}
+
+			chatResp, err := outboundTransformer.TransformResponse(t.Context(), &httpclient.Response{
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
+				},
+				Body: buf.Bytes(),
+			})
+			require.NoError(t, err)
+			require.NotNil(t, chatResp)
+
+			println("chatResp.Body:", xjson.MustMarshalString(chatResp))
+
+			inboundResp, err := inboundTransformer.TransformResponse(t.Context(), chatResp)
+			require.NoError(t, err)
+
+			var gotMessage Message
+
+			err = json.Unmarshal(inboundResp.Body, &gotMessage)
+			require.NoError(t, err)
+
+			if !xjson.Equal(wantMessage, gotMessage) {
+				t.Errorf("wantMessage != gotMessage\n%s", cmp.Diff(wantMessage, gotMessage))
 			}
 		})
 	}
