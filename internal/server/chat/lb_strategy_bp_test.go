@@ -36,7 +36,7 @@ func TestErrorAwareStrategy_Score_NoMetrics(t *testing.T) {
 	}
 
 	score := strategy.Score(ctx, channel)
-	// Should return maxScore (200) when no failures
+	// Should return maxScore (200) when no failures - no boosts applied
 	assert.Equal(t, 200.0, score)
 }
 
@@ -69,11 +69,14 @@ func TestErrorAwareStrategy_Score_WithMockRecentSuccess(t *testing.T) {
 	now := time.Now()
 	recentSuccess := now.Add(-30 * time.Second)
 
+	// Create metrics with recent success - but no boost should be applied
+	metrics := &biz.AggregatedMetrics{
+		LastSuccessAt: &recentSuccess,
+	}
+
 	mockProvider := &mockMetricsProvider{
 		metrics: map[int]*biz.AggregatedMetrics{
-			1: {
-				LastSuccessAt: &recentSuccess,
-			},
+			1: metrics,
 		},
 	}
 	strategy := NewErrorAwareStrategy(mockProvider)
@@ -83,8 +86,8 @@ func TestErrorAwareStrategy_Score_WithMockRecentSuccess(t *testing.T) {
 	}
 
 	score := strategy.Score(ctx, channel)
-	// Base 200 + 20 (recent success boost) = 220
-	assert.Equal(t, 220.0, score)
+	// Base 200 - no boosts applied (we removed success-based boosts)
+	assert.Equal(t, 200.0, score)
 }
 
 func TestErrorAwareStrategy_Score_ConsecutiveFailures(t *testing.T) {
@@ -161,9 +164,9 @@ func TestErrorAwareStrategy_Score_RecentSuccess(t *testing.T) {
 
 	score := strategy.Score(ctx, channel)
 
-	// Should have boost for recent success
-	// Base 200 + 20 (recent success) = 220
-	assert.Greater(t, score, 200.0, "Score should be boosted for recent success")
+	// No boost for recent success - we only apply penalties
+	// Base 200, no penalties = 200
+	assert.Equal(t, 200.0, score, "Score should be base score with no penalties")
 }
 
 func TestErrorAwareStrategy_ScoreConsistency(t *testing.T) {
@@ -421,5 +424,236 @@ func TestConnectionAwareStrategy_ScoreConsistency(t *testing.T) {
 			assert.Equal(t, score, debugScore,
 				"Score and ScoreWithDebug must return identical scores for %s", tc.name)
 		})
+	}
+}
+
+// TestErrorAwareStrategy_NoPenaltyForHealthyChannels tests that healthy channels get base score.
+func TestErrorAwareStrategy_NoPenaltyForHealthyChannels(t *testing.T) {
+	ctx := context.Background()
+
+	testCases := []struct {
+		name         string
+		requestCount int64
+		successCount int64
+	}{
+		{"zero requests", 0, 0},
+		{"1 request", 1, 1},
+		{"4 requests", 4, 4},
+		{"5 requests with 100% success", 5, 5},
+		{"10 requests with 100% success", 10, 10},
+		{"100 requests with 80% success", 100, 80}, // 80% > 50%, no penalty
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			metrics := &biz.AggregatedMetrics{}
+			metrics.RequestCount = tc.requestCount
+			metrics.SuccessCount = tc.successCount
+
+			mockProvider := &mockMetricsProvider{
+				metrics: map[int]*biz.AggregatedMetrics{
+					1: metrics,
+				},
+			}
+			strategy := NewErrorAwareStrategy(mockProvider)
+
+			channel := &biz.Channel{
+				Channel: &ent.Channel{ID: 1, Name: "test"},
+			}
+
+			score := strategy.Score(ctx, channel)
+
+			// All healthy channels should get base score (200) - no boosts, no penalties
+			assert.Equal(t, 200.0, score, "Healthy channel should get base score for %s", tc.name)
+		})
+	}
+}
+
+// TestErrorAwareStrategy_OnlyPenaltiesNoBoosts tests that only penalties are applied, no boosts.
+func TestErrorAwareStrategy_OnlyPenaltiesNoBoosts(t *testing.T) {
+	ctx := context.Background()
+
+	now := time.Now()
+	recentSuccess := now.Add(-30 * time.Second)
+
+	// Test that recent success does NOT give a boost
+	t.Run("no recent success boost", func(t *testing.T) {
+		metrics := &biz.AggregatedMetrics{
+			LastSuccessAt: &recentSuccess,
+		}
+		metrics.RequestCount = 10
+		metrics.SuccessCount = 10 // 100% success rate
+
+		mockProvider := &mockMetricsProvider{
+			metrics: map[int]*biz.AggregatedMetrics{
+				1: metrics,
+			},
+		}
+		strategy := NewErrorAwareStrategy(mockProvider)
+
+		channel := &biz.Channel{
+			Channel: &ent.Channel{ID: 1, Name: "test"},
+		}
+
+		score := strategy.Score(ctx, channel)
+		// Base 200, no boosts applied
+		assert.Equal(t, 200.0, score)
+	})
+
+	// Test that high success rate does NOT give a boost
+	t.Run("no high success rate boost", func(t *testing.T) {
+		metrics := &biz.AggregatedMetrics{}
+		metrics.RequestCount = 10
+		metrics.SuccessCount = 10 // 100% success rate
+
+		mockProvider := &mockMetricsProvider{
+			metrics: map[int]*biz.AggregatedMetrics{
+				1: metrics,
+			},
+		}
+		strategy := NewErrorAwareStrategy(mockProvider)
+
+		channel := &biz.Channel{
+			Channel: &ent.Channel{ID: 1, Name: "test"},
+		}
+
+		score := strategy.Score(ctx, channel)
+		// Base 200, no boosts applied
+		assert.Equal(t, 200.0, score)
+	})
+
+	// Test that low success rate DOES apply penalty
+	t.Run("low success rate penalty still applies", func(t *testing.T) {
+		metrics := &biz.AggregatedMetrics{}
+		metrics.RequestCount = 10
+		metrics.SuccessCount = 4 // 40% success rate
+
+		mockProvider := &mockMetricsProvider{
+			metrics: map[int]*biz.AggregatedMetrics{
+				1: metrics,
+			},
+		}
+		strategy := NewErrorAwareStrategy(mockProvider)
+
+		channel := &biz.Channel{
+			Channel: &ent.Channel{ID: 1, Name: "test"},
+		}
+
+		score := strategy.Score(ctx, channel)
+		// Base 200 - 50 (low success rate penalty) = 150
+		assert.Equal(t, 150.0, score)
+	})
+}
+
+// TestErrorAwareStrategy_LowSuccessRatePenalty tests that low success rate penalty is applied.
+func TestErrorAwareStrategy_LowSuccessRatePenalty(t *testing.T) {
+	ctx := context.Background()
+
+	testCases := []struct {
+		name                    string
+		requestCount            int64
+		successCount            int64
+		expectLowSuccessPenalty bool
+	}{
+		{"4 requests - no check (below threshold)", 4, 1, false},
+		{"5 requests - high rate, no penalty", 5, 5, false},
+		{"5 requests - low rate, penalty", 5, 2, true},
+		{"10 requests - high rate, no penalty", 10, 10, false},
+		{"10 requests - 50% rate, no penalty", 10, 5, false}, // 50% is not < 50%
+		{"10 requests - 40% rate, penalty", 10, 4, true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			metrics := &biz.AggregatedMetrics{}
+			metrics.RequestCount = tc.requestCount
+			metrics.SuccessCount = tc.successCount
+
+			mockProvider := &mockMetricsProvider{
+				metrics: map[int]*biz.AggregatedMetrics{
+					1: metrics,
+				},
+			}
+			strategy := NewErrorAwareStrategy(mockProvider)
+
+			channel := &biz.Channel{
+				Channel: &ent.Channel{ID: 1, Name: "test"},
+			}
+
+			score := strategy.Score(ctx, channel)
+
+			expectedScore := 200.0
+			if tc.expectLowSuccessPenalty {
+				expectedScore -= 50.0
+			}
+
+			assert.Equal(t, expectedScore, score, "Score should match expected for %s", tc.name)
+		})
+	}
+}
+
+// TestErrorAwareStrategy_FairDistribution tests that the strategy promotes fair distribution
+// by NOT giving boosts to successful channels.
+func TestErrorAwareStrategy_FairDistribution(t *testing.T) {
+	ctx := context.Background()
+
+	now := time.Now()
+	recentSuccess := now.Add(-30 * time.Second)
+	oldSuccess := now.Add(-30 * time.Minute)
+
+	// Simulate the bug scenario:
+	// Channel 8: heavily used (23 requests), recent success, 100% success rate
+	// Channel 6: lightly used (5 requests), old success
+	// Channel 4: never used (0 requests)
+	// Channel 7: barely used (1 request), old success
+
+	channelMetrics := map[int]*biz.AggregatedMetrics{
+		8: func() *biz.AggregatedMetrics {
+			m := &biz.AggregatedMetrics{LastSuccessAt: &recentSuccess}
+			m.RequestCount = 23
+			m.SuccessCount = 23
+
+			return m
+		}(),
+		6: func() *biz.AggregatedMetrics {
+			m := &biz.AggregatedMetrics{LastSuccessAt: &oldSuccess}
+			m.RequestCount = 5
+			m.SuccessCount = 5
+
+			return m
+		}(),
+		4: func() *biz.AggregatedMetrics {
+			m := &biz.AggregatedMetrics{}
+			m.RequestCount = 0
+			m.SuccessCount = 0
+
+			return m
+		}(),
+		7: func() *biz.AggregatedMetrics {
+			m := &biz.AggregatedMetrics{LastSuccessAt: &oldSuccess}
+			m.RequestCount = 1
+			m.SuccessCount = 1
+
+			return m
+		}(),
+	}
+
+	mockProvider := &mockMetricsProvider{metrics: channelMetrics}
+	strategy := NewErrorAwareStrategy(mockProvider)
+
+	scores := make(map[int]float64)
+
+	for id := range channelMetrics {
+		channel := &biz.Channel{
+			Channel: &ent.Channel{ID: id, Name: "test"},
+		}
+		scores[id] = strategy.Score(ctx, channel)
+	}
+
+	// With no boosts, all healthy channels should get the same base score (200)
+	// This ensures ErrorAwareStrategy doesn't interfere with WeightRoundRobinStrategy's distribution
+	for id, score := range scores {
+		assert.Equal(t, 200.0, score,
+			"Channel %d should get base score (no boosts), got %.1f", id, score)
 	}
 }

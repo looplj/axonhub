@@ -11,7 +11,7 @@ import (
 
 const (
 	roundRobinScalingFactor          = 150.0
-	defaultRoundRobinInactivityDecay = 15 * time.Second
+	defaultRoundRobinInactivityDecay = 5 * time.Minute // Increased from 15s to 5min for better round-robin distribution
 )
 
 func latestActivityAt(metrics *biz.AggregatedMetrics) *time.Time {
@@ -219,43 +219,57 @@ func (s *RoundRobinStrategy) calculateScoreComponents(metrics *biz.AggregatedMet
 	return finalScore, cappedCount, effectiveCount, lastActivity, inactivitySeconds
 }
 
-// WeightRoundRobinStrategy combines round-robin (request count based) and weight-based strategies.
-// It prioritizes channels with fewer historical requests while respecting user-configured ordering weights.
-// The final score is a combination of:
-//   - Round-robin score: Based on request count (10-150 range)
-//   - Weight score: Based on ordering weight (0-50 range)
-//   - Total: 10-200 range
+// WeightRoundRobinStrategy implements weighted round-robin load balancing.
+// It distributes requests proportionally based on channel weights.
 //
-// This allows new channels (low request count) to get high priority, while also
-// letting administrators boost priority of specific channels via ordering weight.
+// The algorithm normalizes request counts by weight, so higher weight channels
+// need proportionally more requests to get the same penalty.
+//
+// Formula:
+//
+//	normalizedCount = effectiveCount / (weight / 100.0)
+//	score = maxScore * exp(-normalizedCount / scalingFactor)
+//
+// This means:
+//   - weight=80, 80 requests → normalized=100 → score ~77
+//   - weight=20, 20 requests → normalized=100 → score ~77
+//   - weight=80, 0 requests → normalized=0 → score=150
+//   - weight=20, 0 requests → normalized=0 → score=150
+//
+// All channels start equal, but higher weight channels can handle more requests
+// before their score drops. This achieves proportional distribution:
+// - weight=80 gets ~80/(80+50+20+10) = 50% of requests
+// - weight=50 gets ~50/(80+50+20+10) = 31% of requests
+// - weight=20 gets ~20/(80+50+20+10) = 12.5% of requests
+// - weight=10 gets ~10/(80+50+20+10) = 6.25% of requests
+//
+// Score range: 10-150.
 type WeightRoundRobinStrategy struct {
 	metricsProvider ChannelMetricsProvider
-	// maxRoundRobinScore is the maximum score from round-robin component (default: 150)
-	maxRoundRobinScore float64
-	// minScore is the minimum total score (default: 10)
+	// maxScore is the maximum score for a channel (default: 150)
+	maxScore float64
+	// minScore is the minimum score (default: 10)
 	minScore float64
 	// requestCountCap caps the maximum request count considered (default: 1000)
 	requestCountCap int64
-	// maxWeightScore is the maximum score from weight component (default: 50)
-	maxWeightScore float64
 	// inactivityDecay mirrors RoundRobinStrategy to decay historical load when channel is idle
 	inactivityDecay time.Duration
 }
 
-// NewWeightRoundRobinStrategy creates a new combined weight + round-robin strategy.
+// NewWeightRoundRobinStrategy creates a new weighted round-robin strategy.
 func NewWeightRoundRobinStrategy(metricsProvider ChannelMetricsProvider) *WeightRoundRobinStrategy {
 	return &WeightRoundRobinStrategy{
-		metricsProvider:    metricsProvider,
-		maxRoundRobinScore: 150.0,
-		minScore:           10.0,
-		requestCountCap:    1000,
-		maxWeightScore:     50.0,
-		inactivityDecay:    defaultRoundRobinInactivityDecay,
+		metricsProvider: metricsProvider,
+		maxScore:        150.0,
+		minScore:        10.0,
+		requestCountCap: 1000,
+		inactivityDecay: defaultRoundRobinInactivityDecay,
 	}
 }
 
-// calculateRoundRobinScore calculates the round-robin component based on request count.
-func (s *WeightRoundRobinStrategy) calculateRoundRobinScore(metrics *biz.AggregatedMetrics) (float64, float64, float64, *time.Time, float64) {
+// calculateScore calculates the weighted round-robin score.
+// Normalizes request count by weight to achieve proportional distribution.
+func (s *WeightRoundRobinStrategy) calculateScore(metrics *biz.AggregatedMetrics, weight int) (float64, float64, float64, *time.Time, float64) {
 	if metrics == nil {
 		metrics = &biz.AggregatedMetrics{}
 	}
@@ -263,58 +277,48 @@ func (s *WeightRoundRobinStrategy) calculateRoundRobinScore(metrics *biz.Aggrega
 	lastActivity := latestActivityAt(metrics)
 	cappedCount, effectiveCount, inactivitySeconds := computeRequestLoad(metrics.RequestCount, s.requestCountCap, lastActivity, s.inactivityDecay)
 
-	score := s.maxRoundRobinScore * math.Exp(-effectiveCount/roundRobinScalingFactor)
-	if score < 0 {
-		score = 0
+	// Normalize request count by weight to achieve proportional distribution.
+	// Higher weight channels need more requests to get the same penalty.
+	// Formula: normalizedCount = effectiveCount / (weight / 100.0)
+	// This means:
+	//   - weight=80, 80 requests → normalized=100
+	//   - weight=20, 20 requests → normalized=100
+	// Both get the same score after receiving their proportional share.
+	weightFactor := float64(weight) / 100.0
+	if weightFactor <= 0 {
+		weightFactor = 0.01 // Avoid division by zero, treat as very low weight
+	}
+
+	normalizedCount := effectiveCount / weightFactor
+
+	// Calculate score using the weight-normalized request count
+	score := s.maxScore
+	if normalizedCount > 0 {
+		score = s.maxScore * math.Exp(-normalizedCount/roundRobinScalingFactor)
+	}
+
+	if score < s.minScore {
+		score = s.minScore
 	}
 
 	return score, cappedCount, effectiveCount, lastActivity, inactivitySeconds
 }
 
-// calculateWeightScore calculates the weight component based on ordering weight.
-func (s *WeightRoundRobinStrategy) calculateWeightScore(orderingWeight int) float64 {
-	// Weight is typically 0-100, normalize to 0-maxWeightScore
-	weight := float64(orderingWeight)
-	if weight < 0 {
-		weight = 0
-	}
-
-	// Assume max weight is 100, scale accordingly
-	score := (weight / 100.0) * s.maxWeightScore
-
-	return score
-}
-
-// Score returns a combined score based on both request count and ordering weight.
+// Score returns a weighted round-robin score.
 // Production path without debug logging.
 func (s *WeightRoundRobinStrategy) Score(ctx context.Context, channel *biz.Channel) float64 {
 	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID)
 	if err != nil {
-		// If we can't get metrics, return a moderate score (midpoint of round-robin + max weight)
-		moderateRoundRobin := (s.maxRoundRobinScore + s.minScore) / 2
-		moderateWeight := s.maxWeightScore / 2
-
-		return moderateRoundRobin + moderateWeight
+		// If we can't get metrics, return a moderate score
+		return (s.maxScore + s.minScore) / 2
 	}
 
-	// Calculate round-robin component from request count with recency awareness
-	roundRobinScore, _, _, _, _ := s.calculateRoundRobinScore(metrics)
+	score, _, _, _, _ := s.calculateScore(metrics, channel.OrderingWeight)
 
-	// Calculate weight component from ordering weight
-	weightScore := s.calculateWeightScore(channel.OrderingWeight)
-
-	// Total score is the sum of both components
-	totalScore := roundRobinScore + weightScore
-
-	// Ensure total doesn't go below minimum
-	if totalScore < s.minScore {
-		totalScore = s.minScore
-	}
-
-	return totalScore
+	return score
 }
 
-// ScoreWithDebug returns a combined score with detailed debug information.
+// ScoreWithDebug returns a weighted round-robin score with detailed debug information.
 // Debug path with comprehensive logging.
 func (s *WeightRoundRobinStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel) (float64, StrategyScore) {
 	log.Info(ctx, "WeightRoundRobinStrategy: starting score calculation",
@@ -326,22 +330,18 @@ func (s *WeightRoundRobinStrategy) ScoreWithDebug(ctx context.Context, channel *
 	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID)
 	if err != nil {
 		// If we can't get metrics, return a moderate score
-		moderateRoundRobin := (s.maxRoundRobinScore + s.minScore) / 2
-		moderateWeight := s.maxWeightScore / 2
-		moderateTotal := moderateRoundRobin + moderateWeight
+		moderateScore := (s.maxScore + s.minScore) / 2
 
 		log.Warn(ctx, "WeightRoundRobinStrategy: failed to get metrics, using moderate score",
 			log.Int("channel_id", channel.ID),
 			log.String("channel_name", channel.Name),
 			log.Cause(err),
-			log.Float64("moderate_round_robin", moderateRoundRobin),
-			log.Float64("moderate_weight", moderateWeight),
-			log.Float64("moderate_total", moderateTotal),
+			log.Float64("moderate_score", moderateScore),
 		)
 
-		return moderateTotal, StrategyScore{
+		return moderateScore, StrategyScore{
 			StrategyName: s.Name(),
-			Score:        moderateTotal,
+			Score:        moderateScore,
 			Details: map[string]interface{}{
 				"error": err.Error(),
 			},
@@ -349,30 +349,39 @@ func (s *WeightRoundRobinStrategy) ScoreWithDebug(ctx context.Context, channel *
 	}
 
 	requestCount := metrics.RequestCount
-	roundRobinScore, cappedCount, effectiveCount, lastActivity, inactivitySeconds := s.calculateRoundRobinScore(metrics)
+	score, cappedCount, effectiveCount, lastActivity, inactivitySeconds := s.calculateScore(metrics, channel.OrderingWeight)
+
+	// Calculate normalized count for debug info
+	weightFactor := float64(channel.OrderingWeight) / 100.0
+	if weightFactor <= 0 {
+		weightFactor = 0.01
+	}
+
+	normalizedCount := effectiveCount / weightFactor
 
 	details := map[string]interface{}{
-		"request_count":           requestCount,
-		"original_cap":            s.requestCountCap,
-		"capped_request_count":    cappedCount,
-		"effective_request_count": effectiveCount,
-		"max_roundrobin_score":    s.maxRoundRobinScore,
-		"min_score":               s.minScore,
-		"max_weight_score":        s.maxWeightScore,
-		"ordering_weight":         channel.OrderingWeight,
-		"last_activity_at":        lastActivity,
-		"inactivity_seconds":      inactivitySeconds,
-		"scaling_factor":          roundRobinScalingFactor,
-		"round_robin_score":       roundRobinScore,
+		"request_count":            requestCount,
+		"original_cap":             s.requestCountCap,
+		"capped_request_count":     cappedCount,
+		"effective_request_count":  effectiveCount,
+		"ordering_weight":          channel.OrderingWeight,
+		"weight_factor":            weightFactor,
+		"normalized_request_count": normalizedCount,
+		"max_score":                s.maxScore,
+		"min_score":                s.minScore,
+		"last_activity_at":         lastActivity,
+		"inactivity_seconds":       inactivitySeconds,
+		"scaling_factor":           roundRobinScalingFactor,
+		"calculated_score":         score,
 	}
 
 	if requestCount == 0 {
-		details["round_robin_reason"] = "zero_requests"
+		details["reason"] = "zero_requests"
 
-		log.Info(ctx, "WeightRoundRobinStrategy: channel has zero requests, giving max round-robin score",
+		log.Info(ctx, "WeightRoundRobinStrategy: channel has zero requests",
 			log.Int("channel_id", channel.ID),
 			log.String("channel_name", channel.Name),
-			log.Float64("round_robin_score", s.maxRoundRobinScore),
+			log.Float64("score", score),
 		)
 	}
 
@@ -385,67 +394,19 @@ func (s *WeightRoundRobinStrategy) ScoreWithDebug(ctx context.Context, channel *
 		)
 	}
 
-	log.Info(ctx, "WeightRoundRobinStrategy: calculated round-robin component",
+	log.Info(ctx, "WeightRoundRobinStrategy: calculated weighted round-robin score",
 		log.Int("channel_id", channel.ID),
 		log.String("channel_name", channel.Name),
+		log.Int("ordering_weight", channel.OrderingWeight),
 		log.Float64("request_count", float64(requestCount)),
-		log.Float64("round_robin_score", roundRobinScore),
-	)
-
-	// Calculate weight component from ordering weight
-	weight := float64(channel.OrderingWeight)
-	if weight < 0 {
-		log.Info(ctx, "WeightRoundRobinStrategy: channel has negative weight, clamping to 0",
-			log.Int("channel_id", channel.ID),
-			log.String("channel_name", channel.Name),
-			log.Float64("weight", weight),
-		)
-
-		details["weight_clamped"] = true
-		details["original_weight"] = weight
-		weight = 0
-	}
-
-	weightScore := (weight / 100.0) * s.maxWeightScore
-	details["weight_factor"] = weight / 100.0
-	details["weight_score"] = weightScore
-
-	log.Info(ctx, "WeightRoundRobinStrategy: calculated weight component",
-		log.Int("channel_id", channel.ID),
-		log.String("channel_name", channel.Name),
-		log.Float64("ordering_weight", weight),
-		log.Float64("weight_score", weightScore),
-	)
-
-	// Total score is the sum of both components
-	totalScore := roundRobinScore + weightScore
-	details["total_score_before_clamp"] = totalScore
-
-	// Ensure total doesn't go below minimum
-	if totalScore < s.minScore {
-		log.Info(ctx, "WeightRoundRobinStrategy: total score clamped to minimum",
-			log.Int("channel_id", channel.ID),
-			log.String("channel_name", channel.Name),
-			log.Float64("original_total_score", totalScore),
-			log.Float64("min_score", s.minScore),
-		)
-		totalScore = s.minScore
-		details["total_score_clamped"] = true
-		details["final_total_score"] = totalScore
-	}
-
-	log.Info(ctx, "WeightRoundRobinStrategy: calculated final total score",
-		log.Int("channel_id", channel.ID),
-		log.String("channel_name", channel.Name),
-		log.Float64("round_robin_score", roundRobinScore),
-		log.Float64("weight_score", weightScore),
-		log.Float64("final_total_score", totalScore),
+		log.Float64("normalized_count", normalizedCount),
+		log.Float64("final_score", score),
 		log.Any("calculation_details", details),
 	)
 
-	return totalScore, StrategyScore{
+	return score, StrategyScore{
 		StrategyName: s.Name(),
-		Score:        totalScore,
+		Score:        score,
 		Details:      details,
 	}
 }
