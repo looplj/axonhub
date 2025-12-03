@@ -181,14 +181,15 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 			message.ReasoningContent = &reasoningContent
 		}
 
-		// Set content or tool calls
-		if len(finalToolCalls) > 0 {
-			message.ToolCalls = finalToolCalls
-			// For tool calls, content should be null
-			message.Content = llm.MessageContent{Content: nil}
-		} else {
+		// Set content if available
+		if choiceAgg.content.Len() > 0 {
 			content := choiceAgg.content.String()
 			message.Content = llm.MessageContent{Content: &content}
+		}
+
+		// Set tool calls if available (can coexist with content)
+		if len(finalToolCalls) > 0 {
+			message.ToolCalls = finalToolCalls
 		}
 
 		// Determine finish reason

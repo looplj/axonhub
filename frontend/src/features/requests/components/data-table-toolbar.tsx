@@ -10,7 +10,6 @@ import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter'
 import { useMe } from '@/features/auth/data/auth'
 import { useQueryChannels } from '@/features/channels/data/channels'
 import { RequestStatus } from '../data/schema'
-import { DataTableViewOptions } from './data-table-view-options'
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>

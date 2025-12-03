@@ -1383,7 +1383,8 @@
       "selectRow": "Select row",
       "unknown": "Unknown",
       "requestBody": "Request Body",
-      "responseBody": "Response Body"
+      "responseBody": "Response Body",
+      "responseChunks": "Response Chunks"
     },
     "status": {
       "pending": "Pending",
@@ -1429,6 +1430,7 @@
       "jsonViewer": {
         "requestBody": "Request Body",
         "responseBody": "Response Body",
+        "responseChunks": "Response Chunks",
         "copy": "Copy",
         "copied": "Copied"
       },

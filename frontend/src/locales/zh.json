@@ -1413,7 +1413,8 @@
       "selectRow": "选择行",
       "unknown": "未知",
       "requestBody": "请求体",
-      "responseBody": "响应体"
+      "responseBody": "响应体",
+      "responseChunks": "响应块"
     },
     "status": {
       "pending": "等待中",
@@ -1459,6 +1460,7 @@
       "jsonViewer": {
         "requestBody": "请求体",
         "responseBody": "响应体",
+        "responseChunks": "响应块",
         "copy": "复制",
         "copied": "已复制"
       },
