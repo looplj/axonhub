@@ -30,10 +30,10 @@ AxonHub is an all-in-one AI development platform that provides unified API gatew
 
 ### Core Features
 
-1. [**Unified API**](docs/api-reference/unified-api.md): OpenAI- and Anthropic-compatible interface with automatic API translation lets you use one API format to access any supported model provider.
-2. [**Tracing / Threads**](docs/guides/tracing.md): Thread-aware tracing captures full request timelines for deep observability and faster debugging.
-3. [**Fine-grained Permission**](docs/guides/permissions.md): RBAC-based policies help teams govern access, usage, and data segregation precisely.
-4. [**Adaptive Load Balancing**](docs/guides/load-balance.md): Intelligent multi-strategy load balancing automatically selects optimal AI channels based on health, performance, and session consistency.
+1. [**Unified API**](docs/en/api-reference/unified-api.md): OpenAI- and Anthropic-compatible interface with automatic API translation lets you use one API format to access any supported model provider.
+2. [**Tracing / Threads**](docs/en/guides/tracing.md): Thread-aware tracing captures full request timelines for deep observability and faster debugging.
+3. [**Fine-grained Permission**](docs/en/guides/permissions.md): RBAC-based policies help teams govern access, usage, and data segregation precisely.
+4. [**Adaptive Load Balancing**](docs/en/guides/load-balance.md): Intelligent multi-strategy load balancing automatically selects optimal AI channels based on health, performance, and session consistency.
 
 ---
 
@@ -120,8 +120,8 @@ Here are some screenshots of AxonHub in action:
 
 | API Type             | Status     | Description                    | Document                                     |
 | -------------------- | ---------- | ------------------------------ | -------------------------------------------- |
-| **Text Generation**  | ✅ Done    | Conversational interface       | [Unified API](docs/api-reference/unified-api.md) |
-| **Image Generation** | ⚠️ Partial | Image generation               | [Image Generation](docs/api-reference/image-generation.md) |
+| **Text Generation**  | ✅ Done    | Conversational interface       | [Unified API](docs/en/api-reference/unified-api.md) |
+| **Image Generation** | ⚠️ Partial | Image generation               | [Image Generation](docs/en/api-reference/image-generation.md) |
 | **Rerank**           | 📝 Todo    | Results ranking                | -                                            |
 | **Embedding**        | 📝 Todo    | Vector embedding generation    | -                                            |
 | **Realtime**         | 📝 Todo    | Live conversation capabilities | -                                            |
@@ -146,7 +146,7 @@ AxonHub records every request as part of a thread-aware trace without requiring 
 - Link traces to threads so you can follow the entire conversation journey end to end
 - Capture model metadata, prompt / response spans, and timing information for fast root-cause analysis
 
-Learn more about how tracing works and how to integrate it in the [Tracing Guide](docs/guides/tracing.md).
+Learn more about how tracing works and how to integrate it in the [Tracing Guide](docs/en/guides/tracing.md).
 
 ### 🔧 API Format Support
 
@@ -275,7 +275,7 @@ AXONHUB_DB_DSN="<USER>.root:<PASSWORD>@tcp(gateway01.us-west-2.prod.aws.tidbclou
 AXONHUB_LOG_LEVEL=info
 ```
 
-For detailed configuration instructions, please refer to [configuration documentation](docs/deployment/configuration.md).
+For detailed configuration instructions, please refer to [configuration documentation](docs/en/deployment/configuration.md).
 
 #### Docker Compose Deployment
 
@@ -422,7 +422,7 @@ settings:
 
 ### 4. Claude Code/Codex Integration
 
-See the dedicated [Claude Code & Codex Integration Guide](docs/guides/claude-code-integration.md) for detailed setup steps, troubleshooting, and tips on combining these tools with AxonHub model profiles. 
+See the dedicated [Claude Code & Codex Integration Guide](docs/en/guides/claude-code-integration.md) for detailed setup steps, troubleshooting, and tips on combining these tools with AxonHub model profiles. 
 
 ---
 
