@@ -144,11 +144,12 @@ func (t *OutboundTransformer) TransformRequest(
 		APIKey: t.APIKey,
 	}
 
+	// TODO: find a better way to handle this.
 	var url string
-	if strings.HasSuffix(t.BaseURL, "/v1") {
+	if strings.HasSuffix(t.BaseURL, "/v4") {
 		url = t.BaseURL + "/chat/completions"
 	} else {
-		url = t.BaseURL + "/v1/chat/completions"
+		url = t.BaseURL + "/v4/chat/completions"
 	}
 
 	return &httpclient.Request{
