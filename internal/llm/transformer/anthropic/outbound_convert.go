@@ -218,10 +218,15 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 			var preBlocks []MessageContentBlock
 
 			if msg.ReasoningContent != nil && *msg.ReasoningContent != "" {
-				preBlocks = append(preBlocks, MessageContentBlock{
+				thinkingBlock := MessageContentBlock{
 					Type:     "thinking",
 					Thinking: *msg.ReasoningContent,
-				})
+				}
+				if msg.ReasoningSignature != nil && *msg.ReasoningSignature != "" {
+					thinkingBlock.Signature = *msg.ReasoningSignature
+				}
+
+				preBlocks = append(preBlocks, thinkingBlock)
 			}
 
 			if msg.Content.Content != nil && *msg.Content.Content != "" {
@@ -272,10 +277,15 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 					// Add reasoning content (thinking) first if present
 					// This matches Anthropic's expected format where thinking comes before text
 					if msg.ReasoningContent != nil && *msg.ReasoningContent != "" {
-						contentBlocks = append(contentBlocks, MessageContentBlock{
+						thinkingBlock := MessageContentBlock{
 							Type:     "thinking",
 							Thinking: *msg.ReasoningContent,
-						})
+						}
+						if msg.ReasoningSignature != nil && *msg.ReasoningSignature != "" {
+							thinkingBlock.Signature = *msg.ReasoningSignature
+						}
+
+						contentBlocks = append(contentBlocks, thinkingBlock)
 					}
 
 					// Add text content
@@ -440,10 +450,11 @@ func convertToChatCompletionResponse(anthropicResp *Message, platformType Platfo
 
 	// Convert content to message
 	var (
-		content      llm.MessageContent
-		thinkingText string
-		toolCalls    []llm.ToolCall
-		textParts    []string
+		content           llm.MessageContent
+		thinkingText      string
+		thinkingSignature string
+		toolCalls         []llm.ToolCall
+		textParts         []string
 	)
 
 	for _, block := range anthropicResp.Content {
@@ -482,6 +493,7 @@ func convertToChatCompletionResponse(anthropicResp *Message, platformType Platfo
 			}
 		case "thinking":
 			thinkingText = block.Thinking
+			thinkingSignature = block.Signature
 		}
 	}
 
@@ -506,6 +518,10 @@ func convertToChatCompletionResponse(anthropicResp *Message, platformType Platfo
 
 	if thinkingText != "" {
 		message.ReasoningContent = &thinkingText
+	}
+
+	if thinkingSignature != "" {
+		message.ReasoningSignature = &thinkingSignature
 	}
 
 	choice := llm.Choice{

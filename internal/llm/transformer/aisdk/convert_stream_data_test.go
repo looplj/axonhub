@@ -95,7 +95,7 @@ func TestDataStreamTransformer_StreamTransformation_WithTestData(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// The input file contains LLM format responses (OpenAI-like)
-			llmResponses, err := xtest.LoadResponses(t, tt.inputStreamFile)
+			llmResponses, err := xtest.LoadLlmResponses(t, tt.inputStreamFile)
 			require.NoError(t, err)
 
 			var expectedEvents []*httpclient.StreamEvent

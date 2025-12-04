@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
-	"github.com/looplj/axonhub/internal/pkg/xjson"
 	"github.com/looplj/axonhub/internal/pkg/xtest"
 )
 
@@ -253,7 +252,7 @@ func TestTransformRequest_Integration(t *testing.T) {
 			err = json.Unmarshal(outboundReq.Body, &gotReq)
 			require.NoError(t, err)
 
-			if !xjson.Equal(wantReq, gotReq) {
+			if !xtest.Equal(wantReq, gotReq) {
 				t.Errorf("wantReq != gotReq\n%s", cmp.Diff(wantReq, gotReq))
 			}
 		})
@@ -428,7 +427,7 @@ func TestTransformResponse_Integration(t *testing.T) {
 			err = json.Unmarshal(inboundResp.Body, &gotMessage)
 			require.NoError(t, err)
 
-			if !xjson.Equal(wantMessage, gotMessage) {
+			if !xtest.Equal(wantMessage, gotMessage) {
 				t.Errorf("wantMessage != gotMessage\n%s", cmp.Diff(wantMessage, gotMessage))
 			}
 		})

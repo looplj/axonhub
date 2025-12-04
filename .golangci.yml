@@ -195,6 +195,11 @@ linters:
   exclusions:
     # Excluding configuration per-path, per-linter, per-text and per-source
     rules:
+      # Exclude some linters from running on tools files.
+      - path: tools/
+        linters:
+          - gosec
+          - errcheck
       # Exclude some linters from running on tests files.
       - path: _test\.go$
         linters:

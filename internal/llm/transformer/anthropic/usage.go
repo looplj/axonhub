@@ -54,12 +54,12 @@ func convertToLlmUsage(usage *Usage, platformType PlatformType) *llm.Usage {
 	}
 
 	u := llm.Usage{
-		PromptTokens:     promptTokens,
-		CompletionTokens: usage.OutputTokens,
-		TotalTokens:      promptTokens + usage.OutputTokens,
+		PromptTokens:            promptTokens,
+		CompletionTokens:        usage.OutputTokens,
+		CompletionTokensDetails: &llm.CompletionTokensDetails{},
+		TotalTokens:             promptTokens + usage.OutputTokens,
 	}
 
-	// Map detailed token information from Anthropic format to unified model
 	if usage.CacheReadInputTokens > 0 || usage.CacheCreationInputTokens > 0 {
 		u.PromptTokensDetails = &llm.PromptTokensDetails{
 			CachedTokens: usage.CacheReadInputTokens + usage.CacheCreationInputTokens,
@@ -67,4 +67,26 @@ func convertToLlmUsage(usage *Usage, platformType PlatformType) *llm.Usage {
 	}
 
 	return &u
+}
+
+func convertToAnthropicUsage(llmUsage *llm.Usage) *Usage {
+	usage := &Usage{
+		InputTokens:  llmUsage.PromptTokens,
+		OutputTokens: llmUsage.CompletionTokens,
+	}
+
+	// Map detailed token information from unified model to Anthropic format
+	if llmUsage.PromptTokensDetails != nil {
+		usage.CacheReadInputTokens = llmUsage.PromptTokensDetails.CachedTokens
+		usage.InputTokens -= usage.CacheReadInputTokens
+	}
+
+	// Note: Anthropic doesn't have a direct equivalent for reasoning tokens in their current API
+	// but we can store it in cache_creation_input_tokens as a workaround if needed
+	if llmUsage.CompletionTokensDetails != nil {
+		// For now, we don't map reasoning tokens as Anthropic doesn't have a direct field
+		// This could be extended in the future if Anthropic adds support
+	}
+
+	return usage
 }

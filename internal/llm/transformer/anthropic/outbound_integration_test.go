@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/llm"
@@ -60,54 +61,14 @@ func TestOutboundTransformer_TransformResponse_WithTestData(t *testing.T) {
 				err = xtest.LoadTestData(t, tt.expectedFile, &expected)
 				require.NoError(t, err)
 
-				// Normalize pointer fields for comparison
-				normalizeResponseForComparison(t, &expected)
-				normalizeResponseForComparison(t, result)
-
-				require.Equal(t, expected, *result)
+				if !xtest.Equal(expected, *result) {
+					t.Fatalf("responses are not equal %s", cmp.Diff(expected, *result))
+				}
 			}
 
 			if tt.validateResponse != nil {
 				tt.validateResponse(t, result)
 			}
 		})
-	}
-}
-
-func normalizeResponseForComparison(t *testing.T, resp *llm.Response) {
-	t.Helper()
-
-	for i := range resp.Choices {
-		choice := &resp.Choices[i]
-
-		if choice.Message != nil {
-			if choice.Message.Content.Content != nil {
-				trimmed := *choice.Message.Content.Content
-				choice.Message.Content.Content = &trimmed
-			}
-
-			for j := range choice.Message.Content.MultipleContent {
-				part := &choice.Message.Content.MultipleContent[j]
-				if part.Text != nil {
-					trimmed := *part.Text
-					part.Text = &trimmed
-				}
-			}
-
-			for j := range choice.Message.ToolCalls {
-				call := &choice.Message.ToolCalls[j]
-				if len(call.Function.Arguments) > 0 {
-					var m map[string]any
-
-					err := json.Unmarshal([]byte(call.Function.Arguments), &m)
-					require.NoError(t, err)
-
-					normalizedArgs, err := json.Marshal(m)
-					require.NoError(t, err)
-
-					call.Function.Arguments = string(normalizedArgs)
-				}
-			}
-		}
 	}
 }

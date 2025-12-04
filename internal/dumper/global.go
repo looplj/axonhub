@@ -12,11 +12,15 @@ func SetGlobal(d *Dumper) {
 	Global = d
 }
 
+func Enabled() bool {
+	return Global != nil && Global.config.Enabled
+}
+
 func DumpStreamEvents(ctx context.Context, events []*httpclient.StreamEvent, filename string) {
 	Global.DumpStreamEvents(ctx, events, filename)
 }
 
-func DumpStruct(ctx context.Context, obj any, filename string) {
+func DumpObject(ctx context.Context, obj any, filename string) {
 	Global.DumpStruct(ctx, obj, filename)
 }
 

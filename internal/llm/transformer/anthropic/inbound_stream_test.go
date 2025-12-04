@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
@@ -174,7 +175,7 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// The input file contains OpenAI format responses
-			openaiResponses, err := xtest.LoadResponses(t, tt.inputStreamFile)
+			openaiResponses, err := xtest.LoadLlmResponses(t, tt.inputStreamFile)
 			require.NoError(t, err)
 
 			// The expected file contains expected Anthropic format events
@@ -240,7 +241,13 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 					require.Equal(t, expectedStreamEvent.Message.Role, actualStreamEvent.Message.Role, "Event %d: Role should match", i)
 
 					if expectedStreamEvent.Message.Usage != nil && actualStreamEvent.Message.Usage != nil {
-						require.Equal(t, int64(1), actualStreamEvent.Message.Usage.InputTokens, "Event %d: Input tokens should match", i)
+						require.Equal(
+							t,
+							expectedStreamEvent.Message.Usage.InputTokens,
+							actualStreamEvent.Message.Usage.InputTokens,
+							"Event %d: Input tokens should match",
+							i,
+						)
 						require.Equal(
 							t,
 							expectedStreamEvent.Message.Usage.OutputTokens,
@@ -274,18 +281,8 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 					require.NotNil(t, expectedStreamEvent.Delta)
 					require.NotNil(t, actualStreamEvent.Delta)
 
-					if expectedStreamEvent.Delta.Text != nil && actualStreamEvent.Delta.Text != nil {
-						require.Equal(t, *expectedStreamEvent.Delta.Text, *actualStreamEvent.Delta.Text, "Event %d: Delta text should match", i)
-					}
-
-					if expectedStreamEvent.Delta.PartialJSON != nil && actualStreamEvent.Delta.PartialJSON != nil {
-						require.Equal(
-							t,
-							*expectedStreamEvent.Delta.PartialJSON,
-							*actualStreamEvent.Delta.PartialJSON,
-							"Event %d: Delta partial JSON should match",
-							i,
-						)
+					if !xtest.Equal(expectedStreamEvent.Delta, actualStreamEvent.Delta) {
+						t.Errorf("Index: %d, Diff: %s ", i, cmp.Diff(expectedStreamEvent.Delta, actualStreamEvent.Delta))
 					}
 
 				case "content_block_stop":
@@ -303,14 +300,10 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 					require.NotNil(t, expectedStreamEvent.Delta)
 					require.NotNil(t, actualStreamEvent.Delta)
 
-					if expectedStreamEvent.Delta.StopReason != nil && actualStreamEvent.Delta.StopReason != nil {
-						require.Equal(
-							t,
-							*expectedStreamEvent.Delta.StopReason,
-							*actualStreamEvent.Delta.StopReason,
-							"Event %d: Stop reason should match",
-							i,
-						)
+					require.Equal(t, expectedStreamEvent.Delta.StopReason, actualStreamEvent.Delta.StopReason)
+
+					if !xtest.Equal(expectedStreamEvent.Delta, actualStreamEvent.Delta) {
+						t.Errorf("Index: %d, Diff: %s ", i, cmp.Diff(expectedStreamEvent.Delta, actualStreamEvent.Delta))
 					}
 
 					if expectedStreamEvent.Usage != nil && actualStreamEvent.Usage != nil {

@@ -16,6 +16,8 @@
   "usage": {
     "prompt_tokens": 21,
     "completion_tokens": 43,
-    "total_tokens": 64
+    "total_tokens": 64,
+    "prompt_tokens_details": {},
+    "completion_tokens_details": {}
   }
 }
