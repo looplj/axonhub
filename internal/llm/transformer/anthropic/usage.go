@@ -27,7 +27,7 @@ type Usage struct {
 // convertToLlmUsage converts Anthropic Usage to unified Usage format.
 // The platformType parameter determines how cache tokens are calculated:
 // - For Anthropic official (direct, bedrock, vertex): input_tokens does NOT include cached tokens
-// - For DeepSeek/Moonshot: input_tokens INCLUDES cached tokens.
+// - For Moonshot: input_tokens INCLUDES cached tokens.
 func convertToLlmUsage(usage *Usage, platformType PlatformType) *llm.Usage {
 	if usage == nil {
 		return nil
@@ -43,8 +43,8 @@ func convertToLlmUsage(usage *Usage, platformType PlatformType) *llm.Usage {
 	// Different calculation logic based on platform type
 	//nolint:exhaustive
 	switch platformType {
-	case PlatformDeepSeek, PlatformMoonshot:
-		// For DeepSeek/Moonshot: InputTokens already includes cached tokens
+	case PlatformMoonshot:
+		// For Moonshot: InputTokens already includes cached tokens
 		// So we don't add cache tokens again
 		promptTokens = usage.InputTokens
 	default:

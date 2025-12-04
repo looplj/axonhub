@@ -230,27 +230,6 @@ func Test_convertUsage(t *testing.T) {
 			},
 		},
 		{
-			name: "DeepSeek - cache read tokens included in input tokens",
-			args: args{
-				usage: &Usage{
-					InputTokens:              100, // Already includes 30 cached tokens
-					OutputTokens:             50,
-					CacheCreationInputTokens: 0,
-					CacheReadInputTokens:     30,
-					ServiceTier:              "standard",
-				},
-				platformType: PlatformDeepSeek,
-			},
-			want: &llm.Usage{
-				PromptTokens:     100, // 100 input tokens.
-				CompletionTokens: 50,
-				TotalTokens:      150, // 100 + 50
-				PromptTokensDetails: &llm.PromptTokensDetails{
-					CachedTokens: 30, //
-				},
-			},
-		},
-		{
 			name: "Moonshot - cache read tokens included in input tokens",
 			args: args{
 				usage: &Usage{
