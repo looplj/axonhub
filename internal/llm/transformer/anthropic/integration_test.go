@@ -420,8 +420,6 @@ func TestTransformResponse_Integration(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, chatResp)
 
-			println("chatResp.Body:", xjson.MustMarshalString(chatResp))
-
 			inboundResp, err := inboundTransformer.TransformResponse(t.Context(), chatResp)
 			require.NoError(t, err)
 

@@ -479,6 +479,9 @@ func (svc *ChannelService) asyncReloadChannels() {
 		reloadCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
+		// Force reload by resetting latestUpdate timestamp
+		svc.latestUpdate = time.Time{}
+
 		if reloadErr := svc.loadChannels(reloadCtx); reloadErr != nil {
 			log.Error(reloadCtx, "failed to reload channels after bulk update", log.Cause(reloadErr))
 		}
