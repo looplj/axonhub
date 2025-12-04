@@ -56,8 +56,8 @@ AxonHub 的模型配置文件支持将请求模型映射到具体提供商模型
 <table>
   <tr align="center">
     <td align="center">
-      <a href="../screenshots/axonhub-profiles.png">
-        <img src="../screenshots/axonhub-profiles.png" alt="Model Profiles" width="250"/>
+      <a href="../../screenshots/axonhub-profiles.png">
+        <img src="../../screenshots/axonhub-profiles.png" alt="Model Profiles" width="250"/>
       </a>
       <br/>
       Model Profiles

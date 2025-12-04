@@ -56,8 +56,8 @@ AxonHub model profiles remap incoming model names to provider-specific equivalen
 <table>
   <tr align="center">
     <td align="center">
-      <a href="../screenshots/axonhub-profiles.png">
-        <img src="../screenshots/axonhub-profiles.png" alt="Model Profiles" width="250"/>
+      <a href="../../screenshots/axonhub-profiles.png">
+        <img src="../../screenshots/axonhub-profiles.png" alt="Model Profiles" width="250"/>
       </a>
       <br/>
       Model Profiles
