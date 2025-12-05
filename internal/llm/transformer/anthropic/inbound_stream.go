@@ -7,6 +7,7 @@ import (
 
 	"github.com/samber/lo"
 
+	"github.com/looplj/axonhub/internal/dumper"
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
@@ -45,6 +46,8 @@ type anthropicInboundStream struct {
 	stopReason                *string
 	// Tool call tracking
 	toolCalls map[int]*llm.ToolCall // Track tool calls by index
+
+	sourceEvents []*llm.Response
 }
 
 func (s *anthropicInboundStream) enqueEvent(ev *StreamEvent) error {
@@ -82,6 +85,10 @@ func (s *anthropicInboundStream) Next() bool {
 		return s.Next() // Try next chunk
 	}
 
+	if dumper.Enabled() {
+		s.sourceEvents = append(s.sourceEvents, chunk)
+	}
+
 	// Handle [DONE] marker
 	if chunk.Object == "[DONE]" {
 		return s.Next() // Try next chunk
@@ -103,6 +110,9 @@ func (s *anthropicInboundStream) Next() bool {
 		usage := &Usage{
 			InputTokens:  1,
 			OutputTokens: 1,
+		}
+		if chunk.Usage != nil {
+			usage = convertToAnthropicUsage(chunk.Usage)
 		}
 
 		streamEvent := StreamEvent{
@@ -186,28 +196,27 @@ func (s *anthropicInboundStream) Next() bool {
 			}
 		}
 
+		// Add signature delta before stopping thinking block if signature is available
+		if choice.Delta != nil && choice.Delta.ReasoningSignature != nil && *choice.Delta.ReasoningSignature != "" {
+			err := s.enqueEvent(&StreamEvent{
+				Type:  "content_block_delta",
+				Index: &s.contentIndex,
+				Delta: &StreamDelta{
+					Type:      lo.ToPtr("signature_delta"),
+					Signature: choice.Delta.ReasoningSignature,
+				},
+			})
+			if err != nil {
+				s.err = fmt.Errorf("failed to enqueue signature_delta event: %w", err)
+				return false
+			}
+		}
+
 		// Handle content delta
 		if choice.Delta != nil && choice.Delta.Content.Content != nil && *choice.Delta.Content.Content != "" {
 			// If the thinking content has started before the text content, we need to stop it
 			if s.hasThinkingContentStarted {
 				s.hasThinkingContentStarted = false
-
-				// Add signature delta before stopping thinking block
-				// TODO Confirm if this is needed.
-				// signatureEvent := StreamEvent{
-				// 	Type:  "content_block_delta",
-				// 	Index: &s.contentIndex,
-				// 	Delta: &StreamDelta{
-				// 		Type:      lo.ToPtr("signature_delta"),
-				// 		Signature: lo.ToPtr(""),
-				// 	},
-				// }
-
-				// err := s.enqueEvent(&signatureEvent)
-				// if err != nil {
-				// 	s.err = fmt.Errorf("failed to enqueue signature_delta event: %w", err)
-				// 	return false
-				// }
 
 				stopEvent := StreamEvent{
 					Type:  "content_block_stop",
@@ -280,6 +289,25 @@ func (s *anthropicInboundStream) Next() bool {
 
 		// Handle tool calls
 		if choice.Delta != nil && len(choice.Delta.ToolCalls) > 0 {
+			// Support tool call when the thinking.
+			// If the thinking content has started before the text content, we need to stop it
+			if s.hasThinkingContentStarted {
+				s.hasThinkingContentStarted = false
+
+				stopEvent := StreamEvent{
+					Type:  "content_block_stop",
+					Index: &s.contentIndex,
+				}
+
+				err := s.enqueEvent(&stopEvent)
+				if err != nil {
+					s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
+					return false
+				}
+
+				s.contentIndex += 1
+			}
+
 			// If the text content has started before the tool content, we need to stop it
 			if s.hasTextContentStarted {
 				s.hasTextContentStarted = false
@@ -439,17 +467,7 @@ func (s *anthropicInboundStream) Next() bool {
 			}
 		}
 
-		usage := &Usage{
-			InputTokens:  chunk.Usage.PromptTokens,
-			OutputTokens: chunk.Usage.CompletionTokens,
-		}
-
-		// Map detailed token information
-		if chunk.Usage.PromptTokensDetails != nil {
-			usage.CacheReadInputTokens = chunk.Usage.PromptTokensDetails.CachedTokens
-		}
-
-		streamEvent.Usage = usage
+		streamEvent.Usage = convertToAnthropicUsage(chunk.Usage)
 
 		err := s.enqueEvent(&streamEvent)
 		if err != nil {
@@ -495,5 +513,9 @@ func (s *anthropicInboundStream) Err() error {
 }
 
 func (s *anthropicInboundStream) Close() error {
+	if dumper.Enabled() {
+		dumper.DumpObject(s.ctx, s.sourceEvents, "anthropic-inbound-stream")
+	}
+
 	return s.source.Close()
 }

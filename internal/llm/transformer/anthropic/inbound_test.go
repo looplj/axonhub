@@ -816,7 +816,7 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 			validate: func(t *testing.T, resp *Message) {
 				t.Helper()
 				require.NotNil(t, resp.Usage)
-				require.Equal(t, int64(100), resp.Usage.InputTokens)
+				require.Equal(t, int64(80), resp.Usage.InputTokens)
 				require.Equal(t, int64(50), resp.Usage.OutputTokens)
 				require.Equal(t, int64(20), resp.Usage.CacheReadInputTokens)
 			},

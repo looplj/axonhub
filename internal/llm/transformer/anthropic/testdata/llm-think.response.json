@@ -27,7 +27,8 @@
             }
           }
         ],
-        "reasoning_content": "The user is asking for the weather in San Francisco, CA. To get the weather, I need to:\n\n1. First get the coordinates (latitude and longitude) of San Francisco, CA using the get_coordinates function\n2. Then get the temperature unit for the US using get_temperature_unit function \n3. Finally use the get_weather function with the coordinates and appropriate unit\n\nLet me start with getting the coordinates and temperature unit."
+        "reasoning_content": "The user is asking for the weather in San Francisco, CA. To get the weather, I need to:\n\n1. First get the coordinates (latitude and longitude) of San Francisco, CA using the get_coordinates function\n2. Then get the temperature unit for the US using get_temperature_unit function \n3. Finally use the get_weather function with the coordinates and appropriate unit\n\nLet me start with getting the coordinates and temperature unit.",
+        "reasoning_signature": "EqQBCgIYAhIM1gbcDa9GJwZA2b3hGgxBdjrkzLoky3dl1pkiMOYds"
       },
       "finish_reason": "tool_calls"
     }
@@ -35,6 +36,8 @@
   "usage": {
     "prompt_tokens": 587,
     "completion_tokens": 226,
-    "total_tokens": 813
+    "total_tokens": 813,
+    "prompt_tokens_details": {},
+    "completion_tokens_details": {}
   }
 }

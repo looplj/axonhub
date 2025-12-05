@@ -101,9 +101,9 @@ func (t *InboundTransformer) TransformStream(
 	ctx context.Context,
 	stream streams.Stream[*llm.Response],
 ) (streams.Stream[*httpclient.StreamEvent], error) {
-	return streams.MapErr(stream, func(chunk *llm.Response) (*httpclient.StreamEvent, error) {
+	return streams.NoNil(streams.MapErr(stream, func(chunk *llm.Response) (*httpclient.StreamEvent, error) {
 		return t.TransformStreamChunk(ctx, chunk)
-	}), nil
+	})), nil
 }
 
 func (t *InboundTransformer) TransformStreamChunk(
@@ -120,6 +120,13 @@ func (t *InboundTransformer) TransformStreamChunk(
 		}, nil
 	}
 
+	// Skip events that only contain ReasoningSignature (used by Anthropic inbound)
+	// OpenAI format doesn't support ReasoningSignature in streaming
+	if isReasoningSignatureEvent(chatResp) {
+		//nolint:nilnil // Skip this event
+		return nil, nil
+	}
+
 	// For OpenAI, we keep the original response format as the event data
 	eventData, err := json.Marshal(chatResp)
 	if err != nil {
@@ -130,6 +137,28 @@ func (t *InboundTransformer) TransformStreamChunk(
 		Type: "",
 		Data: eventData,
 	}, nil
+}
+
+// isReasoningSignatureEvent checks if the response contains ReasoningSignature.
+// This is a help func to adapt the Anthropic thinking signature to OpenAI format.
+// In the real world, the signature will use a separate event, so if the response contains
+// ReasoningSignature, it means the event is for signature_delta, we should ignore it.
+func isReasoningSignatureEvent(resp *llm.Response) bool {
+	if len(resp.Choices) != 1 {
+		return false
+	}
+
+	delta := resp.Choices[0].Delta
+	if delta == nil {
+		return false
+	}
+
+	// Check if ReasoningSignature is set
+	if delta.ReasoningSignature != nil && *delta.ReasoningSignature != "" {
+		return true
+	}
+
+	return false
 }
 
 func (t *InboundTransformer) AggregateStreamChunks(

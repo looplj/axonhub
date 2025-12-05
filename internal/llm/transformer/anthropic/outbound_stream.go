@@ -129,9 +129,10 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 
 	// Convert the stream event to ChatCompletionResponse
 	resp := &llm.Response{
-		Object: "chat.completion.chunk",
-		ID:     state.streamID,    // Use stored ID from message_start
-		Model:  state.streamModel, // Use stored model from message_start
+		Object:  "chat.completion.chunk",
+		ID:      state.streamID,    // Use stored ID from message_start
+		Model:   state.streamModel, // Use stored model from message_start
+		Created: 0,
 	}
 
 	switch streamEvent.Type {
@@ -147,15 +148,11 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 
 			if streamEvent.Message.Usage != nil {
 				state.streamUsage = convertToLlmUsage(streamEvent.Message.Usage, state.platformType)
+				resp.ServiceTier = streamEvent.Message.Usage.ServiceTier
 				resp.Usage = state.streamUsage
 			}
-
-			resp.Created = 0
-			if streamEvent.Message.Usage != nil {
-				resp.ServiceTier = streamEvent.Message.Usage.ServiceTier
-			}
 		}
-		// For message_start, we return an empty choice to indicate the start
+
 		resp.Choices = []llm.Choice{
 			{
 				Index: 0,
@@ -196,29 +193,6 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 
 	case "content_block_delta":
 		if streamEvent.Delta != nil {
-			// Handle tool use deltas (input_json_delta)
-			if streamEvent.Delta.PartialJSON != nil {
-				choice := llm.Choice{
-					Index: 0,
-					Delta: &llm.Message{
-						Role: "assistant",
-						ToolCalls: []llm.ToolCall{
-							{
-								Index: state.toolIndex,
-								ID:    state.toolCalls[state.toolIndex].ID,
-								Type:  "function",
-								Function: llm.FunctionCall{
-									Arguments: *streamEvent.Delta.PartialJSON,
-								},
-							},
-						},
-					},
-				}
-				resp.Choices = []llm.Choice{choice}
-
-				return resp, nil
-			}
-
 			choice := llm.Choice{
 				Index: 0,
 				Delta: &llm.Message{
@@ -226,22 +200,39 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 				},
 			}
 
-			// Handle text content
-			if streamEvent.Delta.Text != nil {
+			switch *streamEvent.Delta.Type {
+			case "input_json_delta":
+				if streamEvent.Delta.PartialJSON != nil {
+					choice := llm.Choice{
+						Index: 0,
+						Delta: &llm.Message{
+							Role: "assistant",
+							ToolCalls: []llm.ToolCall{
+								{
+									Index: state.toolIndex,
+									ID:    state.toolCalls[state.toolIndex].ID,
+									Type:  "function",
+									Function: llm.FunctionCall{
+										Arguments: *streamEvent.Delta.PartialJSON,
+									},
+								},
+							},
+						},
+					}
+					resp.Choices = []llm.Choice{choice}
+
+					return resp, nil
+				}
+			case "text_delta":
 				choice.Delta.Content = llm.MessageContent{
 					Content: streamEvent.Delta.Text,
 				}
-			}
-
-			// Handle thinking content - map to reasoning_content
-			if streamEvent.Delta.Thinking != nil {
-				choice.Delta.ReasoningContent = streamEvent.Delta.Thinking
-			}
-
-			// Skip signature deltas as they're not part of the content
-			if streamEvent.Delta.Signature != nil {
-				//nolint:nilnil // It is expected.
+			case "thinking":
 				return nil, nil
+			case "thinking_delta":
+				choice.Delta.ReasoningContent = streamEvent.Delta.Thinking
+			case "signature_delta":
+				choice.Delta.ReasoningSignature = streamEvent.Delta.Signature
 			}
 
 			resp.Choices = []llm.Choice{choice}
@@ -253,7 +244,7 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 			usage := convertToLlmUsage(streamEvent.Usage, state.platformType)
 			if state.streamUsage != nil {
 				usage.PromptTokens = state.streamUsage.PromptTokens
-				if state.streamUsage.PromptTokensDetails != nil {
+				if usage.PromptTokensDetails == nil && state.streamUsage.PromptTokensDetails != nil {
 					usage.PromptTokensDetails = state.streamUsage.PromptTokensDetails
 				}
 				// Recalculate total tokens
@@ -262,8 +253,6 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 
 			state.streamUsage = usage
 		}
-
-		resp.Usage = state.streamUsage
 
 		if streamEvent.Delta != nil && streamEvent.Delta.StopReason != nil {
 			// Determine finish reason

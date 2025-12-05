@@ -39,6 +39,7 @@
 {"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\" with getting\"}}"}
 {"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\" the coordinates an\"}}"}
 {"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\"d temperature unit.\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"signature_delta\",\"signature\":\"EqQBCgIYAhIM1gbcDa9GJwZA2b3hGgxBdjrkzLoky3dl1pkiMOYds\"}}"}
 {"LastEventID":"","Type":"content_block_stop","Data":"{\"type\":\"content_block_stop\",\"index\":0}"}
 {"LastEventID":"","Type":"content_block_start","Data":"{\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}"}
 {"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"text_delta\",\"text\":\"I'll\"}}"}

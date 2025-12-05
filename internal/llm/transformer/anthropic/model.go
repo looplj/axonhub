@@ -243,11 +243,11 @@ type MessageContentBlock struct {
 	// Text will be present if type is "text".
 	Text string `json:"text,omitempty"`
 
-	// Signature will be present if type is "thinking".
-	Signature string `json:"signature,omitempty"`
-
 	// Thinking will be present if type is "thinking".
 	Thinking string `json:"thinking,omitempty"`
+
+	// Signature will be present if type is "thinking".
+	Signature string `json:"signature,omitempty"`
 
 	// Data will be present if type is "redacted_thinking".
 	Data string `json:"data,omitempty"`

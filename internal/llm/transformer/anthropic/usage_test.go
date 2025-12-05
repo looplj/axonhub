@@ -3,9 +3,10 @@ package anthropic
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/google/go-cmp/cmp"
 
 	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/pkg/xtest"
 )
 
 func Test_convertUsage(t *testing.T) {
@@ -255,7 +256,13 @@ func Test_convertUsage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := convertToLlmUsage(tt.args.usage, tt.args.platformType)
 
-			require.Equal(t, tt.want, got)
+			if !cmp.Equal(tt.want, got,
+				xtest.NilPromptTokensDetails,
+				xtest.NilCompletionTokensDetails,
+			) {
+				t.Fatalf("diff: %v", cmp.Diff(tt.want, got))
+			}
+			// require.Equal(t, tt.want, got)
 		})
 	}
 }

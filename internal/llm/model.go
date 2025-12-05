@@ -203,6 +203,13 @@ type Request struct {
 	RawAPIFormat APIFormat `json:"-"`
 }
 
+func (r *Request) ClearHelpFields() {
+	for i, msg := range r.Messages {
+		msg.ClearHelpFields()
+		r.Messages[i] = msg
+	}
+}
+
 func (r *Request) IsImageGenerationRequest() bool {
 	return len(r.Modalities) > 0 && slices.Contains(r.Modalities, "image")
 }
@@ -279,9 +286,17 @@ type Message struct {
 	// - https://api-docs.deepseek.com/api/create-chat-completion#responses
 	ReasoningContent *string `json:"reasoning_content,omitempty"`
 
+	// Help field, will not be sent to the llm service, to adapt the anthropic think signature.
+	ReasoningSignature *string `json:"reasoning_signature,omitempty"`
+
 	// CacheControl is used for provider-specific cache control (e.g., Anthropic).
 	// This field is not serialized in JSON.
 	CacheControl *CacheControl `json:"-"`
+}
+
+func (m *Message) ClearHelpFields() {
+	m.ReasoningContent = nil
+	m.ReasoningSignature = nil
 }
 
 type MessageContent struct {
@@ -412,6 +427,20 @@ type Response struct {
 
 	// Error is the error information, will present if request to llm service failed with status >= 400.
 	Error *ResponseError `json:"error,omitempty"`
+}
+
+func (r *Response) ClearHelpFields() {
+	for i, choice := range r.Choices {
+		if choice.Message != nil {
+			choice.Message.ClearHelpFields()
+		}
+
+		if choice.Delta != nil {
+			choice.Delta.ClearHelpFields()
+		}
+
+		r.Choices[i] = choice
+	}
 }
 
 // Choice represents a choice in the response.

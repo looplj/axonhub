@@ -727,7 +727,8 @@ func TestAggregateStreamChunks_EdgeCases(t *testing.T) {
 							"index": 0,
 							"content_block": {
 								"type": "thinking",
-								"thinking": ""
+								"thinking": "",
+								"signature": ""
 							}
 						}`),
 					},
@@ -767,6 +768,7 @@ func TestAggregateStreamChunks_EdgeCases(t *testing.T) {
 					require.NotEmpty(t, result.Content)
 					require.Equal(t, "thinking", result.Content[0].Type)
 					require.Equal(t, "Thinking...", result.Content[0].Thinking)
+					require.Equal(t, "abc123", result.Content[0].Signature)
 				},
 			},
 			{
@@ -899,6 +901,12 @@ func TestAggregateStreamChunks_WithTestData(t *testing.T) {
 				// Compare text content
 				if expectedContent.Type == "text" {
 					require.Equal(t, expectedContent.Text, result.Content[i].Text)
+				}
+
+				// Compare thinking content
+				if expectedContent.Type == "thinking" {
+					require.Equal(t, expectedContent.Thinking, result.Content[i].Thinking)
+					require.Equal(t, expectedContent.Signature, result.Content[i].Signature)
 				}
 
 				// Compare tool use content

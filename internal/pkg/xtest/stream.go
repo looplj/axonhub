@@ -92,7 +92,7 @@ func LoadTestData(t *testing.T, filename string, v any) error {
 	return decoder.Decode(v)
 }
 
-func LoadResponses(t *testing.T, filename string) ([]*llm.Response, error) {
+func LoadLlmResponses(t *testing.T, filename string) ([]*llm.Response, error) {
 	t.Helper()
 
 	expectedData, err := LoadStreamChunks(t, filename)

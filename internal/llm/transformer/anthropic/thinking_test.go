@@ -15,8 +15,9 @@ import (
 
 func TestConvertToChatCompletionResponse_WithThinking(t *testing.T) {
 	const (
-		thinking = "Chain-of-thought reasoning"
-		answer   = "Here is the final answer."
+		thinking  = "Chain-of-thought reasoning"
+		signature = "EqQBCgIYAhIM1gbcDa9GJwZA2b3hGgxBdjrkzLoky3dl1pkiMOYds"
+		answer    = "Here is the final answer."
 	)
 
 	anthropicResp := &Message{
@@ -24,7 +25,7 @@ func TestConvertToChatCompletionResponse_WithThinking(t *testing.T) {
 		Type: "message",
 		Role: "assistant",
 		Content: []MessageContentBlock{
-			{Type: "thinking", Thinking: thinking, Signature: "sig"},
+			{Type: "thinking", Thinking: thinking, Signature: signature},
 			{Type: "text", Text: answer},
 		},
 		Model: "claude-3-sonnet-20240229",
@@ -36,6 +37,8 @@ func TestConvertToChatCompletionResponse_WithThinking(t *testing.T) {
 	require.Len(t, result.Choices, 1)
 	require.NotNil(t, result.Choices[0].Message.ReasoningContent)
 	require.Equal(t, thinking, *result.Choices[0].Message.ReasoningContent)
+	require.NotNil(t, result.Choices[0].Message.ReasoningSignature)
+	require.Equal(t, signature, *result.Choices[0].Message.ReasoningSignature)
 	require.NotNil(t, result.Choices[0].Message.Content.Content)
 	require.Equal(t, answer, *result.Choices[0].Message.Content.Content)
 	require.Empty(t, result.Choices[0].Message.Content.MultipleContent)

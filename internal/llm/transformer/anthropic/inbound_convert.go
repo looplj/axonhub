@@ -81,6 +81,8 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 				hasReasoningInContent bool
 			)
 
+			var reasoningSignature string
+
 			for _, block := range msg.Content.MultipleContent {
 				switch block.Type {
 				case "thinking":
@@ -88,6 +90,10 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 					if block.Thinking != "" {
 						reasoningContent = block.Thinking
 						hasReasoningInContent = true
+					}
+
+					if block.Signature != "" {
+						reasoningSignature = block.Signature
 					}
 				case "text":
 					contentParts = append(contentParts, llm.MessageContentPart{
@@ -186,9 +192,13 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 				hasContent = true
 			}
 
-			// Assign reasoning content if present and not in MultipleContent
+			// Assign reasoning content and signature if present
 			if reasoningContent != "" && hasReasoningInContent {
 				chatMsg.ReasoningContent = &reasoningContent
+			}
+
+			if reasoningSignature != "" {
+				chatMsg.ReasoningSignature = &reasoningSignature
 			}
 		}
 
@@ -272,10 +282,15 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 
 			// Handle reasoning content (thinking) first if present
 			if message.ReasoningContent != nil && *message.ReasoningContent != "" {
-				contentBlocks = append(contentBlocks, MessageContentBlock{
+				thinkingBlock := MessageContentBlock{
 					Type:     "thinking",
 					Thinking: *message.ReasoningContent,
-				})
+				}
+				if message.ReasoningSignature != nil && *message.ReasoningSignature != "" {
+					thinkingBlock.Signature = *message.ReasoningSignature
+				}
+
+				contentBlocks = append(contentBlocks, thinkingBlock)
 			}
 
 			// Handle regular content
@@ -372,24 +387,7 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 
 	// Convert usage
 	if chatResp.Usage != nil {
-		usage := &Usage{
-			InputTokens:  chatResp.Usage.PromptTokens,
-			OutputTokens: chatResp.Usage.CompletionTokens,
-		}
-
-		// Map detailed token information from unified model to Anthropic format
-		if chatResp.Usage.PromptTokensDetails != nil {
-			usage.CacheReadInputTokens = chatResp.Usage.PromptTokensDetails.CachedTokens
-		}
-
-		// Note: Anthropic doesn't have a direct equivalent for reasoning tokens in their current API
-		// but we can store it in cache_creation_input_tokens as a workaround if needed
-		if chatResp.Usage.CompletionTokensDetails != nil {
-			// For now, we don't map reasoning tokens as Anthropic doesn't have a direct field
-			// This could be extended in the future if Anthropic adds support
-		}
-
-		resp.Usage = usage
+		resp.Usage = convertToAnthropicUsage(chatResp.Usage)
 	}
 
 	return resp
