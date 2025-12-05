@@ -189,11 +189,11 @@ type Request struct {
 
 	ResponseFormat *ResponseFormat `json:"response_format,omitempty"`
 
-	// Extra parameters for gateway functionality
-	// TODO support.
-	// ExtraParams map[string]any `json:"extra_params,omitempty"`
-
 	// Help fields， will not be sent to the llm service.
+
+	// ExtraBody is helpful to extend the request for different providers.
+	// It will not be sent to the OpenAI server.
+	ExtraBody json.RawMessage `json:"extra_body,omitempty"`
 
 	// RawRequest is the raw request from the client.
 	RawRequest *httpclient.Request `json:"-"`
@@ -208,6 +208,8 @@ func (r *Request) ClearHelpFields() {
 		msg.ClearHelpFields()
 		r.Messages[i] = msg
 	}
+
+	r.ExtraBody = nil
 }
 
 func (r *Request) IsImageGenerationRequest() bool {

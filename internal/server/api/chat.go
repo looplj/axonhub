@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/gin-contrib/sse"
 	"github.com/gin-gonic/gin"
 
 	"github.com/looplj/axonhub/internal/log"
@@ -117,22 +118,15 @@ func WriteSSEStream(c *gin.Context, stream streams.Stream[*httpclient.StreamEven
 	}()
 
 	// Set SSE headers
-	c.Header("Content-Type", "text/event-stream")
+	c.Header("Content-Type", sse.ContentType)
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
 
-	clientGone := c.Writer.CloseNotify()
-
 	for {
 		select {
-		case <-clientGone:
+		case <-ctx.Done():
 			clientDisconnected = true
 
-			log.Warn(ctx, "Client disconnected, stopping stream")
-
-			return
-
-		case <-ctx.Done():
 			log.Warn(ctx, "Context done, stopping stream")
 
 			return
@@ -141,12 +135,13 @@ func WriteSSEStream(c *gin.Context, stream streams.Stream[*httpclient.StreamEven
 				cur := stream.Current()
 				c.SSEvent(cur.Type, cur.Data)
 				log.Debug(ctx, "write stream event", log.Any("event", cur))
-				c.Writer.Flush()
 			} else {
 				if stream.Err() != nil {
 					log.Error(ctx, "Error in stream", log.Cause(stream.Err()))
 					c.SSEvent("error", stream.Err())
 				}
+
+				c.Writer.Flush()
 
 				return
 			}

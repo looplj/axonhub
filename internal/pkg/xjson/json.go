@@ -1,6 +1,7 @@
 package xjson
 
 import (
+	"bytes"
 	"encoding/json"
 
 	"github.com/looplj/axonhub/internal/objects"
@@ -53,4 +54,8 @@ func Marshal(v any) (objects.JSONRawMessage, error) {
 
 		return objects.JSONRawMessage(b), nil
 	}
+}
+
+func IsNull(v json.RawMessage) bool {
+	return len(v) == 0 || bytes.Equal(v, NullJSON)
 }

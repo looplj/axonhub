@@ -64,11 +64,9 @@ func WriteJSONStream(c *gin.Context, stream streams.Stream[*httpclient.StreamEve
 	c.Header("Access-Control-Allow-Origin", "*")
 	c.Header("X-Vercel-AI-Data-Stream", "v1")
 
-	clientGone := c.Writer.CloseNotify()
-
 	for {
 		select {
-		case <-clientGone:
+		case <-ctx.Done():
 			clientDisconnected = true
 
 			log.Warn(ctx, "Client disconnected, stop streaming")

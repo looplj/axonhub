@@ -199,6 +199,18 @@ type GenerationConfig struct {
 
 	// ThinkingConfig is the thinking features configuration.
 	ThinkingConfig *ThinkingConfig `json:"thinkingConfig,omitempty"`
+
+	ImageConfig *ImageConfig `json:"imageConfig,omitempty"`
+}
+
+type ImageConfig struct {
+	// Optional. Aspect ratio of the generated images. Supported values are
+	// "1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", and "21:9".
+	AspectRatio string `json:"aspectRatio,omitempty"`
+	// Optional. Specifies the size of generated images. Supported
+	// values are `1K`, `2K`, `4K`. If not specified, the model will use default
+	// value `1K`.
+	ImageSize string `json:"imageSize,omitempty"`
 }
 
 // ThinkingConfig is the thinking features configuration.
@@ -208,6 +220,9 @@ type ThinkingConfig struct {
 
 	// ThinkingBudget is the thinking budget in tokens.
 	ThinkingBudget *int64 `json:"thinkingBudget,omitempty"`
+
+	// Optional. The level of thoughts tokens that the model should generate.
+	ThinkingLevel string `json:"thinkingLevel,omitempty"`
 }
 
 // SafetySetting is a safety setting.
@@ -255,10 +270,10 @@ type Candidate struct {
 	CitationMetadata *CitationMetadata `json:"citationMetadata,omitempty"`
 
 	// TokenCount is the number of tokens for this candidate.
-	TokenCount int64 `json:"tokenCount"`
+	TokenCount int64 `json:"tokenCount,omitempty"`
 
 	// AvgLogprobs is the average log probability score of the candidate.
-	AvgLogprobs float64 `json:"avgLogprobs"`
+	AvgLogprobs float64 `json:"avgLogprobs,omitempty"`
 
 	// LogprobsResult is the log-likelihood scores for the response tokens.
 	LogprobsResult *LogprobsResult `json:"logprobsResult,omitempty"`
