@@ -31,7 +31,7 @@ func TestConvertToChatCompletionResponse_WithThinking(t *testing.T) {
 		Model: "claude-3-sonnet-20240229",
 	}
 
-	result := convertToChatCompletionResponse(anthropicResp, PlatformDirect)
+	result := convertToLlmResponse(anthropicResp, PlatformDirect)
 
 	require.NotNil(t, result)
 	require.Len(t, result.Choices, 1)

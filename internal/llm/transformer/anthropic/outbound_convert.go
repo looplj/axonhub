@@ -15,317 +15,403 @@ func convertToAnthropicRequest(chatReq *llm.Request) *MessageRequest {
 	return convertToAnthropicRequestWithConfig(chatReq, nil)
 }
 
-func convertCacheControlToAnthropic(cacheControl *llm.CacheControl) *CacheControl {
-	if cacheControl == nil {
-		return nil
-	}
+// convertToAnthropicRequestWithConfig converts ChatCompletionRequest to Anthropic MessageRequest with config.
+func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *MessageRequest {
+	req := buildBaseRequest(chatReq, config)
+	req.Tools = convertTools(chatReq.Tools)
+	req.Messages = convertMessages(chatReq)
+	req.StopSequences = convertStopSequences(chatReq.Stop)
 
-	return &CacheControl{
-		Type: cacheControl.Type,
-		TTL:  cacheControl.TTL,
-	}
+	return req
 }
 
-// convertToAnthropicRequestWithConfig converts ChatCompletionRequest to Anthropic MessageRequest with config.
-//
-//nolint:maintidx // TODO: fix.
-func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *MessageRequest {
+// buildBaseRequest creates the base MessageRequest with common fields.
+func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 	req := &MessageRequest{
 		Model:       chatReq.Model,
 		Temperature: chatReq.Temperature,
 		TopP:        chatReq.TopP,
 		Stream:      chatReq.Stream,
 		System:      convertToAnthropicSystemPrompt(chatReq),
-	}
-	if chatReq.Metadata != nil {
-		if chatReq.Metadata["user_id"] != "" {
-			req.Metadata = &AnthropicMetadata{
-				UserID: chatReq.Metadata["user_id"],
-			}
-		}
+		MaxTokens:   resolveMaxTokens(chatReq),
 	}
 
-	// Convert ReasoningEffort to Thinking if present
-	// Priority: ReasoningBudget > config mapping > default mapping
+	if chatReq.Metadata != nil && chatReq.Metadata["user_id"] != "" {
+		req.Metadata = &AnthropicMetadata{UserID: chatReq.Metadata["user_id"]}
+	}
+
 	if chatReq.ReasoningEffort != "" {
-		var budgetTokens int64
-		if chatReq.ReasoningBudget != nil {
-			budgetTokens = *chatReq.ReasoningBudget
-		} else {
-			budgetTokens = getThinkingBudgetTokensWithConfig(chatReq.ReasoningEffort, config)
-		}
-
-		req.Thinking = &Thinking{
-			Type:         "enabled",
-			BudgetTokens: budgetTokens,
-		}
+		req.Thinking = buildThinking(chatReq, config)
 	}
 
-	// Set max_tokens (required for Anthropic)
-	if chatReq.MaxTokens != nil {
-		req.MaxTokens = *chatReq.MaxTokens
-	} else if chatReq.MaxCompletionTokens != nil {
-		req.MaxTokens = *chatReq.MaxCompletionTokens
-	} else {
-		// TODO: add a way to configure default max_tokens
-		req.MaxTokens = 4096
+	return req
+}
+
+// resolveMaxTokens determines the max_tokens value with fallback.
+func resolveMaxTokens(chatReq *llm.Request) int64 {
+	switch {
+	case chatReq.MaxTokens != nil:
+		return *chatReq.MaxTokens
+	case chatReq.MaxCompletionTokens != nil:
+		return *chatReq.MaxCompletionTokens
+	default:
+		return 4096
+	}
+}
+
+// buildThinking creates the Thinking configuration.
+func buildThinking(chatReq *llm.Request, config *Config) *Thinking {
+	budgetTokens := lo.FromPtrOr(chatReq.ReasoningBudget, getThinkingBudgetTokensWithConfig(chatReq.ReasoningEffort, config))
+
+	return &Thinking{
+		Type:         "enabled",
+		BudgetTokens: budgetTokens,
+	}
+}
+
+// convertTools converts LLM tools to Anthropic tools.
+func convertTools(tools []llm.Tool) []Tool {
+	if len(tools) == 0 {
+		return nil
 	}
 
-	// Convert tools if present
-	if len(chatReq.Tools) > 0 {
-		tools := make([]Tool, 0, len(chatReq.Tools))
-		for _, tool := range chatReq.Tools {
-			if tool.Type == "function" {
-				anthropicTool := Tool{
-					Name:         tool.Function.Name,
-					Description:  tool.Function.Description,
-					InputSchema:  tool.Function.Parameters,
-					CacheControl: convertCacheControlToAnthropic(tool.CacheControl),
-				}
-
-				tools = append(tools, anthropicTool)
-			}
+	return lo.FilterMap(tools, func(tool llm.Tool, _ int) (Tool, bool) {
+		if tool.Type != "function" {
+			return Tool{}, false
 		}
 
-		req.Tools = tools
+		return Tool{
+			Name:         tool.Function.Name,
+			Description:  tool.Function.Description,
+			InputSchema:  tool.Function.Parameters,
+			CacheControl: convertToAnthropicCacheControl(tool.CacheControl),
+		}, true
+	})
+}
+
+// convertStopSequences converts stop sequences.
+func convertStopSequences(stop *llm.Stop) []string {
+	if stop == nil {
+		return nil
 	}
 
-	// Convert messages
+	if stop.Stop != nil {
+		return []string{*stop.Stop}
+	}
+
+	if len(stop.MultipleStop) > 0 {
+		return stop.MultipleStop
+	}
+
+	return nil
+}
+
+// convertMessages converts all messages to Anthropic format.
+func convertMessages(chatReq *llm.Request) []MessageParam {
 	messages := make([]MessageParam, 0, len(chatReq.Messages))
-
-	processedToolMessageIndexes := make(map[int]bool)
+	processedIndexes := make(map[int]bool)
 
 	for _, msg := range chatReq.Messages {
-		// Handle system messages separately
 		if msg.Role == "system" {
 			continue
 		}
 
-		if msg.Role == "tool" {
-			// One tool call.
-			if msg.MessageIndex == nil {
-				messages = append(messages, MessageParam{
-					Role: "user",
-					Content: MessageContent{
-						MultipleContent: []MessageContentBlock{
-							{
-								Type:      "tool_result",
-								ToolUseID: msg.ToolCallID,
-								Content: &MessageContent{
-									Content: msg.Content.Content,
-								},
-								CacheControl: convertCacheControlToAnthropic(msg.CacheControl),
-							},
-						},
+		if converted, ok := convertSingleMessage(msg, chatReq.Messages, processedIndexes); ok {
+			messages = append(messages, converted...)
+		}
+	}
+
+	return messages
+}
+
+// convertSingleMessage handles conversion of a single message based on its role.
+func convertSingleMessage(msg llm.Message, allMessages []llm.Message, processedIndexes map[int]bool) ([]MessageParam, bool) {
+	switch msg.Role {
+	case "tool":
+		return convertToolMessage(msg, allMessages, processedIndexes)
+	case "user":
+		if msg.MessageIndex != nil && processedIndexes[*msg.MessageIndex] {
+			return nil, false
+		}
+
+		return convertUserMessage(msg)
+	case "assistant":
+		return convertAssistantMessage(msg)
+	default:
+		return nil, false
+	}
+}
+
+// convertToolMessage handles tool message conversion (single and parallel).
+func convertToolMessage(msg llm.Message, allMessages []llm.Message, processedIndexes map[int]bool) ([]MessageParam, bool) {
+	// Single tool call
+	if msg.MessageIndex == nil {
+		return []MessageParam{{
+			Role: "user",
+			Content: MessageContent{
+				MultipleContent: []MessageContentBlock{convertToToolResultBlock(msg)},
+			},
+		}}, true
+	}
+
+	// Parallel tool calls - skip if already processed
+	if processedIndexes[*msg.MessageIndex] {
+		return nil, false
+	}
+
+	toolMsgs := lo.Filter(allMessages, func(item llm.Message, _ int) bool {
+		return item.Role == "tool" && item.MessageIndex != nil && *item.MessageIndex == *msg.MessageIndex
+	})
+
+	if len(toolMsgs) == 0 {
+		return nil, false
+	}
+
+	contentBlocks := buildToolResultBlocks(toolMsgs)
+	contentBlocks = appendUserMessageBlocks(contentBlocks, allMessages, *msg.MessageIndex)
+
+	processedIndexes[*msg.MessageIndex] = true
+
+	return []MessageParam{{
+		Role:    "user",
+		Content: MessageContent{MultipleContent: contentBlocks},
+	}}, true
+}
+
+// buildToolResultBlocks creates tool_result blocks from tool messages.
+func buildToolResultBlocks(toolMsgs []llm.Message) []MessageContentBlock {
+	return lo.Map(toolMsgs, func(item llm.Message, _ int) MessageContentBlock {
+		return convertToToolResultBlock(item)
+	})
+}
+
+// appendUserMessageBlocks merges user message content with the same MessageIndex.
+func appendUserMessageBlocks(blocks []MessageContentBlock, allMessages []llm.Message, index int) []MessageContentBlock {
+	userMsgs := lo.Filter(allMessages, func(item llm.Message, _ int) bool {
+		return item.Role == "user" && item.MessageIndex != nil && *item.MessageIndex == index
+	})
+
+	for _, userMsg := range userMsgs {
+		userBlocks := convertToAnthropicTrivialContent(userMsg.Content).ExtractTrivalBlocks(convertToAnthropicCacheControl(userMsg.CacheControl))
+		blocks = append(blocks, userBlocks...)
+	}
+
+	return blocks
+}
+
+// convertUserMessage handles user message conversion.
+func convertUserMessage(msg llm.Message) ([]MessageParam, bool) {
+	content, ok := buildMessageContent(msg)
+	if !ok {
+		return nil, false
+	}
+
+	return []MessageParam{{Role: "user", Content: content}}, true
+}
+
+// convertAssistantMessage handles assistant message conversion.
+func convertAssistantMessage(msg llm.Message) ([]MessageParam, bool) {
+	if len(msg.ToolCalls) > 0 {
+		return convertAssistantWithToolCalls(msg)
+	}
+
+	content, ok := buildMessageContent(msg)
+	if !ok {
+		return nil, false
+	}
+
+	return []MessageParam{{Role: "assistant", Content: content}}, true
+}
+
+// convertAssistantWithToolCalls handles assistant messages that have tool calls.
+func convertAssistantWithToolCalls(msg llm.Message) ([]MessageParam, bool) {
+	preBlocks := buildPreBlocks(msg)
+	toolContent, hasToolContent := convertMultiplePartContent(msg)
+
+	switch {
+	case hasToolContent && len(preBlocks) > 0:
+		toolContent.MultipleContent = append(preBlocks, toolContent.MultipleContent...)
+	case hasToolContent:
+		// Use toolContent directly
+	case len(preBlocks) > 0:
+		toolContent = buildContentFromBlocks(preBlocks)
+	default:
+		return nil, false
+	}
+
+	return []MessageParam{{Role: "assistant", Content: toolContent}}, true
+}
+
+// buildPreBlocks creates thinking and text blocks that precede tool use.
+func buildPreBlocks(msg llm.Message) []MessageContentBlock {
+	var blocks []MessageContentBlock
+
+	if block := buildThinkingBlock(msg.ReasoningContent, msg.ReasoningSignature); block != nil {
+		blocks = append(blocks, *block)
+	}
+
+	if msg.Content.Content != nil && *msg.Content.Content != "" {
+		blocks = append(blocks, MessageContentBlock{
+			Type:         "text",
+			Text:         *msg.Content.Content,
+			CacheControl: convertToAnthropicCacheControl(msg.CacheControl),
+		})
+	}
+
+	return blocks
+}
+
+// buildContentFromBlocks converts blocks to MessageContent.
+func buildContentFromBlocks(blocks []MessageContentBlock) MessageContent {
+	if len(blocks) == 1 && blocks[0].Type == "text" {
+		return MessageContent{Content: &blocks[0].Text}
+	}
+
+	return MessageContent{MultipleContent: blocks}
+}
+
+// buildMessageContent creates message content with optional thinking block.
+func buildMessageContent(msg llm.Message) (MessageContent, bool) {
+	// Handle simple string content
+	if msg.Content.Content != nil {
+		if msg.CacheControl != nil || hasThinkingContent(msg) {
+			return buildMultipleContentWithThinking(msg), true
+		}
+
+		return MessageContent{Content: msg.Content.Content}, true
+	}
+
+	// Handle multiple content parts
+	if len(msg.Content.MultipleContent) > 0 {
+		return convertMultiplePartContent(msg)
+	}
+
+	return MessageContent{}, false
+}
+
+// hasThinkingContent checks if message has reasoning content.
+func hasThinkingContent(msg llm.Message) bool {
+	return msg.ReasoningContent != nil && *msg.ReasoningContent != ""
+}
+
+// buildMultipleContentWithThinking creates content blocks including thinking.
+func buildMultipleContentWithThinking(msg llm.Message) MessageContent {
+	blocks := make([]MessageContentBlock, 0, 2)
+
+	if block := buildThinkingBlock(msg.ReasoningContent, msg.ReasoningSignature); block != nil {
+		blocks = append(blocks, *block)
+	}
+
+	blocks = append(blocks, MessageContentBlock{
+		Type:         "text",
+		Text:         *msg.Content.Content,
+		CacheControl: convertToAnthropicCacheControl(msg.CacheControl),
+	})
+
+	return MessageContent{MultipleContent: blocks}
+}
+
+// buildThinkingBlock creates a thinking block from reasoning content.
+func buildThinkingBlock(reasoningContent, reasoningSignature *string) *MessageContentBlock {
+	if reasoningContent == nil || *reasoningContent == "" {
+		return nil
+	}
+
+	block := &MessageContentBlock{
+		Type:     "thinking",
+		Thinking: *reasoningContent,
+	}
+
+	if reasoningSignature != nil && *reasoningSignature != "" {
+		block.Signature = *reasoningSignature
+	}
+
+	return block
+}
+
+func convertToToolResultBlock(msg llm.Message) MessageContentBlock {
+	return MessageContentBlock{
+		Type:         "tool_result",
+		ToolUseID:    msg.ToolCallID,
+		Content:      convertToAnthropicTrivialContent(msg.Content),
+		CacheControl: convertToAnthropicCacheControl(msg.CacheControl),
+		IsError:      msg.ToolCallIsError,
+	}
+}
+
+// convertImageURLToAnthropicBlock converts image_url content part to Anthropic MessageContentBlock.
+func convertImageURLToAnthropicBlock(part llm.MessageContentPart) (MessageContentBlock, bool) {
+	if part.ImageURL == nil || part.ImageURL.URL == "" {
+		return MessageContentBlock{}, false
+	}
+
+	// Convert OpenAI image format to Anthropic format
+	// Extract media type and data from data URL
+	url := part.ImageURL.URL
+	if strings.HasPrefix(url, "data:") {
+		parts := strings.SplitN(url, ",", 2)
+		if len(parts) == 2 {
+			headerParts := strings.Split(parts[0], ";")
+			if len(headerParts) >= 2 {
+				mediaType := strings.TrimPrefix(headerParts[0], "data:")
+
+				return MessageContentBlock{
+					Type: "image",
+					Source: &ImageSource{
+						Type:      "base64",
+						MediaType: mediaType,
+						Data:      parts[1],
 					},
-				})
-			} else {
-				// Multiple tool calls.
-				// DeepSeek Anthropic require the request content be same with the response content, so we need to handle it.
-				if processedToolMessageIndexes[*msg.MessageIndex] {
-					continue
-				}
-
-				toolMsgs := lo.Filter(chatReq.Messages, func(item llm.Message, _ int) bool {
-					return item.Role == "tool" && item.MessageIndex != nil && *item.MessageIndex == *msg.MessageIndex
-				})
-				if len(toolMsgs) == 0 {
-					continue
-				}
-
-				// Build tool_result blocks
-				contentBlocks := lo.Map(toolMsgs, func(item llm.Message, _ int) MessageContentBlock {
-					var toolResultContent *MessageContent
-					if item.Content.Content != nil {
-						// String content - keep as string
-						toolResultContent = &MessageContent{
-							Content: item.Content.Content,
-						}
-					} else if len(item.Content.MultipleContent) > 0 {
-						// MultipleContent format - convert to Anthropic format
-						toolResultContent = &MessageContent{
-							MultipleContent: lo.Map(item.Content.MultipleContent, func(part llm.MessageContentPart, _ int) MessageContentBlock {
-								return MessageContentBlock{
-									Type: part.Type,
-									Text: lo.FromPtrOr(part.Text, ""),
-								}
-							}),
-						}
-					}
-
-					return MessageContentBlock{
-						Type:         "tool_result",
-						ToolUseID:    item.ToolCallID,
-						Content:      toolResultContent,
-						IsError:      item.ToolCallIsError,
-						CacheControl: convertCacheControlToAnthropic(item.CacheControl),
-					}
-				})
-
-				// Check if there's a user message with the same MessageIndex
-				// If so, merge the tool_result blocks with the user message content
-				userMsgAtSameIndex := lo.Filter(chatReq.Messages, func(item llm.Message, _ int) bool {
-					return item.Role == "user" && item.MessageIndex != nil && *item.MessageIndex == *msg.MessageIndex
-				})
-
-				if len(userMsgAtSameIndex) > 0 {
-					// There's a user message with the same MessageIndex
-					// Merge tool_result blocks with the user message content
-					for _, userMsg := range userMsgAtSameIndex {
-						if userMsg.Content.Content != nil && *userMsg.Content.Content != "" {
-							contentBlocks = append(contentBlocks, MessageContentBlock{
-								Type:         "text",
-								Text:         *userMsg.Content.Content,
-								CacheControl: convertCacheControlToAnthropic(userMsg.CacheControl),
-							})
-						} else if len(userMsg.Content.MultipleContent) > 0 {
-							// Handle multiple content parts
-							for _, part := range userMsg.Content.MultipleContent {
-								if part.Type == "text" && part.Text != nil {
-									contentBlocks = append(contentBlocks, MessageContentBlock{
-										Type:         "text",
-										Text:         *part.Text,
-										CacheControl: convertCacheControlToAnthropic(part.CacheControl),
-									})
-								}
-							}
-						}
-					}
-				}
-
-				messages = append(messages, MessageParam{
-					Role: "user",
-					Content: MessageContent{
-						MultipleContent: contentBlocks,
-					},
-				})
-				processedToolMessageIndexes[*msg.MessageIndex] = true
+					CacheControl: convertToAnthropicCacheControl(part.CacheControl),
+				}, true
 			}
-
-			continue
 		}
+	} else {
+		return MessageContentBlock{
+			Type: "image",
+			Source: &ImageSource{
+				Type: "url",
+				URL:  part.ImageURL.URL,
+			},
+			CacheControl: convertToAnthropicCacheControl(part.CacheControl),
+		}, true
+	}
 
-		// Skip user messages that were already merged with tool results
-		if msg.Role == "user" && msg.MessageIndex != nil && processedToolMessageIndexes[*msg.MessageIndex] {
-			continue
+	return MessageContentBlock{}, false
+}
+
+// convertToAnthropicTrivialContent converts llm.MessageContent to Anthropic MessageContent format.
+func convertToAnthropicTrivialContent(content llm.MessageContent) *MessageContent {
+	if content.Content != nil {
+		return &MessageContent{
+			Content: content.Content,
 		}
+	} else if len(content.MultipleContent) > 0 {
+		blocks := make([]MessageContentBlock, 0, len(content.MultipleContent))
 
-		anthropicMsg := MessageParam{
-			Role: lo.Ternary(msg.Role == "assistant", "assistant", "user"),
-		}
-
-		if len(msg.ToolCalls) > 0 {
-			var preBlocks []MessageContentBlock
-
-			if msg.ReasoningContent != nil && *msg.ReasoningContent != "" {
-				thinkingBlock := MessageContentBlock{
-					Type:     "thinking",
-					Thinking: *msg.ReasoningContent,
-				}
-				if msg.ReasoningSignature != nil && *msg.ReasoningSignature != "" {
-					thinkingBlock.Signature = *msg.ReasoningSignature
-				}
-
-				preBlocks = append(preBlocks, thinkingBlock)
-			}
-
-			if msg.Content.Content != nil && *msg.Content.Content != "" {
-				preBlocks = append(preBlocks, MessageContentBlock{
-					Type:         "text",
-					Text:         *msg.Content.Content,
-					CacheControl: convertCacheControlToAnthropic(msg.CacheControl),
-				})
-			}
-
-			content, existMultipleParts := convertMultiplePartContent(msg)
-
-			switch {
-			case existMultipleParts && len(preBlocks) > 0:
-				content.MultipleContent = append(preBlocks, content.MultipleContent...)
-			case existMultipleParts:
-				// Do nothing, reuse the content directly.
-			case len(preBlocks) > 0:
-				// If only has one block, we need to use single Content format.
-				if len(preBlocks) == 1 {
-					if preBlocks[0].Type == "text" {
-						content = MessageContent{
-							Content: &preBlocks[0].Text,
-						}
-					} else {
-						// This should not happen, but just in case.
-						content = MessageContent{
-							Content: &preBlocks[0].Thinking,
-						}
-					}
-				} else {
-					content = MessageContent{
-						MultipleContent: preBlocks,
-					}
-				}
-			default:
-				continue
-			}
-
-			anthropicMsg.Content = content
-			messages = append(messages, anthropicMsg)
-		} else {
-			if msg.Content.Content != nil {
-				// If message has cache control or reasoning content, we need to use MultipleContent format
-				if msg.CacheControl != nil || msg.ReasoningContent != nil {
-					contentBlocks := make([]MessageContentBlock, 0, 2)
-
-					// Add reasoning content (thinking) first if present
-					// This matches Anthropic's expected format where thinking comes before text
-					if msg.ReasoningContent != nil && *msg.ReasoningContent != "" {
-						thinkingBlock := MessageContentBlock{
-							Type:     "thinking",
-							Thinking: *msg.ReasoningContent,
-						}
-						if msg.ReasoningSignature != nil && *msg.ReasoningSignature != "" {
-							thinkingBlock.Signature = *msg.ReasoningSignature
-						}
-
-						contentBlocks = append(contentBlocks, thinkingBlock)
-					}
-
-					// Add text content
-					contentBlocks = append(contentBlocks, MessageContentBlock{
+		for _, part := range content.MultipleContent {
+			switch part.Type {
+			case "text":
+				if part.Text != nil {
+					blocks = append(blocks, MessageContentBlock{
 						Type:         "text",
-						Text:         *msg.Content.Content,
-						CacheControl: convertCacheControlToAnthropic(msg.CacheControl),
+						Text:         *part.Text,
+						CacheControl: convertToAnthropicCacheControl(part.CacheControl),
 					})
-
-					anthropicMsg.Content = MessageContent{
-						MultipleContent: contentBlocks,
-					}
-				} else {
-					anthropicMsg.Content = MessageContent{
-						Content: msg.Content.Content,
-					}
 				}
-
-				messages = append(messages, anthropicMsg)
-			} else if len(msg.Content.MultipleContent) > 0 {
-				content, ok := convertMultiplePartContent(msg)
-				if ok {
-					anthropicMsg.Content = content
-					messages = append(messages, anthropicMsg)
+			case "image_url":
+				if block, ok := convertImageURLToAnthropicBlock(part); ok {
+					blocks = append(blocks, block)
 				}
 			}
 		}
-	}
 
-	req.Messages = messages
-
-	if chatReq.Stop != nil {
-		if chatReq.Stop.Stop != nil {
-			req.StopSequences = []string{*chatReq.Stop.Stop}
-		} else if len(chatReq.Stop.MultipleStop) > 0 {
-			req.StopSequences = chatReq.Stop.MultipleStop
+		return &MessageContent{
+			MultipleContent: blocks,
 		}
 	}
 
-	return req
+	return nil
 }
 
 func convertToAnthropicSystemPrompt(chatReq *llm.Request) *SystemPrompt {
@@ -347,7 +433,7 @@ func convertToAnthropicSystemPrompt(chatReq *llm.Request) *SystemPrompt {
 				part := SystemPromptPart{
 					Type:         "text",
 					Text:         *msg.Content.Content,
-					CacheControl: convertCacheControlToAnthropic(msg.CacheControl),
+					CacheControl: convertToAnthropicCacheControl(msg.CacheControl),
 				}
 
 				return part
@@ -367,7 +453,7 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 				blocks = append(blocks, MessageContentBlock{
 					Type:         "text",
 					Text:         *part.Text,
-					CacheControl: convertCacheControlToAnthropic(part.CacheControl),
+					CacheControl: convertToAnthropicCacheControl(part.CacheControl),
 				})
 			}
 		case "image_url":
@@ -388,7 +474,7 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 									MediaType: mediaType,
 									Data:      parts[1],
 								},
-								CacheControl: convertCacheControlToAnthropic(part.CacheControl),
+								CacheControl: convertToAnthropicCacheControl(part.CacheControl),
 							}
 
 							blocks = append(blocks, block)
@@ -401,7 +487,7 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 							Type: "url",
 							URL:  part.ImageURL.URL,
 						},
-						CacheControl: convertCacheControlToAnthropic(part.CacheControl),
+						CacheControl: convertToAnthropicCacheControl(part.CacheControl),
 					}
 
 					blocks = append(blocks, block)
@@ -417,7 +503,7 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 			ID:           toolCall.ID,
 			Name:         &toolCall.Function.Name,
 			Input:        xjson.SafeJSONRawMessage(toolCall.Function.Arguments),
-			CacheControl: convertCacheControlToAnthropic(toolCall.CacheControl),
+			CacheControl: convertToAnthropicCacheControl(toolCall.CacheControl),
 		})
 	}
 
@@ -430,8 +516,8 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 	}, true
 }
 
-// convertToChatCompletionResponse converts Anthropic Message to unified Response format.
-func convertToChatCompletionResponse(anthropicResp *Message, platformType PlatformType) *llm.Response {
+// convertToLlmResponse converts Anthropic Message to unified Response format.
+func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *llm.Response {
 	if anthropicResp == nil {
 		return &llm.Response{
 			ID:      "",
@@ -527,7 +613,7 @@ func convertToChatCompletionResponse(anthropicResp *Message, platformType Platfo
 	choice := llm.Choice{
 		Index:        0,
 		Message:      message,
-		FinishReason: convertFinishReason(anthropicResp.StopReason),
+		FinishReason: convertToLlmFinishReason(anthropicResp.StopReason),
 	}
 
 	resp.Choices = []llm.Choice{choice}
@@ -537,7 +623,7 @@ func convertToChatCompletionResponse(anthropicResp *Message, platformType Platfo
 	return resp
 }
 
-func convertFinishReason(stopReason *string) *string {
+func convertToLlmFinishReason(stopReason *string) *string {
 	if stopReason == nil {
 		return nil
 	}

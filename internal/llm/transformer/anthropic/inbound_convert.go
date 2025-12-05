@@ -48,7 +48,7 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 					Content: llm.MessageContent{
 						Content: &prompt.Text,
 					},
-					CacheControl: prompt.CacheControl.ToLLMCacheControl(),
+					CacheControl: convertToLLMCacheControl(prompt.CacheControl),
 				}
 				messages = append(messages, msg)
 			}
@@ -99,14 +99,14 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 					contentParts = append(contentParts, llm.MessageContentPart{
 						Type:         "text",
 						Text:         &block.Text,
-						CacheControl: block.CacheControl.ToLLMCacheControl(),
+						CacheControl: convertToLLMCacheControl(block.CacheControl),
 					})
 					hasContent = true
 				case "image":
 					if block.Source != nil {
 						part := llm.MessageContentPart{
 							Type:         "image_url",
-							CacheControl: block.CacheControl.ToLLMCacheControl(),
+							CacheControl: convertToLLMCacheControl(block.CacheControl),
 						}
 						if block.Source.Type == "base64" {
 							// Convert Anthropic image format to OpenAI format
@@ -131,7 +131,7 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 							Role:            "tool",
 							MessageIndex:    lo.ToPtr(msgIndex),
 							ToolCallID:      block.ToolUseID,
-							CacheControl:    block.CacheControl.ToLLMCacheControl(),
+							CacheControl:    convertToLLMCacheControl(block.CacheControl),
 							ToolCallIsError: block.IsError,
 						}
 
@@ -167,7 +167,7 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 							Name:      lo.FromPtr(block.Name),
 							Arguments: string(block.Input),
 						},
-						CacheControl: block.CacheControl.ToLLMCacheControl(),
+						CacheControl: convertToLLMCacheControl(block.CacheControl),
 					})
 					hasContent = true
 				}
@@ -227,7 +227,7 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 					Description: tool.Description,
 					Parameters:  tool.InputSchema,
 				},
-				CacheControl: tool.CacheControl.ToLLMCacheControl(),
+				CacheControl: convertToLLMCacheControl(tool.CacheControl),
 			}
 			tools = append(tools, llmTool)
 		}
