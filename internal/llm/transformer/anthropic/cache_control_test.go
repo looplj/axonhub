@@ -16,7 +16,7 @@ func TestCacheControl_ToLLMCacheControl(t *testing.T) {
 	t.Run("nil cache control", func(t *testing.T) {
 		var cc *CacheControl
 
-		result := cc.ToLLMCacheControl()
+		result := convertToLLMCacheControl(cc)
 		require.Nil(t, result)
 	})
 
@@ -24,7 +24,7 @@ func TestCacheControl_ToLLMCacheControl(t *testing.T) {
 		cc := &CacheControl{
 			Type: "ephemeral",
 		}
-		result := cc.ToLLMCacheControl()
+		result := convertToLLMCacheControl(cc)
 		require.NotNil(t, result)
 		require.Equal(t, "ephemeral", result.Type)
 		require.Equal(t, "", result.TTL)
@@ -35,7 +35,7 @@ func TestCacheControl_ToLLMCacheControl(t *testing.T) {
 			Type: "ephemeral",
 			TTL:  "5m",
 		}
-		result := cc.ToLLMCacheControl()
+		result := convertToLLMCacheControl(cc)
 		require.NotNil(t, result)
 		require.Equal(t, "ephemeral", result.Type)
 		require.Equal(t, "5m", result.TTL)
@@ -44,7 +44,7 @@ func TestCacheControl_ToLLMCacheControl(t *testing.T) {
 
 func TestConvertCacheControlToAnthropic(t *testing.T) {
 	t.Run("nil cache control", func(t *testing.T) {
-		result := convertCacheControlToAnthropic(nil)
+		result := convertToAnthropicCacheControl(nil)
 		require.Nil(t, result)
 	})
 
@@ -52,7 +52,7 @@ func TestConvertCacheControlToAnthropic(t *testing.T) {
 		cc := &llm.CacheControl{
 			Type: "ephemeral",
 		}
-		result := convertCacheControlToAnthropic(cc)
+		result := convertToAnthropicCacheControl(cc)
 		require.NotNil(t, result)
 		require.Equal(t, "ephemeral", result.Type)
 		require.Equal(t, "", result.TTL)
@@ -63,7 +63,7 @@ func TestConvertCacheControlToAnthropic(t *testing.T) {
 			Type: "ephemeral",
 			TTL:  "1h",
 		}
-		result := convertCacheControlToAnthropic(cc)
+		result := convertToAnthropicCacheControl(cc)
 		require.NotNil(t, result)
 		require.Equal(t, "ephemeral", result.Type)
 		require.Equal(t, "1h", result.TTL)

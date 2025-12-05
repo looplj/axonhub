@@ -282,7 +282,7 @@ func (t *OutboundTransformer) TransformResponse(
 	}
 
 	// Convert to ChatCompletionResponse
-	chatResp := convertToChatCompletionResponse(&anthropicResp, t.config.Type)
+	chatResp := convertToLlmResponse(&anthropicResp, t.config.Type)
 
 	return chatResp, nil
 }
