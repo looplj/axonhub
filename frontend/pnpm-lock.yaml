@@ -30,8 +30,8 @@ importers:
         specifier: ^5.1.1
         version: 5.1.1(react-hook-form@7.58.1(react@19.2.0))
       '@lobehub/icons':
-        specifier: ^2.43.1
-        version: 2.43.1(@babel/core@7.28.5)(@types/react@19.2.2)(acorn@8.15.0)(antd@5.27.0(date-fns@4.1.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(framer-motion@11.18.2(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        specifier: ^2.44.0
+        version: 2.44.0(@babel/core@7.28.5)(@types/react@19.2.2)(acorn@8.15.0)(antd@5.27.0(date-fns@4.1.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(framer-motion@11.18.2(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@radix-ui/react-alert-dialog':
         specifier: ^1.1.14
         version: 1.1.14(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -1037,8 +1037,8 @@ packages:
       react: ^19.0.0
       react-dom: ^19.0.0
 
-  '@lobehub/icons@2.43.1':
-    resolution: {integrity: sha512-kva7fS6JwsOxoEqk4T1XZmRdmm9f+C2Enssin54MpTj7fduwYSG6oGgFgyYZ7RQq3eW5b5mnyO2SPIXU39xVsQ==}
+  '@lobehub/icons@2.44.0':
+    resolution: {integrity: sha512-kfMzMJUNPvgg8WhYUoSJdaSNRGxvniZxnIqwsrMi9Dpz48RRAO35Y6xjGQevHvXEI/sKlBDq46x9NW3WA7G3Ew==}
     peerDependencies:
       antd: ^5.23.0
       react: ^19.0.0
@@ -6333,7 +6333,7 @@ snapshots:
       - framer-motion
       - supports-color
 
-  '@lobehub/icons@2.43.1(@babel/core@7.28.5)(@types/react@19.2.2)(acorn@8.15.0)(antd@5.27.0(date-fns@4.1.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(framer-motion@11.18.2(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+  '@lobehub/icons@2.44.0(@babel/core@7.28.5)(@types/react@19.2.2)(acorn@8.15.0)(antd@5.27.0(date-fns@4.1.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(framer-motion@11.18.2(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
       '@lobehub/ui': 2.9.4(@babel/core@7.28.5)(@types/react@19.2.2)(acorn@8.15.0)(antd@5.27.0(date-fns@4.1.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(framer-motion@11.18.2(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       antd: 5.27.0(date-fns@4.1.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -6362,7 +6362,7 @@ snapshots:
       '@floating-ui/react': 0.27.15(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@giscus/react': 3.1.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@lobehub/fluent-emoji': 2.0.0(@babel/core@7.28.5)(@types/react@19.2.2)(acorn@8.15.0)(antd@5.27.0(date-fns@4.1.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(framer-motion@11.18.2(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
-      '@lobehub/icons': 2.43.1(@babel/core@7.28.5)(@types/react@19.2.2)(acorn@8.15.0)(antd@5.27.0(date-fns@4.1.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(framer-motion@11.18.2(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      '@lobehub/icons': 2.44.0(@babel/core@7.28.5)(@types/react@19.2.2)(acorn@8.15.0)(antd@5.27.0(date-fns@4.1.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(framer-motion@11.18.2(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@mdx-js/mdx': 3.1.0(acorn@8.15.0)
       '@mdx-js/react': 3.1.0(@types/react@19.2.2)(react@19.2.0)
       '@radix-ui/react-slot': 1.2.3(@types/react@19.2.2)(react@19.2.0)

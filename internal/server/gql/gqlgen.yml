@@ -7,6 +7,9 @@ schema:
   - me.graphql
   - system.graphql
 
+
+omit_gqlgen_version_in_file_notice: true
+
 #exec:
 #  layout: follow-schema
 #  dir: ./graph
