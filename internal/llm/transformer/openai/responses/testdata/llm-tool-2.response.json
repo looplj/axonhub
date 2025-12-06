@@ -1,0 +1,39 @@
+{
+  "id": "resp_020592949fb9ce090069355e9a54788196911d78a6360a88f2",
+  "object": "response",
+  "created_at": 1765105306,
+  "status": "completed",
+  "model": "gpt-4o",
+  "output": [
+    {
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "Hello! I'm an AI assistant designed to help with a wide range of tasks, including answering math questions and providing current weather information. For your project, I'll first calculate the product of 25 and 4, and then I'll retrieve the current weather conditions in Tokyo.\n\nI'll be using dedicated tools for these tasks:\n\n1. A calculation tool to find the product of 25 multiplied by 4.\n2. A weather information tool to get the latest weather update for Tokyo.\n\nLet's start with the calculations and weather retrieval. I'll execute both tasks simultaneously to save time."
+        }
+      ],
+      "role": "assistant"
+    },
+    {
+      "type": "function_call",
+      "status": "completed",
+      "call_id": "call_zfEfzIJcwVLuoHXhbdyXeb77",
+      "name": "calculate",
+      "arguments": "{\"expression\":\"25 * 4\"}"
+    },
+    {
+      "type": "function_call",
+      "status": "completed",
+      "call_id": "call_QGIzrBsREQ0xDM1snIlUGG78",
+      "name": "get_current_weather",
+      "arguments": "{\"location\":\"Tokyo\"}"
+    }
+  ],
+  "usage": {
+    "input_tokens": 100,
+    "output_tokens": 150,
+    "total_tokens": 250
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "model": "deepseek-chat",
+  "messages": [
+    {
+      "role": "user",
+      "content": "My name is Alice."
+    },
+    {
+      "role": "assistant",
+      "content": "Hello Alice. How can I help you today?"
+    },
+    {
+      "role": "user",
+      "content": "I live in Paris."
+    },
+    {
+      "role": "assistant",
+      "content": "That's a lovely combination! Paris is a wonderful city."
+    },
+    {
+      "role": "user",
+      "content": "What is my name?"
+    },
+    {
+      "role": "assistant",
+      "content": "Your name is Alice."
+    },
+    {
+      "role": "user",
+      "content": "Where do I live?"
+    }
+  ]
+}

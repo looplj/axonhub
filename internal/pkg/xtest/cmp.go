@@ -39,6 +39,14 @@ func nilString(x *string) string {
 	return *x
 }
 
+func nilInt(x *int) int {
+	if x == nil {
+		return 0
+	}
+
+	return *x
+}
+
 // Equal provides semantic equality comparison with custom transformers and comparers.
 func Equal(a, b any, opts ...cmp.Option) bool {
 	allOpts := append(opts,
@@ -46,6 +54,7 @@ func Equal(a, b any, opts ...cmp.Option) bool {
 		NilPromptTokensDetails,
 		ToolCallsTransformer,
 		cmp.Transformer("", nilString),
+		cmp.Transformer("", nilInt),
 		cmp.Comparer(jsonRawMessageComparer))
 
 	return cmp.Equal(a, b, allOpts...)

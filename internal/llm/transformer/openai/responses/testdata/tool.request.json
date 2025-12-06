@@ -1,0 +1,72 @@
+{
+  "input": [
+    {
+      "content": [
+        {
+          "text": "What is the weather in Tokyo and calculate 365 * 24 for me?",
+          "type": "input_text"
+        }
+      ],
+      "role": "user"
+    },
+    {
+      "arguments": "{\"location\":\"Tokyo\"}",
+      "call_id": "call_37aa88bd3ce546eab836c2614035fd26",
+      "name": "get_current_weather",
+      "type": "function_call"
+    },
+    {
+      "call_id": "call_37aa88bd3ce546eab836c2614035fd26",
+      "output": "Current weather in Tokyo: 25°C, Sunny, humidity 60%",
+      "type": "function_call_output"
+    },
+    {
+      "arguments": "{\"expression\":\"365 * 24\"}",
+      "call_id": "call_7247ea7c0a1e4c6b9faef8f1687ead66",
+      "name": "calculate",
+      "type": "function_call"
+    },
+    {
+      "call_id": "call_7247ea7c0a1e4c6b9faef8f1687ead66",
+      "output": "8760",
+      "type": "function_call_output"
+    }
+  ],
+  "model": "deepseek-chat",
+  "tools": [
+    {
+      "strict": true,
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "expression": {
+            "description": "The mathematical expression to evaluate",
+            "type": "string"
+          }
+        },
+        "required": ["expression"],
+        "type": "object"
+      },
+      "name": "calculate",
+      "description": "Perform mathematical calculations",
+      "type": "function"
+    },
+    {
+      "strict": true,
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "location": {
+            "description": "The city name to get weather for",
+            "type": "string"
+          }
+        },
+        "required": ["location"],
+        "type": "object"
+      },
+      "name": "get_current_weather",
+      "description": "Get the current weather for a specified location",
+      "type": "function"
+    }
+  ]
+}

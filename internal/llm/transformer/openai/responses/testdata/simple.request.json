@@ -1,0 +1,77 @@
+{
+  "input": [
+    {
+      "content": [
+        {
+          "text": "My name is Alice.",
+          "type": "input_text"
+        }
+      ],
+      "role": "user"
+    },
+    {
+      "content": [
+        {
+          "annotations": [],
+          "text": "Hello Alice. How can I help you today?",
+          "type": "output_text"
+        }
+      ],
+      "status": "completed",
+      "role": "assistant",
+      "type": "message"
+    },
+    {
+      "content": [
+        {
+          "text": "I live in Paris.",
+          "type": "input_text"
+        }
+      ],
+      "role": "user"
+    },
+    {
+      "content": [
+        {
+          "annotations": [],
+          "text": "That's a lovely combination! Paris is a wonderful city.",
+          "type": "output_text"
+        }
+      ],
+      "status": "completed",
+      "role": "assistant",
+      "type": "message"
+    },
+    {
+      "content": [
+        {
+          "text": "What is my name?",
+          "type": "input_text"
+        }
+      ],
+      "role": "user"
+    },
+    {
+      "content": [
+        {
+          "annotations": [],
+          "text": "Your name is Alice.",
+          "type": "output_text"
+        }
+      ],
+      "status": "completed",
+      "role": "assistant",
+      "type": "message"
+    },
+    {
+      "content": [
+        {
+          "text": "Where do I live?",
+          "type": "input_text"
+        }
+      ],
+      "role": "user"
+    }
+  ],
+  "model": "deepseek-chat"
+}

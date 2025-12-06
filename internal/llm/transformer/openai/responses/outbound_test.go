@@ -214,7 +214,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			},
 		},
 		{
-			name: "request with unsupported tool type",
+			name: "request with unsupported tool type is skipped",
 			chatReq: &llm.Request{
 				Model: "gpt-4o",
 				Messages: []llm.Message{
@@ -231,7 +231,131 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 					},
 				},
 			},
-			expectError: true,
+			expectError: false,
+			validate: func(t *testing.T, result *httpclient.Request, chatReq *llm.Request) {
+				var req Request
+
+				err := json.Unmarshal(result.Body, &req)
+				require.NoError(t, err)
+				// Unsupported tools should be skipped
+				require.Len(t, req.Tools, 0)
+			},
+		},
+		{
+			name: "request with function tool",
+			chatReq: &llm.Request{
+				Model: "gpt-4o",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("What's the weather?"),
+						},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type: "function",
+						Function: llm.Function{
+							Name:        "get_weather",
+							Description: "Get weather information",
+							Parameters:  []byte(`{"type":"object","properties":{"location":{"type":"string"}}}`),
+						},
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *httpclient.Request, chatReq *llm.Request) {
+				var req Request
+
+				err := json.Unmarshal(result.Body, &req)
+				require.NoError(t, err)
+				require.Len(t, req.Tools, 1)
+				require.Equal(t, "function", req.Tools[0].Type)
+				require.Equal(t, "get_weather", req.Tools[0].Name)
+				require.Equal(t, "Get weather information", req.Tools[0].Description)
+			},
+		},
+		{
+			name: "request with reasoning effort",
+			chatReq: &llm.Request{
+				Model:           "o3",
+				ReasoningEffort: "high",
+				ReasoningBudget: lo.ToPtr(int64(5000)),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Solve this problem"),
+						},
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *httpclient.Request, chatReq *llm.Request) {
+				var req Request
+
+				err := json.Unmarshal(result.Body, &req)
+				require.NoError(t, err)
+				require.NotNil(t, req.Reasoning)
+				require.Equal(t, "high", req.Reasoning.Effort)
+				require.NotNil(t, req.Reasoning.MaxTokens)
+				require.Equal(t, int64(5000), *req.Reasoning.MaxTokens)
+			},
+		},
+		{
+			name: "request with tool choice",
+			chatReq: &llm.Request{
+				Model: "gpt-4o",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello"),
+						},
+					},
+				},
+				ToolChoice: &llm.ToolChoice{
+					ToolChoice: lo.ToPtr("auto"),
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *httpclient.Request, chatReq *llm.Request) {
+				var req Request
+
+				err := json.Unmarshal(result.Body, &req)
+				require.NoError(t, err)
+				require.NotNil(t, req.ToolChoice)
+				require.NotNil(t, req.ToolChoice.Mode)
+				require.Equal(t, "auto", *req.ToolChoice.Mode)
+			},
+		},
+		{
+			name: "request with top_p and top_logprobs",
+			chatReq: &llm.Request{
+				Model:       "gpt-4o",
+				TopP:        lo.ToPtr(0.9),
+				TopLogprobs: lo.ToPtr(int64(5)),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello"),
+						},
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *httpclient.Request, chatReq *llm.Request) {
+				var req Request
+
+				err := json.Unmarshal(result.Body, &req)
+				require.NoError(t, err)
+				require.NotNil(t, req.TopP)
+				require.Equal(t, 0.9, *req.TopP)
+				require.NotNil(t, req.TopLogprobs)
+				require.Equal(t, int64(5), *req.TopLogprobs)
+			},
 		},
 		{
 			name: "request with streaming enabled",

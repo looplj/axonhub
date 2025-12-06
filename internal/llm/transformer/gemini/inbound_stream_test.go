@@ -1,11 +1,8 @@
 package gemini
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
-	"os"
-	"strings"
 	"testing"
 
 	"github.com/samber/lo"
@@ -14,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
+	"github.com/looplj/axonhub/internal/pkg/xtest"
 )
 
 func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
@@ -678,7 +676,7 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Load LLM format responses
-			llmResponses, err := loadLLMResponses(t, tt.inputStreamFile)
+			llmResponses, err := xtest.LoadLlmResponses(t, tt.inputStreamFile)
 			require.NoError(t, err)
 
 			// Create a mock stream from LLM responses
@@ -716,78 +714,6 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 			}
 		})
 	}
-}
-
-// loadLLMResponses loads LLM responses from a JSONL file in testdata directory.
-func loadLLMResponses(t *testing.T, filename string) ([]*llm.Response, error) {
-	t.Helper()
-
-	chunks, err := loadStreamChunks(t, filename)
-	if err != nil {
-		return nil, err
-	}
-
-	var responses []*llm.Response
-
-	for _, chunk := range chunks {
-		if chunk == nil || len(chunk.Data) == 0 {
-			continue
-		}
-
-		// Check for DONE marker
-		if string(chunk.Data) == "[DONE]" {
-			responses = append(responses, llm.DoneResponse)
-			continue
-		}
-
-		var resp llm.Response
-		if err := json.Unmarshal(chunk.Data, &resp); err != nil {
-			return nil, err
-		}
-
-		responses = append(responses, &resp)
-	}
-
-	return responses, nil
-}
-
-// loadStreamChunks loads stream chunks from a JSONL file in testdata directory.
-func loadStreamChunks(t *testing.T, filename string) ([]*httpclient.StreamEvent, error) {
-	t.Helper()
-
-	file, err := os.Open("testdata/" + filename)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	var chunks []*httpclient.StreamEvent
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-
-		var temp struct {
-			LastEventID string `json:"LastEventID"`
-			Type        string `json:"Type"`
-			Data        string `json:"Data"`
-		}
-
-		if err := json.Unmarshal([]byte(line), &temp); err != nil {
-			return nil, err
-		}
-
-		chunks = append(chunks, &httpclient.StreamEvent{
-			LastEventID: temp.LastEventID,
-			Type:        temp.Type,
-			Data:        []byte(temp.Data),
-		})
-	}
-
-	return chunks, scanner.Err()
 }
 
 func TestInboundTransformer_TransformStreamChunk_FinishReasons(t *testing.T) {
