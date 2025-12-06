@@ -9,6 +9,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/llm"
+	geminioai "github.com/looplj/axonhub/internal/llm/transformer/gemini/openai"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
 )
 
@@ -18,6 +19,8 @@ func convertLLMToGeminiRequest(chatReq *llm.Request) *GenerateContentRequest {
 }
 
 // convertLLMToGeminiRequestWithConfig converts unified Request to Gemini GenerateContentRequest with config.
+//
+//nolint:maintidx // Checked.
 func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *GenerateContentRequest {
 	req := &GenerateContentRequest{}
 
@@ -68,9 +71,49 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 		hasGenerationConfig = true
 	}
 
+	// Priority 1: Parse ExtraBody from llm.Request (higher priority)
+	var hasExtraBodyThinkingConfig bool
+
+	if len(chatReq.ExtraBody) > 0 {
+		extraBody := geminioai.ParseExtraBody(chatReq.ExtraBody)
+		if extraBody != nil && extraBody.Google != nil && extraBody.Google.ThinkingConfig != nil {
+			// Convert geminioai.ThinkingConfig to gemini.ThinkingConfig
+			geminiThinkingConfig := &ThinkingConfig{
+				IncludeThoughts: extraBody.Google.ThinkingConfig.IncludeThoughts,
+			}
+
+			// Handle ThinkingBudget conversion
+			if extraBody.Google.ThinkingConfig.ThinkingBudget != nil {
+				if extraBody.Google.ThinkingConfig.ThinkingBudget.IntValue != nil {
+					geminiThinkingConfig.ThinkingBudget = lo.ToPtr(int64(*extraBody.Google.ThinkingConfig.ThinkingBudget.IntValue))
+				} else if extraBody.Google.ThinkingConfig.ThinkingBudget.StringValue != nil {
+					// For string values, we'll need to map them or set a default
+					// For now, set a reasonable default for string values
+					switch strings.ToLower(*extraBody.Google.ThinkingConfig.ThinkingBudget.StringValue) {
+					case "low":
+						geminiThinkingConfig.ThinkingBudget = lo.ToPtr(int64(1024))
+					case "high":
+						geminiThinkingConfig.ThinkingBudget = lo.ToPtr(int64(24576))
+					default:
+						geminiThinkingConfig.ThinkingBudget = lo.ToPtr(int64(8192)) // medium
+					}
+				}
+			}
+
+			// Set ThinkingLevel if present
+			if extraBody.Google.ThinkingConfig.ThinkingLevel != "" {
+				geminiThinkingConfig.ThinkingLevel = extraBody.Google.ThinkingConfig.ThinkingLevel
+			}
+
+			gc.ThinkingConfig = geminiThinkingConfig
+			hasGenerationConfig = true
+			hasExtraBodyThinkingConfig = true
+		}
+	}
+
 	// Convert reasoning effort to thinking config
-	// Priority: ReasoningBudget > config mapping > default mapping
-	if chatReq.ReasoningEffort != "" {
+	// Priority: ExtraBody > ReasoningBudget > config mapping > default mapping
+	if !hasExtraBodyThinkingConfig && chatReq.ReasoningEffort != "" {
 		var thinkingBudget int64
 		if chatReq.ReasoningBudget != nil {
 			thinkingBudget = *chatReq.ReasoningBudget

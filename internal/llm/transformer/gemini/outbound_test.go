@@ -1,6 +1,8 @@
 package gemini
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/samber/lo"
@@ -305,4 +307,189 @@ func TestNewOutboundTransformerWithConfig(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTransformRequestWithExtraBody(t *testing.T) {
+	tests := []struct {
+		name        string
+		request     *llm.Request
+		expectError bool
+		description string
+	}{
+		{
+			name: "request with extra body thinking config integer budget",
+			request: &llm.Request{
+				Model: "gemini-2.5-flash",
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
+					},
+				},
+				ExtraBody: json.RawMessage(`{
+					"google": {
+						"thinking_config": {
+							"thinking_budget": 8192,
+							"thinking_level": "high",
+							"include_thoughts": true
+						}
+					}
+				}`),
+			},
+			expectError: false,
+			description: "Should convert extra body thinking config to Gemini format",
+		},
+		{
+			name: "request with extra body thinking config string budget",
+			request: &llm.Request{
+				Model: "gemini-2.5-flash",
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
+					},
+				},
+				ExtraBody: json.RawMessage(`{
+					"google": {
+						"thinking_config": {
+							"thinking_budget": "low",
+							"thinking_level": "low",
+							"include_thoughts": true
+						}
+					}
+				}`),
+			},
+			expectError: false,
+			description: "Should convert string thinking budget to integer",
+		},
+		{
+			name: "request with extra body and reasoning effort (extra body should take priority)",
+			request: &llm.Request{
+				Model: "gemini-2.5-flash",
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
+					},
+				},
+				ReasoningEffort: "high",
+				ExtraBody: json.RawMessage(`{
+					"google": {
+						"thinking_config": {
+							"thinking_budget": 1024,
+							"thinking_level": "low",
+							"include_thoughts": true
+						}
+					}
+				}`),
+			},
+			expectError: false,
+			description: "Extra body should take priority over reasoning_effort",
+		},
+		{
+			name: "request with invalid extra body",
+			request: &llm.Request{
+				Model: "gemini-2.5-flash",
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
+					},
+				},
+				ExtraBody: json.RawMessage(`{invalid`),
+			},
+			expectError: false,
+			description: "Should handle invalid extra body gracefully",
+		},
+		{
+			name: "request with empty extra body",
+			request: &llm.Request{
+				Model: "gemini-2.5-flash",
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
+					},
+				},
+				ExtraBody: json.RawMessage{},
+			},
+			expectError: false,
+			description: "Should handle empty extra body gracefully",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			transformer, err := NewOutboundTransformer("https://generativelanguage.googleapis.com", "test-key")
+			require.NoError(t, err)
+			require.NotNil(t, transformer)
+
+			httpReq, err := transformer.TransformRequest(nil, tt.request)
+			if tt.expectError {
+				require.Error(t, err)
+				require.Nil(t, httpReq)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, httpReq)
+
+				// Verify the request body contains the expected thinking config
+				var geminiReq GenerateContentRequest
+
+				err = json.Unmarshal(httpReq.Body, &geminiReq)
+				require.NoError(t, err)
+
+				if len(tt.request.ExtraBody) > 0 && string(tt.request.ExtraBody) != "{invalid" {
+					// Should have thinking config from extra body
+					require.NotNil(t, geminiReq.GenerationConfig)
+					require.NotNil(t, geminiReq.GenerationConfig.ThinkingConfig)
+
+					// Verify thinking config values based on the test case
+					if strings.Contains(string(tt.request.ExtraBody), "8192") {
+						require.Equal(t, int64(8192), *geminiReq.GenerationConfig.ThinkingConfig.ThinkingBudget)
+						require.Equal(t, "high", geminiReq.GenerationConfig.ThinkingConfig.ThinkingLevel)
+						require.True(t, geminiReq.GenerationConfig.ThinkingConfig.IncludeThoughts)
+					} else if strings.Contains(string(tt.request.ExtraBody), "1024") {
+						require.Equal(t, int64(1024), *geminiReq.GenerationConfig.ThinkingConfig.ThinkingBudget)
+						require.Equal(t, "low", geminiReq.GenerationConfig.ThinkingConfig.ThinkingLevel)
+						require.True(t, geminiReq.GenerationConfig.ThinkingConfig.IncludeThoughts)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestReasoningEffortFallback(t *testing.T) {
+	// Test that reasoning_effort is used when extra body is not present
+	request := &llm.Request{
+		Model: "gemini-2.5-flash",
+		Messages: []llm.Message{
+			{
+				Role:    "user",
+				Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
+			},
+		},
+		ReasoningEffort: "medium",
+		ExtraBody:       json.RawMessage{}, // Empty extra body
+	}
+
+	transformer, err := NewOutboundTransformer("https://generativelanguage.googleapis.com", "test-key")
+	require.NoError(t, err)
+	require.NotNil(t, transformer)
+
+	httpReq, err := transformer.TransformRequest(nil, request)
+	require.NoError(t, err)
+	require.NotNil(t, httpReq)
+
+	// Verify the request body contains thinking config from reasoning effort
+	var geminiReq GenerateContentRequest
+
+	err = json.Unmarshal(httpReq.Body, &geminiReq)
+	require.NoError(t, err)
+
+	require.NotNil(t, geminiReq.GenerationConfig)
+	require.NotNil(t, geminiReq.GenerationConfig.ThinkingConfig)
+	require.True(t, geminiReq.GenerationConfig.ThinkingConfig.IncludeThoughts)
+	// Should use default mapping for "medium" reasoning effort
+	require.Equal(t, int64(8192), *geminiReq.GenerationConfig.ThinkingConfig.ThinkingBudget)
 }

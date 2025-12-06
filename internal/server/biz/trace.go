@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/llm/transformer/anthropic"
+	"github.com/looplj/axonhub/internal/llm/transformer/gemini"
 	"github.com/looplj/axonhub/internal/llm/transformer/openai"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
@@ -672,6 +673,8 @@ func getInboundTransformer(format llm.APIFormat) (transformer.Inbound, error) {
 		return openai.NewInboundTransformer(), nil
 	case llm.APIFormatAnthropicMessage:
 		return anthropic.NewInboundTransformer(), nil
+	case llm.APIFormatGeminiContents:
+		return gemini.NewInboundTransformer(), nil
 	default:
 		return nil, fmt.Errorf("unsupported format for inbound transformation: %s", format)
 	}
@@ -696,6 +699,13 @@ func getOutboundTransformer(format llm.APIFormat) (transformer.Outbound, error) 
 		}
 
 		return anthropic.NewOutboundTransformerWithConfig(config)
+	case llm.APIFormatGeminiContents:
+		config := gemini.Config{
+			BaseURL: "https://generativelanguage.googleapis.com",
+			APIKey:  "dummy",
+		}
+
+		return gemini.NewOutboundTransformerWithConfig(config)
 	default:
 		return nil, fmt.Errorf("unsupported format for outbound transformation: %s", format)
 	}
