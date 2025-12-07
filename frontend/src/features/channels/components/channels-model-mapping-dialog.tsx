@@ -290,7 +290,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
       <DialogContent className='max-h-[90vh] overflow-y-auto sm:max-w-[800px]'>
         <DialogHeader>
           <DialogTitle>{t('channels.dialogs.settings.modelMapping.title')}</DialogTitle>
-          {/* <DialogDescription>{t('channels.dialogs.settings.modelMapping.description', { name: currentRow.name })}</DialogDescription> */}
+          <DialogDescription>{t('channels.dialogs.settings.modelMapping.description', { name: currentRow.name })}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -324,15 +324,23 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
                   {/* 前缀列表显示 */}
                   <div className="flex flex-wrap gap-2">
                     {(form.watch('removeModelPrefixes') || []).map((prefix, index) => (
-                      <Badge key={index} variant="secondary" className="gap-1">
+                      <Badge key={`${prefix}-${index}`} variant="secondary" className="gap-1">
                         {prefix}
-                        <X
-                          className="h-3 w-3 cursor-pointer"
-                          onClick={() => {
-                            const currentPrefixes = form.watch('removeModelPrefixes') || []
-                            form.setValue('removeModelPrefixes', currentPrefixes.filter((_, i) => i !== index))
+                        <button
+                          type="button"
+                          className="ml-1 hover:bg-destructive/20 rounded p-0.5 transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const currentPrefixes = form.getValues('removeModelPrefixes') || []
+                            const newPrefixes = currentPrefixes.filter((_, i) => i !== index)
+                            form.setValue('removeModelPrefixes', newPrefixes, {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                            })
                           }}
-                        />
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
                       </Badge>
                     ))}
                   </div>

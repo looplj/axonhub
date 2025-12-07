@@ -1308,7 +1308,7 @@ func TestChannelService_BulkCreateChannels(t *testing.T) {
 	}
 }
 
-func TestChannel_ResolveAutoRemovedPrefixes(t *testing.T) {
+func TestChannel_RemoveModelPrefixes(t *testing.T) {
 	tests := []struct {
 		name     string
 		channel  *Channel
@@ -1411,7 +1411,7 @@ func TestChannel_ResolveAutoRemovedPrefixes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.channel.resolveAutoRemovedPrefixes(tt.model)
+			result := tt.channel.RemoveModelPrefixes(tt.model)
 			require.Equal(t, tt.expected, result)
 		})
 	}

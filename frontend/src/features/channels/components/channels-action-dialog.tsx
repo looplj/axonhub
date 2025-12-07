@@ -55,6 +55,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
   const [selectedFetchedModels, setSelectedFetchedModels] = useState<string[]>([])
   const [showAddedModelsOnly, setShowAddedModelsOnly] = useState(false)
   const [supportedModelsExpanded, setSupportedModelsExpanded] = useState(false)
+  const [isClearAllDialogOpen, setIsClearAllDialogOpen] = useState(false)
   
   // Provider-based selection state
   const [selectedProvider, setSelectedProvider] = useState<string>(() => {
@@ -1152,5 +1153,6 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  </>
+)
 }
