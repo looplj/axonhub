@@ -120,6 +120,9 @@ test-results
 .qoder
 dumps
 .builds
+.pnpm-store
+.serena
+.claude
 
 config.yml
 internal/server/static/dist
