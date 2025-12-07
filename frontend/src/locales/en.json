@@ -812,7 +812,10 @@
           "searchPlaceholder": "Search models...",
           "showAddedOnly": "Show added only",
           "added": "Added",
-          "allModels": "All Models ({{count}})"
+          "allModels": "All Models ({{count}})",
+          "clearAllTitle": "Clear all supported models?",
+          "clearAllDescription": "Are you sure you want to clear all {{count}} models?",
+          "willRemove": "Will remove"
         },
         "defaultTestModel": {
           "label": "Test Model",
@@ -868,7 +871,8 @@
         "fetchModels": "Fetch Models",
         "selectAll": "Select All",
         "deselectAll": "Deselect All",
-        "addSelectedCount": "Add Selected ({{count}})"
+        "addSelectedCount": "Add Selected ({{count}})",
+        "clearAll": "Clear all"
       },
 
       "status": {
@@ -912,7 +916,12 @@
           "description": "Use aliases to expose channel-supported models under alternative names without transforming the request model. For example: register 'gpt-4' as an alias of 'gpt-4-turbo', and both names will be handled by this channel",
           "originalModel": "Alias Name",
           "targetModel": "Channel-Supported Model",
-          "noMappings": "No model alias configuration"
+          "noMappings": "No model alias configuration",
+          "editHint": "Double-click to edit",
+          "validationRequired": "Both alias and target model are required",
+          "targetInvalid": "Target model must be in supported models",
+          "duplicateAlias": "Each original model can only be mapped once",
+          "useSuggestion": "Use {{alias}}"
         },
         "overrides": {
           "action": "Overrides",

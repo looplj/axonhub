@@ -840,6 +840,8 @@
           "searchPlaceholder": "搜索模型...",
           "showAddedOnly": "仅显示已添加",
           "added": "已添加",
+          "clearAllTitle": "清空全部支持的模型？",
+          "clearAllDescription": "确定要清空全部 {{count}} 个模型吗？",
           "willRemove": "将移除",
           "allModels": "全部模型 ({{count}})"
         },
@@ -898,6 +900,7 @@
         "fetchModels": "获取模型",
         "selectAll": "全选",
         "deselectAll": "取消全选",
+        "clearAll": "清空全部",
         "addSelectedCount": "确定选中 ({{count}})"
       },
 
@@ -942,7 +945,12 @@
           "description": "使用别名暴露渠道支持的模型，而不改变请求中的模型名称。例如将 'gpt-4' 设为 'gpt-4-turbo' 的别名，两者都由该渠道处理",
           "originalModel": "别名",
           "targetModel": "渠道支持的模型",
-          "noMappings": "暂无模型别名配置"
+          "noMappings": "暂无模型别名配置",
+          "editHint": "双击编辑",
+          "validationRequired": "别名和目标模型都不能为空",
+          "targetInvalid": "目标模型必须在支持的模型列表中",
+          "duplicateAlias": "每个别名只能映射一次",
+          "useSuggestion": "使用 {{alias}}"
         },
         "overrides": {
           "action": "覆盖设置",

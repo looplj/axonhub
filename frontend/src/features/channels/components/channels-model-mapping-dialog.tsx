@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import type { KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, X } from 'lucide-react'
+import { Plus, X, Lightbulb } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,6 +25,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { useUpdateChannel } from '../data/channels'
 import { Channel, ModelMapping } from '../data/schema'
 
@@ -65,12 +72,23 @@ const createModelMappingFormSchema = (supportedModels: string[]) =>
       ),
   })
 
+const extractAliasFromModelPath = (modelPath: string): string => {
+  if (!modelPath) {
+    return ''
+  }
+  const segments = modelPath.split('/')
+  return segments[segments.length - 1]?.trim() ?? ''
+}
+
 export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: Props) {
   const { t } = useTranslation()
   const updateChannel = useUpdateChannel()
 
   const [modelMappings, setModelMappings] = useState<ModelMapping[]>(currentRow.settings?.modelMappings || [])
   const [newMapping, setNewMapping] = useState({ from: '', to: '' })
+  const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  const [editingDraft, setEditingDraft] = useState<ModelMapping | null>(null)
+  const [editingError, setEditingError] = useState<string | null>(null)
 
   const modelMappingFormSchema = createModelMappingFormSchema(currentRow.supportedModels)
 
@@ -82,6 +100,40 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
     },
   })
 
+  const exitInlineEditing = () => {
+    setEditingIndex(null)
+    setEditingDraft(null)
+    setEditingError(null)
+  }
+
+  const sanitizeMapping = (mapping: ModelMapping): ModelMapping => ({
+    from: mapping.from.trim(),
+    to: mapping.to.trim(),
+  })
+
+  const validateMappingDraft = (draft: ModelMapping, skipIndex?: number): string | null => {
+    const normalized = sanitizeMapping(draft)
+    if (!normalized.from || !normalized.to) {
+      return t('channels.dialogs.settings.modelMapping.validationRequired', {
+        defaultValue: 'Both alias and target model are required',
+      })
+    }
+    if (!currentRow.supportedModels.includes(normalized.to)) {
+      return t('channels.dialogs.settings.modelMapping.targetInvalid', {
+        defaultValue: 'Target model must be in supported models',
+      })
+    }
+    const isDuplicateFrom = modelMappings.some(
+      (mapping, idx) => idx !== skipIndex && mapping.from === normalized.from
+    )
+    if (isDuplicateFrom) {
+      return t('channels.dialogs.settings.modelMapping.duplicateAlias', {
+        defaultValue: 'Each original model can only be mapped once',
+      })
+    }
+    return null
+  }
+
   useEffect(() => {
     const nextExtraModelPrefix = currentRow.settings?.extraModelPrefix || ''
     const nextMappings = currentRow.settings?.modelMappings || []
@@ -91,7 +143,74 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
       extraModelPrefix: nextExtraModelPrefix,
       modelMappings: nextMappings,
     })
+    exitInlineEditing()
   }, [currentRow, open, form])
+
+  const aliasSuggestion = useMemo(() => {
+    const modelPath = newMapping.to
+    // Only show suggestion if the model path contains a slash
+    if (!modelPath || !modelPath.includes('/')) {
+      return ''
+    }
+    return extractAliasFromModelPath(modelPath)
+  }, [newMapping.to])
+
+  const applyAliasSuggestion = () => {
+    if (!aliasSuggestion) {
+      return
+    }
+    setNewMapping((prev) => ({ ...prev, from: aliasSuggestion }))
+  }
+
+  const startEditing = (index: number) => {
+    setEditingIndex(index)
+    setEditingDraft(modelMappings[index])
+    setEditingError(null)
+  }
+
+  const handleInlineEditFieldChange = (key: keyof ModelMapping, value: string) => {
+    if (!editingDraft) {
+      return
+    }
+    setEditingDraft({
+      ...editingDraft,
+      [key]: value,
+    })
+    // Clear error when user makes changes
+    setEditingError(null)
+  }
+
+  const saveEditingDraft = () => {
+    if (editingIndex === null || !editingDraft) {
+      return
+    }
+    const validationError = validateMappingDraft(editingDraft, editingIndex)
+    if (validationError) {
+      setEditingError(validationError)
+      return
+    }
+    const sanitizedDraft = sanitizeMapping(editingDraft)
+    const updatedMappings = modelMappings.map((mapping, idx) =>
+      idx === editingIndex ? sanitizedDraft : mapping
+    )
+    setModelMappings(updatedMappings)
+    form.setValue('modelMappings', updatedMappings, {
+      shouldValidate: true,
+      shouldDirty: true,
+    })
+    exitInlineEditing()
+  }
+
+  const handleInlineEditKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      saveEditingDraft()
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      exitInlineEditing()
+    }
+  }
 
   const onSubmit = async (values: z.infer<typeof modelMappingFormSchema>) => {
     // 检查是否有未添加的映射
@@ -123,7 +242,8 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
       return
     }
 
-    const updatedMappings = [...modelMappings, newMapping]
+    const sanitizedMapping = sanitizeMapping(newMapping)
+    const updatedMappings = [...modelMappings, sanitizedMapping]
     setModelMappings(updatedMappings)
     form.setValue('modelMappings', updatedMappings, {
       shouldValidate: true,
@@ -136,10 +256,18 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
     const updatedMappings = modelMappings.filter((_, i) => i !== index)
     setModelMappings(updatedMappings)
     form.setValue('modelMappings', updatedMappings)
+    if (editingIndex !== null) {
+      if (editingIndex === index) {
+        exitInlineEditing()
+      } else if (editingIndex > index) {
+        setEditingIndex(editingIndex - 1)
+      }
+    }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <TooltipProvider>
+      <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className='max-h-[90vh] overflow-y-auto sm:max-w-[800px]'>
         <DialogHeader>
           <DialogTitle>{t('channels.dialogs.settings.modelMapping.title')}</DialogTitle>
@@ -174,12 +302,41 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
               </CardHeader>
               <CardContent className='space-y-4'>
                 <div className='flex gap-2'>
-                  <Input
-                    placeholder={t('channels.dialogs.settings.modelMapping.originalModel')}
-                    value={newMapping.from}
-                    onChange={(e) => setNewMapping({ ...newMapping, from: e.target.value })}
-                    className='flex-1'
-                  />
+                  <div className='flex flex-1 gap-2'>
+                    <Input
+                      placeholder={t('channels.dialogs.settings.modelMapping.originalModel')}
+                      value={newMapping.from}
+                      onChange={(e) => setNewMapping({ ...newMapping, from: e.target.value })}
+                      className='flex-1'
+                    />
+                    {aliasSuggestion && newMapping.to && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type='button'
+                            variant='outline'
+                            size='sm'
+                            onClick={applyAliasSuggestion}
+                            disabled={!aliasSuggestion || newMapping.from.trim() === aliasSuggestion}
+                            aria-label={t('channels.dialogs.settings.modelMapping.useSuggestion', {
+                              alias: aliasSuggestion,
+                              defaultValue: `Use ${aliasSuggestion}`,
+                            })}
+                          >
+                            <Lightbulb className='h-4 w-4' />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>
+                            {t('channels.dialogs.settings.modelMapping.useSuggestion', {
+                              alias: aliasSuggestion,
+                              defaultValue: `Use ${aliasSuggestion}`,
+                            })}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
                   <span className='text-muted-foreground flex items-center'>→</span>
                   <Select value={newMapping.to} onValueChange={(value) => setNewMapping({ ...newMapping, to: value })}>
                     <SelectTrigger className='flex-1'>
@@ -218,24 +375,93 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
                       {t('channels.dialogs.settings.modelMapping.noMappings')}
                     </p>
                   ) : (
-                    modelMappings.map((mapping, index) => (
-                      <div key={index} className='flex items-center justify-between rounded-lg border p-3'>
-                        <div className='flex items-center gap-2'>
-                          <Badge variant='outline'>{mapping.from}</Badge>
-                          <span className='text-muted-foreground'>→</span>
-                          <Badge variant='outline'>{mapping.to}</Badge>
+                    modelMappings.map((mapping, index) => {
+                      const isEditing = editingIndex === index
+                      return (
+                        <div key={index} className='rounded-lg border p-3'>
+                          {isEditing ? (
+                            <div className='space-y-2'>
+                              <div className='flex flex-wrap items-center gap-3' onKeyDown={handleInlineEditKeyDown}>
+                                <div className='flex flex-1 items-center gap-2'>
+                                  <Input
+                                    value={editingDraft?.from ?? ''}
+                                    onChange={(e) => handleInlineEditFieldChange('from', e.target.value)}
+                                    autoFocus
+                                    className='flex-1'
+                                  />
+                                  <span className='text-muted-foreground'>→</span>
+                                  <Select
+                                    value={editingDraft?.to ?? undefined}
+                                    onValueChange={(value) => handleInlineEditFieldChange('to', value)}
+                                  >
+                                    <SelectTrigger className='min-w-[180px] flex-1'>
+                                      <SelectValue
+                                        placeholder={t('channels.dialogs.settings.modelMapping.targetModel')}
+                                      />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {currentRow.supportedModels.map((model) => (
+                                        <SelectItem key={model} value={model}>
+                                          {model}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className='flex gap-2'>
+                                  <Button
+                                    type='button'
+                                    size='sm'
+                                    onClick={saveEditingDraft}
+                                    disabled={!editingDraft?.from.trim() || !editingDraft?.to.trim()}
+                                  >
+                                    {t('common.buttons.save')}
+                                  </Button>
+                                  <Button type='button' variant='ghost' size='sm' onClick={exitInlineEditing}>
+                                    {t('common.buttons.cancel')}
+                                  </Button>
+                                </div>
+                              </div>
+                              {editingError && <p className='text-destructive text-sm'>{editingError}</p>}
+                            </div>
+                          ) : (
+                            <div className='flex items-center justify-between'>
+                              <div
+                                className='flex flex-1 cursor-pointer items-center gap-2 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring rounded p-1'
+                                onDoubleClick={() => startEditing(index)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault()
+                                    startEditing(index)
+                                  }
+                                }}
+                                tabIndex={0}
+                                role='button'
+                                aria-label={t('channels.dialogs.settings.modelMapping.editHint', {
+                                  defaultValue: 'Double-click to edit',
+                                })}
+                                title={t('channels.dialogs.settings.modelMapping.editHint', {
+                                  defaultValue: 'Double-click to edit',
+                                })}
+                              >
+                                <Badge variant='outline'>{mapping.from}</Badge>
+                                <span className='text-muted-foreground'>→</span>
+                                <Badge variant='outline'>{mapping.to}</Badge>
+                              </div>
+                              <Button
+                                type='button'
+                                variant='ghost'
+                                size='sm'
+                                onClick={() => removeMapping(index)}
+                                className='text-destructive hover:text-destructive'
+                              >
+                                <X size={16} />
+                              </Button>
+                            </div>
+                          )}
                         </div>
-                        <Button
-                          type='button'
-                          variant='ghost'
-                          size='sm'
-                          onClick={() => removeMapping(index)}
-                          className='text-destructive hover:text-destructive'
-                        >
-                          <X size={16} />
-                        </Button>
-                      </div>
-                    ))
+                      )
+                    })
                   )}
                 </div>
               </CardContent>
@@ -253,5 +479,6 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
         </form>
       </DialogContent>
     </Dialog>
+    </TooltipProvider>
   )
 }

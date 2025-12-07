@@ -126,8 +126,6 @@ dumps
 .gomodcache
 .gocache
 
-
-
 config.yml
 internal/server/static/dist
 *.b64

@@ -11,6 +11,16 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Form, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -55,6 +65,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
   const [selectedFetchedModels, setSelectedFetchedModels] = useState<string[]>([])
   const [showAddedModelsOnly, setShowAddedModelsOnly] = useState(false)
   const [supportedModelsExpanded, setSupportedModelsExpanded] = useState(false)
+  const [isClearAllDialogOpen, setIsClearAllDialogOpen] = useState(false)
 
   // Provider-based selection state
   const [selectedProvider, setSelectedProvider] = useState<string>(() => {
@@ -125,7 +136,15 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
       // Convert 'openai/chat_completions' to 'openaiChatCompletions'
       const formatKey = format
         .split('/')
-        .map((part, index) => (index === 0 ? part : part.charAt(0).toUpperCase() + part.slice(1)))
+        .map((part, index) => {
+          // Handle underscores: 'chat_completions' -> 'chatCompletions'
+          const camelCased = part
+            .split('_')
+            .map((word, wordIndex) => (wordIndex === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1)))
+            .join('')
+          // Capitalize first letter if not the first part
+          return index === 0 ? camelCased : camelCased.charAt(0).toUpperCase() + camelCased.slice(1)
+        })
         .join('')
       return t(`channels.dialogs.fields.apiFormat.formats.${formatKey}`)
     },
@@ -139,15 +158,6 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
     }
     return getChannelTypeForApiFormat(selectedProvider, selectedApiFormat) || 'openai'
   }, [isEdit, currentRow, selectedProvider, selectedApiFormat])
-
-  const baseURLPlaceholder = useMemo(() => {
-    const currentType = selectedType || derivedChannelType
-    const defaultURL = getDefaultBaseURL(currentType)
-    if (defaultURL) {
-      return defaultURL
-    }
-    return t('channels.dialogs.fields.baseURL.placeholder')
-  }, [selectedType, derivedChannelType, t])
 
   const formSchema = isEdit ? updateChannelInputSchema : createChannelInputSchema
 
@@ -198,6 +208,15 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
   })
 
   const selectedType = form.watch('type') as ChannelType | undefined
+
+  const baseURLPlaceholder = useMemo(() => {
+    const currentType = selectedType || derivedChannelType
+    const defaultURL = getDefaultBaseURL(currentType)
+    if (defaultURL) {
+      return defaultURL
+    }
+    return t('channels.dialogs.fields.baseURL.placeholder')
+  }, [selectedType, derivedChannelType, t])
 
   // Sync form type when provider or API format changes (only for create mode)
   const handleProviderChange = useCallback(
@@ -475,6 +494,23 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
     setShowSupportedModelsPanel(false)
   }, [])
 
+  const handleClearAllSupportedModels = () => {
+    if (supportedModels.length === 0) {
+      return
+    }
+    setIsClearAllDialogOpen(true)
+  }
+
+  const confirmClearAllSupportedModels = () => {
+    setSupportedModels([])
+    setSelectedDefaultModels([])
+    setSelectedFetchedModels([])
+    setIsClearAllDialogOpen(false)
+    if (form.getValues('defaultTestModel')) {
+      form.setValue('defaultTestModel', '')
+    }
+  }
+
   // Models to display (limited to 5 unless expanded)
   const displayedSupportedModels = useMemo(() => {
     if (supportedModels.length <= 5) {
@@ -484,9 +520,10 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
   }, [supportedModels])
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(state) => {
+    <>
+      <Dialog
+        open={open}
+        onOpenChange={(state) => {
         if (!state) {
           form.reset()
           setSupportedModels(currentRow?.supportedModels || [])
@@ -861,6 +898,15 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                           </Button>
                           <Button
                             type='button'
+                            variant='ghost'
+                            onClick={handleClearAllSupportedModels}
+                            size='sm'
+                            disabled={supportedModels.length === 0}
+                          >
+                            {t('channels.dialogs.buttons.clearAll', { defaultValue: 'Clear all' })}
+                          </Button>
+                          <Button
+                            type='button'
                             onClick={handleFetchModels}
                             size='sm'
                             variant='outline'
@@ -1115,5 +1161,29 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <AlertDialog open={isClearAllDialogOpen} onOpenChange={setIsClearAllDialogOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {t('channels.dialogs.fields.supportedModels.clearAllTitle', {
+              defaultValue: 'Clear all supported models?',
+            })}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {t('channels.dialogs.fields.supportedModels.clearAllDescription', {
+              count: supportedModels.length,
+              defaultValue: `Are you sure you want to clear all ${supportedModels.length} models?`,
+            })}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{t('common.buttons.cancel')}</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmClearAllSupportedModels}>
+            {t('common.buttons.confirm', { defaultValue: 'Confirm' })}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   )
 }

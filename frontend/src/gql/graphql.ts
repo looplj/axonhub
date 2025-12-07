@@ -83,7 +83,22 @@ export async function graphqlRequest<T>(
     throw new GraphQLRequestError('Unauthorized', { status: response.status, isAuthError: true })
   }
 
-  const result = await response.json()
+  // Check content type before parsing JSON
+  const contentType = response.headers.get('content-type')
+  if (!contentType || !contentType.includes('application/json')) {
+    throw new GraphQLRequestError('Server returned non-JSON response. Please check the API endpoint.', {
+      status: response.status,
+    })
+  }
+
+  let result
+  try {
+    result = await response.json()
+  } catch (error) {
+    throw new GraphQLRequestError('Failed to parse server response as JSON', {
+      status: response.status,
+    })
+  }
 
   if (!response.ok) {
     throw new GraphQLRequestError(result?.errors?.[0]?.message || 'Request failed', {
