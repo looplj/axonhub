@@ -27,6 +27,21 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
+func (c Channel) removeModelPrefixes(model string) string {
+	if c.Settings == nil || len(c.Settings.RemoveModelPrefixes) == 0 {
+		return model
+	}
+
+	for _, prefix := range c.Settings.RemoveModelPrefixes {
+		prefixWithSlash := prefix + "/"
+		if strings.HasPrefix(model, prefixWithSlash) {
+			return strings.TrimPrefix(model, prefixWithSlash)
+		}
+	}
+
+	return model
+}
+
 func (c Channel) resolvePrefixedModel(model string) (string, bool) {
 	if c.Settings == nil || c.Settings.ExtraModelPrefix == "" {
 		return "", false
@@ -46,6 +61,8 @@ func (c Channel) resolvePrefixedModel(model string) (string, bool) {
 }
 
 func (c Channel) IsModelSupported(model string) bool {
+	model = c.removeModelPrefixes(model)
+
 	if slices.Contains(c.SupportedModels, model) {
 		return true
 	}
@@ -79,6 +96,8 @@ func (c *Channel) CustomizeExecutor(executor pipeline.Executor) pipeline.Executo
 }
 
 func (c Channel) ChooseModel(model string) (string, error) {
+	model = c.removeModelPrefixes(model)
+
 	if slices.Contains(c.SupportedModels, model) {
 		return model, nil
 	}

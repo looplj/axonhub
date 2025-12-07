@@ -41,6 +41,10 @@ type ChannelSettings struct {
 	// e.g. {"from": "deepseek-chat", "to": "deepseek/deepseek-chat"} will add a alias "deepseek-chat" for "deepseek/deepseek-chat".
 	ModelMappings []ModelMapping `json:"modelMappings"`
 
+	// RemoveModelPrefixes configures prefixes to automatically remove from model names.
+	// e.g. ["openai", "deepseek"] will transform "openai/gpt-4" to "gpt-4" and "deepseek/deepseek-chat" to "deepseek-chat".
+	RemoveModelPrefixes []string `json:"removeModelPrefixes"`
+
 	// OverrideParameters sets the channel override the request body.
 	// A json string.
 	// e.g. {"max_tokens": 100}, {"temperature": 0.7}
