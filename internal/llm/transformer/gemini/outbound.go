@@ -95,7 +95,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm
 	}
 
 	if len(chatReq.Messages) == 0 {
-		return nil, fmt.Errorf("messages are required,%v", chatReq.Messages)
+		return nil, fmt.Errorf("%w: messages are required,%v", transformer.ErrInvalidRequest, chatReq.Messages)
 	}
 
 	// Convert to Gemini request format

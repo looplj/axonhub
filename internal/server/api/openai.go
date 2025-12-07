@@ -7,6 +7,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/llm/transformer/openai"
+	"github.com/looplj/axonhub/internal/llm/transformer/openai/responses"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/chat"
@@ -23,8 +24,9 @@ type OpenAIHandlersParams struct {
 }
 
 type OpenAIHandlers struct {
-	ChatCompletionHandlers *ChatCompletionHandlers
-	ChannelService         *biz.ChannelService
+	ChannelService             *biz.ChannelService
+	ChatCompletionHandlers     *ChatCompletionHandlers
+	ResponseCompletionHandlers *ChatCompletionHandlers
 }
 
 func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
@@ -39,12 +41,26 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.UsageLogService,
 			),
 		},
+		ResponseCompletionHandlers: &ChatCompletionHandlers{
+			ChatCompletionProcessor: chat.NewChatCompletionProcessor(
+				params.ChannelService,
+				params.RequestService,
+				params.HttpClient,
+				responses.NewInboundTransformer(),
+				params.SystemService,
+				params.UsageLogService,
+			),
+		},
 		ChannelService: params.ChannelService,
 	}
 }
 
 func (handlers *OpenAIHandlers) ChatCompletion(c *gin.Context) {
 	handlers.ChatCompletionHandlers.ChatCompletion(c)
+}
+
+func (handlers *OpenAIHandlers) CreateResponse(c *gin.Context) {
+	handlers.ResponseCompletionHandlers.ChatCompletion(c)
 }
 
 type OpenAIModel struct {

@@ -1,6 +1,7 @@
 package responses
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/looplj/axonhub/internal/llm"
@@ -12,7 +13,9 @@ func convertToTextOptions(chatReq *llm.Request) *TextOptions {
 	}
 
 	return &TextOptions{
-		Format: chatReq.ResponseFormat.Type,
+		Format: &TextFormat{
+			Type: chatReq.ResponseFormat.Type,
+		},
 	}
 }
 
@@ -129,4 +132,66 @@ func convertImageGenerationToTool(src llm.Tool) Tool {
 	}
 
 	return tool
+}
+
+// convertFunctionToTool converts an llm.Tool function to Responses API Tool format.
+func convertFunctionToTool(src llm.Tool) Tool {
+	tool := Tool{
+		Type:        "function",
+		Name:        src.Function.Name,
+		Description: src.Function.Description,
+	}
+
+	// Convert parameters from json.RawMessage to map[string]any
+	if len(src.Function.Parameters) > 0 {
+		var params map[string]any
+		if err := json.Unmarshal(src.Function.Parameters, &params); err == nil {
+			tool.Parameters = params
+		}
+	}
+
+	return tool
+}
+
+// convertToolChoice converts llm.ToolChoice to Responses API ToolChoice.
+func convertToolChoice(src *llm.ToolChoice) *ToolChoice {
+	if src == nil {
+		return nil
+	}
+
+	result := &ToolChoice{}
+
+	if src.ToolChoice != nil {
+		// String mode like "none", "auto", "required"
+		result.Mode = src.ToolChoice
+	} else if src.NamedToolChoice != nil {
+		// Specific tool choice
+		result.Type = &src.NamedToolChoice.Type
+		result.Name = &src.NamedToolChoice.Function.Name
+	}
+
+	return result
+}
+
+// convertStreamOptions converts llm.StreamOptions to Responses API StreamOptions.
+func convertStreamOptions(src *llm.StreamOptions) *StreamOptions {
+	if src == nil {
+		return nil
+	}
+
+	return &StreamOptions{
+		IncludeObfuscation: nil, // llm.StreamOptions doesn't have this field
+	}
+}
+
+// convertReasoning converts llm.Request reasoning fields to Responses API Reasoning.
+func convertReasoning(req *llm.Request) *Reasoning {
+	if req.ReasoningEffort == "" && req.ReasoningBudget == nil {
+		return nil
+	}
+
+	return &Reasoning{
+		Effort:    req.ReasoningEffort,
+		MaxTokens: req.ReasoningBudget,
+	}
 }

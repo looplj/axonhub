@@ -13,7 +13,6 @@ import (
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
-	"github.com/looplj/axonhub/internal/pkg/streams"
 )
 
 var _ transformer.Outbound = (*OutboundTransformer)(nil)
@@ -53,15 +52,19 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm
 
 	metadata := map[string]string{}
 
-	// If caller provided a tool of type image_generation, merge its parameters.
+	// Convert tools to Responses API format
 	for _, item := range chatReq.Tools {
 		switch item.Type {
 		case llm.ToolTypeImageGeneration:
 			tool := convertImageGenerationToTool(item)
 			tools = append(tools, tool)
 			metadata["image_output_format"] = tool.OutputFormat
+		case "function":
+			tool := convertFunctionToTool(item)
+			tools = append(tools, tool)
 		default:
-			return nil, fmt.Errorf("unsupported tool type: %s", item.Type)
+			// Skip unsupported tool types
+			continue
 		}
 	}
 
@@ -73,6 +76,17 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm
 		ParallelToolCalls: chatReq.ParallelToolCalls,
 		Stream:            chatReq.Stream,
 		Text:              convertToTextOptions(chatReq),
+		Store:             chatReq.Store,
+		ServiceTier:       chatReq.ServiceTier,
+		SafetyIdentifier:  chatReq.SafetyIdentifier,
+		User:              chatReq.User,
+		Metadata:          chatReq.Metadata,
+		MaxOutputTokens:   chatReq.MaxCompletionTokens,
+		TopLogprobs:       chatReq.TopLogprobs,
+		TopP:              chatReq.TopP,
+		ToolChoice:        convertToolChoice(chatReq.ToolChoice),
+		StreamOptions:     convertStreamOptions(chatReq.StreamOptions),
+		Reasoning:         convertReasoning(chatReq),
 	}
 
 	body, err := json.Marshal(payload)
@@ -136,7 +150,7 @@ func (t *OutboundTransformer) TransformResponse(
 	}
 
 	// Process output items
-	for i, output := range resp.Output {
+	for i, outputItem := range resp.Output {
 		choice := llm.Choice{
 			Index: i,
 			Message: &llm.Message{
@@ -150,18 +164,39 @@ func (t *OutboundTransformer) TransformResponse(
 			textContent  strings.Builder
 		)
 
-		switch output.Type {
+		switch outputItem.Type {
 		case "message":
 			// Extract text content from message content array
-			for _, contentItem := range output.Content {
+			for _, contentItem := range outputItem.GetContentItems() {
 				if contentItem.Type == "output_text" {
 					textContent.WriteString(contentItem.Text)
 				}
 			}
 		case "output_text":
 			// Direct text output
-			if output.Text != nil {
-				textContent.WriteString(*output.Text)
+			if outputItem.Text != nil {
+				textContent.WriteString(*outputItem.Text)
+			}
+		case "function_call":
+			// Function call output - use CallID, Name, Arguments directly
+			choice.Message.ToolCalls = append(choice.Message.ToolCalls, llm.ToolCall{
+				ID:   outputItem.CallID,
+				Type: "function",
+				Function: llm.FunctionCall{
+					Name:      outputItem.Name,
+					Arguments: outputItem.Arguments,
+				},
+			})
+			choice.FinishReason = lo.ToPtr("tool_calls")
+		case "reasoning":
+			// Handle reasoning output - convert to ReasoningContent
+			var reasoningText strings.Builder
+			for _, summary := range outputItem.Summary {
+				reasoningText.WriteString(summary.Text)
+			}
+
+			if reasoningText.Len() > 0 {
+				choice.Message.ReasoningContent = lo.ToPtr(reasoningText.String())
 			}
 		case "image_generation_call":
 			imageOutputFormat := "png"
@@ -169,21 +204,21 @@ func (t *OutboundTransformer) TransformResponse(
 				imageOutputFormat = httpResp.Request.Metadata["image_output_format"]
 			}
 			// Image generation result
-			if output.Result != nil && *output.Result != "" {
+			if outputItem.Result != nil && *outputItem.Result != "" {
 				contentParts = append(contentParts, llm.MessageContentPart{
 					Type: "image_url",
 					ImageURL: &llm.ImageURL{
-						URL: `data:image/` + imageOutputFormat + `;base64,` + *output.Result,
+						URL: `data:image/` + imageOutputFormat + `;base64,` + *outputItem.Result,
 					},
 				})
 			}
 		case "input_image":
 			// Input image (for reference)
-			if output.ImageURL != nil && *output.ImageURL != "" {
+			if outputItem.ImageURL != nil && *outputItem.ImageURL != "" {
 				contentParts = append(contentParts, llm.MessageContentPart{
 					Type: "image_url",
 					ImageURL: &llm.ImageURL{
-						URL: *output.ImageURL,
+						URL: *outputItem.ImageURL,
 					},
 				})
 			}
@@ -249,19 +284,7 @@ func (t *OutboundTransformer) TransformResponse(
 	return llmResp, nil
 }
 
-func (t *OutboundTransformer) TransformStream(
-	ctx context.Context,
-	stream streams.Stream[*httpclient.StreamEvent],
-) (streams.Stream[*llm.Response], error) {
-	return nil, nil
-}
-
-func (t *OutboundTransformer) AggregateStreamChunks(
-	ctx context.Context,
-	chunks []*httpclient.StreamEvent,
-) ([]byte, llm.ResponseMeta, error) {
-	return nil, llm.ResponseMeta{}, nil
-}
+// TransformStream and AggregateStreamChunks are implemented in outbound_stream.go
 
 // TransformStreamChunk maps a Responses API streaming event to a partial llm.Response.
 // We support emitting a full response structure whenever we can extract an image URL.

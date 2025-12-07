@@ -1,12 +1,11 @@
 package anthropic
 
 import (
-	"strings"
-
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
+	"github.com/looplj/axonhub/internal/pkg/xurl"
 )
 
 // convertToAnthropicRequest converts ChatCompletionRequest to Anthropic MessageRequest.
@@ -346,38 +345,27 @@ func convertImageURLToAnthropicBlock(part llm.MessageContentPart) (MessageConten
 	}
 
 	// Convert OpenAI image format to Anthropic format
-	// Extract media type and data from data URL
 	url := part.ImageURL.URL
-	if strings.HasPrefix(url, "data:") {
-		parts := strings.SplitN(url, ",", 2)
-		if len(parts) == 2 {
-			headerParts := strings.Split(parts[0], ";")
-			if len(headerParts) >= 2 {
-				mediaType := strings.TrimPrefix(headerParts[0], "data:")
-
-				return MessageContentBlock{
-					Type: "image",
-					Source: &ImageSource{
-						Type:      "base64",
-						MediaType: mediaType,
-						Data:      parts[1],
-					},
-					CacheControl: convertToAnthropicCacheControl(part.CacheControl),
-				}, true
-			}
-		}
-	} else {
+	if parsed := xurl.ParseDataURL(url); parsed != nil {
 		return MessageContentBlock{
 			Type: "image",
 			Source: &ImageSource{
-				Type: "url",
-				URL:  part.ImageURL.URL,
+				Type:      "base64",
+				MediaType: parsed.MediaType,
+				Data:      parsed.Data,
 			},
 			CacheControl: convertToAnthropicCacheControl(part.CacheControl),
 		}, true
 	}
 
-	return MessageContentBlock{}, false
+	return MessageContentBlock{
+		Type: "image",
+		Source: &ImageSource{
+			Type: "url",
+			URL:  part.ImageURL.URL,
+		},
+		CacheControl: convertToAnthropicCacheControl(part.CacheControl),
+	}, true
 }
 
 // convertToAnthropicTrivialContent converts llm.MessageContent to Anthropic MessageContent format.
@@ -459,27 +447,19 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 		case "image_url":
 			if part.ImageURL != nil && part.ImageURL.URL != "" {
 				// Convert OpenAI image format to Anthropic format
-				// Extract media type and data from data URL
 				url := part.ImageURL.URL
-				if strings.HasPrefix(url, "data:") {
-					parts := strings.SplitN(url, ",", 2)
-					if len(parts) == 2 {
-						headerParts := strings.Split(parts[0], ";")
-						if len(headerParts) >= 2 {
-							mediaType := strings.TrimPrefix(headerParts[0], "data:")
-							block := MessageContentBlock{
-								Type: "image",
-								Source: &ImageSource{
-									Type:      "base64",
-									MediaType: mediaType,
-									Data:      parts[1],
-								},
-								CacheControl: convertToAnthropicCacheControl(part.CacheControl),
-							}
-
-							blocks = append(blocks, block)
-						}
+				if parsed := xurl.ParseDataURL(url); parsed != nil {
+					block := MessageContentBlock{
+						Type: "image",
+						Source: &ImageSource{
+							Type:      "base64",
+							MediaType: parsed.MediaType,
+							Data:      parsed.Data,
+						},
+						CacheControl: convertToAnthropicCacheControl(part.CacheControl),
 					}
+
+					blocks = append(blocks, block)
 				} else {
 					block := MessageContentBlock{
 						Type: "image",

@@ -1,0 +1,36 @@
+{
+  "object": "response",
+  "id": "chatcmpl-20251207132740230385121UYwDwBGp",
+  "created_at": 1765085261,
+  "model": "deepseek-chat",
+  "output": [
+    {
+      "id": "call_eda8722c71944fe394a8893c0de8146a",
+      "type": "function_call",
+      "call_id": "call_eda8722c71944fe394a8893c0de8146a",
+      "name": "get_current_weather",
+      "arguments": "{\"location\":\"Tokyo\"}",
+      "status": "completed"
+    },
+    {
+      "id": "call_bd313747960f44af8bef50dc27f0f07e",
+      "type": "function_call",
+      "call_id": "call_bd313747960f44af8bef50dc27f0f07e",
+      "name": "calculate",
+      "arguments": "{\"expression\":\"365 * 24\"}",
+      "status": "completed"
+    }
+  ],
+  "status": "completed",
+  "usage": {
+    "input_tokens": 105,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 166,
+    "output_tokens_details": {
+      "reasoning_tokens": 122
+    },
+    "total_tokens": 271
+  }
+}

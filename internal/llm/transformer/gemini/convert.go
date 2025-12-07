@@ -6,6 +6,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/pkg/xurl"
 )
 
 func extractTextFromContent(content *Content) string {
@@ -132,32 +133,21 @@ func convertLLMFinishReasonToGemini(reason *string) string {
 }
 
 func convertImageURLToGeminiPart(url string) *Part {
-	if strings.HasPrefix(url, "data:") {
-		// Parse data URL
-		parts := strings.SplitN(url, ",", 2)
-		if len(parts) == 2 {
-			headerParts := strings.Split(parts[0], ";")
-			if len(headerParts) >= 1 {
-				mimeType := strings.TrimPrefix(headerParts[0], "data:")
-
-				return &Part{
-					InlineData: &Blob{
-						MIMEType: mimeType,
-						Data:     parts[1],
-					},
-				}
-			}
-		}
-	} else {
-		// Regular URL - use FileData
+	if parsed := xurl.ParseDataURL(url); parsed != nil {
 		return &Part{
-			FileData: &FileData{
-				FileURI: url,
+			InlineData: &Blob{
+				MIMEType: parsed.MediaType,
+				Data:     parsed.Data,
 			},
 		}
 	}
 
-	return nil
+	// Regular URL - use FileData
+	return &Part{
+		FileData: &FileData{
+			FileURI: url,
+		},
+	}
 }
 
 func convertGeminiFunctionCallingConfigToToolChoice(fcc *FunctionCallingConfig) *llm.ToolChoice {
