@@ -47,6 +47,7 @@ const CHANNELS_QUERY = `
               from
               to
             }
+            removeModelPrefixes
             overrideParameters
             proxy {
               type
@@ -97,6 +98,7 @@ const CREATE_CHANNEL_MUTATION = `
           from
           to
         }
+        removeModelPrefixes
         overrideParameters
         proxy {
           type
@@ -129,6 +131,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
           from
           to
         }
+        removeModelPrefixes
         overrideParameters
         proxy {
           type
@@ -161,6 +164,7 @@ const UPDATE_CHANNEL_MUTATION = `
           from
           to
         }
+        removeModelPrefixes
         overrideParameters
         proxy {
           type
@@ -249,6 +253,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
             from
             to
           }
+          removeModelPrefixes
           overrideParameters
         }
       }
@@ -278,6 +283,7 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
             from
             to
           }
+          removeModelPrefixes
         }
       }
     }
@@ -353,6 +359,7 @@ const QUERY_CHANNELS_QUERY = `
               from
               to
             }
+            removeModelPrefixes
             overrideParameters
             overrideHeaders{
               key

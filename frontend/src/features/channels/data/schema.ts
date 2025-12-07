@@ -85,6 +85,7 @@ export type ChannelPerformance = z.infer<typeof channelPerformanceSchema>
 export const channelSettingsSchema = z.object({
   extraModelPrefix: z.string().optional(),
   modelMappings: z.array(modelMappingSchema),
+  removeModelPrefixes: z.array(z.string()).optional().nullable(),
   overrideParameters: z.string().optional(),
   overrideHeaders: z.array(headerEntrySchema).optional().nullable(),
   proxy: proxyConfigSchema.optional().nullable(),

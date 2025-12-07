@@ -910,6 +910,12 @@
           "description": "Configure an extra model prefix to allow accessing this channel with prefixed model names. For example: with prefix 'deepseek', both 'deepseek/deepseek-chat' and 'deepseek-chat' can access this channel",
           "placeholder": "e.g., deepseek"
         },
+        "removeModelPrefixes": {
+          "title": "Remove Model Prefixes",
+          "description": "Configure prefixes to automatically remove from model names. For example: with prefixes 'openai, deepseek', model 'openai/gpt-4' becomes 'gpt-4' and 'deepseek/deepseek-chat' becomes 'deepseek-chat'",
+          "placeholder": "e.g., openai, deepseek",
+          "duplicateWarning": "This prefix already exists"
+        },
         "modelMapping": {
           "action": "Model Alias",
           "title": "Model Alias",

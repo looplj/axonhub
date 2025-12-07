@@ -81,7 +81,14 @@ export function AutoCompleteSelect<T extends string>({
               value={searchValue}
               onValueChange={setSearchValue}
               onKeyDown={(e) => setOpen(e.key !== 'Escape')}
-              onMouseDown={() => setOpen((prev) => !!searchValue || !prev)}
+              onMouseDown={() => {
+                setOpen((prev) => {
+                  if (!prev) {
+                    setSearchValue('') // 打开时清空搜索，显示所有选项
+                  }
+                  return !prev
+                })
+              }}
               onFocus={() => setOpen(true)}
               onBlur={onInputBlur}
             >

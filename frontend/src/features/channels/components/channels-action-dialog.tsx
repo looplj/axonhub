@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { X, RefreshCw, Search, ChevronRight } from 'lucide-react'
+import { X, RefreshCw, Search, ChevronRight, ChevronLeft } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -511,12 +511,12 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
     }
   }
 
-  // Models to display (limited to 5 unless expanded)
+  // Models to display (limited to 3 unless expanded)
   const displayedSupportedModels = useMemo(() => {
-    if (supportedModels.length <= 5) {
+    if (supportedModels.length <= 3) {
       return supportedModels
     }
-    return supportedModels.slice(0, 5)
+    return supportedModels.slice(0, 3)
   }, [supportedModels])
 
   return (
@@ -898,15 +898,6 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                           </Button>
                           <Button
                             type='button'
-                            variant='ghost'
-                            onClick={handleClearAllSupportedModels}
-                            size='sm'
-                            disabled={supportedModels.length === 0}
-                          >
-                            {t('channels.dialogs.buttons.clearAll', { defaultValue: 'Clear all' })}
-                          </Button>
-                          <Button
-                            type='button'
                             onClick={handleFetchModels}
                             size='sm'
                             variant='outline'
@@ -917,7 +908,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                           </Button>
                         </div>
 
-                        {/* Supported models display - limited to 5 with expand button */}
+                        {/* Supported models display - limited to 3 with expand button */}
                         <div className='flex flex-wrap items-center gap-1'>
                           {displayedSupportedModels.map((model) => (
                             <Badge key={model} variant='secondary' className='text-xs'>
@@ -927,7 +918,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                               </button>
                             </Badge>
                           ))}
-                          {supportedModels.length > 5 && !supportedModelsExpanded && (
+                          {supportedModels.length > 3 && (
                             <Button
                               type='button'
                               variant='ghost'
@@ -936,7 +927,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                               onClick={() => setShowSupportedModelsPanel(true)}
                             >
                               <ChevronRight className='mr-1 h-3 w-3' />
-                              {t('channels.dialogs.fields.supportedModels.showMore', { count: supportedModels.length - 5 })}
+                              {t('channels.dialogs.fields.supportedModels.showMore', { count: supportedModels.length - 3 })}
                             </Button>
                           )}
                         </div>
@@ -1024,7 +1015,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
               <div className='mb-3 flex items-center justify-between'>
                 <h3 className='text-sm font-semibold'>{t('channels.dialogs.fields.supportedModels.fetchedModelsLabel')}</h3>
                 <Button type='button' variant='ghost' size='sm' onClick={closeFetchedModelsPanel}>
-                  <X className='h-4 w-4' />
+                  <ChevronLeft className='h-4 w-4' />
                 </Button>
               </div>
 
@@ -1113,11 +1104,22 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
               className={`flex h-full flex-col transition-opacity duration-200 ${showSupportedModelsPanel ? 'opacity-100' : 'pointer-events-none absolute opacity-0'}`}
             >
               <div className='mb-3 flex items-center justify-between'>
-                <h3 className='text-sm font-semibold'>
-                  {t('channels.dialogs.fields.supportedModels.allModels', { count: supportedModels.length })}
-                </h3>
-                <Button type='button' variant='ghost' size='sm' onClick={closeSupportedModelsPanel}>
-                  <X className='h-4 w-4' />
+                <div className='flex items-center gap-2'>
+                  <Button type='button' variant='ghost' size='sm' onClick={closeSupportedModelsPanel} className='h-8 w-8 p-0'>
+                    <ChevronLeft className='h-4 w-4' />
+                  </Button>
+                  <h3 className='text-sm font-semibold'>
+                    {t('channels.dialogs.fields.supportedModels.allModels', { count: supportedModels.length })}
+                  </h3>
+                </div>
+                <Button
+                  type='button'
+                  variant='ghost'
+                  size='sm'
+                  onClick={confirmClearAllSupportedModels}
+                  disabled={supportedModels.length === 0}
+                >
+                  {t('channels.dialogs.buttons.clearAll', { defaultValue: 'Clear all' })}
                 </Button>
               </div>
 

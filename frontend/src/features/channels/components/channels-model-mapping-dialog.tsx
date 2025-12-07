@@ -70,6 +70,7 @@ const createModelMappingFormSchema = (supportedModels: string[]) =>
           message: 'Target model must be in supported models',
         }
       ),
+    removeModelPrefixes: z.array(z.string()).optional(),
   })
 
 const extractAliasFromModelPath = (modelPath: string): string => {
@@ -86,6 +87,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
 
   const [modelMappings, setModelMappings] = useState<ModelMapping[]>(currentRow.settings?.modelMappings || [])
   const [newMapping, setNewMapping] = useState({ from: '', to: '' })
+  const [newPrefix, setNewPrefix] = useState('')
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editingDraft, setEditingDraft] = useState<ModelMapping | null>(null)
   const [editingError, setEditingError] = useState<string | null>(null)
@@ -97,6 +99,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
     defaultValues: {
       extraModelPrefix: currentRow.settings?.extraModelPrefix || '',
       modelMappings: currentRow.settings?.modelMappings || [],
+      removeModelPrefixes: currentRow.settings?.removeModelPrefixes || [],
     },
   })
 
@@ -226,6 +229,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
           settings: {
             extraModelPrefix: values.extraModelPrefix,
             modelMappings: values.modelMappings,
+            removeModelPrefixes: values.removeModelPrefixes || [],
             overrideParameters: currentRow.settings?.overrideParameters,
           },
         },
@@ -292,6 +296,73 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
                     {form.formState.errors.extraModelPrefix.message.toString()}
                   </p>
                 )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className='text-lg'>{t('channels.dialogs.settings.removeModelPrefixes.title')}</CardTitle>
+                <CardDescription>{t('channels.dialogs.settings.removeModelPrefixes.description')}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {/* 前缀列表显示 */}
+                  <div className="flex flex-wrap gap-2">
+                    {(form.watch('removeModelPrefixes') || []).map((prefix, index) => (
+                      <Badge key={index} variant="secondary" className="gap-1">
+                        {prefix}
+                        <X
+                          className="h-3 w-3 cursor-pointer"
+                          onClick={() => {
+                            const currentPrefixes = form.watch('removeModelPrefixes') || []
+                            form.setValue('removeModelPrefixes', currentPrefixes.filter((_, i) => i !== index))
+                          }}
+                        />
+                      </Badge>
+                    ))}
+                  </div>
+
+                  {/* 添加新前缀 */}
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder={t('channels.dialogs.settings.removeModelPrefixes.placeholder')}
+                      value={newPrefix}
+                      onChange={(e) => setNewPrefix(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          if (newPrefix.trim()) {
+                            const currentPrefixes = form.watch('removeModelPrefixes') || []
+                            if (!currentPrefixes.includes(newPrefix.trim())) {
+                              form.setValue('removeModelPrefixes', [...currentPrefixes, newPrefix.trim()])
+                              setNewPrefix('')
+                            } else {
+                              toast.warning(t('channels.dialogs.settings.removeModelPrefixes.duplicateWarning'))
+                            }
+                          }
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        if (newPrefix.trim()) {
+                          const currentPrefixes = form.watch('removeModelPrefixes') || []
+                          if (!currentPrefixes.includes(newPrefix.trim())) {
+                            form.setValue('removeModelPrefixes', [...currentPrefixes, newPrefix.trim()])
+                            setNewPrefix('')
+                          } else {
+                            toast.warning(t('channels.dialogs.settings.removeModelPrefixes.duplicateWarning'))
+                          }
+                        }
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
