@@ -11,16 +11,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import { Form, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -65,8 +55,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
   const [selectedFetchedModels, setSelectedFetchedModels] = useState<string[]>([])
   const [showAddedModelsOnly, setShowAddedModelsOnly] = useState(false)
   const [supportedModelsExpanded, setSupportedModelsExpanded] = useState(false)
-  const [isClearAllDialogOpen, setIsClearAllDialogOpen] = useState(false)
-
+  
   // Provider-based selection state
   const [selectedProvider, setSelectedProvider] = useState<string>(() => {
     if (currentRow) {
@@ -494,29 +483,12 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
     setShowSupportedModelsPanel(false)
   }, [])
 
-  const handleClearAllSupportedModels = () => {
-    if (supportedModels.length === 0) {
-      return
-    }
-    setIsClearAllDialogOpen(true)
-  }
-
-  const confirmClearAllSupportedModels = () => {
-    setSupportedModels([])
-    setSelectedDefaultModels([])
-    setSelectedFetchedModels([])
-    setIsClearAllDialogOpen(false)
-    if (form.getValues('defaultTestModel')) {
-      form.setValue('defaultTestModel', '')
-    }
-  }
-
-  // Models to display (limited to 5 unless expanded)
+  // Models to display (limited to 3 unless expanded)
   const displayedSupportedModels = useMemo(() => {
-    if (supportedModels.length <= 5) {
+    if (supportedModels.length <= 3) {
       return supportedModels
     }
-    return supportedModels.slice(0, 5)
+    return supportedModels.slice(0, 3)
   }, [supportedModels])
 
   return (
@@ -1161,29 +1133,5 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
         </DialogFooter>
       </DialogContent>
     </Dialog>
-    <AlertDialog open={isClearAllDialogOpen} onOpenChange={setIsClearAllDialogOpen}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>
-            {t('channels.dialogs.fields.supportedModels.clearAllTitle', {
-              defaultValue: 'Clear all supported models?',
-            })}
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            {t('channels.dialogs.fields.supportedModels.clearAllDescription', {
-              count: supportedModels.length,
-              defaultValue: `Are you sure you want to clear all ${supportedModels.length} models?`,
-            })}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>{t('common.buttons.cancel')}</AlertDialogCancel>
-          <AlertDialogAction onClick={confirmClearAllSupportedModels}>
-            {t('common.buttons.confirm', { defaultValue: 'Confirm' })}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-    </>
   )
 }
