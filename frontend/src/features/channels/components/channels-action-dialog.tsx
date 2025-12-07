@@ -136,7 +136,15 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
       // Convert 'openai/chat_completions' to 'openaiChatCompletions'
       const formatKey = format
         .split('/')
-        .map((part, index) => (index === 0 ? part : part.charAt(0).toUpperCase() + part.slice(1)))
+        .map((part, index) => {
+          // Handle underscores: 'chat_completions' -> 'chatCompletions'
+          const camelCased = part
+            .split('_')
+            .map((word, wordIndex) => (wordIndex === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1)))
+            .join('')
+          // Capitalize first letter if not the first part
+          return index === 0 ? camelCased : camelCased.charAt(0).toUpperCase() + camelCased.slice(1)
+        })
         .join('')
       return t(`channels.dialogs.fields.apiFormat.formats.${formatKey}`)
     },
@@ -150,15 +158,6 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
     }
     return getChannelTypeForApiFormat(selectedProvider, selectedApiFormat) || 'openai'
   }, [isEdit, currentRow, selectedProvider, selectedApiFormat])
-
-  const baseURLPlaceholder = useMemo(() => {
-    const currentType = selectedType || derivedChannelType
-    const defaultURL = getDefaultBaseURL(currentType)
-    if (defaultURL) {
-      return defaultURL
-    }
-    return t('channels.dialogs.fields.baseURL.placeholder')
-  }, [selectedType, derivedChannelType, t])
 
   const formSchema = isEdit ? updateChannelInputSchema : createChannelInputSchema
 
@@ -209,6 +208,15 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
   })
 
   const selectedType = form.watch('type') as ChannelType | undefined
+
+  const baseURLPlaceholder = useMemo(() => {
+    const currentType = selectedType || derivedChannelType
+    const defaultURL = getDefaultBaseURL(currentType)
+    if (defaultURL) {
+      return defaultURL
+    }
+    return t('channels.dialogs.fields.baseURL.placeholder')
+  }, [selectedType, derivedChannelType, t])
 
   // Sync form type when provider or API format changes (only for create mode)
   const handleProviderChange = useCallback(

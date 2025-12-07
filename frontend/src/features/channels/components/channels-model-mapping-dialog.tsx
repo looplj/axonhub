@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, X } from 'lucide-react'
+import { Plus, X, Lightbulb } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,6 +25,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { useUpdateChannel } from '../data/channels'
 import { Channel, ModelMapping } from '../data/schema'
 
@@ -140,7 +146,14 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
     exitInlineEditing()
   }, [currentRow, open, form])
 
-  const aliasSuggestion = useMemo(() => extractAliasFromModelPath(newMapping.to), [newMapping.to])
+  const aliasSuggestion = useMemo(() => {
+    const modelPath = newMapping.to
+    // Only show suggestion if the model path contains a slash
+    if (!modelPath || !modelPath.includes('/')) {
+      return ''
+    }
+    return extractAliasFromModelPath(modelPath)
+  }, [newMapping.to])
 
   const applyAliasSuggestion = () => {
     if (!aliasSuggestion) {
@@ -253,7 +266,8 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <TooltipProvider>
+      <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className='max-h-[90vh] overflow-y-auto sm:max-w-[800px]'>
         <DialogHeader>
           <DialogTitle>{t('channels.dialogs.settings.modelMapping.title')}</DialogTitle>
@@ -296,22 +310,31 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
                       className='flex-1'
                     />
                     {aliasSuggestion && newMapping.to && (
-                      <Button
-                        type='button'
-                        variant='outline'
-                        size='sm'
-                        onClick={applyAliasSuggestion}
-                        disabled={!aliasSuggestion || newMapping.from.trim() === aliasSuggestion}
-                        aria-label={t('channels.dialogs.settings.modelMapping.useSuggestion', {
-                          alias: aliasSuggestion,
-                          defaultValue: `Use ${aliasSuggestion}`,
-                        })}
-                      >
-                        {t('channels.dialogs.settings.modelMapping.useSuggestion', {
-                          alias: aliasSuggestion,
-                          defaultValue: `Use ${aliasSuggestion}`,
-                        })}
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type='button'
+                            variant='outline'
+                            size='sm'
+                            onClick={applyAliasSuggestion}
+                            disabled={!aliasSuggestion || newMapping.from.trim() === aliasSuggestion}
+                            aria-label={t('channels.dialogs.settings.modelMapping.useSuggestion', {
+                              alias: aliasSuggestion,
+                              defaultValue: `Use ${aliasSuggestion}`,
+                            })}
+                          >
+                            <Lightbulb className='h-4 w-4' />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>
+                            {t('channels.dialogs.settings.modelMapping.useSuggestion', {
+                              alias: aliasSuggestion,
+                              defaultValue: `Use ${aliasSuggestion}`,
+                            })}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
                     )}
                   </div>
                   <span className='text-muted-foreground flex items-center'>→</span>
@@ -456,5 +479,6 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
         </form>
       </DialogContent>
     </Dialog>
+    </TooltipProvider>
   )
 }
