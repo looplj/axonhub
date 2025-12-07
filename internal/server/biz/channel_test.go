@@ -1307,3 +1307,112 @@ func TestChannelService_BulkCreateChannels(t *testing.T) {
 		})
 	}
 }
+
+func TestChannel_ResolveAutoRemovedPrefixes(t *testing.T) {
+	tests := []struct {
+		name     string
+		channel  *Channel
+		model    string
+		expected string
+	}{
+		{
+			name: "no prefixes configured",
+			channel: &Channel{
+				Channel: &ent.Channel{
+					Settings: &objects.ChannelSettings{},
+				},
+			},
+			model:    "openai/gpt-4",
+			expected: "openai/gpt-4",
+		},
+		{
+			name: "settings is nil",
+			channel: &Channel{
+				Channel: &ent.Channel{
+					Settings: nil,
+				},
+			},
+			model:    "openai/gpt-4",
+			expected: "openai/gpt-4",
+		},
+		{
+			name: "remove single prefix - match",
+			channel: &Channel{
+				Channel: &ent.Channel{
+					Settings: &objects.ChannelSettings{
+						RemoveModelPrefixes: []string{"openai"},
+					},
+				},
+			},
+			model:    "openai/gpt-4",
+			expected: "gpt-4",
+		},
+		{
+			name: "remove single prefix - no match",
+			channel: &Channel{
+				Channel: &ent.Channel{
+					Settings: &objects.ChannelSettings{
+						RemoveModelPrefixes: []string{"deepseek"},
+					},
+				},
+			},
+			model:    "openai/gpt-4",
+			expected: "openai/gpt-4",
+		},
+		{
+			name: "remove multiple prefixes - match first",
+			channel: &Channel{
+				Channel: &ent.Channel{
+					Settings: &objects.ChannelSettings{
+						RemoveModelPrefixes: []string{"openai", "deepseek"},
+					},
+				},
+			},
+			model:    "openai/gpt-4",
+			expected: "gpt-4",
+		},
+		{
+			name: "remove multiple prefixes - match second",
+			channel: &Channel{
+				Channel: &ent.Channel{
+					Settings: &objects.ChannelSettings{
+						RemoveModelPrefixes: []string{"openai", "deepseek"},
+					},
+				},
+			},
+			model:    "deepseek/deepseek-chat",
+			expected: "deepseek-chat",
+		},
+		{
+			name: "model without slash - no removal",
+			channel: &Channel{
+				Channel: &ent.Channel{
+					Settings: &objects.ChannelSettings{
+						RemoveModelPrefixes: []string{"openai"},
+					},
+				},
+			},
+			model:    "gpt-4",
+			expected: "gpt-4",
+		},
+		{
+			name: "prefix without slash in model - no removal",
+			channel: &Channel{
+				Channel: &ent.Channel{
+					Settings: &objects.ChannelSettings{
+						RemoveModelPrefixes: []string{"gpt"},
+					},
+				},
+			},
+			model:    "gpt-4",
+			expected: "gpt-4",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.channel.resolveAutoRemovedPrefixes(tt.model)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
