@@ -215,6 +215,18 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
     }
   }
 
+  const handleAddPrefix = () => {
+    if (newPrefix.trim()) {
+      const currentPrefixes = form.watch('removeModelPrefixes') || []
+      if (!currentPrefixes.includes(newPrefix.trim())) {
+        form.setValue('removeModelPrefixes', [...currentPrefixes, newPrefix.trim()])
+        setNewPrefix('')
+      } else {
+        toast.warning(t('channels.dialogs.settings.removeModelPrefixes.duplicateWarning'))
+      }
+    }
+  }
+
   const onSubmit = async (values: z.infer<typeof modelMappingFormSchema>) => {
     // 检查是否有未添加的映射
     if (newMapping.from.trim() || newMapping.to.trim()) {
@@ -331,15 +343,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
                       onKeyPress={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault()
-                          if (newPrefix.trim()) {
-                            const currentPrefixes = form.watch('removeModelPrefixes') || []
-                            if (!currentPrefixes.includes(newPrefix.trim())) {
-                              form.setValue('removeModelPrefixes', [...currentPrefixes, newPrefix.trim()])
-                              setNewPrefix('')
-                            } else {
-                              toast.warning(t('channels.dialogs.settings.removeModelPrefixes.duplicateWarning'))
-                            }
-                          }
+                          handleAddPrefix()
                         }
                       }}
                     />
@@ -347,17 +351,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
                       type="button"
                       variant="outline"
                       size="icon"
-                      onClick={() => {
-                        if (newPrefix.trim()) {
-                          const currentPrefixes = form.watch('removeModelPrefixes') || []
-                          if (!currentPrefixes.includes(newPrefix.trim())) {
-                            form.setValue('removeModelPrefixes', [...currentPrefixes, newPrefix.trim()])
-                            setNewPrefix('')
-                          } else {
-                            toast.warning(t('channels.dialogs.settings.removeModelPrefixes.duplicateWarning'))
-                          }
-                        }
-                      }}
+                      onClick={handleAddPrefix}
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
