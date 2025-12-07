@@ -27,6 +27,7 @@ const (
 	PlatformMoonshot PlatformType = "moonshot" // Moonshot with Anthropic format
 	PlatformZhipu    PlatformType = "zhipu"    // Zhipu with Anthropic format
 	PlatformZai      PlatformType = "zai"      // Zai with Anthropic format
+	PlatformLongCat  PlatformType = "longcat"  // LongCat with Anthropic format (Bearer auth)
 )
 
 // Config holds all configuration for the Anthropic outbound transformer.
@@ -184,10 +185,18 @@ func (t *OutboundTransformer) TransformRequest(
 	// Prepare authentication
 	var auth *httpclient.AuthConfig
 	if t.config.APIKey != "" && (t.config.Type != PlatformBedrock && t.config.Type != PlatformVertex) {
-		auth = &httpclient.AuthConfig{
-			Type:      "api_key",
-			APIKey:    t.config.APIKey,
-			HeaderKey: "X-API-Key",
+		// LongCat uses Bearer token authentication instead of X-API-Key
+		if t.config.Type == PlatformLongCat {
+			auth = &httpclient.AuthConfig{
+				Type:   httpclient.AuthTypeBearer,
+				APIKey: t.config.APIKey,
+			}
+		} else {
+			auth = &httpclient.AuthConfig{
+				Type:      httpclient.AuthTypeAPIKey,
+				APIKey:    t.config.APIKey,
+				HeaderKey: "X-API-Key",
+			}
 		}
 	}
 
