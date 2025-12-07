@@ -953,6 +953,56 @@ func TestChannel_ChooseModel_WithExtraModelPrefix(t *testing.T) {
 	}
 }
 
+func TestChannel_ChooseModel_RemoveModelPrefixes_Symmetric(t *testing.T) {
+	tests := []struct {
+		name          string
+		channel       *Channel
+		inputModel    string
+		expectedModel string
+		expectError   bool
+	}{
+		{
+			name: "request has prefix, channel supports trimmed",
+			channel: &Channel{
+				Channel: &ent.Channel{
+					Name:            "DeepSeek",
+					SupportedModels: []string{"DeepSeek-V3.2"},
+					Settings:        &objects.ChannelSettings{RemoveModelPrefixes: []string{"deepseek-ai"}},
+				},
+			},
+			inputModel:    "deepseek-ai/DeepSeek-V3.2",
+			expectedModel: "DeepSeek-V3.2",
+			expectError:   false,
+		},
+		{
+			name: "request trimmed, channel supports prefixed",
+			channel: &Channel{
+				Channel: &ent.Channel{
+					Name:            "DeepSeek",
+					SupportedModels: []string{"deepseek-ai/DeepSeek-V3.2"},
+					Settings:        &objects.ChannelSettings{RemoveModelPrefixes: []string{"deepseek-ai"}},
+				},
+			},
+			inputModel:    "DeepSeek-V3.2",
+			expectedModel: "deepseek-ai/DeepSeek-V3.2",
+			expectError:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := tt.channel.ChooseModel(tt.inputModel)
+
+			if tt.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expectedModel, result)
+			}
+		})
+	}
+}
+
 func TestChannelService_BulkUpdateChannelOrdering(t *testing.T) {
 	svc, client := setupTestChannelService(t)
 	defer client.Close()
@@ -1339,6 +1389,7 @@ func TestChannel_RemoveModelPrefixes(t *testing.T) {
 			name: "remove single prefix - match",
 			channel: &Channel{
 				Channel: &ent.Channel{
+					SupportedModels: []string{"gpt-4"},
 					Settings: &objects.ChannelSettings{
 						RemoveModelPrefixes: []string{"openai"},
 					},
@@ -1363,6 +1414,7 @@ func TestChannel_RemoveModelPrefixes(t *testing.T) {
 			name: "remove multiple prefixes - match first",
 			channel: &Channel{
 				Channel: &ent.Channel{
+					SupportedModels: []string{"gpt-4"},
 					Settings: &objects.ChannelSettings{
 						RemoveModelPrefixes: []string{"openai", "deepseek"},
 					},
@@ -1375,6 +1427,7 @@ func TestChannel_RemoveModelPrefixes(t *testing.T) {
 			name: "remove multiple prefixes - match second",
 			channel: &Channel{
 				Channel: &ent.Channel{
+					SupportedModels: []string{"deepseek-chat"},
 					Settings: &objects.ChannelSettings{
 						RemoveModelPrefixes: []string{"openai", "deepseek"},
 					},
@@ -1406,6 +1459,19 @@ func TestChannel_RemoveModelPrefixes(t *testing.T) {
 			},
 			model:    "gpt-4",
 			expected: "gpt-4",
+		},
+		{
+			name: "request without prefix but supported model has prefix",
+			channel: &Channel{
+				Channel: &ent.Channel{
+					SupportedModels: []string{"deepseek-ai/DeepSeek-V3.2"},
+					Settings: &objects.ChannelSettings{
+						RemoveModelPrefixes: []string{"deepseek-ai"},
+					},
+				},
+			},
+			model:    "DeepSeek-V3.2",
+			expected: "deepseek-ai/DeepSeek-V3.2",
 		},
 	}
 

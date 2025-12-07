@@ -34,8 +34,19 @@ func (c Channel) RemoveModelPrefixes(model string) string {
 
 	for _, prefix := range c.Settings.RemoveModelPrefixes {
 		prefixWithSlash := prefix + "/"
+
+		// Case 1: request carries the prefix – strip it if the trimmed model is supported.
 		if strings.HasPrefix(model, prefixWithSlash) {
-			return strings.TrimPrefix(model, prefixWithSlash)
+			trimmed := strings.TrimPrefix(model, prefixWithSlash)
+			if slices.Contains(c.SupportedModels, trimmed) {
+				return trimmed
+			}
+		}
+
+		// Case 2: request omits the prefix but the channel only lists the prefixed model.
+		prefixed := prefixWithSlash + model
+		if slices.Contains(c.SupportedModels, prefixed) {
+			return prefixed
 		}
 	}
 

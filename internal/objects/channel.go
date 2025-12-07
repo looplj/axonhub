@@ -42,7 +42,11 @@ type ChannelSettings struct {
 	ModelMappings []ModelMapping `json:"modelMappings"`
 
 	// RemoveModelPrefixes configures prefixes to automatically remove from model names.
-	// e.g. ["openai", "deepseek"] will transform "openai/gpt-4" to "gpt-4" and "deepseek/deepseek-chat" to "deepseek-chat".
+	// Behavior is symmetric: the request can be with or without the prefix, and the channel can
+	// list the model with or without the prefix in SupportedModels.
+	// e.g. ["openai", "deepseek"] will transform "openai/gpt-4" -> "gpt-4" when the channel
+	// supports "gpt-4"; likewise a request "gpt-4" can resolve to "openai/gpt-4" if that is the
+	// configured supported model.
 	RemoveModelPrefixes []string `json:"removeModelPrefixes"`
 
 	// OverrideParameters sets the channel override the request body.
