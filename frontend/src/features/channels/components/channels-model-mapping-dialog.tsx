@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import type { KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
@@ -103,6 +103,19 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
     },
   })
 
+  const handleAddPrefix = useCallback(() => {
+    const trimmed = newPrefix.trim()
+    if (!trimmed) return
+
+    const currentPrefixes = form.getValues('removeModelPrefixes') || []
+    if (!currentPrefixes.includes(trimmed)) {
+      form.setValue('removeModelPrefixes', [...currentPrefixes, trimmed])
+      setNewPrefix('')
+    } else {
+      toast.warning(t('channels.dialogs.settings.removeModelPrefixes.duplicateWarning'))
+    }
+  }, [form, newPrefix, t])
+
   const exitInlineEditing = () => {
     setEditingIndex(null)
     setEditingDraft(null)
@@ -142,9 +155,11 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
     const nextMappings = currentRow.settings?.modelMappings || []
     setModelMappings(nextMappings)
     setNewMapping({ from: '', to: '' })
+    setNewPrefix('')
     form.reset({
       extraModelPrefix: nextExtraModelPrefix,
       modelMappings: nextMappings,
+      removeModelPrefixes: currentRow.settings?.removeModelPrefixes || [],
     })
     exitInlineEditing()
   }, [currentRow, open, form])
@@ -215,6 +230,17 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
     }
   }
 
+  const handleAddPrefix = () => {
+    if (newPrefix.trim()) {
+      const currentPrefixes = form.watch('removeModelPrefixes') || []
+      if (!currentPrefixes.includes(newPrefix.trim())) {
+        form.setValue('removeModelPrefixes', [...currentPrefixes, newPrefix.trim()])
+        setNewPrefix('')
+      } else {
+        toast.warning(t('channels.dialogs.settings.removeModelPrefixes.duplicateWarning'))
+      }
+    }
+  }
   const onSubmit = async (values: z.infer<typeof modelMappingFormSchema>) => {
     // 检查是否有未添加的映射
     if (newMapping.from.trim() || newMapping.to.trim()) {
@@ -328,18 +354,10 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
                       placeholder={t('channels.dialogs.settings.removeModelPrefixes.placeholder')}
                       value={newPrefix}
                       onChange={(e) => setNewPrefix(e.target.value)}
-                      onKeyPress={(e) => {
+                      onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault()
-                          if (newPrefix.trim()) {
-                            const currentPrefixes = form.watch('removeModelPrefixes') || []
-                            if (!currentPrefixes.includes(newPrefix.trim())) {
-                              form.setValue('removeModelPrefixes', [...currentPrefixes, newPrefix.trim()])
-                              setNewPrefix('')
-                            } else {
-                              toast.warning(t('channels.dialogs.settings.removeModelPrefixes.duplicateWarning'))
-                            }
-                          }
+                          handleAddPrefix()
                         }
                       }}
                     />
@@ -347,17 +365,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
                       type="button"
                       variant="outline"
                       size="icon"
-                      onClick={() => {
-                        if (newPrefix.trim()) {
-                          const currentPrefixes = form.watch('removeModelPrefixes') || []
-                          if (!currentPrefixes.includes(newPrefix.trim())) {
-                            form.setValue('removeModelPrefixes', [...currentPrefixes, newPrefix.trim()])
-                            setNewPrefix('')
-                          } else {
-                            toast.warning(t('channels.dialogs.settings.removeModelPrefixes.duplicateWarning'))
-                          }
-                        }
-                      }}
+                      onClick={handleAddPrefix}
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
