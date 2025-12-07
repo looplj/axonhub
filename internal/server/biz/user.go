@@ -104,6 +104,12 @@ func (s *UserService) UpdateUser(ctx context.Context, id int, input ent.UpdateUs
 		SetNillableIsOwner(input.IsOwner).
 		SetNillablePreferLanguage(input.PreferLanguage)
 
+    if input.ClearAvatar {
+    		mut.ClearAvatar()
+    } else {
+    		mut.SetNillableAvatar(input.Avatar)
+    }
+	
 	if input.Password != nil {
 		hashedPassword, err := HashPassword(*input.Password)
 		if err != nil {

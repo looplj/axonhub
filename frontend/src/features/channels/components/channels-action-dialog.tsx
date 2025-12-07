@@ -131,6 +131,18 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
     return getApiFormatsForProvider(selectedProvider)
   }, [selectedProvider])
 
+  const getApiFormatLabel = useCallback(
+    (format: ApiFormat) => {
+      // Convert 'openai/chat_completions' to 'openaiChatCompletions'
+      const formatKey = format
+        .split('/')
+        .map((part, index) => (index === 0 ? part : part.charAt(0).toUpperCase() + part.slice(1)))
+        .join('')
+      return t(`channels.dialogs.fields.apiFormat.formats.${formatKey}`)
+    },
+    [t]
+  )
+
   // Determine the actual channel type based on provider and API format
   const derivedChannelType = useMemo(() => {
     if (isEdit && currentRow) {
@@ -138,6 +150,15 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
     }
     return getChannelTypeForApiFormat(selectedProvider, selectedApiFormat) || 'openai'
   }, [isEdit, currentRow, selectedProvider, selectedApiFormat])
+
+  const baseURLPlaceholder = useMemo(() => {
+    const currentType = selectedType || derivedChannelType
+    const defaultURL = getDefaultBaseURL(currentType)
+    if (defaultURL) {
+      return defaultURL
+    }
+    return t('channels.dialogs.fields.baseURL.placeholder')
+  }, [selectedType, derivedChannelType, t])
 
   const formSchema = isEdit ? updateChannelInputSchema : createChannelInputSchema
 
@@ -596,7 +617,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                           isControlled={true}
                           items={availableApiFormats.map((format) => ({
                             value: format,
-                            label: format,
+                            label: getApiFormatLabel(format),
                           }))}
                         />
                         {isEdit && (
@@ -637,7 +658,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                           </FormLabel>
                           <div className='col-span-6 space-y-1'>
                             <Input
-                              placeholder={t('channels.dialogs.fields.baseURL.placeholder')}
+                              placeholder={baseURLPlaceholder}
                               autoComplete='off'
                               aria-invalid={!!fieldState.error}
                               data-testid='channel-base-url-input'
