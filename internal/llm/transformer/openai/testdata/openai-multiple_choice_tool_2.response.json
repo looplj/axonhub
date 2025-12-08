@@ -8,8 +8,7 @@
     {
       "index": 0,
       "message": {
-        "role": "assistant",
-        "content": null
+        "role": "assistant"
       },
       "finish_reason": "tool_calls"
     },
@@ -17,7 +16,6 @@
       "index": 1,
       "message": {
         "role": "assistant",
-        "content": null,
         "tool_calls": [
           {
             "id": "call_rozbrZN8cFD89vSENPvUNzAp",

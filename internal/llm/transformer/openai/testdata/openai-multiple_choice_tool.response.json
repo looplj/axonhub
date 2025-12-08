@@ -9,7 +9,6 @@
       "index": 0,
       "message": {
         "role": "assistant",
-        "content": null,
         "tool_calls": [
           {
             "id": "call_rozbrZN8cFD89vSENPvUNzAp",
@@ -27,7 +26,6 @@
       "index": 1,
       "message": {
         "role": "assistant",
-        "content": null,
         "tool_calls": [
           {
             "id": "call_UawosuGVPeWhbNvRDSoKo6mx",

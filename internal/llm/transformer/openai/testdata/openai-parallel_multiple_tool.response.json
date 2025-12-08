@@ -9,7 +9,6 @@
       "index": 0,
       "message": {
         "role": "assistant",
-        "content": null,
         "tool_calls": [
           {
             "id": "call_tooG2dAMZaICWBfsYU5LYyvs",

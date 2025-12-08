@@ -39,7 +39,7 @@ func TestMessageContent_MarshalJSON(t *testing.T) {
 				Content:         nil,
 				MultipleContent: nil,
 			},
-			want:    `""`,
+			want:    `null`,
 			wantErr: false,
 		},
 		{
@@ -117,6 +117,126 @@ func TestResponseError_Error(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.e.Error()
 			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestMessage_JSONOmitZero(t *testing.T) {
+	tests := []struct {
+		name     string
+		message  Message
+		expected string
+	}{
+		{
+			name: "zero content should be omitted",
+			message: Message{
+				Role: "user",
+			},
+			expected: `{"role":"user"}`,
+		},
+		{
+			name: "empty MessageContent should be omitted",
+			message: Message{
+				Role:    "user",
+				Content: MessageContent{},
+			},
+			expected: `{"role":"user"}`,
+		},
+		{
+			name: "nil content should be omitted",
+			message: Message{
+				Role: "user",
+				Content: MessageContent{
+					Content:         nil,
+					MultipleContent: nil,
+				},
+			},
+			expected: `{"role":"user"}`,
+		},
+		{
+			name: "empty string content should be included as empty string",
+			message: Message{
+				Role: "user",
+				Content: MessageContent{
+					Content:         lo.ToPtr(""),
+					MultipleContent: nil,
+				},
+			},
+			expected: `{"role":"user","content":""}`,
+		},
+		{
+			name: "empty slice content should be included as null",
+			message: Message{
+				Role: "user",
+				Content: MessageContent{
+					Content:         nil,
+					MultipleContent: []MessageContentPart{},
+				},
+			},
+			expected: `{"role":"user","content":null}`,
+		},
+		{
+			name: "non-empty content should be included",
+			message: Message{
+				Role: "user",
+				Content: MessageContent{
+					Content:         lo.ToPtr("Hello"),
+					MultipleContent: nil,
+				},
+			},
+			expected: `{"role":"user","content":"Hello"}`,
+		},
+		{
+			name: "non-empty multiple content should be included",
+			message: Message{
+				Role: "user",
+				Content: MessageContent{
+					Content:         nil,
+					MultipleContent: []MessageContentPart{{Type: "text", Text: lo.ToPtr("Hello")}},
+				},
+			},
+			expected: `{"role":"user","content":"Hello"}`,
+		},
+		{
+			name: "multiple content parts should be included as array",
+			message: Message{
+				Role: "user",
+				Content: MessageContent{
+					Content: nil,
+					MultipleContent: []MessageContentPart{
+						{Type: "text", Text: lo.ToPtr("Hello")},
+						{Type: "text", Text: lo.ToPtr("World")},
+					},
+				},
+			},
+			expected: `{"role":"user","content":[{"type":"text","text":"Hello"},{"type":"text","text":"World"}]}`,
+		},
+		{
+			name: "other zero fields should be omitted",
+			message: Message{
+				Role:    "user",
+				Content: MessageContent{Content: lo.ToPtr("Hello")},
+				Name:    nil,
+			},
+			expected: `{"role":"user","content":"Hello"}`,
+		},
+		{
+			name: "non-zero fields should be included",
+			message: Message{
+				Role:    "user",
+				Content: MessageContent{Content: lo.ToPtr("Hello")},
+				Name:    lo.ToPtr("John"),
+				Refusal: "Cannot answer",
+			},
+			expected: `{"role":"user","content":"Hello","name":"John","refusal":"Cannot answer"}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := json.Marshal(tt.message)
+			require.NoError(t, err)
+			require.JSONEq(t, tt.expected, string(got))
 		})
 	}
 }
