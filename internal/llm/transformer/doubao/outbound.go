@@ -95,7 +95,7 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	if len(chatReq.Messages) == 0 {
-		return nil, fmt.Errorf("messages are required")
+		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
 	}
 
 	// If this is an image generation request, use the Doubao Image Generation API

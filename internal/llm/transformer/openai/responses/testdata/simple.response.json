@@ -1,0 +1,31 @@
+{
+  "id": "resp_68daaab804b88197bb79413e057aa748001f79b13b9c9cbb",
+  "object": "response",
+  "created_at": 1759161016,
+  "model": "gpt-4o",
+  "output": [
+    {
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "I currently do not have real-time access to weather data or the internet. To get the latest weather information for New York City, I recommend checking reliable sources such as [Weather.com](https://www.weather.com), [AccuWeather](https://www.accuweather.com), or your preferred weather app."
+        }
+      ],
+      "status": "completed"
+    }
+  ],
+  "status": "completed",
+  "usage": {
+    "input_tokens": 16,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 63,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 79
+  }
+}

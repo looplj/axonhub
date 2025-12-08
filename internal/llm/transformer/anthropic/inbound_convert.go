@@ -3,12 +3,12 @@ package anthropic
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
+	"github.com/looplj/axonhub/internal/pkg/xurl"
 )
 
 // convertToLLMRequest converts Anthropic MessageRequest to ChatCompletionRequest.
@@ -313,23 +313,15 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 						if part.ImageURL != nil && part.ImageURL.URL != "" {
 							// Convert OpenAI image format to Anthropic format
 							url := part.ImageURL.URL
-							if strings.HasPrefix(url, "data:") {
-								// Extract media type and data from data URL
-								parts := strings.SplitN(url, ",", 2)
-								if len(parts) == 2 {
-									headerParts := strings.Split(parts[0], ";")
-									if len(headerParts) >= 2 {
-										mediaType := strings.TrimPrefix(headerParts[0], "data:")
-										contentBlocks = append(contentBlocks, MessageContentBlock{
-											Type: "image",
-											Source: &ImageSource{
-												Type:      "base64",
-												MediaType: mediaType,
-												Data:      parts[1],
-											},
-										})
-									}
-								}
+							if parsed := xurl.ParseDataURL(url); parsed != nil {
+								contentBlocks = append(contentBlocks, MessageContentBlock{
+									Type: "image",
+									Source: &ImageSource{
+										Type:      "base64",
+										MediaType: parsed.MediaType,
+										Data:      parsed.Data,
+									},
+								})
 							} else {
 								contentBlocks = append(contentBlocks, MessageContentBlock{
 									Type: "image",

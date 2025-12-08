@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { X, RefreshCw, Search, ChevronRight, ChevronLeft } from 'lucide-react'
+import { X, RefreshCw, Search, ChevronRight, PanelLeft } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -13,6 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Form, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Textarea } from '@/components/ui/textarea'
 import { AutoCompleteSelect } from '@/components/auto-complete-select'
@@ -33,6 +34,8 @@ interface Props {
   onOpenChange: (open: boolean) => void
   showModelsPanel?: boolean
 }
+
+const MAX_MODELS_DISPLAY = 2
 
 export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModelsPanel = false }: Props) {
   const { t } = useTranslation()
@@ -55,8 +58,8 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
   const [selectedFetchedModels, setSelectedFetchedModels] = useState<string[]>([])
   const [showAddedModelsOnly, setShowAddedModelsOnly] = useState(false)
   const [supportedModelsExpanded, setSupportedModelsExpanded] = useState(false)
-  const [isClearAllDialogOpen, setIsClearAllDialogOpen] = useState(false)
-  
+  const [showClearAllPopover, setShowClearAllPopover] = useState(false)
+
   // Provider-based selection state
   const [selectedProvider, setSelectedProvider] = useState<string>(() => {
     if (currentRow) {
@@ -365,6 +368,10 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
     }
   }
 
+  const handleClearAllSupportedModels = () => {
+    setSupportedModels([])
+  }
+
   const handleFetchModels = useCallback(async () => {
     const channelType = form.getValues('type')
     const baseURL = form.getValues('baseURL')
@@ -376,7 +383,12 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
 
     try {
       // Only use the first API key when multiple keys are provided
-      const firstApiKey = isEdit ? undefined : (apiKey?.split('\n').map(key => key.trim()).filter(key => key.length > 0)[0] || '')
+      const firstApiKey = isEdit
+        ? undefined
+        : apiKey
+            ?.split('\n')
+            .map((key) => key.trim())
+            .filter((key) => key.length > 0)[0] || ''
 
       const result = await fetchModels.mutateAsync({
         channelType,
@@ -484,36 +496,18 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
     setShowSupportedModelsPanel(false)
   }, [])
 
-  const handleClearAllSupportedModels = () => {
-    if (supportedModels.length === 0) {
-      return
-    }
-    setIsClearAllDialogOpen(true)
-  }
-
-  const confirmClearAllSupportedModels = () => {
-    setSupportedModels([])
-    setSelectedDefaultModels([])
-    setSelectedFetchedModels([])
-    setIsClearAllDialogOpen(false)
-    if (form.getValues('defaultTestModel')) {
-      form.setValue('defaultTestModel', '')
-    }
-  }
-
-  // Models to display (limited to 3 unless expanded)
+  // Models to display (limited to MAX_MODELS_DISPLAY unless expanded)
   const displayedSupportedModels = useMemo(() => {
-    if (supportedModels.length <= 3) {
+    if (supportedModels.length <= MAX_MODELS_DISPLAY) {
       return supportedModels
     }
-    return supportedModels.slice(0, 3)
+    return supportedModels.slice(0, MAX_MODELS_DISPLAY)
   }, [supportedModels])
 
   return (
-    <>
-      <Dialog
-        open={open}
-        onOpenChange={(state) => {
+    <Dialog
+      open={open}
+      onOpenChange={(state) => {
         if (!state) {
           form.reset()
           setSupportedModels(currentRow?.supportedModels || [])
@@ -908,7 +902,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                               </button>
                             </Badge>
                           ))}
-                          {supportedModels.length > 3 && (
+                          {supportedModels.length > MAX_MODELS_DISPLAY && !supportedModelsExpanded && (
                             <Button
                               type='button'
                               variant='ghost'
@@ -917,7 +911,9 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                               onClick={() => setShowSupportedModelsPanel(true)}
                             >
                               <ChevronRight className='mr-1 h-3 w-3' />
-                              {t('channels.dialogs.fields.supportedModels.showMore', { count: supportedModels.length - 3 })}
+                              {t('channels.dialogs.fields.supportedModels.showMore', {
+                                count: supportedModels.length - MAX_MODELS_DISPLAY,
+                              })}
                             </Button>
                           )}
                         </div>
@@ -1095,22 +1091,46 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
             >
               <div className='mb-3 flex items-center justify-between'>
                 <div className='flex items-center gap-2'>
-                  <Button type='button' variant='ghost' size='sm' onClick={closeSupportedModelsPanel} className='h-8 w-8 p-0'>
-                    <ChevronLeft className='h-4 w-4' />
+                  <Button type='button' variant='ghost' size='sm' className='h-6 w-6 p-0' onClick={closeSupportedModelsPanel}>
+                    <PanelLeft className='h-4 w-4' />
                   </Button>
                   <h3 className='text-sm font-semibold'>
                     {t('channels.dialogs.fields.supportedModels.allModels', { count: supportedModels.length })}
                   </h3>
                 </div>
-                <Button
-                  type='button'
-                  variant='ghost'
-                  size='sm'
-                  onClick={confirmClearAllSupportedModels}
-                  disabled={supportedModels.length === 0}
-                >
-                  {t('channels.dialogs.buttons.clearAll', { defaultValue: 'Clear all' })}
-                </Button>
+                <Popover open={showClearAllPopover} onOpenChange={setShowClearAllPopover}>
+                  <PopoverTrigger asChild>
+                    <Button type='button' variant='ghost' size='sm' disabled={supportedModels.length === 0}>
+                      <X className='h-4 w-4' />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className='w-72 p-4' align='end'>
+                    <div className='space-y-3'>
+                      <div>
+                        <h4 className='font-medium'>{t('channels.dialogs.fields.supportedModels.clearAllTitle')}</h4>
+                        <p className='text-muted-foreground text-sm'>
+                          {t('channels.dialogs.fields.supportedModels.clearAllDescription', { count: supportedModels.length })}
+                        </p>
+                      </div>
+                      <div className='flex gap-2'>
+                        <Button variant='outline' size='sm' onClick={() => setShowClearAllPopover(false)} className='flex-1'>
+                          {t('common.buttons.cancel')}
+                        </Button>
+                        <Button
+                          variant='destructive'
+                          size='sm'
+                          onClick={() => {
+                            handleClearAllSupportedModels()
+                            setShowClearAllPopover(false)
+                          }}
+                          className='flex-1'
+                        >
+                          {t('channels.dialogs.buttons.clearAll')}
+                        </Button>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               {/* Model List */}

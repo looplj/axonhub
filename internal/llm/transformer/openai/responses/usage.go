@@ -29,3 +29,26 @@ func (u *Usage) ToUsage() *llm.Usage {
 		},
 	}
 }
+
+// ConvertLLMUsageToResponsesUsage converts llm.Usage to Responses API Usage.
+func ConvertLLMUsageToResponsesUsage(usage *llm.Usage) *Usage {
+	if usage == nil {
+		return nil
+	}
+
+	result := &Usage{
+		InputTokens:  usage.PromptTokens,
+		OutputTokens: usage.CompletionTokens,
+		TotalTokens:  usage.TotalTokens,
+	}
+
+	if usage.PromptTokensDetails != nil {
+		result.InputTokenDetails.CachedTokens = usage.PromptTokensDetails.CachedTokens
+	}
+
+	if usage.CompletionTokensDetails != nil {
+		result.OutputTokenDetails.ReasoningTokens = usage.CompletionTokensDetails.ReasoningTokens
+	}
+
+	return result
+}
