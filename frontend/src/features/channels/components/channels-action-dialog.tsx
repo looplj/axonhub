@@ -892,7 +892,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                           </Button>
                         </div>
 
-                        {/* Supported models display - limited to 5 with expand button */}
+                        {/* Supported models display - limited to 3 with expand button */}
                         <div className='flex flex-wrap items-center gap-1'>
                           {displayedSupportedModels.map((model) => (
                             <Badge key={model} variant='secondary' className='text-xs'>
@@ -1001,7 +1001,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
               <div className='mb-3 flex items-center justify-between'>
                 <h3 className='text-sm font-semibold'>{t('channels.dialogs.fields.supportedModels.fetchedModelsLabel')}</h3>
                 <Button type='button' variant='ghost' size='sm' onClick={closeFetchedModelsPanel}>
-                  <X className='h-4 w-4' />
+                  <ChevronLeft className='h-4 w-4' />
                 </Button>
               </div>
 
@@ -1173,5 +1173,6 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  </>
+)
 }

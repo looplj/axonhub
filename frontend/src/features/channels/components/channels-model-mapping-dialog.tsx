@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import type { KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
@@ -70,6 +70,7 @@ const createModelMappingFormSchema = (supportedModels: string[]) =>
           message: 'Target model must be in supported models',
         }
       ),
+    removeModelPrefixes: z.array(z.string()).optional(),
   })
 
 const extractAliasFromModelPath = (modelPath: string): string => {
@@ -86,6 +87,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
 
   const [modelMappings, setModelMappings] = useState<ModelMapping[]>(currentRow.settings?.modelMappings || [])
   const [newMapping, setNewMapping] = useState({ from: '', to: '' })
+  const [newPrefix, setNewPrefix] = useState('')
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editingDraft, setEditingDraft] = useState<ModelMapping | null>(null)
   const [editingError, setEditingError] = useState<string | null>(null)
@@ -97,8 +99,22 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
     defaultValues: {
       extraModelPrefix: currentRow.settings?.extraModelPrefix || '',
       modelMappings: currentRow.settings?.modelMappings || [],
+      removeModelPrefixes: currentRow.settings?.removeModelPrefixes || [],
     },
   })
+
+  const handleAddPrefix = useCallback(() => {
+    const trimmed = newPrefix.trim()
+    if (!trimmed) return
+
+    const currentPrefixes = form.getValues('removeModelPrefixes') || []
+    if (!currentPrefixes.includes(trimmed)) {
+      form.setValue('removeModelPrefixes', [...currentPrefixes, trimmed])
+      setNewPrefix('')
+    } else {
+      toast.warning(t('channels.dialogs.settings.removeModelPrefixes.duplicateWarning'))
+    }
+  }, [form, newPrefix, t])
 
   const exitInlineEditing = () => {
     setEditingIndex(null)
@@ -139,9 +155,11 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
     const nextMappings = currentRow.settings?.modelMappings || []
     setModelMappings(nextMappings)
     setNewMapping({ from: '', to: '' })
+    setNewPrefix('')
     form.reset({
       extraModelPrefix: nextExtraModelPrefix,
       modelMappings: nextMappings,
+      removeModelPrefixes: currentRow.settings?.removeModelPrefixes || [],
     })
     exitInlineEditing()
   }, [currentRow, open, form])
@@ -226,6 +244,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
           settings: {
             extraModelPrefix: values.extraModelPrefix,
             modelMappings: values.modelMappings,
+            removeModelPrefixes: values.removeModelPrefixes || [],
             overrideParameters: currentRow.settings?.overrideParameters,
           },
         },
@@ -271,7 +290,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
       <DialogContent className='max-h-[90vh] overflow-y-auto sm:max-w-[800px]'>
         <DialogHeader>
           <DialogTitle>{t('channels.dialogs.settings.modelMapping.title')}</DialogTitle>
-          {/* <DialogDescription>{t('channels.dialogs.settings.modelMapping.description', { name: currentRow.name })}</DialogDescription> */}
+          <DialogDescription>{t('channels.dialogs.settings.modelMapping.description', { name: currentRow.name })}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -292,6 +311,63 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
                     {form.formState.errors.extraModelPrefix.message.toString()}
                   </p>
                 )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className='text-lg'>{t('channels.dialogs.settings.removeModelPrefixes.title')}</CardTitle>
+                <CardDescription>{t('channels.dialogs.settings.removeModelPrefixes.description')}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {/* 前缀列表显示 */}
+                  <div className="flex flex-wrap gap-2">
+                    {(form.watch('removeModelPrefixes') || []).map((prefix, index) => (
+                      <Badge key={`${prefix}-${index}`} variant="secondary" className="gap-1">
+                        {prefix}
+                        <button
+                          type="button"
+                          className="ml-1 hover:bg-destructive/20 rounded p-0.5 transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const currentPrefixes = form.getValues('removeModelPrefixes') || []
+                            const newPrefixes = currentPrefixes.filter((_, i) => i !== index)
+                            form.setValue('removeModelPrefixes', newPrefixes, {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                            })
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+
+                  {/* 添加新前缀 */}
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder={t('channels.dialogs.settings.removeModelPrefixes.placeholder')}
+                      value={newPrefix}
+                      onChange={(e) => setNewPrefix(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          handleAddPrefix()
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={handleAddPrefix}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 

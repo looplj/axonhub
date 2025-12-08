@@ -27,6 +27,32 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
+func (c Channel) RemoveModelPrefixes(model string) string {
+	if c.Settings == nil || len(c.Settings.RemoveModelPrefixes) == 0 {
+		return model
+	}
+
+	for _, prefix := range c.Settings.RemoveModelPrefixes {
+		prefixWithSlash := prefix + "/"
+
+		// Case 1: request carries the prefix – strip it if the trimmed model is supported.
+		if strings.HasPrefix(model, prefixWithSlash) {
+			trimmed := strings.TrimPrefix(model, prefixWithSlash)
+			if slices.Contains(c.SupportedModels, trimmed) {
+				return trimmed
+			}
+		}
+
+		// Case 2: request omits the prefix but the channel only lists the prefixed model.
+		prefixed := prefixWithSlash + model
+		if slices.Contains(c.SupportedModels, prefixed) {
+			return prefixed
+		}
+	}
+
+	return model
+}
+
 func (c Channel) resolvePrefixedModel(model string) (string, bool) {
 	if c.Settings == nil || c.Settings.ExtraModelPrefix == "" {
 		return "", false
@@ -55,6 +81,12 @@ func (c Channel) IsModelSupported(model string) bool {
 	}
 
 	if _, ok := c.resolvePrefixedModel(model); ok {
+		return true
+	}
+
+	model = c.RemoveModelPrefixes(model)
+
+	if slices.Contains(c.SupportedModels, model) {
 		return true
 	}
 
@@ -89,6 +121,12 @@ func (c Channel) ChooseModel(model string) (string, error) {
 
 	if resolved, ok := c.resolvePrefixedModel(model); ok {
 		return resolved, nil
+	}
+
+	model = c.RemoveModelPrefixes(model)
+
+	if slices.Contains(c.SupportedModels, model) {
+		return model, nil
 	}
 
 	for _, mapping := range c.Settings.ModelMappings {
