@@ -217,6 +217,10 @@ func TestTransformRequest_Integration(t *testing.T) {
 			name:        "tool result with reasoning",
 			requestFile: `anthropic-tool-result-mixed.request.json`,
 		},
+		{
+			name:        "1 item system array request",
+			requestFile: `anthropic-system-1.request.json`,
+		},
 	}
 
 	for _, tt := range tests {

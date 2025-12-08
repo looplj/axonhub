@@ -407,11 +407,25 @@ func convertToAnthropicSystemPrompt(chatReq *llm.Request) *SystemPrompt {
 		return msg.Role == "system"
 	})
 
+	// Check if system was originally in array format
+	wasArrayFormat := chatReq.TransformerMetadata != nil && chatReq.TransformerMetadata["anthropic_system_array_format"] == "true"
+
 	switch len(systemMessages) {
 	case 0:
 		// Leave System as nil when there are no system messages
 		return nil
 	case 1:
+		// If it was originally in array format, preserve that format
+		if wasArrayFormat {
+			return &SystemPrompt{
+				MultiplePrompts: []SystemPromptPart{{
+					Type:         "text",
+					Text:         *systemMessages[0].Content.Content,
+					CacheControl: convertToAnthropicCacheControl(systemMessages[0].CacheControl),
+				}},
+			}
+		}
+
 		return &SystemPrompt{
 			Prompt: systemMessages[0].Content.Content,
 		}

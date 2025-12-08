@@ -74,10 +74,7 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 			// Validate that all system prompts are text type
 			for _, prompt := range anthropicReq.System.MultiplePrompts {
 				if prompt.Type != "text" {
-					return nil, fmt.Errorf(
-						"%w: system prompt array must contain only text type elements",
-						transformer.ErrInvalidRequest,
-					)
+					return nil, fmt.Errorf("%w: system prompt must be text", transformer.ErrInvalidRequest)
 				}
 			}
 		}
