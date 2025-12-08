@@ -19,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
+	"github.com/looplj/axonhub/internal/pkg/xmap"
 )
 
 type Channel struct {
@@ -35,6 +36,18 @@ type Channel struct {
 
 	// CachedOverrideHeaders stores the parsed override headers to avoid repeated JSON parsing
 	CachedOverrideHeaders []objects.HeaderEntry
+
+	// modelSupportCache caches IsModelSupported results
+	modelSupportCache *xmap.Map[string, bool]
+
+	// chooseModelCache caches ChooseModel results
+	chooseModelCache *xmap.Map[string, chooseModelResult]
+}
+
+// chooseModelResult stores the cached result of ChooseModel.
+type chooseModelResult struct {
+	model string
+	err   error
 }
 
 type ChannelServiceParams struct {

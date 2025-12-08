@@ -70,7 +70,7 @@ const createModelMappingFormSchema = (supportedModels: string[]) =>
           message: 'Target model must be in supported models',
         }
       ),
-    removeModelPrefixes: z.array(z.string()).optional(),
+    autoTrimedModelPrefixes: z.array(z.string()).optional(),
   })
 
 const extractAliasFromModelPath = (modelPath: string): string => {
@@ -99,7 +99,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
     defaultValues: {
       extraModelPrefix: currentRow.settings?.extraModelPrefix || '',
       modelMappings: currentRow.settings?.modelMappings || [],
-      removeModelPrefixes: currentRow.settings?.removeModelPrefixes || [],
+      autoTrimedModelPrefixes: currentRow.settings?.autoTrimedModelPrefixes || [],
     },
   })
 
@@ -107,12 +107,12 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
     const trimmed = newPrefix.trim()
     if (!trimmed) return
 
-    const currentPrefixes = form.getValues('removeModelPrefixes') || []
+    const currentPrefixes = form.getValues('autoTrimedModelPrefixes') || []
     if (!currentPrefixes.includes(trimmed)) {
-      form.setValue('removeModelPrefixes', [...currentPrefixes, trimmed])
+      form.setValue('autoTrimedModelPrefixes', [...currentPrefixes, trimmed])
       setNewPrefix('')
     } else {
-      toast.warning(t('channels.dialogs.settings.removeModelPrefixes.duplicateWarning'))
+      toast.warning(t('channels.dialogs.settings.autoTrimedModelPrefixes.duplicateWarning'))
     }
   }, [form, newPrefix, t])
 
@@ -159,7 +159,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
     form.reset({
       extraModelPrefix: nextExtraModelPrefix,
       modelMappings: nextMappings,
-      removeModelPrefixes: currentRow.settings?.removeModelPrefixes || [],
+      autoTrimedModelPrefixes: currentRow.settings?.autoTrimedModelPrefixes || [],
     })
     exitInlineEditing()
   }, [currentRow, open, form])
@@ -244,7 +244,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
           settings: {
             extraModelPrefix: values.extraModelPrefix,
             modelMappings: values.modelMappings,
-            removeModelPrefixes: values.removeModelPrefixes || [],
+            autoTrimedModelPrefixes: values.autoTrimedModelPrefixes || [],
             overrideParameters: currentRow.settings?.overrideParameters,
           },
         },
@@ -316,14 +316,14 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
 
             <Card>
               <CardHeader>
-                <CardTitle className='text-lg'>{t('channels.dialogs.settings.removeModelPrefixes.title')}</CardTitle>
-                <CardDescription>{t('channels.dialogs.settings.removeModelPrefixes.description')}</CardDescription>
+                <CardTitle className='text-lg'>{t('channels.dialogs.settings.autoTrimedModelPrefixes.title')}</CardTitle>
+                <CardDescription>{t('channels.dialogs.settings.autoTrimedModelPrefixes.description')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
                   {/* 前缀列表显示 */}
                   <div className="flex flex-wrap gap-2">
-                    {(form.watch('removeModelPrefixes') || []).map((prefix, index) => (
+                    {(form.watch('autoTrimedModelPrefixes') || []).map((prefix, index) => (
                       <Badge key={`${prefix}-${index}`} variant="secondary" className="gap-1">
                         {prefix}
                         <button
@@ -331,9 +331,9 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
                           className="ml-1 hover:bg-destructive/20 rounded p-0.5 transition-colors"
                           onClick={(e) => {
                             e.stopPropagation()
-                            const currentPrefixes = form.getValues('removeModelPrefixes') || []
+                            const currentPrefixes = form.getValues('autoTrimedModelPrefixes') || []
                             const newPrefixes = currentPrefixes.filter((_, i) => i !== index)
-                            form.setValue('removeModelPrefixes', newPrefixes, {
+                            form.setValue('autoTrimedModelPrefixes', newPrefixes, {
                               shouldValidate: true,
                               shouldDirty: true,
                             })
@@ -348,7 +348,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
                   {/* 添加新前缀 */}
                   <div className="flex gap-2">
                     <Input
-                      placeholder={t('channels.dialogs.settings.removeModelPrefixes.placeholder')}
+                      placeholder={t('channels.dialogs.settings.autoTrimedModelPrefixes.placeholder')}
                       value={newPrefix}
                       onChange={(e) => setNewPrefix(e.target.value)}
                       onKeyDown={(e) => {

@@ -39,7 +39,7 @@ input ProxyConfigInput {
 type ChannelSettings {
   extraModelPrefix: String
   modelMappings: [ModelMapping!]
-  removeModelPrefixes: [String!]
+  autoTrimedModelPrefixes: [String!]
   overrideParameters: String
   overrideHeaders: [HeaderEntry!]
   proxy: ProxyConfig
@@ -53,7 +53,7 @@ input ModelMappingInput {
 input ChannelSettingsInput {
   extraModelPrefix: String
   modelMappings: [ModelMappingInput!]
-  removeModelPrefixes: [String!]
+  autoTrimedModelPrefixes: [String!]
   overrideParameters: String
   overrideHeaders: [HeaderEntryInput!]
   proxy: ProxyConfigInput

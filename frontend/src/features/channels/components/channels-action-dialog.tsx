@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { X, RefreshCw, Search, ChevronRight, PanelLeft } from 'lucide-react'
+import { X, RefreshCw, Search, ChevronLeft, ChevronRight, PanelLeft } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -570,7 +570,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                                     ? isSelected
                                       ? 'border-primary bg-muted/80 cursor-not-allowed shadow-sm'
                                       : 'cursor-not-allowed opacity-60'
-                                    : `${isSelected ? 'border-primary bg-accent/40 shadow-sm' : ''} hover:bg-accent/50`
+                                    : (isSelected ? 'border-primary bg-accent/40 shadow-sm' : '') + ' hover:bg-accent/50'
                                 }`}
                               >
                                 <RadioGroupItem
@@ -1173,6 +1173,5 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  </>
-)
+  )
 }
