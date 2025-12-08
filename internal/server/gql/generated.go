@@ -205,12 +205,12 @@ type ComplexityRoot struct {
 	}
 
 	ChannelSettings struct {
-		ExtraModelPrefix    func(childComplexity int) int
-		ModelMappings       func(childComplexity int) int
-		OverrideHeaders     func(childComplexity int) int
-		OverrideParameters  func(childComplexity int) int
-		Proxy               func(childComplexity int) int
-		RemoveModelPrefixes func(childComplexity int) int
+		AutoTrimedModelPrefixes func(childComplexity int) int
+		ExtraModelPrefix        func(childComplexity int) int
+		ModelMappings           func(childComplexity int) int
+		OverrideHeaders         func(childComplexity int) int
+		OverrideParameters      func(childComplexity int) int
+		Proxy                   func(childComplexity int) int
 	}
 
 	ChannelTypeCount struct {
@@ -1633,6 +1633,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ChannelPerformance.UpdatedAt(childComplexity), true
 
+	case "ChannelSettings.autoTrimedModelPrefixes":
+		if e.complexity.ChannelSettings.AutoTrimedModelPrefixes == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.AutoTrimedModelPrefixes(childComplexity), true
 	case "ChannelSettings.extraModelPrefix":
 		if e.complexity.ChannelSettings.ExtraModelPrefix == nil {
 			break
@@ -1663,12 +1669,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSettings.Proxy(childComplexity), true
-	case "ChannelSettings.removeModelPrefixes":
-		if e.complexity.ChannelSettings.RemoveModelPrefixes == nil {
-			break
-		}
-
-		return e.complexity.ChannelSettings.RemoveModelPrefixes(childComplexity), true
 
 	case "ChannelTypeCount.count":
 		if e.complexity.ChannelTypeCount.Count == nil {
@@ -8328,8 +8328,8 @@ func (ec *executionContext) fieldContext_Channel_settings(_ context.Context, fie
 				return ec.fieldContext_ChannelSettings_extraModelPrefix(ctx, field)
 			case "modelMappings":
 				return ec.fieldContext_ChannelSettings_modelMappings(ctx, field)
-			case "removeModelPrefixes":
-				return ec.fieldContext_ChannelSettings_removeModelPrefixes(ctx, field)
+			case "autoTrimedModelPrefixes":
+				return ec.fieldContext_ChannelSettings_autoTrimedModelPrefixes(ctx, field)
 			case "overrideParameters":
 				return ec.fieldContext_ChannelSettings_overrideParameters(ctx, field)
 			case "overrideHeaders":
@@ -9727,14 +9727,14 @@ func (ec *executionContext) fieldContext_ChannelSettings_modelMappings(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _ChannelSettings_removeModelPrefixes(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+func (ec *executionContext) _ChannelSettings_autoTrimedModelPrefixes(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_ChannelSettings_removeModelPrefixes,
+		ec.fieldContext_ChannelSettings_autoTrimedModelPrefixes,
 		func(ctx context.Context) (any, error) {
-			return obj.RemoveModelPrefixes, nil
+			return obj.AutoTrimedModelPrefixes, nil
 		},
 		nil,
 		ec.marshalOString2ᚕstringᚄ,
@@ -9743,7 +9743,7 @@ func (ec *executionContext) _ChannelSettings_removeModelPrefixes(ctx context.Con
 	)
 }
 
-func (ec *executionContext) fieldContext_ChannelSettings_removeModelPrefixes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ChannelSettings_autoTrimedModelPrefixes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ChannelSettings",
 		Field:      field,
@@ -29834,7 +29834,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "removeModelPrefixes", "overrideParameters", "overrideHeaders", "proxy"}
+	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "overrideParameters", "overrideHeaders", "proxy"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -29855,13 +29855,13 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.ModelMappings = data
-		case "removeModelPrefixes":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("removeModelPrefixes"))
+		case "autoTrimedModelPrefixes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoTrimedModelPrefixes"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RemoveModelPrefixes = data
+			it.AutoTrimedModelPrefixes = data
 		case "overrideParameters":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("overrideParameters"))
 			data, err := ec.unmarshalOString2string(ctx, v)
@@ -42984,8 +42984,8 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelSettings_extraModelPrefix(ctx, field, obj)
 		case "modelMappings":
 			out.Values[i] = ec._ChannelSettings_modelMappings(ctx, field, obj)
-		case "removeModelPrefixes":
-			out.Values[i] = ec._ChannelSettings_removeModelPrefixes(ctx, field, obj)
+		case "autoTrimedModelPrefixes":
+			out.Values[i] = ec._ChannelSettings_autoTrimedModelPrefixes(ctx, field, obj)
 		case "overrideParameters":
 			out.Values[i] = ec._ChannelSettings_overrideParameters(ctx, field, obj)
 		case "overrideHeaders":

@@ -910,9 +910,9 @@
           "description": "Configure extra model prefixes to allow access to this channel using prefixed model names. For example: with prefix 'deepseek', both 'deepseek/deepseek-chat' and 'deepseek-chat' can access this channel.",
           "placeholder": "e.g., deepseek"
         },
-        "removeModelPrefixes": {
-          "title": "Remove Model Prefixes",
-          "description": "Configure prefixes to automatically remove from model names. For example: with prefix 'deepseek-ai', model 'deepseek-ai/deepseek-chat' becomes 'deepseek-chat'; both 'deepseek-ai/deepseek-chat' and 'deepseek-chat' can access this channel",
+        "autoTrimedModelPrefixes": {
+          "title": "Auto-Trimmed Model Prefixes",
+          "description": "Configure prefixes to automatically trim from model names. For example: with prefix 'deepseek-ai', model 'deepseek-ai/deepseek-chat' becomes 'deepseek-chat'; both 'deepseek-ai/deepseek-chat' and 'deepseek-chat' can access this channel",
           "placeholder": "e.g., openai, deepseek",
           "duplicateWarning": "This prefix already exists"
         },

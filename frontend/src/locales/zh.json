@@ -939,9 +939,9 @@
           "description": "配置额外的模型前缀，允许使用带前缀的模型名称访问该渠道。例如：配置前缀为 'deepseek'，则 'deepseek/deepseek-chat' 和 'deepseek-chat' 都可以访问该渠道",
           "placeholder": "例如: deepseek"
         },
-        "removeModelPrefixes": {
-          "title": "删除模型前缀",
-          "description": "配置需要自动删除的模型前缀。例如：配置前缀为 'deepseek-ai'，则模型 'deepseek-ai/deepseek-chat' 将变为 'deepseek-chat'，则 'deepseek-ai/deepseek-chat' 和 'deepseek-chat' 都可以访问该渠道",
+        "autoTrimedModelPrefixes": {
+          "title": "自动裁剪模型前缀",
+          "description": "配置需要自动裁剪的模型前缀。例如：配置前缀为 'deepseek-ai'，则模型 'deepseek-ai/deepseek-chat' 将变为 'deepseek-chat'，则 'deepseek-ai/deepseek-chat' 和 'deepseek-chat' 都可以访问该渠道",
           "placeholder": "例如: openai, deepseek",
           "duplicateWarning": "该前缀已存在"
         },

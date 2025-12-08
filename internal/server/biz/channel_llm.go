@@ -25,35 +25,25 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/internal/pkg/xmap"
 )
 
-func (c Channel) RemoveModelPrefixes(model string) string {
-	if c.Settings == nil || len(c.Settings.RemoveModelPrefixes) == 0 {
-		return model
+func (c *Channel) resolveAutoTrimedModel(model string) (string, bool) {
+	if c.Settings == nil || len(c.Settings.AutoTrimedModelPrefixes) == 0 {
+		return "", false
 	}
 
-	for _, prefix := range c.Settings.RemoveModelPrefixes {
-		prefixWithSlash := prefix + "/"
-
-		// Case 1: request carries the prefix – strip it if the trimmed model is supported.
-		if strings.HasPrefix(model, prefixWithSlash) {
-			trimmed := strings.TrimPrefix(model, prefixWithSlash)
-			if slices.Contains(c.SupportedModels, trimmed) {
-				return trimmed
-			}
-		}
-
-		// Case 2: request omits the prefix but the channel only lists the prefixed model.
-		prefixed := prefixWithSlash + model
+	for _, prefix := range c.Settings.AutoTrimedModelPrefixes {
+		prefixed := prefix + "/" + model
 		if slices.Contains(c.SupportedModels, prefixed) {
-			return prefixed
+			return prefixed, true
 		}
 	}
 
-	return model
+	return "", false
 }
 
-func (c Channel) resolvePrefixedModel(model string) (string, bool) {
+func (c *Channel) resolvePrefixedModel(model string) (string, bool) {
 	if c.Settings == nil || c.Settings.ExtraModelPrefix == "" {
 		return "", false
 	}
@@ -71,7 +61,23 @@ func (c Channel) resolvePrefixedModel(model string) (string, bool) {
 	return modelWithoutPrefix, true
 }
 
-func (c Channel) IsModelSupported(model string) bool {
+func (c *Channel) IsModelSupported(model string) bool {
+	// Check cache first
+	if c.modelSupportCache == nil {
+		c.modelSupportCache = xmap.New[string, bool]()
+	}
+
+	if cached, ok := c.modelSupportCache.Load(model); ok {
+		return cached
+	}
+
+	result := c.isModelSupportedInternal(model)
+	c.modelSupportCache.Store(model, result)
+
+	return result
+}
+
+func (c *Channel) isModelSupportedInternal(model string) bool {
 	if slices.Contains(c.SupportedModels, model) {
 		return true
 	}
@@ -84,9 +90,7 @@ func (c Channel) IsModelSupported(model string) bool {
 		return true
 	}
 
-	model = c.RemoveModelPrefixes(model)
-
-	if slices.Contains(c.SupportedModels, model) {
+	if _, ok := c.resolveAutoTrimedModel(model); ok {
 		return true
 	}
 
@@ -110,7 +114,24 @@ func (c *Channel) CustomizeExecutor(executor pipeline.Executor) pipeline.Executo
 	return executor
 }
 
-func (c Channel) ChooseModel(model string) (string, error) {
+func (c *Channel) ChooseModel(model string) (string, error) {
+	// Check cache first
+	if c.chooseModelCache == nil {
+		c.chooseModelCache = xmap.New[string, chooseModelResult]()
+	}
+
+	if cached, ok := c.chooseModelCache.Load(model); ok {
+		result := cached
+		return result.model, result.err
+	}
+
+	resultModel, err := c.chooseModelInternal(model)
+	c.chooseModelCache.Store(model, chooseModelResult{model: resultModel, err: err})
+
+	return resultModel, err
+}
+
+func (c *Channel) chooseModelInternal(model string) (string, error) {
 	if slices.Contains(c.SupportedModels, model) {
 		return model, nil
 	}
@@ -123,10 +144,8 @@ func (c Channel) ChooseModel(model string) (string, error) {
 		return resolved, nil
 	}
 
-	model = c.RemoveModelPrefixes(model)
-
-	if slices.Contains(c.SupportedModels, model) {
-		return model, nil
+	if resolved, ok := c.resolveAutoTrimedModel(model); ok {
+		return resolved, nil
 	}
 
 	for _, mapping := range c.Settings.ModelMappings {
@@ -204,9 +223,13 @@ func buildChannelWithTransformer(
 	httpClient *httpclient.HttpClient,
 ) *Channel {
 	return &Channel{
-		Channel:    c,
-		Outbound:   transformer,
-		HTTPClient: httpClient,
+		Channel:               c,
+		Outbound:              transformer,
+		HTTPClient:            httpClient,
+		CachedOverrideParams:  make(map[string]any),
+		CachedOverrideHeaders: make([]objects.HeaderEntry, 0),
+		modelSupportCache:     xmap.New[string, bool](),
+		chooseModelCache:      xmap.New[string, chooseModelResult](),
 	}
 }
 
