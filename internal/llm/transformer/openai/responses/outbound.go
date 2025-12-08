@@ -149,21 +149,15 @@ func (t *OutboundTransformer) TransformResponse(
 		llmResp.Usage = resp.Usage.ToUsage()
 	}
 
-	// Process output items
-	for i, outputItem := range resp.Output {
-		choice := llm.Choice{
-			Index: i,
-			Message: &llm.Message{
-				Role: "assistant",
-			},
-		}
+	// Process output items - aggregate all into a single choice (Chat Completions format)
+	var (
+		contentParts     []llm.MessageContentPart
+		textContent      strings.Builder
+		reasoningContent strings.Builder
+		toolCalls        []llm.ToolCall
+	)
 
-		// Handle different output item types
-		var (
-			contentParts []llm.MessageContentPart
-			textContent  strings.Builder
-		)
-
+	for _, outputItem := range resp.Output {
 		switch outputItem.Type {
 		case "message":
 			// Extract text content from message content array
@@ -178,8 +172,8 @@ func (t *OutboundTransformer) TransformResponse(
 				textContent.WriteString(*outputItem.Text)
 			}
 		case "function_call":
-			// Function call output - use CallID, Name, Arguments directly
-			choice.Message.ToolCalls = append(choice.Message.ToolCalls, llm.ToolCall{
+			// Function call output - aggregate all tool calls
+			toolCalls = append(toolCalls, llm.ToolCall{
 				ID:   outputItem.CallID,
 				Type: "function",
 				Function: llm.FunctionCall{
@@ -187,16 +181,10 @@ func (t *OutboundTransformer) TransformResponse(
 					Arguments: outputItem.Arguments,
 				},
 			})
-			choice.FinishReason = lo.ToPtr("tool_calls")
 		case "reasoning":
 			// Handle reasoning output - convert to ReasoningContent
-			var reasoningText strings.Builder
 			for _, summary := range outputItem.Summary {
-				reasoningText.WriteString(summary.Text)
-			}
-
-			if reasoningText.Len() > 0 {
-				choice.Message.ReasoningContent = lo.ToPtr(reasoningText.String())
+				reasoningContent.WriteString(summary.Text)
 			}
 		case "image_generation_call":
 			imageOutputFormat := "png"
@@ -223,47 +211,62 @@ func (t *OutboundTransformer) TransformResponse(
 				})
 			}
 		}
+	}
 
-		// Set message content
-		if textContent.Len() > 0 {
-			if len(contentParts) > 0 {
-				// Mixed content: text + images
-				textPart := llm.MessageContentPart{
-					Type: "text",
-					Text: func() *string { s := textContent.String(); return &s }(),
-				}
-				contentParts = append([]llm.MessageContentPart{textPart}, contentParts...)
-				choice.Message.Content = llm.MessageContent{
-					MultipleContent: contentParts,
-				}
-			} else {
-				// Text only
-				content := textContent.String()
-				choice.Message.Content = llm.MessageContent{
-					Content: &content,
-				}
+	// Build the single choice
+	choice := llm.Choice{
+		Index: 0,
+		Message: &llm.Message{
+			Role:      "assistant",
+			ToolCalls: toolCalls,
+		},
+	}
+
+	// Set reasoning content if present
+	if reasoningContent.Len() > 0 {
+		choice.Message.ReasoningContent = lo.ToPtr(reasoningContent.String())
+	}
+
+	// Set message content
+	if textContent.Len() > 0 {
+		if len(contentParts) > 0 {
+			// Mixed content: text + images
+			textPart := llm.MessageContentPart{
+				Type: "text",
+				Text: lo.ToPtr(textContent.String()),
 			}
-		} else if len(contentParts) > 0 {
-			// Images only
+			contentParts = append([]llm.MessageContentPart{textPart}, contentParts...)
 			choice.Message.Content = llm.MessageContent{
 				MultipleContent: contentParts,
 			}
-		}
-
-		// Set finish reason based on status
-		if resp.Status != nil {
-			switch *resp.Status {
-			case "completed":
-				choice.FinishReason = lo.ToPtr("stop")
-			case "failed":
-				choice.FinishReason = lo.ToPtr("error")
-			case "incomplete":
-				choice.FinishReason = lo.ToPtr("length")
+		} else {
+			// Text only
+			choice.Message.Content = llm.MessageContent{
+				Content: lo.ToPtr(textContent.String()),
 			}
 		}
-
-		llmResp.Choices = append(llmResp.Choices, choice)
+	} else if len(contentParts) > 0 {
+		// Images only
+		choice.Message.Content = llm.MessageContent{
+			MultipleContent: contentParts,
+		}
 	}
+
+	// Set finish reason based on status and content
+	if len(toolCalls) > 0 {
+		choice.FinishReason = lo.ToPtr("tool_calls")
+	} else if resp.Status != nil {
+		switch *resp.Status {
+		case "completed":
+			choice.FinishReason = lo.ToPtr("stop")
+		case "failed":
+			choice.FinishReason = lo.ToPtr("error")
+		case "incomplete":
+			choice.FinishReason = lo.ToPtr("length")
+		}
+	}
+
+	llmResp.Choices = append(llmResp.Choices, choice)
 
 	// If no choices were created, create a default empty choice
 	if len(llmResp.Choices) == 0 {

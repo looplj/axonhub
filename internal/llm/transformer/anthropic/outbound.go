@@ -184,6 +184,7 @@ func (t *OutboundTransformer) TransformRequest(
 
 	// Prepare authentication
 	var auth *httpclient.AuthConfig
+
 	if t.config.APIKey != "" && (t.config.Type != PlatformBedrock && t.config.Type != PlatformVertex) {
 		// LongCat uses Bearer token authentication instead of X-API-Key
 		if t.config.Type == PlatformLongCat {

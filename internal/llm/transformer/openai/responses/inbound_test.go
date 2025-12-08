@@ -201,6 +201,22 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			},
 		},
 		{
+			name: "request with auto tool choice mode",
+			httpReq: &httpclient.Request{
+				Body: []byte(`{
+					"model": "gpt-4o",
+					"input": "Hello",
+					"tool_choice": "auto"
+				}`),
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *llm.Request) {
+				require.NotNil(t, result.ToolChoice)
+				require.NotNil(t, result.ToolChoice.ToolChoice)
+				require.Equal(t, "auto", *result.ToolChoice.ToolChoice)
+			},
+		},
+		{
 			name: "request with tool choice mode",
 			httpReq: &httpclient.Request{
 				Body: []byte(`{
