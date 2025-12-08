@@ -3,10 +3,12 @@ package responses
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer"
+	"github.com/looplj/axonhub/internal/pkg/xjson"
 )
 
 // ImageGeneration is a permissive structure to carry image generation tool
@@ -147,10 +149,36 @@ type StreamOptions struct {
 type ToolChoice struct {
 	// Mode can be "none", "auto", "required".
 	Mode *string `json:"mode,omitempty"`
-	// Type for specific tool choice. Any of "function", "file_search", "web_search", etc.
+	// Type for specific tool choice. Any of "function", "file_search", "web_search", "shell" etc.
 	Type *string `json:"type,omitempty"`
 	// Name of the function for function tool choice.
 	Name *string `json:"name,omitempty"`
+
+	// Allow multiple tools to be selected.
+	Tools []ToolOption `json:"tools,omitempty"`
+}
+
+type ToolOption struct {
+	Type string `json:"type"`
+	Name string `json:"name"`
+}
+
+type ToolChoiceAlias ToolChoice
+
+func (t *ToolChoice) UnmarshalJSON(data []byte) error {
+	mode, err := xjson.To[string](data)
+	if err == nil {
+		t.Mode = &mode
+		return nil
+	}
+
+	tc, err := xjson.To[ToolChoiceAlias](data)
+	if err == nil {
+		*t = ToolChoice(tc)
+		return nil
+	}
+
+	return errors.New("invalid tool choice type")
 }
 
 // ResponseToolChoice represents tool_choice in responses, which can be a string or object.
