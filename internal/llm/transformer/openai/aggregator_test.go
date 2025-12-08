@@ -101,6 +101,12 @@ func TestAggregateStreamChunks(t *testing.T) {
 				if wantChoice.Message.Content.Content != nil {
 					require.NotNil(t, gotChoice.Message.Content.Content)
 					require.Equal(t, *wantChoice.Message.Content.Content, *gotChoice.Message.Content.Content)
+				} else {
+					// When expected content is nil, the field should be omitted due to omitzero
+					// So we check that the actual content is also nil/empty
+					if gotChoice.Message.Content.Content != nil {
+						require.Equal(t, "", *gotChoice.Message.Content.Content)
+					}
 				}
 
 				if wantChoice.Message.ReasoningContent != nil {

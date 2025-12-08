@@ -6,7 +6,6 @@
       "index": 0,
       "logprobs": { "content": null, "refusal": null },
       "message": {
-        "content": "",
         "refusal": "",
         "role": "assistant",
         "annotations": [],
@@ -37,7 +36,6 @@
       "index": 1,
       "logprobs": { "content": null, "refusal": null },
       "message": {
-        "content": "",
         "refusal": "",
         "role": "assistant",
         "annotations": [],
