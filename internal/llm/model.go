@@ -201,6 +201,10 @@ type Request struct {
 	// RawAPIFormat is the original format of the request.
 	// e.g. the request from the chat/completions endpoint is in the openai/chat_completion format.
 	RawAPIFormat APIFormat `json:"-"`
+
+	// TransformerMetadata stores transformer-specific metadata for preserving format during transformations.
+	// This is a help field and will not be sent to the llm service.
+	TransformerMetadata map[string]string `json:"-"`
 }
 
 func (r *Request) ClearHelpFields() {

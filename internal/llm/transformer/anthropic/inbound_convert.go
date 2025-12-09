@@ -16,13 +16,14 @@ import (
 //nolint:maintidx // TODO: fix.
 func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 	chatReq := &llm.Request{
-		Model:        anthropicReq.Model,
-		MaxTokens:    &anthropicReq.MaxTokens,
-		Temperature:  anthropicReq.Temperature,
-		TopP:         anthropicReq.TopP,
-		Stream:       anthropicReq.Stream,
-		Metadata:     map[string]string{},
-		RawAPIFormat: llm.APIFormatAnthropicMessage,
+		Model:               anthropicReq.Model,
+		MaxTokens:           &anthropicReq.MaxTokens,
+		Temperature:         anthropicReq.Temperature,
+		TopP:                anthropicReq.TopP,
+		Stream:              anthropicReq.Stream,
+		Metadata:            map[string]string{},
+		RawAPIFormat:        llm.APIFormatAnthropicMessage,
+		TransformerMetadata: map[string]string{},
 	}
 	if anthropicReq.Metadata != nil {
 		chatReq.Metadata["user_id"] = anthropicReq.Metadata.UserID
@@ -42,6 +43,9 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 				},
 			})
 		} else if len(anthropicReq.System.MultiplePrompts) > 0 {
+			// Mark that system was originally in array format
+			chatReq.TransformerMetadata["anthropic_system_array_format"] = "true"
+
 			for _, prompt := range anthropicReq.System.MultiplePrompts {
 				msg := llm.Message{
 					Role: "system",
