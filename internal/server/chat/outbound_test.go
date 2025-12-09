@@ -976,6 +976,59 @@ func TestOverrideHeadersMiddleware_EmptyOverrideHeaders(t *testing.T) {
 	assert.Equal(t, httpRequest.Headers, modifiedRequest.Headers)
 }
 
+func TestOverrideHeadersMiddleware_OverrideExistingAuth(t *testing.T) {
+	ctx := context.Background()
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:              1,
+			Name:            "auth-channel",
+			SupportedModels: []string{"gpt-4"},
+			Settings: &objects.ChannelSettings{
+				OverrideHeaders: []objects.HeaderEntry{
+					{Key: "Authorization", Value: "Bearer override-token"},
+					{Key: "Api-Key", Value: "override-key"},
+					{Key: "X-Api-Key", Value: "override-x-key"},
+				},
+			},
+		},
+		Outbound: &mockTransformer{},
+	}
+
+	outbound := &PersistentOutboundTransformer{
+		wrapped: &mockTransformer{},
+		state: &PersistenceState{
+			CurrentChannel: channel,
+			Channels:       []*biz.Channel{channel},
+			ChannelIndex:   0,
+			RequestExec:    &ent.RequestExecution{ID: 1},
+		},
+	}
+
+	middleware := applyOverrideRequestHeaders(outbound)
+
+	httpRequest := &httpclient.Request{
+		Method: "POST",
+		URL:    "https://api.example.com/v1/chat/completions",
+		Body:   []byte(`{"model":"gpt-4","messages":[{"role":"user","content":"Hello"}]}`),
+		Headers: http.Header{
+			"Authorization": []string{"Bearer original-token"},
+			"Api-Key":       []string{"original-key"},
+		},
+	}
+
+	modifiedRequest, err := middleware.OnOutboundRawRequest(ctx, httpRequest)
+	require.NoError(t, err)
+	require.NotNil(t, modifiedRequest)
+
+	// Authorization should be overridden by channel override headers.
+	assert.Equal(t, "Bearer override-token", modifiedRequest.Headers.Get("Authorization"))
+	// Api-Key should be overridden.
+	assert.Equal(t, "override-key", modifiedRequest.Headers.Get("Api-Key"))
+	// X-Api-Key should be added because it was not present originally.
+	assert.Equal(t, "override-x-key", modifiedRequest.Headers.Get("X-Api-Key"))
+}
+
 func TestOverrideHeadersMiddleware_BlockedHeaders(t *testing.T) {
 	tests := []struct {
 		name            string

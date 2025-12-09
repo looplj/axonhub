@@ -223,13 +223,11 @@ func buildChannelWithTransformer(
 	httpClient *httpclient.HttpClient,
 ) *Channel {
 	return &Channel{
-		Channel:               c,
-		Outbound:              transformer,
-		HTTPClient:            httpClient,
-		CachedOverrideParams:  make(map[string]any),
-		CachedOverrideHeaders: make([]objects.HeaderEntry, 0),
-		modelSupportCache:     xmap.New[string, bool](),
-		chooseModelCache:      xmap.New[string, chooseModelResult](),
+		Channel:           c,
+		Outbound:          transformer,
+		HTTPClient:        httpClient,
+		modelSupportCache: xmap.New[string, bool](),
+		chooseModelCache:  xmap.New[string, chooseModelResult](),
 	}
 }
 
