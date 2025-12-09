@@ -48,6 +48,7 @@ jobs:
           git add internal/build/VERSION
 
       - name: Commit VERSION file
+        continue-on-error: true
         run: |
           # Configure git
           git config user.name "github-actions[bot]"
@@ -59,7 +60,7 @@ jobs:
           else
             # Commit VERSION files with [skip ci] to avoid triggering other workflows
             git commit -m "chore: update VERSION to ${GITHUB_REF#refs/tags/} [skip ci]"
-            git push origin HEAD:${{ github.ref_name }}
+            git push origin HEAD:${{ github.event.repository.default_branch }}
           fi
 
       - name: Run GoReleaser
