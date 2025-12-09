@@ -155,7 +155,7 @@ func (t *OutboundTransformer) TransformRequest(
 
 	// Validate max_tokens
 	if chatReq.MaxTokens != nil && *chatReq.MaxTokens <= 0 {
-		return nil, fmt.Errorf("max_tokens must be positive")
+		return nil, fmt.Errorf("%w: max_tokens must be positive", transformer.ErrInvalidRequest)
 	}
 
 	// Convert to Anthropic request format

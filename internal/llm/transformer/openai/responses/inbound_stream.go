@@ -261,18 +261,19 @@ func (s *responsesInboundStream) Next() bool {
 func (s *responsesInboundStream) handleReasoningContent(content *string) error {
 	// Start reasoning output item if not started
 	if !s.hasReasoningItemStarted {
-		s.hasReasoningItemStarted = true
-
 		// Close any previous output item
 		if err := s.closeCurrentOutputItem(); err != nil {
 			return err
 		}
 
+		s.hasReasoningItemStarted = true
+
 		s.currentItemID = generateItemID()
 		item := &Item{
-			ID:     s.currentItemID,
-			Type:   "reasoning",
-			Status: lo.ToPtr("in_progress"),
+			ID:      s.currentItemID,
+			Type:    "reasoning",
+			Status:  lo.ToPtr("in_progress"),
+			Summary: []ReasoningSummary{},
 		}
 
 		err := s.enqueueEvent(&StreamEvent{
@@ -518,6 +519,7 @@ func (s *responsesInboundStream) closeReasoningItem() error {
 		ItemID:       &s.currentItemID,
 		OutputIndex:  s.outputIndex,
 		SummaryIndex: lo.ToPtr(0),
+		Part:         &StreamEventContentPart{Type: "summary_text", Text: &fullReasoning},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to enqueue reasoning_summary_part.done event: %w", err)
@@ -525,9 +527,8 @@ func (s *responsesInboundStream) closeReasoningItem() error {
 
 	// Emit output_item.done with complete reasoning item
 	item := Item{
-		ID:     s.currentItemID,
-		Type:   "reasoning",
-		Status: lo.ToPtr("completed"),
+		ID:   s.currentItemID,
+		Type: "reasoning",
 		Summary: []ReasoningSummary{{
 			Type: "summary_text",
 			Text: fullReasoning,

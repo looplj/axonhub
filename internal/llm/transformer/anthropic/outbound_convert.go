@@ -54,7 +54,8 @@ func resolveMaxTokens(chatReq *llm.Request) int64 {
 	case chatReq.MaxCompletionTokens != nil:
 		return *chatReq.MaxCompletionTokens
 	default:
-		return 4096
+		// Set to 8192 tokens to match common model upper limit.
+		return 8192
 	}
 }
 

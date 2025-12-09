@@ -168,7 +168,7 @@ func NewTwoLevelWithClients[T any](memClient *gocache.Cache, redisClient *redis.
 // Supports two modes:
 // 1. URL mode: Use cfg.URL for full redis:// or rediss:// URLs with credentials
 // 2. Simple mode: Use cfg.Addr for plain host:port format
-// Priority: URL > Addr
+// Priority: URL > Addr.
 func newRedisOptions(cfg RedisConfig) (*redis.Options, error) {
 	opts := &redis.Options{}
 
@@ -205,6 +205,7 @@ func newRedisOptions(cfg RedisConfig) (*redis.Options, error) {
 				if err != nil {
 					return nil, fmt.Errorf("invalid redis db in url: %w", err)
 				}
+
 				opts.DB = db
 			}
 		}
@@ -229,9 +230,11 @@ func newRedisOptions(cfg RedisConfig) (*redis.Options, error) {
 	if cfg.Username != "" {
 		opts.Username = cfg.Username
 	}
+
 	if cfg.Password != "" {
 		opts.Password = cfg.Password
 	}
+
 	if cfg.DB != nil {
 		opts.DB = *cfg.DB
 	}
@@ -243,6 +246,7 @@ func newRedisOptions(cfg RedisConfig) (*redis.Options, error) {
 				MinVersion: tls.VersionTLS12, // #nosec G402 -- User can explicitly enable InsecureSkipVerify via config
 			}
 		}
+
 		opts.TLSConfig.InsecureSkipVerify = cfg.TLSInsecureSkipVerify // #nosec G402 -- User explicitly controls this via config
 	}
 

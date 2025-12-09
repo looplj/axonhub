@@ -344,6 +344,21 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 				require.Equal(t, int64(5), *result.TopLogprobs)
 			},
 		},
+		{
+			name: "request with include field",
+			httpReq: &httpclient.Request{
+				Body: []byte(`{
+					"model": "gpt-4o",
+					"input": "Hello",
+					"include": ["file_search_call.results", "reasoning.encrypted_content"]
+				}`),
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *llm.Request) {
+				require.NotNil(t, result.Include)
+				require.Equal(t, []string{"file_search_call.results", "reasoning.encrypted_content"}, result.Include)
+			},
+		},
 	}
 
 	for _, tt := range tests {

@@ -228,6 +228,7 @@ func convertToLLMRequest(req *Request) (*llm.Request, error) {
 		SafetyIdentifier:    req.SafetyIdentifier,
 		ServiceTier:         req.ServiceTier,
 		ParallelToolCalls:   req.ParallelToolCalls,
+		Include:             req.Include,
 	}
 
 	// Convert reasoning
