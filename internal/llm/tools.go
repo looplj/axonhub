@@ -57,8 +57,9 @@ type ToolCall struct {
 
 	Function FunctionCall `json:"function"`
 
-	// The index of the tool call in the list of tool calls.
-	Index int `json:"index,omitempty"`
+	// Index is the index of the tool call in the list of tool calls.
+	// Cannot use omitempty, as an index of 0 would be omitted, which can break consumers.
+	Index int `json:"index"`
 
 	// CacheControl is used for provider-specific cache control (e.g., Anthropic).
 	CacheControl *CacheControl `json:"-"`
