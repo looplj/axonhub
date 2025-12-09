@@ -173,9 +173,12 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("cache.default_expiration", "5m")
 	v.SetDefault("cache.cleanup_interval", "10m")
 	v.SetDefault("cache.redis.addr", "")
+	v.SetDefault("cache.redis.url", "")
 	v.SetDefault("cache.redis.username", "")
 	v.SetDefault("cache.redis.password", "")
-	v.SetDefault("cache.redis.db", 0)
+	// Note: cache.redis.db has no default value to allow explicit override to 0
+	v.SetDefault("cache.redis.tls", false)
+	v.SetDefault("cache.redis.tls_insecure_skip_verify", false)
 }
 
 // parseLogLevel converts a string log level to zapcore.Level.

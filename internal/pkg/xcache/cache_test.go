@@ -14,6 +14,10 @@ import (
 	gocache "github.com/patrickmn/go-cache"
 )
 
+func intPtr(i int) *int {
+	return &i
+}
+
 func TestNewMemory(t *testing.T) {
 	client := gocache.New(5*time.Minute, 10*time.Minute)
 	cache := NewMemory[string](client)
@@ -483,4 +487,156 @@ func TestSeparateExpirationConfig(t *testing.T) {
 	// Note: We can't easily test the actual expiration behavior in a unit test
 	// since the two-level cache behavior is complex, but we can verify the
 	// configuration is accepted and the cache works
+}
+
+func TestNewRedisOptions(t *testing.T) {
+	t.Run("plain addr with tls flag", func(t *testing.T) {
+		opts, err := newRedisOptions(RedisConfig{
+			Addr: "127.0.0.1:6379",
+			TLS:  true,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, "127.0.0.1:6379", opts.Addr)
+		require.NotNil(t, opts.TLSConfig)
+		assert.False(t, opts.TLSConfig.InsecureSkipVerify)
+	})
+
+	t.Run("rediss url auto tls and db", func(t *testing.T) {
+		opts, err := newRedisOptions(RedisConfig{
+			URL:                   "rediss://user:pass@localhost:6380/2",
+			TLSInsecureSkipVerify: true,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, "localhost:6380", opts.Addr)
+		assert.Equal(t, "user", opts.Username)
+		assert.Equal(t, "pass", opts.Password)
+		assert.Equal(t, 2, opts.DB)
+		require.NotNil(t, opts.TLSConfig)
+		assert.True(t, opts.TLSConfig.InsecureSkipVerify)
+	})
+
+	t.Run("config overrides url credentials and db", func(t *testing.T) {
+		opts, err := newRedisOptions(RedisConfig{
+			URL:      "redis://u1:p1@127.0.0.1:6379/1",
+			Username: "u2",
+			Password: "p2",
+			DB:       intPtr(3),
+		})
+		require.NoError(t, err)
+		assert.Equal(t, "127.0.0.1:6379", opts.Addr)
+		assert.Equal(t, "u2", opts.Username)
+		assert.Equal(t, "p2", opts.Password)
+		assert.Equal(t, 3, opts.DB)
+	})
+
+	t.Run("config overrides url db to 0", func(t *testing.T) {
+		opts, err := newRedisOptions(RedisConfig{
+			URL: "redis://127.0.0.1:6379/1",
+			DB:  intPtr(0),
+		})
+		require.NoError(t, err)
+		assert.Equal(t, "127.0.0.1:6379", opts.Addr)
+		assert.Equal(t, 0, opts.DB)
+	})
+
+	t.Run("redis url without credentials", func(t *testing.T) {
+		opts, err := newRedisOptions(RedisConfig{
+			URL: "redis://127.0.0.1:6379",
+		})
+		require.NoError(t, err)
+		assert.Equal(t, "127.0.0.1:6379", opts.Addr)
+		assert.Empty(t, opts.Username)
+		assert.Empty(t, opts.Password)
+		assert.Equal(t, 0, opts.DB)
+	})
+
+	t.Run("plain addr without tls", func(t *testing.T) {
+		opts, err := newRedisOptions(RedisConfig{
+			Addr: "127.0.0.1:6379",
+		})
+		require.NoError(t, err)
+		assert.Equal(t, "127.0.0.1:6379", opts.Addr)
+		assert.Nil(t, opts.TLSConfig)
+	})
+
+	t.Run("plain addr with insecure skip verify only", func(t *testing.T) {
+		_, err := newRedisOptions(RedisConfig{
+			Addr:                  "127.0.0.1:6379",
+			TLSInsecureSkipVerify: true,
+		})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "tls_insecure_skip_verify requires TLS to be enabled")
+	})
+
+	t.Run("empty addr and url", func(t *testing.T) {
+		_, err := newRedisOptions(RedisConfig{})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "redis addr or url is required")
+	})
+
+	t.Run("whitespace only addr", func(t *testing.T) {
+		_, err := newRedisOptions(RedisConfig{
+			Addr: "   ",
+		})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "redis addr or url is required")
+	})
+
+	t.Run("invalid scheme", func(t *testing.T) {
+		_, err := newRedisOptions(RedisConfig{URL: "http://example.com"})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unsupported redis scheme")
+	})
+
+	t.Run("redis url with invalid db", func(t *testing.T) {
+		_, err := newRedisOptions(RedisConfig{
+			URL: "redis://127.0.0.1:6379/invalid",
+		})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid redis db in url")
+	})
+
+	t.Run("redis url missing host", func(t *testing.T) {
+		_, err := newRedisOptions(RedisConfig{
+			URL: "redis://",
+		})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "redis url missing host")
+	})
+
+	t.Run("invalid url format", func(t *testing.T) {
+		_, err := newRedisOptions(RedisConfig{
+			URL: "redis://:invalid",
+		})
+		require.Error(t, err)
+	})
+
+	t.Run("plain addr with tls config", func(t *testing.T) {
+		opts, err := newRedisOptions(RedisConfig{
+			Addr:                  "127.0.0.1:6379",
+			TLS:                   true,
+			TLSInsecureSkipVerify: true,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, "127.0.0.1:6379", opts.Addr)
+		require.NotNil(t, opts.TLSConfig)
+		assert.True(t, opts.TLSConfig.InsecureSkipVerify)
+	})
+
+	t.Run("redis url with explicit tls flag", func(t *testing.T) {
+		opts, err := newRedisOptions(RedisConfig{
+			URL:      "redis://127.0.0.1:6379",
+			TLS:      true,
+			Username: "user",
+			Password: "pass",
+			DB:       intPtr(5),
+		})
+		require.NoError(t, err)
+		assert.Equal(t, "127.0.0.1:6379", opts.Addr)
+		assert.Equal(t, "user", opts.Username)
+		assert.Equal(t, "pass", opts.Password)
+		assert.Equal(t, 5, opts.DB)
+		require.NotNil(t, opts.TLSConfig)
+		assert.False(t, opts.TLSConfig.InsecureSkipVerify)
+	})
 }
