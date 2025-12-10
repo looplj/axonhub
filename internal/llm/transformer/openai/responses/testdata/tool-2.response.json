@@ -6,6 +6,17 @@
   "model": "gpt-4o",
   "output": [
     {
+      "id": "rs_0f60342a2cefd3d80069384a0037848193afeafd76535af96e",
+      "type": "reasoning",
+      "status": "in_progress",
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "I need"
+        }
+      ]
+    },
+    {
       "id": "msg_020592949fb9ce090069355e9c05408196bb3d459b4ca2b073",
       "type": "message",
       "status": "completed",

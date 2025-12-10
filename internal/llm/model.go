@@ -205,6 +205,11 @@ type Request struct {
 	// TransformerMetadata stores transformer-specific metadata for preserving format during transformations.
 	// This is a help field and will not be sent to the llm service.
 	TransformerMetadata map[string]string `json:"-"`
+
+	// Include specifies additional output data to include in the model response.
+	// This is a help field and will not be sent to the llm service.
+	// e.g., "file_search_call.results", "message.input_image.image_url", "reasoning.encrypted_content"
+	Include []string `json:"-"`
 }
 
 func (r *Request) ClearHelpFields() {
@@ -214,6 +219,7 @@ func (r *Request) ClearHelpFields() {
 	}
 
 	r.ExtraBody = nil
+	r.Include = nil
 }
 
 func (r *Request) IsImageGenerationRequest() bool {

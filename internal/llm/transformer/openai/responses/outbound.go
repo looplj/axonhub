@@ -87,6 +87,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm
 		ToolChoice:        convertToolChoice(chatReq.ToolChoice),
 		StreamOptions:     convertStreamOptions(chatReq.StreamOptions),
 		Reasoning:         convertReasoning(chatReq),
+		Include:           chatReq.Include,
 	}
 
 	body, err := json.Marshal(payload)

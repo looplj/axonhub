@@ -166,7 +166,6 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 
 		return nil // Intentionally skip this event
-
 	case StreamEventTypeOutputItemAdded:
 		// Output item added - check type to determine how to handle
 		if streamEvent.Item != nil {
@@ -283,7 +282,6 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			{
 				Index: 0,
 				Delta: &llm.Message{
-					Role:             "assistant",
 					ReasoningContent: &streamEvent.Delta,
 				},
 			},
@@ -376,7 +374,6 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 				{
 					Index: 0,
 					Delta: &llm.Message{
-						Role: "assistant",
 						Content: llm.MessageContent{
 							MultipleContent: []llm.MessageContentPart{
 								{
@@ -394,9 +391,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			resp.Choices = []llm.Choice{
 				{
 					Index: 0,
-					Delta: &llm.Message{
-						Role: "assistant",
-					},
+					Delta: &llm.Message{},
 				},
 			}
 		}

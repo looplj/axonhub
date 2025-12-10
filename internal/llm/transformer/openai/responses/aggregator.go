@@ -169,6 +169,14 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 			}
 		}
 
+	case StreamEventTypeOutputTextDone:
+		if item, ok := a.outputItems[ev.OutputIndex]; ok {
+			if ev.ContentIndex != nil && *ev.ContentIndex < len(item.Content) && ev.Text != "" {
+				item.Content[*ev.ContentIndex].Text.Reset()
+				item.Content[*ev.ContentIndex].Text.WriteString(ev.Text)
+			}
+		}
+
 	case StreamEventTypeFunctionCallArgumentsDelta:
 		// Find item by item_id
 		if ev.ItemID != nil {
@@ -210,14 +218,6 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 			if ev.Text != "" {
 				item.Summary.Reset()
 				item.Summary.WriteString(ev.Text)
-			}
-		}
-
-	case StreamEventTypeOutputTextDone:
-		if item, ok := a.outputItems[ev.OutputIndex]; ok {
-			if ev.ContentIndex != nil && *ev.ContentIndex < len(item.Content) && ev.Text != "" {
-				item.Content[*ev.ContentIndex].Text.Reset()
-				item.Content[*ev.ContentIndex].Text.WriteString(ev.Text)
 			}
 		}
 

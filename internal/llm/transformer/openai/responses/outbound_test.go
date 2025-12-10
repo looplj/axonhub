@@ -430,6 +430,30 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 				require.NotNil(t, req.Text)
 			},
 		},
+		{
+			name: "request with include field",
+			chatReq: &llm.Request{
+				Model:   "gpt-4o",
+				Include: []string{"file_search_call.results", "reasoning.encrypted_content"},
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello"),
+						},
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *httpclient.Request, chatReq *llm.Request) {
+				var req Request
+
+				err := json.Unmarshal(result.Body, &req)
+				require.NoError(t, err)
+				require.NotNil(t, req.Include)
+				require.Equal(t, []string{"file_search_call.results", "reasoning.encrypted_content"}, req.Include)
+			},
+		},
 	}
 
 	for _, tt := range tests {
