@@ -94,9 +94,9 @@ export function DataTableToolbar<TData>({
           onChange={(event) => table.getColumn('name')?.setFilterValue(event.target.value)}
           className='h-8 w-[150px] lg:w-[250px]'
         />
-        {table.getColumn('type') && selectedTypeTab === 'all' && (
+        {/* {table.getColumn('type') && selectedTypeTab === 'all' && (
           <DataTableFacetedFilter column={table.getColumn('type')} title={t('channels.filters.type')} options={channelTypes} />
-        )}
+        )} */}
         {table.getColumn('status') && (
           <DataTableFacetedFilter column={table.getColumn('status')} title={t('channels.filters.status')} options={channelStatuses} />
         )}

@@ -446,6 +446,13 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		mut.SetCredentials(input.Credentials)
 	}
 
+	if input.Remark != nil {
+		mut.SetRemark(*input.Remark)
+	}
+	if input.ClearRemark {
+		mut.ClearRemark()
+	}
+
 	if input.ClearErrorMessage {
 		mut.ClearErrorMessage()
 	}

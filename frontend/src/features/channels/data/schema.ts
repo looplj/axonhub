@@ -108,6 +108,7 @@ export const channelSchema = z.object({
   settings: channelSettingsSchema.optional().nullable(),
   orderingWeight: z.number().default(0),
   errorMessage: z.string().optional().nullable(),
+  remark: z.string().optional().nullable(),
   channelPerformance: channelPerformanceSchema.optional().nullable(),
 })
 export type Channel = z.infer<typeof channelSchema>
@@ -205,6 +206,7 @@ export const updateChannelInputSchema = z
     defaultTestModel: z.string().min(1, 'Please select a default test model').optional(),
     settings: channelSettingsSchema.optional(),
     errorMessage: z.string().optional().nullable(),
+    remark: z.string().optional().nullable(),
     credentials: z
       .object({
         apiKey: z.string().optional(),

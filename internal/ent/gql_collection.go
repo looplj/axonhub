@@ -644,6 +644,11 @@ func (_q *ChannelQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, channel.FieldErrorMessage)
 				fieldSeen[channel.FieldErrorMessage] = struct{}{}
 			}
+		case "remark":
+			if _, ok := fieldSeen[channel.FieldRemark]; !ok {
+				selectedFields = append(selectedFields, channel.FieldRemark)
+				fieldSeen[channel.FieldRemark] = struct{}{}
+			}
 		case "id":
 		case "__typename":
 		default:

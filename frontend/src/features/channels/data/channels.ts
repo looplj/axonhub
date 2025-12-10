@@ -58,6 +58,7 @@ const CHANNELS_QUERY = `
           }
           orderingWeight
           errorMessage
+          remark
           channelPerformance {
             avgLatencyMs
             avgTokenPerSecond
@@ -374,6 +375,7 @@ const QUERY_CHANNELS_QUERY = `
           }
           orderingWeight
           errorMessage
+          remark
           channelPerformance {
             avgLatencyMs
             avgTokenPerSecond

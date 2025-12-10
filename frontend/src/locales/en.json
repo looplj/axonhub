@@ -551,6 +551,7 @@
     "columns": {
       "name": "Name",
       "type": "Type",
+      "provider": "Provider",
       "status": "Status",
       "tags": "Tags",
       "baseURL": "Base URL",
@@ -805,7 +806,7 @@
         },
         "supportedModels": {
           "label": "Models",
-          "description": "List of models supported by this channel",
+          "description": "Model ID",
           "required": "Please add at least one supported model",
           "defaultModelsLabel": "Quick Add Models",
           "fetchedModelsLabel": "Fetched Models",
@@ -1029,7 +1030,27 @@
         "description": "Adjust the ordering weight for channel \"{{name}}\".",
         "action": "Adjust Weight",
         "rangeHint": "Weight must be between {{min}} and {{max}}. Higher values will be prioritized."
+      },
+      "remark": {
+        "title": "Channel Remark",
+        "description": "Add or edit remark for channel \"{{name}}\".",
+        "action": "Remark",
+        "label": "Remark",
+        "placeholder": "Enter a note or remark for this channel..."
       }
+    },
+    "expandedRow": {
+      "basicInfo": "Basic Information",
+      "performance": "Performance",
+      "modelsAndRemark": "Models & Remark",
+      "modelInfo": "Model Information",
+      "supportedModels": "Supported Models",
+      "totalModels": "Total Models",
+      "defaultTestModel": "Default Test Model",
+      "remark": "Remark",
+      "apiFormat": "API Format",
+      "noPerformanceData": "No performance data available",
+      "more": "more"
     },
     "validation": {
       "nameRequired": "Name is required",

@@ -634,8 +634,8 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                               data-testid='channel-name-input'
                               {...field}
                             />
+                            <FormMessage />
                           </div>
-                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -656,8 +656,8 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                               data-testid='channel-base-url-input'
                               {...field}
                             />
+                            <FormMessage />
                           </div>
-                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -695,8 +695,8 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                                   <p className='text-muted-foreground text-xs'>{t('channels.dialogs.fields.apiKey.multiLineHint')}</p>
                                 </>
                               )}
+                              <FormMessage />
                             </div>
-                            <FormMessage />
                           </FormItem>
                         )}
                       />
@@ -721,8 +721,8 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                                   aria-invalid={!!fieldState.error}
                                   {...field}
                                 />
+                                <FormMessage />
                               </div>
-                              <FormMessage />
                             </FormItem>
                           )}
                         />
@@ -744,8 +744,8 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                                   aria-invalid={!!fieldState.error}
                                   {...field}
                                 />
+                                <FormMessage />
                               </div>
-                              <FormMessage />
                             </FormItem>
                           )}
                         />
@@ -766,8 +766,8 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                                   aria-invalid={!!fieldState.error}
                                   {...field}
                                 />
+                                <FormMessage />
                               </div>
-                              <FormMessage />
                             </FormItem>
                           )}
                         />
@@ -792,8 +792,8 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                                   aria-invalid={!!fieldState.error}
                                   {...field}
                                 />
+                                <FormMessage />
                               </div>
-                              <FormMessage />
                             </FormItem>
                           )}
                         />
@@ -814,8 +814,8 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                                   aria-invalid={!!fieldState.error}
                                   {...field}
                                 />
+                                <FormMessage />
                               </div>
-                              <FormMessage />
                             </FormItem>
                           )}
                         />
@@ -847,8 +847,8 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                                   aria-invalid={!!fieldState.error}
                                   {...field}
                                 />
+                                <FormMessage />
                               </div>
-                              <FormMessage />
                             </FormItem>
                           )}
                         />
@@ -880,17 +880,11 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                           <Button type='button' onClick={addModel} size='sm'>
                             {t('channels.dialogs.buttons.add')}
                           </Button>
-                          <Button
-                            type='button'
-                            onClick={handleFetchModels}
-                            size='sm'
-                            variant='outline'
-                            disabled={!canFetchModels() || fetchModels.isPending}
-                          >
-                            <RefreshCw className={`mr-1 h-4 w-4 ${fetchModels.isPending ? 'animate-spin' : ''}`} />
-                            {t('channels.dialogs.buttons.fetchModels')}
-                          </Button>
                         </div>
+
+                        {supportedModels.length === 0 && (
+                          <p className='text-destructive text-sm'>{t('channels.dialogs.fields.supportedModels.required')}</p>
+                        )}
 
                         {/* Supported models display - limited to 3 with expand button */}
                         <div className='flex flex-wrap items-center gap-1'>
@@ -919,10 +913,20 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                         </div>
 
                         {/* Quick add models section */}
-                        {quickModels.length > 0 && (
-                          <div className='pt-3'>
-                            <div className='mb-2 flex items-center justify-between'>
-                              <span className='text-sm font-medium'>{t('channels.dialogs.fields.supportedModels.defaultModelsLabel')}</span>
+                        <div className='pt-3'>
+                          <div className='mb-2 flex items-center justify-between'>
+                            <span className='text-sm font-medium'>{t('channels.dialogs.fields.supportedModels.defaultModelsLabel')}</span>
+                            <div className='flex items-center gap-2'>
+                              <Button
+                                type='button'
+                                onClick={handleFetchModels}
+                                size='sm'
+                                variant='outline'
+                                disabled={!canFetchModels() || fetchModels.isPending}
+                              >
+                                <RefreshCw className={`mr-1 h-4 w-4 ${fetchModels.isPending ? 'animate-spin' : ''}`} />
+                                {t('channels.dialogs.buttons.fetchModels')}
+                              </Button>
                               <Button
                                 type='button'
                                 onClick={addSelectedDefaultModels}
@@ -933,25 +937,21 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                                 {t('channels.dialogs.buttons.addSelected')}
                               </Button>
                             </div>
-                            <div className='flex flex-wrap gap-2'>
-                              {quickModels.map((model: string) => (
-                                <Badge
-                                  key={model}
-                                  variant={selectedDefaultModels.includes(model) ? 'default' : 'secondary'}
-                                  className='cursor-pointer text-xs'
-                                  onClick={() => toggleDefaultModel(model)}
-                                >
-                                  {model}
-                                  {selectedDefaultModels.includes(model) && <span className='ml-1'>✓</span>}
-                                </Badge>
-                              ))}
-                            </div>
                           </div>
-                        )}
-
-                        {supportedModels.length === 0 && (
-                          <p className='text-muted-foreground text-sm'>{t('channels.dialogs.fields.supportedModels.required')}</p>
-                        )}
+                          <div className='flex flex-wrap gap-2'>
+                            {quickModels.map((model: string) => (
+                              <Badge
+                                key={model}
+                                variant={selectedDefaultModels.includes(model) ? 'default' : 'secondary'}
+                                className='cursor-pointer text-xs'
+                                onClick={() => toggleDefaultModel(model)}
+                              >
+                                {model}
+                                {selectedDefaultModels.includes(model) && <span className='ml-1'>✓</span>}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
 
@@ -974,8 +974,8 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                               isControlled={true}
                               data-testid='default-test-model-select'
                             />
+                            <FormMessage />
                           </div>
-                          <FormMessage />
                         </FormItem>
                       )}
                     />

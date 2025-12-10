@@ -1,13 +1,15 @@
-import { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
   ColumnDef,
   ColumnFiltersState,
+  ExpandedState,
   RowData,
   RowSelectionState,
   SortingState,
   VisibilityState,
   flexRender,
   getCoreRowModel,
+  getExpandedRowModel,
   getFacetedRowModel,
   getFacetedUniqueValues,
   getFilteredRowModel,
@@ -15,10 +17,14 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
+import { format } from 'date-fns'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
 import { ServerSidePagination } from '@/components/server-side-pagination'
+import { formatDuration } from '@/utils/format-duration'
 import { useChannels } from '../context/channels-context'
 import { Channel, ChannelConnection } from '../data/schema'
+import { CHANNEL_CONFIGS } from '../data/config_channels'
 import { DataTableToolbar } from './data-table-toolbar'
 
 declare module '@tanstack/react-table' {
@@ -84,6 +90,7 @@ export function ChannelsTable({
   const { t } = useTranslation()
   const { setSelectedChannels, setResetRowSelection } = useChannels()
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+  const [expanded, setExpanded] = useState<ExpandedState>({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
     tags: false, // Hide tags column by default but keep it for filtering
   })
@@ -97,7 +104,7 @@ export function ChannelsTable({
       newColumnFilters.push({ id: 'name', value: nameFilter })
     }
     if (typeFilter.length > 0) {
-      newColumnFilters.push({ id: 'type', value: typeFilter })
+      newColumnFilters.push({ id: 'provider', value: typeFilter })
     }
     if (statusFilter.length > 0) {
       newColumnFilters.push({ id: 'status', value: statusFilter })
@@ -121,7 +128,7 @@ export function ChannelsTable({
 
     // Extract filter values
     const nameFilterValue = newFilters.find((filter) => filter.id === 'name')?.value as string
-    const typeFilterValue = newFilters.find((filter) => filter.id === 'type')?.value as string[]
+    const typeFilterValue = newFilters.find((filter) => filter.id === 'provider')?.value as string[]
     const statusFilterValue = newFilters.find((filter) => filter.id === 'status')?.value as string[]
     const tagFilterValue = newFilters.find((filter) => filter.id === 'tags')?.value as string
     const modelFilterValue = newFilters.find((filter) => filter.id === 'model')?.value as string
@@ -162,10 +169,12 @@ export function ChannelsTable({
       columnVisibility,
       rowSelection,
       columnFilters,
+      expanded,
     },
     enableRowSelection: true,
     getRowId: (row) => row.id,
     onRowSelectionChange: setRowSelection,
+    onExpandedChange: setExpanded,
     onSortingChange,
     onColumnFiltersChange: handleColumnFiltersChange,
     onColumnVisibilityChange: setColumnVisibility,
@@ -174,6 +183,7 @@ export function ChannelsTable({
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
+    getExpandedRowModel: getExpandedRowModel(),
     // Enable server-side pagination and filtering
     manualPagination: true,
     manualFiltering: true, // Enable manual filtering for server-side filtering
@@ -255,15 +265,119 @@ export function ChannelsTable({
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'} className='group/row'>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className={cell.column.columnDef.meta?.className ?? ''}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              table.getRowModel().rows.map((row) => {
+                const channel = row.original
+                const config = CHANNEL_CONFIGS[channel.type]
+                const performance = channel.channelPerformance
+                return (
+                  <React.Fragment key={row.id}>
+                    <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'} className='group/row'>
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id} className={cell.column.columnDef.meta?.className ?? ''}>
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                    {row.getIsExpanded() && (
+                      <TableRow key={`${row.id}-expanded`} className='bg-muted/30 hover:bg-muted/50'>
+                        <TableCell colSpan={columns.length} className='p-6'>
+                          <div className='space-y-6'>
+                            {/* Top Section: Basic Info + Performance (2 columns) */}
+                            <div className='grid grid-cols-1 gap-6 md:grid-cols-2'>
+                              {/* Basic Info */}
+                              <div className='space-y-3'>
+                                <h4 className='text-sm font-semibold'>{t('channels.expandedRow.basicInfo')}</h4>
+                                <div className='space-y-2 text-sm'>
+                                  <div className='flex justify-between gap-4'>
+                                    <span className='text-muted-foreground shrink-0'>{t('channels.columns.baseURL')}:</span>
+                                    <span className='font-mono text-xs break-all text-right'>
+                                      {channel.baseURL}
+                                    </span>
+                                  </div>
+                                  <div className='flex justify-between items-center'>
+                                    <span className='text-muted-foreground'>{t('channels.columns.type')}:</span>
+                                    <Badge variant='outline' className={config?.color}>
+                                      {t(`channels.types.${channel.type}`)}
+                                    </Badge>
+                                  </div>
+                                  <div className='flex justify-between items-center'>
+                                    <span className='text-muted-foreground'>{t('channels.expandedRow.apiFormat')}:</span>
+                                    <span className='font-mono text-xs'>{config?.apiFormat || '-'}</span>
+                                  </div>
+                                  <div className='flex justify-between'>
+                                    <span className='text-muted-foreground'>{t('channels.columns.createdAt')}:</span>
+                                    <span>{format(channel.createdAt, 'yyyy-MM-dd HH:mm')}</span>
+                                  </div>
+                                  <div className='flex justify-between'>
+                                    <span className='text-muted-foreground'>{t('channels.columns.updatedAt')}:</span>
+                                    <span>{format(channel.updatedAt, 'yyyy-MM-dd HH:mm')}</span>
+                                  </div>
+                                  <div className='flex justify-between'>
+                                    <span className='text-muted-foreground'>{t('channels.expandedRow.remark')}:</span>
+                                    <span className='max-w-[200px] truncate text-right' title={channel.remark || undefined}>
+                                      {channel.remark || '-'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Performance */}
+                              <div className='space-y-3'>
+                                <h4 className='text-sm font-semibold'>{t('channels.expandedRow.performance')}</h4>
+                                <div className='space-y-2 text-sm'>
+                                  {performance ? (
+                                    <>
+                                      <div className='flex justify-between'>
+                                        <span className='text-muted-foreground'>{t('channels.columns.firstTokenLatencyFull')}:</span>
+                                        <span>{formatDuration(performance.avgStreamFirstTokenLatencyMs || performance.avgLatencyMs || 0)}</span>
+                                      </div>
+                                      <div className='flex justify-between'>
+                                        <span className='text-muted-foreground'>{t('channels.columns.tokensPerSecondFull')}:</span>
+                                        <span>{(performance.avgStreamTokenPerSecond || performance.avgTokenPerSecond || 0).toFixed(1)}</span>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <span className='text-muted-foreground'>{t('channels.expandedRow.noPerformanceData')}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Bottom Section: Model Info (single column, full width) */}
+                            <div className='space-y-3 border-t pt-4'>
+                              <h4 className='text-sm font-semibold'>{t('channels.expandedRow.modelInfo')}</h4>
+                              <div className='space-y-3'>
+                                <div className='flex items-center gap-6 text-sm'>
+                                  <div className='flex items-center gap-2'>
+                                    <span className='text-muted-foreground'>{t('channels.expandedRow.totalModels')}:</span>
+                                    <span className='font-medium'>{channel.supportedModels.length}</span>
+                                  </div>
+                                  <div className='flex items-center gap-2'>
+                                    <span className='text-muted-foreground'>{t('channels.expandedRow.defaultTestModel')}:</span>
+                                    <span className='font-medium'>{channel.defaultTestModel || '-'}</span>
+                                  </div>
+                                </div>
+                                <div className='flex flex-wrap gap-1'>
+                                  {channel.supportedModels.slice(0, 20).map((model) => (
+                                    <Badge key={model} variant='secondary' className='text-xs'>
+                                      {model}
+                                    </Badge>
+                                  ))}
+                                  {channel.supportedModels.length > 20 && (
+                                    <Badge variant='outline' className='text-xs'>
+                                      +{channel.supportedModels.length - 20} {t('channels.expandedRow.more')}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
+                )
+              })
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className='h-24 text-center'>

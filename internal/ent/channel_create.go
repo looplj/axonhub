@@ -167,6 +167,20 @@ func (_c *ChannelCreate) SetNillableErrorMessage(v *string) *ChannelCreate {
 	return _c
 }
 
+// SetRemark sets the "remark" field.
+func (_c *ChannelCreate) SetRemark(v string) *ChannelCreate {
+	_c.mutation.SetRemark(v)
+	return _c
+}
+
+// SetNillableRemark sets the "remark" field if the given value is not nil.
+func (_c *ChannelCreate) SetNillableRemark(v *string) *ChannelCreate {
+	if v != nil {
+		_c.SetRemark(*v)
+	}
+	return _c
+}
+
 // AddRequestIDs adds the "requests" edge to the Request entity by IDs.
 func (_c *ChannelCreate) AddRequestIDs(ids ...int) *ChannelCreate {
 	_c.mutation.AddRequestIDs(ids...)
@@ -433,6 +447,10 @@ func (_c *ChannelCreate) createSpec() (*Channel, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.ErrorMessage(); ok {
 		_spec.SetField(channel.FieldErrorMessage, field.TypeString, value)
 		_node.ErrorMessage = &value
+	}
+	if value, ok := _c.mutation.Remark(); ok {
+		_spec.SetField(channel.FieldRemark, field.TypeString, value)
+		_node.Remark = &value
 	}
 	if nodes := _c.mutation.RequestsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -730,6 +748,24 @@ func (u *ChannelUpsert) ClearErrorMessage() *ChannelUpsert {
 	return u
 }
 
+// SetRemark sets the "remark" field.
+func (u *ChannelUpsert) SetRemark(v string) *ChannelUpsert {
+	u.Set(channel.FieldRemark, v)
+	return u
+}
+
+// UpdateRemark sets the "remark" field to the value that was provided on create.
+func (u *ChannelUpsert) UpdateRemark() *ChannelUpsert {
+	u.SetExcluded(channel.FieldRemark)
+	return u
+}
+
+// ClearRemark clears the value of the "remark" field.
+func (u *ChannelUpsert) ClearRemark() *ChannelUpsert {
+	u.SetNull(channel.FieldRemark)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -985,6 +1021,27 @@ func (u *ChannelUpsertOne) UpdateErrorMessage() *ChannelUpsertOne {
 func (u *ChannelUpsertOne) ClearErrorMessage() *ChannelUpsertOne {
 	return u.Update(func(s *ChannelUpsert) {
 		s.ClearErrorMessage()
+	})
+}
+
+// SetRemark sets the "remark" field.
+func (u *ChannelUpsertOne) SetRemark(v string) *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetRemark(v)
+	})
+}
+
+// UpdateRemark sets the "remark" field to the value that was provided on create.
+func (u *ChannelUpsertOne) UpdateRemark() *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateRemark()
+	})
+}
+
+// ClearRemark clears the value of the "remark" field.
+func (u *ChannelUpsertOne) ClearRemark() *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.ClearRemark()
 	})
 }
 
@@ -1409,6 +1466,27 @@ func (u *ChannelUpsertBulk) UpdateErrorMessage() *ChannelUpsertBulk {
 func (u *ChannelUpsertBulk) ClearErrorMessage() *ChannelUpsertBulk {
 	return u.Update(func(s *ChannelUpsert) {
 		s.ClearErrorMessage()
+	})
+}
+
+// SetRemark sets the "remark" field.
+func (u *ChannelUpsertBulk) SetRemark(v string) *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetRemark(v)
+	})
+}
+
+// UpdateRemark sets the "remark" field to the value that was provided on create.
+func (u *ChannelUpsertBulk) UpdateRemark() *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateRemark()
+	})
+}
+
+// ClearRemark clears the value of the "remark" field.
+func (u *ChannelUpsertBulk) ClearRemark() *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.ClearRemark()
 	})
 }
 

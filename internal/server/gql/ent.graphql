@@ -252,6 +252,10 @@ type Channel implements Node {
   """
   orderingWeight: Int!
   errorMessage: String
+  """
+  User-defined remark or note for the channel
+  """
+  remark: String
   requests(
     """
     Returns the elements in the list that come after the specified cursor.
@@ -936,6 +940,24 @@ input ChannelWhereInput {
   errorMessageEqualFold: String
   errorMessageContainsFold: String
   """
+  remark field predicates
+  """
+  remark: String
+  remarkNEQ: String
+  remarkIn: [String!]
+  remarkNotIn: [String!]
+  remarkGT: String
+  remarkGTE: String
+  remarkLT: String
+  remarkLTE: String
+  remarkContains: String
+  remarkHasPrefix: String
+  remarkHasSuffix: String
+  remarkIsNil: Boolean
+  remarkNotNil: Boolean
+  remarkEqualFold: String
+  remarkContainsFold: String
+  """
   requests edge predicates
   """
   hasRequests: Boolean
@@ -982,6 +1004,10 @@ input CreateChannelInput {
   Ordering weight for display sorting
   """
   orderingWeight: Int
+  """
+  User-defined remark or note for the channel
+  """
+  remark: String
 }
 """
 CreateDataStorageInput is used for create DataStorage object.
@@ -3639,6 +3665,11 @@ input UpdateChannelInput {
   orderingWeight: Int
   errorMessage: String
   clearErrorMessage: Boolean
+  """
+  User-defined remark or note for the channel
+  """
+  remark: String
+  clearRemark: Boolean
 }
 """
 UpdateDataStorageInput is used for update DataStorage object.

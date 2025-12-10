@@ -22,6 +22,7 @@ type ChannelsDialogType =
   | 'errorResolved'
   | 'weight'
   | 'viewModels'
+  | 'remark'
 
 interface ChannelsContextType {
   open: ChannelsDialogType | null
