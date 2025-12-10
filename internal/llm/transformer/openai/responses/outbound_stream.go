@@ -9,6 +9,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
 )
@@ -118,6 +119,10 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		return fmt.Errorf("failed to unmarshal responses api stream event: %w", err)
 	}
 
+	if log.DebugEnabled(context.Background()) {
+		log.Debug(context.Background(), "received response stream event", log.Any("event", streamEvent))
+	}
+
 	// Build base response
 	resp := &llm.Response{
 		Object:  "chat.completion.chunk",
@@ -212,25 +217,6 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			return nil // Intentionally skip this event
 		}
 
-	case StreamEventTypeContentPartAdded:
-		// Content part added - skip, no meaningful content to emit
-		return nil // Intentionally skip this event
-
-	case StreamEventTypeOutputTextDelta:
-		// Text content delta
-		s.state.textContent.WriteString(streamEvent.Delta)
-
-		resp.Choices = []llm.Choice{
-			{
-				Index: 0,
-				Delta: &llm.Message{
-					Content: llm.MessageContent{
-						Content: &streamEvent.Delta,
-					},
-				},
-			},
-		}
-
 	case StreamEventTypeFunctionCallArgumentsDelta:
 		// Function call arguments delta
 		if streamEvent.ItemID != nil {
@@ -273,6 +259,25 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 
 		return nil // Intentionally skip this event
+
+	case StreamEventTypeContentPartAdded:
+		// Content part added - skip, no meaningful content to emit
+		return nil // Intentionally skip this event
+
+	case StreamEventTypeOutputTextDelta:
+		// Text content delta
+		s.state.textContent.WriteString(streamEvent.Delta)
+
+		resp.Choices = []llm.Choice{
+			{
+				Index: 0,
+				Delta: &llm.Message{
+					Content: llm.MessageContent{
+						Content: &streamEvent.Delta,
+					},
+				},
+			},
+		}
 
 	case StreamEventTypeReasoningSummaryTextDelta:
 		// Reasoning content delta

@@ -277,7 +277,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			},
 		},
 		{
-			name: "request with reasoning effort",
+			name: "request with reasoning effort and budget - effort takes priority",
 			chatReq: &llm.Request{
 				Model:           "o3",
 				ReasoningEffort: "high",
@@ -299,8 +299,59 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, req.Reasoning)
 				require.Equal(t, "high", req.Reasoning.Effort)
+				// MaxTokens should be nil when effort is specified (priority rule)
+				require.Nil(t, req.Reasoning.MaxTokens)
+			},
+		},
+		{
+			name: "request with reasoning effort only",
+			chatReq: &llm.Request{
+				Model:           "o3",
+				ReasoningEffort: "medium",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Solve this problem"),
+						},
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *httpclient.Request, chatReq *llm.Request) {
+				var req Request
+
+				err := json.Unmarshal(result.Body, &req)
+				require.NoError(t, err)
+				require.NotNil(t, req.Reasoning)
+				require.Equal(t, "medium", req.Reasoning.Effort)
+				require.Nil(t, req.Reasoning.MaxTokens)
+			},
+		},
+		{
+			name: "request with reasoning budget only",
+			chatReq: &llm.Request{
+				Model:           "o3",
+				ReasoningBudget: lo.ToPtr(int64(3000)),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Solve this problem"),
+						},
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *httpclient.Request, chatReq *llm.Request) {
+				var req Request
+
+				err := json.Unmarshal(result.Body, &req)
+				require.NoError(t, err)
+				require.NotNil(t, req.Reasoning)
+				require.Empty(t, req.Reasoning.Effort)
 				require.NotNil(t, req.Reasoning.MaxTokens)
-				require.Equal(t, int64(5000), *req.Reasoning.MaxTokens)
+				require.Equal(t, int64(3000), *req.Reasoning.MaxTokens)
 			},
 		},
 		{

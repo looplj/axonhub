@@ -40,7 +40,7 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     provider: 'openai',
     icon: OpenAI,
     color: 'bg-white-100 text-white-800 border-white-200',
-    channelTypes: ['openai'],
+    channelTypes: ['openai', 'openai_responses'],
   },
   deepseek: {
     provider: 'deepseek',

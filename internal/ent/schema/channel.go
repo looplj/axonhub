@@ -37,6 +37,7 @@ func (Channel) Fields() []ent.Field {
 		field.Enum("type").
 			Values(
 				"openai",
+				"openai_responses",
 				"vercel",
 				"anthropic",
 				"anthropic_aws",

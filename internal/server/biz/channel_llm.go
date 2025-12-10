@@ -19,6 +19,7 @@ import (
 	geminioai "github.com/looplj/axonhub/internal/llm/transformer/gemini/openai"
 	"github.com/looplj/axonhub/internal/llm/transformer/modelscope"
 	"github.com/looplj/axonhub/internal/llm/transformer/openai"
+	"github.com/looplj/axonhub/internal/llm/transformer/openai/responses"
 	"github.com/looplj/axonhub/internal/llm/transformer/openrouter"
 	"github.com/looplj/axonhub/internal/llm/transformer/xai"
 	"github.com/looplj/axonhub/internal/llm/transformer/zai"
@@ -422,6 +423,13 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 			BaseURL: c.BaseURL,
 			APIKey:  c.Credentials.APIKey,
 		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		return buildChannelWithTransformer(c, transformer, httpClient), nil
+	case channel.TypeOpenaiResponses:
+		transformer, err := responses.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
 		}

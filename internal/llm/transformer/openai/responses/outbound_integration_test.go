@@ -1,14 +1,15 @@
 package responses
 
 import (
-	"encoding/json"
 	"net/http"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/internal/pkg/xjson"
 	"github.com/looplj/axonhub/internal/pkg/xtest"
 )
 
@@ -131,50 +132,11 @@ func TestOutboundTransformer_TransformRequest_Integration(t *testing.T) {
 			name:         "simple text request transformation",
 			requestFile:  "llm-simple.request.json",
 			expectedFile: "simple.request.json",
-			validate: func(t *testing.T, result *httpclient.Request, llmReq *llm.Request) {
-				t.Helper()
-
-				// Verify HTTP request properties
-				require.Equal(t, http.MethodPost, result.Method)
-				require.Equal(t, "https://api.openai.com/responses", result.URL)
-				require.Equal(t, "application/json", result.Headers.Get("Content-Type"))
-				require.NotNil(t, result.Auth)
-				require.Equal(t, "bearer", result.Auth.Type)
-
-				// Parse the transformed request body
-				var req Request
-
-				err := json.Unmarshal(result.Body, &req)
-				require.NoError(t, err)
-
-				// Verify model
-				require.Equal(t, llmReq.Model, req.Model)
-
-				// Verify input is properly structured
-				require.NotNil(t, req.Input)
-			},
 		},
 		{
 			name:         "tool request transformation",
 			requestFile:  "llm-tool.request.json",
 			expectedFile: "tool.request.json",
-			validate: func(t *testing.T, result *httpclient.Request, llmReq *llm.Request) {
-				t.Helper()
-
-				// Parse the transformed request body
-				var req Request
-
-				err := json.Unmarshal(result.Body, &req)
-				require.NoError(t, err)
-
-				// Verify model
-				require.Equal(t, llmReq.Model, req.Model)
-
-				// Verify tools are properly transformed
-				if len(llmReq.Tools) > 0 {
-					require.NotNil(t, req.Tools)
-				}
-			},
 		},
 	}
 
@@ -191,12 +153,26 @@ func TestOutboundTransformer_TransformRequest_Integration(t *testing.T) {
 			}
 
 			// Transform the request
-			result, err := trans.TransformRequest(t.Context(), &llmReq)
+			actualResult, err := trans.TransformRequest(t.Context(), &llmReq)
 			require.NoError(t, err)
-			require.NotNil(t, result)
+			require.NotNil(t, actualResult)
 
 			// Run validation
-			tt.validate(t, result, &llmReq)
+			if tt.validate != nil {
+				tt.validate(t, actualResult, &llmReq)
+			}
+
+			var expectedRequest Request
+
+			err = xtest.LoadTestData(t, tt.expectedFile, &expectedRequest)
+			require.NoError(t, err)
+
+			actualRequest, err := xjson.To[Request](actualResult.Body)
+			require.NoError(t, err)
+
+			if !xtest.Equal(expectedRequest, actualRequest) {
+				t.Errorf("diff: %v", cmp.Diff(expectedRequest, actualRequest))
+			}
 		})
 	}
 }

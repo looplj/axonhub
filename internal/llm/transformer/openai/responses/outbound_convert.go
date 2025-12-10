@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/llm"
 )
 
@@ -61,9 +63,10 @@ func convertInstructionsFromMessages(msgs []llm.Message) string {
 	return strings.Join(instructions, "\n")
 }
 
-// convertInputFromMessages tries to extract a concise prompt string from the
-// request messages, preferring the last user message. If multiple text parts
-// exist, they are concatenated with newlines.
+// convertInputFromMessages converts LLM messages to Responses API Input format.
+// User messages become items with content array containing input_text items.
+// Assistant messages become items with type "message" and content array containing output_text items.
+// Tool calls become function_call items, tool results become function_call_output items.
 func convertInputFromMessages(msgs []llm.Message) Input {
 	if len(msgs) == 0 {
 		return Input{}
@@ -76,43 +79,130 @@ func convertInputFromMessages(msgs []llm.Message) Input {
 	var items []Item
 
 	for _, msg := range msgs {
-		if msg.Role != "user" && msg.Role != "assistant" {
-			continue
-		}
-		// Collect text from either the simple string content or parts
-		if msg.Content.Content != nil {
-			items = append(items, Item{
-				Type: "message",
-				Role: msg.Role,
-				Text: msg.Content.Content,
-			})
-		} else {
-			for _, p := range msg.Content.MultipleContent {
-				switch p.Type {
-				case "text":
-					if p.Text != nil {
-						items = append(items, Item{
-							Type: "message",
-							Role: msg.Role,
-							Text: p.Text,
-						})
-					}
-				case "image_url":
-					if p.ImageURL != nil {
-						items = append(items, Item{
-							Role:     msg.Role,
-							Type:     "input_image",
-							ImageURL: &p.ImageURL.URL,
-							Detail:   p.ImageURL.Detail,
-						})
-					}
-				}
-			}
+		switch msg.Role {
+		case "user":
+			items = append(items, convertUserMessage(msg))
+		case "assistant":
+			items = append(items, convertAssistantMessage(msg)...)
+		case "tool":
+			items = append(items, convertToolMessage(msg))
 		}
 	}
 
 	return Input{
 		Items: items,
+	}
+}
+
+// convertUserMessage converts a user message to Responses API Item format.
+func convertUserMessage(msg llm.Message) Item {
+	var contentItems []Item
+
+	if msg.Content.Content != nil {
+		contentItems = append(contentItems, Item{
+			Type: "input_text",
+			Text: msg.Content.Content,
+		})
+	} else {
+		for _, p := range msg.Content.MultipleContent {
+			switch p.Type {
+			case "text":
+				if p.Text != nil {
+					contentItems = append(contentItems, Item{
+						Type: "input_text",
+						Text: p.Text,
+					})
+				}
+			case "image_url":
+				if p.ImageURL != nil {
+					contentItems = append(contentItems, Item{
+						Type:     "input_image",
+						ImageURL: &p.ImageURL.URL,
+						Detail:   p.ImageURL.Detail,
+					})
+				}
+			}
+		}
+	}
+
+	return Item{
+		Role:    msg.Role,
+		Content: &Input{Items: contentItems},
+	}
+}
+
+// convertAssistantMessage converts an assistant message to Responses API Item(s) format.
+// Returns multiple items if the message contains tool calls.
+func convertAssistantMessage(msg llm.Message) []Item {
+	var items []Item
+
+	// Handle tool calls
+	for _, tc := range msg.ToolCalls {
+		items = append(items, Item{
+			Type:      "function_call",
+			CallID:    tc.ID,
+			Name:      tc.Function.Name,
+			Arguments: tc.Function.Arguments,
+		})
+	}
+
+	var contentItems []Item
+
+	if msg.Content.Content != nil {
+		contentItems = append(contentItems, Item{
+			Type: "output_text",
+			Text: msg.Content.Content,
+		})
+	} else {
+		for _, p := range msg.Content.MultipleContent {
+			if p.Type == "text" && p.Text != nil {
+				contentItems = append(contentItems, Item{
+					Type: "output_text",
+					Text: p.Text,
+				})
+			}
+		}
+	}
+
+	if len(contentItems) > 0 {
+		items = append(items, Item{
+			Type:    "message",
+			Role:    msg.Role,
+			Status:  lo.ToPtr("completed"),
+			Content: &Input{Items: contentItems},
+		})
+	}
+
+	return items
+}
+
+// convertToolMessage converts a tool result message to Responses API Item format.
+func convertToolMessage(msg llm.Message) Item {
+	var output Input
+
+	// Handle simple content first
+	if msg.Content.Content != nil {
+		output.Text = msg.Content.Content
+	} else if len(msg.Content.MultipleContent) > 0 {
+		for _, p := range msg.Content.MultipleContent {
+			if p.Type == "text" && p.Text != nil {
+				output.Items = append(output.Items, Item{
+					Type: "input_text",
+					Text: p.Text,
+				})
+			}
+		}
+	}
+
+	// Some times the tool result is empty, so we need to add an empty string.
+	if output.Text == nil && len(output.Items) == 0 {
+		output.Text = lo.ToPtr("")
+	}
+
+	return Item{
+		Type:   "function_call_output",
+		CallID: lo.FromPtr(msg.ToolCallID),
+		Output: &output,
 	}
 }
 
@@ -140,6 +230,7 @@ func convertFunctionToTool(src llm.Tool) Tool {
 		Type:        "function",
 		Name:        src.Function.Name,
 		Description: src.Function.Description,
+		Strict:      src.Function.Strict,
 	}
 
 	// Convert parameters from json.RawMessage to map[string]any
@@ -185,9 +276,19 @@ func convertStreamOptions(src *llm.StreamOptions) *StreamOptions {
 }
 
 // convertReasoning converts llm.Request reasoning fields to Responses API Reasoning.
+// Only one of "reasoning.effort" and "reasoning.max_tokens" can be specified.
+// Priority is given to effort when both are present.
 func convertReasoning(req *llm.Request) *Reasoning {
 	if req.ReasoningEffort == "" && req.ReasoningBudget == nil {
 		return nil
+	}
+
+	// If both effort and budget are specified, prioritize effort as per requirement
+	if req.ReasoningEffort != "" && req.ReasoningBudget != nil {
+		return &Reasoning{
+			Effort:    req.ReasoningEffort,
+			MaxTokens: nil, // Ignore max_tokens when effort is specified
+		}
 	}
 
 	return &Reasoning{

@@ -60,7 +60,8 @@
             "expression"
           ],
           "type": "object"
-        }
+        },
+        "strict": true
       }
     },
     {
@@ -80,7 +81,8 @@
             "location"
           ],
           "type": "object"
-        }
+        },
+        "strict": true
       }
     }
   ]

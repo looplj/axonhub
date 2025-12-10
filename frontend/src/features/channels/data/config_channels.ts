@@ -24,6 +24,7 @@ import { BURNCLOUD_DEFAULT_MODELS } from './burncloud-models'
 import { ApiFormat, ChannelType } from './schema'
 
 export const OPENAI_CHAT_COMPLETIONS: ApiFormat = 'openai/chat_completions'
+export const OPENAI_RESPONSES: ApiFormat = 'openai/responses'
 export const ANTHROPIC_MESSAGES: ApiFormat = 'anthropic/messages'
 export const GEMINI_CONTENTS: ApiFormat = 'gemini/contents'
 
@@ -60,6 +61,14 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     defaultModels: ['gpt-4o', 'gpt-4o-mini', 'gpt-5', 'gpt-5.1'],
     apiFormat: OPENAI_CHAT_COMPLETIONS,
     color: 'bg-white-100 text-white-800 border-white-200',
+    icon: OpenAI,
+  },
+  openai_responses: {
+    channelType: 'openai_responses',
+    baseURL: 'https://api.openai.com/v1',
+    defaultModels: ['gpt-4o', 'gpt-4o-mini', 'gpt-5', 'gpt-5.1'],
+    apiFormat: OPENAI_RESPONSES,
+    color: 'bg-green-100 text-green-800 border-green-200',
     icon: OpenAI,
   },
   deepseek: {
