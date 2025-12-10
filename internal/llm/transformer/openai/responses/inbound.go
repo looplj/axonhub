@@ -565,6 +565,7 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 					Name:        tool.Name,
 					Description: tool.Description,
 					Parameters:  params,
+					Strict:      tool.Strict,
 				},
 			})
 

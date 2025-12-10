@@ -18,6 +18,7 @@ import (
 	"github.com/looplj/axonhub/internal/llm/transformer/anthropic"
 	"github.com/looplj/axonhub/internal/llm/transformer/gemini"
 	"github.com/looplj/axonhub/internal/llm/transformer/openai"
+	"github.com/looplj/axonhub/internal/llm/transformer/openai/responses"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
@@ -667,10 +668,12 @@ func extractSpansFromMessage(msg *llm.Message, idPrefix string) []Span {
 
 // getInboundTransformer returns the appropriate inbound transformer based on format.
 func getInboundTransformer(format llm.APIFormat) (transformer.Inbound, error) {
-	//nolint:exhaustive // TODO: add more formats.
+	//nolint:exhaustive // Checked
 	switch format {
 	case llm.APIFormatOpenAIChatCompletion:
 		return openai.NewInboundTransformer(), nil
+	case llm.APIFormatOpenAIResponse:
+		return responses.NewInboundTransformer(), nil
 	case llm.APIFormatAnthropicMessage:
 		return anthropic.NewInboundTransformer(), nil
 	case llm.APIFormatGeminiContents:
@@ -681,7 +684,7 @@ func getInboundTransformer(format llm.APIFormat) (transformer.Inbound, error) {
 }
 
 func getOutboundTransformer(format llm.APIFormat) (transformer.Outbound, error) {
-	//nolint:exhaustive // TODO: add more formats.
+	//nolint:exhaustive // Checked
 	switch format {
 	case llm.APIFormatOpenAIChatCompletion:
 		config := &openai.Config{
@@ -691,6 +694,14 @@ func getOutboundTransformer(format llm.APIFormat) (transformer.Outbound, error) 
 		}
 
 		return openai.NewOutboundTransformerWithConfig(config)
+	case llm.APIFormatOpenAIResponse:
+		config := &openai.Config{
+			Type:    openai.PlatformOpenAI,
+			BaseURL: "https://api.openai.com/v1",
+			APIKey:  "dummy",
+		}
+
+		return responses.NewOutboundTransformer(config.BaseURL, config.APIKey)
 	case llm.APIFormatAnthropicMessage:
 		config := &anthropic.Config{
 			Type:    anthropic.PlatformDirect,

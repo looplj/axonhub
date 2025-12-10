@@ -167,8 +167,8 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			},
 			expected: &llm.Request{
 				Model:       "claude-3-sonnet-20240229",
-				MaxTokens:   func() *int64 { v := int64(1024); return &v }(),
-				Temperature: func() *float64 { v := 0.7; return &v }(),
+				MaxTokens:   lo.ToPtr(int64(1024)),
+				Temperature: lo.ToPtr(0.7),
 				Stop: &llm.Stop{
 					MultipleStop: []string{"Human:", "Assistant:"},
 				},
@@ -180,6 +180,60 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 						},
 					},
 				},
+			},
+			expectError: false,
+		},
+		{
+			name: "request with tool result",
+			httpReq: &httpclient.Request{
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
+				},
+				Body: []byte(`{
+					"model": "claude-sonnet-4-5-20250929",
+					"max_tokens":100,
+					"messages": [
+						{
+						"role": "user",
+						"content": [
+							{
+							"tool_use_id": "call_cmN7LOSh5GhF7h0m5KfWuGEI",
+							"type": "tool_result",
+							"content": [
+								{
+								"type": "text",
+								"text": "I located "
+								}
+							],
+							"cache_control": {
+								"type": "ephemeral"
+							}
+							}
+						]
+						}
+					]
+			}`),
+			},
+			expected: &llm.Request{
+				Messages: []llm.Message{
+					{
+						Role:       "tool",
+						ToolCallID: lo.ToPtr("call_cmN7LOSh5GhF7h0m5KfWuGEI"),
+						Content: llm.MessageContent{
+							MultipleContent: []llm.MessageContentPart{
+								{
+									Type: "text",
+									Text: lo.ToPtr("I located"),
+									CacheControl: &llm.CacheControl{
+										Type: "ephemeral",
+									},
+								},
+							},
+						},
+					},
+				},
+				Model:     "claude-sonnet-4-5-20250929",
+				MaxTokens: lo.ToPtr(int64(100)),
 			},
 			expectError: false,
 		},

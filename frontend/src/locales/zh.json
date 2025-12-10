@@ -602,6 +602,7 @@
     },
     "types": {
       "openai": "OpenAI",
+      "openai_responses": "OpenAI (Responses)",
       "anthropic": "Anthropic",
       "anthropic_aws": "Anthropic AWS",
       "anthropic_gcp": "Anthropic GCP",
@@ -804,6 +805,7 @@
           "placeholder": "选择 API 格式",
           "formats": {
             "openaiChatCompletions": "OpenAI (Chat Completions)",
+            "openaiResponses": "OpenAI (Responses)",
             "anthropicMessages": "Anthropic (Messages)",
             "geminiContents": "Gemini (Contents)"
           }

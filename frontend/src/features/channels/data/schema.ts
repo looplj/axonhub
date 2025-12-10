@@ -1,12 +1,13 @@
 import { z } from 'zod'
 
-const apiFormatSchema = z.enum(['openai/chat_completions', 'anthropic/messages', 'gemini/contents'])
+const apiFormatSchema = z.enum(['openai/chat_completions', 'openai/responses', 'anthropic/messages', 'gemini/contents'])
 
 export type ApiFormat = z.infer<typeof apiFormatSchema>
 
 // Channel Types
 export const channelTypeSchema = z.enum([
   'openai',
+  'openai_responses',
   'anthropic',
   'anthropic_aws',
   'anthropic_gcp',
