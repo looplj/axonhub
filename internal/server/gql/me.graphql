@@ -1,5 +1,6 @@
 
 type UserInfo {
+  id: ID!
   email: String!
   firstName: String!
   lastName: String!

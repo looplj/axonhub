@@ -734,6 +734,29 @@ func HasRolesWith(preds ...predicate.Role) predicate.User {
 	})
 }
 
+// HasChannelOverrideTemplates applies the HasEdge predicate on the "channel_override_templates" edge.
+func HasChannelOverrideTemplates() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, ChannelOverrideTemplatesTable, ChannelOverrideTemplatesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasChannelOverrideTemplatesWith applies the HasEdge predicate on the "channel_override_templates" edge with a given conditions (other predicates).
+func HasChannelOverrideTemplatesWith(preds ...predicate.ChannelOverrideTemplate) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newChannelOverrideTemplatesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasProjectUsers applies the HasEdge predicate on the "project_users" edge.
 func HasProjectUsers() predicate.User {
 	return predicate.User(func(s *sql.Selector) {

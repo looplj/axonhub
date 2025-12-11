@@ -1,6 +1,7 @@
 package objects
 
 type UserInfo struct {
+	ID             GUID              `json:"id"`
 	Email          string            `json:"email"`
 	FirstName      string            `json:"firstName"`
 	LastName       string            `json:"lastName"`
