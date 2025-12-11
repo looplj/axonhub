@@ -242,7 +242,22 @@ func selectChannels(inbound *PersistentInboundTransformer) pipeline.Middleware {
 			return llmRequest, nil
 		}
 
-		channels, err := inbound.state.ChannelSelector.Select(ctx, llmRequest)
+		// Get allowed channel IDs from active profile if exists
+		var allowedChannelIDs []int
+		if profile := GetActiveProfile(inbound.state.APIKey); profile != nil {
+			allowedChannelIDs = profile.ChannelIDs
+		}
+
+		// Use SelectWithAllowedChannels if the selector supports it, otherwise fall back to Select
+		var channels []*biz.Channel
+		var err error
+
+		if selector, ok := inbound.state.ChannelSelector.(*DefaultChannelSelector); ok {
+			channels, err = selector.SelectWithAllowedChannels(ctx, llmRequest, allowedChannelIDs)
+		} else {
+			channels, err = inbound.state.ChannelSelector.Select(ctx, llmRequest)
+		}
+
 		if err != nil {
 			return nil, err
 		}

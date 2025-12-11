@@ -159,7 +159,7 @@ func containsRegexChars(pattern string) bool {
 }
 
 // GetActiveProfile returns the active profile for an API key, if any.
-func (m *ModelMapper) GetActiveProfile(apiKey *ent.APIKey) *objects.APIKeyProfile {
+func GetActiveProfile(apiKey *ent.APIKey) *objects.APIKeyProfile {
 	if apiKey == nil || apiKey.Profiles == nil || apiKey.Profiles.ActiveProfile == "" {
 		return nil
 	}
@@ -174,8 +174,8 @@ func (m *ModelMapper) GetActiveProfile(apiKey *ent.APIKey) *objects.APIKeyProfil
 }
 
 // HasActiveProfile checks if an API key has an active profile with model mappings.
-func (m *ModelMapper) HasActiveProfile(apiKey *ent.APIKey) bool {
-	profile := m.GetActiveProfile(apiKey)
+func HasActiveProfile(apiKey *ent.APIKey) bool {
+	profile := GetActiveProfile(apiKey)
 	return profile != nil && len(profile.ModelMappings) > 0
 }
 

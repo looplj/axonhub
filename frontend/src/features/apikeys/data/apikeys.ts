@@ -77,6 +77,7 @@ function buildApiKeyQuery(permissions: { canViewUsers: boolean }) {
           profiles {
             name
             modelMappings { from to }
+            channelIDs
           }
         }
       }

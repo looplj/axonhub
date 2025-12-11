@@ -453,10 +453,27 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 func (svc *ChannelService) ChooseChannels(
 	ctx context.Context,
 	chatReq *llm.Request,
+	allowedChannelIDs []int,
 ) ([]*Channel, error) {
 	var channels []*Channel
 
+	// Build allowed channel IDs set for O(1) lookup if specified
+	var allowedSet map[int]struct{}
+	if len(allowedChannelIDs) > 0 {
+		allowedSet = make(map[int]struct{}, len(allowedChannelIDs))
+		for _, id := range allowedChannelIDs {
+			allowedSet[id] = struct{}{}
+		}
+	}
+
 	for _, channel := range svc.EnabledChannels {
+		// Skip if channel is not in allowed list (when list is specified)
+		if allowedSet != nil {
+			if _, ok := allowedSet[channel.ID]; !ok {
+				continue
+			}
+		}
+
 		if channel.IsModelSupported(chatReq.Model) {
 			channels = append(channels, channel)
 		}

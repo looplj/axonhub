@@ -46,9 +46,16 @@ func NewDefaultChannelSelector(
 }
 
 func (s *DefaultChannelSelector) Select(ctx context.Context, req *llm.Request) ([]*biz.Channel, error) {
+	return s.SelectWithAllowedChannels(ctx, req, nil)
+}
+
+// SelectWithAllowedChannels selects channels with optional filtering by allowed channel IDs.
+// If allowedChannelIDs is nil or empty, all enabled channels supporting the model are returned.
+func (s *DefaultChannelSelector) SelectWithAllowedChannels(ctx context.Context, req *llm.Request, allowedChannelIDs []int) ([]*biz.Channel, error) {
 	// The request model has already been mapped by the inbound transformer if needed
 	// Channel selection will use the mapped model for finding compatible channels
-	channels, err := s.ChannelService.ChooseChannels(ctx, req)
+	// Pass allowed channel IDs to filter at selection time (before load balancing)
+	channels, err := s.ChannelService.ChooseChannels(ctx, req, allowedChannelIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -60,10 +67,13 @@ func (s *DefaultChannelSelector) Select(ctx context.Context, req *llm.Request) (
 	// Apply load balancing to sort channels by priority
 	sortedChannels := s.LoadBalancer.Sort(ctx, channels, req.Model)
 
-	log.Debug(ctx, "Selected and sorted channels for model",
-		log.String("model", req.Model),
-		log.Int("total_channels", len(channels)),
-		log.Int("selected_channels", len(sortedChannels)))
+	if log.DebugEnabled(ctx) {
+		log.Debug(ctx, "Selected and sorted channels for model",
+			log.String("model", req.Model),
+			log.Int("total_channels", len(channels)),
+			log.Int("selected_channels", len(sortedChannels)),
+			log.Any("allowed_channel_ids", allowedChannelIDs))
+	}
 
 	return sortedChannels, nil
 }

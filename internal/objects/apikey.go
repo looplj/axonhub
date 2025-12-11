@@ -8,4 +8,5 @@ type APIKeyProfiles struct {
 type APIKeyProfile struct {
 	Name          string         `json:"name"`
 	ModelMappings []ModelMapping `json:"modelMappings"`
+	ChannelIDs    []int          `json:"channelIDs,omitempty"`
 }
