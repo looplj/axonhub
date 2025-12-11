@@ -4,14 +4,22 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { Loader2, Save, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useUpdateChannel } from '../data/channels'
 import { Channel, HeaderEntry } from '../data/schema'
+import {
+  useChannelOverrideTemplates,
+  useCreateChannelOverrideTemplate,
+} from '../data/templates'
+import { mergeOverrideHeaders, mergeOverrideParameters, normalizeOverrideParameters } from '../utils/merge'
 
 interface Props {
   open: boolean
@@ -19,7 +27,95 @@ interface Props {
   currentRow: Channel
 }
 
-const AUTH_HEADER_KEYS = ['authorization', 'proxy-authorization','x-api-key','x-api-secret','x-api-token']
+const AUTH_HEADER_KEYS = ['authorization', 'proxy-authorization', 'x-api-key', 'x-api-secret', 'x-api-token']
+
+const saveTemplateFormSchema = z.object({
+  name: z.string().min(1, 'Template name is required'),
+  description: z.string().optional(),
+})
+
+interface SaveTemplateDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSave: (name: string, description?: string) => void
+  isSaving: boolean
+}
+
+function SaveTemplateDialog({ open, onOpenChange, onSave, isSaving }: SaveTemplateDialogProps) {
+  const { t } = useTranslation()
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+
+  const handleSave = () => {
+    if (!name.trim()) {
+      toast.error(t('channels.templates.validation.nameRequired'))
+      return
+    }
+    onSave(name.trim(), description.trim() || undefined)
+  }
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
+      setName('')
+      setDescription('')
+    }
+    onOpenChange(newOpen)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className='sm:max-w-[500px]'>
+        <DialogHeader>
+          <DialogTitle>{t('channels.templates.dialogs.save.title')}</DialogTitle>
+          <DialogDescription>
+            {t('channels.templates.dialogs.save.description')}
+          </DialogDescription>
+        </DialogHeader>
+        <div className='space-y-4 py-4'>
+          <div className='space-y-2'>
+            <Label htmlFor='template-name'>{t('channels.templates.fields.name')}</Label>
+            <Input
+              id='template-name'
+              placeholder={t('channels.templates.fields.namePlaceholder')}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={isSaving}
+            />
+          </div>
+          <div className='space-y-2'>
+            <Label htmlFor='template-description'>{t('channels.templates.fields.description')}</Label>
+            <Textarea
+              id='template-description'
+              placeholder={t('channels.templates.fields.descriptionPlaceholder')}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              disabled={isSaving}
+              className='min-h-[80px]'
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant='outline' onClick={() => handleOpenChange(false)} disabled={isSaving}>
+            {t('common.buttons.cancel')}
+          </Button>
+          <Button onClick={handleSave} disabled={isSaving}>
+            {isSaving ? (
+              <>
+                <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                {t('common.buttons.saving')}
+              </>
+            ) : (
+              <>
+                <Save className='mr-2 h-4 w-4' />
+                {t('common.buttons.save')}
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 const overrideFormSchema = z.object({
   overrideHeaders: z.array(z.object({
@@ -63,6 +159,28 @@ const overrideFormSchema = z.object({
 export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props) {
   const { t } = useTranslation()
   const updateChannel = useUpdateChannel()
+  const createTemplate = useCreateChannelOverrideTemplate()
+
+  // Template states
+  const [showSaveTemplateDialog, setShowSaveTemplateDialog] = useState(false)
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
+  const [templateSearchOpen, setTemplateSearchOpen] = useState(false)
+  const [templateSearchValue, setTemplateSearchValue] = useState('')
+  const [isApplyingTemplate, setIsApplyingTemplate] = useState(false)
+
+  // Fetch templates for this channel type
+  const { data: templatesData } = useChannelOverrideTemplates(
+    {
+      channelType: currentRow.type,
+      search: templateSearchValue,
+      first: 50,
+    },
+    {
+      enabled: open,
+    }
+  )
+
+  const templates = templatesData?.edges?.map((edge) => edge.node) || []
 
   const [headers, setHeaders] = useState<HeaderEntry[]>(
     currentRow.settings?.overrideHeaders || []
@@ -119,12 +237,9 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
     try {
       // Filter out headers with empty keys
       const validHeaders = values.overrideHeaders?.filter(header => header.key.trim() !== '') || []
-      
-      // Parse overrideParameters if provided
-      let overrideParameters: string | undefined
-      if (values.overrideParameters && values.overrideParameters.trim()) {
-        overrideParameters = values.overrideParameters
-      }
+
+      // Normalize and parse overrideParameters if provided
+      const normalizedParams = normalizeOverrideParameters(values.overrideParameters || '')
 
       await updateChannel.mutateAsync({
         id: currentRow.id,
@@ -132,7 +247,7 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
           settings: {
             extraModelPrefix: currentRow.settings?.extraModelPrefix,
             modelMappings: currentRow.settings?.modelMappings || [],
-            overrideParameters,
+            overrideParameters: normalizedParams,
             overrideHeaders: validHeaders,
             proxy: currentRow.settings?.proxy,
           },
@@ -145,6 +260,61 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
     }
   }
 
+  // Handle apply template
+  const handleApplyTemplate = useCallback(async () => {
+    if (!selectedTemplateId) return
+
+    const template = templates.find((t) => t.id === selectedTemplateId)
+    if (!template) return
+
+    setIsApplyingTemplate(true)
+    try {
+      // Parse template data
+      const templateHeaders = template.overrideHeaders || []
+      const templateParams = template.overrideParameters || ''
+
+      // Use merge utilities to match backend behavior
+      const mergedHeaders = mergeOverrideHeaders(headers, templateHeaders)
+      const mergedParams = mergeOverrideParameters(overrideParametersText, templateParams)
+
+      setHeaders(mergedHeaders)
+      setOverrideParametersText(mergedParams)
+      form.setValue('overrideHeaders', mergedHeaders)
+      form.setValue('overrideParameters', mergedParams)
+
+      toast.success(t('channels.templates.messages.applied'))
+    } catch (error) {
+      toast.error(t('channels.templates.messages.applyError'))
+    } finally {
+      setIsApplyingTemplate(false)
+    }
+  }, [selectedTemplateId, templates, headers, overrideParametersText, form, t])
+
+  // Handle save as template
+  const handleSaveAsTemplate = useCallback(
+    async (name: string, description?: string) => {
+      // Filter out headers with empty keys
+      const validHeaders = headers.filter((h) => h.key.trim() !== '')
+
+      // Normalize empty parameters to "{}"
+      const normalizedParams = normalizeOverrideParameters(overrideParametersText)
+
+      try {
+        await createTemplate.mutateAsync({
+          name,
+          description,
+          channelType: currentRow.type,
+          overrideParameters: normalizedParams,
+          overrideHeaders: validHeaders,
+        })
+        setShowSaveTemplateDialog(false)
+      } catch (error) {
+        // Error already handled by mutation
+      }
+    },
+    [headers, overrideParametersText, currentRow.type, createTemplate]
+  )
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className='max-h-[90vh] overflow-y-auto sm:max-w-[800px]'>
@@ -154,6 +324,93 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
 
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <div className='space-y-6'>
+            {/* Template Section */}
+            <Card data-testid='override-template-section'>
+              <CardHeader>
+                <CardTitle className='text-lg'>{t('channels.templates.section.title')}</CardTitle>
+                <CardDescription>{t('channels.templates.section.description')}</CardDescription>
+              </CardHeader>
+              <CardContent className='space-y-3'>
+                <div className='flex gap-2'>
+                  <div className='flex-1'>
+                    <Popover open={templateSearchOpen} onOpenChange={setTemplateSearchOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant='outline'
+                          role='combobox'
+                          aria-expanded={templateSearchOpen}
+                          className='w-full justify-between'
+                          type='button'
+                        >
+                          {selectedTemplateId
+                            ? templates.find((t) => t.id === selectedTemplateId)?.name
+                            : t('channels.templates.selectTemplate')}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className='w-[400px] p-0'>
+                        <Command>
+                          <CommandInput
+                            placeholder={t('channels.templates.searchPlaceholder')}
+                            value={templateSearchValue}
+                            onValueChange={setTemplateSearchValue}
+                          />
+                          <CommandList>
+                            <CommandEmpty>{t('channels.templates.noTemplates')}</CommandEmpty>
+                            <CommandGroup>
+                              {templates.map((template) => (
+                                <CommandItem
+                                  key={template.id}
+                                  value={template.id}
+                                  onSelect={() => {
+                                    setSelectedTemplateId(template.id)
+                                    setTemplateSearchOpen(false)
+                                  }}
+                                >
+                                  <div className='flex flex-col'>
+                                    <span className='font-medium'>{template.name}</span>
+                                    {template.description && (
+                                      <span className='text-muted-foreground text-xs'>{template.description}</span>
+                                    )}
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <Button
+                    type='button'
+                    variant='default'
+                    onClick={handleApplyTemplate}
+                    disabled={!selectedTemplateId || isApplyingTemplate}
+                  >
+                    {isApplyingTemplate ? (
+                      <>
+                        <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                        {t('channels.templates.applying')}
+                      </>
+                    ) : (
+                      <>
+                        <Download className='mr-2 h-4 w-4' />
+                        {t('channels.templates.applyTemplate')}
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    onClick={() => setShowSaveTemplateDialog(true)}
+                    disabled={headers.length === 0 && !overrideParametersText}
+                  >
+                    <Save className='mr-2 h-4 w-4' />
+                    {t('channels.templates.saveAsTemplate')}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Headers Section */}
             <Card data-testid="override-headers-section">
               <CardHeader>
@@ -272,6 +529,13 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
           </DialogFooter>
         </form>
       </DialogContent>
+
+      <SaveTemplateDialog
+        open={showSaveTemplateDialog}
+        onOpenChange={setShowSaveTemplateDialog}
+        onSave={handleSaveAsTemplate}
+        isSaving={createTemplate.isPending}
+      />
     </Dialog>
   )
 }

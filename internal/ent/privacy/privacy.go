@@ -159,6 +159,30 @@ func (f ChannelMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutatio
 	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.ChannelMutation", m)
 }
 
+// The ChannelOverrideTemplateQueryRuleFunc type is an adapter to allow the use of ordinary
+// functions as a query rule.
+type ChannelOverrideTemplateQueryRuleFunc func(context.Context, *ent.ChannelOverrideTemplateQuery) error
+
+// EvalQuery return f(ctx, q).
+func (f ChannelOverrideTemplateQueryRuleFunc) EvalQuery(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.ChannelOverrideTemplateQuery); ok {
+		return f(ctx, q)
+	}
+	return Denyf("ent/privacy: unexpected query type %T, expect *ent.ChannelOverrideTemplateQuery", q)
+}
+
+// The ChannelOverrideTemplateMutationRuleFunc type is an adapter to allow the use of ordinary
+// functions as a mutation rule.
+type ChannelOverrideTemplateMutationRuleFunc func(context.Context, *ent.ChannelOverrideTemplateMutation) error
+
+// EvalMutation calls f(ctx, m).
+func (f ChannelOverrideTemplateMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) error {
+	if m, ok := m.(*ent.ChannelOverrideTemplateMutation); ok {
+		return f(ctx, m)
+	}
+	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.ChannelOverrideTemplateMutation", m)
+}
+
 // The ChannelPerformanceQueryRuleFunc type is an adapter to allow the use of ordinary
 // functions as a query rule.
 type ChannelPerformanceQueryRuleFunc func(context.Context, *ent.ChannelPerformanceQuery) error
@@ -510,6 +534,8 @@ func queryFilter(q ent.Query) (Filter, error) {
 		return q.Filter(), nil
 	case *ent.ChannelQuery:
 		return q.Filter(), nil
+	case *ent.ChannelOverrideTemplateQuery:
+		return q.Filter(), nil
 	case *ent.ChannelPerformanceQuery:
 		return q.Filter(), nil
 	case *ent.DataStorageQuery:
@@ -546,6 +572,8 @@ func mutationFilter(m ent.Mutation) (Filter, error) {
 	case *ent.APIKeyMutation:
 		return m.Filter(), nil
 	case *ent.ChannelMutation:
+		return m.Filter(), nil
+	case *ent.ChannelOverrideTemplateMutation:
 		return m.Filter(), nil
 	case *ent.ChannelPerformanceMutation:
 		return m.Filter(), nil

@@ -15,21 +15,22 @@ import (
 
 // Resolver is the resolver root.
 type Resolver struct {
-	client               *ent.Client
-	authService          *biz.AuthService
-	apiKeyService        *biz.APIKeyService
-	userService          *biz.UserService
-	systemService        *biz.SystemService
-	channelService       *biz.ChannelService
-	requestService       *biz.RequestService
-	projectService       *biz.ProjectService
-	dataStorageService   *biz.DataStorageService
-	roleService          *biz.RoleService
-	traceService         *biz.TraceService
-	threadService        *biz.ThreadService
-	httpClient           *httpclient.HttpClient
-	modelFetcher         *biz.ModelFetcher
-	TestChannelProcessor *chat.TestChannelProcessor
+	client                         *ent.Client
+	authService                    *biz.AuthService
+	apiKeyService                  *biz.APIKeyService
+	userService                    *biz.UserService
+	systemService                  *biz.SystemService
+	channelService                 *biz.ChannelService
+	requestService                 *biz.RequestService
+	projectService                 *biz.ProjectService
+	dataStorageService             *biz.DataStorageService
+	roleService                    *biz.RoleService
+	traceService                   *biz.TraceService
+	threadService                  *biz.ThreadService
+	channelOverrideTemplateService *biz.ChannelOverrideTemplateService
+	httpClient                     *httpclient.HttpClient
+	modelFetcher                   *biz.ModelFetcher
+	TestChannelProcessor           *chat.TestChannelProcessor
 }
 
 // NewSchema creates a graphql executable schema.
@@ -47,27 +48,29 @@ func NewSchema(
 	traceService *biz.TraceService,
 	threadService *biz.ThreadService,
 	usageLogService *biz.UsageLogService,
+	channelOverrideTemplateService *biz.ChannelOverrideTemplateService,
 ) graphql.ExecutableSchema {
 	httpClient := httpclient.NewHttpClient()
 	modelFetcher := biz.NewModelFetcher(httpClient, channelService)
 
 	return NewExecutableSchema(Config{
 		Resolvers: &Resolver{
-			client:               client,
-			authService:          authService,
-			apiKeyService:        apiKeyService,
-			userService:          userService,
-			systemService:        systemService,
-			channelService:       channelService,
-			requestService:       requestService,
-			projectService:       projectService,
-			dataStorageService:   dataStorageService,
-			roleService:          roleService,
-			traceService:         traceService,
-			threadService:        threadService,
-			httpClient:           httpClient,
-			modelFetcher:         modelFetcher,
-			TestChannelProcessor: chat.NewTestChannelProcessor(channelService, requestService, systemService, usageLogService, httpClient),
+			client:                         client,
+			authService:                    authService,
+			apiKeyService:                  apiKeyService,
+			userService:                    userService,
+			systemService:                  systemService,
+			channelService:                 channelService,
+			requestService:                 requestService,
+			projectService:                 projectService,
+			dataStorageService:             dataStorageService,
+			roleService:                    roleService,
+			traceService:                   traceService,
+			threadService:                  threadService,
+			channelOverrideTemplateService: channelOverrideTemplateService,
+			httpClient:                     httpClient,
+			modelFetcher:                   modelFetcher,
+			TestChannelProcessor:           chat.NewTestChannelProcessor(channelService, requestService, systemService, usageLogService, httpClient),
 		},
 	})
 }

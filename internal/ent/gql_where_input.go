@@ -9,6 +9,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/predicate"
@@ -1154,6 +1155,460 @@ func (i *ChannelWhereInput) P() (predicate.Channel, error) {
 		return predicates[0], nil
 	default:
 		return channel.And(predicates...), nil
+	}
+}
+
+// ChannelOverrideTemplateWhereInput represents a where input for filtering ChannelOverrideTemplate queries.
+type ChannelOverrideTemplateWhereInput struct {
+	Predicates []predicate.ChannelOverrideTemplate  `json:"-"`
+	Not        *ChannelOverrideTemplateWhereInput   `json:"not,omitempty"`
+	Or         []*ChannelOverrideTemplateWhereInput `json:"or,omitempty"`
+	And        []*ChannelOverrideTemplateWhereInput `json:"and,omitempty"`
+
+	// "id" field predicates.
+	ID      *int  `json:"id,omitempty"`
+	IDNEQ   *int  `json:"idNEQ,omitempty"`
+	IDIn    []int `json:"idIn,omitempty"`
+	IDNotIn []int `json:"idNotIn,omitempty"`
+	IDGT    *int  `json:"idGT,omitempty"`
+	IDGTE   *int  `json:"idGTE,omitempty"`
+	IDLT    *int  `json:"idLT,omitempty"`
+	IDLTE   *int  `json:"idLTE,omitempty"`
+
+	// "created_at" field predicates.
+	CreatedAt      *time.Time  `json:"createdAt,omitempty"`
+	CreatedAtNEQ   *time.Time  `json:"createdAtNEQ,omitempty"`
+	CreatedAtIn    []time.Time `json:"createdAtIn,omitempty"`
+	CreatedAtNotIn []time.Time `json:"createdAtNotIn,omitempty"`
+	CreatedAtGT    *time.Time  `json:"createdAtGT,omitempty"`
+	CreatedAtGTE   *time.Time  `json:"createdAtGTE,omitempty"`
+	CreatedAtLT    *time.Time  `json:"createdAtLT,omitempty"`
+	CreatedAtLTE   *time.Time  `json:"createdAtLTE,omitempty"`
+
+	// "updated_at" field predicates.
+	UpdatedAt      *time.Time  `json:"updatedAt,omitempty"`
+	UpdatedAtNEQ   *time.Time  `json:"updatedAtNEQ,omitempty"`
+	UpdatedAtIn    []time.Time `json:"updatedAtIn,omitempty"`
+	UpdatedAtNotIn []time.Time `json:"updatedAtNotIn,omitempty"`
+	UpdatedAtGT    *time.Time  `json:"updatedAtGT,omitempty"`
+	UpdatedAtGTE   *time.Time  `json:"updatedAtGTE,omitempty"`
+	UpdatedAtLT    *time.Time  `json:"updatedAtLT,omitempty"`
+	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
+
+	// "deleted_at" field predicates.
+	DeletedAt      *int  `json:"deletedAt,omitempty"`
+	DeletedAtNEQ   *int  `json:"deletedAtNEQ,omitempty"`
+	DeletedAtIn    []int `json:"deletedAtIn,omitempty"`
+	DeletedAtNotIn []int `json:"deletedAtNotIn,omitempty"`
+	DeletedAtGT    *int  `json:"deletedAtGT,omitempty"`
+	DeletedAtGTE   *int  `json:"deletedAtGTE,omitempty"`
+	DeletedAtLT    *int  `json:"deletedAtLT,omitempty"`
+	DeletedAtLTE   *int  `json:"deletedAtLTE,omitempty"`
+
+	// "user_id" field predicates.
+	UserID      *int  `json:"userID,omitempty"`
+	UserIDNEQ   *int  `json:"userIDNEQ,omitempty"`
+	UserIDIn    []int `json:"userIDIn,omitempty"`
+	UserIDNotIn []int `json:"userIDNotIn,omitempty"`
+
+	// "name" field predicates.
+	Name             *string  `json:"name,omitempty"`
+	NameNEQ          *string  `json:"nameNEQ,omitempty"`
+	NameIn           []string `json:"nameIn,omitempty"`
+	NameNotIn        []string `json:"nameNotIn,omitempty"`
+	NameGT           *string  `json:"nameGT,omitempty"`
+	NameGTE          *string  `json:"nameGTE,omitempty"`
+	NameLT           *string  `json:"nameLT,omitempty"`
+	NameLTE          *string  `json:"nameLTE,omitempty"`
+	NameContains     *string  `json:"nameContains,omitempty"`
+	NameHasPrefix    *string  `json:"nameHasPrefix,omitempty"`
+	NameHasSuffix    *string  `json:"nameHasSuffix,omitempty"`
+	NameEqualFold    *string  `json:"nameEqualFold,omitempty"`
+	NameContainsFold *string  `json:"nameContainsFold,omitempty"`
+
+	// "description" field predicates.
+	Description             *string  `json:"description,omitempty"`
+	DescriptionNEQ          *string  `json:"descriptionNEQ,omitempty"`
+	DescriptionIn           []string `json:"descriptionIn,omitempty"`
+	DescriptionNotIn        []string `json:"descriptionNotIn,omitempty"`
+	DescriptionGT           *string  `json:"descriptionGT,omitempty"`
+	DescriptionGTE          *string  `json:"descriptionGTE,omitempty"`
+	DescriptionLT           *string  `json:"descriptionLT,omitempty"`
+	DescriptionLTE          *string  `json:"descriptionLTE,omitempty"`
+	DescriptionContains     *string  `json:"descriptionContains,omitempty"`
+	DescriptionHasPrefix    *string  `json:"descriptionHasPrefix,omitempty"`
+	DescriptionHasSuffix    *string  `json:"descriptionHasSuffix,omitempty"`
+	DescriptionIsNil        bool     `json:"descriptionIsNil,omitempty"`
+	DescriptionNotNil       bool     `json:"descriptionNotNil,omitempty"`
+	DescriptionEqualFold    *string  `json:"descriptionEqualFold,omitempty"`
+	DescriptionContainsFold *string  `json:"descriptionContainsFold,omitempty"`
+
+	// "channel_type" field predicates.
+	ChannelType      *channeloverridetemplate.ChannelType  `json:"channelType,omitempty"`
+	ChannelTypeNEQ   *channeloverridetemplate.ChannelType  `json:"channelTypeNEQ,omitempty"`
+	ChannelTypeIn    []channeloverridetemplate.ChannelType `json:"channelTypeIn,omitempty"`
+	ChannelTypeNotIn []channeloverridetemplate.ChannelType `json:"channelTypeNotIn,omitempty"`
+
+	// "override_parameters" field predicates.
+	OverrideParameters             *string  `json:"overrideParameters,omitempty"`
+	OverrideParametersNEQ          *string  `json:"overrideParametersNEQ,omitempty"`
+	OverrideParametersIn           []string `json:"overrideParametersIn,omitempty"`
+	OverrideParametersNotIn        []string `json:"overrideParametersNotIn,omitempty"`
+	OverrideParametersGT           *string  `json:"overrideParametersGT,omitempty"`
+	OverrideParametersGTE          *string  `json:"overrideParametersGTE,omitempty"`
+	OverrideParametersLT           *string  `json:"overrideParametersLT,omitempty"`
+	OverrideParametersLTE          *string  `json:"overrideParametersLTE,omitempty"`
+	OverrideParametersContains     *string  `json:"overrideParametersContains,omitempty"`
+	OverrideParametersHasPrefix    *string  `json:"overrideParametersHasPrefix,omitempty"`
+	OverrideParametersHasSuffix    *string  `json:"overrideParametersHasSuffix,omitempty"`
+	OverrideParametersEqualFold    *string  `json:"overrideParametersEqualFold,omitempty"`
+	OverrideParametersContainsFold *string  `json:"overrideParametersContainsFold,omitempty"`
+
+	// "user" edge predicates.
+	HasUser     *bool             `json:"hasUser,omitempty"`
+	HasUserWith []*UserWhereInput `json:"hasUserWith,omitempty"`
+}
+
+// AddPredicates adds custom predicates to the where input to be used during the filtering phase.
+func (i *ChannelOverrideTemplateWhereInput) AddPredicates(predicates ...predicate.ChannelOverrideTemplate) {
+	i.Predicates = append(i.Predicates, predicates...)
+}
+
+// Filter applies the ChannelOverrideTemplateWhereInput filter on the ChannelOverrideTemplateQuery builder.
+func (i *ChannelOverrideTemplateWhereInput) Filter(q *ChannelOverrideTemplateQuery) (*ChannelOverrideTemplateQuery, error) {
+	if i == nil {
+		return q, nil
+	}
+	p, err := i.P()
+	if err != nil {
+		if err == ErrEmptyChannelOverrideTemplateWhereInput {
+			return q, nil
+		}
+		return nil, err
+	}
+	return q.Where(p), nil
+}
+
+// ErrEmptyChannelOverrideTemplateWhereInput is returned in case the ChannelOverrideTemplateWhereInput is empty.
+var ErrEmptyChannelOverrideTemplateWhereInput = errors.New("ent: empty predicate ChannelOverrideTemplateWhereInput")
+
+// P returns a predicate for filtering channeloverridetemplates.
+// An error is returned if the input is empty or invalid.
+func (i *ChannelOverrideTemplateWhereInput) P() (predicate.ChannelOverrideTemplate, error) {
+	var predicates []predicate.ChannelOverrideTemplate
+	if i.Not != nil {
+		p, err := i.Not.P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'not'", err)
+		}
+		predicates = append(predicates, channeloverridetemplate.Not(p))
+	}
+	switch n := len(i.Or); {
+	case n == 1:
+		p, err := i.Or[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'or'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		or := make([]predicate.ChannelOverrideTemplate, 0, n)
+		for _, w := range i.Or {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'or'", err)
+			}
+			or = append(or, p)
+		}
+		predicates = append(predicates, channeloverridetemplate.Or(or...))
+	}
+	switch n := len(i.And); {
+	case n == 1:
+		p, err := i.And[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'and'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		and := make([]predicate.ChannelOverrideTemplate, 0, n)
+		for _, w := range i.And {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'and'", err)
+			}
+			and = append(and, p)
+		}
+		predicates = append(predicates, channeloverridetemplate.And(and...))
+	}
+	predicates = append(predicates, i.Predicates...)
+	if i.ID != nil {
+		predicates = append(predicates, channeloverridetemplate.IDEQ(*i.ID))
+	}
+	if i.IDNEQ != nil {
+		predicates = append(predicates, channeloverridetemplate.IDNEQ(*i.IDNEQ))
+	}
+	if len(i.IDIn) > 0 {
+		predicates = append(predicates, channeloverridetemplate.IDIn(i.IDIn...))
+	}
+	if len(i.IDNotIn) > 0 {
+		predicates = append(predicates, channeloverridetemplate.IDNotIn(i.IDNotIn...))
+	}
+	if i.IDGT != nil {
+		predicates = append(predicates, channeloverridetemplate.IDGT(*i.IDGT))
+	}
+	if i.IDGTE != nil {
+		predicates = append(predicates, channeloverridetemplate.IDGTE(*i.IDGTE))
+	}
+	if i.IDLT != nil {
+		predicates = append(predicates, channeloverridetemplate.IDLT(*i.IDLT))
+	}
+	if i.IDLTE != nil {
+		predicates = append(predicates, channeloverridetemplate.IDLTE(*i.IDLTE))
+	}
+	if i.CreatedAt != nil {
+		predicates = append(predicates, channeloverridetemplate.CreatedAtEQ(*i.CreatedAt))
+	}
+	if i.CreatedAtNEQ != nil {
+		predicates = append(predicates, channeloverridetemplate.CreatedAtNEQ(*i.CreatedAtNEQ))
+	}
+	if len(i.CreatedAtIn) > 0 {
+		predicates = append(predicates, channeloverridetemplate.CreatedAtIn(i.CreatedAtIn...))
+	}
+	if len(i.CreatedAtNotIn) > 0 {
+		predicates = append(predicates, channeloverridetemplate.CreatedAtNotIn(i.CreatedAtNotIn...))
+	}
+	if i.CreatedAtGT != nil {
+		predicates = append(predicates, channeloverridetemplate.CreatedAtGT(*i.CreatedAtGT))
+	}
+	if i.CreatedAtGTE != nil {
+		predicates = append(predicates, channeloverridetemplate.CreatedAtGTE(*i.CreatedAtGTE))
+	}
+	if i.CreatedAtLT != nil {
+		predicates = append(predicates, channeloverridetemplate.CreatedAtLT(*i.CreatedAtLT))
+	}
+	if i.CreatedAtLTE != nil {
+		predicates = append(predicates, channeloverridetemplate.CreatedAtLTE(*i.CreatedAtLTE))
+	}
+	if i.UpdatedAt != nil {
+		predicates = append(predicates, channeloverridetemplate.UpdatedAtEQ(*i.UpdatedAt))
+	}
+	if i.UpdatedAtNEQ != nil {
+		predicates = append(predicates, channeloverridetemplate.UpdatedAtNEQ(*i.UpdatedAtNEQ))
+	}
+	if len(i.UpdatedAtIn) > 0 {
+		predicates = append(predicates, channeloverridetemplate.UpdatedAtIn(i.UpdatedAtIn...))
+	}
+	if len(i.UpdatedAtNotIn) > 0 {
+		predicates = append(predicates, channeloverridetemplate.UpdatedAtNotIn(i.UpdatedAtNotIn...))
+	}
+	if i.UpdatedAtGT != nil {
+		predicates = append(predicates, channeloverridetemplate.UpdatedAtGT(*i.UpdatedAtGT))
+	}
+	if i.UpdatedAtGTE != nil {
+		predicates = append(predicates, channeloverridetemplate.UpdatedAtGTE(*i.UpdatedAtGTE))
+	}
+	if i.UpdatedAtLT != nil {
+		predicates = append(predicates, channeloverridetemplate.UpdatedAtLT(*i.UpdatedAtLT))
+	}
+	if i.UpdatedAtLTE != nil {
+		predicates = append(predicates, channeloverridetemplate.UpdatedAtLTE(*i.UpdatedAtLTE))
+	}
+	if i.DeletedAt != nil {
+		predicates = append(predicates, channeloverridetemplate.DeletedAtEQ(*i.DeletedAt))
+	}
+	if i.DeletedAtNEQ != nil {
+		predicates = append(predicates, channeloverridetemplate.DeletedAtNEQ(*i.DeletedAtNEQ))
+	}
+	if len(i.DeletedAtIn) > 0 {
+		predicates = append(predicates, channeloverridetemplate.DeletedAtIn(i.DeletedAtIn...))
+	}
+	if len(i.DeletedAtNotIn) > 0 {
+		predicates = append(predicates, channeloverridetemplate.DeletedAtNotIn(i.DeletedAtNotIn...))
+	}
+	if i.DeletedAtGT != nil {
+		predicates = append(predicates, channeloverridetemplate.DeletedAtGT(*i.DeletedAtGT))
+	}
+	if i.DeletedAtGTE != nil {
+		predicates = append(predicates, channeloverridetemplate.DeletedAtGTE(*i.DeletedAtGTE))
+	}
+	if i.DeletedAtLT != nil {
+		predicates = append(predicates, channeloverridetemplate.DeletedAtLT(*i.DeletedAtLT))
+	}
+	if i.DeletedAtLTE != nil {
+		predicates = append(predicates, channeloverridetemplate.DeletedAtLTE(*i.DeletedAtLTE))
+	}
+	if i.UserID != nil {
+		predicates = append(predicates, channeloverridetemplate.UserIDEQ(*i.UserID))
+	}
+	if i.UserIDNEQ != nil {
+		predicates = append(predicates, channeloverridetemplate.UserIDNEQ(*i.UserIDNEQ))
+	}
+	if len(i.UserIDIn) > 0 {
+		predicates = append(predicates, channeloverridetemplate.UserIDIn(i.UserIDIn...))
+	}
+	if len(i.UserIDNotIn) > 0 {
+		predicates = append(predicates, channeloverridetemplate.UserIDNotIn(i.UserIDNotIn...))
+	}
+	if i.Name != nil {
+		predicates = append(predicates, channeloverridetemplate.NameEQ(*i.Name))
+	}
+	if i.NameNEQ != nil {
+		predicates = append(predicates, channeloverridetemplate.NameNEQ(*i.NameNEQ))
+	}
+	if len(i.NameIn) > 0 {
+		predicates = append(predicates, channeloverridetemplate.NameIn(i.NameIn...))
+	}
+	if len(i.NameNotIn) > 0 {
+		predicates = append(predicates, channeloverridetemplate.NameNotIn(i.NameNotIn...))
+	}
+	if i.NameGT != nil {
+		predicates = append(predicates, channeloverridetemplate.NameGT(*i.NameGT))
+	}
+	if i.NameGTE != nil {
+		predicates = append(predicates, channeloverridetemplate.NameGTE(*i.NameGTE))
+	}
+	if i.NameLT != nil {
+		predicates = append(predicates, channeloverridetemplate.NameLT(*i.NameLT))
+	}
+	if i.NameLTE != nil {
+		predicates = append(predicates, channeloverridetemplate.NameLTE(*i.NameLTE))
+	}
+	if i.NameContains != nil {
+		predicates = append(predicates, channeloverridetemplate.NameContains(*i.NameContains))
+	}
+	if i.NameHasPrefix != nil {
+		predicates = append(predicates, channeloverridetemplate.NameHasPrefix(*i.NameHasPrefix))
+	}
+	if i.NameHasSuffix != nil {
+		predicates = append(predicates, channeloverridetemplate.NameHasSuffix(*i.NameHasSuffix))
+	}
+	if i.NameEqualFold != nil {
+		predicates = append(predicates, channeloverridetemplate.NameEqualFold(*i.NameEqualFold))
+	}
+	if i.NameContainsFold != nil {
+		predicates = append(predicates, channeloverridetemplate.NameContainsFold(*i.NameContainsFold))
+	}
+	if i.Description != nil {
+		predicates = append(predicates, channeloverridetemplate.DescriptionEQ(*i.Description))
+	}
+	if i.DescriptionNEQ != nil {
+		predicates = append(predicates, channeloverridetemplate.DescriptionNEQ(*i.DescriptionNEQ))
+	}
+	if len(i.DescriptionIn) > 0 {
+		predicates = append(predicates, channeloverridetemplate.DescriptionIn(i.DescriptionIn...))
+	}
+	if len(i.DescriptionNotIn) > 0 {
+		predicates = append(predicates, channeloverridetemplate.DescriptionNotIn(i.DescriptionNotIn...))
+	}
+	if i.DescriptionGT != nil {
+		predicates = append(predicates, channeloverridetemplate.DescriptionGT(*i.DescriptionGT))
+	}
+	if i.DescriptionGTE != nil {
+		predicates = append(predicates, channeloverridetemplate.DescriptionGTE(*i.DescriptionGTE))
+	}
+	if i.DescriptionLT != nil {
+		predicates = append(predicates, channeloverridetemplate.DescriptionLT(*i.DescriptionLT))
+	}
+	if i.DescriptionLTE != nil {
+		predicates = append(predicates, channeloverridetemplate.DescriptionLTE(*i.DescriptionLTE))
+	}
+	if i.DescriptionContains != nil {
+		predicates = append(predicates, channeloverridetemplate.DescriptionContains(*i.DescriptionContains))
+	}
+	if i.DescriptionHasPrefix != nil {
+		predicates = append(predicates, channeloverridetemplate.DescriptionHasPrefix(*i.DescriptionHasPrefix))
+	}
+	if i.DescriptionHasSuffix != nil {
+		predicates = append(predicates, channeloverridetemplate.DescriptionHasSuffix(*i.DescriptionHasSuffix))
+	}
+	if i.DescriptionIsNil {
+		predicates = append(predicates, channeloverridetemplate.DescriptionIsNil())
+	}
+	if i.DescriptionNotNil {
+		predicates = append(predicates, channeloverridetemplate.DescriptionNotNil())
+	}
+	if i.DescriptionEqualFold != nil {
+		predicates = append(predicates, channeloverridetemplate.DescriptionEqualFold(*i.DescriptionEqualFold))
+	}
+	if i.DescriptionContainsFold != nil {
+		predicates = append(predicates, channeloverridetemplate.DescriptionContainsFold(*i.DescriptionContainsFold))
+	}
+	if i.ChannelType != nil {
+		predicates = append(predicates, channeloverridetemplate.ChannelTypeEQ(*i.ChannelType))
+	}
+	if i.ChannelTypeNEQ != nil {
+		predicates = append(predicates, channeloverridetemplate.ChannelTypeNEQ(*i.ChannelTypeNEQ))
+	}
+	if len(i.ChannelTypeIn) > 0 {
+		predicates = append(predicates, channeloverridetemplate.ChannelTypeIn(i.ChannelTypeIn...))
+	}
+	if len(i.ChannelTypeNotIn) > 0 {
+		predicates = append(predicates, channeloverridetemplate.ChannelTypeNotIn(i.ChannelTypeNotIn...))
+	}
+	if i.OverrideParameters != nil {
+		predicates = append(predicates, channeloverridetemplate.OverrideParametersEQ(*i.OverrideParameters))
+	}
+	if i.OverrideParametersNEQ != nil {
+		predicates = append(predicates, channeloverridetemplate.OverrideParametersNEQ(*i.OverrideParametersNEQ))
+	}
+	if len(i.OverrideParametersIn) > 0 {
+		predicates = append(predicates, channeloverridetemplate.OverrideParametersIn(i.OverrideParametersIn...))
+	}
+	if len(i.OverrideParametersNotIn) > 0 {
+		predicates = append(predicates, channeloverridetemplate.OverrideParametersNotIn(i.OverrideParametersNotIn...))
+	}
+	if i.OverrideParametersGT != nil {
+		predicates = append(predicates, channeloverridetemplate.OverrideParametersGT(*i.OverrideParametersGT))
+	}
+	if i.OverrideParametersGTE != nil {
+		predicates = append(predicates, channeloverridetemplate.OverrideParametersGTE(*i.OverrideParametersGTE))
+	}
+	if i.OverrideParametersLT != nil {
+		predicates = append(predicates, channeloverridetemplate.OverrideParametersLT(*i.OverrideParametersLT))
+	}
+	if i.OverrideParametersLTE != nil {
+		predicates = append(predicates, channeloverridetemplate.OverrideParametersLTE(*i.OverrideParametersLTE))
+	}
+	if i.OverrideParametersContains != nil {
+		predicates = append(predicates, channeloverridetemplate.OverrideParametersContains(*i.OverrideParametersContains))
+	}
+	if i.OverrideParametersHasPrefix != nil {
+		predicates = append(predicates, channeloverridetemplate.OverrideParametersHasPrefix(*i.OverrideParametersHasPrefix))
+	}
+	if i.OverrideParametersHasSuffix != nil {
+		predicates = append(predicates, channeloverridetemplate.OverrideParametersHasSuffix(*i.OverrideParametersHasSuffix))
+	}
+	if i.OverrideParametersEqualFold != nil {
+		predicates = append(predicates, channeloverridetemplate.OverrideParametersEqualFold(*i.OverrideParametersEqualFold))
+	}
+	if i.OverrideParametersContainsFold != nil {
+		predicates = append(predicates, channeloverridetemplate.OverrideParametersContainsFold(*i.OverrideParametersContainsFold))
+	}
+
+	if i.HasUser != nil {
+		p := channeloverridetemplate.HasUser()
+		if !*i.HasUser {
+			p = channeloverridetemplate.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasUserWith) > 0 {
+		with := make([]predicate.User, 0, len(i.HasUserWith))
+		for _, w := range i.HasUserWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasUserWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, channeloverridetemplate.HasUserWith(with...))
+	}
+	switch len(predicates) {
+	case 0:
+		return nil, ErrEmptyChannelOverrideTemplateWhereInput
+	case 1:
+		return predicates[0], nil
+	default:
+		return channeloverridetemplate.And(predicates...), nil
 	}
 }
 
@@ -6648,6 +7103,10 @@ type UserWhereInput struct {
 	HasRoles     *bool             `json:"hasRoles,omitempty"`
 	HasRolesWith []*RoleWhereInput `json:"hasRolesWith,omitempty"`
 
+	// "channel_override_templates" edge predicates.
+	HasChannelOverrideTemplates     *bool                                `json:"hasChannelOverrideTemplates,omitempty"`
+	HasChannelOverrideTemplatesWith []*ChannelOverrideTemplateWhereInput `json:"hasChannelOverrideTemplatesWith,omitempty"`
+
 	// "project_users" edge predicates.
 	HasProjectUsers     *bool                    `json:"hasProjectUsers,omitempty"`
 	HasProjectUsersWith []*UserProjectWhereInput `json:"hasProjectUsersWith,omitempty"`
@@ -7136,6 +7595,24 @@ func (i *UserWhereInput) P() (predicate.User, error) {
 			with = append(with, p)
 		}
 		predicates = append(predicates, user.HasRolesWith(with...))
+	}
+	if i.HasChannelOverrideTemplates != nil {
+		p := user.HasChannelOverrideTemplates()
+		if !*i.HasChannelOverrideTemplates {
+			p = user.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasChannelOverrideTemplatesWith) > 0 {
+		with := make([]predicate.ChannelOverrideTemplate, 0, len(i.HasChannelOverrideTemplatesWith))
+		for _, w := range i.HasChannelOverrideTemplatesWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasChannelOverrideTemplatesWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, user.HasChannelOverrideTemplatesWith(with...))
 	}
 	if i.HasProjectUsers != nil {
 		p := user.HasProjectUsers()

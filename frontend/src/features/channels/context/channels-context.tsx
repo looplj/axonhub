@@ -20,6 +20,7 @@ type ChannelsDialogType =
   | 'bulkDisable'
   | 'bulkEnable'
   | 'bulkDelete'
+  | 'bulkApplyTemplate'
   | 'errorResolved'
   | 'weight'
   | 'viewModels'

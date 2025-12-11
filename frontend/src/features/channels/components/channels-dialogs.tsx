@@ -7,6 +7,7 @@ import { ChannelsBulkDisableDialog } from './channels-bulk-disable-dialog'
 import { ChannelsBulkEnableDialog } from './channels-bulk-enable-dialog'
 import { ChannelsBulkImportDialog } from './channels-bulk-import-dialog'
 import { ChannelsBulkOrderingDialog } from './channels-bulk-ordering-dialog'
+import { ChannelsBulkApplyTemplateDialog } from './channels-bulk-apply-template-dialog'
 import { ChannelsDeleteDialog } from './channels-delete-dialog'
 import { ChannelsErrorResolvedDialog } from './channels-error-resolved-dialog'
 import { ChannelsModelMappingDialog } from './channels-model-mapping-dialog'
@@ -18,7 +19,7 @@ import { ChannelsTestDialog } from './channels-test-dialog'
 import { ChannelsWeightDialog } from './channels-weight-dialog'
 
 export function ChannelsDialogs() {
-  const { open, setOpen, currentRow, setCurrentRow } = useChannels()
+  const { open, setOpen, currentRow, setCurrentRow, selectedChannels } = useChannels()
   return (
     <>
       <ChannelsActionDialog
@@ -34,6 +35,12 @@ export function ChannelsDialogs() {
       <ChannelsBulkEnableDialog />
 
       <ChannelsBulkDeleteDialog />
+
+      <ChannelsBulkApplyTemplateDialog
+        open={open === 'bulkApplyTemplate'}
+        onOpenChange={(isOpen) => setOpen(isOpen ? 'bulkApplyTemplate' : null)}
+        selectedChannels={selectedChannels}
+      />
 
       <ChannelsBulkImportDialog isOpen={open === 'bulkImport'} onClose={() => setOpen(null)} />
 

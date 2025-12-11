@@ -16,6 +16,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/errcode"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/project"
@@ -753,6 +754,320 @@ func (_m *Channel) ToEdge(order *ChannelOrder) *ChannelEdge {
 		order = DefaultChannelOrder
 	}
 	return &ChannelEdge{
+		Node:   _m,
+		Cursor: order.Field.toCursor(_m),
+	}
+}
+
+// ChannelOverrideTemplateEdge is the edge representation of ChannelOverrideTemplate.
+type ChannelOverrideTemplateEdge struct {
+	Node   *ChannelOverrideTemplate `json:"node"`
+	Cursor Cursor                   `json:"cursor"`
+}
+
+// ChannelOverrideTemplateConnection is the connection containing edges to ChannelOverrideTemplate.
+type ChannelOverrideTemplateConnection struct {
+	Edges      []*ChannelOverrideTemplateEdge `json:"edges"`
+	PageInfo   PageInfo                       `json:"pageInfo"`
+	TotalCount int                            `json:"totalCount"`
+}
+
+func (c *ChannelOverrideTemplateConnection) build(nodes []*ChannelOverrideTemplate, pager *channeloverridetemplatePager, after *Cursor, first *int, before *Cursor, last *int) {
+	c.PageInfo.HasNextPage = before != nil
+	c.PageInfo.HasPreviousPage = after != nil
+	if first != nil && *first+1 == len(nodes) {
+		c.PageInfo.HasNextPage = true
+		nodes = nodes[:len(nodes)-1]
+	} else if last != nil && *last+1 == len(nodes) {
+		c.PageInfo.HasPreviousPage = true
+		nodes = nodes[:len(nodes)-1]
+	}
+	var nodeAt func(int) *ChannelOverrideTemplate
+	if last != nil {
+		n := len(nodes) - 1
+		nodeAt = func(i int) *ChannelOverrideTemplate {
+			return nodes[n-i]
+		}
+	} else {
+		nodeAt = func(i int) *ChannelOverrideTemplate {
+			return nodes[i]
+		}
+	}
+	c.Edges = make([]*ChannelOverrideTemplateEdge, len(nodes))
+	for i := range nodes {
+		node := nodeAt(i)
+		c.Edges[i] = &ChannelOverrideTemplateEdge{
+			Node:   node,
+			Cursor: pager.toCursor(node),
+		}
+	}
+	if l := len(c.Edges); l > 0 {
+		c.PageInfo.StartCursor = &c.Edges[0].Cursor
+		c.PageInfo.EndCursor = &c.Edges[l-1].Cursor
+	}
+	if c.TotalCount == 0 {
+		c.TotalCount = len(nodes)
+	}
+}
+
+// ChannelOverrideTemplatePaginateOption enables pagination customization.
+type ChannelOverrideTemplatePaginateOption func(*channeloverridetemplatePager) error
+
+// WithChannelOverrideTemplateOrder configures pagination ordering.
+func WithChannelOverrideTemplateOrder(order *ChannelOverrideTemplateOrder) ChannelOverrideTemplatePaginateOption {
+	if order == nil {
+		order = DefaultChannelOverrideTemplateOrder
+	}
+	o := *order
+	return func(pager *channeloverridetemplatePager) error {
+		if err := o.Direction.Validate(); err != nil {
+			return err
+		}
+		if o.Field == nil {
+			o.Field = DefaultChannelOverrideTemplateOrder.Field
+		}
+		pager.order = &o
+		return nil
+	}
+}
+
+// WithChannelOverrideTemplateFilter configures pagination filter.
+func WithChannelOverrideTemplateFilter(filter func(*ChannelOverrideTemplateQuery) (*ChannelOverrideTemplateQuery, error)) ChannelOverrideTemplatePaginateOption {
+	return func(pager *channeloverridetemplatePager) error {
+		if filter == nil {
+			return errors.New("ChannelOverrideTemplateQuery filter cannot be nil")
+		}
+		pager.filter = filter
+		return nil
+	}
+}
+
+type channeloverridetemplatePager struct {
+	reverse bool
+	order   *ChannelOverrideTemplateOrder
+	filter  func(*ChannelOverrideTemplateQuery) (*ChannelOverrideTemplateQuery, error)
+}
+
+func newChannelOverrideTemplatePager(opts []ChannelOverrideTemplatePaginateOption, reverse bool) (*channeloverridetemplatePager, error) {
+	pager := &channeloverridetemplatePager{reverse: reverse}
+	for _, opt := range opts {
+		if err := opt(pager); err != nil {
+			return nil, err
+		}
+	}
+	if pager.order == nil {
+		pager.order = DefaultChannelOverrideTemplateOrder
+	}
+	return pager, nil
+}
+
+func (p *channeloverridetemplatePager) applyFilter(query *ChannelOverrideTemplateQuery) (*ChannelOverrideTemplateQuery, error) {
+	if p.filter != nil {
+		return p.filter(query)
+	}
+	return query, nil
+}
+
+func (p *channeloverridetemplatePager) toCursor(_m *ChannelOverrideTemplate) Cursor {
+	return p.order.Field.toCursor(_m)
+}
+
+func (p *channeloverridetemplatePager) applyCursors(query *ChannelOverrideTemplateQuery, after, before *Cursor) (*ChannelOverrideTemplateQuery, error) {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	for _, predicate := range entgql.CursorsPredicate(after, before, DefaultChannelOverrideTemplateOrder.Field.column, p.order.Field.column, direction) {
+		query = query.Where(predicate)
+	}
+	return query, nil
+}
+
+func (p *channeloverridetemplatePager) applyOrder(query *ChannelOverrideTemplateQuery) *ChannelOverrideTemplateQuery {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	query = query.Order(p.order.Field.toTerm(direction.OrderTermOption()))
+	if p.order.Field != DefaultChannelOverrideTemplateOrder.Field {
+		query = query.Order(DefaultChannelOverrideTemplateOrder.Field.toTerm(direction.OrderTermOption()))
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return query
+}
+
+func (p *channeloverridetemplatePager) orderExpr(query *ChannelOverrideTemplateQuery) sql.Querier {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return sql.ExprFunc(func(b *sql.Builder) {
+		b.Ident(p.order.Field.column).Pad().WriteString(string(direction))
+		if p.order.Field != DefaultChannelOverrideTemplateOrder.Field {
+			b.Comma().Ident(DefaultChannelOverrideTemplateOrder.Field.column).Pad().WriteString(string(direction))
+		}
+	})
+}
+
+// Paginate executes the query and returns a relay based cursor connection to ChannelOverrideTemplate.
+func (_m *ChannelOverrideTemplateQuery) Paginate(
+	ctx context.Context, after *Cursor, first *int,
+	before *Cursor, last *int, opts ...ChannelOverrideTemplatePaginateOption,
+) (*ChannelOverrideTemplateConnection, error) {
+	if err := validateFirstLast(first, last); err != nil {
+		return nil, err
+	}
+	pager, err := newChannelOverrideTemplatePager(opts, last != nil)
+	if err != nil {
+		return nil, err
+	}
+	if _m, err = pager.applyFilter(_m); err != nil {
+		return nil, err
+	}
+	conn := &ChannelOverrideTemplateConnection{Edges: []*ChannelOverrideTemplateEdge{}}
+	ignoredEdges := !hasCollectedField(ctx, edgesField)
+	if hasCollectedField(ctx, totalCountField) || hasCollectedField(ctx, pageInfoField) {
+		hasPagination := after != nil || first != nil || before != nil || last != nil
+		if hasPagination || ignoredEdges {
+			c := _m.Clone()
+			c.ctx.Fields = nil
+			if conn.TotalCount, err = c.Count(ctx); err != nil {
+				return nil, err
+			}
+			conn.PageInfo.HasNextPage = first != nil && conn.TotalCount > 0
+			conn.PageInfo.HasPreviousPage = last != nil && conn.TotalCount > 0
+		}
+	}
+	if ignoredEdges || (first != nil && *first == 0) || (last != nil && *last == 0) {
+		return conn, nil
+	}
+	if _m, err = pager.applyCursors(_m, after, before); err != nil {
+		return nil, err
+	}
+	limit := paginateLimit(first, last)
+	if limit != 0 {
+		_m.Limit(limit)
+	}
+	if field := collectedField(ctx, edgesField, nodeField); field != nil {
+		if err := _m.collectField(ctx, limit == 1, graphql.GetOperationContext(ctx), *field, []string{edgesField, nodeField}); err != nil {
+			return nil, err
+		}
+	}
+	_m = pager.applyOrder(_m)
+	nodes, err := _m.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn.build(nodes, pager, after, first, before, last)
+	return conn, nil
+}
+
+var (
+	// ChannelOverrideTemplateOrderFieldCreatedAt orders ChannelOverrideTemplate by created_at.
+	ChannelOverrideTemplateOrderFieldCreatedAt = &ChannelOverrideTemplateOrderField{
+		Value: func(_m *ChannelOverrideTemplate) (ent.Value, error) {
+			return _m.CreatedAt, nil
+		},
+		column: channeloverridetemplate.FieldCreatedAt,
+		toTerm: channeloverridetemplate.ByCreatedAt,
+		toCursor: func(_m *ChannelOverrideTemplate) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.CreatedAt,
+			}
+		},
+	}
+	// ChannelOverrideTemplateOrderFieldUpdatedAt orders ChannelOverrideTemplate by updated_at.
+	ChannelOverrideTemplateOrderFieldUpdatedAt = &ChannelOverrideTemplateOrderField{
+		Value: func(_m *ChannelOverrideTemplate) (ent.Value, error) {
+			return _m.UpdatedAt, nil
+		},
+		column: channeloverridetemplate.FieldUpdatedAt,
+		toTerm: channeloverridetemplate.ByUpdatedAt,
+		toCursor: func(_m *ChannelOverrideTemplate) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.UpdatedAt,
+			}
+		},
+	}
+)
+
+// String implement fmt.Stringer interface.
+func (f ChannelOverrideTemplateOrderField) String() string {
+	var str string
+	switch f.column {
+	case ChannelOverrideTemplateOrderFieldCreatedAt.column:
+		str = "CREATED_AT"
+	case ChannelOverrideTemplateOrderFieldUpdatedAt.column:
+		str = "UPDATED_AT"
+	}
+	return str
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (f ChannelOverrideTemplateOrderField) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(f.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (f *ChannelOverrideTemplateOrderField) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("ChannelOverrideTemplateOrderField %T must be a string", v)
+	}
+	switch str {
+	case "CREATED_AT":
+		*f = *ChannelOverrideTemplateOrderFieldCreatedAt
+	case "UPDATED_AT":
+		*f = *ChannelOverrideTemplateOrderFieldUpdatedAt
+	default:
+		return fmt.Errorf("%s is not a valid ChannelOverrideTemplateOrderField", str)
+	}
+	return nil
+}
+
+// ChannelOverrideTemplateOrderField defines the ordering field of ChannelOverrideTemplate.
+type ChannelOverrideTemplateOrderField struct {
+	// Value extracts the ordering value from the given ChannelOverrideTemplate.
+	Value    func(*ChannelOverrideTemplate) (ent.Value, error)
+	column   string // field or computed.
+	toTerm   func(...sql.OrderTermOption) channeloverridetemplate.OrderOption
+	toCursor func(*ChannelOverrideTemplate) Cursor
+}
+
+// ChannelOverrideTemplateOrder defines the ordering of ChannelOverrideTemplate.
+type ChannelOverrideTemplateOrder struct {
+	Direction OrderDirection                     `json:"direction"`
+	Field     *ChannelOverrideTemplateOrderField `json:"field"`
+}
+
+// DefaultChannelOverrideTemplateOrder is the default ordering of ChannelOverrideTemplate.
+var DefaultChannelOverrideTemplateOrder = &ChannelOverrideTemplateOrder{
+	Direction: entgql.OrderDirectionAsc,
+	Field: &ChannelOverrideTemplateOrderField{
+		Value: func(_m *ChannelOverrideTemplate) (ent.Value, error) {
+			return _m.ID, nil
+		},
+		column: channeloverridetemplate.FieldID,
+		toTerm: channeloverridetemplate.ByID,
+		toCursor: func(_m *ChannelOverrideTemplate) Cursor {
+			return Cursor{ID: _m.ID}
+		},
+	},
+}
+
+// ToEdge converts ChannelOverrideTemplate into ChannelOverrideTemplateEdge.
+func (_m *ChannelOverrideTemplate) ToEdge(order *ChannelOverrideTemplateOrder) *ChannelOverrideTemplateEdge {
+	if order == nil {
+		order = DefaultChannelOverrideTemplateOrder
+	}
+	return &ChannelOverrideTemplateEdge{
 		Node:   _m,
 		Cursor: order.Field.toCursor(_m),
 	}
