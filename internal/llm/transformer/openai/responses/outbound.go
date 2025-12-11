@@ -39,8 +39,39 @@ func (t *OutboundTransformer) APIFormat() llm.APIFormat {
 	return llm.APIFormatOpenAIResponse
 }
 
-func (t *OutboundTransformer) TransformError(ctx context.Context, err *httpclient.Error) *llm.ResponseError {
-	return nil
+// TransformError transforms HTTP error response to unified error response.
+func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpclient.Error) *llm.ResponseError {
+	if rawErr == nil {
+		return &llm.ResponseError{
+			StatusCode: http.StatusInternalServerError,
+			Detail: llm.ErrorDetail{
+				Message: http.StatusText(http.StatusInternalServerError),
+				Type:    "api_error",
+			},
+		}
+	}
+
+	// Try to parse as OpenAI error format first
+	var openaiError struct {
+		Error llm.ErrorDetail `json:"error"`
+	}
+
+	err := json.Unmarshal(rawErr.Body, &openaiError)
+	if err == nil && openaiError.Error.Message != "" {
+		return &llm.ResponseError{
+			StatusCode: rawErr.StatusCode,
+			Detail:     openaiError.Error,
+		}
+	}
+
+	// If JSON parsing fails, use the upstream status text
+	return &llm.ResponseError{
+		StatusCode: rawErr.StatusCode,
+		Detail: llm.ErrorDetail{
+			Message: http.StatusText(rawErr.StatusCode),
+			Type:    "api_error",
+		},
+	}
 }
 
 func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm.Request) (*httpclient.Request, error) {

@@ -33,6 +33,17 @@ interface ApiKeyProfilesDialogProps {
 export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = false, initialData }: ApiKeyProfilesDialogProps) {
   const { t } = useTranslation()
   const { selectedApiKey } = useApiKeysContext()
+  const { data: availableModels, mutateAsync: fetchModels } = useQueryModels()
+
+  useEffect(() => {
+    if (open) {
+      fetchModels({
+        statusIn: ['enabled'],
+        includeMapping: true,
+        includePrefix: true,
+      })
+    }
+  }, [open, fetchModels])
 
   const defaultValues = useMemo(
     () => ({
@@ -193,6 +204,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
                           form={form}
                           onRemove={() => removeProfileHandler(profileIndex)}
                           canRemove={profileFields.length > 1}
+                          availableModels={availableModels?.map((model) => model.id) || []}
                           t={t}
                         />
                       ))}
@@ -269,21 +281,13 @@ interface ProfileCardProps {
   form: any
   onRemove: () => void
   canRemove: boolean
+  availableModels: string[]
   t: (key: string) => string
 }
 
-function ProfileCard({ profileIndex, form, onRemove, canRemove, t }: ProfileCardProps) {
+function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels, t }: ProfileCardProps) {
   const [localProfileName, setLocalProfileName] = useState('')
-  const { data: availableModels, mutateAsync: fetchModels } = useQueryModels()
   const { data: channelsData } = useAllChannelsForOrdering({ enabled: true })
-
-  useEffect(() => {
-    fetchModels({
-      statusIn: ['enabled'],
-      includeMapping: true,
-      includePrefix: true,
-    })
-  }, [])
 
   const debouncedProfileName = useDebounce(localProfileName, 500)
 
@@ -391,7 +395,7 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, t }: ProfileCard
               mappingIndex={mappingIndex}
               form={form}
               onRemove={() => removeMapping(mappingIndex)}
-              availableModels={availableModels?.map((model) => model.id) || []}
+              availableModels={availableModels}
               t={t}
             />
           ))}
@@ -503,7 +507,7 @@ function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModel
                   field.onChange(value)
                   setFromSearch(value)
                 }}
-                searchValue={fromSearch ?? field.value ?? ''}
+                searchValue={fromSearch || field.value || ''}
                 onSearchValueChange={setFromSearch}
                 items={filteredFromModels}
                 placeholder={t('apikeys.profiles.sourceModel')}
@@ -528,7 +532,7 @@ function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModel
                   field.onChange(value)
                   setToSearch(value)
                 }}
-                searchValue={toSearch ?? field.value ?? ''}
+                searchValue={toSearch || field.value || ''}
                 onSearchValueChange={setToSearch}
                 items={filteredToModels}
                 placeholder={t('apikeys.profiles.targetModel')}
