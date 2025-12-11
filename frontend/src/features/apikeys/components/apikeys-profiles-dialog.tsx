@@ -444,7 +444,7 @@ function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModel
                   field.onChange(value)
                   setFromSearch(value)
                 }}
-                searchValue={fromSearch || field.value || ''}
+                searchValue={fromSearch ?? field.value ?? ''}
                 onSearchValueChange={setFromSearch}
                 items={filteredFromModels}
                 placeholder={t('apikeys.profiles.sourceModel')}
@@ -469,7 +469,7 @@ function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModel
                   field.onChange(value)
                   setToSearch(value)
                 }}
-                searchValue={toSearch || field.value || ''}
+                searchValue={toSearch ?? field.value ?? ''}
                 onSearchValueChange={setToSearch}
                 items={filteredToModels}
                 placeholder={t('apikeys.profiles.targetModel')}

@@ -766,6 +766,11 @@ func (s *RequestService) LoadResponseBody(ctx context.Context, req *ent.Request)
 		return nil, fmt.Errorf("request is nil")
 	}
 
+	// Only load response body if request is completed
+	if req.Status != request.StatusCompleted {
+		return nil, nil
+	}
+
 	dataStorage, err := s.getDataStorage(ctx, req.DataStorageID)
 	if err != nil {
 		log.Warn(ctx, "Failed to get data storage for request response body", log.Cause(err), log.Int("request_id", req.ID))
@@ -800,6 +805,10 @@ func (s *RequestService) LoadResponseBody(ctx context.Context, req *ent.Request)
 func (s *RequestService) LoadResponseChunks(ctx context.Context, req *ent.Request) ([]objects.JSONRawMessage, error) {
 	if req == nil {
 		return nil, fmt.Errorf("request is nil")
+	}
+	// Only load response body if request is completed
+	if req.Status != request.StatusCompleted {
+		return nil, nil
 	}
 
 	dataStorage, err := s.getDataStorage(ctx, req.DataStorageID)
@@ -878,6 +887,11 @@ func (s *RequestService) LoadRequestExecutionRequestBody(ctx context.Context, ex
 func (s *RequestService) LoadRequestExecutionResponseBody(ctx context.Context, exec *ent.RequestExecution) (objects.JSONRawMessage, error) {
 	if exec == nil {
 		return nil, fmt.Errorf("request execution is nil")
+	}
+
+	// Only load response body if execution is completed
+	if exec.Status != requestexecution.StatusCompleted {
+		return nil, nil
 	}
 
 	dataStorage, err := s.getDataStorage(ctx, exec.DataStorageID)
