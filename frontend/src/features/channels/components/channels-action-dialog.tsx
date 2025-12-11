@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { X, RefreshCw, Search, ChevronLeft, ChevronRight, PanelLeft } from 'lucide-react'
+import { X, RefreshCw, Search, ChevronLeft, ChevronRight, PanelLeft, Plus, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -496,6 +496,18 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
     setShowSupportedModelsPanel(false)
   }, [])
 
+  // Remove deprecated models (models in supportedModels but not in fetchedModels)
+  const removeDeprecatedModels = useCallback(() => {
+    const fetchedModelsSet = new Set(fetchedModels)
+    setSupportedModels((prev) => prev.filter((model) => fetchedModelsSet.has(model)))
+  }, [fetchedModels])
+
+  // Count of deprecated models
+  const deprecatedModelsCount = useMemo(() => {
+    const fetchedModelsSet = new Set(fetchedModels)
+    return supportedModels.filter((model) => !fetchedModelsSet.has(model)).length
+  }, [supportedModels, fetchedModels])
+
   // Models to display (limited to MAX_MODELS_DISPLAY unless expanded)
   const displayedSupportedModels = useMemo(() => {
     if (supportedModels.length <= MAX_MODELS_DISPLAY) {
@@ -934,6 +946,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                                 variant='outline'
                                 disabled={selectedDefaultModels.length === 0}
                               >
+                                <Plus className='mr-1 h-4 w-4' />
                                 {t('channels.dialogs.buttons.addSelected')}
                               </Button>
                             </div>
@@ -1069,11 +1082,11 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                 </div>
               </div>
 
-              {/* Add Selected Button */}
-              <div className='mt-3 border-t pt-3'>
+              {/* Action Buttons */}
+              <div className='mt-3 flex gap-2 border-t pt-3'>
                 <Button
                   type='button'
-                  className='w-full'
+                  className='flex-1'
                   size='sm'
                   onClick={addSelectedFetchedModels}
                   disabled={selectedFetchedModels.length === 0}
@@ -1081,6 +1094,17 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                   {selectedFetchedModels.some((model) => supportedModels.includes(model))
                     ? t('channels.dialogs.buttons.confirmSelection')
                     : t('channels.dialogs.buttons.addSelectedCount', { count: selectedFetchedModels.length })}
+                </Button>
+                <Button
+                  type='button'
+                  variant='outline'
+                  className='flex-1'
+                  size='sm'
+                  onClick={removeDeprecatedModels}
+                  disabled={deprecatedModelsCount === 0}
+                >
+                  <Trash2 className='mr-1 h-4 w-4' />
+                  {t('channels.dialogs.buttons.removeDeprecated', { count: deprecatedModelsCount })}
                 </Button>
               </div>
             </div>

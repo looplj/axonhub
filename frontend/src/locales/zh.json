@@ -901,13 +901,14 @@
         "test": "测试连接",
         "testing": "测试中...",
         "add": "添加",
-        "addSelected": "添加选中",
+        "addSelected": "添加",
         "confirmSelection": "确定选中",
-        "fetchModels": "获取模型",
+        "fetchModels": "获取",
         "selectAll": "全选",
         "deselectAll": "取消全选",
         "clearAll": "清空全部",
-        "addSelectedCount": "确定选中 ({{count}})"
+        "addSelectedCount": "确定选中 ({{count}})",
+        "removeDeprecated": "清理 ({{count}})"
       },
 
       "status": {
