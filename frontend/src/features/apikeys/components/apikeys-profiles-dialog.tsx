@@ -7,13 +7,17 @@ import { useTranslation } from 'react-i18next'
 import { useDebounce } from '@/hooks/use-debounce'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AutoComplete } from '@/components/auto-complete'
 import { useApiKeysContext } from '../context/apikeys-context'
 import { updateApiKeyProfilesInputSchemaFactory, type UpdateApiKeyProfilesInput, type ApiKeyProfile } from '../data/schema'
+import { useAllChannelsForOrdering } from '@/features/channels/data/channels'
+import { extractNumberID } from '@/lib/utils'
 
 interface ApiKeyProfilesDialogProps {
   open: boolean
@@ -33,7 +37,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
   const defaultValues = useMemo(
     () => ({
       activeProfile: '',
-      profiles: [],
+      profiles: [] as ApiKeyProfile[],
     }),
     []
   )
@@ -122,6 +126,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
     appendProfile({
       name: `Profile ${profileFields.length + 1}`,
       modelMappings: [],
+      channelIDs: [],
     })
   }, [appendProfile, profileFields])
 
@@ -270,6 +275,8 @@ interface ProfileCardProps {
 function ProfileCard({ profileIndex, form, onRemove, canRemove, t }: ProfileCardProps) {
   const [localProfileName, setLocalProfileName] = useState('')
   const { data: availableModels, mutateAsync: fetchModels } = useQueryModels()
+  const { data: channelsData } = useAllChannelsForOrdering({ enabled: true })
+
   useEffect(() => {
     fetchModels({
       statusIn: ['enabled'],
@@ -389,6 +396,58 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, t }: ProfileCard
             />
           ))}
         </div>
+
+        {/* Channel Restrictions Section */}
+        <div className='border-t pt-4'>
+          <h4 className='text-sm font-medium mb-3'>{t('apikeys.profiles.allowedChannels')}</h4>
+          <p className='text-muted-foreground text-xs mb-3'>{t('apikeys.profiles.allowedChannelsDescription')}</p>
+          <FormField
+            control={form.control}
+            name={`profiles.${profileIndex}.channelIDs`}
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <div className='grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border rounded-md p-2'>
+                    {channelsData?.edges?.map((edge) => {
+                      const channel = edge.node
+                      const channelId = parseInt(extractNumberID(channel.id), 10)
+                      const isChecked = (field.value || []).includes(channelId)
+                      return (
+                        <div key={channel.id} className='flex items-center space-x-2'>
+                          <Checkbox
+                            id={`channel-${profileIndex}-${channel.id}`}
+                            checked={isChecked}
+                            onCheckedChange={(checked) => {
+                              const currentValue: number[] = field.value || []
+                              if (checked) {
+                                field.onChange([...currentValue, channelId])
+                              } else {
+                                field.onChange(currentValue.filter((id) => id !== channelId))
+                              }
+                            }}
+                          />
+                          <Label
+                            htmlFor={`channel-${profileIndex}-${channel.id}`}
+                            className='text-sm font-normal cursor-pointer truncate'
+                            title={channel.name}
+                          >
+                            {channel.name}
+                          </Label>
+                        </div>
+                      )
+                    })}
+                    {(!channelsData?.edges || channelsData.edges.length === 0) && (
+                      <p className='text-muted-foreground text-sm col-span-2 text-center py-2'>
+                        {t('apikeys.profiles.noChannelsAvailable')}
+                      </p>
+                    )}
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
       </CardContent>
     </Card>
   )
@@ -444,7 +503,7 @@ function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModel
                   field.onChange(value)
                   setFromSearch(value)
                 }}
-                searchValue={fromSearch || field.value || ''}
+                searchValue={fromSearch ?? field.value ?? ''}
                 onSearchValueChange={setFromSearch}
                 items={filteredFromModels}
                 placeholder={t('apikeys.profiles.sourceModel')}
@@ -469,7 +528,7 @@ function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModel
                   field.onChange(value)
                   setToSearch(value)
                 }}
-                searchValue={toSearch || field.value || ''}
+                searchValue={toSearch ?? field.value ?? ''}
                 onSearchValueChange={setToSearch}
                 items={filteredToModels}
                 placeholder={t('apikeys.profiles.targetModel')}

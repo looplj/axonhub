@@ -207,7 +207,7 @@ func TestChatCompletionProcessor_Process_NonStreaming(t *testing.T) {
 
 	// Create processor
 	processor := &ChatCompletionProcessor{
-		ChannelSelector:   channelSelector,
+		channelSelector:   channelSelector,
 		Inbound:           openai.NewInboundTransformer(),
 		RequestService:    requestService,
 		ChannelService:    channelService,
@@ -215,7 +215,7 @@ func TestChatCompletionProcessor_Process_NonStreaming(t *testing.T) {
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),
 		ModelMapper:       NewModelMapper(),
-		ConnectionTracker: NewDefaultConnectionTracker(1024),
+		connectionTracker: NewDefaultConnectionTracker(1024),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
@@ -321,7 +321,7 @@ func TestChatCompletionProcessor_Process_Streaming(t *testing.T) {
 
 	// Create processor
 	processor := &ChatCompletionProcessor{
-		ChannelSelector:   channelSelector,
+		channelSelector:   channelSelector,
 		Inbound:           openai.NewInboundTransformer(),
 		RequestService:    requestService,
 		ChannelService:    channelService,
@@ -329,7 +329,7 @@ func TestChatCompletionProcessor_Process_Streaming(t *testing.T) {
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),
 		ModelMapper:       NewModelMapper(),
-		ConnectionTracker: NewDefaultConnectionTracker(1024),
+		connectionTracker: NewDefaultConnectionTracker(1024),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
@@ -445,7 +445,7 @@ func TestChatCompletionProcessor_Process_WithModelMapping(t *testing.T) {
 
 	// Create processor
 	processor := &ChatCompletionProcessor{
-		ChannelSelector:   channelSelector,
+		channelSelector:   channelSelector,
 		Inbound:           openai.NewInboundTransformer(),
 		RequestService:    requestService,
 		ChannelService:    channelService,
@@ -453,7 +453,7 @@ func TestChatCompletionProcessor_Process_WithModelMapping(t *testing.T) {
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),
 		ModelMapper:       NewModelMapper(),
-		ConnectionTracker: NewDefaultConnectionTracker(1024),
+		connectionTracker: NewDefaultConnectionTracker(1024),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
@@ -520,7 +520,7 @@ func TestChatCompletionProcessor_Process_ErrorHandling(t *testing.T) {
 
 	// Create processor
 	processor := &ChatCompletionProcessor{
-		ChannelSelector:   channelSelector,
+		channelSelector:   channelSelector,
 		Inbound:           openai.NewInboundTransformer(),
 		RequestService:    requestService,
 		ChannelService:    channelService,
@@ -528,7 +528,7 @@ func TestChatCompletionProcessor_Process_ErrorHandling(t *testing.T) {
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),
 		ModelMapper:       NewModelMapper(),
-		ConnectionTracker: NewDefaultConnectionTracker(1024),
+		connectionTracker: NewDefaultConnectionTracker(1024),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
@@ -616,7 +616,7 @@ func TestChatCompletionProcessor_Process_WithOverrideParameters(t *testing.T) {
 
 	// Create processor
 	processor := &ChatCompletionProcessor{
-		ChannelSelector:   channelSelector,
+		channelSelector:   channelSelector,
 		Inbound:           openai.NewInboundTransformer(),
 		RequestService:    requestService,
 		ChannelService:    channelService,
@@ -624,7 +624,7 @@ func TestChatCompletionProcessor_Process_WithOverrideParameters(t *testing.T) {
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),
 		ModelMapper:       NewModelMapper(),
-		ConnectionTracker: NewDefaultConnectionTracker(1024),
+		connectionTracker: NewDefaultConnectionTracker(1024),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
@@ -699,7 +699,7 @@ func TestChatCompletionProcessor_Process_ConnectionTracking(t *testing.T) {
 
 	// Create processor
 	processor := &ChatCompletionProcessor{
-		ChannelSelector:   channelSelector,
+		channelSelector:   channelSelector,
 		Inbound:           openai.NewInboundTransformer(),
 		RequestService:    requestService,
 		ChannelService:    channelService,
@@ -707,7 +707,7 @@ func TestChatCompletionProcessor_Process_ConnectionTracking(t *testing.T) {
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),
 		ModelMapper:       NewModelMapper(),
-		ConnectionTracker: connectionTracker,
+		connectionTracker: connectionTracker,
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
@@ -761,7 +761,7 @@ func TestChatCompletionProcessor_Process_NoChannelsAvailable(t *testing.T) {
 
 	// Create processor
 	processor := &ChatCompletionProcessor{
-		ChannelSelector:   channelSelector,
+		channelSelector:   channelSelector,
 		Inbound:           openai.NewInboundTransformer(),
 		RequestService:    requestService,
 		ChannelService:    channelService,
@@ -769,7 +769,7 @@ func TestChatCompletionProcessor_Process_NoChannelsAvailable(t *testing.T) {
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),
 		ModelMapper:       NewModelMapper(),
-		ConnectionTracker: NewDefaultConnectionTracker(1024),
+		connectionTracker: NewDefaultConnectionTracker(1024),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
@@ -815,7 +815,7 @@ func TestChatCompletionProcessor_Process_InvalidRequest(t *testing.T) {
 	channelSelector := &staticChannelSelector{channels: []*biz.Channel{bizChannel}}
 
 	processor := &ChatCompletionProcessor{
-		ChannelSelector:   channelSelector,
+		channelSelector:   channelSelector,
 		Inbound:           openai.NewInboundTransformer(),
 		RequestService:    requestService,
 		ChannelService:    channelService,
@@ -823,7 +823,7 @@ func TestChatCompletionProcessor_Process_InvalidRequest(t *testing.T) {
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),
 		ModelMapper:       NewModelMapper(),
-		ConnectionTracker: NewDefaultConnectionTracker(1024),
+		connectionTracker: NewDefaultConnectionTracker(1024),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
@@ -878,7 +878,7 @@ func TestChatCompletionProcessor_Process_MultipleRequests(t *testing.T) {
 	channelSelector := &staticChannelSelector{channels: []*biz.Channel{bizChannel}}
 
 	processor := &ChatCompletionProcessor{
-		ChannelSelector:   channelSelector,
+		channelSelector:   channelSelector,
 		Inbound:           openai.NewInboundTransformer(),
 		RequestService:    requestService,
 		ChannelService:    channelService,
@@ -886,7 +886,7 @@ func TestChatCompletionProcessor_Process_MultipleRequests(t *testing.T) {
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),
 		ModelMapper:       NewModelMapper(),
-		ConnectionTracker: NewDefaultConnectionTracker(1024),
+		connectionTracker: NewDefaultConnectionTracker(1024),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},

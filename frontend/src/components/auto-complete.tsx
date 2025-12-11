@@ -71,9 +71,17 @@ export function AutoComplete<T extends string>({
   }
 
   const onInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    // Don't reset if the input has a value - allow custom values
-    if (!e.relatedTarget?.hasAttribute('cmdk-list') && searchValue && labels[selectedValue] !== searchValue) {
-      // Keep the current search value as the selected value for custom inputs
+    // Don't reset if clicking on the command list
+    if (e.relatedTarget?.hasAttribute('cmdk-list')) {
+      return
+    }
+    // If searchValue is empty, clear the selected value
+    if (searchValue === '') {
+      onSelectedValueChange('' as T)
+      return
+    }
+    // Keep the current search value as the selected value for custom inputs
+    if (searchValue && labels[selectedValue] !== searchValue) {
       onSelectedValueChange(searchValue as T)
     }
   }

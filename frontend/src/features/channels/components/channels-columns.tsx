@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import LongText from '@/components/long-text'
 import { useChannels } from '../context/channels-context'
 import { useTestChannel } from '../data/channels'
 import { CHANNEL_CONFIGS, getProvider } from '../data/config_channels'
@@ -60,10 +59,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       id: 'expand',
       header: () => null,
       meta: {
-        className: cn(
-          'w-8 min-w-8',
-          'bg-background transition-colors duration-200 group-hover/row:bg-muted group-data-[state=selected]/row:bg-muted'
-        ),
+        className: 'w-8 min-w-8',
       },
       cell: ({ row }) => (
         <Button
@@ -92,12 +88,6 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
           className='translate-y-[2px]'
         />
       ),
-      meta: {
-        className: cn(
-          'sticky md:table-cell left-0 z-10 rounded-tl',
-          'bg-background transition-colors duration-200 group-hover/row:bg-muted group-data-[state=selected]/row:bg-muted'
-        ),
-      },
       cell: ({ row }) => (
         <Checkbox
           checked={row.getIsSelected()}
@@ -116,28 +106,32 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
         const channel = row.original
         const hasError = !!channel.errorMessage
 
-        return (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className='flex max-w-36 items-center gap-2'>
-                {hasError && <IconAlertTriangle className='text-destructive h-4 w-4 shrink-0' />}
-                <LongText className={cn('font-medium', hasError && 'text-destructive')}>{row.getValue('name')}</LongText>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>
-              <div className='space-y-1'>
-                {hasError && <p className='text-destructive text-sm'>{t(`channels.messages.${channel.errorMessage}`)}</p>}
-              </div>
-            </TooltipContent>
-          </Tooltip>
+        const content = (
+          <div className='flex max-w-36 items-center gap-2'>
+            {hasError && <IconAlertTriangle className='text-destructive h-4 w-4 shrink-0' />}
+            <div className={cn('font-medium truncate', hasError && 'text-destructive')}>{row.getValue('name')}</div>
+          </div>
         )
+
+        if (hasError) {
+          return (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {content}
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className='space-y-1'>
+                  <p className='text-destructive text-sm'>{t(`channels.messages.${channel.errorMessage}`)}</p>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          )
+        }
+
+        return content
       },
       meta: {
-        className: cn(
-          'drop-shadow-[0_1px_2px_rgb(0_0_0_/_0.1)] dark:drop-shadow-[0_1px_2px_rgb(255_255_255_/_0.1)] lg:drop-shadow-none',
-          'bg-background transition-colors duration-200 group-hover/row:bg-muted group-data-[state=selected]/row:bg-muted',
-          'sticky left-6 md:table-cell'
-        ),
+        className: 'md:table-cell',
       },
       enableHiding: false,
       enableSorting: false,
@@ -300,8 +294,8 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
                 </Badge>
               ))}
               {models.length > 2 && (
-                <Badge 
-                  variant='secondary' 
+                <Badge
+                  variant='secondary'
                   className='text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors'
                   onClick={handleOpenModelsDialog}
                   title={t('channels.actions.viewModels')}
@@ -355,11 +349,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       header: () => null,
       cell: DataTableRowActions,
       meta: {
-        // Fix the sticky name column caused layout issues.
-        className: cn(
-          'sticky right-0 z-10 w-[56px] min-w-[56px] pr-3 pl-0',
-          'bg-background transition-colors duration-200 group-hover/row:bg-muted group-data-[state=selected]/row:bg-muted'
-        ),
+        className: 'w-[56px] min-w-[56px] pr-3 pl-0',
       },
       enableSorting: false,
       enableHiding: false,

@@ -103,7 +103,9 @@ func (ts *OutboundPersistentStream) Close() error {
 	streamErr := ts.stream.Err()
 	if streamErr != nil {
 		// Use context without cancellation to ensure persistence even if client canceled
-		persistCtx := context.WithoutCancel(ctx)
+		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
+		defer cancel()
+
 		if ts.requestExec != nil {
 			if err := ts.RequestService.UpdateRequestExecutionStatusFromError(persistCtx, ts.requestExec.ID, streamErr); err != nil {
 				log.Warn(persistCtx, "Failed to update request execution status from error", log.Cause(err))
@@ -131,7 +133,8 @@ func (ts *OutboundPersistentStream) persistResponseChunks(ctx context.Context) {
 	// Update request execution with aggregated chunks
 	if ts.requestExec != nil {
 		// Use context without cancellation to ensure persistence even if client canceled
-		persistCtx := context.WithoutCancel(ctx)
+		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
+		defer cancel()
 
 		responseBody, meta, err := ts.transformer.AggregateStreamChunks(persistCtx, ts.responseChunks)
 		if err != nil {

@@ -40,20 +40,21 @@ type PlaygroundHandlersParams struct {
 }
 
 type PlaygroundHandlers struct {
-	ChannelService  *biz.ChannelService
-	RequestService  *biz.RequestService
-	SystemService   *biz.SystemService
-	UsageLogService *biz.UsageLogService
-	HttpClient      *httpclient.HttpClient
+	ChannelService          *biz.ChannelService
+	ChatCompletionProcessor *chat.ChatCompletionProcessor
 }
 
 func NewPlaygroundHandlers(params PlaygroundHandlersParams) *PlaygroundHandlers {
 	return &PlaygroundHandlers{
-		ChannelService:  params.ChannelService,
-		RequestService:  params.RequestService,
-		SystemService:   params.SystemService,
-		UsageLogService: params.UsageLogService,
-		HttpClient:      params.HttpClient,
+		ChannelService: params.ChannelService,
+		ChatCompletionProcessor: chat.NewChatCompletionProcessor(
+			params.ChannelService,
+			params.RequestService,
+			params.HttpClient,
+			aisdk.NewDataStreamTransformer(),
+			params.SystemService,
+			params.UsageLogService,
+		),
 	}
 }
 
@@ -136,7 +137,7 @@ func (handlers *PlaygroundHandlers) HandleError(rawErr error) *PlaygroundRespons
 		}
 	}
 
-	if llmErr, ok := xerrors.As[*llm.ResponseError](rawErr); ok {
+	if llmErr, ok := xerrors.As[*llm.ResponseError](rawErr); ok && llmErr != nil {
 		if llmErr.Detail.Message == "" {
 			return &PlaygroundResponseError{
 				Status: llmErr.StatusCode,
@@ -235,7 +236,7 @@ func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 
 	log.Debug(ctx, "Received request", log.Any("request", genericReq), log.String("channel_id", channelIDStr), log.String("project_id", projectIDStr))
 
-	var processor *chat.ChatCompletionProcessor
+	processor := handlers.ChatCompletionProcessor
 
 	if channelIDStr != "" {
 		channelID, err := objects.ParseGUID(channelIDStr)
@@ -254,26 +255,7 @@ func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 			return
 		}
 
-		processor = chat.NewChatCompletionProcessorWithSelector(
-			chat.NewSpecifiedChannelSelector(handlers.ChannelService, channelID),
-			handlers.RequestService,
-			handlers.ChannelService,
-			handlers.HttpClient,
-			aisdk.NewDataStreamTransformer(),
-			handlers.SystemService,
-			handlers.UsageLogService,
-			nil,
-		)
-	} else {
-		// Use default processor with all available channels
-		processor = chat.NewChatCompletionProcessor(
-			handlers.ChannelService,
-			handlers.RequestService,
-			handlers.HttpClient,
-			aisdk.NewDataStreamTransformer(),
-			handlers.SystemService,
-			handlers.UsageLogService,
-		)
+		processor = processor.WithChannelSelector(chat.NewSpecifiedChannelSelector(handlers.ChannelService, channelID))
 	}
 
 	result, err := processor.Process(ctx, genericReq)

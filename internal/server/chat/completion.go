@@ -16,7 +16,6 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
-// NewChatCompletionProcessor creates a new ChatCompletionProcessor.
 func NewChatCompletionProcessor(
 	channelService *biz.ChannelService,
 	requestService *biz.RequestService,
@@ -27,30 +26,17 @@ func NewChatCompletionProcessor(
 ) *ChatCompletionProcessor {
 	connectionTracker := NewDefaultConnectionTracker(256)
 
-	return NewChatCompletionProcessorWithSelector(
-		NewDefaultChannelSelector(channelService, systemService, requestService, connectionTracker),
-		requestService,
-		channelService,
-		httpClient,
-		inbound,
-		systemService,
-		usageLogService,
-		connectionTracker,
-	)
-}
+	// Build strategies
+	strategies := []LoadBalanceStrategy{
+		NewTraceAwareStrategy(requestService),                         // Priority 1: Last successful channel from trace
+		NewErrorAwareStrategy(channelService),                         // Priority 2: Health and error rate
+		NewWeightRoundRobinStrategy(channelService),                   // Priority 3: Weight round robin
+		NewConnectionAwareStrategy(channelService, connectionTracker), // Priority 4: Connection count
+	}
 
-func NewChatCompletionProcessorWithSelector(
-	channelSelector ChannelSelector,
-	requestService *biz.RequestService,
-	channelService *biz.ChannelService,
-	httpClient *httpclient.HttpClient,
-	inbound transformer.Inbound,
-	systemService *biz.SystemService,
-	usageLogService *biz.UsageLogService,
-	connectionTracker *DefaultConnectionTracker,
-) *ChatCompletionProcessor {
+	loadBalancer := NewLoadBalancer(systemService, strategies...)
+
 	return &ChatCompletionProcessor{
-		ChannelSelector: channelSelector,
 		Inbound:         inbound,
 		RequestService:  requestService,
 		ChannelService:  channelService,
@@ -59,27 +45,61 @@ func NewChatCompletionProcessorWithSelector(
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
-		ModelMapper:       NewModelMapper(),
-		PipelineFactory:   pipeline.NewFactory(httpClient),
-		ConnectionTracker: connectionTracker,
+		PipelineFactory:    pipeline.NewFactory(httpClient),
+		ModelMapper:        NewModelMapper(),
+		channelSelector:    NewDefaultSelector(channelService),
+		selectedChannelIds: []int{},
+		connectionTracker:  connectionTracker,
+		loadBalancer:       loadBalancer,
+		proxy:              nil,
 	}
 }
 
 type ChatCompletionProcessor struct {
-	ChannelSelector   ChannelSelector
-	Inbound           transformer.Inbound
-	RequestService    *biz.RequestService
-	ChannelService    *biz.ChannelService
-	SystemService     *biz.SystemService
-	UsageLogService   *biz.UsageLogService
-	Middlewares       []pipeline.Middleware
-	PipelineFactory   *pipeline.Factory
-	ModelMapper       *ModelMapper
-	ConnectionTracker *DefaultConnectionTracker
+	Inbound         transformer.Inbound
+	RequestService  *biz.RequestService
+	ChannelService  *biz.ChannelService
+	SystemService   *biz.SystemService
+	UsageLogService *biz.UsageLogService
+	Middlewares     []pipeline.Middleware
+	PipelineFactory *pipeline.Factory
+	ModelMapper     *ModelMapper
 
-	// Proxy is the proxy configuration for testing
+	// The runtime fields.
+
+	// The default channel selector.
+	channelSelector ChannelSelector
+	// The runtime selected channel ids.
+	selectedChannelIds []int
+	// The load balancer for channel load balancing.
+	loadBalancer *LoadBalancer
+	// The connection tracker for connection aware load balancing.
+	connectionTracker ConnectionTracker
+
+	// proxy is the proxy configuration for testing
 	// If set, it will override the channel's default proxy configuration
-	Proxy *objects.ProxyConfig
+	proxy *objects.ProxyConfig
+}
+
+func (processor *ChatCompletionProcessor) WithChannelSelector(selector ChannelSelector) *ChatCompletionProcessor {
+	c := *processor
+	c.channelSelector = selector
+
+	return &c
+}
+
+func (processor *ChatCompletionProcessor) WithAllowedChannels(allowedChannelIDs []int) *ChatCompletionProcessor {
+	c := *processor
+	c.channelSelector = NewSelectedChannelsSelector(processor.channelSelector, allowedChannelIDs)
+
+	return &c
+}
+
+func (processor *ChatCompletionProcessor) WithProxy(proxy *objects.ProxyConfig) *ChatCompletionProcessor {
+	c := *processor
+	c.proxy = proxy
+
+	return &c
 }
 
 type ChatCompletionResult struct {
@@ -101,10 +121,11 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 		RequestService:  processor.RequestService,
 		UsageLogService: processor.UsageLogService,
 		ChannelService:  processor.ChannelService,
-		ChannelSelector: processor.ChannelSelector,
-		ChannelIndex:    0,
+		ChannelSelector: processor.channelSelector,
+		LoadBalancer:    processor.loadBalancer,
 		ModelMapper:     processor.ModelMapper,
-		Proxy:           processor.Proxy,
+		Proxy:           processor.proxy,
+		ChannelIndex:    0,
 	}
 
 	var pipelineOpts []pipeline.Option
@@ -147,7 +168,7 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 		withPerformanceRecording(outbound),
 
 		// Connection tracking middleware for load balancing.
-		withConnectionTracking(outbound, processor.ConnectionTracker),
+		withConnectionTracking(outbound, processor.connectionTracker),
 	)
 
 	pipelineOpts = append(pipelineOpts, pipeline.WithMiddlewares(middlewares...))
@@ -167,10 +188,10 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 
 			// Update the last request execution status based on error if it exists
 			// This ensures that when retry fails completely, the last execution is properly marked
-			if outbound.GetRequestExecution() != nil {
+			if requestExec := outbound.GetRequestExecution(); requestExec != nil {
 				if updateErr := processor.RequestService.UpdateRequestExecutionStatusFromError(
 					persistCtx,
-					outbound.GetRequestExecution().ID,
+					requestExec.ID,
 					err,
 				); updateErr != nil {
 					log.Warn(persistCtx, "Failed to update request execution status from error", log.Cause(updateErr))
@@ -178,10 +199,10 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 			}
 
 			// Update the main request status based on error
-			if outbound.GetRequest() != nil {
+			if request := outbound.GetRequest(); request != nil {
 				if updateErr := processor.RequestService.UpdateRequestStatusFromError(
 					persistCtx,
-					outbound.GetRequest().ID,
+					request.ID,
 					err,
 				); updateErr != nil {
 					log.Warn(persistCtx, "Failed to update request status from error", log.Cause(updateErr))

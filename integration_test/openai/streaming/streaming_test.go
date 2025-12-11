@@ -2,7 +2,6 @@ package main
 
 import (
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/looplj/axonhub/openai_test/internal/testutil"
@@ -42,21 +41,13 @@ func TestStreamingChatCompletion(t *testing.T) {
 	stream := helper.Client.Chat.Completions.NewStreaming(ctx, params)
 	helper.AssertNoError(t, stream.Err(), "Failed to start streaming chat completion")
 
-	// Read and process the stream
-	var fullContent strings.Builder
-	var chunks []string
-	var totalTokens int
+	var chunksReceived int
+	var accumulator openai.ChatCompletionAccumulator
 
 	for stream.Next() {
 		chunk := stream.Current()
-		if len(chunk.Choices) > 0 {
-			content := chunk.Choices[0].Delta.Content
-			if content != "" {
-				fullContent.WriteString(content)
-				chunks = append(chunks, content)
-				totalTokens++
-			}
-		}
+		chunksReceived++
+		accumulator.AddChunk(chunk)
 	}
 
 	// Check for stream errors
@@ -64,16 +55,21 @@ func TestStreamingChatCompletion(t *testing.T) {
 		helper.AssertNoError(t, err, "Stream error occurred")
 	}
 
-	// Validate streaming response
-	finalContent := fullContent.String()
-	t.Logf("Received %d chunks with %d total tokens", len(chunks), totalTokens)
-	t.Logf("Final content length: %d characters", len(finalContent))
-
-	// Basic validation
-	if len(chunks) == 0 {
-		t.Error("Expected at least one content chunk from streaming")
+	if len(accumulator.Choices) == 0 {
+		t.Error("Expected at least one choice from streaming")
 	}
 
+	finalContent := accumulator.Choices[0].Message.Content
+
+	t.Logf("Streaming: received %d chunks", chunksReceived)
+	t.Logf("Final content: %s", finalContent)
+
+	// Validate that we got some response
+	if chunksReceived == 0 {
+		t.Error("Expected at least one chunk from streaming")
+	}
+
+	// Basic validation
 	if len(finalContent) == 0 {
 		t.Error("Expected non-empty content from streaming response")
 	}
@@ -144,28 +140,13 @@ Please first introduce yourself briefly and explain how you'll approach helping 
 	stream := helper.Client.Chat.Completions.NewStreaming(ctx, params)
 	helper.AssertNoError(t, stream.Err(), "Failed to start streaming with tools")
 
-	// Process the stream
-	var fullContent strings.Builder
-	var toolCalls []openai.ChatCompletionChunkChoiceDeltaToolCall
 	var chunksReceived int
+	var accumulator openai.ChatCompletionAccumulator
 
 	for stream.Next() {
 		chunk := stream.Current()
 		chunksReceived++
-
-		if len(chunk.Choices) > 0 {
-			choice := chunk.Choices[0]
-
-			// Collect content
-			if choice.Delta.Content != "" {
-				fullContent.WriteString(choice.Delta.Content)
-			}
-
-			// Collect tool calls
-			if len(choice.Delta.ToolCalls) > 0 {
-				toolCalls = append(toolCalls, choice.Delta.ToolCalls...)
-			}
-		}
+		accumulator.AddChunk(chunk)
 	}
 
 	// Check for stream errors
@@ -173,7 +154,12 @@ Please first introduce yourself briefly and explain how you'll approach helping 
 		helper.AssertNoError(t, err, "Stream error occurred")
 	}
 
-	finalContent := fullContent.String()
+	if len(accumulator.Choices) == 0 {
+		t.Error("Expected at least one choice from streaming with tools")
+	}
+
+	finalContent := accumulator.Choices[0].Message.Content
+
 	t.Logf("Streaming with tools: received %d chunks", chunksReceived)
 	t.Logf("Final content: %s", finalContent)
 
@@ -183,11 +169,11 @@ Please first introduce yourself briefly and explain how you'll approach helping 
 	}
 
 	// If there were tool calls, they should be collected
-	if len(toolCalls) > 0 {
-		t.Logf("Collected %d tool calls from streaming", len(toolCalls))
+	if len(accumulator.Choices[0].Message.ToolCalls) > 0 {
+		t.Logf("Collected %d tool calls from streaming", len(accumulator.Choices[0].Message.ToolCalls))
 
 		// Process tool calls
-		for i, toolCall := range toolCalls {
+		for i, toolCall := range accumulator.Choices[0].Message.ToolCalls {
 			t.Logf("Tool call %d: %s", i+1, toolCall.Function.Name)
 
 			// Simulate tool execution based on function name
@@ -226,34 +212,31 @@ func TestStreamingLongResponse(t *testing.T) {
 	stream := helper.Client.Chat.Completions.NewStreaming(ctx, params)
 	helper.AssertNoError(t, stream.Err(), "Failed to start long streaming response")
 
-	// Collect streaming data
-	var fullContent strings.Builder
-	var chunks []string
-	var totalTokens int
+	var chunksReceived int
+	var accumulator openai.ChatCompletionAccumulator
 
 	for stream.Next() {
 		chunk := stream.Current()
-		if len(chunk.Choices) > 0 {
-			content := chunk.Choices[0].Delta.Content
-			if content != "" {
-				fullContent.WriteString(content)
-				chunks = append(chunks, content)
-				totalTokens++
-			}
-		}
+		chunksReceived++
+		accumulator.AddChunk(chunk)
 	}
 
 	if err := stream.Err(); err != nil {
 		helper.AssertNoError(t, err, "Stream error in long response")
 	}
 
-	finalContent := fullContent.String()
-	t.Logf("Long response: %d chunks, %d tokens, %d characters",
-		len(chunks), totalTokens, len(finalContent))
+	if len(accumulator.Choices) == 0 {
+		t.Error("Expected at least one choice from long streaming response")
+	}
+
+	finalContent := accumulator.Choices[0].Message.Content
+
+	t.Logf("Long response streaming: received %d chunks", chunksReceived)
+	t.Logf("Final content: %s", finalContent)
 
 	// Validate long response
-	if len(chunks) < 5 {
-		t.Errorf("Expected more chunks for long response, got: %d", len(chunks))
+	if chunksReceived < 5 {
+		t.Errorf("Expected more chunks for long response, got: %d", chunksReceived)
 	}
 
 	if len(finalContent) < 200 {
@@ -297,12 +280,20 @@ func TestStreamingErrorHandling(t *testing.T) {
 	stream := helper.Client.Chat.Completions.NewStreaming(ctx, params)
 	if err := stream.Err(); err == nil {
 		// If no immediate error, try to read from stream
-		if stream.Next() {
-			// If we get here, the request was accepted despite invalid params
-			t.Log("Request accepted despite invalid parameters")
+		var chunksReceived int
+		var accumulator openai.ChatCompletionAccumulator
+
+		for stream.Next() {
+			chunk := stream.Current()
+			chunksReceived++
+			accumulator.AddChunk(chunk)
 		}
+
 		if err := stream.Err(); err != nil {
 			t.Logf("Stream error (expected): %v", err)
+		} else {
+			// If we get here, the request was accepted despite invalid params
+			t.Logf("Request accepted despite invalid parameters, received %d chunks", chunksReceived)
 		}
 	} else {
 		t.Logf("Correctly caught error: %v", err)

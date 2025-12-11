@@ -65,11 +65,11 @@ func (processor *TestChannelProcessor) TestChannel(
 	ctx context.Context,
 	channelID objects.GUID,
 	modelID *string,
-	proxyConfig *objects.ProxyConfig,
+	proxy *objects.ProxyConfig,
 ) (*TestChannelResult, error) {
 	// Create ChatCompletionProcessor for this test request
 	chatProcessor := &ChatCompletionProcessor{
-		ChannelSelector: NewSpecifiedChannelSelector(processor.channelService, channelID),
+		channelSelector: NewSpecifiedChannelSelector(processor.channelService, channelID),
 		Inbound:         openai.NewInboundTransformer(),
 		RequestService:  processor.requestService,
 		ChannelService:  processor.channelService,
@@ -77,15 +77,19 @@ func (processor *TestChannelProcessor) TestChannel(
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
-		SystemService:   processor.systemService,
-		UsageLogService: processor.usageLogService,
-		Proxy:           proxyConfig,
+		SystemService:      processor.systemService,
+		UsageLogService:    processor.usageLogService,
+		proxy:              proxy,
+		ModelMapper:        nil,
+		selectedChannelIds: []int{},
+		loadBalancer:       nil,
+		connectionTracker:  nil,
 	}
 
 	// Create a simple test request
 	testModel := lo.FromPtr(modelID)
 	if testModel == "" {
-		channels, err := chatProcessor.ChannelSelector.Select(ctx, &llm.Request{})
+		channels, err := chatProcessor.channelSelector.Select(ctx, &llm.Request{})
 		if err != nil {
 			return nil, err
 		}

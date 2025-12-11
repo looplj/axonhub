@@ -17,6 +17,7 @@ type PersistenceState struct {
 	UsageLogService *biz.UsageLogService
 	ChannelService  *biz.ChannelService
 	ChannelSelector ChannelSelector
+	LoadBalancer    *LoadBalancer
 
 	// Request state
 	ModelMapper *ModelMapper

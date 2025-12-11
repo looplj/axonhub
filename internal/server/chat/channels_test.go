@@ -28,6 +28,27 @@ func newTestChannelServiceForChannels(client *ent.Client) *biz.ChannelService {
 	})
 }
 
+// newTestLoadBalancedSelector creates a load-balanced selector for testing.
+// This replaces the old DefaultChannelSelector with the new decorator pattern.
+func newTestLoadBalancedSelector(
+	channelService *biz.ChannelService,
+	systemService *biz.SystemService,
+	requestService *biz.RequestService,
+	connectionTracker *DefaultConnectionTracker,
+) ChannelSelector {
+	strategies := []LoadBalanceStrategy{
+		NewTraceAwareStrategy(requestService),
+		NewErrorAwareStrategy(channelService),
+		NewWeightRoundRobinStrategy(channelService),
+		NewConnectionAwareStrategy(channelService, connectionTracker),
+	}
+	loadBalancer := NewLoadBalancer(systemService, strategies...)
+
+	baseSelector := NewDefaultSelector(channelService)
+
+	return NewLoadBalancedSelector(baseSelector, loadBalancer)
+}
+
 // newTestSystemService creates a minimal system service for testing.
 func newTestSystemService(client *ent.Client) *biz.SystemService {
 	return biz.NewSystemService(biz.SystemServiceParams{
@@ -153,7 +174,7 @@ func TestDefaultChannelSelector_Select_SingleChannel(t *testing.T) {
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	connectionTracker := NewDefaultConnectionTracker(10)
-	selector := NewDefaultChannelSelector(channelService, systemService, requestService, connectionTracker)
+	selector := newTestLoadBalancedSelector(channelService, systemService, requestService, connectionTracker)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -165,8 +186,8 @@ func TestDefaultChannelSelector_Select_SingleChannel(t *testing.T) {
 	assert.Equal(t, ch.ID, result[0].ID)
 }
 
-// TestDefaultChannelSelector_Select_MultipleChannels_LoadBalancing tests load balancing with multiple channels.
-func TestDefaultChannelSelector_Select_MultipleChannels_LoadBalancing(t *testing.T) {
+// TestLoadBalancedSelector_Select_MultipleChannels_LoadBalancing tests load balancing with multiple channels.
+func TestLoadBalancedSelector_Select_MultipleChannels_LoadBalancing(t *testing.T) {
 	ctx, client := setupTest(t)
 
 	channels := createTestChannels(t, ctx, client)
@@ -176,7 +197,7 @@ func TestDefaultChannelSelector_Select_MultipleChannels_LoadBalancing(t *testing
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	connectionTracker := NewDefaultConnectionTracker(10)
-	selector := NewDefaultChannelSelector(channelService, systemService, requestService, connectionTracker)
+	selector := newTestLoadBalancedSelector(channelService, systemService, requestService, connectionTracker)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -222,7 +243,7 @@ func TestDefaultChannelSelector_Select_NoChannelsAvailable(t *testing.T) {
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	connectionTracker := NewDefaultConnectionTracker(10)
-	selector := NewDefaultChannelSelector(channelService, systemService, requestService, connectionTracker)
+	selector := newTestLoadBalancedSelector(channelService, systemService, requestService, connectionTracker)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -254,7 +275,7 @@ func TestDefaultChannelSelector_Select_ModelNotSupported(t *testing.T) {
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	connectionTracker := NewDefaultConnectionTracker(10)
-	selector := NewDefaultChannelSelector(channelService, systemService, requestService, connectionTracker)
+	selector := newTestLoadBalancedSelector(channelService, systemService, requestService, connectionTracker)
 
 	req := &llm.Request{
 		Model: "gpt-4", // This model is not supported by the channel
@@ -276,7 +297,7 @@ func TestDefaultChannelSelector_Select_WithConnectionTracking(t *testing.T) {
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	connectionTracker := NewDefaultConnectionTracker(10)
-	selector := NewDefaultChannelSelector(channelService, systemService, requestService, connectionTracker)
+	selector := newTestLoadBalancedSelector(channelService, systemService, requestService, connectionTracker)
 
 	// Add some connections to affect load balancing
 	connectionTracker.IncrementConnection(channels[0].ID) // High weight channel now has 2 connections
@@ -363,7 +384,7 @@ func TestDefaultChannelSelector_Select_WithTraceContext(t *testing.T) {
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	connectionTracker := NewDefaultConnectionTracker(10)
-	selector := NewDefaultChannelSelector(channelService, systemService, requestService, connectionTracker)
+	selector := newTestLoadBalancedSelector(channelService, systemService, requestService, connectionTracker)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -408,7 +429,7 @@ func TestDefaultChannelSelector_Select_WithChannelFailures(t *testing.T) {
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	connectionTracker := NewDefaultConnectionTracker(10)
-	selector := NewDefaultChannelSelector(channelService, systemService, requestService, connectionTracker)
+	selector := newTestLoadBalancedSelector(channelService, systemService, requestService, connectionTracker)
 
 	// Record failures for the high weight channel to test error awareness
 	for i := 0; i < 3; i++ {
@@ -518,7 +539,7 @@ func TestDefaultChannelSelector_Select_WeightedRoundRobin_EqualWeights(t *testin
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	connectionTracker := NewDefaultConnectionTracker(10)
-	selector := NewDefaultChannelSelector(channelService, systemService, requestService, connectionTracker)
+	selector := newTestLoadBalancedSelector(channelService, systemService, requestService, connectionTracker)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -609,7 +630,7 @@ func TestDefaultChannelSelector_Select_WeightedRoundRobin(t *testing.T) {
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	connectionTracker := NewDefaultConnectionTracker(10)
-	selector := NewDefaultChannelSelector(channelService, systemService, requestService, connectionTracker)
+	selector := newTestLoadBalancedSelector(channelService, systemService, requestService, connectionTracker)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -680,7 +701,7 @@ func TestDefaultChannelSelector_Select_WithDisabledChannels(t *testing.T) {
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	connectionTracker := NewDefaultConnectionTracker(10)
-	selector := NewDefaultChannelSelector(channelService, systemService, requestService, connectionTracker)
+	selector := newTestLoadBalancedSelector(channelService, systemService, requestService, connectionTracker)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -713,7 +734,7 @@ func TestDefaultChannelSelector_Select_EmptyRequest(t *testing.T) {
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	connectionTracker := NewDefaultConnectionTracker(10)
-	selector := NewDefaultChannelSelector(channelService, systemService, requestService, connectionTracker)
+	selector := newTestLoadBalancedSelector(channelService, systemService, requestService, connectionTracker)
 
 	// Empty request should still work
 	req := &llm.Request{}
@@ -795,4 +816,295 @@ func TestSpecifiedChannelSelector_Select_ChannelNotFound(t *testing.T) {
 	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "failed to get channel for test")
+}
+
+// TestDefaultSelector_Select tests DefaultSelector returns all enabled channels supporting the model.
+func TestDefaultSelector_Select(t *testing.T) {
+	ctx, client := setupTest(t)
+
+	channels := createTestChannels(t, ctx, client)
+
+	channelService := newTestChannelServiceForChannels(client)
+	selector := NewDefaultSelector(channelService)
+
+	req := &llm.Request{
+		Model: "gpt-4",
+	}
+
+	result, err := selector.Select(ctx, req)
+	require.NoError(t, err)
+
+	// Should return 3 enabled channels (exclude disabled one)
+	require.Len(t, result, 3)
+
+	// Verify disabled channel is not included
+	channelIDs := make([]int, len(result))
+	for i, ch := range result {
+		channelIDs[i] = ch.ID
+	}
+
+	assert.NotContains(t, channelIDs, channels[3].ID, "Disabled channel should not be included")
+	assert.Contains(t, channelIDs, channels[0].ID, "High weight channel should be included")
+	assert.Contains(t, channelIDs, channels[1].ID, "Medium weight channel should be included")
+	assert.Contains(t, channelIDs, channels[2].ID, "Low weight channel should be included")
+}
+
+// TestSelectedChannelsSelector_Select_WithFilter tests SelectedChannelsSelector filters by allowed channel IDs.
+func TestSelectedChannelsSelector_Select_WithFilter(t *testing.T) {
+	ctx, client := setupTest(t)
+
+	channels := createTestChannels(t, ctx, client)
+
+	channelService := newTestChannelServiceForChannels(client)
+	baseSelector := NewDefaultSelector(channelService)
+
+	// Only allow channels 0 and 2
+	allowedIDs := []int{channels[0].ID, channels[2].ID}
+	selector := NewSelectedChannelsSelector(baseSelector, allowedIDs)
+
+	req := &llm.Request{
+		Model: "gpt-4",
+	}
+
+	result, err := selector.Select(ctx, req)
+	require.NoError(t, err)
+
+	// Should return only 2 allowed channels
+	require.Len(t, result, 2)
+
+	channelIDs := make([]int, len(result))
+	for i, ch := range result {
+		channelIDs[i] = ch.ID
+	}
+
+	assert.Contains(t, channelIDs, channels[0].ID, "Allowed channel 0 should be included")
+	assert.Contains(t, channelIDs, channels[2].ID, "Allowed channel 2 should be included")
+	assert.NotContains(t, channelIDs, channels[1].ID, "Non-allowed channel 1 should not be included")
+}
+
+// TestSelectedChannelsSelector_Select_EmptyFilter tests SelectedChannelsSelector with empty filter returns all.
+func TestSelectedChannelsSelector_Select_EmptyFilter(t *testing.T) {
+	ctx, client := setupTest(t)
+
+	channels := createTestChannels(t, ctx, client)
+
+	channelService := newTestChannelServiceForChannels(client)
+	baseSelector := NewDefaultSelector(channelService)
+
+	// Empty filter should return all channels
+	selector := NewSelectedChannelsSelector(baseSelector, nil)
+
+	req := &llm.Request{
+		Model: "gpt-4",
+	}
+
+	result, err := selector.Select(ctx, req)
+	require.NoError(t, err)
+
+	// Should return all 3 enabled channels
+	require.Len(t, result, 3)
+
+	channelIDs := make([]int, len(result))
+	for i, ch := range result {
+		channelIDs[i] = ch.ID
+	}
+
+	assert.Contains(t, channelIDs, channels[0].ID)
+	assert.Contains(t, channelIDs, channels[1].ID)
+	assert.Contains(t, channelIDs, channels[2].ID)
+}
+
+// TestLoadBalancedSelector_Select tests LoadBalancedSelector applies load balancing.
+func TestLoadBalancedSelector_Select(t *testing.T) {
+	ctx, client := setupTest(t)
+
+	channels := createTestChannels(t, ctx, client)
+
+	channelService := newTestChannelServiceForChannels(client)
+	systemService := newTestSystemService(client)
+	requestService := newTestRequestServiceForChannels(client, systemService)
+	connectionTracker := NewDefaultConnectionTracker(10)
+
+	strategies := []LoadBalanceStrategy{
+		NewTraceAwareStrategy(requestService),
+		NewErrorAwareStrategy(channelService),
+		NewWeightRoundRobinStrategy(channelService),
+		NewConnectionAwareStrategy(channelService, connectionTracker),
+	}
+	loadBalancer := NewLoadBalancer(systemService, strategies...)
+
+	baseSelector := NewDefaultSelector(channelService)
+	selector := NewLoadBalancedSelector(baseSelector, loadBalancer)
+
+	req := &llm.Request{
+		Model: "gpt-4",
+	}
+
+	result, err := selector.Select(ctx, req)
+	require.NoError(t, err)
+
+	// Should return 3 enabled channels
+	require.Len(t, result, 3)
+
+	// Verify all channels are enabled and present
+	channelIDs := make([]int, len(result))
+	for i, ch := range result {
+		channelIDs[i] = ch.ID
+		assert.Equal(t, channel.StatusEnabled, ch.Status)
+	}
+
+	assert.Contains(t, channelIDs, channels[0].ID)
+	assert.Contains(t, channelIDs, channels[1].ID)
+	assert.Contains(t, channelIDs, channels[2].ID)
+}
+
+// TestLoadBalancedSelector_Select_SingleChannel tests LoadBalancedSelector with single channel skips sorting.
+func TestLoadBalancedSelector_Select_SingleChannel(t *testing.T) {
+	ctx, client := setupTest(t)
+
+	// Create single channel
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Single Channel").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"gpt-4"}).
+		SetDefaultTestModel("gpt-4").
+		SetStatus(channel.StatusEnabled).
+		Save(ctx)
+	require.NoError(t, err)
+
+	channelService := newTestChannelServiceForChannels(client)
+	systemService := newTestSystemService(client)
+	loadBalancer := NewLoadBalancer(systemService)
+
+	baseSelector := NewDefaultSelector(channelService)
+	selector := NewLoadBalancedSelector(baseSelector, loadBalancer)
+
+	req := &llm.Request{
+		Model: "gpt-4",
+	}
+
+	result, err := selector.Select(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, result, 1)
+	assert.Equal(t, ch.ID, result[0].ID)
+}
+
+// TestDecoratorChain_FullStack tests the complete decorator chain: Default -> SelectedChannels -> LoadBalanced.
+func TestDecoratorChain_FullStack(t *testing.T) {
+	ctx, client := setupTest(t)
+
+	channels := createTestChannels(t, ctx, client)
+
+	channelService := newTestChannelServiceForChannels(client)
+	systemService := newTestSystemService(client)
+	requestService := newTestRequestServiceForChannels(client, systemService)
+	connectionTracker := NewDefaultConnectionTracker(10)
+
+	strategies := []LoadBalanceStrategy{
+		NewTraceAwareStrategy(requestService),
+		NewErrorAwareStrategy(channelService),
+		NewWeightRoundRobinStrategy(channelService),
+		NewConnectionAwareStrategy(channelService, connectionTracker),
+	}
+	loadBalancer := NewLoadBalancer(systemService, strategies...)
+
+	// Build decorator chain: Default -> SelectedChannels -> LoadBalanced
+	baseSelector := NewDefaultSelector(channelService)
+	filteredSelector := NewSelectedChannelsSelector(baseSelector, []int{channels[0].ID, channels[1].ID})
+	selector := NewLoadBalancedSelector(filteredSelector, loadBalancer)
+
+	req := &llm.Request{
+		Model: "gpt-4",
+	}
+
+	result, err := selector.Select(ctx, req)
+	require.NoError(t, err)
+
+	// Should return only 2 allowed channels
+	require.Len(t, result, 2)
+
+	channelIDs := make([]int, len(result))
+	for i, ch := range result {
+		channelIDs[i] = ch.ID
+	}
+
+	assert.Contains(t, channelIDs, channels[0].ID)
+	assert.Contains(t, channelIDs, channels[1].ID)
+	assert.NotContains(t, channelIDs, channels[2].ID, "Filtered channel should not be included")
+}
+
+// TestSelectedChannelsSelector_WithAllowedChannels tests filtering with allowed channel IDs.
+func TestSelectedChannelsSelector_WithAllowedChannels(t *testing.T) {
+	ctx, client := setupTest(t)
+
+	channels := createTestChannels(t, ctx, client)
+
+	channelService := newTestChannelServiceForChannels(client)
+	systemService := newTestSystemService(client)
+	requestService := newTestRequestServiceForChannels(client, systemService)
+	connectionTracker := NewDefaultConnectionTracker(10)
+
+	baseSelector := newTestLoadBalancedSelector(channelService, systemService, requestService, connectionTracker)
+
+	req := &llm.Request{
+		Model: "gpt-4",
+	}
+
+	// Test without allowed channels - should return all 3 enabled channels
+	result, err := baseSelector.Select(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, result, 3)
+
+	// Test with allowed channels - should return only 2 channels
+	filteredSelector := NewSelectedChannelsSelector(baseSelector, []int{channels[0].ID, channels[2].ID})
+	result, err = filteredSelector.Select(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, result, 2)
+
+	channelIDs := make([]int, len(result))
+	for i, ch := range result {
+		channelIDs[i] = ch.ID
+	}
+
+	assert.Contains(t, channelIDs, channels[0].ID)
+	assert.Contains(t, channelIDs, channels[2].ID)
+	assert.NotContains(t, channelIDs, channels[1].ID)
+}
+
+// TestSelectedChannelsSelector_WithEmptyFilter tests that empty filter returns all channels.
+func TestSelectedChannelsSelector_WithEmptyFilter(t *testing.T) {
+	ctx, client := setupTest(t)
+
+	channels := createTestChannels(t, ctx, client)
+
+	channelService := newTestChannelServiceForChannels(client)
+	baseSelector := NewDefaultSelector(channelService)
+
+	req := &llm.Request{
+		Model: "gpt-4",
+	}
+
+	// Empty slice should return all channels from wrapped selector
+	filteredSelector := NewSelectedChannelsSelector(baseSelector, []int{})
+	result, err := filteredSelector.Select(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, result, 3) // All 3 enabled channels
+
+	// Nil slice should also return all channels
+	filteredSelector = NewSelectedChannelsSelector(baseSelector, nil)
+	result, err = filteredSelector.Select(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, result, 3)
+
+	// Verify all enabled channels are present
+	channelIDs := make([]int, len(result))
+	for i, ch := range result {
+		channelIDs[i] = ch.ID
+	}
+
+	assert.Contains(t, channelIDs, channels[0].ID)
+	assert.Contains(t, channelIDs, channels[1].ID)
+	assert.Contains(t, channelIDs, channels[2].ID)
 }
