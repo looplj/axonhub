@@ -213,6 +213,26 @@ func (_u *ChannelUpdate) ClearErrorMessage() *ChannelUpdate {
 	return _u
 }
 
+// SetRemark sets the "remark" field.
+func (_u *ChannelUpdate) SetRemark(v string) *ChannelUpdate {
+	_u.mutation.SetRemark(v)
+	return _u
+}
+
+// SetNillableRemark sets the "remark" field if the given value is not nil.
+func (_u *ChannelUpdate) SetNillableRemark(v *string) *ChannelUpdate {
+	if v != nil {
+		_u.SetRemark(*v)
+	}
+	return _u
+}
+
+// ClearRemark clears the value of the "remark" field.
+func (_u *ChannelUpdate) ClearRemark() *ChannelUpdate {
+	_u.mutation.ClearRemark()
+	return _u
+}
+
 // AddRequestIDs adds the "requests" edge to the Request entity by IDs.
 func (_u *ChannelUpdate) AddRequestIDs(ids ...int) *ChannelUpdate {
 	_u.mutation.AddRequestIDs(ids...)
@@ -484,6 +504,12 @@ func (_u *ChannelUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.ErrorMessageCleared() {
 		_spec.ClearField(channel.FieldErrorMessage, field.TypeString)
+	}
+	if value, ok := _u.mutation.Remark(); ok {
+		_spec.SetField(channel.FieldRemark, field.TypeString, value)
+	}
+	if _u.mutation.RemarkCleared() {
+		_spec.ClearField(channel.FieldRemark, field.TypeString)
 	}
 	if _u.mutation.RequestsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -849,6 +875,26 @@ func (_u *ChannelUpdateOne) ClearErrorMessage() *ChannelUpdateOne {
 	return _u
 }
 
+// SetRemark sets the "remark" field.
+func (_u *ChannelUpdateOne) SetRemark(v string) *ChannelUpdateOne {
+	_u.mutation.SetRemark(v)
+	return _u
+}
+
+// SetNillableRemark sets the "remark" field if the given value is not nil.
+func (_u *ChannelUpdateOne) SetNillableRemark(v *string) *ChannelUpdateOne {
+	if v != nil {
+		_u.SetRemark(*v)
+	}
+	return _u
+}
+
+// ClearRemark clears the value of the "remark" field.
+func (_u *ChannelUpdateOne) ClearRemark() *ChannelUpdateOne {
+	_u.mutation.ClearRemark()
+	return _u
+}
+
 // AddRequestIDs adds the "requests" edge to the Request entity by IDs.
 func (_u *ChannelUpdateOne) AddRequestIDs(ids ...int) *ChannelUpdateOne {
 	_u.mutation.AddRequestIDs(ids...)
@@ -1150,6 +1196,12 @@ func (_u *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err er
 	}
 	if _u.mutation.ErrorMessageCleared() {
 		_spec.ClearField(channel.FieldErrorMessage, field.TypeString)
+	}
+	if value, ok := _u.mutation.Remark(); ok {
+		_spec.SetField(channel.FieldRemark, field.TypeString, value)
+	}
+	if _u.mutation.RemarkCleared() {
+		_spec.ClearField(channel.FieldRemark, field.TypeString)
 	}
 	if _u.mutation.RequestsCleared() {
 		edge := &sqlgraph.EdgeSpec{

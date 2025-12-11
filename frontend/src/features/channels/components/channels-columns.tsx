@@ -1,6 +1,6 @@
 import { format } from 'date-fns'
 import { ColumnDef, Row } from '@tanstack/react-table'
-import { IconPlayerPlay, IconChevronDown, IconAlertTriangle } from '@tabler/icons-react'
+import { IconPlayerPlay, IconChevronDown, IconChevronRight, IconAlertTriangle } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 import { useCallback } from 'react'
 import { cn } from '@/lib/utils'
@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import LongText from '@/components/long-text'
 import { useChannels } from '../context/channels-context'
 import { useTestChannel } from '../data/channels'
-import { CHANNEL_CONFIGS } from '../data/config_channels'
+import { CHANNEL_CONFIGS, getProvider } from '../data/config_channels'
 import { Channel, ChannelType } from '../data/schema'
 import { DataTableColumnHeader } from './data-table-column-header'
 import { DataTableRowActions } from './data-table-row-actions'
@@ -57,6 +57,32 @@ function TestCell({ row }: { row: Row<Channel> }) {
 export const createColumns = (t: ReturnType<typeof useTranslation>['t']): ColumnDef<Channel>[] => {
   return [
     {
+      id: 'expand',
+      header: () => null,
+      meta: {
+        className: cn(
+          'w-8 min-w-8',
+          'bg-background transition-colors duration-200 group-hover/row:bg-muted group-data-[state=selected]/row:bg-muted'
+        ),
+      },
+      cell: ({ row }) => (
+        <Button
+          variant='ghost'
+          size='sm'
+          className='h-6 w-6 p-0'
+          onClick={() => row.toggleExpanded()}
+        >
+          {row.getIsExpanded() ? (
+            <IconChevronDown className='h-4 w-4' />
+          ) : (
+            <IconChevronRight className='h-4 w-4' />
+          )}
+        </Button>
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
       id: 'select',
       header: ({ table }) => (
         <Checkbox
@@ -100,7 +126,6 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
             </TooltipTrigger>
             <TooltipContent>
               <div className='space-y-1'>
-                <p className='text-muted-foreground text-sm'>{channel.baseURL}</p>
                 {hasError && <p className='text-destructive text-sm'>{t(`channels.messages.${channel.errorMessage}`)}</p>}
               </div>
             </TooltipContent>
@@ -118,23 +143,25 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       enableSorting: false,
     },
     {
+      id: 'provider',
       accessorKey: 'type',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.type')} />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.provider')} />,
       cell: ({ row }) => {
-        const type = row.getValue('type') as ChannelType
+        const type = row.original.type
         const config = CHANNEL_CONFIGS[type]
+        const provider = getProvider(type)
         const IconComponent = config.icon
         return (
           <Badge variant='outline' className={cn('capitalize', config.color)}>
             <div className='flex items-center gap-2'>
               <IconComponent size={16} className='shrink-0' />
-              <span>{t(`channels.types.${type}`)}</span>
+              <span>{t(`channels.providers.${provider}`)}</span>
             </div>
           </Badge>
         )
       },
       filterFn: (row, id, value) => {
-        return value.includes(row.getValue(id))
+        return value.includes(row.original.type)
       },
       enableSorting: false,
       enableHiding: false,

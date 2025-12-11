@@ -77,6 +77,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			channel.FieldSettings:         {Type: field.TypeJSON, Column: channel.FieldSettings},
 			channel.FieldOrderingWeight:   {Type: field.TypeInt, Column: channel.FieldOrderingWeight},
 			channel.FieldErrorMessage:     {Type: field.TypeString, Column: channel.FieldErrorMessage},
+			channel.FieldRemark:           {Type: field.TypeString, Column: channel.FieldRemark},
 		},
 	}
 	graph.Nodes[2] = &sqlgraph.Node{
@@ -1202,6 +1203,11 @@ func (f *ChannelFilter) WhereOrderingWeight(p entql.IntP) {
 // WhereErrorMessage applies the entql string predicate on the error_message field.
 func (f *ChannelFilter) WhereErrorMessage(p entql.StringP) {
 	f.Where(p.Field(channel.FieldErrorMessage))
+}
+
+// WhereRemark applies the entql string predicate on the remark field.
+func (f *ChannelFilter) WhereRemark(p entql.StringP) {
+	f.Where(p.Field(channel.FieldRemark))
 }
 
 // WhereHasRequests applies a predicate to check if query has an edge requests.

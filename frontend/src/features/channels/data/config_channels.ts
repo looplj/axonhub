@@ -476,3 +476,74 @@ export const getDefaultBaseURL = (channelType: ChannelType): string => {
 export const getDefaultModels = (channelType: ChannelType): string[] => {
   return CHANNEL_CONFIGS[channelType]?.defaultModels || []
 }
+
+/**
+ * Provider type for grouping channel types
+ */
+export type Provider =
+  | 'openai'
+  | 'anthropic'
+  | 'deepseek'
+  | 'gemini'
+  | 'moonshot'
+  | 'zhipu'
+  | 'zai'
+  | 'doubao'
+  | 'minimax'
+  | 'longcat'
+  | 'xai'
+  | 'openrouter'
+  | 'vercel'
+  | 'ppio'
+  | 'siliconflow'
+  | 'volcengine'
+  | 'aihubmix'
+  | 'burncloud'
+  | 'modelscope'
+  | 'bailian'
+
+/**
+ * Map channel type to provider
+ */
+export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
+  openai: 'openai',
+  openai_responses: 'openai',
+  openai_fake: 'openai',
+  anthropic: 'anthropic',
+  anthropic_aws: 'anthropic',
+  anthropic_gcp: 'anthropic',
+  anthropic_fake: 'anthropic',
+  deepseek: 'deepseek',
+  deepseek_anthropic: 'deepseek',
+  gemini: 'gemini',
+  gemini_openai: 'gemini',
+  moonshot: 'moonshot',
+  moonshot_anthropic: 'moonshot',
+  zhipu: 'zhipu',
+  zhipu_anthropic: 'zhipu',
+  zai: 'zai',
+  zai_anthropic: 'zai',
+  doubao: 'doubao',
+  doubao_anthropic: 'doubao',
+  minimax: 'minimax',
+  minimax_anthropic: 'minimax',
+  longcat: 'longcat',
+  longcat_anthropic: 'longcat',
+  xai: 'xai',
+  openrouter: 'openrouter',
+  vercel: 'vercel',
+  ppio: 'ppio',
+  siliconflow: 'siliconflow',
+  volcengine: 'volcengine',
+  aihubmix: 'aihubmix',
+  burncloud: 'burncloud',
+  modelscope: 'modelscope',
+  bailian: 'bailian',
+}
+
+/**
+ * Get provider for a channel type
+ */
+export const getProvider = (channelType: ChannelType): Provider => {
+  return CHANNEL_TYPE_TO_PROVIDER[channelType]
+}

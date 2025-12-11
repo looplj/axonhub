@@ -89,6 +89,9 @@ func (Channel) Fields() []ent.Field {
 			Optional().Nillable().Annotations(
 			entgql.Skip(entgql.SkipMutationCreateInput),
 		),
+		field.String("remark").
+			Optional().Nillable().
+			Comment("User-defined remark or note for the channel"),
 	}
 }
 

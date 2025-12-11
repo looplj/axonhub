@@ -578,6 +578,7 @@
     "columns": {
       "name": "名称",
       "type": "类型",
+      "provider": "服务商",
       "status": "状态",
       "tags": "标签",
       "baseURL": "Base URL",
@@ -833,7 +834,7 @@
         },
         "supportedModels": {
           "label": "支持的模型",
-          "description": "此渠道支持的模型列表",
+          "description": "模型 ID",
           "required": "请至少添加一个支持的模型",
           "defaultModelsLabel": "快速添加模型",
           "fetchedModelsLabel": "已获取的模型",
@@ -1058,7 +1059,27 @@
         "description": "调整渠道 \"{{name}}\" 的排序权重。",
         "action": "调整权重",
         "rangeHint": "权重必须在 {{min}} 和 {{max}} 之间。数值越高越优先。"
+      },
+      "remark": {
+        "title": "渠道备注",
+        "description": "为渠道 \"{{name}}\" 添加或编辑备注。",
+        "action": "备注",
+        "label": "备注",
+        "placeholder": "输入此渠道的备注或说明..."
       }
+    },
+    "expandedRow": {
+      "basicInfo": "基本信息",
+      "performance": "性能",
+      "modelsAndRemark": "模型与备注",
+      "modelInfo": "模型信息",
+      "supportedModels": "支持的模型",
+      "totalModels": "模型总数",
+      "defaultTestModel": "默认测试模型",
+      "remark": "备注",
+      "apiFormat": "API 格式",
+      "noPerformanceData": "暂无性能数据",
+      "more": "更多"
     },
     "validation": {
       "nameRequired": "名称不能为空",
