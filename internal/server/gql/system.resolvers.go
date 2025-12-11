@@ -10,8 +10,10 @@ import (
 	"fmt"
 
 	"entgo.io/ent/privacy"
+	"github.com/looplj/axonhub/internal/build"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/samber/lo"
 )
 
 // UpdateBrandSettings is the resolver for the updateBrandSettings field.
@@ -140,4 +142,24 @@ func (r *queryResolver) OnboardingInfo(ctx context.Context) (*biz.OnboardingInfo
 	}
 
 	return info, nil
+}
+
+// SystemVersion is the resolver for the systemVersion field.
+func (r *queryResolver) SystemVersion(ctx context.Context) (*build.Info, error) {
+	return lo.ToPtr(build.GetBuildInfo()), nil
+}
+
+// CheckForUpdate is the resolver for the checkForUpdate field.
+func (r *queryResolver) CheckForUpdate(ctx context.Context) (*VersionCheck, error) {
+	result, err := r.systemService.CheckForUpdate(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check for update: %w", err)
+	}
+
+	return &VersionCheck{
+		CurrentVersion: result.CurrentVersion,
+		LatestVersion:  result.LatestVersion,
+		HasUpdate:      result.HasUpdate,
+		ReleaseURL:     result.ReleaseURL,
+	}, nil
 }

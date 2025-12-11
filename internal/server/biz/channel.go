@@ -449,6 +449,7 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	if input.Remark != nil {
 		mut.SetRemark(*input.Remark)
 	}
+
 	if input.ClearRemark {
 		mut.ClearRemark()
 	}

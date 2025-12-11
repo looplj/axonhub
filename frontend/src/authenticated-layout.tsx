@@ -7,6 +7,7 @@ import { AppHeader } from '@/components/layout/app-header'
 import SkipToMain from '@/components/skip-to-main'
 import { useSidebarData } from './sidebar'
 import { OnboardingProvider } from '@/features/onboarding'
+import { useVersionCheck } from '@/hooks/use-version-check'
 
 interface Props {
   children?: React.ReactNode
@@ -15,6 +16,9 @@ interface Props {
 export function AuthenticatedLayout({ children }: Props) {
   const defaultOpen = Cookies.get('sidebar_state') !== 'false'
   const sidebarData = useSidebarData()
+  
+  // Check for new version on mount (only for owners)
+  useVersionCheck()
   
   return (
     <SidebarProvider defaultOpen={defaultOpen} className='h-screen flex-col overflow-hidden'>

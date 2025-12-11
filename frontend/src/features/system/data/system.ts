@@ -1,11 +1,34 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { graphqlRequest } from '@/gql/graphql'
-import { tr } from 'date-fns/locale'
 import { toast } from 'sonner'
 import i18n from '@/lib/i18n'
 import { useErrorHandler } from '@/hooks/use-error-handler'
 
 // GraphQL queries and mutations
+const SYSTEM_VERSION_QUERY = `
+  query SystemVersion {
+    systemVersion {
+      version
+      commit
+      buildTime
+      goVersion
+      platform
+      uptime
+    }
+  }
+`
+
+export const CHECK_FOR_UPDATE_QUERY = `
+  query CheckForUpdate {
+    checkForUpdate {
+      currentVersion
+      latestVersion
+      hasUpdate
+      releaseUrl
+    }
+  }
+`
+
 const BRAND_SETTINGS_QUERY = `
   query BrandSettings {
     brandSettings {
@@ -150,6 +173,22 @@ export interface OnboardingInfo {
 
 export interface CompleteOnboardingInput {
   dummy?: string
+}
+
+export interface SystemVersion {
+  version: string
+  commit: string
+  buildTime: string
+  goVersion: string
+  platform: string
+  uptime: string
+}
+
+export interface VersionCheck {
+  currentVersion: string
+  latestVersion: string
+  hasUpdate: boolean
+  releaseUrl: string
 }
 
 // Hooks
@@ -325,5 +364,27 @@ export function useCompleteOnboarding() {
     onError: () => {
       toast.error(i18n.t('common.errors.onboardingFailed'))
     },
+  })
+}
+
+export function useSystemVersion() {
+  return useQuery({
+    queryKey: ['systemVersion'],
+    queryFn: async () => {
+      const data = await graphqlRequest<{ systemVersion: SystemVersion }>(SYSTEM_VERSION_QUERY)
+      return data.systemVersion
+    },
+  })
+}
+
+export function useCheckForUpdate() {
+  return useQuery({
+    queryKey: ['checkForUpdate'],
+    queryFn: async () => {
+      const data = await graphqlRequest<{ checkForUpdate: VersionCheck }>(CHECK_FOR_UPDATE_QUERY)
+      return data.checkForUpdate
+    },
+    retry: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   })
 }

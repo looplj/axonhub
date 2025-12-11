@@ -1,15 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { BrandSettings } from './brand-settings'
 import { RetrySettings } from './retry-settings'
 import { StorageSettings } from './storage-settings'
+import { AboutSettings } from './about-settings'
 
-type SystemTabKey = 'brand' | 'storage' | 'retry'
+type SystemTabKey = 'brand' | 'storage' | 'retry' | 'about'
 
 interface SystemSettingsTabsProps {
   initialTab?: SystemTabKey
@@ -17,7 +16,6 @@ interface SystemSettingsTabsProps {
 
 export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<SystemTabKey>('brand')
 
   useEffect(() => {
@@ -28,7 +26,7 @@ export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
 
   return (
     <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as SystemTabKey)} className='w-full'>
-      <TabsList className='grid w-full grid-cols-3'>
+      <TabsList className='grid w-full grid-cols-4'>
         <TabsTrigger value='brand' data-value='brand'>
           {t('system.tabs.brand')}
         </TabsTrigger>
@@ -37,6 +35,9 @@ export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
         </TabsTrigger>
         <TabsTrigger value='storage' data-value='storage'>
           {t('system.tabs.storage')}
+        </TabsTrigger>
+        <TabsTrigger value='about' data-value='about'>
+          {t('system.tabs.about')}
         </TabsTrigger>
       </TabsList>
       <TabsContent value='brand' className='mt-6'>
@@ -47,6 +48,9 @@ export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
       </TabsContent>
       <TabsContent value='retry' className='mt-6'>
         <RetrySettings />
+      </TabsContent>
+      <TabsContent value='about' className='mt-6'>
+        <AboutSettings />
       </TabsContent>
     </Tabs>
   )

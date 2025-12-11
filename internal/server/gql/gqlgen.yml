@@ -234,3 +234,6 @@ models:
   HeaderEntryInput:
     model:
       - github.com/looplj/axonhub/internal/objects.HeaderEntry
+  SystemVersion:
+    model:
+      - github.com/looplj/axonhub/internal/build.Info
