@@ -181,33 +181,32 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 
 	result, err := pipe.Process(ctx, request)
 	if err != nil {
-		// Update request status to failed when all retries are exhausted
-		if outbound != nil {
-			persistCtx, cancel := xcontext.DetachWithTimeout(ctx, time.Second*10)
-			defer cancel()
+		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, time.Second*10)
+		defer cancel()
 
-			// Update the last request execution status based on error if it exists
-			// This ensures that when retry fails completely, the last execution is properly marked
-			if requestExec := outbound.GetRequestExecution(); requestExec != nil {
-				if updateErr := processor.RequestService.UpdateRequestExecutionStatusFromError(
-					persistCtx,
-					requestExec.ID,
-					err,
-				); updateErr != nil {
-					log.Warn(persistCtx, "Failed to update request execution status from error", log.Cause(updateErr))
-				}
+		// Update the last request execution status based on error if it exists
+		// This ensures that when retry fails completely, the last execution is properly marked
+		if requestExec := outbound.GetRequestExecution(); requestExec != nil {
+			if updateErr := processor.RequestService.UpdateRequestExecutionStatusFromError(
+				persistCtx,
+				requestExec.ID,
+				err,
+			); updateErr != nil {
+				log.Warn(persistCtx, "Failed to update request execution status from error", log.Cause(updateErr))
 			}
+		}
 
-			// Update the main request status based on error
-			if request := outbound.GetRequest(); request != nil {
-				if updateErr := processor.RequestService.UpdateRequestStatusFromError(
-					persistCtx,
-					request.ID,
-					err,
-				); updateErr != nil {
-					log.Warn(persistCtx, "Failed to update request status from error", log.Cause(updateErr))
-				}
+		// Update the main request status based on error
+		if request := outbound.GetRequest(); request != nil {
+			if updateErr := processor.RequestService.UpdateRequestStatusFromError(
+				persistCtx,
+				request.ID,
+				err,
+			); updateErr != nil {
+				log.Warn(persistCtx, "Failed to update request status from error", log.Cause(updateErr))
 			}
+		} else {
+			log.Warn(persistCtx, "Request is nil, cannot update request status from error")
 		}
 
 		return ChatCompletionResult{}, err

@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/internal/llm/transformer/doubao"
 	"github.com/looplj/axonhub/internal/llm/transformer/gemini"
 	geminioai "github.com/looplj/axonhub/internal/llm/transformer/gemini/openai"
+	"github.com/looplj/axonhub/internal/llm/transformer/longcat"
 	"github.com/looplj/axonhub/internal/llm/transformer/modelscope"
 	"github.com/looplj/axonhub/internal/llm/transformer/openai"
 	"github.com/looplj/axonhub/internal/llm/transformer/openai/responses"
@@ -414,8 +415,15 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		}
 
 		return buildChannelWithTransformer(c, transformer, httpClient), nil
+	case channel.TypeLongcat:
+		transformer, err := longcat.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		return buildChannelWithTransformer(c, transformer, httpClient), nil
 	case channel.TypeOpenai,
-		channel.TypeDeepseek, channel.TypeMoonshot, channel.TypeLongcat, channel.TypeMinimax,
+		channel.TypeDeepseek, channel.TypeMoonshot, channel.TypeMinimax,
 		channel.TypePpio, channel.TypeSiliconflow,
 		channel.TypeVercel, channel.TypeAihubmix, channel.TypeBurncloud, channel.TypeBailian:
 		transformer, err := openai.NewOutboundTransformerWithConfig(&openai.Config{

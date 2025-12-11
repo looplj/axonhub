@@ -11,6 +11,11 @@ func IsNotFoundErr(err error) bool {
 	return errors.As(err, &e) && e.StatusCode == http.StatusNotFound
 }
 
+func IsRateLimitErr(err error) bool {
+	var e *Error
+	return errors.As(err, &e) && e.StatusCode == http.StatusTooManyRequests
+}
+
 type Error struct {
 	Method     string `json:"method"`
 	URL        string `json:"url"`
