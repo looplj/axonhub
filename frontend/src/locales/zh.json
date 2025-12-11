@@ -1259,7 +1259,8 @@
     "tabs": {
       "brand": "品牌",
       "storage": "存储",
-      "retry": "重试"
+      "retry": "重试",
+      "about": "关于"
     },
     "storage": {
       "dataStorage": {
@@ -1427,6 +1428,31 @@
     "buttons": {
       "save": "保存设置",
       "saving": "保存中..."
+    },
+    "about": {
+      "title": "关于 AxonHub",
+      "description": "系统版本信息和更新状态",
+      "version": "版本",
+      "commit": "提交",
+      "buildTime": "构建时间",
+      "goVersion": "Go 版本",
+      "platform": "平台",
+      "uptime": "运行时间",
+      "updateCheck": {
+        "title": "检查更新",
+        "description": "检查是否有新版本可用",
+        "button": "立即检查",
+        "newVersionAvailable": "发现新版本！",
+        "currentVersion": "当前版本",
+        "latestVersion": "最新版本",
+        "viewRelease": "查看发布说明",
+        "upToDate": "您正在运行最新版本"
+      },
+      "links": {
+        "title": "链接",
+        "releases": "版本发布",
+        "issues": "报告问题"
+      }
     }
   },
   "requests": {

@@ -1230,7 +1230,8 @@
     "tabs": {
       "brand": "Brand",
       "storage": "Storage",
-      "retry": "Retry"
+      "retry": "Retry",
+      "about": "About"
     },
     "storage": {
       "dataStorage": {
@@ -1398,6 +1399,31 @@
     "buttons": {
       "save": "Save Settings",
       "saving": "Saving..."
+    },
+    "about": {
+      "title": "About AxonHub",
+      "description": "System version information and update status",
+      "version": "Version",
+      "commit": "Commit",
+      "buildTime": "Build Time",
+      "goVersion": "Go Version",
+      "platform": "Platform",
+      "uptime": "Uptime",
+      "updateCheck": {
+        "title": "Check for Updates",
+        "description": "Check if a newer version is available",
+        "button": "Check Now",
+        "newVersionAvailable": "A new version is available!",
+        "currentVersion": "Current",
+        "latestVersion": "Latest",
+        "viewRelease": "View Release Notes",
+        "upToDate": "You are running the latest version"
+      },
+      "links": {
+        "title": "Links",
+        "releases": "Releases",
+        "issues": "Report Issue"
+      }
     }
   },
   "requests": {

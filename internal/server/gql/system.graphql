@@ -90,6 +90,22 @@ extend type Mutation {
   completeOnboarding(input: CompleteOnboardingInput!): Boolean!
 }
 
+type SystemVersion {
+  version: String!
+  commit: String!
+  buildTime: String!
+  goVersion: String!
+  platform: String!
+  uptime: String!
+}
+
+type VersionCheck {
+  currentVersion: String!
+  latestVersion: String!
+  hasUpdate: Boolean!
+  releaseUrl: String!
+}
+
 extend type Query {
   systemStatus: SystemStatus!
   brandSettings: BrandSettings!
@@ -97,4 +113,6 @@ extend type Query {
   retryPolicy: RetryPolicy!
   defaultDataStorageID: ID
   onboardingInfo: OnboardingInfo
+  systemVersion: SystemVersion!
+  checkForUpdate: VersionCheck!
 }
