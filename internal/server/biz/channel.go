@@ -439,6 +439,17 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	}
 
 	if input.Settings != nil {
+		// Always normalize and validate override parameters
+		input.Settings.OverrideParameters = NormalizeOverrideParameters(input.Settings.OverrideParameters)
+		if err := ValidateOverrideParameters(input.Settings.OverrideParameters); err != nil {
+			return nil, fmt.Errorf("invalid override parameters: %w", err)
+		}
+		// Validate override headers
+		if len(input.Settings.OverrideHeaders) > 0 {
+			if err := ValidateOverrideHeaders(input.Settings.OverrideHeaders); err != nil {
+				return nil, fmt.Errorf("invalid override headers: %w", err)
+			}
+		}
 		mut.SetSettings(input.Settings)
 	}
 

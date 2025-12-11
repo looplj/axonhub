@@ -1,6 +1,6 @@
 import { Cross2Icon } from '@radix-ui/react-icons'
 import { Table } from '@tanstack/react-table'
-import { IconArchive, IconBan, IconCheck, IconTrash } from '@tabler/icons-react'
+import { IconArchive, IconBan, IconCheck, IconTrash, IconTemplate } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -123,6 +123,15 @@ export function DataTableToolbar<TData>({
         )}
         {hasSelectedRows && (
           <>
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={() => setOpen('bulkApplyTemplate')}
+              className='h-8 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white'
+            >
+              <IconTemplate className='mr-2 h-4 w-4' />
+              {t('channels.templates.bulk.applyButton')} ({selectedCount})
+            </Button>
             <Button
               variant='outline'
               size='sm'
