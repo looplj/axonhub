@@ -11,7 +11,7 @@ import (
 )
 
 // withConnectionTracking creates a middleware that tracks active connections per channel.
-func withConnectionTracking(outbound *PersistentOutboundTransformer, tracker *DefaultConnectionTracker) pipeline.Middleware {
+func withConnectionTracking(outbound *PersistentOutboundTransformer, tracker ConnectionTracker) pipeline.Middleware {
 	if tracker == nil {
 		// If no tracker provided, return a no-op middleware
 		return &noopConnectionTracking{}
@@ -28,7 +28,7 @@ type connectionTracking struct {
 	pipeline.DummyMiddleware
 
 	outbound *PersistentOutboundTransformer
-	tracker  *DefaultConnectionTracker
+	tracker  ConnectionTracker
 }
 
 func (m *connectionTracking) Name() string {
@@ -95,7 +95,7 @@ func (m *connectionTracking) decrementConnection(ctx context.Context) {
 type connectionTrackingStream struct {
 	ctx      context.Context
 	stream   streams.Stream[*llm.Response]
-	tracker  *DefaultConnectionTracker
+	tracker  ConnectionTracker
 	outbound *PersistentOutboundTransformer
 	closed   bool
 }

@@ -247,9 +247,7 @@ func TestModelMapper_Cache(t *testing.T) {
 	assert.Equal(t, 0, mapper.CacheSize())
 }
 
-func TestModelMapper_GetActiveProfile(t *testing.T) {
-	mapper := NewModelMapper()
-
+func TestGetActiveProfile(t *testing.T) {
 	tests := []struct {
 		name     string
 		apiKey   *ent.APIKey
@@ -305,15 +303,13 @@ func TestModelMapper_GetActiveProfile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := mapper.GetActiveProfile(tt.apiKey)
+			result := GetActiveProfile(tt.apiKey)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
 
-func TestModelMapper_HasActiveProfile(t *testing.T) {
-	mapper := NewModelMapper()
-
+func TestHasActiveProfile(t *testing.T) {
 	tests := []struct {
 		name     string
 		apiKey   *ent.APIKey
@@ -369,7 +365,7 @@ func TestModelMapper_HasActiveProfile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := mapper.HasActiveProfile(tt.apiKey)
+			result := HasActiveProfile(tt.apiKey)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

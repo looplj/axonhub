@@ -242,7 +242,17 @@ func selectChannels(inbound *PersistentInboundTransformer) pipeline.Middleware {
 			return llmRequest, nil
 		}
 
-		channels, err := inbound.state.ChannelSelector.Select(ctx, llmRequest)
+		selector := inbound.state.ChannelSelector
+
+		if profile := GetActiveProfile(inbound.state.APIKey); profile != nil && len(profile.ChannelIDs) > 0 {
+			selector = NewSelectedChannelsSelector(selector, profile.ChannelIDs)
+		}
+
+		if inbound.state.LoadBalancer != nil {
+			selector = NewLoadBalancedSelector(selector, inbound.state.LoadBalancer)
+		}
+
+		channels, err := selector.Select(ctx, llmRequest)
 		if err != nil {
 			return nil, err
 		}

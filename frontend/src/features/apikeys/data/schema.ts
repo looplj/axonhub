@@ -27,6 +27,7 @@ export const apiKeySchema = z.object({
               to: z.string(),
             })
           ),
+          channelIDs: z.array(z.number()).optional().nullable(),
         })
       ).nullable(),
     })
@@ -92,6 +93,7 @@ export type ModelMapping = z.infer<typeof modelMappingSchema>
 export const apiKeyProfileSchema = z.object({
   name: z.string(),
   modelMappings: z.array(modelMappingSchema),
+  channelIDs: z.array(z.number()).optional().nullable(),
 })
 export type ApiKeyProfile = z.infer<typeof apiKeyProfileSchema>
 
@@ -111,6 +113,7 @@ export const updateApiKeyProfilesInputSchemaFactory = (t: (key: string) => strin
       from: z.string().min(1, t('apikeys.validation.sourceModelRequired')),
       to: z.string().min(1, t('apikeys.validation.targetModelRequired')),
     })),
+    channelIDs: z.array(z.number()).optional().nullable(),
   })).min(1, t('apikeys.validation.atLeastOneProfile')),
 }).refine(
   (data) => data.profiles.some(profile => profile.name === data.activeProfile),
@@ -138,6 +141,7 @@ export const updateApiKeyProfilesInputSchema = z.object({
       from: z.string().min(1, 'Source model is required'),
       to: z.string().min(1, 'Target model is required'),
     })),
+    channelIDs: z.array(z.number()).optional().nullable(),
   })),
 })
 export type UpdateApiKeyProfilesInput = z.infer<typeof updateApiKeyProfilesInputSchema>

@@ -429,7 +429,10 @@
       "searchModels": "搜索模型",
       "selectActiveProfile": "选择生效配置",
       "noModelsFound": "未找到模型",
-      "regexSupported": "支持正则表达式"
+      "regexSupported": "支持正则表达式",
+      "allowedChannels": "允许的渠道",
+      "allowedChannelsDescription": "选择此配置可以使用的渠道。如果未选择任何渠道，则允许使用所有渠道。",
+      "noChannelsAvailable": "暂无可用渠道"
     }
   },
   "roles": {

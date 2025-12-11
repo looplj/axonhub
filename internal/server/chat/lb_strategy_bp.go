@@ -231,6 +231,8 @@ type ConnectionAwareStrategy struct {
 type ConnectionTracker interface {
 	GetActiveConnections(channelID int) int
 	GetMaxConnections(channelID int) int
+	IncrementConnection(channelID int)
+	DecrementConnection(channelID int)
 }
 
 // NewConnectionAwareStrategy creates a new connection-aware strategy.

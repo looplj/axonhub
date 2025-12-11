@@ -404,7 +404,10 @@
       "searchModels": "Search Model",
       "selectActiveProfile": "Select active profile",
       "noModelsFound": "No models found",
-      "regexSupported": "Supports regular expressions"
+      "regexSupported": "Supports regular expressions",
+      "allowedChannels": "Allowed Channels",
+      "allowedChannelsDescription": "Select channels that this profile can use. If none selected, all channels are allowed.",
+      "noChannelsAvailable": "No channels available"
     }
   },
   "roles": {

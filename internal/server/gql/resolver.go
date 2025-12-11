@@ -29,7 +29,7 @@ type Resolver struct {
 	threadService        *biz.ThreadService
 	httpClient           *httpclient.HttpClient
 	modelFetcher         *biz.ModelFetcher
-	testChannelProcessor *chat.TestChannelProcessor
+	TestChannelProcessor *chat.TestChannelProcessor
 }
 
 // NewSchema creates a graphql executable schema.
@@ -67,7 +67,7 @@ func NewSchema(
 			threadService:        threadService,
 			httpClient:           httpClient,
 			modelFetcher:         modelFetcher,
-			testChannelProcessor: chat.NewTestChannelProcessor(channelService, requestService, systemService, usageLogService, httpClient),
+			TestChannelProcessor: chat.NewTestChannelProcessor(channelService, requestService, systemService, usageLogService, httpClient),
 		},
 	})
 }

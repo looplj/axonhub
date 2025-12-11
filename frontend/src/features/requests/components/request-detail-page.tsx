@@ -438,9 +438,11 @@ export default function RequestDetailPage() {
                                     {t('requests.dialogs.requestDetail.fields.endTime')}
                                   </span>
                                   <p className='text-muted-foreground font-mono text-sm'>
-                                    {execution.updatedAt
-                                      ? format(new Date(execution.updatedAt), 'yyyy-MM-dd HH:mm:ss', { locale })
-                                      : t('requests.columns.unknown')}
+                                    {execution.status === 'completed' || execution.status === 'failed'
+                                      ? execution.updatedAt
+                                        ? format(new Date(execution.updatedAt), 'yyyy-MM-dd HH:mm:ss', { locale })
+                                        : t('requests.columns.unknown')
+                                      : '-'}
                                   </p>
                                 </div>
                                 <div className='bg-background space-y-2 rounded-lg border p-3'>
@@ -449,7 +451,9 @@ export default function RequestDetailPage() {
                                     {t('requests.columns.latency')}
                                   </span>
                                   <p className='text-muted-foreground font-mono text-sm'>
-                                    {formatLatency(calculateLatency(execution.createdAt, execution.updatedAt))}
+                                    {execution.status === 'completed' || execution.status === 'failed'
+                                      ? formatLatency(calculateLatency(execution.createdAt, execution.updatedAt))
+                                      : '-'}
                                   </p>
                                 </div>
                               </div>

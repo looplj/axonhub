@@ -69,12 +69,6 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
         className='translate-y-[2px]'
       />
     ),
-    meta: {
-      className: cn(
-        'sticky md:table-cell left-0 z-10 rounded-tl',
-        'bg-background transition-colors duration-200 group-hover/row:bg-muted group-data-[state=selected]/row:bg-muted'
-      ),
-    },
     cell: ({ row }) => (
       <Checkbox
         checked={row.getIsSelected()}
@@ -109,11 +103,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       </LongText>
     ),
     meta: {
-      className: cn(
-        'drop-shadow-[0_1px_2px_rgb(0_0_0_/_0.1)] dark:drop-shadow-[0_1px_2px_rgb(255_255_255_/_0.1)] lg:drop-shadow-none',
-        'bg-background transition-colors duration-200 group-hover/row:bg-muted group-data-[state=selected]/row:bg-muted',
-        'sticky left-6 md:table-cell'
-      ),
+      className: 'md:table-cell',
     },
     filterFn: (row, _id, value) => {
       return String(row.getValue('name')).toLowerCase().includes(String(value).toLowerCase())
