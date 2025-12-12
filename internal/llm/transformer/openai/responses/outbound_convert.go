@@ -7,18 +7,32 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/pkg/xmap"
 )
 
 func convertToTextOptions(chatReq *llm.Request) *TextOptions {
-	if chatReq == nil || chatReq.ResponseFormat == nil {
+	if chatReq == nil {
 		return nil
 	}
 
-	return &TextOptions{
-		Format: &TextFormat{
-			Type: chatReq.ResponseFormat.Type,
-		},
+	textVerbosity := xmap.GetStringPtr(chatReq.TransformerMetadata, "text_verbosity")
+
+	// Return nil if neither ResponseFormat nor TextVerbosity is set
+	if chatReq.ResponseFormat == nil && textVerbosity == nil {
+		return nil
 	}
+
+	result := &TextOptions{
+		Verbosity: textVerbosity,
+	}
+
+	if chatReq.ResponseFormat != nil {
+		result.Format = &TextFormat{
+			Type: chatReq.ResponseFormat.Type,
+		}
+	}
+
+	return result
 }
 
 // extractPromptFromMessages tries to extract a concise prompt string from the
@@ -211,6 +225,7 @@ func convertImageGenerationToTool(src llm.Tool) Tool {
 		Type: "image_generation",
 	}
 	if src.ImageGeneration != nil {
+		tool.Model = src.ImageGeneration.Model
 		tool.Background = src.ImageGeneration.Background
 		tool.InputFidelity = src.ImageGeneration.InputFidelity
 		tool.Moderation = src.ImageGeneration.Moderation
@@ -265,13 +280,14 @@ func convertToolChoice(src *llm.ToolChoice) *ToolChoice {
 }
 
 // convertStreamOptions converts llm.StreamOptions to Responses API StreamOptions.
-func convertStreamOptions(src *llm.StreamOptions) *StreamOptions {
+// IncludeObfuscation is read from TransformerMetadata since it's a Responses API specific field.
+func convertStreamOptions(src *llm.StreamOptions, metadata map[string]any) *StreamOptions {
 	if src == nil {
 		return nil
 	}
 
 	return &StreamOptions{
-		IncludeObfuscation: nil, // llm.StreamOptions doesn't have this field
+		IncludeObfuscation: xmap.GetBoolPtr(metadata, "include_obfuscation"),
 	}
 }
 

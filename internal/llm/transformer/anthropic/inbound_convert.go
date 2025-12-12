@@ -23,7 +23,7 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 		Stream:              anthropicReq.Stream,
 		Metadata:            map[string]string{},
 		RawAPIFormat:        llm.APIFormatAnthropicMessage,
-		TransformerMetadata: map[string]string{},
+		TransformerMetadata: map[string]any{},
 	}
 	if anthropicReq.Metadata != nil {
 		chatReq.Metadata["user_id"] = anthropicReq.Metadata.UserID

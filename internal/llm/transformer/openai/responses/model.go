@@ -90,7 +90,8 @@ type Request struct {
 	PreviousResponseID *string `json:"previous_response_id,omitempty"`
 
 	// Reference to a prompt template and its variables.
-	Prompt *Prompt `json:"prompt,omitempty"`
+	// TODO
+	// Prompt *Prompt `json:"prompt,omitempty"`
 
 	// Used by OpenAI to cache responses for similar requests.
 	PromptCacheKey *string `json:"prompt_cache_key,omitempty"`
@@ -111,7 +112,7 @@ type Request struct {
 	Truncation *string `json:"truncation,omitempty"`
 
 	// The conversation that this response belongs to.
-	Conversation *Conversation `json:"conversation,omitempty"`
+	// Conversation *Conversation `json:"conversation,omitempty"`
 
 	// An integer between 0 and 20 specifying the number of most likely tokens to return.
 	TopLogprobs *int64 `json:"top_logprobs,omitempty"`
@@ -257,6 +258,9 @@ type TextOptions struct {
 	// The default format is { "type": "text" } with no additional options.
 	// { "type": "json_object" } is also supported.
 	Format *TextFormat `json:"format,omitempty"`
+
+	// The verbosity of the response. Any of "low", "medium", "high".
+	Verbosity *string `json:"verbosity,omitempty"`
 }
 
 // TextFormat specifies the format that the model must output.
@@ -329,6 +333,17 @@ type Item struct {
 
 	// Text for output_text/input_text type.
 	Text *string `json:"text,omitempty"`
+
+	// Image generation fields
+
+	// Background for image generated, e.g: opaque
+	Background *string `json:"background,omitempty"`
+	// Output format for image generated, e.g: png
+	OutputFormat *string `json:"output_format,omitempty"`
+	// Quality for image generated, e.g: low
+	Quality *string `json:"quality,omitempty"`
+	// Size for image generated, e.g: 1024x1024
+	Size *string `json:"size,omitempty"`
 
 	// Result for image_generation_call type.
 	Result *string `json:"result,omitempty"`

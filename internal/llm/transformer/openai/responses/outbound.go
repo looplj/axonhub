@@ -8,11 +8,11 @@ import (
 	"strings"
 
 	"github.com/samber/lo"
-	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/internal/pkg/xmap"
 )
 
 var _ transformer.Outbound = (*OutboundTransformer)(nil)
@@ -81,7 +81,10 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm
 
 	var tools []Tool
 
-	metadata := map[string]string{}
+	// Initialize TransformerMetadata if nil
+	if chatReq.TransformerMetadata == nil {
+		chatReq.TransformerMetadata = map[string]any{}
+	}
 
 	// Convert tools to Responses API format
 	for _, item := range chatReq.Tools {
@@ -89,7 +92,8 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm
 		case llm.ToolTypeImageGeneration:
 			tool := convertImageGenerationToTool(item)
 			tools = append(tools, tool)
-			metadata["image_output_format"] = tool.OutputFormat
+			// Store image output format in TransformerMetadata
+			chatReq.TransformerMetadata["image_output_format"] = tool.OutputFormat
 		case "function":
 			tool := convertFunctionToTool(item)
 			tools = append(tools, tool)
@@ -100,25 +104,29 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm
 	}
 
 	payload := Request{
-		Model:             chatReq.Model,
-		Input:             convertInputFromMessages(chatReq.Messages),
-		Instructions:      convertInstructionsFromMessages(chatReq.Messages),
-		Tools:             tools,
-		ParallelToolCalls: chatReq.ParallelToolCalls,
-		Stream:            chatReq.Stream,
-		Text:              convertToTextOptions(chatReq),
-		Store:             chatReq.Store,
-		ServiceTier:       chatReq.ServiceTier,
-		SafetyIdentifier:  chatReq.SafetyIdentifier,
-		User:              chatReq.User,
-		Metadata:          chatReq.Metadata,
-		MaxOutputTokens:   chatReq.MaxCompletionTokens,
-		TopLogprobs:       chatReq.TopLogprobs,
-		TopP:              chatReq.TopP,
-		ToolChoice:        convertToolChoice(chatReq.ToolChoice),
-		StreamOptions:     convertStreamOptions(chatReq.StreamOptions),
-		Reasoning:         convertReasoning(chatReq),
-		Include:           chatReq.Include,
+		Model:                chatReq.Model,
+		Input:                convertInputFromMessages(chatReq.Messages),
+		Instructions:         convertInstructionsFromMessages(chatReq.Messages),
+		Tools:                tools,
+		ParallelToolCalls:    chatReq.ParallelToolCalls,
+		Stream:               chatReq.Stream,
+		Text:                 convertToTextOptions(chatReq),
+		Store:                chatReq.Store,
+		ServiceTier:          chatReq.ServiceTier,
+		SafetyIdentifier:     chatReq.SafetyIdentifier,
+		User:                 chatReq.User,
+		Metadata:             chatReq.Metadata,
+		MaxOutputTokens:      chatReq.MaxCompletionTokens,
+		TopLogprobs:          chatReq.TopLogprobs,
+		TopP:                 chatReq.TopP,
+		ToolChoice:           convertToolChoice(chatReq.ToolChoice),
+		StreamOptions:        convertStreamOptions(chatReq.StreamOptions, chatReq.TransformerMetadata),
+		Reasoning:            convertReasoning(chatReq),
+		Include:              xmap.GetStringSlice(chatReq.TransformerMetadata, "include"),
+		MaxToolCalls:         xmap.GetInt64Ptr(chatReq.TransformerMetadata, "max_tool_calls"),
+		PromptCacheKey:       xmap.GetStringPtr(chatReq.TransformerMetadata, "prompt_cache_key"),
+		PromptCacheRetention: xmap.GetStringPtr(chatReq.TransformerMetadata, "prompt_cache_retention"),
+		Truncation:           xmap.GetStringPtr(chatReq.TransformerMetadata, "truncation"),
 	}
 
 	body, err := json.Marshal(payload)
@@ -139,7 +147,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm
 			Type:   "bearer",
 			APIKey: t.APIKey,
 		},
-		Metadata: metadata,
+		TransformerMetadata: chatReq.TransformerMetadata,
 	}, nil
 }
 
@@ -220,8 +228,11 @@ func (t *OutboundTransformer) TransformResponse(
 			}
 		case "image_generation_call":
 			imageOutputFormat := "png"
-			if httpResp.Request != nil && httpResp.Request.Metadata != nil && httpResp.Request.Metadata["image_output_format"] != "" {
-				imageOutputFormat = httpResp.Request.Metadata["image_output_format"]
+
+			if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
+				if fmt, ok := httpResp.Request.TransformerMetadata["image_output_format"].(string); ok && fmt != "" {
+					imageOutputFormat = fmt
+				}
 			}
 			// Image generation result
 			if outputItem.Result != nil && *outputItem.Result != "" {
@@ -229,6 +240,12 @@ func (t *OutboundTransformer) TransformResponse(
 					Type: "image_url",
 					ImageURL: &llm.ImageURL{
 						URL: `data:image/` + imageOutputFormat + `;base64,` + *outputItem.Result,
+					},
+					TransformerMetadata: map[string]any{
+						"background":    outputItem.Background,
+						"output_format": outputItem.OutputFormat,
+						"quality":       outputItem.Quality,
+						"size":          outputItem.Size,
 					},
 				})
 			}
@@ -317,47 +334,4 @@ func (t *OutboundTransformer) TransformResponse(
 	}
 
 	return llmResp, nil
-}
-
-// TransformStream and AggregateStreamChunks are implemented in outbound_stream.go
-
-// TransformStreamChunk maps a Responses API streaming event to a partial llm.Response.
-// We support emitting a full response structure whenever we can extract an image URL.
-func (t *OutboundTransformer) TransformStreamChunk(
-	ctx context.Context,
-	event *httpclient.StreamEvent,
-) (*llm.Response, error) {
-	if event == nil || len(event.Data) == 0 {
-		return nil, fmt.Errorf("empty stream event")
-	}
-
-	// Some streams carry discrete event types; try to extract image urls
-	eType := gjson.GetBytes(event.Data, "type").String()
-	switch eType {
-	case "response.image_generation_call.partial_image",
-		"response.image_generation_call.generating",
-		"response.image_generation_call.completed":
-		// Try to find a data URL under common fields
-		url := gjson.GetBytes(event.Data, "image_url.url").String()
-		if url == "" {
-			url = gjson.GetBytes(event.Data, "result").String()
-		}
-
-		if url != "" {
-			msg := &llm.Message{Role: "assistant"}
-			msg.Content = llm.MessageContent{MultipleContent: []llm.MessageContentPart{
-				{Type: "image_url", ImageURL: &llm.ImageURL{URL: url}},
-			}}
-			// Build minimal response
-			return &llm.Response{Object: "chat.completion", Choices: []llm.Choice{{Index: 0, Delta: msg}}}, nil
-		}
-	}
-
-	// If not an image-related event, attempt to interpret as a full Responses payload
-	// to enable non-streaming path reuse.
-	var dummy httpclient.Response
-
-	dummy.Body = event.Data
-
-	return t.TransformResponse(ctx, &dummy)
 }

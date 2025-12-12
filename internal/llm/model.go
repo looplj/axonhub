@@ -204,12 +204,15 @@ type Request struct {
 
 	// TransformerMetadata stores transformer-specific metadata for preserving format during transformations.
 	// This is a help field and will not be sent to the llm service.
-	TransformerMetadata map[string]string `json:"-"`
-
-	// Include specifies additional output data to include in the model response.
-	// This is a help field and will not be sent to the llm service.
-	// e.g., "file_search_call.results", "message.input_image.image_url", "reasoning.encrypted_content"
-	Include []string `json:"-"`
+	// Keys used:
+	// - "include": []string - additional output data to include in the model response
+	// - "text_verbosity": *string - verbosity of the response text ("low", "medium", "high")
+	// - "max_tool_calls": *int64 - maximum number of total calls to built-in tools
+	// - "prompt_cache_key": *string - string key used by OpenAI to cache responses
+	// - "prompt_cache_retention": *string - retention policy for the prompt cache ("in-memory", "24h")
+	// - "truncation": *string - truncation strategy ("auto", "disabled")
+	// - "include_obfuscation": *bool - whether to enable stream obfuscation (Responses API specific)
+	TransformerMetadata map[string]any `json:"-"`
 }
 
 func (r *Request) ClearHelpFields() {
@@ -219,7 +222,6 @@ func (r *Request) ClearHelpFields() {
 	}
 
 	r.ExtraBody = nil
-	r.Include = nil
 }
 
 func (r *Request) IsImageGenerationRequest() bool {
@@ -368,6 +370,10 @@ type MessageContentPart struct {
 	// CacheControl is used for provider-specific cache control (e.g., Anthropic).
 	// This field is not serialized in JSON.
 	CacheControl *CacheControl `json:"-"`
+
+	// TransformerMetadata stores transformer-specific metadata for preserving format during transformations.
+	// This is a help field and will not be sent to the llm service.
+	TransformerMetadata map[string]any `json:"-"`
 }
 
 // ImageURL represents an image URL with optional detail level.

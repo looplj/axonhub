@@ -212,13 +212,17 @@ func (t *OutboundTransformer) TransformResponse(
 	}
 
 	// If this looks like Responses API, delegate to responses transformer
-	if httpResp.Request != nil && httpResp.Request.Metadata != nil && httpResp.Request.Metadata["outbound_format_type"] == llm.APIFormatOpenAIResponse.String() {
-		return t.rt.TransformResponse(ctx, httpResp)
+	if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
+		if fmt, ok := httpResp.Request.TransformerMetadata["outbound_format_type"].(string); ok && fmt == llm.APIFormatOpenAIResponse.String() {
+			return t.rt.TransformResponse(ctx, httpResp)
+		}
 	}
 
 	// If this looks like Image Generation API, use image generation response transformer
-	if httpResp.Request != nil && httpResp.Request.Metadata != nil && httpResp.Request.Metadata["outbound_format_type"] == llm.APIFormatOpenAIImageGeneration.String() {
-		return transformImageGenerationResponse(httpResp)
+	if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
+		if fmt, ok := httpResp.Request.TransformerMetadata["outbound_format_type"].(string); ok && fmt == llm.APIFormatOpenAIImageGeneration.String() {
+			return transformImageGenerationResponse(httpResp)
+		}
 	}
 
 	var chatResp Response

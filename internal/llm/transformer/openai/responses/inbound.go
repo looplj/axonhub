@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
+	"github.com/looplj/axonhub/internal/pkg/xmap"
 	"github.com/looplj/axonhub/internal/pkg/xurl"
 )
 
@@ -228,7 +229,28 @@ func convertToLLMRequest(req *Request) (*llm.Request, error) {
 		SafetyIdentifier:    req.SafetyIdentifier,
 		ServiceTier:         req.ServiceTier,
 		ParallelToolCalls:   req.ParallelToolCalls,
-		Include:             req.Include,
+		TransformerMetadata: map[string]any{},
+	}
+
+	// Store help fields in TransformerMetadata
+	if len(req.Include) > 0 {
+		chatReq.TransformerMetadata["include"] = req.Include
+	}
+
+	if req.MaxToolCalls != nil {
+		chatReq.TransformerMetadata["max_tool_calls"] = req.MaxToolCalls
+	}
+
+	if req.PromptCacheKey != nil {
+		chatReq.TransformerMetadata["prompt_cache_key"] = req.PromptCacheKey
+	}
+
+	if req.PromptCacheRetention != nil {
+		chatReq.TransformerMetadata["prompt_cache_retention"] = req.PromptCacheRetention
+	}
+
+	if req.Truncation != nil {
+		chatReq.TransformerMetadata["truncation"] = req.Truncation
 	}
 
 	// Convert reasoning
@@ -250,6 +272,9 @@ func convertToLLMRequest(req *Request) (*llm.Request, error) {
 	// Convert stream options
 	if req.StreamOptions != nil {
 		chatReq.StreamOptions = &llm.StreamOptions{}
+		if req.StreamOptions.IncludeObfuscation != nil {
+			chatReq.TransformerMetadata["include_obfuscation"] = req.StreamOptions.IncludeObfuscation
+		}
 	}
 
 	// Convert instructions to system message
@@ -288,6 +313,11 @@ func convertToLLMRequest(req *Request) (*llm.Request, error) {
 		chatReq.ResponseFormat = &llm.ResponseFormat{
 			Type: req.Text.Format.Type,
 		}
+	}
+
+	// Store text verbosity in TransformerMetadata
+	if req.Text != nil && req.Text.Verbosity != nil {
+		chatReq.TransformerMetadata["text_verbosity"] = req.Text.Verbosity
 	}
 
 	return chatReq, nil
@@ -682,13 +712,18 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 				case "image_url":
 					// Handle image output
 					if part.ImageURL != nil {
-						resp.Output = append(resp.Output, Item{
-							ID:     generateItemID(),
-							Type:   "image_generation_call",
-							Role:   "assistant",
-							Result: lo.ToPtr(extractBase64FromDataURL(part.ImageURL.URL)),
-							Status: lo.ToPtr("completed"),
-						})
+						imageItem := Item{
+							ID:           generateItemID(),
+							Type:         "image_generation_call",
+							Role:         "assistant",
+							Result:       lo.ToPtr(extractBase64FromDataURL(part.ImageURL.URL)),
+							Status:       lo.ToPtr("completed"),
+							Background:   xmap.GetStringPtr(part.TransformerMetadata, "background"),
+							OutputFormat: xmap.GetStringPtr(part.TransformerMetadata, "output_format"),
+							Quality:      xmap.GetStringPtr(part.TransformerMetadata, "quality"),
+							Size:         xmap.GetStringPtr(part.TransformerMetadata, "size"),
+						}
+						resp.Output = append(resp.Output, imageItem)
 					}
 				}
 			}

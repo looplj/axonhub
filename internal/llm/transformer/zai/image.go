@@ -33,13 +33,13 @@ func (t *OutboundTransformer) buildImageGenerationAPIRequest(chatReq *llm.Reques
 		return nil, err
 	}
 
-	if rawReq.Metadata == nil {
-		rawReq.Metadata = map[string]string{}
+	if rawReq.TransformerMetadata == nil {
+		rawReq.TransformerMetadata = map[string]any{}
 	}
 
-	rawReq.Metadata["outbound_format_type"] = string(llm.APIFormatOpenAIImageGeneration)
-	// Save model to metadata for response transformation
-	rawReq.Metadata["model"] = chatReq.Model
+	rawReq.TransformerMetadata["outbound_format_type"] = string(llm.APIFormatOpenAIImageGeneration)
+	// Save model to TransformerMetadata for response transformation
+	rawReq.TransformerMetadata["model"] = chatReq.Model
 
 	return rawReq, nil
 }

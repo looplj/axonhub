@@ -200,6 +200,236 @@ func TestConvertToolMessage(t *testing.T) {
 	}
 }
 
+func TestConvertStreamOptions(t *testing.T) {
+	tests := []struct {
+		name     string
+		src      *llm.StreamOptions
+		metadata map[string]any
+		expected *StreamOptions
+	}{
+		{
+			name:     "nil stream options",
+			src:      nil,
+			metadata: nil,
+			expected: nil,
+		},
+		{
+			name: "include obfuscation false",
+			src: &llm.StreamOptions{
+				IncludeUsage: true,
+			},
+			metadata: map[string]any{
+				"include_obfuscation": lo.ToPtr(false),
+			},
+			expected: &StreamOptions{
+				IncludeObfuscation: lo.ToPtr(false),
+			},
+		},
+		{
+			name: "include obfuscation true",
+			src: &llm.StreamOptions{
+				IncludeUsage: false,
+			},
+			metadata: map[string]any{
+				"include_obfuscation": lo.ToPtr(true),
+			},
+			expected: &StreamOptions{
+				IncludeObfuscation: lo.ToPtr(true),
+			},
+		},
+		{
+			name: "no include obfuscation in metadata",
+			src: &llm.StreamOptions{
+				IncludeUsage: true,
+			},
+			metadata: map[string]any{},
+			expected: &StreamOptions{
+				IncludeObfuscation: nil,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := convertStreamOptions(tt.src, tt.metadata)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestConvertToTextOptions(t *testing.T) {
+	tests := []struct {
+		name     string
+		req      *llm.Request
+		expected *TextOptions
+	}{
+		{
+			name:     "nil request",
+			req:      nil,
+			expected: nil,
+		},
+		{
+			name:     "empty request",
+			req:      &llm.Request{},
+			expected: nil,
+		},
+		{
+			name: "only response format",
+			req: &llm.Request{
+				ResponseFormat: &llm.ResponseFormat{
+					Type: "json_object",
+				},
+			},
+			expected: &TextOptions{
+				Format: &TextFormat{
+					Type: "json_object",
+				},
+			},
+		},
+		{
+			name: "only text verbosity",
+			req: &llm.Request{
+				TransformerMetadata: map[string]any{
+					"text_verbosity": lo.ToPtr("high"),
+				},
+			},
+			expected: &TextOptions{
+				Verbosity: lo.ToPtr("high"),
+			},
+		},
+		{
+			name: "both response format and text verbosity",
+			req: &llm.Request{
+				ResponseFormat: &llm.ResponseFormat{
+					Type: "text",
+				},
+				TransformerMetadata: map[string]any{
+					"text_verbosity": lo.ToPtr("low"),
+				},
+			},
+			expected: &TextOptions{
+				Format: &TextFormat{
+					Type: "text",
+				},
+				Verbosity: lo.ToPtr("low"),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := convertToTextOptions(tt.req)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestConvertToLLMRequest_TransformerMetadata(t *testing.T) {
+	tests := []struct {
+		name     string
+		req      *Request
+		validate func(t *testing.T, chatReq *llm.Request)
+	}{
+		{
+			name: "converts MaxToolCalls to TransformerMetadata",
+			req: &Request{
+				Model:        "gpt-4o",
+				MaxToolCalls: lo.ToPtr(int64(10)),
+			},
+			validate: func(t *testing.T, chatReq *llm.Request) {
+				require.NotNil(t, chatReq.TransformerMetadata)
+				v, ok := chatReq.TransformerMetadata["max_tool_calls"]
+				require.True(t, ok)
+				require.Equal(t, int64(10), *v.(*int64))
+			},
+		},
+		{
+			name: "converts PromptCacheKey to TransformerMetadata",
+			req: &Request{
+				Model:          "gpt-4o",
+				PromptCacheKey: lo.ToPtr("cache-key-123"),
+			},
+			validate: func(t *testing.T, chatReq *llm.Request) {
+				require.NotNil(t, chatReq.TransformerMetadata)
+				v, ok := chatReq.TransformerMetadata["prompt_cache_key"]
+				require.True(t, ok)
+				require.Equal(t, "cache-key-123", *v.(*string))
+			},
+		},
+		{
+			name: "converts PromptCacheRetention to TransformerMetadata",
+			req: &Request{
+				Model:                "gpt-4o",
+				PromptCacheRetention: lo.ToPtr("24h"),
+			},
+			validate: func(t *testing.T, chatReq *llm.Request) {
+				require.NotNil(t, chatReq.TransformerMetadata)
+				v, ok := chatReq.TransformerMetadata["prompt_cache_retention"]
+				require.True(t, ok)
+				require.Equal(t, "24h", *v.(*string))
+			},
+		},
+		{
+			name: "converts Truncation to TransformerMetadata",
+			req: &Request{
+				Model:      "gpt-4o",
+				Truncation: lo.ToPtr("auto"),
+			},
+			validate: func(t *testing.T, chatReq *llm.Request) {
+				require.NotNil(t, chatReq.TransformerMetadata)
+				v, ok := chatReq.TransformerMetadata["truncation"]
+				require.True(t, ok)
+				require.Equal(t, "auto", *v.(*string))
+			},
+		},
+		{
+			name: "converts TextVerbosity to TransformerMetadata",
+			req: &Request{
+				Model: "gpt-4o",
+				Text: &TextOptions{
+					Verbosity: lo.ToPtr("high"),
+				},
+			},
+			validate: func(t *testing.T, chatReq *llm.Request) {
+				require.NotNil(t, chatReq.TransformerMetadata)
+				v, ok := chatReq.TransformerMetadata["text_verbosity"]
+				require.True(t, ok)
+				require.Equal(t, "high", *v.(*string))
+			},
+		},
+		{
+			name: "converts Include to TransformerMetadata",
+			req: &Request{
+				Model:   "gpt-4o",
+				Include: []string{"file_search_call.results", "reasoning.encrypted_content"},
+			},
+			validate: func(t *testing.T, chatReq *llm.Request) {
+				require.NotNil(t, chatReq.TransformerMetadata)
+				v, ok := chatReq.TransformerMetadata["include"]
+				require.True(t, ok)
+				require.Equal(t, []string{"file_search_call.results", "reasoning.encrypted_content"}, v.([]string))
+			},
+		},
+		{
+			name: "initializes TransformerMetadata",
+			req: &Request{
+				Model: "gpt-4o",
+			},
+			validate: func(t *testing.T, chatReq *llm.Request) {
+				require.NotNil(t, chatReq.TransformerMetadata)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := convertToLLMRequest(tt.req)
+			require.NoError(t, err)
+			tt.validate(t, result)
+		})
+	}
+}
+
 func TestConvertReasoning(t *testing.T) {
 	tests := []struct {
 		name     string

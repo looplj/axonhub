@@ -63,7 +63,7 @@ type StreamEvent struct {
 	Response *Response `json:"response,omitempty"`
 
 	// For output_item.* events
-	OutputIndex int   `json:"output_index,omitempty"`
+	OutputIndex int   `json:"output_index"`
 	Item        *Item `json:"item,omitempty"`
 
 	// For content_part.*, output_text.*, function_call_arguments.* events

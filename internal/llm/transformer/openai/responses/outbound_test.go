@@ -9,7 +9,6 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
-	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
@@ -484,8 +483,10 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 		{
 			name: "request with include field",
 			chatReq: &llm.Request{
-				Model:   "gpt-4o",
-				Include: []string{"file_search_call.results", "reasoning.encrypted_content"},
+				Model: "gpt-4o",
+				TransformerMetadata: map[string]any{
+					"include": []string{"file_search_call.results", "reasoning.encrypted_content"},
+				},
 				Messages: []llm.Message{
 					{
 						Role: "user",
@@ -663,117 +664,6 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 	}
 }
 
-func TestOutboundTransformer_TransformStreamChunk(t *testing.T) {
-	transformer, _ := NewOutboundTransformer("https://api.openai.com", "test-api-key")
-
-	tests := []struct {
-		name        string
-		event       *httpclient.StreamEvent
-		expectError bool
-		validate    func(t *testing.T, result *llm.Response)
-	}{
-		{
-			name:        "nil event",
-			event:       nil,
-			expectError: true,
-		},
-		{
-			name: "empty event data",
-			event: &httpclient.StreamEvent{
-				Data: []byte{},
-			},
-			expectError: true,
-		},
-		{
-			name: "image generation partial event",
-			event: &httpclient.StreamEvent{
-				Data: []byte(`{
-					"type": "response.image_generation_call.partial_image",
-					"image_url": {
-						"url": "data:image/png;base64,partial_image_data"
-					}
-				}`),
-			},
-			expectError: false,
-			validate: func(t *testing.T, result *llm.Response) {
-				require.Equal(t, "chat.completion", result.Object)
-				require.Len(t, result.Choices, 1)
-				require.Equal(t, "assistant", result.Choices[0].Delta.Role)
-				require.Len(t, result.Choices[0].Delta.Content.MultipleContent, 1)
-				require.Equal(t, "image_url", result.Choices[0].Delta.Content.MultipleContent[0].Type)
-				require.Equal(t, "data:image/png;base64,partial_image_data", result.Choices[0].Delta.Content.MultipleContent[0].ImageURL.URL)
-			},
-		},
-		{
-			name: "image generation completed event",
-			event: &httpclient.StreamEvent{
-				Data: []byte(`{
-					"type": "response.image_generation_call.completed",
-					"result": "data:image/png;base64,completed_image_data"
-				}`),
-			},
-			expectError: false,
-			validate: func(t *testing.T, result *llm.Response) {
-				require.Equal(t, "chat.completion", result.Object)
-				require.Len(t, result.Choices, 1)
-				require.Equal(t, "assistant", result.Choices[0].Delta.Role)
-				require.Len(t, result.Choices[0].Delta.Content.MultipleContent, 1)
-				require.Equal(t, "image_url", result.Choices[0].Delta.Content.MultipleContent[0].Type)
-				require.Equal(t, "data:image/png;base64,completed_image_data", result.Choices[0].Delta.Content.MultipleContent[0].ImageURL.URL)
-			},
-		},
-		{
-			name: "non-image event falls back to TransformResponse",
-			event: &httpclient.StreamEvent{
-				Data: []byte(`{
-					"id": "resp_789",
-					"object": "response",
-					"created_at": 1759161016,
-					"status": "completed",
-					"model": "gpt-4o",
-					"output": [
-						{
-							"id": "msg_789",
-							"type": "message",
-							"status": "completed",
-							"content": [
-								{
-									"type": "output_text",
-									"text": "Streaming response"
-								}
-							],
-							"role": "assistant"
-						}
-					]
-				}`),
-			},
-			expectError: false,
-			validate: func(t *testing.T, result *llm.Response) {
-				require.Equal(t, "chat.completion", result.Object)
-				require.Equal(t, "resp_789", result.ID)
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := transformer.TransformStreamChunk(context.Background(), tt.event)
-
-			if tt.expectError {
-				require.Error(t, err)
-				require.Nil(t, result)
-			} else {
-				require.NoError(t, err)
-				require.NotNil(t, result)
-
-				if tt.validate != nil {
-					tt.validate(t, result)
-				}
-			}
-		})
-	}
-}
-
 func TestOutboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -912,75 +802,6 @@ func TestOutboundTransformer_TransformResponse_WithTestData(t *testing.T) {
 
 			// Run validation
 			tt.validate(t, result)
-		})
-	}
-}
-
-func TestOutboundTransformer_TransformStreamChunk_WithTestData(t *testing.T) {
-	transformer, _ := NewOutboundTransformer("https://api.openai.com", "test-api-key")
-
-	tests := []struct {
-		name       string
-		streamFile string
-		validate   func(t *testing.T, events []*httpclient.StreamEvent, results []*llm.Response)
-	}{
-		{
-			name:       "stop response stream transformation",
-			streamFile: "stop.response.stream.jsonl",
-			validate: func(t *testing.T, events []*httpclient.StreamEvent, results []*llm.Response) {
-				require.Greater(t, len(events), 0, "Should have stream events")
-				require.Greater(t, len(results), 0, "Should have transformed results")
-
-				// Check that we have various event types
-				var hasTextDelta, hasResponseCompleted bool
-
-				for _, event := range events {
-					eventType := gjson.GetBytes(event.Data, "type").String()
-					switch eventType {
-					case "response.output_text.delta":
-						hasTextDelta = true
-					case "response.completed":
-						hasResponseCompleted = true
-					}
-				}
-
-				require.True(t, hasTextDelta, "Should have text delta events")
-				require.True(t, hasResponseCompleted, "Should have response completed event")
-
-				// Check final result structure
-				finalResult := results[len(results)-1]
-				if finalResult != nil {
-					require.Equal(t, "chat.completion", finalResult.Object)
-
-					if len(finalResult.Choices) > 0 {
-						require.Equal(t, "assistant", finalResult.Choices[0].Message.Role)
-					}
-				}
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Load stream events
-			events, err := xtest.LoadStreamChunks(t, tt.streamFile)
-			if err != nil {
-				t.Skipf("Test data file %s not found, skipping test: %v", tt.streamFile, err)
-				return
-			}
-
-			// Transform each event
-			var results []*llm.Response
-
-			for _, event := range events {
-				result, err := transformer.TransformStreamChunk(context.Background(), event)
-				if err == nil && result != nil {
-					results = append(results, result)
-				}
-			}
-
-			// Run validation
-			tt.validate(t, events, results)
 		})
 	}
 }
