@@ -54,6 +54,99 @@ responseText := completion.Choices[0].Message.Content
 fmt.Println(responseText)
 ```
 
+### OpenAI Responses API
+
+AxonHub 提供对 OpenAI Responses API 的部分支持。该 API 为单轮交互提供了简化的接口。
+
+**端点：**
+- `POST /v1/responses` - 生成响应
+
+**限制：**
+- ❌ **不支持** `previous_response_id` - 对话历史需要在客户端管理
+- ✅ 基本响应生成完全可用
+- ✅ 支持流式响应
+
+**示例请求：**
+```go
+import (
+    "context"
+    "fmt"
+
+    "github.com/openai/openai-go/v3"
+    "github.com/openai/openai-go/v3/option"
+    "github.com/openai/openai-go/v3/responses"
+    "github.com/openai/openai-go/v3/shared"
+)
+
+// 使用 AxonHub 配置创建 OpenAI 客户端
+client := openai.NewClient(
+    option.WithAPIKey("your-axonhub-api-key"),
+    option.WithBaseURL("http://localhost:8090/v1"),
+)
+
+ctx := context.Background()
+
+// 生成响应（不支持 previous_response_id）
+params := responses.ResponseNewParams{
+    Model: shared.ResponsesModel("gpt-4o"),
+    Input: responses.ResponseNewParamsInputUnion{
+        OfString: openai.String("你好，最近怎么样？"),
+    },
+}
+
+response, err := client.Responses.New(ctx, params)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println(response.OutputText())
+```
+
+**示例：流式响应**
+```go
+import (
+    "context"
+    "fmt"
+    "strings"
+
+    "github.com/openai/openai-go/v3"
+    "github.com/openai/openai-go/v3/option"
+    "github.com/openai/openai-go/v3/responses"
+    "github.com/openai/openai-go/v3/shared"
+)
+
+client := openai.NewClient(
+    option.WithAPIKey("your-axonhub-api-key"),
+    option.WithBaseURL("http://localhost:8090/v1"),
+)
+
+ctx := context.Background()
+
+params := responses.ResponseNewParams{
+    Model: shared.ResponsesModel("gpt-4o"),
+    Input: responses.ResponseNewParamsInputUnion{
+        OfString: openai.String("给我讲一个关于机器人的短故事。"),
+    },
+}
+
+stream := client.Responses.NewStreaming(ctx, params)
+
+var fullContent strings.Builder
+for stream.Next() {
+    event := stream.Current()
+    if event.Type == "response.output_text.delta" && event.Delta != "" {
+        fullContent.WriteString(event.Delta)
+        fmt.Print(event.Delta) // 边传输边打印
+    }
+}
+
+if err := stream.Err(); err != nil {
+    panic(err)
+}
+
+fmt.Println("\n完整响应:", fullContent.String())
+```
+
 ### Anthropic Messages API
 
 AxonHub 还支持原生 Anthropic Messages API，适用于偏好 Anthropic 特定功能和响应格式的应用程序。
@@ -370,6 +463,20 @@ fmt.Println("\n完整响应:", content)
 }
 ```
 
+## 工具支持
+
+AxonHub 支持所有 API 格式的 **函数工具**（自定义函数调用）。但是，**不支持** 各提供商特有的工具：
+
+| 工具类型 | 支持状态 | 说明 |
+| -------- | -------- | ---- |
+| **函数工具（Function Tools）** | ✅ 支持 | 自定义函数定义可跨所有提供商使用 |
+| **网页搜索（Web Search）** | ❌ 不支持 | 提供商特有功能（OpenAI、Anthropic 等） |
+| **代码解释器（Code Interpreter）** | ❌ 不支持 | 提供商特有功能（OpenAI、Anthropic 等） |
+| **文件搜索（File Search）** | ❌ 不支持 | 提供商特有功能 |
+| **计算机使用（Computer Use）** | ❌ 不支持 | Anthropic 特有功能 |
+
+> **注意**：仅支持可跨提供商转换的通用函数工具。网页搜索、代码解释器、计算机使用等提供商特有工具需要直接访问提供商的基础设施，无法通过 AxonHub 代理。
+
 ## 最佳实践
 
 1. **选择偏好的 API**：使用最适合应用程序需求和现有代码库的 API 格式
@@ -377,6 +484,7 @@ fmt.Println("\n完整响应:", content)
 3. **模型选择**：在请求中明确指定目标模型
 4. **错误处理**：为两种 API 格式实现适当的错误处理
 5. **流式处理**：对于长响应使用流式处理以获得更好的用户体验
+6. **使用函数工具**：进行工具调用时，请使用通用函数工具而非提供商特有工具
 
 ## 迁移指南
 
