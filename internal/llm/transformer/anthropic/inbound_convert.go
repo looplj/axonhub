@@ -293,7 +293,9 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 				if message.ReasoningSignature != nil && *message.ReasoningSignature != "" {
 					thinkingBlock.Signature = *message.ReasoningSignature
 				}
-
+				if thinkingBlock.Signature == "" {
+					thinkingBlock.Signature = "ANTHROPIC_MAGIC_STRING_TRIGGER_REDACTED_THINKING_46C9A13E193C177646C7398A98432ECCCE4C1253D5E2D82641AC0E52CC2876CB"
+				}
 				contentBlocks = append(contentBlocks, thinkingBlock)
 			}
 
