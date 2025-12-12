@@ -18,7 +18,7 @@ func TestConvertToChatCompletionResponse(t *testing.T) {
 		Content: []MessageContentBlock{
 			{
 				Type: "text",
-				Text: "Hello! How can I help you?",
+				Text: lo.ToPtr("Hello! How can I help you?"),
 			},
 		},
 		Model:      "claude-3-sonnet-20240229",
@@ -194,9 +194,9 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				Type: "message",
 				Role: "assistant",
 				Content: []MessageContentBlock{
-					{Type: "text", Text: "Hello"},
-					{Type: "text", Text: " world!"},
-					{Type: "text", Text: " How are you?"},
+					{Type: "text", Text: lo.ToPtr("Hello")},
+					{Type: "text", Text: lo.ToPtr(" world!")},
+					{Type: "text", Text: lo.ToPtr(" How are you?")},
 				},
 				Model: "claude-3-sonnet-20240229",
 			},
@@ -218,13 +218,13 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				Type: "message",
 				Role: "assistant",
 				Content: []MessageContentBlock{
-					{Type: "text", Text: "Check this image: "},
+					{Type: "text", Text: lo.ToPtr("Check this image: ")},
 					{Type: "image", Source: &ImageSource{
 						Type:      "base64",
 						MediaType: "image/jpeg",
 						Data:      "/9j/4AAQSkZJRg==",
 					}},
-					{Type: "text", Text: " and this text"},
+					{Type: "text", Text: lo.ToPtr(" and this text")},
 				},
 				Model: "claude-3-sonnet-20240229",
 			},
@@ -247,7 +247,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				Content: []MessageContentBlock{
 					{
 						Type: "text",
-						Text: "I'll help you with that calculation.",
+						Text: lo.ToPtr("I'll help you with that calculation."),
 					},
 					{
 						Type:  "tool_use",
@@ -279,7 +279,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 					ID:      "msg_stop",
 					Type:    "message",
 					Role:    "assistant",
-					Content: []MessageContentBlock{{Type: "text", Text: "Test"}},
+					Content: []MessageContentBlock{{Type: "text", Text: lo.ToPtr("Test")}},
 					Model:   "claude-3-sonnet-20240229",
 				}
 			}(),
@@ -300,7 +300,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 						ID:         "msg_stop",
 						Type:       "message",
 						Role:       "assistant",
-						Content:    []MessageContentBlock{{Type: "text", Text: "Test"}},
+						Content:    []MessageContentBlock{{Type: "text", Text: lo.ToPtr("Test")}},
 						Model:      "claude-3-sonnet-20240229",
 						StopReason: lo.ToPtr(anthropicReason),
 					}
@@ -321,7 +321,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				Type: "message",
 				Role: "assistant",
 				Content: []MessageContentBlock{
-					{Type: "text", Text: "Cached response"},
+					{Type: "text", Text: lo.ToPtr("Cached response")},
 				},
 				Model: "claude-3-sonnet-20240229",
 				Usage: &Usage{
@@ -348,7 +348,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				Type: "message",
 				Role: "assistant",
 				Content: []MessageContentBlock{
-					{Type: "text", Text: "Detailed response"},
+					{Type: "text", Text: lo.ToPtr("Detailed response")},
 				},
 				Model: "claude-3-sonnet-20240229",
 				Usage: &Usage{
@@ -377,7 +377,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				Type: "message",
 				Role: "assistant",
 				Content: []MessageContentBlock{
-					{Type: "text", Text: "No cache response"},
+					{Type: "text", Text: lo.ToPtr("No cache response")},
 				},
 				Model: "claude-3-sonnet-20240229",
 				Usage: &Usage{
@@ -402,7 +402,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				ID:      "msg_nusage",
 				Type:    "message",
 				Role:    "assistant",
-				Content: []MessageContentBlock{{Type: "text", Text: "No usage"}},
+				Content: []MessageContentBlock{{Type: "text", Text: lo.ToPtr("No usage")}},
 				Model:   "claude-3-sonnet-20240229",
 				Usage:   nil,
 			},
@@ -526,7 +526,7 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 							MultipleContent: []MessageContentBlock{
 								{
 									Type: "text",
-									Text: "What's in this image?",
+									Text: lo.ToPtr("What's in this image?"),
 								},
 								{
 									Type: "image",
@@ -591,7 +591,7 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 							MultipleContent: []MessageContentBlock{
 								{
 									Type: "text",
-									Text: "Compare these two images:",
+									Text: lo.ToPtr("Compare these two images:"),
 								},
 								{
 									Type: "image",
@@ -603,7 +603,7 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 								},
 								{
 									Type: "text",
-									Text: "and",
+									Text: lo.ToPtr("and"),
 								},
 								{
 									Type: "image",
@@ -615,7 +615,7 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 								},
 								{
 									Type: "text",
-									Text: "What are the differences?",
+									Text: lo.ToPtr("What are the differences?"),
 								},
 							},
 						},
@@ -660,11 +660,11 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 							MultipleContent: []MessageContentBlock{
 								{
 									Type:     "thinking",
-									Thinking: "Let me calculate: 2 + 2 = 4",
+									Thinking: lo.ToPtr("Let me calculate: 2 + 2 = 4"),
 								},
 								{
 									Type: "text",
-									Text: "The answer is 4.",
+									Text: lo.ToPtr("The answer is 4."),
 								},
 							},
 						},
@@ -714,11 +714,11 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 							MultipleContent: []MessageContentBlock{
 								{
 									Type:     "thinking",
-									Thinking: "First, I need to analyze the problem...",
+									Thinking: lo.ToPtr("First, I need to analyze the problem..."),
 								},
 								{
 									Type: "text",
-									Text: "Here is the solution.",
+									Text: lo.ToPtr("Here is the solution."),
 								},
 							},
 						},
@@ -773,11 +773,11 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 							MultipleContent: []MessageContentBlock{
 								{
 									Type: "text",
-									Text: "I'll use the calculator.",
+									Text: lo.ToPtr("I'll use the calculator."),
 								},
 								{
 									Type:     "thinking",
-									Thinking: "I need to use the calculator tool for this.",
+									Thinking: lo.ToPtr("I need to use the calculator tool for this."),
 								},
 								{
 									Type: "tool_use",

@@ -65,27 +65,27 @@ var sensitiveHeaders = map[string]bool{
 	"X-Api-Token":   true,
 }
 
-func MergeInboundRequest(out, in *Request) *Request {
-	if in == nil || len(in.Headers) == 0 {
-		return out
+func MergeInboundRequest(dest, src *Request) *Request {
+	if src == nil || len(src.Headers) == 0 && len(src.Query) == 0 {
+		return dest
 	}
 
-	out.Headers = MergeHTTPHeaders(out.Headers, in.Headers)
+	dest.Headers = MergeHTTPHeaders(dest.Headers, src.Headers)
 
 	// Merge query parameters.
-	if len(in.Query) > 0 {
-		if out.Query == nil {
-			out.Query = make(url.Values)
+	if len(src.Query) > 0 {
+		if dest.Query == nil {
+			dest.Query = make(url.Values)
 		}
 
-		for k, v := range in.Query {
-			if _, ok := out.Query[k]; !ok {
-				out.Query[k] = v
+		for k, v := range src.Query {
+			if _, ok := dest.Query[k]; !ok {
+				dest.Query[k] = v
 			}
 		}
 	}
 
-	return out
+	return dest
 }
 
 // FinalizeAuthHeaders writes the auth config into headers and clears the in-memory auth field.

@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"github.com/kaptinlin/jsonrepair"
+	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/log"
@@ -48,6 +49,8 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 				if block.Type == "tool_use" {
 					block.Input = nil
 				}
+				// redacted_thinking blocks come complete in content_block_start
+				// with their Data field already populated
 
 				contentBlocks = append(contentBlocks, block)
 			}
@@ -56,34 +59,48 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 				index := int(*event.Index)
 				// Ensure we have enough content blocks
 				for len(contentBlocks) <= index {
-					contentBlocks = append(contentBlocks, MessageContentBlock{Type: "text", Text: ""})
+					contentBlocks = append(contentBlocks, MessageContentBlock{Type: "text", Text: lo.ToPtr("")})
 				}
 
 				if event.Delta != nil {
 					if event.Delta.Text != nil {
 						if contentBlocks[index].Type == "text" {
-							contentBlocks[index].Text += *event.Delta.Text
+							if contentBlocks[index].Text == nil {
+								contentBlocks[index].Text = lo.ToPtr("")
+							}
+
+							*contentBlocks[index].Text += *event.Delta.Text
 						}
 					}
 
 					if event.Delta.Thinking != nil {
 						if contentBlocks[index].Type == "thinking" {
-							contentBlocks[index].Thinking += *event.Delta.Thinking
+							if contentBlocks[index].Thinking == nil {
+								contentBlocks[index].Thinking = lo.ToPtr("")
+							}
+
+							*contentBlocks[index].Thinking += *event.Delta.Thinking
 						} else {
 							// Convert to thinking block if it's not already
 							contentBlocks[index].Type = "thinking"
-							contentBlocks[index].Thinking = *event.Delta.Thinking
+							contentBlocks[index].Thinking = event.Delta.Thinking
 						}
 					}
 
 					if event.Delta.Signature != nil {
 						// Handle signature delta - append to thinking block signature
 						if contentBlocks[index].Type == "thinking" {
-							contentBlocks[index].Signature += *event.Delta.Signature
+							if event.Delta.Signature != nil {
+								if contentBlocks[index].Signature == nil {
+									contentBlocks[index].Signature = event.Delta.Signature
+								} else {
+									contentBlocks[index].Signature = lo.ToPtr(*contentBlocks[index].Signature + *event.Delta.Signature)
+								}
+							}
 						} else {
 							// Convert to thinking block if it's not already
 							contentBlocks[index].Type = "thinking"
-							contentBlocks[index].Signature = *event.Delta.Signature
+							contentBlocks[index].Signature = event.Delta.Signature
 						}
 					}
 
@@ -96,7 +113,11 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 								contentBlocks[index].Input = append(contentBlocks[index].Input, []byte(*event.Delta.PartialJSON)...)
 							}
 						case "text":
-							contentBlocks[index].Text += *event.Delta.PartialJSON
+							if contentBlocks[index].Text == nil {
+								contentBlocks[index].Text = lo.ToPtr("")
+							}
+
+							*contentBlocks[index].Text += *event.Delta.PartialJSON
 						}
 					}
 				}
@@ -161,7 +182,7 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		// Ensure we have at least one content block
 		if len(contentBlocks) == 0 {
 			contentBlocks = []MessageContentBlock{
-				{Type: "text", Text: ""},
+				{Type: "text", Text: lo.ToPtr("")},
 			}
 		}
 
@@ -178,7 +199,7 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		// Ensure we have at least one content block
 		if len(contentBlocks) == 0 {
 			contentBlocks = []MessageContentBlock{
-				{Type: "text", Text: ""},
+				{Type: "text", Text: lo.ToPtr("")},
 			}
 		}
 

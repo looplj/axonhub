@@ -250,10 +250,14 @@ func buildPreBlocks(msg llm.Message) []MessageContentBlock {
 		blocks = append(blocks, *block)
 	}
 
+	if block := buildRedactedThinkingBlock(msg.RedactedReasoningContent); block != nil {
+		blocks = append(blocks, *block)
+	}
+
 	if msg.Content.Content != nil && *msg.Content.Content != "" {
 		blocks = append(blocks, MessageContentBlock{
 			Type:         "text",
-			Text:         *msg.Content.Content,
+			Text:         msg.Content.Content,
 			CacheControl: convertToAnthropicCacheControl(msg.CacheControl),
 		})
 	}
@@ -264,7 +268,7 @@ func buildPreBlocks(msg llm.Message) []MessageContentBlock {
 // buildContentFromBlocks converts blocks to MessageContent.
 func buildContentFromBlocks(blocks []MessageContentBlock) MessageContent {
 	if len(blocks) == 1 && blocks[0].Type == "text" {
-		return MessageContent{Content: &blocks[0].Text}
+		return MessageContent{Content: blocks[0].Text}
 	}
 
 	return MessageContent{MultipleContent: blocks}
@@ -291,20 +295,25 @@ func buildMessageContent(msg llm.Message) (MessageContent, bool) {
 
 // hasThinkingContent checks if message has reasoning content.
 func hasThinkingContent(msg llm.Message) bool {
-	return msg.ReasoningContent != nil && *msg.ReasoningContent != ""
+	return (msg.ReasoningContent != nil && *msg.ReasoningContent != "") ||
+		(msg.RedactedReasoningContent != nil && *msg.RedactedReasoningContent != "")
 }
 
 // buildMultipleContentWithThinking creates content blocks including thinking.
 func buildMultipleContentWithThinking(msg llm.Message) MessageContent {
-	blocks := make([]MessageContentBlock, 0, 2)
+	blocks := make([]MessageContentBlock, 0, 3)
 
 	if block := buildThinkingBlock(msg.ReasoningContent, msg.ReasoningSignature); block != nil {
 		blocks = append(blocks, *block)
 	}
 
+	if block := buildRedactedThinkingBlock(msg.RedactedReasoningContent); block != nil {
+		blocks = append(blocks, *block)
+	}
+
 	blocks = append(blocks, MessageContentBlock{
 		Type:         "text",
-		Text:         *msg.Content.Content,
+		Text:         msg.Content.Content,
 		CacheControl: convertToAnthropicCacheControl(msg.CacheControl),
 	})
 
@@ -318,15 +327,24 @@ func buildThinkingBlock(reasoningContent, reasoningSignature *string) *MessageCo
 	}
 
 	block := &MessageContentBlock{
-		Type:     "thinking",
-		Thinking: *reasoningContent,
-	}
-
-	if reasoningSignature != nil && *reasoningSignature != "" {
-		block.Signature = *reasoningSignature
+		Type:      "thinking",
+		Thinking:  reasoningContent,
+		Signature: reasoningSignature,
 	}
 
 	return block
+}
+
+// buildRedactedThinkingBlock creates a redacted_thinking block from encrypted content.
+func buildRedactedThinkingBlock(redactedContent *string) *MessageContentBlock {
+	if redactedContent == nil || *redactedContent == "" {
+		return nil
+	}
+
+	return &MessageContentBlock{
+		Type: "redacted_thinking",
+		Data: *redactedContent,
+	}
 }
 
 func convertToToolResultBlock(msg llm.Message) MessageContentBlock {
@@ -384,7 +402,7 @@ func convertToAnthropicTrivialContent(content llm.MessageContent) *MessageConten
 				if part.Text != nil {
 					blocks = append(blocks, MessageContentBlock{
 						Type:         "text",
-						Text:         *part.Text,
+						Text:         part.Text,
 						CacheControl: convertToAnthropicCacheControl(part.CacheControl),
 					})
 				}
@@ -455,7 +473,7 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 			if part.Text != nil {
 				blocks = append(blocks, MessageContentBlock{
 					Type:         "text",
-					Text:         *part.Text,
+					Text:         part.Text,
 					CacheControl: convertToAnthropicCacheControl(part.CacheControl),
 				})
 			}
@@ -531,21 +549,22 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 
 	// Convert content to message
 	var (
-		content           llm.MessageContent
-		thinkingText      string
-		thinkingSignature string
-		toolCalls         []llm.ToolCall
-		textParts         []string
+		content              llm.MessageContent
+		thinkingText         *string
+		thinkingSignature    *string
+		redactedThinkingData *string
+		toolCalls            []llm.ToolCall
+		textParts            []string
 	)
 
 	for _, block := range anthropicResp.Content {
 		switch block.Type {
 		case "text":
-			if block.Text != "" {
-				textParts = append(textParts, block.Text)
+			if block.Text != nil && *block.Text != "" {
+				textParts = append(textParts, *block.Text)
 				content.MultipleContent = append(content.MultipleContent, llm.MessageContentPart{
 					Type:     "text",
-					Text:     &block.Text,
+					Text:     block.Text,
 					ImageURL: &llm.ImageURL{},
 				})
 			}
@@ -573,8 +592,15 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 				toolCalls = append(toolCalls, toolCall)
 			}
 		case "thinking":
-			thinkingText = block.Thinking
+			if block.Thinking != nil {
+				thinkingText = block.Thinking
+			}
+
 			thinkingSignature = block.Signature
+		case "redacted_thinking":
+			if block.Data != "" {
+				redactedThinkingData = &block.Data
+			}
 		}
 	}
 
@@ -592,17 +618,12 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 	}
 
 	message := &llm.Message{
-		Role:      anthropicResp.Role,
-		Content:   content,
-		ToolCalls: toolCalls,
-	}
-
-	if thinkingText != "" {
-		message.ReasoningContent = &thinkingText
-	}
-
-	if thinkingSignature != "" {
-		message.ReasoningSignature = &thinkingSignature
+		Role:                     anthropicResp.Role,
+		Content:                  content,
+		ToolCalls:                toolCalls,
+		ReasoningContent:         thinkingText,
+		ReasoningSignature:       thinkingSignature,
+		RedactedReasoningContent: redactedThinkingData,
 	}
 
 	choice := llm.Choice{

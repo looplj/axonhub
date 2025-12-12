@@ -3,6 +3,8 @@ package anthropic
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/samber/lo"
 )
 
 // MessageRequest represents the Anthropic Messages API request format.
@@ -195,12 +197,12 @@ func (m MessageContent) ExtractTrivalBlocks(cacheControl *CacheControl) []Messag
 	if m.Content != nil && *m.Content != "" {
 		contentBlocks = append(contentBlocks, MessageContentBlock{
 			Type:         "text",
-			Text:         *m.Content,
+			Text:         lo.ToPtr(*m.Content),
 			CacheControl: cacheControl,
 		})
 	} else if len(m.MultipleContent) > 0 {
 		for _, part := range m.MultipleContent {
-			if part.Type == "text" && part.Text != "" {
+			if part.Type == "text" && part.Text != nil && *part.Text != "" {
 				contentBlocks = append(contentBlocks, part)
 			}
 
@@ -251,13 +253,13 @@ type MessageContentBlock struct {
 	Type string `json:"type"`
 
 	// Text will be present if type is "text".
-	Text string `json:"text,omitempty"`
+	Text *string `json:"text,omitempty"`
 
 	// Thinking will be present if type is "thinking".
-	Thinking string `json:"thinking,omitempty"`
+	Thinking *string `json:"thinking,omitempty"`
 
 	// Signature will be present if type is "thinking".
-	Signature string `json:"signature,omitempty"`
+	Signature *string `json:"signature,omitempty"`
 
 	// Data will be present if type is "redacted_thinking".
 	Data string `json:"data,omitempty"`

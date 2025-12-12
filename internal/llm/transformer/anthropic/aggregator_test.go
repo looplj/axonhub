@@ -141,7 +141,7 @@ func TestAggregateStreamChunks(t *testing.T) {
 				err := json.Unmarshal(resultBytes, &result)
 				require.NoError(t, err)
 				require.NotEmpty(t, result.Content)
-				require.Equal(t, tt.expected, result.Content[0].Text)
+				require.Equal(t, tt.expected, *result.Content[0].Text)
 				require.Equal(t, "assistant", result.Role)
 			}
 		})
@@ -205,7 +205,7 @@ func TestAggregateStreamChunks_EdgeCases(t *testing.T) {
 					t.Helper()
 					require.NotNil(t, result)
 					require.NotEmpty(t, result.Content)
-					require.Equal(t, "Hello", result.Content[0].Text)
+					require.Equal(t, "Hello", *result.Content[0].Text)
 				},
 			},
 			{
@@ -245,7 +245,7 @@ func TestAggregateStreamChunks_EdgeCases(t *testing.T) {
 					t.Helper()
 					require.NotNil(t, result)
 					require.NotEmpty(t, result.Content)
-					require.Equal(t, "Hello", result.Content[0].Text)
+					require.Equal(t, "Hello", *result.Content[0].Text)
 				},
 			},
 			{
@@ -345,7 +345,7 @@ func TestAggregateStreamChunks_EdgeCases(t *testing.T) {
 					t.Helper()
 					require.NotNil(t, result)
 					require.NotEmpty(t, result.Content)
-					require.Equal(t, "Complete", result.Content[0].Text)
+					require.Equal(t, "Complete", *result.Content[0].Text)
 					require.Equal(t, "msg_complete", result.ID)
 					require.NotNil(t, result.StopReason)
 					require.Equal(t, "end_turn", *result.StopReason)
@@ -390,7 +390,7 @@ func TestAggregateStreamChunks_EdgeCases(t *testing.T) {
 					require.Equal(
 						t,
 						"Response with detailed usage",
-						result.Content[0].Text,
+						*result.Content[0].Text,
 					)
 					require.Equal(t, "msg_detailed_usage", result.ID)
 					require.NotNil(t, result.StopReason)
@@ -430,7 +430,7 @@ func TestAggregateStreamChunks_EdgeCases(t *testing.T) {
 					require.Equal(
 						t,
 						"No cache response",
-						result.Content[0].Text,
+						*result.Content[0].Text,
 					)
 					require.Equal(t, "msg_no_cache_stream", result.ID)
 					require.NotNil(t, result.StopReason)
@@ -703,7 +703,7 @@ func TestAggregateStreamChunks_EdgeCases(t *testing.T) {
 					t.Helper()
 					require.NotNil(t, result)
 					require.NotEmpty(t, result.Content)
-					require.Equal(t, "After ping", result.Content[0].Text)
+					require.Equal(t, "After ping", *result.Content[0].Text)
 				},
 			},
 			{
@@ -767,8 +767,8 @@ func TestAggregateStreamChunks_EdgeCases(t *testing.T) {
 					require.NotNil(t, result)
 					require.NotEmpty(t, result.Content)
 					require.Equal(t, "thinking", result.Content[0].Type)
-					require.Equal(t, "Thinking...", result.Content[0].Thinking)
-					require.Equal(t, "abc123", result.Content[0].Signature)
+					require.Equal(t, "Thinking...", *result.Content[0].Thinking)
+					require.Equal(t, "abc123", *result.Content[0].Signature)
 				},
 			},
 			{

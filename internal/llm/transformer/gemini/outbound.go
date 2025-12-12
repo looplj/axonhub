@@ -121,6 +121,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm
 		}
 	}
 
+	if chatReq.RawRequest != nil {
+		// We need to remove the alt query parameter to avoid passing through to the backend.
+		chatReq.RawRequest.Query = nil
+	}
+
 	// Build URL
 	url := t.buildFullRequestURL(chatReq)
 

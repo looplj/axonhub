@@ -166,9 +166,8 @@ func (s *anthropicInboundStream) Next() bool {
 					Type:  "content_block_start",
 					Index: &s.contentIndex,
 					ContentBlock: &MessageContentBlock{
-						Type:      "thinking",
-						Thinking:  "",
-						Signature: "",
+						Type:     "thinking",
+						Thinking: lo.ToPtr(""),
 					},
 				}
 
@@ -259,7 +258,7 @@ func (s *anthropicInboundStream) Next() bool {
 					Index: &s.contentIndex,
 					ContentBlock: &MessageContentBlock{
 						Type: "text",
-						Text: "",
+						Text: lo.ToPtr(""),
 					},
 				}
 
