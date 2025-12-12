@@ -177,8 +177,10 @@ func (t *OutboundTransformer) TransformResponse(
 	}
 
 	// If this looks like Image Generation API, use image generation response transformer
-	if httpResp.Request != nil && httpResp.Request.Metadata != nil && httpResp.Request.Metadata["outbound_format_type"] == string(llm.APIFormatOpenAIImageGeneration) {
-		return transformImageGenerationResponse(ctx, httpResp)
+	if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
+		if fmt, ok := httpResp.Request.TransformerMetadata["outbound_format_type"].(string); ok && fmt == string(llm.APIFormatOpenAIImageGeneration) {
+			return transformImageGenerationResponse(ctx, httpResp)
+		}
 	}
 
 	// For regular chat completions, delegate to the wrapped OpenAI transformer

@@ -355,8 +355,10 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			},
 			expectError: false,
 			validate: func(t *testing.T, result *llm.Request) {
-				require.NotNil(t, result.Include)
-				require.Equal(t, []string{"file_search_call.results", "reasoning.encrypted_content"}, result.Include)
+				require.NotNil(t, result.TransformerMetadata)
+				v, ok := result.TransformerMetadata["include"]
+				require.True(t, ok)
+				require.Equal(t, []string{"file_search_call.results", "reasoning.encrypted_content"}, v.([]string))
 			},
 		},
 	}

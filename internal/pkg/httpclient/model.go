@@ -38,6 +38,10 @@ type Request struct {
 
 	// Metadata for advanced use cases
 	Metadata map[string]string `json:"-"`
+
+	// TransformerMetadata stores transformer-specific metadata for preserving format during transformations.
+	// This supports any type of value for flexibility.
+	TransformerMetadata map[string]any `json:"-"`
 }
 
 // AuthConfig represents authentication configuration.

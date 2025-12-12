@@ -315,7 +315,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 					req.Headers.Get("Content-Type") == "application/json" &&
 					req.Auth != nil &&
 					req.Auth.Type == "bearer" &&
-					req.Metadata["outbound_format_type"] == llm.APIFormatOpenAIImageGeneration.String()
+					req.TransformerMetadata["outbound_format_type"] == llm.APIFormatOpenAIImageGeneration.String()
 			},
 		},
 		{

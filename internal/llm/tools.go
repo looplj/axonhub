@@ -115,6 +115,7 @@ func (t *ToolChoice) UnmarshalJSON(data []byte) error {
 // parameters. It mirrors the OpenRouter/OpenAI Responses API fields we care
 // about, but is intentionally loose to allow forward-compatibility.
 type ImageGeneration struct {
+	Model string `json:"model,omitempty"`
 	// One of opaque, transparent.
 	Background     string         `json:"background,omitempty"`
 	InputFidelity  string         `json:"input_fidelity,omitempty"`

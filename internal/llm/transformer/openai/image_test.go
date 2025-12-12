@@ -108,12 +108,12 @@ func TestTransformResponse_FromResponsesAPI_ImageResult(t *testing.T) {
 		]
 	}`)
 
-	// Add metadata to indicate this is a responses API call
+	// Add TransformerMetadata to indicate this is a responses API call
 	httpResp := &httpclient.Response{
 		StatusCode: http.StatusOK,
 		Body:       body,
 		Request: &httpclient.Request{
-			Metadata: map[string]string{
+			TransformerMetadata: map[string]any{
 				"outbound_format_type": "openai/responses",
 			},
 		},
@@ -165,12 +165,12 @@ func TestTransformResponse_FromResponsesAPI_ImageResult_WithMeta(t *testing.T) {
 		}
 	}`)
 
-	// Add metadata to indicate this is a responses API call
+	// Add TransformerMetadata to indicate this is a responses API call
 	httpResp := &httpclient.Response{
 		StatusCode: http.StatusOK,
 		Body:       body,
 		Request: &httpclient.Request{
-			Metadata: map[string]string{
+			TransformerMetadata: map[string]any{
 				"outbound_format_type": "openai/responses",
 			},
 		},
@@ -213,12 +213,12 @@ func TestTransformResponse_DebugResponsesAPI(t *testing.T) {
 		]
 	}`)
 
-	// Add metadata to indicate this is a responses API call
+	// Add TransformerMetadata to indicate this is a responses API call
 	httpResp := &httpclient.Response{
 		StatusCode: http.StatusOK,
 		Body:       body,
 		Request: &httpclient.Request{
-			Metadata: map[string]string{
+			TransformerMetadata: map[string]any{
 				"outbound_format_type": "openai/responses",
 			},
 		},
@@ -269,7 +269,7 @@ func TestTransformRequest_BuildsCorrectMetadata(t *testing.T) {
 	hreq, err := ot.buildResponsesAPIRequest(context.Background(), req)
 	assert.NoError(t, err)
 	assert.NotNil(t, hreq)
-	assert.Equal(t, "openai/responses", hreq.Metadata["outbound_format_type"])
+	assert.Equal(t, "openai/responses", hreq.TransformerMetadata["outbound_format_type"])
 }
 
 // Test Image Generation API (images/generations)
@@ -478,8 +478,8 @@ func TestBuildImageGenerationAPIRequest_RoutesToGenerate(t *testing.T) {
 	httpReq, err := ot.buildImageGenerationAPIRequest(context.Background(), req)
 	require.NoError(t, err)
 	assert.Equal(t, "https://api.openai.com/v1/images/generations", httpReq.URL)
-	assert.Equal(t, llm.APIFormatOpenAIImageGeneration.String(), httpReq.Metadata["outbound_format_type"])
-	assert.Equal(t, "dall-e-3", httpReq.Metadata["model"])
+	assert.Equal(t, llm.APIFormatOpenAIImageGeneration.String(), httpReq.TransformerMetadata["outbound_format_type"])
+	assert.Equal(t, "dall-e-3", httpReq.TransformerMetadata["model"])
 }
 
 func TestBuildImageGenerationAPIRequest_RoutesToEdit(t *testing.T) {
@@ -514,8 +514,8 @@ func TestBuildImageGenerationAPIRequest_RoutesToEdit(t *testing.T) {
 	httpReq, err := ot.buildImageGenerationAPIRequest(context.Background(), req)
 	require.NoError(t, err)
 	assert.Equal(t, "https://api.openai.com/v1/images/edits", httpReq.URL)
-	assert.Equal(t, llm.APIFormatOpenAIImageGeneration.String(), httpReq.Metadata["outbound_format_type"])
-	assert.Equal(t, "gpt-image-1", httpReq.Metadata["model"])
+	assert.Equal(t, llm.APIFormatOpenAIImageGeneration.String(), httpReq.TransformerMetadata["outbound_format_type"])
+	assert.Equal(t, "gpt-image-1", httpReq.TransformerMetadata["model"])
 }
 
 // Test response transformation
@@ -619,7 +619,7 @@ func TestTransformImageGenerationResponse_MultipleImages(t *testing.T) {
 	assert.Contains(t, resp.Choices[1].Message.Content.MultipleContent[0].ImageURL.URL, "data:image/webp;base64,image2data")
 }
 
-func TestTransformImageGenerationResponse_WithModelInMetadata(t *testing.T) {
+func TestTransformImageGenerationResponse_WithModelInTransformerMetadata(t *testing.T) {
 	body := []byte(`{
 		"created": 1730000000,
 		"data": [
@@ -633,7 +633,7 @@ func TestTransformImageGenerationResponse_WithModelInMetadata(t *testing.T) {
 		StatusCode: http.StatusOK,
 		Body:       body,
 		Request: &httpclient.Request{
-			Metadata: map[string]string{
+			TransformerMetadata: map[string]any{
 				"model": "dall-e-3",
 			},
 		},
@@ -644,7 +644,7 @@ func TestTransformImageGenerationResponse_WithModelInMetadata(t *testing.T) {
 	assert.Equal(t, "dall-e-3", resp.Model)
 }
 
-func TestTransformImageGenerationResponse_WithoutModelInMetadata(t *testing.T) {
+func TestTransformImageGenerationResponse_WithoutModelInTransformerMetadata(t *testing.T) {
 	body := []byte(`{
 		"created": 1730000000,
 		"data": [
@@ -899,7 +899,7 @@ func TestTransformRequest_ImageGeneration_Integration(t *testing.T) {
 	httpReq, err := ot.TransformRequest(context.Background(), req)
 	require.NoError(t, err)
 	assert.Equal(t, "https://api.openai.com/v1/images/generations", httpReq.URL)
-	assert.Equal(t, llm.APIFormatOpenAIImageGeneration.String(), httpReq.Metadata["outbound_format_type"])
+	assert.Equal(t, llm.APIFormatOpenAIImageGeneration.String(), httpReq.TransformerMetadata["outbound_format_type"])
 }
 
 func TestTransformResponse_ImageGeneration_Integration(t *testing.T) {
@@ -920,7 +920,7 @@ func TestTransformResponse_ImageGeneration_Integration(t *testing.T) {
 		StatusCode: http.StatusOK,
 		Body:       body,
 		Request: &httpclient.Request{
-			Metadata: map[string]string{
+			TransformerMetadata: map[string]any{
 				"outbound_format_type": llm.APIFormatOpenAIImageGeneration.String(),
 			},
 		},

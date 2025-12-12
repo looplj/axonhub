@@ -83,6 +83,8 @@ func TestInboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 			require.NoError(t, err)
 
 			expected.RawAPIFormat = llm.APIFormatOpenAIResponse
+
+			expected.TransformerMetadata = map[string]any{} // Initialize to match the actual result
 			if !xtest.Equal(expected, *result) {
 				t.Errorf("diff: %v", cmp.Diff(expected, *result))
 			}

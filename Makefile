@@ -9,7 +9,7 @@ generate:
 # Build the backend application
 build-backend:
 	@echo "Building axonhub backend..."
-	go build -o axonhub ./cmd/axonhub
+	go build -tags=nomsgpack -o axonhub ./cmd/axonhub
 	@echo "Backend build completed!"
 
 # Build the frontend application

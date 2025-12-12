@@ -29,11 +29,11 @@ func (t *OutboundTransformer) buildResponsesAPIRequest(ctx context.Context, chat
 		return nil, fmt.Errorf("failed to transform request: %w", err)
 	}
 
-	if rawReq.Metadata == nil {
-		rawReq.Metadata = map[string]string{}
+	if rawReq.TransformerMetadata == nil {
+		rawReq.TransformerMetadata = map[string]any{}
 	}
 
-	rawReq.Metadata["outbound_format_type"] = llm.APIFormatOpenAIResponse.String()
+	rawReq.TransformerMetadata["outbound_format_type"] = llm.APIFormatOpenAIResponse.String()
 
 	return rawReq, nil
 }
@@ -63,13 +63,13 @@ func (t *OutboundTransformer) buildImageGenerationAPIRequest(ctx context.Context
 		return nil, err
 	}
 
-	if rawReq.Metadata == nil {
-		rawReq.Metadata = map[string]string{}
+	if rawReq.TransformerMetadata == nil {
+		rawReq.TransformerMetadata = map[string]any{}
 	}
 
-	rawReq.Metadata["outbound_format_type"] = llm.APIFormatOpenAIImageGeneration.String()
-	// Save model to metadata for response transformation
-	rawReq.Metadata["model"] = chatReq.Model
+	rawReq.TransformerMetadata["outbound_format_type"] = llm.APIFormatOpenAIImageGeneration.String()
+	// Save model to TransformerMetadata for response transformation
+	rawReq.TransformerMetadata["model"] = chatReq.Model
 
 	return rawReq, nil
 }
@@ -373,11 +373,11 @@ func transformImageGenerationResponse(httpResp *httpclient.Response) (*llm.Respo
 		return nil, fmt.Errorf("failed to unmarshal images response: %w", err)
 	}
 
-	// Read model from request metadata
+	// Read model from request TransformerMetadata
 	model := "image-generation"
 
-	if httpResp.Request != nil && httpResp.Request.Metadata != nil {
-		if m, ok := httpResp.Request.Metadata["model"]; ok && m != "" {
+	if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
+		if m, ok := httpResp.Request.TransformerMetadata["model"].(string); ok && m != "" {
 			model = m
 		}
 	}

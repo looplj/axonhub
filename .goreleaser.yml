@@ -14,6 +14,8 @@ builds:
   - id: build
     main: ./cmd/axonhub
     binary: axonhub
+    flags:
+      - -tags=nomsgpack
     ldflags:
       - -s -w -X github.com/looplj/axonhub/internal/build.Version={{ .Tag }}
       - -s -w -X github.com/looplj/axonhub/internal/build.Commit={{ .Commit }}
