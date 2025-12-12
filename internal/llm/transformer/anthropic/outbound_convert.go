@@ -253,7 +253,7 @@ func buildPreBlocks(msg llm.Message) []MessageContentBlock {
 	if msg.Content.Content != nil && *msg.Content.Content != "" {
 		blocks = append(blocks, MessageContentBlock{
 			Type:         "text",
-			Text:         *msg.Content.Content,
+			Text:         msg.Content.Content,
 			CacheControl: convertToAnthropicCacheControl(msg.CacheControl),
 		})
 	}
@@ -264,7 +264,7 @@ func buildPreBlocks(msg llm.Message) []MessageContentBlock {
 // buildContentFromBlocks converts blocks to MessageContent.
 func buildContentFromBlocks(blocks []MessageContentBlock) MessageContent {
 	if len(blocks) == 1 && blocks[0].Type == "text" {
-		return MessageContent{Content: &blocks[0].Text}
+		return MessageContent{Content: blocks[0].Text}
 	}
 
 	return MessageContent{MultipleContent: blocks}
@@ -304,7 +304,7 @@ func buildMultipleContentWithThinking(msg llm.Message) MessageContent {
 
 	blocks = append(blocks, MessageContentBlock{
 		Type:         "text",
-		Text:         *msg.Content.Content,
+		Text:         msg.Content.Content,
 		CacheControl: convertToAnthropicCacheControl(msg.CacheControl),
 	})
 
@@ -319,7 +319,7 @@ func buildThinkingBlock(reasoningContent, reasoningSignature *string) *MessageCo
 
 	block := &MessageContentBlock{
 		Type:     "thinking",
-		Thinking: *reasoningContent,
+		Thinking: reasoningContent,
 	}
 
 	if reasoningSignature != nil && *reasoningSignature != "" {
@@ -378,22 +378,22 @@ func convertToAnthropicTrivialContent(content llm.MessageContent) *MessageConten
 	} else if len(content.MultipleContent) > 0 {
 		blocks := make([]MessageContentBlock, 0, len(content.MultipleContent))
 
-		for _, part := range content.MultipleContent {
-			switch part.Type {
-			case "text":
-				if part.Text != nil {
-					blocks = append(blocks, MessageContentBlock{
-						Type:         "text",
-						Text:         *part.Text,
-						CacheControl: convertToAnthropicCacheControl(part.CacheControl),
-					})
-				}
-			case "image_url":
-				if block, ok := convertImageURLToAnthropicBlock(part); ok {
-					blocks = append(blocks, block)
-				}
+	for _, part := range content.MultipleContent {
+		switch part.Type {
+		case "text":
+			if part.Text != nil {
+				blocks = append(blocks, MessageContentBlock{
+					Type:         "text",
+					Text:         part.Text,
+					CacheControl: convertToAnthropicCacheControl(part.CacheControl),
+				})
+			}
+		case "image_url":
+			if block, ok := convertImageURLToAnthropicBlock(part); ok {
+				blocks = append(blocks, block)
 			}
 		}
+	}
 
 		return &MessageContent{
 			MultipleContent: blocks,
@@ -455,7 +455,7 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 			if part.Text != nil {
 				blocks = append(blocks, MessageContentBlock{
 					Type:         "text",
-					Text:         *part.Text,
+					Text:         part.Text,
 					CacheControl: convertToAnthropicCacheControl(part.CacheControl),
 				})
 			}
@@ -541,11 +541,11 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 	for _, block := range anthropicResp.Content {
 		switch block.Type {
 		case "text":
-			if block.Text != "" {
-				textParts = append(textParts, block.Text)
+			if block.Text != nil && *block.Text != "" {
+				textParts = append(textParts, *block.Text)
 				content.MultipleContent = append(content.MultipleContent, llm.MessageContentPart{
 					Type:     "text",
-					Text:     &block.Text,
+					Text:     block.Text,
 					ImageURL: &llm.ImageURL{},
 				})
 			}
@@ -573,7 +573,9 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 				toolCalls = append(toolCalls, toolCall)
 			}
 		case "thinking":
-			thinkingText = block.Thinking
+			if block.Thinking != nil {
+				thinkingText = *block.Thinking
+			}
 			thinkingSignature = block.Signature
 		}
 	}

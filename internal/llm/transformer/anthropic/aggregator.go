@@ -54,27 +54,38 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		case "content_block_delta":
 			if event.Index != nil {
 				index := int(*event.Index)
-				// Ensure we have enough content blocks
-				for len(contentBlocks) <= index {
-					contentBlocks = append(contentBlocks, MessageContentBlock{Type: "text", Text: ""})
+			// Ensure we have enough content blocks
+			for len(contentBlocks) <= index {
+				emptyText := ""
+				contentBlocks = append(contentBlocks, MessageContentBlock{Type: "text", Text: &emptyText})
+			}
+
+			if event.Delta != nil {
+				if event.Delta.Text != nil {
+					if contentBlocks[index].Type == "text" {
+						if contentBlocks[index].Text == nil {
+							contentBlocks[index].Text = event.Delta.Text
+						} else {
+							newText := *contentBlocks[index].Text + *event.Delta.Text
+							contentBlocks[index].Text = &newText
+						}
+					}
 				}
 
-				if event.Delta != nil {
-					if event.Delta.Text != nil {
-						if contentBlocks[index].Type == "text" {
-							contentBlocks[index].Text += *event.Delta.Text
-						}
-					}
-
-					if event.Delta.Thinking != nil {
-						if contentBlocks[index].Type == "thinking" {
-							contentBlocks[index].Thinking += *event.Delta.Thinking
+				if event.Delta.Thinking != nil {
+					if contentBlocks[index].Type == "thinking" {
+						if contentBlocks[index].Thinking == nil {
+							contentBlocks[index].Thinking = event.Delta.Thinking
 						} else {
-							// Convert to thinking block if it's not already
-							contentBlocks[index].Type = "thinking"
-							contentBlocks[index].Thinking = *event.Delta.Thinking
+							newThinking := *contentBlocks[index].Thinking + *event.Delta.Thinking
+							contentBlocks[index].Thinking = &newThinking
 						}
+					} else {
+						// Convert to thinking block if it's not already
+						contentBlocks[index].Type = "thinking"
+						contentBlocks[index].Thinking = event.Delta.Thinking
 					}
+				}
 
 					if event.Delta.Signature != nil {
 						// Handle signature delta - append to thinking block signature
@@ -96,7 +107,12 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 								contentBlocks[index].Input = append(contentBlocks[index].Input, []byte(*event.Delta.PartialJSON)...)
 							}
 						case "text":
-							contentBlocks[index].Text += *event.Delta.PartialJSON
+							if contentBlocks[index].Text == nil {
+								contentBlocks[index].Text = event.Delta.PartialJSON
+							} else {
+								newText := *contentBlocks[index].Text + *event.Delta.PartialJSON
+								contentBlocks[index].Text = &newText
+							}
 						}
 					}
 				}
@@ -160,8 +176,9 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 	if messageStart != nil {
 		// Ensure we have at least one content block
 		if len(contentBlocks) == 0 {
+			emptyText := ""
 			contentBlocks = []MessageContentBlock{
-				{Type: "text", Text: ""},
+				{Type: "text", Text: &emptyText},
 			}
 		}
 
@@ -177,8 +194,9 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 	} else {
 		// Ensure we have at least one content block
 		if len(contentBlocks) == 0 {
+			emptyText := ""
 			contentBlocks = []MessageContentBlock{
-				{Type: "text", Text: ""},
+				{Type: "text", Text: &emptyText},
 			}
 		}
 

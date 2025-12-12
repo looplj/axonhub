@@ -15,12 +15,12 @@ func TestConvertToChatCompletionResponse(t *testing.T) {
 		ID:   "msg_123",
 		Type: "message",
 		Role: "assistant",
-		Content: []MessageContentBlock{
-			{
-				Type: "text",
-				Text: "Hello! How can I help you?",
-			},
+	Content: []MessageContentBlock{
+		{
+			Type: "text",
+			Text: lo.ToPtr("Hello! How can I help you?"),
 		},
+	},
 		Model:      "claude-3-sonnet-20240229",
 		StopReason: func() *string { s := "end_turn"; return &s }(),
 		Usage: &Usage{
@@ -193,11 +193,11 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				ID:   "msg_multi",
 				Type: "message",
 				Role: "assistant",
-				Content: []MessageContentBlock{
-					{Type: "text", Text: "Hello"},
-					{Type: "text", Text: " world!"},
-					{Type: "text", Text: " How are you?"},
-				},
+			Content: []MessageContentBlock{
+				{Type: "text", Text: lo.ToPtr("Hello")},
+				{Type: "text", Text: lo.ToPtr(" world!")},
+				{Type: "text", Text: lo.ToPtr(" How are you?")},
+			},
 				Model: "claude-3-sonnet-20240229",
 			},
 			validate: func(t *testing.T, result *llm.Response) {
@@ -217,15 +217,15 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				ID:   "msg_mixed",
 				Type: "message",
 				Role: "assistant",
-				Content: []MessageContentBlock{
-					{Type: "text", Text: "Check this image: "},
-					{Type: "image", Source: &ImageSource{
-						Type:      "base64",
-						MediaType: "image/jpeg",
-						Data:      "/9j/4AAQSkZJRg==",
-					}},
-					{Type: "text", Text: " and this text"},
-				},
+			Content: []MessageContentBlock{
+				{Type: "text", Text: lo.ToPtr("Check this image: ")},
+				{Type: "image", Source: &ImageSource{
+					Type:      "base64",
+					MediaType: "image/jpeg",
+					Data:      "/9j/4AAQSkZJRg==",
+				}},
+				{Type: "text", Text: lo.ToPtr(" and this text")},
+			},
 				Model: "claude-3-sonnet-20240229",
 			},
 			validate: func(t *testing.T, result *llm.Response) {
@@ -244,18 +244,18 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				ID:   "msg_tool",
 				Type: "message",
 				Role: "assistant",
-				Content: []MessageContentBlock{
-					{
-						Type: "text",
-						Text: "I'll help you with that calculation.",
-					},
-					{
-						Type:  "tool_use",
-						ID:    "tool_123",
-						Name:  lo.ToPtr("calculator"),
-						Input: json.RawMessage(`{"expression": "2+2"}`),
-					},
+			Content: []MessageContentBlock{
+				{
+					Type: "text",
+					Text: lo.ToPtr("I'll help you with that calculation."),
 				},
+				{
+					Type:  "tool_use",
+					ID:    "tool_123",
+					Name:  lo.ToPtr("calculator"),
+					Input: json.RawMessage(`{"expression": "2+2"}`),
+				},
+			},
 				Model: "claude-3-sonnet-20240229",
 			},
 			validate: func(t *testing.T, result *llm.Response) {
@@ -279,7 +279,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 					ID:      "msg_stop",
 					Type:    "message",
 					Role:    "assistant",
-					Content: []MessageContentBlock{{Type: "text", Text: "Test"}},
+					Content: []MessageContentBlock{{Type: "text", Text: lo.ToPtr("Test")}},
 					Model:   "claude-3-sonnet-20240229",
 				}
 			}(),
@@ -296,14 +296,14 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				}
 
 				for anthropicReason, expectedReason := range stopReasons {
-					msg := &Message{
-						ID:         "msg_stop",
-						Type:       "message",
-						Role:       "assistant",
-						Content:    []MessageContentBlock{{Type: "text", Text: "Test"}},
-						Model:      "claude-3-sonnet-20240229",
-						StopReason: lo.ToPtr(anthropicReason),
-					}
+				msg := &Message{
+					ID:         "msg_stop",
+					Type:       "message",
+					Role:       "assistant",
+					Content:    []MessageContentBlock{{Type: "text", Text: lo.ToPtr("Test")}},
+					Model:      "claude-3-sonnet-20240229",
+					StopReason: lo.ToPtr(anthropicReason),
+				}
 
 					result := convertToLlmResponse(msg, PlatformDirect)
 					if expectedReason == "stop" {
@@ -320,9 +320,9 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				ID:   "msg_cache",
 				Type: "message",
 				Role: "assistant",
-				Content: []MessageContentBlock{
-					{Type: "text", Text: "Cached response"},
-				},
+			Content: []MessageContentBlock{
+				{Type: "text", Text: lo.ToPtr("Cached response")},
+			},
 				Model: "claude-3-sonnet-20240229",
 				Usage: &Usage{
 					InputTokens:              100,
@@ -347,9 +347,9 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				ID:   "msg_detailed",
 				Type: "message",
 				Role: "assistant",
-				Content: []MessageContentBlock{
-					{Type: "text", Text: "Detailed response"},
-				},
+			Content: []MessageContentBlock{
+				{Type: "text", Text: lo.ToPtr("Detailed response")},
+			},
 				Model: "claude-3-sonnet-20240229",
 				Usage: &Usage{
 					InputTokens:              200,
@@ -376,9 +376,9 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				ID:   "msg_no_cache",
 				Type: "message",
 				Role: "assistant",
-				Content: []MessageContentBlock{
-					{Type: "text", Text: "No cache response"},
-				},
+			Content: []MessageContentBlock{
+				{Type: "text", Text: lo.ToPtr("No cache response")},
+			},
 				Model: "claude-3-sonnet-20240229",
 				Usage: &Usage{
 					InputTokens:              80,
@@ -402,7 +402,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				ID:      "msg_nusage",
 				Type:    "message",
 				Role:    "assistant",
-				Content: []MessageContentBlock{{Type: "text", Text: "No usage"}},
+				Content: []MessageContentBlock{{Type: "text", Text: lo.ToPtr("No usage")}},
 				Model:   "claude-3-sonnet-20240229",
 				Usage:   nil,
 			},
@@ -524,10 +524,10 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 						Role: "user",
 						Content: MessageContent{
 							MultipleContent: []MessageContentBlock{
-								{
-									Type: "text",
-									Text: "What's in this image?",
-								},
+							{
+								Type: "text",
+								Text: lo.ToPtr("What's in this image?"),
+							},
 								{
 									Type: "image",
 									Source: &ImageSource{
@@ -589,10 +589,10 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 						Role: "user",
 						Content: MessageContent{
 							MultipleContent: []MessageContentBlock{
-								{
-									Type: "text",
-									Text: "Compare these two images:",
-								},
+							{
+								Type: "text",
+								Text: lo.ToPtr("Compare these two images:"),
+							},
 								{
 									Type: "image",
 									Source: &ImageSource{
@@ -601,10 +601,10 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 										Data:      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
 									},
 								},
-								{
-									Type: "text",
-									Text: "and",
-								},
+							{
+								Type: "text",
+								Text: lo.ToPtr("and"),
+							},
 								{
 									Type: "image",
 									Source: &ImageSource{
@@ -613,10 +613,10 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 										Data:      "UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEADsD+JaQAA3AAAAAA",
 									},
 								},
-								{
-									Type: "text",
-									Text: "What are the differences?",
-								},
+							{
+								Type: "text",
+								Text: lo.ToPtr("What are the differences?"),
+							},
 							},
 						},
 					},
@@ -658,14 +658,14 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 						Role: "assistant",
 						Content: MessageContent{
 							MultipleContent: []MessageContentBlock{
-								{
-									Type:     "thinking",
-									Thinking: "Let me calculate: 2 + 2 = 4",
-								},
-								{
-									Type: "text",
-									Text: "The answer is 4.",
-								},
+							{
+								Type:     "thinking",
+								Thinking: lo.ToPtr("Let me calculate: 2 + 2 = 4"),
+							},
+							{
+								Type: "text",
+								Text: lo.ToPtr("The answer is 4."),
+							},
 							},
 						},
 					},
@@ -712,14 +712,14 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 						Role: "assistant",
 						Content: MessageContent{
 							MultipleContent: []MessageContentBlock{
-								{
-									Type:     "thinking",
-									Thinking: "First, I need to analyze the problem...",
-								},
-								{
-									Type: "text",
-									Text: "Here is the solution.",
-								},
+							{
+								Type:     "thinking",
+								Thinking: lo.ToPtr("First, I need to analyze the problem..."),
+							},
+							{
+								Type: "text",
+								Text: lo.ToPtr("Here is the solution."),
+							},
 							},
 						},
 					},
@@ -771,14 +771,14 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 						Role: "assistant",
 						Content: MessageContent{
 							MultipleContent: []MessageContentBlock{
-								{
-									Type: "text",
-									Text: "I'll use the calculator.",
-								},
-								{
-									Type:     "thinking",
-									Thinking: "I need to use the calculator tool for this.",
-								},
+							{
+								Type: "text",
+								Text: lo.ToPtr("I'll use the calculator."),
+							},
+							{
+								Type:     "thinking",
+								Thinking: lo.ToPtr("I need to use the calculator tool for this."),
+							},
 								{
 									Type: "tool_use",
 									ID:   "call_123",

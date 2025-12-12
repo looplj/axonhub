@@ -162,15 +162,15 @@ func (s *anthropicInboundStream) Next() bool {
 			if !s.hasThinkingContentStarted {
 				s.hasThinkingContentStarted = true
 
-				streamEvent := StreamEvent{
-					Type:  "content_block_start",
-					Index: &s.contentIndex,
-					ContentBlock: &MessageContentBlock{
-						Type:      "thinking",
-						Thinking:  "",
-						Signature: "",
-					},
-				}
+			streamEvent := StreamEvent{
+				Type:  "content_block_start",
+				Index: &s.contentIndex,
+				ContentBlock: &MessageContentBlock{
+					Type:      "thinking",
+					Thinking:  lo.ToPtr(""),
+					Signature: "",
+				},
+			}
 
 				err := s.enqueEvent(&streamEvent)
 				if err != nil {
@@ -254,14 +254,14 @@ func (s *anthropicInboundStream) Next() bool {
 			if !s.hasTextContentStarted {
 				s.hasTextContentStarted = true
 
-				streamEvent := StreamEvent{
-					Type:  "content_block_start",
-					Index: &s.contentIndex,
-					ContentBlock: &MessageContentBlock{
-						Type: "text",
-						Text: "",
-					},
-				}
+			streamEvent := StreamEvent{
+				Type:  "content_block_start",
+				Index: &s.contentIndex,
+				ContentBlock: &MessageContentBlock{
+					Type: "text",
+					Text: lo.ToPtr(""),
+				},
+			}
 
 				err := s.enqueEvent(&streamEvent)
 				if err != nil {

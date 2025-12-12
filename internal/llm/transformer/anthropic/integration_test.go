@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
@@ -128,12 +129,12 @@ func TestAnthropicTransformers_Integration(t *testing.T) {
 				ID:   "msg_test_123",
 				Type: "message",
 				Role: "assistant",
-				Content: []MessageContentBlock{
-					{
-						Type: "text",
-						Text: "This is a test response from Claude.",
-					},
+			Content: []MessageContentBlock{
+				{
+					Type: "text",
+					Text: lo.ToPtr("This is a test response from Claude."),
 				},
+			},
 				Model:      tt.expectedModel,
 				StopReason: func() *string { s := "end_turn"; return &s }(),
 				Usage: &Usage{

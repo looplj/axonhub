@@ -1241,15 +1241,15 @@ func TestAnthropicMessageContent_MarshalUnmarshal(t *testing.T) {
 			jsonStr: `"Hello, world!"`,
 		},
 		{
-			name: "array content",
-			content: MessageContent{
-				MultipleContent: []MessageContentBlock{
-					{
-						Type: "text",
-						Text: "Hello",
-					},
+		name: "array content",
+		content: MessageContent{
+			MultipleContent: []MessageContentBlock{
+				{
+					Type: "text",
+					Text: lo.ToPtr("Hello"),
 				},
 			},
+		},
 			jsonStr: `[{"type":"text","text":"Hello"}]`,
 		},
 	}

@@ -24,10 +24,10 @@ func TestConvertToChatCompletionResponse_WithThinking(t *testing.T) {
 		ID:   "msg_thinking",
 		Type: "message",
 		Role: "assistant",
-		Content: []MessageContentBlock{
-			{Type: "thinking", Thinking: thinking, Signature: signature},
-			{Type: "text", Text: answer},
-		},
+	Content: []MessageContentBlock{
+		{Type: "thinking", Thinking: lo.ToPtr(thinking), Signature: signature},
+		{Type: "text", Text: lo.ToPtr(answer)},
+	},
 		Model: "claude-3-sonnet-20240229",
 	}
 

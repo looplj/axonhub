@@ -162,7 +162,7 @@ func TestPipeline_OpenAI_to_Anthropic(t *testing.T) {
 		Content: []anthropic.MessageContentBlock{
 			{
 				Type: "text",
-				Text: "Hello! I'm Claude, how can I assist you today?",
+				Text: lo.ToPtr("Hello! I'm Claude, how can I assist you today?"),
 			},
 		},
 		Model:      "claude-3-sonnet-20240229",
@@ -373,7 +373,7 @@ func TestPipeline_Anthropic_to_Anthropic(t *testing.T) {
 		Content: []anthropic.MessageContentBlock{
 			{
 				Type: "text",
-				Text: "Hello! I'm Claude, nice to meet you!",
+				Text: lo.ToPtr("Hello! I'm Claude, nice to meet you!"),
 			},
 		},
 		Model:      "claude-3-sonnet-20240229",
