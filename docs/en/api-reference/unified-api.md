@@ -54,6 +54,99 @@ responseText := completion.Choices[0].Message.Content
 fmt.Println(responseText)
 ```
 
+### OpenAI Responses API
+
+AxonHub provides partial support for the OpenAI Responses API. This API offers a simplified interface for single-turn interactions.
+
+**Endpoints:**
+- `POST /v1/responses` - Generate a response
+
+**Limitations:**
+- ❌ `previous_response_id` is **not supported** - conversation history must be managed client-side
+- ✅ Basic response generation is fully functional
+- ✅ Streaming responses are supported
+
+**Example Request:**
+```go
+import (
+    "context"
+    "fmt"
+
+    "github.com/openai/openai-go/v3"
+    "github.com/openai/openai-go/v3/option"
+    "github.com/openai/openai-go/v3/responses"
+    "github.com/openai/openai-go/v3/shared"
+)
+
+// Create OpenAI client with AxonHub configuration
+client := openai.NewClient(
+    option.WithAPIKey("your-axonhub-api-key"),
+    option.WithBaseURL("http://localhost:8090/v1"),
+)
+
+ctx := context.Background()
+
+// Generate a response (previous_response_id not supported)
+params := responses.ResponseNewParams{
+    Model: shared.ResponsesModel("gpt-4o"),
+    Input: responses.ResponseNewParamsInputUnion{
+        OfString: openai.String("Hello, how are you?"),
+    },
+}
+
+response, err := client.Responses.New(ctx, params)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println(response.OutputText())
+```
+
+**Example: Streaming Response**
+```go
+import (
+    "context"
+    "fmt"
+    "strings"
+
+    "github.com/openai/openai-go/v3"
+    "github.com/openai/openai-go/v3/option"
+    "github.com/openai/openai-go/v3/responses"
+    "github.com/openai/openai-go/v3/shared"
+)
+
+client := openai.NewClient(
+    option.WithAPIKey("your-axonhub-api-key"),
+    option.WithBaseURL("http://localhost:8090/v1"),
+)
+
+ctx := context.Background()
+
+params := responses.ResponseNewParams{
+    Model: shared.ResponsesModel("gpt-4o"),
+    Input: responses.ResponseNewParamsInputUnion{
+        OfString: openai.String("Tell me a short story about a robot."),
+    },
+}
+
+stream := client.Responses.NewStreaming(ctx, params)
+
+var fullContent strings.Builder
+for stream.Next() {
+    event := stream.Current()
+    if event.Type == "response.output_text.delta" && event.Delta != "" {
+        fullContent.WriteString(event.Delta)
+        fmt.Print(event.Delta) // Print as it streams
+    }
+}
+
+if err := stream.Err(); err != nil {
+    panic(err)
+}
+
+fmt.Println("\nComplete response:", fullContent.String())
+```
+
 ### Anthropic Messages API
 
 AxonHub also supports the native Anthropic Messages API for applications that prefer Anthropic's specific features and response format.
@@ -367,6 +460,20 @@ Both API formats return standardized error responses:
 }
 ```
 
+## Tool Support
+
+AxonHub supports **function tools** (custom function calling) across all API formats. However, provider-specific tools are **not supported**:
+
+| Tool Type | Support Status | Notes |
+| --------- | -------------- | ----- |
+| **Function Tools** | ✅ Supported | Custom function definitions work across all providers |
+| **Web Search** | ❌ Not Supported | Provider-specific (OpenAI, Anthropic, etc.) |
+| **Code Interpreter** | ❌ Not Supported | Provider-specific (OpenAI, Anthropic, etc.) |
+| **File Search** | ❌ Not Supported | Provider-specific |
+| **Computer Use** | ❌ Not Supported | Anthropic-specific |
+
+> **Note**: Only generic function tools that can be translated across providers are supported. Provider-specific tools like web search, code interpreter, and computer use require direct access to the provider's infrastructure and cannot be proxied through AxonHub.
+
 ## Best Practices
 
 1. **Choose Your Preferred API**: Use the API format that best fits your application's needs and existing codebase
@@ -374,6 +481,7 @@ Both API formats return standardized error responses:
 3. **Model Selection**: Specify the target model explicitly in your requests
 4. **Error Handling**: Implement proper error handling for both API formats
 5. **Streaming**: Use streaming for better user experience with long responses
+6. **Use Function Tools**: For tool calling, use generic function tools instead of provider-specific tools
 
 ## Migration Guide
 
