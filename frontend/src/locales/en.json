@@ -391,6 +391,8 @@
     },
     "profiles": {
       "title": "API Key Profiles",
+      "expand": "Expand Profile",
+      "collapse": "Collapse Profile",
       "description": "Configure model mapping profiles for {{name}}. When an active profile has model mappings configured, the system will automatically map requested models to their target models during API requests.",
       "profilesTitle": "Profiles",
       "addProfile": "Add Profile",

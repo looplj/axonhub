@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { IconPlus, IconTrash, IconSettings } from '@tabler/icons-react'
+import { IconPlus, IconTrash, IconSettings, IconChevronDown, IconChevronUp } from '@tabler/icons-react'
 import { useQueryModels } from '@/gql/models'
 import { useTranslation } from 'react-i18next'
 import { useDebounce } from '@/hooks/use-debounce'
@@ -287,6 +287,7 @@ interface ProfileCardProps {
 
 function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels, t }: ProfileCardProps) {
   const [localProfileName, setLocalProfileName] = useState('')
+  const [isCollapsed, setIsCollapsed] = useState(false)
   const { data: channelsData } = useAllChannelsForOrdering({ enabled: true })
 
   const debouncedProfileName = useDebounce(localProfileName, 500)
@@ -344,8 +345,8 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels,
   return (
     <Card>
       <CardHeader className='pb-3'>
-        <div className='flex items-center justify-between'>
-          <CardTitle className='text-base'>
+        <div className='flex items-center justify-between gap-2'>
+          <CardTitle className='text-base flex-1 min-w-0'>
             <FormField
               control={form.control}
               name={`profiles.${profileIndex}.name`}
@@ -361,7 +362,7 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels,
                       }}
                       onBlur={field.onBlur}
                       placeholder={t('apikeys.profiles.profileName')}
-                      className='font-medium'
+                      className='font-medium w-full md:w-[12em]'
                     />
                   </FormControl>
                   <FormMessage />
@@ -369,90 +370,105 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels,
               )}
             />
           </CardTitle>
-          {canRemove && (
-            <Button type='button' variant='ghost' size='sm' onClick={onRemove} className='text-destructive hover:text-destructive'>
-              <IconTrash className='h-4 w-4' />
+          <div className='flex items-center gap-1 shrink-0'>
+            <Button
+              type='button'
+              variant='ghost'
+              size='sm'
+              onClick={() => setIsCollapsed((prev) => !prev)}
+              className='hover:bg-accent'
+              aria-expanded={!isCollapsed}
+              aria-label={isCollapsed ? t('apikeys.profiles.expand') : t('apikeys.profiles.collapse')}
+            >
+              {isCollapsed ? <IconChevronDown className='h-4 w-4' /> : <IconChevronUp className='h-4 w-4' />}
             </Button>
-          )}
+            {canRemove && (
+              <Button type='button' variant='ghost' size='sm' onClick={onRemove} className='text-destructive hover:text-destructive'>
+                <IconTrash className='h-4 w-4' />
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
-      <CardContent className='space-y-4'>
-        <div className='flex items-center justify-between'>
-          <h4 className='text-sm font-medium'>{t('apikeys.profiles.modelMappings')}</h4>
-          <Button type='button' variant='outline' size='sm' onClick={addMapping} className='flex items-center gap-2'>
-            <IconPlus className='h-4 w-4' />
-            {t('apikeys.profiles.addMapping')}
-          </Button>
-        </div>
+      {!isCollapsed && (
+        <CardContent className='space-y-4'>
+          <div className='flex items-center justify-between'>
+            <h4 className='text-sm font-medium'>{t('apikeys.profiles.modelMappings')}</h4>
+            <Button type='button' variant='outline' size='sm' onClick={addMapping} className='flex items-center gap-2'>
+              <IconPlus className='h-4 w-4' />
+              {t('apikeys.profiles.addMapping')}
+            </Button>
+          </div>
 
-        {mappingFields.length === 0 && <p className='text-muted-foreground py-4 text-center text-sm'>{t('apikeys.profiles.noMappings')}</p>}
+          {mappingFields.length === 0 && <p className='text-muted-foreground py-4 text-center text-sm'>{t('apikeys.profiles.noMappings')}</p>}
 
-        <div className='space-y-3'>
-          {mappingFields.map((mapping, mappingIndex) => (
-            <MappingRow
-              key={mapping.id}
-              profileIndex={profileIndex}
-              mappingIndex={mappingIndex}
-              form={form}
-              onRemove={() => removeMapping(mappingIndex)}
-              availableModels={availableModels}
-              t={t}
+          <div className='space-y-3'>
+            {mappingFields.map((mapping, mappingIndex) => (
+              <MappingRow
+                key={mapping.id}
+                profileIndex={profileIndex}
+                mappingIndex={mappingIndex}
+                form={form}
+                onRemove={() => removeMapping(mappingIndex)}
+                availableModels={availableModels}
+                t={t}
+              />
+            ))}
+          </div>
+
+          {/* Channel Restrictions Section */}
+          <div className='border-t pt-4'>
+            <h4 className='text-sm font-medium mb-3'>{t('apikeys.profiles.allowedChannels')}</h4>
+            <p className='text-muted-foreground text-xs mb-3'>{t('apikeys.profiles.allowedChannelsDescription')}</p>
+            <FormField
+              control={form.control}
+              name={`profiles.${profileIndex}.channelIDs`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <div className='grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border rounded-md p-2'>
+                      {channelsData?.edges?.map((edge) => {
+                        const channel = edge.node
+                        const channelId = parseInt(extractNumberID(channel.id), 10)
+                        const isChecked = (field.value || []).includes(channelId)
+                        return (
+                          <div key={channel.id} className='flex items-center space-x-2'>
+                            <Checkbox
+                              id={`channel-${profileIndex}-${channel.id}`}
+                              checked={isChecked}
+                              onCheckedChange={(checked) => {
+                                const currentValue: number[] = field.value || []
+                                if (checked) {
+                                  field.onChange([...currentValue, channelId])
+                                } else {
+                                  field.onChange(currentValue.filter((id) => id !== channelId))
+                                }
+                              }}
+                            />
+                            <Label
+                              htmlFor={`channel-${profileIndex}-${channel.id}`}
+                              className='text-sm font-normal cursor-pointer truncate'
+                              title={channel.name}
+                            >
+                              {channel.name}
+                            </Label>
+                          </div>
+                        )
+                      })}
+                      {(!channelsData?.edges || channelsData.edges.length === 0) && (
+                        <p className='text-muted-foreground text-sm col-span-2 text-center py-2'>
+                          {t('apikeys.profiles.noChannelsAvailable')}
+                        </p>
+                      )}
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          ))}
-        </div>
-
-        {/* Channel Restrictions Section */}
-        <div className='border-t pt-4'>
-          <h4 className='text-sm font-medium mb-3'>{t('apikeys.profiles.allowedChannels')}</h4>
-          <p className='text-muted-foreground text-xs mb-3'>{t('apikeys.profiles.allowedChannelsDescription')}</p>
-          <FormField
-            control={form.control}
-            name={`profiles.${profileIndex}.channelIDs`}
-            render={({ field }) => (
-              <FormItem>
-                <FormControl>
-                  <div className='grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border rounded-md p-2'>
-                    {channelsData?.edges?.map((edge) => {
-                      const channel = edge.node
-                      const channelId = parseInt(extractNumberID(channel.id), 10)
-                      const isChecked = (field.value || []).includes(channelId)
-                      return (
-                        <div key={channel.id} className='flex items-center space-x-2'>
-                          <Checkbox
-                            id={`channel-${profileIndex}-${channel.id}`}
-                            checked={isChecked}
-                            onCheckedChange={(checked) => {
-                              const currentValue: number[] = field.value || []
-                              if (checked) {
-                                field.onChange([...currentValue, channelId])
-                              } else {
-                                field.onChange(currentValue.filter((id) => id !== channelId))
-                              }
-                            }}
-                          />
-                          <Label
-                            htmlFor={`channel-${profileIndex}-${channel.id}`}
-                            className='text-sm font-normal cursor-pointer truncate'
-                            title={channel.name}
-                          >
-                            {channel.name}
-                          </Label>
-                        </div>
-                      )
-                    })}
-                    {(!channelsData?.edges || channelsData.edges.length === 0) && (
-                      <p className='text-muted-foreground text-sm col-span-2 text-center py-2'>
-                        {t('apikeys.profiles.noChannelsAvailable')}
-                      </p>
-                    )}
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-      </CardContent>
+          </div>
+        </CardContent>
+      )}
     </Card>
   )
 }

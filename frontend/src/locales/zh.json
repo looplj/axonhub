@@ -416,6 +416,8 @@
     },
     "profiles": {
       "title": "配置文件管理",
+      "expand": "展开配置",
+      "collapse": "收起配置",
       "description": "为以下 API Key {{name}} 配置模型映射, 当一个活动配置有模型映射配置时, 系统将自动在 API 请求时将请求模型映射到目标模型",
       "profilesTitle": "配置文件",
       "addProfile": "新增配置",

@@ -280,7 +280,7 @@ export function ChannelsTable({
                     </TableRow>
                     {row.getIsExpanded() && (
                       <TableRow key={`${row.id}-expanded`} className='bg-muted/30 hover:bg-muted/50'>
-                        <TableCell colSpan={columns.length} className='p-6'>
+                        <TableCell colSpan={columns.length} className='p-6 whitespace-normal'>
                           <div className='space-y-6'>
                             {/* Top Section: Basic Info + Performance (2 columns) */}
                             <div className='grid grid-cols-1 gap-6 md:grid-cols-2'>
@@ -288,11 +288,11 @@ export function ChannelsTable({
                               <div className='space-y-3'>
                                 <h4 className='text-sm font-semibold'>{t('channels.expandedRow.basicInfo')}</h4>
                                 <div className='space-y-2 text-sm'>
-                                  <div className='flex justify-between gap-4'>
-                                    <span className='text-muted-foreground shrink-0'>{t('channels.columns.baseURL')}:</span>
-                                    <span className='font-mono text-xs break-all text-right'>
-                                      {channel.baseURL}
+                                  <div className='flex items-start gap-2'>
+                                    <span className='text-muted-foreground shrink-0'>
+                                      {t('channels.columns.baseURL')}:
                                     </span>
+                                    <span className='flex-1 min-w-0 font-mono text-xs break-all text-right'>{channel.baseURL}</span>
                                   </div>
                                   <div className='flex justify-between items-center'>
                                     <span className='text-muted-foreground'>{t('channels.columns.type')}:</span>
