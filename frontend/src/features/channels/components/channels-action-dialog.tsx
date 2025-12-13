@@ -31,6 +31,7 @@ import { Channel, ChannelType, ApiFormat, createChannelInputSchema, updateChanne
 
 interface Props {
   currentRow?: Channel
+  duplicateFromRow?: Channel
   open: boolean
   onOpenChange: (open: boolean) => void
   showModelsPanel?: boolean
@@ -38,14 +39,15 @@ interface Props {
 
 const MAX_MODELS_DISPLAY = 2
 
-export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModelsPanel = false }: Props) {
+export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpenChange, showModelsPanel = false }: Props) {
   const { t } = useTranslation()
   const isEdit = !!currentRow
+  const initialRow: Channel | undefined = currentRow || duplicateFromRow
   const createChannel = useCreateChannel()
   const bulkCreateChannels = useBulkCreateChannels()
   const updateChannel = useUpdateChannel()
   const fetchModels = useFetchModels()
-  const [supportedModels, setSupportedModels] = useState<string[]>(currentRow?.supportedModels || [])
+  const [supportedModels, setSupportedModels] = useState<string[]>(() => initialRow?.supportedModels || [])
   const [newModel, setNewModel] = useState('')
   const [selectedDefaultModels, setSelectedDefaultModels] = useState<string[]>([])
   const [fetchedModels, setFetchedModels] = useState<string[]>([])
@@ -64,14 +66,14 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
 
   // Provider-based selection state
   const [selectedProvider, setSelectedProvider] = useState<string>(() => {
-    if (currentRow) {
-      return getProviderFromChannelType(currentRow.type) || 'openai'
+    if (initialRow) {
+      return getProviderFromChannelType(initialRow.type) || 'openai'
     }
     return 'openai'
   })
   const [selectedApiFormat, setSelectedApiFormat] = useState<ApiFormat>(() => {
-    if (currentRow) {
-      return CHANNEL_CONFIGS[currentRow.type]?.apiFormat || 'openai/chat_completions'
+    if (initialRow) {
+      return CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || 'openai/chat_completions'
     }
     return 'openai/chat_completions'
   })
@@ -168,6 +170,28 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
               },
             },
           }
+        : duplicateFromRow
+          ? {
+              type: duplicateFromRow.type,
+              baseURL: duplicateFromRow.baseURL,
+              name: duplicateFromRow.name,
+              supportedModels: duplicateFromRow.supportedModels,
+              defaultTestModel: duplicateFromRow.defaultTestModel,
+              tags: duplicateFromRow.tags || [],
+              credentials: {
+                apiKey: '',
+                aws: {
+                  accessKeyID: '',
+                  secretAccessKey: '',
+                  region: '',
+                },
+                gcp: {
+                  region: '',
+                  projectID: '',
+                  jsonData: '',
+                },
+              },
+            }
         : {
             type: derivedChannelType,
             baseURL: getDefaultBaseURL(derivedChannelType),
@@ -317,15 +341,15 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
           })
         } else {
           // Single create: use existing mutation
-          await createChannel.mutateAsync(dataWithModels as any)
+          await createChannel.mutateAsync(dataWithModels as z.infer<typeof createChannelInputSchema>)
         }
       }
 
       form.reset()
       setSupportedModels([])
       onOpenChange(false)
-    } catch (error) {
-      console.error('Failed to save channel:', error)
+    } catch (_error) {
+      void _error
     }
   }
 
@@ -402,7 +426,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
         setFetchedModelsSearch('')
         setShowAddedModelsOnly(false)
       }
-    } catch (error) {
+    } catch (_error) {
       // Error is already handled by the mutation
     }
   }, [fetchModels, form, isEdit, currentRow])
@@ -523,7 +547,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
       onOpenChange={(state) => {
         if (!state) {
           form.reset()
-          setSupportedModels(currentRow?.supportedModels || [])
+          setSupportedModels(initialRow?.supportedModels || [])
           setSelectedDefaultModels([])
           setFetchedModels([])
           setUseFetchedModels(false)
@@ -536,9 +560,9 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
           setShowAddedModelsOnly(false)
           setSupportedModelsExpanded(false)
           // Reset provider and API format state
-          if (currentRow) {
-            setSelectedProvider(getProviderFromChannelType(currentRow.type) || 'openai')
-            setSelectedApiFormat(CHANNEL_CONFIGS[currentRow.type]?.apiFormat || OPENAI_CHAT_COMPLETIONS)
+          if (initialRow) {
+            setSelectedProvider(getProviderFromChannelType(initialRow.type) || 'openai')
+            setSelectedApiFormat(CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || OPENAI_CHAT_COMPLETIONS)
           } else {
             setSelectedProvider('openai')
             setSelectedApiFormat(OPENAI_CHAT_COMPLETIONS)

@@ -61,6 +61,22 @@ export function ChannelsDialogs() {
           />
 
           <ChannelsActionDialog
+            key={`channel-duplicate-${currentRow.id}`}
+            open={open === 'duplicate'}
+            onOpenChange={(isOpen) => {
+              if (isOpen) {
+                setOpen('duplicate')
+              } else {
+                setOpen(null)
+                setTimeout(() => {
+                  setCurrentRow(null)
+                }, 500)
+              }
+            }}
+            duplicateFromRow={currentRow}
+          />
+
+          <ChannelsActionDialog
             key={`channel-view-models-${currentRow.id}`}
             open={open === 'viewModels'}
             onOpenChange={(isOpen) => {
