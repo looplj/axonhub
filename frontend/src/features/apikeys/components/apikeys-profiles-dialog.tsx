@@ -199,16 +199,17 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
                   <div className='space-y-4'>
                     <div className='space-y-4'>
                       {profileFields.map((profile, profileIndex) => (
-                        <ProfileCard
-                          key={profile.id}
-                          profileIndex={profileIndex}
-                          form={form}
-                          onRemove={() => removeProfileHandler(profileIndex)}
-                          canRemove={profileFields.length > 1}
-                          availableModels={availableModels?.map((model) => model.id) || []}
-                          t={t}
-                          defaultExpanded={profileIndex === 0}
-                        />
+                        <div key={profile.id} className={profileIndex === 0 ? 'mt-4' : ''}>
+                          <ProfileCard
+                            profileIndex={profileIndex}
+                            form={form}
+                            onRemove={() => removeProfileHandler(profileIndex)}
+                            canRemove={profileFields.length > 1}
+                            availableModels={availableModels?.map((model) => model.id) || []}
+                            t={t}
+                            defaultExpanded={profileIndex === 0}
+                          />
+                        </div>
                       ))}
                     </div>
                   </div>

@@ -128,20 +128,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
 
   const getApiFormatLabel = useCallback(
     (format: ApiFormat) => {
-      // Convert 'openai/chat_completions' to 'openaiChatCompletions'
-      const formatKey = format
-        .split('/')
-        .map((part, index) => {
-          // Handle underscores: 'chat_completions' -> 'chatCompletions'
-          const camelCased = part
-            .split('_')
-            .map((word, wordIndex) => (wordIndex === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1)))
-            .join('')
-          // Capitalize first letter if not the first part
-          return index === 0 ? camelCased : camelCased.charAt(0).toUpperCase() + camelCased.slice(1)
-        })
-        .join('')
-      return t(`channels.dialogs.fields.apiFormat.formats.${formatKey}`)
+      return t(`channels.dialogs.fields.apiFormat.formats.${format}`)
     },
     [t]
   )
