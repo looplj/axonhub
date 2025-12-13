@@ -434,7 +434,10 @@
       "regexSupported": "支持正则表达式",
       "allowedChannels": "允许的渠道",
       "allowedChannelsDescription": "选择此配置可以使用的渠道。如果未选择任何渠道，则允许使用所有渠道。",
-      "noChannelsAvailable": "暂无可用渠道"
+      "noChannelsAvailable": "暂无可用渠道",
+      "allowedChannelTags": "允许的渠道标签",
+      "allowedChannelTagsDescription": "选择标签来过滤此配置可用的渠道。包含任一所选标签的渠道将被允许使用。如果未选择任何标签，则禁用标签过滤。",
+      "noTagsAvailable": "暂无可用标签"
     }
   },
   "roles": {
@@ -857,6 +860,11 @@
           "label": "默认测试模型",
           "description": "用于测试连接的默认模型"
         },
+        "tags": {
+          "label": "标签",
+          "placeholder": "添加标签...",
+          "description": "添加标签来分类和过滤渠道。按回车键、逗号或空格来添加标签。"
+        },
         "modelName": {
           "label": "模型名称",
           "placeholder": "输入模型名称"
@@ -1083,6 +1091,7 @@
       "totalModels": "模型总数",
       "defaultTestModel": "默认测试模型",
       "remark": "备注",
+      "tags": "标签",
       "apiFormat": "API 格式",
       "noPerformanceData": "暂无性能数据",
       "more": "更多"

@@ -138,6 +138,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
       name: `Profile ${profileFields.length + 1}`,
       modelMappings: [],
       channelIDs: [],
+      channelTags: [],
     })
   }, [appendProfile, profileFields])
 
@@ -278,7 +279,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
 
 interface ProfileCardProps {
   profileIndex: number
-  form: any
+  form: ReturnType<typeof useForm<UpdateApiKeyProfilesInput>>
   onRemove: () => void
   canRemove: boolean
   availableModels: string[]
@@ -291,6 +292,17 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels,
   const { data: channelsData } = useAllChannelsForOrdering({ enabled: true })
 
   const debouncedProfileName = useDebounce(localProfileName, 500)
+
+  // 从所有渠道中提取唯一标签
+  const allTags = useMemo(() => {
+    const tagsSet = new Set<string>()
+    channelsData?.edges?.forEach((edge) => {
+      edge.node.tags?.forEach((tag) => {
+        if (tag) tagsSet.add(tag)
+      })
+    })
+    return Array.from(tagsSet).sort()
+  }, [channelsData])
 
   const {
     fields: mappingFields,
@@ -319,8 +331,8 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels,
         return
       }
 
-      const otherProfiles = allProfiles.filter((_: any, idx: number) => idx !== profileIndex)
-      const isDuplicate = otherProfiles.some((p: any) => p.name && p.name.trim().toLowerCase() === trimmedValue)
+      const otherProfiles = allProfiles.filter((_profile: ApiKeyProfile, idx: number) => idx !== profileIndex)
+      const isDuplicate = otherProfiles.some((p: ApiKeyProfile) => p.name && p.name.trim().toLowerCase() === trimmedValue)
 
       if (isDuplicate) {
         form.setError(`profiles.${profileIndex}.name`, {
@@ -336,7 +348,7 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels,
   // Debounced form value update for performance
   useEffect(() => {
     checkDuplicate(debouncedProfileName)
-  }, [debouncedProfileName])
+  }, [debouncedProfileName, checkDuplicate])
 
   const addMapping = useCallback(() => {
     appendMapping({ from: '', to: '' })
@@ -467,6 +479,56 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels,
               )}
             />
           </div>
+
+          {/* Channel Tags Restrictions Section */}
+          <div className='border-t pt-4 mt-4'>
+            <h4 className='text-sm font-medium mb-3'>{t('apikeys.profiles.allowedChannelTags')}</h4>
+            <p className='text-muted-foreground text-xs mb-3'>{t('apikeys.profiles.allowedChannelTagsDescription')}</p>
+            <FormField
+              control={form.control}
+              name={`profiles.${profileIndex}.channelTags`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <div className='grid grid-cols-3 gap-2 max-h-40 overflow-y-auto border rounded-md p-2'>
+                      {allTags.map((tag) => {
+                        const isChecked = (field.value || []).includes(tag)
+                        return (
+                          <div key={tag} className='flex items-center space-x-2'>
+                            <Checkbox
+                              id={`tag-${profileIndex}-${tag}`}
+                              checked={isChecked}
+                              onCheckedChange={(checked) => {
+                                const currentValue: string[] = field.value || []
+                                if (checked) {
+                                  field.onChange([...currentValue, tag])
+                                } else {
+                                  field.onChange(currentValue.filter((t) => t !== tag))
+                                }
+                              }}
+                            />
+                            <Label
+                              htmlFor={`tag-${profileIndex}-${tag}`}
+                              className='text-sm font-normal cursor-pointer truncate'
+                              title={tag}
+                            >
+                              {tag}
+                            </Label>
+                          </div>
+                        )
+                      })}
+                      {allTags.length === 0 && (
+                        <p className='text-muted-foreground text-sm col-span-3 text-center py-2'>
+                          {t('apikeys.profiles.noTagsAvailable')}
+                        </p>
+                      )}
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
         </CardContent>
       )}
     </Card>
@@ -476,7 +538,7 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels,
 interface MappingRowProps {
   profileIndex: number
   mappingIndex: number
-  form: any
+  form: ReturnType<typeof useForm<UpdateApiKeyProfilesInput>>
   onRemove: () => void
   availableModels: string[]
   t: (key: string) => string

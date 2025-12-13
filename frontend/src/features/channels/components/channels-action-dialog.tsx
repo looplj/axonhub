@@ -18,6 +18,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Textarea } from '@/components/ui/textarea'
 import { AutoCompleteSelect } from '@/components/auto-complete-select'
 import { SelectDropdown } from '@/components/select-dropdown'
+import { TagsInput } from '@/components/ui/tags-input'
 import { useCreateChannel, useUpdateChannel, useFetchModels, useBulkCreateChannels } from '../data/channels'
 import { getDefaultBaseURL, getDefaultModels, CHANNEL_CONFIGS, OPENAI_CHAT_COMPLETIONS } from '../data/config_channels'
 import {
@@ -164,6 +165,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
             name: currentRow.name,
             supportedModels: currentRow.supportedModels,
             defaultTestModel: currentRow.defaultTestModel,
+            tags: currentRow.tags || [],
             credentials: {
               apiKey: '', // credentials字段是敏感字段，不从API返回
               aws: {
@@ -197,6 +199,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
             },
             supportedModels: [],
             defaultTestModel: '',
+            tags: [],
           },
   })
 
@@ -987,6 +990,28 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                               isControlled={true}
                               data-testid='default-test-model-select'
                             />
+                            <FormMessage />
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name='tags'
+                      render={({ field }) => (
+                        <FormItem className='grid grid-cols-8 items-start gap-x-6'>
+                          <FormLabel className='col-span-2 pt-2 text-right font-medium'>
+                            {t('channels.dialogs.fields.tags.label')}
+                          </FormLabel>
+                          <div className='col-span-6 space-y-1'>
+                            <TagsInput
+                              value={field.value || []}
+                              onChange={field.onChange}
+                              placeholder={t('channels.dialogs.fields.tags.placeholder')}
+                              data-testid='channel-tags-input'
+                            />
+                            <p className='text-muted-foreground text-xs'>{t('channels.dialogs.fields.tags.description')}</p>
                             <FormMessage />
                           </div>
                         </FormItem>

@@ -173,6 +173,7 @@ input APIKeyProfileInput {
   name: String!
   modelMappings: [ModelMappingInput!]
   channelIDs: [Int!]
+  channelTags: [String!]
 }
 
 type APIKeyProfiles {
@@ -184,6 +185,7 @@ type APIKeyProfile {
   name: String!
   modelMappings: [ModelMapping!]
   channelIDs: [Int!]
+  channelTags: [String!]
 }
 
 input FetchModelsInput {

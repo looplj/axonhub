@@ -110,6 +110,52 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 	return sortedChannels, nil
 }
 
+// TagsFilterSelector 是一个装饰器，根据允许的标签过滤渠道。
+// 采用 OR 逻辑：渠道包含任意一个允许的标签即可被选中。
+type TagsFilterSelector struct {
+	wrapped     ChannelSelector
+	allowedTags []string
+}
+
+// NewTagsFilterSelector 创建根据标签过滤的选择器。
+// 如果 allowedTags 为空，返回所有来自 wrapped selector 的渠道。
+func NewTagsFilterSelector(wrapped ChannelSelector, allowedTags []string) *TagsFilterSelector {
+	return &TagsFilterSelector{
+		wrapped:     wrapped,
+		allowedTags: allowedTags,
+	}
+}
+
+func (s *TagsFilterSelector) Select(ctx context.Context, req *llm.Request) ([]*biz.Channel, error) {
+	channels, err := s.wrapped.Select(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	// 如果没有指定标签，返回所有渠道
+	if len(s.allowedTags) == 0 {
+		return channels, nil
+	}
+
+	// 构建标签集合用于 O(1) 查找
+	allowedSet := lo.SliceToMap(s.allowedTags, func(tag string) (string, struct{}) {
+		return tag, struct{}{}
+	})
+
+	// 过滤渠道：只保留至少包含一个允许标签的渠道（OR 逻辑）
+	// 空标签的渠道不会被匹配
+	filtered := lo.Filter(channels, func(ch *biz.Channel, _ int) bool {
+		for _, tag := range ch.Tags {
+			if _, ok := allowedSet[tag]; ok {
+				return true
+			}
+		}
+		return false
+	})
+
+	return filtered, nil
+}
+
 // SpecifiedChannelSelector allows selecting specific channels (including disabled ones) for testing.
 type SpecifiedChannelSelector struct {
 	ChannelService *biz.ChannelService

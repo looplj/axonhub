@@ -339,6 +339,7 @@ export const channelOrderingItemSchema = z.object({
   status: channelStatusSchema,
   baseURL: z.string(),
   orderingWeight: z.number(),
+  tags: z.array(z.string()).optional().default([]).nullable(),
 })
 export type ChannelOrderingItem = z.infer<typeof channelOrderingItemSchema>
 

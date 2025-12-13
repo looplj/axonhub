@@ -294,7 +294,7 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
 const ALL_CHANNELS_QUERY = `
   query GetAllChannels {
     channels(
-      first: 1000, 
+      first: 1000,
       orderBy: { field: ORDERING_WEIGHT, direction: DESC }
       where: { statusIn: [enabled, disabled] }
     ) {
@@ -307,6 +307,7 @@ const ALL_CHANNELS_QUERY = `
           status
           baseURL
           orderingWeight
+          tags
         }
       }
     }

@@ -409,7 +409,10 @@
       "regexSupported": "Supports regular expressions",
       "allowedChannels": "Allowed Channels",
       "allowedChannelsDescription": "Select channels that this profile can use. If none selected, all channels are allowed.",
-      "noChannelsAvailable": "No channels available"
+      "noChannelsAvailable": "No channels available",
+      "allowedChannelTags": "Allowed Channel Tags",
+      "allowedChannelTagsDescription": "Select tags to filter channels for this profile. Channels with any of the selected tags will be allowed. If none selected, tag filtering is disabled.",
+      "noTagsAvailable": "No tags available"
     }
   },
   "roles": {
@@ -829,6 +832,11 @@
           "label": "Test Model",
           "description": "Default model for testing connections"
         },
+        "tags": {
+          "label": "Tags",
+          "placeholder": "Add tags...",
+          "description": "Add tags to categorize and filter channels. Press Enter, comma, or space to add a tag."
+        },
         "modelName": {
           "label": "Model Name",
           "placeholder": "Enter model name"
@@ -1054,6 +1062,7 @@
       "totalModels": "Total Models",
       "defaultTestModel": "Default Test Model",
       "remark": "Remark",
+      "tags": "Tags",
       "apiFormat": "API Format",
       "noPerformanceData": "No performance data available",
       "more": "more"

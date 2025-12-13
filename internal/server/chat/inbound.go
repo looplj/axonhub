@@ -244,8 +244,16 @@ func selectChannels(inbound *PersistentInboundTransformer) pipeline.Middleware {
 
 		selector := inbound.state.ChannelSelector
 
-		if profile := GetActiveProfile(inbound.state.APIKey); profile != nil && len(profile.ChannelIDs) > 0 {
-			selector = NewSelectedChannelsSelector(selector, profile.ChannelIDs)
+		if profile := GetActiveProfile(inbound.state.APIKey); profile != nil {
+			// 先应用 ChannelIDs 过滤
+			if len(profile.ChannelIDs) > 0 {
+				selector = NewSelectedChannelsSelector(selector, profile.ChannelIDs)
+			}
+
+			// 再应用 ChannelTags 过滤（链式装饰器，与 IDs 取交集）
+			if len(profile.ChannelTags) > 0 {
+				selector = NewTagsFilterSelector(selector, profile.ChannelTags)
+			}
 		}
 
 		if inbound.state.LoadBalancer != nil {

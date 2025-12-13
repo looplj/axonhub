@@ -318,6 +318,20 @@ export function ChannelsTable({
                                       {channel.remark || '-'}
                                     </span>
                                   </div>
+                                  <div className='flex justify-between items-start'>
+                                    <span className='text-muted-foreground shrink-0'>{t('channels.expandedRow.tags')}:</span>
+                                    <div className='flex flex-wrap gap-1 justify-end max-w-[200px]'>
+                                      {channel.tags && channel.tags.length > 0 ? (
+                                        channel.tags.map((tag) => (
+                                          <Badge key={tag} variant='outline' className='text-xs'>
+                                            {tag}
+                                          </Badge>
+                                        ))
+                                      ) : (
+                                        <span>-</span>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
 
