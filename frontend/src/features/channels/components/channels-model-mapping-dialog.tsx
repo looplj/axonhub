@@ -438,6 +438,11 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
                   >
                     <Plus size={16} />
                   </Button>
+                  {(newMapping.from.trim() || newMapping.to.trim()) && (
+                    <Button type='button' variant='outline' size='sm' onClick={() => setNewMapping({ from: '', to: '' })}>
+                      <X size={16} />
+                    </Button>
+                  )}
                 </div>
 
                 {/* 显示表单错误 */}

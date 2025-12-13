@@ -13,9 +13,9 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Form, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Textarea } from '@/components/ui/textarea'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { AutoCompleteSelect } from '@/components/auto-complete-select'
 import { SelectDropdown } from '@/components/select-dropdown'
 import { TagsInput } from '@/components/ui/tags-input'
@@ -56,6 +56,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
   const [showFetchedModelsPanel, setShowFetchedModelsPanel] = useState(false)
   const [showSupportedModelsPanel, setShowSupportedModelsPanel] = useState(false)
   const [fetchedModelsSearch, setFetchedModelsSearch] = useState('')
+  const [supportedModelsSearch, setSupportedModelsSearch] = useState('')
   const [selectedFetchedModels, setSelectedFetchedModels] = useState<string[]>([])
   const [showAddedModelsOnly, setShowAddedModelsOnly] = useState(false)
   const [supportedModelsExpanded, setSupportedModelsExpanded] = useState(false)
@@ -519,9 +520,19 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
     return supportedModels.slice(0, MAX_MODELS_DISPLAY)
   }, [supportedModels])
 
+  // Filtered supported models based on search
+  const filteredSupportedModels = useMemo(() => {
+    if (!supportedModelsSearch.trim()) {
+      return supportedModels
+    }
+    const search = supportedModelsSearch.toLowerCase()
+    return supportedModels.filter((model) => model.toLowerCase().includes(search))
+  }, [supportedModels, supportedModelsSearch])
+
   return (
-    <Dialog
-      open={open}
+    <>
+      <Dialog
+        open={open}
       onOpenChange={(state) => {
         if (!state) {
           form.reset()
@@ -533,6 +544,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
           setShowFetchedModelsPanel(false)
           setShowSupportedModelsPanel(false)
           setFetchedModelsSearch('')
+          setSupportedModelsSearch('')
           setSelectedFetchedModels([])
           setShowAddedModelsOnly(false)
           setSupportedModelsExpanded(false)
@@ -1151,30 +1163,40 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                 </div>
                 <Popover open={showClearAllPopover} onOpenChange={setShowClearAllPopover}>
                   <PopoverTrigger asChild>
-                    <Button type='button' variant='ghost' size='sm' disabled={supportedModels.length === 0}>
+                    <Button
+                      type='button'
+                      variant='ghost'
+                      size='sm'
+                      disabled={supportedModels.length === 0}
+                    >
                       <X className='h-4 w-4' />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className='w-72 p-4' align='end'>
+                  <PopoverContent className='w-80 border-destructive/50 bg-background' align='end'>
                     <div className='space-y-3'>
-                      <div>
-                        <h4 className='font-medium'>{t('channels.dialogs.fields.supportedModels.clearAllTitle')}</h4>
+                      <div className='space-y-1'>
+                        <h4 className='font-medium leading-none'>{t('channels.dialogs.fields.supportedModels.clearAllTitle')}</h4>
                         <p className='text-muted-foreground text-sm'>
                           {t('channels.dialogs.fields.supportedModels.clearAllDescription', { count: supportedModels.length })}
                         </p>
                       </div>
-                      <div className='flex gap-2'>
-                        <Button variant='outline' size='sm' onClick={() => setShowClearAllPopover(false)} className='flex-1'>
+                      <div className='flex justify-end gap-2'>
+                        <Button
+                          type='button'
+                          variant='ghost'
+                          size='sm'
+                          onClick={() => setShowClearAllPopover(false)}
+                        >
                           {t('common.buttons.cancel')}
                         </Button>
                         <Button
+                          type='button'
                           variant='destructive'
                           size='sm'
                           onClick={() => {
                             handleClearAllSupportedModels()
                             setShowClearAllPopover(false)
                           }}
-                          className='flex-1'
                         >
                           {t('channels.dialogs.buttons.clearAll')}
                         </Button>
@@ -1184,10 +1206,21 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                 </Popover>
               </div>
 
+              {/* Search */}
+              <div className='relative mb-3'>
+                <Search className='text-muted-foreground absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2' />
+                <Input
+                  placeholder={t('channels.dialogs.fields.supportedModels.searchPlaceholder')}
+                  value={supportedModelsSearch}
+                  onChange={(e) => setSupportedModelsSearch(e.target.value)}
+                  className='h-8 pl-8 text-sm'
+                />
+              </div>
+
               {/* Model List */}
               <div className='-mr-2 max-h-[400px] flex-1 overflow-y-auto pr-2'>
                 <div className='space-y-1'>
-                  {supportedModels.map((model) => (
+                  {filteredSupportedModels.map((model) => (
                     <div key={model} className='hover:bg-accent flex items-center justify-between gap-2 rounded-md p-2 text-sm'>
                       <span className='flex-1 truncate'>{model}</span>
                       <Button
@@ -1224,5 +1257,6 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    </>
   )
 }
