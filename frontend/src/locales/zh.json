@@ -2052,6 +2052,7 @@
     "actions": {
       "openMenu": "打开菜单",
       "edit": "编辑",
+      "duplicate": "复制",
       "delete": "删除"
     },
     "filters": {

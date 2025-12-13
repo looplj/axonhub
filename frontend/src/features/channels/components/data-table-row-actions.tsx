@@ -2,6 +2,7 @@ import { DotsHorizontalIcon } from '@radix-ui/react-icons'
 import { Row } from '@tanstack/react-table'
 import {
   IconEdit,
+  IconCopy,
   IconToggleLeft,
   IconToggleRight,
   IconArchive,
@@ -61,6 +62,18 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           >
             <IconEdit size={16} className='mr-2' />
             {t('common.actions.edit')}
+          </DropdownMenuItem>
+        )}
+
+        {channelPermissions.canEdit && (
+          <DropdownMenuItem
+            onClick={() => {
+              setCurrentRow(row.original)
+              setOpen('duplicate')
+            }}
+          >
+            <IconCopy size={16} className='mr-2' />
+            {t('common.actions.duplicate')}
           </DropdownMenuItem>
         )}
 

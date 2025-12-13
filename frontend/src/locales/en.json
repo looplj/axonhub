@@ -2023,6 +2023,7 @@
       "test": "Test",
       "openMenu": "Open menu",
       "edit": "Edit",
+      "duplicate": "Duplicate",
       "delete": "Delete"
     },
     "filters": {
