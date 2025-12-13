@@ -146,8 +146,8 @@ test.describe('Admin API Keys Management', () => {
     const profilesDialog = page.getByRole('dialog').filter({ hasText: /配置|Profiles/i })
     await expect(profilesDialog).toBeVisible()
 
-    const profileInputSelector = 'input[placeholder*="配置名称"], input[placeholder*="Profile"]'
-    const addProfileButton = profilesDialog.getByRole('button', { name: /添加配置|Add Profile|新建/i })
+    const profileInputSelector = 'input[placeholder*="配置名称"], input[placeholder*="Profile Name"]'
+    const addProfileButton = profilesDialog.getByRole('button', { name: /新增配置|Add Profile/i })
     await expect(addProfileButton).toBeVisible()
 
     // Add first profile card (UI starts empty)
@@ -246,8 +246,8 @@ test.describe('Admin API Keys Management', () => {
     const profilesDialog = page.getByRole('dialog').filter({ hasText: /配置|Profiles/i })
     await expect(profilesDialog).toBeVisible()
     
-    const profileInputSelector = 'input[placeholder*="配置名称"], input[placeholder*="Profile"]'
-    const addProfileButton = profilesDialog.getByRole('button', { name: /添加配置|Add Profile|新建/i })
+    const profileInputSelector = 'input[placeholder*="配置名称"], input[placeholder*="Profile Name"]'
+    const addProfileButton = profilesDialog.getByRole('button', { name: /新增配置|Add Profile/i })
     await expect(addProfileButton).toBeVisible()
 
     // Add first profile and set its name to "Default" for baseline comparison

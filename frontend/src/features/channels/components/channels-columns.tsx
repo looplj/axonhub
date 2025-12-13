@@ -2,12 +2,13 @@ import { format } from 'date-fns'
 import { ColumnDef, Row } from '@tanstack/react-table'
 import { IconPlayerPlay, IconChevronDown, IconChevronRight, IconAlertTriangle } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { formatDuration } from '@/utils/format-duration'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useChannels } from '../context/channels-context'
 import { useTestChannel } from '../data/channels'
@@ -15,6 +16,40 @@ import { CHANNEL_CONFIGS, getProvider } from '../data/config_channels'
 import { Channel, ChannelType } from '../data/schema'
 import { DataTableColumnHeader } from './data-table-column-header'
 import { DataTableRowActions } from './data-table-row-actions'
+import { ChannelsStatusDialog } from './channels-status-dialog'
+
+// Status Switch Cell Component to handle status toggle with confirmation dialog
+function StatusSwitchCell({ row }: { row: Row<Channel> }) {
+  const channel = row.original
+  const [dialogOpen, setDialogOpen] = useState(false)
+  
+  const isEnabled = channel.status === 'enabled'
+  const isArchived = channel.status === 'archived'
+
+  const handleSwitchClick = useCallback(() => {
+    if (!isArchived) {
+      setDialogOpen(true)
+    }
+  }, [isArchived])
+
+  return (
+    <>
+      <Switch
+        checked={isEnabled}
+        onCheckedChange={handleSwitchClick}
+        disabled={isArchived}
+        data-testid="channel-status-switch"
+      />
+      {dialogOpen && (
+        <ChannelsStatusDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          currentRow={channel}
+        />
+      )}
+    </>
+  )
+}
 
 // Test Cell Component to handle hooks properly
 function TestCell({ row }: { row: Row<Channel> }) {
@@ -35,10 +70,10 @@ function TestCell({ row }: { row: Row<Channel> }) {
     }
   }
 
-  const handleOpenTestDialog = () => {
+  const handleOpenTestDialog = useCallback(() => {
     setCurrentRow(channel)
     setOpen('test')
-  }
+  }, [channel, setCurrentRow, setOpen])
 
   return (
     <div className='flex items-center gap-1'>
@@ -163,30 +198,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
     {
       accessorKey: 'status',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.status')} />,
-      cell: ({ row }) => {
-        const status = row.getValue('status') as string
-        const getBadgeVariant = () => {
-          switch (status) {
-            case 'enabled':
-              return 'default'
-            case 'archived':
-              return 'outline'
-            default:
-              return 'secondary'
-          }
-        }
-        const getStatusText = () => {
-          switch (status) {
-            case 'enabled':
-              return t('channels.status.enabled')
-            case 'archived':
-              return t('channels.status.archived')
-            default:
-              return t('channels.status.disabled')
-          }
-        }
-        return <Badge variant={getBadgeVariant()}>{getStatusText()}</Badge>
-      },
+      cell: StatusSwitchCell,
       enableSorting: false,
       enableHiding: false,
     },

@@ -7,8 +7,12 @@ test.describe('Admin Channels Management', () => {
     test.setTimeout(60000)
     await gotoAndEnsureAuth(page, '/channels')
 
-    // Wait for page to fully load
+    // Wait for page to fully load and channels table to appear
     await page.waitForTimeout(2000)
+    
+    // Wait for the channels table to be visible (indicates page is loaded)
+    const channelsTable = page.locator('[data-testid="channels-table"]')
+    await channelsTable.waitFor({ state: 'visible', timeout: 15000 })
   })
 
   test('can create, edit, and archive a channel', async ({ page }) => {
@@ -17,8 +21,9 @@ test.describe('Admin Channels Management', () => {
     const baseURL = `https://api.test-${uniqueSuffix}.example.com`
 
     // Step 1: Create a new channel
+    // Wait for the add button to appear (requires write_channels permission)
     const createButton = page.getByTestId('add-channel-button')
-    await expect(createButton).toBeVisible()
+    await expect(createButton).toBeVisible({ timeout: 10000 })
     await createButton.click()
 
     const createDialog = page.getByRole('dialog')
@@ -40,21 +45,18 @@ test.describe('Admin Channels Management', () => {
     await apiKeyInput.fill('sk-test-key-' + uniqueSuffix)
 
     // Add at least one supported model (required to enable Create button)
-    // Wait for Quick Add Models section to appear
+    // Wait for Quick Add Models section to appear and click on gpt-4o badge
+    const modelBadge = createDialog.getByTestId('quick-model-gpt-4o')
+    await expect(modelBadge).toBeVisible({ timeout: 5000 })
+    await modelBadge.click()
+    // Wait for selection state to update
+    await page.waitForTimeout(300)
+
+    // Click "Add Selected" button to add the selected models
+    const addSelectedButton = createDialog.getByTestId('add-selected-models-button')
+    await expect(addSelectedButton).toBeEnabled({ timeout: 5000 })
+    await addSelectedButton.click()
     await page.waitForTimeout(500)
-
-    // Click on one of the quick add model badges (e.g., gpt-4o)
-    const modelBadge = createDialog.locator('text=gpt-4o').first()
-    if ((await modelBadge.count()) > 0) {
-      await modelBadge.click()
-
-      // Click "Add Selected" button to add the selected models
-      const addSelectedButton = createDialog.getByRole('button', { name: /Add Selected|添加选中/i })
-      await addSelectedButton.click()
-
-      // Wait for model to be added
-      await page.waitForTimeout(500)
-    }
 
     // Select Default Test Model (required field)
     const defaultTestModelSelect = createDialog.getByTestId('default-test-model-select')
@@ -80,8 +82,10 @@ test.describe('Admin Channels Management', () => {
     const channelsTable = page.locator('[data-testid="channels-table"]')
     const channelRow = channelsTable.locator('tbody tr').filter({ hasText: name })
     await expect(channelRow).toBeVisible()
-    // New channels are created with 'disabled' status by default
-    await expect(channelRow).toContainText(/disabled|禁用/i)
+    // New channels are created with 'disabled' status by default - verify switch is unchecked
+    const statusSwitch = channelRow.locator('[data-testid="channel-status-switch"]')
+    await expect(statusSwitch).toBeVisible()
+    await expect(statusSwitch).not.toBeChecked()
 
     // Step 2: Edit the channel
     const actionsTrigger = channelRow.locator('[data-testid="row-actions"]')
@@ -89,8 +93,7 @@ test.describe('Admin Channels Management', () => {
 
     const editMenu = page.getByRole('menu')
     await expect(editMenu).toBeVisible()
-    await editMenu.getByRole('menuitem', { name: /编辑|Edit/i }).focus()
-    await page.keyboard.press('Enter')
+    await editMenu.getByRole('menuitem', { name: /编辑|Edit/i }).click()
 
     const editDialog = page.getByRole('dialog', { name: /编辑|Edit Channel/i })
     await expect(editDialog).toBeVisible()
@@ -123,8 +126,7 @@ test.describe('Admin Channels Management', () => {
     await archiveActionsTrigger.click()
     const archiveMenu = page.getByRole('menu')
     await expect(archiveMenu).toBeVisible()
-    await archiveMenu.getByRole('menuitem', { name: /归档|Archive/i }).focus()
-    await page.keyboard.press('Enter')
+    await archiveMenu.getByRole('menuitem', { name: /归档|Archive/i }).click()
 
     const archiveDialog = page.getByRole('alertdialog').or(page.getByRole('dialog'))
     await expect(archiveDialog).toBeVisible()
@@ -134,7 +136,7 @@ test.describe('Admin Channels Management', () => {
     await page.waitForTimeout(500)
 
     // Click the confirm button - it's the last button (first is Cancel)
-    const archiveButton = archiveDialog.locator('button').last()
+    const archiveButton = archiveDialog.getByRole('button', { name: /归档|Archive/i }).last()
     await Promise.all([waitForGraphQLOperation(page, 'UpdateChannelStatus'), archiveButton.click()])
 
     // Wait for dialog to close before proceeding
@@ -167,18 +169,18 @@ test.describe('Admin Channels Management', () => {
     // Wait for filter to apply
     await page.waitForTimeout(1000)
 
-    // Now verify the archived channel appears
+    // Now verify the archived channel appears - switch should be disabled for archived channels
     const archivedChannelRow = channelsTable.locator('tbody tr').filter({ hasText: updatedName })
     await expect(archivedChannelRow).toBeVisible()
-    await expect(archivedChannelRow).toContainText(/Archived|归档/i)
+    const archivedSwitch = archivedChannelRow.locator('[data-testid="channel-status-switch"]')
+    await expect(archivedSwitch).toBeDisabled()
 
-    // Step 4: Enable the channel
+    // Step 4: Enable the channel (from archived state, use menu action)
     const enableActionsTrigger = archivedChannelRow.locator('[data-testid="row-actions"]')
     await enableActionsTrigger.click()
     const enableMenu = page.getByRole('menu')
     await expect(enableMenu).toBeVisible()
-    await enableMenu.getByRole('menuitem', { name: /启用|Enable/i }).focus()
-    await page.keyboard.press('Enter')
+    await enableMenu.getByRole('menuitem', { name: /启用|Enable/i }).click()
 
     const enableDialog = page.getByRole('alertdialog').or(page.getByRole('dialog'))
     await expect(enableDialog).toBeVisible()
@@ -188,7 +190,7 @@ test.describe('Admin Channels Management', () => {
     await page.waitForTimeout(500)
 
     // Click the confirm button - it's the last button (first is Cancel)
-    const enableButton = enableDialog.locator('button').last()
+    const enableButton = enableDialog.getByRole('button', { name: /启用|Enable/i }).last()
     await Promise.all([waitForGraphQLOperation(page, 'UpdateChannelStatus'), enableButton.click()])
 
     // Wait for dialog to close before proceeding
@@ -211,10 +213,11 @@ test.describe('Admin Channels Management', () => {
     // Wait for table to refetch channels after clearing the filter
     await waitForGraphQLOperation(page, 'GetChannels')
 
-    // Now verify the enabled channel appears
+    // Now verify the enabled channel appears - switch should be checked
     const enabledChannelRow = channelsTable.locator('tbody tr').filter({ hasText: updatedName })
     await expect(enabledChannelRow).toBeVisible({ timeout: 10000 })
-    await expect(enabledChannelRow).toContainText(/Enabled|启用/i)
+    const enabledSwitch = enabledChannelRow.locator('[data-testid="channel-status-switch"]')
+    await expect(enabledSwitch).toBeChecked()
   })
 
   test('can test a channel', async ({ page }) => {
@@ -246,6 +249,7 @@ test.describe('Admin Channels Management', () => {
 
     // Create a channel with a unique name for searching
     const createButton = page.getByTestId('add-channel-button')
+    await expect(createButton).toBeVisible({ timeout: 10000 })
     await createButton.click()
 
     const createDialog = page.getByRole('dialog')
@@ -259,24 +263,24 @@ test.describe('Admin Channels Management', () => {
     await createDialog.getByTestId('channel-api-key-input').fill('sk-test-key-' + uniqueSuffix)
 
     // Add at least one supported model (required to enable Create button)
+    // Wait for model badge to appear and click it
+    const modelBadge = createDialog.getByTestId('quick-model-gpt-4o')
+    await expect(modelBadge).toBeVisible({ timeout: 5000 })
+    await modelBadge.click()
+    await page.waitForTimeout(300)
+    
+    const addSelectedButton = createDialog.getByTestId('add-selected-models-button')
+    await expect(addSelectedButton).toBeEnabled({ timeout: 5000 })
+    await addSelectedButton.click()
     await page.waitForTimeout(500)
-
-    const modelBadge = createDialog.locator('text=gpt-4o').first()
-    if ((await modelBadge.count()) > 0) {
-      await modelBadge.click()
-      const addSelectedButton = createDialog.getByRole('button', { name: /Add Selected|添加选中/i })
-      await addSelectedButton.click()
-      await page.waitForTimeout(500)
-    }
 
     // Select Default Test Model (required field)
     const defaultTestModelSelect = createDialog.getByTestId('default-test-model-select')
-    if ((await defaultTestModelSelect.count()) > 0) {
-      await defaultTestModelSelect.click()
-      const firstOption = page.getByRole('option').first()
-      await firstOption.click()
-      await page.waitForTimeout(300)
-    }
+    await expect(defaultTestModelSelect).toBeVisible({ timeout: 5000 })
+    await defaultTestModelSelect.click()
+    const firstOption = page.getByRole('option').first()
+    await firstOption.click()
+    await page.waitForTimeout(300)
 
     await Promise.all([
       waitForGraphQLOperation(page, 'CreateChannel'),
@@ -323,10 +327,10 @@ test.describe('Admin Channels Management', () => {
     // Wait for filter menu
     await page.waitForTimeout(500)
 
-    // Select OpenAI filter
+    // Select OpenAI filter - it's a CommandItem with role="option"
     const openaiFilter = page
-      .getByRole('menuitemcheckbox', { name: /OpenAI/i })
-      .or(page.locator('[role="menuitemcheckbox"]').filter({ hasText: /OpenAI/i }))
+      .getByRole('option', { name: /OpenAI/i })
+      .or(page.locator('[role="option"]').filter({ hasText: /OpenAI/i }))
 
     const openaiFilterCount = await openaiFilter.count()
     if (openaiFilterCount > 0) {
@@ -367,10 +371,10 @@ test.describe('Admin Channels Management', () => {
     // Wait for filter menu
     await page.waitForTimeout(500)
 
-    // Select Enabled filter
+    // Select Enabled filter - it's a CommandItem with role="option"
     const enabledFilter = page
-      .getByRole('menuitemcheckbox', { name: /Enabled|启用/i })
-      .or(page.locator('[role="menuitemcheckbox"]').filter({ hasText: /Enabled|启用/i }))
+      .getByRole('option', { name: /Enabled|启用/i })
+      .or(page.locator('[role="option"]').filter({ hasText: /Enabled|启用/i }))
 
     const enabledFilterCount = await enabledFilter.count()
     if (enabledFilterCount > 0) {
@@ -379,15 +383,22 @@ test.describe('Admin Channels Management', () => {
       // Wait for filter to apply
       await page.waitForTimeout(1000)
 
-      // Verify filtered results
+      // Verify filtered results - enabled channels have checked switches
       const rows = page.locator('tbody tr')
       const rowCount = await rows.count()
 
-      if (rowCount > 0) {
-        // Check that visible rows contain enabled status
-        const firstRow = rows.first()
-        await expect(firstRow).toContainText(/enabled|启用/i)
+      // Skip assertion if no enabled channels exist after filtering
+      if (rowCount === 0) {
+        // No enabled channels exist - this is valid, skip the assertion
+        return
       }
+      
+      // Check that visible rows have enabled status (switch is checked)
+      const firstRow = rows.first()
+      const statusSwitch = firstRow.locator('[data-testid="channel-status-switch"]')
+      // Wait for the switch to be visible first
+      await expect(statusSwitch).toBeVisible({ timeout: 5000 })
+      await expect(statusSwitch).toBeChecked({ timeout: 5000 })
     }
   })
 
@@ -504,20 +515,19 @@ test.describe('Admin Channels Management', () => {
     const menu = page.getByRole('menu')
     await expect(menu).toBeVisible()
 
-    // Look for model mapping option
+    // Look for model mapping option - uses i18n key channels.dialogs.settings.modelMapping.title
     const modelMappingOption = menu.getByRole('menuitem', {
       name: /模型映射|Model Mapping|模型别名|Model Alias/i,
     })
     const modelMappingCount = await modelMappingOption.count()
 
     if (modelMappingCount > 0) {
-      await modelMappingOption.focus()
-      await page.keyboard.press('Enter')
+      await modelMappingOption.click()
 
       // Verify model mapping dialog opens
       const modelMappingDialog = page.getByRole('dialog')
       await expect(modelMappingDialog).toBeVisible()
-      await expect(modelMappingDialog).toContainText(/模型别名|Model Alias/i)
+      await expect(modelMappingDialog).toContainText(/模型映射|Model Mapping|模型别名|Model Alias/i)
     }
   })
 
@@ -552,20 +562,19 @@ test.describe('Admin Channels Management', () => {
     const menu = page.getByRole('menu')
     await expect(menu).toBeVisible()
 
-    // Look for override settings option - use updated i18n label
+    // Look for override settings option - uses i18n key channels.dialogs.settings.overrides.action
     const overrideParametersOption = menu.getByRole('menuitem', {
       name: /Overrides|覆盖设置/i,
     })
     const overrideParametersCount = await overrideParametersOption.count()
 
     if (overrideParametersCount > 0) {
-      await overrideParametersOption.focus()
-      await page.keyboard.press('Enter')
+      await overrideParametersOption.click()
 
-      // Verify override settings dialog opens - use updated i18n label
+      // Verify override settings dialog opens
       const overrideParametersDialog = page.getByRole('dialog')
       await expect(overrideParametersDialog).toBeVisible()
-      await expect(overrideParametersDialog).toContainText(/Override Settings|覆盖配置/i)
+      await expect(overrideParametersDialog).toContainText(/Override Settings|覆盖配置|覆盖设置/i)
     }
   })
 
@@ -626,7 +635,7 @@ test.describe('Admin Channels Management', () => {
     const menu = page.getByRole('menu')
     await expect(menu).toBeVisible()
 
-    // Look for override settings option - use updated i18n label
+    // Look for override settings option
     const overrideParametersOption = menu.getByRole('menuitem', { name: /Overrides|覆盖设置/i })
     const overrideParametersCount = await overrideParametersOption.count()
 
@@ -635,19 +644,19 @@ test.describe('Admin Channels Management', () => {
       return
     }
 
-    await overrideParametersOption.focus()
-    await page.keyboard.press('Enter')
+    await overrideParametersOption.click()
 
-    // Verify override settings dialog opens - use updated i18n label
+    // Verify override settings dialog opens
     const settingsDialog = page.getByRole('dialog')
     await expect(settingsDialog).toBeVisible()
-    await expect(settingsDialog).toContainText(/Override Settings|覆盖配置/i)
+    await expect(settingsDialog).toContainText(/Override Settings|覆盖配置|覆盖设置/i)
 
-    // Ensure override body section text is visible - use updated i18n label
-    await expect(settingsDialog.getByText(/Override Body|覆盖请求体/i)).toBeVisible()
+    // Ensure override parameters section is visible
+    const parametersSection = settingsDialog.locator('[data-testid="override-parameters-section"]')
+    await expect(parametersSection).toBeVisible()
 
-    // Find the textarea for override parameters - use data-testid for stable selection
-    const overrideTextarea = settingsDialog.locator('textarea').first()
+    // Find the textarea for override parameters
+    const overrideTextarea = settingsDialog.locator('[data-testid="override-parameters-textarea"]')
 
     // Enter valid JSON
     const validJson = '{"temperature": 0.8, "max_tokens": 4096}'
@@ -684,7 +693,7 @@ test.describe('Admin Channels Management', () => {
     await expect(reopenedDialog).toBeVisible()
 
     // Verify the textarea still contains the saved value
-    const reopenedTextarea = reopenedDialog.locator('textarea').first()
+    const reopenedTextarea = reopenedDialog.locator('[data-testid="override-parameters-textarea"]')
     await expect(reopenedTextarea).toHaveValue(validJson)
 
     // Close the dialog
@@ -724,7 +733,7 @@ test.describe('Admin Channels Management', () => {
     const menu = page.getByRole('menu')
     await expect(menu).toBeVisible()
 
-    // Look for override settings option - use updated i18n label
+    // Look for override settings option
     const overrideParametersOption = menu.getByRole('menuitem', { name: /Overrides|覆盖设置/i })
     const overrideParametersCount = await overrideParametersOption.count()
 
@@ -733,19 +742,19 @@ test.describe('Admin Channels Management', () => {
       return
     }
 
-    await overrideParametersOption.focus()
-    await page.keyboard.press('Enter')
+    await overrideParametersOption.click()
 
-    // Verify override settings dialog opens - use updated i18n label
+    // Verify override settings dialog opens
     const settingsDialog = page.getByRole('dialog')
     await expect(settingsDialog).toBeVisible()
-    await expect(settingsDialog).toContainText(/Override Settings|覆盖配置/i)
+    await expect(settingsDialog).toContainText(/Override Settings|覆盖配置|覆盖设置/i)
 
-    // Ensure override body section text is visible - use updated i18n label
-    await expect(settingsDialog.getByText(/Override Body|覆盖请求体/i)).toBeVisible()
+    // Ensure override parameters section is visible
+    const parametersSection = settingsDialog.locator('[data-testid="override-parameters-section"]')
+    await expect(parametersSection).toBeVisible()
 
     // Find the textarea for override parameters
-    const overrideTextarea = settingsDialog.locator('textarea').first()
+    const overrideTextarea = settingsDialog.locator('[data-testid="override-parameters-textarea"]')
 
     // Enter invalid JSON
     const invalidJson = '{"temperature": 0.8, "max_tokens": invalid}'
@@ -815,13 +824,12 @@ test.describe('Admin Channels Management', () => {
       return
     }
 
-    await modelMappingOption.focus()
-    await page.keyboard.press('Enter')
+    await modelMappingOption.click()
 
     // Verify model mapping dialog opens
     const settingsDialog = page.getByRole('dialog')
     await expect(settingsDialog).toBeVisible()
-    await expect(settingsDialog).toContainText(/模型别名|Model Alias/i)
+    await expect(settingsDialog).toContainText(/模型映射|Model Mapping|模型别名|Model Alias/i)
 
     // Look for model mapping section
     const mappingSection = settingsDialog.getByRole('heading', {
@@ -903,6 +911,7 @@ test.describe('Admin Channels Management', () => {
 
     // Create first channel
     const createButton = page.getByTestId('add-channel-button')
+    await expect(createButton).toBeVisible({ timeout: 10000 })
     await createButton.click()
 
     const createDialog = page.getByRole('dialog')
@@ -915,30 +924,28 @@ test.describe('Admin Channels Management', () => {
     await createDialog.getByTestId('channel-base-url-input').fill(baseURL)
     await createDialog.getByTestId('channel-api-key-input').fill(apiKeys.join('\n'))
 
-    // Add model
+    // Add model - wait for badge to be visible then click
+    const modelBadge = createDialog.getByTestId('quick-model-gpt-4o')
+    await expect(modelBadge).toBeVisible({ timeout: 5000 })
+    await modelBadge.click()
+    await page.waitForTimeout(300)
+    
+    const addSelectedButton = createDialog.getByTestId('add-selected-models-button')
+    await expect(addSelectedButton).toBeEnabled({ timeout: 5000 })
+    await addSelectedButton.click()
     await page.waitForTimeout(500)
-    const modelBadge = createDialog.locator('text=gpt-4o').first()
-    if ((await modelBadge.count()) > 0) {
-      await modelBadge.click()
-      const addSelectedButton = createDialog.getByRole('button', { name: /Add Selected|添加选中/i })
-      await addSelectedButton.click()
-      await page.waitForTimeout(500)
-    }
 
     // Select Default Test Model
-    const defaultTestModelSelect = createDialog
-      .locator('[name="defaultTestModel"]')
-      .or(createDialog.getByLabel(/Test Model|默认测试模型/i))
-    if ((await defaultTestModelSelect.count()) > 0) {
-      await defaultTestModelSelect.click()
-      const firstOption = page.getByRole('option').first()
-      await firstOption.click()
-      await page.waitForTimeout(300)
-    }
+    const defaultTestModelSelect = createDialog.getByTestId('default-test-model-select')
+    await expect(defaultTestModelSelect).toBeVisible({ timeout: 5000 })
+    await defaultTestModelSelect.click()
+    const firstOption = page.getByRole('option').first()
+    await firstOption.click()
+    await page.waitForTimeout(300)
 
     await Promise.all([
       waitForGraphQLOperation(page, 'BulkCreateChannels'),
-      createDialog.getByRole('button', { name: /创建|Create|保存|Save/i }).click(),
+      createDialog.getByTestId('channel-submit-button').click(),
     ])
 
     await expect(createDialog).not.toBeVisible({ timeout: 10000 })
@@ -961,6 +968,7 @@ test.describe('Admin Channels Management', () => {
 
     // Create a channel with a specific tag
     const createButton = page.getByTestId('add-channel-button')
+    await expect(createButton).toBeVisible({ timeout: 10000 })
     await createButton.click()
 
     const createDialog = page.getByRole('dialog')
@@ -973,30 +981,28 @@ test.describe('Admin Channels Management', () => {
     await createDialog.getByTestId('channel-base-url-input').fill('https://api.openai.com/v1')
     await createDialog.getByTestId('channel-api-key-input').fill('sk-test-' + uniqueSuffix)
 
-    // Add model
+    // Add model - wait for badge to be visible then click
+    const modelBadge = createDialog.getByTestId('quick-model-gpt-4o')
+    await expect(modelBadge).toBeVisible({ timeout: 5000 })
+    await modelBadge.click()
+    await page.waitForTimeout(300)
+    
+    const addSelectedButton = createDialog.getByTestId('add-selected-models-button')
+    await expect(addSelectedButton).toBeEnabled({ timeout: 5000 })
+    await addSelectedButton.click()
     await page.waitForTimeout(500)
-    const modelBadge = createDialog.locator('text=gpt-4o').first()
-    if ((await modelBadge.count()) > 0) {
-      await modelBadge.click()
-      const addSelectedButton = createDialog.getByRole('button', { name: /Add Selected|添加选中/i })
-      await addSelectedButton.click()
-      await page.waitForTimeout(500)
-    }
 
     // Select Default Test Model
-    const defaultTestModelSelect = createDialog
-      .locator('[name="defaultTestModel"]')
-      .or(createDialog.getByLabel(/Test Model|默认测试模型/i))
-    if ((await defaultTestModelSelect.count()) > 0) {
-      await defaultTestModelSelect.click()
-      const firstOption = page.getByRole('option').first()
-      await firstOption.click()
-      await page.waitForTimeout(300)
-    }
+    const defaultTestModelSelect = createDialog.getByTestId('default-test-model-select')
+    await expect(defaultTestModelSelect).toBeVisible({ timeout: 5000 })
+    await defaultTestModelSelect.click()
+    const firstOption = page.getByRole('option').first()
+    await firstOption.click()
+    await page.waitForTimeout(300)
 
     await Promise.all([
       waitForGraphQLOperation(page, 'CreateChannel'),
-      createDialog.getByRole('button', { name: /创建|Create|保存|Save/i }).click(),
+      createDialog.getByTestId('channel-submit-button').click(),
     ])
 
     await expect(createDialog).not.toBeVisible({ timeout: 10000 })
@@ -1303,83 +1309,8 @@ test.describe('Admin Channels Management', () => {
     await expect(settingsDialog).not.toBeVisible()
   })
 
-  test('validates forbidden headers in override settings', async ({ page }) => {
-    // Wait for table to load
-    await page.waitForTimeout(2000)
-
-    // Find the first channel row
-    const channelsTable = page.locator('[data-testid="channels-table"]')
-    const firstRow = channelsTable.locator('tbody tr').first()
-    const rowCount = await channelsTable.locator('tbody tr').count()
-
-    if (rowCount === 0) {
-      test.skip()
-      return
-    }
-
-    await expect(firstRow).toBeVisible()
-
-    // Click actions menu
-    const actionsTrigger = firstRow.locator('[data-testid="row-actions"]')
-    const actionsCount = await actionsTrigger.count()
-    if (actionsCount === 0) {
-      test.skip()
-      return
-    }
-
-    await actionsTrigger.click()
-
-    const menu = page.getByRole('menu')
-    await expect(menu).toBeVisible()
-
-    const overrideParametersOption = menu.getByRole('menuitem', { name: /Overrides|覆盖设置/i })
-    const overrideParametersCount = await overrideParametersOption.count()
-
-    if (overrideParametersCount === 0) {
-      test.skip()
-      return
-    }
-
-    await overrideParametersOption.focus()
-    await page.keyboard.press('Enter')
-
-    const settingsDialog = page.getByRole('dialog')
-    await expect(settingsDialog).toBeVisible()
-
-    // Add a header
-    const addHeaderButton = settingsDialog.locator('[data-testid="add-header-button"]')
-    await addHeaderButton.click()
-    await page.waitForTimeout(500)
-
-    // Try to enter a forbidden header (authorization)
-    const headerKeyInput = settingsDialog.locator('[data-testid="header-key-0"]')
-    await headerKeyInput.fill('Authorization')
-    await page.waitForTimeout(500)
-
-    // Verify validation error appears
-    const errorMessage = settingsDialog.locator('p.text-destructive')
-    await expect(errorMessage).toBeVisible()
-    await expect(errorMessage).toContainText(/Header cannot override sensitive headers|不能覆盖敏感请求头/i)
-
-    // Try another forbidden header (x-api-key)
-    await headerKeyInput.fill('X-API-Key')
-    await page.waitForTimeout(500)
-
-    // Verify validation error still appears
-    await expect(errorMessage).toBeVisible()
-
-    // Enter a valid header
-    await headerKeyInput.fill('X-Valid-Header')
-    await page.waitForTimeout(500)
-
-    // Verify validation error disappears
-    await expect(errorMessage).not.toBeVisible()
-
-    // Close the dialog without saving
-    const cancelButton = settingsDialog.locator('[data-testid="override-cancel-button"]')
-    await cancelButton.click()
-    await expect(settingsDialog).not.toBeVisible()
-  })
+  // NOTE: Test for 'validates forbidden headers in override settings' was removed
+  // because the sensitive headers validation logic was deleted from the codebase
 
   test('can clear headers by leaving value empty', async ({ page }) => {
     // Wait for table to load

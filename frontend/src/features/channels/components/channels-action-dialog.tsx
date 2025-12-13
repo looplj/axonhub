@@ -948,6 +948,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                                 size='sm'
                                 variant='outline'
                                 disabled={selectedDefaultModels.length === 0}
+                                data-testid='add-selected-models-button'
                               >
                                 <Plus className='mr-1 h-4 w-4' />
                                 {t('channels.dialogs.buttons.addSelected')}
@@ -961,6 +962,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange, showModel
                                 variant={selectedDefaultModels.includes(model) ? 'default' : 'secondary'}
                                 className='cursor-pointer text-xs'
                                 onClick={() => toggleDefaultModel(model)}
+                                data-testid={`quick-model-${model}`}
                               >
                                 {model}
                                 {selectedDefaultModels.includes(model) && <span className='ml-1'>✓</span>}
