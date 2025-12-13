@@ -207,6 +207,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
                           canRemove={profileFields.length > 1}
                           availableModels={availableModels?.map((model) => model.id) || []}
                           t={t}
+                          defaultExpanded={profileIndex === 0}
                         />
                       ))}
                     </div>
@@ -217,15 +218,15 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
           )}
 
           {/* Fixed Active Profile Section at Bottom */}
-          <div className='bg-background shrink-0 border-t p-4'>
+          <div className='bg-background shrink-0 border-t mt-4 px-4 py-2'>
             <Form {...form}>
               <FormField
                 control={form.control}
                 name='activeProfile'
                 render={({ field }) => (
-                  <FormItem className='grid grid-cols-8 items-start space-y-0 gap-x-6 gap-y-1'>
-                    <FormLabel className='col-span-2 pt-2 text-right font-medium'>{t('apikeys.profiles.activeProfile')}</FormLabel>
-                    <FormControl className='col-span-6'>
+                  <FormItem className='flex items-center space-y-0 gap-x-3'>
+                    <FormLabel className='shrink-0 font-medium'>{t('apikeys.profiles.activeProfile')}</FormLabel>
+                    <FormControl>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <SelectTrigger>
                           <SelectValue placeholder={t('apikeys.profiles.selectActiveProfile')} />
@@ -241,9 +242,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
                         </SelectContent>
                       </Select>
                     </FormControl>
-                    <div className='col-span-6 col-start-3 min-h-[1.25rem]'>
-                      <FormMessage />
-                    </div>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -284,11 +283,12 @@ interface ProfileCardProps {
   canRemove: boolean
   availableModels: string[]
   t: (key: string) => string
+  defaultExpanded?: boolean
 }
 
-function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels, t }: ProfileCardProps) {
+function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels, t, defaultExpanded = false }: ProfileCardProps) {
   const [localProfileName, setLocalProfileName] = useState('')
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(!defaultExpanded)
   const { data: channelsData } = useAllChannelsForOrdering({ enabled: true })
 
   const debouncedProfileName = useDebounce(localProfileName, 500)
