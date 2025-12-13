@@ -190,14 +190,23 @@ func convertGeminiContentToLLMMessage(content *Content, previousContents []*Cont
 
 		case part.FunctionCall != nil:
 			argsJSON, _ := json.Marshal(part.FunctionCall.Args)
-			toolCalls = append(toolCalls, llm.ToolCall{
+			tc := llm.ToolCall{
 				ID:   part.FunctionCall.ID,
 				Type: "function",
 				Function: llm.FunctionCall{
 					Name:      part.FunctionCall.Name,
 					Arguments: string(argsJSON),
 				},
-			})
+			}
+
+			// Store ThoughtSignature in TransformerMetadata for Gemini 3 Pro function calling
+			if len(part.ThoughtSignature) > 0 {
+				tc.TransformerMetadata = map[string]any{
+					"thought_signature": part.ThoughtSignature,
+				}
+			}
+
+			toolCalls = append(toolCalls, tc)
 
 		case part.FunctionResponse != nil:
 			// Function response is a separate message in unified format
@@ -332,13 +341,22 @@ func convertLLMChoiceToGeminiCandidate(choice *llm.Choice, isStream bool) *Candi
 				_ = json.Unmarshal([]byte(toolCall.Function.Arguments), &args)
 			}
 
-			parts = append(parts, &Part{
+			part := &Part{
 				FunctionCall: &FunctionCall{
 					ID:   toolCall.ID,
 					Name: toolCall.Function.Name,
 					Args: args,
 				},
-			})
+			}
+
+			// Restore ThoughtSignature from TransformerMetadata for Gemini 3 Pro function calling
+			if toolCall.TransformerMetadata != nil {
+				if sig, ok := toolCall.TransformerMetadata["thought_signature"].([]byte); ok && len(sig) > 0 {
+					part.ThoughtSignature = sig
+				}
+			}
+
+			parts = append(parts, part)
 		}
 
 		content.Parts = parts

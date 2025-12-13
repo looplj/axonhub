@@ -12,6 +12,11 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/streams"
 )
 
+// streamState tracks state across streaming events.
+type streamState struct {
+	toolCallIndex int
+}
+
 // TransformStream transforms the HTTP stream response to the unified response format.
 // Gemini's stream is a stream of GenerateContentResponse.
 func (t *OutboundTransformer) TransformStream(
@@ -20,15 +25,27 @@ func (t *OutboundTransformer) TransformStream(
 ) (streams.Stream[*llm.Response], error) {
 	stream = streams.AppendStream(stream, lo.ToPtr(llm.DoneStreamEvent))
 
+	// Track tool call index across stream events
+	state := &streamState{}
+
 	return streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
-		return t.TransformStreamChunk(ctx, event)
+		return t.transformStreamChunkWithState(event, state)
 	}), nil
 }
 
 // TransformStreamChunk transforms a single Gemini streaming chunk to unified Response.
+// Note: This method does not track tool call index across events. Use TransformStream for proper streaming.
 func (t *OutboundTransformer) TransformStreamChunk(
 	ctx context.Context,
 	event *httpclient.StreamEvent,
+) (*llm.Response, error) {
+	return t.transformStreamChunkWithState(event, &streamState{})
+}
+
+// transformStreamChunkWithState transforms a single Gemini streaming chunk with state tracking.
+func (t *OutboundTransformer) transformStreamChunkWithState(
+	event *httpclient.StreamEvent,
+	state *streamState,
 ) (*llm.Response, error) {
 	if event == nil || len(event.Data) == 0 {
 		return nil, nil
@@ -51,8 +68,11 @@ func (t *OutboundTransformer) TransformStreamChunk(
 		return nil, transformer.ErrInvalidResponse
 	}
 
-	// Convert to unified response format (streaming)
-	return convertGeminiToLLMResponse(&resp, true), nil
+	// Convert to unified response format (streaming) with tool call index tracking
+	llmResp, nextIndex := convertGeminiToLLMResponseWithState(&resp, true, state.toolCallIndex)
+	state.toolCallIndex = nextIndex
+
+	return llmResp, nil
 }
 
 // AggregateStreamChunks aggregates Gemini streaming response chunks into a complete response.

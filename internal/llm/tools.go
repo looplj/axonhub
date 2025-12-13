@@ -64,6 +64,9 @@ type ToolCall struct {
 
 	// CacheControl is used for provider-specific cache control (e.g., Anthropic).
 	CacheControl *CacheControl `json:"-"`
+
+	// TransformerMetadata is used for provider-specific metadata (e.g., Gemini).
+	TransformerMetadata map[string]any `json:"-"`
 }
 
 type ToolFunction struct {

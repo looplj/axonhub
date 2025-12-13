@@ -189,6 +189,103 @@ Please first introduce yourself briefly and explain how you'll approach helping 
 	}
 }
 
+func TestStreamingToolMultipleCallsSingleTurn(t *testing.T) {
+	// Skip test if no API key is configured
+	helper := testutil.NewTestHelper(t)
+
+	ctx := helper.CreateTestContext()
+
+	question := `You have access to function tools.
+
+You MUST make exactly two tool calls in a single assistant turn:
+1) call get_current_weather with location "Tokyo"
+2) call calculate with expression "25 * 4"
+
+Do not answer with normal text. Only make the two tool calls.`
+
+	t.Logf("Sending streaming request requiring multiple tool calls in one turn")
+
+	calculatorFunction := shared.FunctionDefinitionParam{
+		Name:        "calculate",
+		Description: openai.String("Perform mathematical calculations"),
+		Parameters: openai.FunctionParameters{
+			"type": "object",
+			"properties": map[string]any{
+				"expression": map[string]string{
+					"type": "string",
+				},
+			},
+			"required": []string{"expression"},
+		},
+	}
+
+	weatherFunction := shared.FunctionDefinitionParam{
+		Name:        "get_current_weather",
+		Description: openai.String("Get the current weather for a specified location"),
+		Parameters: openai.FunctionParameters{
+			"type": "object",
+			"properties": map[string]any{
+				"location": map[string]string{
+					"type": "string",
+				},
+			},
+			"required": []string{"location"},
+		},
+	}
+
+	calculatorTool := openai.ChatCompletionFunctionTool(calculatorFunction)
+	weatherTool := openai.ChatCompletionFunctionTool(weatherFunction)
+
+	params := openai.ChatCompletionNewParams{
+		Messages: []openai.ChatCompletionMessageParamUnion{
+			openai.UserMessage(question),
+		},
+		Tools:             []openai.ChatCompletionToolUnionParam{weatherTool, calculatorTool},
+		ParallelToolCalls: openai.Bool(true),
+		ToolChoice: openai.ChatCompletionToolChoiceOptionUnionParam{
+			OfAuto: openai.String("required"),
+		},
+		Model: helper.GetModel(),
+	}
+
+	stream := helper.Client.Chat.Completions.NewStreaming(ctx, params)
+	helper.AssertNoError(t, stream.Err(), "Failed to start streaming request with multiple tool calls")
+
+	var chunksReceived int
+	var accumulator openai.ChatCompletionAccumulator
+
+	for stream.Next() {
+		chunk := stream.Current()
+		chunksReceived++
+		accumulator.AddChunk(chunk)
+	}
+
+	if err := stream.Err(); err != nil {
+		helper.AssertNoError(t, err, "Stream error occurred")
+	}
+
+	if len(accumulator.Choices) == 0 {
+		t.Fatal("Expected at least one choice from streaming")
+	}
+
+	toolCalls := accumulator.Choices[0].Message.ToolCalls
+	if len(toolCalls) < 2 {
+		t.Fatalf("Expected at least 2 tool calls from streaming, got %d. Content: %s", len(toolCalls), accumulator.Choices[0].Message.Content)
+	}
+
+	seen := map[string]bool{}
+	for _, tc := range toolCalls {
+		seen[tc.Function.Name] = true
+	}
+
+	if !seen["calculate"] || !seen["get_current_weather"] {
+		t.Fatalf("Expected tool calls to include calculate and get_current_weather, got: %+v", toolCalls)
+	}
+
+	t.Logf("Streaming multiple tool calls: received %d chunks", chunksReceived)
+	t.Logf("Collected %d tool calls from streaming", len(toolCalls))
+}
+
 func TestStreamingLongResponse(t *testing.T) {
 	// Skip test if no API key is configured
 	helper := testutil.NewTestHelper(t)
