@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -193,6 +193,17 @@ export function ChannelsTable({
     () => table.getFilteredSelectedRowModel().rows,
     [table, rowSelection, data]
   )
+
+  const getApiFormatLabel = useCallback(
+    (apiFormat?: string) => {
+      if (!apiFormat) return '-'
+
+      const key = `channels.dialogs.fields.apiFormat.formats.${apiFormat}`
+      const label = t(key)
+      return label === key ? apiFormat : label
+    },
+    [t]
+  )
   const selectedCount = filteredSelectedRows.length
   const isFiltered = columnFilters.length > 0
 
@@ -302,7 +313,11 @@ export function ChannelsTable({
                                   </div>
                                   <div className='flex justify-between items-center'>
                                     <span className='text-muted-foreground'>{t('channels.expandedRow.apiFormat')}:</span>
-                                    <span className='font-mono text-xs'>{config?.apiFormat || '-'}</span>
+                                    <span className='font-mono text-xs'>{getApiFormatLabel(config?.apiFormat)}</span>
+                                  </div>
+                                  <div className='flex justify-between items-center'>
+                                    <span className='text-muted-foreground'>{t('channels.columns.weight')}:</span>
+                                    <span className='font-mono text-xs'>{channel.orderingWeight ?? 0}</span>
                                   </div>
                                   <div className='flex justify-between'>
                                     <span className='text-muted-foreground'>{t('channels.columns.createdAt')}:</span>

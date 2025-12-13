@@ -14,13 +14,27 @@ export interface TagsInputProps extends Omit<InputHTMLAttributes<HTMLInputElemen
 export const TagsInput = forwardRef<HTMLDivElement, TagsInputProps>(({ value = [], onChange, placeholder, className, ...props }, ref) => {
   const [inputValue, setInputValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+  const isComposingRef = useRef(false)
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value)
   }, [])
 
+  const handleCompositionStart = useCallback(() => {
+    isComposingRef.current = true
+  }, [])
+
+  const handleCompositionEnd = useCallback(() => {
+    isComposingRef.current = false
+  }, [])
+
   const handleInputKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
+      const nativeEvent = e.nativeEvent as unknown as { isComposing?: boolean; keyCode?: number }
+      if (isComposingRef.current || nativeEvent.isComposing || nativeEvent.keyCode === 229) {
+        return
+      }
+
       if (e.key === 'Enter' || e.key === ',' || e.key === ' ') {
         e.preventDefault()
         const newTag = inputValue.trim()
@@ -45,6 +59,8 @@ export const TagsInput = forwardRef<HTMLDivElement, TagsInputProps>(({ value = [
   )
 
   const handleInputBlur = useCallback(() => {
+    if (isComposingRef.current) return
+
     const newTag = inputValue.trim()
     if (newTag && !value.includes(newTag)) {
       onChange([...value, newTag])
@@ -80,6 +96,8 @@ export const TagsInput = forwardRef<HTMLDivElement, TagsInputProps>(({ value = [
         value={inputValue}
         onChange={handleInputChange}
         onKeyDown={handleInputKeyDown}
+        onCompositionStart={handleCompositionStart}
+        onCompositionEnd={handleCompositionEnd}
         onBlur={handleInputBlur}
         placeholder={value.length === 0 ? placeholder : ''}
         className='placeholder:text-muted-foreground min-w-[80px] flex-1 bg-transparent outline-none'

@@ -813,10 +813,10 @@
           "editDisabled": "无法更改 API 格式",
           "placeholder": "选择 API 格式",
           "formats": {
-            "openaiChatCompletions": "OpenAI (Chat Completions)",
-            "openaiResponses": "OpenAI (Responses)",
-            "anthropicMessages": "Anthropic (Messages)",
-            "geminiContents": "Gemini (Contents)"
+            "openai/chat_completions": "OpenAI (Chat Completions)",
+            "openai/responses": "OpenAI (Responses)",
+            "anthropic/messages": "Anthropic (Messages)",
+            "gemini/contents": "Gemini (Contents)"
           }
         },
         "provider": {
