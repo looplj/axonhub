@@ -25,8 +25,8 @@ func TestConvertToChatCompletionResponse_WithThinking(t *testing.T) {
 		Type: "message",
 		Role: "assistant",
 		Content: []MessageContentBlock{
-			{Type: "thinking", Thinking: thinking, Signature: signature},
-			{Type: "text", Text: answer},
+			{Type: "thinking", Thinking: lo.ToPtr(thinking), Signature: lo.ToPtr(signature)},
+			{Type: "text", Text: lo.ToPtr(answer)},
 		},
 		Model: "claude-3-sonnet-20240229",
 	}
@@ -42,6 +42,68 @@ func TestConvertToChatCompletionResponse_WithThinking(t *testing.T) {
 	require.NotNil(t, result.Choices[0].Message.Content.Content)
 	require.Equal(t, answer, *result.Choices[0].Message.Content.Content)
 	require.Empty(t, result.Choices[0].Message.Content.MultipleContent)
+}
+
+func TestConvertToChatCompletionResponse_WithRedactedThinking(t *testing.T) {
+	const (
+		redactedData = "EmwKAhgBEgy3va3pzix/LafPsn4aDFIT2Xlxh0L5L8rLVyIwxtE3rAFBa8cr3qpPkNRj2YfWXGmKDxH4mPnZ5sQ7vB9URj2pLmN3kF8/dW5hR7xJ0aP1oLs9yTcMnKVf2wRpEGjH9XZaBt4UvDcPrQ..."
+		answer       = "Based on my analysis..."
+	)
+
+	anthropicResp := &Message{
+		ID:   "msg_redacted",
+		Type: "message",
+		Role: "assistant",
+		Content: []MessageContentBlock{
+			{Type: "redacted_thinking", Data: redactedData},
+			{Type: "text", Text: lo.ToPtr(answer)},
+		},
+		Model: "claude-sonnet-4-5-20250929",
+	}
+
+	result := convertToLlmResponse(anthropicResp, PlatformDirect)
+
+	require.NotNil(t, result)
+	require.Len(t, result.Choices, 1)
+	require.NotNil(t, result.Choices[0].Message.RedactedReasoningContent)
+	require.Equal(t, redactedData, *result.Choices[0].Message.RedactedReasoningContent)
+	require.Nil(t, result.Choices[0].Message.ReasoningContent)
+	require.NotNil(t, result.Choices[0].Message.Content.Content)
+	require.Equal(t, answer, *result.Choices[0].Message.Content.Content)
+}
+
+func TestConvertToChatCompletionResponse_WithThinkingAndRedactedThinking(t *testing.T) {
+	const (
+		thinking     = "Let me analyze this step by step..."
+		signature    = "WaUjzkypQ2mUEVM36O2TxuC06KN8xyfbJwyem2dw3URve/op91XWHOEBLLqIOMfFG/UvLEczmEsUjavL...."
+		redactedData = "EmwKAhgBEgy3va3pzix/LafPsn4aDFIT2Xlxh0L5L8rLVyIwxtE3rAFBa8cr3qpPkNRj2YfWXGmKDxH4mPnZ5sQ7vB9URj2pLmN3kF8/dW5hR7xJ0aP1oLs9yTcMnKVf2wRpEGjH9XZaBt4UvDcPrQ..."
+		answer       = "Based on my analysis..."
+	)
+
+	anthropicResp := &Message{
+		ID:   "msg_mixed",
+		Type: "message",
+		Role: "assistant",
+		Content: []MessageContentBlock{
+			{Type: "thinking", Thinking: lo.ToPtr(thinking), Signature: lo.ToPtr(signature)},
+			{Type: "redacted_thinking", Data: redactedData},
+			{Type: "text", Text: lo.ToPtr(answer)},
+		},
+		Model: "claude-sonnet-4-5-20250929",
+	}
+
+	result := convertToLlmResponse(anthropicResp, PlatformDirect)
+
+	require.NotNil(t, result)
+	require.Len(t, result.Choices, 1)
+	require.NotNil(t, result.Choices[0].Message.ReasoningContent)
+	require.Equal(t, thinking, *result.Choices[0].Message.ReasoningContent)
+	require.NotNil(t, result.Choices[0].Message.ReasoningSignature)
+	require.Equal(t, signature, *result.Choices[0].Message.ReasoningSignature)
+	require.NotNil(t, result.Choices[0].Message.RedactedReasoningContent)
+	require.Equal(t, redactedData, *result.Choices[0].Message.RedactedReasoningContent)
+	require.NotNil(t, result.Choices[0].Message.Content.Content)
+	require.Equal(t, answer, *result.Choices[0].Message.Content.Content)
 }
 
 func TestReasoningEffortToThinking(t *testing.T) {
@@ -427,6 +489,154 @@ func TestThinkingBudgetToReasoningEffort(t *testing.T) {
 	}
 }
 
+func TestInboundTransformer_RedactedThinkingInRequest(t *testing.T) {
+	const (
+		thinking     = "Let me analyze this step by step..."
+		signature    = "WaUjzkypQ2mUEVM36O2TxuC06KN8xyfbJwyem2dw3URve/op91XWHOEBLLqIOMfFG/UvLEczmEsUjavL...."
+		redactedData = "EmwKAhgBEgy3va3pzix/LafPsn4aDFIT2Xlxh0L5L8rLVyIwxtE3rAFBa8cr3qpPkNRj2YfWXGmKDxH4mPnZ5sQ7vB9URj2pLmN3kF8/dW5hR7xJ0aP1oLs9yTcMnKVf2wRpEGjH9XZaBt4UvDcPrQ..."
+		textContent  = "Based on my analysis..."
+	)
+
+	// Test case: assistant message with thinking, redacted_thinking, and text blocks
+	anthropicReq := MessageRequest{
+		Model:     "claude-sonnet-4-5-20250929",
+		MaxTokens: 16000,
+		Messages: []MessageParam{
+			{
+				Role: "user",
+				Content: MessageContent{
+					Content: lo.ToPtr("Hello"),
+				},
+			},
+			{
+				Role: "assistant",
+				Content: MessageContent{
+					MultipleContent: []MessageContentBlock{
+						{Type: "thinking", Thinking: lo.ToPtr(thinking), Signature: lo.ToPtr(signature)},
+						{Type: "redacted_thinking", Data: redactedData},
+						{Type: "text", Text: lo.ToPtr(textContent)},
+					},
+				},
+			},
+			{
+				Role: "user",
+				Content: MessageContent{
+					Content: lo.ToPtr("Continue"),
+				},
+			},
+		},
+		Thinking: &Thinking{
+			Type:         "enabled",
+			BudgetTokens: 10000,
+		},
+	}
+
+	body, err := json.Marshal(anthropicReq)
+	require.NoError(t, err)
+
+	httpReq := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "https://api.anthropic.com/v1/messages",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: body,
+	}
+
+	transformer := NewInboundTransformer()
+	chatReq, err := transformer.TransformRequest(context.Background(), httpReq)
+	require.NoError(t, err)
+
+	// Find the assistant message
+	var assistantMsg *llm.Message
+
+	for i := range chatReq.Messages {
+		if chatReq.Messages[i].Role == "assistant" {
+			assistantMsg = &chatReq.Messages[i]
+			break
+		}
+	}
+
+	require.NotNil(t, assistantMsg)
+	require.NotNil(t, assistantMsg.ReasoningContent)
+	require.Equal(t, thinking, *assistantMsg.ReasoningContent)
+	require.NotNil(t, assistantMsg.ReasoningSignature)
+	require.Equal(t, signature, *assistantMsg.ReasoningSignature)
+	require.NotNil(t, assistantMsg.RedactedReasoningContent)
+	require.Equal(t, redactedData, *assistantMsg.RedactedReasoningContent)
+}
+
+func TestInboundTransformer_RedactedThinkingOnlyInRequest(t *testing.T) {
+	const (
+		redactedData = "EmwKAhgBEgy3va3pzix/LafPsn4aDFIT2Xlxh0L5L8rLVyIwxtE3rAFBa8cr3qpPkNRj2YfWXGmKDxH4mPnZ5sQ7vB9URj2pLmN3kF8/dW5hR7xJ0aP1oLs9yTcMnKVf2wRpEGjH9XZaBt4UvDcPrQ..."
+		textContent  = "Based on my analysis..."
+	)
+
+	// Test case: assistant message with only redacted_thinking and text blocks
+	anthropicReq := MessageRequest{
+		Model:     "claude-sonnet-4-5-20250929",
+		MaxTokens: 16000,
+		Messages: []MessageParam{
+			{
+				Role: "user",
+				Content: MessageContent{
+					Content: lo.ToPtr("Hello"),
+				},
+			},
+			{
+				Role: "assistant",
+				Content: MessageContent{
+					MultipleContent: []MessageContentBlock{
+						{Type: "redacted_thinking", Data: redactedData},
+						{Type: "text", Text: lo.ToPtr(textContent)},
+					},
+				},
+			},
+			{
+				Role: "user",
+				Content: MessageContent{
+					Content: lo.ToPtr("Continue"),
+				},
+			},
+		},
+		Thinking: &Thinking{
+			Type:         "enabled",
+			BudgetTokens: 10000,
+		},
+	}
+
+	body, err := json.Marshal(anthropicReq)
+	require.NoError(t, err)
+
+	httpReq := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "https://api.anthropic.com/v1/messages",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: body,
+	}
+
+	transformer := NewInboundTransformer()
+	chatReq, err := transformer.TransformRequest(context.Background(), httpReq)
+	require.NoError(t, err)
+
+	// Find the assistant message
+	var assistantMsg *llm.Message
+
+	for i := range chatReq.Messages {
+		if chatReq.Messages[i].Role == "assistant" {
+			assistantMsg = &chatReq.Messages[i]
+			break
+		}
+	}
+
+	require.NotNil(t, assistantMsg)
+	require.Nil(t, assistantMsg.ReasoningContent)
+	require.NotNil(t, assistantMsg.RedactedReasoningContent)
+	require.Equal(t, redactedData, *assistantMsg.RedactedReasoningContent)
+}
+
 func TestInboundTransformer_ThinkingWithOtherFields(t *testing.T) {
 	anthropicReq := MessageRequest{
 		Model:       "claude-3-sonnet-20240229",
@@ -496,4 +706,123 @@ func TestInboundTransformer_ThinkingWithOtherFields(t *testing.T) {
 	if chatReq.Messages[0].Role != "user" {
 		t.Errorf("Expected user role, got %s", chatReq.Messages[0].Role)
 	}
+}
+
+func TestOutboundConvert_RedactedThinkingToAnthropic(t *testing.T) {
+	const (
+		thinking     = "Let me analyze this step by step..."
+		signature    = "WaUjzkypQ2mUEVM36O2TxuC06KN8xyfbJwyem2dw3URve/op91XWHOEBLLqIOMfFG/UvLEczmEsUjavL...."
+		redactedData = "EmwKAhgBEgy3va3pzix/LafPsn4aDFIT2Xlxh0L5L8rLVyIwxtE3rAFBa8cr3qpPkNRj2YfWXGmKDxH4mPnZ5sQ7vB9URj2pLmN3kF8/dW5hR7xJ0aP1oLs9yTcMnKVf2wRpEGjH9XZaBt4UvDcPrQ..."
+		textContent  = "Based on my analysis..."
+	)
+
+	chatReq := &llm.Request{
+		Model:           "claude-sonnet-4-5-20250929",
+		MaxTokens:       lo.ToPtr(int64(16000)),
+		ReasoningEffort: "medium",
+		Messages: []llm.Message{
+			{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Hello"),
+				},
+			},
+			{
+				Role:                     "assistant",
+				ReasoningContent:         lo.ToPtr(thinking),
+				ReasoningSignature:       lo.ToPtr(signature),
+				RedactedReasoningContent: lo.ToPtr(redactedData),
+				Content: llm.MessageContent{
+					Content: lo.ToPtr(textContent),
+				},
+			},
+			{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Continue"),
+				},
+			},
+		},
+	}
+
+	anthropicReq := convertToAnthropicRequest(chatReq)
+
+	require.NotNil(t, anthropicReq)
+	require.Len(t, anthropicReq.Messages, 3)
+
+	// Check the assistant message has thinking, redacted_thinking, and text blocks
+	assistantMsg := anthropicReq.Messages[1]
+	require.Equal(t, "assistant", assistantMsg.Role)
+	require.NotNil(t, assistantMsg.Content.MultipleContent)
+	require.Len(t, assistantMsg.Content.MultipleContent, 3)
+
+	// First block should be thinking
+	require.Equal(t, "thinking", assistantMsg.Content.MultipleContent[0].Type)
+	require.NotNil(t, assistantMsg.Content.MultipleContent[0].Thinking)
+	require.Equal(t, thinking, *assistantMsg.Content.MultipleContent[0].Thinking)
+	require.NotNil(t, assistantMsg.Content.MultipleContent[0].Signature)
+	require.Equal(t, signature, *assistantMsg.Content.MultipleContent[0].Signature)
+
+	// Second block should be redacted_thinking
+	require.Equal(t, "redacted_thinking", assistantMsg.Content.MultipleContent[1].Type)
+	require.Equal(t, redactedData, assistantMsg.Content.MultipleContent[1].Data)
+
+	// Third block should be text
+	require.Equal(t, "text", assistantMsg.Content.MultipleContent[2].Type)
+	require.NotNil(t, assistantMsg.Content.MultipleContent[2].Text)
+	require.Equal(t, textContent, *assistantMsg.Content.MultipleContent[2].Text)
+}
+
+func TestOutboundConvert_RedactedThinkingOnlyToAnthropic(t *testing.T) {
+	const (
+		redactedData = "EmwKAhgBEgy3va3pzix/LafPsn4aDFIT2Xlxh0L5L8rLVyIwxtE3rAFBa8cr3qpPkNRj2YfWXGmKDxH4mPnZ5sQ7vB9URj2pLmN3kF8/dW5hR7xJ0aP1oLs9yTcMnKVf2wRpEGjH9XZaBt4UvDcPrQ..."
+		textContent  = "Based on my analysis..."
+	)
+
+	chatReq := &llm.Request{
+		Model:           "claude-sonnet-4-5-20250929",
+		MaxTokens:       lo.ToPtr(int64(16000)),
+		ReasoningEffort: "medium",
+		Messages: []llm.Message{
+			{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Hello"),
+				},
+			},
+			{
+				Role:                     "assistant",
+				RedactedReasoningContent: lo.ToPtr(redactedData),
+				Content: llm.MessageContent{
+					Content: lo.ToPtr(textContent),
+				},
+			},
+			{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Continue"),
+				},
+			},
+		},
+	}
+
+	anthropicReq := convertToAnthropicRequest(chatReq)
+
+	require.NotNil(t, anthropicReq)
+	require.Len(t, anthropicReq.Messages, 3)
+
+	// Check the assistant message has redacted_thinking and text blocks
+	assistantMsg := anthropicReq.Messages[1]
+	require.Equal(t, "assistant", assistantMsg.Role)
+	require.NotNil(t, assistantMsg.Content.MultipleContent)
+	require.Len(t, assistantMsg.Content.MultipleContent, 2)
+
+	// First block should be redacted_thinking
+	require.Equal(t, "redacted_thinking", assistantMsg.Content.MultipleContent[0].Type)
+	require.Equal(t, redactedData, assistantMsg.Content.MultipleContent[0].Data)
+
+	// Second block should be text
+	require.Equal(t, "text", assistantMsg.Content.MultipleContent[1].Type)
+	require.NotNil(t, assistantMsg.Content.MultipleContent[1].Text)
+	require.Equal(t, textContent, *assistantMsg.Content.MultipleContent[1].Text)
 }

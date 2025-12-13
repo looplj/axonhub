@@ -39,7 +39,7 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 
 				// Verify the complete content
 				expectedContent := "1 2 3 4 5\n6 7 8 9 10\n11 12 13 14 15\n16 17 18 19 20"
-				require.Equal(t, expectedContent, result.Content[0].Text)
+				require.Equal(t, expectedContent, *result.Content[0].Text)
 			},
 		},
 		{
@@ -105,13 +105,13 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 				require.Equal(t, "thinking", result.Content[0].Type)
 
 				expectedThinking := "The user is asking for the weather in San Francisco, CA. To get the weather, I need to:\n\n1. First get the coordinates (latitude and longitude) of San Francisco, CA using the get_coordinates function\n2. Then get the temperature unit for the US using get_temperature_unit function \n3. Finally use the get_weather function with the coordinates and appropriate unit\n\nLet me start with getting the coordinates and temperature unit."
-				require.Equal(t, expectedThinking, result.Content[0].Thinking)
+				require.Equal(t, expectedThinking, *result.Content[0].Thinking)
 
 				// Verify text content block
 				require.Equal(t, "text", result.Content[1].Type)
 
 				expectedText := "I'll help you get the weather for San Francisco, CA. Let me first get the coordinates and determine the appropriate temperature unit for the US."
-				require.Equal(t, expectedText, result.Content[1].Text)
+				require.Equal(t, expectedText, *result.Content[1].Text)
 
 				// Verify first tool call (get_coordinates)
 				require.Equal(t, "tool_use", result.Content[2].Type)
@@ -156,7 +156,7 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 
 				// Verify text content block
 				require.Equal(t, "text", result.Content[0].Type)
-				require.Contains(t, result.Content[0].Text, "代码Review结果")
+				require.Contains(t, *result.Content[0].Text, "代码Review结果")
 
 				// Verify tool call (TodoWrite)
 				require.Equal(t, "tool_use", result.Content[1].Type)

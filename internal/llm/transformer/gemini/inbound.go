@@ -69,11 +69,6 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 		return nil, err
 	}
 
-	// We need to remove the alt query parameter to avoid passing through to the backend.
-	if len(httpReq.Query) > 0 {
-		httpReq.Query.Del("alt")
-	}
-
 	log.Debug(ctx, "extract gemini request params", log.String("model", model), log.Bool("stream", stream))
 
 	var geminiReq GenerateContentRequest

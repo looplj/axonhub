@@ -171,7 +171,6 @@ func TestGeminiTransformers_Integration(t *testing.T) {
 			// Verify the URL matches expected path
 			expectedURL := "https://generativelanguage.googleapis.com" + tt.expectedPath
 			require.Equal(t, expectedURL, outboundReq.URL)
-			require.Empty(t, tt.requestQuery.Get("alt"))
 
 			// Verify the outbound request body can be unmarshaled
 			var geminiReq GenerateContentRequest

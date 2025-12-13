@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
@@ -131,7 +132,7 @@ func TestAnthropicTransformers_Integration(t *testing.T) {
 				Content: []MessageContentBlock{
 					{
 						Type: "text",
-						Text: "This is a test response from Claude.",
+						Text: lo.ToPtr("This is a test response from Claude."),
 					},
 				},
 				Model:      tt.expectedModel,
@@ -365,7 +366,7 @@ func TestAnthropicTransformers_StreamingIntegration(t *testing.T) {
 	require.Equal(
 		t,
 		"Hello, this is a streaming response!",
-		chatResp.Content[0].Text,
+		*chatResp.Content[0].Text,
 	)
 	require.NotNil(t, chatResp.StopReason)
 	require.Equal(t, "end_turn", *chatResp.StopReason)

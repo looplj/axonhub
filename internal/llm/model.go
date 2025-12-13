@@ -304,7 +304,12 @@ type Message struct {
 	ReasoningContent *string `json:"reasoning_content,omitempty"`
 
 	// Help field, will not be sent to the llm service, to adapt the anthropic think signature.
+	// https://platform.claude.com/docs/en/build-with-claude/extended-thinking
 	ReasoningSignature *string `json:"reasoning_signature,omitempty"`
+
+	// Help field, will not be sent to the llm service, to adapt the anthropic think signature.
+	// https://platform.claude.com/docs/en/build-with-claude/extended-thinking
+	RedactedReasoningContent *string `json:"redacted_reasoning_content,omitempty"`
 
 	// CacheControl is used for provider-specific cache control (e.g., Anthropic).
 	// This field is not serialized in JSON.
@@ -314,6 +319,7 @@ type Message struct {
 func (m *Message) ClearHelpFields() {
 	m.ReasoningContent = nil
 	m.ReasoningSignature = nil
+	m.RedactedReasoningContent = nil
 }
 
 type MessageContent struct {

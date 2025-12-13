@@ -162,7 +162,7 @@ func TestPipeline_OpenAI_to_Anthropic(t *testing.T) {
 		Content: []anthropic.MessageContentBlock{
 			{
 				Type: "text",
-				Text: "Hello! I'm Claude, how can I assist you today?",
+				Text: lo.ToPtr("Hello! I'm Claude, how can I assist you today?"),
 			},
 		},
 		Model:      "claude-3-sonnet-20240229",
@@ -353,7 +353,7 @@ func TestPipeline_Anthropic_to_OpenAI(t *testing.T) {
 	require.Equal(t, "assistant", finalResponse.Role)
 	require.Len(t, finalResponse.Content, 1)
 	require.Equal(t, "text", finalResponse.Content[0].Type)
-	require.Equal(t, "Hello! I'm GPT-4, how can I help you?", finalResponse.Content[0].Text)
+	require.Equal(t, "Hello! I'm GPT-4, how can I help you?", lo.FromPtr(finalResponse.Content[0].Text))
 }
 
 // TestPipeline_Anthropic_to_Anthropic tests the pipeline with Anthropic inbound and outbound transformers.
@@ -373,7 +373,7 @@ func TestPipeline_Anthropic_to_Anthropic(t *testing.T) {
 		Content: []anthropic.MessageContentBlock{
 			{
 				Type: "text",
-				Text: "Hello! I'm Claude, nice to meet you!",
+				Text: lo.ToPtr("Hello! I'm Claude, nice to meet you!"),
 			},
 		},
 		Model:      "claude-3-sonnet-20240229",
@@ -457,5 +457,5 @@ func TestPipeline_Anthropic_to_Anthropic(t *testing.T) {
 	require.Equal(t, "assistant", finalResponse.Role)
 	require.Len(t, finalResponse.Content, 1)
 	require.Equal(t, "text", finalResponse.Content[0].Type)
-	require.Equal(t, "Hello! I'm Claude, nice to meet you!", finalResponse.Content[0].Text)
+	require.Equal(t, "Hello! I'm Claude, nice to meet you!", lo.FromPtr(finalResponse.Content[0].Text))
 }
