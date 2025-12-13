@@ -22,7 +22,7 @@ ENV GO111MODULE=on \
     CGO_ENABLED=0 \
     GOOS=linux
 
-RUN go build -tags=nomsgpack -ldflags "-s -w -X 'github.com/looplj/axonhub/internal/build.Version=$(cat VERSION 2>/dev/null || echo dev)' -X 'github.com/looplj/axonhub/internal/build.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)'" -o axonhub ./cmd/axonhub
+RUN go build -tags=nomsgpack -ldflags "-s -w -X 'github.com/looplj/axonhub/internal/build.Version=$(cat internal/build/VERSION 2>/dev/null || echo dev)' -X 'github.com/looplj/axonhub/internal/build.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)'" -o axonhub ./cmd/axonhub
 
 FROM alpine
 
