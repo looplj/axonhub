@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/project"
@@ -98,21 +99,22 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 }
 
 var guidTypeToNodeType = map[string]string{
-	ent.TypeUser:               user.Table,
-	ent.TypeAPIKey:             apikey.Table,
-	ent.TypeChannel:            channel.Table,
-	ent.TypeChannelPerformance: channelperformance.Table,
-	ent.TypeRequest:            request.Table,
-	ent.TypeRequestExecution:   requestexecution.Table,
-	ent.TypeRole:               role.Table,
-	ent.TypeSystem:             system.Table,
-	ent.TypeUsageLog:           usagelog.Table,
-	ent.TypeProject:            project.Table,
-	ent.TypeUserProject:        userproject.Table,
-	ent.TypeUserRole:           userrole.Table,
-	ent.TypeThread:             thread.Table,
-	ent.TypeTrace:              trace.Table,
-	ent.TypeDataStorage:        datastorage.Table,
+	ent.TypeUser:                      user.Table,
+	ent.TypeAPIKey:                    apikey.Table,
+	ent.TypeChannel:                   channel.Table,
+	ent.TypeChannelPerformance:        channelperformance.Table,
+	ent.TypeChannelOverrideTemplate:   channeloverridetemplate.Table,
+	ent.TypeRequest:                   request.Table,
+	ent.TypeRequestExecution:          requestexecution.Table,
+	ent.TypeRole:                      role.Table,
+	ent.TypeSystem:                    system.Table,
+	ent.TypeUsageLog:                  usagelog.Table,
+	ent.TypeProject:                   project.Table,
+	ent.TypeUserProject:               userproject.Table,
+	ent.TypeUserRole:                  userrole.Table,
+	ent.TypeThread:                    thread.Table,
+	ent.TypeTrace:                     trace.Table,
+	ent.TypeDataStorage:               datastorage.Table,
 }
 
 const maxPaginationLimit = 1000

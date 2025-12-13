@@ -49,12 +49,18 @@ func (r *channelResolver) ID(ctx context.Context, obj *ent.Channel) (*objects.GU
 
 // ID is the resolver for the id field.
 func (r *channelOverrideTemplateResolver) ID(ctx context.Context, obj *ent.ChannelOverrideTemplate) (*objects.GUID, error) {
-	panic(fmt.Errorf("not implemented: ID - id"))
+	return &objects.GUID{
+		Type: ent.TypeChannelOverrideTemplate,
+		ID:   obj.ID,
+	}, nil
 }
 
 // UserID is the resolver for the userID field.
 func (r *channelOverrideTemplateResolver) UserID(ctx context.Context, obj *ent.ChannelOverrideTemplate) (*objects.GUID, error) {
-	panic(fmt.Errorf("not implemented: UserID - userID"))
+	return &objects.GUID{
+		Type: ent.TypeUser,
+		ID:   obj.UserID,
+	}, nil
 }
 
 // ID is the resolver for the id field.
