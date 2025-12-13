@@ -258,13 +258,22 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 			_ = json.Unmarshal([]byte(toolCall.Function.Arguments), &args)
 		}
 
-		parts = append(parts, &Part{
+		part := &Part{
 			FunctionCall: &FunctionCall{
 				ID:   toolCall.ID,
 				Name: toolCall.Function.Name,
 				Args: args,
 			},
-		})
+		}
+
+		// Restore ThoughtSignature from TransformerMetadata for Gemini 3 Pro function calling
+		if toolCall.TransformerMetadata != nil {
+			if sig, ok := toolCall.TransformerMetadata["thought_signature"].([]byte); ok && len(sig) > 0 {
+				part.ThoughtSignature = sig
+			}
+		}
+
+		parts = append(parts, part)
 	}
 
 	if len(parts) == 0 {
@@ -324,6 +333,13 @@ func findToolNameByToolCallID(contents []*Content, id string) string {
 // convertGeminiToLLMResponse converts Gemini GenerateContentResponse to unified Response.
 // When isStream is true, it sets Delta instead of Message in choices.
 func convertGeminiToLLMResponse(geminiResp *GenerateContentResponse, isStream bool) *llm.Response {
+	resp, _ := convertGeminiToLLMResponseWithState(geminiResp, isStream, 0)
+	return resp
+}
+
+// convertGeminiToLLMResponseWithState converts Gemini response with tool call index tracking.
+// Returns the response and the next tool call index to use.
+func convertGeminiToLLMResponseWithState(geminiResp *GenerateContentResponse, isStream bool, toolCallIndexOffset int) (*llm.Response, int) {
 	resp := &llm.Response{
 		ID:      geminiResp.ResponseID,
 		Model:   geminiResp.ModelVersion,
@@ -344,25 +360,31 @@ func convertGeminiToLLMResponse(geminiResp *GenerateContentResponse, isStream bo
 
 	// Convert candidates to choices
 	choices := make([]llm.Choice, 0, len(geminiResp.Candidates))
+	nextToolCallIndex := toolCallIndexOffset
+
 	for _, candidate := range geminiResp.Candidates {
-		choice := convertGeminiCandidateToLLMChoice(candidate, isStream)
+		var choice llm.Choice
+
+		choice, nextToolCallIndex = convertGeminiCandidateToLLMChoiceWithState(candidate, isStream, nextToolCallIndex)
 		choices = append(choices, choice)
 	}
 
 	resp.Choices = choices
 	resp.Usage = convertToLLMUsage(geminiResp.UsageMetadata)
 
-	return resp
+	return resp, nextToolCallIndex
 }
 
-// convertGeminiCandidateToLLMChoice converts a Gemini Candidate to an LLM Choice.
-// When isStream is true, it sets Delta instead of Message.
-func convertGeminiCandidateToLLMChoice(candidate *Candidate, isStream bool) llm.Choice {
+// convertGeminiCandidateToLLMChoiceWithState converts a Gemini Candidate to an LLM Choice with tool call index tracking.
+// Returns the choice and the next tool call index to use.
+func convertGeminiCandidateToLLMChoiceWithState(candidate *Candidate, isStream bool, toolCallIndexOffset int) (llm.Choice, int) {
 	choice := llm.Choice{
 		Index: int(candidate.Index),
 	}
 
 	var hasToolCall bool
+
+	nextToolCallIndex := toolCallIndexOffset
 
 	if candidate.Content != nil {
 		msg := &llm.Message{
@@ -398,8 +420,9 @@ func convertGeminiCandidateToLLMChoice(candidate *Candidate, isStream bool) llm.
 			case part.FunctionCall != nil:
 				argsJSON, _ := json.Marshal(part.FunctionCall.Args)
 				tc := llm.ToolCall{
-					ID:   part.FunctionCall.ID,
-					Type: "function",
+					Index: nextToolCallIndex,
+					ID:    part.FunctionCall.ID,
+					Type:  "function",
 					Function: llm.FunctionCall{
 						Name:      part.FunctionCall.Name,
 						Arguments: string(argsJSON),
@@ -410,7 +433,15 @@ func convertGeminiCandidateToLLMChoice(candidate *Candidate, isStream bool) llm.
 					tc.ID = uuid.NewString()
 				}
 
+				// Store ThoughtSignature in TransformerMetadata for Gemini 3 Pro function calling
+				if len(part.ThoughtSignature) > 0 {
+					tc.TransformerMetadata = map[string]any{
+						"thought_signature": part.ThoughtSignature,
+					}
+				}
+
 				toolCalls = append(toolCalls, tc)
+				nextToolCallIndex++
 			}
 		}
 
@@ -456,5 +487,5 @@ func convertGeminiCandidateToLLMChoice(candidate *Candidate, isStream bool) llm.
 	// Convert finish reason
 	choice.FinishReason = convertGeminiFinishReasonToLLM(candidate.FinishReason, hasToolCall)
 
-	return choice
+	return choice, nextToolCallIndex
 }

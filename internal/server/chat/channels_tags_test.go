@@ -16,7 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
-// setupTagsTest 创建测试环境和测试用的 channels
+// setupTagsTest 创建测试环境和测试用的 channels.
 func setupTagsTest(t *testing.T) (context.Context, *ent.Client, []*biz.Channel) {
 	t.Helper()
 
@@ -24,6 +24,7 @@ func setupTagsTest(t *testing.T) (context.Context, *ent.Client, []*biz.Channel) 
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	t.Cleanup(func() { client.Close() })
+
 	ctx = ent.NewContext(ctx, client)
 
 	// 创建测试渠道
@@ -102,7 +103,7 @@ func setupTagsTest(t *testing.T) (context.Context, *ent.Client, []*biz.Channel) 
 	return ctx, client, channels
 }
 
-// TestTagsFilterSelector_EmptyAllowedTags 测试当 allowedTags 为空时返回所有渠道
+// TestTagsFilterSelector_EmptyAllowedTags 测试当 allowedTags 为空时返回所有渠道.
 func TestTagsFilterSelector_EmptyAllowedTags(t *testing.T) {
 	ctx, _, channels := setupTagsTest(t)
 
@@ -128,7 +129,7 @@ func TestTagsFilterSelector_EmptyAllowedTags(t *testing.T) {
 	assert.Equal(t, channels, result)
 }
 
-// TestTagsFilterSelector_NilAllowedTags 测试当 allowedTags 为 nil 时返回所有渠道
+// TestTagsFilterSelector_NilAllowedTags 测试当 allowedTags 为 nil 时返回所有渠道.
 func TestTagsFilterSelector_NilAllowedTags(t *testing.T) {
 	ctx, _, channels := setupTagsTest(t)
 
@@ -150,7 +151,7 @@ func TestTagsFilterSelector_NilAllowedTags(t *testing.T) {
 	assert.Len(t, result, 5)
 }
 
-// TestTagsFilterSelector_SingleMatchingTag 测试单个匹配标签
+// TestTagsFilterSelector_SingleMatchingTag 测试单个匹配标签.
 func TestTagsFilterSelector_SingleMatchingTag(t *testing.T) {
 	ctx, _, channels := setupTagsTest(t)
 
@@ -173,7 +174,7 @@ func TestTagsFilterSelector_SingleMatchingTag(t *testing.T) {
 	assert.Equal(t, "Channel with tag1 and tag2", result[0].Name)
 }
 
-// TestTagsFilterSelector_MultipleMatchingTags 测试多个匹配标签 (OR 逻辑)
+// TestTagsFilterSelector_MultipleMatchingTags 测试多个匹配标签 (OR 逻辑).
 func TestTagsFilterSelector_MultipleMatchingTags(t *testing.T) {
 	ctx, _, channels := setupTagsTest(t)
 
@@ -200,7 +201,7 @@ func TestTagsFilterSelector_MultipleMatchingTags(t *testing.T) {
 	assert.Contains(t, names, "Channel with tag2 only")
 }
 
-// TestTagsFilterSelector_NoMatchingTags 测试没有匹配的标签
+// TestTagsFilterSelector_NoMatchingTags 测试没有匹配的标签.
 func TestTagsFilterSelector_NoMatchingTags(t *testing.T) {
 	ctx, _, channels := setupTagsTest(t)
 
@@ -223,7 +224,7 @@ func TestTagsFilterSelector_NoMatchingTags(t *testing.T) {
 	assert.Len(t, result, 0)
 }
 
-// TestTagsFilterSelector_ChannelsWithoutTags 测试没有标签的渠道不会被匹配
+// TestTagsFilterSelector_ChannelsWithoutTags 测试没有标签的渠道不会被匹配.
 func TestTagsFilterSelector_ChannelsWithoutTags(t *testing.T) {
 	ctx, _, channels := setupTagsTest(t)
 
@@ -251,7 +252,7 @@ func TestTagsFilterSelector_ChannelsWithoutTags(t *testing.T) {
 	assert.Len(t, result, 0)
 }
 
-// TestTagsFilterSelector_ORLogic 明确测试 OR 逻辑
+// TestTagsFilterSelector_ORLogic 明确测试 OR 逻辑.
 func TestTagsFilterSelector_ORLogic(t *testing.T) {
 	ctx, _, channels := setupTagsTest(t)
 
@@ -279,7 +280,7 @@ func TestTagsFilterSelector_ORLogic(t *testing.T) {
 	assert.Contains(t, names, "Channel with tag3 only")
 }
 
-// TestTagsFilterSelector_WithSelectedChannelsSelector 测试与 SelectedChannelsSelector 的集成 (交集逻辑)
+// TestTagsFilterSelector_WithSelectedChannelsSelector 测试与 SelectedChannelsSelector 的集成 (交集逻辑).
 func TestTagsFilterSelector_WithSelectedChannelsSelector(t *testing.T) {
 	ctx, _, channels := setupTagsTest(t)
 
@@ -310,7 +311,7 @@ func TestTagsFilterSelector_WithSelectedChannelsSelector(t *testing.T) {
 	assert.Len(t, result, 2)
 }
 
-// TestTagsFilterSelector_WithSelectedChannelsSelector_NoIntersection 测试 tags 和 IDs 没有交集
+// TestTagsFilterSelector_WithSelectedChannelsSelector_NoIntersection 测试 tags 和 IDs 没有交集.
 func TestTagsFilterSelector_WithSelectedChannelsSelector_NoIntersection(t *testing.T) {
 	ctx, _, channels := setupTagsTest(t)
 
@@ -338,7 +339,7 @@ func TestTagsFilterSelector_WithSelectedChannelsSelector_NoIntersection(t *testi
 	assert.Len(t, result, 0)
 }
 
-// TestTagsFilterSelector_ErrorPropagation 测试错误传播
+// TestTagsFilterSelector_ErrorPropagation 测试错误传播.
 func TestTagsFilterSelector_ErrorPropagation(t *testing.T) {
 	ctx := context.Background()
 
@@ -364,7 +365,7 @@ func TestTagsFilterSelector_ErrorPropagation(t *testing.T) {
 	assert.Nil(t, result)
 }
 
-// TestTagsFilterSelector_CaseSensitive 测试标签是否大小写敏感
+// TestTagsFilterSelector_CaseSensitive 测试标签是否大小写敏感.
 func TestTagsFilterSelector_CaseSensitive(t *testing.T) {
 	ctx := context.Background()
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
@@ -372,6 +373,7 @@ func TestTagsFilterSelector_CaseSensitive(t *testing.T) {
 	// 创建一个带有大写标签的渠道
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	t.Cleanup(func() { client.Close() })
+
 	ctx = ent.NewContext(ctx, client)
 
 	ch, err := client.Channel.Create().

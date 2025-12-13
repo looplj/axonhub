@@ -150,6 +150,7 @@ func (s *TagsFilterSelector) Select(ctx context.Context, req *llm.Request) ([]*b
 				return true
 			}
 		}
+
 		return false
 	})
 

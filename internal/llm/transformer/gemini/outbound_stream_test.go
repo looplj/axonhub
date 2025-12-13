@@ -264,6 +264,183 @@ func TestOutboundTransformer_TransformStream(t *testing.T) {
 	require.Equal(t, ", world!", *results[1].Choices[0].Delta.Content.Content)
 }
 
+func TestOutboundTransformer_TransformStream_ToolCallIndexAccumulation(t *testing.T) {
+	transformer := &OutboundTransformer{
+		config: Config{
+			BaseURL:    DefaultBaseURL,
+			APIVersion: DefaultAPIVersion,
+		},
+	}
+
+	// Create test stream events with tool calls across multiple events
+	// This tests that tool call index accumulates across the entire stream
+	events := []*httpclient.StreamEvent{
+		{
+			Data: mustMarshal(&GenerateContentResponse{
+				ResponseID:   "resp-tool-stream-1",
+				ModelVersion: "gemini-2.0-flash",
+				Candidates: []*Candidate{
+					{
+						Index: 0,
+						Content: &Content{
+							Role: "model",
+							Parts: []*Part{
+								{
+									FunctionCall: &FunctionCall{
+										ID:   "call-1",
+										Name: "get_weather",
+										Args: map[string]any{"location": "Tokyo"},
+									},
+								},
+							},
+						},
+					},
+				},
+			}),
+		},
+		{
+			Data: mustMarshal(&GenerateContentResponse{
+				ResponseID:   "resp-tool-stream-1",
+				ModelVersion: "gemini-2.0-flash",
+				Candidates: []*Candidate{
+					{
+						Index: 0,
+						Content: &Content{
+							Role: "model",
+							Parts: []*Part{
+								{
+									FunctionCall: &FunctionCall{
+										ID:   "call-2",
+										Name: "get_time",
+										Args: map[string]any{"timezone": "JST"},
+									},
+								},
+							},
+						},
+						FinishReason: "STOP",
+					},
+				},
+			}),
+		},
+	}
+
+	// Create a stream from the events
+	inputStream := streams.SliceStream(events)
+
+	// Transform the stream
+	outputStream, err := transformer.TransformStream(context.Background(), inputStream)
+	require.NoError(t, err)
+	require.NotNil(t, outputStream)
+
+	// Collect results
+	var results []*llm.Response
+
+	for outputStream.Next() {
+		resp := outputStream.Current()
+		if resp != nil {
+			results = append(results, resp)
+		}
+	}
+
+	require.NoError(t, outputStream.Err())
+
+	// Filter out [DONE] response
+	var toolCallResults []*llm.Response
+
+	for _, r := range results {
+		if r.Object != "[DONE]" {
+			toolCallResults = append(toolCallResults, r)
+		}
+	}
+
+	// Verify we have 2 tool call responses
+	require.Len(t, toolCallResults, 2)
+
+	// First event: tool call with index 0
+	require.Len(t, toolCallResults[0].Choices[0].Delta.ToolCalls, 1)
+	require.Equal(t, 0, toolCallResults[0].Choices[0].Delta.ToolCalls[0].Index)
+	require.Equal(t, "call-1", toolCallResults[0].Choices[0].Delta.ToolCalls[0].ID)
+	require.Equal(t, "get_weather", toolCallResults[0].Choices[0].Delta.ToolCalls[0].Function.Name)
+
+	// Second event: tool call with index 1 (accumulated from previous event)
+	require.Len(t, toolCallResults[1].Choices[0].Delta.ToolCalls, 1)
+	require.Equal(t, 1, toolCallResults[1].Choices[0].Delta.ToolCalls[0].Index)
+	require.Equal(t, "call-2", toolCallResults[1].Choices[0].Delta.ToolCalls[0].ID)
+	require.Equal(t, "get_time", toolCallResults[1].Choices[0].Delta.ToolCalls[0].Function.Name)
+}
+
+func TestOutboundTransformer_TransformStream_MultipleToolCallsInSingleEvent(t *testing.T) {
+	transformer := &OutboundTransformer{
+		config: Config{
+			BaseURL:    DefaultBaseURL,
+			APIVersion: DefaultAPIVersion,
+		},
+	}
+
+	// Create test stream event with multiple tool calls in a single event
+	events := []*httpclient.StreamEvent{
+		{
+			Data: mustMarshal(&GenerateContentResponse{
+				ResponseID:   "resp-multi-tool-1",
+				ModelVersion: "gemini-2.0-flash",
+				Candidates: []*Candidate{
+					{
+						Index: 0,
+						Content: &Content{
+							Role: "model",
+							Parts: []*Part{
+								{
+									FunctionCall: &FunctionCall{
+										ID:   "call-a",
+										Name: "func_a",
+										Args: map[string]any{"param": "value_a"},
+									},
+								},
+								{
+									FunctionCall: &FunctionCall{
+										ID:   "call-b",
+										Name: "func_b",
+										Args: map[string]any{"param": "value_b"},
+									},
+								},
+							},
+						},
+						FinishReason: "STOP",
+					},
+				},
+			}),
+		},
+	}
+
+	// Create a stream from the events
+	inputStream := streams.SliceStream(events)
+
+	// Transform the stream
+	outputStream, err := transformer.TransformStream(context.Background(), inputStream)
+	require.NoError(t, err)
+	require.NotNil(t, outputStream)
+
+	// Collect results
+	var results []*llm.Response
+
+	for outputStream.Next() {
+		resp := outputStream.Current()
+		if resp != nil && resp.Object != "[DONE]" {
+			results = append(results, resp)
+		}
+	}
+
+	require.NoError(t, outputStream.Err())
+	require.Len(t, results, 1)
+
+	// Verify both tool calls have correct indices within the same event
+	require.Len(t, results[0].Choices[0].Delta.ToolCalls, 2)
+	require.Equal(t, 0, results[0].Choices[0].Delta.ToolCalls[0].Index)
+	require.Equal(t, "call-a", results[0].Choices[0].Delta.ToolCalls[0].ID)
+	require.Equal(t, 1, results[0].Choices[0].Delta.ToolCalls[1].Index)
+	require.Equal(t, "call-b", results[0].Choices[0].Delta.ToolCalls[1].ID)
+}
+
 func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 	transformer := &OutboundTransformer{
 		config: Config{
@@ -667,9 +844,11 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 				require.Equal(t, "resp-gemini-parallel-1", result.ID)
 				require.Len(t, result.Choices, 1)
 
-				// Should have 2 tool calls
+				// Should have 2 tool calls with correct indices
 				require.Len(t, result.Choices[0].Message.ToolCalls, 2)
+				require.Equal(t, 0, result.Choices[0].Message.ToolCalls[0].Index)
 				require.Equal(t, "get_weather", result.Choices[0].Message.ToolCalls[0].Function.Name)
+				require.Equal(t, 1, result.Choices[0].Message.ToolCalls[1].Index)
 				require.Equal(t, "get_time", result.Choices[0].Message.ToolCalls[1].Function.Name)
 
 				require.NotNil(t, result.Choices[0].FinishReason)

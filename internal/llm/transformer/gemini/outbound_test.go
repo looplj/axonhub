@@ -493,3 +493,261 @@ func TestReasoningEffortFallback(t *testing.T) {
 	// Should use default mapping for "medium" reasoning effort
 	require.Equal(t, int64(8192), *geminiReq.GenerationConfig.ThinkingConfig.ThinkingBudget)
 }
+
+func TestOutboundTransformer_TransformResponse_MultipleFunctionCalls(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://generativelanguage.googleapis.com", "test-key")
+	require.NoError(t, err)
+
+	tests := []struct {
+		name           string
+		geminiResponse *GenerateContentResponse
+		validate       func(t *testing.T, resp *llm.Response)
+	}{
+		{
+			name: "single function call has index 0",
+			geminiResponse: &GenerateContentResponse{
+				ResponseID:   "resp-single-tool",
+				ModelVersion: "gemini-2.0-flash",
+				Candidates: []*Candidate{
+					{
+						Index: 0,
+						Content: &Content{
+							Role: "model",
+							Parts: []*Part{
+								{
+									FunctionCall: &FunctionCall{
+										ID:   "call-1",
+										Name: "get_weather",
+										Args: map[string]any{"location": "Tokyo"},
+									},
+								},
+							},
+						},
+						FinishReason: "STOP",
+					},
+				},
+			},
+			validate: func(t *testing.T, resp *llm.Response) {
+				t.Helper()
+				require.Len(t, resp.Choices, 1)
+				require.Len(t, resp.Choices[0].Message.ToolCalls, 1)
+				require.Equal(t, 0, resp.Choices[0].Message.ToolCalls[0].Index)
+				require.Equal(t, "call-1", resp.Choices[0].Message.ToolCalls[0].ID)
+				require.Equal(t, "get_weather", resp.Choices[0].Message.ToolCalls[0].Function.Name)
+			},
+		},
+		{
+			name: "multiple function calls in single response have sequential indices",
+			geminiResponse: &GenerateContentResponse{
+				ResponseID:   "resp-multi-tool",
+				ModelVersion: "gemini-2.0-flash",
+				Candidates: []*Candidate{
+					{
+						Index: 0,
+						Content: &Content{
+							Role: "model",
+							Parts: []*Part{
+								{
+									FunctionCall: &FunctionCall{
+										ID:   "call-1",
+										Name: "get_weather",
+										Args: map[string]any{"location": "Tokyo"},
+									},
+								},
+								{
+									FunctionCall: &FunctionCall{
+										ID:   "call-2",
+										Name: "get_time",
+										Args: map[string]any{"timezone": "JST"},
+									},
+								},
+							},
+						},
+						FinishReason: "STOP",
+					},
+				},
+			},
+			validate: func(t *testing.T, resp *llm.Response) {
+				t.Helper()
+				require.Len(t, resp.Choices, 1)
+				require.Len(t, resp.Choices[0].Message.ToolCalls, 2)
+
+				// First tool call should have index 0
+				require.Equal(t, 0, resp.Choices[0].Message.ToolCalls[0].Index)
+				require.Equal(t, "call-1", resp.Choices[0].Message.ToolCalls[0].ID)
+				require.Equal(t, "get_weather", resp.Choices[0].Message.ToolCalls[0].Function.Name)
+
+				// Second tool call should have index 1
+				require.Equal(t, 1, resp.Choices[0].Message.ToolCalls[1].Index)
+				require.Equal(t, "call-2", resp.Choices[0].Message.ToolCalls[1].ID)
+				require.Equal(t, "get_time", resp.Choices[0].Message.ToolCalls[1].Function.Name)
+			},
+		},
+		{
+			name: "three function calls have sequential indices 0, 1, 2",
+			geminiResponse: &GenerateContentResponse{
+				ResponseID:   "resp-three-tools",
+				ModelVersion: "gemini-2.0-flash",
+				Candidates: []*Candidate{
+					{
+						Index: 0,
+						Content: &Content{
+							Role: "model",
+							Parts: []*Part{
+								{
+									FunctionCall: &FunctionCall{
+										ID:   "call-a",
+										Name: "func_a",
+										Args: map[string]any{"param": "a"},
+									},
+								},
+								{
+									FunctionCall: &FunctionCall{
+										ID:   "call-b",
+										Name: "func_b",
+										Args: map[string]any{"param": "b"},
+									},
+								},
+								{
+									FunctionCall: &FunctionCall{
+										ID:   "call-c",
+										Name: "func_c",
+										Args: map[string]any{"param": "c"},
+									},
+								},
+							},
+						},
+						FinishReason: "STOP",
+					},
+				},
+			},
+			validate: func(t *testing.T, resp *llm.Response) {
+				t.Helper()
+				require.Len(t, resp.Choices, 1)
+				require.Len(t, resp.Choices[0].Message.ToolCalls, 3)
+
+				require.Equal(t, 0, resp.Choices[0].Message.ToolCalls[0].Index)
+				require.Equal(t, "func_a", resp.Choices[0].Message.ToolCalls[0].Function.Name)
+
+				require.Equal(t, 1, resp.Choices[0].Message.ToolCalls[1].Index)
+				require.Equal(t, "func_b", resp.Choices[0].Message.ToolCalls[1].Function.Name)
+
+				require.Equal(t, 2, resp.Choices[0].Message.ToolCalls[2].Index)
+				require.Equal(t, "func_c", resp.Choices[0].Message.ToolCalls[2].Function.Name)
+			},
+		},
+		{
+			name: "function calls with text content mixed",
+			geminiResponse: &GenerateContentResponse{
+				ResponseID:   "resp-mixed",
+				ModelVersion: "gemini-2.0-flash",
+				Candidates: []*Candidate{
+					{
+						Index: 0,
+						Content: &Content{
+							Role: "model",
+							Parts: []*Part{
+								{Text: "I'll help you with that."},
+								{
+									FunctionCall: &FunctionCall{
+										ID:   "call-1",
+										Name: "search",
+										Args: map[string]any{"query": "weather"},
+									},
+								},
+								{
+									FunctionCall: &FunctionCall{
+										ID:   "call-2",
+										Name: "calculate",
+										Args: map[string]any{"expr": "1+1"},
+									},
+								},
+							},
+						},
+						FinishReason: "STOP",
+					},
+				},
+			},
+			validate: func(t *testing.T, resp *llm.Response) {
+				t.Helper()
+				require.Len(t, resp.Choices, 1)
+
+				// Text content should be present
+				require.NotNil(t, resp.Choices[0].Message.Content.Content)
+				require.Equal(t, "I'll help you with that.", *resp.Choices[0].Message.Content.Content)
+
+				// Tool calls should have correct indices
+				require.Len(t, resp.Choices[0].Message.ToolCalls, 2)
+				require.Equal(t, 0, resp.Choices[0].Message.ToolCalls[0].Index)
+				require.Equal(t, "search", resp.Choices[0].Message.ToolCalls[0].Function.Name)
+				require.Equal(t, 1, resp.Choices[0].Message.ToolCalls[1].Index)
+				require.Equal(t, "calculate", resp.Choices[0].Message.ToolCalls[1].Function.Name)
+			},
+		},
+		{
+			name: "function call without ID gets generated UUID",
+			geminiResponse: &GenerateContentResponse{
+				ResponseID:   "resp-no-id",
+				ModelVersion: "gemini-2.0-flash",
+				Candidates: []*Candidate{
+					{
+						Index: 0,
+						Content: &Content{
+							Role: "model",
+							Parts: []*Part{
+								{
+									FunctionCall: &FunctionCall{
+										Name: "get_data",
+										Args: map[string]any{"key": "value"},
+									},
+								},
+								{
+									FunctionCall: &FunctionCall{
+										Name: "process_data",
+										Args: map[string]any{"data": "test"},
+									},
+								},
+							},
+						},
+						FinishReason: "STOP",
+					},
+				},
+			},
+			validate: func(t *testing.T, resp *llm.Response) {
+				t.Helper()
+				require.Len(t, resp.Choices, 1)
+				require.Len(t, resp.Choices[0].Message.ToolCalls, 2)
+
+				// IDs should be generated (non-empty UUIDs)
+				require.NotEmpty(t, resp.Choices[0].Message.ToolCalls[0].ID)
+				require.NotEmpty(t, resp.Choices[0].Message.ToolCalls[1].ID)
+
+				// Indices should still be correct
+				require.Equal(t, 0, resp.Choices[0].Message.ToolCalls[0].Index)
+				require.Equal(t, 1, resp.Choices[0].Message.ToolCalls[1].Index)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Marshal the Gemini response to JSON
+			respBody, err := json.Marshal(tt.geminiResponse)
+			require.NoError(t, err)
+
+			// Create HTTP response
+			httpResp := &httpclient.Response{
+				StatusCode: 200,
+				Body:       respBody,
+			}
+
+			// Transform response
+			resp, err := transformer.TransformResponse(nil, httpResp)
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+
+			// Run validation
+			tt.validate(t, resp)
+		})
+	}
+}
