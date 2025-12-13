@@ -19,7 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { AutoCompleteSelect } from '@/components/auto-complete-select'
 import { SelectDropdown } from '@/components/select-dropdown'
 import { TagsInput } from '@/components/ui/tags-input'
-import { useCreateChannel, useUpdateChannel, useFetchModels, useBulkCreateChannels } from '../data/channels'
+import { useCreateChannel, useUpdateChannel, useFetchModels, useBulkCreateChannels, useAllChannelNames } from '../data/channels'
 import { getDefaultBaseURL, getDefaultModels, CHANNEL_CONFIGS, OPENAI_CHAT_COMPLETIONS } from '../data/config_channels'
 import {
   PROVIDER_CONFIGS,
@@ -39,14 +39,38 @@ interface Props {
 
 const MAX_MODELS_DISPLAY = 2
 
+const duplicateNameRegex = /^(.*) \((\d+)\)$/
+
+function getDuplicateBaseName(name: string) {
+  const match = name.match(duplicateNameRegex)
+  if (match?.[1]) {
+    return match[1]
+  }
+  return name
+}
+
+function getNextDuplicateName(name: string, existingNames: Set<string>) {
+  const baseName = getDuplicateBaseName(name)
+  let i = 1
+  for (;;) {
+    const candidate = `${baseName} (${i})`
+    if (!existingNames.has(candidate)) {
+      return candidate
+    }
+    i++
+  }
+}
+
 export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpenChange, showModelsPanel = false }: Props) {
   const { t } = useTranslation()
   const isEdit = !!currentRow
+  const isDuplicate = !!duplicateFromRow && !isEdit
   const initialRow: Channel | undefined = currentRow || duplicateFromRow
   const createChannel = useCreateChannel()
   const bulkCreateChannels = useBulkCreateChannels()
   const updateChannel = useUpdateChannel()
   const fetchModels = useFetchModels()
+  const { data: allChannelNames = [], isSuccess: allChannelNamesLoaded } = useAllChannelNames({ enabled: open && isDuplicate })
   const [supportedModels, setSupportedModels] = useState<string[]>(() => initialRow?.supportedModels || [])
   const [newModel, setNewModel] = useState('')
   const [selectedDefaultModels, setSelectedDefaultModels] = useState<string[]>([])
@@ -63,6 +87,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [showAddedModelsOnly, setShowAddedModelsOnly] = useState(false)
   const [supportedModelsExpanded, setSupportedModelsExpanded] = useState(false)
   const [showClearAllPopover, setShowClearAllPopover] = useState(false)
+  const hasAutoSetDuplicateNameRef = useRef(false)
 
   // Provider-based selection state
   const [selectedProvider, setSelectedProvider] = useState<string>(() => {
@@ -86,6 +111,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     const apiFormat = CHANNEL_CONFIGS[currentRow.type]?.apiFormat || OPENAI_CHAT_COMPLETIONS
     setSelectedApiFormat(apiFormat)
   }, [isEdit, currentRow])
+
+  useEffect(() => {
+    if (!open) {
+      hasAutoSetDuplicateNameRef.current = false
+    }
+  }, [open])
 
   useEffect(() => {
     if (!open || !isEdit) return
@@ -214,6 +245,21 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             tags: [],
           },
   })
+
+  useEffect(() => {
+    if (!open || !isDuplicate || !duplicateFromRow) return
+    if (!allChannelNamesLoaded) return
+    if (hasAutoSetDuplicateNameRef.current) return
+
+    const currentName = form.getValues('name')
+    if (currentName !== duplicateFromRow.name) {
+      return
+    }
+
+    const nextName = getNextDuplicateName(duplicateFromRow.name, new Set(allChannelNames))
+    form.setValue('name', nextName)
+    hasAutoSetDuplicateNameRef.current = true
+  }, [open, isDuplicate, duplicateFromRow, allChannelNamesLoaded, allChannelNames, form])
 
   const selectedType = form.watch('type') as ChannelType | undefined
 

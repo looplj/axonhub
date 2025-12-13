@@ -170,8 +170,8 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
         <div className='space-y-6'>
           {/* <Card>
             <CardHeader>
-              <CardTitle className='text-lg'>{t('channels.dialogs.settings.basicInfo.title')}</CardTitle>
-              <CardDescription>{t('channels.dialogs.settings.basicInfo.description')}</CardDescription>
+              <CardTitle className='text-lg'>{t('channels.dialogs.settings.basic.title')}</CardTitle>
+              <CardDescription>{t('channels.dialogs.settings.basic.description')}</CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'>
               <div className='grid grid-cols-2 gap-4'>

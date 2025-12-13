@@ -249,7 +249,7 @@ export function ChannelsTable({
         showErrorOnly={showErrorOnly}
         onExitErrorOnlyMode={onExitErrorOnlyMode}
       />
-      <div className='mt-4 flex-1 overflow-auto rounded-md border'>
+      <div className='mt-4 flex-1 overflow-auto rounded-md border relative'>
         <Table data-testid='channels-table'>
           <TableHeader className='bg-background sticky top-0 z-10'>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -293,11 +293,11 @@ export function ChannelsTable({
                       <TableRow key={`${row.id}-expanded`} className='bg-muted/30 hover:bg-muted/50'>
                         <TableCell colSpan={columns.length} className='p-6 whitespace-normal'>
                           <div className='space-y-6'>
-                            {/* Top Section: Basic Info + Performance (2 columns) */}
+                            {/* Top Section: Basic Info (left) + Additional Info & Performance (right, stacked) */}
                             <div className='grid grid-cols-1 gap-6 md:grid-cols-2'>
                               {/* Basic Info */}
                               <div className='space-y-3'>
-                                <h4 className='text-sm font-semibold'>{t('channels.expandedRow.basicInfo')}</h4>
+                                <h4 className='text-sm font-semibold'>{t('channels.expandedRow.basic')}</h4>
                                 <div className='space-y-2 text-sm'>
                                   <div className='flex items-start gap-2'>
                                     <span className='text-muted-foreground shrink-0'>
@@ -315,10 +315,6 @@ export function ChannelsTable({
                                     <span className='text-muted-foreground'>{t('channels.expandedRow.apiFormat')}:</span>
                                     <span className='font-mono text-xs'>{getApiFormatLabel(config?.apiFormat)}</span>
                                   </div>
-                                  <div className='flex justify-between items-center'>
-                                    <span className='text-muted-foreground'>{t('channels.columns.weight')}:</span>
-                                    <span className='font-mono text-xs'>{channel.orderingWeight ?? 0}</span>
-                                  </div>
                                   <div className='flex justify-between'>
                                     <span className='text-muted-foreground'>{t('channels.columns.createdAt')}:</span>
                                     <span>{format(channel.createdAt, 'yyyy-MM-dd HH:mm')}</span>
@@ -327,54 +323,68 @@ export function ChannelsTable({
                                     <span className='text-muted-foreground'>{t('channels.columns.updatedAt')}:</span>
                                     <span>{format(channel.updatedAt, 'yyyy-MM-dd HH:mm')}</span>
                                   </div>
-                                  <div className='flex justify-between'>
-                                    <span className='text-muted-foreground'>{t('channels.expandedRow.remark')}:</span>
-                                    <span className='max-w-[200px] truncate text-right' title={channel.remark || undefined}>
-                                      {channel.remark || '-'}
-                                    </span>
-                                  </div>
-                                  <div className='flex justify-between items-start'>
-                                    <span className='text-muted-foreground shrink-0'>{t('channels.expandedRow.tags')}:</span>
-                                    <div className='flex flex-wrap gap-1 justify-end max-w-[200px]'>
-                                      {channel.tags && channel.tags.length > 0 ? (
-                                        channel.tags.map((tag) => (
-                                          <Badge key={tag} variant='outline' className='text-xs'>
-                                            {tag}
-                                          </Badge>
-                                        ))
-                                      ) : (
-                                        <span>-</span>
-                                      )}
-                                    </div>
-                                  </div>
                                 </div>
                               </div>
 
-                              {/* Performance */}
-                              <div className='space-y-3'>
-                                <h4 className='text-sm font-semibold'>{t('channels.expandedRow.performance')}</h4>
-                                <div className='space-y-2 text-sm'>
-                                  {performance ? (
-                                    <>
-                                      <div className='flex justify-between'>
-                                        <span className='text-muted-foreground'>{t('channels.columns.firstTokenLatencyFull')}:</span>
-                                        <span>{formatDuration(performance.avgStreamFirstTokenLatencyMs || performance.avgLatencyMs || 0)}</span>
+                              {/* Right Side: Additional Info (top) + Performance (bottom) */}
+                              <div className='space-y-6'>
+                                {/* Additional Info */}
+                                <div className='space-y-3'>
+                                  <h4 className='text-sm font-semibold'>{t('channels.expandedRow.additional')}</h4>
+                                  <div className='space-y-2 text-sm'>
+                                    <div className='flex justify-between items-center'>
+                                      <span className='text-muted-foreground'>{t('channels.columns.weight')}:</span>
+                                      <span className='font-mono text-xs'>{channel.orderingWeight ?? 0}</span>
+                                    </div>
+                                    <div className='flex justify-between'>
+                                      <span className='text-muted-foreground'>{t('channels.expandedRow.remark')}:</span>
+                                      <span className='max-w-[200px] truncate text-right' title={channel.remark || undefined}>
+                                        {channel.remark || '-'}
+                                      </span>
+                                    </div>
+                                    <div className='flex justify-between items-start'>
+                                      <span className='text-muted-foreground shrink-0'>{t('channels.expandedRow.tags')}:</span>
+                                      <div className='flex flex-wrap gap-1 justify-end max-w-[200px]'>
+                                        {channel.tags && channel.tags.length > 0 ? (
+                                          channel.tags.map((tag) => (
+                                            <Badge key={tag} variant='outline' className='text-xs'>
+                                              {tag}
+                                            </Badge>
+                                          ))
+                                        ) : (
+                                          <span>-</span>
+                                        )}
                                       </div>
-                                      <div className='flex justify-between'>
-                                        <span className='text-muted-foreground'>{t('channels.columns.tokensPerSecondFull')}:</span>
-                                        <span>{(performance.avgStreamTokenPerSecond || performance.avgTokenPerSecond || 0).toFixed(1)}</span>
-                                      </div>
-                                    </>
-                                  ) : (
-                                    <span className='text-muted-foreground'>{t('channels.expandedRow.noPerformanceData')}</span>
-                                  )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Performance */}
+                                <div className='space-y-3'>
+                                  <h4 className='text-sm font-semibold'>{t('channels.expandedRow.performance')}</h4>
+                                  <div className='space-y-2 text-sm'>
+                                    {performance ? (
+                                      <>
+                                        <div className='flex justify-between'>
+                                          <span className='text-muted-foreground'>{t('channels.columns.firstTokenLatencyFull')}:</span>
+                                          <span>{formatDuration(performance.avgStreamFirstTokenLatencyMs || performance.avgLatencyMs || 0)}</span>
+                                        </div>
+                                        <div className='flex justify-between'>
+                                          <span className='text-muted-foreground'>{t('channels.columns.tokensPerSecondFull')}:</span>
+                                          <span>{(performance.avgStreamTokenPerSecond || performance.avgTokenPerSecond || 0).toFixed(1)}</span>
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <span className='text-muted-foreground'>{t('channels.expandedRow.noPerformanceData')}</span>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </div>
 
                             {/* Bottom Section: Model Info (single column, full width) */}
                             <div className='space-y-3 border-t pt-4'>
-                              <h4 className='text-sm font-semibold'>{t('channels.expandedRow.modelInfo')}</h4>
+                              <h4 className='text-sm font-semibold'>{t('channels.expandedRow.modes')}</h4>
                               <div className='space-y-3'>
                                 <div className='flex items-center gap-6 text-sm'>
                                   <div className='flex items-center gap-2'>

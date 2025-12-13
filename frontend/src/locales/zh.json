@@ -947,7 +947,7 @@
       "settings": {
         "title": "渠道设置",
         "description": "配置 {{name}} 的高级设置。",
-        "basicInfo": {
+        "basic": {
           "title": "基本信息",
           "description": "渠道的基本配置信息"
         },
@@ -1083,10 +1083,11 @@
       }
     },
     "expandedRow": {
-      "basicInfo": "基本信息",
+      "basic": "基本信息",
+      "additional": "额外信息",
       "performance": "性能",
       "modelsAndRemark": "模型与备注",
-      "modelInfo": "模型信息",
+      "modes": "模型信息",
       "supportedModels": "支持的模型",
       "totalModels": "模型总数",
       "defaultTestModel": "默认测试模型",
@@ -1661,8 +1662,8 @@
     },
     "detail": {
       "title": "追踪详情",
-      "basicInfo": "基本信息",
-      "additionalInfo": "附加信息",
+      "basic": "基本信息",
+      "additional": "附加信息",
       "notFound": "未找到追踪",
       "overview": "概览",
       "requestTrace": "请求追踪",

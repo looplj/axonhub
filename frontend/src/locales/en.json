@@ -918,7 +918,7 @@
       "settings": {
         "title": "Channel Settings",
         "description": "Configure advanced settings for {{name}}.",
-        "basicInfo": {
+        "basic": {
           "title": "Basic Information",
           "description": "Basic configuration information for the Channel"
         },
@@ -1054,10 +1054,11 @@
       }
     },
     "expandedRow": {
-      "basicInfo": "Basic Information",
+      "basic": "Basic",
+      "additional": "Additional", 
       "performance": "Performance",
       "modelsAndRemark": "Models & Remark",
-      "modelInfo": "Model Information",
+      "modes": "Models",
       "supportedModels": "Supported Models",
       "totalModels": "Total Models",
       "defaultTestModel": "Default Test Model",
@@ -1632,8 +1633,8 @@
     },
     "detail": {
       "title": "Trace Details",
-      "basicInfo": "Basic Information",
-      "additionalInfo": "Additional Information",
+      "basic": "Basic Information",
+      "additional": "Additional Information",
       "notFound": "Trace not found",
       "overview": "Overview",
       "requestTrace": "Request Trace",

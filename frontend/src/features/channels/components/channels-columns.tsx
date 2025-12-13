@@ -142,7 +142,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
         const hasError = !!channel.errorMessage
 
         const content = (
-          <div className='flex max-w-36 items-center gap-2'>
+          <div className='flex max-w-56 items-center gap-2'>
             {hasError && <IconAlertTriangle className='text-destructive h-4 w-4 shrink-0' />}
             <div className={cn('font-medium truncate', hasError && 'text-destructive')}>{row.getValue('name')}</div>
           </div>
@@ -166,7 +166,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
         return content
       },
       meta: {
-        className: 'md:table-cell',
+        className: 'md:table-cell min-w-48',
       },
       enableHiding: false,
       enableSorting: false,
@@ -340,7 +340,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
         return <span className='font-mono text-sm'>{weight}</span>
       },
       meta: {
-        className: 'text-right',
+        className: 'w-20 min-w-20 text-right',
       },
       sortingFn: 'alphanumeric',
       enableSorting: true,
@@ -350,8 +350,21 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       accessorKey: 'createdAt',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.createdAt')} />,
       cell: ({ row }) => {
-        const date = row.getValue('createdAt') as Date
-        return <div className='text-muted-foreground text-sm'>{format(date, 'yyyy-MM-dd HH:mm')}</div>
+        const raw = row.getValue('createdAt') as unknown
+        const date = raw instanceof Date ? raw : new Date(raw as string)
+
+        if (Number.isNaN(date.getTime())) {
+          return <span className='text-muted-foreground text-xs'>-</span>
+        }
+
+        return (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className='text-muted-foreground text-sm cursor-help'>{format(date, 'yyyy-MM-dd')}</div>
+            </TooltipTrigger>
+            <TooltipContent>{format(date, 'yyyy-MM-dd HH:mm:ss')}</TooltipContent>
+          </Tooltip>
+        )
       },
       enableSorting: true,
       enableHiding: false,
