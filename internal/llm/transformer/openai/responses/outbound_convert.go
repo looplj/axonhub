@@ -15,15 +15,13 @@ func convertToTextOptions(chatReq *llm.Request) *TextOptions {
 		return nil
 	}
 
-	textVerbosity := xmap.GetStringPtr(chatReq.TransformerMetadata, "text_verbosity")
-
 	// Return nil if neither ResponseFormat nor TextVerbosity is set
-	if chatReq.ResponseFormat == nil && textVerbosity == nil {
+	if chatReq.ResponseFormat == nil && chatReq.Verbosity == nil {
 		return nil
 	}
 
 	result := &TextOptions{
-		Verbosity: textVerbosity,
+		Verbosity: chatReq.Verbosity,
 	}
 
 	if chatReq.ResponseFormat != nil {

@@ -10,6 +10,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/llm"
 	geminioai "github.com/looplj/axonhub/internal/llm/transformer/gemini/openai"
+	"github.com/looplj/axonhub/internal/llm/transformer/shared"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
 )
 
@@ -190,7 +191,6 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 					// ignore
 					params = tool.Function.Parameters
 				}
-				// println("params:", string(params))
 
 				fd := &FunctionDeclaration{
 					Name:        tool.Function.Name,
@@ -216,40 +216,68 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 
 // convertLLMMessageToGeminiContent converts an LLM Message to Gemini Content.
 func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
+	if msg == nil {
+		return nil
+	}
+
 	content := &Content{
 		Role: convertLLMRoleToGeminiRole(msg.Role),
 	}
 
 	parts := make([]*Part, 0)
 
+	var (
+		firstFunctionCallPart *Part
+		lastPart              *Part
+	)
+
 	// Add reasoning content (thinking) first if present
+
 	if msg.ReasoningContent != nil && *msg.ReasoningContent != "" {
-		parts = append(parts, &Part{
+		p := &Part{
 			Text:    *msg.ReasoningContent,
 			Thought: true,
-		})
+		}
+		parts = append(parts, p)
+		lastPart = p
 	}
 
 	// Add text content
 	if msg.Content.Content != nil && *msg.Content.Content != "" {
-		parts = append(parts, &Part{Text: *msg.Content.Content})
+		p := &Part{Text: *msg.Content.Content}
+		parts = append(parts, p)
+		lastPart = p
 	} else if len(msg.Content.MultipleContent) > 0 {
 		for _, part := range msg.Content.MultipleContent {
 			switch part.Type {
 			case "text":
 				if part.Text != nil {
-					parts = append(parts, &Part{Text: *part.Text})
+					p := &Part{Text: *part.Text}
+					parts = append(parts, p)
+					lastPart = p
 				}
 			case "image_url":
 				if part.ImageURL != nil && part.ImageURL.URL != "" {
 					geminiPart := convertImageURLToGeminiPart(part.ImageURL.URL)
 					if geminiPart != nil {
 						parts = append(parts, geminiPart)
+						lastPart = geminiPart
 					}
 				}
 			}
 		}
 	}
+
+	// https://ai.google.dev/gemini-api/docs/thought-signatures#model-behavior
+	// Gemini 3 Pro, Gemini 3 Pro Image and Gemini 2.5 models behave differently with thought signatures.
+	// For Gemini 3 Pro Image see the thinking process section of the image generation guide.
+	// Gemini 3 Pro and Gemini 2.5 models behave differently with thought signatures in function calls:
+	//     If there are function calls in a response,
+	//         Gemini 3 Pro will always have the signature on the first function call part. It is mandatory to return that part.
+	//         Gemini 2.5 will have the signature in the first part (regardless of type). It is optional to return that part.
+	//     If there are no function calls in a response,
+	//         Gemini 3 Pro will have the signature on the last part if the model generates a thought.
+	//         Gemini 2.5 won't have a signature in any part.
 
 	// Add tool calls
 	for _, toolCall := range msg.ToolCalls {
@@ -266,14 +294,29 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 			},
 		}
 
-		// Restore ThoughtSignature from TransformerMetadata for Gemini 3 Pro function calling
-		if toolCall.TransformerMetadata != nil {
-			if sig, ok := toolCall.TransformerMetadata["thought_signature"].([]byte); ok && len(sig) > 0 {
-				part.ThoughtSignature = sig
-			}
-		}
-
 		parts = append(parts, part)
+
+		lastPart = part
+		if firstFunctionCallPart == nil {
+			firstFunctionCallPart = part
+		}
+	}
+
+	msgThoughtSignature := shared.DecodeGeminiThoughtSignature(msg.RedactedReasoningContent)
+
+	// https://ai.google.dev/gemini-api/docs/gemini-3#migrating_from_other_models
+	// If there are tool calls but no thought signature, use a default one.
+	// This field is not compatible with OpenAI sdk, so we use the default value.
+	if len(msg.ToolCalls) > 0 && msgThoughtSignature == nil {
+		msgThoughtSignature = lo.ToPtr("context_engineering_is_the_way_to_go")
+	}
+
+	if msgThoughtSignature != nil && lastPart != nil {
+		if firstFunctionCallPart != nil {
+			firstFunctionCallPart.ThoughtSignature = *msgThoughtSignature
+		} else {
+			lastPart.ThoughtSignature = *msgThoughtSignature
+		}
 	}
 
 	if len(parts) == 0 {
@@ -399,6 +442,10 @@ func convertGeminiCandidateToLLMChoiceWithState(candidate *Candidate, isStream b
 		)
 
 		for _, part := range candidate.Content.Parts {
+			if msg.RedactedReasoningContent == nil && part.ThoughtSignature != "" {
+				msg.RedactedReasoningContent = shared.EncodeGeminiThoughtSignature(&part.ThoughtSignature)
+			}
+
 			switch {
 			case part.Text != "":
 				if part.Thought {
@@ -431,13 +478,6 @@ func convertGeminiCandidateToLLMChoiceWithState(candidate *Candidate, isStream b
 				// Gemini may response empty tool call ID.
 				if tc.ID == "" {
 					tc.ID = uuid.NewString()
-				}
-
-				// Store ThoughtSignature in TransformerMetadata for Gemini 3 Pro function calling
-				if len(part.ThoughtSignature) > 0 {
-					tc.TransformerMetadata = map[string]any{
-						"thought_signature": part.ThoughtSignature,
-					}
 				}
 
 				toolCalls = append(toolCalls, tc)

@@ -141,6 +141,9 @@ func (f *ModelFetcher) prepareModelsEndpoint(channelType channel.Type, baseURL s
 	case channelType.IsAnthropic():
 		headers.Set("Anthropic-Version", "2023-06-01")
 
+		baseURL = strings.TrimSuffix(baseURL, "/anthropic")
+		baseURL = strings.TrimSuffix(baseURL, "/claude")
+
 		if strings.HasSuffix(baseURL, "/v1") {
 			return baseURL + "/models", headers
 		}

@@ -289,9 +289,7 @@ func TestConvertToTextOptions(t *testing.T) {
 		{
 			name: "only text verbosity",
 			req: &llm.Request{
-				TransformerMetadata: map[string]any{
-					"text_verbosity": lo.ToPtr("high"),
-				},
+				Verbosity: lo.ToPtr("high"),
 			},
 			expected: &TextOptions{
 				Verbosity: lo.ToPtr("high"),
@@ -303,9 +301,7 @@ func TestConvertToTextOptions(t *testing.T) {
 				ResponseFormat: &llm.ResponseFormat{
 					Type: "text",
 				},
-				TransformerMetadata: map[string]any{
-					"text_verbosity": lo.ToPtr("low"),
-				},
+				Verbosity: lo.ToPtr("low"),
 			},
 			expected: &TextOptions{
 				Format: &TextFormat{
@@ -383,7 +379,7 @@ func TestConvertToLLMRequest_TransformerMetadata(t *testing.T) {
 			},
 		},
 		{
-			name: "converts TextVerbosity to TransformerMetadata",
+			name: "converts TextVerbosity to Verbosity",
 			req: &Request{
 				Model: "gpt-4o",
 				Text: &TextOptions{
@@ -391,10 +387,7 @@ func TestConvertToLLMRequest_TransformerMetadata(t *testing.T) {
 				},
 			},
 			validate: func(t *testing.T, chatReq *llm.Request) {
-				require.NotNil(t, chatReq.TransformerMetadata)
-				v, ok := chatReq.TransformerMetadata["text_verbosity"]
-				require.True(t, ok)
-				require.Equal(t, "high", *v.(*string))
+				require.Equal(t, "high", lo.FromPtr(chatReq.Verbosity))
 			},
 		},
 		{

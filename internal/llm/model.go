@@ -189,6 +189,13 @@ type Request struct {
 
 	ResponseFormat *ResponseFormat `json:"response_format,omitempty"`
 
+	// Constrains the verbosity of the model's response. Lower values will result in
+	// more concise responses, while higher values will result in more verbose
+	// responses. Currently supported values are `low`, `medium`, and `high`.
+	//
+	// Any of "low", "medium", "high".
+	Verbosity *string `json:"verbosity,omitempty"`
+
 	// Help fields， will not be sent to the llm service.
 
 	// ExtraBody is helpful to extend the request for different providers.
@@ -206,7 +213,6 @@ type Request struct {
 	// This is a help field and will not be sent to the llm service.
 	// Keys used:
 	// - "include": []string - additional output data to include in the model response
-	// - "text_verbosity": *string - verbosity of the response text ("low", "medium", "high")
 	// - "max_tool_calls": *int64 - maximum number of total calls to built-in tools
 	// - "prompt_cache_key": *string - string key used by OpenAI to cache responses
 	// - "prompt_cache_retention": *string - retention policy for the prompt cache ("in-memory", "24h")

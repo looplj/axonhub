@@ -59,7 +59,7 @@ type Part struct {
 	Thought bool `json:"thought,omitempty"`
 
 	// ThoughtSignature is an opaque signature for the thought.
-	ThoughtSignature []byte `json:"thoughtSignature,omitempty"`
+	ThoughtSignature string `json:"thoughtSignature,omitempty"`
 }
 
 // Blob represents raw media bytes.

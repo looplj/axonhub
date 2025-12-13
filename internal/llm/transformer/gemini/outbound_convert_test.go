@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/llm/transformer/shared"
 )
 
 // =============================================================================
@@ -1043,7 +1044,7 @@ func TestConvertGeminiToLLMResponse_ThoughtSignature(t *testing.T) {
 										Name: "check_flight",
 										Args: map[string]any{"flight": "AA100"},
 									},
-									ThoughtSignature: []byte("signature_A"),
+									ThoughtSignature: "signature_A",
 								},
 							},
 						},
@@ -1054,14 +1055,17 @@ func TestConvertGeminiToLLMResponse_ThoughtSignature(t *testing.T) {
 			validate: func(t *testing.T, result *llm.Response) {
 				t.Helper()
 				require.Len(t, result.Choices, 1)
+				require.NotNil(t, result.Choices[0].Message)
+				require.NotNil(t, result.Choices[0].Message.RedactedReasoningContent)
+				require.True(t, shared.IsGeminiThoughtSignature(result.Choices[0].Message.RedactedReasoningContent))
+				decoded := shared.DecodeGeminiThoughtSignature(result.Choices[0].Message.RedactedReasoningContent)
+				require.NotNil(t, decoded)
+				require.Equal(t, "signature_A", *decoded)
 				require.Len(t, result.Choices[0].Message.ToolCalls, 1)
 				tc := result.Choices[0].Message.ToolCalls[0]
 				require.Equal(t, "call_001", tc.ID)
 				require.Equal(t, "check_flight", tc.Function.Name)
-				require.NotNil(t, tc.TransformerMetadata)
-				sig, ok := tc.TransformerMetadata["thought_signature"].([]byte)
-				require.True(t, ok)
-				require.Equal(t, []byte("signature_A"), sig)
+				require.Nil(t, tc.TransformerMetadata)
 			},
 		},
 		{
@@ -1081,7 +1085,7 @@ func TestConvertGeminiToLLMResponse_ThoughtSignature(t *testing.T) {
 										Name: "get_weather",
 										Args: map[string]any{"location": "Paris"},
 									},
-									ThoughtSignature: []byte("signature_parallel"),
+									ThoughtSignature: "signature_parallel",
 								},
 								{
 									FunctionCall: &FunctionCall{
@@ -1098,15 +1102,18 @@ func TestConvertGeminiToLLMResponse_ThoughtSignature(t *testing.T) {
 			},
 			validate: func(t *testing.T, result *llm.Response) {
 				t.Helper()
+				require.NotNil(t, result.Choices[0].Message)
+				require.NotNil(t, result.Choices[0].Message.RedactedReasoningContent)
+				require.True(t, shared.IsGeminiThoughtSignature(result.Choices[0].Message.RedactedReasoningContent))
+				decoded := shared.DecodeGeminiThoughtSignature(result.Choices[0].Message.RedactedReasoningContent)
+				require.NotNil(t, decoded)
+				require.Equal(t, "signature_parallel", *decoded)
 				require.Len(t, result.Choices[0].Message.ToolCalls, 2)
 
 				// First call should have signature
 				tc1 := result.Choices[0].Message.ToolCalls[0]
 				require.Equal(t, "call_paris", tc1.ID)
-				require.NotNil(t, tc1.TransformerMetadata)
-				sig, ok := tc1.TransformerMetadata["thought_signature"].([]byte)
-				require.True(t, ok)
-				require.Equal(t, []byte("signature_parallel"), sig)
+				require.Nil(t, tc1.TransformerMetadata)
 
 				// Second call should not have signature
 				tc2 := result.Choices[0].Message.ToolCalls[1]
@@ -1139,6 +1146,8 @@ func TestConvertGeminiToLLMResponse_ThoughtSignature(t *testing.T) {
 			},
 			validate: func(t *testing.T, result *llm.Response) {
 				t.Helper()
+				require.NotNil(t, result.Choices[0].Message)
+				require.Nil(t, result.Choices[0].Message.RedactedReasoningContent)
 				require.Len(t, result.Choices[0].Message.ToolCalls, 1)
 				tc := result.Choices[0].Message.ToolCalls[0]
 				require.Equal(t, "call_002", tc.ID)
@@ -1164,7 +1173,8 @@ func TestConvertLLMMessageToGeminiContent_ThoughtSignature(t *testing.T) {
 		{
 			name: "tool call with thought signature",
 			input: &llm.Message{
-				Role: "assistant",
+				Role:                     "assistant",
+				RedactedReasoningContent: shared.EncodeGeminiThoughtSignature(lo.ToPtr("signature_A")),
 				ToolCalls: []llm.ToolCall{
 					{
 						ID:   "call_001",
@@ -1172,9 +1182,6 @@ func TestConvertLLMMessageToGeminiContent_ThoughtSignature(t *testing.T) {
 						Function: llm.FunctionCall{
 							Name:      "check_flight",
 							Arguments: `{"flight":"AA100"}`,
-						},
-						TransformerMetadata: map[string]any{
-							"thought_signature": []byte("signature_A"),
 						},
 					},
 				},
@@ -1186,13 +1193,14 @@ func TestConvertLLMMessageToGeminiContent_ThoughtSignature(t *testing.T) {
 				require.Len(t, result.Parts, 1)
 				require.NotNil(t, result.Parts[0].FunctionCall)
 				require.Equal(t, "check_flight", result.Parts[0].FunctionCall.Name)
-				require.Equal(t, []byte("signature_A"), result.Parts[0].ThoughtSignature)
+				require.Equal(t, "signature_A", result.Parts[0].ThoughtSignature)
 			},
 		},
 		{
-			name: "multiple tool calls with signatures",
+			name: "multiple tool calls - only first has signature",
 			input: &llm.Message{
-				Role: "assistant",
+				Role:                     "assistant",
+				RedactedReasoningContent: shared.EncodeGeminiThoughtSignature(lo.ToPtr("signature_A")),
 				ToolCalls: []llm.ToolCall{
 					{
 						ID:   "call_001",
@@ -1201,9 +1209,6 @@ func TestConvertLLMMessageToGeminiContent_ThoughtSignature(t *testing.T) {
 							Name:      "check_flight",
 							Arguments: `{"flight":"AA100"}`,
 						},
-						TransformerMetadata: map[string]any{
-							"thought_signature": []byte("signature_A"),
-						},
 					},
 					{
 						ID:   "call_002",
@@ -1211,9 +1216,6 @@ func TestConvertLLMMessageToGeminiContent_ThoughtSignature(t *testing.T) {
 						Function: llm.FunctionCall{
 							Name:      "book_taxi",
 							Arguments: `{"time":"10 AM"}`,
-						},
-						TransformerMetadata: map[string]any{
-							"thought_signature": []byte("signature_B"),
 						},
 					},
 				},
@@ -1224,10 +1226,10 @@ func TestConvertLLMMessageToGeminiContent_ThoughtSignature(t *testing.T) {
 				require.Len(t, result.Parts, 2)
 
 				require.Equal(t, "check_flight", result.Parts[0].FunctionCall.Name)
-				require.Equal(t, []byte("signature_A"), result.Parts[0].ThoughtSignature)
+				require.Equal(t, "signature_A", result.Parts[0].ThoughtSignature)
 
 				require.Equal(t, "book_taxi", result.Parts[1].FunctionCall.Name)
-				require.Equal(t, []byte("signature_B"), result.Parts[1].ThoughtSignature)
+				require.Empty(t, result.Parts[1].ThoughtSignature)
 			},
 		},
 		{
@@ -1250,7 +1252,38 @@ func TestConvertLLMMessageToGeminiContent_ThoughtSignature(t *testing.T) {
 				require.NotNil(t, result)
 				require.Len(t, result.Parts, 1)
 				require.NotNil(t, result.Parts[0].FunctionCall)
-				require.Nil(t, result.Parts[0].ThoughtSignature)
+				require.Equal(t, "context_engineering_is_the_way_to_go", result.Parts[0].ThoughtSignature)
+			},
+		},
+		{
+			name: "parallel tool calls without signature - only first gets default",
+			input: &llm.Message{
+				Role: "assistant",
+				ToolCalls: []llm.ToolCall{
+					{
+						ID:   "call_paris",
+						Type: "function",
+						Function: llm.FunctionCall{
+							Name:      "get_weather",
+							Arguments: `{"location":"Paris"}`,
+						},
+					},
+					{
+						ID:   "call_london",
+						Type: "function",
+						Function: llm.FunctionCall{
+							Name:      "get_weather",
+							Arguments: `{"location":"London"}`,
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *Content) {
+				t.Helper()
+				require.NotNil(t, result)
+				require.Len(t, result.Parts, 2)
+				require.Equal(t, "context_engineering_is_the_way_to_go", result.Parts[0].ThoughtSignature)
+				require.Empty(t, result.Parts[1].ThoughtSignature)
 			},
 		},
 	}
