@@ -315,9 +315,9 @@ func convertToLLMRequest(req *Request) (*llm.Request, error) {
 		}
 	}
 
-	// Store text verbosity in TransformerMetadata
-	if req.Text != nil && req.Text.Verbosity != nil {
-		chatReq.TransformerMetadata["text_verbosity"] = req.Text.Verbosity
+	// Convert text verbosity
+	if req.Text != nil {
+		chatReq.Verbosity = req.Text.Verbosity
 	}
 
 	return chatReq, nil

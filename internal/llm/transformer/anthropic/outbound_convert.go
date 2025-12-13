@@ -4,6 +4,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/llm/transformer/shared"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
 	"github.com/looplj/axonhub/internal/pkg/xurl"
 )
@@ -296,7 +297,7 @@ func buildMessageContent(msg llm.Message) (MessageContent, bool) {
 // hasThinkingContent checks if message has reasoning content.
 func hasThinkingContent(msg llm.Message) bool {
 	return (msg.ReasoningContent != nil && *msg.ReasoningContent != "") ||
-		(msg.RedactedReasoningContent != nil && *msg.RedactedReasoningContent != "")
+		(shared.IsAnthropicRedactedContent(msg.RedactedReasoningContent) && *msg.RedactedReasoningContent != "")
 }
 
 // buildMultipleContentWithThinking creates content blocks including thinking.
@@ -338,6 +339,10 @@ func buildThinkingBlock(reasoningContent, reasoningSignature *string) *MessageCo
 // buildRedactedThinkingBlock creates a redacted_thinking block from encrypted content.
 func buildRedactedThinkingBlock(redactedContent *string) *MessageContentBlock {
 	if redactedContent == nil || *redactedContent == "" {
+		return nil
+	}
+
+	if !shared.IsAnthropicRedactedContent(redactedContent) {
 		return nil
 	}
 

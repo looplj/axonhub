@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/llm/transformer/shared"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
@@ -42,6 +43,45 @@ func TestConvertToChatCompletionResponse_WithThinking(t *testing.T) {
 	require.NotNil(t, result.Choices[0].Message.Content.Content)
 	require.Equal(t, answer, *result.Choices[0].Message.Content.Content)
 	require.Empty(t, result.Choices[0].Message.Content.MultipleContent)
+}
+
+func TestOutboundConvert_GeminiThoughtSignatureNotAnthropicRedactedThinking(t *testing.T) {
+	chatReq := &llm.Request{
+		Model:     "claude-sonnet-4-5-20250929",
+		MaxTokens: lo.ToPtr(int64(16000)),
+		Messages: []llm.Message{
+			{
+				Role: "assistant",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("hello"),
+				},
+			},
+			{
+				Role:                     "assistant",
+				RedactedReasoningContent: shared.EncodeGeminiThoughtSignature(lo.ToPtr("signature_A")),
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Hi"),
+				},
+			},
+			{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Continue"),
+				},
+			},
+		},
+	}
+
+	anthropicReq := convertToAnthropicRequest(chatReq)
+
+	require.NotNil(t, anthropicReq)
+	require.Len(t, anthropicReq.Messages, 3)
+
+	assistantMsg := anthropicReq.Messages[1]
+	require.Equal(t, "assistant", assistantMsg.Role)
+	require.NotNil(t, assistantMsg.Content.Content)
+	require.Equal(t, "Hi", *assistantMsg.Content.Content)
+	require.Empty(t, assistantMsg.Content.MultipleContent)
 }
 
 func TestConvertToChatCompletionResponse_WithRedactedThinking(t *testing.T) {

@@ -69,8 +69,9 @@ func TestMultipleToolsSequential(t *testing.T) {
 		Messages: []openai.ChatCompletionMessageParamUnion{
 			openai.UserMessage(question),
 		},
-		Tools: []openai.ChatCompletionToolUnionParam{weatherTool, calculatorTool},
-		Model: helper.GetModel(),
+		Tools:     []openai.ChatCompletionToolUnionParam{weatherTool, calculatorTool},
+		Model:     helper.GetModel(),
+		Verbosity: openai.ChatCompletionNewParamsVerbosity("high"),
 	}
 
 	// Make the initial API call
