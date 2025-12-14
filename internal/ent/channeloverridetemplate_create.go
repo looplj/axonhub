@@ -93,7 +93,7 @@ func (_c *ChannelOverrideTemplateCreate) SetNillableDescription(v *string) *Chan
 }
 
 // SetChannelType sets the "channel_type" field.
-func (_c *ChannelOverrideTemplateCreate) SetChannelType(v channeloverridetemplate.ChannelType) *ChannelOverrideTemplateCreate {
+func (_c *ChannelOverrideTemplateCreate) SetChannelType(v string) *ChannelOverrideTemplateCreate {
 	_c.mutation.SetChannelType(v)
 	return _c
 }
@@ -214,11 +214,6 @@ func (_c *ChannelOverrideTemplateCreate) check() error {
 	if _, ok := _c.mutation.ChannelType(); !ok {
 		return &ValidationError{Name: "channel_type", err: errors.New(`ent: missing required field "ChannelOverrideTemplate.channel_type"`)}
 	}
-	if v, ok := _c.mutation.ChannelType(); ok {
-		if err := channeloverridetemplate.ChannelTypeValidator(v); err != nil {
-			return &ValidationError{Name: "channel_type", err: fmt.Errorf(`ent: validator failed for field "ChannelOverrideTemplate.channel_type": %w`, err)}
-		}
-	}
 	if _, ok := _c.mutation.OverrideParameters(); !ok {
 		return &ValidationError{Name: "override_parameters", err: errors.New(`ent: missing required field "ChannelOverrideTemplate.override_parameters"`)}
 	}
@@ -276,7 +271,7 @@ func (_c *ChannelOverrideTemplateCreate) createSpec() (*ChannelOverrideTemplate,
 		_node.Description = value
 	}
 	if value, ok := _c.mutation.ChannelType(); ok {
-		_spec.SetField(channeloverridetemplate.FieldChannelType, field.TypeEnum, value)
+		_spec.SetField(channeloverridetemplate.FieldChannelType, field.TypeString, value)
 		_node.ChannelType = value
 	}
 	if value, ok := _c.mutation.OverrideParameters(); ok {
@@ -417,7 +412,7 @@ func (u *ChannelOverrideTemplateUpsert) ClearDescription() *ChannelOverrideTempl
 }
 
 // SetChannelType sets the "channel_type" field.
-func (u *ChannelOverrideTemplateUpsert) SetChannelType(v channeloverridetemplate.ChannelType) *ChannelOverrideTemplateUpsert {
+func (u *ChannelOverrideTemplateUpsert) SetChannelType(v string) *ChannelOverrideTemplateUpsert {
 	u.Set(channeloverridetemplate.FieldChannelType, v)
 	return u
 }
@@ -571,7 +566,7 @@ func (u *ChannelOverrideTemplateUpsertOne) ClearDescription() *ChannelOverrideTe
 }
 
 // SetChannelType sets the "channel_type" field.
-func (u *ChannelOverrideTemplateUpsertOne) SetChannelType(v channeloverridetemplate.ChannelType) *ChannelOverrideTemplateUpsertOne {
+func (u *ChannelOverrideTemplateUpsertOne) SetChannelType(v string) *ChannelOverrideTemplateUpsertOne {
 	return u.Update(func(s *ChannelOverrideTemplateUpsert) {
 		s.SetChannelType(v)
 	})
@@ -897,7 +892,7 @@ func (u *ChannelOverrideTemplateUpsertBulk) ClearDescription() *ChannelOverrideT
 }
 
 // SetChannelType sets the "channel_type" field.
-func (u *ChannelOverrideTemplateUpsertBulk) SetChannelType(v channeloverridetemplate.ChannelType) *ChannelOverrideTemplateUpsertBulk {
+func (u *ChannelOverrideTemplateUpsertBulk) SetChannelType(v string) *ChannelOverrideTemplateUpsertBulk {
 	return u.Update(func(s *ChannelOverrideTemplateUpsert) {
 		s.SetChannelType(v)
 	})

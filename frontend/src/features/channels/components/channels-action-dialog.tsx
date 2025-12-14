@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { Textarea } from '@/components/ui/textarea'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { AutoCompleteSelect } from '@/components/auto-complete-select'
@@ -1121,7 +1122,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
           {/* Expandable Side Panel */}
           <div
-            className='border-border flex flex-col overflow-hidden border-l pl-4 transition-all duration-300 ease-out'
+            className='border-border flex min-h-0 flex-col overflow-hidden border-l pl-4 transition-all duration-300 ease-out'
             style={{
               width: showFetchedModelsPanel || showSupportedModelsPanel ? '320px' : '0px',
               opacity: showFetchedModelsPanel || showSupportedModelsPanel ? 1 : 0,
@@ -1130,7 +1131,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           >
             {/* Fetched Models Panel Content */}
             <div
-              className={`flex h-full flex-col transition-opacity duration-200 ${showFetchedModelsPanel ? 'opacity-100' : 'pointer-events-none absolute opacity-0'}`}
+              className={`flex h-full min-h-0 flex-col transition-opacity duration-200 ${showFetchedModelsPanel ? 'opacity-100' : 'pointer-events-none absolute opacity-0'}`}
             >
               <div className='mb-3 flex items-center justify-between'>
                 <h3 className='text-sm font-semibold'>{t('channels.dialogs.fields.supportedModels.fetchedModelsLabel')}</h3>
@@ -1167,8 +1168,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               </div>
 
               {/* Model List */}
-              <div className='-mr-2 max-h-[400px] flex-1 overflow-y-auto pr-2'>
-                <div className='space-y-1'>
+              <ScrollArea className='min-h-0 flex-1' type='always'>
+                <div className='space-y-1 pr-3'>
                   {filteredFetchedModels.map((model) => {
                     const isAdded = supportedModels.includes(model)
                     const isSelected = selectedFetchedModels.includes(model)
@@ -1201,10 +1202,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                     )
                   })}
                 </div>
-              </div>
+              </ScrollArea>
 
               {/* Action Buttons */}
-              <div className='mt-3 flex gap-2 border-t pt-3'>
+              <div className='mt-2 flex gap-2 border-t pt-2'>
                 <Button
                   type='button'
                   className='flex-1'
@@ -1232,7 +1233,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
             {/* Supported Models Panel Content */}
             <div
-              className={`flex h-full flex-col transition-opacity duration-200 ${showSupportedModelsPanel ? 'opacity-100' : 'pointer-events-none absolute opacity-0'}`}
+              className={`flex h-full min-h-0 flex-col transition-opacity duration-200 ${showSupportedModelsPanel ? 'opacity-100' : 'pointer-events-none absolute opacity-0'}`}
             >
               <div className='mb-3 flex items-center justify-between'>
                 <div className='flex items-center gap-2'>
@@ -1300,8 +1301,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               </div>
 
               {/* Model List */}
-              <div className='-mr-2 max-h-[400px] flex-1 overflow-y-auto pr-2'>
-                <div className='space-y-1'>
+              <ScrollArea className='min-h-0 flex-1' type='always'>
+                <div className='space-y-1 pr-3'>
                   {filteredSupportedModels.map((model) => (
                     <div key={model} className='hover:bg-accent flex items-center justify-between gap-2 rounded-md p-2 text-sm'>
                       <span className='flex-1 truncate'>{model}</span>
@@ -1317,7 +1318,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                     </div>
                   ))}
                 </div>
-              </div>
+              </ScrollArea>
             </div>
           </div>
         </div>

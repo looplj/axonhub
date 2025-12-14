@@ -211,17 +211,19 @@ export function ChannelsTestDialog({ open, onOpenChange, channel }: Props) {
                             onCheckedChange={(checked) => handleModelSelect(model, !!checked)}
                           />
                         </TableCell>
-                        <TableCell className="font-medium">{model}</TableCell>
+                        <TableCell className="font-medium">
+                          <div>{model}</div>
+                          {result?.error && (
+                            <div className="text-xs text-red-600 mt-1">
+                              {result.error}
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell>
                           {getStatusBadge(result?.status || 'not_started')}
                           {result?.latency && (
                             <div className="text-xs text-muted-foreground mt-1">
                               {result.latency.toFixed(2)}s
-                            </div>
-                          )}
-                          {result?.error && (
-                            <div className="text-xs text-red-600 mt-1">
-                              {result.error}
                             </div>
                           )}
                         </TableCell>

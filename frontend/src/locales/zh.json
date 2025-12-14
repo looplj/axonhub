@@ -2051,6 +2051,7 @@
   },
   "common": {
     "refresh": "刷新",
+    "selected": "已选择",
     "selectedItems": "已选择 {{count}} 项",
     "noResultsFound": "未找到结果",
     "clearFilters": "清除筛选",
@@ -2060,6 +2061,7 @@
     "noData": "暂无数据",
     "noResults": "无结果。",
     "loadError": "加载失败:",
+    "error": "错误",
     "back": "返回",
     "showing": "显示",
     "of": "共",

@@ -422,7 +422,7 @@ type ChannelOverrideTemplate implements Node {
   """
   Channel type this template applies to
   """
-  channelType: ChannelOverrideTemplateChannelType!
+  channelType: String!
   """
   Override request body parameters as JSON string
   """
@@ -432,43 +432,6 @@ type ChannelOverrideTemplate implements Node {
   """
   overrideHeaders: [HeaderEntry!]!
   user: User!
-}
-"""
-ChannelOverrideTemplateChannelType is enum for the field channel_type
-"""
-enum ChannelOverrideTemplateChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/channeloverridetemplate.ChannelType") {
-  openai
-  vercel
-  anthropic
-  anthropic_aws
-  anthropic_gcp
-  gemini_openai
-  gemini
-  deepseek
-  deepseek_anthropic
-  doubao
-  doubao_anthropic
-  moonshot
-  moonshot_anthropic
-  zhipu
-  zai
-  zhipu_anthropic
-  zai_anthropic
-  anthropic_fake
-  openai_fake
-  openrouter
-  xai
-  ppio
-  siliconflow
-  volcengine
-  longcat
-  longcat_anthropic
-  minimax
-  minimax_anthropic
-  aihubmix
-  burncloud
-  modelscope
-  bailian
 }
 """
 A connection to a list of items.
@@ -616,10 +579,19 @@ input ChannelOverrideTemplateWhereInput {
   """
   channel_type field predicates
   """
-  channelType: ChannelOverrideTemplateChannelType
-  channelTypeNEQ: ChannelOverrideTemplateChannelType
-  channelTypeIn: [ChannelOverrideTemplateChannelType!]
-  channelTypeNotIn: [ChannelOverrideTemplateChannelType!]
+  channelType: String
+  channelTypeNEQ: String
+  channelTypeIn: [String!]
+  channelTypeNotIn: [String!]
+  channelTypeGT: String
+  channelTypeGTE: String
+  channelTypeLT: String
+  channelTypeLTE: String
+  channelTypeContains: String
+  channelTypeHasPrefix: String
+  channelTypeHasSuffix: String
+  channelTypeEqualFold: String
+  channelTypeContainsFold: String
   """
   override_parameters field predicates
   """
@@ -1265,7 +1237,7 @@ input CreateChannelOverrideTemplateInput {
   """
   Channel type this template applies to
   """
-  channelType: ChannelOverrideTemplateChannelType!
+  channelType: String!
   """
   Override request body parameters as JSON string
   """
@@ -3985,7 +3957,7 @@ input UpdateChannelOverrideTemplateInput {
   """
   Channel type this template applies to
   """
-  channelType: ChannelOverrideTemplateChannelType
+  channelType: String
   """
   Override request body parameters as JSON string
   """

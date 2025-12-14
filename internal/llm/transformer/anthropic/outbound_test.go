@@ -809,7 +809,7 @@ func TestOutboundTransformer_TransformError(t *testing.T) {
 			expected: &llm.ResponseError{
 				Detail: llm.ErrorDetail{
 					Type:    "api_error",
-					Message: "Request failed. Request_id: req_123",
+					Message: `{"type": "api_error", "message": "bad request", "request_id": "req_123"}`,
 				},
 			},
 		},

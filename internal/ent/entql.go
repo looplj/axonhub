@@ -98,7 +98,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			channeloverridetemplate.FieldUserID:             {Type: field.TypeInt, Column: channeloverridetemplate.FieldUserID},
 			channeloverridetemplate.FieldName:               {Type: field.TypeString, Column: channeloverridetemplate.FieldName},
 			channeloverridetemplate.FieldDescription:        {Type: field.TypeString, Column: channeloverridetemplate.FieldDescription},
-			channeloverridetemplate.FieldChannelType:        {Type: field.TypeEnum, Column: channeloverridetemplate.FieldChannelType},
+			channeloverridetemplate.FieldChannelType:        {Type: field.TypeString, Column: channeloverridetemplate.FieldChannelType},
 			channeloverridetemplate.FieldOverrideParameters: {Type: field.TypeString, Column: channeloverridetemplate.FieldOverrideParameters},
 			channeloverridetemplate.FieldOverrideHeaders:    {Type: field.TypeJSON, Column: channeloverridetemplate.FieldOverrideHeaders},
 		},

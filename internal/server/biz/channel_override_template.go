@@ -40,29 +40,32 @@ func NewChannelOverrideTemplateService(params ChannelOverrideTemplateServicePara
 func (svc *ChannelOverrideTemplateService) CreateTemplate(
 	ctx context.Context,
 	userID int,
-	name, description, channelType, overrideParameters string,
-	overrideHeaders []objects.HeaderEntry,
+	input ent.CreateChannelOverrideTemplateInput,
 ) (*ent.ChannelOverrideTemplate, error) {
-	// Normalize empty parameters to "{}"
+	overrideParameters := ""
+	if input.OverrideParameters != nil {
+		overrideParameters = *input.OverrideParameters
+	}
+
 	overrideParameters = NormalizeOverrideParameters(overrideParameters)
 
 	if err := ValidateOverrideParameters(overrideParameters); err != nil {
 		return nil, fmt.Errorf("invalid override parameters: %w", err)
 	}
 
-	if overrideHeaders != nil {
-		if err := ValidateOverrideHeaders(overrideHeaders); err != nil {
+	if input.OverrideHeaders != nil {
+		if err := ValidateOverrideHeaders(input.OverrideHeaders); err != nil {
 			return nil, fmt.Errorf("invalid override headers: %w", err)
 		}
 	}
 
 	template, err := svc.entFromContext(ctx).ChannelOverrideTemplate.Create().
 		SetUserID(userID).
-		SetName(name).
-		SetDescription(description).
-		SetChannelType(channeloverridetemplate.ChannelType(channelType)).
+		SetName(input.Name).
+		SetNillableDescription(input.Description).
+		SetChannelType(input.ChannelType).
 		SetOverrideParameters(overrideParameters).
-		SetOverrideHeaders(overrideHeaders).
+		SetOverrideHeaders(input.OverrideHeaders).
 		Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create channel override template: %w", err)
@@ -71,28 +74,27 @@ func (svc *ChannelOverrideTemplateService) CreateTemplate(
 	return template, nil
 }
 
-// UpdateTemplate updates fields of an existing template. Nil pointers mean "skip".
+// UpdateTemplate updates fields of an existing template using the input structure.
 func (svc *ChannelOverrideTemplateService) UpdateTemplate(
 	ctx context.Context,
 	id int,
-	name, description *string,
-	overrideParameters *string,
-	overrideHeaders []objects.HeaderEntry,
-	appendOverrideHeaders []objects.HeaderEntry,
+	input ent.UpdateChannelOverrideTemplateInput,
 ) (*ent.ChannelOverrideTemplate, error) {
 	mut := svc.entFromContext(ctx).ChannelOverrideTemplate.UpdateOneID(id)
 
-	if name != nil {
-		mut.SetName(*name)
+	if input.Name != nil {
+		mut.SetName(*input.Name)
 	}
 
-	if description != nil {
-		mut.SetDescription(*description)
+	if input.ClearDescription {
+		mut.ClearDescription()
+	} else {
+		mut.SetNillableDescription(input.Description)
 	}
 
-	if overrideParameters != nil {
+	if input.OverrideParameters != nil {
 		// Normalize empty parameters to "{}"
-		normalized := NormalizeOverrideParameters(*overrideParameters)
+		normalized := NormalizeOverrideParameters(*input.OverrideParameters)
 		if err := ValidateOverrideParameters(normalized); err != nil {
 			return nil, fmt.Errorf("invalid override parameters: %w", err)
 		}
@@ -100,20 +102,20 @@ func (svc *ChannelOverrideTemplateService) UpdateTemplate(
 		mut.SetOverrideParameters(normalized)
 	}
 
-	if overrideHeaders != nil {
-		if err := ValidateOverrideHeaders(overrideHeaders); err != nil {
+	if input.OverrideHeaders != nil {
+		if err := ValidateOverrideHeaders(input.OverrideHeaders); err != nil {
 			return nil, fmt.Errorf("invalid override headers: %w", err)
 		}
 
-		mut.SetOverrideHeaders(overrideHeaders)
+		mut.SetOverrideHeaders(input.OverrideHeaders)
 	}
 
-	if appendOverrideHeaders != nil {
-		if err := ValidateOverrideHeaders(appendOverrideHeaders); err != nil {
+	if input.AppendOverrideHeaders != nil {
+		if err := ValidateOverrideHeaders(input.AppendOverrideHeaders); err != nil {
 			return nil, fmt.Errorf("invalid override headers to append: %w", err)
 		}
 
-		mut.AppendOverrideHeaders(appendOverrideHeaders)
+		mut.AppendOverrideHeaders(input.AppendOverrideHeaders)
 	}
 
 	template, err := mut.Save(ctx)
@@ -173,18 +175,6 @@ func (svc *ChannelOverrideTemplateService) ApplyTemplate(
 		}
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to start transaction: %w", err)
-	}
-
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		}
-	}()
-
-	txCtx := ent.NewContext(ctx, tx.Client())
 	updated = make([]*ent.Channel, 0, len(channels))
 
 	for _, ch := range channels {
@@ -204,9 +194,9 @@ func (svc *ChannelOverrideTemplateService) ApplyTemplate(
 
 		settings.OverrideParameters = mergedParams
 
-		updatedChannel, saveErr := tx.Channel.UpdateOneID(ch.ID).
+		updatedChannel, saveErr := db.Channel.UpdateOneID(ch.ID).
 			SetSettings(&settings).
-			Save(txCtx)
+			Save(ctx)
 		if saveErr != nil {
 			err = fmt.Errorf("failed to update channel %d: %w", ch.ID, saveErr)
 			return nil, err
@@ -215,13 +205,7 @@ func (svc *ChannelOverrideTemplateService) ApplyTemplate(
 		updated = append(updated, updatedChannel)
 	}
 
-	if err = tx.Commit(); err != nil {
-		return nil, fmt.Errorf("failed to commit apply template transaction: %w", err)
-	}
-
-	if svc.channelService != nil {
-		svc.channelService.asyncReloadChannels()
-	}
+	svc.channelService.asyncReloadChannels()
 
 	return updated, nil
 }
@@ -244,7 +228,7 @@ func (svc *ChannelOverrideTemplateService) QueryTemplates(
 	query := svc.entFromContext(ctx).ChannelOverrideTemplate.Query()
 
 	if input.ChannelType != nil {
-		query = query.Where(channeloverridetemplate.ChannelTypeEQ(channeloverridetemplate.ChannelType(*input.ChannelType)))
+		query = query.Where(channeloverridetemplate.ChannelTypeEQ(input.ChannelType.String()))
 	}
 
 	if input.Search != nil && *input.Search != "" {

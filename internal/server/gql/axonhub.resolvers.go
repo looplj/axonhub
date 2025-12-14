@@ -294,43 +294,12 @@ func (r *mutationResolver) CreateChannelOverrideTemplate(ctx context.Context, in
 		return nil, fmt.Errorf("user not found in context")
 	}
 
-	overrideHeaders := input.OverrideHeaders
-	if overrideHeaders == nil {
-		overrideHeaders = []objects.HeaderEntry{}
-	}
-
-	overrideParameters := ""
-	if input.OverrideParameters != nil {
-		overrideParameters = *input.OverrideParameters
-	}
-
-	description := ""
-	if input.Description != nil {
-		description = *input.Description
-	}
-
-	return r.channelOverrideTemplateService.CreateTemplate(
-		ctx,
-		user.ID,
-		input.Name,
-		description,
-		string(input.ChannelType),
-		overrideParameters,
-		overrideHeaders,
-	)
+	return r.channelOverrideTemplateService.CreateTemplate(ctx, user.ID, input)
 }
 
 // UpdateChannelOverrideTemplate is the resolver for the updateChannelOverrideTemplate field.
 func (r *mutationResolver) UpdateChannelOverrideTemplate(ctx context.Context, id objects.GUID, input ent.UpdateChannelOverrideTemplateInput) (*ent.ChannelOverrideTemplate, error) {
-	return r.channelOverrideTemplateService.UpdateTemplate(
-		ctx,
-		id.ID,
-		input.Name,
-		input.Description,
-		input.OverrideParameters,
-		input.OverrideHeaders,
-		input.AppendOverrideHeaders,
-	)
+	return r.channelOverrideTemplateService.UpdateTemplate(ctx, id.ID, input)
 }
 
 // DeleteChannelOverrideTemplate is the resolver for the deleteChannelOverrideTemplate field.
