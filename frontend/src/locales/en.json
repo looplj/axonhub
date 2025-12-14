@@ -883,6 +883,7 @@
         "test": "Test Connection",
         "testing": "Testing...",
         "add": "Add",
+        "batchAdd": "Batch Add",
         "addSelected": "Add",
         "fetchModels": "Fetch",
         "selectAll": "Select All",
