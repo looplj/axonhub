@@ -44,6 +44,7 @@ func (svc *ChannelService) BulkUpdateChannelOrdering(ctx context.Context, items 
 type BulkCreateChannelsInput struct {
 	Type             channel.Type
 	Name             string
+	Tags             []string
 	BaseURL          *string
 	APIKeys          []string
 	SupportedModels  []string
@@ -80,6 +81,12 @@ func (svc *ChannelService) BulkCreateChannels(ctx context.Context, input BulkCre
 
 	// All channels use numbered format: "base - (1)", "base - (2)", etc.
 	counter := 1
+
+	tagsToUse := input.Tags
+	if len(tagsToUse) == 0 {
+		tagsToUse = []string{input.Name} // Use base name as tag (backward compatible)
+	}
+
 	for _, apiKey := range input.APIKeys {
 		// Generate unique channel name with numbering
 		channelName := fmt.Sprintf("%s - (%d)", input.Name, counter)
@@ -99,7 +106,7 @@ func (svc *ChannelService) BulkCreateChannels(ctx context.Context, input BulkCre
 			Name:             channelName,
 			Credentials:      &objects.ChannelCredentials{APIKey: apiKey},
 			SupportedModels:  input.SupportedModels,
-			Tags:             []string{input.Name}, // Use base name as tag
+			Tags:             tagsToUse,
 			DefaultTestModel: input.DefaultTestModel,
 			Settings:         input.Settings,
 		}

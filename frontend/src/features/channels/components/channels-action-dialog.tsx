@@ -210,6 +210,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               supportedModels: duplicateFromRow.supportedModels,
               defaultTestModel: duplicateFromRow.defaultTestModel,
               tags: duplicateFromRow.tags || [],
+              settings: duplicateFromRow.settings ?? undefined,
               credentials: {
                 apiKey: '',
                 aws: {
@@ -244,6 +245,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             supportedModels: [],
             defaultTestModel: '',
             tags: [],
+            settings: undefined,
           },
   })
 
@@ -305,14 +307,14 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       const newChannelType = getChannelTypeForApiFormat(selectedProvider, format)
       if (newChannelType) {
         form.setValue('type', newChannelType)
-        const baseURL = getDefaultBaseURL(newChannelType)
-        if (baseURL) {
-          form.setValue('baseURL', baseURL)
+
+        const baseURLFieldState = form.getFieldState('baseURL', form.formState)
+        if (!baseURLFieldState.isDirty) {
+          const baseURL = getDefaultBaseURL(newChannelType)
+          if (baseURL) {
+            form.setValue('baseURL', baseURL)
+          }
         }
-        // Reset models when API format changes
-        setSupportedModels([])
-        setFetchedModels([])
-        setUseFetchedModels(false)
       }
     },
     [isEdit, selectedProvider, form]
@@ -376,19 +378,24 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             .filter((key) => key.length > 0) || []
 
         if (apiKeys.length > 1) {
+          const settings = values.settings ?? duplicateFromRow?.settings ?? undefined
           // Bulk create: use bulk mutation
           await bulkCreateChannels.mutateAsync({
             type: values.type as string,
             name: values.name as string,
             baseURL: values.baseURL,
+            tags: values.tags,
             apiKeys: apiKeys,
             supportedModels: supportedModels,
             defaultTestModel: values.defaultTestModel as string,
-            settings: values.settings,
+            settings,
           })
         } else {
           // Single create: use existing mutation
-          await createChannel.mutateAsync(dataWithModels as z.infer<typeof createChannelInputSchema>)
+          await createChannel.mutateAsync({
+            ...(dataWithModels as z.infer<typeof createChannelInputSchema>),
+            settings: values.settings ?? duplicateFromRow?.settings ?? undefined,
+          })
         }
       }
 
@@ -1230,6 +1237,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 </Button>
               </div>
             </div>
+
+            {showFetchedModelsPanel && showSupportedModelsPanel && <div className='border-border my-2 border-t' />}
 
             {/* Supported Models Panel Content */}
             <div

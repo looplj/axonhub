@@ -189,20 +189,18 @@ func (svc *ChannelOverrideTemplateService) ApplyTemplate(
 
 			settings.OverrideHeaders = MergeOverrideHeaders(settings.OverrideHeaders, template.OverrideHeaders)
 
-			mergedParams, mergeErr := MergeOverrideParameters(settings.OverrideParameters, template.OverrideParameters)
-			if mergeErr != nil {
-				err = fmt.Errorf("failed to merge override parameters for channel %d: %w", ch.ID, mergeErr)
-				return err
+			mergedParams, err := MergeOverrideParameters(settings.OverrideParameters, template.OverrideParameters)
+			if err != nil {
+				return fmt.Errorf("failed to merge override parameters for channel %s: %w", ch.Name, err)
 			}
 
 			settings.OverrideParameters = mergedParams
 
-			updatedChannel, saveErr := db.Channel.UpdateOneID(ch.ID).
+			updatedChannel, err := db.Channel.UpdateOneID(ch.ID).
 				SetSettings(&settings).
 				Save(ctx)
-			if saveErr != nil {
-				err = fmt.Errorf("failed to update channel %d: %w", ch.ID, saveErr)
-				return err
+			if err != nil {
+				return fmt.Errorf("failed to update channel %s: %w", ch.Name, err)
 			}
 
 			updated = append(updated, updatedChannel)

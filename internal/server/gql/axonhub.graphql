@@ -142,6 +142,7 @@ type BulkImportChannelsResult {
 input BulkCreateChannelsInput {
   type: String!
   name: String!
+  tags: [String!]
   baseURL: String
   apiKeys: [String!]!
   supportedModels: [String!]!
