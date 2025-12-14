@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"net/http"
 	"runtime"
@@ -9,7 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/looplj/axonhub/internal/log"
-	"github.com/looplj/axonhub/internal/objects"
 )
 
 // Recovery returns a middleware that recovers from any panics and logs detailed error information.
@@ -39,12 +39,7 @@ func RecoveryWithWriter() gin.HandlerFunc {
 				)
 
 				// Return 500 error
-				c.AbortWithStatusJSON(http.StatusInternalServerError, objects.ErrorResponse{
-					Error: objects.Error{
-						Type:    http.StatusText(http.StatusInternalServerError),
-						Message: "Internal server error",
-					},
-				})
+				AbortWithError(c, http.StatusInternalServerError, errors.New("Internal server error"))
 			}
 		}()
 

@@ -6,6 +6,7 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"go.uber.org/zap"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/tracing"
 )
@@ -38,5 +39,14 @@ func (t *loggingTracer) InterceptResponse(ctx context.Context, next graphql.Resp
 		}
 	}
 
-	return next(ctx)
+	resp := next(ctx)
+
+	// Capture GraphQL errors to context for access logging
+	if resp != nil && len(resp.Errors) > 0 {
+		for _, gqlErr := range resp.Errors {
+			contexts.AddError(ctx, gqlErr)
+		}
+	}
+
+	return resp
 }

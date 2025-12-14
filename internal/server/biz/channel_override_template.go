@@ -49,6 +49,7 @@ func (svc *ChannelOverrideTemplateService) CreateTemplate(
 	if err := ValidateOverrideParameters(overrideParameters); err != nil {
 		return nil, fmt.Errorf("invalid override parameters: %w", err)
 	}
+
 	if overrideHeaders != nil {
 		if err := ValidateOverrideHeaders(overrideHeaders); err != nil {
 			return nil, fmt.Errorf("invalid override headers: %w", err)
@@ -84,27 +85,34 @@ func (svc *ChannelOverrideTemplateService) UpdateTemplate(
 	if name != nil {
 		mut.SetName(*name)
 	}
+
 	if description != nil {
 		mut.SetDescription(*description)
 	}
+
 	if overrideParameters != nil {
 		// Normalize empty parameters to "{}"
 		normalized := NormalizeOverrideParameters(*overrideParameters)
 		if err := ValidateOverrideParameters(normalized); err != nil {
 			return nil, fmt.Errorf("invalid override parameters: %w", err)
 		}
+
 		mut.SetOverrideParameters(normalized)
 	}
+
 	if overrideHeaders != nil {
 		if err := ValidateOverrideHeaders(overrideHeaders); err != nil {
 			return nil, fmt.Errorf("invalid override headers: %w", err)
 		}
+
 		mut.SetOverrideHeaders(overrideHeaders)
 	}
+
 	if appendOverrideHeaders != nil {
 		if err := ValidateOverrideHeaders(appendOverrideHeaders); err != nil {
 			return nil, fmt.Errorf("invalid override headers to append: %w", err)
 		}
+
 		mut.AppendOverrideHeaders(appendOverrideHeaders)
 	}
 
@@ -121,6 +129,7 @@ func (svc *ChannelOverrideTemplateService) DeleteTemplate(ctx context.Context, i
 	if err := svc.entFromContext(ctx).ChannelOverrideTemplate.DeleteOneID(id).Exec(ctx); err != nil {
 		return fmt.Errorf("failed to delete channel override template: %w", err)
 	}
+
 	return nil
 }
 
@@ -130,6 +139,7 @@ func (svc *ChannelOverrideTemplateService) GetTemplate(ctx context.Context, id i
 	if err != nil {
 		return nil, fmt.Errorf("failed to get channel override template: %w", err)
 	}
+
 	return template, nil
 }
 
@@ -152,6 +162,7 @@ func (svc *ChannelOverrideTemplateService) ApplyTemplate(
 	if err != nil {
 		return nil, fmt.Errorf("failed to query channels: %w", err)
 	}
+
 	if len(channels) != len(channelIDs) {
 		return nil, fmt.Errorf("some channels not found for provided IDs")
 	}
@@ -166,6 +177,7 @@ func (svc *ChannelOverrideTemplateService) ApplyTemplate(
 	if err != nil {
 		return nil, fmt.Errorf("failed to start transaction: %w", err)
 	}
+
 	defer func() {
 		if err != nil {
 			_ = tx.Rollback()
@@ -189,6 +201,7 @@ func (svc *ChannelOverrideTemplateService) ApplyTemplate(
 			err = fmt.Errorf("failed to merge override parameters for channel %d: %w", ch.ID, mergeErr)
 			return nil, err
 		}
+
 		settings.OverrideParameters = mergedParams
 
 		updatedChannel, saveErr := tx.Channel.UpdateOneID(ch.ID).

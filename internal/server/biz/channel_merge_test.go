@@ -3,9 +3,10 @@ package biz
 import (
 	"testing"
 
-	"github.com/looplj/axonhub/internal/objects"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/looplj/axonhub/internal/objects"
 )
 
 func TestMergeOverrideHeaders(t *testing.T) {

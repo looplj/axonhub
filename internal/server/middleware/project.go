@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -18,15 +19,9 @@ func WithProjectID() gin.HandlerFunc {
 			return
 		}
 
-		projectID, err := objects.ParseGUID(projectIDStr)
-		if err != nil || projectID.Type != ent.TypeProject {
-			c.AbortWithStatusJSON(http.StatusBadRequest, objects.ErrorResponse{
-				Error: objects.Error{
-					Type:    http.StatusText(http.StatusBadRequest),
-					Message: "Invalid project ID",
-				},
-			})
-
+		projectID, parseErr := objects.ParseGUID(projectIDStr)
+		if parseErr != nil || projectID.Type != ent.TypeProject {
+			AbortWithError(c, http.StatusBadRequest, errors.New("Invalid project ID"))
 			return
 		}
 

@@ -2,6 +2,7 @@ package contexts
 
 import (
 	"context"
+	"sync"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/request"
@@ -18,6 +19,8 @@ type contextContainer struct {
 	Source        *request.Source
 	Thread        *ent.Thread
 	Trace         *ent.Trace
+	Errors        []error
+	mu            sync.RWMutex
 }
 
 // getContainer retrieves the existing container from context, or creates a new one and stores it in the context if it doesn't exist.

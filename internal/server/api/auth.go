@@ -48,13 +48,7 @@ func (h *AuthHandlers) SignIn(c *gin.Context) {
 
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, objects.ErrorResponse{
-			Error: objects.Error{
-				Type:    http.StatusText(http.StatusBadRequest),
-				Message: "Invalid request format",
-			},
-		})
-
+		JSONError(c, http.StatusBadRequest, errors.New("Invalid request format"))
 		return
 	}
 
@@ -62,22 +56,11 @@ func (h *AuthHandlers) SignIn(c *gin.Context) {
 	user, err := h.AuthService.AuthenticateUser(ctx, req.Email, req.Password)
 	if err != nil {
 		if errors.Is(err, biz.ErrInvalidPassword) {
-			c.JSON(http.StatusUnauthorized, objects.ErrorResponse{
-				Error: objects.Error{
-					Type:    http.StatusText(http.StatusUnauthorized),
-					Message: "Invalid email or password",
-				},
-			})
-
+			JSONError(c, http.StatusUnauthorized, errors.New("Invalid email or password"))
 			return
 		}
 
-		c.JSON(http.StatusInternalServerError, objects.ErrorResponse{
-			Error: objects.Error{
-				Type:    http.StatusText(http.StatusInternalServerError),
-				Message: "Internal server error",
-			},
-		})
+		JSONError(c, http.StatusInternalServerError, errors.New("Internal server error"))
 
 		return
 	}
@@ -85,13 +68,7 @@ func (h *AuthHandlers) SignIn(c *gin.Context) {
 	// Generate JWT token
 	token, err := h.AuthService.GenerateJWTToken(ctx, user)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, objects.ErrorResponse{
-			Error: objects.Error{
-				Type:    http.StatusText(http.StatusInternalServerError),
-				Message: "Internal server error",
-			},
-		})
-
+		JSONError(c, http.StatusInternalServerError, errors.New("Internal server error"))
 		return
 	}
 
