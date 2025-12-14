@@ -77,6 +77,7 @@ func (svc *ChannelOverrideTemplateService) UpdateTemplate(
 	name, description *string,
 	overrideParameters *string,
 	overrideHeaders []objects.HeaderEntry,
+	appendOverrideHeaders []objects.HeaderEntry,
 ) (*ent.ChannelOverrideTemplate, error) {
 	mut := svc.entFromContext(ctx).ChannelOverrideTemplate.UpdateOneID(id)
 
@@ -99,6 +100,12 @@ func (svc *ChannelOverrideTemplateService) UpdateTemplate(
 			return nil, fmt.Errorf("invalid override headers: %w", err)
 		}
 		mut.SetOverrideHeaders(overrideHeaders)
+	}
+	if appendOverrideHeaders != nil {
+		if err := ValidateOverrideHeaders(appendOverrideHeaders); err != nil {
+			return nil, fmt.Errorf("invalid override headers to append: %w", err)
+		}
+		mut.AppendOverrideHeaders(appendOverrideHeaders)
 	}
 
 	template, err := mut.Save(ctx)

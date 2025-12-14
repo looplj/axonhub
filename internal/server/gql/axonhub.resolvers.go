@@ -329,6 +329,7 @@ func (r *mutationResolver) UpdateChannelOverrideTemplate(ctx context.Context, id
 		input.Description,
 		input.OverrideParameters,
 		input.OverrideHeaders,
+		input.AppendOverrideHeaders,
 	)
 }
 
