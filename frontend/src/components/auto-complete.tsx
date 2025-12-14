@@ -39,6 +39,8 @@ type Props<T extends string> = {
   isLoading?: boolean
   emptyMessage?: string
   placeholder?: string
+  /** 指定 Popover Portal 的容器元素，用于解决在 Dialog 内无法滚动的问题 */
+  portalContainer?: HTMLElement | null
 }
 
 export function AutoComplete<T extends string>({
@@ -50,6 +52,7 @@ export function AutoComplete<T extends string>({
   isLoading,
   emptyMessage = 'No items.',
   placeholder = 'Search...',
+  portalContainer,
 }: Props<T>) {
   const [open, setOpen] = useState(false)
 
@@ -115,16 +118,16 @@ export function AutoComplete<T extends string>({
           </PopoverAnchor>
           {!open && <CommandList aria-hidden='true' className='hidden' />}
           <PopoverContent
-            asChild
             onOpenAutoFocus={(e) => e.preventDefault()}
             onInteractOutside={(e) => {
               if (e.target instanceof Element && e.target.hasAttribute('cmdk-input')) {
                 e.preventDefault()
               }
             }}
-            className='w-[var(--radix-popover-trigger-width)] max-w-[var(--radix-popover-trigger-width)] overflow-hidden p-0'
+            className='w-[var(--radix-popover-trigger-width)] max-w-[var(--radix-popover-trigger-width)] p-0'
+            container={portalContainer}
           >
-            <CommandList className='max-h-72 overflow-auto'>
+            <CommandList>
               {isLoading && (
                 <CommandPrimitive.Loading>
                   <div className='p-1'>

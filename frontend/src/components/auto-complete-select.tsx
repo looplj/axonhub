@@ -6,6 +6,7 @@ import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '.
 import { Input } from './ui/input'
 import { Popover, PopoverAnchor, PopoverContent } from './ui/popover'
 import { Skeleton } from './ui/skeleton'
+import { TruncatedText } from './truncated-text'
 
 type Props<T extends string> = {
   selectedValue: T
@@ -97,16 +98,15 @@ export function AutoCompleteSelect<T extends string>({
           </PopoverAnchor>
           {!open && <CommandList aria-hidden='true' className='hidden' />}
           <PopoverContent
-            asChild
             onOpenAutoFocus={(e) => e.preventDefault()}
             onInteractOutside={(e) => {
               if (e.target instanceof Element && e.target.hasAttribute('cmdk-input')) {
                 e.preventDefault()
               }
             }}
-            className='w-[var(--radix-popover-trigger-width)] max-w-[var(--radix-popover-trigger-width)] overflow-hidden p-0'
+            className='w-[var(--radix-popover-trigger-width)] max-w-[var(--radix-popover-trigger-width)] p-0'
           >
-            <CommandList className='max-h-72 overflow-auto'>
+            <CommandList>
               {isLoading && (
                 <CommandPrimitive.Loading>
                   <div className='p-1'>
@@ -125,7 +125,7 @@ export function AutoCompleteSelect<T extends string>({
                       className='max-w-full w-full min-w-0'
                     >
                       <Check className={cn('mr-2 h-4 w-4', selectedValue === option.value ? 'opacity-100' : 'opacity-0')} />
-                      <span className='truncate flex-1 min-w-0'>{option.label}</span>
+                      <TruncatedText className='flex-1 min-w-0'>{option.label}</TruncatedText>
                     </CommandItem>
                   ))}
                 </CommandGroup>

@@ -19,6 +19,8 @@ import { updateApiKeyProfilesInputSchemaFactory, type UpdateApiKeyProfilesInput,
 import { useAllChannelsForOrdering } from '@/features/channels/data/channels'
 import { extractNumberID } from '@/lib/utils'
 
+type DialogContentRef = HTMLDivElement | null
+
 interface ApiKeyProfilesDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -34,6 +36,8 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
   const { t } = useTranslation()
   const { selectedApiKey } = useApiKeysContext()
   const { data: availableModels, mutateAsync: fetchModels } = useQueryModels()
+  // 用于解决 Dialog 内 Popover 无法滚动的问题
+  const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (open) {
@@ -162,7 +166,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='flex max-h-[90vh] flex-col sm:max-w-4xl'>
+      <DialogContent ref={setDialogContent} className='flex max-h-[90vh] flex-col sm:max-w-4xl'>
         <DialogHeader className='shrink-0 text-left'>
           <DialogTitle className='flex items-center gap-2'>
             <IconSettings className='h-5 w-5' />
@@ -208,6 +212,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
                             availableModels={availableModels?.map((model) => model.id) || []}
                             t={t}
                             defaultExpanded={profileIndex === 0}
+                            portalContainer={dialogContent}
                           />
                         </div>
                       ))}
@@ -285,9 +290,11 @@ interface ProfileCardProps {
   availableModels: string[]
   t: (key: string) => string
   defaultExpanded?: boolean
+  /** Popover Portal 容器元素，解决 Dialog 内无法滚动的问题 */
+  portalContainer?: HTMLElement | null
 }
 
-function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels, t, defaultExpanded = false }: ProfileCardProps) {
+function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels, t, defaultExpanded = false, portalContainer }: ProfileCardProps) {
   const [localProfileName, setLocalProfileName] = useState('')
   const [isCollapsed, setIsCollapsed] = useState(!defaultExpanded)
   const { data: channelsData } = useAllChannelsForOrdering({ enabled: true })
@@ -425,6 +432,7 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels,
                 onRemove={() => removeMapping(mappingIndex)}
                 availableModels={availableModels}
                 t={t}
+                portalContainer={portalContainer}
               />
             ))}
           </div>
@@ -543,9 +551,11 @@ interface MappingRowProps {
   onRemove: () => void
   availableModels: string[]
   t: (key: string) => string
+  /** Popover Portal 容器元素，解决 Dialog 内无法滚动的问题 */
+  portalContainer?: HTMLElement | null
 }
 
-function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModels, t }: MappingRowProps) {
+function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModels, t, portalContainer }: MappingRowProps) {
   const [fromSearch, setFromSearch] = useState('')
   const [toSearch, setToSearch] = useState('')
 
@@ -591,6 +601,7 @@ function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModel
                 items={filteredFromModels}
                 placeholder={t('apikeys.profiles.sourceModel')}
                 emptyMessage={t('apikeys.profiles.noModelsFound')}
+                portalContainer={portalContainer}
               />
             </FormControl>
             {/* <div className='text-muted-foreground mt-1 text-xs'>{t('apikeys.profiles.regexSupported')}</div> */}
@@ -616,6 +627,7 @@ function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModel
                 items={filteredToModels}
                 placeholder={t('apikeys.profiles.targetModel')}
                 emptyMessage={t('apikeys.profiles.noModelsFound')}
+                portalContainer={portalContainer}
               />
             </FormControl>
             <FormMessage />
