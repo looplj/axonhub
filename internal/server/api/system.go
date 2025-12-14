@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/looplj/axonhub/internal/build"
 	"github.com/looplj/axonhub/internal/log"
-	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
@@ -65,13 +65,7 @@ type InitializeSystemResponse struct {
 func (h *SystemHandlers) GetSystemStatus(c *gin.Context) {
 	isInitialized, err := h.SystemService.IsInitialized(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, objects.ErrorResponse{
-			Error: objects.Error{
-				Type:    http.StatusText(http.StatusInternalServerError),
-				Message: "Failed to check system status",
-			},
-		})
-
+		JSONError(c, http.StatusInternalServerError, errors.New("Failed to check system status"))
 		return
 	}
 
@@ -110,13 +104,7 @@ func (h *SystemHandlers) InitializeSystem(c *gin.Context) {
 	// Check if system is already initialized
 	isInitialized, err := h.SystemService.IsInitialized(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, objects.ErrorResponse{
-			Error: objects.Error{
-				Type:    http.StatusText(http.StatusInternalServerError),
-				Message: "Failed to check initialization status",
-			},
-		})
-
+		JSONError(c, http.StatusInternalServerError, errors.New("Failed to check initialization status"))
 		return
 	}
 
@@ -159,13 +147,7 @@ func (h *SystemHandlers) GetFavicon(c *gin.Context) {
 	brandLogo, err := h.SystemService.BrandLogo(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to get brand logo", log.Cause(err))
-
-		c.JSON(http.StatusInternalServerError, objects.ErrorResponse{
-			Error: objects.Error{
-				Type:    http.StatusText(http.StatusInternalServerError),
-				Message: "Failed to get brand logo",
-			},
-		})
+		JSONError(c, http.StatusInternalServerError, errors.New("Failed to get brand logo"))
 
 		return
 	}
@@ -179,26 +161,14 @@ func (h *SystemHandlers) GetFavicon(c *gin.Context) {
 	// 解析 base64 编码的图片数据
 	// 假设格式为 "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
 	if !strings.HasPrefix(brandLogo, "data:") {
-		c.JSON(http.StatusBadRequest, objects.ErrorResponse{
-			Error: objects.Error{
-				Type:    http.StatusText(http.StatusBadRequest),
-				Message: "Invalid brand logo format",
-			},
-		})
-
+		JSONError(c, http.StatusBadRequest, errors.New("Invalid brand logo format"))
 		return
 	}
 
 	// 提取 MIME 类型和 base64 数据
 	parts := strings.Split(brandLogo, ",")
 	if len(parts) != 2 {
-		c.JSON(http.StatusBadRequest, objects.ErrorResponse{
-			Error: objects.Error{
-				Type:    http.StatusText(http.StatusBadRequest),
-				Message: "Invalid brand logo format",
-			},
-		})
-
+		JSONError(c, http.StatusBadRequest, errors.New("Invalid brand logo format"))
 		return
 	}
 
@@ -208,13 +178,7 @@ func (h *SystemHandlers) GetFavicon(c *gin.Context) {
 
 	mimeEnd := strings.Index(headerPart, ";")
 	if mimeStart == -1 || mimeEnd == -1 {
-		c.JSON(http.StatusBadRequest, objects.ErrorResponse{
-			Error: objects.Error{
-				Type:    http.StatusText(http.StatusBadRequest),
-				Message: "Invalid brand logo format",
-			},
-		})
-
+		JSONError(c, http.StatusBadRequest, errors.New("Invalid brand logo format"))
 		return
 	}
 
@@ -223,13 +187,7 @@ func (h *SystemHandlers) GetFavicon(c *gin.Context) {
 	// 解码 base64 数据
 	imageData, err := base64.StdEncoding.DecodeString(parts[1])
 	if err != nil {
-		c.JSON(http.StatusBadRequest, objects.ErrorResponse{
-			Error: objects.Error{
-				Type:    http.StatusText(http.StatusBadRequest),
-				Message: "Failed to decode brand logo",
-			},
-		})
-
+		JSONError(c, http.StatusBadRequest, errors.New("Failed to decode brand logo"))
 		return
 	}
 

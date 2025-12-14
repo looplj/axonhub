@@ -2,6 +2,7 @@ package contexts
 
 import (
 	"context"
+	"slices"
 
 	"github.com/looplj/axonhub/internal/ent"
 )
@@ -122,4 +123,32 @@ func GetProjectID(ctx context.Context) (int, bool) {
 	}
 
 	return 0, false
+}
+
+// AddError appends an error to the context's error list.
+// Will do nothing if the context is not initialized.
+// But in real world, it should be initialized.
+func AddError(ctx context.Context, err error) {
+	if err == nil {
+		return
+	}
+
+	container := getContainer(ctx)
+
+	container.mu.Lock()
+	defer container.mu.Unlock()
+
+	container.Errors = append(container.Errors, err)
+}
+
+// GetErrors retrieves all errors from the context.
+// Will return nil if the context is not initialized.
+// But in real world, it should be initialized.
+func GetErrors(ctx context.Context) []error {
+	container := getContainer(ctx)
+
+	container.mu.RLock()
+	defer container.mu.RUnlock()
+
+	return slices.Clone(container.Errors)
 }

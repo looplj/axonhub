@@ -2,13 +2,13 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/gin-contrib/sse"
 	"github.com/gin-gonic/gin"
 
 	"github.com/looplj/axonhub/internal/log"
-	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
 	"github.com/looplj/axonhub/internal/server/chat"
@@ -50,13 +50,7 @@ func (handlers *ChatCompletionHandlers) ChatCompletion(c *gin.Context) {
 	}
 
 	if len(genericReq.Body) == 0 {
-		c.JSON(http.StatusBadRequest, objects.ErrorResponse{
-			Error: objects.Error{
-				Type:    http.StatusText(http.StatusBadRequest),
-				Message: "Request body is empty",
-			},
-		})
-
+		JSONError(c, http.StatusBadRequest, errors.New("Request body is empty"))
 		return
 	}
 

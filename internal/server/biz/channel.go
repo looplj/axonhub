@@ -450,6 +450,7 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 				return nil, fmt.Errorf("invalid override headers: %w", err)
 			}
 		}
+
 		mut.SetSettings(input.Settings)
 	}
 

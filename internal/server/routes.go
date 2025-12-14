@@ -38,6 +38,7 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 	// Serve static frontend files
 	server.NoRoute(static.Handler())
 
+	server.Use(middleware.AccessLog())
 	server.Use(middleware.WithEntClient(client))
 	server.Use(middleware.WithLoggingTracing(server.Config.Trace))
 	server.Use(middleware.WithMetrics())

@@ -21,6 +21,7 @@ func MergeOverrideHeaders(existing, template []objects.HeaderEntry) []objects.He
 
 	for _, header := range template {
 		index := -1
+
 		for i, item := range result {
 			if strings.EqualFold(item.Key, header.Key) {
 				index = i
@@ -32,6 +33,7 @@ func MergeOverrideHeaders(existing, template []objects.HeaderEntry) []objects.He
 			if index >= 0 {
 				result = append(result[:index], result[index+1:]...)
 			}
+
 			continue
 		}
 
@@ -75,6 +77,7 @@ func NormalizeOverrideParameters(params string) string {
 	if strings.TrimSpace(params) == "" {
 		return "{}"
 	}
+
 	return params
 }
 
@@ -105,7 +108,7 @@ func ValidateOverrideHeaders(headers []objects.HeaderEntry) error {
 			return fmt.Errorf("header at index %d has an empty key", i)
 		}
 
-		for j := 0; j < i; j++ {
+		for j := range i {
 			if strings.EqualFold(headers[j].Key, header.Key) {
 				return fmt.Errorf("duplicate header key (case-insensitive): %s", header.Key)
 			}

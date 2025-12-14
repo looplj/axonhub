@@ -13,7 +13,6 @@ import (
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/log"
-	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/tracing"
 )
@@ -52,13 +51,7 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 
 			traceID, err = tryExtractTraceIDFromClaudeCodeRequest(c, config)
 			if err != nil {
-				c.AbortWithStatusJSON(http.StatusBadRequest, objects.ErrorResponse{
-					Error: objects.Error{
-						Type:    http.StatusText(http.StatusBadRequest),
-						Message: err.Error(),
-					},
-				})
-
+				AbortWithError(c, http.StatusBadRequest, err)
 				return
 			}
 		}
