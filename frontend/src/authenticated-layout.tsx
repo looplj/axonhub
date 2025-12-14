@@ -33,7 +33,7 @@ export function AuthenticatedLayout({ children }: Props) {
             'peer-data-[state=collapsed]:w-[calc(100%-var(--sidebar-width-icon)-1rem)]',
             'peer-data-[state=expanded]:w-[calc(100%-var(--sidebar-width))]',
             'sm:transition-[width] sm:duration-200 sm:ease-linear',
-            'flex flex-1 flex-col overflow-auto pt-14',
+            'flex flex-1 min-h-0 min-w-0 flex-col overflow-auto pt-14 has-[main.fixed-main]:overflow-hidden',
             'group-data-[scroll-locked=1]/body:h-full',
             'has-[main.fixed-main]:group-data-[scroll-locked=1]/body:h-svh'
           )}
