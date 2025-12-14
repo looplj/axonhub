@@ -19,6 +19,9 @@ func NewEntClient(t TestingT, driverName, dataSourceName string) *ent.Client {
 		panic(err)
 	}
 
+	sqlDB.SetMaxOpenConns(1)
+	sqlDB.SetMaxIdleConns(1)
+
 	return NewClient(t,
 		WithOptions(
 			ent.Driver(entsql.OpenDB(driverName, sqlDB)),

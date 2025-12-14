@@ -18,11 +18,6 @@ globs: *.ts,*.tsx
 6. Use extractNumberID to extract int id from the GUID.
 
 
-## Login
-
-1. Use my@example.com as the email, and pwd123456 as the password to login when need to test the frontend.
-
-
 ## i18n rules
 
 1. MUST ADD i18n key in the locales/*.json file if created a new key in the code.

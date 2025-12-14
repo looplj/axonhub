@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"entgo.io/ent/dialect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -16,7 +15,7 @@ import (
 )
 
 func TestChannelOverrideTemplateService_CreateTemplate(t *testing.T) {
-	client := enttest.Open(t, dialect.SQLite, "file:ent?mode=memory&_fk=0")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
 	ctx := privacy.DecisionContext(context.Background(), privacy.Allow)
@@ -130,7 +129,7 @@ func TestChannelOverrideTemplateService_CreateTemplate(t *testing.T) {
 }
 
 func TestChannelOverrideTemplateService_UpdateTemplate(t *testing.T) {
-	client := enttest.Open(t, dialect.SQLite, "file:ent?mode=memory&_fk=0")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
 	ctx := privacy.DecisionContext(context.Background(), privacy.Allow)
@@ -202,7 +201,7 @@ func TestChannelOverrideTemplateService_UpdateTemplate(t *testing.T) {
 }
 
 func TestChannelOverrideTemplateService_ApplyTemplate(t *testing.T) {
-	client := enttest.Open(t, dialect.SQLite, "file:ent?mode=memory&_fk=0")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
 	ctx := privacy.DecisionContext(context.Background(), privacy.Allow)
@@ -325,7 +324,7 @@ func TestChannelOverrideTemplateService_ApplyTemplate(t *testing.T) {
 }
 
 func TestChannelOverrideTemplateService_DeleteTemplate(t *testing.T) {
-	client := enttest.Open(t, dialect.SQLite, "file:ent?mode=memory&_fk=0")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
 	ctx := privacy.DecisionContext(context.Background(), privacy.Allow)
@@ -355,7 +354,7 @@ func TestChannelOverrideTemplateService_DeleteTemplate(t *testing.T) {
 }
 
 func TestChannelOverrideTemplateService_QueryTemplates(t *testing.T) {
-	client := enttest.Open(t, dialect.SQLite, "file:ent?mode=memory&_fk=0")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
 	ctx := privacy.DecisionContext(context.Background(), privacy.Allow)
