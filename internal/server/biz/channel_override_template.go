@@ -177,35 +177,46 @@ func (svc *ChannelOverrideTemplateService) ApplyTemplate(
 
 	updated = make([]*ent.Channel, 0, len(channels))
 
-	for _, ch := range channels {
-		// Copy existing settings to avoid mutating shared pointers.
-		settings := objects.ChannelSettings{}
-		if ch.Settings != nil {
-			settings = *ch.Settings
+	err = svc.RunInTransaction(ctx, func(ctx context.Context) error {
+		db := svc.entFromContext(ctx)
+
+		for _, ch := range channels {
+			// Copy existing settings to avoid mutating shared pointers.
+			settings := objects.ChannelSettings{}
+			if ch.Settings != nil {
+				settings = *ch.Settings
+			}
+
+			settings.OverrideHeaders = MergeOverrideHeaders(settings.OverrideHeaders, template.OverrideHeaders)
+
+			mergedParams, mergeErr := MergeOverrideParameters(settings.OverrideParameters, template.OverrideParameters)
+			if mergeErr != nil {
+				err = fmt.Errorf("failed to merge override parameters for channel %d: %w", ch.ID, mergeErr)
+				return err
+			}
+
+			settings.OverrideParameters = mergedParams
+
+			updatedChannel, saveErr := db.Channel.UpdateOneID(ch.ID).
+				SetSettings(&settings).
+				Save(ctx)
+			if saveErr != nil {
+				err = fmt.Errorf("failed to update channel %d: %w", ch.ID, saveErr)
+				return err
+			}
+
+			updated = append(updated, updatedChannel)
 		}
 
-		settings.OverrideHeaders = MergeOverrideHeaders(settings.OverrideHeaders, template.OverrideHeaders)
-
-		mergedParams, mergeErr := MergeOverrideParameters(settings.OverrideParameters, template.OverrideParameters)
-		if mergeErr != nil {
-			err = fmt.Errorf("failed to merge override parameters for channel %d: %w", ch.ID, mergeErr)
-			return nil, err
-		}
-
-		settings.OverrideParameters = mergedParams
-
-		updatedChannel, saveErr := db.Channel.UpdateOneID(ch.ID).
-			SetSettings(&settings).
-			Save(ctx)
-		if saveErr != nil {
-			err = fmt.Errorf("failed to update channel %d: %w", ch.ID, saveErr)
-			return nil, err
-		}
-
-		updated = append(updated, updatedChannel)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	svc.channelService.asyncReloadChannels()
+	if svc.channelService != nil {
+		svc.channelService.asyncReloadChannels()
+	}
 
 	return updated, nil
 }

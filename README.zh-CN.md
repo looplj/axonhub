@@ -432,7 +432,7 @@ const completion = await openai.chat.completions.create({
 
 ## 🛠️ 开发指南
 
-详细的开发说明、架构设计和贡献指南，请查看 [DEVELOPMENT.md](DEVELOPMENT.md)。
+详细的开发说明、架构设计和贡献指南，请查看 [docs/zh/guides/development.md](docs/zh/guides/development.md)。
 
 ---
 
