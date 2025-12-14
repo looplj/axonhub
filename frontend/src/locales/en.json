@@ -1087,6 +1087,59 @@
       "overrideParametersInvalidJson": "Must be valid JSON",
       "overrideParametersStreamNotAllowed": "Stream cannot be overridden",
       "forbiddenHeader": "Header cannot override sensitive headers like Authorization, API-Key, or Cookie"
+    },
+    "templates": {
+      "section": {
+        "title": "Templates",
+        "description": "Load saved override configurations or save current settings as a template for reuse"
+      },
+      "selectTemplate": "Select template...",
+      "searchPlaceholder": "Search templates...",
+      "noTemplates": "No templates found",
+      "applyTemplate": "Apply Template",
+      "applying": "Applying...",
+      "saveAsTemplate": "Save as Template",
+      "fields": {
+        "name": "Template Name",
+        "namePlaceholder": "e.g., Production Headers",
+        "description": "Description (Optional)",
+        "descriptionPlaceholder": "Describe what this template is for..."
+      },
+      "dialogs": {
+        "save": {
+          "title": "Save as Template",
+          "description": "Save current override configuration as a reusable template"
+        }
+      },
+      "validation": {
+        "nameRequired": "Template name is required"
+      },
+      "messages": {
+        "createSuccess": "Template created successfully",
+        "createError": "Failed to create template: {{error}}",
+        "updateSuccess": "Template updated successfully",
+        "updateError": "Failed to update template: {{error}}",
+        "deleteSuccess": "Template deleted successfully",
+        "deleteError": "Failed to delete template: {{error}}",
+        "applied": "Template applied successfully",
+        "applySuccess": "Template applied to {{count}} channel(s)",
+        "applyError": "Failed to apply template: {{error}}"
+      },
+      "errors": {
+        "fetchList": "Failed to load templates",
+        "noUser": "User not authenticated"
+      },
+      "bulk": {
+        "title": "Apply Template to Multiple Channels",
+        "description": "Apply a template to {{count}} selected channel(s)",
+        "applyButton": "Apply Template",
+        "apply": "Apply to {{count}} Channel(s)",
+        "applying": "Applying...",
+        "channelTypeInfo": "Selected {{count}} {{type}} channel(s)",
+        "noChannelsSelected": "No channels selected",
+        "multipleTypesError": "All selected channels must be of the same type to apply a template",
+        "applyInfo": "The template will be merged with existing channel configurations. New headers and parameters will be added, existing values will be preserved."
+      }
     }
   },
   "dataStorages": {

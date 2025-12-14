@@ -286,6 +286,7 @@ func ConvertUserToUserInfo(ctx context.Context, u *ent.User) *objects.UserInfo {
 	}
 
 	return &objects.UserInfo{
+		ID:             objects.GUID{Type: ent.TypeUser, ID: u.ID},
 		Email:          u.Email,
 		FirstName:      u.FirstName,
 		LastName:       u.LastName,

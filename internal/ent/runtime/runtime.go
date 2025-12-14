@@ -8,6 +8,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/project"
@@ -130,6 +131,53 @@ func init() {
 	channelDescOrderingWeight := channelFields[9].Descriptor()
 	// channel.DefaultOrderingWeight holds the default value on creation for the ordering_weight field.
 	channel.DefaultOrderingWeight = channelDescOrderingWeight.Default.(int)
+	channeloverridetemplateMixin := schema.ChannelOverrideTemplate{}.Mixin()
+	channeloverridetemplate.Policy = privacy.NewPolicies(schema.ChannelOverrideTemplate{})
+	channeloverridetemplate.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := channeloverridetemplate.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	channeloverridetemplateMixinHooks1 := channeloverridetemplateMixin[1].Hooks()
+
+	channeloverridetemplate.Hooks[1] = channeloverridetemplateMixinHooks1[0]
+	channeloverridetemplateMixinInters1 := channeloverridetemplateMixin[1].Interceptors()
+	channeloverridetemplate.Interceptors[0] = channeloverridetemplateMixinInters1[0]
+	channeloverridetemplateMixinFields0 := channeloverridetemplateMixin[0].Fields()
+	_ = channeloverridetemplateMixinFields0
+	channeloverridetemplateMixinFields1 := channeloverridetemplateMixin[1].Fields()
+	_ = channeloverridetemplateMixinFields1
+	channeloverridetemplateFields := schema.ChannelOverrideTemplate{}.Fields()
+	_ = channeloverridetemplateFields
+	// channeloverridetemplateDescCreatedAt is the schema descriptor for created_at field.
+	channeloverridetemplateDescCreatedAt := channeloverridetemplateMixinFields0[0].Descriptor()
+	// channeloverridetemplate.DefaultCreatedAt holds the default value on creation for the created_at field.
+	channeloverridetemplate.DefaultCreatedAt = channeloverridetemplateDescCreatedAt.Default.(func() time.Time)
+	// channeloverridetemplateDescUpdatedAt is the schema descriptor for updated_at field.
+	channeloverridetemplateDescUpdatedAt := channeloverridetemplateMixinFields0[1].Descriptor()
+	// channeloverridetemplate.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	channeloverridetemplate.DefaultUpdatedAt = channeloverridetemplateDescUpdatedAt.Default.(func() time.Time)
+	// channeloverridetemplate.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	channeloverridetemplate.UpdateDefaultUpdatedAt = channeloverridetemplateDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// channeloverridetemplateDescDeletedAt is the schema descriptor for deleted_at field.
+	channeloverridetemplateDescDeletedAt := channeloverridetemplateMixinFields1[0].Descriptor()
+	// channeloverridetemplate.DefaultDeletedAt holds the default value on creation for the deleted_at field.
+	channeloverridetemplate.DefaultDeletedAt = channeloverridetemplateDescDeletedAt.Default.(int)
+	// channeloverridetemplateDescName is the schema descriptor for name field.
+	channeloverridetemplateDescName := channeloverridetemplateFields[1].Descriptor()
+	// channeloverridetemplate.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	channeloverridetemplate.NameValidator = channeloverridetemplateDescName.Validators[0].(func(string) error)
+	// channeloverridetemplateDescOverrideParameters is the schema descriptor for override_parameters field.
+	channeloverridetemplateDescOverrideParameters := channeloverridetemplateFields[4].Descriptor()
+	// channeloverridetemplate.DefaultOverrideParameters holds the default value on creation for the override_parameters field.
+	channeloverridetemplate.DefaultOverrideParameters = channeloverridetemplateDescOverrideParameters.Default.(string)
+	// channeloverridetemplateDescOverrideHeaders is the schema descriptor for override_headers field.
+	channeloverridetemplateDescOverrideHeaders := channeloverridetemplateFields[5].Descriptor()
+	// channeloverridetemplate.DefaultOverrideHeaders holds the default value on creation for the override_headers field.
+	channeloverridetemplate.DefaultOverrideHeaders = channeloverridetemplateDescOverrideHeaders.Default.([]objects.HeaderEntry)
 	channelperformanceMixin := schema.ChannelPerformance{}.Mixin()
 	channelperformanceMixinHooks1 := channelperformanceMixin[1].Hooks()
 	channelperformance.Hooks[0] = channelperformanceMixinHooks1[0]

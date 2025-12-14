@@ -48,6 +48,22 @@ func (r *channelResolver) ID(ctx context.Context, obj *ent.Channel) (*objects.GU
 }
 
 // ID is the resolver for the id field.
+func (r *channelOverrideTemplateResolver) ID(ctx context.Context, obj *ent.ChannelOverrideTemplate) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeChannelOverrideTemplate,
+		ID:   obj.ID,
+	}, nil
+}
+
+// UserID is the resolver for the userID field.
+func (r *channelOverrideTemplateResolver) UserID(ctx context.Context, obj *ent.ChannelOverrideTemplate) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeUser,
+		ID:   obj.UserID,
+	}, nil
+}
+
+// ID is the resolver for the id field.
 func (r *channelPerformanceResolver) ID(ctx context.Context, obj *ent.ChannelPerformance) (*objects.GUID, error) {
 	return &objects.GUID{
 		Type: ent.TypeChannelPerformance,
@@ -121,6 +137,11 @@ func (r *queryResolver) Channels(ctx context.Context, after *entgql.Cursor[int],
 		ent.WithChannelOrder(orderBy),
 		ent.WithChannelFilter(where.Filter),
 	)
+}
+
+// ChannelOverrideTemplates is the resolver for the channelOverrideTemplates field.
+func (r *queryResolver) ChannelOverrideTemplates(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOverrideTemplateOrder, where *ent.ChannelOverrideTemplateWhereInput) (*ent.ChannelOverrideTemplateConnection, error) {
+	panic(fmt.Errorf("not implemented: ChannelOverrideTemplates - channelOverrideTemplates"))
 }
 
 // DataStorages is the resolver for the dataStorages field.
@@ -595,6 +616,11 @@ func (r *Resolver) APIKey() APIKeyResolver { return &aPIKeyResolver{r} }
 // Channel returns ChannelResolver implementation.
 func (r *Resolver) Channel() ChannelResolver { return &channelResolver{r} }
 
+// ChannelOverrideTemplate returns ChannelOverrideTemplateResolver implementation.
+func (r *Resolver) ChannelOverrideTemplate() ChannelOverrideTemplateResolver {
+	return &channelOverrideTemplateResolver{r}
+}
+
 // ChannelPerformance returns ChannelPerformanceResolver implementation.
 func (r *Resolver) ChannelPerformance() ChannelPerformanceResolver {
 	return &channelPerformanceResolver{r}
@@ -641,6 +667,7 @@ func (r *Resolver) UserRole() UserRoleResolver { return &userRoleResolver{r} }
 
 type aPIKeyResolver struct{ *Resolver }
 type channelResolver struct{ *Resolver }
+type channelOverrideTemplateResolver struct{ *Resolver }
 type channelPerformanceResolver struct{ *Resolver }
 type dataStorageResolver struct{ *Resolver }
 type projectResolver struct{ *Resolver }

@@ -287,6 +287,81 @@ func (r *mutationResolver) UpdateDataStorage(ctx context.Context, id objects.GUI
 	return r.dataStorageService.UpdateDataStorage(ctx, id.ID, &input)
 }
 
+// CreateChannelOverrideTemplate is the resolver for the createChannelOverrideTemplate field.
+func (r *mutationResolver) CreateChannelOverrideTemplate(ctx context.Context, input ent.CreateChannelOverrideTemplateInput) (*ent.ChannelOverrideTemplate, error) {
+	user, ok := contexts.GetUser(ctx)
+	if !ok {
+		return nil, fmt.Errorf("user not found in context")
+	}
+
+	overrideHeaders := input.OverrideHeaders
+	if overrideHeaders == nil {
+		overrideHeaders = []objects.HeaderEntry{}
+	}
+
+	overrideParameters := ""
+	if input.OverrideParameters != nil {
+		overrideParameters = *input.OverrideParameters
+	}
+
+	description := ""
+	if input.Description != nil {
+		description = *input.Description
+	}
+
+	return r.channelOverrideTemplateService.CreateTemplate(
+		ctx,
+		user.ID,
+		input.Name,
+		description,
+		string(input.ChannelType),
+		overrideParameters,
+		overrideHeaders,
+	)
+}
+
+// UpdateChannelOverrideTemplate is the resolver for the updateChannelOverrideTemplate field.
+func (r *mutationResolver) UpdateChannelOverrideTemplate(ctx context.Context, id objects.GUID, input ent.UpdateChannelOverrideTemplateInput) (*ent.ChannelOverrideTemplate, error) {
+	return r.channelOverrideTemplateService.UpdateTemplate(
+		ctx,
+		id.ID,
+		input.Name,
+		input.Description,
+		input.OverrideParameters,
+		input.OverrideHeaders,
+		input.AppendOverrideHeaders,
+	)
+}
+
+// DeleteChannelOverrideTemplate is the resolver for the deleteChannelOverrideTemplate field.
+func (r *mutationResolver) DeleteChannelOverrideTemplate(ctx context.Context, id objects.GUID) (bool, error) {
+	if err := r.channelOverrideTemplateService.DeleteTemplate(ctx, id.ID); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// ApplyChannelOverrideTemplate is the resolver for the applyChannelOverrideTemplate field.
+func (r *mutationResolver) ApplyChannelOverrideTemplate(ctx context.Context, input ApplyChannelOverrideTemplateInput) (*ApplyChannelOverrideTemplatePayload, error) {
+	channelIDs := objects.IntGuids(input.ChannelIDs)
+
+	updatedChannels, err := r.channelOverrideTemplateService.ApplyTemplate(
+		ctx,
+		input.TemplateID.ID,
+		channelIDs,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to apply template: %w", err)
+	}
+
+	return &ApplyChannelOverrideTemplatePayload{
+		Success:  true,
+		Updated:  len(updatedChannels),
+		Channels: updatedChannels,
+	}, nil
+}
+
 // FetchModels is the resolver for the fetchModels field.
 func (r *queryResolver) FetchModels(ctx context.Context, input biz.FetchModelsInput) (*FetchModelsPayload, error) {
 	// Call the model fetcher service
@@ -379,6 +454,24 @@ func (r *queryResolver) QueryChannels(ctx context.Context, input biz.QueryChanne
 
 	// Call the biz layer method directly
 	return r.channelService.QueryChannels(ctx, input)
+}
+
+// QueryChannelOverrideTemplates is the resolver for the queryChannelOverrideTemplates field.
+func (r *queryResolver) QueryChannelOverrideTemplates(ctx context.Context, input biz.QueryChannelOverrideTemplatesInput) (*ent.ChannelOverrideTemplateConnection, error) {
+	if err := validatePaginationArgs(input.First, input.Last); err != nil {
+		return nil, err
+	}
+
+	bizInput := biz.QueryChannelOverrideTemplatesInput{
+		After:       input.After,
+		First:       input.First,
+		Before:      input.Before,
+		Last:        input.Last,
+		ChannelType: input.ChannelType,
+		Search:      input.Search,
+	}
+
+	return r.channelOverrideTemplateService.QueryTemplates(ctx, bizInput)
 }
 
 // ID is the resolver for the id field.

@@ -1116,6 +1116,59 @@
       "overrideParametersInvalidJson": "必须是有效的 JSON",
       "overrideParametersStreamNotAllowed": "stream 参数不允许覆盖",
       "forbiddenHeader": "不允许覆盖敏感请求头，如 Authorization、API-Key 或 Cookie"
+    },
+    "templates": {
+      "section": {
+        "title": "模板",
+        "description": "加载已保存的覆盖配置或将当前设置保存为模板以供重复使用"
+      },
+      "selectTemplate": "选择模板...",
+      "searchPlaceholder": "搜索模板...",
+      "noTemplates": "未找到模板",
+      "applyTemplate": "应用模板",
+      "applying": "应用中...",
+      "saveAsTemplate": "保存为模板",
+      "fields": {
+        "name": "模板名称",
+        "namePlaceholder": "例如：生产环境请求头",
+        "description": "描述（可选）",
+        "descriptionPlaceholder": "描述此模板的用途..."
+      },
+      "dialogs": {
+        "save": {
+          "title": "保存为模板",
+          "description": "将当前覆盖配置保存为可重用的模板"
+        }
+      },
+      "validation": {
+        "nameRequired": "模板名称不能为空"
+      },
+      "messages": {
+        "createSuccess": "模板创建成功",
+        "createError": "创建模板失败：{{error}}",
+        "updateSuccess": "模板更新成功",
+        "updateError": "更新模板失败：{{error}}",
+        "deleteSuccess": "模板删除成功",
+        "deleteError": "删除模板失败：{{error}}",
+        "applied": "模板应用成功",
+        "applySuccess": "模板已应用到 {{count}} 个渠道",
+        "applyError": "应用模板失败：{{error}}"
+      },
+      "errors": {
+        "fetchList": "加载模板失败",
+        "noUser": "用户未认证"
+      },
+      "bulk": {
+        "title": "批量应用模板到多个渠道",
+        "description": "将模板应用到 {{count}} 个选中的渠道",
+        "applyButton": "应用模板",
+        "apply": "应用到 {{count}} 个渠道",
+        "applying": "应用中...",
+        "channelTypeInfo": "已选择 {{count}} 个 {{type}} 类型渠道",
+        "noChannelsSelected": "未选择渠道",
+        "multipleTypesError": "要应用模板，所有选中的渠道必须是相同类型",
+        "applyInfo": "模板将与现有渠道配置合并。新的请求头和参数将被添加，现有值将被保留。"
+      }
     }
   },
   "dataStorages": {

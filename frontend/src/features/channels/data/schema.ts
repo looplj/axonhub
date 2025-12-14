@@ -371,3 +371,13 @@ export const bulkUpdateChannelOrderingResultSchema = z.object({
   channels: z.array(channelSchema),
 })
 export type BulkUpdateChannelOrderingResult = z.infer<typeof bulkUpdateChannelOrderingResultSchema>
+
+// Re-export template types from templates.ts
+export type {
+  ChannelOverrideTemplate,
+  ChannelOverrideTemplateConnection,
+  CreateChannelOverrideTemplateInput,
+  UpdateChannelOverrideTemplateInput,
+  ApplyChannelOverrideTemplateInput,
+  ApplyChannelOverrideTemplatePayload,
+} from './templates'

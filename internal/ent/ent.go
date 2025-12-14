@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/project"
@@ -87,21 +88,22 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			apikey.Table:             apikey.ValidColumn,
-			channel.Table:            channel.ValidColumn,
-			channelperformance.Table: channelperformance.ValidColumn,
-			datastorage.Table:        datastorage.ValidColumn,
-			project.Table:            project.ValidColumn,
-			request.Table:            request.ValidColumn,
-			requestexecution.Table:   requestexecution.ValidColumn,
-			role.Table:               role.ValidColumn,
-			system.Table:             system.ValidColumn,
-			thread.Table:             thread.ValidColumn,
-			trace.Table:              trace.ValidColumn,
-			usagelog.Table:           usagelog.ValidColumn,
-			user.Table:               user.ValidColumn,
-			userproject.Table:        userproject.ValidColumn,
-			userrole.Table:           userrole.ValidColumn,
+			apikey.Table:                  apikey.ValidColumn,
+			channel.Table:                 channel.ValidColumn,
+			channeloverridetemplate.Table: channeloverridetemplate.ValidColumn,
+			channelperformance.Table:      channelperformance.ValidColumn,
+			datastorage.Table:             datastorage.ValidColumn,
+			project.Table:                 project.ValidColumn,
+			request.Table:                 request.ValidColumn,
+			requestexecution.Table:        requestexecution.ValidColumn,
+			role.Table:                    role.ValidColumn,
+			system.Table:                  system.ValidColumn,
+			thread.Table:                  thread.ValidColumn,
+			trace.Table:                   trace.ValidColumn,
+			usagelog.Table:                usagelog.ValidColumn,
+			user.Table:                    user.ValidColumn,
+			userproject.Table:             userproject.ValidColumn,
+			userrole.Table:                userrole.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

@@ -17,6 +17,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/project"
@@ -41,6 +42,8 @@ type Client struct {
 	APIKey *APIKeyClient
 	// Channel is the client for interacting with the Channel builders.
 	Channel *ChannelClient
+	// ChannelOverrideTemplate is the client for interacting with the ChannelOverrideTemplate builders.
+	ChannelOverrideTemplate *ChannelOverrideTemplateClient
 	// ChannelPerformance is the client for interacting with the ChannelPerformance builders.
 	ChannelPerformance *ChannelPerformanceClient
 	// DataStorage is the client for interacting with the DataStorage builders.
@@ -82,6 +85,7 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.APIKey = NewAPIKeyClient(c.config)
 	c.Channel = NewChannelClient(c.config)
+	c.ChannelOverrideTemplate = NewChannelOverrideTemplateClient(c.config)
 	c.ChannelPerformance = NewChannelPerformanceClient(c.config)
 	c.DataStorage = NewDataStorageClient(c.config)
 	c.Project = NewProjectClient(c.config)
@@ -185,23 +189,24 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:                ctx,
-		config:             cfg,
-		APIKey:             NewAPIKeyClient(cfg),
-		Channel:            NewChannelClient(cfg),
-		ChannelPerformance: NewChannelPerformanceClient(cfg),
-		DataStorage:        NewDataStorageClient(cfg),
-		Project:            NewProjectClient(cfg),
-		Request:            NewRequestClient(cfg),
-		RequestExecution:   NewRequestExecutionClient(cfg),
-		Role:               NewRoleClient(cfg),
-		System:             NewSystemClient(cfg),
-		Thread:             NewThreadClient(cfg),
-		Trace:              NewTraceClient(cfg),
-		UsageLog:           NewUsageLogClient(cfg),
-		User:               NewUserClient(cfg),
-		UserProject:        NewUserProjectClient(cfg),
-		UserRole:           NewUserRoleClient(cfg),
+		ctx:                     ctx,
+		config:                  cfg,
+		APIKey:                  NewAPIKeyClient(cfg),
+		Channel:                 NewChannelClient(cfg),
+		ChannelOverrideTemplate: NewChannelOverrideTemplateClient(cfg),
+		ChannelPerformance:      NewChannelPerformanceClient(cfg),
+		DataStorage:             NewDataStorageClient(cfg),
+		Project:                 NewProjectClient(cfg),
+		Request:                 NewRequestClient(cfg),
+		RequestExecution:        NewRequestExecutionClient(cfg),
+		Role:                    NewRoleClient(cfg),
+		System:                  NewSystemClient(cfg),
+		Thread:                  NewThreadClient(cfg),
+		Trace:                   NewTraceClient(cfg),
+		UsageLog:                NewUsageLogClient(cfg),
+		User:                    NewUserClient(cfg),
+		UserProject:             NewUserProjectClient(cfg),
+		UserRole:                NewUserRoleClient(cfg),
 	}, nil
 }
 
@@ -219,23 +224,24 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:                ctx,
-		config:             cfg,
-		APIKey:             NewAPIKeyClient(cfg),
-		Channel:            NewChannelClient(cfg),
-		ChannelPerformance: NewChannelPerformanceClient(cfg),
-		DataStorage:        NewDataStorageClient(cfg),
-		Project:            NewProjectClient(cfg),
-		Request:            NewRequestClient(cfg),
-		RequestExecution:   NewRequestExecutionClient(cfg),
-		Role:               NewRoleClient(cfg),
-		System:             NewSystemClient(cfg),
-		Thread:             NewThreadClient(cfg),
-		Trace:              NewTraceClient(cfg),
-		UsageLog:           NewUsageLogClient(cfg),
-		User:               NewUserClient(cfg),
-		UserProject:        NewUserProjectClient(cfg),
-		UserRole:           NewUserRoleClient(cfg),
+		ctx:                     ctx,
+		config:                  cfg,
+		APIKey:                  NewAPIKeyClient(cfg),
+		Channel:                 NewChannelClient(cfg),
+		ChannelOverrideTemplate: NewChannelOverrideTemplateClient(cfg),
+		ChannelPerformance:      NewChannelPerformanceClient(cfg),
+		DataStorage:             NewDataStorageClient(cfg),
+		Project:                 NewProjectClient(cfg),
+		Request:                 NewRequestClient(cfg),
+		RequestExecution:        NewRequestExecutionClient(cfg),
+		Role:                    NewRoleClient(cfg),
+		System:                  NewSystemClient(cfg),
+		Thread:                  NewThreadClient(cfg),
+		Trace:                   NewTraceClient(cfg),
+		UsageLog:                NewUsageLogClient(cfg),
+		User:                    NewUserClient(cfg),
+		UserProject:             NewUserProjectClient(cfg),
+		UserRole:                NewUserRoleClient(cfg),
 	}, nil
 }
 
@@ -265,9 +271,9 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.APIKey, c.Channel, c.ChannelPerformance, c.DataStorage, c.Project, c.Request,
-		c.RequestExecution, c.Role, c.System, c.Thread, c.Trace, c.UsageLog, c.User,
-		c.UserProject, c.UserRole,
+		c.APIKey, c.Channel, c.ChannelOverrideTemplate, c.ChannelPerformance,
+		c.DataStorage, c.Project, c.Request, c.RequestExecution, c.Role, c.System,
+		c.Thread, c.Trace, c.UsageLog, c.User, c.UserProject, c.UserRole,
 	} {
 		n.Use(hooks...)
 	}
@@ -277,9 +283,9 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.APIKey, c.Channel, c.ChannelPerformance, c.DataStorage, c.Project, c.Request,
-		c.RequestExecution, c.Role, c.System, c.Thread, c.Trace, c.UsageLog, c.User,
-		c.UserProject, c.UserRole,
+		c.APIKey, c.Channel, c.ChannelOverrideTemplate, c.ChannelPerformance,
+		c.DataStorage, c.Project, c.Request, c.RequestExecution, c.Role, c.System,
+		c.Thread, c.Trace, c.UsageLog, c.User, c.UserProject, c.UserRole,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -292,6 +298,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.APIKey.mutate(ctx, m)
 	case *ChannelMutation:
 		return c.Channel.mutate(ctx, m)
+	case *ChannelOverrideTemplateMutation:
+		return c.ChannelOverrideTemplate.mutate(ctx, m)
 	case *ChannelPerformanceMutation:
 		return c.ChannelPerformance.mutate(ctx, m)
 	case *DataStorageMutation:
@@ -702,6 +710,157 @@ func (c *ChannelClient) mutate(ctx context.Context, m *ChannelMutation) (Value, 
 		return (&ChannelDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Channel mutation op: %q", m.Op())
+	}
+}
+
+// ChannelOverrideTemplateClient is a client for the ChannelOverrideTemplate schema.
+type ChannelOverrideTemplateClient struct {
+	config
+}
+
+// NewChannelOverrideTemplateClient returns a client for the ChannelOverrideTemplate from the given config.
+func NewChannelOverrideTemplateClient(c config) *ChannelOverrideTemplateClient {
+	return &ChannelOverrideTemplateClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `channeloverridetemplate.Hooks(f(g(h())))`.
+func (c *ChannelOverrideTemplateClient) Use(hooks ...Hook) {
+	c.hooks.ChannelOverrideTemplate = append(c.hooks.ChannelOverrideTemplate, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `channeloverridetemplate.Intercept(f(g(h())))`.
+func (c *ChannelOverrideTemplateClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ChannelOverrideTemplate = append(c.inters.ChannelOverrideTemplate, interceptors...)
+}
+
+// Create returns a builder for creating a ChannelOverrideTemplate entity.
+func (c *ChannelOverrideTemplateClient) Create() *ChannelOverrideTemplateCreate {
+	mutation := newChannelOverrideTemplateMutation(c.config, OpCreate)
+	return &ChannelOverrideTemplateCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ChannelOverrideTemplate entities.
+func (c *ChannelOverrideTemplateClient) CreateBulk(builders ...*ChannelOverrideTemplateCreate) *ChannelOverrideTemplateCreateBulk {
+	return &ChannelOverrideTemplateCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ChannelOverrideTemplateClient) MapCreateBulk(slice any, setFunc func(*ChannelOverrideTemplateCreate, int)) *ChannelOverrideTemplateCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ChannelOverrideTemplateCreateBulk{err: fmt.Errorf("calling to ChannelOverrideTemplateClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ChannelOverrideTemplateCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ChannelOverrideTemplateCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ChannelOverrideTemplate.
+func (c *ChannelOverrideTemplateClient) Update() *ChannelOverrideTemplateUpdate {
+	mutation := newChannelOverrideTemplateMutation(c.config, OpUpdate)
+	return &ChannelOverrideTemplateUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ChannelOverrideTemplateClient) UpdateOne(_m *ChannelOverrideTemplate) *ChannelOverrideTemplateUpdateOne {
+	mutation := newChannelOverrideTemplateMutation(c.config, OpUpdateOne, withChannelOverrideTemplate(_m))
+	return &ChannelOverrideTemplateUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ChannelOverrideTemplateClient) UpdateOneID(id int) *ChannelOverrideTemplateUpdateOne {
+	mutation := newChannelOverrideTemplateMutation(c.config, OpUpdateOne, withChannelOverrideTemplateID(id))
+	return &ChannelOverrideTemplateUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ChannelOverrideTemplate.
+func (c *ChannelOverrideTemplateClient) Delete() *ChannelOverrideTemplateDelete {
+	mutation := newChannelOverrideTemplateMutation(c.config, OpDelete)
+	return &ChannelOverrideTemplateDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ChannelOverrideTemplateClient) DeleteOne(_m *ChannelOverrideTemplate) *ChannelOverrideTemplateDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ChannelOverrideTemplateClient) DeleteOneID(id int) *ChannelOverrideTemplateDeleteOne {
+	builder := c.Delete().Where(channeloverridetemplate.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ChannelOverrideTemplateDeleteOne{builder}
+}
+
+// Query returns a query builder for ChannelOverrideTemplate.
+func (c *ChannelOverrideTemplateClient) Query() *ChannelOverrideTemplateQuery {
+	return &ChannelOverrideTemplateQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeChannelOverrideTemplate},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ChannelOverrideTemplate entity by its id.
+func (c *ChannelOverrideTemplateClient) Get(ctx context.Context, id int) (*ChannelOverrideTemplate, error) {
+	return c.Query().Where(channeloverridetemplate.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ChannelOverrideTemplateClient) GetX(ctx context.Context, id int) *ChannelOverrideTemplate {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a ChannelOverrideTemplate.
+func (c *ChannelOverrideTemplateClient) QueryUser(_m *ChannelOverrideTemplate) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(channeloverridetemplate.Table, channeloverridetemplate.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, channeloverridetemplate.UserTable, channeloverridetemplate.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ChannelOverrideTemplateClient) Hooks() []Hook {
+	hooks := c.hooks.ChannelOverrideTemplate
+	return append(hooks[:len(hooks):len(hooks)], channeloverridetemplate.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *ChannelOverrideTemplateClient) Interceptors() []Interceptor {
+	inters := c.inters.ChannelOverrideTemplate
+	return append(inters[:len(inters):len(inters)], channeloverridetemplate.Interceptors[:]...)
+}
+
+func (c *ChannelOverrideTemplateClient) mutate(ctx context.Context, m *ChannelOverrideTemplateMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ChannelOverrideTemplateCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ChannelOverrideTemplateUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ChannelOverrideTemplateUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ChannelOverrideTemplateDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ChannelOverrideTemplate mutation op: %q", m.Op())
 	}
 }
 
@@ -2717,6 +2876,22 @@ func (c *UserClient) QueryRoles(_m *User) *RoleQuery {
 	return query
 }
 
+// QueryChannelOverrideTemplates queries the channel_override_templates edge of a User.
+func (c *UserClient) QueryChannelOverrideTemplates(_m *User) *ChannelOverrideTemplateQuery {
+	query := (&ChannelOverrideTemplateClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(channeloverridetemplate.Table, channeloverridetemplate.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.ChannelOverrideTemplatesTable, user.ChannelOverrideTemplatesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryProjectUsers queries the project_users edge of a User.
 func (c *UserClient) QueryProjectUsers(_m *User) *UserProjectQuery {
 	query := (&UserProjectClient{config: c.config}).Query()
@@ -3113,13 +3288,13 @@ func (c *UserRoleClient) mutate(ctx context.Context, m *UserRoleMutation) (Value
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		APIKey, Channel, ChannelPerformance, DataStorage, Project, Request,
-		RequestExecution, Role, System, Thread, Trace, UsageLog, User, UserProject,
-		UserRole []ent.Hook
+		APIKey, Channel, ChannelOverrideTemplate, ChannelPerformance, DataStorage,
+		Project, Request, RequestExecution, Role, System, Thread, Trace, UsageLog,
+		User, UserProject, UserRole []ent.Hook
 	}
 	inters struct {
-		APIKey, Channel, ChannelPerformance, DataStorage, Project, Request,
-		RequestExecution, Role, System, Thread, Trace, UsageLog, User, UserProject,
-		UserRole []ent.Interceptor
+		APIKey, Channel, ChannelOverrideTemplate, ChannelPerformance, DataStorage,
+		Project, Request, RequestExecution, Role, System, Thread, Trace, UsageLog,
+		User, UserProject, UserRole []ent.Interceptor
 	}
 )

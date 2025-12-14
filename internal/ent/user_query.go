@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/role"
@@ -25,22 +26,24 @@ import (
 // UserQuery is the builder for querying User entities.
 type UserQuery struct {
 	config
-	ctx                   *QueryContext
-	order                 []user.OrderOption
-	inters                []Interceptor
-	predicates            []predicate.User
-	withProjects          *ProjectQuery
-	withAPIKeys           *APIKeyQuery
-	withRoles             *RoleQuery
-	withProjectUsers      *UserProjectQuery
-	withUserRoles         *UserRoleQuery
-	loadTotal             []func(context.Context, []*User) error
-	modifiers             []func(*sql.Selector)
-	withNamedProjects     map[string]*ProjectQuery
-	withNamedAPIKeys      map[string]*APIKeyQuery
-	withNamedRoles        map[string]*RoleQuery
-	withNamedProjectUsers map[string]*UserProjectQuery
-	withNamedUserRoles    map[string]*UserRoleQuery
+	ctx                               *QueryContext
+	order                             []user.OrderOption
+	inters                            []Interceptor
+	predicates                        []predicate.User
+	withProjects                      *ProjectQuery
+	withAPIKeys                       *APIKeyQuery
+	withRoles                         *RoleQuery
+	withChannelOverrideTemplates      *ChannelOverrideTemplateQuery
+	withProjectUsers                  *UserProjectQuery
+	withUserRoles                     *UserRoleQuery
+	loadTotal                         []func(context.Context, []*User) error
+	modifiers                         []func(*sql.Selector)
+	withNamedProjects                 map[string]*ProjectQuery
+	withNamedAPIKeys                  map[string]*APIKeyQuery
+	withNamedRoles                    map[string]*RoleQuery
+	withNamedChannelOverrideTemplates map[string]*ChannelOverrideTemplateQuery
+	withNamedProjectUsers             map[string]*UserProjectQuery
+	withNamedUserRoles                map[string]*UserRoleQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -136,6 +139,28 @@ func (_q *UserQuery) QueryRoles() *RoleQuery {
 			sqlgraph.From(user.Table, user.FieldID, selector),
 			sqlgraph.To(role.Table, role.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, user.RolesTable, user.RolesPrimaryKey...),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryChannelOverrideTemplates chains the current query on the "channel_override_templates" edge.
+func (_q *UserQuery) QueryChannelOverrideTemplates() *ChannelOverrideTemplateQuery {
+	query := (&ChannelOverrideTemplateClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(channeloverridetemplate.Table, channeloverridetemplate.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.ChannelOverrideTemplatesTable, user.ChannelOverrideTemplatesColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -374,16 +399,17 @@ func (_q *UserQuery) Clone() *UserQuery {
 		return nil
 	}
 	return &UserQuery{
-		config:           _q.config,
-		ctx:              _q.ctx.Clone(),
-		order:            append([]user.OrderOption{}, _q.order...),
-		inters:           append([]Interceptor{}, _q.inters...),
-		predicates:       append([]predicate.User{}, _q.predicates...),
-		withProjects:     _q.withProjects.Clone(),
-		withAPIKeys:      _q.withAPIKeys.Clone(),
-		withRoles:        _q.withRoles.Clone(),
-		withProjectUsers: _q.withProjectUsers.Clone(),
-		withUserRoles:    _q.withUserRoles.Clone(),
+		config:                       _q.config,
+		ctx:                          _q.ctx.Clone(),
+		order:                        append([]user.OrderOption{}, _q.order...),
+		inters:                       append([]Interceptor{}, _q.inters...),
+		predicates:                   append([]predicate.User{}, _q.predicates...),
+		withProjects:                 _q.withProjects.Clone(),
+		withAPIKeys:                  _q.withAPIKeys.Clone(),
+		withRoles:                    _q.withRoles.Clone(),
+		withChannelOverrideTemplates: _q.withChannelOverrideTemplates.Clone(),
+		withProjectUsers:             _q.withProjectUsers.Clone(),
+		withUserRoles:                _q.withUserRoles.Clone(),
 		// clone intermediate query.
 		sql:       _q.sql.Clone(),
 		path:      _q.path,
@@ -421,6 +447,17 @@ func (_q *UserQuery) WithRoles(opts ...func(*RoleQuery)) *UserQuery {
 		opt(query)
 	}
 	_q.withRoles = query
+	return _q
+}
+
+// WithChannelOverrideTemplates tells the query-builder to eager-load the nodes that are connected to
+// the "channel_override_templates" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithChannelOverrideTemplates(opts ...func(*ChannelOverrideTemplateQuery)) *UserQuery {
+	query := (&ChannelOverrideTemplateClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withChannelOverrideTemplates = query
 	return _q
 }
 
@@ -530,10 +567,11 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = _q.querySpec()
-		loadedTypes = [5]bool{
+		loadedTypes = [6]bool{
 			_q.withProjects != nil,
 			_q.withAPIKeys != nil,
 			_q.withRoles != nil,
+			_q.withChannelOverrideTemplates != nil,
 			_q.withProjectUsers != nil,
 			_q.withUserRoles != nil,
 		}
@@ -580,6 +618,15 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 			return nil, err
 		}
 	}
+	if query := _q.withChannelOverrideTemplates; query != nil {
+		if err := _q.loadChannelOverrideTemplates(ctx, query, nodes,
+			func(n *User) { n.Edges.ChannelOverrideTemplates = []*ChannelOverrideTemplate{} },
+			func(n *User, e *ChannelOverrideTemplate) {
+				n.Edges.ChannelOverrideTemplates = append(n.Edges.ChannelOverrideTemplates, e)
+			}); err != nil {
+			return nil, err
+		}
+	}
 	if query := _q.withProjectUsers; query != nil {
 		if err := _q.loadProjectUsers(ctx, query, nodes,
 			func(n *User) { n.Edges.ProjectUsers = []*UserProject{} },
@@ -612,6 +659,13 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 		if err := _q.loadRoles(ctx, query, nodes,
 			func(n *User) { n.appendNamedRoles(name) },
 			func(n *User, e *Role) { n.appendNamedRoles(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedChannelOverrideTemplates {
+		if err := _q.loadChannelOverrideTemplates(ctx, query, nodes,
+			func(n *User) { n.appendNamedChannelOverrideTemplates(name) },
+			func(n *User, e *ChannelOverrideTemplate) { n.appendNamedChannelOverrideTemplates(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -786,6 +840,36 @@ func (_q *UserQuery) loadRoles(ctx context.Context, query *RoleQuery, nodes []*U
 		for kn := range nodes {
 			assign(kn, n)
 		}
+	}
+	return nil
+}
+func (_q *UserQuery) loadChannelOverrideTemplates(ctx context.Context, query *ChannelOverrideTemplateQuery, nodes []*User, init func(*User), assign func(*User, *ChannelOverrideTemplate)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(channeloverridetemplate.FieldUserID)
+	}
+	query.Where(predicate.ChannelOverrideTemplate(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.ChannelOverrideTemplatesColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
 	}
 	return nil
 }
@@ -982,6 +1066,20 @@ func (_q *UserQuery) WithNamedRoles(name string, opts ...func(*RoleQuery)) *User
 		_q.withNamedRoles = make(map[string]*RoleQuery)
 	}
 	_q.withNamedRoles[name] = query
+	return _q
+}
+
+// WithNamedChannelOverrideTemplates tells the query-builder to eager-load the nodes that are connected to the "channel_override_templates"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithNamedChannelOverrideTemplates(name string, opts ...func(*ChannelOverrideTemplateQuery)) *UserQuery {
+	query := (&ChannelOverrideTemplateClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedChannelOverrideTemplates == nil {
+		_q.withNamedChannelOverrideTemplates = make(map[string]*ChannelOverrideTemplateQuery)
+	}
+	_q.withNamedChannelOverrideTemplates[name] = query
 	return _q
 }
 

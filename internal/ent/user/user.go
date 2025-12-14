@@ -48,6 +48,8 @@ const (
 	EdgeAPIKeys = "api_keys"
 	// EdgeRoles holds the string denoting the roles edge name in mutations.
 	EdgeRoles = "roles"
+	// EdgeChannelOverrideTemplates holds the string denoting the channel_override_templates edge name in mutations.
+	EdgeChannelOverrideTemplates = "channel_override_templates"
 	// EdgeProjectUsers holds the string denoting the project_users edge name in mutations.
 	EdgeProjectUsers = "project_users"
 	// EdgeUserRoles holds the string denoting the user_roles edge name in mutations.
@@ -71,6 +73,13 @@ const (
 	// RolesInverseTable is the table name for the Role entity.
 	// It exists in this package in order to avoid circular dependency with the "role" package.
 	RolesInverseTable = "roles"
+	// ChannelOverrideTemplatesTable is the table that holds the channel_override_templates relation/edge.
+	ChannelOverrideTemplatesTable = "channel_override_templates"
+	// ChannelOverrideTemplatesInverseTable is the table name for the ChannelOverrideTemplate entity.
+	// It exists in this package in order to avoid circular dependency with the "channeloverridetemplate" package.
+	ChannelOverrideTemplatesInverseTable = "channel_override_templates"
+	// ChannelOverrideTemplatesColumn is the table column denoting the channel_override_templates relation/edge.
+	ChannelOverrideTemplatesColumn = "user_id"
 	// ProjectUsersTable is the table that holds the project_users relation/edge.
 	ProjectUsersTable = "user_projects"
 	// ProjectUsersInverseTable is the table name for the UserProject entity.
@@ -283,6 +292,20 @@ func ByRoles(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByChannelOverrideTemplatesCount orders the results by channel_override_templates count.
+func ByChannelOverrideTemplatesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newChannelOverrideTemplatesStep(), opts...)
+	}
+}
+
+// ByChannelOverrideTemplates orders the results by channel_override_templates terms.
+func ByChannelOverrideTemplates(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newChannelOverrideTemplatesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByProjectUsersCount orders the results by project_users count.
 func ByProjectUsersCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -329,6 +352,13 @@ func newRolesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(RolesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2M, false, RolesTable, RolesPrimaryKey...),
+	)
+}
+func newChannelOverrideTemplatesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ChannelOverrideTemplatesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ChannelOverrideTemplatesTable, ChannelOverrideTemplatesColumn),
 	)
 }
 func newProjectUsersStep() *sqlgraph.Step {

@@ -3,6 +3,11 @@
 package gql
 
 import (
+	"bytes"
+	"fmt"
+	"io"
+	"strconv"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
@@ -15,6 +20,18 @@ type AddUserToProjectInput struct {
 	IsOwner   *bool           `json:"isOwner,omitempty"`
 	Scopes    []string        `json:"scopes,omitempty"`
 	RoleIDs   []*objects.GUID `json:"roleIDs,omitempty"`
+}
+
+type ApplyChannelOverrideTemplateInput struct {
+	TemplateID objects.GUID       `json:"templateID"`
+	ChannelIDs []*objects.GUID    `json:"channelIDs"`
+	Mode       *OverrideApplyMode `json:"mode,omitempty"`
+}
+
+type ApplyChannelOverrideTemplatePayload struct {
+	Success  bool           `json:"success"`
+	Updated  int            `json:"updated"`
+	Channels []*ent.Channel `json:"channels"`
 }
 
 type BrandSettings struct {
@@ -199,4 +216,57 @@ type VersionCheck struct {
 	LatestVersion  string `json:"latestVersion"`
 	HasUpdate      bool   `json:"hasUpdate"`
 	ReleaseURL     string `json:"releaseUrl"`
+}
+
+type OverrideApplyMode string
+
+const (
+	OverrideApplyModeMerge OverrideApplyMode = "MERGE"
+)
+
+var AllOverrideApplyMode = []OverrideApplyMode{
+	OverrideApplyModeMerge,
+}
+
+func (e OverrideApplyMode) IsValid() bool {
+	switch e {
+	case OverrideApplyModeMerge:
+		return true
+	}
+	return false
+}
+
+func (e OverrideApplyMode) String() string {
+	return string(e)
+}
+
+func (e *OverrideApplyMode) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = OverrideApplyMode(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid OverrideApplyMode", str)
+	}
+	return nil
+}
+
+func (e OverrideApplyMode) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *OverrideApplyMode) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e OverrideApplyMode) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }

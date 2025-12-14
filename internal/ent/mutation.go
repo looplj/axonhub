@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/predicate"
@@ -39,21 +40,22 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeAPIKey             = "APIKey"
-	TypeChannel            = "Channel"
-	TypeChannelPerformance = "ChannelPerformance"
-	TypeDataStorage        = "DataStorage"
-	TypeProject            = "Project"
-	TypeRequest            = "Request"
-	TypeRequestExecution   = "RequestExecution"
-	TypeRole               = "Role"
-	TypeSystem             = "System"
-	TypeThread             = "Thread"
-	TypeTrace              = "Trace"
-	TypeUsageLog           = "UsageLog"
-	TypeUser               = "User"
-	TypeUserProject        = "UserProject"
-	TypeUserRole           = "UserRole"
+	TypeAPIKey                  = "APIKey"
+	TypeChannel                 = "Channel"
+	TypeChannelOverrideTemplate = "ChannelOverrideTemplate"
+	TypeChannelPerformance      = "ChannelPerformance"
+	TypeDataStorage             = "DataStorage"
+	TypeProject                 = "Project"
+	TypeRequest                 = "Request"
+	TypeRequestExecution        = "RequestExecution"
+	TypeRole                    = "Role"
+	TypeSystem                  = "System"
+	TypeThread                  = "Thread"
+	TypeTrace                   = "Trace"
+	TypeUsageLog                = "UsageLog"
+	TypeUser                    = "User"
+	TypeUserProject             = "UserProject"
+	TypeUserRole                = "UserRole"
 )
 
 // APIKeyMutation represents an operation that mutates the APIKey nodes in the graph.
@@ -2745,6 +2747,892 @@ func (m *ChannelMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown Channel edge %s", name)
+}
+
+// ChannelOverrideTemplateMutation represents an operation that mutates the ChannelOverrideTemplate nodes in the graph.
+type ChannelOverrideTemplateMutation struct {
+	config
+	op                     Op
+	typ                    string
+	id                     *int
+	created_at             *time.Time
+	updated_at             *time.Time
+	deleted_at             *int
+	adddeleted_at          *int
+	name                   *string
+	description            *string
+	channel_type           *channeloverridetemplate.ChannelType
+	override_parameters    *string
+	override_headers       *[]objects.HeaderEntry
+	appendoverride_headers []objects.HeaderEntry
+	clearedFields          map[string]struct{}
+	user                   *int
+	cleareduser            bool
+	done                   bool
+	oldValue               func(context.Context) (*ChannelOverrideTemplate, error)
+	predicates             []predicate.ChannelOverrideTemplate
+}
+
+var _ ent.Mutation = (*ChannelOverrideTemplateMutation)(nil)
+
+// channeloverridetemplateOption allows management of the mutation configuration using functional options.
+type channeloverridetemplateOption func(*ChannelOverrideTemplateMutation)
+
+// newChannelOverrideTemplateMutation creates new mutation for the ChannelOverrideTemplate entity.
+func newChannelOverrideTemplateMutation(c config, op Op, opts ...channeloverridetemplateOption) *ChannelOverrideTemplateMutation {
+	m := &ChannelOverrideTemplateMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeChannelOverrideTemplate,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withChannelOverrideTemplateID sets the ID field of the mutation.
+func withChannelOverrideTemplateID(id int) channeloverridetemplateOption {
+	return func(m *ChannelOverrideTemplateMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ChannelOverrideTemplate
+		)
+		m.oldValue = func(ctx context.Context) (*ChannelOverrideTemplate, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ChannelOverrideTemplate.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withChannelOverrideTemplate sets the old ChannelOverrideTemplate of the mutation.
+func withChannelOverrideTemplate(node *ChannelOverrideTemplate) channeloverridetemplateOption {
+	return func(m *ChannelOverrideTemplateMutation) {
+		m.oldValue = func(context.Context) (*ChannelOverrideTemplate, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ChannelOverrideTemplateMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ChannelOverrideTemplateMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ChannelOverrideTemplateMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ChannelOverrideTemplateMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ChannelOverrideTemplate.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *ChannelOverrideTemplateMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *ChannelOverrideTemplateMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the ChannelOverrideTemplate entity.
+// If the ChannelOverrideTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelOverrideTemplateMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *ChannelOverrideTemplateMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *ChannelOverrideTemplateMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *ChannelOverrideTemplateMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the ChannelOverrideTemplate entity.
+// If the ChannelOverrideTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelOverrideTemplateMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *ChannelOverrideTemplateMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (m *ChannelOverrideTemplateMutation) SetDeletedAt(i int) {
+	m.deleted_at = &i
+	m.adddeleted_at = nil
+}
+
+// DeletedAt returns the value of the "deleted_at" field in the mutation.
+func (m *ChannelOverrideTemplateMutation) DeletedAt() (r int, exists bool) {
+	v := m.deleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeletedAt returns the old "deleted_at" field's value of the ChannelOverrideTemplate entity.
+// If the ChannelOverrideTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelOverrideTemplateMutation) OldDeletedAt(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
+	}
+	return oldValue.DeletedAt, nil
+}
+
+// AddDeletedAt adds i to the "deleted_at" field.
+func (m *ChannelOverrideTemplateMutation) AddDeletedAt(i int) {
+	if m.adddeleted_at != nil {
+		*m.adddeleted_at += i
+	} else {
+		m.adddeleted_at = &i
+	}
+}
+
+// AddedDeletedAt returns the value that was added to the "deleted_at" field in this mutation.
+func (m *ChannelOverrideTemplateMutation) AddedDeletedAt() (r int, exists bool) {
+	v := m.adddeleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetDeletedAt resets all changes to the "deleted_at" field.
+func (m *ChannelOverrideTemplateMutation) ResetDeletedAt() {
+	m.deleted_at = nil
+	m.adddeleted_at = nil
+}
+
+// SetUserID sets the "user_id" field.
+func (m *ChannelOverrideTemplateMutation) SetUserID(i int) {
+	m.user = &i
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *ChannelOverrideTemplateMutation) UserID() (r int, exists bool) {
+	v := m.user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the ChannelOverrideTemplate entity.
+// If the ChannelOverrideTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelOverrideTemplateMutation) OldUserID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *ChannelOverrideTemplateMutation) ResetUserID() {
+	m.user = nil
+}
+
+// SetName sets the "name" field.
+func (m *ChannelOverrideTemplateMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *ChannelOverrideTemplateMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the ChannelOverrideTemplate entity.
+// If the ChannelOverrideTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelOverrideTemplateMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *ChannelOverrideTemplateMutation) ResetName() {
+	m.name = nil
+}
+
+// SetDescription sets the "description" field.
+func (m *ChannelOverrideTemplateMutation) SetDescription(s string) {
+	m.description = &s
+}
+
+// Description returns the value of the "description" field in the mutation.
+func (m *ChannelOverrideTemplateMutation) Description() (r string, exists bool) {
+	v := m.description
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDescription returns the old "description" field's value of the ChannelOverrideTemplate entity.
+// If the ChannelOverrideTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelOverrideTemplateMutation) OldDescription(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDescription is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDescription requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDescription: %w", err)
+	}
+	return oldValue.Description, nil
+}
+
+// ClearDescription clears the value of the "description" field.
+func (m *ChannelOverrideTemplateMutation) ClearDescription() {
+	m.description = nil
+	m.clearedFields[channeloverridetemplate.FieldDescription] = struct{}{}
+}
+
+// DescriptionCleared returns if the "description" field was cleared in this mutation.
+func (m *ChannelOverrideTemplateMutation) DescriptionCleared() bool {
+	_, ok := m.clearedFields[channeloverridetemplate.FieldDescription]
+	return ok
+}
+
+// ResetDescription resets all changes to the "description" field.
+func (m *ChannelOverrideTemplateMutation) ResetDescription() {
+	m.description = nil
+	delete(m.clearedFields, channeloverridetemplate.FieldDescription)
+}
+
+// SetChannelType sets the "channel_type" field.
+func (m *ChannelOverrideTemplateMutation) SetChannelType(ct channeloverridetemplate.ChannelType) {
+	m.channel_type = &ct
+}
+
+// ChannelType returns the value of the "channel_type" field in the mutation.
+func (m *ChannelOverrideTemplateMutation) ChannelType() (r channeloverridetemplate.ChannelType, exists bool) {
+	v := m.channel_type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChannelType returns the old "channel_type" field's value of the ChannelOverrideTemplate entity.
+// If the ChannelOverrideTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelOverrideTemplateMutation) OldChannelType(ctx context.Context) (v channeloverridetemplate.ChannelType, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChannelType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChannelType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChannelType: %w", err)
+	}
+	return oldValue.ChannelType, nil
+}
+
+// ResetChannelType resets all changes to the "channel_type" field.
+func (m *ChannelOverrideTemplateMutation) ResetChannelType() {
+	m.channel_type = nil
+}
+
+// SetOverrideParameters sets the "override_parameters" field.
+func (m *ChannelOverrideTemplateMutation) SetOverrideParameters(s string) {
+	m.override_parameters = &s
+}
+
+// OverrideParameters returns the value of the "override_parameters" field in the mutation.
+func (m *ChannelOverrideTemplateMutation) OverrideParameters() (r string, exists bool) {
+	v := m.override_parameters
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOverrideParameters returns the old "override_parameters" field's value of the ChannelOverrideTemplate entity.
+// If the ChannelOverrideTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelOverrideTemplateMutation) OldOverrideParameters(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOverrideParameters is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOverrideParameters requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOverrideParameters: %w", err)
+	}
+	return oldValue.OverrideParameters, nil
+}
+
+// ResetOverrideParameters resets all changes to the "override_parameters" field.
+func (m *ChannelOverrideTemplateMutation) ResetOverrideParameters() {
+	m.override_parameters = nil
+}
+
+// SetOverrideHeaders sets the "override_headers" field.
+func (m *ChannelOverrideTemplateMutation) SetOverrideHeaders(oe []objects.HeaderEntry) {
+	m.override_headers = &oe
+	m.appendoverride_headers = nil
+}
+
+// OverrideHeaders returns the value of the "override_headers" field in the mutation.
+func (m *ChannelOverrideTemplateMutation) OverrideHeaders() (r []objects.HeaderEntry, exists bool) {
+	v := m.override_headers
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOverrideHeaders returns the old "override_headers" field's value of the ChannelOverrideTemplate entity.
+// If the ChannelOverrideTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelOverrideTemplateMutation) OldOverrideHeaders(ctx context.Context) (v []objects.HeaderEntry, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOverrideHeaders is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOverrideHeaders requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOverrideHeaders: %w", err)
+	}
+	return oldValue.OverrideHeaders, nil
+}
+
+// AppendOverrideHeaders adds oe to the "override_headers" field.
+func (m *ChannelOverrideTemplateMutation) AppendOverrideHeaders(oe []objects.HeaderEntry) {
+	m.appendoverride_headers = append(m.appendoverride_headers, oe...)
+}
+
+// AppendedOverrideHeaders returns the list of values that were appended to the "override_headers" field in this mutation.
+func (m *ChannelOverrideTemplateMutation) AppendedOverrideHeaders() ([]objects.HeaderEntry, bool) {
+	if len(m.appendoverride_headers) == 0 {
+		return nil, false
+	}
+	return m.appendoverride_headers, true
+}
+
+// ResetOverrideHeaders resets all changes to the "override_headers" field.
+func (m *ChannelOverrideTemplateMutation) ResetOverrideHeaders() {
+	m.override_headers = nil
+	m.appendoverride_headers = nil
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (m *ChannelOverrideTemplateMutation) ClearUser() {
+	m.cleareduser = true
+	m.clearedFields[channeloverridetemplate.FieldUserID] = struct{}{}
+}
+
+// UserCleared reports if the "user" edge to the User entity was cleared.
+func (m *ChannelOverrideTemplateMutation) UserCleared() bool {
+	return m.cleareduser
+}
+
+// UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
+func (m *ChannelOverrideTemplateMutation) UserIDs() (ids []int) {
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetUser resets all changes to the "user" edge.
+func (m *ChannelOverrideTemplateMutation) ResetUser() {
+	m.user = nil
+	m.cleareduser = false
+}
+
+// Where appends a list predicates to the ChannelOverrideTemplateMutation builder.
+func (m *ChannelOverrideTemplateMutation) Where(ps ...predicate.ChannelOverrideTemplate) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ChannelOverrideTemplateMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ChannelOverrideTemplateMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ChannelOverrideTemplate, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ChannelOverrideTemplateMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ChannelOverrideTemplateMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ChannelOverrideTemplate).
+func (m *ChannelOverrideTemplateMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ChannelOverrideTemplateMutation) Fields() []string {
+	fields := make([]string, 0, 9)
+	if m.created_at != nil {
+		fields = append(fields, channeloverridetemplate.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, channeloverridetemplate.FieldUpdatedAt)
+	}
+	if m.deleted_at != nil {
+		fields = append(fields, channeloverridetemplate.FieldDeletedAt)
+	}
+	if m.user != nil {
+		fields = append(fields, channeloverridetemplate.FieldUserID)
+	}
+	if m.name != nil {
+		fields = append(fields, channeloverridetemplate.FieldName)
+	}
+	if m.description != nil {
+		fields = append(fields, channeloverridetemplate.FieldDescription)
+	}
+	if m.channel_type != nil {
+		fields = append(fields, channeloverridetemplate.FieldChannelType)
+	}
+	if m.override_parameters != nil {
+		fields = append(fields, channeloverridetemplate.FieldOverrideParameters)
+	}
+	if m.override_headers != nil {
+		fields = append(fields, channeloverridetemplate.FieldOverrideHeaders)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ChannelOverrideTemplateMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case channeloverridetemplate.FieldCreatedAt:
+		return m.CreatedAt()
+	case channeloverridetemplate.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case channeloverridetemplate.FieldDeletedAt:
+		return m.DeletedAt()
+	case channeloverridetemplate.FieldUserID:
+		return m.UserID()
+	case channeloverridetemplate.FieldName:
+		return m.Name()
+	case channeloverridetemplate.FieldDescription:
+		return m.Description()
+	case channeloverridetemplate.FieldChannelType:
+		return m.ChannelType()
+	case channeloverridetemplate.FieldOverrideParameters:
+		return m.OverrideParameters()
+	case channeloverridetemplate.FieldOverrideHeaders:
+		return m.OverrideHeaders()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ChannelOverrideTemplateMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case channeloverridetemplate.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case channeloverridetemplate.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case channeloverridetemplate.FieldDeletedAt:
+		return m.OldDeletedAt(ctx)
+	case channeloverridetemplate.FieldUserID:
+		return m.OldUserID(ctx)
+	case channeloverridetemplate.FieldName:
+		return m.OldName(ctx)
+	case channeloverridetemplate.FieldDescription:
+		return m.OldDescription(ctx)
+	case channeloverridetemplate.FieldChannelType:
+		return m.OldChannelType(ctx)
+	case channeloverridetemplate.FieldOverrideParameters:
+		return m.OldOverrideParameters(ctx)
+	case channeloverridetemplate.FieldOverrideHeaders:
+		return m.OldOverrideHeaders(ctx)
+	}
+	return nil, fmt.Errorf("unknown ChannelOverrideTemplate field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ChannelOverrideTemplateMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case channeloverridetemplate.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case channeloverridetemplate.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case channeloverridetemplate.FieldDeletedAt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeletedAt(v)
+		return nil
+	case channeloverridetemplate.FieldUserID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
+		return nil
+	case channeloverridetemplate.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case channeloverridetemplate.FieldDescription:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDescription(v)
+		return nil
+	case channeloverridetemplate.FieldChannelType:
+		v, ok := value.(channeloverridetemplate.ChannelType)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChannelType(v)
+		return nil
+	case channeloverridetemplate.FieldOverrideParameters:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOverrideParameters(v)
+		return nil
+	case channeloverridetemplate.FieldOverrideHeaders:
+		v, ok := value.([]objects.HeaderEntry)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOverrideHeaders(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ChannelOverrideTemplate field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ChannelOverrideTemplateMutation) AddedFields() []string {
+	var fields []string
+	if m.adddeleted_at != nil {
+		fields = append(fields, channeloverridetemplate.FieldDeletedAt)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ChannelOverrideTemplateMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case channeloverridetemplate.FieldDeletedAt:
+		return m.AddedDeletedAt()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ChannelOverrideTemplateMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case channeloverridetemplate.FieldDeletedAt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddDeletedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ChannelOverrideTemplate numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ChannelOverrideTemplateMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(channeloverridetemplate.FieldDescription) {
+		fields = append(fields, channeloverridetemplate.FieldDescription)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ChannelOverrideTemplateMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ChannelOverrideTemplateMutation) ClearField(name string) error {
+	switch name {
+	case channeloverridetemplate.FieldDescription:
+		m.ClearDescription()
+		return nil
+	}
+	return fmt.Errorf("unknown ChannelOverrideTemplate nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ChannelOverrideTemplateMutation) ResetField(name string) error {
+	switch name {
+	case channeloverridetemplate.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case channeloverridetemplate.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case channeloverridetemplate.FieldDeletedAt:
+		m.ResetDeletedAt()
+		return nil
+	case channeloverridetemplate.FieldUserID:
+		m.ResetUserID()
+		return nil
+	case channeloverridetemplate.FieldName:
+		m.ResetName()
+		return nil
+	case channeloverridetemplate.FieldDescription:
+		m.ResetDescription()
+		return nil
+	case channeloverridetemplate.FieldChannelType:
+		m.ResetChannelType()
+		return nil
+	case channeloverridetemplate.FieldOverrideParameters:
+		m.ResetOverrideParameters()
+		return nil
+	case channeloverridetemplate.FieldOverrideHeaders:
+		m.ResetOverrideHeaders()
+		return nil
+	}
+	return fmt.Errorf("unknown ChannelOverrideTemplate field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ChannelOverrideTemplateMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.user != nil {
+		edges = append(edges, channeloverridetemplate.EdgeUser)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ChannelOverrideTemplateMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case channeloverridetemplate.EdgeUser:
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ChannelOverrideTemplateMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ChannelOverrideTemplateMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ChannelOverrideTemplateMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.cleareduser {
+		edges = append(edges, channeloverridetemplate.EdgeUser)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ChannelOverrideTemplateMutation) EdgeCleared(name string) bool {
+	switch name {
+	case channeloverridetemplate.EdgeUser:
+		return m.cleareduser
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ChannelOverrideTemplateMutation) ClearEdge(name string) error {
+	switch name {
+	case channeloverridetemplate.EdgeUser:
+		m.ClearUser()
+		return nil
+	}
+	return fmt.Errorf("unknown ChannelOverrideTemplate unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ChannelOverrideTemplateMutation) ResetEdge(name string) error {
+	switch name {
+	case channeloverridetemplate.EdgeUser:
+		m.ResetUser()
+		return nil
+	}
+	return fmt.Errorf("unknown ChannelOverrideTemplate edge %s", name)
 }
 
 // ChannelPerformanceMutation represents an operation that mutates the ChannelPerformance nodes in the graph.
@@ -14957,42 +15845,45 @@ func (m *UsageLogMutation) ResetEdge(name string) error {
 // UserMutation represents an operation that mutates the User nodes in the graph.
 type UserMutation struct {
 	config
-	op                   Op
-	typ                  string
-	id                   *int
-	created_at           *time.Time
-	updated_at           *time.Time
-	deleted_at           *int
-	adddeleted_at        *int
-	email                *string
-	status               *user.Status
-	prefer_language      *string
-	password             *string
-	first_name           *string
-	last_name            *string
-	avatar               *string
-	is_owner             *bool
-	scopes               *[]string
-	appendscopes         []string
-	clearedFields        map[string]struct{}
-	projects             map[int]struct{}
-	removedprojects      map[int]struct{}
-	clearedprojects      bool
-	api_keys             map[int]struct{}
-	removedapi_keys      map[int]struct{}
-	clearedapi_keys      bool
-	roles                map[int]struct{}
-	removedroles         map[int]struct{}
-	clearedroles         bool
-	project_users        map[int]struct{}
-	removedproject_users map[int]struct{}
-	clearedproject_users bool
-	user_roles           map[int]struct{}
-	removeduser_roles    map[int]struct{}
-	cleareduser_roles    bool
-	done                 bool
-	oldValue             func(context.Context) (*User, error)
-	predicates           []predicate.User
+	op                                Op
+	typ                               string
+	id                                *int
+	created_at                        *time.Time
+	updated_at                        *time.Time
+	deleted_at                        *int
+	adddeleted_at                     *int
+	email                             *string
+	status                            *user.Status
+	prefer_language                   *string
+	password                          *string
+	first_name                        *string
+	last_name                         *string
+	avatar                            *string
+	is_owner                          *bool
+	scopes                            *[]string
+	appendscopes                      []string
+	clearedFields                     map[string]struct{}
+	projects                          map[int]struct{}
+	removedprojects                   map[int]struct{}
+	clearedprojects                   bool
+	api_keys                          map[int]struct{}
+	removedapi_keys                   map[int]struct{}
+	clearedapi_keys                   bool
+	roles                             map[int]struct{}
+	removedroles                      map[int]struct{}
+	clearedroles                      bool
+	channel_override_templates        map[int]struct{}
+	removedchannel_override_templates map[int]struct{}
+	clearedchannel_override_templates bool
+	project_users                     map[int]struct{}
+	removedproject_users              map[int]struct{}
+	clearedproject_users              bool
+	user_roles                        map[int]struct{}
+	removeduser_roles                 map[int]struct{}
+	cleareduser_roles                 bool
+	done                              bool
+	oldValue                          func(context.Context) (*User, error)
+	predicates                        []predicate.User
 }
 
 var _ ent.Mutation = (*UserMutation)(nil)
@@ -15749,6 +16640,60 @@ func (m *UserMutation) ResetRoles() {
 	m.removedroles = nil
 }
 
+// AddChannelOverrideTemplateIDs adds the "channel_override_templates" edge to the ChannelOverrideTemplate entity by ids.
+func (m *UserMutation) AddChannelOverrideTemplateIDs(ids ...int) {
+	if m.channel_override_templates == nil {
+		m.channel_override_templates = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.channel_override_templates[ids[i]] = struct{}{}
+	}
+}
+
+// ClearChannelOverrideTemplates clears the "channel_override_templates" edge to the ChannelOverrideTemplate entity.
+func (m *UserMutation) ClearChannelOverrideTemplates() {
+	m.clearedchannel_override_templates = true
+}
+
+// ChannelOverrideTemplatesCleared reports if the "channel_override_templates" edge to the ChannelOverrideTemplate entity was cleared.
+func (m *UserMutation) ChannelOverrideTemplatesCleared() bool {
+	return m.clearedchannel_override_templates
+}
+
+// RemoveChannelOverrideTemplateIDs removes the "channel_override_templates" edge to the ChannelOverrideTemplate entity by IDs.
+func (m *UserMutation) RemoveChannelOverrideTemplateIDs(ids ...int) {
+	if m.removedchannel_override_templates == nil {
+		m.removedchannel_override_templates = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.channel_override_templates, ids[i])
+		m.removedchannel_override_templates[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedChannelOverrideTemplates returns the removed IDs of the "channel_override_templates" edge to the ChannelOverrideTemplate entity.
+func (m *UserMutation) RemovedChannelOverrideTemplatesIDs() (ids []int) {
+	for id := range m.removedchannel_override_templates {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ChannelOverrideTemplatesIDs returns the "channel_override_templates" edge IDs in the mutation.
+func (m *UserMutation) ChannelOverrideTemplatesIDs() (ids []int) {
+	for id := range m.channel_override_templates {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetChannelOverrideTemplates resets all changes to the "channel_override_templates" edge.
+func (m *UserMutation) ResetChannelOverrideTemplates() {
+	m.channel_override_templates = nil
+	m.clearedchannel_override_templates = false
+	m.removedchannel_override_templates = nil
+}
+
 // AddProjectUserIDs adds the "project_users" edge to the UserProject entity by ids.
 func (m *UserMutation) AddProjectUserIDs(ids ...int) {
 	if m.project_users == nil {
@@ -16207,7 +17152,7 @@ func (m *UserMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UserMutation) AddedEdges() []string {
-	edges := make([]string, 0, 5)
+	edges := make([]string, 0, 6)
 	if m.projects != nil {
 		edges = append(edges, user.EdgeProjects)
 	}
@@ -16216,6 +17161,9 @@ func (m *UserMutation) AddedEdges() []string {
 	}
 	if m.roles != nil {
 		edges = append(edges, user.EdgeRoles)
+	}
+	if m.channel_override_templates != nil {
+		edges = append(edges, user.EdgeChannelOverrideTemplates)
 	}
 	if m.project_users != nil {
 		edges = append(edges, user.EdgeProjectUsers)
@@ -16248,6 +17196,12 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeChannelOverrideTemplates:
+		ids := make([]ent.Value, 0, len(m.channel_override_templates))
+		for id := range m.channel_override_templates {
+			ids = append(ids, id)
+		}
+		return ids
 	case user.EdgeProjectUsers:
 		ids := make([]ent.Value, 0, len(m.project_users))
 		for id := range m.project_users {
@@ -16266,7 +17220,7 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UserMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 5)
+	edges := make([]string, 0, 6)
 	if m.removedprojects != nil {
 		edges = append(edges, user.EdgeProjects)
 	}
@@ -16275,6 +17229,9 @@ func (m *UserMutation) RemovedEdges() []string {
 	}
 	if m.removedroles != nil {
 		edges = append(edges, user.EdgeRoles)
+	}
+	if m.removedchannel_override_templates != nil {
+		edges = append(edges, user.EdgeChannelOverrideTemplates)
 	}
 	if m.removedproject_users != nil {
 		edges = append(edges, user.EdgeProjectUsers)
@@ -16307,6 +17264,12 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeChannelOverrideTemplates:
+		ids := make([]ent.Value, 0, len(m.removedchannel_override_templates))
+		for id := range m.removedchannel_override_templates {
+			ids = append(ids, id)
+		}
+		return ids
 	case user.EdgeProjectUsers:
 		ids := make([]ent.Value, 0, len(m.removedproject_users))
 		for id := range m.removedproject_users {
@@ -16325,7 +17288,7 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UserMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 5)
+	edges := make([]string, 0, 6)
 	if m.clearedprojects {
 		edges = append(edges, user.EdgeProjects)
 	}
@@ -16334,6 +17297,9 @@ func (m *UserMutation) ClearedEdges() []string {
 	}
 	if m.clearedroles {
 		edges = append(edges, user.EdgeRoles)
+	}
+	if m.clearedchannel_override_templates {
+		edges = append(edges, user.EdgeChannelOverrideTemplates)
 	}
 	if m.clearedproject_users {
 		edges = append(edges, user.EdgeProjectUsers)
@@ -16354,6 +17320,8 @@ func (m *UserMutation) EdgeCleared(name string) bool {
 		return m.clearedapi_keys
 	case user.EdgeRoles:
 		return m.clearedroles
+	case user.EdgeChannelOverrideTemplates:
+		return m.clearedchannel_override_templates
 	case user.EdgeProjectUsers:
 		return m.clearedproject_users
 	case user.EdgeUserRoles:
@@ -16382,6 +17350,9 @@ func (m *UserMutation) ResetEdge(name string) error {
 		return nil
 	case user.EdgeRoles:
 		m.ResetRoles()
+		return nil
+	case user.EdgeChannelOverrideTemplates:
+		m.ResetChannelOverrideTemplates()
 		return nil
 	case user.EdgeProjectUsers:
 		m.ResetProjectUsers()
