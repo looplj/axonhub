@@ -911,6 +911,7 @@
         "test": "测试连接",
         "testing": "测试中...",
         "add": "添加",
+        "batchAdd": "批量添加",
         "addSelected": "添加",
         "confirmSelection": "确定选中",
         "fetchModels": "获取",

@@ -406,6 +406,28 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     }
   }
 
+  const batchAddModels = useCallback(() => {
+    const raw = newModel.trim()
+    if (!raw) return
+
+    const models = raw
+      .split(/[,，]+/)
+      .map((m) => m.trim())
+      .filter((m) => m.length > 0)
+
+    if (models.length === 0) {
+      setNewModel('')
+      return
+    }
+
+    setSupportedModels((prev) => {
+      const combinedModels = new Set([...prev, ...models]);
+      if (combinedModels.size === prev.length) return prev;
+      return [...combinedModels];
+    })
+    setNewModel('')
+  }, [newModel])
+
   const removeModel = (model: string) => {
     setSupportedModels(supportedModels.filter((m) => m !== model))
   }
@@ -963,6 +985,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           )}
                           <Button type='button' onClick={addModel} size='sm'>
                             {t('channels.dialogs.buttons.add')}
+                          </Button>
+                          <Button type='button' onClick={batchAddModels} size='sm' variant='outline'>
+                            {t('channels.dialogs.buttons.batchAdd')}
                           </Button>
                         </div>
 
