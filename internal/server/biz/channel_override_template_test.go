@@ -136,7 +136,7 @@ func TestChannelOverrideTemplateService_UpdateTemplate(t *testing.T) {
 
 	t.Run("update name only", func(t *testing.T) {
 		newName := "Updated Name"
-		updated, err := service.UpdateTemplate(ctx, template.ID, &newName, nil, nil, nil)
+		updated, err := service.UpdateTemplate(ctx, template.ID, &newName, nil, nil, nil, nil)
 
 		require.NoError(t, err)
 		assert.Equal(t, newName, updated.Name)
@@ -145,7 +145,7 @@ func TestChannelOverrideTemplateService_UpdateTemplate(t *testing.T) {
 
 	t.Run("update parameters", func(t *testing.T) {
 		newParams := `{"max_tokens": 1000}`
-		updated, err := service.UpdateTemplate(ctx, template.ID, nil, nil, &newParams, nil)
+		updated, err := service.UpdateTemplate(ctx, template.ID, nil, nil, &newParams, nil, nil)
 
 		require.NoError(t, err)
 		assert.Equal(t, newParams, updated.OverrideParameters)
@@ -153,7 +153,7 @@ func TestChannelOverrideTemplateService_UpdateTemplate(t *testing.T) {
 
 	t.Run("update headers", func(t *testing.T) {
 		newHeaders := []objects.HeaderEntry{{Key: "Authorization", Value: "Bearer token"}}
-		updated, err := service.UpdateTemplate(ctx, template.ID, nil, nil, nil, newHeaders)
+		updated, err := service.UpdateTemplate(ctx, template.ID, nil, nil, nil, newHeaders, nil)
 
 		require.NoError(t, err)
 		assert.Equal(t, newHeaders, updated.OverrideHeaders)
@@ -161,7 +161,7 @@ func TestChannelOverrideTemplateService_UpdateTemplate(t *testing.T) {
 
 	t.Run("reject invalid parameters on update", func(t *testing.T) {
 		invalidParams := `{invalid}`
-		_, err := service.UpdateTemplate(ctx, template.ID, nil, nil, &invalidParams, nil)
+		_, err := service.UpdateTemplate(ctx, template.ID, nil, nil, &invalidParams, nil, nil)
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid override parameters")
