@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
-	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/objects"
@@ -37,35 +37,46 @@ func TestChannelOverrideTemplateService_CreateTemplate(t *testing.T) {
 			{Key: "Authorization", Value: "Bearer token"},
 		}
 		params := `{"temperature": 0.7}`
+		description := "Test description"
+
+		input := ent.CreateChannelOverrideTemplateInput{
+			Name:               "Test Template",
+			Description:        &description,
+			ChannelType:        channel.TypeOpenai.String(),
+			OverrideParameters: &params,
+			OverrideHeaders:    headers,
+		}
 
 		template, err := service.CreateTemplate(
 			ctx,
 			user.ID,
-			"Test Template",
-			"Test description",
-			string(channel.TypeOpenai),
-			params,
-			headers,
+			input,
 		)
 
 		require.NoError(t, err)
 		assert.Equal(t, "Test Template", template.Name)
 		assert.Equal(t, "Test description", template.Description)
-		assert.Equal(t, channeloverridetemplate.ChannelTypeOpenai, template.ChannelType)
+		assert.Equal(t, channel.TypeOpenai.String(), template.ChannelType)
 		assert.Equal(t, params, template.OverrideParameters)
 		assert.Equal(t, headers, template.OverrideHeaders)
 		assert.Equal(t, user.ID, template.UserID)
 	})
 
 	t.Run("reject invalid parameters", func(t *testing.T) {
+		params := `{invalid}`
+
+		input := ent.CreateChannelOverrideTemplateInput{
+			Name:               "Invalid Params Template",
+			Description:        nil,
+			ChannelType:        channel.TypeOpenai.String(),
+			OverrideParameters: &params,
+			OverrideHeaders:    nil,
+		}
+
 		_, err := service.CreateTemplate(
 			ctx,
 			user.ID,
-			"Invalid Params Template",
-			"",
-			string(channel.TypeOpenai),
-			`{invalid}`,
-			nil,
+			input,
 		)
 
 		assert.Error(t, err)
@@ -73,14 +84,20 @@ func TestChannelOverrideTemplateService_CreateTemplate(t *testing.T) {
 	})
 
 	t.Run("reject stream parameter", func(t *testing.T) {
+		params := `{"stream": true}`
+
+		input := ent.CreateChannelOverrideTemplateInput{
+			Name:               "Stream Template",
+			Description:        nil,
+			ChannelType:        channel.TypeOpenai.String(),
+			OverrideParameters: &params,
+			OverrideHeaders:    nil,
+		}
+
 		_, err := service.CreateTemplate(
 			ctx,
 			user.ID,
-			"Stream Template",
-			"",
-			string(channel.TypeOpenai),
-			`{"stream": true}`,
-			nil,
+			input,
 		)
 
 		assert.Error(t, err)
@@ -93,14 +110,18 @@ func TestChannelOverrideTemplateService_CreateTemplate(t *testing.T) {
 			{Key: "authorization", Value: "Bearer token2"}, // duplicate
 		}
 
+		input := ent.CreateChannelOverrideTemplateInput{
+			Name:               "Duplicate Headers Template",
+			Description:        nil,
+			ChannelType:        channel.TypeOpenai.String(),
+			OverrideParameters: nil,
+			OverrideHeaders:    headers,
+		}
+
 		_, err := service.CreateTemplate(
 			ctx,
 			user.ID,
-			"Duplicate Headers Template",
-			"",
-			string(channel.TypeOpenai),
-			"{}",
-			headers,
+			input,
 		)
 
 		assert.Error(t, err)
@@ -129,14 +150,17 @@ func TestChannelOverrideTemplateService_UpdateTemplate(t *testing.T) {
 		SetUserID(user.ID).
 		SetName("Original Name").
 		SetDescription("Original description").
-		SetChannelType(channeloverridetemplate.ChannelTypeOpenai).
+		SetChannelType(string(channel.TypeOpenai)).
 		SetOverrideParameters(`{"temperature": 0.7}`).
 		SetOverrideHeaders([]objects.HeaderEntry{{Key: "X-API-Key", Value: "key1"}}).
 		SaveX(ctx)
 
 	t.Run("update name only", func(t *testing.T) {
 		newName := "Updated Name"
-		updated, err := service.UpdateTemplate(ctx, template.ID, &newName, nil, nil, nil, nil)
+		input := ent.UpdateChannelOverrideTemplateInput{
+			Name: &newName,
+		}
+		updated, err := service.UpdateTemplate(ctx, template.ID, input)
 
 		require.NoError(t, err)
 		assert.Equal(t, newName, updated.Name)
@@ -145,7 +169,10 @@ func TestChannelOverrideTemplateService_UpdateTemplate(t *testing.T) {
 
 	t.Run("update parameters", func(t *testing.T) {
 		newParams := `{"max_tokens": 1000}`
-		updated, err := service.UpdateTemplate(ctx, template.ID, nil, nil, &newParams, nil, nil)
+		input := ent.UpdateChannelOverrideTemplateInput{
+			OverrideParameters: &newParams,
+		}
+		updated, err := service.UpdateTemplate(ctx, template.ID, input)
 
 		require.NoError(t, err)
 		assert.Equal(t, newParams, updated.OverrideParameters)
@@ -153,7 +180,10 @@ func TestChannelOverrideTemplateService_UpdateTemplate(t *testing.T) {
 
 	t.Run("update headers", func(t *testing.T) {
 		newHeaders := []objects.HeaderEntry{{Key: "Authorization", Value: "Bearer token"}}
-		updated, err := service.UpdateTemplate(ctx, template.ID, nil, nil, nil, newHeaders, nil)
+		input := ent.UpdateChannelOverrideTemplateInput{
+			OverrideHeaders: newHeaders,
+		}
+		updated, err := service.UpdateTemplate(ctx, template.ID, input)
 
 		require.NoError(t, err)
 		assert.Equal(t, newHeaders, updated.OverrideHeaders)
@@ -161,7 +191,10 @@ func TestChannelOverrideTemplateService_UpdateTemplate(t *testing.T) {
 
 	t.Run("reject invalid parameters on update", func(t *testing.T) {
 		invalidParams := `{invalid}`
-		_, err := service.UpdateTemplate(ctx, template.ID, nil, nil, &invalidParams, nil, nil)
+		input := ent.UpdateChannelOverrideTemplateInput{
+			OverrideParameters: &invalidParams,
+		}
+		_, err := service.UpdateTemplate(ctx, template.ID, input)
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid override parameters")
@@ -188,7 +221,7 @@ func TestChannelOverrideTemplateService_ApplyTemplate(t *testing.T) {
 	template := client.ChannelOverrideTemplate.Create().
 		SetUserID(user.ID).
 		SetName("Test Template").
-		SetChannelType(channeloverridetemplate.ChannelTypeOpenai).
+		SetChannelType(channel.TypeOpenai.String()).
 		SetOverrideParameters(`{"temperature": 0.9, "max_tokens": 2000}`).
 		SetOverrideHeaders([]objects.HeaderEntry{
 			{Key: "X-Custom-Header", Value: "custom-value"},
@@ -310,7 +343,7 @@ func TestChannelOverrideTemplateService_DeleteTemplate(t *testing.T) {
 	template := client.ChannelOverrideTemplate.Create().
 		SetUserID(user.ID).
 		SetName("Template to Delete").
-		SetChannelType(channeloverridetemplate.ChannelTypeOpenai).
+		SetChannelType(channel.TypeOpenai.String()).
 		SaveX(ctx)
 
 	err := service.DeleteTemplate(ctx, template.ID)
@@ -341,19 +374,19 @@ func TestChannelOverrideTemplateService_QueryTemplates(t *testing.T) {
 	client.ChannelOverrideTemplate.Create().
 		SetUserID(user.ID).
 		SetName("OpenAI Template 1").
-		SetChannelType(channeloverridetemplate.ChannelTypeOpenai).
+		SetChannelType(channel.TypeOpenai.String()).
 		SaveX(ctx)
 
 	client.ChannelOverrideTemplate.Create().
 		SetUserID(user.ID).
 		SetName("OpenAI Template 2").
-		SetChannelType(channeloverridetemplate.ChannelTypeOpenai).
+		SetChannelType(channel.TypeOpenai.String()).
 		SaveX(ctx)
 
 	client.ChannelOverrideTemplate.Create().
 		SetUserID(user.ID).
 		SetName("Anthropic Template").
-		SetChannelType(channeloverridetemplate.ChannelTypeAnthropic).
+		SetChannelType(channel.TypeAnthropic.String()).
 		SaveX(ctx)
 
 	t.Run("query all templates", func(t *testing.T) {

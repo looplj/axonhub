@@ -4,7 +4,6 @@ package ent
 
 import (
 	"github.com/looplj/axonhub/internal/ent/channel"
-	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
@@ -204,7 +203,7 @@ func (c *ChannelUpdateOne) SetInput(i UpdateChannelInput) *ChannelUpdateOne {
 type CreateChannelOverrideTemplateInput struct {
 	Name               string
 	Description        *string
-	ChannelType        channeloverridetemplate.ChannelType
+	ChannelType        string
 	OverrideParameters *string
 	OverrideHeaders    []objects.HeaderEntry
 }
@@ -235,7 +234,7 @@ type UpdateChannelOverrideTemplateInput struct {
 	Name                  *string
 	ClearDescription      bool
 	Description           *string
-	ChannelType           *channeloverridetemplate.ChannelType
+	ChannelType           *string
 	OverrideParameters    *string
 	OverrideHeaders       []objects.HeaderEntry
 	AppendOverrideHeaders []objects.HeaderEntry

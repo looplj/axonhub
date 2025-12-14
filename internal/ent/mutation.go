@@ -2761,7 +2761,7 @@ type ChannelOverrideTemplateMutation struct {
 	adddeleted_at          *int
 	name                   *string
 	description            *string
-	channel_type           *channeloverridetemplate.ChannelType
+	channel_type           *string
 	override_parameters    *string
 	override_headers       *[]objects.HeaderEntry
 	appendoverride_headers []objects.HeaderEntry
@@ -3121,12 +3121,12 @@ func (m *ChannelOverrideTemplateMutation) ResetDescription() {
 }
 
 // SetChannelType sets the "channel_type" field.
-func (m *ChannelOverrideTemplateMutation) SetChannelType(ct channeloverridetemplate.ChannelType) {
-	m.channel_type = &ct
+func (m *ChannelOverrideTemplateMutation) SetChannelType(s string) {
+	m.channel_type = &s
 }
 
 // ChannelType returns the value of the "channel_type" field in the mutation.
-func (m *ChannelOverrideTemplateMutation) ChannelType() (r channeloverridetemplate.ChannelType, exists bool) {
+func (m *ChannelOverrideTemplateMutation) ChannelType() (r string, exists bool) {
 	v := m.channel_type
 	if v == nil {
 		return
@@ -3137,7 +3137,7 @@ func (m *ChannelOverrideTemplateMutation) ChannelType() (r channeloverridetempla
 // OldChannelType returns the old "channel_type" field's value of the ChannelOverrideTemplate entity.
 // If the ChannelOverrideTemplate object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ChannelOverrideTemplateMutation) OldChannelType(ctx context.Context) (v channeloverridetemplate.ChannelType, err error) {
+func (m *ChannelOverrideTemplateMutation) OldChannelType(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldChannelType is only allowed on UpdateOne operations")
 	}
@@ -3437,7 +3437,7 @@ func (m *ChannelOverrideTemplateMutation) SetField(name string, value ent.Value)
 		m.SetDescription(v)
 		return nil
 	case channeloverridetemplate.FieldChannelType:
-		v, ok := value.(channeloverridetemplate.ChannelType)
+		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}

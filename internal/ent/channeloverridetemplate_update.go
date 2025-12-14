@@ -93,13 +93,13 @@ func (_u *ChannelOverrideTemplateUpdate) ClearDescription() *ChannelOverrideTemp
 }
 
 // SetChannelType sets the "channel_type" field.
-func (_u *ChannelOverrideTemplateUpdate) SetChannelType(v channeloverridetemplate.ChannelType) *ChannelOverrideTemplateUpdate {
+func (_u *ChannelOverrideTemplateUpdate) SetChannelType(v string) *ChannelOverrideTemplateUpdate {
 	_u.mutation.SetChannelType(v)
 	return _u
 }
 
 // SetNillableChannelType sets the "channel_type" field if the given value is not nil.
-func (_u *ChannelOverrideTemplateUpdate) SetNillableChannelType(v *channeloverridetemplate.ChannelType) *ChannelOverrideTemplateUpdate {
+func (_u *ChannelOverrideTemplateUpdate) SetNillableChannelType(v *string) *ChannelOverrideTemplateUpdate {
 	if v != nil {
 		_u.SetChannelType(*v)
 	}
@@ -186,11 +186,6 @@ func (_u *ChannelOverrideTemplateUpdate) check() error {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "ChannelOverrideTemplate.name": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.ChannelType(); ok {
-		if err := channeloverridetemplate.ChannelTypeValidator(v); err != nil {
-			return &ValidationError{Name: "channel_type", err: fmt.Errorf(`ent: validator failed for field "ChannelOverrideTemplate.channel_type": %w`, err)}
-		}
-	}
 	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "ChannelOverrideTemplate.user"`)
 	}
@@ -234,7 +229,7 @@ func (_u *ChannelOverrideTemplateUpdate) sqlSave(ctx context.Context) (_node int
 		_spec.ClearField(channeloverridetemplate.FieldDescription, field.TypeString)
 	}
 	if value, ok := _u.mutation.ChannelType(); ok {
-		_spec.SetField(channeloverridetemplate.FieldChannelType, field.TypeEnum, value)
+		_spec.SetField(channeloverridetemplate.FieldChannelType, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.OverrideParameters(); ok {
 		_spec.SetField(channeloverridetemplate.FieldOverrideParameters, field.TypeString, value)
@@ -331,13 +326,13 @@ func (_u *ChannelOverrideTemplateUpdateOne) ClearDescription() *ChannelOverrideT
 }
 
 // SetChannelType sets the "channel_type" field.
-func (_u *ChannelOverrideTemplateUpdateOne) SetChannelType(v channeloverridetemplate.ChannelType) *ChannelOverrideTemplateUpdateOne {
+func (_u *ChannelOverrideTemplateUpdateOne) SetChannelType(v string) *ChannelOverrideTemplateUpdateOne {
 	_u.mutation.SetChannelType(v)
 	return _u
 }
 
 // SetNillableChannelType sets the "channel_type" field if the given value is not nil.
-func (_u *ChannelOverrideTemplateUpdateOne) SetNillableChannelType(v *channeloverridetemplate.ChannelType) *ChannelOverrideTemplateUpdateOne {
+func (_u *ChannelOverrideTemplateUpdateOne) SetNillableChannelType(v *string) *ChannelOverrideTemplateUpdateOne {
 	if v != nil {
 		_u.SetChannelType(*v)
 	}
@@ -437,11 +432,6 @@ func (_u *ChannelOverrideTemplateUpdateOne) check() error {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "ChannelOverrideTemplate.name": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.ChannelType(); ok {
-		if err := channeloverridetemplate.ChannelTypeValidator(v); err != nil {
-			return &ValidationError{Name: "channel_type", err: fmt.Errorf(`ent: validator failed for field "ChannelOverrideTemplate.channel_type": %w`, err)}
-		}
-	}
 	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "ChannelOverrideTemplate.user"`)
 	}
@@ -502,7 +492,7 @@ func (_u *ChannelOverrideTemplateUpdateOne) sqlSave(ctx context.Context) (_node 
 		_spec.ClearField(channeloverridetemplate.FieldDescription, field.TypeString)
 	}
 	if value, ok := _u.mutation.ChannelType(); ok {
-		_spec.SetField(channeloverridetemplate.FieldChannelType, field.TypeEnum, value)
+		_spec.SetField(channeloverridetemplate.FieldChannelType, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.OverrideParameters(); ok {
 		_spec.SetField(channeloverridetemplate.FieldOverrideParameters, field.TypeString, value)

@@ -33,7 +33,7 @@ type ChannelOverrideTemplate struct {
 	// Template description
 	Description string `json:"description,omitempty"`
 	// Channel type this template applies to
-	ChannelType channeloverridetemplate.ChannelType `json:"channel_type,omitempty"`
+	ChannelType string `json:"channel_type,omitempty"`
 	// Override request body parameters as JSON string
 	OverrideParameters string `json:"override_parameters,omitempty"`
 	// Override request headers
@@ -140,7 +140,7 @@ func (_m *ChannelOverrideTemplate) assignValues(columns []string, values []any) 
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field channel_type", values[i])
 			} else if value.Valid {
-				_m.ChannelType = channeloverridetemplate.ChannelType(value.String)
+				_m.ChannelType = value.String
 			}
 		case channeloverridetemplate.FieldOverrideParameters:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -216,7 +216,7 @@ func (_m *ChannelOverrideTemplate) String() string {
 	builder.WriteString(_m.Description)
 	builder.WriteString(", ")
 	builder.WriteString("channel_type=")
-	builder.WriteString(fmt.Sprintf("%v", _m.ChannelType))
+	builder.WriteString(_m.ChannelType)
 	builder.WriteString(", ")
 	builder.WriteString("override_parameters=")
 	builder.WriteString(_m.OverrideParameters)

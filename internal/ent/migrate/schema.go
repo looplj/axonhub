@@ -99,7 +99,7 @@ var (
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "name", Type: field.TypeString},
 		{Name: "description", Type: field.TypeString, Nullable: true},
-		{Name: "channel_type", Type: field.TypeEnum, Enums: []string{"openai", "vercel", "anthropic", "anthropic_aws", "anthropic_gcp", "gemini_openai", "gemini", "deepseek", "deepseek_anthropic", "doubao", "doubao_anthropic", "moonshot", "moonshot_anthropic", "zhipu", "zai", "zhipu_anthropic", "zai_anthropic", "anthropic_fake", "openai_fake", "openrouter", "xai", "ppio", "siliconflow", "volcengine", "longcat", "longcat_anthropic", "minimax", "minimax_anthropic", "aihubmix", "burncloud", "modelscope", "bailian"}},
+		{Name: "channel_type", Type: field.TypeString},
 		{Name: "override_parameters", Type: field.TypeString, Default: "{}"},
 		{Name: "override_headers", Type: field.TypeJSON},
 		{Name: "user_id", Type: field.TypeInt},

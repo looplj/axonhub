@@ -1,11 +1,9 @@
 import { Cross2Icon } from '@radix-ui/react-icons'
 import { Table } from '@tanstack/react-table'
-import { IconArchive, IconBan, IconCheck, IconTrash, IconTemplate } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter'
-import { useChannels } from '../context/channels-context'
 import { CHANNEL_CONFIGS } from '../data/config_channels'
 import { useAllChannelTags } from '../data/channels'
 import { useQueryModels } from '@/gql/models'
@@ -29,12 +27,8 @@ export function DataTableToolbar<TData>({
   onExitErrorOnlyMode,
 }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation()
-  const { setOpen } = useChannels()
   const tableState = table.getState()
-  const selectedRows = table.getFilteredSelectedRowModel().rows
-  const selectedCount = externalSelectedCount ?? selectedRows.length
   const isFiltered = externalIsFiltered ?? tableState.columnFilters.length > 0
-  const hasSelectedRows = selectedCount > 0
 
   // Get all channel tags from GraphQL
   const { data: allTags = [] } = useAllChannelTags()
@@ -120,55 +114,6 @@ export function DataTableToolbar<TData>({
           >
             {t('channels.errorBanner.exitErrorOnlyButton')}
           </Button>
-        )}
-        {hasSelectedRows && (
-          <>
-            <Button
-              variant='outline'
-              size='sm'
-              onClick={() => setOpen('bulkApplyTemplate')}
-              className='h-8 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white'
-            >
-              <IconTemplate className='mr-2 h-4 w-4' />
-              {t('channels.templates.bulk.applyButton')} ({selectedCount})
-            </Button>
-            <Button
-              variant='outline'
-              size='sm'
-              onClick={() => setOpen('bulkEnable')}
-              className='h-8 border-green-600 text-green-600 hover:bg-green-600 hover:text-white'
-            >
-              <IconCheck className='mr-2 h-4 w-4' />
-              {t('common.buttons.enable')} ({selectedCount})
-            </Button>
-            <Button
-              variant='outline'
-              size='sm'
-              onClick={() => setOpen('bulkDisable')}
-              className='h-8 border-amber-600 text-amber-600 hover:bg-amber-600 hover:text-white'
-            >
-              <IconBan className='mr-2 h-4 w-4' />
-              {t('common.buttons.disable')} ({selectedCount})
-            </Button>
-            <Button
-              variant='outline'
-              size='sm'
-              onClick={() => setOpen('bulkArchive')}
-              className='h-8 border-orange-600 text-orange-600 hover:bg-orange-600 hover:text-white'
-            >
-              <IconArchive className='mr-2 h-4 w-4' />
-              {t('common.buttons.archive')} ({selectedCount})
-            </Button>
-            <Button
-              variant='outline'
-              size='sm'
-              onClick={() => setOpen('bulkDelete')}
-              className='h-8 border-red-600 text-red-600 hover:bg-red-600 hover:text-white'
-            >
-              <IconTrash className='mr-2 h-4 w-4' />
-              {t('common.buttons.delete')} ({selectedCount})
-            </Button>
-          </>
         )}
       </div>
       {/* <DataTableViewOptions table={table} /> */}

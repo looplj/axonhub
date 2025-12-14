@@ -3,9 +3,6 @@
 package channeloverridetemplate
 
 import (
-	"fmt"
-	"io"
-	"strconv"
 	"time"
 
 	"entgo.io/ent"
@@ -99,59 +96,6 @@ var (
 	DefaultOverrideHeaders []objects.HeaderEntry
 )
 
-// ChannelType defines the type for the "channel_type" enum field.
-type ChannelType string
-
-// ChannelType values.
-const (
-	ChannelTypeOpenai            ChannelType = "openai"
-	ChannelTypeVercel            ChannelType = "vercel"
-	ChannelTypeAnthropic         ChannelType = "anthropic"
-	ChannelTypeAnthropicAWS      ChannelType = "anthropic_aws"
-	ChannelTypeAnthropicGcp      ChannelType = "anthropic_gcp"
-	ChannelTypeGeminiOpenai      ChannelType = "gemini_openai"
-	ChannelTypeGemini            ChannelType = "gemini"
-	ChannelTypeDeepseek          ChannelType = "deepseek"
-	ChannelTypeDeepseekAnthropic ChannelType = "deepseek_anthropic"
-	ChannelTypeDoubao            ChannelType = "doubao"
-	ChannelTypeDoubaoAnthropic   ChannelType = "doubao_anthropic"
-	ChannelTypeMoonshot          ChannelType = "moonshot"
-	ChannelTypeMoonshotAnthropic ChannelType = "moonshot_anthropic"
-	ChannelTypeZhipu             ChannelType = "zhipu"
-	ChannelTypeZai               ChannelType = "zai"
-	ChannelTypeZhipuAnthropic    ChannelType = "zhipu_anthropic"
-	ChannelTypeZaiAnthropic      ChannelType = "zai_anthropic"
-	ChannelTypeAnthropicFake     ChannelType = "anthropic_fake"
-	ChannelTypeOpenaiFake        ChannelType = "openai_fake"
-	ChannelTypeOpenrouter        ChannelType = "openrouter"
-	ChannelTypeXai               ChannelType = "xai"
-	ChannelTypePpio              ChannelType = "ppio"
-	ChannelTypeSiliconflow       ChannelType = "siliconflow"
-	ChannelTypeVolcengine        ChannelType = "volcengine"
-	ChannelTypeLongcat           ChannelType = "longcat"
-	ChannelTypeLongcatAnthropic  ChannelType = "longcat_anthropic"
-	ChannelTypeMinimax           ChannelType = "minimax"
-	ChannelTypeMinimaxAnthropic  ChannelType = "minimax_anthropic"
-	ChannelTypeAihubmix          ChannelType = "aihubmix"
-	ChannelTypeBurncloud         ChannelType = "burncloud"
-	ChannelTypeModelscope        ChannelType = "modelscope"
-	ChannelTypeBailian           ChannelType = "bailian"
-)
-
-func (ct ChannelType) String() string {
-	return string(ct)
-}
-
-// ChannelTypeValidator is a validator for the "channel_type" field enum values. It is called by the builders before save.
-func ChannelTypeValidator(ct ChannelType) error {
-	switch ct {
-	case ChannelTypeOpenai, ChannelTypeVercel, ChannelTypeAnthropic, ChannelTypeAnthropicAWS, ChannelTypeAnthropicGcp, ChannelTypeGeminiOpenai, ChannelTypeGemini, ChannelTypeDeepseek, ChannelTypeDeepseekAnthropic, ChannelTypeDoubao, ChannelTypeDoubaoAnthropic, ChannelTypeMoonshot, ChannelTypeMoonshotAnthropic, ChannelTypeZhipu, ChannelTypeZai, ChannelTypeZhipuAnthropic, ChannelTypeZaiAnthropic, ChannelTypeAnthropicFake, ChannelTypeOpenaiFake, ChannelTypeOpenrouter, ChannelTypeXai, ChannelTypePpio, ChannelTypeSiliconflow, ChannelTypeVolcengine, ChannelTypeLongcat, ChannelTypeLongcatAnthropic, ChannelTypeMinimax, ChannelTypeMinimaxAnthropic, ChannelTypeAihubmix, ChannelTypeBurncloud, ChannelTypeModelscope, ChannelTypeBailian:
-		return nil
-	default:
-		return fmt.Errorf("channeloverridetemplate: invalid enum value for channel_type field: %q", ct)
-	}
-}
-
 // OrderOption defines the ordering options for the ChannelOverrideTemplate queries.
 type OrderOption func(*sql.Selector)
 
@@ -212,22 +156,4 @@ func newUserStep() *sqlgraph.Step {
 		sqlgraph.To(UserInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, UserTable, UserColumn),
 	)
-}
-
-// MarshalGQL implements graphql.Marshaler interface.
-func (e ChannelType) MarshalGQL(w io.Writer) {
-	io.WriteString(w, strconv.Quote(e.String()))
-}
-
-// UnmarshalGQL implements graphql.Unmarshaler interface.
-func (e *ChannelType) UnmarshalGQL(val interface{}) error {
-	str, ok := val.(string)
-	if !ok {
-		return fmt.Errorf("enum %T must be a string", val)
-	}
-	*e = ChannelType(str)
-	if err := ChannelTypeValidator(*e); err != nil {
-		return fmt.Errorf("%s is not a valid ChannelType", str)
-	}
-	return nil
 }

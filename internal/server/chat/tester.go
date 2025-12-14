@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/samber/lo"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/pipeline"
@@ -67,16 +68,17 @@ func (processor *TestChannelProcessor) TestChannel(
 	modelID *string,
 	proxy *objects.ProxyConfig,
 ) (*TestChannelResult, error) {
+	inbound := openai.NewInboundTransformer()
 	// Create ChatCompletionProcessor for this test request
 	chatProcessor := &ChatCompletionProcessor{
 		channelSelector: NewSpecifiedChannelSelector(processor.channelService, channelID),
-		Inbound:         openai.NewInboundTransformer(),
 		RequestService:  processor.requestService,
 		ChannelService:  processor.channelService,
 		PipelineFactory: pipeline.NewFactory(processor.httpClient),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
+		Inbound:            inbound,
 		SystemService:      processor.systemService,
 		UsageLogService:    processor.usageLogService,
 		proxy:              proxy,
@@ -130,13 +132,16 @@ func (processor *TestChannelProcessor) TestChannel(
 	})
 
 	latency := time.Since(startTime).Seconds()
+	rawErr := inbound.TransformError(ctx, err)
+	message := gjson.GetBytes(rawErr.Body, "error.message").String()
 
+	//nolint:nilerr // Checked.
 	if err != nil {
 		return &TestChannelResult{
 			Latency: latency,
 			Success: false,
 			Message: lo.ToPtr(""),
-			Error:   lo.ToPtr(err.Error()),
+			Error:   lo.ToPtr(message),
 		}, nil
 	}
 

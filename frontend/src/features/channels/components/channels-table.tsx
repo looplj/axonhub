@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import { IconArchive, IconBan, IconCheck, IconTrash, IconTemplate, IconX } from '@tabler/icons-react'
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -22,6 +23,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { ServerSidePagination } from '@/components/server-side-pagination'
 import { formatDuration } from '@/utils/format-duration'
+import { Button } from '@/components/ui/button'
 import { useChannels } from '../context/channels-context'
 import { Channel, ChannelConnection } from '../data/schema'
 import { CHANNEL_CONFIGS } from '../data/config_channels'
@@ -88,7 +90,7 @@ export function ChannelsTable({
   onModelFilterChange,
 }: DataTableProps) {
   const { t } = useTranslation()
-  const { setSelectedChannels, setResetRowSelection } = useChannels()
+  const { setSelectedChannels, setResetRowSelection, setOpen } = useChannels()
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const [expanded, setExpanded] = useState<ExpandedState>({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
@@ -439,6 +441,75 @@ export function ChannelsTable({
           onPageSizeChange={onPageSizeChange}
         />
       </div>
+      {/* Floating Bulk Actions Bar */}
+      {selectedCount > 0 && (
+        <div className='fixed bottom-6 left-1/2 -translate-x-1/2 z-50'>
+          <div className='flex items-center gap-2 rounded-lg border bg-background px-4 py-2 shadow-lg'>
+            <Button
+              variant='ghost'
+              size='icon'
+              className='h-8 w-8'
+              onClick={() => setRowSelection({})}
+            >
+              <IconX className='h-4 w-4' />
+            </Button>
+            <div className='flex items-center gap-1.5 px-2'>
+              <span className='flex h-6 min-w-6 items-center justify-center rounded bg-primary px-1.5 text-xs font-medium text-primary-foreground'>
+                {selectedCount}
+              </span>
+              <span className='text-sm text-muted-foreground'>
+                {t('common.selected')}
+              </span>
+            </div>
+            <div className='mx-2 h-6 w-px bg-border' />
+            <Button
+              variant='ghost'
+              size='icon'
+              className='h-8 w-8 text-blue-600 hover:bg-blue-100 hover:text-blue-700'
+              onClick={() => setOpen('bulkApplyTemplate')}
+              title={t('channels.templates.bulk.applyButton')}
+            >
+              <IconTemplate className='h-4 w-4' />
+            </Button>
+            <Button
+              variant='ghost'
+              size='icon'
+              className='h-8 w-8 text-green-600 hover:bg-green-100 hover:text-green-700'
+              onClick={() => setOpen('bulkEnable')}
+              title={t('common.buttons.enable')}
+            >
+              <IconCheck className='h-4 w-4' />
+            </Button>
+            <Button
+              variant='ghost'
+              size='icon'
+              className='h-8 w-8 text-amber-600 hover:bg-amber-100 hover:text-amber-700'
+              onClick={() => setOpen('bulkDisable')}
+              title={t('common.buttons.disable')}
+            >
+              <IconBan className='h-4 w-4' />
+            </Button>
+            <Button
+              variant='ghost'
+              size='icon'
+              className='h-8 w-8 text-orange-600 hover:bg-orange-100 hover:text-orange-700'
+              onClick={() => setOpen('bulkArchive')}
+              title={t('common.buttons.archive')}
+            >
+              <IconArchive className='h-4 w-4' />
+            </Button>
+            <Button
+              variant='ghost'
+              size='icon'
+              className='h-8 w-8 text-destructive hover:bg-red-100 hover:text-red-700'
+              onClick={() => setOpen('bulkDelete')}
+              title={t('common.buttons.delete')}
+            >
+              <IconTrash className='h-4 w-4' />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

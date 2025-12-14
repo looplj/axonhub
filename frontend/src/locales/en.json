@@ -2021,6 +2021,7 @@
   },
   "common": {
     "refresh": "Refresh",
+    "selected": "selected",
     "selectedItems": "{{count}} selected",
     "noResultsFound": "No results found",
     "clearFilters": "Clear filters",
@@ -2030,6 +2031,7 @@
     "noResults": "No results.",
     "loading": "Loading...",
     "loadError": "Load failed:",
+    "error": "Error",
     "back": "Back",
     "showing": "Showing",
     "of": "of",

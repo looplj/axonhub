@@ -400,7 +400,7 @@ func (_m *ChannelOverrideTemplate) Node(ctx context.Context) (node *Node, err er
 		return nil, err
 	}
 	node.Fields[6] = &Field{
-		Type:  "channeloverridetemplate.ChannelType",
+		Type:  "string",
 		Name:  "channel_type",
 		Value: string(buf),
 	}
