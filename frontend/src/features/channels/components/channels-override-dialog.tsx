@@ -19,7 +19,12 @@ import {
   useChannelOverrideTemplates,
   useCreateChannelOverrideTemplate,
 } from '../data/templates'
-import { mergeOverrideHeaders, mergeOverrideParameters, normalizeOverrideParameters } from '../utils/merge'
+import {
+  mergeChannelSettingsForUpdate,
+  mergeOverrideHeaders,
+  mergeOverrideParameters,
+  normalizeOverrideParameters,
+} from '../utils/merge'
 
 interface Props {
   open: boolean
@@ -28,11 +33,6 @@ interface Props {
 }
 
 const AUTH_HEADER_KEYS = ['authorization', 'proxy-authorization', 'x-api-key', 'x-api-secret', 'x-api-token']
-
-const saveTemplateFormSchema = z.object({
-  name: z.string().min(1, 'Template name is required'),
-  description: z.string().optional(),
-})
 
 interface SaveTemplateDialogProps {
   open: boolean
@@ -241,16 +241,15 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
       // Normalize and parse overrideParameters if provided
       const normalizedParams = normalizeOverrideParameters(values.overrideParameters || '')
 
+      const nextSettings = mergeChannelSettingsForUpdate(currentRow.settings, {
+        overrideParameters: normalizedParams,
+        overrideHeaders: validHeaders,
+      })
+
       await updateChannel.mutateAsync({
         id: currentRow.id,
         input: {
-          settings: {
-            extraModelPrefix: currentRow.settings?.extraModelPrefix,
-            modelMappings: currentRow.settings?.modelMappings || [],
-            overrideParameters: normalizedParams,
-            overrideHeaders: validHeaders,
-            proxy: currentRow.settings?.proxy,
-          },
+          settings: nextSettings,
         },
       })
       toast.success(t('channels.messages.updateSuccess'))

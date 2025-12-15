@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useUpdateChannel, useTestChannel } from '../data/channels'
 import { Channel } from '../data/schema'
+import { mergeChannelSettingsForUpdate } from '../utils/merge'
 
 interface Props {
   open: boolean
@@ -89,15 +90,14 @@ export function ChannelsProxyDialog({ open, onOpenChange, currentRow }: Props) {
         }),
       }
 
+      const nextSettings = mergeChannelSettingsForUpdate(currentRow.settings, {
+        proxy: proxyConfig,
+      })
+
       await updateChannel.mutateAsync({
         id: currentRow.id,
         input: {
-          settings: {
-            extraModelPrefix: currentRow.settings?.extraModelPrefix,
-            modelMappings: currentRow.settings?.modelMappings || [],
-            overrideParameters: currentRow.settings?.overrideParameters,
-            proxy: proxyConfig,
-          },
+          settings: nextSettings,
         },
       })
       toast.success(t('channels.messages.updateSuccess'))

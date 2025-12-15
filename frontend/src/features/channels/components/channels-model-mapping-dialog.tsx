@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/tooltip'
 import { useUpdateChannel } from '../data/channels'
 import { Channel, ModelMapping } from '../data/schema'
+import { mergeChannelSettingsForUpdate } from '../utils/merge'
 
 interface Props {
   open: boolean
@@ -238,15 +239,16 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
     }
 
     try {
+      const nextSettings = mergeChannelSettingsForUpdate(currentRow.settings, {
+        extraModelPrefix: values.extraModelPrefix,
+        modelMappings: values.modelMappings,
+        autoTrimedModelPrefixes: values.autoTrimedModelPrefixes || [],
+      })
+
       await updateChannel.mutateAsync({
         id: currentRow.id,
         input: {
-          settings: {
-            extraModelPrefix: values.extraModelPrefix,
-            modelMappings: values.modelMappings,
-            autoTrimedModelPrefixes: values.autoTrimedModelPrefixes || [],
-            overrideParameters: currentRow.settings?.overrideParameters,
-          },
+          settings: nextSettings,
         },
       })
       toast.success(t('channels.messages.updateSuccess'))
