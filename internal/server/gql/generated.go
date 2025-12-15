@@ -30242,7 +30242,7 @@ func (ec *executionContext) unmarshalInputBulkCreateChannelsInput(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"type", "name", "baseURL", "apiKeys", "supportedModels", "defaultTestModel", "settings"}
+	fieldsInOrder := [...]string{"type", "name", "tags", "baseURL", "apiKeys", "supportedModels", "defaultTestModel", "settings"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -30263,6 +30263,13 @@ func (ec *executionContext) unmarshalInputBulkCreateChannelsInput(ctx context.Co
 				return it, err
 			}
 			it.Name = data
+		case "tags":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tags"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Tags = data
 		case "baseURL":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("baseURL"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)

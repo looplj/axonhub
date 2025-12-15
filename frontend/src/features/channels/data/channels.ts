@@ -598,6 +598,7 @@ export interface BulkCreateChannelsInput {
   type: string
   name: string
   baseURL?: string
+  tags?: string[]
   apiKeys: string[]
   supportedModels: string[]
   defaultTestModel: string

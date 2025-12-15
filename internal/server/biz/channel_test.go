@@ -1087,6 +1087,7 @@ func TestChannelService_BulkCreateChannels(t *testing.T) {
 			channels, err := svc.BulkCreateChannels(ctx, BulkCreateChannelsInput{
 				Type:             tt.channelType,
 				Name:             tt.baseName,
+				Tags:             nil,
 				BaseURL:          tt.baseURL,
 				APIKeys:          tt.apiKeys,
 				SupportedModels:  tt.supportedModels,
