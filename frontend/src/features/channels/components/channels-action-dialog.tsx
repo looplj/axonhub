@@ -17,6 +17,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Textarea } from '@/components/ui/textarea'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { AutoCompleteSelect } from '@/components/auto-complete-select'
 import { SelectDropdown } from '@/components/select-dropdown'
 import { TagsInput } from '@/components/ui/tags-input'
@@ -1313,13 +1314,20 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               <ScrollArea className='min-h-0 flex-1' type='always'>
                 <div className='space-y-1 pr-3'>
                   {filteredSupportedModels.map((model) => (
-                    <div key={model} className='hover:bg-accent flex items-center justify-between gap-2 rounded-md p-2 text-sm'>
-                      <span className='flex-1 truncate'>{model}</span>
+                    <div key={model} className='hover:bg-accent flex items-center gap-2 rounded-md p-2 text-sm'>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className='w-0 flex-1 truncate cursor-help'>{model}</span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className='max-w-xs break-all'>{model}</p>
+                        </TooltipContent>
+                      </Tooltip>
                       <Button
                         type='button'
                         variant='ghost'
                         size='sm'
-                        className='hover:text-destructive h-6 w-6 p-0'
+                        className='hover:text-destructive h-6 w-6 shrink-0 p-0'
                         onClick={() => removeModel(model)}
                       >
                         <X className='h-3 w-3' />
