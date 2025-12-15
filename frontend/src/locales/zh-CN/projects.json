@@ -1,0 +1,67 @@
+{
+  "projects": {
+    "title": "项目管理",
+    "description": "管理系统项目和配置。",
+    "createProject": "新建项目",
+    "searchProjects": "按名称搜索项目...",
+    "columns": {
+      "slug": "项目标识",
+      "name": "项目名称",
+      "description": "描述",
+      "status": "状态",
+      "createdAt": "创建时间",
+      "updatedAt": "更新时间",
+      "actions": "操作",
+      "selectAll": "全选",
+      "selectRow": "选择行"
+    },
+    "status": {
+      "active": "活跃",
+      "archived": "已归档"
+    },
+    "actions": {},
+    "filters": {},
+    "dialogs": {
+      "create": {
+        "title": "新建项目",
+        "description": "创建一个新的项目。"
+      },
+      "edit": {
+        "title": "编辑项目",
+        "description": "修改项目信息。",
+        "slugNotEditable": "项目标识创建后不可修改"
+      },
+      "archive": {
+        "title": "归档项目",
+        "description": "确定要归档项目 \"{{name}}\" 吗？归档后的项目将不再显示在活跃列表中。"
+      },
+      "activate": {
+        "title": "激活项目",
+        "description": "确定要激活项目 \"{{name}}\" 吗？激活后的项目将重新显示在活跃列表中。"
+      },
+      "fields": {
+        "name": {
+          "label": "项目名称",
+          "placeholder": "我的项目",
+          "description": "项目的显示名称"
+        },
+        "slug": {
+          "label": "项目标识",
+          "placeholder": "my-project",
+          "description": "URL 友好的唯一标识符（留空将自动生成）"
+        },
+        "description": {
+          "label": "项目描述",
+          "placeholder": "输入项目描述",
+          "description": "项目的详细描述"
+        }
+      },
+      "buttons": {
+        "create": "创建项目"
+      }
+    },
+    "validation": {
+      "nameRequired": "项目名称不能为空"
+    }
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "dashboard": {
+    "title": "Dashboard",
+    "description": "System overview and statistics.",
+    "cards": {
+      "overview": "Overview",
+      "totalUsers": "Total Users",
+      "totalRequests": "Total Requests",
+      "requestsByTime": "Requests by Time",
+      "successRate": "Success Rate",
+      "tokenStats": "Token Statistics",
+      "tokensByTime": "Tokens by Time"
+    },
+    "charts": {
+      "dailyRequestOverview": "Daily Request Overview",
+      "topUsers": "Top Users",
+      "topProjects": "Top Projects",
+      "requestsByChannel": "Requests by Channel",
+      "requestsByModel": "Requests by Model",
+      "errorLoadingChart": "Error loading chart data:",
+      "errorLoadingTopUsers": "Error loading top users:",
+      "errorLoadingTopProjects": "Error loading top projects:",
+      "errorLoadingChannelData": "Error loading channel data:",
+      "errorLoadingModelData": "Error loading model data:",
+      "noUserData": "No user data available",
+      "noProjectData": "No project data available",
+      "noChannelData": "No channel data available",
+      "noModelData": "No model data available",
+      "requestsByChannelDescription": "Distribution of requests across different channels.",
+      "requestsByModelDescription": "Distribution of requests across different AI models."
+    },
+    "stats": {
+      "totalUsersInSystem": "Total users in system",
+      "allTimeRequests": "All time requests",
+      "thisMonth": "This month",
+      "thisWeek": "This week",
+      "today": "Today",
+      "failedRequests": "Failed requests",
+      "fromLastMonth": "from last month",
+      "sinceYesterday": "since yesterday",
+      "usersWithMostRequests": "Users with the most requests this month.",
+      "projectsWithMostRequests": "Projects with the most requests this month.",
+      "requests": "requests",
+      "inputTokens": "Input Tokens",
+      "outputTokens": "Output Tokens",
+      "cachedTokens": "Cached Tokens",
+      "totalTokens": "Total Tokens",
+      "input": "Input",
+      "output": "Output",
+      "cached": "Cached"
+    }
+  }
+}

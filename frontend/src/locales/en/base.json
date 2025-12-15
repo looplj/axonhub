@@ -1,0 +1,305 @@
+{
+  "sidebar": {
+    "groups": {
+      "admin": "Admin",
+      "general": "General",
+      "project": "Project",
+      "api": "API",
+      "settings": "Settings"
+    },
+    "items": {
+      "dashboard": "Dashboard",
+      "channels": "Channels",
+      "dataStorages": "Data Storages",
+      "users": "Users",
+      "roles": "Roles",
+      "system": "System",
+      "requests": "Requests",
+      "traces": "Traces",
+      "threads": "Threads",
+      "usageLogs": "Usage Logs",
+      "apiKeys": "API Keys",
+      "playground": "Playground",
+      "profile": "Profile",
+      "projects": "Projects"
+    },
+    "team": {
+      "name": "AxonHub",
+      "plan": "AI + Unified"
+    },
+    "teamSwitcher": {
+      "teams": "Teams"
+    },
+    "projectSwitcher": {
+      "projects": "Projects",
+      "project": "Project",
+      "selectProject": "Select Project"
+    },
+    "userMenu": {
+      "account": "Account",
+      "logOut": "Log out"
+    }
+  },
+  "theme": {
+    "toggle": "Toggle theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "colorScheme": "Color scheme",
+    "colors": {
+      "blue": "Blue",
+      "green": "Green",
+      "purple": "Purple",
+      "orange": "Orange",
+      "red": "Red",
+      "black": "Black",
+      "cream": "Cream",
+      "claude": "Claude",
+      "starry": "Starry"
+    }
+  },
+  "language": {
+    "toggle": "Toggle language",
+    "changeSuccess": "Language changed to {{language}} successfully",
+    "changeError": "Failed to change language: {{error}}"
+  },
+  "command": {
+    "placeholder": "Type a command or search...",
+    "noResults": "No results found.",
+    "theme": "Theme"
+  },
+  "search": {
+    "placeholder": "Search"
+  },
+  "projectUsers": {
+    "title": "Project Users",
+    "description": "Manage users and permissions for the current project.",
+    "addToProject": "Add User to Project"
+  },
+  "projectRoles": {
+    "title": "Project Roles",
+    "description": "Manage roles and permissions for the current project.",
+    "createRole": "Add Role to Project"
+  },
+  "pagination": {
+    "selectedRows": "{{selected}} of {{total}} row(s) selected",
+    "selectedInfo": "{{selectedRows}} of {{dataLength}} row(s) selected",
+    "selectedInfoWithTotal": "{{selectedRows}} of {{dataLength}} row(s) selected / Total {{totalCount}} row(s)",
+    "totalRows": "Total {{total}} row(s)",
+    "rowsPerPage": "Rows per page",
+    "currentPage": "Page {{current}} of {{total}}",
+    "firstPage": "First page",
+    "lastPage": "Last page",
+    "previousPage": "Go to previous page",
+    "nextPage": "Go to next page",
+    "hasPrevious": "Has previous",
+    "hasNext": "Has next"
+  },
+  "common": {
+    "refresh": "Refresh",
+    "selected": "selected",
+    "selectedItems": "{{count}} selected",
+    "noResultsFound": "No results found",
+    "clearFilters": "Clear filters",
+    "view": "View",
+    "toggleColumns": "Toggle columns",
+    "noData": "No data available",
+    "noResults": "No results.",
+    "loading": "Loading...",
+    "loadError": "Load failed:",
+    "error": "Error",
+    "back": "Back",
+    "showing": "Showing",
+    "of": "of",
+    "previous": "Previous",
+    "next": "Next",
+    "moveUp": "Move Up",
+    "moveDown": "Move Down",
+    "moveToTop": "Move to top",
+    "moveToBottom": "Move to bottom",
+    "dragging": "Dragging",
+    "unsavedChanges": "You have unsaved changes",
+    "sort": {
+      "ascending": "Ascending",
+      "descending": "Descending",
+      "hide": "Hide"
+    },
+    "messages": {
+      "errorMessage": "Error Message",
+      "success": "Success",
+      "error": "Error"
+    },
+    "buttons": {
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving...",
+      "saveChanges": "Save changes",
+      "create": "Create",
+      "creating": "Creating...",
+      "update": "Update",
+      "updating": "Updating...",
+      "delete": "Delete",
+      "deleting": "Deleting...",
+      "edit": "Edit",
+      "editing": "Editing...",
+      "enable": "Enable",
+      "enabling": "Enabling...",
+      "disable": "Disable",
+      "disabling": "Disabling...",
+      "archive": "Archive",
+      "archiving": "Archiving...",
+      "activate": "Activate",
+      "activating": "Activating...",
+      "remove": "Remove"
+    },
+    "actions": {
+      "test": "Test",
+      "openMenu": "Open menu",
+      "edit": "Edit",
+      "duplicate": "Duplicate",
+      "delete": "Delete"
+    },
+    "filters": {
+      "reset": "Reset"
+    },
+    "routeGuard": {
+      "accessDenied": "Access Denied",
+      "noPermission": "You do not have permission to access this page. Please contact the administrator to obtain the necessary access permissions.",
+      "goBack": "Go Back"
+    },
+    "projectGuard": {
+      "noProjectSelected": "No Project Selected",
+      "pleaseSelectProject": "Please select a project from the project switcher to continue.",
+      "pleaseJoinOrCreateProject": "You haven't joined any projects yet. Please create a new project or ask an administrator to add you to an existing project.",
+      "goToProjects": "Go to Projects",
+      "createOrJoinProject": "Create or Join Project"
+    },
+    "errors": {
+      "sessionExpired": "Session expired!",
+      "sessionExpiredSignIn": "Session expired. Please sign in again.",
+      "contentNotModified": "Content not modified!",
+      "internalServerError": "Internal Server Error!",
+      "somethingWentWrong": "Something went wrong!",
+      "contentNotFound": "Content not found.",
+      "initializationFailed": "Failed to initialize system",
+      "unknownError": "Unknown error occurred",
+      "validationError": "Validation error",
+      "validationFailed": "Validation failed: {{details}}",
+      "operationFailed": "{{operation}} failed",
+      "copyFailed": "Failed to copy to clipboard.",
+      "loadFailed": "Failed to load data",
+      "systemUpdateFailed": "Failed to update system settings",
+      "onboardingFailed": "Failed to complete onboarding"
+    },
+    "success": {
+      "copiedToClipboard": "Copied to clipboard!",
+      "roleCreated": "Role created successfully",
+      "roleUpdated": "Role updated successfully",
+      "roleDeleted": "Role deleted successfully",
+      "rolesDeleted": "Successfully deleted {{count}} roles",
+      "projectCreated": "Project created successfully",
+      "projectUpdated": "Project updated successfully",
+      "projectArchived": "Project archived successfully",
+      "projectActivated": "Project activated successfully",
+      "signedIn": "Successfully signed in!",
+      "signedOut": "Successfully signed out!",
+      "userCreated": "User created successfully",
+      "userUpdated": "User updated successfully",
+      "modelCreated": "Model created successfully",
+      "modelUpdated": "Model updated successfully",
+      "modelDeleted": "Model deleted successfully",
+      "systemUpdated": "System settings updated successfully",
+      "onboardingCompleted": "Onboarding completed successfully"
+    }
+  },
+  "initialization": {
+    "title": "Initialize System",
+    "description": "Welcome to AxonHub! Please set up the system by creating an owner account.",
+    "form": {
+      "ownerEmail": "Owner Email",
+      "ownerPassword": "Owner Password",
+      "ownerFirstName": "Owner First Name",
+      "ownerLastName": "Owner Last Name",
+      "brandName": "Brand Name",
+      "placeholders": {
+        "ownerEmail": "admin@example.com",
+        "ownerPassword": "********",
+        "ownerFirstName": "John",
+        "ownerLastName": "Doe",
+        "brandName": "Your Company Name"
+      },
+      "validation": {
+        "ownerEmailRequired": "Please enter owner email",
+        "ownerEmailInvalid": "Invalid email address",
+        "ownerPasswordRequired": "Please enter owner password",
+        "ownerPasswordMinLength": "Password must be at least 8 characters long",
+        "ownerFirstNameRequired": "Please enter owner first name",
+        "ownerLastNameRequired": "Please enter owner last name",
+        "brandNameRequired": "Please enter brand name"
+      },
+      "submit": "Initialize System",
+      "submitting": "Initializing..."
+    }
+  },
+  "scopes": {
+    "read_channels": "View channel information",
+    "write_channels": "Manage channels",
+    "read_users": "View user information",
+    "write_users": "Manage users",
+    "read_roles": "View role information",
+    "write_roles": "Manage roles",
+    "read_api_keys": "View API keys",
+    "write_api_keys": "Manage API keys",
+    "read_requests": "View request records",
+    "write_requests": "Manage request records",
+    "read_dashboard": "View dashboard",
+    "read_settings": "View system settings",
+    "write_settings": "Manage system settings",
+    "read_projects": "View project information",
+    "write_projects": "Manage projects"
+  },
+  "auth": {
+    "brand": {
+      "title": "Unified AI Gateway",
+      "description": "Unified OpenAI/Anthropic compatible API with a flexible transformer pipeline, intelligent routing, and comprehensive tracing—built for enterprise reliability."
+    },
+    "signIn": {
+      "title": "Sign in to AxonHub",
+      "subtitle": "Enter your email and password to access your account",
+      "form": {
+        "email": {
+          "label": "Email",
+          "placeholder": "Enter your email address"
+        },
+        "password": {
+          "label": "Password",
+          "placeholder": "Enter your password"
+        },
+        "captcha": {
+          "label": "Captcha",
+          "placeholder": "Enter captcha",
+          "refresh": "Refresh captcha"
+        },
+        "rememberMe": "Remember me",
+        "signInButton": "Sign in",
+        "signingIn": "Signing in..."
+      },
+      "validation": {
+        "emailRequired": "Email is required",
+        "emailInvalid": "Invalid email format",
+        "passwordRequired": "Password is required",
+        "passwordMinLength": "Password must be at least 8 characters",
+        "captchaRequired": "Captcha is required",
+        "passwordPattern": "Password must contain at least one uppercase letter, one lowercase letter, and one digit"
+      },
+      "links": {
+        "forgotPassword": "Forgot password?",
+        "noAccount": "Don't have an account?",
+        "signUp": "Sign up"
+      },
+      "footer": {
+        "agreement": "By signing in, you agree to our Terms of Service and Privacy Policy"
+      }
+    }
+  }
+}

@@ -1,0 +1,178 @@
+{
+  "users": {
+    "title": "User Management",
+    "description": "Manage system users and permission configurations.",
+    "inviteUser": "Invite User",
+    "addUser": "Add User",
+    "filterUsers": "Filter users...",
+    "columns": {
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "email": "Email",
+      "owner": "Owner",
+      "roles": "Roles",
+      "status": "Status",
+      "createdAt": "Created At",
+      "updatedAt": "Updated At",
+      "actions": "actions",
+      "selectAll": "Select all",
+      "selectRow": "Select row",
+      "noRoles": "No roles",
+      "projectOwner": "Project Owner",
+      "projectRoles": "Project Roles",
+      "projectScopes": "Project Scopes"
+    },
+    "status": {
+      "activated": "Activated",
+      "deactivated": "Deactivated",
+      "active": "Active",
+      "inactive": "Inactive",
+      "invited": "Invited",
+      "suspended": "Suspended"
+    },
+    "badges": {
+      "owner": "Owner",
+      "user": "User",
+      "noRoles": "No roles",
+      "member": "Member",
+      "projectOwner": "Project Owner",
+      "noScopes": "No scopes"
+    },
+    "filters": {
+      "status": "Status",
+      "role": "Role"
+    },
+    "actions": {
+      "changePassword": "Change Password",
+      "deactivate": "Deactivate",
+      "addToProject": "Add to Project",
+      "removeFromProject": "Remove from Project"
+    },
+    "dialogs": {
+      "add": {
+        "title": "Add New User",
+        "description": "Create new user here. Click save when you're done."
+      },
+      "addToProject": {
+        "title": "Add User to Project",
+        "description": "Add a user to a project with specific roles and permissions."
+      },
+      "edit": {
+        "title": "Edit User",
+        "description": "Update the user here. Click save when you're done."
+      },
+      "changePassword": {
+        "title": "Change Password",
+        "description": "Change password for {{name}} ({{email}})"
+      },
+      "statusChange": {
+        "title": "{{action}} User",
+        "confirmMessage": "Are you sure you want to {{action}} user {{name}}?",
+        "deactivateWarning": "After deactivation, this user will not be able to log in to the system.",
+        "activateInfo": "After activation, this user will be able to log in to the system normally."
+      },
+      "status": {
+        "activate": {
+          "title": "Activate User",
+          "description": "Are you sure you want to activate user {{name}}?",
+          "note": "After activation, this user will be able to log in to the system normally."
+        },
+        "deactivate": {
+          "title": "Deactivate User",
+          "description": "Are you sure you want to deactivate user {{name}}?",
+          "note": "After deactivation, this user will not be able to log in to the system."
+        }
+      },
+      "remove": {
+        "title": "Remove User from Project",
+        "description": "Are you sure you want to remove {{name}} from this project?",
+        "confirmLabel": "Type the user's full name to confirm:",
+        "confirmPlaceholder": "Enter full name",
+        "warningTitle": "Warning",
+        "warningDescription": "This action will remove the user from the project. They will lose access to all project resources."
+      }
+    },
+    "form": {
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "email": "Email",
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "currentPassword": "Current Password",
+      "newPassword": "New Password",
+      "confirmNewPassword": "Confirm New Password",
+      "isOwner": "Owner",
+      "ownerDescription": "Grant owner privileges to this user",
+      "roles": "Roles",
+      "scopes": "Scopes",
+      "projectRoles": "Project Roles",
+      "projectScopes": "Project Scopes",
+      "selectUser": "Select User",
+      "selectUserPlaceholder": "Select a user to add to project",
+      "selectProject": "Select Project",
+      "selectProjectPlaceholder": "Select a project",
+      "searchUsers": "Search users...",
+      "noUsersFound": "No users found",
+      "noProjectRoles": "No project roles available",
+      "loadingRoles": "Loading roles...",
+      "loadingScopes": "Loading scopes...",
+      "placeholders": {
+        "firstName": "John",
+        "lastName": "Doe",
+        "email": "john.doe@example.com",
+        "password": "Enter password",
+        "confirmPassword": "Confirm password",
+        "currentPassword": "Enter current password",
+        "newPassword": "Enter new password",
+        "confirmNewPassword": "Confirm new password",
+        "currentPasswordPlaceholder": "Enter current password",
+        "newPasswordPlaceholder": "Enter new password",
+        "confirmNewPasswordPlaceholder": "Confirm new password"
+      },
+      "passwordMismatch": "Passwords don't match"
+    },
+    "validation": {
+      "firstNameRequired": "First name is required",
+      "lastNameRequired": "Last name is required",
+      "emailInvalid": "Invalid email address",
+      "passwordMinLength": "Password must be at least 8 characters",
+      "passwordsNotMatch": "Passwords don't match",
+      "currentPasswordRequired": "Current password is required",
+      "newPasswordRequired": "New password is required",
+      "newPasswordMinLength": "New password must be at least 8 characters",
+      "projectRequired": "Project is required"
+    },
+    "buttons": {
+      "deactivate": "Deactivate",
+      "changePassword": "Change Password",
+      "changing": "Changing...",
+      "addToProject": "Add to Project",
+      "adding": "Adding...",
+      "remove": "Remove",
+      "removing": "Removing..."
+    },
+    "messages": {
+      "createSuccess": "User created successfully",
+      "updateSuccess": "User updated successfully",
+      "passwordChangeSuccess": "Password changed successfully",
+      "statusUpdateSuccess": "User status updated to {{status}}",
+      "createError": "Failed to save user",
+      "updateError": "Failed to save user",
+      "passwordChangeError": "Failed to change password",
+      "statusUpdateError": "Failed to update status",
+      "deleteSuccess": "User deleted successfully",
+      "deleteError": "Failed to delete user",
+      "loadUsersError": "Failed to load users data",
+      "loadUserError": "Failed to load user details",
+      "userNotFound": "User not found",
+      "loadRolesError": "Failed to load roles and scopes",
+      "addToProjectSuccess": "User added to project successfully",
+      "addToProjectError": "Failed to add user to project",
+      "removeFromProjectSuccess": "User removed from project successfully",
+      "removeFromProjectError": "Failed to remove user from project"
+    },
+    "errors": {
+      "insufficientPermissions": "You don't have sufficient permissions to edit this user"
+    }
+  }
+}

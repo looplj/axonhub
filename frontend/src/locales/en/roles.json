@@ -1,0 +1,67 @@
+{
+  "roles": {
+    "title": "Role Management",
+    "description": "Manage system roles and permission configurations.",
+    "createRole": "Create Role",
+    "searchRoles": "Search roles by name",
+    "columns": {
+      "code": "Role Code",
+      "name": "Role Name",
+      "scopes": "Scopes",
+      "createdAt": "Created At",
+      "updatedAt": "Updated At",
+      "actions": "Actions",
+      "selectAll": "Select all",
+      "selectRow": "Select row",
+      "moreScopes": "more"
+    },
+    "actions": {},
+    "filters": {
+      "filterByName": "Filter by name...",
+      "filterByCode": "Filter by code..."
+    },
+    "dialogs": {
+      "create": {
+        "title": "Create Role",
+        "description": "Create a new role and configure its permission scopes."
+      },
+      "edit": {
+        "title": "Edit Role",
+        "description": "Modify role information and permission configuration."
+      },
+      "delete": {
+        "title": "Delete Role",
+        "description": "Are you sure you want to delete this role? This action cannot be undone."
+      },
+      "bulkDelete": {
+        "title": "Bulk Delete Roles",
+        "description": "Are you sure you want to delete {{count}} selected roles? This action cannot be undone."
+      },
+      "fields": {
+        "code": {
+          "label": "Role Code",
+          "placeholder": "admin",
+          "description": "Unique identifier"
+        },
+        "name": {
+          "label": "Role Name",
+          "placeholder": "Administrator",
+          "description": "User-friendly role name"
+        },
+        "scopes": {
+          "label": "Permission Scopes",
+          "description": "Select the permissions this role has"
+        }
+      },
+      "buttons": {
+        "create": "Create Role",
+        "update": "Update Role"
+      }
+    },
+    "validation": {
+      "nameRequired": "Role name is required",
+      "scopesRequired": "At least one permission is required",
+      "projectIdRequired": "Project ID is required"
+    }
+  }
+}

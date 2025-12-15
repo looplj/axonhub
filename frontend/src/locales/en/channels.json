@@ -1,0 +1,598 @@
+{
+  "channels": {
+    "title": "Channel Management",
+    "description": "Manage your AI model channels and configurations.",
+    "addChannel": "Add Channel",
+    "importChannels": "Bulk Import",
+    "orderChannels": "Bulk Ordering",
+    "settings": "Settings",
+    "filterChannels": "Filter channels...",
+    "tabs": {
+      "all": "All"
+    },
+    "columns": {
+      "name": "Name",
+      "type": "Type",
+      "provider": "Provider",
+      "status": "Status",
+      "tags": "Tags",
+      "baseURL": "Base URL",
+      "supportedModels": "Models",
+      "performance": "Performance",
+      "firstTokenLatency": "FTL",
+      "tokensPerSecond": "TPS",
+      "firstTokenLatencyFull": "First Token Latency",
+      "tokensPerSecondFull": "Tokens/Second",
+      "weight": "Weight",
+      "test": "Test",
+      "createdAt": "Created At",
+      "updatedAt": "Updated At",
+      "actions": "Actions",
+      "selectAll": "Select all",
+      "selectRow": "Select row"
+    },
+    "status": {
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "archived": "Archived"
+    },
+    "types": {
+      "openai": "OpenAI",
+      "openai_responses": "OpenAI (Responses)",
+      "anthropic": "Anthropic",
+      "anthropic_aws": "Anthropic AWS",
+      "anthropic_gcp": "Anthropic GCP",
+      "gemini": "Gemini",
+      "gemini_openai": "Gemini (OpenAI)",
+      "deepseek": "DeepSeek",
+      "doubao": "Doubao",
+      "doubao_anthropic": "Doubao (Anthropic)",
+      "moonshot": "Moonshot",
+      "openrouter": "OpenRouter",
+      "deepseek_anthropic": "DeepSeek (Anthropic)",
+      "moonshot_anthropic": "Moonshot (Anthropic)",
+      "zhipu": "Zhipu",
+      "zai": "Zai",
+      "zhipu_anthropic": "Zhipu (Anthropic)",
+      "zai_anthropic": "Zai (Anthropic)",
+      "vercel": "Vercel",
+      "xai": "xAI",
+      "ppio": "PPIO",
+      "siliconflow": "SiliconFlow",
+      "volcengine": "Volcengine",
+      "anthropic_fake": "Anthropic Fake",
+      "openai_fake": "OpenAI Fake",
+      "longcat": "LongCat",
+      "longcat_anthropic": "LongCat (Anthropic)",
+      "minimax": "Minimax",
+      "minimax_anthropic": "Minimax (Anthropic)",
+      "aihubmix": "AiHubMix",
+      "burncloud": "BurnCloud",
+      "modelscope": "ModelScope",
+      "bailian": "Bailian (OpenAI)"
+    },
+    "providers": {
+      "openai": "OpenAI",
+      "anthropic": "Anthropic",
+      "deepseek": "DeepSeek",
+      "gemini": "Gemini",
+      "moonshot": "Moonshot",
+      "zhipu": "Zhipu",
+      "zai": "Zai",
+      "doubao": "Doubao",
+      "minimax": "Minimax",
+      "longcat": "LongCat",
+      "xai": "xAI",
+      "openrouter": "OpenRouter",
+      "vercel": "Vercel",
+      "ppio": "PPIO",
+      "siliconflow": "SiliconFlow",
+      "volcengine": "Volcengine",
+      "aihubmix": "AiHubMix",
+      "burncloud": "BurnCloud",
+      "modelscope": "ModelScope",
+      "bailian": "Bailian"
+    },
+    "actions": {
+      "test": "Test",
+      "settings": "Settings",
+      "errorResolved": "Error Resolved",
+      "viewModels": "View Models"
+    },
+    "errorBanner": {
+      "message": "{{count}} channel(s) need attention for disabled due to unrecoverable errors",
+      "filterButton": "Show Error Channels",
+      "errorOnlyMode": "Showing only channels with errors",
+      "exitErrorOnlyButton": "Exit Error Mode"
+    },
+    "filters": {
+      "type": "Type",
+      "status": "Status",
+      "tags": "Tags",
+      "model": "Model",
+      "filterByName": "Search by name"
+    },
+    "messages": {
+      "addAtLeastOneModel": "Please add at least one supported model",
+      "createDescription": "Create a new Channel here.",
+      "editDescription": "Update Channel information here.",
+      "completeAndSave": "Click save when complete.",
+      "createSuccess": "Channel created successfully",
+      "createError": "Creation failed: {{error}}",
+      "updateSuccess": "Channel updated successfully",
+      "updateError": "Update failed: {{error}}",
+      "statusUpdateSuccess": "Channel status updated to {{status}}",
+      "archiveSuccess": "Channel archived successfully",
+      "archiveError": "Archive failed: {{error}}",
+      "statusUpdateError": "Status update failed: {{error}}",
+      "testSuccess": "Channel test successful ({{latency}}s latency)",
+      "testError": "Channel test failed: {{error}}",
+      "testUnknownError": "Unknown test error occurred",
+      "bulkImportSuccess": "Successfully imported {{created}} channels",
+      "bulkImportPartialError": "Imported {{created}} channels, {{failed}} failed",
+      "bulkImportError": "Bulk import failed: {{error}}",
+      "orderingUpdateSuccess": "Successfully updated ordering for {{updated}} channels",
+      "orderingUpdateError": "Failed to update channel ordering: {{error}}",
+      "bulkArchiveSuccess": "Successfully archived {{count}} channels",
+      "bulkArchiveError": "Failed to archive channels: {{error}}",
+      "bulkDisableSuccess": "Successfully disabled {{count}} channels",
+      "bulkDisableError": "Failed to disable channels: {{error}}",
+      "bulkEnableSuccess": "Successfully enabled {{count}} channels",
+      "bulkEnableError": "Failed to enable channels: {{error}}",
+      "deleteSuccess": "Successfully deleted channel",
+      "deleteError": "Failed to delete channel: {{error}}",
+      "bulkDeleteSuccess": "Successfully deleted {{count}} channels",
+      "bulkDeleteError": "Failed to delete channels: {{error}}",
+      "pendingMappingWarning": "There are pending model mappings, please add them before saving.",
+      "duplicateMappingWarning": "Duplicate model mapping detected. Please remove the duplicate mapping before saving.",
+      "fetchModelsSuccess": "Successfully fetched {{count}} models",
+      "fetchModelsSuccessLarge": "Successfully fetched {{count}} models. Use search to find specific models.",
+      "fetchModelsError": "Failed to fetch models: {{error}}",
+      "fetchTypesError": "Failed to fetch channel types: {{error}}",
+      "batchCreateSuccess": "Successfully created {{count}} channels",
+      "batchCreateError": "Failed to create channels: {{error}}",
+      "errorResolvedSuccess": "Channel error resolved successfully",
+      "errorResolvedError": "Failed to resolve channel error: {{error}}",
+      "Unauthorized": "Unauthorized, please check the API key of the channel",
+      "Not Found": "Endpoint not found, pleast check the base url of the channel",
+      "Interval Server Error": "Interval server error, please confirm the channel configuration"
+    },
+    "errors": {
+      "fetchList": "Failed to load channels",
+      "fetchDetail": "Failed to load channel details",
+      "notFound": "Channel not found",
+      "fetchNames": "Failed to load existing channel names",
+      "fetchOrdering": "Failed to load channels for ordering",
+      "fetchTypes": "Failed to fetch channel types",
+      "fetchTags": "Failed to fetch channel tags"
+    },
+    "dialogs": {
+      "create": {
+        "title": "Add Channel",
+        "description": "Create a new AI model channel."
+      },
+      "edit": {
+        "title": "Edit Channel",
+        "description": "Modify channel configuration."
+      },
+      "test": {
+        "title": "Test Channel",
+        "description": "Test {{name}} with selected models",
+        "searchPlaceholder": "Search models...",
+        "modelNameColumn": "Model Name",
+        "statusColumn": "Status",
+        "testAllButton": "Test {{count}} models",
+        "testModel": "Test",
+        "testingModel": "Testing...",
+        "testSuccess": "✅ Success",
+        "testFailed": "❌ Failed",
+        "notStarted": "Not started"
+      },
+      "bulkImport": {
+        "title": "Bulk Import Channels",
+        "description": "Import multiple channels from CSV data. One channel per line, comma-separated fields.",
+        "formatDescription": "Format: type,name,baseURL,apiKey,supportedModels,defaultTestModel",
+        "supportedModelsNote": "Use | to separate multiple models",
+        "requiredFieldsNote": "Note: baseURL and apiKey are required fields",
+        "supportedTypes": "Supported types: openai, anthropic, anthropic_aws, anthropic_gcp, gemini_openai, deepseek, doubao, moonshot, zhipu, zai, deepseek_anthropic, moonshot_anthropic, zhipu_anthropic, zai_anthropic, openrouter, xai",
+        "loadingChannelNames": "Loading existing channel names...",
+        "inputLabel": "Import Data",
+        "inputPlaceholder": "Enter channel data to import, one per line...",
+        "previewButton": "Preview Import Data",
+        "previewTitle": "Preview Results",
+        "validRecords": "{{count}} valid records",
+        "errors": "{{count}} errors",
+        "validChannels": "Valid Channels",
+        "importButton": "Import {{count}} Channels",
+        "importing": "Importing...",
+        "formatTitle": "Format Instructions",
+        "formatNote": "Use | to separate multiple models",
+        "exampleData": "Example Data",
+        "errorMessages": "Error Messages",
+        "invalidFormat": "Line {{line}}: Invalid format, should be: type,name,baseURL,apiKey,supportedModels,defaultTestModel",
+        "unsupportedType": "Line {{line}}: Unsupported channel type \"{{type}}\"",
+        "baseUrlRequired": "Line {{line}}: Base URL cannot be empty",
+        "apiKeyRequired": "Line {{line}}: API Key cannot be empty",
+        "duplicateName": "Line {{line}}: Channel name \"{{name}}\" is duplicate. Each channel must have a unique name",
+        "duplicateNameWithExisting": "Line {{line}}: Channel name \"{{name}}\" already exists on server. Each channel must have a unique name",
+        "validationError": "Line {{line}} ({{name}}): {{error}}",
+        "fieldLabels": {
+          "baseUrl": "Base URL",
+          "apiKey": "API Key",
+          "supportedModels": "Models",
+          "defaultTestModel": "Default Test Model"
+        },
+        "status": {
+          "blocked": "Import blocked",
+          "ready": "Ready to import",
+          "blockedHint": "Import blocked - fix errors first"
+        }
+      },
+      "fields": {
+        "name": {
+          "label": "Channel Name",
+          "placeholder": "My Channel",
+          "description": "Set an easily recognizable name for this channel"
+        },
+        "apiFormat": {
+          "label": "API Format",
+          "editDisabled": "API format cannot be changed",
+          "placeholder": "Select API format",
+          "formats": {
+            "openai/chat_completions": "OpenAI (Chat Completions)",
+            "openai/responses": "OpenAI (Responses)",
+            "anthropic/messages": "Anthropic (Messages)",
+            "gemini/contents": "Gemini (Contents)"
+          }
+        },
+        "provider": {
+          "label": "Provider",
+          "description": "Select the AI model provider"
+        },
+        "type": {
+          "label": "Channel Type",
+          "description": "Select the AI model provider type",
+          "helper": "Channel types are OpenAI-compatible by default; types containing \"Anthropic\" follow the Anthropic-compatible format."
+        },
+        "baseURL": {
+          "label": "Base URL",
+          "placeholder": "https://api.openai.com/v1",
+          "description": "The base URL address for the API"
+        },
+        "apiKey": {
+          "label": "API Key",
+          "placeholder": "sk-...",
+          "editPlaceholder": "Leave empty to keep unchanged",
+          "description": "API key for authentication",
+          "multiLineHint": "One API key per line, will create multiple channels if provided multiple keys."
+        },
+        "supportedModels": {
+          "label": "Models",
+          "description": "Model ID",
+          "required": "Please add at least one supported model",
+          "defaultModelsLabel": "Quick Add Models",
+          "fetchedModelsLabel": "Fetched Models",
+          "largeListHint": "Fetched {{count}} models. Use the search above to find specific models.",
+          "showMore": "+{{count}} more",
+          "searchPlaceholder": "Search models...",
+          "showAddedOnly": "Show added only",
+          "added": "Added",
+          "allModels": "All Models ({{count}})",
+          "clearAllTitle": "Clear all supported models?",
+          "clearAllDescription": "Are you sure you want to clear all {{count}} models?",
+          "willRemove": "Will remove"
+        },
+        "defaultTestModel": {
+          "label": "Test Model",
+          "description": "Default model for testing connections"
+        },
+        "tags": {
+          "label": "Tags",
+          "placeholder": "Add tags...",
+          "description": "Add tags to categorize and filter channels. Press Enter, comma, or space to add a tag."
+        },
+        "modelName": {
+          "label": "Model Name",
+          "placeholder": "Enter model name"
+        },
+        "awsAccessKeyID": {
+          "label": "AWS Access Key ID",
+          "placeholder": "Enter AWS Access Key ID",
+          "description": "AWS access key ID for authentication"
+        },
+        "awsSecretAccessKey": {
+          "label": "AWS Secret Access Key",
+          "placeholder": "Enter AWS Secret Access Key",
+          "description": "AWS secret access key for authentication"
+        },
+        "awsRegion": {
+          "label": "AWS Region",
+          "placeholder": "us-east-1",
+          "description": "AWS service region"
+        },
+        "gcpRegion": {
+          "label": "GCP Region",
+          "placeholder": "us-central1",
+          "description": "Google Cloud Platform service region"
+        },
+        "gcpProjectID": {
+          "label": "GCP Project ID",
+          "placeholder": "my-gcp-project",
+          "description": "Google Cloud Platform project identifier"
+        },
+        "gcpJsonData": {
+          "label": "Service Account JSON",
+          "placeholder": "Paste your GCP service account JSON credentials here",
+          "description": "Complete JSON credentials for GCP service account authentication"
+        },
+        "jsonData": {
+          "label": "GCP Service Account JSON",
+          "placeholder": "Paste your GCP service account JSON credentials here",
+          "description": "Complete JSON credentials for GCP service account authentication"
+        }
+      },
+      "buttons": {
+        "create": "Create Channel",
+        "update": "Update Channel",
+        "test": "Test Connection",
+        "testing": "Testing...",
+        "add": "Add",
+        "batchAdd": "Batch Add",
+        "addSelected": "Add",
+        "fetchModels": "Fetch",
+        "selectAll": "Select All",
+        "deselectAll": "Deselect All",
+        "addSelectedCount": "Add Selected ({{count}})",
+        "removeDeprecated": "Clean ({{count}})",
+        "clearAll": "Clear all"
+      },
+      "status": {
+        "enable": {
+          "title": "Enable Channel",
+          "description": "Are you sure you want to enable channel \"{{name}}\"? The channel will be available for use after enabling.",
+          "warning": "Please ensure the channel configuration is correct and test the connection before enabling to avoid service interruptions.",
+          "warningTitle": "Important Notice",
+          "testRecommended": "Test connection recommended:",
+          "testButton": "Test",
+          "testSuccess": "✅ Test successful ({{latency}}s latency)",
+          "testFailed": "❌ Test failed - please check configuration",
+          "testMessage": "Response",
+          "errorDetails": "Error Details"
+        },
+        "disable": {
+          "title": "Disable Channel",
+          "description": "Are you sure you want to disable channel \"{{name}}\"? The channel will be unavailable after disabling."
+        },
+        "archive": {
+          "title": "Archive Channel",
+          "description": "Are you sure you want to archive channel \"{{name}}\"? Archived channels are hidden by default and will not appear in the channel list unless the archived filter is explicitly selected.",
+          "warning": "This channel will be hidden from the default view. You can view archived channels by selecting the 'Archived' status filter."
+        }
+      },
+      "settings": {
+        "title": "Channel Settings",
+        "description": "Configure advanced settings for {{name}}.",
+        "basic": {
+          "title": "Basic Information",
+          "description": "Basic configuration information for the Channel"
+        },
+        "extraModelPrefix": {
+          "title": "Extra Model Prefix",
+          "description": "Configure extra model prefixes to allow access to this channel using prefixed model names. For example: with prefix 'deepseek', both 'deepseek/deepseek-chat' and 'deepseek-chat' can access this channel.",
+          "placeholder": "e.g., deepseek"
+        },
+        "autoTrimedModelPrefixes": {
+          "title": "Auto-Trimmed Model Prefixes",
+          "description": "Configure prefixes to automatically trim from model names. For example: with prefix 'deepseek-ai', model 'deepseek-ai/deepseek-chat' becomes 'deepseek-chat'; both 'deepseek-ai/deepseek-chat' and 'deepseek-chat' can access this channel",
+          "placeholder": "e.g., openai, deepseek",
+          "duplicateWarning": "This prefix already exists"
+        },
+        "modelMapping": {
+          "action": "Model Alias",
+          "title": "Model Alias",
+          "description": "Use aliases to expose channel-supported models under alternative names without transforming the request model. For example: register 'gpt-4' as an alias of 'gpt-4-turbo', and both names will be handled by this channel",
+          "originalModel": "Alias Name",
+          "targetModel": "Channel-Supported Model",
+          "noMappings": "No model alias configuration",
+          "editHint": "Double-click to edit",
+          "validationRequired": "Both alias and target model are required",
+          "targetInvalid": "Target model must be in supported models",
+          "duplicateAlias": "Each original model can only be mapped once",
+          "useSuggestion": "Use {{alias}}"
+        },
+        "overrides": {
+          "action": "Overrides",
+          "title": "Override Settings",
+          "parameters": {
+            "title": "Override Body",
+            "description": "Provide JSON-formatted overrides to customize the request body sent through this channel. Use \"__AXONHUB_CLEAR__\" as the value to remove a parameter from the request body."
+          },
+          "headers": {
+            "title": "Override Headers",
+            "description": "Configure custom HTTP headers that will be applied to all requests sent through this channel.",
+            "key": "Header Key",
+            "value": "Header Value",
+            "valuePlaceholder": "Use __AXONHUB_CLEAR__ to delete this header",
+            "addButton": "Add Header",
+            "sensitiveWarning": "This header may contain authentication credentials. Double-check before saving."
+          }
+        }
+      },
+      "proxy": {
+        "action": "Proxy",
+        "title": "Proxy Configuration",
+        "description": "Configure proxy settings for {{name}}.",
+        "config": {
+          "title": "Proxy Settings",
+          "description": "Configure how this channel connects through a proxy server"
+        },
+        "fields": {
+          "type": {
+            "label": "Proxy Type",
+            "placeholder": "Select proxy type"
+          },
+          "url": {
+            "label": "Proxy URL",
+            "placeholder": "http://proxy.example.com:8080"
+          },
+          "username": {
+            "label": "Username (Optional)",
+            "placeholder": "Enter proxy username"
+          },
+          "password": {
+            "label": "Password (Optional)",
+            "placeholder": "Enter proxy password"
+          }
+        },
+        "types": {
+          "disabled": "Disabled - No proxy",
+          "environment": "Environment - Use system proxy settings",
+          "url": "Custom URL - Use specified proxy"
+        },
+        "environmentHint": "The channel will use proxy settings from environment variables (HTTP_PROXY, HTTPS_PROXY, NO_PROXY)",
+        "disabledHint": "The channel will connect directly without using any proxy",
+        "test": "Test Connection",
+        "testing": "Testing...",
+        "testSuccess": "✅ Connection successful",
+        "testFailed": "❌ Connection failed",
+        "latency": "Latency"
+      },
+      "bulkOrdering": {
+        "title": "Bulk Channel Ordering",
+        "description": "Drag and drop to reorder channels. Higher weight channels will be preferred when selecting channels.",
+        "dragHint": "Drag channels to reorder them",
+        "channelCount": "{{count}} channel",
+        "channelCount_plural": "{{count}} channels",
+        "saveButton": "Save Order",
+        "orderingWeight": "Weight",
+        "noChannels": "No channels available for ordering"
+      },
+      "bulkArchive": {
+        "title": "Bulk Archive Channels",
+        "description": "Are you sure you want to archive {{count}} selected channels? Archived channels are hidden from the default list.",
+        "warning": "This action will hide all selected channels from regular views. You can still find them by filtering by archived status."
+      },
+      "bulkDisable": {
+        "title": "Bulk Disable Channels",
+        "description": "Are you sure you want to disable {{count}} selected channels? Disabled channels won't process requests until re-enabled.",
+        "warning": "This action will make all selected channels unavailable. Enable them again from the channel list when needed."
+      },
+      "bulkEnable": {
+        "title": "Bulk Enable Channels",
+        "description": "Are you sure you want to enable {{count}} selected channels? Enabled channels will be available to process requests.",
+        "warning": "This action will make all selected channels available for use. Make sure the channels are properly configured."
+      },
+      "bulkDelete": {
+        "title": "Bulk Delete Channels",
+        "description": "Are you sure you want to delete {{count}} selected channels?",
+        "warning": "Warning: This action cannot be undone",
+        "warningDetail": "This will permanently delete all selected channels and their related data. This cannot be recovered."
+      },
+      "errorResolved": {
+        "title": "Resolve Channel Error",
+        "description": "Are you sure you want to resolve the error for channel \"{{channelName}}\"? This will clear the error message: \"{{errorMessage}}\"",
+        "currentError": "Current Error Message"
+      },
+      "weight": {
+        "title": "Adjust Channel Weight",
+        "description": "Adjust the ordering weight for channel \"{{name}}\".",
+        "action": "Adjust Weight",
+        "rangeHint": "Weight must be between {{min}} and {{max}}. Higher values will be prioritized."
+      },
+      "remark": {
+        "title": "Channel Remark",
+        "description": "Add or edit remark for channel \"{{name}}\".",
+        "action": "Remark",
+        "label": "Remark",
+        "placeholder": "Enter a note or remark for this channel..."
+      }
+    },
+    "expandedRow": {
+      "basic": "Basic",
+      "additional": "Additional",
+      "performance": "Performance",
+      "modelsAndRemark": "Models & Remark",
+      "modes": "Models",
+      "supportedModels": "Supported Models",
+      "totalModels": "Total Models",
+      "defaultTestModel": "Default Test Model",
+      "remark": "Remark",
+      "tags": "Tags",
+      "apiFormat": "API Format",
+      "noPerformanceData": "No performance data available",
+      "more": "more"
+    },
+    "validation": {
+      "nameRequired": "Name is required",
+      "baseUrlInvalid": "Please enter a valid URL",
+      "baseUrlRequired": "Base URL is required",
+      "apiKeyRequired": "API Key is required",
+      "supportedModelsRequired": "At least one supported model is required",
+      "defaultTestModelRequired": "Please select a default test model",
+      "importDataRequired": "Please enter data to import",
+      "awsAccessKeyIdRequired": "AWS Access Key ID is required",
+      "awsSecretAccessKeyRequired": "AWS Secret Access Key is required",
+      "awsRegionRequired": "AWS Region is required",
+      "gcpRegionRequired": "GCP Region is required",
+      "gcpProjectIdRequired": "GCP Project ID is required",
+      "gcpJsonDataRequired": "GCP Service Account JSON is required",
+      "atLeastOneChannel": "At least one channel is required",
+      "overrideParametersInvalidJson": "Must be valid JSON",
+      "overrideParametersStreamNotAllowed": "Stream cannot be overridden",
+      "forbiddenHeader": "Header cannot override sensitive headers like Authorization, API-Key, or Cookie"
+    },
+    "templates": {
+      "section": {
+        "title": "Templates",
+        "description": "Load saved override configurations or save current settings as a template for reuse"
+      },
+      "selectTemplate": "Select template...",
+      "searchPlaceholder": "Search templates...",
+      "noTemplates": "No templates found",
+      "applyTemplate": "Apply Template",
+      "applying": "Applying...",
+      "saveAsTemplate": "Save as Template",
+      "fields": {
+        "name": "Template Name",
+        "namePlaceholder": "e.g., Production Headers",
+        "description": "Description (Optional)",
+        "descriptionPlaceholder": "Describe what this template is for..."
+      },
+      "dialogs": {
+        "save": {
+          "title": "Save as Template",
+          "description": "Save current override configuration as a reusable template"
+        }
+      },
+      "validation": {
+        "nameRequired": "Template name is required"
+      },
+      "messages": {
+        "createSuccess": "Template created successfully",
+        "createError": "Failed to create template: {{error}}",
+        "updateSuccess": "Template updated successfully",
+        "updateError": "Failed to update template: {{error}}",
+        "deleteSuccess": "Template deleted successfully",
+        "deleteError": "Failed to delete template: {{error}}",
+        "applied": "Template applied successfully",
+        "applySuccess": "Template applied to {{count}} channel(s)",
+        "applyError": "Failed to apply template: {{error}}"
+      },
+      "errors": {
+        "fetchList": "Failed to load templates",
+        "noUser": "User not authenticated"
+      },
+      "bulk": {
+        "title": "Apply Template to Multiple Channels",
+        "description": "Apply a template to {{count}} selected channel(s)",
+        "applyButton": "Apply Template",
+        "apply": "Apply to {{count}} Channel(s)",
+        "applying": "Applying...",
+        "channelTypeInfo": "Selected {{count}} {{type}} channel(s)",
+        "noChannelsSelected": "No channels selected",
+        "multipleTypesError": "All selected channels must be of the same type to apply a template",
+        "applyInfo": "The template will be merged with existing channel configurations. New headers and parameters will be added, existing values will be preserved."
+      }
+    }
+  }
+}

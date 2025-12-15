@@ -1,0 +1,115 @@
+{
+  "requests": {
+    "title": "请求日志",
+    "description": "查看和管理 LLM 调用请求日志",
+    "columns": {
+      "id": "ID",
+      "modelId": "模型ID",
+      "status": "状态",
+      "stream": "流式",
+      "source": "来源",
+      "channel": "渠道",
+      "user": "用户",
+      "apiKey": "API密钥",
+      "roles": "角色",
+      "noRoles": "无角色",
+      "details": "详情",
+      "createdAt": "创建时间",
+      "latency": "延迟",
+      "actions": "操作",
+      "selectAll": "全选",
+      "selectRow": "选择行",
+      "unknown": "未知",
+      "requestBody": "请求体",
+      "responseBody": "响应体",
+      "responseChunks": "响应块"
+    },
+    "status": {
+      "pending": "等待中",
+      "processing": "处理中",
+      "completed": "已完成",
+      "failed": "失败",
+      "canceled": "已取消"
+    },
+    "stream": {
+      "streaming": "流式",
+      "nonStreaming": "非流式"
+    },
+    "source": {
+      "api": "API",
+      "playground": "测试场",
+      "test": "测试"
+    },
+    "actions": {
+      "viewDetails": "查看详情",
+      "viewRequest": "查看请求",
+      "viewResponse": "查看响应",
+      "copy": "复制"
+    },
+    "filters": {
+      "filterId": "按ID筛选...",
+      "status": "状态",
+      "source": "来源",
+      "channel": "渠道",
+      "user": "用户"
+    },
+    "detail": {
+      "title": "请求详情",
+      "overview": "概览",
+      "tabs": {
+        "request": "请求",
+        "response": "响应",
+        "executions": "执行记录",
+        "usage": "用量"
+      },
+      "noResponse": "暂无响应数据"
+    },
+    "dialogs": {
+      "jsonViewer": {
+        "requestBody": "请求体",
+        "responseBody": "响应体",
+        "responseChunks": "响应块",
+        "copy": "复制",
+        "copied": "已复制"
+      },
+      "executionDetail": {
+        "title": "执行详情",
+        "channel": "渠道",
+        "modelId": "模型ID",
+        "status": "状态",
+        "createdAt": "创建时间",
+        "requestBody": "请求体",
+        "responseBody": "响应体",
+        "errorMessage": "错误信息",
+        "noResponse": "暂无响应",
+        "unknown": "未知"
+      },
+      "requestDetail": {
+        "title": "请求详情",
+        "tabs": {
+          "overview": "概览",
+          "request": "请求",
+          "response": "响应",
+          "executions": "执行记录",
+          "usage": "用量信息"
+        },
+        "fields": {
+          "userId": "用户ID",
+          "userName": "用户名称",
+          "apiKeyId": "API密钥ID",
+          "apiKeyName": "API密钥名称",
+          "startTime": "开始时间",
+          "endTime": "结束时间",
+          "notStarted": "未开始"
+        },
+        "execution": "执行 #{{index}}",
+        "noExecutions": "暂无执行记录",
+        "notFound": "请求不存在"
+      },
+      "executionsDrawer": {
+        "title": "执行列表",
+        "noExecutions": "暂无执行记录"
+      }
+    }
+  }
+}

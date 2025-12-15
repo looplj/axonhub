@@ -1,0 +1,67 @@
+{
+  "roles": {
+    "title": "角色管理",
+    "description": "管理系统角色和权限配置。",
+    "createRole": "新建角色",
+    "searchRoles": "按名称搜索角色...",
+    "columns": {
+      "code": "角色代码",
+      "name": "角色名称",
+      "scopes": "权限范围",
+      "createdAt": "创建时间",
+      "updatedAt": "更新时间",
+      "actions": "操作",
+      "selectAll": "全选",
+      "selectRow": "选择行",
+      "moreScopes": "更多"
+    },
+    "actions": {},
+    "filters": {
+      "filterByName": "按名称筛选...",
+      "filterByCode": "按代码筛选..."
+    },
+    "dialogs": {
+      "create": {
+        "title": "新建角色",
+        "description": "创建一个新的角色并配置其权限范围。"
+      },
+      "edit": {
+        "title": "编辑角色",
+        "description": "修改角色信息和权限配置。"
+      },
+      "delete": {
+        "title": "删除角色",
+        "description": "确定要删除这个角色吗？此操作无法撤销。"
+      },
+      "bulkDelete": {
+        "title": "批量删除角色",
+        "description": "确定要删除选中的 {{count}} 个角色吗？此操作无法撤销。"
+      },
+      "fields": {
+        "code": {
+          "label": "角色代码",
+          "placeholder": "admin",
+          "description": "唯一标识符"
+        },
+        "name": {
+          "label": "角色名称",
+          "placeholder": "管理员",
+          "description": "用户友好的角色名称"
+        },
+        "scopes": {
+          "label": "权限范围",
+          "description": "选择此角色拥有的权限"
+        }
+      },
+      "buttons": {
+        "create": "创建角色",
+        "update": "更新角色"
+      }
+    },
+    "validation": {
+      "nameRequired": "角色名称不能为空",
+      "scopesRequired": "至少需要选择一个权限",
+      "projectIdRequired": "项目 ID不能为空"
+    }
+  }
+}
