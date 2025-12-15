@@ -1,0 +1,333 @@
+{
+  "sidebar": {
+    "groups": {
+      "admin": "管理",
+      "general": "常规",
+      "api": "API",
+      "project": "项目",
+      "settings": "设置"
+    },
+    "items": {
+      "dashboard": "仪表板",
+      "channels": "渠道",
+      "dataStorages": "数据存储",
+      "users": "用户",
+      "roles": "角色",
+      "system": "系统",
+      "requests": "请求",
+      "traces": "追踪",
+      "threads": "线程",
+      "usageLogs": "用量日志",
+      "apiKeys": "API 密钥",
+      "playground": "测试场",
+      "profile": "个人资料",
+      "projects": "项目"
+    },
+    "team": {
+      "name": "AxonHub",
+      "plan": "AI + 统一"
+    },
+    "userMenu": {
+      "account": "账户",
+      "logOut": "退出登录"
+    },
+    "profile": {
+      "dropdown": {
+        "user": "用户",
+        "defaultEmail": "user@example.com",
+        "settings": "设置",
+        "logOut": "退出登录"
+      }
+    },
+    "teamSwitcher": {
+      "teams": "团队"
+    },
+    "projectSwitcher": {
+      "projects": "项目",
+      "project": "项目",
+      "selectProject": "选择项目"
+    }
+  },
+  "theme": {
+    "toggle": "切换主题",
+    "light": "浅色",
+    "dark": "深色",
+    "system": "系统",
+    "colorScheme": "配色方案",
+    "colors": {
+      "blue": "蓝色",
+      "green": "绿色",
+      "purple": "紫色",
+      "orange": "橙色",
+      "red": "红色",
+      "black": "黑色",
+      "cream": "奶油色",
+      "claude": "Claude",
+      "starry": "星空"
+    }
+  },
+  "language": {
+    "toggle": "切换语言",
+    "changeSuccess": "语言已成功切换为{{language}}",
+    "changeError": "切换语言失败：{{error}}"
+  },
+  "command": {
+    "placeholder": "输入命令或搜索...",
+    "noResults": "未找到结果。",
+    "theme": "主题"
+  },
+  "search": {
+    "placeholder": "搜索"
+  },
+  "apps": {
+    "title": "应用集成",
+    "description": "这是您的应用集成列表！",
+    "filter": {
+      "placeholder": "筛选应用...",
+      "all": "所有应用",
+      "connected": "已连接",
+      "notConnected": "未连接"
+    },
+    "status": {
+      "connected": "已连接",
+      "connect": "连接"
+    }
+  },
+  "projectUsers": {
+    "title": "项目用户",
+    "description": "管理当前项目的用户和权限。",
+    "addToProject": "添加用户到项目"
+  },
+  "projectRoles": {
+    "title": "项目角色",
+    "description": "管理当前项目的角色和权限。",
+    "createRole": "添加角色到项目"
+  },
+  "pagination": {
+    "selectedRows": "已选择 {{selected}} / {{total}} 行",
+    "selectedInfo": "已选择 {{selectedRows}} / {{dataLength}} 行",
+    "selectedInfoWithTotal": "已选择 {{selectedRows}} / {{dataLength}} 行 / 总计 {{totalCount}} 行",
+    "totalRows": "总计 {{total}} 行",
+    "rowsPerPage": "每页行数",
+    "currentPage": "第 {{current}} 页，共 {{total}} 页",
+    "firstPage": "首页",
+    "lastPage": "末页",
+    "previousPage": "上一页",
+    "nextPage": "下一页",
+    "hasPrevious": "有上一页",
+    "hasNext": "有下一页"
+  },
+  "common": {
+    "refresh": "刷新",
+    "selected": "已选择",
+    "selectedItems": "已选择 {{count}} 项",
+    "noResultsFound": "未找到结果",
+    "clearFilters": "清除筛选",
+    "loading": "加载中...",
+    "view": "视图",
+    "toggleColumns": "切换列",
+    "noData": "暂无数据",
+    "noResults": "无结果。",
+    "loadError": "加载失败:",
+    "error": "错误",
+    "back": "返回",
+    "showing": "显示",
+    "of": "共",
+    "previous": "上一页",
+    "next": "下一页",
+    "moveUp": "上移",
+    "moveDown": "下移",
+    "moveToTop": "移动到顶部",
+    "moveToBottom": "移动到底部",
+    "dragging": "拖拽中",
+    "unsavedChanges": "您有未保存的更改",
+    "sort": {
+      "ascending": "升序",
+      "descending": "降序",
+      "hide": "隐藏"
+    },
+    "messages": {
+      "errorMessage": "错误信息",
+      "success": "成功",
+      "error": "错误"
+    },
+    "buttons": {
+      "cancel": "取消",
+      "save": "保存",
+      "saving": "保存中...",
+      "saveChanges": "保存更改",
+      "create": "创建",
+      "creating": "创建中...",
+      "update": "更新",
+      "updating": "更新中...",
+      "delete": "删除",
+      "deleting": "删除中...",
+      "edit": "编辑",
+      "editing": "编辑中...",
+      "enable": "启用",
+      "enabling": "启用中...",
+      "disable": "禁用",
+      "disabling": "禁用中...",
+      "archive": "归档",
+      "archiving": "归档中...",
+      "activate": "激活",
+      "activating": "激活中...",
+      "remove": "移除"
+    },
+    "actions": {
+      "openMenu": "打开菜单",
+      "edit": "编辑",
+      "duplicate": "复制",
+      "delete": "删除"
+    },
+    "filters": {
+      "reset": "重置"
+    },
+    "routeGuard": {
+      "accessDenied": "访问被拒绝",
+      "noPermission": "您没有访问此页面的权限。请联系管理员获取相应的访问权限。",
+      "goBack": "返回"
+    },
+    "projectGuard": {
+      "noProjectSelected": "未选择项目",
+      "pleaseSelectProject": "请从项目切换器中选择一个项目以继续。",
+      "pleaseJoinOrCreateProject": "您还没有加入任何项目。请创建新项目或联系管理员将您添加到现有项目中。",
+      "goToProjects": "前往项目",
+      "createOrJoinProject": "创建或加入项目"
+    },
+    "errors": {
+      "sessionExpired": "会话已过期！",
+      "sessionExpiredSignIn": "会话已过期，请重新登录。",
+      "contentNotModified": "内容未修改！",
+      "internalServerError": "内部服务器错误！",
+      "somethingWentWrong": "出现了一些问题！",
+      "contentNotFound": "内容未找到。",
+      "initializationFailed": "系统初始化失败",
+      "unknownError": "发生未知错误",
+      "validationError": "数据校验错误",
+      "validationFailed": "数据校验失败：{{details}}",
+      "operationFailed": "{{operation}}失败",
+      "copyFailed": "复制到剪贴板失败。",
+      "loadFailed": "加载数据失败",
+      "systemUpdateFailed": "系统设置更新失败",
+      "onboardingFailed": "引导完成失败",
+      "userLoadFailed": "加载角色和权限失败",
+      "userSaveFailed": "保存用户失败",
+      "userDeleteFailed": "删除用户失败",
+      "modelCreateFailed": "创建模型失败",
+      "modelUpdateFailed": "更新模型失败",
+      "modelDeleteFailed": "删除模型失败"
+    },
+    "success": {
+      "copiedToClipboard": "已复制到剪贴板！",
+      "roleCreated": "角色创建成功",
+      "roleUpdated": "角色更新成功",
+      "roleDeleted": "角色删除成功",
+      "rolesDeleted": "成功删除 {{count}} 个角色",
+      "projectCreated": "项目创建成功",
+      "projectUpdated": "项目更新成功",
+      "projectArchived": "项目归档成功",
+      "projectActivated": "项目激活成功",
+      "signedIn": "登录成功！",
+      "signedOut": "退出登录成功！",
+      "userCreated": "用户创建成功",
+      "userUpdated": "用户更新成功",
+      "userDeleted": "用户删除成功",
+      "modelCreated": "模型创建成功",
+      "modelUpdated": "模型更新成功",
+      "modelDeleted": "模型删除成功",
+      "systemSettingsUpdated": "系统设置更新成功",
+      "systemUpdated": "系统设置更新成功",
+      "onboardingCompleted": "引导完成成功"
+    }
+  },
+  "initialization": {
+    "title": "初始化系统",
+    "description": "欢迎使用 AxonHub！请通过创建所有者账户来设置系统。",
+    "form": {
+      "ownerEmail": "管理员邮箱",
+      "ownerPassword": "管理员密码",
+      "ownerFirstName": "管理员名",
+      "ownerLastName": "管理员姓",
+      "brandName": "品牌名称",
+      "placeholders": {
+        "ownerEmail": "admin@example.com",
+        "ownerPassword": "********",
+        "ownerFirstName": "张",
+        "ownerLastName": "三",
+        "brandName": "您的公司名称"
+      },
+      "validation": {
+        "ownerEmailRequired": "请输入所有者邮箱",
+        "ownerEmailInvalid": "邮箱地址无效",
+        "ownerPasswordRequired": "请输入所有者密码",
+        "ownerPasswordMinLength": "密码至少需要8个字符",
+        "ownerFirstNameRequired": "请输入所有者名",
+        "ownerLastNameRequired": "请输入所有者姓",
+        "brandNameRequired": "请输入品牌名称"
+      },
+      "submit": "初始化系统",
+      "submitting": "初始化中..."
+    }
+  },
+  "scopes": {
+    "read_channels": "查看渠道信息",
+    "write_channels": "管理渠道",
+    "read_users": "查看用户信息",
+    "write_users": "管理用户",
+    "read_roles": "查看角色信息",
+    "write_roles": "管理角色",
+    "read_api_keys": "查看API密钥",
+    "write_api_keys": "管理API密钥",
+    "read_requests": "查看请求记录",
+    "write_requests": "管理请求记录",
+    "read_dashboard": "查看仪表板",
+    "read_settings": "查看系统设置",
+    "write_settings": "管理系统设置",
+    "read_projects": "查看项目信息",
+    "write_projects": "管理项目"
+  },
+  "auth": {
+    "brand": {
+      "title": "统一 AI 网关",
+      "description": "统一兼容 OpenAI/Anthropic 的 API，具备灵活的 Transformer 管道、智能路由与全链路追踪——为企业级可靠性而生。"
+    },
+    "signIn": {
+      "title": "登录到 AxonHub",
+      "subtitle": "输入您的邮箱和密码以访问您的账户",
+      "form": {
+        "email": {
+          "label": "邮箱",
+          "placeholder": "输入您的邮箱地址"
+        },
+        "password": {
+          "label": "密码",
+          "placeholder": "输入您的密码"
+        },
+        "captcha": {
+          "label": "验证码",
+          "placeholder": "输入验证码",
+          "refresh": "刷新验证码"
+        },
+        "rememberMe": "记住我",
+        "signInButton": "登录",
+        "signingIn": "登录中..."
+      },
+      "validation": {
+        "emailRequired": "邮箱不能为空",
+        "emailInvalid": "邮箱格式无效",
+        "passwordRequired": "密码不能为空",
+        "passwordMinLength": "密码至少需要7个字符",
+        "captchaRequired": "验证码不能为空"
+      },
+      "links": {
+        "forgotPassword": "忘记密码？",
+        "noAccount": "还没有账户？",
+        "signUp": "注册"
+      },
+      "footer": {
+        "agreement": "登录即表示您同意我们的服务条款和隐私政策"
+      }
+    }
+  }
+}

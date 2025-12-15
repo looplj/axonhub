@@ -1,0 +1,72 @@
+{
+  "profile": {
+    "dropdown": {
+      "user": "User",
+      "defaultEmail": "user@example.com",
+      "settings": "Settings",
+      "logOut": "Log out"
+    },
+    "title": "Profile",
+    "description": "This is how others will see you on the site.",
+    "form": {
+      "fields": {
+        "firstName": {
+          "label": "First Name",
+          "placeholder": "Enter your first name",
+          "description": "Your first name as it will appear to other users.",
+          "required": "First name is required.",
+          "maxLength": "First name must not be longer than 50 characters."
+        },
+        "lastName": {
+          "label": "Last Name",
+          "placeholder": "Enter your last name",
+          "description": "Your last name as it will appear to other users.",
+          "required": "Last name is required.",
+          "maxLength": "Last name must not be longer than 50 characters."
+        },
+        "email": {
+          "label": "Email",
+          "placeholder": "Enter your email address",
+          "description": "Your email address for account notifications and login.",
+          "required": "Email is required.",
+          "invalid": "Please enter a valid email address."
+        },
+        "preferLanguage": {
+          "label": "Preferred Language",
+          "placeholder": "Select your preferred language",
+          "description": "Choose your preferred language for the interface.",
+          "required": "Please select a preferred language.",
+          "options": {
+            "en": "English",
+            "zh": "中文"
+          }
+        },
+        "avatar": {
+          "label": "Avatar",
+          "upload": "Upload Avatar",
+          "description": "Upload a profile picture. Recommended size is 200x200 pixels."
+        }
+      },
+      "validation": {
+        "firstNameRequired": "First name is required.",
+        "firstNameTooLong": "First name must not be longer than 50 characters.",
+        "lastNameRequired": "Last name is required.",
+        "lastNameTooLong": "Last name must not be longer than 50 characters.",
+        "emailRequired": "Email is required.",
+        "emailInvalid": "Please enter a valid email address.",
+        "languageRequired": "Please select a preferred language."
+      },
+      "buttons": {
+        "update": "Save Changes"
+      },
+      "messages": {
+        "updateSuccess": "Profile updated successfully!",
+        "updateError": "Failed to update profile: {{error}}"
+      }
+    },
+    "languages": {
+      "en": "English",
+      "zh": "中文"
+    }
+  }
+}

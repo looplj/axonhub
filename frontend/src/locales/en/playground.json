@@ -1,0 +1,33 @@
+{
+  "playground": {
+    "title": "Playground",
+    "description": "Test and experiment with AI models in an interactive environment.",
+    "settings": {
+      "model": "Model",
+      "modelPlaceholder": "Select a model",
+      "selectModel": "Select a model",
+      "temperature": "Temperature",
+      "maxTokens": "Max Tokens",
+      "systemPrompt": "System Prompt",
+      "defaultSystemPrompt": "You are a helpful assistant."
+    },
+    "actions": {
+      "copy": "Copy",
+      "regenerate": "Regenerate",
+      "readAloud": "Read Aloud"
+    },
+    "chat": {
+      "generating": "Generating...",
+      "retry": "Retry Last Response",
+      "clear": "Clear Chat",
+      "startConversation": "Start a conversation",
+      "typeMessageBelow": "Type your message below to begin",
+      "typeMessage": "Type a message...",
+      "noMessages": "No messages to retry"
+    },
+    "errors": {
+      "noChannelsAvailable": "No models available"
+    },
+    "modelsAvailable": "{{count}} models available across {{channels}} channels"
+  }
+}

@@ -1,0 +1,115 @@
+{
+  "requests": {
+    "title": "Request Logs",
+    "description": "View and manage LLM call request logs",
+    "columns": {
+      "id": "ID",
+      "modelId": "Model ID",
+      "status": "Status",
+      "stream": "Stream",
+      "source": "Source",
+      "channel": "Channel",
+      "user": "User",
+      "apiKey": "API Key",
+      "roles": "Roles",
+      "noRoles": "No roles",
+      "details": "Details",
+      "createdAt": "Created At",
+      "latency": "Latency",
+      "actions": "Actions",
+      "selectAll": "Select all",
+      "selectRow": "Select row",
+      "unknown": "Unknown",
+      "requestBody": "Request Body",
+      "responseBody": "Response Body",
+      "responseChunks": "Response Chunks"
+    },
+    "status": {
+      "pending": "Pending",
+      "processing": "Processing",
+      "completed": "Completed",
+      "failed": "Failed",
+      "canceled": "Canceled"
+    },
+    "stream": {
+      "streaming": "Streaming",
+      "nonStreaming": "Non-streaming"
+    },
+    "source": {
+      "api": "API",
+      "playground": "Playground",
+      "test": "Test"
+    },
+    "actions": {
+      "viewDetails": "View Details",
+      "viewRequest": "View Request",
+      "viewResponse": "View Response",
+      "copy": "Copy"
+    },
+    "filters": {
+      "filterId": "Filter by ID...",
+      "status": "Status",
+      "source": "Source",
+      "channel": "Channel",
+      "user": "User"
+    },
+    "detail": {
+      "title": "Request Details",
+      "overview": "Overview",
+      "tabs": {
+        "request": "Request",
+        "response": "Response",
+        "executions": "Executions",
+        "usage": "Usage"
+      },
+      "noResponse": "No response data"
+    },
+    "dialogs": {
+      "jsonViewer": {
+        "requestBody": "Request Body",
+        "responseBody": "Response Body",
+        "responseChunks": "Response Chunks",
+        "copy": "Copy",
+        "copied": "Copied"
+      },
+      "executionDetail": {
+        "title": "Execution Details",
+        "channel": "Channel",
+        "modelId": "Model ID",
+        "status": "Status",
+        "createdAt": "Created At",
+        "requestBody": "Request Body",
+        "responseBody": "Response Body",
+        "errorMessage": "Error Message",
+        "noResponse": "No Response",
+        "unknown": "Unknown"
+      },
+      "requestDetail": {
+        "title": "Request Details",
+        "tabs": {
+          "overview": "Overview",
+          "request": "Request",
+          "response": "Response",
+          "executions": "Executions",
+          "usage": "Usage"
+        },
+        "fields": {
+          "userId": "User ID",
+          "userName": "User Name",
+          "apiKeyId": "API Key ID",
+          "apiKeyName": "API Key Name",
+          "startTime": "Start Time",
+          "endTime": "End Time",
+          "notStarted": "Not Started"
+        },
+        "execution": "Execution #{{index}}",
+        "noExecutions": "No executions",
+        "notFound": "Request not found"
+      },
+      "executionsDrawer": {
+        "title": "Execution List",
+        "noExecutions": "No execution records"
+      }
+    }
+  }
+}

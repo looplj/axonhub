@@ -1,0 +1,124 @@
+{
+  "traces": {
+    "title": "Trace Management",
+    "description": "View and manage AI request traces and execution flows",
+    "common": {
+      "badges": {
+        "request": "Request",
+        "response": "Response",
+        "trace": "Trace"
+      }
+    },
+    "columns": {
+      "id": "ID",
+      "traceId": "Trace ID",
+      "project": "Project",
+      "thread": "Thread",
+      "userQuery": "User Query",
+      "userImageUrl": "User Image URL",
+      "requestCount": "Request Count",
+      "details": "Details",
+      "createdAt": "Created At",
+      "updatedAt": "Updated At",
+      "actions": "Actions",
+      "selectAll": "Select all",
+      "selectRow": "Select row",
+      "unknown": "Unknown",
+      "noThread": "-"
+    },
+    "actions": {
+      "viewDetails": "View Details",
+      "viewTrace": "View Trace",
+      "openMenu": "Open menu"
+    },
+    "filters": {
+      "filterId": "Filter by ID...",
+      "filterTraceId": "Filter by Trace ID...",
+      "project": "Project",
+      "thread": "Thread"
+    },
+    "detail": {
+      "title": "Trace Details",
+      "basic": "Basic Information",
+      "additional": "Additional Information",
+      "notFound": "Trace not found",
+      "overview": "Overview",
+      "requestTrace": "Request Trace",
+      "traceTree": "Trace Tree",
+      "noTraceData": "No trace data available",
+      "metadata": "Metadata",
+      "duration": "Duration",
+      "tokens": "Tokens",
+      "cost": "Cost",
+      "items": "Items",
+      "requestSpans": "Request Spans",
+      "responseSpans": "Response Spans",
+      "levelBadge": "Level {{level}}",
+      "durationLabel": "Duration",
+      "tokensLabel": "Tokens",
+      "costLabel": "Cost",
+      "itemsLabel": "Items",
+      "inputTokensLabel": "Input Tokens",
+      "outputTokensLabel": "Output Tokens",
+      "totalTokensLabel": "Total Tokens",
+      "cachedTokensLabel": "Cached Tokens",
+      "requestSpansHeader": "Request Spans ({{count}})",
+      "responseSpansHeader": "Response Spans ({{count}})",
+      "requestQuery": "Request",
+      "promptLabel": "Prompt",
+      "textOutput": "Text Output",
+      "thinking": "Thinking",
+      "functionCall": "Function Call",
+      "nameLabel": "Name",
+      "argumentsLabel": "Arguments",
+      "functionResult": "Function Result",
+      "error": "Error",
+      "image": "Generated Image",
+      "imageAlt": "Generated span image",
+      "systemInstruction": "System Instruction",
+      "noSpanContent": "No additional content for this span.",
+      "selectSpanHint": "Select a span from the timeline to inspect its detail.",
+      "tokenSummary": {
+        "input": "Input Tokens: {{value}}",
+        "output": "Output Tokens: {{value}}",
+        "cached": "Cached Tokens: {{value}}"
+      },
+      "segmentTime": "Segment: {{start}} - {{end}}"
+    },
+    "timeline": {
+      "title": "Timeline",
+      "emptyDescription": "Timeline data is unavailable for this trace.",
+      "itemsCount": "{{count}} item",
+      "itemsCount_plural": "{{count}} items",
+      "aria": {
+        "expandRow": "Expand row",
+        "collapseRow": "Collapse row"
+      },
+      "spanTypes": {
+        "default": "Span",
+        "userQuery": "User Query",
+        "text": "Text",
+        "thinking": "Thinking",
+        "toolUse": "Tool Call",
+        "toolResult": "Tool Result",
+        "message": "Message",
+        "retrieve": "Retrieve",
+        "embedding": "Embedding",
+        "synthesize": "Synthesize",
+        "chunking": "Chunking",
+        "templating": "Templating",
+        "llm": "LLM",
+        "imageUrl": "Image",
+        "systemInstruction": "System Instruction"
+      },
+      "totalDurationLabel": "Total Duration",
+      "summary": {
+        "duration": "Duration {{value}}",
+        "tokenCount": "{{value}} tokens"
+      },
+      "collapseAll": "Collapse All",
+      "expandAll": "Expand All",
+      "viewRequest": "View Request"
+    }
+  }
+}

@@ -1,0 +1,153 @@
+{
+  "dataStorages": {
+    "title": "Data Storage Management",
+    "description": "Manage your data storage configurations and settings.",
+    "createStorage": "Create Data Storage",
+    "filterStorages": "Filter data storages...",
+    "columns": {
+      "name": "Name",
+      "primary": "Primary",
+      "description": "Description",
+      "type": "Type",
+      "settings": "Settings",
+      "status": "Status",
+      "createdAt": "Created At",
+      "updatedAt": "Updated At",
+      "actions": "Actions",
+      "selectAll": "Select all",
+      "selectRow": "Select row"
+    },
+    "status": {
+      "active": "Active",
+      "archived": "Archived"
+    },
+    "types": {
+      "database": "Database",
+      "fs": "File System",
+      "s3": "S3",
+      "gcs": "GCS"
+    },
+    "primary": "Primary",
+    "default": "Default",
+    "actions": {
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "filters": {
+      "type": "Type",
+      "status": "Status",
+      "searchByName": "Search by name..."
+    },
+    "messages": {
+      "createSuccess": "Data storage created successfully",
+      "createError": "Failed to create data storage",
+      "updateSuccess": "Data storage updated successfully",
+      "updateError": "Failed to update data storage",
+      "deleteSuccess": "Data storage deleted successfully",
+      "deleteError": "Failed to delete data storage",
+      "statusUpdateSuccess": "Data storage status updated to {{status}}",
+      "statusUpdateError": "Failed to update status",
+      "archiveSuccess": "Data storage archived successfully",
+      "archiveError": "Failed to archive data storage"
+    },
+    "dialogs": {
+      "create": {
+        "title": "Create Data Storage",
+        "description": "Configure a new data storage location."
+      },
+      "edit": {
+        "title": "Edit Data Storage",
+        "description": "Modify data storage configuration."
+      },
+      "delete": {
+        "title": "Delete Data Storage",
+        "description": "Are you sure you want to delete data storage {{name}}? This action cannot be undone."
+      },
+      "status": {
+        "title": "Change Status",
+        "description": "Are you sure you want to change the status of this data storage?",
+        "activateTitle": "Activate Data Storage",
+        "archiveTitle": "Archive Data Storage",
+        "activateDescription": "Are you sure you want to activate data storage {{name}}?",
+        "archiveDescription": "Are you sure you want to archive data storage {{name}}?"
+      },
+      "fields": {
+        "name": {
+          "label": "Name",
+          "placeholder": "Enter storage name",
+          "description": "Set an easily recognizable name for this storage"
+        },
+        "description": {
+          "label": "Description",
+          "placeholder": "Enter storage description",
+          "description": "Detailed description of the storage"
+        },
+        "type": {
+          "label": "Type",
+          "description": "Select the storage type"
+        },
+        "directory": {
+          "label": "Directory Path",
+          "placeholder": "/var/axonhub/data",
+          "description": "Directory path for file system storage"
+        },
+        "s3AccessKey": {
+          "label": "Access Key",
+          "placeholder": "Enter S3 access key",
+          "editPlaceholder": "Leave empty to keep current value",
+          "description": "S3 access key for authentication"
+        },
+        "s3SecretKey": {
+          "label": "Secret Key",
+          "placeholder": "Enter S3 secret key",
+          "editPlaceholder": "Leave empty to keep current value",
+          "description": "S3 secret key for authentication"
+        },
+        "gcsCredential": {
+          "label": "Service Account JSON",
+          "placeholder": "Enter GCS service account JSON",
+          "editPlaceholder": "Leave empty to keep current value",
+          "description": "GCP service account JSON credentials"
+        }
+      },
+      "buttons": {
+        "create": "Create Storage",
+        "update": "Update Storage",
+        "delete": "Delete"
+      }
+    },
+    "validation": {
+      "nameRequired": "Name is required",
+      "directoryRequired": "Directory path is required",
+      "typeRequired": "Storage type is required",
+      "s3BucketRequired": "S3 bucket name is required",
+      "s3AccessKeyRequired": "S3 access key is required",
+      "s3SecretKeyRequired": "S3 secret key is required",
+      "gcsBucketRequired": "GCS bucket name is required",
+      "gcsCredentialRequired": "GCS service account JSON is required",
+      "gcsCredentialInvalid": "GCS credential must be a valid JSON object"
+    },
+    "fields": {
+      "name": "Name",
+      "description": "Description",
+      "type": "Type",
+      "directory": "Directory Path",
+      "s3BucketName": "Bucket Name",
+      "s3Endpoint": "Endpoint (optional)",
+      "s3Region": "Region",
+      "s3AccessKey": "Access Key",
+      "s3SecretKey": "Secret Key",
+      "gcsBucketName": "Bucket Name",
+      "gcsCredential": "Service Account JSON"
+    },
+    "buttons": {
+      "create": "Create Data Storage",
+      "edit": "Edit",
+      "delete": "Delete",
+      "activate": "Activate",
+      "archive": "Archive",
+      "openStorageSettings": "Storage Settings"
+    },
+    "llmStorageHint": "Can be used to configure storage for LLM request and response bodies"
+  }
+}

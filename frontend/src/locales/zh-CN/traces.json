@@ -1,0 +1,125 @@
+{
+  "traces": {
+    "title": "追踪管理",
+    "description": "查看和管理AI请求追踪和执行流程",
+    "refresh": "刷新",
+    "common": {
+      "badges": {
+        "request": "请求",
+        "response": "响应",
+        "trace": "追踪"
+      }
+    },
+    "columns": {
+      "id": "ID",
+      "traceId": "追踪ID",
+      "project": "项目",
+      "thread": "线程",
+      "userQuery": "用户提问",
+      "requestCount": "请求次数",
+      "details": "详情",
+      "createdAt": "创建时间",
+      "updatedAt": "更新时间",
+      "actions": "操作",
+      "selectAll": "选择全部",
+      "selectRow": "选择行",
+      "unknown": "未知",
+      "noThread": "-"
+    },
+    "actions": {
+      "viewDetails": "查看详情",
+      "viewTrace": "查看追踪",
+      "openMenu": "打开菜单"
+    },
+    "filters": {
+      "filterId": "按ID筛选...",
+      "filterTraceId": "按追踪ID筛选...",
+      "project": "项目",
+      "thread": "线程"
+    },
+    "detail": {
+      "title": "追踪详情",
+      "basic": "基本信息",
+      "additional": "附加信息",
+      "notFound": "未找到追踪",
+      "overview": "概览",
+      "requestTrace": "请求追踪",
+      "traceTree": "追踪树",
+      "noTraceData": "暂无追踪数据",
+      "metadata": "元数据",
+      "duration": "持续时间",
+      "tokens": "令牌数",
+      "cost": "成本",
+      "items": "项目数",
+      "requestSpans": "请求片段",
+      "responseSpans": "响应片段",
+      "levelBadge": "层级 {{level}}",
+      "durationLabel": "持续时间",
+      "tokensLabel": "令牌数",
+      "costLabel": "成本",
+      "itemsLabel": "项目数",
+      "inputTokensLabel": "输入令牌数",
+      "outputTokensLabel": "输出令牌数",
+      "totalTokensLabel": "总令牌数",
+      "cachedTokensLabel": "缓存令牌数",
+      "requestSpansHeader": "请求片段 ({{count}})",
+      "responseSpansHeader": "响应片段 ({{count}})",
+      "requestQuery": "请求内容",
+      "promptLabel": "提示词",
+      "textOutput": "文本输出",
+      "thinking": "思考内容",
+      "functionCall": "函数调用",
+      "nameLabel": "名称",
+      "argumentsLabel": "参数",
+      "functionResult": "函数结果",
+      "error": "错误",
+      "image": "生成图像",
+      "imageAlt": "追踪片段图像",
+      "systemInstruction": "系统指令",
+      "noSpanContent": "该片段没有额外内容。",
+      "selectSpanHint": "请从时间线选择片段查看详情。",
+      "tokenSummary": {
+        "input": "输入令牌：{{value}}",
+        "output": "输出令牌：{{value}}",
+        "cached": "缓存令牌：{{value}}"
+      },
+      "segmentTime": "片段：{{start}} - {{end}}"
+    },
+    "timeline": {
+      "title": "时间线",
+      "emptyDescription": "该追踪暂无时间线数据。",
+      "itemsCount": "{{count}} 项",
+      "itemsCount_plural": "{{count}} 项",
+      "aria": {
+        "expandRow": "展开行",
+        "collapseRow": "折叠行"
+      },
+      "spanTypes": {
+        "default": "片段",
+        "userQuery": "用户查询",
+        "userImageUrl": "用户图片",
+        "text": "文本",
+        "thinking": "思考",
+        "toolUse": "工具调用",
+        "toolResult": "工具结果",
+        "message": "消息",
+        "retrieve": "检索",
+        "embedding": "向量化",
+        "synthesize": "合成",
+        "chunking": "分块",
+        "templating": "模板化",
+        "llm": "大模型",
+        "imageUrl": "图像",
+        "systemInstruction": "系统指令"
+      },
+      "totalDurationLabel": "总持续时间",
+      "summary": {
+        "duration": "持续时间 {{value}}",
+        "tokenCount": "令牌数：{{value}}"
+      },
+      "collapseAll": "全部收起",
+      "expandAll": "全部展开",
+      "viewRequest": "查看请求"
+    }
+  }
+}

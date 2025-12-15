@@ -1,0 +1,53 @@
+{
+  "dashboard": {
+    "title": "仪表板",
+    "description": "系统概览和统计信息。",
+    "cards": {
+      "overview": "概览",
+      "totalUsers": "总用户数",
+      "totalRequests": "总请求数",
+      "requestsByTime": "请求数统计",
+      "successRate": "成功率",
+      "tokenStats": "令牌统计",
+      "tokensByTime": "令牌使用统计"
+    },
+    "charts": {
+      "dailyRequestOverview": "每日请求概览",
+      "topUsers": "活跃用户",
+      "topProjects": "活跃项目",
+      "requestsByChannel": "按渠道分组的请求",
+      "requestsByModel": "按模型分组的请求",
+      "errorLoadingChart": "加载图表数据失败:",
+      "errorLoadingTopUsers": "加载活跃用户失败:",
+      "errorLoadingTopProjects": "加载活跃项目失败:",
+      "errorLoadingChannelData": "加载渠道数据失败:",
+      "errorLoadingModelData": "加载模型数据失败:",
+      "noUserData": "暂无用户数据",
+      "noProjectData": "暂无项目数据",
+      "noChannelData": "暂无渠道数据",
+      "noModelData": "暂无模型数据",
+      "requestsByChannelDescription": "不同渠道的请求分布情况。",
+      "requestsByModelDescription": "不同AI模型的请求分布情况。"
+    },
+    "stats": {
+      "totalUsersInSystem": "系统总用户数",
+      "allTimeRequests": "历史总请求数",
+      "thisMonth": "本月",
+      "thisWeek": "本周",
+      "today": "今天",
+      "failedRequests": "失败请求",
+      "fromLastMonth": "较上月",
+      "sinceYesterday": "较昨日",
+      "usersWithMostRequests": "本月请求最多的用户。",
+      "projectsWithMostRequests": "本月请求最多的项目。",
+      "requests": "次请求",
+      "inputTokens": "输入令牌",
+      "outputTokens": "输出令牌",
+      "cachedTokens": "缓存令牌",
+      "totalTokens": "总令牌数",
+      "input": "输入",
+      "output": "输出",
+      "cached": "缓存"
+    }
+  }
+}
