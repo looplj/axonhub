@@ -670,14 +670,14 @@ test.describe('Admin Channels Management', () => {
     await expect(errorMessage).not.toBeVisible()
 
     // Save the settings
-    const saveButton = settingsDialog.getByRole('button', { name: /保存|Save/i })
+    const saveButton = settingsDialog.locator('[data-testid="override-save-button"]')
     await Promise.all([
       waitForGraphQLOperation(page, 'UpdateChannel'),
       saveButton.click(),
     ])
 
     // Wait for dialog to close
-    await expect(settingsDialog).not.toBeVisible({ timeout: 10000 })
+    await expect(settingsDialog).not.toBeVisible({ timeout: 15000 })
 
     // Re-open override settings dialog to verify the value was saved
     const refreshedRow = channelsTable.locator('tbody tr').first()
@@ -700,6 +700,347 @@ test.describe('Admin Channels Management', () => {
     const cancelButton = reopenedDialog.getByRole('button', { name: /取消|Cancel/i })
     await cancelButton.click()
     await expect(reopenedDialog).not.toBeVisible()
+  })
+
+  test('should preserve override settings when saving proxy settings', async ({ page }) => {
+    const uniqueSuffix = Date.now().toString().slice(-6)
+    const validJson = `{"temperature": 0.8, "max_tokens": 4096, "note": "pw-${uniqueSuffix}"}`
+    const proxyUrl = `http://proxy.test-${uniqueSuffix}.example.com:8080`
+
+    await page.waitForTimeout(2000)
+
+    const channelsTable = page.locator('[data-testid="channels-table"]')
+    const firstRow = channelsTable.locator('tbody tr').first()
+    const rowCount = await channelsTable.locator('tbody tr').count()
+
+    if (rowCount === 0) {
+      test.skip()
+      return
+    }
+
+    await expect(firstRow).toBeVisible()
+
+    const actionsTrigger = firstRow.locator('[data-testid="row-actions"]')
+    const actionsCount = await actionsTrigger.count()
+    if (actionsCount === 0) {
+      test.skip()
+      return
+    }
+
+    await actionsTrigger.click()
+    const menu = page.getByRole('menu')
+    await expect(menu).toBeVisible()
+
+    const overridesOption = menu.getByRole('menuitem', { name: /Overrides|覆盖设置/i })
+    const overridesCount = await overridesOption.count()
+    if (overridesCount === 0) {
+      test.skip()
+      return
+    }
+
+    await overridesOption.click()
+    const overridesDialog = page.getByRole('dialog')
+    await expect(overridesDialog).toBeVisible()
+
+    const overrideTextarea = overridesDialog.locator('[data-testid="override-parameters-textarea"]')
+    await overrideTextarea.fill(validJson)
+    await page.waitForTimeout(500)
+
+    const saveOverridesButton = overridesDialog.locator('[data-testid="override-save-button"]')
+    await Promise.all([
+      waitForGraphQLOperation(page, 'UpdateChannel'),
+      saveOverridesButton.click(),
+    ])
+
+    await expect(overridesDialog).not.toBeVisible({ timeout: 15000 })
+    await page.waitForTimeout(1000)
+
+    const refreshedRow = channelsTable.locator('tbody tr').first()
+    const refreshedActionsTrigger = refreshedRow.locator('[data-testid="row-actions"]')
+    await refreshedActionsTrigger.click()
+
+    const menu2 = page.getByRole('menu')
+    await expect(menu2).toBeVisible()
+
+    const proxyOption = menu2.getByRole('menuitem', { name: /Proxy|代理配置/i })
+    const proxyCount = await proxyOption.count()
+    if (proxyCount === 0) {
+      test.skip()
+      return
+    }
+
+    await proxyOption.click()
+    const proxyDialog = page.getByRole('dialog')
+    await expect(proxyDialog).toBeVisible()
+    await expect(proxyDialog).toContainText(/Proxy Configuration|代理配置/i)
+
+    const typeTrigger = proxyDialog.getByRole('combobox').first()
+    await typeTrigger.click()
+
+    const urlTypeOption = page.getByRole('option', { name: /Custom URL|自定义 URL/i }).first()
+    await urlTypeOption.click()
+    await page.waitForTimeout(300)
+
+    const urlInput = proxyDialog.getByPlaceholder(/http:\/\/proxy\.example\.com:8080/i)
+    await urlInput.fill(proxyUrl)
+
+    const saveProxyButton = proxyDialog.getByRole('button', { name: /保存|Save/i })
+    await Promise.all([
+      waitForGraphQLOperation(page, 'UpdateChannel'),
+      saveProxyButton.click(),
+    ])
+
+    await expect(proxyDialog).not.toBeVisible({ timeout: 15000 })
+    await page.waitForTimeout(1000)
+
+    const finalRow = channelsTable.locator('tbody tr').first()
+    const finalActionsTrigger = finalRow.locator('[data-testid="row-actions"]')
+    await finalActionsTrigger.click()
+
+    const menu3 = page.getByRole('menu')
+    await expect(menu3).toBeVisible()
+    await menu3.getByRole('menuitem', { name: /Overrides|覆盖设置/i }).click()
+
+    const reopenedOverridesDialog = page.getByRole('dialog')
+    await expect(reopenedOverridesDialog).toBeVisible()
+
+    const reopenedTextarea = reopenedOverridesDialog.locator('[data-testid="override-parameters-textarea"]')
+    await expect(reopenedTextarea).toHaveValue(validJson)
+
+    const cancelButton = reopenedOverridesDialog.getByRole('button', { name: /取消|Cancel/i }).first()
+    if ((await cancelButton.count()) > 0) {
+      await cancelButton.click()
+    } else {
+      await page.keyboard.press('Escape')
+    }
+    await expect(reopenedOverridesDialog).not.toBeVisible()
+  })
+
+  test('should preserve proxy settings when saving override settings', async ({ page }) => {
+    const uniqueSuffix = Date.now().toString().slice(-6)
+    const validJson = `{"temperature": 0.9, "max_tokens": 2048, "note": "pw-${uniqueSuffix}"}`
+    const proxyUrl = `http://proxy.rev-${uniqueSuffix}.example.com:8080`
+
+    await page.waitForTimeout(2000)
+
+    const channelsTable = page.locator('[data-testid="channels-table"]')
+    const firstRow = channelsTable.locator('tbody tr').first()
+    const rowCount = await channelsTable.locator('tbody tr').count()
+
+    if (rowCount === 0) {
+      test.skip()
+      return
+    }
+
+    await expect(firstRow).toBeVisible()
+
+    const actionsTrigger = firstRow.locator('[data-testid="row-actions"]')
+    const actionsCount = await actionsTrigger.count()
+    if (actionsCount === 0) {
+      test.skip()
+      return
+    }
+
+    await actionsTrigger.click()
+    const menu = page.getByRole('menu')
+    await expect(menu).toBeVisible()
+
+    const proxyOption = menu.getByRole('menuitem', { name: /Proxy|代理配置/i })
+    const proxyCount = await proxyOption.count()
+    if (proxyCount === 0) {
+      test.skip()
+      return
+    }
+
+    await proxyOption.click()
+    const proxyDialog = page.getByRole('dialog')
+    await expect(proxyDialog).toBeVisible()
+    await expect(proxyDialog).toContainText(/Proxy Configuration|代理配置/i)
+
+    const typeTrigger = proxyDialog.getByRole('combobox').first()
+    await typeTrigger.click()
+    const urlTypeOption = page.getByRole('option', { name: /Custom URL|自定义 URL/i }).first()
+    await urlTypeOption.click()
+    await page.waitForTimeout(300)
+
+    const urlInput = proxyDialog.getByPlaceholder(/http:\/\/proxy\.example\.com:8080/i)
+    await urlInput.fill(proxyUrl)
+
+    const saveProxyButton = proxyDialog.getByRole('button', { name: /保存|Save/i })
+    await Promise.all([
+      waitForGraphQLOperation(page, 'UpdateChannel'),
+      saveProxyButton.click(),
+    ])
+
+    await expect(proxyDialog).not.toBeVisible({ timeout: 15000 })
+    await page.waitForTimeout(1000)
+
+    const refreshedRow = channelsTable.locator('tbody tr').first()
+    const refreshedActionsTrigger = refreshedRow.locator('[data-testid="row-actions"]')
+    await refreshedActionsTrigger.click()
+
+    const menu2 = page.getByRole('menu')
+    await expect(menu2).toBeVisible()
+
+    const overridesOption = menu2.getByRole('menuitem', { name: /Overrides|覆盖设置/i })
+    const overridesCount = await overridesOption.count()
+    if (overridesCount === 0) {
+      test.skip()
+      return
+    }
+
+    await overridesOption.click()
+    const overridesDialog = page.getByRole('dialog')
+    await expect(overridesDialog).toBeVisible()
+
+    const overrideTextarea = overridesDialog.locator('[data-testid="override-parameters-textarea"]')
+    await overrideTextarea.fill(validJson)
+    await page.waitForTimeout(500)
+
+    const saveOverridesButton = overridesDialog.locator('[data-testid="override-save-button"]')
+    await Promise.all([
+      waitForGraphQLOperation(page, 'UpdateChannel'),
+      saveOverridesButton.click(),
+    ])
+
+    await expect(overridesDialog).not.toBeVisible({ timeout: 15000 })
+    await page.waitForTimeout(1000)
+
+    const finalRow = channelsTable.locator('tbody tr').first()
+    const finalActionsTrigger = finalRow.locator('[data-testid="row-actions"]')
+    await finalActionsTrigger.click()
+
+    const menu3 = page.getByRole('menu')
+    await expect(menu3).toBeVisible()
+    await menu3.getByRole('menuitem', { name: /Proxy|代理配置/i }).click()
+
+    const reopenedProxyDialog = page.getByRole('dialog')
+    await expect(reopenedProxyDialog).toBeVisible()
+
+    const reopenedUrlInput = reopenedProxyDialog.getByPlaceholder(/http:\/\/proxy\.example\.com:8080/i)
+    await expect(reopenedUrlInput).toHaveValue(proxyUrl)
+
+    const cancelButton = reopenedProxyDialog.getByRole('button', { name: /取消|Cancel/i }).first()
+    if ((await cancelButton.count()) > 0) {
+      await cancelButton.click()
+    } else {
+      await page.keyboard.press('Escape')
+    }
+    await expect(reopenedProxyDialog).not.toBeVisible()
+  })
+
+  test('should preserve model mappings when saving override settings', async ({ page }) => {
+    const uniqueSuffix = Date.now().toString().slice(-6)
+    const aliasName = `pw-alias-${uniqueSuffix}`
+    const validJson = `{"temperature": 0.6, "max_tokens": 1024, "note": "pw-${uniqueSuffix}"}`
+
+    await page.waitForTimeout(2000)
+
+    const channelsTable = page.locator('[data-testid="channels-table"]')
+    const firstRow = channelsTable.locator('tbody tr').first()
+    const rowCount = await channelsTable.locator('tbody tr').count()
+
+    if (rowCount === 0) {
+      test.skip()
+      return
+    }
+
+    await expect(firstRow).toBeVisible()
+
+    const actionsTrigger = firstRow.locator('[data-testid="row-actions"]')
+    const actionsCount = await actionsTrigger.count()
+    if (actionsCount === 0) {
+      test.skip()
+      return
+    }
+
+    await actionsTrigger.click()
+    const menu = page.getByRole('menu')
+    await expect(menu).toBeVisible()
+
+    const modelMappingOption = menu.getByRole('menuitem', { name: /模型别名|Model Alias|Model Mapping|模型映射/i })
+    const modelMappingCount = await modelMappingOption.count()
+    if (modelMappingCount === 0) {
+      test.skip()
+      return
+    }
+
+    await modelMappingOption.click()
+    const modelMappingDialog = page.getByRole('dialog')
+    await expect(modelMappingDialog).toBeVisible()
+
+    const originalInput = modelMappingDialog.getByPlaceholder(/Original Model Name|原模型名称|Alias Name|别名/i)
+    await originalInput.fill(aliasName)
+    await page.waitForTimeout(500)
+
+    const targetSelectTrigger = modelMappingDialog.locator('[role="combobox"]').last()
+    await targetSelectTrigger.click()
+    await page.waitForTimeout(500)
+    const firstOption = page.getByRole('option').first()
+    await firstOption.click()
+    await page.waitForTimeout(500)
+
+    const addButton = modelMappingDialog.getByTestId('add-model-mapping-button')
+    await addButton.click()
+    await page.waitForTimeout(1000)
+
+    const mappingContainer = modelMappingDialog.locator('.rounded-lg.border').filter({ hasText: aliasName })
+    await expect(mappingContainer).toBeVisible()
+
+    const saveModelMappingButton = modelMappingDialog.getByRole('button', { name: /保存|Save/i })
+    await Promise.all([
+      waitForGraphQLOperation(page, 'UpdateChannel'),
+      saveModelMappingButton.click(),
+    ])
+
+    await expect(modelMappingDialog).not.toBeVisible({ timeout: 15000 })
+    await page.waitForTimeout(1000)
+
+    const refreshedRow = channelsTable.locator('tbody tr').first()
+    const refreshedActionsTrigger = refreshedRow.locator('[data-testid="row-actions"]')
+    await refreshedActionsTrigger.click()
+
+    const menu2 = page.getByRole('menu')
+    await expect(menu2).toBeVisible()
+
+    const overridesOption = menu2.getByRole('menuitem', { name: /Overrides|覆盖设置/i })
+    const overridesCount = await overridesOption.count()
+    if (overridesCount === 0) {
+      test.skip()
+      return
+    }
+
+    await overridesOption.click()
+    const overridesDialog = page.getByRole('dialog')
+    await expect(overridesDialog).toBeVisible()
+
+    const overrideTextarea = overridesDialog.locator('[data-testid="override-parameters-textarea"]')
+    await overrideTextarea.fill(validJson)
+    await page.waitForTimeout(500)
+
+    const saveOverridesButton = overridesDialog.locator('[data-testid="override-save-button"]')
+    await Promise.all([
+      waitForGraphQLOperation(page, 'UpdateChannel'),
+      saveOverridesButton.click(),
+    ])
+
+    await expect(overridesDialog).not.toBeVisible({ timeout: 15000 })
+    await page.waitForTimeout(1000)
+
+    const finalRow = channelsTable.locator('tbody tr').first()
+    const finalActionsTrigger = finalRow.locator('[data-testid="row-actions"]')
+    await finalActionsTrigger.click()
+
+    const menu3 = page.getByRole('menu')
+    await expect(menu3).toBeVisible()
+    await menu3.getByRole('menuitem', { name: /模型别名|Model Alias|Model Mapping|模型映射/i }).click()
+
+    const reopenedModelMappingDialog = page.getByRole('dialog')
+    await expect(reopenedModelMappingDialog).toBeVisible({ timeout: 5000 })
+    await expect(reopenedModelMappingDialog).toContainText(aliasName)
+
+    await page.keyboard.press('Escape')
+    await expect(reopenedModelMappingDialog).not.toBeVisible()
   })
 
   test('validates JSON format in override body settings', async ({ page }) => {
@@ -788,6 +1129,9 @@ test.describe('Admin Channels Management', () => {
     // Wait for table to load
     await page.waitForTimeout(2000)
 
+    const uniqueSuffix = Date.now().toString().slice(-6)
+    const aliasName = `pw-alias-${uniqueSuffix}`
+
     // Find the first channel row
     const channelsTable = page.locator('[data-testid="channels-table"]')
     const firstRow = channelsTable.locator('tbody tr').first()
@@ -846,7 +1190,7 @@ test.describe('Admin Channels Management', () => {
     const originalInput = settingsDialog.getByPlaceholder(/Original Model Name|原模型名称|Alias Name|别名/i)
     
     // Fill original model name
-    await originalInput.fill('gpt-4')
+    await originalInput.fill(aliasName)
     await page.waitForTimeout(500)
 
     // Find and click the target model select (it's a Select component)
@@ -869,7 +1213,7 @@ test.describe('Admin Channels Management', () => {
     await page.waitForTimeout(1000)
 
     // Verify mapping appears in the list - look for the text in a border container
-    const mappingContainer = settingsDialog.locator('.rounded-lg.border').filter({ hasText: 'gpt-4' })
+    const mappingContainer = settingsDialog.locator('.rounded-lg.border').filter({ hasText: aliasName })
     await expect(mappingContainer).toBeVisible()
 
     // Save the settings
@@ -892,7 +1236,7 @@ test.describe('Admin Channels Management', () => {
     await expect(reopenedDialog).toBeVisible({ timeout: 5000 })
 
     // Verify the mapping still exists
-    await expect(reopenedDialog).toContainText('gpt-4')
+    await expect(reopenedDialog).toContainText(aliasName)
 
     // Close the dialog via keyboard to avoid flaky button detach
     await page.keyboard.press('Escape')
@@ -1363,6 +1707,9 @@ test.describe('Admin Channels Management', () => {
     const addHeaderButton = settingsDialog.locator('[data-testid="add-header-button"]')
     await addHeaderButton.click()
 
+    const uniqueSuffix = Date.now().toString().slice(-6)
+    const headerKeyName = `X-To-Remove-${uniqueSuffix}`
+
     // Get the correct header index (should be existingHeaderCount)
     const headerIndex = existingHeaderCount
     // Wait for the new header input to be visible
@@ -1370,7 +1717,7 @@ test.describe('Admin Channels Management', () => {
     const headerKeyInput = settingsDialog.locator(`[data-testid="header-key-${headerIndex}"]`)
     const headerValueInput = settingsDialog.locator(`[data-testid="header-value-${headerIndex}"]`)
 
-    await headerKeyInput.fill('X-To-Remove')
+    await headerKeyInput.fill(headerKeyName)
     // Leave value empty to indicate removal
 
     // Save the settings
@@ -1405,7 +1752,7 @@ test.describe('Admin Channels Management', () => {
     // Verify the header is still saved (frontend saves headers with empty values)
     const reopenedHeaderKey = reopenedDialog.locator(`[data-testid="header-key-${headerIndex}"]`)
     const reopenedHeaderValue = reopenedDialog.locator(`[data-testid="header-value-${headerIndex}"]`)
-    await expect(reopenedHeaderKey).toHaveValue('X-To-Remove')
+    await expect(reopenedHeaderKey).toHaveValue(headerKeyName)
     await expect(reopenedHeaderValue).toHaveValue('')
 
     // Close the dialog
@@ -1466,12 +1813,15 @@ test.describe('Admin Channels Management', () => {
     await addHeaderButton.click()
     await page.waitForTimeout(500)
 
+    const uniqueSuffix = Date.now().toString().slice(-6)
+    const headerKeyName = `X-To-Remove-${uniqueSuffix}`
+
     // Get the correct header index (should be existingHeaderCount)
     const headerIndex = existingHeaderCount
     const headerKeyInput = settingsDialog.locator(`[data-testid="header-key-${headerIndex}"]`)
     const headerValueInput = settingsDialog.locator(`[data-testid="header-value-${headerIndex}"]`)
 
-    await headerKeyInput.fill('X-To-Remove')
+    await headerKeyInput.fill(headerKeyName)
     await headerValueInput.fill('some-value')
 
     // Save the settings
@@ -1504,7 +1854,7 @@ test.describe('Admin Channels Management', () => {
 
     // Verify the header exists
     const reopenedHeaderKey = reopenedDialog.locator(`[data-testid="header-key-${headerIndex}"]`)
-    await expect(reopenedHeaderKey).toHaveValue('X-To-Remove')
+    await expect(reopenedHeaderKey).toHaveValue(headerKeyName)
 
     // Remove the header using the remove button
     const removeHeaderButton = reopenedDialog.locator(`[data-testid="remove-header-${headerIndex}"]`)
