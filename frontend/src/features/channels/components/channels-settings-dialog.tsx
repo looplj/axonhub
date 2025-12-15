@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useUpdateChannel } from '../data/channels'
 import { Channel, ModelMapping } from '../data/schema'
+import { mergeChannelSettingsForUpdate } from '../utils/merge'
 
 interface Props {
   open: boolean
@@ -107,14 +108,16 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
         overrideParameters = values.overrideParameters
       }
 
+      const nextSettings = mergeChannelSettingsForUpdate(currentRow.settings, {
+        extraModelPrefix: values.extraModelPrefix,
+        modelMappings: values.modelMappings,
+        overrideParameters,
+      })
+
       await updateChannel.mutateAsync({
         id: currentRow.id,
         input: {
-          settings: {
-            extraModelPrefix: values.extraModelPrefix,
-            modelMappings: values.modelMappings,
-            overrideParameters,
-          },
+          settings: nextSettings,
         },
       })
       toast.success(t('channels.messages.updateSuccess'))

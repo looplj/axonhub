@@ -1,7 +1,7 @@
 // Utility functions for merging channel override configurations
 // Mirrors backend merge logic in internal/server/biz/channel_merge.go
 
-import type { HeaderEntry } from '../data/schema'
+import type { ChannelSettings, HeaderEntry } from '../data/schema'
 
 const CLEAR_HEADER_DIRECTIVE = '__AXONHUB_CLEAR__'
 
@@ -47,6 +47,29 @@ export function mergeOverrideHeaders(existing: HeaderEntry[], template: HeaderEn
   }
 
   return result
+}
+
+export function mergeChannelSettingsForUpdate(
+  existing: ChannelSettings | null | undefined,
+  patch: Partial<ChannelSettings>
+): ChannelSettings {
+  const hasOwn = (key: keyof ChannelSettings) => Object.prototype.hasOwnProperty.call(patch, key)
+  const pick = <K extends keyof ChannelSettings>(key: K, fallback: ChannelSettings[K]): ChannelSettings[K] => {
+    if (!hasOwn(key)) {
+      return fallback
+    }
+    const value = patch[key]
+    return (value === undefined ? fallback : (value as ChannelSettings[K]))
+  }
+
+  return {
+    extraModelPrefix: pick('extraModelPrefix', existing?.extraModelPrefix ?? ''),
+    modelMappings: pick('modelMappings', existing?.modelMappings ?? []),
+    autoTrimedModelPrefixes: pick('autoTrimedModelPrefixes', existing?.autoTrimedModelPrefixes ?? []),
+    overrideParameters: pick('overrideParameters', existing?.overrideParameters ?? ''),
+    overrideHeaders: pick('overrideHeaders', existing?.overrideHeaders ?? []),
+    proxy: pick('proxy', existing?.proxy ?? null),
+  }
 }
 
 /**
