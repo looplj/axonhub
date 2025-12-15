@@ -8,10 +8,14 @@ import (
 // Tool represents a function tool.
 type Tool struct {
 	// Type is the type of the tool.
-	// Any of "function", "image_generation".
+	// Any of "function", "image_generation", or "google" (for Google-specific tools).
 	Type            string           `json:"type"`
-	Function        Function         `json:"function"`
+	Function        Function         `json:"function,omitempty"`
 	ImageGeneration *ImageGeneration `json:"image_generation,omitempty"`
+
+	// Google contains Google/Gemini-specific grounding tools.
+	// This namespace isolates Google's tools from other providers.
+	Google *GoogleTools `json:"google,omitempty"`
 
 	// CacheControl is used for provider-specific cache control (e.g., Anthropic).
 	// This field is not serialized in JSON.
@@ -25,6 +29,8 @@ func (t Tool) MarshalJSON() ([]byte, error) {
 	m := toolJSONMarshaller(t)
 	// ImageGeneration is not a valid field for chat completion, so we should remove it from the request.
 	m.ImageGeneration = nil
+	// Google tools are provider-specific and handled by transformers.
+	m.Google = nil
 
 	return json.Marshal(m)
 }
@@ -144,3 +150,27 @@ type ImageGeneration struct {
 	// It only works for the models support watermark, it will be ignored otherwise.
 	Watermark bool `json:"watermark,omitempty"`
 }
+
+// GoogleTools contains Google/Gemini-specific grounding tools.
+// This namespace isolates Google's tools from other providers,
+// allowing for provider-specific implementations without naming conflicts.
+type GoogleTools struct {
+	// Search enables Google Search grounding for real-time web searches.
+	Search *GoogleSearch `json:"search,omitempty"`
+	// CodeExecution enables code execution as part of generation.
+	CodeExecution *GoogleCodeExecution `json:"code_execution,omitempty"`
+	// UrlContext enables URL context grounding for Gemini 2.0+.
+	UrlContext *GoogleUrlContext `json:"url_context,omitempty"`
+}
+
+// GoogleSearch represents Google Search grounding tool for Gemini.
+// This enables the model to perform real-time web searches.
+type GoogleSearch struct{}
+
+// GoogleCodeExecution represents code execution tool for Gemini.
+// This enables the model to execute code as part of generation.
+type GoogleCodeExecution struct{}
+
+// GoogleUrlContext represents URL context grounding tool for Gemini 2.0+.
+// This allows the model to fetch and process content from specified URLs.
+type GoogleUrlContext struct{}

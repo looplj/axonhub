@@ -105,6 +105,7 @@ func convertGeminiToLLMRequest(geminiReq *GenerateContentRequest) (*llm.Request,
 		tools := make([]llm.Tool, 0)
 
 		for _, tool := range geminiReq.Tools {
+			// Handle function declarations
 			if tool.FunctionDeclarations != nil {
 				for _, fd := range tool.FunctionDeclarations {
 					parameters := fd.Parameters
@@ -127,6 +128,39 @@ func convertGeminiToLLMRequest(geminiReq *GenerateContentRequest) (*llm.Request,
 					}
 					tools = append(tools, llmTool)
 				}
+			}
+
+			// Handle Google Search tool
+			if tool.GoogleSearch != nil {
+				llmTool := llm.Tool{
+					Type: llm.ToolTypeGoogleSearch,
+					Google: &llm.GoogleTools{
+						Search: &llm.GoogleSearch{},
+					},
+				}
+				tools = append(tools, llmTool)
+			}
+
+			// Handle Code Execution tool
+			if tool.CodeExecution != nil {
+				llmTool := llm.Tool{
+					Type: llm.ToolTypeGoogleCodeExecution,
+					Google: &llm.GoogleTools{
+						CodeExecution: &llm.GoogleCodeExecution{},
+					},
+				}
+				tools = append(tools, llmTool)
+			}
+
+			// Handle URL Context tool
+			if tool.UrlContext != nil {
+				llmTool := llm.Tool{
+					Type: llm.ToolTypeGoogleUrlContext,
+					Google: &llm.GoogleTools{
+						UrlContext: &llm.GoogleUrlContext{},
+					},
+				}
+				tools = append(tools, llmTool)
 			}
 		}
 
@@ -280,6 +314,7 @@ func convertLLMChoiceToGeminiCandidate(choice *llm.Choice, isStream bool) *Candi
 	}
 
 	var msg *llm.Message
+
 	if isStream {
 		// For streaming, prefer Delta
 		if choice.Delta != nil {

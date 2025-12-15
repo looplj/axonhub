@@ -401,6 +401,138 @@ func TestConvertLLMToGeminiRequest_Tools(t *testing.T) {
 			},
 		},
 		{
+			name: "request with google search tool",
+			input: &llm.Request{
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Search the web"),
+						},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type: llm.ToolTypeGoogleSearch,
+						Google: &llm.GoogleTools{
+							Search: &llm.GoogleSearch{},
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *GenerateContentRequest) {
+				t.Helper()
+				require.Len(t, result.Tools, 1)
+				require.NotNil(t, result.Tools[0].GoogleSearch)
+				require.Nil(t, result.Tools[0].FunctionDeclarations)
+				require.Nil(t, result.Tools[0].CodeExecution)
+			},
+		},
+		{
+			name: "request with code execution tool",
+			input: &llm.Request{
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Run some code"),
+						},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type: llm.ToolTypeGoogleCodeExecution,
+						Google: &llm.GoogleTools{
+							CodeExecution: &llm.GoogleCodeExecution{},
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *GenerateContentRequest) {
+				t.Helper()
+				require.Len(t, result.Tools, 1)
+				require.NotNil(t, result.Tools[0].CodeExecution)
+				require.Nil(t, result.Tools[0].FunctionDeclarations)
+				require.Nil(t, result.Tools[0].GoogleSearch)
+			},
+		},
+		{
+			name: "request with url context tool",
+			input: &llm.Request{
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Fetch URL content"),
+						},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type: llm.ToolTypeGoogleUrlContext,
+						Google: &llm.GoogleTools{
+							UrlContext: &llm.GoogleUrlContext{},
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *GenerateContentRequest) {
+				t.Helper()
+				require.Len(t, result.Tools, 1)
+				require.NotNil(t, result.Tools[0].UrlContext)
+				require.Nil(t, result.Tools[0].FunctionDeclarations)
+				require.Nil(t, result.Tools[0].GoogleSearch)
+				require.Nil(t, result.Tools[0].CodeExecution)
+			},
+		},
+		{
+			name: "request with mixed tools (function, google search, code execution)",
+			input: &llm.Request{
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Use all tools"),
+						},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type: "function",
+						Function: llm.Function{
+							Name:        "get_weather",
+							Description: "Get weather info",
+							Parameters:  json.RawMessage(`{"type":"object"}`),
+						},
+					},
+					{
+						Type: llm.ToolTypeGoogleSearch,
+						Google: &llm.GoogleTools{
+							Search: &llm.GoogleSearch{},
+						},
+					},
+					{
+						Type: llm.ToolTypeGoogleCodeExecution,
+						Google: &llm.GoogleTools{
+							CodeExecution: &llm.GoogleCodeExecution{},
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *GenerateContentRequest) {
+				t.Helper()
+				require.Len(t, result.Tools, 3)
+				// First tool should have function declarations
+				require.NotNil(t, result.Tools[0].FunctionDeclarations)
+				require.Len(t, result.Tools[0].FunctionDeclarations, 1)
+				require.Equal(t, "get_weather", result.Tools[0].FunctionDeclarations[0].Name)
+				// Second tool should be google search
+				require.NotNil(t, result.Tools[1].GoogleSearch)
+				// Third tool should be code execution
+				require.NotNil(t, result.Tools[2].CodeExecution)
+			},
+		},
+		{
 			name: "request with tool choice auto",
 			input: &llm.Request{
 				Messages: []llm.Message{

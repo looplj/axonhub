@@ -19,4 +19,10 @@ func (f APIFormat) String() string {
 const (
 	ToolType                = "function"
 	ToolTypeImageGeneration = "image_generation"
+	// ToolTypeGoogleSearch is the Google Search grounding tool type for Gemini.
+	ToolTypeGoogleSearch = "google_search"
+	// ToolTypeGoogleCodeExecution is the code execution tool type for Gemini.
+	ToolTypeGoogleCodeExecution = "google_code_execution"
+	// ToolTypeGoogleUrlContext is the URL context grounding tool type for Gemini 2.0+.
+	ToolTypeGoogleUrlContext = "google_url_context"
 )

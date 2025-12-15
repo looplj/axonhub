@@ -117,6 +117,10 @@ type Tool struct {
 
 	// GoogleSearch enables Google Search grounding.
 	GoogleSearch *GoogleSearch `json:"googleSearch,omitempty"`
+
+	// UrlContext enables URL context grounding for Gemini 2.0+.
+	// This allows the model to fetch and process content from specified URLs.
+	UrlContext *UrlContext `json:"urlContext,omitempty"`
 }
 
 // FunctionDeclaration represents a function declaration.
@@ -136,6 +140,10 @@ type CodeExecution struct{}
 
 // GoogleSearch enables Google Search.
 type GoogleSearch struct{}
+
+// UrlContext enables URL context grounding for Gemini 2.0+.
+// This allows the model to fetch and process content from specified URLs.
+type UrlContext struct{}
 
 // ToolConfig is the tool configuration.
 type ToolConfig struct {
