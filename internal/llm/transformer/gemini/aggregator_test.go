@@ -558,3 +558,171 @@ func TestAggregateStreamChunks_FinishReasons(t *testing.T) {
 		})
 	}
 }
+
+func TestAggregateStreamChunks_WithGroundingMetadata(t *testing.T) {
+	t.Run("grounding metadata in final chunk", func(t *testing.T) {
+		chunks := []*httpclient.StreamEvent{
+			{
+				Data: mustMarshal(&GenerateContentResponse{
+					ResponseID:   "resp-grounding",
+					ModelVersion: "gemini-2.0-flash",
+					Candidates: []*Candidate{
+						{
+							Index: 0,
+							Content: &Content{
+								Role:  "model",
+								Parts: []*Part{{Text: "Based on my search, "}},
+							},
+						},
+					},
+				}),
+			},
+			{
+				Data: mustMarshal(&GenerateContentResponse{
+					ResponseID:   "resp-grounding",
+					ModelVersion: "gemini-2.0-flash",
+					Candidates: []*Candidate{
+						{
+							Index: 0,
+							Content: &Content{
+								Role:  "model",
+								Parts: []*Part{{Text: "here is the answer."}},
+							},
+							FinishReason: "STOP",
+							GroundingMetadata: &GroundingMetadata{
+								WebSearchQueries: []string{"latest AI news"},
+								GroundingChunks: []*GroundingChunk{
+									{
+										Web: &GroundingChunkWeb{
+											URI:    "https://example.com/article",
+											Title:  "AI News",
+											Domain: "example.com",
+										},
+									},
+								},
+								GroundingSupports: []*GroundingSupport{
+									{
+										Segment: &Segment{
+											StartIndex: 0,
+											EndIndex:   40,
+											Text:       "Based on my search, here is the answer.",
+										},
+										GroundingChunkIndices: []int32{0},
+										ConfidenceScores:      []float32{0.95},
+									},
+								},
+								SearchEntryPoint: &SearchEntryPoint{
+									RenderedContent: "<div>Search results</div>",
+								},
+								RetrievalMetadata: &RetrievalMetadata{
+									GoogleSearchDynamicRetrievalScore: 0.92,
+								},
+							},
+						},
+					},
+				}),
+			},
+		}
+
+		data, _, err := AggregateStreamChunks(context.Background(), chunks)
+		require.NoError(t, err)
+
+		var resp GenerateContentResponse
+
+		err = json.Unmarshal(data, &resp)
+		require.NoError(t, err)
+
+		require.Len(t, resp.Candidates, 1)
+		require.NotNil(t, resp.Candidates[0].GroundingMetadata)
+
+		gm := resp.Candidates[0].GroundingMetadata
+		require.Equal(t, []string{"latest AI news"}, gm.WebSearchQueries)
+		require.Len(t, gm.GroundingChunks, 1)
+		require.Equal(t, "https://example.com/article", gm.GroundingChunks[0].Web.URI)
+		require.Equal(t, "AI News", gm.GroundingChunks[0].Web.Title)
+		require.Len(t, gm.GroundingSupports, 1)
+		require.Equal(t, []int32{0}, gm.GroundingSupports[0].GroundingChunkIndices)
+		require.NotNil(t, gm.SearchEntryPoint)
+		require.Equal(t, "<div>Search results</div>", gm.SearchEntryPoint.RenderedContent)
+		require.NotNil(t, gm.RetrievalMetadata)
+		require.InDelta(t, 0.92, gm.RetrievalMetadata.GoogleSearchDynamicRetrievalScore, 0.01)
+	})
+
+	t.Run("grounding metadata with retrieved context", func(t *testing.T) {
+		chunks := []*httpclient.StreamEvent{
+			{
+				Data: mustMarshal(&GenerateContentResponse{
+					ResponseID:   "resp-retrieval",
+					ModelVersion: "gemini-2.0-flash",
+					Candidates: []*Candidate{
+						{
+							Index: 0,
+							Content: &Content{
+								Role:  "model",
+								Parts: []*Part{{Text: "According to the document..."}},
+							},
+							FinishReason: "STOP",
+							GroundingMetadata: &GroundingMetadata{
+								GroundingChunks: []*GroundingChunk{
+									{
+										RetrievedContext: &GroundingChunkRetrievedContext{
+											URI:   "gs://bucket/document.pdf",
+											Title: "Important Document",
+											Text:  "Relevant excerpt from the document.",
+										},
+									},
+								},
+							},
+						},
+					},
+				}),
+			},
+		}
+
+		data, _, err := AggregateStreamChunks(context.Background(), chunks)
+		require.NoError(t, err)
+
+		var resp GenerateContentResponse
+
+		err = json.Unmarshal(data, &resp)
+		require.NoError(t, err)
+
+		require.NotNil(t, resp.Candidates[0].GroundingMetadata)
+		gm := resp.Candidates[0].GroundingMetadata
+		require.Len(t, gm.GroundingChunks, 1)
+		require.NotNil(t, gm.GroundingChunks[0].RetrievedContext)
+		require.Equal(t, "gs://bucket/document.pdf", gm.GroundingChunks[0].RetrievedContext.URI)
+		require.Equal(t, "Important Document", gm.GroundingChunks[0].RetrievedContext.Title)
+	})
+
+	t.Run("no grounding metadata", func(t *testing.T) {
+		chunks := []*httpclient.StreamEvent{
+			{
+				Data: mustMarshal(&GenerateContentResponse{
+					ResponseID:   "resp-no-grounding",
+					ModelVersion: "gemini-2.0-flash",
+					Candidates: []*Candidate{
+						{
+							Index: 0,
+							Content: &Content{
+								Role:  "model",
+								Parts: []*Part{{Text: "Simple response"}},
+							},
+							FinishReason: "STOP",
+						},
+					},
+				}),
+			},
+		}
+
+		data, _, err := AggregateStreamChunks(context.Background(), chunks)
+		require.NoError(t, err)
+
+		var resp GenerateContentResponse
+
+		err = json.Unmarshal(data, &resp)
+		require.NoError(t, err)
+
+		require.Nil(t, resp.Candidates[0].GroundingMetadata)
+	})
+}

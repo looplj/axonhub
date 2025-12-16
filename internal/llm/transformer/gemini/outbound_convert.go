@@ -331,11 +331,12 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 		}
 	}
 
-	msgThoughtSignature := shared.DecodeGeminiThoughtSignature(msg.RedactedReasoningContent)
-
 	// https://ai.google.dev/gemini-api/docs/gemini-3#migrating_from_other_models
 	// If there are tool calls but no thought signature, use a default one.
 	// This field is not compatible with OpenAI sdk, so we use the default value.
+	// We try the best to support this fields to keep this fields in the chat conversions, so we use the RedactedReasoningContent to hold the field,
+	// And this field will be preserved during claude code trace, will not degrade the gemini model performance.
+	msgThoughtSignature := shared.DecodeGeminiThoughtSignature(msg.RedactedReasoningContent)
 	if len(msg.ToolCalls) > 0 && msgThoughtSignature == nil {
 		msgThoughtSignature = lo.ToPtr("context_engineering_is_the_way_to_go")
 	}
@@ -409,6 +410,9 @@ func convertGeminiToLLMResponse(geminiResp *GenerateContentResponse, isStream bo
 	return resp
 }
 
+// TransformerMetadataKeyGroundingMetadata is the key for storing GroundingMetadata in TransformerMetadata.
+const TransformerMetadataKeyGroundingMetadata = "gemini_grounding_metadata"
+
 // convertGeminiToLLMResponseWithState converts Gemini response with tool call index tracking.
 // Returns the response and the next tool call index to use.
 func convertGeminiToLLMResponseWithState(geminiResp *GenerateContentResponse, isStream bool, toolCallIndexOffset int) (*llm.Response, int) {
@@ -438,6 +442,16 @@ func convertGeminiToLLMResponseWithState(geminiResp *GenerateContentResponse, is
 		var choice llm.Choice
 
 		choice, nextToolCallIndex = convertGeminiCandidateToLLMChoiceWithState(candidate, isStream, nextToolCallIndex)
+
+		// Store GroundingMetadata in Choice.TransformerMetadata if present
+		if candidate.GroundingMetadata != nil {
+			if choice.TransformerMetadata == nil {
+				choice.TransformerMetadata = map[string]any{}
+			}
+
+			choice.TransformerMetadata[TransformerMetadataKeyGroundingMetadata] = candidate.GroundingMetadata
+		}
+
 		choices = append(choices, choice)
 	}
 

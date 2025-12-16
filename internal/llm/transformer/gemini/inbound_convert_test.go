@@ -1606,3 +1606,571 @@ func TestRoundTrip_LLMResponse_ToGemini_BackToLLM(t *testing.T) {
 		})
 	}
 }
+
+func TestConvertLLMToGeminiResponse_GroundingMetadata(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    *llm.Response
+		isStream bool
+		validate func(t *testing.T, result *GenerateContentResponse)
+	}{
+		{
+			name: "response with grounding metadata - web search",
+			input: &llm.Response{
+				ID:    "resp_grounding",
+				Model: "gemini-2.5-flash",
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								Content: lo.ToPtr("Based on my search, here is the answer."),
+							},
+						},
+						FinishReason: lo.ToPtr("stop"),
+						TransformerMetadata: map[string]any{
+							TransformerMetadataKeyGroundingMetadata: &GroundingMetadata{
+								WebSearchQueries: []string{"latest news about AI"},
+								GroundingChunks: []*GroundingChunk{
+									{
+										Web: &GroundingChunkWeb{
+											URI:    "https://example.com/article1",
+											Title:  "AI News Article",
+											Domain: "example.com",
+										},
+									},
+								},
+								GroundingSupports: []*GroundingSupport{
+									{
+										Segment: &Segment{
+											StartIndex: 0,
+											EndIndex:   38,
+											Text:       "Based on my search, here is the answer",
+										},
+										GroundingChunkIndices: []int32{0},
+										ConfidenceScores:      []float32{0.95},
+									},
+								},
+								SearchEntryPoint: &SearchEntryPoint{
+									RenderedContent: "<div>Search results</div>",
+								},
+								RetrievalMetadata: &RetrievalMetadata{
+									GoogleSearchDynamicRetrievalScore: 0.92,
+								},
+							},
+						},
+					},
+				},
+			},
+			isStream: false,
+			validate: func(t *testing.T, result *GenerateContentResponse) {
+				t.Helper()
+				require.Len(t, result.Candidates, 1)
+				require.NotNil(t, result.Candidates[0].GroundingMetadata)
+
+				gm := result.Candidates[0].GroundingMetadata
+				require.Equal(t, []string{"latest news about AI"}, gm.WebSearchQueries)
+				require.Len(t, gm.GroundingChunks, 1)
+				require.Equal(t, "https://example.com/article1", gm.GroundingChunks[0].Web.URI)
+				require.Equal(t, "AI News Article", gm.GroundingChunks[0].Web.Title)
+				require.Len(t, gm.GroundingSupports, 1)
+				require.Equal(t, []int32{0}, gm.GroundingSupports[0].GroundingChunkIndices)
+				require.NotNil(t, gm.SearchEntryPoint)
+				require.Equal(t, "<div>Search results</div>", gm.SearchEntryPoint.RenderedContent)
+				require.NotNil(t, gm.RetrievalMetadata)
+				require.InDelta(t, 0.92, gm.RetrievalMetadata.GoogleSearchDynamicRetrievalScore, 0.01)
+			},
+		},
+		{
+			name: "response with grounding metadata - retrieved context",
+			input: &llm.Response{
+				ID:    "resp_retrieval",
+				Model: "gemini-2.5-flash",
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								Content: lo.ToPtr("According to the document..."),
+							},
+						},
+						FinishReason: lo.ToPtr("stop"),
+						TransformerMetadata: map[string]any{
+							TransformerMetadataKeyGroundingMetadata: &GroundingMetadata{
+								GroundingChunks: []*GroundingChunk{
+									{
+										RetrievedContext: &GroundingChunkRetrievedContext{
+											URI:   "gs://bucket/document.pdf",
+											Title: "Important Document",
+											Text:  "Relevant excerpt from the document.",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			isStream: false,
+			validate: func(t *testing.T, result *GenerateContentResponse) {
+				t.Helper()
+				require.NotNil(t, result.Candidates[0].GroundingMetadata)
+				gm := result.Candidates[0].GroundingMetadata
+				require.Len(t, gm.GroundingChunks, 1)
+				require.NotNil(t, gm.GroundingChunks[0].RetrievedContext)
+				require.Equal(t, "gs://bucket/document.pdf", gm.GroundingChunks[0].RetrievedContext.URI)
+				require.Equal(t, "Important Document", gm.GroundingChunks[0].RetrievedContext.Title)
+			},
+		},
+		{
+			name: "response without grounding metadata",
+			input: &llm.Response{
+				ID:    "resp_no_grounding",
+				Model: "gemini-2.5-flash",
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								Content: lo.ToPtr("Simple response without grounding."),
+							},
+						},
+						FinishReason: lo.ToPtr("stop"),
+					},
+				},
+			},
+			isStream: false,
+			validate: func(t *testing.T, result *GenerateContentResponse) {
+				t.Helper()
+				require.Nil(t, result.Candidates[0].GroundingMetadata)
+			},
+		},
+		{
+			name: "streaming response with grounding metadata",
+			input: &llm.Response{
+				ID:    "resp_stream_grounding",
+				Model: "gemini-2.5-flash",
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Delta: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								Content: lo.ToPtr("Streaming chunk with grounding."),
+							},
+						},
+						TransformerMetadata: map[string]any{
+							TransformerMetadataKeyGroundingMetadata: &GroundingMetadata{
+								WebSearchQueries: []string{"streaming search query"},
+								GroundingChunks: []*GroundingChunk{
+									{
+										Web: &GroundingChunkWeb{
+											URI:   "https://stream.example.com",
+											Title: "Stream Source",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			isStream: true,
+			validate: func(t *testing.T, result *GenerateContentResponse) {
+				t.Helper()
+				require.NotNil(t, result.Candidates[0].GroundingMetadata)
+				gm := result.Candidates[0].GroundingMetadata
+				require.Equal(t, []string{"streaming search query"}, gm.WebSearchQueries)
+				require.Len(t, gm.GroundingChunks, 1)
+				require.Equal(t, "https://stream.example.com", gm.GroundingChunks[0].Web.URI)
+			},
+		},
+		{
+			name: "multiple candidates with grounding metadata",
+			input: &llm.Response{
+				ID:    "resp_multi_candidates",
+				Model: "gemini-2.5-flash",
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								Content: lo.ToPtr("First candidate response."),
+							},
+						},
+						TransformerMetadata: map[string]any{
+							TransformerMetadataKeyGroundingMetadata: &GroundingMetadata{
+								WebSearchQueries: []string{"query for candidate 1"},
+							},
+						},
+					},
+					{
+						Index: 1,
+						Message: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								Content: lo.ToPtr("Second candidate response."),
+							},
+						},
+						TransformerMetadata: map[string]any{
+							TransformerMetadataKeyGroundingMetadata: &GroundingMetadata{
+								WebSearchQueries: []string{"query for candidate 2"},
+							},
+						},
+					},
+				},
+			},
+			isStream: false,
+			validate: func(t *testing.T, result *GenerateContentResponse) {
+				t.Helper()
+				require.Len(t, result.Candidates, 2)
+				require.NotNil(t, result.Candidates[0].GroundingMetadata)
+				require.NotNil(t, result.Candidates[1].GroundingMetadata)
+				require.Equal(t, []string{"query for candidate 1"}, result.Candidates[0].GroundingMetadata.WebSearchQueries)
+				require.Equal(t, []string{"query for candidate 2"}, result.Candidates[1].GroundingMetadata.WebSearchQueries)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := convertLLMToGeminiResponse(tt.input, tt.isStream)
+			tt.validate(t, result)
+		})
+	}
+}
+
+func TestConvertLLMToGeminiResponse_GroundingMetadata_Additional(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    *llm.Response
+		isStream bool
+		validate func(t *testing.T, result *GenerateContentResponse)
+	}{
+		{
+			name: "grounding metadata with all fields populated",
+			input: &llm.Response{
+				ID:    "resp_all_fields",
+				Model: "gemini-2.5-flash",
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								Content: lo.ToPtr("Comprehensive response with all grounding fields."),
+							},
+						},
+						FinishReason: lo.ToPtr("stop"),
+						TransformerMetadata: map[string]any{
+							TransformerMetadataKeyGroundingMetadata: &GroundingMetadata{
+								WebSearchQueries: []string{"comprehensive inbound search"},
+								GroundingChunks: []*GroundingChunk{
+									{
+										Web: &GroundingChunkWeb{
+											URI:    "https://inbound.example.com/comprehensive",
+											Title:  "Comprehensive Inbound Article",
+											Domain: "inbound.example.com",
+										},
+									},
+									{
+										RetrievedContext: &GroundingChunkRetrievedContext{
+											URI:   "gs://inbound-bucket/comprehensive.pdf",
+											Title: "Comprehensive Inbound Document",
+											Text:  "Comprehensive inbound document content.",
+										},
+									},
+								},
+								GroundingSupports: []*GroundingSupport{
+									{
+										Segment: &Segment{
+											StartIndex: 0,
+											EndIndex:   45,
+											PartIndex:  0,
+											Text:       "Comprehensive response with all grounding fields",
+										},
+										GroundingChunkIndices: []int32{0, 1},
+										ConfidenceScores:      []float32{0.97, 0.91},
+									},
+								},
+								SearchEntryPoint: &SearchEntryPoint{
+									RenderedContent: "<div>Comprehensive inbound search entry point</div>",
+								},
+								RetrievalMetadata: &RetrievalMetadata{
+									GoogleSearchDynamicRetrievalScore: 0.94,
+								},
+							},
+						},
+					},
+				},
+			},
+			isStream: false,
+			validate: func(t *testing.T, result *GenerateContentResponse) {
+				t.Helper()
+				require.Len(t, result.Candidates, 1)
+				require.NotNil(t, result.Candidates[0].GroundingMetadata)
+
+				gm := result.Candidates[0].GroundingMetadata
+				require.Equal(t, []string{"comprehensive inbound search"}, gm.WebSearchQueries)
+				require.Len(t, gm.GroundingChunks, 2)
+				require.NotNil(t, gm.GroundingChunks[0].Web)
+				require.NotNil(t, gm.GroundingChunks[1].RetrievedContext)
+				require.Len(t, gm.GroundingSupports, 1)
+				require.NotNil(t, gm.SearchEntryPoint)
+				require.NotNil(t, gm.RetrievalMetadata)
+			},
+		},
+		{
+			name: "grounding metadata with empty arrays",
+			input: &llm.Response{
+				ID:    "resp_empty_arrays",
+				Model: "gemini-2.5-flash",
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								Content: lo.ToPtr("Response with empty grounding arrays."),
+							},
+						},
+						FinishReason: lo.ToPtr("stop"),
+						TransformerMetadata: map[string]any{
+							TransformerMetadataKeyGroundingMetadata: &GroundingMetadata{
+								WebSearchQueries:  []string{},
+								GroundingChunks:   []*GroundingChunk{},
+								GroundingSupports: []*GroundingSupport{},
+							},
+						},
+					},
+				},
+			},
+			isStream: false,
+			validate: func(t *testing.T, result *GenerateContentResponse) {
+				t.Helper()
+				require.Len(t, result.Candidates, 1)
+				require.NotNil(t, result.Candidates[0].GroundingMetadata)
+
+				gm := result.Candidates[0].GroundingMetadata
+				require.Empty(t, gm.WebSearchQueries)
+				require.Empty(t, gm.GroundingChunks)
+				require.Empty(t, gm.GroundingSupports)
+			},
+		},
+		{
+			name: "mixed candidates with and without grounding metadata",
+			input: &llm.Response{
+				ID:    "resp_mixed_grounding",
+				Model: "gemini-2.5-flash",
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								Content: lo.ToPtr("Response with grounding."),
+							},
+						},
+						TransformerMetadata: map[string]any{
+							TransformerMetadataKeyGroundingMetadata: &GroundingMetadata{
+								WebSearchQueries: []string{"inbound candidate 1 search"},
+							},
+						},
+					},
+					{
+						Index: 1,
+						Message: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								Content: lo.ToPtr("Response without grounding."),
+							},
+						},
+					},
+					{
+						Index: 2,
+						Message: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								Content: lo.ToPtr("Another response with grounding."),
+							},
+						},
+						TransformerMetadata: map[string]any{
+							TransformerMetadataKeyGroundingMetadata: &GroundingMetadata{
+								RetrievalMetadata: &RetrievalMetadata{
+									GoogleSearchDynamicRetrievalScore: 0.85,
+								},
+							},
+						},
+					},
+				},
+			},
+			isStream: false,
+			validate: func(t *testing.T, result *GenerateContentResponse) {
+				t.Helper()
+				require.Len(t, result.Candidates, 3)
+
+				// First choice has grounding metadata
+				require.NotNil(t, result.Candidates[0].GroundingMetadata)
+				require.Equal(t, []string{"inbound candidate 1 search"}, result.Candidates[0].GroundingMetadata.WebSearchQueries)
+
+				// Second choice has no grounding metadata
+				require.Nil(t, result.Candidates[1].GroundingMetadata)
+
+				// Third choice has grounding metadata
+				require.NotNil(t, result.Candidates[2].GroundingMetadata)
+				require.NotNil(t, result.Candidates[2].GroundingMetadata.RetrievalMetadata)
+				require.InDelta(t, 0.85, result.Candidates[2].GroundingMetadata.RetrievalMetadata.GoogleSearchDynamicRetrievalScore, 0.01)
+			},
+		},
+		{
+			name: "streaming response with multiple grounding chunks",
+			input: &llm.Response{
+				ID:    "resp_stream_multi_chunks",
+				Model: "gemini-2.5-flash",
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Delta: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								Content: lo.ToPtr("Streaming with multiple chunks."),
+							},
+						},
+						TransformerMetadata: map[string]any{
+							TransformerMetadataKeyGroundingMetadata: &GroundingMetadata{
+								GroundingChunks: []*GroundingChunk{
+									{
+										Web: &GroundingChunkWeb{
+											URI:   "https://inbound-source1.example.com",
+											Title: "Inbound Source 1",
+										},
+									},
+									{
+										Web: &GroundingChunkWeb{
+											URI:   "https://inbound-source2.example.com",
+											Title: "Inbound Source 2",
+										},
+									},
+									{
+										RetrievedContext: &GroundingChunkRetrievedContext{
+											URI:   "gs://inbound-bucket/internal.pdf",
+											Title: "Inbound Internal Document",
+										},
+									},
+								},
+								GroundingSupports: []*GroundingSupport{
+									{
+										Segment: &Segment{
+											StartIndex: 0,
+											EndIndex:   31,
+											Text:       "Streaming with multiple chunks",
+										},
+										GroundingChunkIndices: []int32{0, 1, 2},
+										ConfidenceScores:      []float32{0.94, 0.86, 0.90},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			isStream: true,
+			validate: func(t *testing.T, result *GenerateContentResponse) {
+				t.Helper()
+				require.Len(t, result.Candidates, 1)
+				require.NotNil(t, result.Candidates[0].GroundingMetadata)
+
+				gm := result.Candidates[0].GroundingMetadata
+				require.Len(t, gm.GroundingChunks, 3)
+				require.NotNil(t, gm.GroundingChunks[0].Web)
+				require.NotNil(t, gm.GroundingChunks[1].Web)
+				require.NotNil(t, gm.GroundingChunks[2].RetrievedContext)
+				require.Len(t, gm.GroundingSupports, 1)
+				require.Equal(t, []int32{0, 1, 2}, gm.GroundingSupports[0].GroundingChunkIndices)
+			},
+		},
+		{
+			name: "grounding metadata with complex segment details",
+			input: &llm.Response{
+				ID:    "resp_complex_segments",
+				Model: "gemini-2.5-flash",
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								Content: lo.ToPtr("Complex response with detailed segments."),
+							},
+						},
+						FinishReason: lo.ToPtr("stop"),
+						TransformerMetadata: map[string]any{
+							TransformerMetadataKeyGroundingMetadata: &GroundingMetadata{
+								GroundingChunks: []*GroundingChunk{
+									{
+										Web: &GroundingChunkWeb{
+											URI:   "https://complex.example.com",
+											Title: "Complex Source",
+										},
+									},
+								},
+								GroundingSupports: []*GroundingSupport{
+									{
+										Segment: &Segment{
+											StartIndex: 0,
+											EndIndex:   15,
+											PartIndex:  0,
+											Text:       "Complex response",
+										},
+										GroundingChunkIndices: []int32{0},
+										ConfidenceScores:      []float32{0.96},
+									},
+									{
+										Segment: &Segment{
+											StartIndex: 16,
+											EndIndex:   41,
+											PartIndex:  0,
+											Text:       "with detailed segments",
+										},
+										GroundingChunkIndices: []int32{0},
+										ConfidenceScores:      []float32{0.88},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			isStream: false,
+			validate: func(t *testing.T, result *GenerateContentResponse) {
+				t.Helper()
+				require.Len(t, result.Candidates, 1)
+				require.NotNil(t, result.Candidates[0].GroundingMetadata)
+
+				gm := result.Candidates[0].GroundingMetadata
+				require.Len(t, gm.GroundingSupports, 2)
+
+				seg1 := gm.GroundingSupports[0].Segment
+				require.Equal(t, int32(0), seg1.StartIndex)
+				require.Equal(t, int32(15), seg1.EndIndex)
+				require.Equal(t, "Complex response", seg1.Text)
+
+				seg2 := gm.GroundingSupports[1].Segment
+				require.Equal(t, int32(16), seg2.StartIndex)
+				require.Equal(t, int32(41), seg2.EndIndex)
+				require.Equal(t, "with detailed segments", seg2.Text)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := convertLLMToGeminiResponse(tt.input, tt.isStream)
+			tt.validate(t, result)
+		})
+	}
+}

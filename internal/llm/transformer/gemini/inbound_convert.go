@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer/shared"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
+	"github.com/looplj/axonhub/internal/pkg/xmap"
 )
 
 // convertGeminiToLLMRequest converts Gemini GenerateContentRequest to unified Request.
@@ -297,6 +298,12 @@ func convertLLMToGeminiResponse(chatResp *llm.Response, isStream bool) *Generate
 	candidates := make([]*Candidate, 0, len(chatResp.Choices))
 	for _, choice := range chatResp.Choices {
 		candidate := convertLLMChoiceToGeminiCandidate(&choice, isStream)
+
+		// Extract GroundingMetadata from Choice.TransformerMetadata if present
+		if gm := xmap.GetPtr[GroundingMetadata](choice.TransformerMetadata, TransformerMetadataKeyGroundingMetadata); gm != nil {
+			candidate.GroundingMetadata = gm
+		}
+
 		candidates = append(candidates, candidate)
 	}
 

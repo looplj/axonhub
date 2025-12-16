@@ -553,6 +553,7 @@ func TestEmbeddingInboundTransformer_TransformResponse(t *testing.T) {
 
 	t.Run("nil pointer provider data", func(t *testing.T) {
 		var nilResp *objects.EmbeddingResponse
+
 		llmResp := &llm.Response{
 			Object:       "list",
 			Model:        "text-embedding-ada-002",

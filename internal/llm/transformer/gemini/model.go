@@ -285,6 +285,9 @@ type Candidate struct {
 
 	// LogprobsResult is the log-likelihood scores for the response tokens.
 	LogprobsResult *LogprobsResult `json:"logprobsResult,omitempty"`
+
+	// GroundingMetadata is the metadata specifies sources used to ground generated content.
+	GroundingMetadata *GroundingMetadata `json:"groundingMetadata,omitempty"`
 }
 
 // SafetyRating is a safety rating for a piece of content.
@@ -407,4 +410,98 @@ type ErrorDetail struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 	Status  string `json:"status"`
+}
+
+// GroundingMetadata is the metadata returned to client when grounding is enabled.
+type GroundingMetadata struct {
+	// GroundingChunks is the list of supporting references retrieved from specified grounding source.
+	GroundingChunks []*GroundingChunk `json:"groundingChunks,omitempty"`
+
+	// GroundingSupports is the list of grounding support.
+	GroundingSupports []*GroundingSupport `json:"groundingSupports,omitempty"`
+
+	// RetrievalMetadata is the retrieval metadata.
+	RetrievalMetadata *RetrievalMetadata `json:"retrievalMetadata,omitempty"`
+
+	// SearchEntryPoint is the Google search entry for the following-up web searches.
+	SearchEntryPoint *SearchEntryPoint `json:"searchEntryPoint,omitempty"`
+
+	// WebSearchQueries is the web search queries for the following-up web search.
+	WebSearchQueries []string `json:"webSearchQueries,omitempty"`
+}
+
+// GroundingChunk is a grounding chunk.
+type GroundingChunk struct {
+	// Web is the grounding chunk from the web.
+	Web *GroundingChunkWeb `json:"web,omitempty"`
+
+	// RetrievedContext is the grounding chunk from context retrieved by the retrieval tools.
+	RetrievedContext *GroundingChunkRetrievedContext `json:"retrievedContext,omitempty"`
+}
+
+// GroundingChunkWeb is a chunk from the web.
+type GroundingChunkWeb struct {
+	// URI is the URI reference of the chunk.
+	URI string `json:"uri,omitempty"`
+
+	// Title is the title of the chunk.
+	Title string `json:"title,omitempty"`
+
+	// Domain is the domain of the (original) URI.
+	Domain string `json:"domain,omitempty"`
+}
+
+// GroundingChunkRetrievedContext is a chunk from context retrieved by the retrieval tools.
+type GroundingChunkRetrievedContext struct {
+	// URI is the URI reference of the attribution.
+	URI string `json:"uri,omitempty"`
+
+	// Title is the title of the attribution.
+	Title string `json:"title,omitempty"`
+
+	// Text is the text of the attribution.
+	Text string `json:"text,omitempty"`
+}
+
+// GroundingSupport is the grounding support.
+type GroundingSupport struct {
+	// Segment is the segment of the content this support belongs to.
+	Segment *Segment `json:"segment,omitempty"`
+
+	// GroundingChunkIndices is the list of indices (into 'grounding_chunk') specifying the citations.
+	GroundingChunkIndices []int32 `json:"groundingChunkIndices,omitempty"`
+
+	// ConfidenceScores is the confidence score of the support references.
+	ConfidenceScores []float32 `json:"confidenceScores,omitempty"`
+}
+
+// Segment is the segment of the content.
+type Segment struct {
+	// StartIndex is the start index in the given Part, measured in bytes.
+	StartIndex int32 `json:"startIndex,omitempty"`
+
+	// EndIndex is the end index in the given Part, measured in bytes.
+	EndIndex int32 `json:"endIndex,omitempty"`
+
+	// PartIndex is the index of a Part object within its parent Content object.
+	PartIndex int32 `json:"partIndex,omitempty"`
+
+	// Text is the text corresponding to the segment from the response.
+	Text string `json:"text,omitempty"`
+}
+
+// RetrievalMetadata is the metadata related to retrieval in the grounding flow.
+type RetrievalMetadata struct {
+	// GoogleSearchDynamicRetrievalScore is the score indicating how likely information
+	// from Google Search could help answer the prompt.
+	GoogleSearchDynamicRetrievalScore float32 `json:"googleSearchDynamicRetrievalScore,omitempty"`
+}
+
+// SearchEntryPoint is the Google search entry point.
+type SearchEntryPoint struct {
+	// RenderedContent is the web content snippet that can be embedded in a web page or an app webview.
+	RenderedContent string `json:"renderedContent,omitempty"`
+
+	// SDKBlob is the base64 encoded JSON representing array of tuple.
+	SDKBlob []byte `json:"sdkBlob,omitempty"`
 }
