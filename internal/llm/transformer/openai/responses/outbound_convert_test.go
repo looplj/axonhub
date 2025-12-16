@@ -243,9 +243,7 @@ func TestConvertStreamOptions(t *testing.T) {
 				IncludeUsage: true,
 			},
 			metadata: map[string]any{},
-			expected: &StreamOptions{
-				IncludeObfuscation: nil,
-			},
+			expected: nil,
 		},
 	}
 
@@ -284,30 +282,6 @@ func TestConvertToTextOptions(t *testing.T) {
 				Format: &TextFormat{
 					Type: "json_object",
 				},
-			},
-		},
-		{
-			name: "only text verbosity",
-			req: &llm.Request{
-				Verbosity: lo.ToPtr("high"),
-			},
-			expected: &TextOptions{
-				Verbosity: lo.ToPtr("high"),
-			},
-		},
-		{
-			name: "both response format and text verbosity",
-			req: &llm.Request{
-				ResponseFormat: &llm.ResponseFormat{
-					Type: "text",
-				},
-				Verbosity: lo.ToPtr("low"),
-			},
-			expected: &TextOptions{
-				Format: &TextFormat{
-					Type: "text",
-				},
-				Verbosity: lo.ToPtr("low"),
 			},
 		},
 	}

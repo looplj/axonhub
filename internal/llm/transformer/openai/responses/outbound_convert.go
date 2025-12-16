@@ -284,8 +284,13 @@ func convertStreamOptions(src *llm.StreamOptions, metadata map[string]any) *Stre
 		return nil
 	}
 
+	includeObfuscation := xmap.GetBoolPtr(metadata, "include_obfuscation")
+	if includeObfuscation == nil {
+		return nil
+	}
+
 	return &StreamOptions{
-		IncludeObfuscation: xmap.GetBoolPtr(metadata, "include_obfuscation"),
+		IncludeObfuscation: includeObfuscation,
 	}
 }
 
