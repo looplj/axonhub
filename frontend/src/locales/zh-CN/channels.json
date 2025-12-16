@@ -46,6 +46,7 @@
       "anthropic_gcp": "Anthropic GCP",
       "gemini": "Gemini",
       "gemini_openai": "Gemini (OpenAI)",
+      "gemini_vertex": "Gemini (Vertex AI)",
       "deepseek": "DeepSeek",
       "doubao": "Doubao",
       "doubao_anthropic": "Doubao (Anthropic)",
@@ -241,6 +242,11 @@
           "label": "API 格式",
           "editDisabled": "无法更改 API 格式",
           "placeholder": "选择 API 格式",
+          "geminiVertex": {
+            "label": "使用 Vertex AI",
+            "description": "使用 Google Cloud Vertex AI 替代标准 Gemini API",
+            "editDisabled": "无法更改 Vertex AI 设置"
+          },
           "formats": {
             "openai/chat_completions": "OpenAI (Chat Completions)",
             "openai/responses": "OpenAI (Responses)",
@@ -327,6 +333,10 @@
           "label": "服务账户 JSON",
           "placeholder": "在此粘贴您的 GCP 服务账户 JSON 凭据",
           "description": "用于 GCP 服务账户认证的完整 JSON 凭据"
+        },
+        "platformType": {
+          "label": "平台",
+          "vertexLabel": "Vertex AI"
         },
         "jsonData": {
           "label": "服务账户 JSON",

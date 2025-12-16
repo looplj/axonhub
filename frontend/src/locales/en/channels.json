@@ -44,6 +44,7 @@
       "anthropic_gcp": "Anthropic GCP",
       "gemini": "Gemini",
       "gemini_openai": "Gemini (OpenAI)",
+      "gemini_vertex": "Gemini (Vertex AI)",
       "deepseek": "DeepSeek",
       "doubao": "Doubao",
       "doubao_anthropic": "Doubao (Anthropic)",
@@ -238,6 +239,11 @@
           "label": "API Format",
           "editDisabled": "API format cannot be changed",
           "placeholder": "Select API format",
+          "geminiVertex": {
+            "label": "Use Vertex AI",
+            "description": "Use Google Cloud Vertex AI instead of the standard Gemini API",
+            "editDisabled": "Vertex AI setting cannot be changed"
+          },
           "formats": {
             "openai/chat_completions": "OpenAI (Chat Completions)",
             "openai/responses": "OpenAI (Responses)",
@@ -324,6 +330,10 @@
           "label": "Service Account JSON",
           "placeholder": "Paste your GCP service account JSON credentials here",
           "description": "Complete JSON credentials for GCP service account authentication"
+        },
+        "platformType": {
+          "label": "Platform",
+          "vertexLabel": "Vertex AI"
         },
         "jsonData": {
           "label": "GCP Service Account JSON",

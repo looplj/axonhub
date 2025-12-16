@@ -33,9 +33,9 @@ func TestOutboundTransformer_AzureConfigurations(t *testing.T) {
 			setupFunc: func(transformer *OutboundTransformer) {
 				err := transformer.ConfigureForAzure("my-resource", "2024-06-01", "test-key")
 				require.NoError(t, err)
-				// Note: Current implementation uses model name as deployment
+				// Note: Current implementation uses /openai/v1/ path structure
 			},
-			expectedURL: "https://my-resource.openai.azure.com/openai/deployments/gpt-4/chat/completions?api-version=2024-06-01",
+			expectedURL: "https://my-resource.openai.azure.com/openai/v1/chat/completions?api-version=2024-06-01",
 			model:       "gpt-4",
 			stream:      false,
 		},
@@ -44,9 +44,9 @@ func TestOutboundTransformer_AzureConfigurations(t *testing.T) {
 			setupFunc: func(transformer *OutboundTransformer) {
 				err := transformer.ConfigureForAzure("another-resource", "2024-02-01", "azure-key")
 				require.NoError(t, err)
-				// No deployment name set, should use model name
+				// Current implementation uses /openai/v1/ path structure
 			},
-			expectedURL: "https://another-resource.openai.azure.com/openai/deployments/gpt-3.5-turbo/chat/completions?api-version=2024-02-01",
+			expectedURL: "https://another-resource.openai.azure.com/openai/v1/chat/completions?api-version=2024-02-01",
 			model:       "gpt-3.5-turbo",
 			stream:      false,
 		},
@@ -55,9 +55,9 @@ func TestOutboundTransformer_AzureConfigurations(t *testing.T) {
 			setupFunc: func(transformer *OutboundTransformer) {
 				err := transformer.ConfigureForAzure("test-resource", "2024-06-01", "key123")
 				require.NoError(t, err)
-				// Note: Current implementation uses model name as deployment
+				// Note: Current implementation uses /openai/v1/ path structure
 			},
-			expectedURL: "https://test-resource.openai.azure.com/openai/deployments/gpt-4-turbo-preview/chat/completions?api-version=2024-06-01",
+			expectedURL: "https://test-resource.openai.azure.com/openai/v1/chat/completions?api-version=2024-06-01",
 			model:       "gpt-4-turbo-preview",
 			stream:      false,
 		},
