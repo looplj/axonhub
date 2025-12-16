@@ -460,6 +460,10 @@ type Response struct {
 	// ProviderData stores provider-specific response payloads that do not map to the chat completion schema.
 	// This field is ignored when serializing to JSON and is only used internally by transformers (e.g., embeddings).
 	ProviderData any `json:"-"`
+
+	// TransformerMetadata stores metadata from transformers that process the response.
+	// This field is ignored when serializing to JSON and is only used internally by transformers.
+	TransformerMetadata map[string]any `json:"-"`
 }
 
 func (r *Response) ClearHelpFields() {
@@ -493,6 +497,10 @@ type Choice struct {
 	FinishReason *string `json:"finish_reason,omitempty"`
 
 	Logprobs *LogprobsContent `json:"logprobs,omitempty"`
+
+	// TransformerMetadata stores metadata from transformers that process the response.
+	// This field is ignored when serializing to JSON and is only used internally by transformers.
+	TransformerMetadata map[string]any `json:"-"`
 }
 
 // LogprobsContent represents logprobs information.

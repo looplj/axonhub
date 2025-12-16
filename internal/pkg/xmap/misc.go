@@ -79,6 +79,44 @@ func GetStringSlice(m map[string]any, key string) []string {
 	return nil
 }
 
+func GetSlice[T any](m map[string]any, key string) []T {
+	if m == nil {
+		return nil
+	}
+
+	if v, ok := m[key]; ok {
+		switch vv := v.(type) {
+		case []T:
+			return vv
+		case []*T:
+			return lo.FromSlicePtr(vv)
+		default:
+			return []T{}
+		}
+	}
+
+	return nil
+}
+
+func GetSlicePtr[T any](m map[string]any, key string) []*T {
+	if m == nil {
+		return nil
+	}
+
+	if v, ok := m[key]; ok {
+		switch vv := v.(type) {
+		case []*T:
+			return vv
+		case []T:
+			return lo.ToSlicePtr(vv)
+		default:
+			return nil
+		}
+	}
+
+	return nil
+}
+
 func GetPtr[T any](m map[string]any, key string) *T {
 	if m == nil {
 		return nil

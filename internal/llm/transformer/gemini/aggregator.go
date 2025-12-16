@@ -11,12 +11,13 @@ import (
 
 // candidateAggregator is a helper struct to aggregate data for each candidate.
 type candidateAggregator struct {
-	index            int64
-	textParts        strings.Builder
-	reasoningContent strings.Builder
-	toolCalls        map[int]*llm.ToolCall
-	inlineDataParts  []*Blob
-	finishReason     string
+	index             int64
+	textParts         strings.Builder
+	reasoningContent  strings.Builder
+	toolCalls         map[int]*llm.ToolCall
+	inlineDataParts   []*Blob
+	finishReason      string
+	groundingMetadata *GroundingMetadata
 }
 
 // AggregateStreamChunks aggregates Gemini streaming response chunks into a complete response.
@@ -114,6 +115,11 @@ func AggregateStreamChunks(
 			if candidate.FinishReason != "" {
 				agg.finishReason = candidate.FinishReason
 			}
+
+			// Capture grounding metadata (use the last one if multiple chunks have it)
+			if candidate.GroundingMetadata != nil {
+				agg.groundingMetadata = candidate.GroundingMetadata
+			}
 		}
 
 		// Extract usage information if present
@@ -200,9 +206,10 @@ func buildGeminiResponse(
 		}
 
 		candidates[i] = &Candidate{
-			Index:        agg.index,
-			Content:      content,
-			FinishReason: finishReason,
+			Index:             agg.index,
+			Content:           content,
+			FinishReason:      finishReason,
+			GroundingMetadata: agg.groundingMetadata,
 		}
 	}
 
