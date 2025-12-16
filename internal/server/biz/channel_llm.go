@@ -453,6 +453,17 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		}
 
 		return buildChannelWithTransformer(c, transformer, httpClient), nil
+	case channel.TypeGeminiVertex:
+		transformer, err := gemini.NewOutboundTransformerWithConfig(gemini.Config{
+			BaseURL:      c.BaseURL,
+			APIKey:       c.Credentials.APIKey,
+			PlatformType: gemini.PlatformVertex,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		return buildChannelWithTransformer(c, transformer, httpClient), nil
 	default:
 		return nil, errors.New("unknown channel type")
 	}

@@ -104,6 +104,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     }
     return 'openai/chat_completions'
   })
+  const [useGeminiVertex, setUseGeminiVertex] = useState(() => {
+    if (initialRow) {
+      return initialRow.type === 'gemini_vertex'
+    }
+    return false
+  })
 
   useEffect(() => {
     if (!isEdit || !currentRow) return
@@ -112,6 +118,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     setSelectedProvider(provider)
     const apiFormat = CHANNEL_CONFIGS[currentRow.type]?.apiFormat || OPENAI_CHAT_COMPLETIONS
     setSelectedApiFormat(apiFormat)
+    setUseGeminiVertex(currentRow.type === 'gemini_vertex')
   }, [isEdit, currentRow])
 
   useEffect(() => {
@@ -173,8 +180,14 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     if (isEdit && currentRow) {
       return currentRow.type
     }
+    
+    // If gemini/contents is selected and vertex checkbox is checked, use gemini_vertex
+    if (selectedApiFormat === 'gemini/contents' && useGeminiVertex) {
+      return 'gemini_vertex'
+    }
+    
     return getChannelTypeForApiFormat(selectedProvider, selectedApiFormat) || 'openai'
-  }, [isEdit, currentRow, selectedProvider, selectedApiFormat])
+  }, [isEdit, currentRow, selectedProvider, selectedApiFormat, useGeminiVertex])
 
   const formSchema = isEdit ? updateChannelInputSchema : createChannelInputSchema
 
@@ -281,16 +294,23 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     (provider: string) => {
       if (isEdit) return
       setSelectedProvider(provider)
+
+      if (provider !== 'gemini') {
+        setUseGeminiVertex(false)
+      }
       const formats = getApiFormatsForProvider(provider)
       // Default to first available format
       const newFormat = formats[0] || 'openai/chat_completions'
       setSelectedApiFormat(newFormat)
-      const newChannelType = getChannelTypeForApiFormat(provider, newFormat)
+      const newChannelType =
+        provider === 'gemini' && newFormat === 'gemini/contents' && useGeminiVertex
+          ? 'gemini_vertex'
+          : getChannelTypeForApiFormat(provider, newFormat)
       if (newChannelType) {
         form.setValue('type', newChannelType)
         const baseURL = getDefaultBaseURL(newChannelType)
         if (baseURL) {
-          form.setValue('baseURL', baseURL)
+          form.resetField('baseURL', { defaultValue: baseURL })
         }
         // Reset models when provider changes
         setSupportedModels([])
@@ -298,14 +318,21 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         setUseFetchedModels(false)
       }
     },
-    [isEdit, form]
+    [isEdit, form, useGeminiVertex]
   )
 
   const handleApiFormatChange = useCallback(
     (format: ApiFormat) => {
       if (isEdit) return
       setSelectedApiFormat(format)
-      const newChannelType = getChannelTypeForApiFormat(selectedProvider, format)
+
+      // Reset vertex checkbox if not gemini/contents
+      if (format !== 'gemini/contents') {
+        setUseGeminiVertex(false)
+      }
+
+      const channelTypeFromFormat = getChannelTypeForApiFormat(selectedProvider, format)
+      const newChannelType = format === 'gemini/contents' && useGeminiVertex ? 'gemini_vertex' : channelTypeFromFormat
       if (newChannelType) {
         form.setValue('type', newChannelType)
 
@@ -313,12 +340,33 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         if (!baseURLFieldState.isDirty) {
           const baseURL = getDefaultBaseURL(newChannelType)
           if (baseURL) {
-            form.setValue('baseURL', baseURL)
+            form.resetField('baseURL', { defaultValue: baseURL })
           }
         }
       }
     },
-    [isEdit, selectedProvider, form]
+    [isEdit, selectedProvider, form, useGeminiVertex]
+  )
+
+  const handleGeminiVertexChange = useCallback(
+    (checked: boolean) => {
+      if (isEdit) return
+      setUseGeminiVertex(checked)
+      
+      if (selectedApiFormat === 'gemini/contents') {
+        const newChannelType = checked ? 'gemini_vertex' : 'gemini'
+        form.setValue('type', newChannelType)
+        
+        const baseURLFieldState = form.getFieldState('baseURL', form.formState)
+        if (!baseURLFieldState.isDirty) {
+          const baseURL = getDefaultBaseURL(newChannelType)
+          if (baseURL) {
+            form.resetField('baseURL', { defaultValue: baseURL })
+          }
+        }
+      }
+    },
+    [isEdit, selectedApiFormat, form]
   )
 
   useEffect(() => {
@@ -331,8 +379,16 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
+      const valuesForSubmit =
+        isEdit
+          ? values
+          : {
+              ...values,
+              type: derivedChannelType,
+            }
+
       const dataWithModels = {
-        ...values,
+        ...valuesForSubmit,
         supportedModels,
       }
 
@@ -373,7 +429,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       } else {
         // For create mode, check if multiple API keys are provided
         const apiKeys =
-          values.credentials?.apiKey
+          valuesForSubmit.credentials?.apiKey
             ?.split('\n')
             .map((key) => key.trim())
             .filter((key) => key.length > 0) || []
@@ -382,13 +438,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           const settings = values.settings ?? duplicateFromRow?.settings ?? undefined
           // Bulk create: use bulk mutation
           await bulkCreateChannels.mutateAsync({
-            type: values.type as string,
-            name: values.name as string,
-            baseURL: values.baseURL,
-            tags: values.tags,
+            type: valuesForSubmit.type as string,
+            name: valuesForSubmit.name as string,
+            baseURL: valuesForSubmit.baseURL,
+            tags: valuesForSubmit.tags,
             apiKeys: apiKeys,
             supportedModels: supportedModels,
-            defaultTestModel: values.defaultTestModel as string,
+            defaultTestModel: valuesForSubmit.defaultTestModel as string,
             settings,
           })
         } else {
@@ -640,9 +696,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           if (initialRow) {
             setSelectedProvider(getProviderFromChannelType(initialRow.type) || 'openai')
             setSelectedApiFormat(CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || OPENAI_CHAT_COMPLETIONS)
+            setUseGeminiVertex(initialRow.type === 'gemini_vertex')
           } else {
             setSelectedProvider('openai')
             setSelectedApiFormat(OPENAI_CHAT_COMPLETIONS)
+            setUseGeminiVertex(false)
           }
         }
         onOpenChange(state)
@@ -729,6 +787,25 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         />
                         {isEdit && (
                           <p className='text-muted-foreground mt-1 text-xs'>{t('channels.dialogs.fields.apiFormat.editDisabled')}</p>
+                        )}
+                        {selectedApiFormat === 'gemini/contents' && (
+                          <div className='mt-3'>
+                            <label
+                              className={`flex items-center gap-2 text-sm ${
+                                isEdit ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+                              }`}
+                            >
+                              <Checkbox
+                                checked={useGeminiVertex}
+                                onCheckedChange={(checked) => handleGeminiVertexChange(checked === true)}
+                                disabled={isEdit}
+                              />
+                              <span>{t('channels.dialogs.fields.apiFormat.geminiVertex.label')}</span>
+                            </label>
+                            <p className='text-muted-foreground mt-1 text-xs'>
+                              {t('channels.dialogs.fields.apiFormat.geminiVertex.description')}
+                            </p>
+                          </div>
                         )}
                       </div>
                     </FormItem>

@@ -13,6 +13,7 @@ export const channelTypeSchema = z.enum([
   'anthropic_gcp',
   'gemini_openai',
   'gemini',
+  'gemini_vertex',
   'deepseek',
   'doubao',
   'doubao_anthropic',

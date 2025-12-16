@@ -111,6 +111,14 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-green-100 text-green-800 border-green-200',
     icon: Google,
   },
+  gemini_vertex: {
+    channelType: 'gemini_vertex',
+    baseURL: 'https://aiplatform.googleapis.com/v1',
+    defaultModels: ['gemini-2.5-pro', 'gemini-2.5-flash'],
+    apiFormat: GEMINI_CONTENTS,
+    color: 'bg-green-100 text-green-800 border-green-200',
+    icon: Google,
+  },
   minimax: {
     channelType: 'minimax',
     baseURL: 'https://api.minimaxi.com/v1',
@@ -517,6 +525,7 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   deepseek_anthropic: 'deepseek',
   gemini: 'gemini',
   gemini_openai: 'gemini',
+  gemini_vertex: 'gemini',
   moonshot: 'moonshot',
   moonshot_anthropic: 'moonshot',
   zhipu: 'zhipu',

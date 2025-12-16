@@ -65,11 +65,23 @@ type ChannelCredentials struct {
 	// APIKey is the API key for the channel.
 	APIKey string `json:"apiKey,omitempty"`
 
+	// PlatformType distinguishes different platform configurations (e.g., "openai", "azure").
+	// e.g., "openai", "azure", "anthropic", "vertex" etc.
+	PlatformType string `json:"platformType,omitempty"`
+
+	// Azure configuration for the channel.
+	Azure *AzureCredential `json:"azure,omitempty"`
+
 	// AWS is the AWS credentials for the channel.
 	AWS *AWSCredential `json:"aws,omitempty"`
 
 	// GCP is the GCP credentials for the channel.
 	GCP *GCPCredential `json:"gcp,omitempty"`
+}
+
+type AzureCredential struct {
+	// APIVersion is a optional version for the channel.
+	APIVersion string `json:"apiVersion"`
 }
 
 type AWSCredential struct {

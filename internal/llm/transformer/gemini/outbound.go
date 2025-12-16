@@ -18,6 +18,9 @@ const (
 
 	// DefaultAPIVersion is the default API version.
 	DefaultAPIVersion = "v1beta"
+
+	// PlatformVertex indicates Vertex AI platform.
+	PlatformVertex = "vertex"
 )
 
 // Config holds all configuration for the Gemini outbound transformer.
@@ -30,6 +33,9 @@ type Config struct {
 
 	// APIVersion is the API version to use.
 	APIVersion string `json:"api_version,omitempty"`
+
+	// PlatformType distinguishes different platform configurations (e.g., "vertex").
+	PlatformType string `json:"platform_type,omitempty"`
 
 	// ReasoningEffortToBudget maps reasoning effort levels to thinking budget tokens.
 	ReasoningEffortToBudget map[string]int64 `json:"reasoning_effort_to_budget,omitempty"`
@@ -159,6 +165,12 @@ func (t *OutboundTransformer) buildFullRequestURL(chatReq *llm.Request) string {
 				version = requestVersion
 			}
 		}
+	}
+
+	// For Vertex AI platform, use different URL format:
+	// https://${API_ENDPOINT}/v1/publishers/google/models/${MODEL_ID}:${ACTION}?key=${API_KEY}
+	if t.config.PlatformType == PlatformVertex {
+		return fmt.Sprintf("%s/v1/publishers/google/models/%s:%s", t.config.BaseURL, chatReq.Model, action)
 	}
 
 	// Format: /base_url/{version}/models/{model}:generateContent

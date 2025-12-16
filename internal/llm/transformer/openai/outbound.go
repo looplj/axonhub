@@ -267,15 +267,24 @@ func (t *OutboundTransformer) TransformStreamChunk(
 }
 
 // buildPlatformURL constructs the appropriate URL based on the platform.
-func (t *OutboundTransformer) buildPlatformURL(chatReq *llm.Request) (string, error) {
+func (t *OutboundTransformer) buildPlatformURL(_ *llm.Request) (string, error) {
 	//nolint:exhaustive // Chcked.
 	switch t.config.Type {
 	case PlatformAzure:
-		// Build the Azure OpenAI URL
-		azureURL := fmt.Sprintf("%s/openai/deployments/%s/chat/completions?api-version=%s",
-			t.config.BaseURL, chatReq.Model, t.config.APIVersion)
+		if strings.HasSuffix(t.config.BaseURL, "/openai/v1") {
+			// Azure URL already includes /openai/v1
+			return fmt.Sprintf("%s/chat/completions?api-version=%s",
+				t.config.BaseURL, t.config.APIVersion), nil
+		}
 
-		return azureURL, nil
+		if strings.HasSuffix(t.config.BaseURL, "/openai") {
+			// Azure URL includes /openai but not /v1
+			return fmt.Sprintf("%s/v1/chat/completions?api-version=%s",
+				t.config.BaseURL, t.config.APIVersion), nil
+		}
+		// Default case for other Azure URLs
+		return fmt.Sprintf("%s/openai/v1/chat/completions?api-version=%s",
+			t.config.BaseURL, t.config.APIVersion), nil
 	default:
 		// Standard OpenAI API
 		if strings.HasSuffix(t.config.BaseURL, "/v1") {
