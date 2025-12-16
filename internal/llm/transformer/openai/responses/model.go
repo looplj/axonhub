@@ -182,6 +182,27 @@ func (t *ToolChoice) UnmarshalJSON(data []byte) error {
 	return errors.New("invalid tool choice type")
 }
 
+func (t *ToolChoice) MarshalJSON() ([]byte, error) {
+	if t.Mode != nil && *t.Mode == "auto" {
+		return json.Marshal("auto")
+	}
+
+	// For other cases, marshal as object
+	type Alias ToolChoice
+
+	return json.Marshal(&struct {
+		Mode  *string      `json:"mode,omitempty"`
+		Type  *string      `json:"type,omitempty"`
+		Name  *string      `json:"name,omitempty"`
+		Tools []ToolOption `json:"tools,omitempty"`
+	}{
+		Mode:  t.Mode,
+		Type:  t.Type,
+		Name:  t.Name,
+		Tools: t.Tools,
+	})
+}
+
 // ResponseToolChoice represents tool_choice in responses, which can be a string or object.
 type ResponseToolChoice struct {
 	// String value when tool_choice is a simple string like "auto", "none", "required".
