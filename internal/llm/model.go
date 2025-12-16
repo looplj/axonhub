@@ -456,6 +456,10 @@ type Response struct {
 
 	// Error is the error information, will present if request to llm service failed with status >= 400.
 	Error *ResponseError `json:"error,omitempty"`
+
+	// ProviderData stores provider-specific response payloads that do not map to the chat completion schema.
+	// This field is ignored when serializing to JSON and is only used internally by transformers (e.g., embeddings).
+	ProviderData any `json:"-"`
 }
 
 func (r *Response) ClearHelpFields() {

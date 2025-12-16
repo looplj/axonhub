@@ -27,6 +27,7 @@ type OpenAIHandlers struct {
 	ChannelService             *biz.ChannelService
 	ChatCompletionHandlers     *ChatCompletionHandlers
 	ResponseCompletionHandlers *ChatCompletionHandlers
+	EmbeddingHandlers          *ChatCompletionHandlers
 }
 
 func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
@@ -51,6 +52,16 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.UsageLogService,
 			),
 		},
+		EmbeddingHandlers: &ChatCompletionHandlers{
+			ChatCompletionProcessor: chat.NewChatCompletionProcessor(
+				params.ChannelService,
+				params.RequestService,
+				params.HttpClient,
+				openai.NewEmbeddingInboundTransformer(),
+				params.SystemService,
+				params.UsageLogService,
+			),
+		},
 		ChannelService: params.ChannelService,
 	}
 }
@@ -61,6 +72,10 @@ func (handlers *OpenAIHandlers) ChatCompletion(c *gin.Context) {
 
 func (handlers *OpenAIHandlers) CreateResponse(c *gin.Context) {
 	handlers.ResponseCompletionHandlers.ChatCompletion(c)
+}
+
+func (handlers *OpenAIHandlers) CreateEmbedding(c *gin.Context) {
+	handlers.EmbeddingHandlers.ChatCompletion(c)
 }
 
 type OpenAIModel struct {

@@ -93,6 +93,7 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 	{
 		openaiGroup.POST("/chat/completions", handlers.OpenAI.ChatCompletion)
 		openaiGroup.POST("/responses", handlers.OpenAI.CreateResponse)
+		openaiGroup.POST("/embeddings", handlers.OpenAI.CreateEmbedding)
 		openaiGroup.GET("/models", handlers.OpenAI.ListModels)
 	}
 

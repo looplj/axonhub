@@ -6,6 +6,7 @@ const (
 	APIFormatOpenAIChatCompletion  APIFormat = "openai/chat_completions"
 	APIFormatOpenAIResponse        APIFormat = "openai/responses"
 	APIFormatOpenAIImageGeneration APIFormat = "openai/image_generation"
+	APIFormatOpenAIEmbedding       APIFormat = "openai/embeddings"
 	APIFormatGeminiContents        APIFormat = "gemini/contents"
 	APIFormatAnthropicMessage      APIFormat = "anthropic/messages"
 	APIFormatAiSDKText             APIFormat = "aisdk/text"
