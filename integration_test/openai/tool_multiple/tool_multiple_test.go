@@ -20,7 +20,7 @@ func TestMain(m *testing.M) {
 
 func TestMultipleToolsSequential(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestMultipleToolsSequential")
 
 	// Print headers for debugging
 	helper.PrintHeaders(t)
@@ -75,7 +75,7 @@ func TestMultipleToolsSequential(t *testing.T) {
 	}
 
 	// Make the initial API call
-	completion, err := helper.Client.Chat.Completions.New(ctx, params)
+	completion, err := helper.CreateChatCompletionWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed to get chat completion with multiple tools")
 
 	// Validate the response
@@ -129,7 +129,7 @@ func TestMultipleToolsSequential(t *testing.T) {
 	}
 
 	// Make the follow-up call
-	finalCompletion, err := helper.Client.Chat.Completions.New(ctx, params)
+	finalCompletion, err := helper.CreateChatCompletionWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed to get final completion")
 
 	// Validate the final response
@@ -146,7 +146,7 @@ func TestMultipleToolsSequential(t *testing.T) {
 
 func TestMultipleToolsParallel(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestMultipleToolsParallel")
 
 	ctx := helper.CreateTestContext()
 
@@ -197,48 +197,47 @@ func TestMultipleToolsParallel(t *testing.T) {
 		Model:             helper.GetModel(),
 	}
 
-	completion, err := helper.Client.Chat.Completions.New(ctx, params)
+	completion, err := helper.CreateChatCompletionWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed to get chat completion with parallel tools")
 
 	helper.ValidateChatResponse(t, completion, "Parallel tools")
 
-	// Check for tool calls
-	if len(completion.Choices) == 0 || completion.Choices[0].Message.ToolCalls == nil {
-		t.Fatalf("Expected tool calls for parallel execution, got: %s", completion.Choices[0].Message.Content)
+	if len(completion.Choices) == 0 {
+		t.Fatal("No choices returned for parallel execution")
 	}
 
-	t.Logf("Number of parallel tool calls: %d", len(completion.Choices[0].Message.ToolCalls))
+	currentCompletion := completion
+	const maxParallelIterations = 5
+	var finalCompletion *openai.ChatCompletion
 
-	// Process all tool calls
-	var toolResults []string
-	for i, toolCall := range completion.Choices[0].Message.ToolCalls {
-		var args map[string]interface{}
-		err = json.Unmarshal([]byte(toolCall.Function.Arguments), &args)
-		helper.AssertNoError(t, err, "Failed to parse parallel tool arguments")
-
-		var result string
-		switch toolCall.Function.Name {
-		case "get_current_weather":
-			result = simulateWeatherFunction(args)
-		case "calculate":
-			calcResult := simulateCalculatorFunction(args)
-			result = fmt.Sprintf("%v", calcResult)
-		default:
-			result = "Unknown function"
+	for iteration := 0; iteration < maxParallelIterations; iteration++ {
+		message := currentCompletion.Choices[0].Message
+		if len(message.ToolCalls) == 0 {
+			finalCompletion = currentCompletion
+			break
 		}
 
-		toolResults = append(toolResults, result)
-		t.Logf("Parallel tool %d (%s) result: %s", i+1, toolCall.Function.Name, result)
+		if iteration == 0 {
+			t.Logf("Number of parallel tool calls: %d", len(message.ToolCalls))
+		} else {
+			t.Logf("Additional parallel tool call round %d: %d", iteration+1, len(message.ToolCalls))
+		}
+
+		params.Messages = append(params.Messages, message.ToParam())
+		for i, toolCall := range message.ToolCalls {
+			result := executeSimulatedToolCall(t, helper, toolCall.Function.Name, toolCall.Function.Arguments)
+			params.Messages = append(params.Messages, openai.ToolMessage(result, toolCall.ID))
+			t.Logf("Parallel tool %d (%s) result: %s", i+1, toolCall.Function.Name, result)
+		}
+
+		currentCompletion, err = helper.CreateChatCompletionWithHeaders(ctx, params)
+		helper.AssertNoError(t, err, "Failed to continue parallel completion")
+		helper.ValidateChatResponse(t, currentCompletion, fmt.Sprintf("Parallel tools iteration %d", iteration+2))
 	}
 
-	// Continue conversation
-	params.Messages = append(params.Messages, completion.Choices[0].Message.ToParam())
-	for i, toolCall := range completion.Choices[0].Message.ToolCalls {
-		params.Messages = append(params.Messages, openai.ToolMessage(toolResults[i], toolCall.ID))
+	if finalCompletion == nil {
+		t.Fatalf("Parallel tool execution did not finish within %d iterations", maxParallelIterations)
 	}
-
-	finalCompletion, err := helper.Client.Chat.Completions.New(ctx, params)
-	helper.AssertNoError(t, err, "Failed to get parallel final completion")
 
 	finalResponse := finalCompletion.Choices[0].Message.Content
 	t.Logf("Final parallel response: %s", finalResponse)
@@ -251,7 +250,7 @@ func TestMultipleToolsParallel(t *testing.T) {
 
 func TestToolChoiceRequired(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestToolChoiceRequired")
 
 	ctx := helper.CreateTestContext()
 
@@ -292,7 +291,7 @@ func TestToolChoiceRequired(t *testing.T) {
 		Model: helper.GetModel(),
 	}
 
-	completion, err := helper.Client.Chat.Completions.New(ctx, params)
+	completion, err := helper.CreateChatCompletionWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed to get chat completion with forced tool choice")
 
 	helper.ValidateChatResponse(t, completion, "Forced tool choice")
@@ -322,7 +321,7 @@ func TestToolChoiceRequired(t *testing.T) {
 	// Remove tool choice for final response
 	params.ToolChoice = openai.ChatCompletionToolChoiceOptionUnionParam{}
 
-	finalCompletion, err := helper.Client.Chat.Completions.New(ctx, params)
+	finalCompletion, err := helper.CreateChatCompletionWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed to get forced tool final completion")
 
 	finalResponse := finalCompletion.Choices[0].Message.Content
@@ -380,4 +379,22 @@ func simulateCalculatorFunction(args map[string]interface{}) float64 {
 func normalizeLocation(location string) string {
 	// Simple normalization - convert to lowercase
 	return strings.ToLower(location)
+}
+
+func executeSimulatedToolCall(t *testing.T, helper *testutil.TestHelper, functionName string, rawArgs string) string {
+	t.Helper()
+
+	var args map[string]interface{}
+	err := json.Unmarshal([]byte(rawArgs), &args)
+	helper.AssertNoError(t, err, "Failed to parse tool arguments")
+
+	switch functionName {
+	case "get_current_weather":
+		return simulateWeatherFunction(args)
+	case "calculate":
+		calcResult := simulateCalculatorFunction(args)
+		return fmt.Sprintf("%v", calcResult)
+	default:
+		return "Unknown function"
+	}
 }

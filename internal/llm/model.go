@@ -8,8 +8,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/samber/lo"
-
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
@@ -163,7 +161,7 @@ type Request struct {
 
 	// Reasoning budget for reasoning models.
 	// Help fields， will not be sent to the llm service.
-	ReasoningBudget *int64 `json:"-"`
+	ReasoningBudget *int64 `json:"reasoning_budget,omitempty"`
 
 	// Specifies the processing type used for serving the request.
 	ServiceTier *string `json:"service_tier,omitempty"`
@@ -205,11 +203,11 @@ type Request struct {
 	ExtraBody json.RawMessage `json:"extra_body,omitempty"`
 
 	// RawRequest is the raw request from the client.
-	RawRequest *httpclient.Request `json:"-"`
+	RawRequest *httpclient.Request `json:"raw_request,omitempty"`
 
 	// RawAPIFormat is the original format of the request.
 	// e.g. the request from the chat/completions endpoint is in the openai/chat_completion format.
-	RawAPIFormat APIFormat `json:"-"`
+	RawAPIFormat APIFormat `json:"raw_api_format,omitempty"`
 
 	// TransformerMetadata stores transformer-specific metadata for preserving format during transformations.
 	// This is a help field and will not be sent to the llm service.
@@ -220,22 +218,7 @@ type Request struct {
 	// - "prompt_cache_retention": *string - retention policy for the prompt cache ("in-memory", "24h")
 	// - "truncation": *string - truncation strategy ("auto", "disabled")
 	// - "include_obfuscation": *bool - whether to enable stream obfuscation (Responses API specific)
-	TransformerMetadata map[string]any `json:"-"`
-}
-
-func (r *Request) ClearHelpFields() {
-	for i, msg := range r.Messages {
-		msg.ClearHelpFields()
-		r.Messages[i] = msg
-	}
-
-	r.ExtraBody = nil
-
-	// If tools are present, keep only function tools
-	tools := lo.Filter(r.Tools, func(tool Tool, _ int) bool {
-		return tool.Type == "function"
-	})
-	r.Tools = tools
+	TransformerMetadata map[string]any `json:"transformer_metadata,omitempty"`
 }
 
 func (r *Request) IsImageGenerationRequest() bool {
@@ -304,13 +287,13 @@ type Message struct {
 
 	// The index of the message that the tool call is associated with.
 	// Is is a help field, will not be sent to the llm service.
-	MessageIndex *int    `json:"-"`
+	MessageIndex *int    `json:"message_index,omitempty"`
 	ToolCallID   *string `json:"tool_call_id,omitempty"`
 	// The name of the tool call.
 	// Is is a help field, will not be sent to the llm service.
-	ToolCallName *string `json:"-"`
+	ToolCallName *string `json:"tool_call_name,omitempty"`
 	// This field is a help field, will not be sent to the llm service.
-	ToolCallIsError *bool      `json:"-"`
+	ToolCallIsError *bool      `json:"tool_call_is_error,omitempty"`
 	ToolCalls       []ToolCall `json:"tool_calls,omitempty"`
 
 	// This property is used for the "reasoning" feature supported by deepseek-reasoner
@@ -328,13 +311,7 @@ type Message struct {
 
 	// CacheControl is used for provider-specific cache control (e.g., Anthropic).
 	// This field is not serialized in JSON.
-	CacheControl *CacheControl `json:"-"`
-}
-
-func (m *Message) ClearHelpFields() {
-	m.ReasoningContent = nil
-	m.ReasoningSignature = nil
-	m.RedactedReasoningContent = nil
+	CacheControl *CacheControl `json:"cache_control,omitempty"`
 }
 
 type MessageContent struct {
@@ -390,11 +367,11 @@ type MessageContentPart struct {
 
 	// CacheControl is used for provider-specific cache control (e.g., Anthropic).
 	// This field is not serialized in JSON.
-	CacheControl *CacheControl `json:"-"`
+	CacheControl *CacheControl `json:"cache_control,omitempty"`
 
 	// TransformerMetadata stores transformer-specific metadata for preserving format during transformations.
 	// This is a help field and will not be sent to the llm service.
-	TransformerMetadata map[string]any `json:"-"`
+	TransformerMetadata map[string]any `json:"transformer_metadata,omitempty"`
 }
 
 // ImageURL represents an image URL with optional detail level.
@@ -468,25 +445,11 @@ type Response struct {
 
 	// ProviderData stores provider-specific response payloads that do not map to the chat completion schema.
 	// This field is ignored when serializing to JSON and is only used internally by transformers (e.g., embeddings).
-	ProviderData any `json:"-"`
+	ProviderData any `json:"provider_data,omitempty"`
 
 	// TransformerMetadata stores metadata from transformers that process the response.
 	// This field is ignored when serializing to JSON and is only used internally by transformers.
-	TransformerMetadata map[string]any `json:"-"`
-}
-
-func (r *Response) ClearHelpFields() {
-	for i, choice := range r.Choices {
-		if choice.Message != nil {
-			choice.Message.ClearHelpFields()
-		}
-
-		if choice.Delta != nil {
-			choice.Delta.ClearHelpFields()
-		}
-
-		r.Choices[i] = choice
-	}
+	TransformerMetadata map[string]any `json:"transformer_metadata,omitempty"`
 }
 
 // Choice represents a choice in the response.
@@ -509,7 +472,7 @@ type Choice struct {
 
 	// TransformerMetadata stores metadata from transformers that process the response.
 	// This field is ignored when serializing to JSON and is only used internally by transformers.
-	TransformerMetadata map[string]any `json:"-"`
+	TransformerMetadata map[string]any `json:"transformer_metadata,omitempty"`
 }
 
 // LogprobsContent represents logprobs information.
@@ -546,9 +509,9 @@ type Usage struct {
 	CompletionTokensDetails *CompletionTokensDetails `json:"completion_tokens_details"`
 
 	// Output only. A detailed breakdown of the token count for each modality in the prompt.
-	PromptModalityTokenDetails []ModalityTokenCount `json:"-"`
+	PromptModalityTokenDetails []ModalityTokenCount `json:"prompt_modality_token_details,omitempty"`
 	// Output only. A detailed breakdown of the token count for each modality in the candidates.
-	CompletionModalityTokenDetails []ModalityTokenCount `json:"-"`
+	CompletionModalityTokenDetails []ModalityTokenCount `json:"completion_modality_token_details,omitempty"`
 }
 
 func (u *Usage) GetCompletionTokens() *int64 {
@@ -580,7 +543,7 @@ type PromptTokensDetails struct {
 	AudioTokens  int64 `json:"audio_tokens"`
 	CachedTokens int64 `json:"cached_tokens"`
 	// hidden field, used for internal calculation.
-	WriteCachedTokens int64 `json:"-"`
+	WriteCachedTokens int64 `json:"write_cached_tokens,omitempty"`
 }
 
 // ResponseError represents an error response.

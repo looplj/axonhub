@@ -11,8 +11,7 @@ import (
 )
 
 func TestSingleThreadMultipleTraces(t *testing.T) {
-	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestSingleThreadMultipleTraces")
 
 	// Print headers for debugging
 	helper.PrintHeaders(t)
@@ -36,7 +35,7 @@ func TestSingleThreadMultipleTraces(t *testing.T) {
 		Model:    helper.GetModel(),
 	}
 
-	completion1, err := helper.Client.Chat.Completions.New(ctx1, params1)
+	completion1, err := helper.CreateChatCompletionWithHeaders(ctx1, params1)
 	helper.AssertNoError(t, err, "Failed in trace 1, call 1")
 
 	helper.ValidateChatResponse(t, completion1, "Trace 1, call 1")
@@ -49,7 +48,7 @@ func TestSingleThreadMultipleTraces(t *testing.T) {
 	messages1 = append(messages1, openai.UserMessage("What tools and technologies should I consider for each phase?"))
 
 	params1.Messages = messages1
-	completion2, err := helper.Client.Chat.Completions.New(ctx1, params1)
+	completion2, err := helper.CreateChatCompletionWithHeaders(ctx1, params1)
 	helper.AssertNoError(t, err, "Failed in trace 1, call 2")
 
 	helper.ValidateChatResponse(t, completion2, "Trace 1, call 2")
@@ -74,7 +73,7 @@ func TestSingleThreadMultipleTraces(t *testing.T) {
 		Model:    helper2.GetModel(),
 	}
 
-	completion3, err := helper2.Client.Chat.Completions.New(ctx2, params2)
+	completion3, err := helper2.CreateChatCompletionWithHeaders(ctx2, params2)
 	helper.AssertNoError(t, err, "Failed in trace 2, call 1")
 
 	helper.ValidateChatResponse(t, completion3, "Trace 2, call 1")
@@ -87,7 +86,7 @@ func TestSingleThreadMultipleTraces(t *testing.T) {
 	messages2 = append(messages2, openai.UserMessage("What about the project timeline and milestones?"))
 
 	params2.Messages = messages2
-	completion4, err := helper2.Client.Chat.Completions.New(ctx2, params2)
+	completion4, err := helper2.CreateChatCompletionWithHeaders(ctx2, params2)
 	helper.AssertNoError(t, err, "Failed in trace 2, call 2")
 
 	helper.ValidateChatResponse(t, completion4, "Trace 2, call 2")
@@ -135,7 +134,7 @@ func TestSingleThreadMultipleTraces(t *testing.T) {
 		Model:    helper3.GetModel(),
 	}
 
-	completion5, err := helper3.Client.Chat.Completions.New(ctx3, params3)
+	completion5, err := helper3.CreateChatCompletionWithHeaders(ctx3, params3)
 	helper.AssertNoError(t, err, "Failed in trace 3, call 1 with tools")
 
 	helper.ValidateChatResponse(t, completion5, "Trace 3, call 1 with tools")
@@ -180,7 +179,7 @@ func TestSingleThreadMultipleTraces(t *testing.T) {
 		// Final call with tool results
 		params3.Messages = messages3
 		params3.Tools = nil
-		completion6, err := helper3.Client.Chat.Completions.New(ctx3, params3)
+		completion6, err := helper3.CreateChatCompletionWithHeaders(ctx3, params3)
 		helper.AssertNoError(t, err, "Failed in trace 3, call 2")
 
 		helper.ValidateChatResponse(t, completion6, "Trace 3, call 2")

@@ -22,7 +22,7 @@ func TestMain(m *testing.M) {
 func TestResponsesConversation(t *testing.T) {
 	t.Skip("Test uses PreviousResponseID - temporarily skipped")
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestResponsesConversation")
 
 	// Print headers for debugging
 	helper.PrintHeaders(t)
@@ -40,7 +40,7 @@ func TestResponsesConversation(t *testing.T) {
 		},
 	}
 
-	resp1, err := helper.Client.Responses.New(ctx, params1)
+	resp1, err := helper.CreateResponseWithHeaders(ctx, params1)
 	helper.AssertNoError(t, err, "Failed on first turn")
 
 	if resp1 == nil || resp1.ID == "" {
@@ -62,7 +62,7 @@ func TestResponsesConversation(t *testing.T) {
 		},
 	}
 
-	resp2, err := helper.Client.Responses.New(ctx, params2)
+	resp2, err := helper.CreateResponseWithHeaders(ctx, params2)
 	helper.AssertNoError(t, err, "Failed on second turn")
 
 	if resp2 == nil {
@@ -89,7 +89,7 @@ func TestResponsesConversation(t *testing.T) {
 		},
 	}
 
-	resp3, err := helper.Client.Responses.New(ctx, params3)
+	resp3, err := helper.CreateResponseWithHeaders(ctx, params3)
 	helper.AssertNoError(t, err, "Failed on third turn")
 
 	if resp3 == nil {
@@ -110,7 +110,7 @@ func TestResponsesConversation(t *testing.T) {
 func TestResponsesConversationWithInstructions(t *testing.T) {
 	t.Skip("Test uses PreviousResponseID - temporarily skipped")
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestResponsesConversationWithInstructions")
 
 	ctx := helper.CreateTestContext()
 
@@ -129,7 +129,7 @@ func TestResponsesConversationWithInstructions(t *testing.T) {
 		},
 	}
 
-	resp1, err := helper.Client.Responses.New(ctx, params1)
+	resp1, err := helper.CreateResponseWithHeaders(ctx, params1)
 	helper.AssertNoError(t, err, "Failed on first turn with instructions")
 
 	if resp1 == nil || resp1.ID == "" {
@@ -152,7 +152,7 @@ func TestResponsesConversationWithInstructions(t *testing.T) {
 		},
 	}
 
-	resp2, err := helper.Client.Responses.New(ctx, params2)
+	resp2, err := helper.CreateResponseWithHeaders(ctx, params2)
 	helper.AssertNoError(t, err, "Failed on second turn")
 
 	if resp2 == nil {
@@ -171,7 +171,7 @@ func TestResponsesConversationWithInstructions(t *testing.T) {
 func TestResponsesConversationContextChain(t *testing.T) {
 	t.Skip("Test uses PreviousResponseID - temporarily skipped")
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestResponsesConversationContextChain")
 
 	ctx := helper.CreateTestContext()
 
@@ -220,7 +220,7 @@ func TestResponsesConversationContextChain(t *testing.T) {
 			params.PreviousResponseID = openai.String(previousID)
 		}
 
-		resp, err := helper.Client.Responses.New(ctx, params)
+		resp, err := helper.CreateResponseWithHeaders(ctx, params)
 		helper.AssertNoError(t, err, "Failed on turn", i+1)
 
 		if resp == nil || resp.ID == "" {
@@ -244,7 +244,7 @@ func TestResponsesConversationContextChain(t *testing.T) {
 
 func TestMultiTurnConversation(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestMultiTurnConversation")
 
 	// Print headers for debugging
 	helper.PrintHeaders(t)
@@ -263,7 +263,7 @@ func TestMultiTurnConversation(t *testing.T) {
 		},
 	}
 
-	resp1, err := helper.Client.Responses.New(ctx, params1)
+	resp1, err := helper.CreateResponseWithHeaders(ctx, params1)
 	helper.AssertNoError(t, err, "Failed to start conversation")
 
 	if resp1 == nil {
@@ -285,7 +285,7 @@ func TestMultiTurnConversation(t *testing.T) {
 		},
 	}
 
-	resp2, err := helper.Client.Responses.New(ctx, params2)
+	resp2, err := helper.CreateResponseWithHeaders(ctx, params2)
 	helper.AssertNoError(t, err, "Failed in second conversation turn")
 
 	if resp2 == nil {
@@ -312,7 +312,7 @@ func TestMultiTurnConversation(t *testing.T) {
 		},
 	}
 
-	resp3, err := helper.Client.Responses.New(ctx, params3)
+	resp3, err := helper.CreateResponseWithHeaders(ctx, params3)
 	helper.AssertNoError(t, err, "Failed in third conversation turn")
 
 	if resp3 == nil {
@@ -332,7 +332,7 @@ func TestMultiTurnConversation(t *testing.T) {
 
 func TestConversationWithTools(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestConversationWithTools")
 
 	ctx := helper.CreateTestContext()
 
@@ -389,7 +389,7 @@ func TestConversationWithTools(t *testing.T) {
 		Tools: []responses.ToolUnionParam{calculatorTool, weatherTool},
 	}
 
-	resp1, err := helper.Client.Responses.New(ctx, params1)
+	resp1, err := helper.CreateResponseWithHeaders(ctx, params1)
 	helper.AssertNoError(t, err, "Failed in conversation with tools")
 
 	if resp1 == nil {
@@ -442,7 +442,7 @@ func TestConversationWithTools(t *testing.T) {
 			Tools: []responses.ToolUnionParam{calculatorTool, weatherTool},
 		}
 
-		resp2, err := helper.Client.Responses.New(ctx, params2)
+		resp2, err := helper.CreateResponseWithHeaders(ctx, params2)
 		helper.AssertNoError(t, err, "Failed in tool conversation second turn")
 
 		if resp2 == nil {
@@ -470,7 +470,7 @@ func TestConversationWithTools(t *testing.T) {
 			Tools: []responses.ToolUnionParam{calculatorTool, weatherTool},
 		}
 
-		resp3, err := helper.Client.Responses.New(ctx, params3)
+		resp3, err := helper.CreateResponseWithHeaders(ctx, params3)
 		helper.AssertNoError(t, err, "Failed in tool conversation third turn")
 
 		if resp3 == nil {
@@ -486,7 +486,7 @@ func TestConversationWithTools(t *testing.T) {
 
 func TestConversationContextPreservation(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestConversationContextPreservation")
 
 	ctx := helper.CreateTestContext()
 
@@ -505,7 +505,7 @@ func TestConversationContextPreservation(t *testing.T) {
 		},
 	}
 
-	resp1, err := helper.Client.Responses.New(ctx, params1)
+	resp1, err := helper.CreateResponseWithHeaders(ctx, params1)
 	helper.AssertNoError(t, err, "Failed in context preservation turn 1")
 
 	if resp1 == nil {
@@ -533,7 +533,7 @@ func TestConversationContextPreservation(t *testing.T) {
 		},
 	}
 
-	resp2, err := helper.Client.Responses.New(ctx, params2)
+	resp2, err := helper.CreateResponseWithHeaders(ctx, params2)
 	helper.AssertNoError(t, err, "Failed in context preservation turn 2")
 
 	if resp2 == nil {
@@ -556,7 +556,7 @@ func TestConversationContextPreservation(t *testing.T) {
 		},
 	}
 
-	resp3, err := helper.Client.Responses.New(ctx, params3)
+	resp3, err := helper.CreateResponseWithHeaders(ctx, params3)
 	helper.AssertNoError(t, err, "Failed in context preservation turn 3")
 
 	if resp3 == nil {
@@ -587,7 +587,7 @@ func TestConversationContextPreservation(t *testing.T) {
 
 func TestConversationSystemPrompt(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestConversationSystemPrompt")
 
 	ctx := helper.CreateTestContext()
 
@@ -606,7 +606,7 @@ func TestConversationSystemPrompt(t *testing.T) {
 		},
 	}
 
-	resp1, err := helper.Client.Responses.New(ctx, params1)
+	resp1, err := helper.CreateResponseWithHeaders(ctx, params1)
 	helper.AssertNoError(t, err, "Failed with system prompt")
 
 	if resp1 == nil {
@@ -642,7 +642,7 @@ func TestConversationSystemPrompt(t *testing.T) {
 		},
 	}
 
-	resp2, err := helper.Client.Responses.New(ctx, params2)
+	resp2, err := helper.CreateResponseWithHeaders(ctx, params2)
 	helper.AssertNoError(t, err, "Failed in cooking conversation continuation")
 
 	if resp2 == nil {

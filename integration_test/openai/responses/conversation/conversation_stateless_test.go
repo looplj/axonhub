@@ -39,8 +39,7 @@ func createAssistantMessage(text string) responses.ResponseInputItemUnionParam {
 }
 
 func TestResponsesConversationStateless(t *testing.T) {
-	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestResponsesConversationStateless")
 
 	// Print headers for debugging
 	helper.PrintHeaders(t)
@@ -60,7 +59,7 @@ func TestResponsesConversationStateless(t *testing.T) {
 		},
 	}
 
-	resp1, err := helper.Client.Responses.New(ctx, params1)
+	resp1, err := helper.CreateResponseWithHeaders(ctx, params1)
 	helper.AssertNoError(t, err, "Failed on first turn")
 
 	if resp1 == nil {
@@ -85,7 +84,7 @@ func TestResponsesConversationStateless(t *testing.T) {
 		},
 	}
 
-	resp2, err := helper.Client.Responses.New(ctx, params2)
+	resp2, err := helper.CreateResponseWithHeaders(ctx, params2)
 	helper.AssertNoError(t, err, "Failed on second turn")
 
 	if resp2 == nil {
@@ -117,7 +116,7 @@ func TestResponsesConversationStateless(t *testing.T) {
 		},
 	}
 
-	resp3, err := helper.Client.Responses.New(ctx, params3)
+	resp3, err := helper.CreateResponseWithHeaders(ctx, params3)
 	helper.AssertNoError(t, err, "Failed on third turn")
 
 	if resp3 == nil {
@@ -136,8 +135,7 @@ func TestResponsesConversationStateless(t *testing.T) {
 }
 
 func TestResponsesConversationStatelessWithInstructions(t *testing.T) {
-	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestResponsesConversationStatelessWithInstructions")
 
 	ctx := helper.CreateTestContext()
 
@@ -158,7 +156,7 @@ func TestResponsesConversationStatelessWithInstructions(t *testing.T) {
 		},
 	}
 
-	resp1, err := helper.Client.Responses.New(ctx, params1)
+	resp1, err := helper.CreateResponseWithHeaders(ctx, params1)
 	helper.AssertNoError(t, err, "Failed on first turn with instructions")
 
 	if resp1 == nil {
@@ -184,7 +182,7 @@ func TestResponsesConversationStatelessWithInstructions(t *testing.T) {
 		},
 	}
 
-	resp2, err := helper.Client.Responses.New(ctx, params2)
+	resp2, err := helper.CreateResponseWithHeaders(ctx, params2)
 	helper.AssertNoError(t, err, "Failed on second turn")
 
 	if resp2 == nil {
@@ -201,8 +199,7 @@ func TestResponsesConversationStatelessWithInstructions(t *testing.T) {
 }
 
 func TestResponsesConversationStatelessContextChain(t *testing.T) {
-	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestResponsesConversationStatelessContextChain")
 
 	ctx := helper.CreateTestContext()
 
@@ -252,7 +249,7 @@ func TestResponsesConversationStatelessContextChain(t *testing.T) {
 			},
 		}
 
-		resp, err := helper.Client.Responses.New(ctx, params)
+		resp, err := helper.CreateResponseWithHeaders(ctx, params)
 		helper.AssertNoError(t, err, "Failed on turn", i+1)
 
 		if resp == nil {
@@ -276,8 +273,7 @@ func TestResponsesConversationStatelessContextChain(t *testing.T) {
 }
 
 func TestMultiTurnConversationStateless(t *testing.T) {
-	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestMultiTurnConversationStateless")
 
 	// Print headers for debugging
 	helper.PrintHeaders(t)
@@ -298,7 +294,7 @@ func TestMultiTurnConversationStateless(t *testing.T) {
 		},
 	}
 
-	resp1, err := helper.Client.Responses.New(ctx, params1)
+	resp1, err := helper.CreateResponseWithHeaders(ctx, params1)
 	helper.AssertNoError(t, err, "Failed to start conversation")
 
 	if resp1 == nil {
@@ -323,7 +319,7 @@ func TestMultiTurnConversationStateless(t *testing.T) {
 		},
 	}
 
-	resp2, err := helper.Client.Responses.New(ctx, params2)
+	resp2, err := helper.CreateResponseWithHeaders(ctx, params2)
 	helper.AssertNoError(t, err, "Failed in second conversation turn")
 
 	if resp2 == nil {
@@ -355,7 +351,7 @@ func TestMultiTurnConversationStateless(t *testing.T) {
 		},
 	}
 
-	resp3, err := helper.Client.Responses.New(ctx, params3)
+	resp3, err := helper.CreateResponseWithHeaders(ctx, params3)
 	helper.AssertNoError(t, err, "Failed in third conversation turn")
 
 	if resp3 == nil {
@@ -374,8 +370,7 @@ func TestMultiTurnConversationStateless(t *testing.T) {
 }
 
 func TestConversationWithToolsStateless(t *testing.T) {
-	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestConversationWithToolsStateless")
 
 	ctx := helper.CreateTestContext()
 
@@ -436,7 +431,7 @@ func TestConversationWithToolsStateless(t *testing.T) {
 		Tools: tools,
 	}
 
-	resp1, err := helper.Client.Responses.New(ctx, params1)
+	resp1, err := helper.CreateResponseWithHeaders(ctx, params1)
 	helper.AssertNoError(t, err, "Failed in conversation with tools")
 
 	if resp1 == nil {
@@ -495,7 +490,7 @@ func TestConversationWithToolsStateless(t *testing.T) {
 			Tools: tools,
 		}
 
-		resp2, err := helper.Client.Responses.New(ctx, params2)
+		resp2, err := helper.CreateResponseWithHeaders(ctx, params2)
 		helper.AssertNoError(t, err, "Failed in tool conversation second turn")
 
 		if resp2 == nil {
@@ -525,7 +520,7 @@ func TestConversationWithToolsStateless(t *testing.T) {
 			Tools: tools,
 		}
 
-		resp3, err := helper.Client.Responses.New(ctx, params3)
+		resp3, err := helper.CreateResponseWithHeaders(ctx, params3)
 		helper.AssertNoError(t, err, "Failed in tool conversation third turn")
 
 		if resp3 == nil {
@@ -580,8 +575,7 @@ func simulateWeatherFunctionStateless(args map[string]interface{}) string {
 }
 
 func TestConversationContextPreservationStateless(t *testing.T) {
-	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestConversationContextPreservationStateless")
 
 	ctx := helper.CreateTestContext()
 
@@ -602,7 +596,7 @@ func TestConversationContextPreservationStateless(t *testing.T) {
 		},
 	}
 
-	resp1, err := helper.Client.Responses.New(ctx, params1)
+	resp1, err := helper.CreateResponseWithHeaders(ctx, params1)
 	helper.AssertNoError(t, err, "Failed in context preservation turn 1")
 
 	if resp1 == nil {
@@ -633,7 +627,7 @@ func TestConversationContextPreservationStateless(t *testing.T) {
 		},
 	}
 
-	resp2, err := helper.Client.Responses.New(ctx, params2)
+	resp2, err := helper.CreateResponseWithHeaders(ctx, params2)
 	helper.AssertNoError(t, err, "Failed in context preservation turn 2")
 
 	if resp2 == nil {
@@ -661,7 +655,7 @@ func TestConversationContextPreservationStateless(t *testing.T) {
 		},
 	}
 
-	resp3, err := helper.Client.Responses.New(ctx, params3)
+	resp3, err := helper.CreateResponseWithHeaders(ctx, params3)
 	helper.AssertNoError(t, err, "Failed in context preservation turn 3")
 
 	if resp3 == nil {
@@ -691,8 +685,7 @@ func TestConversationContextPreservationStateless(t *testing.T) {
 }
 
 func TestConversationSystemPromptStateless(t *testing.T) {
-	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestConversationSystemPromptStateless")
 
 	ctx := helper.CreateTestContext()
 
@@ -713,7 +706,7 @@ func TestConversationSystemPromptStateless(t *testing.T) {
 		},
 	}
 
-	resp1, err := helper.Client.Responses.New(ctx, params1)
+	resp1, err := helper.CreateResponseWithHeaders(ctx, params1)
 	helper.AssertNoError(t, err, "Failed with system prompt")
 
 	if resp1 == nil {
@@ -752,7 +745,7 @@ func TestConversationSystemPromptStateless(t *testing.T) {
 		},
 	}
 
-	resp2, err := helper.Client.Responses.New(ctx, params2)
+	resp2, err := helper.CreateResponseWithHeaders(ctx, params2)
 	helper.AssertNoError(t, err, "Failed in cooking conversation continuation")
 
 	if resp2 == nil {

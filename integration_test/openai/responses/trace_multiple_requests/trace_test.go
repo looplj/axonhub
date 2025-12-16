@@ -17,9 +17,9 @@ func TestMain(m *testing.M) {
 }
 
 func TestSingleTraceMultipleCalls(t *testing.T) {
+	helper := testutil.NewTestHelper(t, "TestSingleTraceMultipleCalls")
 	t.Skip("Test uses PreviousResponseID - temporarily skipped")
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
 
 	// Print headers for debugging
 	helper.PrintHeaders(t)
@@ -40,7 +40,7 @@ func TestSingleTraceMultipleCalls(t *testing.T) {
 		},
 	}
 
-	resp1, err := helper.Client.Responses.New(ctx, params1)
+	resp1, err := helper.CreateResponseWithHeaders(ctx, params1)
 	helper.AssertNoError(t, err, "Failed in first trace call")
 
 	if resp1 == nil || resp1.ID == "" {
@@ -62,7 +62,7 @@ func TestSingleTraceMultipleCalls(t *testing.T) {
 		},
 	}
 
-	resp2, err := helper.Client.Responses.New(ctx, params2)
+	resp2, err := helper.CreateResponseWithHeaders(ctx, params2)
 	helper.AssertNoError(t, err, "Failed in second trace call")
 
 	if resp2 == nil || resp2.ID == "" {
@@ -84,7 +84,7 @@ func TestSingleTraceMultipleCalls(t *testing.T) {
 		},
 	}
 
-	resp3, err := helper.Client.Responses.New(ctx, params3)
+	resp3, err := helper.CreateResponseWithHeaders(ctx, params3)
 	helper.AssertNoError(t, err, "Failed in third trace call")
 
 	if resp3 == nil || resp3.ID == "" {
@@ -112,7 +112,7 @@ func TestSingleTraceMultipleCalls(t *testing.T) {
 		},
 	}
 
-	resp4, err := helper.Client.Responses.New(ctx, params4)
+	resp4, err := helper.CreateResponseWithHeaders(ctx, params4)
 	helper.AssertNoError(t, err, "Failed in fourth trace call")
 
 	if resp4 == nil {
@@ -131,9 +131,9 @@ func TestSingleTraceMultipleCalls(t *testing.T) {
 }
 
 func TestSingleTraceContextPreservation(t *testing.T) {
+	helper := testutil.NewTestHelper(t, "TestSingleTraceContextPreservation")
 	t.Skip("Test uses PreviousResponseID - temporarily skipped")
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
 
 	ctx := helper.CreateTestContext()
 
@@ -150,7 +150,7 @@ func TestSingleTraceContextPreservation(t *testing.T) {
 		},
 	}
 
-	resp1, err := helper.Client.Responses.New(ctx, params1)
+	resp1, err := helper.CreateResponseWithHeaders(ctx, params1)
 	helper.AssertNoError(t, err, "Failed in call 1")
 
 	if resp1 == nil || resp1.ID == "" {
@@ -172,7 +172,7 @@ func TestSingleTraceContextPreservation(t *testing.T) {
 		},
 	}
 
-	resp2, err := helper.Client.Responses.New(ctx, params2)
+	resp2, err := helper.CreateResponseWithHeaders(ctx, params2)
 	helper.AssertNoError(t, err, "Failed in call 2")
 
 	if resp2 == nil || resp2.ID == "" {
@@ -199,7 +199,7 @@ func TestSingleTraceContextPreservation(t *testing.T) {
 		},
 	}
 
-	resp3, err := helper.Client.Responses.New(ctx, params3)
+	resp3, err := helper.CreateResponseWithHeaders(ctx, params3)
 	helper.AssertNoError(t, err, "Failed in call 3")
 
 	if resp3 == nil || resp3.ID == "" {
@@ -226,7 +226,7 @@ func TestSingleTraceContextPreservation(t *testing.T) {
 		},
 	}
 
-	resp4, err := helper.Client.Responses.New(ctx, params4)
+	resp4, err := helper.CreateResponseWithHeaders(ctx, params4)
 	helper.AssertNoError(t, err, "Failed in call 4")
 
 	if resp4 == nil {

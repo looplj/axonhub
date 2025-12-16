@@ -20,7 +20,7 @@ type Tool struct {
 
 	// CacheControl is used for provider-specific cache control (e.g., Anthropic).
 	// This field is not serialized in JSON.
-	CacheControl *CacheControl `json:"-"`
+	CacheControl *CacheControl `json:"cache_control,omitempty"`
 }
 
 type toolJSONMarshaller Tool
@@ -70,10 +70,10 @@ type ToolCall struct {
 	Index int `json:"index"`
 
 	// CacheControl is used for provider-specific cache control (e.g., Anthropic).
-	CacheControl *CacheControl `json:"-"`
+	CacheControl *CacheControl `json:"cache_control,omitempty"`
 
 	// TransformerMetadata is used for provider-specific metadata (e.g., Gemini).
-	TransformerMetadata map[string]any `json:"-"`
+	TransformerMetadata map[string]any `json:"transformer_metadata,omitempty"`
 }
 
 type ToolFunction struct {

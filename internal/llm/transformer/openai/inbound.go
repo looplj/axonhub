@@ -50,26 +50,29 @@ func (t *InboundTransformer) TransformRequest(
 		return nil, fmt.Errorf("%w: unsupported content type: %s", transformer.ErrInvalidRequest, contentType)
 	}
 
-	var chatReq llm.Request
+	// Parse into OpenAI-specific Request type
+	var oaiReq Request
 
-	err := json.Unmarshal(httpReq.Body, &chatReq)
+	err := json.Unmarshal(httpReq.Body, &oaiReq)
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to decode openai request: %w", transformer.ErrInvalidRequest, err)
 	}
 
 	// Validate required fields
-	if chatReq.Model == "" {
+	if oaiReq.Model == "" {
 		return nil, fmt.Errorf("%w: model is required", transformer.ErrInvalidRequest)
 	}
 
-	if len(chatReq.Messages) == 0 {
+	if len(oaiReq.Messages) == 0 {
 		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
 	}
 
+	// Convert to unified llm.Request
+	chatReq := oaiReq.ToLLMRequest()
 	chatReq.RawRequest = httpReq
 	chatReq.RawAPIFormat = llm.APIFormatOpenAIChatCompletion
 
-	return &chatReq, nil
+	return chatReq, nil
 }
 
 // TransformResponse transforms ChatCompletionResponse to Response.
@@ -81,7 +84,10 @@ func (t *InboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("chat completion response is nil")
 	}
 
-	body, err := json.Marshal(chatResp)
+	// Convert to OpenAI Response format
+	oaiResp := ResponseFromLLM(chatResp)
+
+	body, err := json.Marshal(oaiResp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal chat completion response: %w", err)
 	}
@@ -127,8 +133,11 @@ func (t *InboundTransformer) TransformStreamChunk(
 		return nil, nil
 	}
 
+	// Convert to OpenAI Response format
+	oaiResp := ResponseFromLLM(chatResp)
+
 	// For OpenAI, we keep the original response format as the event data
-	eventData, err := json.Marshal(chatResp)
+	eventData, err := json.Marshal(oaiResp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal chat completion response: %w", err)
 	}

@@ -148,9 +148,10 @@ func (t *OutboundTransformer) TransformRequest(
 		return t.buildImageGenerationAPIRequest(ctx, chatReq)
 	}
 
-	chatReq.ClearHelpFields()
+	// Convert to OpenAI Request format (this strips helper fields)
+	oaiReq := RequestFromLLM(chatReq)
 
-	body, err := json.Marshal(chatReq)
+	body, err := json.Marshal(oaiReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to transform request: %w", err)
 	}
@@ -213,26 +214,28 @@ func (t *OutboundTransformer) TransformResponse(
 
 	// If this looks like Responses API, delegate to responses transformer
 	if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
-		if fmt, ok := httpResp.Request.TransformerMetadata["outbound_format_type"].(string); ok && fmt == llm.APIFormatOpenAIResponse.String() {
+		if fmtType, ok := httpResp.Request.TransformerMetadata["outbound_format_type"].(string); ok && fmtType == llm.APIFormatOpenAIResponse.String() {
 			return t.rt.TransformResponse(ctx, httpResp)
 		}
 	}
 
 	// If this looks like Image Generation API, use image generation response transformer
 	if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
-		if fmt, ok := httpResp.Request.TransformerMetadata["outbound_format_type"].(string); ok && fmt == llm.APIFormatOpenAIImageGeneration.String() {
+		if fmtType, ok := httpResp.Request.TransformerMetadata["outbound_format_type"].(string); ok && fmtType == llm.APIFormatOpenAIImageGeneration.String() {
 			return transformImageGenerationResponse(httpResp)
 		}
 	}
 
-	var chatResp Response
+	// Parse into OpenAI Response type
+	var oaiResp Response
 
-	err := json.Unmarshal(httpResp.Body, &chatResp)
+	err := json.Unmarshal(httpResp.Body, &oaiResp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal chat completion response: %w", err)
 	}
 
-	return chatResp.ToLLMResponse(), nil
+	// Convert to unified llm.Response
+	return oaiResp.ToLLMResponse(), nil
 }
 
 func (t *OutboundTransformer) TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {

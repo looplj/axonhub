@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/llm/transformer/openai"
 )
 
 func TestReasoningEffortToThinking(t *testing.T) {
@@ -102,7 +103,7 @@ func TestZAIRequestWithoutThinking(t *testing.T) {
 	}
 
 	zaiReq := Request{
-		Request: *chatReq,
+		Request: *openai.RequestFromLLM(chatReq),
 		UserID:  "test-user",
 	}
 

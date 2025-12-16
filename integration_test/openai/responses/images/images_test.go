@@ -22,7 +22,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestResponsesImageGeneration(t *testing.T) {
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestResponsesImageGeneration")
 	ctx := helper.CreateTestContext()
 
 	imageModel := os.Getenv("TEST_IMAGE_MODEL")
@@ -50,7 +50,7 @@ func TestResponsesImageGeneration(t *testing.T) {
 		},
 	}
 
-	resp, err := helper.Client.Responses.New(ctx, params)
+	resp, err := helper.CreateResponseWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed to generate image with Responses API")
 	if resp == nil {
 		t.Fatal("Response is nil")
@@ -112,7 +112,7 @@ func TestResponsesImageGeneration(t *testing.T) {
 }
 
 func TestResponsesImageGenerationStreaming(t *testing.T) {
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestResponsesImageGenerationStreaming")
 	ctx := helper.CreateTestContext()
 
 	imageModel := os.Getenv("TEST_IMAGE_MODEL")
@@ -140,7 +140,7 @@ func TestResponsesImageGenerationStreaming(t *testing.T) {
 		},
 	}
 
-	stream := helper.Client.Responses.NewStreaming(ctx, params)
+	stream := helper.CreateResponseStreamingWithHeaders(ctx, params)
 	helper.AssertNoError(t, stream.Err(), "Failed to start Responses image streaming")
 
 	var (

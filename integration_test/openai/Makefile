@@ -1,6 +1,6 @@
 # OpenAI Go SDK Integration Tests Makefile
 
-.PHONY: all test test-all test-qa test-tools test-streaming test-conversation clean help setup
+.PHONY: all test test-all test-qa test-tools test-streaming test-conversation test-exclude-responses-extra-body clean help setup
 
 # Default target
 all: test
@@ -41,6 +41,11 @@ test-streaming: setup
 test-conversation: setup
 	@echo "Running conversation tests..."
 	go test -v ./conversation
+
+# Run all tests except responses and extra_body
+test-exclude-responses-extra-body: setup
+	@echo "Running all tests except responses and extra_body..."
+	go test -parallel=1 -v ./qa_simple ./tool_single ./tool_multiple ./streaming ./conversation ./thread_multiple_traces ./trace_multiple_requests
 
 # Run specific test patterns
 test-simple: setup
@@ -127,6 +132,7 @@ help:
 	@echo "  test-tools      - Run tool calling tests only"
 	@echo "  test-streaming  - Run streaming tests only"
 	@echo "  test-conversation - Run conversation tests only"
+	@echo "  test-exclude-responses-extra-body - Run all tests except responses and extra_body"
 	@echo "  test-simple     - Run simple tests"
 	@echo "  test-weather    - Run weather tool tests"
 	@echo "  test-calculator - Run calculator tool tests"

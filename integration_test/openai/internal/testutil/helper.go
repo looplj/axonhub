@@ -6,6 +6,9 @@ import (
 	"testing"
 
 	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/option"
+	"github.com/openai/openai-go/v3/packages/ssestream"
+	"github.com/openai/openai-go/v3/responses"
 )
 
 // TestHelper provides common testing utilities
@@ -15,8 +18,8 @@ type TestHelper struct {
 }
 
 // NewTestHelper creates a new test helper with default configuration
-func NewTestHelper(t *testing.T) *TestHelper {
-	config := DefaultConfig()
+func NewTestHelper(t *testing.T, name string) *TestHelper {
+	config := DefaultConfigWithPrefix(name)
 	if err := config.ValidateConfig(); err != nil {
 		t.Skipf("Skipping test due to configuration error: %v", err)
 	}
@@ -64,7 +67,34 @@ func (h *TestHelper) RunWithHeaders(t *testing.T, testFunc func(ctx context.Cont
 	}
 }
 
-// ValidateChatResponse validates a chat completion response
+// CreateChatCompletionWithHeaders creates a chat completion with trace headers passed at call time
+func (h *TestHelper) CreateChatCompletionWithHeaders(ctx context.Context, params openai.ChatCompletionNewParams) (*openai.ChatCompletion, error) {
+	headerOpts := h.Config.GetHeaderOptions()
+	return h.Client.Chat.Completions.New(ctx, params, headerOpts...)
+}
+
+// CreateStreamingWithHeaders creates a streaming chat completion with trace headers passed at call time
+func (h *TestHelper) CreateStreamingWithHeaders(ctx context.Context, params openai.ChatCompletionNewParams) *ssestream.Stream[openai.ChatCompletionChunk] {
+	headerOpts := h.Config.GetHeaderOptions()
+	return h.Client.Chat.Completions.NewStreaming(ctx, params, headerOpts...)
+}
+
+// CreateResponseWithHeaders creates a response with trace headers passed at call time
+func (h *TestHelper) CreateResponseWithHeaders(ctx context.Context, params responses.ResponseNewParams) (*responses.Response, error) {
+	headerOpts := h.Config.GetHeaderOptions()
+	return h.Client.Responses.New(ctx, params, headerOpts...)
+}
+
+// CreateResponseStreamingWithHeaders creates a streaming response with trace headers passed at call time
+func (h *TestHelper) CreateResponseStreamingWithHeaders(ctx context.Context, params responses.ResponseNewParams) *ssestream.Stream[responses.ResponseStreamEventUnion] {
+	headerOpts := h.Config.GetHeaderOptions()
+	return h.Client.Responses.NewStreaming(ctx, params, headerOpts...)
+}
+
+// GetHeaderOptions returns request options with the configured headers for call-time usage
+func (h *TestHelper) GetHeaderOptions() []option.RequestOption {
+	return h.Config.GetHeaderOptions()
+}
 func (h *TestHelper) ValidateChatResponse(t *testing.T, response *openai.ChatCompletion, description string) {
 	t.Helper()
 	if response == nil {
@@ -116,7 +146,15 @@ func CreateTestHelperWithNewTrace(t *testing.T, existingConfig *Config) *TestHel
 
 	// Only generate new trace ID if not disabled
 	if !existingConfig.DisableTrace {
-		newConfig.TraceID = getRandomTraceID()
+		// Use existing trace ID prefix if available, otherwise default to "trace"
+		prefix := "trace"
+		if existingConfig.TraceID != "" {
+			// Extract prefix from existing trace ID (everything before the first hyphen)
+			if idx := strings.Index(existingConfig.TraceID, "-"); idx > 0 {
+				prefix = existingConfig.TraceID[:idx]
+			}
+		}
+		newConfig.TraceID = getRandomTraceIDWithPrefix(prefix)
 	}
 
 	client := newConfig.NewClient()

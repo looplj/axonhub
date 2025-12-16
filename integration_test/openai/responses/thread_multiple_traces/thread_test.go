@@ -19,7 +19,7 @@ func TestMain(m *testing.M) {
 func TestSingleThreadMultipleTraces(t *testing.T) {
 	t.Skip("Test uses PreviousResponseID - temporarily skipped")
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestSingleThreadMultipleTraces")
 
 	// Print headers for debugging
 	helper.PrintHeaders(t)
@@ -44,7 +44,7 @@ func TestSingleThreadMultipleTraces(t *testing.T) {
 		},
 	}
 
-	resp1_1, err := helper.Client.Responses.New(ctx1, params1_1)
+	resp1_1, err := helper.CreateResponseWithHeaders(ctx1, params1_1)
 	helper.AssertNoError(t, err, "Failed in trace 1, call 1")
 
 	if resp1_1 == nil || resp1_1.ID == "" {
@@ -66,7 +66,7 @@ func TestSingleThreadMultipleTraces(t *testing.T) {
 		},
 	}
 
-	resp1_2, err := helper.Client.Responses.New(ctx1, params1_2)
+	resp1_2, err := helper.CreateResponseWithHeaders(ctx1, params1_2)
 	helper.AssertNoError(t, err, "Failed in trace 1, call 2")
 
 	if resp1_2 == nil {
@@ -93,7 +93,7 @@ func TestSingleThreadMultipleTraces(t *testing.T) {
 		},
 	}
 
-	resp2_1, err := helper2.Client.Responses.New(ctx2, params2_1)
+	resp2_1, err := helper2.CreateResponseWithHeaders(ctx2, params2_1)
 	helper.AssertNoError(t, err, "Failed in trace 2, call 1")
 
 	if resp2_1 == nil || resp2_1.ID == "" {
@@ -115,7 +115,7 @@ func TestSingleThreadMultipleTraces(t *testing.T) {
 		},
 	}
 
-	resp2_2, err := helper2.Client.Responses.New(ctx2, params2_2)
+	resp2_2, err := helper2.CreateResponseWithHeaders(ctx2, params2_2)
 	helper.AssertNoError(t, err, "Failed in trace 2, call 2")
 
 	if resp2_2 == nil {
@@ -141,7 +141,7 @@ func TestSingleThreadMultipleTraces(t *testing.T) {
 		},
 	}
 
-	resp3_1, err := helper3.Client.Responses.New(ctx3, params3_1)
+	resp3_1, err := helper3.CreateResponseWithHeaders(ctx3, params3_1)
 	helper.AssertNoError(t, err, "Failed in trace 3, call 1")
 
 	if resp3_1 == nil || resp3_1.ID == "" {
@@ -163,7 +163,7 @@ func TestSingleThreadMultipleTraces(t *testing.T) {
 		},
 	}
 
-	resp3_2, err := helper3.Client.Responses.New(ctx3, params3_2)
+	resp3_2, err := helper3.CreateResponseWithHeaders(ctx3, params3_2)
 	helper.AssertNoError(t, err, "Failed in trace 3, call 2")
 
 	if resp3_2 == nil {
@@ -195,7 +195,7 @@ func TestSingleThreadMultipleTraces(t *testing.T) {
 func TestSingleThreadTraceIsolation(t *testing.T) {
 	t.Skip("Test uses PreviousResponseID - temporarily skipped")
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestSingleThreadTraceIsolation")
 
 	currentThreadID := helper.Config.ThreadID
 	t.Logf("Testing trace isolation within thread %s", currentThreadID)
@@ -214,7 +214,7 @@ func TestSingleThreadTraceIsolation(t *testing.T) {
 		},
 	}
 
-	resp1, err := helper.Client.Responses.New(ctx1, params1)
+	resp1, err := helper.CreateResponseWithHeaders(ctx1, params1)
 	helper.AssertNoError(t, err, "Failed in trace 1")
 
 	if resp1 == nil {
@@ -240,7 +240,7 @@ func TestSingleThreadTraceIsolation(t *testing.T) {
 		},
 	}
 
-	resp2, err := helper2.Client.Responses.New(ctx2, params2)
+	resp2, err := helper2.CreateResponseWithHeaders(ctx2, params2)
 	helper.AssertNoError(t, err, "Failed in trace 2")
 
 	if resp2 == nil || resp2.ID == "" {
@@ -262,7 +262,7 @@ func TestSingleThreadTraceIsolation(t *testing.T) {
 		},
 	}
 
-	resp2_2, err := helper2.Client.Responses.New(ctx2, params2_2)
+	resp2_2, err := helper2.CreateResponseWithHeaders(ctx2, params2_2)
 	helper.AssertNoError(t, err, "Failed in trace 2 follow-up")
 
 	if resp2_2 == nil {
