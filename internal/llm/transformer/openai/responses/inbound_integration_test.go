@@ -48,6 +48,43 @@ func TestInboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 			validate: func(t *testing.T, result *llm.Request, httpReq *httpclient.Request) {
 			},
 		},
+		{
+			name:         "reasoning with function_call merge transformation",
+			requestFile:  "reasoninig.request.json",
+			expectedFile: "llm-reasoning.request.json",
+			validate: func(t *testing.T, result *llm.Request, httpReq *httpclient.Request) {
+				t.Helper()
+
+				// Verify basic request properties
+				require.Equal(t, "gpt-5.1-codex-mini", result.Model)
+				require.Equal(t, llm.APIFormatOpenAIResponse, result.RawAPIFormat)
+
+				// Verify messages: system + user + assistant(reasoning+function_call) + tool
+				require.Len(t, result.Messages, 4)
+
+				// First message: system (from instructions)
+				require.Equal(t, "system", result.Messages[0].Role)
+
+				// Second message: user
+				require.Equal(t, "user", result.Messages[1].Role)
+				require.NotNil(t, result.Messages[1].Content.Content)
+				require.Equal(t, "总结并详细分析一下暂存区的内容", *result.Messages[1].Content.Content)
+
+				// Third message: assistant with merged reasoning and function_call
+				require.Equal(t, "assistant", result.Messages[2].Role)
+				require.NotNil(t, result.Messages[2].ReasoningContent)
+				require.Contains(t, *result.Messages[2].ReasoningContent, "我需要检查暂存区的内容")
+				require.Contains(t, *result.Messages[2].ReasoningSignature, "encrypted_content")
+				require.Len(t, result.Messages[2].ToolCalls, 1)
+				require.Equal(t, "call_00_bVbIarCdMYjXCUsTd9MEJVia", result.Messages[2].ToolCalls[0].ID)
+				require.Equal(t, "shell_command", result.Messages[2].ToolCalls[0].Function.Name)
+
+				// Fourth message: tool response
+				require.Equal(t, "tool", result.Messages[3].Role)
+				require.NotNil(t, result.Messages[3].ToolCallID)
+				require.Equal(t, "call_00_bVbIarCdMYjXCUsTd9MEJVia", *result.Messages[3].ToolCallID)
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -84,7 +121,8 @@ func TestInboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 
 			expected.RawAPIFormat = llm.APIFormatOpenAIResponse
 
-			expected.TransformerMetadata = map[string]any{} // Initialize to match the actual result
+			// Copy TransformerMetadata from result as it contains dynamic fields (include, prompt_cache_key, etc.)
+			expected.TransformerMetadata = result.TransformerMetadata
 			if !xtest.Equal(expected, *result) {
 				t.Errorf("diff: %v", cmp.Diff(expected, *result))
 			}

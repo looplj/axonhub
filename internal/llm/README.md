@@ -488,6 +488,6 @@ AxonHub 的 LLM Pipeline 采用**转换器链（Transformer Chain）**模式，�
 ## Contact & Support
 
 如有问题，请查看：
-- `/Users/September_1/Projects/AI/axonhub/internal/llm/` - Transformer 实现
-- `/Users/September_1/Projects/AI/axonhub/internal/llm/pipeline/` - Pipeline 核心
-- `/Users/September_1/Projects/AI/axonhub/internal/server/chat/` - 业务逻辑
+- `internal/llm/` - Transformer 实现
+- `internal/llm/pipeline/` - Pipeline 核心
+- `internal/server/chat/` - 业务逻辑

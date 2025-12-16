@@ -346,6 +346,7 @@ func convertToolChoiceToLLM(src *ToolChoice) *llm.ToolChoice {
 }
 
 // convertInputToMessages converts Responses API input to llm.Message slice.
+// It handles merging reasoning items with subsequent function_call items into a single assistant message.
 func convertInputToMessages(input *Input) ([]llm.Message, error) {
 	if input == nil {
 		return nil, nil
@@ -365,8 +366,29 @@ func convertInputToMessages(input *Input) ([]llm.Message, error) {
 
 	// If input is an array of items
 	messages := make([]llm.Message, 0, len(input.Items))
-	for _, item := range input.Items {
-		msg, err := convertItemToMessage(&item)
+	i := 0
+
+	for i < len(input.Items) {
+		item := &input.Items[i]
+
+		// Handle reasoning item - merge with subsequent function_call or text items
+		if item.Type == "reasoning" {
+			msg, consumed, err := convertReasoningWithFollowing(input.Items, i)
+			if err != nil {
+				return nil, err
+			}
+
+			if msg != nil {
+				messages = append(messages, *msg)
+			}
+
+			i += consumed
+
+			continue
+		}
+
+		// Handle regular items
+		msg, err := convertItemToMessage(item)
 		if err != nil {
 			return nil, err
 		}
@@ -374,9 +396,84 @@ func convertInputToMessages(input *Input) ([]llm.Message, error) {
 		if msg != nil {
 			messages = append(messages, *msg)
 		}
+
+		i++
 	}
 
 	return messages, nil
+}
+
+// convertReasoningWithFollowing converts a reasoning item and merges it with subsequent
+// function_call items or text content into a single assistant message.
+// Returns the merged message and the number of items consumed.
+func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, int, error) {
+	if startIdx >= len(items) || items[startIdx].Type != "reasoning" {
+		return nil, 0, nil
+	}
+
+	reasoningItem := &items[startIdx]
+	msg := &llm.Message{
+		Role: "assistant",
+	}
+
+	// Extract reasoning content
+	var reasoningText strings.Builder
+
+	for _, summary := range reasoningItem.Summary {
+		reasoningText.WriteString(summary.Text)
+	}
+
+	if reasoningText.Len() > 0 {
+		msg.ReasoningContent = lo.ToPtr(reasoningText.String())
+	}
+
+	if reasoningItem.EncryptedContent != nil && *reasoningItem.EncryptedContent != "" {
+		msg.ReasoningSignature = reasoningItem.EncryptedContent
+	}
+
+	consumed := 1
+
+	// Look ahead for subsequent function_call items to merge
+	for i := startIdx + 1; i < len(items); i++ {
+		nextItem := &items[i]
+
+		switch nextItem.Type {
+		case "function_call":
+			// Merge function_call into the same assistant message
+			msg.ToolCalls = append(msg.ToolCalls, llm.ToolCall{
+				ID:   nextItem.CallID,
+				Type: "function",
+				Function: llm.FunctionCall{
+					Name:      nextItem.Name,
+					Arguments: nextItem.Arguments,
+				},
+			})
+			consumed++
+
+		case "message", "input_text", "":
+			// If we encounter a text message with assistant role, merge its content
+			if nextItem.Role == "assistant" {
+				if nextItem.Content != nil && len(nextItem.Content.Items) > 0 && nextItem.isOutputMessageContent() {
+					msg.Content = convertContentItemsToMessageContent(nextItem.GetContentItems())
+				} else if nextItem.Content != nil {
+					msg.Content = convertToMessageContent(*nextItem.Content)
+				} else if nextItem.Text != nil {
+					msg.Content = llm.MessageContent{Content: nextItem.Text}
+				}
+
+				consumed++
+			} else {
+				// Non-assistant message, stop merging
+				return msg, consumed, nil
+			}
+
+		default:
+			// Any other type (including function_call_output), stop merging
+			return msg, consumed, nil
+		}
+	}
+
+	return msg, consumed, nil
 }
 
 // convertItemToMessage converts a single input item to an llm.Message.
@@ -447,29 +544,9 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		}, nil
 
 	case "reasoning":
-		// Reasoning item from previous response - convert to assistant message with reasoning content
-		msg := &llm.Message{
-			Role: "assistant",
-		}
-
-		// Extract reasoning text from Summary or ReasoningContent
-		var reasoningText strings.Builder
-		for _, summary := range item.Summary {
-			reasoningText.WriteString(summary.Text)
-		}
-
-		if reasoningText.Len() > 0 {
-			msg.ReasoningContent = lo.ToPtr(reasoningText.String())
-		}
-
-		// If there's encrypted content, store it for potential re-use
-		if item.EncryptedContent != nil && *item.EncryptedContent != "" {
-			// Note: encrypted_content is typically passed through as-is
-			// The actual handling depends on the downstream provider
-			msg.ReasoningSignature = item.EncryptedContent
-		}
-
-		return msg, nil
+		// Reasoning is handled by convertReasoningWithFollowing in convertInputToMessages
+		// This case should not be reached in normal flow, but return nil to skip if it does
+		return nil, nil
 
 	default:
 		// Skip unknown types
@@ -662,6 +739,7 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 						Text: *message.ReasoningContent,
 					},
 				},
+				EncryptedContent: message.ReasoningSignature,
 			})
 		}
 

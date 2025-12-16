@@ -212,16 +212,7 @@ func convertUserMessage(msg llm.Message) ([]MessageParam, bool) {
 
 // convertAssistantMessage handles assistant message conversion.
 func convertAssistantMessage(msg llm.Message) ([]MessageParam, bool) {
-	if len(msg.ToolCalls) > 0 {
-		return convertAssistantWithToolCalls(msg)
-	}
-
-	content, ok := buildMessageContent(msg)
-	if !ok {
-		return nil, false
-	}
-
-	return []MessageParam{{Role: "assistant", Content: content}}, true
+	return convertAssistantWithToolCalls(msg)
 }
 
 // convertAssistantWithToolCalls handles assistant messages that have tool calls.

@@ -205,6 +205,7 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 			// Assign reasoning content and signature if present
 			if reasoningContent != "" && hasReasoningInContent {
 				chatMsg.ReasoningContent = &reasoningContent
+				hasContent = true
 			}
 
 			if reasoningSignature != "" {
@@ -213,6 +214,7 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 
 			if redactedReasoningContent != "" {
 				chatMsg.RedactedReasoningContent = &redactedReasoningContent
+				hasContent = true
 			}
 		}
 

@@ -802,3 +802,49 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 		})
 	}
 }
+
+func Test_convertSingleMessage(t *testing.T) {
+	tests := []struct {
+		name string // description of this test case
+		// Named input parameters for target function.
+		msg              llm.Message
+		allMessages      []llm.Message
+		processedIndexes map[int]bool
+		want             []MessageParam
+		want2            bool
+	}{
+		{
+			name: "assistant with thinking only",
+			msg: llm.Message{
+				Role:               "assistant",
+				ReasoningContent:   lo.ToPtr("This is my reasoning"),
+				ReasoningSignature: lo.ToPtr("encrypted_content"),
+			},
+			allMessages:      []llm.Message{},
+			processedIndexes: map[int]bool{},
+			want: []MessageParam{
+				{
+					Role: "assistant",
+					Content: MessageContent{
+						MultipleContent: []MessageContentBlock{
+							{
+								Type:      "thinking",
+								Thinking:  lo.ToPtr("This is my reasoning"),
+								Signature: lo.ToPtr("encrypted_content"),
+							},
+						},
+					},
+				},
+			},
+			want2: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got2 := convertSingleMessage(tt.msg, tt.allMessages, tt.processedIndexes)
+
+			require.Equal(t, tt.want, got)
+			require.Equal(t, tt.want2, got2)
+		})
+	}
+}
