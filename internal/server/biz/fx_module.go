@@ -18,4 +18,5 @@ var Module = fx.Module("biz",
 	fx.Provide(NewTraceService),
 	fx.Provide(NewDataStorageService),
 	fx.Provide(NewChannelOverrideTemplateService),
+	fx.Provide(NewRerankService),
 )

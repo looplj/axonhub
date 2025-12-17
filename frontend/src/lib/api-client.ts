@@ -3,10 +3,44 @@ import { AuthUser, getTokenFromStorage } from '@/stores/authStore'
 // Same domain, no need to add baseURL.
 export const API_BASE_URL = ''
 
+type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue }
+
+type ErrorResponseBody = {
+  message?: string
+  error?: string | { message?: string }
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+
+const isErrorResponseBody = (value: unknown): value is ErrorResponseBody => {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  const message = value.message
+  const error = value.error
+
+  const hasValidMessage = message === undefined || typeof message === 'string'
+
+  const hasValidError =
+    error === undefined ||
+    typeof error === 'string' ||
+    (isRecord(error) && (error.message === undefined || typeof error.message === 'string'))
+
+  return hasValidMessage && hasValidError
+}
+
 interface ApiRequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
   headers?: Record<string, string>
-  body?: any
+  body?: JsonValue
   requireAuth?: boolean
 }
 
@@ -14,7 +48,7 @@ class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
-    public response?: any
+    public response?: unknown
   ) {
     super(message)
     this.name = 'ApiError'
@@ -53,17 +87,19 @@ export async function apiRequest<T>(endpoint: string, options: ApiRequestOptions
 
     if (!response.ok) {
       let errorMessage = `HTTP ${response.status}: ${response.statusText}`
-      let errorData: any = null
+      let errorData: unknown = null
 
       try {
         errorData = await response.json()
-        if (errorData.message) {
-          errorMessage = errorData.message
-        } else if (errorData.error) {
-          errorMessage =
-            typeof errorData.error === 'string'
-              ? errorData.error
-              : errorData.error?.message || errorMessage
+        if (isErrorResponseBody(errorData)) {
+          if (errorData.message) {
+            errorMessage = errorData.message
+          } else if (errorData.error) {
+            errorMessage =
+              typeof errorData.error === 'string'
+                ? errorData.error
+                : errorData.error?.message || errorMessage
+          }
         }
       } catch {
         // If response is not JSON, use status text
@@ -75,18 +111,17 @@ export async function apiRequest<T>(endpoint: string, options: ApiRequestOptions
     // Handle empty responses
     const contentType = response.headers.get('content-type')
     if (contentType && contentType.includes('application/json')) {
-      return await response.json()
-    } else {
-      return {} as T
+      return (await response.json()) as T
     }
+
+    return {} as T
   } catch (error) {
     if (error instanceof ApiError) {
       throw error
     }
 
-    // Network or other errors
-    console.error('API request failed:', error)
-    throw new ApiError(error instanceof Error ? error.message : 'Network error occurred', 0)
+    const message = error instanceof Error ? error.message : 'Network error occurred'
+    throw new ApiError(message, 0)
   }
 }
 
@@ -119,5 +154,31 @@ export const authApi = {
     apiRequest('/admin/auth/signin', {
       method: 'POST',
       body: data,
+    }),
+}
+
+// Rerank API endpoints
+export const rerankApi = {
+  rerank: (data: {
+    model: string
+    query: string
+    documents: string[]
+    top_n?: number
+  }): Promise<{
+    results: Array<{
+      index: number
+      relevance_score: number
+      document?: string
+    }>
+    usage?: {
+      prompt_tokens: number
+      completion_tokens: number
+      total_tokens: number
+    }
+  }> =>
+    apiRequest('/v1/rerank', {
+      method: 'POST',
+      body: data,
+      requireAuth: true,
     }),
 }

@@ -24,6 +24,7 @@ type Handlers struct {
 	Playground *api.PlaygroundHandlers
 	System     *api.SystemHandlers
 	Auth       *api.AuthHandlers
+	Rerank     *api.RerankHandlers
 }
 
 type Services struct {
@@ -95,6 +96,7 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		openaiGroup.POST("/responses", handlers.OpenAI.CreateResponse)
 		openaiGroup.POST("/embeddings", handlers.OpenAI.CreateEmbedding)
 		openaiGroup.GET("/models", handlers.OpenAI.ListModels)
+		openaiGroup.POST("/rerank", handlers.Rerank.Rerank)
 	}
 
 	anthropicGroup := apiGroup.Group("/anthropic/v1")

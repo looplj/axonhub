@@ -7,6 +7,7 @@ const (
 	APIFormatOpenAIResponse        APIFormat = "openai/responses"
 	APIFormatOpenAIImageGeneration APIFormat = "openai/image_generation"
 	APIFormatOpenAIEmbedding       APIFormat = "openai/embeddings"
+	APIFormatOpenAIRerank          APIFormat = "openai/rerank"
 	APIFormatGeminiContents        APIFormat = "gemini/contents"
 	APIFormatAnthropicMessage      APIFormat = "anthropic/messages"
 	APIFormatAiSDKText             APIFormat = "aisdk/text"

@@ -12,5 +12,6 @@ var Module = fx.Module("api",
 	fx.Provide(NewPlaygroundHandlers),
 	fx.Provide(NewSystemHandlers),
 	fx.Provide(NewAuthHandlers),
+	fx.Provide(NewRerankHandlers),
 	fx.Invoke(initLogger),
 )

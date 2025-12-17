@@ -58,3 +58,14 @@ type Outbound interface {
 	// the chunks to the OpenAI chat completion response format.
 	AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error)
 }
+
+// Transformer represents a transformer that supports additional operations like Rerank.
+// This interface extends Outbound with methods for rerank and other advanced operations.
+type Transformer interface {
+	Outbound
+
+	// Rerank performs document reranking based on query relevance.
+	// The httpClient parameter allows using a custom HTTP client with proxy/timeout configuration.
+	// If httpClient is nil, a default client will be used.
+	Rerank(ctx context.Context, req *llm.RerankRequest, httpClient *httpclient.HttpClient) (*llm.RerankResponse, error)
+}
