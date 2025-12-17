@@ -50,6 +50,10 @@ const (
 	FieldStatus = "status"
 	// FieldStream holds the string denoting the stream field in the database.
 	FieldStream = "stream"
+	// FieldMetricsLatencyMs holds the string denoting the metrics_latency_ms field in the database.
+	FieldMetricsLatencyMs = "metrics_latency_ms"
+	// FieldMetricsFirstTokenLatencyMs holds the string denoting the metrics_first_token_latency_ms field in the database.
+	FieldMetricsFirstTokenLatencyMs = "metrics_first_token_latency_ms"
 	// EdgeAPIKey holds the string denoting the api_key edge name in mutations.
 	EdgeAPIKey = "api_key"
 	// EdgeProject holds the string denoting the project edge name in mutations.
@@ -136,6 +140,8 @@ var Columns = []string{
 	FieldExternalID,
 	FieldStatus,
 	FieldStream,
+	FieldMetricsLatencyMs,
+	FieldMetricsFirstTokenLatencyMs,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -294,6 +300,16 @@ func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 // ByStream orders the results by the stream field.
 func ByStream(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStream, opts...).ToFunc()
+}
+
+// ByMetricsLatencyMs orders the results by the metrics_latency_ms field.
+func ByMetricsLatencyMs(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMetricsLatencyMs, opts...).ToFunc()
+}
+
+// ByMetricsFirstTokenLatencyMs orders the results by the metrics_first_token_latency_ms field.
+func ByMetricsFirstTokenLatencyMs(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMetricsFirstTokenLatencyMs, opts...).ToFunc()
 }
 
 // ByAPIKeyField orders the results by api_key field.

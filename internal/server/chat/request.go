@@ -9,6 +9,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
+	"github.com/looplj/axonhub/internal/server/biz"
 )
 
 type persistRequestMiddleware struct {
@@ -85,7 +86,21 @@ func (m *persistRequestMiddleware) OnInboundRawResponse(ctx context.Context, htt
 	persistCtx, cancel := xcontext.DetachWithTimeout(ctx, time.Second*10)
 	defer cancel()
 
-	err := state.RequestService.UpdateRequestCompleted(persistCtx, state.Request.ID, llmResp.ID, httpResp.Body)
+	// Build latency metrics from performance record
+	var metrics *biz.LatencyMetrics
+
+	if state.Perf != nil {
+		firstTokenLatencyMs, requestLatencyMs, _ := state.Perf.Calculate()
+
+		metrics = &biz.LatencyMetrics{
+			LatencyMs: &requestLatencyMs,
+		}
+		if state.Perf.Stream && state.Perf.FirstTokenTime != nil {
+			metrics.FirstTokenLatencyMs = &firstTokenLatencyMs
+		}
+	}
+
+	err := state.RequestService.UpdateRequestCompleted(persistCtx, state.Request.ID, llmResp.ID, httpResp.Body, metrics)
 	if err != nil {
 		log.Warn(persistCtx, "Failed to update request status to completed", log.Cause(err))
 	}

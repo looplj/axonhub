@@ -469,7 +469,7 @@
         "testing": "测试中...",
         "testSuccess": "✅ 连接成功",
         "testFailed": "❌ 连接失败",
-        "latency": "延迟"
+        "latency": "耗时"
       },
       "bulkOrdering": {
         "title": "批量渠道排序",

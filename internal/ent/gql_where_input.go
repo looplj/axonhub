@@ -3632,6 +3632,30 @@ type RequestWhereInput struct {
 	Stream    *bool `json:"stream,omitempty"`
 	StreamNEQ *bool `json:"streamNEQ,omitempty"`
 
+	// "metrics_latency_ms" field predicates.
+	MetricsLatencyMs       *int64  `json:"metricsLatencyMs,omitempty"`
+	MetricsLatencyMsNEQ    *int64  `json:"metricsLatencyMsNEQ,omitempty"`
+	MetricsLatencyMsIn     []int64 `json:"metricsLatencyMsIn,omitempty"`
+	MetricsLatencyMsNotIn  []int64 `json:"metricsLatencyMsNotIn,omitempty"`
+	MetricsLatencyMsGT     *int64  `json:"metricsLatencyMsGT,omitempty"`
+	MetricsLatencyMsGTE    *int64  `json:"metricsLatencyMsGTE,omitempty"`
+	MetricsLatencyMsLT     *int64  `json:"metricsLatencyMsLT,omitempty"`
+	MetricsLatencyMsLTE    *int64  `json:"metricsLatencyMsLTE,omitempty"`
+	MetricsLatencyMsIsNil  bool    `json:"metricsLatencyMsIsNil,omitempty"`
+	MetricsLatencyMsNotNil bool    `json:"metricsLatencyMsNotNil,omitempty"`
+
+	// "metrics_first_token_latency_ms" field predicates.
+	MetricsFirstTokenLatencyMs       *int64  `json:"metricsFirstTokenLatencyMs,omitempty"`
+	MetricsFirstTokenLatencyMsNEQ    *int64  `json:"metricsFirstTokenLatencyMsNEQ,omitempty"`
+	MetricsFirstTokenLatencyMsIn     []int64 `json:"metricsFirstTokenLatencyMsIn,omitempty"`
+	MetricsFirstTokenLatencyMsNotIn  []int64 `json:"metricsFirstTokenLatencyMsNotIn,omitempty"`
+	MetricsFirstTokenLatencyMsGT     *int64  `json:"metricsFirstTokenLatencyMsGT,omitempty"`
+	MetricsFirstTokenLatencyMsGTE    *int64  `json:"metricsFirstTokenLatencyMsGTE,omitempty"`
+	MetricsFirstTokenLatencyMsLT     *int64  `json:"metricsFirstTokenLatencyMsLT,omitempty"`
+	MetricsFirstTokenLatencyMsLTE    *int64  `json:"metricsFirstTokenLatencyMsLTE,omitempty"`
+	MetricsFirstTokenLatencyMsIsNil  bool    `json:"metricsFirstTokenLatencyMsIsNil,omitempty"`
+	MetricsFirstTokenLatencyMsNotNil bool    `json:"metricsFirstTokenLatencyMsNotNil,omitempty"`
+
 	// "api_key" edge predicates.
 	HasAPIKey     *bool               `json:"hasAPIKey,omitempty"`
 	HasAPIKeyWith []*APIKeyWhereInput `json:"hasAPIKeyWith,omitempty"`
@@ -4041,6 +4065,66 @@ func (i *RequestWhereInput) P() (predicate.Request, error) {
 	if i.StreamNEQ != nil {
 		predicates = append(predicates, request.StreamNEQ(*i.StreamNEQ))
 	}
+	if i.MetricsLatencyMs != nil {
+		predicates = append(predicates, request.MetricsLatencyMsEQ(*i.MetricsLatencyMs))
+	}
+	if i.MetricsLatencyMsNEQ != nil {
+		predicates = append(predicates, request.MetricsLatencyMsNEQ(*i.MetricsLatencyMsNEQ))
+	}
+	if len(i.MetricsLatencyMsIn) > 0 {
+		predicates = append(predicates, request.MetricsLatencyMsIn(i.MetricsLatencyMsIn...))
+	}
+	if len(i.MetricsLatencyMsNotIn) > 0 {
+		predicates = append(predicates, request.MetricsLatencyMsNotIn(i.MetricsLatencyMsNotIn...))
+	}
+	if i.MetricsLatencyMsGT != nil {
+		predicates = append(predicates, request.MetricsLatencyMsGT(*i.MetricsLatencyMsGT))
+	}
+	if i.MetricsLatencyMsGTE != nil {
+		predicates = append(predicates, request.MetricsLatencyMsGTE(*i.MetricsLatencyMsGTE))
+	}
+	if i.MetricsLatencyMsLT != nil {
+		predicates = append(predicates, request.MetricsLatencyMsLT(*i.MetricsLatencyMsLT))
+	}
+	if i.MetricsLatencyMsLTE != nil {
+		predicates = append(predicates, request.MetricsLatencyMsLTE(*i.MetricsLatencyMsLTE))
+	}
+	if i.MetricsLatencyMsIsNil {
+		predicates = append(predicates, request.MetricsLatencyMsIsNil())
+	}
+	if i.MetricsLatencyMsNotNil {
+		predicates = append(predicates, request.MetricsLatencyMsNotNil())
+	}
+	if i.MetricsFirstTokenLatencyMs != nil {
+		predicates = append(predicates, request.MetricsFirstTokenLatencyMsEQ(*i.MetricsFirstTokenLatencyMs))
+	}
+	if i.MetricsFirstTokenLatencyMsNEQ != nil {
+		predicates = append(predicates, request.MetricsFirstTokenLatencyMsNEQ(*i.MetricsFirstTokenLatencyMsNEQ))
+	}
+	if len(i.MetricsFirstTokenLatencyMsIn) > 0 {
+		predicates = append(predicates, request.MetricsFirstTokenLatencyMsIn(i.MetricsFirstTokenLatencyMsIn...))
+	}
+	if len(i.MetricsFirstTokenLatencyMsNotIn) > 0 {
+		predicates = append(predicates, request.MetricsFirstTokenLatencyMsNotIn(i.MetricsFirstTokenLatencyMsNotIn...))
+	}
+	if i.MetricsFirstTokenLatencyMsGT != nil {
+		predicates = append(predicates, request.MetricsFirstTokenLatencyMsGT(*i.MetricsFirstTokenLatencyMsGT))
+	}
+	if i.MetricsFirstTokenLatencyMsGTE != nil {
+		predicates = append(predicates, request.MetricsFirstTokenLatencyMsGTE(*i.MetricsFirstTokenLatencyMsGTE))
+	}
+	if i.MetricsFirstTokenLatencyMsLT != nil {
+		predicates = append(predicates, request.MetricsFirstTokenLatencyMsLT(*i.MetricsFirstTokenLatencyMsLT))
+	}
+	if i.MetricsFirstTokenLatencyMsLTE != nil {
+		predicates = append(predicates, request.MetricsFirstTokenLatencyMsLTE(*i.MetricsFirstTokenLatencyMsLTE))
+	}
+	if i.MetricsFirstTokenLatencyMsIsNil {
+		predicates = append(predicates, request.MetricsFirstTokenLatencyMsIsNil())
+	}
+	if i.MetricsFirstTokenLatencyMsNotNil {
+		predicates = append(predicates, request.MetricsFirstTokenLatencyMsNotNil())
+	}
 
 	if i.HasAPIKey != nil {
 		p := request.HasAPIKey()
@@ -4316,6 +4400,30 @@ type RequestExecutionWhereInput struct {
 	StatusNEQ   *requestexecution.Status  `json:"statusNEQ,omitempty"`
 	StatusIn    []requestexecution.Status `json:"statusIn,omitempty"`
 	StatusNotIn []requestexecution.Status `json:"statusNotIn,omitempty"`
+
+	// "metrics_latency_ms" field predicates.
+	MetricsLatencyMs       *int64  `json:"metricsLatencyMs,omitempty"`
+	MetricsLatencyMsNEQ    *int64  `json:"metricsLatencyMsNEQ,omitempty"`
+	MetricsLatencyMsIn     []int64 `json:"metricsLatencyMsIn,omitempty"`
+	MetricsLatencyMsNotIn  []int64 `json:"metricsLatencyMsNotIn,omitempty"`
+	MetricsLatencyMsGT     *int64  `json:"metricsLatencyMsGT,omitempty"`
+	MetricsLatencyMsGTE    *int64  `json:"metricsLatencyMsGTE,omitempty"`
+	MetricsLatencyMsLT     *int64  `json:"metricsLatencyMsLT,omitempty"`
+	MetricsLatencyMsLTE    *int64  `json:"metricsLatencyMsLTE,omitempty"`
+	MetricsLatencyMsIsNil  bool    `json:"metricsLatencyMsIsNil,omitempty"`
+	MetricsLatencyMsNotNil bool    `json:"metricsLatencyMsNotNil,omitempty"`
+
+	// "metrics_first_token_latency_ms" field predicates.
+	MetricsFirstTokenLatencyMs       *int64  `json:"metricsFirstTokenLatencyMs,omitempty"`
+	MetricsFirstTokenLatencyMsNEQ    *int64  `json:"metricsFirstTokenLatencyMsNEQ,omitempty"`
+	MetricsFirstTokenLatencyMsIn     []int64 `json:"metricsFirstTokenLatencyMsIn,omitempty"`
+	MetricsFirstTokenLatencyMsNotIn  []int64 `json:"metricsFirstTokenLatencyMsNotIn,omitempty"`
+	MetricsFirstTokenLatencyMsGT     *int64  `json:"metricsFirstTokenLatencyMsGT,omitempty"`
+	MetricsFirstTokenLatencyMsGTE    *int64  `json:"metricsFirstTokenLatencyMsGTE,omitempty"`
+	MetricsFirstTokenLatencyMsLT     *int64  `json:"metricsFirstTokenLatencyMsLT,omitempty"`
+	MetricsFirstTokenLatencyMsLTE    *int64  `json:"metricsFirstTokenLatencyMsLTE,omitempty"`
+	MetricsFirstTokenLatencyMsIsNil  bool    `json:"metricsFirstTokenLatencyMsIsNil,omitempty"`
+	MetricsFirstTokenLatencyMsNotNil bool    `json:"metricsFirstTokenLatencyMsNotNil,omitempty"`
 
 	// "request" edge predicates.
 	HasRequest     *bool                `json:"hasRequest,omitempty"`
@@ -4724,6 +4832,66 @@ func (i *RequestExecutionWhereInput) P() (predicate.RequestExecution, error) {
 	}
 	if len(i.StatusNotIn) > 0 {
 		predicates = append(predicates, requestexecution.StatusNotIn(i.StatusNotIn...))
+	}
+	if i.MetricsLatencyMs != nil {
+		predicates = append(predicates, requestexecution.MetricsLatencyMsEQ(*i.MetricsLatencyMs))
+	}
+	if i.MetricsLatencyMsNEQ != nil {
+		predicates = append(predicates, requestexecution.MetricsLatencyMsNEQ(*i.MetricsLatencyMsNEQ))
+	}
+	if len(i.MetricsLatencyMsIn) > 0 {
+		predicates = append(predicates, requestexecution.MetricsLatencyMsIn(i.MetricsLatencyMsIn...))
+	}
+	if len(i.MetricsLatencyMsNotIn) > 0 {
+		predicates = append(predicates, requestexecution.MetricsLatencyMsNotIn(i.MetricsLatencyMsNotIn...))
+	}
+	if i.MetricsLatencyMsGT != nil {
+		predicates = append(predicates, requestexecution.MetricsLatencyMsGT(*i.MetricsLatencyMsGT))
+	}
+	if i.MetricsLatencyMsGTE != nil {
+		predicates = append(predicates, requestexecution.MetricsLatencyMsGTE(*i.MetricsLatencyMsGTE))
+	}
+	if i.MetricsLatencyMsLT != nil {
+		predicates = append(predicates, requestexecution.MetricsLatencyMsLT(*i.MetricsLatencyMsLT))
+	}
+	if i.MetricsLatencyMsLTE != nil {
+		predicates = append(predicates, requestexecution.MetricsLatencyMsLTE(*i.MetricsLatencyMsLTE))
+	}
+	if i.MetricsLatencyMsIsNil {
+		predicates = append(predicates, requestexecution.MetricsLatencyMsIsNil())
+	}
+	if i.MetricsLatencyMsNotNil {
+		predicates = append(predicates, requestexecution.MetricsLatencyMsNotNil())
+	}
+	if i.MetricsFirstTokenLatencyMs != nil {
+		predicates = append(predicates, requestexecution.MetricsFirstTokenLatencyMsEQ(*i.MetricsFirstTokenLatencyMs))
+	}
+	if i.MetricsFirstTokenLatencyMsNEQ != nil {
+		predicates = append(predicates, requestexecution.MetricsFirstTokenLatencyMsNEQ(*i.MetricsFirstTokenLatencyMsNEQ))
+	}
+	if len(i.MetricsFirstTokenLatencyMsIn) > 0 {
+		predicates = append(predicates, requestexecution.MetricsFirstTokenLatencyMsIn(i.MetricsFirstTokenLatencyMsIn...))
+	}
+	if len(i.MetricsFirstTokenLatencyMsNotIn) > 0 {
+		predicates = append(predicates, requestexecution.MetricsFirstTokenLatencyMsNotIn(i.MetricsFirstTokenLatencyMsNotIn...))
+	}
+	if i.MetricsFirstTokenLatencyMsGT != nil {
+		predicates = append(predicates, requestexecution.MetricsFirstTokenLatencyMsGT(*i.MetricsFirstTokenLatencyMsGT))
+	}
+	if i.MetricsFirstTokenLatencyMsGTE != nil {
+		predicates = append(predicates, requestexecution.MetricsFirstTokenLatencyMsGTE(*i.MetricsFirstTokenLatencyMsGTE))
+	}
+	if i.MetricsFirstTokenLatencyMsLT != nil {
+		predicates = append(predicates, requestexecution.MetricsFirstTokenLatencyMsLT(*i.MetricsFirstTokenLatencyMsLT))
+	}
+	if i.MetricsFirstTokenLatencyMsLTE != nil {
+		predicates = append(predicates, requestexecution.MetricsFirstTokenLatencyMsLTE(*i.MetricsFirstTokenLatencyMsLTE))
+	}
+	if i.MetricsFirstTokenLatencyMsIsNil {
+		predicates = append(predicates, requestexecution.MetricsFirstTokenLatencyMsIsNil())
+	}
+	if i.MetricsFirstTokenLatencyMsNotNil {
+		predicates = append(predicates, requestexecution.MetricsFirstTokenLatencyMsNotNil())
 	}
 
 	if i.HasRequest != nil {

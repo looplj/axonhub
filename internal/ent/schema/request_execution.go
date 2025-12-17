@@ -62,6 +62,10 @@ func (RequestExecution) Fields() []ent.Field {
 		field.String("error_message").Optional(),
 		// The status of the request execution.
 		field.Enum("status").Values("pending", "processing", "completed", "failed", "canceled"),
+		// Total latency in milliseconds from request start to completion
+		field.Int64("metrics_latency_ms").Optional().Nillable(),
+		// First token latency in milliseconds (only for streaming requests)
+		field.Int64("metrics_first_token_latency_ms").Optional().Nillable(),
 	}
 }
 

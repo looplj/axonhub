@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
+	"github.com/looplj/axonhub/internal/server/biz"
 )
 
 // persistRequestExecutionMiddleware ensures a request execution exists and handles error updates.
@@ -81,11 +82,46 @@ func (m *persistRequestExecutionMiddleware) OnOutboundLlmResponse(ctx context.Co
 	persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
+	// Build latency metrics from performance record
+	var metrics *biz.LatencyMetrics
+
+	if state.Perf != nil && !state.Perf.StartTime.IsZero() {
+		var (
+			firstTokenLatencyMs int64
+			requestLatencyMs    int64
+		)
+
+		if state.Perf.RequestCompleted && !state.Perf.EndTime.IsZero() {
+			firstTokenLatencyMs, requestLatencyMs, _ = state.Perf.Calculate()
+		} else {
+			requestLatencyMs = time.Since(state.Perf.StartTime).Milliseconds()
+			if state.Perf.Stream && state.Perf.FirstTokenTime != nil {
+				firstTokenLatencyMs = state.Perf.FirstTokenTime.Sub(state.Perf.StartTime).Milliseconds()
+			}
+		}
+
+		if requestLatencyMs < 0 {
+			requestLatencyMs = 0
+		}
+
+		if firstTokenLatencyMs < 0 {
+			firstTokenLatencyMs = 0
+		}
+
+		metrics = &biz.LatencyMetrics{
+			LatencyMs: &requestLatencyMs,
+		}
+		if state.Perf.Stream && state.Perf.FirstTokenTime != nil {
+			metrics.FirstTokenLatencyMs = &firstTokenLatencyMs
+		}
+	}
+
 	err := state.RequestService.UpdateRequestExecutionCompleted(
 		persistCtx,
 		state.RequestExec.ID,
 		llmResp.ID,
 		m.rawResponse.Body,
+		metrics,
 	)
 	if err != nil {
 		log.Warn(persistCtx, "Failed to update request execution status to completed", log.Cause(err))

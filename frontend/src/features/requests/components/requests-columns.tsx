@@ -3,12 +3,11 @@
 import { format } from 'date-fns'
 import { ColumnDef } from '@tanstack/react-table'
 import { zhCN, enUS } from 'date-fns/locale'
-import { FileText } from 'lucide-react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { extractNumberID } from '@/lib/utils'
 import { usePaginationSearch } from '@/hooks/use-pagination-search'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { useRequestPermissions } from '../../../hooks/useRequestPermissions'
 import { Request } from '../data/schema'
 import { DataTableColumnHeader } from './data-table-column-header'
@@ -28,7 +27,23 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
     {
       accessorKey: 'id',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.id')} />,
-      cell: ({ row }) => <div className='font-mono text-xs'>#{extractNumberID(row.getValue('id'))}</div>,
+      cell: ({ row }) => {
+        const handleClick = useCallback(() => {
+          navigateWithSearch({
+            to: '/project/requests/$requestId',
+            params: { requestId: row.original.id },
+          })
+        }, [row.original.id, navigateWithSearch])
+        
+        return (
+          <button
+            onClick={handleClick}
+            className='font-mono text-xs text-primary hover:underline cursor-pointer'
+          >
+            #{extractNumberID(row.getValue('id'))}
+          </button>
+        )
+      },
       enableSorting: true,
       enableHiding: false,
     },
@@ -150,34 +165,26 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.latency')} />,
       cell: ({ row }) => {
         const request = row.original
-        if (request.status !== 'completed' || !request.updatedAt || !request.createdAt) {
+        if (request.status !== 'completed' || request.metricsLatencyMs == null) {
           return <div className='text-muted-foreground text-xs'>-</div>
         }
 
-        const latency = new Date(request.updatedAt).getTime() - new Date(request.createdAt).getTime()
-
-        return <div className='font-mono text-xs'>{formatDuration(latency)}</div>
+        return <div className='font-mono text-xs'>{formatDuration(request.metricsLatencyMs)}</div>
       },
       enableSorting: false,
     },
     {
-      id: 'details',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.details')} />,
+      id: 'firstTokenLatency',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.firstTokenLatency')} />,
       cell: ({ row }) => {
-        const handleViewDetails = () => {
-          navigateWithSearch({
-            to: '/project/requests/$requestId',
-            params: { requestId: row.original.id },
-          })
+        const request = row.original
+        if (!request.stream || request.status !== 'completed' || request.metricsFirstTokenLatencyMs == null) {
+          return <div className='text-muted-foreground text-xs'>-</div>
         }
 
-        return (
-          <Button variant='outline' size='sm' onClick={handleViewDetails}>
-            <FileText className='mr-2 h-4 w-4' />
-            {t('requests.actions.viewDetails')}
-          </Button>
-        )
+        return <div className='font-mono text-xs'>{formatDuration(request.metricsFirstTokenLatencyMs)}</div>
       },
+      enableSorting: false,
     },
     {
       accessorKey: 'createdAt',

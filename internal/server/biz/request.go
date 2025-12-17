@@ -295,12 +295,19 @@ func (s *RequestService) CreateRequestExecution(
 	return execution, nil
 }
 
+// LatencyMetrics holds latency metrics for a request.
+type LatencyMetrics struct {
+	LatencyMs           *int64
+	FirstTokenLatencyMs *int64
+}
+
 // UpdateRequestCompleted updates request status to completed with response body.
 func (s *RequestService) UpdateRequestCompleted(
 	ctx context.Context,
 	requestID int,
 	externalId string,
 	responseBody any,
+	metrics *LatencyMetrics,
 ) error {
 	// Decide whether to store the final response body
 	storeResponseBody := true
@@ -331,6 +338,17 @@ func (s *RequestService) UpdateRequestCompleted(
 	upd := client.Request.UpdateOneID(requestID).
 		SetStatus(request.StatusCompleted).
 		SetExternalID(externalId)
+
+	// Set latency metrics if provided
+	if metrics != nil {
+		if metrics.LatencyMs != nil {
+			upd = upd.SetMetricsLatencyMs(*metrics.LatencyMs)
+		}
+
+		if metrics.FirstTokenLatencyMs != nil {
+			upd = upd.SetMetricsFirstTokenLatencyMs(*metrics.FirstTokenLatencyMs)
+		}
+	}
 
 	if storeResponseBody {
 		responseBodyBytes, err := xjson.Marshal(responseBody)
@@ -370,6 +388,7 @@ func (s *RequestService) UpdateRequestExecutionCompleted(
 	executionID int,
 	externalId string,
 	responseBody any,
+	metrics *LatencyMetrics,
 ) error {
 	// Decide whether to store the final response body for execution
 	storeResponseBody := true
@@ -400,6 +419,17 @@ func (s *RequestService) UpdateRequestExecutionCompleted(
 	upd := client.RequestExecution.UpdateOneID(executionID).
 		SetStatus(requestexecution.StatusCompleted).
 		SetExternalID(externalId)
+
+	// Set latency metrics if provided
+	if metrics != nil {
+		if metrics.LatencyMs != nil {
+			upd = upd.SetMetricsLatencyMs(*metrics.LatencyMs)
+		}
+
+		if metrics.FirstTokenLatencyMs != nil {
+			upd = upd.SetMetricsFirstTokenLatencyMs(*metrics.FirstTokenLatencyMs)
+		}
+	}
 
 	if storeResponseBody {
 		responseBodyBytes, err := xjson.Marshal(responseBody)

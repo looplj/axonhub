@@ -130,6 +130,60 @@ func (_u *RequestUpdate) SetNillableStatus(v *request.Status) *RequestUpdate {
 	return _u
 }
 
+// SetMetricsLatencyMs sets the "metrics_latency_ms" field.
+func (_u *RequestUpdate) SetMetricsLatencyMs(v int64) *RequestUpdate {
+	_u.mutation.ResetMetricsLatencyMs()
+	_u.mutation.SetMetricsLatencyMs(v)
+	return _u
+}
+
+// SetNillableMetricsLatencyMs sets the "metrics_latency_ms" field if the given value is not nil.
+func (_u *RequestUpdate) SetNillableMetricsLatencyMs(v *int64) *RequestUpdate {
+	if v != nil {
+		_u.SetMetricsLatencyMs(*v)
+	}
+	return _u
+}
+
+// AddMetricsLatencyMs adds value to the "metrics_latency_ms" field.
+func (_u *RequestUpdate) AddMetricsLatencyMs(v int64) *RequestUpdate {
+	_u.mutation.AddMetricsLatencyMs(v)
+	return _u
+}
+
+// ClearMetricsLatencyMs clears the value of the "metrics_latency_ms" field.
+func (_u *RequestUpdate) ClearMetricsLatencyMs() *RequestUpdate {
+	_u.mutation.ClearMetricsLatencyMs()
+	return _u
+}
+
+// SetMetricsFirstTokenLatencyMs sets the "metrics_first_token_latency_ms" field.
+func (_u *RequestUpdate) SetMetricsFirstTokenLatencyMs(v int64) *RequestUpdate {
+	_u.mutation.ResetMetricsFirstTokenLatencyMs()
+	_u.mutation.SetMetricsFirstTokenLatencyMs(v)
+	return _u
+}
+
+// SetNillableMetricsFirstTokenLatencyMs sets the "metrics_first_token_latency_ms" field if the given value is not nil.
+func (_u *RequestUpdate) SetNillableMetricsFirstTokenLatencyMs(v *int64) *RequestUpdate {
+	if v != nil {
+		_u.SetMetricsFirstTokenLatencyMs(*v)
+	}
+	return _u
+}
+
+// AddMetricsFirstTokenLatencyMs adds value to the "metrics_first_token_latency_ms" field.
+func (_u *RequestUpdate) AddMetricsFirstTokenLatencyMs(v int64) *RequestUpdate {
+	_u.mutation.AddMetricsFirstTokenLatencyMs(v)
+	return _u
+}
+
+// ClearMetricsFirstTokenLatencyMs clears the value of the "metrics_first_token_latency_ms" field.
+func (_u *RequestUpdate) ClearMetricsFirstTokenLatencyMs() *RequestUpdate {
+	_u.mutation.ClearMetricsFirstTokenLatencyMs()
+	return _u
+}
+
 // AddExecutionIDs adds the "executions" edge to the RequestExecution entity by IDs.
 func (_u *RequestUpdate) AddExecutionIDs(ids ...int) *RequestUpdate {
 	_u.mutation.AddExecutionIDs(ids...)
@@ -324,6 +378,24 @@ func (_u *RequestUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.MetricsLatencyMs(); ok {
+		_spec.SetField(request.FieldMetricsLatencyMs, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedMetricsLatencyMs(); ok {
+		_spec.AddField(request.FieldMetricsLatencyMs, field.TypeInt64, value)
+	}
+	if _u.mutation.MetricsLatencyMsCleared() {
+		_spec.ClearField(request.FieldMetricsLatencyMs, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.MetricsFirstTokenLatencyMs(); ok {
+		_spec.SetField(request.FieldMetricsFirstTokenLatencyMs, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedMetricsFirstTokenLatencyMs(); ok {
+		_spec.AddField(request.FieldMetricsFirstTokenLatencyMs, field.TypeInt64, value)
+	}
+	if _u.mutation.MetricsFirstTokenLatencyMsCleared() {
+		_spec.ClearField(request.FieldMetricsFirstTokenLatencyMs, field.TypeInt64)
 	}
 	if _u.mutation.ExecutionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -562,6 +634,60 @@ func (_u *RequestUpdateOne) SetNillableStatus(v *request.Status) *RequestUpdateO
 	return _u
 }
 
+// SetMetricsLatencyMs sets the "metrics_latency_ms" field.
+func (_u *RequestUpdateOne) SetMetricsLatencyMs(v int64) *RequestUpdateOne {
+	_u.mutation.ResetMetricsLatencyMs()
+	_u.mutation.SetMetricsLatencyMs(v)
+	return _u
+}
+
+// SetNillableMetricsLatencyMs sets the "metrics_latency_ms" field if the given value is not nil.
+func (_u *RequestUpdateOne) SetNillableMetricsLatencyMs(v *int64) *RequestUpdateOne {
+	if v != nil {
+		_u.SetMetricsLatencyMs(*v)
+	}
+	return _u
+}
+
+// AddMetricsLatencyMs adds value to the "metrics_latency_ms" field.
+func (_u *RequestUpdateOne) AddMetricsLatencyMs(v int64) *RequestUpdateOne {
+	_u.mutation.AddMetricsLatencyMs(v)
+	return _u
+}
+
+// ClearMetricsLatencyMs clears the value of the "metrics_latency_ms" field.
+func (_u *RequestUpdateOne) ClearMetricsLatencyMs() *RequestUpdateOne {
+	_u.mutation.ClearMetricsLatencyMs()
+	return _u
+}
+
+// SetMetricsFirstTokenLatencyMs sets the "metrics_first_token_latency_ms" field.
+func (_u *RequestUpdateOne) SetMetricsFirstTokenLatencyMs(v int64) *RequestUpdateOne {
+	_u.mutation.ResetMetricsFirstTokenLatencyMs()
+	_u.mutation.SetMetricsFirstTokenLatencyMs(v)
+	return _u
+}
+
+// SetNillableMetricsFirstTokenLatencyMs sets the "metrics_first_token_latency_ms" field if the given value is not nil.
+func (_u *RequestUpdateOne) SetNillableMetricsFirstTokenLatencyMs(v *int64) *RequestUpdateOne {
+	if v != nil {
+		_u.SetMetricsFirstTokenLatencyMs(*v)
+	}
+	return _u
+}
+
+// AddMetricsFirstTokenLatencyMs adds value to the "metrics_first_token_latency_ms" field.
+func (_u *RequestUpdateOne) AddMetricsFirstTokenLatencyMs(v int64) *RequestUpdateOne {
+	_u.mutation.AddMetricsFirstTokenLatencyMs(v)
+	return _u
+}
+
+// ClearMetricsFirstTokenLatencyMs clears the value of the "metrics_first_token_latency_ms" field.
+func (_u *RequestUpdateOne) ClearMetricsFirstTokenLatencyMs() *RequestUpdateOne {
+	_u.mutation.ClearMetricsFirstTokenLatencyMs()
+	return _u
+}
+
 // AddExecutionIDs adds the "executions" edge to the RequestExecution entity by IDs.
 func (_u *RequestUpdateOne) AddExecutionIDs(ids ...int) *RequestUpdateOne {
 	_u.mutation.AddExecutionIDs(ids...)
@@ -786,6 +912,24 @@ func (_u *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err er
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.MetricsLatencyMs(); ok {
+		_spec.SetField(request.FieldMetricsLatencyMs, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedMetricsLatencyMs(); ok {
+		_spec.AddField(request.FieldMetricsLatencyMs, field.TypeInt64, value)
+	}
+	if _u.mutation.MetricsLatencyMsCleared() {
+		_spec.ClearField(request.FieldMetricsLatencyMs, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.MetricsFirstTokenLatencyMs(); ok {
+		_spec.SetField(request.FieldMetricsFirstTokenLatencyMs, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedMetricsFirstTokenLatencyMs(); ok {
+		_spec.AddField(request.FieldMetricsFirstTokenLatencyMs, field.TypeInt64, value)
+	}
+	if _u.mutation.MetricsFirstTokenLatencyMsCleared() {
+		_spec.ClearField(request.FieldMetricsFirstTokenLatencyMs, field.TypeInt64)
 	}
 	if _u.mutation.ExecutionsCleared() {
 		edge := &sqlgraph.EdgeSpec{

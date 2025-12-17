@@ -163,12 +163,12 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 		applyOverrideRequestBody(outbound),
 		applyOverrideRequestHeaders(outbound),
 
+		// Unified performance tracking middleware.
+		withPerformanceRecording(outbound),
+
 		// The request execution middleware must be the final middleware
 		// to ensure that the request execution is created with the correct request bodys.
 		persistRequestExecution(outbound),
-
-		// Unified performance tracking middleware.
-		withPerformanceRecording(outbound),
 
 		// Connection tracking middleware for load balancing.
 		withConnectionTracking(outbound, processor.connectionTracker),
