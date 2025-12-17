@@ -112,7 +112,10 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 	user, _ := contexts.GetUser(ctx)
 
 	if log.DebugEnabled(ctx) {
-		log.Debug(ctx, "request received", log.String("request_body", string(request.Body)))
+		log.Debug(ctx, "request received",
+			log.String("request_body", string(request.Body)),
+			log.Any("request_headers", request.Headers),
+		)
 	}
 
 	state := &PersistenceState{

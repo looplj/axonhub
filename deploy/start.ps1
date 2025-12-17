@@ -17,6 +17,7 @@ $ConfigFile = Join-Path $BaseDir 'config.yml'
 $BinaryPath = Join-Path $BaseDir 'axonhub.exe'
 $PidFile = Join-Path $BaseDir 'axonhub.pid'
 $LogFile = Join-Path $BaseDir 'axonhub.log'
+$DefaultPort = 8090
 
 function Show-Usage {
   Write-Host @" 
@@ -36,6 +37,20 @@ foreach($a in $ArgsFromCmd){
 }
 
 function Ensure-Dirs([string]$path){ if(-not (Test-Path $path)){ New-Item -ItemType Directory -Force -Path $path | Out-Null } }
+
+function Get-ConfiguredPort {
+  $port = $DefaultPort
+  if(Test-Path $BinaryPath){
+    try {
+      $configPort = $null
+      $configPort = & $BinaryPath config get server.port 2>$null
+      if($configPort -match '^[0-9]+$'){
+        $port = [int]$configPort
+      }
+    } catch {}
+  }
+  return $port
+}
 
 function Check-Port([int]$port){
   try {
@@ -79,14 +94,20 @@ if(Test-Path $PidFile){
   }
 }
 
-# Check default port 8090
-if(-not (Check-Port 8090)){
-  Write-Err 'Cannot start AxonHub: port 8090 is already in use'
+# Check configured port
+$port = Get-ConfiguredPort
+if(-not (Check-Port $port)){
+  Write-Err "Cannot start AxonHub: port $port is already in use"
   exit 1
 }
 
 $ConfigArgs = @()
-if(Test-Path $ConfigFile){ $ConfigArgs += @('--config', $ConfigFile) } else { Write-Warn "Configuration not found at $ConfigFile, starting with defaults" }
+if(Test-Path $ConfigFile){ 
+  # Config exists, binary will auto-detect it from $HOME/.config/axonhub/
+  Write-Info "Configuration found at $ConfigFile, binary will auto-detect it" 
+} else { 
+  Write-Warn "Configuration not found at $ConfigFile, starting with defaults" 
+}
 
 Write-Info 'Starting AxonHub process...'
 try {
@@ -100,7 +121,7 @@ try {
     Write-Host "  • PID: $($p.Id)"
     Write-Host "  • Log file: $LogFile"
     Write-Host "  • Config: " -NoNewline; if(Test-Path $ConfigFile){ Write-Host $ConfigFile } else { Write-Host 'default' }
-    Write-Host '  • Web interface: http://localhost:8090'
+    Write-Host "  • Web interface: http://localhost:$port"
     Write-Host ''
     Write-Info 'To stop AxonHub: stop.bat'
     Write-Info "To view logs: Get-Content -Path '$LogFile' -Tail 100 -Wait"

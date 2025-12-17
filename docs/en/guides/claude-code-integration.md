@@ -5,6 +5,11 @@
 ## Overview
 AxonHub can act as a drop-in replacement for Anthropic or OpenAI endpoints, letting Claude Code and Codex connect through your own infrastructure. This guide explains how to configure both tools and how to combine them with AxonHub model profiles for flexible routing.
 
+### Key Points
+- AxonHub performs AI protocol/format transformation. You can configure multiple upstream channels (providers) and expose a single Anthropic/OpenAI-compatible interface for tools like Claude Code and Codex.
+- You can aggregate Claude Code requests from the same session into one trace (see "Configure Claude Code").
+- You can aggregate Codex requests from the same conversation by configuring `server.trace.extra_trace_headers` (see "Configure Codex").
+
 ### Prerequisites
 - AxonHub instance reachable from your development machine.
 - Valid AxonHub API key with project access.
@@ -20,6 +25,15 @@ AxonHub can act as a drop-in replacement for Anthropic or OpenAI endpoints, lett
 2. Launch Claude Code. It will read the environment variables and route all Anthropic requests through AxonHub.
 3. (Optional) Confirm the integration by triggering a chat completion and checking AxonHub traces.
 
+#### Trace aggregation (optional)
+To aggregate requests from the same Claude Code session into a single trace, enable the following in `config.yml`:
+
+```yaml
+server:
+  trace:
+    claude_code_trace_enabled: true
+```
+
 #### Tips
 - Keep your API key secret; store it in a shell profile or secret manager.
 - If your AxonHub endpoint uses HTTPS with a self-signed certificate, configure trust settings in your OS.
@@ -28,13 +42,13 @@ AxonHub can act as a drop-in replacement for Anthropic or OpenAI endpoints, lett
 1. Edit `${HOME}/.codex/config.toml` and register AxonHub as a provider:
    ```toml
    model = "gpt-5"
-   model_provider = "axonhub-chat-completions"
+   model_provider = "axonhub-responses"
 
-   [model_providers.axonhub-chat-completions]
+   [model_providers.axonhub-responses]
    name = "AxonHub using Chat Completions"
    base_url = "http://127.0.0.1:8090/v1"
    env_key = "AXONHUB_API_KEY"
-   wire_api = "chat"
+   wire_api = "responses"
    query_params = {}
    ```
 2. Export the API key for Codex to read:
@@ -42,6 +56,16 @@ AxonHub can act as a drop-in replacement for Anthropic or OpenAI endpoints, lett
    export AXONHUB_API_KEY="<your-axonhub-api-key>"
    ```
 3. Restart Codex to apply the configuration.
+
+#### Trace aggregation by conversation (optional)
+If Codex sends a stable conversation identifier header (for example `Conversation_id`), you can configure AxonHub to use it as a fallback trace header in `config.yml`:
+
+```yaml
+server:
+  trace:
+    extra_trace_headers:
+      - Conversation_id
+```
 
 #### Testing
 - Send a sample prompt; AxonHub's request logs should show a `/v1/chat/completions` call.

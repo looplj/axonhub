@@ -111,7 +111,7 @@ func startServer() {
 
 func handleConfigCommand() {
 	if len(os.Args) < 3 {
-		fmt.Println("Usage: axonhub config <preview|validate>")
+		fmt.Println("Usage: axonhub config <preview|validate|get>")
 		os.Exit(1)
 	}
 
@@ -120,8 +120,10 @@ func handleConfigCommand() {
 		configPreview()
 	case "validate":
 		configValidate()
+	case "get":
+		configGet()
 	default:
-		fmt.Println("Usage: axonhub config <preview|validate>")
+		fmt.Println("Usage: axonhub config <preview|validate|get>")
 		os.Exit(1)
 	}
 }
@@ -215,6 +217,49 @@ func validateConfig(config conf.Config) []string {
 	return errors
 }
 
+func configGet() {
+	if len(os.Args) < 4 {
+		fmt.Println("Usage: axonhub config get <key>")
+		fmt.Println("")
+		fmt.Println("Available keys:")
+		fmt.Println("  server.port    Server port number")
+		fmt.Println("  server.name    Server name")
+		fmt.Println("  db.dialect     Database dialect")
+		fmt.Println("  db.dsn         Database DSN")
+		os.Exit(1)
+	}
+
+	key := os.Args[3]
+
+	config, err := conf.Load()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
+		os.Exit(1)
+	}
+
+	var value interface{}
+
+	switch key {
+	case "server.port":
+		value = config.APIServer.Port
+	case "server.name":
+		value = config.APIServer.Name
+	case "server.base_path":
+		value = config.APIServer.BasePath
+	case "server.debug":
+		value = config.APIServer.Debug
+	case "db.dialect":
+		value = config.DB.Dialect
+	case "db.dsn":
+		value = config.DB.DSN
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown config key: %s\n", key)
+		os.Exit(1)
+	}
+
+	fmt.Println(value)
+}
+
 func showHelp() {
 	fmt.Println("AxonHub AI Gateway")
 	fmt.Println("")
@@ -222,6 +267,7 @@ func showHelp() {
 	fmt.Println("  axonhub                    Start the server (default)")
 	fmt.Println("  axonhub config preview     Preview configuration")
 	fmt.Println("  axonhub config validate    Validate configuration")
+	fmt.Println("  axonhub config get <key>   Get a specific config value")
 	fmt.Println("  axonhub version            Show version")
 	fmt.Println("  axonhub help               Show this help message")
 	fmt.Println("")

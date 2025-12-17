@@ -525,12 +525,23 @@ main() {
     
     print_success "AxonHub installation completed!"
     echo
+    
+    # Get configured port for display
+    local port=8090
+    if [[ -x "$INSTALL_DIR/axonhub" ]]; then
+        local config_port
+        config_port=$("$INSTALL_DIR/axonhub" config get server.port 2>/dev/null) || true
+        if [[ -n "$config_port" && "$config_port" =~ ^[0-9]+$ ]]; then
+            port="$config_port"
+        fi
+    fi
+    
     print_info "Next steps:"
     echo "  1. Edit configuration: nano $CONFIG_DIR/config.yml"
     echo "  2. Start AxonHub: ./start.sh"
     echo "  3. Stop AxonHub: ./stop.sh"
     echo "  4. View logs: tail -f $LOG_DIR/axonhub.log"
-    echo "  5. Access web interface: http://localhost:8090"
+    echo "  5. Access web interface: http://localhost:${port}"
     echo
     print_info "To start AxonHub now, run: ./start.sh"
 }

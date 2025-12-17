@@ -50,7 +50,7 @@ func TestInboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 		},
 		{
 			name:         "reasoning with function_call merge transformation",
-			requestFile:  "reasoninig.request.json",
+			requestFile:  "reasoning.request.json",
 			expectedFile: "llm-reasoning.request.json",
 			validate: func(t *testing.T, result *llm.Request, httpReq *httpclient.Request) {
 				t.Helper()
