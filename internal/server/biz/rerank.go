@@ -145,6 +145,7 @@ func (s *RerankService) Rerank(ctx context.Context, req *llm.RerankRequest) (*ll
 
 	// Get retry policy from system settings
 	retryPolicy := s.systemService.RetryPolicyOrDefault(ctx)
+
 	maxRetries := 1
 	if retryPolicy.Enabled {
 		maxRetries = lo.Min([]int{retryPolicy.MaxChannelRetries, len(channels)})
@@ -165,15 +166,18 @@ func (s *RerankService) Rerank(ctx context.Context, req *llm.RerankRequest) (*ll
 		log.Warn(ctx, "failed to create request record", log.Cause(err))
 	}
 
-	var lastErr error
-	var lastStatusCode int
+	var (
+		lastErr        error
+		lastStatusCode int
+	)
 
 	// Try channels with retry mechanism
-	for attempt := 0; attempt < maxRetries; attempt++ {
+
+	for attempt := range maxRetries {
 		channelIndex := attempt % len(channels)
 		selectedChannel := channels[channelIndex]
 
-		resp, statusCode, err := s.tryChannel(ctx, req, selectedChannel, requestRecord, reqBody)
+		resp, statusCode, err := s.tryChannel(ctx, req, selectedChannel, requestRecord)
 		if err == nil {
 			// Success - update request status
 			s.updateRequestSuccess(ctx, requestRecord, resp, startTime)
@@ -252,7 +256,6 @@ func (s *RerankService) tryChannel(
 	req *llm.RerankRequest,
 	channel *Channel,
 	requestRecord *ent.Request,
-	reqBody []byte,
 ) (*llm.RerankResponse, int, error) {
 	// Check if the transformer supports Rerank
 	rerankTransformer, ok := channel.Outbound.(transformer.Transformer)
@@ -274,7 +277,7 @@ func (s *RerankService) tryChannel(
 		TopN:      req.TopN,
 	}
 
-	log.Info(ctx, "selected channel for rerank",
+	log.Debug(ctx, "selected channel for rerank",
 		log.String("requested_model", req.Model),
 		log.String("actual_model", actualModel),
 		log.Int("channel_id", channel.ID),
@@ -292,12 +295,14 @@ func (s *RerankService) tryChannel(
 
 	// Create execution record
 	var executionRecord *ent.RequestExecution
+
 	if requestRecord != nil {
 		// Marshal the mapped request body to record the actual request sent to the channel
 		mappedReqBody := marshalJSONWithFallback(ctx, mappedReq)
 		channelRequest := httpclient.Request{
 			Body: mappedReqBody,
 		}
+
 		executionRecord, err = s.requestService.CreateRequestExecution(
 			ctx,
 			channel,
@@ -340,7 +345,7 @@ func (s *RerankService) tryChannel(
 		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, time.Second*5)
 		defer cancel()
 
-		if updateErr := s.requestService.UpdateRequestExecutionCompleted(persistCtx, executionRecord.ID, "", resp); updateErr != nil {
+		if updateErr := s.requestService.UpdateRequestExecutionCompleted(persistCtx, executionRecord.ID, "", resp, nil); updateErr != nil {
 			log.Warn(persistCtx, "failed to update execution completed", log.Cause(updateErr))
 		}
 	}
@@ -357,7 +362,7 @@ func (s *RerankService) updateRequestSuccess(
 ) {
 	latency := time.Since(startTime)
 
-	log.Info(ctx, "rerank request completed",
+	log.Debug(ctx, "rerank request completed",
 		log.Int("num_results", len(resp.Results)),
 		log.Duration("latency", latency))
 
@@ -365,7 +370,9 @@ func (s *RerankService) updateRequestSuccess(
 		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, time.Second*5)
 		defer cancel()
 
-		if err := s.requestService.UpdateRequestCompleted(persistCtx, requestRecord.ID, "", resp); err != nil {
+		if err := s.requestService.UpdateRequestCompleted(persistCtx, requestRecord.ID, "", resp, &LatencyMetrics{
+			LatencyMs: lo.ToPtr(latency.Milliseconds()),
+		}); err != nil {
 			log.Warn(persistCtx, "failed to update request completed", log.Cause(err))
 		}
 	}

@@ -24,6 +24,7 @@ func TestRerank_Success(t *testing.T) {
 
 		// Verify request body
 		var req llm.RerankRequest
+
 		err := json.NewDecoder(r.Body).Decode(&req)
 		require.NoError(t, err)
 		assert.Equal(t, "test-model", req.Model)
@@ -37,6 +38,7 @@ func TestRerank_Success(t *testing.T) {
 				{Index: 1, RelevanceScore: 0.5, Document: "doc2"},
 			},
 		}
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)
 	}))
