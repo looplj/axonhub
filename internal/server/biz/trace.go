@@ -401,9 +401,12 @@ func requestToSegment(ctx context.Context, req *ent.Request) (*Segment, error) {
 	if len(req.RequestBody) > 0 {
 		httpReq := &httpclient.Request{
 			Body: req.RequestBody,
+			// Ensure the gemini path format.
+			Path: fmt.Sprintf("%s:generateContent", req.ModelID),
 			Headers: map[string][]string{
 				"Content-Type": {"application/json"},
 			},
+			TransformerMetadata: map[string]any{},
 		}
 
 		inbound, err := getInboundTransformer(llm.APIFormat(req.Format))
