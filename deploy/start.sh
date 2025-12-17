@@ -26,6 +26,7 @@ TARGET_GROUP="$(id -gn "$TARGET_USER" 2>/dev/null || echo "$TARGET_USER")"
 BASE_DIR="${USER_HOME}/.config/axonhub"
 CONFIG_FILE="${BASE_DIR}/config.yml"
 BINARY_PATH="/usr/local/bin/axonhub"
+DEFAULT_PORT=8090
 PID_FILE="${BASE_DIR}/axonhub.pid"
 LOG_FILE="${BASE_DIR}/axonhub.log"
 
@@ -75,7 +76,8 @@ start_directly() {
         print_info "Starting with default configuration..."
         CONFIG_ARGS=""
     else
-        CONFIG_ARGS="--config $CONFIG_FILE"
+        # Config exists, binary will auto-detect it from $HOME/.config/axonhub/
+        CONFIG_ARGS=""
     fi
     
     # Ensure base directory exists and is owned by target user
@@ -106,7 +108,9 @@ start_directly() {
         echo "  • PID: $pid"
         echo "  • Log file: $LOG_FILE"
         echo "  • Config: ${CONFIG_FILE:-"default"}"
-        echo "  • Web interface: http://localhost:8090"
+        local port
+        port=$(get_configured_port)
+        echo "  • Web interface: http://localhost:${port}"
         echo
         print_info "To stop AxonHub: ./stop.sh"
         print_info "To view logs: tail -f $LOG_FILE"
@@ -121,8 +125,23 @@ start_directly() {
     fi
 }
 
+get_configured_port() {
+    local port="$DEFAULT_PORT"
+    
+    # Try to get port from config using axonhub binary
+    if [[ -x "$BINARY_PATH" ]]; then
+        local config_port
+        config_port=$("$BINARY_PATH" config get server.port 2>/dev/null) || true
+        if [[ -n "$config_port" && "$config_port" =~ ^[0-9]+$ ]]; then
+            port="$config_port"
+        fi
+    fi
+    
+    echo "$port"
+}
+
 check_port() {
-    local port=${1:-8090}
+    local port=${1:-$DEFAULT_PORT}
     
     if command -v netstat >/dev/null 2>&1; then
         if netstat -tuln | grep -q ":$port "; then
@@ -146,9 +165,13 @@ check_port() {
 main() {
     print_info "Starting AxonHub..."
     
+    # Get configured port
+    local port
+    port=$(get_configured_port)
+    
     # Check if port is available
-    if ! check_port 8090; then
-        print_error "Cannot start AxonHub: port 8090 is already in use"
+    if ! check_port "$port"; then
+        print_error "Cannot start AxonHub: port $port is already in use"
         return 1
     fi
     

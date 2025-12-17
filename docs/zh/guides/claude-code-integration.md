@@ -5,6 +5,11 @@
 ## 概览
 AxonHub 可以作为 Anthropic 或 OpenAI 接口的直接替代方案，使 Claude Code 与 Codex 能够通过您自己的基础设施连接。本文将介绍两者的配置方法，并说明如何结合 AxonHub 的模型配置文件功能实现灵活路由。
 
+### 关键点
+- AxonHub 支持多种 AI 协议/格式转换。你可以配置多个上游渠道（provider/channel），对外提供统一的 Anthropic/OpenAI 兼容接口，供 Claude Code 与 Codex 使用。
+- 你可以开启 Claude Code trace 聚合，将 Claude Code 同一次会话中的请求自动归并到同一条 Trace（见“配置 Claude Code”）。
+- 你可以通过配置 `server.trace.extra_trace_headers` 将 Codex 同一次对话的请求聚合到同一条 Trace（见“配置 Codex”）。
+
 ### 前置要求
 - 可访问的 AxonHub 实例。
 - 拥有项目访问权限的 AxonHub API Key。
@@ -20,6 +25,15 @@ AxonHub 可以作为 Anthropic 或 OpenAI 接口的直接替代方案，使 Clau
 2. 启动 Claude Code，程序会自动读取上述变量并将所有 Anthropic 请求代理到 AxonHub。
 3. （可选）触发一次对话并在 AxonHub 的 Traces 页面确认流量已成功记录。
 
+#### Trace 聚合（可选）
+若希望将 Claude Code 同一次会话的请求聚合到同一条 Trace，可在 `config.yml` 中开启：
+
+```yaml
+server:
+  trace:
+    claude_code_trace_enabled: true
+```
+
 #### 提示
 - 请务必保密 API Key，可写入 shell profile 或使用密钥管理工具。
 - 若 AxonHub 使用自签名证书，请在操作系统内添加信任配置。
@@ -28,13 +42,13 @@ AxonHub 可以作为 Anthropic 或 OpenAI 接口的直接替代方案，使 Clau
 1. 编辑 `${HOME}/.codex/config.toml`，将 AxonHub 注册为 provider：
    ```toml
    model = "gpt-5"
-   model_provider = "axonhub-chat-completions"
+   model_provider = "axonhub-responses"
 
-   [model_providers.axonhub-chat-completions]
+   [model_providers.axonhub-responses]
    name = "AxonHub using Chat Completions"
    base_url = "http://127.0.0.1:8090/v1"
    env_key = "AXONHUB_API_KEY"
-   wire_api = "chat"
+   wire_api = "responses"
    query_params = {}
    ```
 2. 导出供 Codex 读取的 API Key：
@@ -42,6 +56,16 @@ AxonHub 可以作为 Anthropic 或 OpenAI 接口的直接替代方案，使 Clau
    export AXONHUB_API_KEY="<your-axonhub-api-key>"
    ```
 3. 重启 Codex 以加载配置。
+
+#### 按对话聚合 Trace（可选）
+若 Codex 会携带稳定的对话标识 header（例如 `Conversation_id`），可在 `config.yml` 中将其加入 `extra_trace_headers`，用于在主 trace header 缺失时进行聚合：
+
+```yaml
+server:
+  trace:
+    extra_trace_headers:
+      - Conversation_id
+```
 
 #### 验证
 - 发送测试 Prompt，AxonHub 日志中应出现 `/v1/chat/completions` 调用。

@@ -197,9 +197,21 @@ log:
 }
 
 Write-Success 'AxonHub installation completed!'
+
+# Get configured port for display
+$port = 8090
+if(Test-Path $TargetBinary){
+  try {
+    $configPort = & $TargetBinary config get server.port 2>$null
+    if($configPort -match '^[0-9]+$'){
+      $port = $configPort
+    }
+  } catch {}
+}
+
 Write-Info "Next steps:"
 Write-Host "  1. Edit configuration: $ConfigFile"
 Write-Host "  2. Start AxonHub: start.bat"
 Write-Host "  3. Stop AxonHub: stop.bat"
-Write-Host "  4. View logs: $BaseDir\\axonhub.log (or logs\\axonhub.log in config)"
-Write-Host "  5. Access web interface: http://localhost:8090"
+Write-Host "  4. View logs: $BaseDir\axonhub.log (or logs\axonhub.log in config)"
+Write-Host "  5. Access web interface: http://localhost:$port"
