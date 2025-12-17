@@ -214,6 +214,34 @@ func (_c *RequestCreate) SetNillableStream(v *bool) *RequestCreate {
 	return _c
 }
 
+// SetMetricsLatencyMs sets the "metrics_latency_ms" field.
+func (_c *RequestCreate) SetMetricsLatencyMs(v int64) *RequestCreate {
+	_c.mutation.SetMetricsLatencyMs(v)
+	return _c
+}
+
+// SetNillableMetricsLatencyMs sets the "metrics_latency_ms" field if the given value is not nil.
+func (_c *RequestCreate) SetNillableMetricsLatencyMs(v *int64) *RequestCreate {
+	if v != nil {
+		_c.SetMetricsLatencyMs(*v)
+	}
+	return _c
+}
+
+// SetMetricsFirstTokenLatencyMs sets the "metrics_first_token_latency_ms" field.
+func (_c *RequestCreate) SetMetricsFirstTokenLatencyMs(v int64) *RequestCreate {
+	_c.mutation.SetMetricsFirstTokenLatencyMs(v)
+	return _c
+}
+
+// SetNillableMetricsFirstTokenLatencyMs sets the "metrics_first_token_latency_ms" field if the given value is not nil.
+func (_c *RequestCreate) SetNillableMetricsFirstTokenLatencyMs(v *int64) *RequestCreate {
+	if v != nil {
+		_c.SetMetricsFirstTokenLatencyMs(*v)
+	}
+	return _c
+}
+
 // SetAPIKey sets the "api_key" edge to the APIKey entity.
 func (_c *RequestCreate) SetAPIKey(v *APIKey) *RequestCreate {
 	return _c.SetAPIKeyID(v.ID)
@@ -451,6 +479,14 @@ func (_c *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Stream(); ok {
 		_spec.SetField(request.FieldStream, field.TypeBool, value)
 		_node.Stream = value
+	}
+	if value, ok := _c.mutation.MetricsLatencyMs(); ok {
+		_spec.SetField(request.FieldMetricsLatencyMs, field.TypeInt64, value)
+		_node.MetricsLatencyMs = &value
+	}
+	if value, ok := _c.mutation.MetricsFirstTokenLatencyMs(); ok {
+		_spec.SetField(request.FieldMetricsFirstTokenLatencyMs, field.TypeInt64, value)
+		_node.MetricsFirstTokenLatencyMs = &value
 	}
 	if nodes := _c.mutation.APIKeyIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -717,6 +753,54 @@ func (u *RequestUpsert) UpdateStatus() *RequestUpsert {
 	return u
 }
 
+// SetMetricsLatencyMs sets the "metrics_latency_ms" field.
+func (u *RequestUpsert) SetMetricsLatencyMs(v int64) *RequestUpsert {
+	u.Set(request.FieldMetricsLatencyMs, v)
+	return u
+}
+
+// UpdateMetricsLatencyMs sets the "metrics_latency_ms" field to the value that was provided on create.
+func (u *RequestUpsert) UpdateMetricsLatencyMs() *RequestUpsert {
+	u.SetExcluded(request.FieldMetricsLatencyMs)
+	return u
+}
+
+// AddMetricsLatencyMs adds v to the "metrics_latency_ms" field.
+func (u *RequestUpsert) AddMetricsLatencyMs(v int64) *RequestUpsert {
+	u.Add(request.FieldMetricsLatencyMs, v)
+	return u
+}
+
+// ClearMetricsLatencyMs clears the value of the "metrics_latency_ms" field.
+func (u *RequestUpsert) ClearMetricsLatencyMs() *RequestUpsert {
+	u.SetNull(request.FieldMetricsLatencyMs)
+	return u
+}
+
+// SetMetricsFirstTokenLatencyMs sets the "metrics_first_token_latency_ms" field.
+func (u *RequestUpsert) SetMetricsFirstTokenLatencyMs(v int64) *RequestUpsert {
+	u.Set(request.FieldMetricsFirstTokenLatencyMs, v)
+	return u
+}
+
+// UpdateMetricsFirstTokenLatencyMs sets the "metrics_first_token_latency_ms" field to the value that was provided on create.
+func (u *RequestUpsert) UpdateMetricsFirstTokenLatencyMs() *RequestUpsert {
+	u.SetExcluded(request.FieldMetricsFirstTokenLatencyMs)
+	return u
+}
+
+// AddMetricsFirstTokenLatencyMs adds v to the "metrics_first_token_latency_ms" field.
+func (u *RequestUpsert) AddMetricsFirstTokenLatencyMs(v int64) *RequestUpsert {
+	u.Add(request.FieldMetricsFirstTokenLatencyMs, v)
+	return u
+}
+
+// ClearMetricsFirstTokenLatencyMs clears the value of the "metrics_first_token_latency_ms" field.
+func (u *RequestUpsert) ClearMetricsFirstTokenLatencyMs() *RequestUpsert {
+	u.SetNull(request.FieldMetricsFirstTokenLatencyMs)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -898,6 +982,62 @@ func (u *RequestUpsertOne) SetStatus(v request.Status) *RequestUpsertOne {
 func (u *RequestUpsertOne) UpdateStatus() *RequestUpsertOne {
 	return u.Update(func(s *RequestUpsert) {
 		s.UpdateStatus()
+	})
+}
+
+// SetMetricsLatencyMs sets the "metrics_latency_ms" field.
+func (u *RequestUpsertOne) SetMetricsLatencyMs(v int64) *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetMetricsLatencyMs(v)
+	})
+}
+
+// AddMetricsLatencyMs adds v to the "metrics_latency_ms" field.
+func (u *RequestUpsertOne) AddMetricsLatencyMs(v int64) *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.AddMetricsLatencyMs(v)
+	})
+}
+
+// UpdateMetricsLatencyMs sets the "metrics_latency_ms" field to the value that was provided on create.
+func (u *RequestUpsertOne) UpdateMetricsLatencyMs() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateMetricsLatencyMs()
+	})
+}
+
+// ClearMetricsLatencyMs clears the value of the "metrics_latency_ms" field.
+func (u *RequestUpsertOne) ClearMetricsLatencyMs() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.ClearMetricsLatencyMs()
+	})
+}
+
+// SetMetricsFirstTokenLatencyMs sets the "metrics_first_token_latency_ms" field.
+func (u *RequestUpsertOne) SetMetricsFirstTokenLatencyMs(v int64) *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetMetricsFirstTokenLatencyMs(v)
+	})
+}
+
+// AddMetricsFirstTokenLatencyMs adds v to the "metrics_first_token_latency_ms" field.
+func (u *RequestUpsertOne) AddMetricsFirstTokenLatencyMs(v int64) *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.AddMetricsFirstTokenLatencyMs(v)
+	})
+}
+
+// UpdateMetricsFirstTokenLatencyMs sets the "metrics_first_token_latency_ms" field to the value that was provided on create.
+func (u *RequestUpsertOne) UpdateMetricsFirstTokenLatencyMs() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateMetricsFirstTokenLatencyMs()
+	})
+}
+
+// ClearMetricsFirstTokenLatencyMs clears the value of the "metrics_first_token_latency_ms" field.
+func (u *RequestUpsertOne) ClearMetricsFirstTokenLatencyMs() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.ClearMetricsFirstTokenLatencyMs()
 	})
 }
 
@@ -1248,6 +1388,62 @@ func (u *RequestUpsertBulk) SetStatus(v request.Status) *RequestUpsertBulk {
 func (u *RequestUpsertBulk) UpdateStatus() *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
 		s.UpdateStatus()
+	})
+}
+
+// SetMetricsLatencyMs sets the "metrics_latency_ms" field.
+func (u *RequestUpsertBulk) SetMetricsLatencyMs(v int64) *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetMetricsLatencyMs(v)
+	})
+}
+
+// AddMetricsLatencyMs adds v to the "metrics_latency_ms" field.
+func (u *RequestUpsertBulk) AddMetricsLatencyMs(v int64) *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.AddMetricsLatencyMs(v)
+	})
+}
+
+// UpdateMetricsLatencyMs sets the "metrics_latency_ms" field to the value that was provided on create.
+func (u *RequestUpsertBulk) UpdateMetricsLatencyMs() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateMetricsLatencyMs()
+	})
+}
+
+// ClearMetricsLatencyMs clears the value of the "metrics_latency_ms" field.
+func (u *RequestUpsertBulk) ClearMetricsLatencyMs() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.ClearMetricsLatencyMs()
+	})
+}
+
+// SetMetricsFirstTokenLatencyMs sets the "metrics_first_token_latency_ms" field.
+func (u *RequestUpsertBulk) SetMetricsFirstTokenLatencyMs(v int64) *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetMetricsFirstTokenLatencyMs(v)
+	})
+}
+
+// AddMetricsFirstTokenLatencyMs adds v to the "metrics_first_token_latency_ms" field.
+func (u *RequestUpsertBulk) AddMetricsFirstTokenLatencyMs(v int64) *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.AddMetricsFirstTokenLatencyMs(v)
+	})
+}
+
+// UpdateMetricsFirstTokenLatencyMs sets the "metrics_first_token_latency_ms" field to the value that was provided on create.
+func (u *RequestUpsertBulk) UpdateMetricsFirstTokenLatencyMs() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateMetricsFirstTokenLatencyMs()
+	})
+}
+
+// ClearMetricsFirstTokenLatencyMs clears the value of the "metrics_first_token_latency_ms" field.
+func (u *RequestUpsertBulk) ClearMetricsFirstTokenLatencyMs() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.ClearMetricsFirstTokenLatencyMs()
 	})
 }
 

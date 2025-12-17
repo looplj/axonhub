@@ -37,6 +37,7 @@ type OutboundPersistentStream struct {
 	requestExec *ent.RequestExecution
 
 	transformer    transformer.Outbound
+	perf           *biz.PerformanceRecord
 	responseChunks []*httpclient.StreamEvent
 	closed         bool
 }
@@ -51,6 +52,7 @@ func NewOutboundPersistentStream(
 	requestService *biz.RequestService,
 	usageLogService *biz.UsageLogService,
 	outboundTransformer transformer.Outbound,
+	perf *biz.PerformanceRecord,
 ) *OutboundPersistentStream {
 	return &OutboundPersistentStream{
 		ctx:             ctx,
@@ -60,6 +62,7 @@ func NewOutboundPersistentStream(
 		RequestService:  requestService,
 		UsageLogService: usageLogService,
 		transformer:     outboundTransformer,
+		perf:            perf,
 		responseChunks:  make([]*httpclient.StreamEvent, 0),
 		closed:          false,
 	}
@@ -143,11 +146,26 @@ func (ts *OutboundPersistentStream) persistResponseChunks(ctx context.Context) {
 			return
 		}
 
+		// Build latency metrics from performance record
+		var metrics *biz.LatencyMetrics
+
+		if ts.perf != nil {
+			firstTokenLatencyMs, requestLatencyMs, _ := ts.perf.Calculate()
+
+			metrics = &biz.LatencyMetrics{
+				LatencyMs: &requestLatencyMs,
+			}
+			if ts.perf.Stream && ts.perf.FirstTokenTime != nil {
+				metrics.FirstTokenLatencyMs = &firstTokenLatencyMs
+			}
+		}
+
 		err = ts.RequestService.UpdateRequestExecutionCompleted(
 			persistCtx,
 			ts.requestExec.ID,
 			meta.ID,
 			responseBody,
+			metrics,
 		)
 		if err != nil {
 			log.Warn(
@@ -393,6 +411,7 @@ func (p *PersistentOutboundTransformer) TransformStream(ctx context.Context, str
 		p.state.RequestService,
 		p.state.UsageLogService,
 		p.wrapped, // Pass the wrapped outbound transformer for chunk aggregation
+		p.state.Perf,
 	)
 
 	return p.wrapped.TransformStream(ctx, persistentStream)

@@ -411,7 +411,7 @@ export default function RequestDetailPage() {
                               </div>
                             </CardHeader>
                             <CardContent className='space-y-6'>
-                              <div className='grid grid-cols-1 gap-4 sm:grid-cols-4'>
+                              <div className='grid grid-cols-1 gap-4 sm:grid-cols-5'>
                                 <div className='bg-background space-y-2 rounded-lg border p-3'>
                                   <span className='flex items-center gap-2 text-sm font-medium'>
                                     <Database className='text-primary h-4 w-4' />
@@ -453,6 +453,17 @@ export default function RequestDetailPage() {
                                   <p className='text-muted-foreground font-mono text-sm'>
                                     {execution.status === 'completed' || execution.status === 'failed'
                                       ? formatLatency(calculateLatency(execution.createdAt, execution.updatedAt))
+                                      : '-'}
+                                  </p>
+                                </div>
+                                <div className='bg-background space-y-2 rounded-lg border p-3'>
+                                  <span className='flex items-center gap-2 text-sm font-medium'>
+                                    <Clock className='text-primary h-4 w-4' />
+                                    {t('requests.columns.firstTokenLatency')}
+                                  </span>
+                                  <p className='text-muted-foreground font-mono text-sm'>
+                                    {execution.status === 'completed' && execution.metricsFirstTokenLatencyMs != null
+                                      ? formatLatency(execution.metricsFirstTokenLatencyMs)
                                       : '-'}
                                   </p>
                                 </div>

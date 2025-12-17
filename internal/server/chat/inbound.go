@@ -26,6 +26,7 @@ type InboundPersistentStream struct {
 	requestExec    *ent.RequestExecution
 	requestService *biz.RequestService
 	transformer    transformer.Inbound
+	perf           *biz.PerformanceRecord
 	responseChunks []*httpclient.StreamEvent
 	closed         bool
 }
@@ -39,6 +40,7 @@ func NewInboundPersistentStream(
 	requestExec *ent.RequestExecution,
 	requestService *biz.RequestService,
 	transformer transformer.Inbound,
+	perf *biz.PerformanceRecord,
 ) *InboundPersistentStream {
 	return &InboundPersistentStream{
 		ctx:            ctx,
@@ -47,6 +49,7 @@ func NewInboundPersistentStream(
 		requestExec:    requestExec,
 		requestService: requestService,
 		transformer:    transformer,
+		perf:           perf,
 		responseChunks: make([]*httpclient.StreamEvent, 0),
 		closed:         false,
 	}
@@ -131,7 +134,21 @@ func (ts *InboundPersistentStream) persistResponseChunks(ctx context.Context) {
 			dumper.DumpStreamEvents(persistCtx, ts.responseChunks, "response_chunks.json")
 		}
 
-		err = ts.requestService.UpdateRequestCompleted(persistCtx, ts.request.ID, meta.ID, responseBody)
+		// Build latency metrics from performance record
+		var metrics *biz.LatencyMetrics
+
+		if ts.perf != nil {
+			firstTokenLatencyMs, requestLatencyMs, _ := ts.perf.Calculate()
+
+			metrics = &biz.LatencyMetrics{
+				LatencyMs: &requestLatencyMs,
+			}
+			if ts.perf.Stream && ts.perf.FirstTokenTime != nil {
+				metrics.FirstTokenLatencyMs = &firstTokenLatencyMs
+			}
+		}
+
+		err = ts.requestService.UpdateRequestCompleted(persistCtx, ts.request.ID, meta.ID, responseBody, metrics)
 		if err != nil {
 			log.Warn(persistCtx, "Failed to update request status to completed", log.Cause(err))
 		}
@@ -182,6 +199,7 @@ func (p *PersistentInboundTransformer) TransformStream(ctx context.Context, stre
 		p.state.RequestExec,
 		p.state.RequestService,
 		p, // Use the PersistentInboundTransformer as the transformer
+		p.state.Perf,
 	)
 
 	return persistentStream, nil

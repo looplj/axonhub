@@ -50,6 +50,10 @@ type RequestExecution struct {
 	ErrorMessage string `json:"error_message,omitempty"`
 	// Status holds the value of the "status" field.
 	Status requestexecution.Status `json:"status,omitempty"`
+	// MetricsLatencyMs holds the value of the "metrics_latency_ms" field.
+	MetricsLatencyMs *int64 `json:"metrics_latency_ms,omitempty"`
+	// MetricsFirstTokenLatencyMs holds the value of the "metrics_first_token_latency_ms" field.
+	MetricsFirstTokenLatencyMs *int64 `json:"metrics_first_token_latency_ms,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the RequestExecutionQuery when eager-loading is set.
 	Edges        RequestExecutionEdges `json:"edges"`
@@ -111,7 +115,7 @@ func (*RequestExecution) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case requestexecution.FieldRequestBody, requestexecution.FieldResponseBody, requestexecution.FieldResponseChunks:
 			values[i] = new([]byte)
-		case requestexecution.FieldID, requestexecution.FieldProjectID, requestexecution.FieldRequestID, requestexecution.FieldChannelID, requestexecution.FieldDataStorageID:
+		case requestexecution.FieldID, requestexecution.FieldProjectID, requestexecution.FieldRequestID, requestexecution.FieldChannelID, requestexecution.FieldDataStorageID, requestexecution.FieldMetricsLatencyMs, requestexecution.FieldMetricsFirstTokenLatencyMs:
 			values[i] = new(sql.NullInt64)
 		case requestexecution.FieldExternalID, requestexecution.FieldModelID, requestexecution.FieldFormat, requestexecution.FieldErrorMessage, requestexecution.FieldStatus:
 			values[i] = new(sql.NullString)
@@ -228,6 +232,20 @@ func (_m *RequestExecution) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Status = requestexecution.Status(value.String)
 			}
+		case requestexecution.FieldMetricsLatencyMs:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field metrics_latency_ms", values[i])
+			} else if value.Valid {
+				_m.MetricsLatencyMs = new(int64)
+				*_m.MetricsLatencyMs = value.Int64
+			}
+		case requestexecution.FieldMetricsFirstTokenLatencyMs:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field metrics_first_token_latency_ms", values[i])
+			} else if value.Valid {
+				_m.MetricsFirstTokenLatencyMs = new(int64)
+				*_m.MetricsFirstTokenLatencyMs = value.Int64
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -320,6 +338,16 @@ func (_m *RequestExecution) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Status))
+	builder.WriteString(", ")
+	if v := _m.MetricsLatencyMs; v != nil {
+		builder.WriteString("metrics_latency_ms=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	if v := _m.MetricsFirstTokenLatencyMs; v != nil {
+		builder.WriteString("metrics_first_token_latency_ms=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteByte(')')
 	return builder.String()
 }

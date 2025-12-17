@@ -105,6 +105,16 @@ func ErrorMessage(v string) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldEQ(FieldErrorMessage, v))
 }
 
+// MetricsLatencyMs applies equality check predicate on the "metrics_latency_ms" field. It's identical to MetricsLatencyMsEQ.
+func MetricsLatencyMs(v int64) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEQ(FieldMetricsLatencyMs, v))
+}
+
+// MetricsFirstTokenLatencyMs applies equality check predicate on the "metrics_first_token_latency_ms" field. It's identical to MetricsFirstTokenLatencyMsEQ.
+func MetricsFirstTokenLatencyMs(v int64) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEQ(FieldMetricsFirstTokenLatencyMs, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldEQ(FieldCreatedAt, v))
@@ -623,6 +633,106 @@ func StatusIn(vs ...Status) predicate.RequestExecution {
 // StatusNotIn applies the NotIn predicate on the "status" field.
 func StatusNotIn(vs ...Status) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldNotIn(FieldStatus, vs...))
+}
+
+// MetricsLatencyMsEQ applies the EQ predicate on the "metrics_latency_ms" field.
+func MetricsLatencyMsEQ(v int64) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEQ(FieldMetricsLatencyMs, v))
+}
+
+// MetricsLatencyMsNEQ applies the NEQ predicate on the "metrics_latency_ms" field.
+func MetricsLatencyMsNEQ(v int64) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNEQ(FieldMetricsLatencyMs, v))
+}
+
+// MetricsLatencyMsIn applies the In predicate on the "metrics_latency_ms" field.
+func MetricsLatencyMsIn(vs ...int64) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldIn(FieldMetricsLatencyMs, vs...))
+}
+
+// MetricsLatencyMsNotIn applies the NotIn predicate on the "metrics_latency_ms" field.
+func MetricsLatencyMsNotIn(vs ...int64) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNotIn(FieldMetricsLatencyMs, vs...))
+}
+
+// MetricsLatencyMsGT applies the GT predicate on the "metrics_latency_ms" field.
+func MetricsLatencyMsGT(v int64) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldGT(FieldMetricsLatencyMs, v))
+}
+
+// MetricsLatencyMsGTE applies the GTE predicate on the "metrics_latency_ms" field.
+func MetricsLatencyMsGTE(v int64) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldGTE(FieldMetricsLatencyMs, v))
+}
+
+// MetricsLatencyMsLT applies the LT predicate on the "metrics_latency_ms" field.
+func MetricsLatencyMsLT(v int64) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldLT(FieldMetricsLatencyMs, v))
+}
+
+// MetricsLatencyMsLTE applies the LTE predicate on the "metrics_latency_ms" field.
+func MetricsLatencyMsLTE(v int64) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldLTE(FieldMetricsLatencyMs, v))
+}
+
+// MetricsLatencyMsIsNil applies the IsNil predicate on the "metrics_latency_ms" field.
+func MetricsLatencyMsIsNil() predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldIsNull(FieldMetricsLatencyMs))
+}
+
+// MetricsLatencyMsNotNil applies the NotNil predicate on the "metrics_latency_ms" field.
+func MetricsLatencyMsNotNil() predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNotNull(FieldMetricsLatencyMs))
+}
+
+// MetricsFirstTokenLatencyMsEQ applies the EQ predicate on the "metrics_first_token_latency_ms" field.
+func MetricsFirstTokenLatencyMsEQ(v int64) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEQ(FieldMetricsFirstTokenLatencyMs, v))
+}
+
+// MetricsFirstTokenLatencyMsNEQ applies the NEQ predicate on the "metrics_first_token_latency_ms" field.
+func MetricsFirstTokenLatencyMsNEQ(v int64) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNEQ(FieldMetricsFirstTokenLatencyMs, v))
+}
+
+// MetricsFirstTokenLatencyMsIn applies the In predicate on the "metrics_first_token_latency_ms" field.
+func MetricsFirstTokenLatencyMsIn(vs ...int64) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldIn(FieldMetricsFirstTokenLatencyMs, vs...))
+}
+
+// MetricsFirstTokenLatencyMsNotIn applies the NotIn predicate on the "metrics_first_token_latency_ms" field.
+func MetricsFirstTokenLatencyMsNotIn(vs ...int64) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNotIn(FieldMetricsFirstTokenLatencyMs, vs...))
+}
+
+// MetricsFirstTokenLatencyMsGT applies the GT predicate on the "metrics_first_token_latency_ms" field.
+func MetricsFirstTokenLatencyMsGT(v int64) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldGT(FieldMetricsFirstTokenLatencyMs, v))
+}
+
+// MetricsFirstTokenLatencyMsGTE applies the GTE predicate on the "metrics_first_token_latency_ms" field.
+func MetricsFirstTokenLatencyMsGTE(v int64) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldGTE(FieldMetricsFirstTokenLatencyMs, v))
+}
+
+// MetricsFirstTokenLatencyMsLT applies the LT predicate on the "metrics_first_token_latency_ms" field.
+func MetricsFirstTokenLatencyMsLT(v int64) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldLT(FieldMetricsFirstTokenLatencyMs, v))
+}
+
+// MetricsFirstTokenLatencyMsLTE applies the LTE predicate on the "metrics_first_token_latency_ms" field.
+func MetricsFirstTokenLatencyMsLTE(v int64) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldLTE(FieldMetricsFirstTokenLatencyMs, v))
+}
+
+// MetricsFirstTokenLatencyMsIsNil applies the IsNil predicate on the "metrics_first_token_latency_ms" field.
+func MetricsFirstTokenLatencyMsIsNil() predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldIsNull(FieldMetricsFirstTokenLatencyMs))
+}
+
+// MetricsFirstTokenLatencyMsNotNil applies the NotNil predicate on the "metrics_first_token_latency_ms" field.
+func MetricsFirstTokenLatencyMsNotNil() predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNotNull(FieldMetricsFirstTokenLatencyMs))
 }
 
 // HasRequest applies the HasEdge predicate on the "request" edge.

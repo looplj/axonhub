@@ -56,6 +56,10 @@ type Request struct {
 	Status request.Status `json:"status,omitempty"`
 	// Stream holds the value of the "stream" field.
 	Stream bool `json:"stream,omitempty"`
+	// MetricsLatencyMs holds the value of the "metrics_latency_ms" field.
+	MetricsLatencyMs *int64 `json:"metrics_latency_ms,omitempty"`
+	// MetricsFirstTokenLatencyMs holds the value of the "metrics_first_token_latency_ms" field.
+	MetricsFirstTokenLatencyMs *int64 `json:"metrics_first_token_latency_ms,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the RequestQuery when eager-loading is set.
 	Edges        RequestEdges `json:"edges"`
@@ -170,7 +174,7 @@ func (*Request) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case request.FieldStream:
 			values[i] = new(sql.NullBool)
-		case request.FieldID, request.FieldAPIKeyID, request.FieldProjectID, request.FieldTraceID, request.FieldDataStorageID, request.FieldChannelID:
+		case request.FieldID, request.FieldAPIKeyID, request.FieldProjectID, request.FieldTraceID, request.FieldDataStorageID, request.FieldChannelID, request.FieldMetricsLatencyMs, request.FieldMetricsFirstTokenLatencyMs:
 			values[i] = new(sql.NullInt64)
 		case request.FieldSource, request.FieldModelID, request.FieldFormat, request.FieldExternalID, request.FieldStatus:
 			values[i] = new(sql.NullString)
@@ -299,6 +303,20 @@ func (_m *Request) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Stream = value.Bool
 			}
+		case request.FieldMetricsLatencyMs:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field metrics_latency_ms", values[i])
+			} else if value.Valid {
+				_m.MetricsLatencyMs = new(int64)
+				*_m.MetricsLatencyMs = value.Int64
+			}
+		case request.FieldMetricsFirstTokenLatencyMs:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field metrics_first_token_latency_ms", values[i])
+			} else if value.Valid {
+				_m.MetricsFirstTokenLatencyMs = new(int64)
+				*_m.MetricsFirstTokenLatencyMs = value.Int64
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -417,6 +435,16 @@ func (_m *Request) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("stream=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Stream))
+	builder.WriteString(", ")
+	if v := _m.MetricsLatencyMs; v != nil {
+		builder.WriteString("metrics_latency_ms=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	if v := _m.MetricsFirstTokenLatencyMs; v != nil {
+		builder.WriteString("metrics_first_token_latency_ms=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteByte(')')
 	return builder.String()
 }

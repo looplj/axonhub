@@ -16,6 +16,7 @@
       "details": "Details",
       "createdAt": "Created At",
       "latency": "Latency",
+      "firstTokenLatency": "First Token Latency",
       "actions": "Actions",
       "selectAll": "Select all",
       "selectRow": "Select row",

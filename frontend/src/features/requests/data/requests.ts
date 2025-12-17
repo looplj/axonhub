@@ -45,6 +45,8 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
             modelID
             stream
             status
+            metricsLatencyMs
+            metricsFirstTokenLatencyMs
           }
           cursor
         }
@@ -131,6 +133,7 @@ function buildRequestExecutionsQuery(permissions: { canViewChannels: boolean }) 
                 responseChunks
                 errorMessage
                 status
+                metricsFirstTokenLatencyMs
               }
               cursor
             }

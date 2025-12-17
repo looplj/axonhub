@@ -8033,43 +8033,47 @@ func (m *ProjectMutation) ResetEdge(name string) error {
 // RequestMutation represents an operation that mutates the Request nodes in the graph.
 type RequestMutation struct {
 	config
-	op                    Op
-	typ                   string
-	id                    *int
-	created_at            *time.Time
-	updated_at            *time.Time
-	source                *request.Source
-	model_id              *string
-	format                *string
-	request_body          *objects.JSONRawMessage
-	appendrequest_body    objects.JSONRawMessage
-	response_body         *objects.JSONRawMessage
-	appendresponse_body   objects.JSONRawMessage
-	response_chunks       *[]objects.JSONRawMessage
-	appendresponse_chunks []objects.JSONRawMessage
-	external_id           *string
-	status                *request.Status
-	stream                *bool
-	clearedFields         map[string]struct{}
-	api_key               *int
-	clearedapi_key        bool
-	project               *int
-	clearedproject        bool
-	trace                 *int
-	clearedtrace          bool
-	data_storage          *int
-	cleareddata_storage   bool
-	executions            map[int]struct{}
-	removedexecutions     map[int]struct{}
-	clearedexecutions     bool
-	channel               *int
-	clearedchannel        bool
-	usage_logs            map[int]struct{}
-	removedusage_logs     map[int]struct{}
-	clearedusage_logs     bool
-	done                  bool
-	oldValue              func(context.Context) (*Request, error)
-	predicates            []predicate.Request
+	op                                Op
+	typ                               string
+	id                                *int
+	created_at                        *time.Time
+	updated_at                        *time.Time
+	source                            *request.Source
+	model_id                          *string
+	format                            *string
+	request_body                      *objects.JSONRawMessage
+	appendrequest_body                objects.JSONRawMessage
+	response_body                     *objects.JSONRawMessage
+	appendresponse_body               objects.JSONRawMessage
+	response_chunks                   *[]objects.JSONRawMessage
+	appendresponse_chunks             []objects.JSONRawMessage
+	external_id                       *string
+	status                            *request.Status
+	stream                            *bool
+	metrics_latency_ms                *int64
+	addmetrics_latency_ms             *int64
+	metrics_first_token_latency_ms    *int64
+	addmetrics_first_token_latency_ms *int64
+	clearedFields                     map[string]struct{}
+	api_key                           *int
+	clearedapi_key                    bool
+	project                           *int
+	clearedproject                    bool
+	trace                             *int
+	clearedtrace                      bool
+	data_storage                      *int
+	cleareddata_storage               bool
+	executions                        map[int]struct{}
+	removedexecutions                 map[int]struct{}
+	clearedexecutions                 bool
+	channel                           *int
+	clearedchannel                    bool
+	usage_logs                        map[int]struct{}
+	removedusage_logs                 map[int]struct{}
+	clearedusage_logs                 bool
+	done                              bool
+	oldValue                          func(context.Context) (*Request, error)
+	predicates                        []predicate.Request
 }
 
 var _ ent.Mutation = (*RequestMutation)(nil)
@@ -8884,6 +8888,146 @@ func (m *RequestMutation) ResetStream() {
 	m.stream = nil
 }
 
+// SetMetricsLatencyMs sets the "metrics_latency_ms" field.
+func (m *RequestMutation) SetMetricsLatencyMs(i int64) {
+	m.metrics_latency_ms = &i
+	m.addmetrics_latency_ms = nil
+}
+
+// MetricsLatencyMs returns the value of the "metrics_latency_ms" field in the mutation.
+func (m *RequestMutation) MetricsLatencyMs() (r int64, exists bool) {
+	v := m.metrics_latency_ms
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMetricsLatencyMs returns the old "metrics_latency_ms" field's value of the Request entity.
+// If the Request object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestMutation) OldMetricsLatencyMs(ctx context.Context) (v *int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMetricsLatencyMs is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMetricsLatencyMs requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMetricsLatencyMs: %w", err)
+	}
+	return oldValue.MetricsLatencyMs, nil
+}
+
+// AddMetricsLatencyMs adds i to the "metrics_latency_ms" field.
+func (m *RequestMutation) AddMetricsLatencyMs(i int64) {
+	if m.addmetrics_latency_ms != nil {
+		*m.addmetrics_latency_ms += i
+	} else {
+		m.addmetrics_latency_ms = &i
+	}
+}
+
+// AddedMetricsLatencyMs returns the value that was added to the "metrics_latency_ms" field in this mutation.
+func (m *RequestMutation) AddedMetricsLatencyMs() (r int64, exists bool) {
+	v := m.addmetrics_latency_ms
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearMetricsLatencyMs clears the value of the "metrics_latency_ms" field.
+func (m *RequestMutation) ClearMetricsLatencyMs() {
+	m.metrics_latency_ms = nil
+	m.addmetrics_latency_ms = nil
+	m.clearedFields[request.FieldMetricsLatencyMs] = struct{}{}
+}
+
+// MetricsLatencyMsCleared returns if the "metrics_latency_ms" field was cleared in this mutation.
+func (m *RequestMutation) MetricsLatencyMsCleared() bool {
+	_, ok := m.clearedFields[request.FieldMetricsLatencyMs]
+	return ok
+}
+
+// ResetMetricsLatencyMs resets all changes to the "metrics_latency_ms" field.
+func (m *RequestMutation) ResetMetricsLatencyMs() {
+	m.metrics_latency_ms = nil
+	m.addmetrics_latency_ms = nil
+	delete(m.clearedFields, request.FieldMetricsLatencyMs)
+}
+
+// SetMetricsFirstTokenLatencyMs sets the "metrics_first_token_latency_ms" field.
+func (m *RequestMutation) SetMetricsFirstTokenLatencyMs(i int64) {
+	m.metrics_first_token_latency_ms = &i
+	m.addmetrics_first_token_latency_ms = nil
+}
+
+// MetricsFirstTokenLatencyMs returns the value of the "metrics_first_token_latency_ms" field in the mutation.
+func (m *RequestMutation) MetricsFirstTokenLatencyMs() (r int64, exists bool) {
+	v := m.metrics_first_token_latency_ms
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMetricsFirstTokenLatencyMs returns the old "metrics_first_token_latency_ms" field's value of the Request entity.
+// If the Request object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestMutation) OldMetricsFirstTokenLatencyMs(ctx context.Context) (v *int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMetricsFirstTokenLatencyMs is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMetricsFirstTokenLatencyMs requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMetricsFirstTokenLatencyMs: %w", err)
+	}
+	return oldValue.MetricsFirstTokenLatencyMs, nil
+}
+
+// AddMetricsFirstTokenLatencyMs adds i to the "metrics_first_token_latency_ms" field.
+func (m *RequestMutation) AddMetricsFirstTokenLatencyMs(i int64) {
+	if m.addmetrics_first_token_latency_ms != nil {
+		*m.addmetrics_first_token_latency_ms += i
+	} else {
+		m.addmetrics_first_token_latency_ms = &i
+	}
+}
+
+// AddedMetricsFirstTokenLatencyMs returns the value that was added to the "metrics_first_token_latency_ms" field in this mutation.
+func (m *RequestMutation) AddedMetricsFirstTokenLatencyMs() (r int64, exists bool) {
+	v := m.addmetrics_first_token_latency_ms
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearMetricsFirstTokenLatencyMs clears the value of the "metrics_first_token_latency_ms" field.
+func (m *RequestMutation) ClearMetricsFirstTokenLatencyMs() {
+	m.metrics_first_token_latency_ms = nil
+	m.addmetrics_first_token_latency_ms = nil
+	m.clearedFields[request.FieldMetricsFirstTokenLatencyMs] = struct{}{}
+}
+
+// MetricsFirstTokenLatencyMsCleared returns if the "metrics_first_token_latency_ms" field was cleared in this mutation.
+func (m *RequestMutation) MetricsFirstTokenLatencyMsCleared() bool {
+	_, ok := m.clearedFields[request.FieldMetricsFirstTokenLatencyMs]
+	return ok
+}
+
+// ResetMetricsFirstTokenLatencyMs resets all changes to the "metrics_first_token_latency_ms" field.
+func (m *RequestMutation) ResetMetricsFirstTokenLatencyMs() {
+	m.metrics_first_token_latency_ms = nil
+	m.addmetrics_first_token_latency_ms = nil
+	delete(m.clearedFields, request.FieldMetricsFirstTokenLatencyMs)
+}
+
 // ClearAPIKey clears the "api_key" edge to the APIKey entity.
 func (m *RequestMutation) ClearAPIKey() {
 	m.clearedapi_key = true
@@ -9161,7 +9305,7 @@ func (m *RequestMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestMutation) Fields() []string {
-	fields := make([]string, 0, 16)
+	fields := make([]string, 0, 18)
 	if m.created_at != nil {
 		fields = append(fields, request.FieldCreatedAt)
 	}
@@ -9210,6 +9354,12 @@ func (m *RequestMutation) Fields() []string {
 	if m.stream != nil {
 		fields = append(fields, request.FieldStream)
 	}
+	if m.metrics_latency_ms != nil {
+		fields = append(fields, request.FieldMetricsLatencyMs)
+	}
+	if m.metrics_first_token_latency_ms != nil {
+		fields = append(fields, request.FieldMetricsFirstTokenLatencyMs)
+	}
 	return fields
 }
 
@@ -9250,6 +9400,10 @@ func (m *RequestMutation) Field(name string) (ent.Value, bool) {
 		return m.Status()
 	case request.FieldStream:
 		return m.Stream()
+	case request.FieldMetricsLatencyMs:
+		return m.MetricsLatencyMs()
+	case request.FieldMetricsFirstTokenLatencyMs:
+		return m.MetricsFirstTokenLatencyMs()
 	}
 	return nil, false
 }
@@ -9291,6 +9445,10 @@ func (m *RequestMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldStatus(ctx)
 	case request.FieldStream:
 		return m.OldStream(ctx)
+	case request.FieldMetricsLatencyMs:
+		return m.OldMetricsLatencyMs(ctx)
+	case request.FieldMetricsFirstTokenLatencyMs:
+		return m.OldMetricsFirstTokenLatencyMs(ctx)
 	}
 	return nil, fmt.Errorf("unknown Request field %s", name)
 }
@@ -9412,6 +9570,20 @@ func (m *RequestMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetStream(v)
 		return nil
+	case request.FieldMetricsLatencyMs:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMetricsLatencyMs(v)
+		return nil
+	case request.FieldMetricsFirstTokenLatencyMs:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMetricsFirstTokenLatencyMs(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Request field %s", name)
 }
@@ -9420,6 +9592,12 @@ func (m *RequestMutation) SetField(name string, value ent.Value) error {
 // this mutation.
 func (m *RequestMutation) AddedFields() []string {
 	var fields []string
+	if m.addmetrics_latency_ms != nil {
+		fields = append(fields, request.FieldMetricsLatencyMs)
+	}
+	if m.addmetrics_first_token_latency_ms != nil {
+		fields = append(fields, request.FieldMetricsFirstTokenLatencyMs)
+	}
 	return fields
 }
 
@@ -9428,6 +9606,10 @@ func (m *RequestMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *RequestMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
+	case request.FieldMetricsLatencyMs:
+		return m.AddedMetricsLatencyMs()
+	case request.FieldMetricsFirstTokenLatencyMs:
+		return m.AddedMetricsFirstTokenLatencyMs()
 	}
 	return nil, false
 }
@@ -9437,6 +9619,20 @@ func (m *RequestMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *RequestMutation) AddField(name string, value ent.Value) error {
 	switch name {
+	case request.FieldMetricsLatencyMs:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddMetricsLatencyMs(v)
+		return nil
+	case request.FieldMetricsFirstTokenLatencyMs:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddMetricsFirstTokenLatencyMs(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Request numeric field %s", name)
 }
@@ -9465,6 +9661,12 @@ func (m *RequestMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(request.FieldExternalID) {
 		fields = append(fields, request.FieldExternalID)
+	}
+	if m.FieldCleared(request.FieldMetricsLatencyMs) {
+		fields = append(fields, request.FieldMetricsLatencyMs)
+	}
+	if m.FieldCleared(request.FieldMetricsFirstTokenLatencyMs) {
+		fields = append(fields, request.FieldMetricsFirstTokenLatencyMs)
 	}
 	return fields
 }
@@ -9500,6 +9702,12 @@ func (m *RequestMutation) ClearField(name string) error {
 		return nil
 	case request.FieldExternalID:
 		m.ClearExternalID()
+		return nil
+	case request.FieldMetricsLatencyMs:
+		m.ClearMetricsLatencyMs()
+		return nil
+	case request.FieldMetricsFirstTokenLatencyMs:
+		m.ClearMetricsFirstTokenLatencyMs()
 		return nil
 	}
 	return fmt.Errorf("unknown Request nullable field %s", name)
@@ -9556,6 +9764,12 @@ func (m *RequestMutation) ResetField(name string) error {
 		return nil
 	case request.FieldStream:
 		m.ResetStream()
+		return nil
+	case request.FieldMetricsLatencyMs:
+		m.ResetMetricsLatencyMs()
+		return nil
+	case request.FieldMetricsFirstTokenLatencyMs:
+		m.ResetMetricsFirstTokenLatencyMs()
 		return nil
 	}
 	return fmt.Errorf("unknown Request field %s", name)
@@ -9764,34 +9978,38 @@ func (m *RequestMutation) ResetEdge(name string) error {
 // RequestExecutionMutation represents an operation that mutates the RequestExecution nodes in the graph.
 type RequestExecutionMutation struct {
 	config
-	op                    Op
-	typ                   string
-	id                    *int
-	created_at            *time.Time
-	updated_at            *time.Time
-	project_id            *int
-	addproject_id         *int
-	external_id           *string
-	model_id              *string
-	format                *string
-	request_body          *objects.JSONRawMessage
-	appendrequest_body    objects.JSONRawMessage
-	response_body         *objects.JSONRawMessage
-	appendresponse_body   objects.JSONRawMessage
-	response_chunks       *[]objects.JSONRawMessage
-	appendresponse_chunks []objects.JSONRawMessage
-	error_message         *string
-	status                *requestexecution.Status
-	clearedFields         map[string]struct{}
-	request               *int
-	clearedrequest        bool
-	channel               *int
-	clearedchannel        bool
-	data_storage          *int
-	cleareddata_storage   bool
-	done                  bool
-	oldValue              func(context.Context) (*RequestExecution, error)
-	predicates            []predicate.RequestExecution
+	op                                Op
+	typ                               string
+	id                                *int
+	created_at                        *time.Time
+	updated_at                        *time.Time
+	project_id                        *int
+	addproject_id                     *int
+	external_id                       *string
+	model_id                          *string
+	format                            *string
+	request_body                      *objects.JSONRawMessage
+	appendrequest_body                objects.JSONRawMessage
+	response_body                     *objects.JSONRawMessage
+	appendresponse_body               objects.JSONRawMessage
+	response_chunks                   *[]objects.JSONRawMessage
+	appendresponse_chunks             []objects.JSONRawMessage
+	error_message                     *string
+	status                            *requestexecution.Status
+	metrics_latency_ms                *int64
+	addmetrics_latency_ms             *int64
+	metrics_first_token_latency_ms    *int64
+	addmetrics_first_token_latency_ms *int64
+	clearedFields                     map[string]struct{}
+	request                           *int
+	clearedrequest                    bool
+	channel                           *int
+	clearedchannel                    bool
+	data_storage                      *int
+	cleareddata_storage               bool
+	done                              bool
+	oldValue                          func(context.Context) (*RequestExecution, error)
+	predicates                        []predicate.RequestExecution
 }
 
 var _ ent.Mutation = (*RequestExecutionMutation)(nil)
@@ -10541,6 +10759,146 @@ func (m *RequestExecutionMutation) ResetStatus() {
 	m.status = nil
 }
 
+// SetMetricsLatencyMs sets the "metrics_latency_ms" field.
+func (m *RequestExecutionMutation) SetMetricsLatencyMs(i int64) {
+	m.metrics_latency_ms = &i
+	m.addmetrics_latency_ms = nil
+}
+
+// MetricsLatencyMs returns the value of the "metrics_latency_ms" field in the mutation.
+func (m *RequestExecutionMutation) MetricsLatencyMs() (r int64, exists bool) {
+	v := m.metrics_latency_ms
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMetricsLatencyMs returns the old "metrics_latency_ms" field's value of the RequestExecution entity.
+// If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestExecutionMutation) OldMetricsLatencyMs(ctx context.Context) (v *int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMetricsLatencyMs is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMetricsLatencyMs requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMetricsLatencyMs: %w", err)
+	}
+	return oldValue.MetricsLatencyMs, nil
+}
+
+// AddMetricsLatencyMs adds i to the "metrics_latency_ms" field.
+func (m *RequestExecutionMutation) AddMetricsLatencyMs(i int64) {
+	if m.addmetrics_latency_ms != nil {
+		*m.addmetrics_latency_ms += i
+	} else {
+		m.addmetrics_latency_ms = &i
+	}
+}
+
+// AddedMetricsLatencyMs returns the value that was added to the "metrics_latency_ms" field in this mutation.
+func (m *RequestExecutionMutation) AddedMetricsLatencyMs() (r int64, exists bool) {
+	v := m.addmetrics_latency_ms
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearMetricsLatencyMs clears the value of the "metrics_latency_ms" field.
+func (m *RequestExecutionMutation) ClearMetricsLatencyMs() {
+	m.metrics_latency_ms = nil
+	m.addmetrics_latency_ms = nil
+	m.clearedFields[requestexecution.FieldMetricsLatencyMs] = struct{}{}
+}
+
+// MetricsLatencyMsCleared returns if the "metrics_latency_ms" field was cleared in this mutation.
+func (m *RequestExecutionMutation) MetricsLatencyMsCleared() bool {
+	_, ok := m.clearedFields[requestexecution.FieldMetricsLatencyMs]
+	return ok
+}
+
+// ResetMetricsLatencyMs resets all changes to the "metrics_latency_ms" field.
+func (m *RequestExecutionMutation) ResetMetricsLatencyMs() {
+	m.metrics_latency_ms = nil
+	m.addmetrics_latency_ms = nil
+	delete(m.clearedFields, requestexecution.FieldMetricsLatencyMs)
+}
+
+// SetMetricsFirstTokenLatencyMs sets the "metrics_first_token_latency_ms" field.
+func (m *RequestExecutionMutation) SetMetricsFirstTokenLatencyMs(i int64) {
+	m.metrics_first_token_latency_ms = &i
+	m.addmetrics_first_token_latency_ms = nil
+}
+
+// MetricsFirstTokenLatencyMs returns the value of the "metrics_first_token_latency_ms" field in the mutation.
+func (m *RequestExecutionMutation) MetricsFirstTokenLatencyMs() (r int64, exists bool) {
+	v := m.metrics_first_token_latency_ms
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMetricsFirstTokenLatencyMs returns the old "metrics_first_token_latency_ms" field's value of the RequestExecution entity.
+// If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestExecutionMutation) OldMetricsFirstTokenLatencyMs(ctx context.Context) (v *int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMetricsFirstTokenLatencyMs is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMetricsFirstTokenLatencyMs requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMetricsFirstTokenLatencyMs: %w", err)
+	}
+	return oldValue.MetricsFirstTokenLatencyMs, nil
+}
+
+// AddMetricsFirstTokenLatencyMs adds i to the "metrics_first_token_latency_ms" field.
+func (m *RequestExecutionMutation) AddMetricsFirstTokenLatencyMs(i int64) {
+	if m.addmetrics_first_token_latency_ms != nil {
+		*m.addmetrics_first_token_latency_ms += i
+	} else {
+		m.addmetrics_first_token_latency_ms = &i
+	}
+}
+
+// AddedMetricsFirstTokenLatencyMs returns the value that was added to the "metrics_first_token_latency_ms" field in this mutation.
+func (m *RequestExecutionMutation) AddedMetricsFirstTokenLatencyMs() (r int64, exists bool) {
+	v := m.addmetrics_first_token_latency_ms
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearMetricsFirstTokenLatencyMs clears the value of the "metrics_first_token_latency_ms" field.
+func (m *RequestExecutionMutation) ClearMetricsFirstTokenLatencyMs() {
+	m.metrics_first_token_latency_ms = nil
+	m.addmetrics_first_token_latency_ms = nil
+	m.clearedFields[requestexecution.FieldMetricsFirstTokenLatencyMs] = struct{}{}
+}
+
+// MetricsFirstTokenLatencyMsCleared returns if the "metrics_first_token_latency_ms" field was cleared in this mutation.
+func (m *RequestExecutionMutation) MetricsFirstTokenLatencyMsCleared() bool {
+	_, ok := m.clearedFields[requestexecution.FieldMetricsFirstTokenLatencyMs]
+	return ok
+}
+
+// ResetMetricsFirstTokenLatencyMs resets all changes to the "metrics_first_token_latency_ms" field.
+func (m *RequestExecutionMutation) ResetMetricsFirstTokenLatencyMs() {
+	m.metrics_first_token_latency_ms = nil
+	m.addmetrics_first_token_latency_ms = nil
+	delete(m.clearedFields, requestexecution.FieldMetricsFirstTokenLatencyMs)
+}
+
 // ClearRequest clears the "request" edge to the Request entity.
 func (m *RequestExecutionMutation) ClearRequest() {
 	m.clearedrequest = true
@@ -10656,7 +11014,7 @@ func (m *RequestExecutionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestExecutionMutation) Fields() []string {
-	fields := make([]string, 0, 14)
+	fields := make([]string, 0, 16)
 	if m.created_at != nil {
 		fields = append(fields, requestexecution.FieldCreatedAt)
 	}
@@ -10699,6 +11057,12 @@ func (m *RequestExecutionMutation) Fields() []string {
 	if m.status != nil {
 		fields = append(fields, requestexecution.FieldStatus)
 	}
+	if m.metrics_latency_ms != nil {
+		fields = append(fields, requestexecution.FieldMetricsLatencyMs)
+	}
+	if m.metrics_first_token_latency_ms != nil {
+		fields = append(fields, requestexecution.FieldMetricsFirstTokenLatencyMs)
+	}
 	return fields
 }
 
@@ -10735,6 +11099,10 @@ func (m *RequestExecutionMutation) Field(name string) (ent.Value, bool) {
 		return m.ErrorMessage()
 	case requestexecution.FieldStatus:
 		return m.Status()
+	case requestexecution.FieldMetricsLatencyMs:
+		return m.MetricsLatencyMs()
+	case requestexecution.FieldMetricsFirstTokenLatencyMs:
+		return m.MetricsFirstTokenLatencyMs()
 	}
 	return nil, false
 }
@@ -10772,6 +11140,10 @@ func (m *RequestExecutionMutation) OldField(ctx context.Context, name string) (e
 		return m.OldErrorMessage(ctx)
 	case requestexecution.FieldStatus:
 		return m.OldStatus(ctx)
+	case requestexecution.FieldMetricsLatencyMs:
+		return m.OldMetricsLatencyMs(ctx)
+	case requestexecution.FieldMetricsFirstTokenLatencyMs:
+		return m.OldMetricsFirstTokenLatencyMs(ctx)
 	}
 	return nil, fmt.Errorf("unknown RequestExecution field %s", name)
 }
@@ -10879,6 +11251,20 @@ func (m *RequestExecutionMutation) SetField(name string, value ent.Value) error 
 		}
 		m.SetStatus(v)
 		return nil
+	case requestexecution.FieldMetricsLatencyMs:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMetricsLatencyMs(v)
+		return nil
+	case requestexecution.FieldMetricsFirstTokenLatencyMs:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMetricsFirstTokenLatencyMs(v)
+		return nil
 	}
 	return fmt.Errorf("unknown RequestExecution field %s", name)
 }
@@ -10890,6 +11276,12 @@ func (m *RequestExecutionMutation) AddedFields() []string {
 	if m.addproject_id != nil {
 		fields = append(fields, requestexecution.FieldProjectID)
 	}
+	if m.addmetrics_latency_ms != nil {
+		fields = append(fields, requestexecution.FieldMetricsLatencyMs)
+	}
+	if m.addmetrics_first_token_latency_ms != nil {
+		fields = append(fields, requestexecution.FieldMetricsFirstTokenLatencyMs)
+	}
 	return fields
 }
 
@@ -10900,6 +11292,10 @@ func (m *RequestExecutionMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
 	case requestexecution.FieldProjectID:
 		return m.AddedProjectID()
+	case requestexecution.FieldMetricsLatencyMs:
+		return m.AddedMetricsLatencyMs()
+	case requestexecution.FieldMetricsFirstTokenLatencyMs:
+		return m.AddedMetricsFirstTokenLatencyMs()
 	}
 	return nil, false
 }
@@ -10915,6 +11311,20 @@ func (m *RequestExecutionMutation) AddField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddProjectID(v)
+		return nil
+	case requestexecution.FieldMetricsLatencyMs:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddMetricsLatencyMs(v)
+		return nil
+	case requestexecution.FieldMetricsFirstTokenLatencyMs:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddMetricsFirstTokenLatencyMs(v)
 		return nil
 	}
 	return fmt.Errorf("unknown RequestExecution numeric field %s", name)
@@ -10941,6 +11351,12 @@ func (m *RequestExecutionMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(requestexecution.FieldErrorMessage) {
 		fields = append(fields, requestexecution.FieldErrorMessage)
+	}
+	if m.FieldCleared(requestexecution.FieldMetricsLatencyMs) {
+		fields = append(fields, requestexecution.FieldMetricsLatencyMs)
+	}
+	if m.FieldCleared(requestexecution.FieldMetricsFirstTokenLatencyMs) {
+		fields = append(fields, requestexecution.FieldMetricsFirstTokenLatencyMs)
 	}
 	return fields
 }
@@ -10973,6 +11389,12 @@ func (m *RequestExecutionMutation) ClearField(name string) error {
 		return nil
 	case requestexecution.FieldErrorMessage:
 		m.ClearErrorMessage()
+		return nil
+	case requestexecution.FieldMetricsLatencyMs:
+		m.ClearMetricsLatencyMs()
+		return nil
+	case requestexecution.FieldMetricsFirstTokenLatencyMs:
+		m.ClearMetricsFirstTokenLatencyMs()
 		return nil
 	}
 	return fmt.Errorf("unknown RequestExecution nullable field %s", name)
@@ -11023,6 +11445,12 @@ func (m *RequestExecutionMutation) ResetField(name string) error {
 		return nil
 	case requestexecution.FieldStatus:
 		m.ResetStatus()
+		return nil
+	case requestexecution.FieldMetricsLatencyMs:
+		m.ResetMetricsLatencyMs()
+		return nil
+	case requestexecution.FieldMetricsFirstTokenLatencyMs:
+		m.ResetMetricsFirstTokenLatencyMs()
 		return nil
 	}
 	return fmt.Errorf("unknown RequestExecution field %s", name)

@@ -3,34 +3,16 @@ import { apiKeySchema } from '@/features/apikeys/data/schema'
 import { channelSchema } from '@/features/channels/data'
 
 // Request Status
-export const requestStatusSchema = z.enum([
-  'pending',
-  'processing',
-  'completed',
-  'failed',
-  'canceled',
-])
+export const requestStatusSchema = z.enum(['pending', 'processing', 'completed', 'failed', 'canceled'])
 export type RequestStatus = z.infer<typeof requestStatusSchema>
 
 // Request Source
-export const requestSourceSchema = z.enum([
-  'api',
-  'playground',
-  'test',
-])
+export const requestSourceSchema = z.enum(['api', 'playground', 'test'])
 export type RequestSource = z.infer<typeof requestSourceSchema>
 
 // Request Execution Status
-export const requestExecutionStatusSchema = z.enum([
-  'pending',
-  'processing',
-  'completed',
-  'failed',
-  'canceled',
-])
-export type RequestExecutionStatus = z.infer<
-  typeof requestExecutionStatusSchema
->
+export const requestExecutionStatusSchema = z.enum(['pending', 'processing', 'completed', 'failed', 'canceled'])
+export type RequestExecutionStatus = z.infer<typeof requestExecutionStatusSchema>
 
 // Request Execution
 export const requestExecutionSchema = z.object({
@@ -47,6 +29,8 @@ export const requestExecutionSchema = z.object({
   responseChunks: z.array(z.any()).nullable(), // [JSONRawMessage!]
   errorMessage: z.string().nullable(),
   status: requestExecutionStatusSchema,
+  metricsLatencyMs: z.number().nullable().optional(),
+  metricsFirstTokenLatencyMs: z.number().nullable().optional(),
 })
 export type RequestExecution = z.infer<typeof requestExecutionSchema>
 
@@ -66,6 +50,8 @@ export const requestSchema = z.object({
   responseChunks: z.array(z.any()).nullable().optional(), // [JSONRawMessage!]
   status: requestStatusSchema,
   stream: z.boolean().nullable(),
+  metricsLatencyMs: z.number().nullable().optional(),
+  metricsFirstTokenLatencyMs: z.number().nullable().optional(),
   executions: z
     .object({
       edges: z.array(
@@ -121,6 +107,4 @@ export const requestExecutionConnectionSchema = z.object({
   }),
   totalCount: z.number(),
 })
-export type RequestExecutionConnection = z.infer<
-  typeof requestExecutionConnectionSchema
->
+export type RequestExecutionConnection = z.infer<typeof requestExecutionConnectionSchema>

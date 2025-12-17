@@ -415,20 +415,22 @@ func (c *ProjectUpdateOne) SetInput(i UpdateProjectInput) *ProjectUpdateOne {
 
 // CreateRequestInput represents a mutation input for creating requests.
 type CreateRequestInput struct {
-	Source         *request.Source
-	ModelID        string
-	Format         *string
-	RequestBody    objects.JSONRawMessage
-	ResponseBody   objects.JSONRawMessage
-	ResponseChunks []objects.JSONRawMessage
-	ExternalID     *string
-	Status         request.Status
-	Stream         *bool
-	APIKeyID       *int
-	ProjectID      int
-	TraceID        *int
-	DataStorageID  *int
-	ChannelID      *int
+	Source                     *request.Source
+	ModelID                    string
+	Format                     *string
+	RequestBody                objects.JSONRawMessage
+	ResponseBody               objects.JSONRawMessage
+	ResponseChunks             []objects.JSONRawMessage
+	ExternalID                 *string
+	Status                     request.Status
+	Stream                     *bool
+	MetricsLatencyMs           *int64
+	MetricsFirstTokenLatencyMs *int64
+	APIKeyID                   *int
+	ProjectID                  int
+	TraceID                    *int
+	DataStorageID              *int
+	ChannelID                  *int
 }
 
 // Mutate applies the CreateRequestInput on the RequestMutation builder.
@@ -456,6 +458,12 @@ func (i *CreateRequestInput) Mutate(m *RequestMutation) {
 	if v := i.Stream; v != nil {
 		m.SetStream(*v)
 	}
+	if v := i.MetricsLatencyMs; v != nil {
+		m.SetMetricsLatencyMs(*v)
+	}
+	if v := i.MetricsFirstTokenLatencyMs; v != nil {
+		m.SetMetricsFirstTokenLatencyMs(*v)
+	}
 	if v := i.APIKeyID; v != nil {
 		m.SetAPIKeyID(*v)
 	}
@@ -479,17 +487,21 @@ func (c *RequestCreate) SetInput(i CreateRequestInput) *RequestCreate {
 
 // UpdateRequestInput represents a mutation input for updating requests.
 type UpdateRequestInput struct {
-	ClearResponseBody    bool
-	ResponseBody         objects.JSONRawMessage
-	AppendResponseBody   objects.JSONRawMessage
-	ClearResponseChunks  bool
-	ResponseChunks       []objects.JSONRawMessage
-	AppendResponseChunks []objects.JSONRawMessage
-	ClearExternalID      bool
-	ExternalID           *string
-	Status               *request.Status
-	ClearChannel         bool
-	ChannelID            *int
+	ClearResponseBody               bool
+	ResponseBody                    objects.JSONRawMessage
+	AppendResponseBody              objects.JSONRawMessage
+	ClearResponseChunks             bool
+	ResponseChunks                  []objects.JSONRawMessage
+	AppendResponseChunks            []objects.JSONRawMessage
+	ClearExternalID                 bool
+	ExternalID                      *string
+	Status                          *request.Status
+	ClearMetricsLatencyMs           bool
+	MetricsLatencyMs                *int64
+	ClearMetricsFirstTokenLatencyMs bool
+	MetricsFirstTokenLatencyMs      *int64
+	ClearChannel                    bool
+	ChannelID                       *int
 }
 
 // Mutate applies the UpdateRequestInput on the RequestMutation builder.
@@ -520,6 +532,18 @@ func (i *UpdateRequestInput) Mutate(m *RequestMutation) {
 	}
 	if v := i.Status; v != nil {
 		m.SetStatus(*v)
+	}
+	if i.ClearMetricsLatencyMs {
+		m.ClearMetricsLatencyMs()
+	}
+	if v := i.MetricsLatencyMs; v != nil {
+		m.SetMetricsLatencyMs(*v)
+	}
+	if i.ClearMetricsFirstTokenLatencyMs {
+		m.ClearMetricsFirstTokenLatencyMs()
+	}
+	if v := i.MetricsFirstTokenLatencyMs; v != nil {
+		m.SetMetricsFirstTokenLatencyMs(*v)
 	}
 	if i.ClearChannel {
 		m.ClearChannel()
