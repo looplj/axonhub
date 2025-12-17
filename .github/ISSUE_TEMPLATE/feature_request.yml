@@ -1,71 +1,74 @@
-name: Feature Request
-description: Suggest a new feature or enhancement
-title: "[Feature]: "
+name: Feature Request / 功能请求
+description: Suggest a new feature or enhancement / 提出新功能或改进建议
+title: "[Feature/功能]: "
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
         Thanks for suggesting a feature!
+        感谢你提出功能建议！
+
         Please search existing issues before submitting to avoid duplicates.
+        提交前请先搜索现有 issues，避免重复。
 
   - type: checkboxes
     id: checklist
     attributes:
-      label: Pre-submission Checklist
-      description: Please confirm the following before submitting
+      label: Pre-submission Checklist / 提交前检查
+      description: Please confirm the following before submitting / 提交前请确认以下内容
       options:
-        - label: I have searched the [existing issues](https://github.com/looplj/axonhub/issues) and this feature has not been requested
+        - label: I have searched the [existing issues](https://github.com/looplj/axonhub/issues) and this feature has not been requested / 我已搜索现有 issues，此功能尚未被提出
           required: true
-        - label: I have read the [documentation](https://github.com/looplj/axonhub#readme)
+        - label: I have read the [documentation](https://github.com/looplj/axonhub#readme) / 我已阅读文档
           required: true
 
   - type: textarea
     id: problem
     attributes:
-      label: Problem Statement
-      description: Is your feature request related to a problem? Please describe.
-      placeholder: A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+      label: Problem Statement / 问题描述
+      description: Is your feature request related to a problem? Please describe. / 你的功能请求是否与某个问题相关？请描述。
+      placeholder: A clear and concise description of what the problem is. Ex. I'm always frustrated when [...] / 清晰简洁地描述问题。例如：当 [...] 时我总是很困扰
     validations:
       required: true
 
   - type: textarea
     id: solution
     attributes:
-      label: Proposed Solution
-      description: Describe the solution you'd like
-      placeholder: A clear and concise description of what you want to happen.
+      label: Proposed Solution / 期望方案
+      description: Describe the solution you'd like / 描述你希望的解决方案
+      placeholder: A clear and concise description of what you want to happen. / 清晰简洁地描述你希望实现的效果。
     validations:
       required: true
 
   - type: textarea
     id: alternatives
     attributes:
-      label: Alternatives Considered
-      description: Describe any alternative solutions or features you've considered
-      placeholder: List any alternative approaches...
+      label: Alternatives Considered / 备选方案
+      description: Describe any alternative solutions or features you've considered / 描述你考虑过的其他替代方案或功能
+      placeholder: List any alternative approaches... / 列出其他替代思路...
 
   - type: dropdown
     id: category
     attributes:
-      label: Feature Category
-      description: What area does this feature relate to?
+      label: Feature Category / 功能分类
+      description: What area does this feature relate to? / 该功能属于哪个方向？
       options:
-        - API Compatibility
-        - Channel Management
-        - Load Balancing / Failover
-        - Authentication / Security
-        - Monitoring / Logging
-        - UI / Dashboard
-        - Configuration
-        - Documentation
-        - Performance
-        - Other
+        - API Compatibility / API 兼容性
+        - Channel Management / 通道管理
+        - Load Balancing / Failover / 负载均衡 / 故障切换
+        - Authentication / Security / 认证 / 安全
+        - Monitoring / Logging / 监控 / 日志
+        - UI / Dashboard / UI / 控制台
+        - Configuration / 配置
+        - Documentation / 文档
+        - Performance / 性能
+        - Other / 其他
     validations:
       required: true
 
   - type: textarea
     id: additional
     attributes:
-      label: Additional Context
-      description: Add any other context, mockups, or screenshots about the feature request here
+      label: Additional Context / 其他补充信息
+      description: Add any other context, mockups, or screenshots about the feature request here / 在此补充其他上下文、原型图或截图
