@@ -1,41 +1,44 @@
-name: Bug Report
-description: Report a bug or unexpected behavior
-title: "[Bug]: "
+name: Bug Report / Bug 报告
+description: Report a bug or unexpected behavior / 报告一个 Bug 或非预期行为
+title: "[Bug/错误]: "
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
         Thanks for taking the time to fill out this bug report!
+        感谢你抽出时间填写此 Bug 报告！
+
         Please search existing issues before submitting to avoid duplicates.
+        提交前请先搜索现有 issues，避免重复。
 
   - type: checkboxes
     id: checklist
     attributes:
-      label: Pre-submission Checklist
-      description: Please confirm the following before submitting
+      label: Pre-submission Checklist / 提交前检查
+      description: Please confirm the following before submitting / 提交前请确认以下内容
       options:
-        - label: I have searched the [existing issues](https://github.com/looplj/axonhub/issues) and this bug has not been reported
+        - label: I have searched the [existing issues](https://github.com/looplj/axonhub/issues) and this bug has not been reported / 我已搜索现有 issues，此 Bug 尚未被报告
           required: true
-        - label: I have read the [documentation](https://github.com/looplj/axonhub#readme)
+        - label: I have read the [documentation](https://github.com/looplj/axonhub#readme) / 我已阅读文档
           required: true
-        - label: I am using the latest version of AxonHub
+        - label: I am using the latest version of AxonHub / 我正在使用 AxonHub 的最新版本
           required: true
 
   - type: textarea
     id: description
     attributes:
-      label: Bug Description
-      description: A clear and concise description of what the bug is
-      placeholder: Describe the bug...
+      label: Bug Description / Bug 描述
+      description: A clear and concise description of what the bug is / 清晰简洁地描述这个 Bug
+      placeholder: Describe the bug... / 描述 Bug...
     validations:
       required: true
 
   - type: textarea
     id: steps
     attributes:
-      label: Steps to Reproduce
-      description: Steps to reproduce the behavior
+      label: Steps to Reproduce / 复现步骤
+      description: Steps to reproduce the behavior / 复现该问题的步骤
       placeholder: |
         1. Go to '...'
         2. Click on '...'
@@ -46,71 +49,102 @@ body:
   - type: textarea
     id: expected
     attributes:
-      label: Expected Behavior
-      description: What you expected to happen
-      placeholder: Describe what you expected...
+      label: Expected Behavior / 期望行为
+      description: What you expected to happen / 你期望发生什么
+      placeholder: Describe what you expected... / 描述期望行为...
     validations:
       required: true
 
   - type: textarea
     id: actual
     attributes:
-      label: Actual Behavior
-      description: What actually happened
-      placeholder: Describe what actually happened...
+      label: Actual Behavior / 实际行为
+      description: What actually happened / 实际发生了什么
+      placeholder: Describe what actually happened... / 描述实际行为...
     validations:
       required: true
 
   - type: dropdown
     id: os
     attributes:
-      label: Operating System
-      description: What operating system are you using?
+      label: Operating System / 操作系统
+      description: What operating system are you using? / 你使用的是什么操作系统？
       options:
-        - Linux (Ubuntu/Debian)
-        - Linux (CentOS/RHEL)
-        - Linux (Other)
-        - macOS
-        - Windows
-        - Docker
-        - Other
+        - Linux (Ubuntu/Debian) / Linux（Ubuntu/Debian）
+        - Linux (CentOS/RHEL) / Linux（CentOS/RHEL）
+        - Linux (Other) / Linux（其他）
+        - macOS / macOS
+        - Windows / Windows
+        - Docker / Docker
+        - Other / 其他
     validations:
       required: true
 
   - type: input
     id: axonhub-version
     attributes:
-      label: AxonHub Version
-      description: What version of AxonHub are you running?
-      placeholder: e.g., v1.0.0
+      label: AxonHub Version / AxonHub 版本
+      description: What version of AxonHub are you running? / 你正在运行的 AxonHub 版本是？
+      placeholder: e.g., v1.0.0 / 例如：v1.0.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: usage-scenario
+    attributes:
+      label: Usage Scenario / 使用场景
+      description: How are you using AxonHub when the issue occurs? / 问题发生时你如何使用 AxonHub？
+      options:
+        - Claude Code
+        - Codex
+        - Cherry Studio 
+        - Deepchat
+        - Lobechat
+        - API 
+        - Other / 其他
+    validations:
+      required: true
+
+  - type: dropdown
+    id: api-format
+    attributes:
+      label: API Format / API 格式
+      description: Which API format/endpoint are you using? (if applicable) / 你使用的是哪种 API 格式或接口？（如适用）
+      multiple: true
+      options:
+        - N/A / 不适用
+        - OpenAI - Chat Completions (/v1/chat/completions) / OpenAI 聊天补全
+        - OpenAI - Responses (/v1/responses) / OpenAI Responses
+        - Anthropic - Messages (/v1/messages) / Anthropic Messages
+        - Google Gemini - GenerateContent / Google Gemini GenerateContent
     validations:
       required: true
 
   - type: dropdown
     id: channel-type
     attributes:
-      label: Channel Type
-      description: Which channel type is affected? (if applicable)
+      label: Channel Type / 通道类型
+      description: Which channel type is affected? (if applicable) / 受影响的通道类型是？（如适用）
       options:
-        - N/A
-        - OpenAI
-        - Anthropic
-        - Google Gemini
-        - DeepSeek
-        - Custom/Other
+        - N/A / 不适用
+        - OpenAI / OpenAI
+        - Anthropic / Anthropic
+        - Google Gemini / Google Gemini
+        - DeepSeek / DeepSeek
+        - Custom/Other / 自定义/其他
     validations:
       required: true
 
   - type: textarea
     id: logs
     attributes:
-      label: Logs
-      description: Relevant log output (please remove sensitive information)
-      placeholder: Paste logs here...
+      label: Logs / 日志
+      description: Relevant log output (please remove sensitive information) / 相关日志输出（请移除敏感信息）
+      placeholder: Paste logs here... / 在此粘贴日志...
       render: shell
 
   - type: textarea
     id: additional
     attributes:
-      label: Additional Context
-      description: Add any other context, screenshots, or information about the problem here
+      label: Additional Context / 其他补充信息
+      description: Add any other context, screenshots, or information about the problem here / 在此补充其他上下文、截图或更多信息
