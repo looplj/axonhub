@@ -54,8 +54,9 @@ type responsesInboundStream struct {
 	currentItemID  string
 
 	// Content accumulation for items (used for emitting done events)
-	accumulatedText      strings.Builder
-	accumulatedReasoning strings.Builder
+	accumulatedText               strings.Builder
+	accumulatedReasoning          strings.Builder
+	accumulatedReasoningSignature strings.Builder
 
 	// Tool call tracking
 	toolCalls           map[int]*llm.ToolCall
@@ -200,6 +201,11 @@ func (s *responsesInboundStream) Next() bool {
 			}
 		}
 
+		// Handle reasoning signature delta
+		if choice.Delta != nil && choice.Delta.ReasoningSignature != nil && *choice.Delta.ReasoningSignature != "" {
+			s.accumulatedReasoningSignature.WriteString(*choice.Delta.ReasoningSignature)
+		}
+
 		// Handle text content delta
 		if choice.Delta != nil && choice.Delta.Content.Content != nil && *choice.Delta.Content.Content != "" {
 			if err := s.handleTextContent(choice.Delta.Content.Content); err != nil {
@@ -285,14 +291,6 @@ func (s *responsesInboundStream) handleReasoningContent(content *string) error {
 			return fmt.Errorf("failed to enqueue output_item.added event: %w", err)
 		}
 
-		// Emit reasoning_summary_part.added
-		summaryPart := map[string]any{
-			"type": "summary_text",
-			"text": "",
-		}
-
-		var partAny any = summaryPart
-
 		err = s.enqueueEvent(&StreamEvent{
 			Type:         StreamEventTypeReasoningSummaryPartAdded,
 			ItemID:       &s.currentItemID,
@@ -303,8 +301,6 @@ func (s *responsesInboundStream) handleReasoningContent(content *string) error {
 		if err != nil {
 			return fmt.Errorf("failed to enqueue reasoning_summary_part.added event: %w", err)
 		}
-
-		_ = partAny // suppress unused warning
 	}
 
 	// Accumulate reasoning content
@@ -519,13 +515,21 @@ func (s *responsesInboundStream) closeReasoningItem() error {
 		ItemID:       &s.currentItemID,
 		OutputIndex:  s.outputIndex,
 		SummaryIndex: lo.ToPtr(0),
-		Part:         &StreamEventContentPart{Type: "summary_text", Text: &fullReasoning},
+		Part: &StreamEventContentPart{
+			Type: "summary_text",
+			Text: &fullReasoning,
+		},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to enqueue reasoning_summary_part.done event: %w", err)
 	}
 
 	// Emit output_item.done with complete reasoning item
+	var encryptedContent *string
+	if s.accumulatedReasoningSignature.Len() > 0 {
+		encryptedContent = lo.ToPtr(s.accumulatedReasoningSignature.String())
+	}
+
 	item := Item{
 		ID:   s.currentItemID,
 		Type: "reasoning",
@@ -533,6 +537,7 @@ func (s *responsesInboundStream) closeReasoningItem() error {
 			Type: "summary_text",
 			Text: fullReasoning,
 		}},
+		EncryptedContent: encryptedContent,
 	}
 
 	err = s.enqueueEvent(&StreamEvent{
@@ -546,6 +551,7 @@ func (s *responsesInboundStream) closeReasoningItem() error {
 
 	s.outputIndex++
 	s.accumulatedReasoning.Reset()
+	s.accumulatedReasoningSignature.Reset()
 
 	return nil
 }

@@ -846,24 +846,45 @@ func TestConvertToMessageContent(t *testing.T) {
 }
 
 func TestConvertItemToMessage_Reasoning(t *testing.T) {
+	// convertItemToMessage returns nil for reasoning items since they are
+	// handled by convertReasoningWithFollowing in convertInputToMessages
+	item := &Item{
+		ID:   "reasoning_123",
+		Type: "reasoning",
+		Summary: []ReasoningSummary{
+			{Type: "summary_text", Text: "First, I need to analyze the problem."},
+		},
+	}
+
+	result, err := convertItemToMessage(item)
+	require.NoError(t, err)
+	require.Nil(t, result, "reasoning items should return nil from convertItemToMessage")
+}
+
+func TestConvertReasoningWithFollowing(t *testing.T) {
 	tests := []struct {
 		name     string
-		item     *Item
-		validate func(t *testing.T, result *llm.Message, err error)
+		items    []Item
+		startIdx int
+		validate func(t *testing.T, result *llm.Message, consumed int, err error)
 	}{
 		{
-			name: "reasoning item with summary",
-			item: &Item{
-				ID:   "reasoning_123",
-				Type: "reasoning",
-				Summary: []ReasoningSummary{
-					{Type: "summary_text", Text: "First, I need to analyze the problem."},
-					{Type: "summary_text", Text: " Then, I will solve it step by step."},
+			name: "reasoning item with summary only",
+			items: []Item{
+				{
+					ID:   "reasoning_123",
+					Type: "reasoning",
+					Summary: []ReasoningSummary{
+						{Type: "summary_text", Text: "First, I need to analyze the problem."},
+						{Type: "summary_text", Text: " Then, I will solve it step by step."},
+					},
 				},
 			},
-			validate: func(t *testing.T, result *llm.Message, err error) {
+			startIdx: 0,
+			validate: func(t *testing.T, result *llm.Message, consumed int, err error) {
 				require.NoError(t, err)
 				require.NotNil(t, result)
+				require.Equal(t, 1, consumed)
 				require.Equal(t, "assistant", result.Role)
 				require.NotNil(t, result.ReasoningContent)
 				require.Equal(t, "First, I need to analyze the problem. Then, I will solve it step by step.", *result.ReasoningContent)
@@ -871,17 +892,21 @@ func TestConvertItemToMessage_Reasoning(t *testing.T) {
 		},
 		{
 			name: "reasoning item with encrypted content",
-			item: &Item{
-				ID:   "reasoning_456",
-				Type: "reasoning",
-				Summary: []ReasoningSummary{
-					{Type: "summary_text", Text: "Reasoning summary"},
+			items: []Item{
+				{
+					ID:   "reasoning_456",
+					Type: "reasoning",
+					Summary: []ReasoningSummary{
+						{Type: "summary_text", Text: "Reasoning summary"},
+					},
+					EncryptedContent: lo.ToPtr("encrypted_data_here"),
 				},
-				EncryptedContent: lo.ToPtr("encrypted_data_here"),
 			},
-			validate: func(t *testing.T, result *llm.Message, err error) {
+			startIdx: 0,
+			validate: func(t *testing.T, result *llm.Message, consumed int, err error) {
 				require.NoError(t, err)
 				require.NotNil(t, result)
+				require.Equal(t, 1, consumed)
 				require.Equal(t, "assistant", result.Role)
 				require.NotNil(t, result.ReasoningContent)
 				require.Equal(t, "Reasoning summary", *result.ReasoningContent)
@@ -891,24 +916,138 @@ func TestConvertItemToMessage_Reasoning(t *testing.T) {
 		},
 		{
 			name: "reasoning item with empty summary",
-			item: &Item{
-				ID:      "reasoning_789",
-				Type:    "reasoning",
-				Summary: []ReasoningSummary{},
+			items: []Item{
+				{
+					ID:      "reasoning_789",
+					Type:    "reasoning",
+					Summary: []ReasoningSummary{},
+				},
 			},
-			validate: func(t *testing.T, result *llm.Message, err error) {
+			startIdx: 0,
+			validate: func(t *testing.T, result *llm.Message, consumed int, err error) {
 				require.NoError(t, err)
 				require.NotNil(t, result)
+				require.Equal(t, 1, consumed)
 				require.Equal(t, "assistant", result.Role)
 				require.Nil(t, result.ReasoningContent)
+			},
+		},
+		{
+			name: "reasoning merged with function_call",
+			items: []Item{
+				{
+					ID:   "reasoning_001",
+					Type: "reasoning",
+					Summary: []ReasoningSummary{
+						{Type: "summary_text", Text: "I need to call the function."},
+					},
+				},
+				{
+					Type:      "function_call",
+					CallID:    "call_123",
+					Name:      "get_weather",
+					Arguments: `{"location": "Tokyo"}`,
+				},
+			},
+			startIdx: 0,
+			validate: func(t *testing.T, result *llm.Message, consumed int, err error) {
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				require.Equal(t, 2, consumed)
+				require.Equal(t, "assistant", result.Role)
+				require.NotNil(t, result.ReasoningContent)
+				require.Equal(t, "I need to call the function.", *result.ReasoningContent)
+				require.Len(t, result.ToolCalls, 1)
+				require.Equal(t, "call_123", result.ToolCalls[0].ID)
+				require.Equal(t, "get_weather", result.ToolCalls[0].Function.Name)
+			},
+		},
+		{
+			name: "reasoning merged with assistant text message",
+			items: []Item{
+				{
+					ID:   "reasoning_002",
+					Type: "reasoning",
+					Summary: []ReasoningSummary{
+						{Type: "summary_text", Text: "Thinking about the answer."},
+					},
+				},
+				{
+					Type: "message",
+					Role: "assistant",
+					Text: lo.ToPtr("The answer is 42."),
+				},
+			},
+			startIdx: 0,
+			validate: func(t *testing.T, result *llm.Message, consumed int, err error) {
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				require.Equal(t, 2, consumed)
+				require.Equal(t, "assistant", result.Role)
+				require.NotNil(t, result.ReasoningContent)
+				require.Equal(t, "Thinking about the answer.", *result.ReasoningContent)
+				require.NotNil(t, result.Content.Content)
+				require.Equal(t, "The answer is 42.", *result.Content.Content)
+			},
+		},
+		{
+			name: "reasoning stops at user message",
+			items: []Item{
+				{
+					ID:   "reasoning_003",
+					Type: "reasoning",
+					Summary: []ReasoningSummary{
+						{Type: "summary_text", Text: "Thinking..."},
+					},
+				},
+				{
+					Type: "message",
+					Role: "user",
+					Text: lo.ToPtr("Next question"),
+				},
+			},
+			startIdx: 0,
+			validate: func(t *testing.T, result *llm.Message, consumed int, err error) {
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				require.Equal(t, 1, consumed)
+				require.Equal(t, "assistant", result.Role)
+				require.NotNil(t, result.ReasoningContent)
+				require.Equal(t, "Thinking...", *result.ReasoningContent)
+				require.Empty(t, result.ToolCalls)
+			},
+		},
+		{
+			name: "reasoning stops at function_call_output",
+			items: []Item{
+				{
+					ID:   "reasoning_004",
+					Type: "reasoning",
+					Summary: []ReasoningSummary{
+						{Type: "summary_text", Text: "Thinking..."},
+					},
+				},
+				{
+					Type:   "function_call_output",
+					CallID: "call_456",
+					Output: &Input{Text: lo.ToPtr("result")},
+				},
+			},
+			startIdx: 0,
+			validate: func(t *testing.T, result *llm.Message, consumed int, err error) {
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				require.Equal(t, 1, consumed)
+				require.Equal(t, "assistant", result.Role)
+				require.NotNil(t, result.ReasoningContent)
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := convertItemToMessage(tt.item)
-			tt.validate(t, result, err)
+			result, consumed, err := convertReasoningWithFollowing(tt.items, tt.startIdx)
+			tt.validate(t, result, consumed, err)
 		})
 	}
 }
@@ -923,7 +1062,7 @@ func TestInboundTransformer_TransformRequest_WithReasoningInput(t *testing.T) {
 		validate    func(t *testing.T, result *llm.Request)
 	}{
 		{
-			name: "request with reasoning input item",
+			name: "request with reasoning input item merged with assistant",
 			httpReq: &httpclient.Request{
 				Body: []byte(`{
 					"model": "o3",
@@ -951,20 +1090,19 @@ func TestInboundTransformer_TransformRequest_WithReasoningInput(t *testing.T) {
 			expectError: false,
 			validate: func(t *testing.T, result *llm.Request) {
 				require.Equal(t, "o3", result.Model)
-				require.Len(t, result.Messages, 3)
+				// Reasoning + assistant message are merged into one message
+				require.Len(t, result.Messages, 2)
 
 				// First message: user
 				require.Equal(t, "user", result.Messages[0].Role)
 				require.Equal(t, "What is 2+2?", *result.Messages[0].Content.Content)
 
-				// Second message: reasoning (converted to assistant with ReasoningContent)
+				// Second message: assistant with merged reasoning and text content
 				require.Equal(t, "assistant", result.Messages[1].Role)
 				require.NotNil(t, result.Messages[1].ReasoningContent)
 				require.Equal(t, "Let me think about this math problem.", *result.Messages[1].ReasoningContent)
-
-				// Third message: assistant
-				require.Equal(t, "assistant", result.Messages[2].Role)
-				require.Equal(t, "The answer is 4.", *result.Messages[2].Content.Content)
+				require.NotNil(t, result.Messages[1].Content.Content)
+				require.Equal(t, "The answer is 4.", *result.Messages[1].Content.Content)
 			},
 		},
 		{
