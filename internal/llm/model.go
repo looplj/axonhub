@@ -8,6 +8,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
@@ -228,6 +230,12 @@ func (r *Request) ClearHelpFields() {
 	}
 
 	r.ExtraBody = nil
+
+	// If tools are present, keep only function tools
+	tools := lo.Filter(r.Tools, func(tool Tool, _ int) bool {
+		return tool.Type == "function"
+	})
+	r.Tools = tools
 }
 
 func (r *Request) IsImageGenerationRequest() bool {

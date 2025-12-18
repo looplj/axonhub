@@ -1126,6 +1126,7 @@ func createGeminiTestChannels(t *testing.T, ctx context.Context, client *ent.Cli
 		SetStatus(channel.StatusEnabled).
 		Save(ctx)
 	require.NoError(t, err)
+
 	channels = append(channels, ch0)
 
 	// Channel 1: gemini_openai (OpenAI format, does NOT support Google native tools)
@@ -1139,6 +1140,7 @@ func createGeminiTestChannels(t *testing.T, ctx context.Context, client *ent.Cli
 		SetStatus(channel.StatusEnabled).
 		Save(ctx)
 	require.NoError(t, err)
+
 	channels = append(channels, ch1)
 
 	// Channel 2: gemini_vertex (Vertex AI, supports Google native tools)
@@ -1152,6 +1154,7 @@ func createGeminiTestChannels(t *testing.T, ctx context.Context, client *ent.Cli
 		SetStatus(channel.StatusEnabled).
 		Save(ctx)
 	require.NoError(t, err)
+
 	channels = append(channels, ch2)
 
 	return channels

@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/llm"
+	geminioai "github.com/looplj/axonhub/internal/llm/transformer/gemini/openai"
 	"github.com/looplj/axonhub/internal/llm/transformer/shared"
 	"github.com/looplj/axonhub/internal/pkg/xtest"
 )
@@ -150,6 +151,19 @@ func TestConvertGeminiToLLMRequest_Basic(t *testing.T) {
 			validate: func(t *testing.T, result *llm.Request) {
 				t.Helper()
 				require.Equal(t, "medium", result.ReasoningEffort)
+				require.NotEmpty(t, result.ExtraBody)
+
+				var extra geminioai.ExtraBody
+
+				err := json.Unmarshal(result.ExtraBody, &extra)
+				require.NoError(t, err)
+				require.NotNil(t, extra.Google)
+				require.NotNil(t, extra.Google.ThinkingConfig)
+				require.True(t, extra.Google.ThinkingConfig.IncludeThoughts)
+				require.Empty(t, extra.Google.ThinkingConfig.ThinkingLevel)
+				require.NotNil(t, extra.Google.ThinkingConfig.ThinkingBudget)
+				require.NotNil(t, extra.Google.ThinkingConfig.ThinkingBudget.IntValue)
+				require.Equal(t, 8192, *extra.Google.ThinkingConfig.ThinkingBudget.IntValue)
 			},
 		},
 		{
@@ -243,6 +257,106 @@ func TestConvertGeminiToLLMRequest_Basic(t *testing.T) {
 				require.Equal(t, "medium", result.ReasoningEffort)
 				require.NotNil(t, result.ReasoningBudget)
 				require.Equal(t, int64(5000), *result.ReasoningBudget)
+			},
+		},
+		{
+			name: "request with thinking level priority - high level",
+			input: &GenerateContentRequest{
+				Contents: []*Content{
+					{
+						Role: "user",
+						Parts: []*Part{
+							{Text: "Complex question"},
+						},
+					},
+				},
+				GenerationConfig: &GenerationConfig{
+					ThinkingConfig: &ThinkingConfig{
+						IncludeThoughts: true,
+						ThinkingLevel:   "high",
+						ThinkingBudget:  lo.ToPtr(int64(1024)), // Budget is low, but level should take priority
+					},
+				},
+			},
+			validate: func(t *testing.T, result *llm.Request) {
+				t.Helper()
+				require.Equal(t, "high", result.ReasoningEffort) // Should use level, not budget
+				require.NotNil(t, result.ReasoningBudget)
+				require.Equal(t, int64(1024), *result.ReasoningBudget) // Budget should be preserved
+				require.NotEmpty(t, result.ExtraBody)
+
+				var extra geminioai.ExtraBody
+
+				err := json.Unmarshal(result.ExtraBody, &extra)
+				require.NoError(t, err)
+				require.NotNil(t, extra.Google)
+				require.NotNil(t, extra.Google.ThinkingConfig)
+				require.True(t, extra.Google.ThinkingConfig.IncludeThoughts)
+				require.Equal(t, "high", extra.Google.ThinkingConfig.ThinkingLevel)
+				require.NotNil(t, extra.Google.ThinkingConfig.ThinkingBudget)
+				require.NotNil(t, extra.Google.ThinkingConfig.ThinkingBudget.IntValue)
+				require.Equal(t, 1024, *extra.Google.ThinkingConfig.ThinkingBudget.IntValue)
+			},
+		},
+		{
+			name: "request with thinking level priority - low level",
+			input: &GenerateContentRequest{
+				Contents: []*Content{
+					{
+						Role: "user",
+						Parts: []*Part{
+							{Text: "Simple question"},
+						},
+					},
+				},
+				GenerationConfig: &GenerationConfig{
+					ThinkingConfig: &ThinkingConfig{
+						IncludeThoughts: true,
+						ThinkingLevel:   "low",
+						ThinkingBudget:  lo.ToPtr(int64(32768)), // Budget is high, but level should take priority
+					},
+				},
+			},
+			validate: func(t *testing.T, result *llm.Request) {
+				t.Helper()
+				require.Equal(t, "low", result.ReasoningEffort) // Should use level, not budget
+				require.NotNil(t, result.ReasoningBudget)
+				require.Equal(t, int64(32768), *result.ReasoningBudget) // Budget should be preserved
+			},
+		},
+		{
+			name: "request with thinking level only - no budget",
+			input: &GenerateContentRequest{
+				Contents: []*Content{
+					{
+						Role: "user",
+						Parts: []*Part{
+							{Text: "Question"},
+						},
+					},
+				},
+				GenerationConfig: &GenerationConfig{
+					ThinkingConfig: &ThinkingConfig{
+						IncludeThoughts: true,
+						ThinkingLevel:   "high",
+					},
+				},
+			},
+			validate: func(t *testing.T, result *llm.Request) {
+				t.Helper()
+				require.Equal(t, "high", result.ReasoningEffort)
+				require.Nil(t, result.ReasoningBudget) // No budget provided
+				require.NotEmpty(t, result.ExtraBody)
+
+				var extra geminioai.ExtraBody
+
+				err := json.Unmarshal(result.ExtraBody, &extra)
+				require.NoError(t, err)
+				require.NotNil(t, extra.Google)
+				require.NotNil(t, extra.Google.ThinkingConfig)
+				require.True(t, extra.Google.ThinkingConfig.IncludeThoughts)
+				require.Equal(t, "high", extra.Google.ThinkingConfig.ThinkingLevel)
+				require.Nil(t, extra.Google.ThinkingConfig.ThinkingBudget)
 			},
 		},
 	}
@@ -1224,7 +1338,7 @@ func TestConvertGeminiToLLMRequest_Testdata(t *testing.T) {
 				require.NotNil(t, result.Messages[1].ReasoningContent)
 				require.Contains(t, *result.Messages[1].ReasoningContent, "25 * 47")
 				require.Equal(t, "user", result.Messages[2].Role)
-				require.Equal(t, "medium", result.ReasoningEffort)
+				require.Equal(t, "high", result.ReasoningEffort) // ThinkingLevel "high" takes priority
 			},
 		},
 		{

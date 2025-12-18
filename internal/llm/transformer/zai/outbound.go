@@ -95,6 +95,8 @@ func (t *OutboundTransformer) TransformRequest(
 		return t.buildImageGenerationAPIRequest(chatReq)
 	}
 
+	chatReq.ClearHelpFields()
+
 	// Create Zai-specific request by removing Metadata and adding request_id/user_id
 	zaiReq := Request{
 		Request:   *chatReq,

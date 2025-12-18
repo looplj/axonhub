@@ -229,7 +229,8 @@ func TestConvertLLMToGeminiRequest_Basic(t *testing.T) {
 				require.NotNil(t, result.GenerationConfig)
 				require.NotNil(t, result.GenerationConfig.ThinkingConfig)
 				require.True(t, result.GenerationConfig.ThinkingConfig.IncludeThoughts)
-				require.Equal(t, int64(1024), *result.GenerationConfig.ThinkingConfig.ThinkingBudget)
+				require.Equal(t, "low", result.GenerationConfig.ThinkingConfig.ThinkingLevel)
+				require.Nil(t, result.GenerationConfig.ThinkingConfig.ThinkingBudget)
 			},
 		},
 		{
@@ -250,7 +251,8 @@ func TestConvertLLMToGeminiRequest_Basic(t *testing.T) {
 				require.NotNil(t, result.GenerationConfig)
 				require.NotNil(t, result.GenerationConfig.ThinkingConfig)
 				require.True(t, result.GenerationConfig.ThinkingConfig.IncludeThoughts)
-				require.Equal(t, int64(8192), *result.GenerationConfig.ThinkingConfig.ThinkingBudget)
+				require.Equal(t, "medium", result.GenerationConfig.ThinkingConfig.ThinkingLevel)
+				require.Nil(t, result.GenerationConfig.ThinkingConfig.ThinkingBudget)
 			},
 		},
 		{
@@ -271,7 +273,8 @@ func TestConvertLLMToGeminiRequest_Basic(t *testing.T) {
 				require.NotNil(t, result.GenerationConfig)
 				require.NotNil(t, result.GenerationConfig.ThinkingConfig)
 				require.True(t, result.GenerationConfig.ThinkingConfig.IncludeThoughts)
-				require.Equal(t, int64(24576), *result.GenerationConfig.ThinkingConfig.ThinkingBudget)
+				require.Equal(t, "high", result.GenerationConfig.ThinkingConfig.ThinkingLevel)
+				require.Nil(t, result.GenerationConfig.ThinkingConfig.ThinkingBudget)
 			},
 		},
 		{
@@ -317,6 +320,157 @@ func TestConvertLLMToGeminiRequest_Basic(t *testing.T) {
 				require.True(t, result.GenerationConfig.ThinkingConfig.IncludeThoughts)
 				// Should be capped at 24576 (Gemini max)
 				require.Equal(t, int64(24576), *result.GenerationConfig.ThinkingConfig.ThinkingBudget)
+			},
+		},
+		{
+			name: "request with reasoning budget priority - budget exceeds max",
+			input: &llm.Request{
+				ReasoningBudget: lo.ToPtr(int64(50000)),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Test"),
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *GenerateContentRequest) {
+				t.Helper()
+				require.NotNil(t, result.GenerationConfig)
+				require.NotNil(t, result.GenerationConfig.ThinkingConfig)
+				require.Equal(t, int64(24576), *result.GenerationConfig.ThinkingConfig.ThinkingBudget)
+			},
+		},
+		{
+			name: "request with reasoning budget priority - budget overrides effort",
+			input: &llm.Request{
+				ReasoningEffort: "low",                  // Would map to 1024
+				ReasoningBudget: lo.ToPtr(int64(20000)), // Budget should take priority
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Complex task"),
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *GenerateContentRequest) {
+				t.Helper()
+				require.NotNil(t, result.GenerationConfig)
+				require.NotNil(t, result.GenerationConfig.ThinkingConfig)
+				require.Equal(t, int64(20000), *result.GenerationConfig.ThinkingConfig.ThinkingBudget)
+				require.True(t, result.GenerationConfig.ThinkingConfig.IncludeThoughts)
+			},
+		},
+		{
+			name: "request with reasoning budget only - no effort",
+			input: &llm.Request{
+				ReasoningBudget: lo.ToPtr(int64(15000)),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Task"),
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *GenerateContentRequest) {
+				t.Helper()
+				require.NotNil(t, result.GenerationConfig)
+				require.NotNil(t, result.GenerationConfig.ThinkingConfig)
+				require.Equal(t, int64(15000), *result.GenerationConfig.ThinkingConfig.ThinkingBudget)
+				require.True(t, result.GenerationConfig.ThinkingConfig.IncludeThoughts)
+			},
+		},
+		{
+			name: "request with reasoning effort only - no budget",
+			input: &llm.Request{
+				ReasoningEffort: "high",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Task"),
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *GenerateContentRequest) {
+				t.Helper()
+				require.NotNil(t, result.GenerationConfig)
+				require.NotNil(t, result.GenerationConfig.ThinkingConfig)
+				require.Equal(t, "high", result.GenerationConfig.ThinkingConfig.ThinkingLevel) // Should use ThinkingLevel for standard values
+				require.Nil(t, result.GenerationConfig.ThinkingConfig.ThinkingBudget)
+				require.True(t, result.GenerationConfig.ThinkingConfig.IncludeThoughts)
+			},
+		},
+		{
+			name: "request with ExtraBody ThinkingLevel priority",
+			input: &llm.Request{
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Test"),
+						},
+					},
+				},
+				ExtraBody: json.RawMessage(`{"google":{"thinking_config":{"thinking_level":"high","thinking_budget":1024,"include_thoughts":true}}}`),
+			},
+			validate: func(t *testing.T, result *GenerateContentRequest) {
+				t.Helper()
+				require.NotNil(t, result.GenerationConfig)
+				require.NotNil(t, result.GenerationConfig.ThinkingConfig)
+				require.Equal(t, "high", result.GenerationConfig.ThinkingConfig.ThinkingLevel) // Level takes priority
+				require.Nil(t, result.GenerationConfig.ThinkingConfig.ThinkingBudget)          // Budget should not be set when level is present
+				require.True(t, result.GenerationConfig.ThinkingConfig.IncludeThoughts)
+			},
+		},
+		{
+			name: "request with ExtraBody minimal mapping to low",
+			input: &llm.Request{
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Test"),
+						},
+					},
+				},
+				ExtraBody: json.RawMessage(`{"google":{"thinking_config":{"thinking_level":"minimal","include_thoughts":true}}}`),
+			},
+			validate: func(t *testing.T, result *GenerateContentRequest) {
+				t.Helper()
+				require.NotNil(t, result.GenerationConfig)
+				require.NotNil(t, result.GenerationConfig.ThinkingConfig)
+				require.Equal(t, "low", result.GenerationConfig.ThinkingConfig.ThinkingLevel) // minimal maps to low
+				require.Nil(t, result.GenerationConfig.ThinkingConfig.ThinkingBudget)
+				require.True(t, result.GenerationConfig.ThinkingConfig.IncludeThoughts)
+			},
+		},
+		{
+			name: "request with ExtraBody string budget converts to level",
+			input: &llm.Request{
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Test"),
+						},
+					},
+				},
+				ExtraBody: json.RawMessage(`{"google":{"thinking_config":{"thinking_budget":"high","include_thoughts":true}}}`),
+			},
+			validate: func(t *testing.T, result *GenerateContentRequest) {
+				t.Helper()
+				require.NotNil(t, result.GenerationConfig)
+				require.NotNil(t, result.GenerationConfig.ThinkingConfig)
+				require.Equal(t, "high", result.GenerationConfig.ThinkingConfig.ThinkingLevel) // String budget converts to level
+				require.Nil(t, result.GenerationConfig.ThinkingConfig.ThinkingBudget)
+				require.True(t, result.GenerationConfig.ThinkingConfig.IncludeThoughts)
 			},
 		},
 	}

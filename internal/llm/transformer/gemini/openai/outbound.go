@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/looplj/axonhub/internal/llm"
@@ -148,42 +149,49 @@ func NewThinkingBudgetString(val string) *ThinkingBudget {
 	return &ThinkingBudget{StringValue: &val}
 }
 
-// reasoningEffortToThinkingConfig converts OpenAI's reasoning_effort to Gemini's thinking_config.
-// Mapping:
-// - "none" -> disable thinking (only for 2.5 models, not 2.5 Pro or 3 models)
-// - "minimal" or "low" -> thinking_level: "low" / thinking_budget: 1024
-// - "medium" -> thinking_level: "high" / thinking_budget: 8192
-// - "high" -> thinking_level: "high" / thinking_budget: 24576.
-func reasoningEffortToThinkingConfig(effort string) *ThinkingConfig {
-	switch strings.ToLower(effort) {
-	case "none":
-		// Disable thinking - use minimal budget
-		// Note: Reasoning cannot be turned off for Gemini 2.5 Pro or 3 models
-		return &ThinkingConfig{
-			ThinkingBudget: NewThinkingBudgetInt(0),
-		}
-	case "minimal", "low":
-		return &ThinkingConfig{
-			ThinkingLevel:   "low",
-			ThinkingBudget:  NewThinkingBudgetInt(1024),
-			IncludeThoughts: true,
-		}
-	case "medium":
-		return &ThinkingConfig{
-			ThinkingLevel:   "high",
-			ThinkingBudget:  NewThinkingBudgetInt(8192),
-			IncludeThoughts: true,
-		}
-	case "high":
-		return &ThinkingConfig{
-			ThinkingLevel:   "high",
-			ThinkingBudget:  NewThinkingBudgetInt(24576),
-			IncludeThoughts: true,
-		}
-	default:
-		// No mapping needed, let Gemini use default
-		return nil
+// thinkingConfigToReasoningEffort converts Gemini's thinking_config to OpenAI's reasoning_effort.
+// According to Gemini OpenAI documentation, reasoning_effort is automatically converted.
+// Mapping (priority: ThinkingLevel > ThinkingBudget):
+// ThinkingLevel:
+//   - "minimal" -> "minimal"
+//   - "low" -> "low"
+//   - "medium" -> "medium"
+//   - "high" -> "high"
+//
+// ThinkingBudget (Gemini 2.5):
+//   - 1024 -> "low"
+//   - 8192 -> "medium"
+//   - 24576 -> "high"
+func thinkingConfigToReasoningEffort(config *ThinkingConfig) string {
+	if config == nil {
+		return ""
 	}
+
+	// Priority 1: Use ThinkingLevel if present
+	if config.ThinkingLevel != "" {
+		return config.ThinkingLevel
+	}
+
+	// Priority 2: Convert ThinkingBudget to reasoning_effort
+	if config.ThinkingBudget != nil {
+		if config.ThinkingBudget.IntValue != nil {
+			switch *config.ThinkingBudget.IntValue {
+			case 1024:
+				return "low"
+			case 8192:
+				return "medium"
+			case 24576:
+				return "high"
+			case 0:
+				return "none"
+			}
+		} else if config.ThinkingBudget.StringValue != nil {
+			// String values like "low", "high" map directly
+			return *config.ThinkingBudget.StringValue
+		}
+	}
+
+	return ""
 }
 
 // ParseExtraBody parses the extra_body from llm.Request and returns the ExtraBody struct.
@@ -200,6 +208,53 @@ func ParseExtraBody(rawExtraBody json.RawMessage) *ExtraBody {
 	return &extraBody
 }
 
+func isGemini25Model(model string) bool {
+	return strings.Contains(strings.ToLower(model), "gemini-2.5")
+}
+
+func reasoningEffortToThinkingBudget(effort string) *ThinkingBudget {
+	switch strings.ToLower(effort) {
+	case "minimal", "low":
+		return NewThinkingBudgetInt(1024)
+	case "medium":
+		return NewThinkingBudgetInt(8192)
+	case "high":
+		return NewThinkingBudgetInt(24576)
+	case "none":
+		return NewThinkingBudgetInt(0)
+	default:
+		return nil
+	}
+}
+
+func fillThinkingConfigFromReasoningEffort(tc *ThinkingConfig, reasoningEffort string, model string) {
+	if tc == nil {
+		return
+	}
+
+	if tc.ThinkingLevel != "" {
+		tc.ThinkingBudget = nil
+		return
+	}
+
+	if tc.ThinkingBudget != nil {
+		return
+	}
+
+	if reasoningEffort == "" {
+		return
+	}
+
+	if isGemini25Model(model) {
+		if budget := reasoningEffortToThinkingBudget(reasoningEffort); budget != nil {
+			tc.ThinkingBudget = budget
+			return
+		}
+	}
+
+	tc.ThinkingLevel = strings.ToLower(reasoningEffort)
+}
+
 // TransformRequest transforms ChatCompletionRequest to Request with Gemini-specific handling.
 func (t *OutboundTransformer) TransformRequest(
 	ctx context.Context,
@@ -209,62 +264,48 @@ func (t *OutboundTransformer) TransformRequest(
 		return nil, fmt.Errorf("chat completion request is nil")
 	}
 
+	req := *chatReq
+
 	// Validate required fields
 	if chatReq.Model == "" {
 		return nil, fmt.Errorf("model is required")
 	}
 
-	if len(chatReq.Messages) == 0 {
+	if len(req.Messages) == 0 {
 		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
 	}
 
 	// Fallback: Filter out Google native tools (not supported by OpenAI-compatible endpoint)
 	// This is a graceful degradation when no native Gemini channels are available.
-	if llm.ContainsGoogleNativeTools(chatReq.Tools) {
+	if llm.ContainsGoogleNativeTools(req.Tools) {
 		log.Warn(ctx, "Google native tools detected but gemini_openai channel does not support them, filtering out",
-			log.Int("original_tools_count", len(chatReq.Tools)))
+			log.Int("original_tools_count", len(req.Tools)))
 
-		chatReq.Tools = llm.FilterGoogleNativeTools(chatReq.Tools)
+		req.Tools = llm.FilterGoogleNativeTools(req.Tools)
 
 		// 如果过滤后为空，置为 nil 以避免某些 OpenAI 兼容实现对空数组的校验问题
-		if len(chatReq.Tools) == 0 {
-			chatReq.Tools = nil
+		if len(req.Tools) == 0 {
+			req.Tools = nil
 			// 同时重置 ToolChoice，因为没有工具可选
-			chatReq.ToolChoice = nil
+			req.ToolChoice = nil
 		}
 
 		log.Debug(ctx, "Filtered Google native tools",
-			log.Int("remaining_tools_count", len(chatReq.Tools)))
+			log.Int("remaining_tools_count", len(req.Tools)))
 	}
 
-	// Create Gemini-specific request
-	geminiReq := Request{
-		Request: *chatReq,
-	}
-
-	// Priority 1: Parse ExtraBody from llm.Request (higher priority)
-	if len(chatReq.ExtraBody) > 0 {
-		extraBody := ParseExtraBody(chatReq.ExtraBody)
+	var extraBody *ExtraBody
+	if len(req.ExtraBody) > 0 {
+		extraBody = ParseExtraBody(req.ExtraBody)
 		if extraBody != nil && extraBody.Google != nil && extraBody.Google.ThinkingConfig != nil {
-			geminiReq.ExtraBody = extraBody
-			// Clear reasoning_effort as we're using thinking_config from extra_body
-			geminiReq.ReasoningEffort = ""
+			fillThinkingConfigFromReasoningEffort(extraBody.Google.ThinkingConfig, req.ReasoningEffort, req.Model)
+			req.ReasoningEffort = ""
 		}
 	}
 
-	// Priority 2: Convert reasoning_effort to thinking_config if ExtraBody not set
-	if geminiReq.ExtraBody == nil && chatReq.ReasoningEffort != "" {
-		thinkingConfig := reasoningEffortToThinkingConfig(chatReq.ReasoningEffort)
-		if thinkingConfig != nil {
-			geminiReq.ExtraBody = &ExtraBody{
-				Google: &GoogleExtraBody{
-					ThinkingConfig: thinkingConfig,
-				},
-			}
-			// Clear reasoning_effort as we're using thinking_config instead
-			// Note: reasoning_effort and thinking_level/thinking_budget overlap functionality
-			geminiReq.ReasoningEffort = ""
-		}
+	geminiReq := Request{Request: req}
+	if extraBody != nil {
+		geminiReq.ExtraBody = extraBody
 	}
 
 	// Clear help fields
@@ -302,4 +343,72 @@ func (t *OutboundTransformer) TransformRequest(
 		Body:    body,
 		Auth:    auth,
 	}, nil
+}
+
+func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpclient.Error) *llm.ResponseError {
+	if rawErr == nil {
+		return &llm.ResponseError{
+			StatusCode: http.StatusInternalServerError,
+			Detail: llm.ErrorDetail{
+				Message: http.StatusText(http.StatusInternalServerError),
+				Type:    "api_error",
+			},
+		}
+	}
+
+	type geminiOpenAIErrorDetail struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+		Status  string `json:"status"`
+	}
+
+	type geminiOpenAIErrorEnvelope struct {
+		Error geminiOpenAIErrorDetail `json:"error"`
+	}
+
+	var arr []geminiOpenAIErrorEnvelope
+	if err := json.Unmarshal(rawErr.Body, &arr); err == nil && len(arr) > 0 && arr[0].Error.Message != "" {
+		detailType := arr[0].Error.Status
+		if detailType == "" {
+			detailType = "api_error"
+		}
+
+		return &llm.ResponseError{
+			StatusCode: rawErr.StatusCode,
+			Detail: llm.ErrorDetail{
+				Code:    strconv.Itoa(arr[0].Error.Code),
+				Message: arr[0].Error.Message,
+				Type:    detailType,
+			},
+		}
+	}
+
+	var obj geminiOpenAIErrorEnvelope
+	if err := json.Unmarshal(rawErr.Body, &obj); err == nil && obj.Error.Message != "" {
+		detailType := obj.Error.Status
+		if detailType == "" {
+			detailType = "api_error"
+		}
+
+		return &llm.ResponseError{
+			StatusCode: rawErr.StatusCode,
+			Detail: llm.ErrorDetail{
+				Code:    strconv.Itoa(obj.Error.Code),
+				Message: obj.Error.Message,
+				Type:    detailType,
+			},
+		}
+	}
+
+	if len(rawErr.Body) > 0 {
+		return &llm.ResponseError{
+			StatusCode: rawErr.StatusCode,
+			Detail: llm.ErrorDetail{
+				Message: string(rawErr.Body),
+				Type:    "api_error",
+			},
+		}
+	}
+
+	return t.Outbound.TransformError(ctx, rawErr)
 }

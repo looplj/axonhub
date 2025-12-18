@@ -214,6 +214,7 @@ func TestFilterGoogleNativeTools(t *testing.T) {
 				for i, tool := range got {
 					gotTypes[i] = tool.Type
 				}
+
 				require.Equal(t, tt.wantType, gotTypes)
 			}
 		})

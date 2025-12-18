@@ -103,6 +103,8 @@ func (t *OutboundTransformer) TransformRequest(
 		return t.buildImageGenerationAPIRequest(chatReq)
 	}
 
+	chatReq.ClearHelpFields()
+
 	// Create Doubao-specific request by removing Metadata and adding request_id/user_id
 	doubaoReq := Request{
 		Request:   *chatReq,
