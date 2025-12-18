@@ -9,6 +9,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/llm"
+	geminioai "github.com/looplj/axonhub/internal/llm/transformer/gemini/openai"
 	"github.com/looplj/axonhub/internal/llm/transformer/shared"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
 	"github.com/looplj/axonhub/internal/pkg/xmap"
@@ -57,12 +58,33 @@ func convertGeminiToLLMRequest(geminiReq *GenerateContentRequest) (*llm.Request,
 		}
 
 		// Convert thinking config to reasoning effort and preserve budget
-		if gc.ThinkingConfig != nil && gc.ThinkingConfig.IncludeThoughts {
-			if gc.ThinkingConfig.ThinkingBudget != nil {
+		// Priority 1: Use ThinkingLevel if provided
+		// Priority 2: Convert from ThinkingBudget if provided
+		if gc.ThinkingConfig != nil {
+			rawExtraBody, err := convertGeminiThinkingConfigToGeminiOpenAIExtraBody(gc.ThinkingConfig)
+			if err != nil {
+				return nil, err
+			}
+
+			chatReq.ExtraBody = rawExtraBody
+
+			if gc.ThinkingConfig.ThinkingLevel != "" {
+				// ThinkingLevel has priority - use it directly
+				chatReq.ReasoningEffort = strings.ToLower(gc.ThinkingConfig.ThinkingLevel)
+				// Gemini "minimal" maps to LLM "low" for consistency.
+				if chatReq.ReasoningEffort == "minimal" {
+					chatReq.ReasoningEffort = "low"
+				}
+			} else if gc.ThinkingConfig.ThinkingBudget != nil {
+				// No ThinkingLevel, convert from ThinkingBudget
 				chatReq.ReasoningEffort = thinkingBudgetToReasoningEffort(*gc.ThinkingConfig.ThinkingBudget)
-				chatReq.ReasoningBudget = gc.ThinkingConfig.ThinkingBudget
 			} else {
+				// No level or budget, use default
 				chatReq.ReasoningEffort = "medium"
+			}
+			// Always preserve the original budget if present
+			if gc.ThinkingConfig.ThinkingBudget != nil {
+				chatReq.ReasoningBudget = gc.ThinkingConfig.ThinkingBudget
 			}
 		}
 
@@ -175,6 +197,37 @@ func convertGeminiToLLMRequest(geminiReq *GenerateContentRequest) (*llm.Request,
 	}
 
 	return chatReq, nil
+}
+
+func convertGeminiThinkingConfigToGeminiOpenAIExtraBody(thinkingConfig *ThinkingConfig) (json.RawMessage, error) {
+	if thinkingConfig == nil {
+		return nil, nil
+	}
+
+	extraThinkingConfig := &geminioai.ThinkingConfig{
+		IncludeThoughts: thinkingConfig.IncludeThoughts,
+	}
+	if thinkingConfig.ThinkingBudget != nil {
+		budget := int(*thinkingConfig.ThinkingBudget)
+		extraThinkingConfig.ThinkingBudget = geminioai.NewThinkingBudgetInt(budget)
+	}
+
+	if thinkingConfig.ThinkingLevel != "" {
+		level := strings.ToLower(thinkingConfig.ThinkingLevel)
+		if level == "minimal" {
+			level = "low"
+		}
+
+		extraThinkingConfig.ThinkingLevel = level
+	}
+
+	extraBody := &geminioai.ExtraBody{
+		Google: &geminioai.GoogleExtraBody{
+			ThinkingConfig: extraThinkingConfig,
+		},
+	}
+
+	return json.Marshal(extraBody)
 }
 
 // convertGeminiContentToLLMMessage converts a Gemini Content to an LLM Message.

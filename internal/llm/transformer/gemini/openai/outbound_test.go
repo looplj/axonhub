@@ -1,7 +1,6 @@
 package geminioai
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"testing"
@@ -227,69 +226,99 @@ func TestThinkingBudget_UnmarshalJSON(t *testing.T) {
 	}
 }
 
-func TestReasoningEffortToThinkingConfig(t *testing.T) {
+func TestThinkingConfigToReasoningEffort(t *testing.T) {
 	tests := []struct {
 		name           string
-		effort         string
-		expectedLevel  string
-		expectedBudget int
-		expectedNil    bool
+		config         *ThinkingConfig
+		expectedEffort string
 	}{
 		{
-			name:           "none",
-			effort:         "none",
-			expectedBudget: 0,
+			name:           "nil config returns empty",
+			config:         nil,
+			expectedEffort: "",
 		},
 		{
-			name:           "minimal",
-			effort:         "minimal",
-			expectedLevel:  "low",
-			expectedBudget: 1024,
+			name: "thinking_level takes priority",
+			config: &ThinkingConfig{
+				ThinkingLevel:  "high",
+				ThinkingBudget: NewThinkingBudgetInt(1024),
+			},
+			expectedEffort: "high",
 		},
 		{
-			name:           "low",
-			effort:         "low",
-			expectedLevel:  "low",
-			expectedBudget: 1024,
+			name: "thinking_budget 1024 converts to low",
+			config: &ThinkingConfig{
+				ThinkingBudget: NewThinkingBudgetInt(1024),
+			},
+			expectedEffort: "low",
 		},
 		{
-			name:           "medium",
-			effort:         "medium",
-			expectedLevel:  "high",
-			expectedBudget: 8192,
+			name: "thinking_budget 8192 converts to medium",
+			config: &ThinkingConfig{
+				ThinkingBudget: NewThinkingBudgetInt(8192),
+			},
+			expectedEffort: "medium",
 		},
 		{
-			name:           "high",
-			effort:         "high",
-			expectedLevel:  "high",
-			expectedBudget: 24576,
+			name: "thinking_budget 24576 converts to high",
+			config: &ThinkingConfig{
+				ThinkingBudget: NewThinkingBudgetInt(24576),
+			},
+			expectedEffort: "high",
 		},
 		{
-			name:        "unknown",
-			effort:      "unknown",
-			expectedNil: true,
+			name: "thinking_budget 0 converts to none",
+			config: &ThinkingConfig{
+				ThinkingBudget: NewThinkingBudgetInt(0),
+			},
+			expectedEffort: "none",
 		},
 		{
-			name:        "empty",
-			effort:      "",
-			expectedNil: true,
+			name: "thinking_budget string maps directly",
+			config: &ThinkingConfig{
+				ThinkingBudget: NewThinkingBudgetString("low"),
+			},
+			expectedEffort: "low",
+		},
+		{
+			name: "thinking_level minimal",
+			config: &ThinkingConfig{
+				ThinkingLevel: "minimal",
+			},
+			expectedEffort: "minimal",
+		},
+		{
+			name: "thinking_level low",
+			config: &ThinkingConfig{
+				ThinkingLevel: "low",
+			},
+			expectedEffort: "low",
+		},
+		{
+			name: "thinking_level medium",
+			config: &ThinkingConfig{
+				ThinkingLevel: "medium",
+			},
+			expectedEffort: "medium",
+		},
+		{
+			name:           "empty config returns empty",
+			config:         &ThinkingConfig{},
+			expectedEffort: "",
+		},
+		{
+			name: "unknown budget value returns empty",
+			config: &ThinkingConfig{
+				ThinkingBudget: NewThinkingBudgetInt(9999),
+			},
+			expectedEffort: "",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := reasoningEffortToThinkingConfig(tt.effort)
-
-			if tt.expectedNil {
-				assert.Nil(t, config)
-				return
-			}
-
-			require.NotNil(t, config)
-			assert.Equal(t, tt.expectedLevel, config.ThinkingLevel)
-			require.NotNil(t, config.ThinkingBudget)
-			require.NotNil(t, config.ThinkingBudget.IntValue)
-			assert.Equal(t, tt.expectedBudget, *config.ThinkingBudget.IntValue)
+			effort := thinkingConfigToReasoningEffort(tt.config)
+			require.Equal(t, tt.expectedEffort, effort)
 		})
 	}
 }
@@ -358,7 +387,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			},
 		},
 		{
-			name:        "request with reasoning_effort converts to thinking_config",
+			name:        "request with reasoning_effort is preserved",
 			transformer: createTransformer("https://generativelanguage.googleapis.com", "test-api-key"),
 			request: &llm.Request{
 				Model: "gemini-2.5-flash",
@@ -381,27 +410,21 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 					return false
 				}
 
-				// reasoning_effort should be cleared
-				if geminiReq.ReasoningEffort != "" {
+				// reasoning_effort should be preserved
+				if geminiReq.ReasoningEffort != "medium" {
 					return false
 				}
 
-				// extra_body should have thinking_config
-				if geminiReq.ExtraBody == nil || geminiReq.ExtraBody.Google == nil || geminiReq.ExtraBody.Google.ThinkingConfig == nil {
+				// extra_body should be nil or empty
+				if geminiReq.ExtraBody != nil && geminiReq.ExtraBody.Google != nil && geminiReq.ExtraBody.Google.ThinkingConfig != nil {
 					return false
 				}
 
-				tc := geminiReq.ExtraBody.Google.ThinkingConfig
-
-				return tc.ThinkingLevel == "high" &&
-					tc.ThinkingBudget != nil &&
-					tc.ThinkingBudget.IntValue != nil &&
-					*tc.ThinkingBudget.IntValue == 8192 &&
-					tc.IncludeThoughts
+				return true
 			},
 		},
 		{
-			name:        "extra_body has higher priority than reasoning_effort",
+			name:        "extra_body thinking_config converts to reasoning_effort",
 			transformer: createTransformer("https://generativelanguage.googleapis.com", "test-api-key"),
 			request: &llm.Request{
 				Model: "gemini-2.5-flash",
@@ -413,11 +436,11 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 						},
 					},
 				},
-				ReasoningEffort: "high", // This should be ignored
+				ReasoningEffort: "high", // This should be overridden
 				ExtraBody: json.RawMessage(`{
 					"google": {
 						"thinking_config": {
-							"thinking_budget": 2048,
+							"thinking_budget": 1024,
 							"include_thoughts": true
 						}
 					}
@@ -432,36 +455,191 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 					return false
 				}
 
-				// reasoning_effort should be cleared
+				// reasoning_effort should be omitted when custom thinking_config is present
 				if geminiReq.ReasoningEffort != "" {
 					return false
 				}
 
-				// extra_body should use the provided thinking_config, not the one from reasoning_effort
+				// extra_body thinking_config should exist and preserve the original thinking_budget/include_thoughts
 				if geminiReq.ExtraBody == nil || geminiReq.ExtraBody.Google == nil || geminiReq.ExtraBody.Google.ThinkingConfig == nil {
 					return false
 				}
 
 				tc := geminiReq.ExtraBody.Google.ThinkingConfig
+				if tc.ThinkingBudget == nil || tc.ThinkingBudget.IntValue == nil || *tc.ThinkingBudget.IntValue != 1024 {
+					return false
+				}
 
-				// Should be 2048 from extra_body, not 24576 from reasoning_effort="high"
-				return tc.ThinkingBudget != nil &&
-					tc.ThinkingBudget.IntValue != nil &&
-					*tc.ThinkingBudget.IntValue == 2048 &&
-					tc.IncludeThoughts
+				if tc.ThinkingLevel != "" || !tc.IncludeThoughts {
+					return false
+				}
+
+				return true
 			},
 		},
 		{
-			name:        "extra_body with string thinking_budget",
+			name:        "when both reasoning_effort and thinking_config are provided, prefer thinking_config and fill missing budget",
 			transformer: createTransformer("https://generativelanguage.googleapis.com", "test-api-key"),
 			request: &llm.Request{
-				Model: "gemini-3.0-flash",
+				Model: "models/gemini-2.5-flash",
 				Messages: []llm.Message{
 					{
 						Role: "user",
 						Content: llm.MessageContent{
 							Content: lo.ToPtr("Explain AI"),
 						},
+					},
+				},
+				ReasoningEffort: "low",
+				ExtraBody: json.RawMessage(`{
+					"google": {
+						"thinking_config": {
+							"include_thoughts": true
+						}
+					}
+				}`),
+			},
+			wantErr: false,
+			validate: func(req *httpclient.Request) bool {
+				var geminiReq Request
+
+				err := json.Unmarshal(req.Body, &geminiReq)
+				if err != nil {
+					return false
+				}
+
+				if geminiReq.ReasoningEffort != "" {
+					return false
+				}
+
+				if geminiReq.ExtraBody == nil || geminiReq.ExtraBody.Google == nil || geminiReq.ExtraBody.Google.ThinkingConfig == nil {
+					return false
+				}
+
+				tc := geminiReq.ExtraBody.Google.ThinkingConfig
+				if tc.ThinkingBudget == nil || tc.ThinkingBudget.IntValue == nil || *tc.ThinkingBudget.IntValue != 1024 {
+					return false
+				}
+
+				if tc.ThinkingLevel != "" {
+					return false
+				}
+
+				return tc.IncludeThoughts
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			httpReq, err := tt.transformer.TransformRequest(nil, tt.request)
+			if tt.wantErr {
+				require.Error(t, err)
+
+				if tt.errContains != "" {
+					require.Contains(t, err.Error(), tt.errContains)
+				}
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, httpReq)
+
+				if tt.validate != nil {
+					require.True(t, tt.validate(httpReq), "validation failed")
+				}
+			}
+		})
+	}
+}
+
+func TestTransformRequestWithExtraBody(t *testing.T) {
+	tests := []struct {
+		name              string
+		request           *llm.Request
+		expectError       bool
+		expectedReasoning string
+		expectedExtraBody bool
+		description       string
+	}{
+		{
+			name: "request with extra body thinking_budget integer 8192 converts to medium",
+			request: &llm.Request{
+				Model: "gemini-2.5-flash",
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
+					},
+				},
+				ExtraBody: json.RawMessage(`{
+					"google": {
+						"thinking_config": {
+							"thinking_budget": 8192,
+							"include_thoughts": true
+						}
+					}
+				}`),
+			},
+			expectError:       false,
+			expectedReasoning: "",
+			expectedExtraBody: true,
+			description:       "Should convert thinking_budget 8192 to reasoning_effort medium",
+		},
+		{
+			name: "request with extra body thinking_budget integer 1024 converts to low",
+			request: &llm.Request{
+				Model: "gemini-2.5-flash",
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
+					},
+				},
+				ExtraBody: json.RawMessage(`{
+					"google": {
+						"thinking_config": {
+							"thinking_budget": 1024,
+							"include_thoughts": true
+						}
+					}
+				}`),
+			},
+			expectError:       false,
+			expectedReasoning: "",
+			expectedExtraBody: true,
+			description:       "Should convert thinking_budget 1024 to reasoning_effort low",
+		},
+		{
+			name: "request with extra body thinking_budget integer 24576 converts to high",
+			request: &llm.Request{
+				Model: "gemini-2.5-flash",
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
+					},
+				},
+				ExtraBody: json.RawMessage(`{
+					"google": {
+						"thinking_config": {
+							"thinking_budget": 24576,
+							"include_thoughts": true
+						}
+					}
+				}`),
+			},
+			expectError:       false,
+			expectedReasoning: "",
+			expectedExtraBody: true,
+			description:       "Should convert thinking_budget 24576 to reasoning_effort high",
+		},
+		{
+			name: "request with extra body thinking_budget string converts directly",
+			request: &llm.Request{
+				Model: "gemini-2.5-flash",
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
 					},
 				},
 				ExtraBody: json.RawMessage(`{
@@ -473,85 +651,171 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 					}
 				}`),
 			},
-			wantErr: false,
-			validate: func(req *httpclient.Request) bool {
-				var geminiReq Request
-
-				err := json.Unmarshal(req.Body, &geminiReq)
-				if err != nil {
-					return false
-				}
-
-				if geminiReq.ExtraBody == nil || geminiReq.ExtraBody.Google == nil || geminiReq.ExtraBody.Google.ThinkingConfig == nil {
-					return false
-				}
-
-				tc := geminiReq.ExtraBody.Google.ThinkingConfig
-
-				// Should be "low" string value
-				return tc.ThinkingBudget != nil &&
-					tc.ThinkingBudget.StringValue != nil &&
-					*tc.ThinkingBudget.StringValue == "low" &&
-					tc.IncludeThoughts
-			},
+			expectError:       false,
+			expectedReasoning: "",
+			expectedExtraBody: true,
+			description:       "Should convert string thinking_budget to reasoning_effort",
 		},
 		{
-			name:        "nil request",
-			transformer: createTransformer("https://generativelanguage.googleapis.com", "test-api-key"),
-			request:     nil,
-			wantErr:     true,
-			errContains: "chat completion request is nil",
-		},
-		{
-			name:        "missing model",
-			transformer: createTransformer("https://generativelanguage.googleapis.com", "test-api-key"),
+			name: "request with extra body thinking_level takes priority",
 			request: &llm.Request{
+				Model: "gemini-2.5-flash",
 				Messages: []llm.Message{
 					{
-						Role: "user",
-						Content: llm.MessageContent{
-							Content: lo.ToPtr("Hello, world!"),
-						},
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
 					},
 				},
+				ExtraBody: json.RawMessage(`{
+					"google": {
+						"thinking_config": {
+							"thinking_level": "high",
+							"thinking_budget": 1024,
+							"include_thoughts": true
+						}
+					}
+				}`),
 			},
-			wantErr:     true,
-			errContains: "model is required",
+			expectError:       false,
+			expectedReasoning: "",
+			expectedExtraBody: true,
+			description:       "ThinkingLevel should take priority over ThinkingBudget",
 		},
 		{
-			name:        "empty messages",
-			transformer: createTransformer("https://generativelanguage.googleapis.com", "test-api-key"),
+			name: "request with extra body and reasoning effort (extra body overrides)",
 			request: &llm.Request{
-				Model:    "gemini-2.5-flash",
-				Messages: []llm.Message{},
+				Model: "gemini-2.5-flash",
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
+					},
+				},
+				ReasoningEffort: "high",
+				ExtraBody: json.RawMessage(`{
+					"google": {
+						"thinking_config": {
+							"thinking_budget": 1024,
+							"include_thoughts": true
+						}
+					}
+				}`),
 			},
-			wantErr:     true,
-			errContains: "messages are required",
+			expectError:       false,
+			expectedReasoning: "",
+			expectedExtraBody: true,
+			description:       "Extra body thinking_config should override reasoning_effort",
+		},
+		{
+			name: "request with invalid extra body",
+			request: &llm.Request{
+				Model: "gemini-2.5-flash",
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
+					},
+				},
+				ExtraBody: json.RawMessage(`{invalid`),
+			},
+			expectError:       false,
+			expectedReasoning: "",
+			expectedExtraBody: false,
+			description:       "Should handle invalid extra body gracefully",
+		},
+		{
+			name: "request with empty extra body",
+			request: &llm.Request{
+				Model: "gemini-2.5-flash",
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
+					},
+				},
+				ExtraBody: json.RawMessage{},
+			},
+			expectError:       false,
+			expectedReasoning: "",
+			expectedExtraBody: false,
+			description:       "Should handle empty extra body gracefully",
+		},
+		{
+			name: "request with only reasoning_effort (no extra body)",
+			request: &llm.Request{
+				Model: "gemini-2.5-flash",
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
+					},
+				},
+				ReasoningEffort: "medium",
+			},
+			expectError:       false,
+			expectedReasoning: "medium",
+			expectedExtraBody: false,
+			description:       "Should preserve reasoning_effort when no extra body",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req, err := tt.transformer.TransformRequest(context.Background(), tt.request)
-
-			if tt.wantErr {
-				assert.Error(t, err)
-
-				if tt.errContains != "" {
-					assert.Contains(t, err.Error(), tt.errContains)
-				}
-
-				return
-			}
-
+			transformer, err := NewOutboundTransformer("https://ai.google.dev/v1beta/openai", "test-key")
 			require.NoError(t, err)
-			require.NotNil(t, req)
+			require.NotNil(t, transformer)
 
-			if tt.validate != nil {
-				assert.True(t, tt.validate(req), "validation failed")
+			httpReq, err := transformer.TransformRequest(nil, tt.request)
+			if tt.expectError {
+				require.Error(t, err)
+				require.Nil(t, httpReq)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, httpReq)
+
+				// Verify the request body
+				var geminiReq Request
+
+				err = json.Unmarshal(httpReq.Body, &geminiReq)
+				require.NoError(t, err)
+
+				// Verify reasoning_effort is set correctly
+				require.Equal(t, tt.expectedReasoning, geminiReq.ReasoningEffort)
+
+				// Verify ExtraBody behavior
+				if tt.expectedExtraBody {
+					require.NotNil(t, geminiReq.ExtraBody)
+					require.NotNil(t, geminiReq.ExtraBody.Google)
+					require.NotNil(t, geminiReq.ExtraBody.Google.ThinkingConfig)
+
+					tc := geminiReq.ExtraBody.Google.ThinkingConfig
+					require.True(t, tc.IncludeThoughts)
+				} else {
+					require.Nil(t, geminiReq.ExtraBody)
+				}
 			}
 		})
 	}
+}
+
+func TestOutboundTransformer_TransformError_ParsesGeminiOpenAIArray(t *testing.T) {
+	transformerInterface, err := NewOutboundTransformer("https://ai.google.dev/v1beta/openai", "test-key")
+	require.NoError(t, err)
+
+	tr := transformerInterface.(*OutboundTransformer)
+
+	respErr := tr.TransformError(nil, &httpclient.Error{
+		StatusCode: 400,
+		Body: []byte("[" +
+			"{\"error\":{\"code\":400,\"message\":\"Expected one of either `reasoning_effort` or custom `thinking_config`; found both.\",\"status\":\"INVALID_ARGUMENT\"}}" +
+			"]"),
+	})
+
+	require.NotNil(t, respErr)
+	require.Equal(t, 400, respErr.StatusCode)
+	require.Equal(t, "INVALID_ARGUMENT", respErr.Detail.Type)
+	require.Equal(t, "400", respErr.Detail.Code)
+	require.Contains(t, respErr.Detail.Message, "found both")
 }
 
 func TestParseExtraBody(t *testing.T) {

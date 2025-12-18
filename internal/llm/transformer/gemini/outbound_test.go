@@ -330,14 +330,13 @@ func TestTransformRequestWithExtraBody(t *testing.T) {
 					"google": {
 						"thinking_config": {
 							"thinking_budget": 8192,
-							"thinking_level": "high",
 							"include_thoughts": true
 						}
 					}
 				}`),
 			},
 			expectError: false,
-			description: "Should convert extra body thinking config to Gemini format",
+			description: "Should convert extra body thinking config with integer budget to Gemini format",
 		},
 		{
 			name: "request with extra body thinking config string budget",
@@ -353,14 +352,13 @@ func TestTransformRequestWithExtraBody(t *testing.T) {
 					"google": {
 						"thinking_config": {
 							"thinking_budget": "low",
-							"thinking_level": "low",
 							"include_thoughts": true
 						}
 					}
 				}`),
 			},
 			expectError: false,
-			description: "Should convert string thinking budget to integer",
+			description: "Should convert string thinking budget to thinking level",
 		},
 		{
 			name: "request with extra body and reasoning effort (extra body should take priority)",
@@ -377,7 +375,6 @@ func TestTransformRequestWithExtraBody(t *testing.T) {
 					"google": {
 						"thinking_config": {
 							"thinking_budget": 1024,
-							"thinking_level": "low",
 							"include_thoughts": true
 						}
 					}
@@ -444,13 +441,22 @@ func TestTransformRequestWithExtraBody(t *testing.T) {
 					require.NotNil(t, geminiReq.GenerationConfig.ThinkingConfig)
 
 					// Verify thinking config values based on the test case
+					// After optimization: only ThinkingBudget OR ThinkingLevel should be set, not both
+					// Integer budgets are preserved as ThinkingBudget, string budgets convert to ThinkingLevel
 					if strings.Contains(string(tt.request.ExtraBody), "8192") {
+						require.NotNil(t, geminiReq.GenerationConfig.ThinkingConfig.ThinkingBudget)
 						require.Equal(t, int64(8192), *geminiReq.GenerationConfig.ThinkingConfig.ThinkingBudget)
-						require.Equal(t, "high", geminiReq.GenerationConfig.ThinkingConfig.ThinkingLevel)
+						require.Empty(t, geminiReq.GenerationConfig.ThinkingConfig.ThinkingLevel)
 						require.True(t, geminiReq.GenerationConfig.ThinkingConfig.IncludeThoughts)
 					} else if strings.Contains(string(tt.request.ExtraBody), "1024") {
+						require.NotNil(t, geminiReq.GenerationConfig.ThinkingConfig.ThinkingBudget)
 						require.Equal(t, int64(1024), *geminiReq.GenerationConfig.ThinkingConfig.ThinkingBudget)
+						require.Empty(t, geminiReq.GenerationConfig.ThinkingConfig.ThinkingLevel)
+						require.True(t, geminiReq.GenerationConfig.ThinkingConfig.IncludeThoughts)
+					} else if strings.Contains(string(tt.request.ExtraBody), `"thinking_budget": "low"`) {
+						// String budget should convert to ThinkingLevel
 						require.Equal(t, "low", geminiReq.GenerationConfig.ThinkingConfig.ThinkingLevel)
+						require.Nil(t, geminiReq.GenerationConfig.ThinkingConfig.ThinkingBudget)
 						require.True(t, geminiReq.GenerationConfig.ThinkingConfig.IncludeThoughts)
 					}
 				}
@@ -490,8 +496,9 @@ func TestReasoningEffortFallback(t *testing.T) {
 	require.NotNil(t, geminiReq.GenerationConfig)
 	require.NotNil(t, geminiReq.GenerationConfig.ThinkingConfig)
 	require.True(t, geminiReq.GenerationConfig.ThinkingConfig.IncludeThoughts)
-	// Should use default mapping for "medium" reasoning effort
-	require.Equal(t, int64(8192), *geminiReq.GenerationConfig.ThinkingConfig.ThinkingBudget)
+	// Should use ThinkingLevel for standard "medium" reasoning effort
+	require.Equal(t, "medium", geminiReq.GenerationConfig.ThinkingConfig.ThinkingLevel)
+	require.Nil(t, geminiReq.GenerationConfig.ThinkingConfig.ThinkingBudget)
 }
 
 func TestOutboundTransformer_TransformResponse_MultipleFunctionCalls(t *testing.T) {

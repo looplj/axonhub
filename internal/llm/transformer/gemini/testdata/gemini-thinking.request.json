@@ -33,7 +33,7 @@
     "maxOutputTokens": 4096,
     "thinkingConfig": {
       "includeThoughts": true,
-      "thinkingBudget": 8192
+      "thinkingLevel": "high"
     }
   }
 }

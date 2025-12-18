@@ -83,27 +83,36 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 				IncludeThoughts: extraBody.Google.ThinkingConfig.IncludeThoughts,
 			}
 
-			// Handle ThinkingBudget conversion
-			if extraBody.Google.ThinkingConfig.ThinkingBudget != nil {
+			// Priority 1: Use ThinkingLevel if present (takes absolute priority)
+			if extraBody.Google.ThinkingConfig.ThinkingLevel != "" {
+				level := extraBody.Google.ThinkingConfig.ThinkingLevel
+				// Map "minimal" to "low" for consistency
+				if strings.ToLower(level) == "minimal" {
+					level = "low"
+				}
+
+				geminiThinkingConfig.ThinkingLevel = level
+				// Don't set ThinkingBudget when ThinkingLevel is present
+			} else if extraBody.Google.ThinkingConfig.ThinkingBudget != nil {
+				// Priority 2: Use ThinkingBudget if no level
 				if extraBody.Google.ThinkingConfig.ThinkingBudget.IntValue != nil {
+					// Integer budget: use as ThinkingBudget
 					geminiThinkingConfig.ThinkingBudget = lo.ToPtr(int64(*extraBody.Google.ThinkingConfig.ThinkingBudget.IntValue))
 				} else if extraBody.Google.ThinkingConfig.ThinkingBudget.StringValue != nil {
-					// For string values, we'll need to map them or set a default
-					// For now, set a reasonable default for string values
-					switch strings.ToLower(*extraBody.Google.ThinkingConfig.ThinkingBudget.StringValue) {
-					case "low":
-						geminiThinkingConfig.ThinkingBudget = lo.ToPtr(int64(1024))
+					// String budget: convert to ThinkingLevel for standard values
+					strVal := strings.ToLower(*extraBody.Google.ThinkingConfig.ThinkingBudget.StringValue)
+					switch strVal {
+					case "low", "minimal":
+						geminiThinkingConfig.ThinkingLevel = "low"
+					case "medium":
+						geminiThinkingConfig.ThinkingLevel = "medium"
 					case "high":
-						geminiThinkingConfig.ThinkingBudget = lo.ToPtr(int64(24576))
+						geminiThinkingConfig.ThinkingLevel = "high"
 					default:
-						geminiThinkingConfig.ThinkingBudget = lo.ToPtr(int64(8192)) // medium
+						// Unknown string value, use as-is
+						geminiThinkingConfig.ThinkingLevel = strVal
 					}
 				}
-			}
-
-			// Set ThinkingLevel if present
-			if extraBody.Google.ThinkingConfig.ThinkingLevel != "" {
-				geminiThinkingConfig.ThinkingLevel = extraBody.Google.ThinkingConfig.ThinkingLevel
 			}
 
 			gc.ThinkingConfig = geminiThinkingConfig
@@ -113,21 +122,37 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 	}
 
 	// Convert reasoning effort to thinking config
-	// Priority: ExtraBody > ReasoningBudget > config mapping > default mapping
-	if !hasExtraBodyThinkingConfig && chatReq.ReasoningEffort != "" {
-		var thinkingBudget int64
+	// Priority: ExtraBody > ReasoningBudget > ReasoningEffort > default
+	if !hasExtraBodyThinkingConfig {
 		if chatReq.ReasoningBudget != nil {
-			thinkingBudget = *chatReq.ReasoningBudget
-		} else {
-			thinkingBudget = reasoningEffortToThinkingBudgetWithConfig(chatReq.ReasoningEffort, config)
-		}
+			// Priority 1: Use ReasoningBudget if provided
+			gc.ThinkingConfig = &ThinkingConfig{
+				IncludeThoughts: true,
+				// Gemini max thinking budget is 24576
+				ThinkingBudget: lo.ToPtr(min(*chatReq.ReasoningBudget, 24576)),
+			}
+			hasGenerationConfig = true
+		} else if chatReq.ReasoningEffort != "" {
+			// Priority 2: Convert from ReasoningEffort if provided
+			// Use ThinkingLevel for standard effort values (low, medium, high)
+			// to preserve the original format when possible
+			thinkingConfig := &ThinkingConfig{
+				IncludeThoughts: true,
+			}
 
-		gc.ThinkingConfig = &ThinkingConfig{
-			IncludeThoughts: true,
-			// Gemini max thinking budget is 24576
-			ThinkingBudget: lo.ToPtr(min(thinkingBudget, 24576)),
+			// For standard effort levels, use ThinkingLevel
+			switch strings.ToLower(chatReq.ReasoningEffort) {
+			case "none", "low", "medium", "high":
+				thinkingConfig.ThinkingLevel = chatReq.ReasoningEffort
+			default:
+				// For non-standard effort values, convert to budget
+				thinkingBudget := reasoningEffortToThinkingBudgetWithConfig(chatReq.ReasoningEffort, config)
+				thinkingConfig.ThinkingBudget = lo.ToPtr(min(thinkingBudget, 24576))
+			}
+
+			gc.ThinkingConfig = thinkingConfig
+			hasGenerationConfig = true
 		}
-		hasGenerationConfig = true
 	}
 
 	// Convert modalities to responseModalities
