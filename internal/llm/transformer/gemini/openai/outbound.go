@@ -10,6 +10,7 @@ import (
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/llm/transformer/openai"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
 )
@@ -215,6 +216,25 @@ func (t *OutboundTransformer) TransformRequest(
 
 	if len(chatReq.Messages) == 0 {
 		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
+	}
+
+	// Fallback: Filter out Google native tools (not supported by OpenAI-compatible endpoint)
+	// This is a graceful degradation when no native Gemini channels are available.
+	if llm.ContainsGoogleNativeTools(chatReq.Tools) {
+		log.Warn(ctx, "Google native tools detected but gemini_openai channel does not support them, filtering out",
+			log.Int("original_tools_count", len(chatReq.Tools)))
+
+		chatReq.Tools = llm.FilterGoogleNativeTools(chatReq.Tools)
+
+		// 如果过滤后为空，置为 nil 以避免某些 OpenAI 兼容实现对空数组的校验问题
+		if len(chatReq.Tools) == 0 {
+			chatReq.Tools = nil
+			// 同时重置 ToolChoice，因为没有工具可选
+			chatReq.ToolChoice = nil
+		}
+
+		log.Debug(ctx, "Filtered Google native tools",
+			log.Int("remaining_tools_count", len(chatReq.Tools)))
 	}
 
 	// Create Gemini-specific request

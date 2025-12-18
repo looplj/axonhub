@@ -3,6 +3,7 @@ package llm
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 )
 
 // Tool represents a function tool.
@@ -174,3 +175,41 @@ type GoogleCodeExecution struct{}
 // GoogleUrlContext represents URL context grounding tool for Gemini 2.0+.
 // This allows the model to fetch and process content from specified URLs.
 type GoogleUrlContext struct{}
+
+// ContainsGoogleNativeTools checks if the tools slice contains any Google native tools.
+// Google native tools include GoogleSearch, GoogleCodeExecution, and GoogleUrlContext.
+// These tools are only supported by native Gemini API format (gemini/gemini_vertex),
+// not by OpenAI-compatible endpoints (gemini_openai).
+func ContainsGoogleNativeTools(tools []Tool) bool {
+	for _, tool := range tools {
+		if IsGoogleNativeTool(tool) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// IsGoogleNativeTool checks if a single tool is a Google native tool.
+// Google native tools follow the naming convention "google_*".
+func IsGoogleNativeTool(tool Tool) bool {
+	return strings.HasPrefix(tool.Type, "google_")
+}
+
+// FilterGoogleNativeTools removes Google native tools from the tools slice.
+// This is useful as a fallback when routing to channels that don't support native tools.
+func FilterGoogleNativeTools(tools []Tool) []Tool {
+	if len(tools) == 0 {
+		return tools
+	}
+
+	filtered := make([]Tool, 0, len(tools))
+
+	for _, tool := range tools {
+		if !IsGoogleNativeTool(tool) {
+			filtered = append(filtered, tool)
+		}
+	}
+
+	return filtered
+}

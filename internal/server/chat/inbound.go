@@ -274,6 +274,11 @@ func selectChannels(inbound *PersistentInboundTransformer) pipeline.Middleware {
 			}
 		}
 
+		// 应用 Google 原生工具过滤（仅对 Gemini 原生 API 格式生效）
+		if inbound.APIFormat() == llm.APIFormatGeminiContents {
+			selector = NewGoogleNativeToolsSelector(selector)
+		}
+
 		if inbound.state.LoadBalancer != nil {
 			selector = NewLoadBalancedSelector(selector, inbound.state.LoadBalancer)
 		}
