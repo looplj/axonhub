@@ -34,7 +34,8 @@ func NewChatCompletionProcessor(
 		NewConnectionAwareStrategy(channelService, connectionTracker), // Priority 4: Connection count
 	}
 
-	loadBalancer := NewLoadBalancer(systemService, strategies...)
+	adaptiveLoadBalancer := NewLoadBalancer(systemService, strategies...)
+	weightedLoadBalancer := NewLoadBalancer(systemService, NewWeightStrategy())
 
 	return &ChatCompletionProcessor{
 		Inbound:         inbound,
@@ -45,13 +46,14 @@ func NewChatCompletionProcessor(
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
-		PipelineFactory:    pipeline.NewFactory(httpClient),
-		ModelMapper:        NewModelMapper(),
-		channelSelector:    NewDefaultSelector(channelService),
-		selectedChannelIds: []int{},
-		connectionTracker:  connectionTracker,
-		loadBalancer:       loadBalancer,
-		proxy:              nil,
+		PipelineFactory:      pipeline.NewFactory(httpClient),
+		ModelMapper:          NewModelMapper(),
+		channelSelector:      NewDefaultSelector(channelService),
+		selectedChannelIds:   []int{},
+		connectionTracker:    connectionTracker,
+		adaptiveLoadBalancer: adaptiveLoadBalancer,
+		weightedLoadBalancer: weightedLoadBalancer,
+		proxy:                nil,
 	}
 }
 
@@ -72,7 +74,8 @@ type ChatCompletionProcessor struct {
 	// The runtime selected channel ids.
 	selectedChannelIds []int
 	// The load balancer for channel load balancing.
-	loadBalancer *LoadBalancer
+	adaptiveLoadBalancer *LoadBalancer
+	weightedLoadBalancer *LoadBalancer
 	// The connection tracker for connection aware load balancing.
 	connectionTracker ConnectionTracker
 
@@ -111,11 +114,26 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 	apiKey, _ := contexts.GetAPIKey(ctx)
 	user, _ := contexts.GetUser(ctx)
 
+	// Get retry policy from system settings
+	retryPolicy := processor.SystemService.RetryPolicyOrDefault(ctx)
+
 	if log.DebugEnabled(ctx) {
-		log.Debug(ctx, "request received",
+		log.Debug(ctx, "chat request received",
 			log.String("request_body", string(request.Body)),
 			log.Any("request_headers", request.Headers),
+			log.Any("retry_policy", retryPolicy),
 		)
+	}
+
+	loadBalancer := processor.adaptiveLoadBalancer
+
+	switch retryPolicy.LoadBalancerStrategy {
+	case "adaptive":
+		loadBalancer = processor.adaptiveLoadBalancer
+	case "weighted":
+		loadBalancer = processor.weightedLoadBalancer
+	default:
+		// Default to adaptive load balancer
 	}
 
 	state := &PersistenceState{
@@ -125,7 +143,7 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 		UsageLogService: processor.UsageLogService,
 		ChannelService:  processor.ChannelService,
 		ChannelSelector: processor.channelSelector,
-		LoadBalancer:    processor.loadBalancer,
+		LoadBalancer:    loadBalancer,
 		ModelMapper:     processor.ModelMapper,
 		Proxy:           processor.proxy,
 		ChannelIndex:    0,
@@ -133,8 +151,6 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 
 	var pipelineOpts []pipeline.Option
 
-	// Get retry policy from system settings
-	retryPolicy := processor.SystemService.RetryPolicyOrDefault(ctx)
 	// Only apply retry if policy is enabled
 	if retryPolicy.Enabled {
 		pipelineOpts = append(pipelineOpts, pipeline.WithRetry(

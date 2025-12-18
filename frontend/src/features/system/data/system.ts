@@ -71,6 +71,7 @@ const RETRY_POLICY_QUERY = `
       maxChannelRetries
       maxSingleChannelRetries
       retryDelayMs
+      loadBalancerStrategy
       enabled
     }
   }
@@ -151,6 +152,7 @@ export interface RetryPolicy {
   maxChannelRetries: number
   maxSingleChannelRetries: number
   retryDelayMs: number
+  loadBalancerStrategy: string
   enabled: boolean
 }
 
@@ -158,6 +160,7 @@ export interface RetryPolicyInput {
   maxChannelRetries?: number
   maxSingleChannelRetries?: number
   retryDelayMs?: number
+  loadBalancerStrategy?: string
   enabled?: boolean
 }
 

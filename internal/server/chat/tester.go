@@ -78,14 +78,15 @@ func (processor *TestChannelProcessor) TestChannel(
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
-		Inbound:            inbound,
-		SystemService:      processor.systemService,
-		UsageLogService:    processor.usageLogService,
-		proxy:              proxy,
-		ModelMapper:        nil,
-		selectedChannelIds: []int{},
-		loadBalancer:       nil,
-		connectionTracker:  nil,
+		Inbound:              inbound,
+		SystemService:        processor.systemService,
+		UsageLogService:      processor.usageLogService,
+		proxy:                proxy,
+		ModelMapper:          nil,
+		selectedChannelIds:   []int{},
+		adaptiveLoadBalancer: nil,
+		weightedLoadBalancer: nil,
+		connectionTracker:    nil,
 	}
 
 	// Create a simple test request

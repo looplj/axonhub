@@ -85,6 +85,9 @@ type RetryPolicy struct {
 	MaxSingleChannelRetries int `json:"max_single_channel_retries"`
 	// RetryDelayMs defines the delay between retries in milliseconds
 	RetryDelayMs int `json:"retry_delay_ms"`
+	// LoadBalancerStrategy defines which channel load balancer strategy to use.
+	// Supported values: "adaptive", "weighted".
+	LoadBalancerStrategy string `json:"load_balancer_strategy"`
 	// Enabled controls whether retry policy is active
 	Enabled bool `json:"enabled"`
 }
@@ -405,6 +408,7 @@ var defaultRetryPolicy = RetryPolicy{
 	MaxChannelRetries:       3,
 	MaxSingleChannelRetries: 2,
 	RetryDelayMs:            1000,
+	LoadBalancerStrategy:    "adaptive",
 	Enabled:                 true,
 }
 
@@ -466,6 +470,10 @@ func (s *SystemService) RetryPolicy(ctx context.Context) (*RetryPolicy, error) {
 		return nil, fmt.Errorf("failed to unmarshal retry policy: %w", err)
 	}
 
+	if policy.LoadBalancerStrategy == "" {
+		policy.LoadBalancerStrategy = defaultRetryPolicy.LoadBalancerStrategy
+	}
+
 	return &policy, nil
 }
 
@@ -488,6 +496,10 @@ func (s *SystemService) RetryPolicyOrDefault(ctx context.Context) *RetryPolicy {
 
 // SetRetryPolicy sets the retry policy configuration.
 func (s *SystemService) SetRetryPolicy(ctx context.Context, policy *RetryPolicy) error {
+	if policy.LoadBalancerStrategy == "" {
+		policy.LoadBalancerStrategy = defaultRetryPolicy.LoadBalancerStrategy
+	}
+
 	jsonBytes, err := json.Marshal(policy)
 	if err != nil {
 		return fmt.Errorf("failed to marshal retry policy: %w", err)
