@@ -60,6 +60,10 @@ func convertLLMRoleToGeminiRole(role string) string {
 		return "model"
 	case "user":
 		return "user"
+	case "developer":
+		// Developer role is treated as system-equivalent and handled in system instruction
+		// Convert to user for any content that needs to be processed as regular content
+		return "user"
 	default:
 		return role
 	}

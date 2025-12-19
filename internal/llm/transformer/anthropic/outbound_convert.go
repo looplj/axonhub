@@ -125,9 +125,9 @@ func convertStopSequences(stop *llm.Stop) []string {
 // convertMessages converts all messages to Anthropic format.
 func convertMessages(chatReq *llm.Request) []MessageParam {
 	messages := make([]MessageParam, 0, len(chatReq.Messages))
-	// First, filter out system messages as they are handled separately.
+	// First, filter out system and developer messages as they are handled separately.
 	nonSystemMsgs := lo.Filter(chatReq.Messages, func(msg llm.Message, _ int) bool {
-		return msg.Role != "system"
+		return msg.Role != "system" && msg.Role != "developer"
 	})
 
 	// Track which message indexes have been processed (for user messages with MessageIndex)
@@ -464,9 +464,19 @@ func convertToAnthropicTrivialContent(content llm.MessageContent) *MessageConten
 }
 
 func convertToAnthropicSystemPrompt(chatReq *llm.Request) *SystemPrompt {
-	systemMessages := lo.Filter(chatReq.Messages, func(msg llm.Message, _ int) bool {
-		return msg.Role == "system"
-	})
+	// Partition messages into system and developer roles in a single loop for better performance
+	var systemOnlyMessages, developerMessages []llm.Message
+
+	for _, msg := range chatReq.Messages {
+		switch msg.Role {
+		case "system":
+			systemOnlyMessages = append(systemOnlyMessages, msg)
+		case "developer":
+			developerMessages = append(developerMessages, msg)
+		}
+	}
+
+	systemMessages := append(systemOnlyMessages, developerMessages...)
 
 	// Check if system was originally in array format
 	wasArrayFormat := chatReq.TransformerMetadata != nil && chatReq.TransformerMetadata["anthropic_system_array_format"] == "true"
@@ -491,6 +501,7 @@ func convertToAnthropicSystemPrompt(chatReq *llm.Request) *SystemPrompt {
 			Prompt: systemMessages[0].Content.Content,
 		}
 	default:
+		// Combine system and developer messages in order
 		return &SystemPrompt{
 			MultiplePrompts: lo.Map(systemMessages, func(msg llm.Message, _ int) SystemPromptPart {
 				part := SystemPromptPart{
