@@ -397,6 +397,14 @@ func TestTransformResponse_Integration(t *testing.T) {
 			name:        "anthropic-tool2.response.json",
 			requestFile: `anthropic-tool2.response.json`,
 		},
+		{
+			name:        "anthropic-stop.response.json",
+			requestFile: `anthropic-stop.response.json`,
+		},
+		{
+			name:        "anthropic-cache-usage.response.json",
+			requestFile: `anthropic-cache-usage.response.json`,
+		},
 	}
 
 	for _, tt := range tests {

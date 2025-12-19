@@ -3821,6 +3821,11 @@ func (_q *UsageLogQuery) collectField(ctx context.Context, oneNode bool, opCtx *
 				selectedFields = append(selectedFields, usagelog.FieldPromptCachedTokens)
 				fieldSeen[usagelog.FieldPromptCachedTokens] = struct{}{}
 			}
+		case "promptWriteCachedTokens":
+			if _, ok := fieldSeen[usagelog.FieldPromptWriteCachedTokens]; !ok {
+				selectedFields = append(selectedFields, usagelog.FieldPromptWriteCachedTokens)
+				fieldSeen[usagelog.FieldPromptWriteCachedTokens] = struct{}{}
+			}
 		case "completionAudioTokens":
 			if _, ok := fieldSeen[usagelog.FieldCompletionAudioTokens]; !ok {
 				selectedFields = append(selectedFields, usagelog.FieldCompletionAudioTokens)

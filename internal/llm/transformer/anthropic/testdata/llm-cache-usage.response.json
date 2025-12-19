@@ -1,0 +1,31 @@
+{
+  "id": "msg_bdrk_01CacheUsageTest123",
+  "object": "chat.completion",
+  "model": "claude-3-7-sonnet-20250219",
+  "created": 0,
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "This is a response with cache usage information."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 3600,
+    "completion_tokens": 50,
+    "total_tokens": 3650,
+    "prompt_tokens_details": {
+      "cached_tokens": 1500,
+      "audio_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "audio_tokens": 0,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0
+    }
+  }
+}

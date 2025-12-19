@@ -795,6 +795,7 @@ type CreateUsageLogInput struct {
 	TotalTokens                        *int64
 	PromptAudioTokens                  *int64
 	PromptCachedTokens                 *int64
+	PromptWriteCachedTokens            *int64
 	CompletionAudioTokens              *int64
 	CompletionReasoningTokens          *int64
 	CompletionAcceptedPredictionTokens *int64
@@ -823,6 +824,9 @@ func (i *CreateUsageLogInput) Mutate(m *UsageLogMutation) {
 	}
 	if v := i.PromptCachedTokens; v != nil {
 		m.SetPromptCachedTokens(*v)
+	}
+	if v := i.PromptWriteCachedTokens; v != nil {
+		m.SetPromptWriteCachedTokens(*v)
 	}
 	if v := i.CompletionAudioTokens; v != nil {
 		m.SetCompletionAudioTokens(*v)
@@ -864,6 +868,8 @@ type UpdateUsageLogInput struct {
 	PromptAudioTokens                       *int64
 	ClearPromptCachedTokens                 bool
 	PromptCachedTokens                      *int64
+	ClearPromptWriteCachedTokens            bool
+	PromptWriteCachedTokens                 *int64
 	ClearCompletionAudioTokens              bool
 	CompletionAudioTokens                   *int64
 	ClearCompletionReasoningTokens          bool
@@ -898,6 +904,12 @@ func (i *UpdateUsageLogInput) Mutate(m *UsageLogMutation) {
 	}
 	if v := i.PromptCachedTokens; v != nil {
 		m.SetPromptCachedTokens(*v)
+	}
+	if i.ClearPromptWriteCachedTokens {
+		m.ClearPromptWriteCachedTokens()
+	}
+	if v := i.PromptWriteCachedTokens; v != nil {
+		m.SetPromptWriteCachedTokens(*v)
 	}
 	if i.ClearCompletionAudioTokens {
 		m.ClearCompletionAudioTokens()

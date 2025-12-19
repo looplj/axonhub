@@ -1392,6 +1392,7 @@ input CreateUsageLogInput {
   Number of cached tokens in the prompt
   """
   promptCachedTokens: Int
+  promptWriteCachedTokens: Int
   """
   Number of audio tokens in the completion
   """
@@ -4164,6 +4165,8 @@ input UpdateUsageLogInput {
   """
   promptCachedTokens: Int
   clearPromptCachedTokens: Boolean
+  promptWriteCachedTokens: Int
+  clearPromptWriteCachedTokens: Boolean
   """
   Number of audio tokens in the completion
   """
@@ -4260,6 +4263,7 @@ type UsageLog implements Node {
   Number of cached tokens in the prompt
   """
   promptCachedTokens: Int
+  promptWriteCachedTokens: Int
   """
   Number of audio tokens in the completion
   """
@@ -4485,6 +4489,19 @@ input UsageLogWhereInput {
   promptCachedTokensLTE: Int
   promptCachedTokensIsNil: Boolean
   promptCachedTokensNotNil: Boolean
+  """
+  prompt_write_cached_tokens field predicates
+  """
+  promptWriteCachedTokens: Int
+  promptWriteCachedTokensNEQ: Int
+  promptWriteCachedTokensIn: [Int!]
+  promptWriteCachedTokensNotIn: [Int!]
+  promptWriteCachedTokensGT: Int
+  promptWriteCachedTokensGTE: Int
+  promptWriteCachedTokensLT: Int
+  promptWriteCachedTokensLTE: Int
+  promptWriteCachedTokensIsNil: Boolean
+  promptWriteCachedTokensNotNil: Boolean
   """
   completion_audio_tokens field predicates
   """

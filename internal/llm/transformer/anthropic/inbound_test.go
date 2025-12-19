@@ -859,7 +859,8 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 					CompletionTokens: 50,
 					TotalTokens:      150,
 					PromptTokensDetails: &llm.PromptTokensDetails{
-						CachedTokens: 20,
+						CachedTokens:      20,
+						WriteCachedTokens: 5,
 					},
 					CompletionTokensDetails: &llm.CompletionTokensDetails{
 						ReasoningTokens: 10,
@@ -870,9 +871,10 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 			validate: func(t *testing.T, resp *Message) {
 				t.Helper()
 				require.NotNil(t, resp.Usage)
-				require.Equal(t, int64(80), resp.Usage.InputTokens)
+				require.Equal(t, int64(75), resp.Usage.InputTokens)
 				require.Equal(t, int64(50), resp.Usage.OutputTokens)
 				require.Equal(t, int64(20), resp.Usage.CacheReadInputTokens)
+				require.Equal(t, int64(5), resp.Usage.CacheCreationInputTokens)
 			},
 		},
 		{

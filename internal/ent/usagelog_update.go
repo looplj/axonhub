@@ -173,6 +173,33 @@ func (_u *UsageLogUpdate) ClearPromptCachedTokens() *UsageLogUpdate {
 	return _u
 }
 
+// SetPromptWriteCachedTokens sets the "prompt_write_cached_tokens" field.
+func (_u *UsageLogUpdate) SetPromptWriteCachedTokens(v int64) *UsageLogUpdate {
+	_u.mutation.ResetPromptWriteCachedTokens()
+	_u.mutation.SetPromptWriteCachedTokens(v)
+	return _u
+}
+
+// SetNillablePromptWriteCachedTokens sets the "prompt_write_cached_tokens" field if the given value is not nil.
+func (_u *UsageLogUpdate) SetNillablePromptWriteCachedTokens(v *int64) *UsageLogUpdate {
+	if v != nil {
+		_u.SetPromptWriteCachedTokens(*v)
+	}
+	return _u
+}
+
+// AddPromptWriteCachedTokens adds value to the "prompt_write_cached_tokens" field.
+func (_u *UsageLogUpdate) AddPromptWriteCachedTokens(v int64) *UsageLogUpdate {
+	_u.mutation.AddPromptWriteCachedTokens(v)
+	return _u
+}
+
+// ClearPromptWriteCachedTokens clears the value of the "prompt_write_cached_tokens" field.
+func (_u *UsageLogUpdate) ClearPromptWriteCachedTokens() *UsageLogUpdate {
+	_u.mutation.ClearPromptWriteCachedTokens()
+	return _u
+}
+
 // SetCompletionAudioTokens sets the "completion_audio_tokens" field.
 func (_u *UsageLogUpdate) SetCompletionAudioTokens(v int64) *UsageLogUpdate {
 	_u.mutation.ResetCompletionAudioTokens()
@@ -407,6 +434,15 @@ func (_u *UsageLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.PromptCachedTokensCleared() {
 		_spec.ClearField(usagelog.FieldPromptCachedTokens, field.TypeInt64)
 	}
+	if value, ok := _u.mutation.PromptWriteCachedTokens(); ok {
+		_spec.SetField(usagelog.FieldPromptWriteCachedTokens, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedPromptWriteCachedTokens(); ok {
+		_spec.AddField(usagelog.FieldPromptWriteCachedTokens, field.TypeInt64, value)
+	}
+	if _u.mutation.PromptWriteCachedTokensCleared() {
+		_spec.ClearField(usagelog.FieldPromptWriteCachedTokens, field.TypeInt64)
+	}
 	if value, ok := _u.mutation.CompletionAudioTokens(); ok {
 		_spec.SetField(usagelog.FieldCompletionAudioTokens, field.TypeInt64, value)
 	}
@@ -634,6 +670,33 @@ func (_u *UsageLogUpdateOne) AddPromptCachedTokens(v int64) *UsageLogUpdateOne {
 // ClearPromptCachedTokens clears the value of the "prompt_cached_tokens" field.
 func (_u *UsageLogUpdateOne) ClearPromptCachedTokens() *UsageLogUpdateOne {
 	_u.mutation.ClearPromptCachedTokens()
+	return _u
+}
+
+// SetPromptWriteCachedTokens sets the "prompt_write_cached_tokens" field.
+func (_u *UsageLogUpdateOne) SetPromptWriteCachedTokens(v int64) *UsageLogUpdateOne {
+	_u.mutation.ResetPromptWriteCachedTokens()
+	_u.mutation.SetPromptWriteCachedTokens(v)
+	return _u
+}
+
+// SetNillablePromptWriteCachedTokens sets the "prompt_write_cached_tokens" field if the given value is not nil.
+func (_u *UsageLogUpdateOne) SetNillablePromptWriteCachedTokens(v *int64) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetPromptWriteCachedTokens(*v)
+	}
+	return _u
+}
+
+// AddPromptWriteCachedTokens adds value to the "prompt_write_cached_tokens" field.
+func (_u *UsageLogUpdateOne) AddPromptWriteCachedTokens(v int64) *UsageLogUpdateOne {
+	_u.mutation.AddPromptWriteCachedTokens(v)
+	return _u
+}
+
+// ClearPromptWriteCachedTokens clears the value of the "prompt_write_cached_tokens" field.
+func (_u *UsageLogUpdateOne) ClearPromptWriteCachedTokens() *UsageLogUpdateOne {
+	_u.mutation.ClearPromptWriteCachedTokens()
 	return _u
 }
 
@@ -900,6 +963,15 @@ func (_u *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, err 
 	}
 	if _u.mutation.PromptCachedTokensCleared() {
 		_spec.ClearField(usagelog.FieldPromptCachedTokens, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.PromptWriteCachedTokens(); ok {
+		_spec.SetField(usagelog.FieldPromptWriteCachedTokens, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedPromptWriteCachedTokens(); ok {
+		_spec.AddField(usagelog.FieldPromptWriteCachedTokens, field.TypeInt64, value)
+	}
+	if _u.mutation.PromptWriteCachedTokensCleared() {
+		_spec.ClearField(usagelog.FieldPromptWriteCachedTokens, field.TypeInt64)
 	}
 	if value, ok := _u.mutation.CompletionAudioTokens(); ok {
 		_spec.SetField(usagelog.FieldCompletionAudioTokens, field.TypeInt64, value)

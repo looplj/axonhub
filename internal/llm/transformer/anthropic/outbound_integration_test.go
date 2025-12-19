@@ -32,6 +32,12 @@ func TestOutboundTransformer_TransformResponse_WithTestData(t *testing.T) {
 			expectedFile: "llm-think.response.json",
 			platformType: PlatformDirect,
 		},
+		{
+			name:         "response with cache usage",
+			responseFile: "anthropic-cache-usage.response.json",
+			expectedFile: "llm-cache-usage.response.json",
+			platformType: PlatformDirect,
+		},
 	}
 
 	for _, tt := range tests {
@@ -60,6 +66,12 @@ func TestOutboundTransformer_TransformResponse_WithTestData(t *testing.T) {
 
 				err = xtest.LoadTestData(t, tt.expectedFile, &expected)
 				require.NoError(t, err)
+
+				// WriteCachedTokens is a hidden field (json:"-"), so we need to set it manually
+				// based on the Anthropic response's cache_creation_input_tokens
+				if expected.Usage != nil && expected.Usage.PromptTokensDetails != nil && anthropicResp.Usage != nil {
+					expected.Usage.PromptTokensDetails.WriteCachedTokens = anthropicResp.Usage.CacheCreationInputTokens
+				}
 
 				if !xtest.Equal(expected, *result) {
 					t.Fatalf("responses are not equal %s", cmp.Diff(expected, *result))

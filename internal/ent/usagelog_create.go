@@ -163,6 +163,20 @@ func (_c *UsageLogCreate) SetNillablePromptCachedTokens(v *int64) *UsageLogCreat
 	return _c
 }
 
+// SetPromptWriteCachedTokens sets the "prompt_write_cached_tokens" field.
+func (_c *UsageLogCreate) SetPromptWriteCachedTokens(v int64) *UsageLogCreate {
+	_c.mutation.SetPromptWriteCachedTokens(v)
+	return _c
+}
+
+// SetNillablePromptWriteCachedTokens sets the "prompt_write_cached_tokens" field if the given value is not nil.
+func (_c *UsageLogCreate) SetNillablePromptWriteCachedTokens(v *int64) *UsageLogCreate {
+	if v != nil {
+		_c.SetPromptWriteCachedTokens(*v)
+	}
+	return _c
+}
+
 // SetCompletionAudioTokens sets the "completion_audio_tokens" field.
 func (_c *UsageLogCreate) SetCompletionAudioTokens(v int64) *UsageLogCreate {
 	_c.mutation.SetCompletionAudioTokens(v)
@@ -337,6 +351,10 @@ func (_c *UsageLogCreate) defaults() error {
 		v := usagelog.DefaultPromptCachedTokens
 		_c.mutation.SetPromptCachedTokens(v)
 	}
+	if _, ok := _c.mutation.PromptWriteCachedTokens(); !ok {
+		v := usagelog.DefaultPromptWriteCachedTokens
+		_c.mutation.SetPromptWriteCachedTokens(v)
+	}
 	if _, ok := _c.mutation.CompletionAudioTokens(); !ok {
 		v := usagelog.DefaultCompletionAudioTokens
 		_c.mutation.SetCompletionAudioTokens(v)
@@ -465,6 +483,10 @@ func (_c *UsageLogCreate) createSpec() (*UsageLog, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.PromptCachedTokens(); ok {
 		_spec.SetField(usagelog.FieldPromptCachedTokens, field.TypeInt64, value)
 		_node.PromptCachedTokens = value
+	}
+	if value, ok := _c.mutation.PromptWriteCachedTokens(); ok {
+		_spec.SetField(usagelog.FieldPromptWriteCachedTokens, field.TypeInt64, value)
+		_node.PromptWriteCachedTokens = value
 	}
 	if value, ok := _c.mutation.CompletionAudioTokens(); ok {
 		_spec.SetField(usagelog.FieldCompletionAudioTokens, field.TypeInt64, value)
@@ -722,6 +744,30 @@ func (u *UsageLogUpsert) AddPromptCachedTokens(v int64) *UsageLogUpsert {
 // ClearPromptCachedTokens clears the value of the "prompt_cached_tokens" field.
 func (u *UsageLogUpsert) ClearPromptCachedTokens() *UsageLogUpsert {
 	u.SetNull(usagelog.FieldPromptCachedTokens)
+	return u
+}
+
+// SetPromptWriteCachedTokens sets the "prompt_write_cached_tokens" field.
+func (u *UsageLogUpsert) SetPromptWriteCachedTokens(v int64) *UsageLogUpsert {
+	u.Set(usagelog.FieldPromptWriteCachedTokens, v)
+	return u
+}
+
+// UpdatePromptWriteCachedTokens sets the "prompt_write_cached_tokens" field to the value that was provided on create.
+func (u *UsageLogUpsert) UpdatePromptWriteCachedTokens() *UsageLogUpsert {
+	u.SetExcluded(usagelog.FieldPromptWriteCachedTokens)
+	return u
+}
+
+// AddPromptWriteCachedTokens adds v to the "prompt_write_cached_tokens" field.
+func (u *UsageLogUpsert) AddPromptWriteCachedTokens(v int64) *UsageLogUpsert {
+	u.Add(usagelog.FieldPromptWriteCachedTokens, v)
+	return u
+}
+
+// ClearPromptWriteCachedTokens clears the value of the "prompt_write_cached_tokens" field.
+func (u *UsageLogUpsert) ClearPromptWriteCachedTokens() *UsageLogUpsert {
+	u.SetNull(usagelog.FieldPromptWriteCachedTokens)
 	return u
 }
 
@@ -1032,6 +1078,34 @@ func (u *UsageLogUpsertOne) UpdatePromptCachedTokens() *UsageLogUpsertOne {
 func (u *UsageLogUpsertOne) ClearPromptCachedTokens() *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.ClearPromptCachedTokens()
+	})
+}
+
+// SetPromptWriteCachedTokens sets the "prompt_write_cached_tokens" field.
+func (u *UsageLogUpsertOne) SetPromptWriteCachedTokens(v int64) *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetPromptWriteCachedTokens(v)
+	})
+}
+
+// AddPromptWriteCachedTokens adds v to the "prompt_write_cached_tokens" field.
+func (u *UsageLogUpsertOne) AddPromptWriteCachedTokens(v int64) *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.AddPromptWriteCachedTokens(v)
+	})
+}
+
+// UpdatePromptWriteCachedTokens sets the "prompt_write_cached_tokens" field to the value that was provided on create.
+func (u *UsageLogUpsertOne) UpdatePromptWriteCachedTokens() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdatePromptWriteCachedTokens()
+	})
+}
+
+// ClearPromptWriteCachedTokens clears the value of the "prompt_write_cached_tokens" field.
+func (u *UsageLogUpsertOne) ClearPromptWriteCachedTokens() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearPromptWriteCachedTokens()
 	})
 }
 
@@ -1524,6 +1598,34 @@ func (u *UsageLogUpsertBulk) UpdatePromptCachedTokens() *UsageLogUpsertBulk {
 func (u *UsageLogUpsertBulk) ClearPromptCachedTokens() *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.ClearPromptCachedTokens()
+	})
+}
+
+// SetPromptWriteCachedTokens sets the "prompt_write_cached_tokens" field.
+func (u *UsageLogUpsertBulk) SetPromptWriteCachedTokens(v int64) *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetPromptWriteCachedTokens(v)
+	})
+}
+
+// AddPromptWriteCachedTokens adds v to the "prompt_write_cached_tokens" field.
+func (u *UsageLogUpsertBulk) AddPromptWriteCachedTokens(v int64) *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.AddPromptWriteCachedTokens(v)
+	})
+}
+
+// UpdatePromptWriteCachedTokens sets the "prompt_write_cached_tokens" field to the value that was provided on create.
+func (u *UsageLogUpsertBulk) UpdatePromptWriteCachedTokens() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdatePromptWriteCachedTokens()
+	})
+}
+
+// ClearPromptWriteCachedTokens clears the value of the "prompt_write_cached_tokens" field.
+func (u *UsageLogUpsertBulk) ClearPromptWriteCachedTokens() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearPromptWriteCachedTokens()
 	})
 }
 
