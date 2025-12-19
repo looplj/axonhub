@@ -76,6 +76,19 @@
         "label": "Enable Retry",
         "description": "When enabled, the system will automatically retry failed requests. This helps improve reliability when experiencing temporary network issues or service unavailability."
       },
+      "loadBalancerStrategy": {
+        "label": "Load Balancer Strategy",
+        "description": "Choose how channels are ordered when routing requests.",
+        "placeholder": "Select strategy",
+        "options": {
+          "adaptive": "Adaptive",
+          "weighted": "Weighted"
+        },
+        "documentation": {
+          "adaptive": "Based on comprehensive consideration of weight, success rate, round-robin, and trace strategies to select appropriate channels for requests. Intelligently balances multiple factors to optimize channel selection.",
+          "weighted": "Each request follows channel weight order from high to low until one succeeds. Higher weight channels are prioritized sequentially for all requests."
+        }
+      },
       "maxChannelRetries": {
         "label": "Max Channel Retries",
         "description": "Maximum number of times to retry across different channels (0-10). When a channel fails, the system will try other available channels up to this limit. Higher values increase reliability but may increase latency."

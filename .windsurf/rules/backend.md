@@ -13,9 +13,7 @@ globs: *.go
 
 4. Use `make generate` command to generate GraphQL and Ent code, which will automatically enter the gql directory and run go generate.
 
-5. DO NOT ADD ANY NEW METHOD/STRUCTURE/FUNCTION/VARIABLE IN *.resolvers.go
-
-6. Use `enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")` to create a new client for test.
+5. Use `enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")` to create a new client for test.
 
 
 #  Golang rules
