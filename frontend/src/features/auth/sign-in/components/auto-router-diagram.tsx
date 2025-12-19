@@ -58,7 +58,7 @@ export default function AutoRouterDiagram() {
 
         {/* Curved text: Auto Router */}
         <defs>
-          <path id="ar-curve" d="M 360 180 m -66 0 a 66 66 0 1 1 132 0" fill="none"/>
+          <path id="ar-curve" d="M 360 180 m -60 0 a 60 60 0 1 1 132 0" fill="none"/>
           <marker id="arrow" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto">
             <path d="M0,0 L8,4 L0,8 Z" fill="#e2e8f0"/>
           </marker>

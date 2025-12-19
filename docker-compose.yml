@@ -73,7 +73,9 @@ services:
 
   # SQLite 配置示例 (取消注释以使用 SQLite)
   # 注意: 此服务与上面的 'axonhub' 服务冲突。请只启用其中一个。
-  # 先执行 mkdir data
+  # 先执行 
+  # mkdir data
+  # chmod 777 data
   # axonhub-sqlite:
   #   image: looplj/axonhub:latest
   #   container_name: axonhub-sqlite-app

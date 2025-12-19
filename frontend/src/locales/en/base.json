@@ -261,7 +261,7 @@
   "auth": {
     "brand": {
       "title": "Unified AI Gateway",
-      "description": "Unified OpenAI/Anthropic compatible API with a flexible transformer pipeline, intelligent routing, and comprehensive tracing—built for enterprise reliability."
+      "description": "Unified OpenAI/Anthropic/Gemini compatible API with a flexible transformer pipeline, intelligent routing, and comprehensive tracing—built for enterprise reliability."
     },
     "signIn": {
       "title": "Sign in to AxonHub",
