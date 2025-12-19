@@ -110,6 +110,11 @@ func PromptCachedTokens(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldPromptCachedTokens, v))
 }
 
+// PromptWriteCachedTokens applies equality check predicate on the "prompt_write_cached_tokens" field. It's identical to PromptWriteCachedTokensEQ.
+func PromptWriteCachedTokens(v int64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldPromptWriteCachedTokens, v))
+}
+
 // CompletionAudioTokens applies equality check predicate on the "completion_audio_tokens" field. It's identical to CompletionAudioTokensEQ.
 func CompletionAudioTokens(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldCompletionAudioTokens, v))
@@ -568,6 +573,56 @@ func PromptCachedTokensIsNil() predicate.UsageLog {
 // PromptCachedTokensNotNil applies the NotNil predicate on the "prompt_cached_tokens" field.
 func PromptCachedTokensNotNil() predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNotNull(FieldPromptCachedTokens))
+}
+
+// PromptWriteCachedTokensEQ applies the EQ predicate on the "prompt_write_cached_tokens" field.
+func PromptWriteCachedTokensEQ(v int64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldPromptWriteCachedTokens, v))
+}
+
+// PromptWriteCachedTokensNEQ applies the NEQ predicate on the "prompt_write_cached_tokens" field.
+func PromptWriteCachedTokensNEQ(v int64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNEQ(FieldPromptWriteCachedTokens, v))
+}
+
+// PromptWriteCachedTokensIn applies the In predicate on the "prompt_write_cached_tokens" field.
+func PromptWriteCachedTokensIn(vs ...int64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIn(FieldPromptWriteCachedTokens, vs...))
+}
+
+// PromptWriteCachedTokensNotIn applies the NotIn predicate on the "prompt_write_cached_tokens" field.
+func PromptWriteCachedTokensNotIn(vs ...int64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotIn(FieldPromptWriteCachedTokens, vs...))
+}
+
+// PromptWriteCachedTokensGT applies the GT predicate on the "prompt_write_cached_tokens" field.
+func PromptWriteCachedTokensGT(v int64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGT(FieldPromptWriteCachedTokens, v))
+}
+
+// PromptWriteCachedTokensGTE applies the GTE predicate on the "prompt_write_cached_tokens" field.
+func PromptWriteCachedTokensGTE(v int64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGTE(FieldPromptWriteCachedTokens, v))
+}
+
+// PromptWriteCachedTokensLT applies the LT predicate on the "prompt_write_cached_tokens" field.
+func PromptWriteCachedTokensLT(v int64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLT(FieldPromptWriteCachedTokens, v))
+}
+
+// PromptWriteCachedTokensLTE applies the LTE predicate on the "prompt_write_cached_tokens" field.
+func PromptWriteCachedTokensLTE(v int64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLTE(FieldPromptWriteCachedTokens, v))
+}
+
+// PromptWriteCachedTokensIsNil applies the IsNil predicate on the "prompt_write_cached_tokens" field.
+func PromptWriteCachedTokensIsNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIsNull(FieldPromptWriteCachedTokens))
+}
+
+// PromptWriteCachedTokensNotNil applies the NotNil predicate on the "prompt_write_cached_tokens" field.
+func PromptWriteCachedTokensNotNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotNull(FieldPromptWriteCachedTokens))
 }
 
 // CompletionAudioTokensEQ applies the EQ predicate on the "completion_audio_tokens" field.

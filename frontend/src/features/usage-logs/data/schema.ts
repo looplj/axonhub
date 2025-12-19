@@ -22,6 +22,7 @@ export const usageLogSchema = z.object({
   totalTokens: z.number(),
   promptAudioTokens: z.number().nullable().optional(),
   promptCachedTokens: z.number().nullable().optional(),
+  promptWriteCachedTokens: z.number().nullable().optional(),
   completionAudioTokens: z.number().nullable().optional(),
   completionReasoningTokens: z.number().nullable().optional(),
   completionAcceptedPredictionTokens: z.number().nullable().optional(),

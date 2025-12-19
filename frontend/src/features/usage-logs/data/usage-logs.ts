@@ -34,6 +34,7 @@ function buildUsageLogsQuery(permissions: { canViewChannels: boolean }) {
             totalTokens
             promptAudioTokens
             promptCachedTokens
+            promptWriteCachedTokens
             completionAudioTokens
             completionReasoningTokens
             completionAcceptedPredictionTokens
@@ -77,6 +78,7 @@ function buildUsageLogDetailQuery(permissions: { canViewChannels: boolean }) {
           totalTokens
           promptAudioTokens
           promptCachedTokens
+          promptWriteCachedTokens
           completionAudioTokens
           completionReasoningTokens
           completionAcceptedPredictionTokens

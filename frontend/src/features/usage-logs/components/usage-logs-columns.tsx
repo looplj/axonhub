@@ -164,18 +164,55 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
       },
     },
     {
-      id: 'source',
-      accessorKey: 'source',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('usageLogs.columns.source')} />,
+      id: 'writeCacheTokens',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('usageLogs.columns.writeCacheTokens')} />,
       cell: ({ row }) => {
-        const source = row.getValue('source') as UsageLogSource
-        return <Badge className={getSourceColor(source)}>{t(`usageLogs.source.${source}`)}</Badge>
+        const usage = row.original
+        const writeCachedTokens = usage.promptWriteCachedTokens || 0
+        const hasWriteCache = writeCachedTokens > 0
+
+        return (
+          <div className='space-y-1 text-sm'>
+            <div className='flex items-center gap-1'>
+              <span
+                className={`text-xs font-medium ${
+                  hasWriteCache ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'
+                }`}
+              >
+                {hasWriteCache ? '✓' : '—'}
+              </span>
+              <span className='font-medium'>{writeCachedTokens.toLocaleString()}</span>
+            </div>
+            {hasWriteCache && (
+              <div className='text-muted-foreground text-xs'>
+                {t('usageLogs.columns.writeCacheRate', {
+                  rate: ((writeCachedTokens / usage.promptTokens) * 100).toFixed(1),
+                })}
+              </div>
+            )}
+          </div>
+        )
       },
-      enableSorting: false,
-      filterFn: (row, id, value) => {
-        return value.includes(row.getValue(id))
+      enableSorting: true,
+      sortingFn: (rowA, rowB) => {
+        const a = rowA.original.promptWriteCachedTokens || 0
+        const b = rowB.original.promptWriteCachedTokens || 0
+        return a - b
       },
     },
+    // {
+    //   id: 'source',
+    //   accessorKey: 'source',
+    //   header: ({ column }) => <DataTableColumnHeader column={column} title={t('usageLogs.columns.source')} />,
+    //   cell: ({ row }) => {
+    //     const source = row.getValue('source') as UsageLogSource
+    //     return <Badge className={getSourceColor(source)}>{t(`usageLogs.source.${source}`)}</Badge>
+    //   },
+    //   enableSorting: false,
+    //   filterFn: (row, id, value) => {
+    //     return value.includes(row.getValue(id))
+    //   },
+    // },
     {
       accessorKey: 'createdAt',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('usageLogs.columns.createdAt')} />,

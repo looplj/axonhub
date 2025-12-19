@@ -220,9 +220,13 @@ export default function RequestDetailPage() {
             usageLogs.edges.length > 0 &&
             (() => {
               const usage = usageLogs.edges[0].node
+              const promptTokens = usage.promptTokens || 0
               const cachedTokens = usage.promptCachedTokens || 0
-              const hasCache = cachedTokens > 0
-              const cacheHitRate = hasCache ? ((cachedTokens / usage.promptTokens) * 100).toFixed(1) : 0
+              const writeCachedTokens = usage.promptWriteCachedTokens || 0
+              const hasReadCache = cachedTokens > 0
+              const hasWriteCache = writeCachedTokens > 0
+              const cacheHitRate = hasReadCache ? ((cachedTokens / promptTokens) * 100).toFixed(1) : '0.0'
+              const writeCacheRate = hasWriteCache ? ((writeCachedTokens / promptTokens) * 100).toFixed(1) : '0.0'
 
               return (
                 <Card className='border-0 shadow-sm'>
@@ -243,7 +247,7 @@ export default function RequestDetailPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className='grid grid-cols-2 gap-4 sm:grid-cols-4'>
+                    <div className='grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4'>
                       <div className='bg-muted/30 space-y-3 rounded-lg border p-4'>
                         <span className='text-muted-foreground text-sm font-medium'>
                           {t('usageLogs.columns.inputLabel')}
@@ -262,26 +266,52 @@ export default function RequestDetailPage() {
                         </span>
                         <p className='text-2xl'>{usage.totalTokens.toLocaleString()}</p>
                       </div>
-                      <div className='bg-muted/30 space-y-3 rounded-lg border p-4'>
+                      <div className='bg-muted/30 space-y-4 rounded-lg border p-4'>
                         <span className='text-muted-foreground text-sm font-medium'>
                           {t('usageLogs.columns.cacheTokens')}
                         </span>
-                        <div className='space-y-1'>
-                          <div className='flex items-center gap-1'>
-                            <span
-                              className={`text-xs font-medium ${
-                                hasCache ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
-                              }`}
-                            >
-                              {hasCache ? '✓' : '—'}
-                            </span>
-                            <span className='text-2xl'>{cachedTokens.toLocaleString()}</span>
-                          </div>
-                          {hasCache && (
-                            <div className='text-muted-foreground text-xs'>
-                              {t('usageLogs.columns.cacheHitRate', { rate: cacheHitRate })}
+                        <div className='space-y-3 text-sm'>
+                          <div className='space-y-1'>
+                            <div className='flex items-center justify-between text-xs'>
+                              <span className='text-muted-foreground'>{t('usageLogs.columns.cacheReadLabel')}</span>
+                              <span
+                                className={`font-medium ${
+                                  hasReadCache ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
+                                }`}
+                              >
+                                {hasReadCache ? '✓' : '—'}
+                              </span>
                             </div>
-                          )}
+                            <div className='flex items-center gap-2'>
+                              <span className='text-2xl'>{cachedTokens.toLocaleString()}</span>
+                              {hasReadCache && (
+                                <span className='text-muted-foreground text-xs'>
+                                  {t('usageLogs.columns.cacheHitRate', { rate: cacheHitRate })}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <Separator />
+                          <div className='space-y-1'>
+                            <div className='flex items-center justify-between text-xs'>
+                              <span className='text-muted-foreground'>{t('usageLogs.columns.cacheWriteLabel')}</span>
+                              <span
+                                className={`font-medium ${
+                                  hasWriteCache ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'
+                                }`}
+                              >
+                                {hasWriteCache ? '✓' : '—'}
+                              </span>
+                            </div>
+                            <div className='flex items-center gap-2'>
+                              <span className='text-2xl'>{writeCachedTokens.toLocaleString()}</span>
+                              {hasWriteCache && (
+                                <span className='text-muted-foreground text-xs'>
+                                  {t('usageLogs.columns.writeCacheRate', { rate: writeCacheRate })}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>

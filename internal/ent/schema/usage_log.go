@@ -56,6 +56,7 @@ func (UsageLog) Fields() []ent.Field {
 		// Prompt tokens details from llm.PromptTokensDetails
 		field.Int64("prompt_audio_tokens").Default(0).Optional().Comment("Number of audio tokens in the prompt"),
 		field.Int64("prompt_cached_tokens").Default(0).Optional().Comment("Number of cached tokens in the prompt"),
+		field.Int64("prompt_write_cached_tokens").Default(0).Optional(),
 
 		// Completion tokens details from llm.CompletionTokensDetails
 		field.Int64("completion_audio_tokens").Default(0).Optional().Comment("Number of audio tokens in the completion"),

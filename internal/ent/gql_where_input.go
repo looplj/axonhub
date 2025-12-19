@@ -6472,6 +6472,18 @@ type UsageLogWhereInput struct {
 	PromptCachedTokensIsNil  bool    `json:"promptCachedTokensIsNil,omitempty"`
 	PromptCachedTokensNotNil bool    `json:"promptCachedTokensNotNil,omitempty"`
 
+	// "prompt_write_cached_tokens" field predicates.
+	PromptWriteCachedTokens       *int64  `json:"promptWriteCachedTokens,omitempty"`
+	PromptWriteCachedTokensNEQ    *int64  `json:"promptWriteCachedTokensNEQ,omitempty"`
+	PromptWriteCachedTokensIn     []int64 `json:"promptWriteCachedTokensIn,omitempty"`
+	PromptWriteCachedTokensNotIn  []int64 `json:"promptWriteCachedTokensNotIn,omitempty"`
+	PromptWriteCachedTokensGT     *int64  `json:"promptWriteCachedTokensGT,omitempty"`
+	PromptWriteCachedTokensGTE    *int64  `json:"promptWriteCachedTokensGTE,omitempty"`
+	PromptWriteCachedTokensLT     *int64  `json:"promptWriteCachedTokensLT,omitempty"`
+	PromptWriteCachedTokensLTE    *int64  `json:"promptWriteCachedTokensLTE,omitempty"`
+	PromptWriteCachedTokensIsNil  bool    `json:"promptWriteCachedTokensIsNil,omitempty"`
+	PromptWriteCachedTokensNotNil bool    `json:"promptWriteCachedTokensNotNil,omitempty"`
+
 	// "completion_audio_tokens" field predicates.
 	CompletionAudioTokens       *int64  `json:"completionAudioTokens,omitempty"`
 	CompletionAudioTokensNEQ    *int64  `json:"completionAudioTokensNEQ,omitempty"`
@@ -6909,6 +6921,36 @@ func (i *UsageLogWhereInput) P() (predicate.UsageLog, error) {
 	}
 	if i.PromptCachedTokensNotNil {
 		predicates = append(predicates, usagelog.PromptCachedTokensNotNil())
+	}
+	if i.PromptWriteCachedTokens != nil {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokensEQ(*i.PromptWriteCachedTokens))
+	}
+	if i.PromptWriteCachedTokensNEQ != nil {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokensNEQ(*i.PromptWriteCachedTokensNEQ))
+	}
+	if len(i.PromptWriteCachedTokensIn) > 0 {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokensIn(i.PromptWriteCachedTokensIn...))
+	}
+	if len(i.PromptWriteCachedTokensNotIn) > 0 {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokensNotIn(i.PromptWriteCachedTokensNotIn...))
+	}
+	if i.PromptWriteCachedTokensGT != nil {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokensGT(*i.PromptWriteCachedTokensGT))
+	}
+	if i.PromptWriteCachedTokensGTE != nil {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokensGTE(*i.PromptWriteCachedTokensGTE))
+	}
+	if i.PromptWriteCachedTokensLT != nil {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokensLT(*i.PromptWriteCachedTokensLT))
+	}
+	if i.PromptWriteCachedTokensLTE != nil {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokensLTE(*i.PromptWriteCachedTokensLTE))
+	}
+	if i.PromptWriteCachedTokensIsNil {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokensIsNil())
+	}
+	if i.PromptWriteCachedTokensNotNil {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokensNotNil())
 	}
 	if i.CompletionAudioTokens != nil {
 		predicates = append(predicates, usagelog.CompletionAudioTokensEQ(*i.CompletionAudioTokens))

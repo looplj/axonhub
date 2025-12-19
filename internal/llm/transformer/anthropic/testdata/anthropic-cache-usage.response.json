@@ -1,0 +1,19 @@
+{
+  "id": "msg_bdrk_01CacheUsageTest123",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": "This is a response with cache usage information."
+    }
+  ],
+  "model": "claude-3-7-sonnet-20250219",
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 100,
+    "cache_creation_input_tokens": 2000,
+    "cache_read_input_tokens": 1500,
+    "output_tokens": 50
+  }
+}

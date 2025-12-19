@@ -62,7 +62,8 @@ func convertToLlmUsage(usage *Usage, platformType PlatformType) *llm.Usage {
 
 	if usage.CacheReadInputTokens > 0 || usage.CacheCreationInputTokens > 0 {
 		u.PromptTokensDetails = &llm.PromptTokensDetails{
-			CachedTokens: usage.CacheReadInputTokens + usage.CacheCreationInputTokens,
+			CachedTokens:      usage.CacheReadInputTokens,
+			WriteCachedTokens: usage.CacheCreationInputTokens,
 		}
 	}
 
@@ -78,7 +79,8 @@ func convertToAnthropicUsage(llmUsage *llm.Usage) *Usage {
 	// Map detailed token information from unified model to Anthropic format
 	if llmUsage.PromptTokensDetails != nil {
 		usage.CacheReadInputTokens = llmUsage.PromptTokensDetails.CachedTokens
-		usage.InputTokens -= usage.CacheReadInputTokens
+		usage.CacheCreationInputTokens = llmUsage.PromptTokensDetails.WriteCachedTokens
+		usage.InputTokens -= (usage.CacheReadInputTokens + usage.CacheCreationInputTokens)
 	}
 
 	// Note: Anthropic doesn't have a direct equivalent for reasoning tokens in their current API

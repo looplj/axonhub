@@ -338,7 +338,8 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				require.Equal(t, int64(150), result.Usage.PromptTokens)
 				require.Equal(t, int64(50), result.Usage.CompletionTokens)
 				require.Equal(t, int64(200), result.Usage.TotalTokens)
-				require.Equal(t, int64(50), result.Usage.PromptTokensDetails.CachedTokens)
+				require.Equal(t, int64(30), result.Usage.PromptTokensDetails.CachedTokens)
+				require.Equal(t, int64(20), result.Usage.PromptTokensDetails.WriteCachedTokens)
 			},
 		},
 		{
@@ -367,7 +368,8 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				require.Equal(t, int64(425), result.Usage.TotalTokens)
 				// Verify detailed prompt token information
 				require.NotNil(t, result.Usage.PromptTokensDetails)
-				require.Equal(t, int64(150), result.Usage.PromptTokensDetails.CachedTokens)
+				require.Equal(t, int64(100), result.Usage.PromptTokensDetails.CachedTokens)
+				require.Equal(t, int64(50), result.Usage.PromptTokensDetails.WriteCachedTokens)
 			},
 		},
 		{

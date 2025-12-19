@@ -42,6 +42,8 @@ type UsageLog struct {
 	PromptAudioTokens int64 `json:"prompt_audio_tokens,omitempty"`
 	// Number of cached tokens in the prompt
 	PromptCachedTokens int64 `json:"prompt_cached_tokens,omitempty"`
+	// PromptWriteCachedTokens holds the value of the "prompt_write_cached_tokens" field.
+	PromptWriteCachedTokens int64 `json:"prompt_write_cached_tokens,omitempty"`
 	// Number of audio tokens in the completion
 	CompletionAudioTokens int64 `json:"completion_audio_tokens,omitempty"`
 	// Number of reasoning tokens in the completion
@@ -113,7 +115,7 @@ func (*UsageLog) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case usagelog.FieldID, usagelog.FieldRequestID, usagelog.FieldProjectID, usagelog.FieldChannelID, usagelog.FieldPromptTokens, usagelog.FieldCompletionTokens, usagelog.FieldTotalTokens, usagelog.FieldPromptAudioTokens, usagelog.FieldPromptCachedTokens, usagelog.FieldCompletionAudioTokens, usagelog.FieldCompletionReasoningTokens, usagelog.FieldCompletionAcceptedPredictionTokens, usagelog.FieldCompletionRejectedPredictionTokens:
+		case usagelog.FieldID, usagelog.FieldRequestID, usagelog.FieldProjectID, usagelog.FieldChannelID, usagelog.FieldPromptTokens, usagelog.FieldCompletionTokens, usagelog.FieldTotalTokens, usagelog.FieldPromptAudioTokens, usagelog.FieldPromptCachedTokens, usagelog.FieldPromptWriteCachedTokens, usagelog.FieldCompletionAudioTokens, usagelog.FieldCompletionReasoningTokens, usagelog.FieldCompletionAcceptedPredictionTokens, usagelog.FieldCompletionRejectedPredictionTokens:
 			values[i] = new(sql.NullInt64)
 		case usagelog.FieldModelID, usagelog.FieldSource, usagelog.FieldFormat:
 			values[i] = new(sql.NullString)
@@ -205,6 +207,12 @@ func (_m *UsageLog) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field prompt_cached_tokens", values[i])
 			} else if value.Valid {
 				_m.PromptCachedTokens = value.Int64
+			}
+		case usagelog.FieldPromptWriteCachedTokens:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field prompt_write_cached_tokens", values[i])
+			} else if value.Valid {
+				_m.PromptWriteCachedTokens = value.Int64
 			}
 		case usagelog.FieldCompletionAudioTokens:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -325,6 +333,9 @@ func (_m *UsageLog) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("prompt_cached_tokens=")
 	builder.WriteString(fmt.Sprintf("%v", _m.PromptCachedTokens))
+	builder.WriteString(", ")
+	builder.WriteString("prompt_write_cached_tokens=")
+	builder.WriteString(fmt.Sprintf("%v", _m.PromptWriteCachedTokens))
 	builder.WriteString(", ")
 	builder.WriteString("completion_audio_tokens=")
 	builder.WriteString(fmt.Sprintf("%v", _m.CompletionAudioTokens))

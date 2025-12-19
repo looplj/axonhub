@@ -40,6 +40,8 @@ const (
 	FieldPromptAudioTokens = "prompt_audio_tokens"
 	// FieldPromptCachedTokens holds the string denoting the prompt_cached_tokens field in the database.
 	FieldPromptCachedTokens = "prompt_cached_tokens"
+	// FieldPromptWriteCachedTokens holds the string denoting the prompt_write_cached_tokens field in the database.
+	FieldPromptWriteCachedTokens = "prompt_write_cached_tokens"
 	// FieldCompletionAudioTokens holds the string denoting the completion_audio_tokens field in the database.
 	FieldCompletionAudioTokens = "completion_audio_tokens"
 	// FieldCompletionReasoningTokens holds the string denoting the completion_reasoning_tokens field in the database.
@@ -97,6 +99,7 @@ var Columns = []string{
 	FieldTotalTokens,
 	FieldPromptAudioTokens,
 	FieldPromptCachedTokens,
+	FieldPromptWriteCachedTokens,
 	FieldCompletionAudioTokens,
 	FieldCompletionReasoningTokens,
 	FieldCompletionAcceptedPredictionTokens,
@@ -141,6 +144,8 @@ var (
 	DefaultPromptAudioTokens int64
 	// DefaultPromptCachedTokens holds the default value on creation for the "prompt_cached_tokens" field.
 	DefaultPromptCachedTokens int64
+	// DefaultPromptWriteCachedTokens holds the default value on creation for the "prompt_write_cached_tokens" field.
+	DefaultPromptWriteCachedTokens int64
 	// DefaultCompletionAudioTokens holds the default value on creation for the "completion_audio_tokens" field.
 	DefaultCompletionAudioTokens int64
 	// DefaultCompletionReasoningTokens holds the default value on creation for the "completion_reasoning_tokens" field.
@@ -241,6 +246,11 @@ func ByPromptAudioTokens(opts ...sql.OrderTermOption) OrderOption {
 // ByPromptCachedTokens orders the results by the prompt_cached_tokens field.
 func ByPromptCachedTokens(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPromptCachedTokens, opts...).ToFunc()
+}
+
+// ByPromptWriteCachedTokens orders the results by the prompt_write_cached_tokens field.
+func ByPromptWriteCachedTokens(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPromptWriteCachedTokens, opts...).ToFunc()
 }
 
 // ByCompletionAudioTokens orders the results by the completion_audio_tokens field.

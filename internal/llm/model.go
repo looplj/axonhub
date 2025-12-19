@@ -578,6 +578,8 @@ type CompletionTokensDetails struct {
 type PromptTokensDetails struct {
 	AudioTokens  int64 `json:"audio_tokens"`
 	CachedTokens int64 `json:"cached_tokens"`
+	// hidden field, used for internal calculation.
+	WriteCachedTokens int64 `json:"-"`
 }
 
 // ResponseError represents an error response.

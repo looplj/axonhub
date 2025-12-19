@@ -37,7 +37,8 @@ func Test_convertUsage(t *testing.T) {
 				CompletionTokens: 50,
 				TotalTokens:      200, // 150 + 50
 				PromptTokensDetails: &llm.PromptTokensDetails{
-					CachedTokens: 50, // 30 + 20
+					CachedTokens:      30,
+					WriteCachedTokens: 20,
 				},
 			},
 		},
@@ -58,7 +59,8 @@ func Test_convertUsage(t *testing.T) {
 				CompletionTokens: 50,
 				TotalTokens:      320, // 270 + 50
 				PromptTokensDetails: &llm.PromptTokensDetails{
-					CachedTokens: 170, // 150 + 20
+					CachedTokens:      150,
+					WriteCachedTokens: 20,
 				},
 			},
 		},
@@ -139,7 +141,7 @@ func Test_convertUsage(t *testing.T) {
 				CompletionTokens: 50,
 				TotalTokens:      150, // 100 + 50
 				PromptTokensDetails: &llm.PromptTokensDetails{
-					CachedTokens: 100,
+					WriteCachedTokens: 100,
 				},
 			},
 		},
@@ -178,7 +180,8 @@ func Test_convertUsage(t *testing.T) {
 				CompletionTokens: 500000,
 				TotalTokens:      2000000, // 1500000 + 500000
 				PromptTokensDetails: &llm.PromptTokensDetails{
-					CachedTokens: 500000, // 300000 + 200000
+					CachedTokens:      300000,
+					WriteCachedTokens: 200000,
 				},
 			},
 		},
@@ -247,7 +250,8 @@ func Test_convertUsage(t *testing.T) {
 				CompletionTokens: 50,
 				TotalTokens:      150, // 100 + 50
 				PromptTokensDetails: &llm.PromptTokensDetails{
-					CachedTokens: 50, // 30 + 20
+					CachedTokens:      30,
+					WriteCachedTokens: 20,
 				},
 			},
 		},

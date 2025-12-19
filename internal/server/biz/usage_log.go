@@ -67,6 +67,10 @@ func (s *UsageLogService) CreateUsageLog(
 		if usage.PromptTokensDetails.CachedTokens > 0 {
 			mut = mut.SetPromptCachedTokens(usage.PromptTokensDetails.CachedTokens)
 		}
+
+		if usage.PromptTokensDetails.WriteCachedTokens > 0 {
+			mut = mut.SetPromptWriteCachedTokens(usage.PromptTokensDetails.WriteCachedTokens)
+		}
 	}
 
 	// Set completion tokens details if available
