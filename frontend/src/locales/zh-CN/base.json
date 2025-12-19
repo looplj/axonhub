@@ -290,7 +290,7 @@
   "auth": {
     "brand": {
       "title": "统一 AI 网关",
-      "description": "统一兼容 OpenAI/Anthropic 的 API，具备灵活的 Transformer 管道、智能路由与全链路追踪——为企业级可靠性而生。"
+      "description": "统一兼容 OpenAI/Anthropic/Gemini 的 API，具备灵活的 Transformer 管道、智能路由与全链路追踪——为企业级可靠性而生。"
     },
     "signIn": {
       "title": "登录到 AxonHub",

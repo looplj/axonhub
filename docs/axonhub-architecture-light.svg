@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" role="img" aria-labelledby="axonhub-title">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img" aria-labelledby="axonhub-title">
   <title id="axonhub-title">AxonHub Architecture - Unified AI Gateway</title>
   
   <!-- CSS Animations -->
@@ -64,7 +64,7 @@
   </style>
   
   <!-- Background -->
-  <rect width="800" height="400" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2" rx="8"/>
+  <rect width="800" height="450" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2" rx="8"/>
   
   <!-- Title -->
   <text x="400" y="30" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#1e293b">
@@ -80,12 +80,16 @@
     <text x="120" y="120" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#059669">OpenAI</text>
     
     <!-- Anthropic -->
-    <rect x="40" y="160" width="160" height="50" rx="8" fill="#8b5cf6" fill-opacity="0.1" stroke="#8b5cf6" stroke-width="2"/>
-    <text x="120" y="190" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#7c3aed">Anthropic</text>
+    <rect x="40" y="160" width="160" height="50" rx="8" fill="#f97316" fill-opacity="0.1" stroke="#f97316" stroke-width="2"/>
+    <text x="120" y="190" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#ea580c">Anthropic</text>
     
     <!-- DeepSeek -->
-    <rect x="40" y="230" width="160" height="50" rx="8" fill="#f59e0b" fill-opacity="0.1" stroke="#f59e0b" stroke-width="2"/>
-    <text x="120" y="260" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#d97706">DeepSeek</text>
+    <rect x="40" y="230" width="160" height="50" rx="8" fill="#3b82f6" fill-opacity="0.1" stroke="#3b82f6" stroke-width="2"/>
+    <text x="120" y="260" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#2563eb">DeepSeek</text>
+    
+    <!-- Gemini -->
+    <rect x="40" y="300" width="160" height="50" rx="8" fill="#4285F4" fill-opacity="0.1" stroke="#4285F4" stroke-width="2"/>
+    <text x="120" y="330" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#3367D6">Gemini</text>
   </g>
   
   <!-- Center: AxonHub -->
@@ -116,6 +120,10 @@
     <!-- API Clients -->
     <rect x="600" y="230" width="160" height="50" rx="8" fill="#06b6d4" fill-opacity="0.1" stroke="#06b6d4" stroke-width="2"/>
     <text x="680" y="260" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#0891b2">API Clients</text>
+    
+    <!-- Agent -->
+    <rect x="600" y="300" width="160" height="50" rx="8" fill="#10b981" fill-opacity="0.1" stroke="#10b981" stroke-width="2"/>
+    <text x="680" y="330" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#059669">Agent</text>
   </g>
   
   <!-- Arrows: Providers to AxonHub -->
@@ -129,18 +137,20 @@
   <path d="M200 115 Q300 115 320 180" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrowhead)" class="flow-line"/>
   <path d="M200 185 Q300 185 320 200" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrowhead)" class="flow-line"/>
   <path d="M200 255 Q300 255 320 220" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrowhead)" class="flow-line"/>
+  <path d="M200 325 Q300 325 320 240" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrowhead)" class="flow-line"/>
   
   <!-- From center to applications -->
   <path d="M480 180 Q500 115 600 115" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrowhead)" class="flow-line"/>
   <path d="M480 200 Q500 185 600 185" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrowhead)" class="flow-line"/>
   <path d="M480 220 Q500 255 600 255" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrowhead)" class="flow-line"/>
+  <path d="M480 240 Q500 325 600 325" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrowhead)" class="flow-line"/>
   
   <!-- Features labels -->
-  <text x="260" y="320" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#64748b">• Unified API Interface</text>
-  <text x="260" y="340" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#64748b">• Automatic Failover</text>
-  <text x="260" y="360" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#64748b">• Load Balancing</text>
+  <text x="260" y="370" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#64748b">• Unified API Interface</text>
+  <text x="260" y="390" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#64748b">• Automatic Failover</text>
+  <text x="260" y="410" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#64748b">• Load Balancing</text>
   
-  <text x="540" y="320" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#64748b">• Request Monitoring</text>
-  <text x="540" y="340" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#64748b">• Usage Analytics</text>
-  <text x="540" y="360" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#64748b">• Access Control</text>
+  <text x="540" y="370" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#64748b">• Request Monitoring</text>
+  <text x="540" y="390" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#64748b">• Usage Analytics</text>
+  <text x="540" y="410" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#64748b">• Access Control</text>
 </svg>

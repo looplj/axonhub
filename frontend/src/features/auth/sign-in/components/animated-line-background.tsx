@@ -16,7 +16,7 @@ interface MouseArea {
 
 const AnimatedLineBackground: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const animationRef = useRef<number>()
+  const animationRef = useRef<number>(null)
   const particlesRef = useRef<Particle[]>([])
   const mouseAreaRef = useRef<MouseArea>({ x: null, y: null, max: 20000 })
 
