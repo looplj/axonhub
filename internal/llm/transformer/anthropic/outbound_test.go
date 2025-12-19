@@ -6,10 +6,12 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/internal/pkg/xjson"
 	"github.com/looplj/axonhub/internal/pkg/xtest"
 )
 
@@ -898,14 +900,16 @@ func TestOutboundTransformer_TransformError(t *testing.T) {
 
 func TestOutboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 	tests := []struct {
-		name        string
-		requestFile string
-		validate    func(t *testing.T, result *httpclient.Request, expectedReq *llm.Request)
+		name         string
+		requestFile  string
+		expectedFile string
+		validate     func(t *testing.T, result *httpclient.Request, llmRequest *llm.Request)
 	}{
 		{
-			name:        "tool use request transformation",
-			requestFile: "llm-tool.request.json",
-			validate: func(t *testing.T, result *httpclient.Request, expectedReq *llm.Request) {
+			name:         "tool use request transformation",
+			requestFile:  "llm-tool.request.json",
+			expectedFile: "anthropic-tool.request.json",
+			validate: func(t *testing.T, result *httpclient.Request, llmRequest *llm.Request) {
 				t.Helper()
 
 				// Verify basic HTTP request properties
@@ -927,16 +931,16 @@ func TestOutboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 				require.NoError(t, err)
 
 				// Verify model and max_tokens
-				require.Equal(t, expectedReq.Model, anthropicReq.Model)
-				require.Equal(t, *expectedReq.MaxTokens, anthropicReq.MaxTokens)
+				require.Equal(t, llmRequest.Model, anthropicReq.Model)
+				require.Equal(t, *llmRequest.MaxTokens, anthropicReq.MaxTokens)
 
 				// Verify messages
-				require.Len(t, anthropicReq.Messages, len(expectedReq.Messages))
-				require.Equal(t, expectedReq.Messages[0].Role, anthropicReq.Messages[0].Role)
+				require.Len(t, anthropicReq.Messages, len(llmRequest.Messages))
+				require.Equal(t, llmRequest.Messages[0].Role, anthropicReq.Messages[0].Role)
 
 				// Verify tools transformation
 				require.NotNil(t, anthropicReq.Tools)
-				require.Len(t, anthropicReq.Tools, len(expectedReq.Tools))
+				require.Len(t, anthropicReq.Tools, len(llmRequest.Tools))
 
 				// Verify first tool (get_coordinates)
 				require.Equal(t, "get_coordinates", anthropicReq.Tools[0].Name)
@@ -964,14 +968,20 @@ func TestOutboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 				require.Equal(t, "Get the weather at a specific location", anthropicReq.Tools[2].Description)
 			},
 		},
+		{
+			name:         "llm-parallel_multiple_tool.request",
+			requestFile:  "llm-parallel_multiple_tool.request.json",
+			expectedFile: "anthropic-parallel_multiple_tool.request.json",
+			validate:     func(t *testing.T, result *httpclient.Request, llmRequest *llm.Request) {},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Load the test request data
-			var expectedReq llm.Request
+			var llmReqquest llm.Request
 
-			err := xtest.LoadTestData(t, tt.requestFile, &expectedReq)
+			err := xtest.LoadTestData(t, tt.requestFile, &llmReqquest)
 			require.NoError(t, err)
 
 			// Create transformer
@@ -979,12 +989,27 @@ func TestOutboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 			require.NoError(t, err)
 
 			// Transform the request
-			result, err := transformer.TransformRequest(t.Context(), &expectedReq)
+			result, err := transformer.TransformRequest(t.Context(), &llmReqquest)
 			require.NoError(t, err)
 			require.NotNil(t, result)
 
 			// Run validation
-			tt.validate(t, result, &expectedReq)
+			tt.validate(t, result, &llmReqquest)
+
+			if tt.expectedFile != "" {
+				gotReq, err := xjson.To[MessageRequest](result.Body)
+				require.NoError(t, err)
+
+				var expectedReq MessageRequest
+
+				err = xtest.LoadTestData(t, tt.expectedFile, &expectedReq)
+				require.NoError(t, err)
+
+				// Verify the transformed request matches the expected request
+				if !xtest.Equal(expectedReq, gotReq) {
+					t.Fatalf("requests are not equal %s", cmp.Diff(expectedReq, gotReq))
+				}
+			}
 		})
 	}
 }
@@ -1119,6 +1144,7 @@ func TestOutboundTransformer_WebSearchBetaHeader(t *testing.T) {
 
 		// Verify tool is passed through correctly
 		var anthropicReq MessageRequest
+
 		err = json.Unmarshal(result.Body, &anthropicReq)
 		require.NoError(t, err)
 		require.Len(t, anthropicReq.Tools, 1)
@@ -1197,18 +1223,22 @@ func TestOutboundTransformer_WebSearchBetaHeader(t *testing.T) {
 
 		// Verify tools are converted correctly
 		var anthropicReq MessageRequest
+
 		err = json.Unmarshal(result.Body, &anthropicReq)
 		require.NoError(t, err)
 		require.Len(t, anthropicReq.Tools, 2)
 
 		// Find web_search tool and verify conversion
 		var hasWebSearch bool
+
 		for _, tool := range anthropicReq.Tools {
 			if tool.Type == ToolTypeWebSearch20250305 {
 				hasWebSearch = true
+
 				require.Equal(t, "web_search", tool.Name)
 			}
 		}
+
 		require.True(t, hasWebSearch, "web_search tool should be converted to web_search_20250305")
 	})
 }

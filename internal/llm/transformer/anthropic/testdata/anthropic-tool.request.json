@@ -2,9 +2,7 @@
   "max_tokens": 1024,
   "messages": [
     {
-      "content": [
-        { "text": "What is the weather in San Francisco, CA?", "type": "text" }
-      ],
+      "content": "What is the weather in San Francisco, CA?",
       "role": "user"
     }
   ],
@@ -12,44 +10,58 @@
   "tools": [
     {
       "input_schema": {
+        "type": "object",
         "properties": {
           "location": {
-            "description": "The location to look up.",
-            "type": "string"
+            "type": "string",
+            "description": "The location to look up."
           }
         },
-        "type": "object"
+        "required": [
+          "location"
+        ]
       },
       "name": "get_coordinates",
       "description": "Accepts a place as an address, then returns the latitude and longitude coordinates."
     },
     {
       "input_schema": {
+        "type": "object",
         "properties": {
-          "country": { "description": "The country", "type": "string" }
-        },
-        "type": "object"
+          "country": {
+            "type": "string",
+            "description": "The country"
+          }
+        }
       },
       "name": "get_temperature_unit"
     },
     {
       "input_schema": {
+        "type": "object",
         "properties": {
           "lat": {
-            "description": "The lattitude of the location to check weather.",
-            "type": "number"
+            "type": "number",
+            "description": "The lattitude of the location to check weather."
           },
           "long": {
-            "description": "The longitude of the location to check weather.",
-            "type": "number"
+            "type": "number",
+            "description": "The longitude of the location to check weather."
           },
           "unit": {
+            "type": "string",
             "description": "Unit for the output",
-            "enum": ["celsius", "fahrenheit"],
-            "type": "string"
+            "enum": [
+              "celsius",
+              "fahrenheit"
+            ]
           }
         },
-        "type": "object"
+        "required": [
+          "lat",
+          "long",
+          "unit"
+        ]
       },
       "name": "get_weather",
       "description": "Get the weather at a specific location"

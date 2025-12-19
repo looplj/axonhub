@@ -230,7 +230,7 @@ func ContainsAnthropicNativeTools(tools []Tool) bool {
 // IsAnthropicNativeTool checks if a single tool is an Anthropic native tool.
 // A tool is considered Anthropic native if:
 // 1. It's a function tool with name "web_search" (OpenAI format input), OR
-// 2. It's already transformed to type "web_search_20250305" (Anthropic native format)
+// 2. It's already transformed to type "web_search_20250305" (Anthropic native format).
 func IsAnthropicNativeTool(tool Tool) bool {
 	// Match function tool with web_search name (OpenAI format input)
 	if tool.Type == ToolType && tool.Function.Name == AnthropicWebSearchFunctionName {
@@ -240,6 +240,7 @@ func IsAnthropicNativeTool(tool Tool) bool {
 	if tool.Type == ToolTypeAnthropicWebSearch {
 		return true
 	}
+
 	return false
 }
 

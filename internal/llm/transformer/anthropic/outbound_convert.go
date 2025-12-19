@@ -125,91 +125,122 @@ func convertStopSequences(stop *llm.Stop) []string {
 // convertMessages converts all messages to Anthropic format.
 func convertMessages(chatReq *llm.Request) []MessageParam {
 	messages := make([]MessageParam, 0, len(chatReq.Messages))
+	// First, filter out system messages as they are handled separately.
+	nonSystemMsgs := lo.Filter(chatReq.Messages, func(msg llm.Message, _ int) bool {
+		return msg.Role != "system"
+	})
+
+	// Track which message indexes have been processed (for user messages with MessageIndex)
 	processedIndexes := make(map[int]bool)
 
-	for _, msg := range chatReq.Messages {
-		if msg.Role == "system" {
-			continue
-		}
+	for i := 0; i < len(nonSystemMsgs); i++ {
+		msg := nonSystemMsgs[i]
 
-		if converted, ok := convertSingleMessage(msg, chatReq.Messages, processedIndexes); ok {
-			messages = append(messages, converted...)
+		switch msg.Role {
+		case "tool":
+			// Handle standalone tool messages (not following an assistant with tool calls)
+			// Group consecutive tool messages into a single user message with tool_results
+			if toolMsg, newIndex, created := groupToolResultMessages(nonSystemMsgs, i, processedIndexes); created {
+				messages = append(messages, toolMsg)
+				i = newIndex
+			}
+		case "user":
+			// Skip user messages that have MessageIndex and have already been processed
+			// (these are merged with tool_result messages)
+			if msg.MessageIndex != nil && processedIndexes[*msg.MessageIndex] {
+				continue
+			}
+
+			if converted, ok := convertUserMessage(msg); ok {
+				messages = append(messages, converted...)
+			}
+		case "assistant":
+			// Convert the assistant message.
+			if assistantMsg, ok := convertAssistantMessage(msg); ok {
+				messages = append(messages, assistantMsg...)
+			}
+
+			// After an assistant message with tool calls, the next message must be a user message with tool results.
+			if len(msg.ToolCalls) > 0 && i+1 < len(nonSystemMsgs) {
+				// Group all subsequent tool messages into a single user message.
+				if toolMsg, newIndex, created := groupToolResultMessages(nonSystemMsgs, i+1, processedIndexes); created {
+					messages = append(messages, toolMsg)
+					i = newIndex
+				}
+			}
 		}
 	}
 
 	return messages
 }
 
-// convertSingleMessage handles conversion of a single message based on its role.
-func convertSingleMessage(msg llm.Message, allMessages []llm.Message, processedIndexes map[int]bool) ([]MessageParam, bool) {
-	switch msg.Role {
-	case "tool":
-		return convertToolMessage(msg, allMessages, processedIndexes)
-	case "user":
-		if msg.MessageIndex != nil && processedIndexes[*msg.MessageIndex] {
-			return nil, false
+// groupToolResultMessages groups consecutive tool messages and finds related user message content.
+// Returns the combined message param, updated index, and whether a message was created.
+func groupToolResultMessages(messages []llm.Message, startIndex int, processedIndexes map[int]bool) (MessageParam, int, bool) {
+	var (
+		toolResultBlocks []MessageContentBlock
+		toolMsgIndex     *int
+		currentIndex     = startIndex
+	)
+
+	// Group consecutive tool messages
+	for currentIndex < len(messages) && messages[currentIndex].Role == "tool" {
+		toolMsg := messages[currentIndex]
+
+		toolResultBlocks = append(toolResultBlocks, convertToToolResultBlock(toolMsg))
+		if toolMsg.MessageIndex != nil {
+			toolMsgIndex = toolMsg.MessageIndex
 		}
 
-		return convertUserMessage(msg)
-	case "assistant":
-		return convertAssistantMessage(msg)
-	default:
-		return nil, false
+		currentIndex++
 	}
-}
 
-// convertToolMessage handles tool message conversion (single and parallel).
-func convertToolMessage(msg llm.Message, allMessages []llm.Message, processedIndexes map[int]bool) ([]MessageParam, bool) {
-	// Single tool call
-	if msg.MessageIndex == nil {
-		return []MessageParam{{
+	// Look for related user message with the same MessageIndex
+	if toolMsgIndex != nil {
+		for j := currentIndex; j < len(messages); j++ {
+			userMsg := messages[j]
+			if userMsg.Role == "user" && userMsg.MessageIndex != nil && *userMsg.MessageIndex == *toolMsgIndex {
+				userBlocks := extractUserContentBlocks(userMsg)
+				toolResultBlocks = append(toolResultBlocks, userBlocks...)
+				processedIndexes[*toolMsgIndex] = true
+
+				break
+			}
+		}
+	}
+
+	if len(toolResultBlocks) > 0 {
+		return MessageParam{
 			Role: "user",
 			Content: MessageContent{
-				MultipleContent: []MessageContentBlock{convertToToolResultBlock(msg)},
+				MultipleContent: toolResultBlocks,
 			},
-		}}, true
+		}, currentIndex - 1, true
 	}
 
-	// Parallel tool calls - skip if already processed
-	if processedIndexes[*msg.MessageIndex] {
-		return nil, false
-	}
-
-	toolMsgs := lo.Filter(allMessages, func(item llm.Message, _ int) bool {
-		return item.Role == "tool" && item.MessageIndex != nil && *item.MessageIndex == *msg.MessageIndex
-	})
-
-	if len(toolMsgs) == 0 {
-		return nil, false
-	}
-
-	contentBlocks := buildToolResultBlocks(toolMsgs)
-	contentBlocks = appendUserMessageBlocks(contentBlocks, allMessages, *msg.MessageIndex)
-
-	processedIndexes[*msg.MessageIndex] = true
-
-	return []MessageParam{{
-		Role:    "user",
-		Content: MessageContent{MultipleContent: contentBlocks},
-	}}, true
+	return MessageParam{}, startIndex, false
 }
 
-// buildToolResultBlocks creates tool_result blocks from tool messages.
-func buildToolResultBlocks(toolMsgs []llm.Message) []MessageContentBlock {
-	return lo.Map(toolMsgs, func(item llm.Message, _ int) MessageContentBlock {
-		return convertToToolResultBlock(item)
-	})
-}
+// extractUserContentBlocks extracts content blocks from a user message.
+func extractUserContentBlocks(msg llm.Message) []MessageContentBlock {
+	var blocks []MessageContentBlock
 
-// appendUserMessageBlocks merges user message content with the same MessageIndex.
-func appendUserMessageBlocks(blocks []MessageContentBlock, allMessages []llm.Message, index int) []MessageContentBlock {
-	userMsgs := lo.Filter(allMessages, func(item llm.Message, _ int) bool {
-		return item.Role == "user" && item.MessageIndex != nil && *item.MessageIndex == index
-	})
-
-	for _, userMsg := range userMsgs {
-		userBlocks := convertToAnthropicTrivialContent(userMsg.Content).ExtractTrivalBlocks(convertToAnthropicCacheControl(userMsg.CacheControl))
-		blocks = append(blocks, userBlocks...)
+	if msg.Content.Content != nil && *msg.Content.Content != "" {
+		blocks = append(blocks, MessageContentBlock{
+			Type:         "text",
+			Text:         msg.Content.Content,
+			CacheControl: convertToAnthropicCacheControl(msg.CacheControl),
+		})
+	} else if len(msg.Content.MultipleContent) > 0 {
+		for _, part := range msg.Content.MultipleContent {
+			if part.Type == "text" && part.Text != nil {
+				blocks = append(blocks, MessageContentBlock{
+					Type:         "text",
+					Text:         part.Text,
+					CacheControl: convertToAnthropicCacheControl(part.CacheControl),
+				})
+			}
+		}
 	}
 
 	return blocks
