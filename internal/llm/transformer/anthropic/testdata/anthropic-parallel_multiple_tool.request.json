@@ -1,0 +1,82 @@
+{
+  "max_tokens": 8192,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Please use the available tools to: 1) Get the current weather in New York, and 2) Calculate 15 * 23. Provide both results."
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "I'll help you with both requests. Let me start by getting the current weather in New York and then calculate 15 * 23."
+        },
+        {
+          "type": "tool_use",
+          "id": "call_00_zGAg9J4lHVXcLl9roRtdhSbX",
+          "name": "get_current_weather",
+          "input": {
+            "location": "New York"
+          }
+        },
+        {
+          "type": "tool_use",
+          "id": "call_01_5h8bOXbWCn7AKol8Ym26apVx",
+          "name": "calculate",
+          "input": {
+            "expression": "15 * 23"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call_00_zGAg9J4lHVXcLl9roRtdhSbX",
+          "content": "Current weather in New York: 22°C, Partly cloudy, humidity 65%"
+        },
+        {
+          "type": "tool_result",
+          "tool_use_id": "call_01_5h8bOXbWCn7AKol8Ym26apVx",
+          "content": "345"
+        }
+      ]
+    }
+  ],
+  "model": "deepseek-chat",
+  "tools": [
+    {
+      "name": "get_current_weather",
+      "description": "Get the current weather for a specified location",
+      "input_schema": {
+        "properties": {
+          "location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "calculate",
+      "description": "Perform mathematical calculations",
+      "input_schema": {
+        "properties": {
+          "expression": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "expression"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

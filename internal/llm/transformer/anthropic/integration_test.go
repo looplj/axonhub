@@ -222,6 +222,10 @@ func TestTransformRequest_Integration(t *testing.T) {
 			name:        "1 item system array request",
 			requestFile: `anthropic-system-1.request.json`,
 		},
+		{
+			name:        "parallel multiple tool request",
+			requestFile: `anthropic-parallel_multiple_tool.request.json`,
+		},
 	}
 
 	for _, tt := range tests {

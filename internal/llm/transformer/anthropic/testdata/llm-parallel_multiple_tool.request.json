@@ -1,0 +1,80 @@
+{
+  "messages": [
+    {
+      "content": "Please use the available tools to: 1) Get the current weather in New York, and 2) Calculate 15 * 23. Provide both results.",
+      "role": "user"
+    },
+    {
+      "content": "I'll help you with both requests. Let me start by getting the current weather in New York and then calculate 15 * 23.",
+      "tool_calls": [
+        {
+          "id": "call_00_zGAg9J4lHVXcLl9roRtdhSbX",
+          "function": {
+            "arguments": "{\"location\":\"New York\"}",
+            "name": "get_current_weather"
+          },
+          "type": "function"
+        },
+        {
+          "id": "call_01_5h8bOXbWCn7AKol8Ym26apVx",
+          "function": {
+            "arguments": "{\"expression\":\"15 * 23\"}",
+            "name": "calculate"
+          },
+          "type": "function"
+        }
+      ],
+      "role": "assistant"
+    },
+    {
+      "content": "Current weather in New York: 22°C, Partly cloudy, humidity 65%",
+      "tool_call_id": "call_00_zGAg9J4lHVXcLl9roRtdhSbX",
+      "role": "tool"
+    },
+    {
+      "content": "345",
+      "tool_call_id": "call_01_5h8bOXbWCn7AKol8Ym26apVx",
+      "role": "tool"
+    }
+  ],
+  "model": "deepseek-chat",
+  "verbosity": "high",
+  "tools": [
+    {
+      "function": {
+        "name": "get_current_weather",
+        "description": "Get the current weather for a specified location",
+        "parameters": {
+          "properties": {
+            "location": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "location"
+          ],
+          "type": "object"
+        }
+      },
+      "type": "function"
+    },
+    {
+      "function": {
+        "name": "calculate",
+        "description": "Perform mathematical calculations",
+        "parameters": {
+          "properties": {
+            "expression": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "expression"
+          ],
+          "type": "object"
+        }
+      },
+      "type": "function"
+    }
+  ]
+}
