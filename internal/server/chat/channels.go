@@ -230,3 +230,51 @@ func (s *GoogleNativeToolsSelector) Select(ctx context.Context, req *llm.Request
 
 	return channels, nil
 }
+
+// AnthropicNativeToolsSelector is a decorator that prioritizes channels supporting Anthropic native tools.
+// When a request contains Anthropic native tools (web_search -> web_search_20250305),
+// this selector filters out channels that don't support these tools (e.g., deepseek_anthropic).
+// If no compatible channels are found, it falls back to all channels (allowing downstream fallback logic).
+type AnthropicNativeToolsSelector struct {
+	wrapped ChannelSelector
+}
+
+// NewAnthropicNativeToolsSelector creates a selector that prioritizes Anthropic native tool compatible channels.
+func NewAnthropicNativeToolsSelector(wrapped ChannelSelector) *AnthropicNativeToolsSelector {
+	return &AnthropicNativeToolsSelector{
+		wrapped: wrapped,
+	}
+}
+
+func (s *AnthropicNativeToolsSelector) Select(ctx context.Context, req *llm.Request) ([]*biz.Channel, error) {
+	channels, err := s.wrapped.Select(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	// 如果请求不包含 Anthropic 原生工具，直接返回所有渠道
+	if !llm.ContainsAnthropicNativeTools(req.Tools) {
+		return channels, nil
+	}
+
+	// 过滤：只保留支持 Anthropic 原生工具的渠道
+	compatible := lo.Filter(channels, func(ch *biz.Channel, _ int) bool {
+		return ch.Type.SupportsAnthropicNativeTools()
+	})
+
+	if len(compatible) > 0 {
+		if log.DebugEnabled(ctx) {
+			log.Debug(ctx, "Filtered channels for Anthropic native tools",
+				log.Int("total_channels", len(channels)),
+				log.Int("compatible_channels", len(compatible)))
+		}
+
+		return compatible, nil
+	}
+
+	// 没有兼容渠道时，返回所有渠道（由下游 outbound 进行降级处理）
+	log.Warn(ctx, "No channels support Anthropic native tools, falling back to all channels",
+		log.Int("total_channels", len(channels)))
+
+	return channels, nil
+}

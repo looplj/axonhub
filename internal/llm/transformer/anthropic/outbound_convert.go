@@ -9,6 +9,9 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xurl"
 )
 
+// ToolTypeWebSearch20250305 is an alias to llm.ToolTypeAnthropicWebSearch for package compatibility.
+const ToolTypeWebSearch20250305 = llm.ToolTypeAnthropicWebSearch
+
 // convertToAnthropicRequest converts ChatCompletionRequest to Anthropic MessageRequest.
 // Deprecated: Use convertToAnthropicRequestWithConfig instead.
 func convertToAnthropicRequest(chatReq *llm.Request) *MessageRequest {
@@ -76,18 +79,30 @@ func convertTools(tools []llm.Tool) []Tool {
 		return nil
 	}
 
-	return lo.FilterMap(tools, func(tool llm.Tool, _ int) (Tool, bool) {
-		if tool.Type != "function" {
-			return Tool{}, false
-		}
+	anthropicTools := make([]Tool, 0, len(tools))
 
-		return Tool{
-			Name:         tool.Function.Name,
-			Description:  tool.Function.Description,
-			InputSchema:  tool.Function.Parameters,
-			CacheControl: convertToAnthropicCacheControl(tool.CacheControl),
-		}, true
-	})
+	for _, tool := range tools {
+		// Use shared helper to detect Anthropic native tools (web_search)
+		if llm.IsAnthropicNativeTool(tool) {
+			anthropicTools = append(anthropicTools, Tool{
+				Type: ToolTypeWebSearch20250305,
+				Name: llm.AnthropicWebSearchFunctionName,
+			})
+		} else if tool.Type == llm.ToolType {
+			anthropicTools = append(anthropicTools, Tool{
+				Name:         tool.Function.Name,
+				Description:  tool.Function.Description,
+				InputSchema:  tool.Function.Parameters,
+				CacheControl: convertToAnthropicCacheControl(tool.CacheControl),
+			})
+		}
+	}
+
+	if len(anthropicTools) == 0 {
+		return nil
+	}
+
+	return anthropicTools
 }
 
 // convertStopSequences converts stop sequences.

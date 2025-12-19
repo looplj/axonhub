@@ -213,3 +213,50 @@ func FilterGoogleNativeTools(tools []Tool) []Tool {
 
 	return filtered
 }
+
+// ContainsAnthropicNativeTools checks if the tools slice contains any Anthropic native tools.
+// Currently, this checks for the web_search function which maps to Anthropic's native
+// web_search_20250305 tool type.
+func ContainsAnthropicNativeTools(tools []Tool) bool {
+	for _, tool := range tools {
+		if IsAnthropicNativeTool(tool) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// IsAnthropicNativeTool checks if a single tool is an Anthropic native tool.
+// A tool is considered Anthropic native if:
+// 1. It's a function tool with name "web_search" (OpenAI format input), OR
+// 2. It's already transformed to type "web_search_20250305" (Anthropic native format)
+func IsAnthropicNativeTool(tool Tool) bool {
+	// Match function tool with web_search name (OpenAI format input)
+	if tool.Type == ToolType && tool.Function.Name == AnthropicWebSearchFunctionName {
+		return true
+	}
+	// Match already-transformed Anthropic native tool type
+	if tool.Type == ToolTypeAnthropicWebSearch {
+		return true
+	}
+	return false
+}
+
+// FilterAnthropicNativeTools removes Anthropic native tools from the tools slice.
+// This is useful as a fallback when routing to channels that don't support native tools.
+func FilterAnthropicNativeTools(tools []Tool) []Tool {
+	if len(tools) == 0 {
+		return tools
+	}
+
+	filtered := make([]Tool, 0, len(tools))
+
+	for _, tool := range tools {
+		if !IsAnthropicNativeTool(tool) {
+			filtered = append(filtered, tool)
+		}
+	}
+
+	return filtered
+}

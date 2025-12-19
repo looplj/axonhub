@@ -27,4 +27,11 @@ const (
 	ToolTypeGoogleCodeExecution = "google_code_execution"
 	// ToolTypeGoogleUrlContext is the URL context grounding tool type for Gemini 2.0+.
 	ToolTypeGoogleUrlContext = "google_url_context"
+
+	// ToolTypeAnthropicWebSearch is the native web search tool type for Anthropic (Beta).
+	// This tool is only supported by native Anthropic API format channels.
+	ToolTypeAnthropicWebSearch = "web_search_20250305"
+	// AnthropicWebSearchFunctionName is the standard function name that triggers
+	// native Anthropic web search tool transformation.
+	AnthropicWebSearchFunctionName = "web_search"
 )

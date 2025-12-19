@@ -182,6 +182,13 @@ func (t *OutboundTransformer) TransformRequest(
 		headers.Set("Anthropic-Version", "2023-06-01")
 	}
 
+	// Add beta header for web search feature only when:
+	// 1. Native web search tool is present, AND
+	// 2. Platform is direct Anthropic API (not Bedrock/Vertex which may not support this beta)
+	if containsNativeWebSearchTool(anthropicReq.Tools) && t.config.Type != PlatformBedrock && t.config.Type != PlatformVertex {
+		headers.Set("Anthropic-Beta", "web-search-2025-03-05")
+	}
+
 	// Prepare authentication
 	var auth *httpclient.AuthConfig
 
@@ -408,4 +415,15 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 			RequestID: "",
 		},
 	}
+}
+
+// containsNativeWebSearchTool checks if the Anthropic tools slice contains the native web search tool.
+func containsNativeWebSearchTool(tools []Tool) bool {
+	for _, tool := range tools {
+		if tool.Type == ToolTypeWebSearch20250305 {
+			return true
+		}
+	}
+
+	return false
 }

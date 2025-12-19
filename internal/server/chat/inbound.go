@@ -279,6 +279,11 @@ func selectChannels(inbound *PersistentInboundTransformer) pipeline.Middleware {
 			selector = NewGoogleNativeToolsSelector(selector)
 		}
 
+		// 应用 Anthropic 原生工具过滤（对所有 API 格式生效）
+		// 无论通过 OpenAI 还是 Anthropic 格式入口，只要包含 web_search 工具，
+		// 都需要优先路由到支持 Anthropic 原生工具的渠道
+		selector = NewAnthropicNativeToolsSelector(selector)
+
 		if inbound.state.LoadBalancer != nil {
 			selector = NewLoadBalancedSelector(selector, inbound.state.LoadBalancer)
 		}
