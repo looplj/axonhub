@@ -10,7 +10,7 @@ import (
 	"github.com/looplj/axonhub/internal/llm/transformer/openai/responses"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/server/biz"
-	"github.com/looplj/axonhub/internal/server/chat"
+	"github.com/looplj/axonhub/internal/server/orchestrator"
 )
 
 type OpenAIHandlersParams struct {
@@ -33,7 +33,7 @@ type OpenAIHandlers struct {
 func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 	return &OpenAIHandlers{
 		ChatCompletionHandlers: &ChatCompletionHandlers{
-			ChatCompletionProcessor: chat.NewChatCompletionProcessor(
+			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
 				params.ChannelService,
 				params.RequestService,
 				params.HttpClient,
@@ -43,7 +43,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 			),
 		},
 		ResponseCompletionHandlers: &ChatCompletionHandlers{
-			ChatCompletionProcessor: chat.NewChatCompletionProcessor(
+			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
 				params.ChannelService,
 				params.RequestService,
 				params.HttpClient,
@@ -53,7 +53,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 			),
 		},
 		EmbeddingHandlers: &ChatCompletionHandlers{
-			ChatCompletionProcessor: chat.NewChatCompletionProcessor(
+			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
 				params.ChannelService,
 				params.RequestService,
 				params.HttpClient,

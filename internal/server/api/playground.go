@@ -18,7 +18,7 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/server/biz"
-	"github.com/looplj/axonhub/internal/server/chat"
+	"github.com/looplj/axonhub/internal/server/orchestrator"
 )
 
 type PlaygroundResponseError struct {
@@ -40,14 +40,14 @@ type PlaygroundHandlersParams struct {
 }
 
 type PlaygroundHandlers struct {
-	ChannelService          *biz.ChannelService
-	ChatCompletionProcessor *chat.ChatCompletionProcessor
+	ChannelService             *biz.ChannelService
+	ChatCompletionOrchestrator *orchestrator.ChatCompletionOrchestrator
 }
 
 func NewPlaygroundHandlers(params PlaygroundHandlersParams) *PlaygroundHandlers {
 	return &PlaygroundHandlers{
 		ChannelService: params.ChannelService,
-		ChatCompletionProcessor: chat.NewChatCompletionProcessor(
+		ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
 			params.ChannelService,
 			params.RequestService,
 			params.HttpClient,
@@ -236,7 +236,7 @@ func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 
 	log.Debug(ctx, "Received request", log.Any("request", genericReq), log.String("channel_id", channelIDStr), log.String("project_id", projectIDStr))
 
-	processor := handlers.ChatCompletionProcessor
+	processor := handlers.ChatCompletionOrchestrator
 
 	if channelIDStr != "" {
 		channelID, err := objects.ParseGUID(channelIDStr)
@@ -255,7 +255,7 @@ func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 			return
 		}
 
-		processor = processor.WithChannelSelector(chat.NewSpecifiedChannelSelector(handlers.ChannelService, channelID))
+		processor = processor.WithChannelSelector(orchestrator.NewSpecifiedChannelSelector(handlers.ChannelService, channelID))
 	}
 
 	result, err := processor.Process(ctx, genericReq)
