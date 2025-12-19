@@ -10,7 +10,7 @@ import (
 	"github.com/looplj/axonhub/internal/llm/transformer/anthropic"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/server/biz"
-	"github.com/looplj/axonhub/internal/server/chat"
+	"github.com/looplj/axonhub/internal/server/orchestrator"
 )
 
 type AnthropicHandlersParams struct {
@@ -31,7 +31,7 @@ type AnthropicHandlers struct {
 func NewAnthropicHandlers(params AnthropicHandlersParams) *AnthropicHandlers {
 	return &AnthropicHandlers{
 		ChatCompletionHandlers: &ChatCompletionHandlers{
-			ChatCompletionProcessor: chat.NewChatCompletionProcessor(
+			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
 				params.ChannelService,
 				params.RequestService,
 				params.HttpClient,

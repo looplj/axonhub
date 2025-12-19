@@ -10,7 +10,7 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
 	"github.com/looplj/axonhub/internal/server/biz"
-	"github.com/looplj/axonhub/internal/server/chat"
+	"github.com/looplj/axonhub/internal/server/orchestrator"
 )
 
 type GeminiHandlersParams struct {
@@ -30,7 +30,7 @@ type GeminiHandlers struct {
 func NewGeminiHandlers(params GeminiHandlersParams) *GeminiHandlers {
 	return &GeminiHandlers{
 		ChatCompletionHandlers: NewChatCompletionHandlers(
-			chat.NewChatCompletionProcessor(
+			orchestrator.NewChatCompletionOrchestrator(
 				params.ChannelService,
 				params.RequestService,
 				params.HttpClient,

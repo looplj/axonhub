@@ -6,7 +6,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/server/biz"
-	"github.com/looplj/axonhub/internal/server/chat"
+	"github.com/looplj/axonhub/internal/server/orchestrator"
 )
 
 // This file will not be regenerated automatically.
@@ -30,7 +30,7 @@ type Resolver struct {
 	channelOverrideTemplateService *biz.ChannelOverrideTemplateService
 	httpClient                     *httpclient.HttpClient
 	modelFetcher                   *biz.ModelFetcher
-	TestChannelProcessor           *chat.TestChannelProcessor
+	TestChannelOrchestrator        *orchestrator.TestChannelOrchestrator
 }
 
 // NewSchema creates a graphql executable schema.
@@ -70,7 +70,7 @@ func NewSchema(
 			channelOverrideTemplateService: channelOverrideTemplateService,
 			httpClient:                     httpClient,
 			modelFetcher:                   modelFetcher,
-			TestChannelProcessor:           chat.NewTestChannelProcessor(channelService, requestService, systemService, usageLogService, httpClient),
+			TestChannelOrchestrator:        orchestrator.NewTestChannelOrchestrator(channelService, requestService, systemService, usageLogService, httpClient),
 		},
 	})
 }

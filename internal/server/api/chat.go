@@ -11,29 +11,29 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
-	"github.com/looplj/axonhub/internal/server/chat"
+	"github.com/looplj/axonhub/internal/server/orchestrator"
 )
 
 // StreamWriter is a function type for writing stream events to the response.
 type StreamWriter func(c *gin.Context, stream streams.Stream[*httpclient.StreamEvent])
 
 type ChatCompletionHandlers struct {
-	ChatCompletionProcessor *chat.ChatCompletionProcessor
-	StreamWriter            StreamWriter
+	ChatCompletionOrchestrator *orchestrator.ChatCompletionOrchestrator
+	StreamWriter               StreamWriter
 }
 
-func NewChatCompletionHandlers(processor *chat.ChatCompletionProcessor) *ChatCompletionHandlers {
+func NewChatCompletionHandlers(orchestrator *orchestrator.ChatCompletionOrchestrator) *ChatCompletionHandlers {
 	return &ChatCompletionHandlers{
-		ChatCompletionProcessor: processor,
-		StreamWriter:            WriteSSEStream,
+		ChatCompletionOrchestrator: orchestrator,
+		StreamWriter:               WriteSSEStream,
 	}
 }
 
 // WithStreamWriter returns a new ChatCompletionHandlers with the specified stream writer.
 func (handlers *ChatCompletionHandlers) WithStreamWriter(writer StreamWriter) *ChatCompletionHandlers {
 	return &ChatCompletionHandlers{
-		ChatCompletionProcessor: handlers.ChatCompletionProcessor,
-		StreamWriter:            writer,
+		ChatCompletionOrchestrator: handlers.ChatCompletionOrchestrator,
+		StreamWriter:               writer,
 	}
 }
 
@@ -43,7 +43,7 @@ func (handlers *ChatCompletionHandlers) ChatCompletion(c *gin.Context) {
 	// Use ReadHTTPRequest to parse the request
 	genericReq, err := httpclient.ReadHTTPRequest(c.Request)
 	if err != nil {
-		httpErr := handlers.ChatCompletionProcessor.Inbound.TransformError(ctx, err)
+		httpErr := handlers.ChatCompletionOrchestrator.Inbound.TransformError(ctx, err)
 		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))
 
 		return
@@ -56,11 +56,11 @@ func (handlers *ChatCompletionHandlers) ChatCompletion(c *gin.Context) {
 
 	// log.Debug(ctx, "Chat completion request", log.Any("request", genericReq))
 
-	result, err := handlers.ChatCompletionProcessor.Process(ctx, genericReq)
+	result, err := handlers.ChatCompletionOrchestrator.Process(ctx, genericReq)
 	if err != nil {
 		log.Error(ctx, "Error processing chat completion", log.Cause(err))
 
-		httpErr := handlers.ChatCompletionProcessor.Inbound.TransformError(ctx, err)
+		httpErr := handlers.ChatCompletionOrchestrator.Inbound.TransformError(ctx, err)
 		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))
 
 		return
