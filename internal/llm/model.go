@@ -289,6 +289,7 @@ func (s *Stop) UnmarshalJSON(data []byte) error {
 
 // Message represents a message in the conversation.
 type Message struct {
+	// user, assistant, system, tool, developer
 	Role string `json:"role,omitempty"`
 	// Content of the message.
 	// string or []ContentPart, be careful about the omitzero tag, it required.

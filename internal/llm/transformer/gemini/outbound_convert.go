@@ -172,8 +172,8 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 
 	for _, msg := range chatReq.Messages {
 		switch msg.Role {
-		case "system":
-			// Collect system messages into system instruction
+		case "system", "developer":
+			// Collect system and developer messages into system instruction
 			parts := extractPartsFromLLMMessage(&msg)
 			if len(parts) > 0 {
 				if systemInstruction == nil {
