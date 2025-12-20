@@ -17,7 +17,7 @@ func TestMain(m *testing.M) {
 
 func TestSimpleQA(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "qa_simple")
 	// Note: genai.Client doesn't have a Close method
 
 	// Print headers for debugging
@@ -41,7 +41,8 @@ func TestSimpleQA(t *testing.T) {
 	}
 
 	// Make the API call
-	response, err := helper.Client.Models.GenerateContent(ctx, modelName, contents, nil)
+	config := helper.MergeHTTPOptions(nil)
+	response, err := helper.Client.Models.GenerateContent(ctx, modelName, contents, config)
 	helper.AssertNoError(t, err, "Failed to generate content")
 
 	// Validate the response
@@ -59,7 +60,7 @@ func TestSimpleQA(t *testing.T) {
 
 func TestSimpleQAWithDifferentQuestion(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "qa_simple")
 	// Note: genai.Client doesn't have a Close method
 
 	// Test with a different question using the same configured model
@@ -76,7 +77,8 @@ func TestSimpleQAWithDifferentQuestion(t *testing.T) {
 	},
 	}
 
-	response, err := helper.Client.Models.GenerateContent(ctx, modelName, contents, nil)
+	config := helper.MergeHTTPOptions(nil)
+	response, err := helper.Client.Models.GenerateContent(ctx, modelName, contents, config)
 	helper.AssertNoError(t, err, "Failed to generate content with capital question")
 
 	helper.ValidateChatResponse(t, response, "Simple Q&A with capital question")
@@ -92,7 +94,7 @@ func TestSimpleQAWithDifferentQuestion(t *testing.T) {
 
 func TestMultipleQuestions(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "qa_simple")
 	// Note: genai.Client doesn't have a Close method
 
 	ctx := helper.CreateTestContext()
@@ -113,7 +115,8 @@ func TestMultipleQuestions(t *testing.T) {
 		},
 		}
 
-		response, err := helper.Client.Models.GenerateContent(ctx, modelName, contents, nil)
+		config := helper.MergeHTTPOptions(nil)
+		response, err := helper.Client.Models.GenerateContent(ctx, modelName, contents, config)
 		helper.AssertNoError(t, err, fmt.Sprintf("Failed on question %d", i+1))
 
 		helper.ValidateChatResponse(t, response, fmt.Sprintf("Question %d", i+1))
@@ -125,7 +128,7 @@ func TestMultipleQuestions(t *testing.T) {
 
 func TestConversationHistory(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "qa_simple")
 	// Note: genai.Client doesn't have a Close method
 
 	ctx := helper.CreateTestContext()

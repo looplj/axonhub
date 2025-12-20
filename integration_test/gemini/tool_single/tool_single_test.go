@@ -18,7 +18,7 @@ func TestMain(m *testing.M) {
 
 func TestSingleToolCall(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "tool_single")
 
 	ctx := helper.CreateTestContext()
 	modelName := helper.GetModel()
@@ -151,7 +151,7 @@ func TestSingleToolCall(t *testing.T) {
 
 func TestCalculatorTool(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "tool_single")
 
 	ctx := helper.CreateTestContext()
 	modelName := helper.GetModel()
@@ -287,7 +287,7 @@ func TestCalculatorTool(t *testing.T) {
 
 func TestToolCallWithChat(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "tool_single")
 
 	ctx := helper.CreateTestContext()
 	modelName := helper.GetModel()
@@ -320,7 +320,7 @@ func TestToolCallWithChat(t *testing.T) {
 		Temperature: genai.Ptr[float32](0.7),
 		Tools:       tools,
 	}
-	chat, err := helper.Client.Chats.Create(ctx, modelName, config, nil)
+	chat, err := helper.CreateChatWithHeaders(ctx, modelName, config, nil)
 	helper.AssertNoError(t, err, "Failed to create chat with tools")
 
 	// Send message that should trigger tool call
@@ -398,7 +398,7 @@ func TestToolCallWithChat(t *testing.T) {
 
 func TestInvalidToolCall(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "tool_single")
 
 	ctx := helper.CreateTestContext()
 	modelName := helper.GetModel()

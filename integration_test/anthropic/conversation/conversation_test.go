@@ -19,7 +19,7 @@ func TestMain(m *testing.M) {
 
 func TestMultiTurnConversation(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "multi_turn")
 
 	// Print headers for debugging
 	helper.PrintHeaders(t)
@@ -40,7 +40,7 @@ func TestMultiTurnConversation(t *testing.T) {
 		MaxTokens: 1024,
 	}
 
-	response, err := helper.Client.Messages.New(ctx, params)
+	response, err := helper.CreateMessageWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed to start conversation")
 
 	helper.ValidateMessageResponse(t, response, "First conversation turn")
@@ -59,7 +59,7 @@ func TestMultiTurnConversation(t *testing.T) {
 
 	// Second turn
 	params.Messages = messages
-	response2, err := helper.Client.Messages.New(ctx, params)
+	response2, err := helper.CreateMessageWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed in second conversation turn")
 
 	helper.ValidateMessageResponse(t, response2, "Second conversation turn")
@@ -82,7 +82,7 @@ func TestMultiTurnConversation(t *testing.T) {
 	messages = append(messages, anthropic.NewUserMessage(anthropic.NewTextBlock("Actually, let me ask: what is 365 * 24?")))
 
 	params.Messages = messages
-	response3, err := helper.Client.Messages.New(ctx, params)
+	response3, err := helper.CreateMessageWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed in third conversation turn")
 
 	helper.ValidateMessageResponse(t, response3, "Third conversation turn")
@@ -105,7 +105,7 @@ func TestMultiTurnConversation(t *testing.T) {
 
 func TestConversationWithTools(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "conv_tools")
 
 	ctx := helper.CreateTestContext()
 
@@ -158,7 +158,7 @@ func TestConversationWithTools(t *testing.T) {
 		MaxTokens: 1024,
 	}
 
-	response, err := helper.Client.Messages.New(ctx, params)
+	response, err := helper.CreateMessageWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed in conversation with tools")
 
 	helper.ValidateMessageResponse(t, response, "Tool conversation first turn")
@@ -205,7 +205,7 @@ func TestConversationWithTools(t *testing.T) {
 
 		// Second turn with tool results
 		params.Messages = messages
-		response2, err := helper.Client.Messages.New(ctx, params)
+		response2, err := helper.CreateMessageWithHeaders(ctx, params)
 		helper.AssertNoError(t, err, "Failed in tool conversation second turn")
 
 		helper.ValidateMessageResponse(t, response2, "Tool conversation second turn")
@@ -229,7 +229,7 @@ func TestConversationWithTools(t *testing.T) {
 
 func TestConversationContextPreservation(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "context_preservation")
 
 	ctx := helper.CreateTestContext()
 
@@ -246,7 +246,7 @@ func TestConversationContextPreservation(t *testing.T) {
 		System:    []anthropic.TextBlockParam{{Type: "text", Text: "You are a helpful assistant knowledgeable about space and astronomy."}},
 	}
 
-	response, err := helper.Client.Messages.New(ctx, params)
+	response, err := helper.CreateMessageWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed in context preservation turn 1")
 
 	helper.ValidateMessageResponse(t, response, "Context preservation turn 1")
@@ -269,7 +269,7 @@ func TestConversationContextPreservation(t *testing.T) {
 	messages = append(messages, anthropic.NewUserMessage(anthropic.NewTextBlock("What about black holes? Are they really holes?")))
 
 	params.Messages = messages
-	response2, err := helper.Client.Messages.New(ctx, params)
+	response2, err := helper.CreateMessageWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed in context preservation turn 2")
 
 	helper.ValidateMessageResponse(t, response2, "Context preservation turn 2")
@@ -287,7 +287,7 @@ func TestConversationContextPreservation(t *testing.T) {
 	messages = append(messages, anthropic.NewUserMessage(anthropic.NewTextBlock("How do they form?")))
 
 	params.Messages = messages
-	response3, err := helper.Client.Messages.New(ctx, params)
+	response3, err := helper.CreateMessageWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed in context preservation turn 3")
 
 	helper.ValidateMessageResponse(t, response3, "Context preservation turn 3")
@@ -321,7 +321,7 @@ func TestConversationContextPreservation(t *testing.T) {
 
 func TestConversationSystemPrompt(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "system_prompt")
 
 	ctx := helper.CreateTestContext()
 
@@ -339,7 +339,7 @@ func TestConversationSystemPrompt(t *testing.T) {
 		System:    []anthropic.TextBlockParam{{Type: "text", Text: systemPrompt}},
 	}
 
-	response, err := helper.Client.Messages.New(ctx, params)
+	response, err := helper.CreateMessageWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed with system prompt")
 
 	helper.ValidateMessageResponse(t, response, "System prompt test")
@@ -370,7 +370,7 @@ func TestConversationSystemPrompt(t *testing.T) {
 	messages = append(messages, anthropic.NewUserMessage(anthropic.NewTextBlock("Actually, what about making pizza instead?")))
 
 	params.Messages = messages
-	response2, err := helper.Client.Messages.New(ctx, params)
+	response2, err := helper.CreateMessageWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed in cooking conversation continuation")
 
 	helper.ValidateMessageResponse(t, response2, "Cooking conversation continuation")

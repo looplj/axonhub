@@ -18,7 +18,7 @@ func TestMain(m *testing.M) {
 
 func TestMultipleToolsSequential(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "tool_multiple")
 
 	// Print headers for debugging
 	helper.PrintHeaders(t)
@@ -179,7 +179,7 @@ func TestMultipleToolsSequential(t *testing.T) {
 
 func TestMultipleToolsParallel(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "tool_multiple")
 
 	ctx := helper.CreateTestContext()
 	modelName := helper.GetModel()
@@ -324,7 +324,7 @@ func TestMultipleToolsParallel(t *testing.T) {
 
 func TestMultipleToolsWithChat(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "tool_multiple")
 
 	ctx := helper.CreateTestContext()
 	modelName := helper.GetModel()
@@ -375,7 +375,7 @@ func TestMultipleToolsWithChat(t *testing.T) {
 		Temperature: genai.Ptr[float32](0.7),
 		Tools:       tools,
 	}
-	chat, err := helper.Client.Chats.Create(ctx, modelName, config, nil)
+	chat, err := helper.CreateChatWithHeaders(ctx, modelName, config, nil)
 	helper.AssertNoError(t, err, "Failed to create chat with multiple tools")
 
 	// Send message that should trigger multiple tool calls
@@ -475,7 +475,7 @@ func TestMultipleToolsWithChat(t *testing.T) {
 
 func TestToolChoiceRequired(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "tool_multiple")
 
 	ctx := helper.CreateTestContext()
 	modelName := helper.GetModel()

@@ -17,7 +17,7 @@ func TestMain(m *testing.M) {
 
 func TestBasicStreamingChatCompletion(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "streaming")
 
 	// Print headers for debugging
 	helper.PrintHeaders(t)
@@ -82,7 +82,7 @@ func TestBasicStreamingChatCompletion(t *testing.T) {
 
 func TestLongResponseStreaming(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "streaming")
 
 	ctx := helper.CreateTestContext()
 	modelName := helper.GetModel()
@@ -150,7 +150,7 @@ func TestLongResponseStreaming(t *testing.T) {
 
 func TestStreamingResponseWithTools(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "streaming")
 
 	ctx := helper.CreateTestContext()
 	modelName := helper.GetModel()
@@ -260,7 +260,7 @@ func TestStreamingResponseWithTools(t *testing.T) {
 
 func TestStreamingErrorHandling(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "streaming")
 
 	ctx := helper.CreateTestContext()
 
@@ -298,7 +298,7 @@ func TestStreamingErrorHandling(t *testing.T) {
 
 func TestStreamingEventHandling(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "streaming")
 
 	ctx := helper.CreateTestContext()
 	modelName := helper.GetModel()
@@ -365,7 +365,7 @@ func TestStreamingEventHandling(t *testing.T) {
 
 func TestStreamingWithSystemPrompt(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "streaming")
 
 	ctx := helper.CreateTestContext()
 	modelName := helper.GetModel()
@@ -433,7 +433,7 @@ func TestStreamingWithSystemPrompt(t *testing.T) {
 
 func TestStreamingChatSession(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "streaming")
 
 	ctx := helper.CreateTestContext()
 	modelName := helper.GetModel()
@@ -442,7 +442,7 @@ func TestStreamingChatSession(t *testing.T) {
 
 	// Create chat session
 	var config *genai.GenerateContentConfig = &genai.GenerateContentConfig{Temperature: genai.Ptr[float32](0.7)}
-	chat, err := helper.Client.Chats.Create(ctx, modelName, config, nil)
+	chat, err := helper.CreateChatWithHeaders(ctx, modelName, config, nil)
 	helper.AssertNoError(t, err, "Failed to create chat for streaming")
 
 	// First message with streaming

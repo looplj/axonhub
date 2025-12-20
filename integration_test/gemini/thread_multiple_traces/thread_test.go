@@ -10,7 +10,7 @@ import (
 
 func TestSingleThreadMultipleTraces(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "thread_multiple_traces")
 
 	// Print headers for debugging
 	helper.PrintHeaders(t)
@@ -235,7 +235,7 @@ func TestSingleThreadMultipleTraces(t *testing.T) {
 
 func TestMultipleThreadsParallelTraces(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "thread_multiple_traces")
 
 	modelName := helper.GetModel()
 
@@ -316,7 +316,7 @@ func TestMultipleThreadsParallelTraces(t *testing.T) {
 
 func TestThreadContextIsolation(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "thread_multiple_traces")
 
 	modelName := helper.GetModel()
 
@@ -377,7 +377,7 @@ func TestThreadContextIsolation(t *testing.T) {
 
 func TestThreadWithStreaming(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "thread_multiple_traces")
 
 	modelName := helper.GetModel()
 

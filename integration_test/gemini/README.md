@@ -1,6 +1,6 @@
 # Gemini Go SDK Integration Tests
 
-This directory contains comprehensive integration tests for the Gemini Go SDK using the `github.com/googleapis/go-genai` library, demonstrating various API usage patterns with proper header handling for AxonHub integration.
+This directory contains comprehensive integration tests for the Gemini Go SDK using the `google.golang.org/genai` library, demonstrating various API usage patterns with proper header handling for AxonHub integration.
 
 ## Test Structure
 
@@ -156,10 +156,10 @@ Proper error handling and validation patterns that integrate well with AxonHub's
 ## Gemini SDK Specific Features
 
 ### go-genai Library Usage
-These tests use the official `github.com/googleapis/go-genai` library:
+These tests use the official `google.golang.org/genai` library:
 
 ```go
-import "github.com/googleapis/go-genai"
+import "google.golang.org/genai"
 
 // Create client
 client, err := genai.NewClient(ctx, opts...)

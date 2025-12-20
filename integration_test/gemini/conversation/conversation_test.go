@@ -18,7 +18,7 @@ func TestMain(m *testing.M) {
 
 func TestMultiTurnConversation(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "conversation")
 
 	// Print headers for debugging
 	helper.PrintHeaders(t)
@@ -32,7 +32,7 @@ func TestMultiTurnConversation(t *testing.T) {
 
 	// Create chat session
 	var config *genai.GenerateContentConfig = &genai.GenerateContentConfig{Temperature: genai.Ptr[float32](0.7)}
-	chat, err := helper.Client.Chats.Create(ctx, modelName, config, nil)
+	chat, err := helper.CreateChatWithHeaders(ctx, modelName, config, nil)
 	helper.AssertNoError(t, err, "Failed to create chat")
 
 	// First turn
@@ -86,7 +86,7 @@ func TestMultiTurnConversation(t *testing.T) {
 
 func TestConversationWithTools(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "conversation")
 
 	ctx := helper.CreateTestContext()
 
@@ -138,7 +138,7 @@ func TestConversationWithTools(t *testing.T) {
 		Temperature: genai.Ptr[float32](0.7),
 		Tools:       tools,
 	}
-	chat, err := helper.Client.Chats.Create(ctx, modelName, config, nil)
+	chat, err := helper.CreateChatWithHeaders(ctx, modelName, config, nil)
 	helper.AssertNoError(t, err, "Failed to create chat with tools")
 
 	// First turn - should trigger tool calls
@@ -246,7 +246,7 @@ func TestConversationWithTools(t *testing.T) {
 
 func TestConversationContextPreservation(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "conversation")
 
 	ctx := helper.CreateTestContext()
 
@@ -259,7 +259,7 @@ func TestConversationContextPreservation(t *testing.T) {
 			Parts: []*genai.Part{{Text: "You are a helpful assistant knowledgeable about space and astronomy."}},
 		},
 	}
-	chat, err := helper.Client.Chats.Create(ctx, modelName, config, nil)
+	chat, err := helper.CreateChatWithHeaders(ctx, modelName, config, nil)
 	helper.AssertNoError(t, err, "Failed to create chat for context preservation")
 
 	// Turn 1: Greeting and topic introduction
@@ -325,7 +325,7 @@ func TestConversationContextPreservation(t *testing.T) {
 
 func TestConversationSystemPrompt(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "conversation")
 
 	ctx := helper.CreateTestContext()
 
@@ -340,7 +340,7 @@ func TestConversationSystemPrompt(t *testing.T) {
 			Parts: []*genai.Part{{Text: systemPrompt}},
 		},
 	}
-	chat, err := helper.Client.Chats.Create(ctx, modelName, config, nil)
+	chat, err := helper.CreateChatWithHeaders(ctx, modelName, config, nil)
 	helper.AssertNoError(t, err, "Failed to create chat with system prompt")
 
 	// First question

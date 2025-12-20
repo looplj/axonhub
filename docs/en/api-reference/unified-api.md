@@ -32,9 +32,7 @@ import (
 client := openai.NewClient(
     option.WithAPIKey("your-axonhub-api-key"),
     option.WithBaseURL("http://localhost:8090/v1"),
-    // Optional: Add custom headers for tracing and thread management
-    option.WithHeader("AH-Trace-Id", "your-trace-id"),
-    option.WithHeader("AH-Thread-Id", "your-thread-id"),
+    
 )
 
 // Call Anthropic model using OpenAI API format
@@ -43,7 +41,9 @@ completion, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewPara
         openai.UserMessage("Hello, Claude!"),
     },
     Model: openai.ChatModel("claude-3-5-sonnet"),
-})
+},
+    option.WithHeader("AH-Trace-Id", "trace-example-123"),
+    option.WithHeader("AH-Thread-Id", "thread-example-abc"))
 if err != nil {
     // Handle error appropriately
     panic(err)
@@ -94,7 +94,9 @@ params := responses.ResponseNewParams{
     },
 }
 
-response, err := client.Responses.New(ctx, params)
+response, err := client.Responses.New(ctx, params,
+        option.WithHeader("AH-Trace-Id", "trace-example-123"),
+        option.WithHeader("AH-Thread-Id", "thread-example-abc"))
 if err != nil {
     panic(err)
 }
@@ -129,7 +131,9 @@ params := responses.ResponseNewParams{
     },
 }
 
-stream := client.Responses.NewStreaming(ctx, params)
+stream := client.Responses.NewStreaming(ctx, params,
+        option.WithHeader("AH-Trace-Id", "trace-example-123"),
+        option.WithHeader("AH-Thread-Id", "thread-example-abc"))
 
 var fullContent strings.Builder
 for stream.Next() {
@@ -166,9 +170,7 @@ import (
 client := anthropic.NewClient(
     option.WithAPIKey("your-axonhub-api-key"),
     option.WithBaseURL("http://localhost:8090/anthropic"),
-    // Optional: Add custom headers for tracing and thread management
-    option.WithHeader("AH-Trace-Id", "your-trace-id"),
-    option.WithHeader("AH-Thread-Id", "your-thread-id"),
+    
 )
 
 // Call OpenAI model using Anthropic API format

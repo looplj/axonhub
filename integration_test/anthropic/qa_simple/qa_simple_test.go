@@ -17,7 +17,7 @@ func TestMain(m *testing.M) {
 
 func TestSimpleQA(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "simple_qa")
 
 	ctx := helper.CreateTestContext()
 
@@ -32,7 +32,7 @@ func TestSimpleQA(t *testing.T) {
 		MaxTokens: 1024,
 	}
 
-	response, err := helper.Client.Messages.New(ctx, params)
+	response, err := helper.CreateMessageWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed to get simple Q&A response")
 
 	helper.ValidateMessageResponse(t, response, "Simple Q&A test")
@@ -69,7 +69,7 @@ func TestSimpleQA(t *testing.T) {
 
 func TestMultipleQuestions(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "multi_questions")
 
 	ctx := helper.CreateTestContext()
 
@@ -91,7 +91,7 @@ func TestMultipleQuestions(t *testing.T) {
 				MaxTokens: 1024,
 			}
 
-			response, err := helper.Client.Messages.New(ctx, params)
+			response, err := helper.CreateMessageWithHeaders(ctx, params)
 			helper.AssertNoError(t, err, fmt.Sprintf("Failed on question %d", i+1))
 
 			helper.ValidateMessageResponse(t, response, fmt.Sprintf("Question %d", i+1))
@@ -134,7 +134,7 @@ func TestMultipleQuestions(t *testing.T) {
 
 func TestQuestionWithContext(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "context_qa")
 
 	ctx := helper.CreateTestContext()
 
@@ -150,7 +150,7 @@ func TestQuestionWithContext(t *testing.T) {
 		System:    []anthropic.TextBlockParam{{Type: "text", Text: "You are a helpful tutor specializing in biology and animal science."}},
 	}
 
-	response, err := helper.Client.Messages.New(ctx, params)
+	response, err := helper.CreateMessageWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed to get contextual response")
 
 	helper.ValidateMessageResponse(t, response, "Contextual Q&A test")

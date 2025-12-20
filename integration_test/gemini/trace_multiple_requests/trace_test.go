@@ -17,7 +17,7 @@ func TestMain(m *testing.M) {
 
 func TestSingleTraceMultipleCalls(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "trace_multiple_requests")
 
 	// Print headers for debugging
 	helper.PrintHeaders(t)
@@ -29,7 +29,7 @@ func TestSingleTraceMultipleCalls(t *testing.T) {
 
 	// Create chat session for maintaining context across calls
 	var config *genai.GenerateContentConfig = &genai.GenerateContentConfig{Temperature: genai.Ptr[float32](0.7)}
-	chat, err := helper.Client.Chats.Create(ctx, modelName, config, nil)
+	chat, err := helper.CreateChatWithHeaders(ctx, modelName, config, nil)
 	helper.AssertNoError(t, err, "Failed to create chat for trace test")
 
 	// First call - Initial greeting focused on calculation
@@ -193,7 +193,7 @@ func TestSingleTraceMultipleCalls(t *testing.T) {
 
 func TestTraceWithDifferentModels(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "trace_multiple_requests")
 
 	ctx := helper.CreateTestContext()
 
@@ -210,7 +210,7 @@ func TestTraceWithDifferentModels(t *testing.T) {
 		t.Run(fmt.Sprintf("Model_%d", i+1), func(t *testing.T) {
 			// Create chat for this model
 			var config *genai.GenerateContentConfig = &genai.GenerateContentConfig{Temperature: genai.Ptr[float32](0.7)}
-			chat, err := helper.Client.Chats.Create(ctx, modelName, config, nil)
+			chat, err := helper.CreateChatWithHeaders(ctx, modelName, config, nil)
 			if err != nil {
 				t.Logf("Skipping model %s due to error: %v", modelName, err)
 				return
@@ -239,7 +239,7 @@ func TestTraceWithDifferentModels(t *testing.T) {
 
 func TestTraceWithStreaming(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "trace_multiple_requests")
 
 	ctx := helper.CreateTestContext()
 	modelName := helper.GetModel()
@@ -248,7 +248,7 @@ func TestTraceWithStreaming(t *testing.T) {
 
 	// Create chat session
 	var config *genai.GenerateContentConfig = &genai.GenerateContentConfig{Temperature: genai.Ptr[float32](0.7)}
-	chat, err := helper.Client.Chats.Create(ctx, modelName, config, nil)
+	chat, err := helper.CreateChatWithHeaders(ctx, modelName, config, nil)
 	helper.AssertNoError(t, err, "Failed to create chat for streaming trace")
 
 	// First streaming call
@@ -330,7 +330,7 @@ func TestTraceWithStreaming(t *testing.T) {
 
 func TestTraceErrorHandling(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "trace_multiple_requests")
 
 	ctx := helper.CreateTestContext()
 	modelName := helper.GetModel()
@@ -339,7 +339,7 @@ func TestTraceErrorHandling(t *testing.T) {
 
 	// Create chat session
 	var config *genai.GenerateContentConfig = &genai.GenerateContentConfig{Temperature: genai.Ptr[float32](0.7)}
-	chat, err := helper.Client.Chats.Create(ctx, modelName, config, nil)
+	chat, err := helper.CreateChatWithHeaders(ctx, modelName, config, nil)
 	helper.AssertNoError(t, err, "Failed to create chat for error test")
 
 	// Normal call

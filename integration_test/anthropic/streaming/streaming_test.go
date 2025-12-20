@@ -16,7 +16,7 @@ func TestMain(m *testing.M) {
 
 func TestBasicStreamingChatCompletion(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "basic_streaming")
 
 	// Print headers for debugging
 	helper.PrintHeaders(t)
@@ -40,7 +40,7 @@ func TestBasicStreamingChatCompletion(t *testing.T) {
 	}
 
 	// Make streaming API call
-	stream := helper.Client.Messages.NewStreaming(ctx, params)
+	stream := helper.CreateMessageStreamWithHeaders(ctx, params)
 	defer stream.Close()
 
 	// Accumulate the streaming response
@@ -97,7 +97,7 @@ func TestBasicStreamingChatCompletion(t *testing.T) {
 
 func TestLongResponseStreaming(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "basic_streaming")
 
 	ctx := helper.CreateTestContext()
 
@@ -113,7 +113,7 @@ func TestLongResponseStreaming(t *testing.T) {
 	}
 
 	// Make streaming API call
-	stream := helper.Client.Messages.NewStreaming(ctx, params)
+	stream := helper.CreateMessageStreamWithHeaders(ctx, params)
 	defer stream.Close()
 
 	// Accumulate the streaming response
@@ -169,7 +169,7 @@ func TestLongResponseStreaming(t *testing.T) {
 
 func TestStreamingResponseWithTools(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "basic_streaming")
 
 	ctx := helper.CreateTestContext()
 
@@ -225,7 +225,7 @@ func TestStreamingResponseWithTools(t *testing.T) {
 	}
 
 	// Make streaming API call
-	stream := helper.Client.Messages.NewStreaming(ctx, params)
+	stream := helper.CreateMessageStreamWithHeaders(ctx, params)
 	defer stream.Close()
 
 	// Accumulate the streaming response
@@ -266,7 +266,7 @@ func TestStreamingResponseWithTools(t *testing.T) {
 				messages = append(messages, anthropic.NewUserMessage(resultBlock))
 
 				// Get final response with streaming
-				finalStream := helper.Client.Messages.NewStreaming(ctx, anthropic.MessageNewParams{
+				finalStream := helper.CreateMessageStreamWithHeaders(ctx, anthropic.MessageNewParams{
 					Model:     helper.GetModel(),
 					Messages:  messages,
 					MaxTokens: 1024,
@@ -317,7 +317,7 @@ func TestStreamingResponseWithTools(t *testing.T) {
 
 func TestStreamingErrorHandling(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "basic_streaming")
 
 	ctx := helper.CreateTestContext()
 
@@ -331,7 +331,7 @@ func TestStreamingErrorHandling(t *testing.T) {
 	}
 
 	// This should fail with streaming
-	stream := helper.Client.Messages.NewStreaming(ctx, params)
+	stream := helper.CreateMessageStreamWithHeaders(ctx, params)
 	defer stream.Close()
 
 	// Try to consume the stream
@@ -350,7 +350,7 @@ func TestStreamingErrorHandling(t *testing.T) {
 
 func TestStreamingEventHandling(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "basic_streaming")
 
 	ctx := helper.CreateTestContext()
 
@@ -366,7 +366,7 @@ func TestStreamingEventHandling(t *testing.T) {
 	t.Logf("Testing streaming event handling: %s", question)
 
 	// Make streaming API call
-	stream := helper.Client.Messages.NewStreaming(ctx, params)
+	stream := helper.CreateMessageStreamWithHeaders(ctx, params)
 	defer stream.Close()
 
 	// Track different event types
@@ -434,7 +434,7 @@ func TestStreamingEventHandling(t *testing.T) {
 
 func TestStreamingWithSystemPrompt(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "basic_streaming")
 
 	ctx := helper.CreateTestContext()
 
@@ -452,7 +452,7 @@ func TestStreamingWithSystemPrompt(t *testing.T) {
 	t.Logf("Testing streaming with system prompt")
 
 	// Make streaming API call
-	stream := helper.Client.Messages.NewStreaming(ctx, params)
+	stream := helper.CreateMessageStreamWithHeaders(ctx, params)
 	defer stream.Close()
 
 	// Accumulate the streaming response
