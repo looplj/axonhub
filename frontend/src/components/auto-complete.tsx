@@ -102,7 +102,7 @@ export function AutoComplete<T extends string>({
   return (
     <div className='flex items-center'>
       <Popover open={open} onOpenChange={setOpen}>
-        <Command shouldFilter={false}>
+        <Command shouldFilter={false} className='bg-transparent'>
           <PopoverAnchor asChild>
             <CommandPrimitive.Input
               asChild
@@ -113,7 +113,7 @@ export function AutoComplete<T extends string>({
               onFocus={() => setOpen(true)}
               onBlur={onInputBlur}
             >
-              <Input placeholder={placeholder} />
+              <Input placeholder={placeholder} className='w-full' />
             </CommandPrimitive.Input>
           </PopoverAnchor>
           {!open && <CommandList aria-hidden='true' className='hidden' />}

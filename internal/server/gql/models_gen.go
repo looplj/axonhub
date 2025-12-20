@@ -105,7 +105,7 @@ type InitializeSystemPayload struct {
 	Token   *string   `json:"token,omitempty"`
 }
 
-type ModelsInput struct {
+type QueryModelsInput struct {
 	StatusIn       []channel.Status `json:"statusIn,omitempty"`
 	IncludeMapping *bool            `json:"includeMapping,omitempty"`
 	IncludePrefix  *bool            `json:"includePrefix,omitempty"`

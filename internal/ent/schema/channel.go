@@ -74,7 +74,10 @@ func (Channel) Fields() []ent.Field {
 			Immutable(),
 		field.String("base_url").Optional(),
 		field.String("name"),
-		field.Enum("status").Values("enabled", "disabled", "archived").Default("disabled"),
+		field.Enum("status").Values("enabled", "disabled", "archived").Default("disabled").
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput),
+			),
 		field.JSON("credentials", &objects.ChannelCredentials{}).Sensitive().Default(&objects.ChannelCredentials{}),
 		field.Strings("supported_models"),
 		field.Strings("tags").Optional().Default([]string{}),
@@ -87,9 +90,10 @@ func (Channel) Fields() []ent.Field {
 			entgql.OrderField("ORDERING_WEIGHT"),
 		),
 		field.String("error_message").
-			Optional().Nillable().Annotations(
-			entgql.Skip(entgql.SkipMutationCreateInput),
-		),
+			Optional().Nillable().
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput),
+			),
 		field.String("remark").
 			Optional().Nillable().
 			Comment("User-defined remark or note for the channel"),

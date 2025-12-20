@@ -69,6 +69,18 @@ func (f DataStorageFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value,
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DataStorageMutation", m)
 }
 
+// The ModelFunc type is an adapter to allow the use of ordinary
+// function as Model mutator.
+type ModelFunc func(context.Context, *ent.ModelMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ModelFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ModelMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ModelMutation", m)
+}
+
 // The ProjectFunc type is an adapter to allow the use of ordinary
 // function as Project mutator.
 type ProjectFunc func(context.Context, *ent.ProjectMutation) (ent.Value, error)

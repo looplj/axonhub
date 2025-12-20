@@ -88,6 +88,14 @@ func (r *dataStorageResolver) ID(ctx context.Context, obj *ent.DataStorage) (*ob
 }
 
 // ID is the resolver for the id field.
+func (r *modelResolver) ID(ctx context.Context, obj *ent.Model) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeModel,
+		ID:   obj.ID,
+	}, nil
+}
+
+// ID is the resolver for the id field.
 func (r *projectResolver) ID(ctx context.Context, obj *ent.Project) (*objects.GUID, error) {
 	return &objects.GUID{
 		Type: ent.TypeProject,
@@ -129,10 +137,6 @@ func (r *queryResolver) APIKeys(ctx context.Context, after *entgql.Cursor[int], 
 
 // Channels is the resolver for the channels field.
 func (r *queryResolver) Channels(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOrder, where *ent.ChannelWhereInput) (*ent.ChannelConnection, error) {
-	if err := validatePaginationArgs(first, last); err != nil {
-		return nil, err
-	}
-
 	return r.client.Channel.Query().Paginate(ctx, after, first, before, last,
 		ent.WithChannelOrder(orderBy),
 		ent.WithChannelFilter(where.Filter),
@@ -153,6 +157,14 @@ func (r *queryResolver) DataStorages(ctx context.Context, after *entgql.Cursor[i
 	return r.client.DataStorage.Query().Paginate(ctx, after, first, before, last,
 		ent.WithDataStorageOrder(orderBy),
 		ent.WithDataStorageFilter(where.Filter),
+	)
+}
+
+// Models is the resolver for the models field.
+func (r *queryResolver) Models(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ModelOrder, where *ent.ModelWhereInput) (*ent.ModelConnection, error) {
+	return r.client.Model.Query().Paginate(ctx, after, first, before, last,
+		ent.WithModelOrder(orderBy),
+		ent.WithModelFilter(where.Filter),
 	)
 }
 
@@ -629,6 +641,9 @@ func (r *Resolver) ChannelPerformance() ChannelPerformanceResolver {
 // DataStorage returns DataStorageResolver implementation.
 func (r *Resolver) DataStorage() DataStorageResolver { return &dataStorageResolver{r} }
 
+// Model returns ModelResolver implementation.
+func (r *Resolver) Model() ModelResolver { return &modelResolver{r} }
+
 // Project returns ProjectResolver implementation.
 func (r *Resolver) Project() ProjectResolver { return &projectResolver{r} }
 
@@ -670,6 +685,7 @@ type channelResolver struct{ *Resolver }
 type channelOverrideTemplateResolver struct{ *Resolver }
 type channelPerformanceResolver struct{ *Resolver }
 type dataStorageResolver struct{ *Resolver }
+type modelResolver struct{ *Resolver }
 type projectResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type requestResolver struct{ *Resolver }

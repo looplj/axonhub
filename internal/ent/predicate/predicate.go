@@ -21,6 +21,9 @@ type ChannelPerformance func(*sql.Selector)
 // DataStorage is the predicate function for datastorage builders.
 type DataStorage func(*sql.Selector)
 
+// Model is the predicate function for model builders.
+type Model func(*sql.Selector)
+
 // Project is the predicate function for project builders.
 type Project func(*sql.Selector)
 

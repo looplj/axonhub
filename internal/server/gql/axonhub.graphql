@@ -205,12 +205,12 @@ type ModelIdentify {
   id: String!
 }
 
-type Model {
+type ModelIdentityWithStatus {
   id: String!
   status: ChannelStatus!
 }
 
-input ModelsInput {
+input QueryModelsInput {
   statusIn: [ChannelStatus!]
   includeMapping: Boolean
   includePrefix: Boolean
@@ -524,7 +524,7 @@ input CountChannelsByTypeInput {
 
 extend type Query {
   fetchModels(input: FetchModelsInput!): FetchModelsPayload!
-  models(input: ModelsInput!): [Model!]!
+  queryModels(input: QueryModelsInput!): [ModelIdentityWithStatus!]!
   allChannelTags: [String!]!
   countChannelsByType(input: CountChannelsByTypeInput!): [ChannelTypeCount!]!
   """

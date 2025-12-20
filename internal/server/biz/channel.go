@@ -203,8 +203,8 @@ func (svc *ChannelService) GetChannelForTest(ctx context.Context, channelID int)
 // ListEnabledModels returns all unique models across all enabled channels,
 // considering model mappings. It returns both the original model names
 // from SupportedModels and the "From" names from model mappings.
-func (svc *ChannelService) ListEnabledModels(ctx context.Context) []objects.Model {
-	modelSet := make(map[string]objects.Model)
+func (svc *ChannelService) ListEnabledModels(ctx context.Context) []objects.ModelFacade {
+	modelSet := make(map[string]objects.ModelFacade)
 
 	for _, ch := range svc.EnabledChannels {
 		// Add all supported models
@@ -213,7 +213,7 @@ func (svc *ChannelService) ListEnabledModels(ctx context.Context) []objects.Mode
 				continue
 			}
 
-			modelSet[model] = objects.Model{
+			modelSet[model] = objects.ModelFacade{
 				ID:          model,
 				DisplayName: model,
 				CreatedAt:   ch.CreatedAt,
@@ -231,7 +231,7 @@ func (svc *ChannelService) ListEnabledModels(ctx context.Context) []objects.Mode
 						continue
 					}
 
-					modelSet[mapping.From] = objects.Model{
+					modelSet[mapping.From] = objects.ModelFacade{
 						ID:          mapping.From,
 						DisplayName: mapping.From,
 						CreatedAt:   ch.CreatedAt,
@@ -249,7 +249,7 @@ func (svc *ChannelService) ListEnabledModels(ctx context.Context) []objects.Mode
 						continue
 					}
 
-					modelSet[prefixedModel] = objects.Model{
+					modelSet[prefixedModel] = objects.ModelFacade{
 						ID:          prefixedModel,
 						DisplayName: prefixedModel,
 						CreatedAt:   ch.CreatedAt,
@@ -271,8 +271,8 @@ type ListModelsInput struct {
 	IncludePrefix  bool
 }
 
-// Model represents a model with its status.
-type Model struct {
+// ModelIdentityWithStatus represents a model with its status.
+type ModelIdentityWithStatus struct {
 	ID     string
 	Status channel.Status
 }
@@ -293,7 +293,7 @@ func setModelStatus(models map[string]channel.Status, modelID string, newStatus 
 
 // ListModels returns all unique models across channels matching the filter criteria.
 // It supports filtering by status and optionally including model mappings and prefixes.
-func (svc *ChannelService) ListModels(ctx context.Context, input ListModelsInput) ([]*Model, error) {
+func (svc *ChannelService) ListModels(ctx context.Context, input ListModelsInput) ([]*ModelIdentityWithStatus, error) {
 	// Build query for channels
 	query := svc.entFromContext(ctx).Channel.Query()
 
@@ -339,9 +339,9 @@ func (svc *ChannelService) ListModels(ctx context.Context, input ListModelsInput
 	}
 
 	// Convert map to slice
-	models := make([]*Model, 0, len(modelMap))
+	models := make([]*ModelIdentityWithStatus, 0, len(modelMap))
 	for modelID, status := range modelMap {
-		models = append(models, &Model{
+		models = append(models, &ModelIdentityWithStatus{
 			ID:     modelID,
 			Status: status,
 		})

@@ -1,0 +1,155 @@
+{
+  "models": {
+    "title": "Models",
+    "description": "Manage AI models and their configurations",
+    "columns": {
+      "selectAll": "Select all",
+      "selectRow": "Select row",
+      "icon": "Icon",
+      "name": "Name",
+      "modelId": "Model ID",
+      "developer": "Developer",
+      "type": "Type",
+      "capabilities": "Capabilities",
+      "input": "Input",
+      "output": "Output",
+      "toolCall": "Tool Call",
+      "context": "Context",
+      "contextWindow": "Context",
+      "contextWindowFull": "Context Window",
+      "maxOutput": "Max Output",
+      "maxOutputFull": "Max Output Tokens",
+      "association": "Association",
+      "status": "Status",
+      "createdAt": "Created At",
+      "updatedAt": "Updated At",
+      "group": "Group",
+      "remark": "Remark"
+    },
+    "types": {
+      "chat": "Chat",
+      "embedding": "Embedding",
+      "rerank": "Rerank"
+    },
+    "status": {
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "archived": "Archived"
+    },
+    "actions": {
+      "create": "Add Model",
+      "addAssociation": "Add",
+      "manageAssociation": "Manage Association"
+    },
+    "filters": {
+      "filterByName": "Filter by name..."
+    },
+    "fields": {
+      "developer": "Developer",
+      "selectDeveloper": "Select developer",
+      "modelId": "Model ID",
+      "modelIdPlaceholder": "Enter or select model ID",
+      "noModels": "No models available",
+      "selectModel": "Select model",
+      "name": "Name",
+      "icon": "Icon",
+      "selectIcon": "Select icon",
+      "noIcons": "No icons available",
+      "group": "Group",
+      "type": "Type",
+      "status": "Status",
+      "remark": "Remark"
+    },
+    "dialogs": {
+      "create": {
+        "title": "Add Model",
+        "description": "Create a new AI model configuration"
+      },
+      "edit": {
+        "title": "Edit Model",
+        "description": "Update model configuration and settings"
+      },
+      "delete": {
+        "title": "Delete Model",
+        "description": "Are you sure you want to delete {{name}}? This action cannot be undone.",
+        "bulkDescription": "Are you sure you want to delete {{count}} models? This action cannot be undone."
+      },
+      "association": {
+        "title": "Model Association",
+        "description": "Configure channel and model associations for {{name}}",
+        "rule": "Rule",
+        "type": "Type",
+        "types": {
+          "channelModel": "Channel Model",
+          "channelRegex": "Channel Regex",
+          "regex": "Regex"
+        },
+        "channelId": "Channel ID",
+        "channelIdPlaceholder": "Enter channel ID",
+        "selectChannel": "Select channel",
+        "modelId": "Model ID",
+        "modelIdPlaceholder": "Enter model ID",
+        "selectModel": "Select model",
+        "noModelsAvailable": "No models available",
+        "noChannelModelsAvailable": "No models available for this channel",
+        "selectChannelFirst": "Please select a channel first",
+        "pattern": "Pattern",
+        "patternPlaceholder": "Enter regex pattern",
+        "addRule": "Add Rule",
+        "noRules": "No association rules configured. Click 'Add Rule' to create one.",
+        "invalidRegex": "Invalid regex pattern",
+        "preview": "Preview",
+        "previewDescription": "Real-time preview of associated channels and models",
+        "filterByChannel": "Filter by channel name...",
+        "noConnections": "No channel connections. Add rules to see preview.",
+        "noFilteredConnections": "No channels found matching filter."
+      },
+      "status": {
+        "enableTitle": "Enable Model",
+        "enableDescription": "Are you sure you want to enable {{name}}?",
+        "disableTitle": "Disable Model",
+        "disableDescription": "Are you sure you want to disable {{name}}?"
+      }
+    },
+    "modelCard": {
+      "title": "Model Card",
+      "capabilities": "Capabilities",
+      "reasoning": "Reasoning",
+      "reasoningSupported": "Supported",
+      "reasoningDefault": "Default",
+      "toolCall": "Tool Call",
+      "vision": "Vision",
+      "temperature": "Temperature",
+      "modalities": "Modalities",
+      "input": "Input",
+      "output": "Output",
+      "cost": "Cost",
+      "cacheRead": "Cache Read",
+      "cacheWrite": "Cache Write",
+      "limit": "Limits",
+      "limitHelp": "Use numbers like 128000 for 128K tokens",
+      "context": "Context",
+      "dates": "Dates",
+      "knowledge": "Knowledge Cutoff",
+      "releaseDate": "Release Date",
+      "lastUpdated": "Last Updated",
+      "noData": "No model card data available",
+      "text": "Text",
+      "image": "Image",
+      "audio": "Audio",
+      "video": "Video"
+    },
+    "expandedRow": {
+      "basic": "Basic Info",
+      "capabilities": "Capabilities"
+    },
+    "messages": {
+      "createSuccess": "Model created successfully",
+      "createError": "Failed to create model: {{error}}",
+      "updateSuccess": "Model updated successfully",
+      "updateError": "Failed to update model: {{error}}",
+      "deleteSuccess": "Model deleted successfully",
+      "deleteError": "Failed to delete model: {{error}}"
+    }
+  }
+}

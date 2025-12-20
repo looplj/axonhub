@@ -1,0 +1,78 @@
+package schema
+
+import (
+	"entgo.io/contrib/entgql"
+	"entgo.io/ent"
+	"entgo.io/ent/schema"
+	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
+
+	"github.com/looplj/axonhub/internal/ent/schema/schematype"
+	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/scopes"
+)
+
+type Model struct {
+	ent.Schema
+}
+
+func (Model) Mixin() []ent.Mixin {
+	return []ent.Mixin{
+		TimeMixin{},
+		schematype.SoftDeleteMixin{},
+	}
+}
+
+func (Model) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("name", "deleted_at").
+			StorageKey("Models_by_name").
+			Unique(),
+	}
+}
+
+func (Model) Fields() []ent.Field {
+	return []ent.Field{
+		field.String("developer").Immutable().Comment("developer of the model, eg. deeepseek"),
+		field.String("model_id").Immutable().Comment("model id, eg. deeepseek-chat"),
+		field.Enum("type").Immutable().Values("chat", "embedding", "rerank").Default("chat").Comment("model type"),
+		field.String("name").Comment("model name, eg. DeepSeek Chat"),
+		field.String("icon").Comment("icon of the model from the lobe-icons, eg. DeepSeek"),
+		field.String("group").Comment("model group, eg. deepseek"),
+		field.JSON("model_card", &objects.ModelCard{}),
+		field.JSON("settings", &objects.ModelSettings{}),
+		field.Enum("status").Values("enabled", "disabled", "archived").Default("disabled").Annotations(
+			entgql.Skip(entgql.SkipMutationCreateInput),
+		),
+		field.String("remark").
+			Optional().Nillable().
+			Comment("User-defined remark or note for the Model"),
+	}
+}
+
+func (Model) Edges() []ent.Edge {
+	return []ent.Edge{}
+}
+
+func (Model) Annotations() []schema.Annotation {
+	return []schema.Annotation{
+		entgql.QueryField(),
+		entgql.RelayConnection(),
+		entgql.Mutations(entgql.MutationCreate(), entgql.MutationUpdate()),
+	}
+}
+
+// Policy 定义 Model 的权限策略.
+func (Model) Policy() ent.Policy {
+	return scopes.Policy{
+		Query: scopes.QueryPolicy{
+			scopes.APIKeyScopeQueryRule(scopes.ScopeReadChannels),
+			scopes.OwnerRule(), // owner 用户可以访问所有渠道
+			scopes.UserReadScopeRule(scopes.ScopeReadChannels), // 需要 Models 读取权限
+		},
+		Mutation: scopes.MutationPolicy{
+			scopes.OwnerRule(), // owner 用户可以修改所有渠道
+			scopes.UserWriteScopeRule(scopes.ScopeWriteChannels), // 需要 Models 写入权限
+		},
+	}
+}

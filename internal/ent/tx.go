@@ -22,6 +22,8 @@ type Tx struct {
 	ChannelPerformance *ChannelPerformanceClient
 	// DataStorage is the client for interacting with the DataStorage builders.
 	DataStorage *DataStorageClient
+	// Model is the client for interacting with the Model builders.
+	Model *ModelClient
 	// Project is the client for interacting with the Project builders.
 	Project *ProjectClient
 	// Request is the client for interacting with the Request builders.
@@ -180,6 +182,7 @@ func (tx *Tx) init() {
 	tx.ChannelOverrideTemplate = NewChannelOverrideTemplateClient(tx.config)
 	tx.ChannelPerformance = NewChannelPerformanceClient(tx.config)
 	tx.DataStorage = NewDataStorageClient(tx.config)
+	tx.Model = NewModelClient(tx.config)
 	tx.Project = NewProjectClient(tx.config)
 	tx.Request = NewRequestClient(tx.config)
 	tx.RequestExecution = NewRequestExecutionClient(tx.config)

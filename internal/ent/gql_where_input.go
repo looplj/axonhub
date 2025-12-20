@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
+	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
@@ -2963,6 +2964,600 @@ func (i *DataStorageWhereInput) P() (predicate.DataStorage, error) {
 		return predicates[0], nil
 	default:
 		return datastorage.And(predicates...), nil
+	}
+}
+
+// ModelWhereInput represents a where input for filtering Model queries.
+type ModelWhereInput struct {
+	Predicates []predicate.Model  `json:"-"`
+	Not        *ModelWhereInput   `json:"not,omitempty"`
+	Or         []*ModelWhereInput `json:"or,omitempty"`
+	And        []*ModelWhereInput `json:"and,omitempty"`
+
+	// "id" field predicates.
+	ID      *int  `json:"id,omitempty"`
+	IDNEQ   *int  `json:"idNEQ,omitempty"`
+	IDIn    []int `json:"idIn,omitempty"`
+	IDNotIn []int `json:"idNotIn,omitempty"`
+	IDGT    *int  `json:"idGT,omitempty"`
+	IDGTE   *int  `json:"idGTE,omitempty"`
+	IDLT    *int  `json:"idLT,omitempty"`
+	IDLTE   *int  `json:"idLTE,omitempty"`
+
+	// "created_at" field predicates.
+	CreatedAt      *time.Time  `json:"createdAt,omitempty"`
+	CreatedAtNEQ   *time.Time  `json:"createdAtNEQ,omitempty"`
+	CreatedAtIn    []time.Time `json:"createdAtIn,omitempty"`
+	CreatedAtNotIn []time.Time `json:"createdAtNotIn,omitempty"`
+	CreatedAtGT    *time.Time  `json:"createdAtGT,omitempty"`
+	CreatedAtGTE   *time.Time  `json:"createdAtGTE,omitempty"`
+	CreatedAtLT    *time.Time  `json:"createdAtLT,omitempty"`
+	CreatedAtLTE   *time.Time  `json:"createdAtLTE,omitempty"`
+
+	// "updated_at" field predicates.
+	UpdatedAt      *time.Time  `json:"updatedAt,omitempty"`
+	UpdatedAtNEQ   *time.Time  `json:"updatedAtNEQ,omitempty"`
+	UpdatedAtIn    []time.Time `json:"updatedAtIn,omitempty"`
+	UpdatedAtNotIn []time.Time `json:"updatedAtNotIn,omitempty"`
+	UpdatedAtGT    *time.Time  `json:"updatedAtGT,omitempty"`
+	UpdatedAtGTE   *time.Time  `json:"updatedAtGTE,omitempty"`
+	UpdatedAtLT    *time.Time  `json:"updatedAtLT,omitempty"`
+	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
+
+	// "deleted_at" field predicates.
+	DeletedAt      *int  `json:"deletedAt,omitempty"`
+	DeletedAtNEQ   *int  `json:"deletedAtNEQ,omitempty"`
+	DeletedAtIn    []int `json:"deletedAtIn,omitempty"`
+	DeletedAtNotIn []int `json:"deletedAtNotIn,omitempty"`
+	DeletedAtGT    *int  `json:"deletedAtGT,omitempty"`
+	DeletedAtGTE   *int  `json:"deletedAtGTE,omitempty"`
+	DeletedAtLT    *int  `json:"deletedAtLT,omitempty"`
+	DeletedAtLTE   *int  `json:"deletedAtLTE,omitempty"`
+
+	// "developer" field predicates.
+	Developer             *string  `json:"developer,omitempty"`
+	DeveloperNEQ          *string  `json:"developerNEQ,omitempty"`
+	DeveloperIn           []string `json:"developerIn,omitempty"`
+	DeveloperNotIn        []string `json:"developerNotIn,omitempty"`
+	DeveloperGT           *string  `json:"developerGT,omitempty"`
+	DeveloperGTE          *string  `json:"developerGTE,omitempty"`
+	DeveloperLT           *string  `json:"developerLT,omitempty"`
+	DeveloperLTE          *string  `json:"developerLTE,omitempty"`
+	DeveloperContains     *string  `json:"developerContains,omitempty"`
+	DeveloperHasPrefix    *string  `json:"developerHasPrefix,omitempty"`
+	DeveloperHasSuffix    *string  `json:"developerHasSuffix,omitempty"`
+	DeveloperEqualFold    *string  `json:"developerEqualFold,omitempty"`
+	DeveloperContainsFold *string  `json:"developerContainsFold,omitempty"`
+
+	// "model_id" field predicates.
+	ModelID             *string  `json:"modelID,omitempty"`
+	ModelIDNEQ          *string  `json:"modelIDNEQ,omitempty"`
+	ModelIDIn           []string `json:"modelIDIn,omitempty"`
+	ModelIDNotIn        []string `json:"modelIDNotIn,omitempty"`
+	ModelIDGT           *string  `json:"modelIDGT,omitempty"`
+	ModelIDGTE          *string  `json:"modelIDGTE,omitempty"`
+	ModelIDLT           *string  `json:"modelIDLT,omitempty"`
+	ModelIDLTE          *string  `json:"modelIDLTE,omitempty"`
+	ModelIDContains     *string  `json:"modelIDContains,omitempty"`
+	ModelIDHasPrefix    *string  `json:"modelIDHasPrefix,omitempty"`
+	ModelIDHasSuffix    *string  `json:"modelIDHasSuffix,omitempty"`
+	ModelIDEqualFold    *string  `json:"modelIDEqualFold,omitempty"`
+	ModelIDContainsFold *string  `json:"modelIDContainsFold,omitempty"`
+
+	// "type" field predicates.
+	Type      *model.Type  `json:"type,omitempty"`
+	TypeNEQ   *model.Type  `json:"typeNEQ,omitempty"`
+	TypeIn    []model.Type `json:"typeIn,omitempty"`
+	TypeNotIn []model.Type `json:"typeNotIn,omitempty"`
+
+	// "name" field predicates.
+	Name             *string  `json:"name,omitempty"`
+	NameNEQ          *string  `json:"nameNEQ,omitempty"`
+	NameIn           []string `json:"nameIn,omitempty"`
+	NameNotIn        []string `json:"nameNotIn,omitempty"`
+	NameGT           *string  `json:"nameGT,omitempty"`
+	NameGTE          *string  `json:"nameGTE,omitempty"`
+	NameLT           *string  `json:"nameLT,omitempty"`
+	NameLTE          *string  `json:"nameLTE,omitempty"`
+	NameContains     *string  `json:"nameContains,omitempty"`
+	NameHasPrefix    *string  `json:"nameHasPrefix,omitempty"`
+	NameHasSuffix    *string  `json:"nameHasSuffix,omitempty"`
+	NameEqualFold    *string  `json:"nameEqualFold,omitempty"`
+	NameContainsFold *string  `json:"nameContainsFold,omitempty"`
+
+	// "icon" field predicates.
+	Icon             *string  `json:"icon,omitempty"`
+	IconNEQ          *string  `json:"iconNEQ,omitempty"`
+	IconIn           []string `json:"iconIn,omitempty"`
+	IconNotIn        []string `json:"iconNotIn,omitempty"`
+	IconGT           *string  `json:"iconGT,omitempty"`
+	IconGTE          *string  `json:"iconGTE,omitempty"`
+	IconLT           *string  `json:"iconLT,omitempty"`
+	IconLTE          *string  `json:"iconLTE,omitempty"`
+	IconContains     *string  `json:"iconContains,omitempty"`
+	IconHasPrefix    *string  `json:"iconHasPrefix,omitempty"`
+	IconHasSuffix    *string  `json:"iconHasSuffix,omitempty"`
+	IconEqualFold    *string  `json:"iconEqualFold,omitempty"`
+	IconContainsFold *string  `json:"iconContainsFold,omitempty"`
+
+	// "group" field predicates.
+	Group             *string  `json:"group,omitempty"`
+	GroupNEQ          *string  `json:"groupNEQ,omitempty"`
+	GroupIn           []string `json:"groupIn,omitempty"`
+	GroupNotIn        []string `json:"groupNotIn,omitempty"`
+	GroupGT           *string  `json:"groupGT,omitempty"`
+	GroupGTE          *string  `json:"groupGTE,omitempty"`
+	GroupLT           *string  `json:"groupLT,omitempty"`
+	GroupLTE          *string  `json:"groupLTE,omitempty"`
+	GroupContains     *string  `json:"groupContains,omitempty"`
+	GroupHasPrefix    *string  `json:"groupHasPrefix,omitempty"`
+	GroupHasSuffix    *string  `json:"groupHasSuffix,omitempty"`
+	GroupEqualFold    *string  `json:"groupEqualFold,omitempty"`
+	GroupContainsFold *string  `json:"groupContainsFold,omitempty"`
+
+	// "status" field predicates.
+	Status      *model.Status  `json:"status,omitempty"`
+	StatusNEQ   *model.Status  `json:"statusNEQ,omitempty"`
+	StatusIn    []model.Status `json:"statusIn,omitempty"`
+	StatusNotIn []model.Status `json:"statusNotIn,omitempty"`
+
+	// "remark" field predicates.
+	Remark             *string  `json:"remark,omitempty"`
+	RemarkNEQ          *string  `json:"remarkNEQ,omitempty"`
+	RemarkIn           []string `json:"remarkIn,omitempty"`
+	RemarkNotIn        []string `json:"remarkNotIn,omitempty"`
+	RemarkGT           *string  `json:"remarkGT,omitempty"`
+	RemarkGTE          *string  `json:"remarkGTE,omitempty"`
+	RemarkLT           *string  `json:"remarkLT,omitempty"`
+	RemarkLTE          *string  `json:"remarkLTE,omitempty"`
+	RemarkContains     *string  `json:"remarkContains,omitempty"`
+	RemarkHasPrefix    *string  `json:"remarkHasPrefix,omitempty"`
+	RemarkHasSuffix    *string  `json:"remarkHasSuffix,omitempty"`
+	RemarkIsNil        bool     `json:"remarkIsNil,omitempty"`
+	RemarkNotNil       bool     `json:"remarkNotNil,omitempty"`
+	RemarkEqualFold    *string  `json:"remarkEqualFold,omitempty"`
+	RemarkContainsFold *string  `json:"remarkContainsFold,omitempty"`
+}
+
+// AddPredicates adds custom predicates to the where input to be used during the filtering phase.
+func (i *ModelWhereInput) AddPredicates(predicates ...predicate.Model) {
+	i.Predicates = append(i.Predicates, predicates...)
+}
+
+// Filter applies the ModelWhereInput filter on the ModelQuery builder.
+func (i *ModelWhereInput) Filter(q *ModelQuery) (*ModelQuery, error) {
+	if i == nil {
+		return q, nil
+	}
+	p, err := i.P()
+	if err != nil {
+		if err == ErrEmptyModelWhereInput {
+			return q, nil
+		}
+		return nil, err
+	}
+	return q.Where(p), nil
+}
+
+// ErrEmptyModelWhereInput is returned in case the ModelWhereInput is empty.
+var ErrEmptyModelWhereInput = errors.New("ent: empty predicate ModelWhereInput")
+
+// P returns a predicate for filtering models.
+// An error is returned if the input is empty or invalid.
+func (i *ModelWhereInput) P() (predicate.Model, error) {
+	var predicates []predicate.Model
+	if i.Not != nil {
+		p, err := i.Not.P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'not'", err)
+		}
+		predicates = append(predicates, model.Not(p))
+	}
+	switch n := len(i.Or); {
+	case n == 1:
+		p, err := i.Or[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'or'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		or := make([]predicate.Model, 0, n)
+		for _, w := range i.Or {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'or'", err)
+			}
+			or = append(or, p)
+		}
+		predicates = append(predicates, model.Or(or...))
+	}
+	switch n := len(i.And); {
+	case n == 1:
+		p, err := i.And[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'and'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		and := make([]predicate.Model, 0, n)
+		for _, w := range i.And {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'and'", err)
+			}
+			and = append(and, p)
+		}
+		predicates = append(predicates, model.And(and...))
+	}
+	predicates = append(predicates, i.Predicates...)
+	if i.ID != nil {
+		predicates = append(predicates, model.IDEQ(*i.ID))
+	}
+	if i.IDNEQ != nil {
+		predicates = append(predicates, model.IDNEQ(*i.IDNEQ))
+	}
+	if len(i.IDIn) > 0 {
+		predicates = append(predicates, model.IDIn(i.IDIn...))
+	}
+	if len(i.IDNotIn) > 0 {
+		predicates = append(predicates, model.IDNotIn(i.IDNotIn...))
+	}
+	if i.IDGT != nil {
+		predicates = append(predicates, model.IDGT(*i.IDGT))
+	}
+	if i.IDGTE != nil {
+		predicates = append(predicates, model.IDGTE(*i.IDGTE))
+	}
+	if i.IDLT != nil {
+		predicates = append(predicates, model.IDLT(*i.IDLT))
+	}
+	if i.IDLTE != nil {
+		predicates = append(predicates, model.IDLTE(*i.IDLTE))
+	}
+	if i.CreatedAt != nil {
+		predicates = append(predicates, model.CreatedAtEQ(*i.CreatedAt))
+	}
+	if i.CreatedAtNEQ != nil {
+		predicates = append(predicates, model.CreatedAtNEQ(*i.CreatedAtNEQ))
+	}
+	if len(i.CreatedAtIn) > 0 {
+		predicates = append(predicates, model.CreatedAtIn(i.CreatedAtIn...))
+	}
+	if len(i.CreatedAtNotIn) > 0 {
+		predicates = append(predicates, model.CreatedAtNotIn(i.CreatedAtNotIn...))
+	}
+	if i.CreatedAtGT != nil {
+		predicates = append(predicates, model.CreatedAtGT(*i.CreatedAtGT))
+	}
+	if i.CreatedAtGTE != nil {
+		predicates = append(predicates, model.CreatedAtGTE(*i.CreatedAtGTE))
+	}
+	if i.CreatedAtLT != nil {
+		predicates = append(predicates, model.CreatedAtLT(*i.CreatedAtLT))
+	}
+	if i.CreatedAtLTE != nil {
+		predicates = append(predicates, model.CreatedAtLTE(*i.CreatedAtLTE))
+	}
+	if i.UpdatedAt != nil {
+		predicates = append(predicates, model.UpdatedAtEQ(*i.UpdatedAt))
+	}
+	if i.UpdatedAtNEQ != nil {
+		predicates = append(predicates, model.UpdatedAtNEQ(*i.UpdatedAtNEQ))
+	}
+	if len(i.UpdatedAtIn) > 0 {
+		predicates = append(predicates, model.UpdatedAtIn(i.UpdatedAtIn...))
+	}
+	if len(i.UpdatedAtNotIn) > 0 {
+		predicates = append(predicates, model.UpdatedAtNotIn(i.UpdatedAtNotIn...))
+	}
+	if i.UpdatedAtGT != nil {
+		predicates = append(predicates, model.UpdatedAtGT(*i.UpdatedAtGT))
+	}
+	if i.UpdatedAtGTE != nil {
+		predicates = append(predicates, model.UpdatedAtGTE(*i.UpdatedAtGTE))
+	}
+	if i.UpdatedAtLT != nil {
+		predicates = append(predicates, model.UpdatedAtLT(*i.UpdatedAtLT))
+	}
+	if i.UpdatedAtLTE != nil {
+		predicates = append(predicates, model.UpdatedAtLTE(*i.UpdatedAtLTE))
+	}
+	if i.DeletedAt != nil {
+		predicates = append(predicates, model.DeletedAtEQ(*i.DeletedAt))
+	}
+	if i.DeletedAtNEQ != nil {
+		predicates = append(predicates, model.DeletedAtNEQ(*i.DeletedAtNEQ))
+	}
+	if len(i.DeletedAtIn) > 0 {
+		predicates = append(predicates, model.DeletedAtIn(i.DeletedAtIn...))
+	}
+	if len(i.DeletedAtNotIn) > 0 {
+		predicates = append(predicates, model.DeletedAtNotIn(i.DeletedAtNotIn...))
+	}
+	if i.DeletedAtGT != nil {
+		predicates = append(predicates, model.DeletedAtGT(*i.DeletedAtGT))
+	}
+	if i.DeletedAtGTE != nil {
+		predicates = append(predicates, model.DeletedAtGTE(*i.DeletedAtGTE))
+	}
+	if i.DeletedAtLT != nil {
+		predicates = append(predicates, model.DeletedAtLT(*i.DeletedAtLT))
+	}
+	if i.DeletedAtLTE != nil {
+		predicates = append(predicates, model.DeletedAtLTE(*i.DeletedAtLTE))
+	}
+	if i.Developer != nil {
+		predicates = append(predicates, model.DeveloperEQ(*i.Developer))
+	}
+	if i.DeveloperNEQ != nil {
+		predicates = append(predicates, model.DeveloperNEQ(*i.DeveloperNEQ))
+	}
+	if len(i.DeveloperIn) > 0 {
+		predicates = append(predicates, model.DeveloperIn(i.DeveloperIn...))
+	}
+	if len(i.DeveloperNotIn) > 0 {
+		predicates = append(predicates, model.DeveloperNotIn(i.DeveloperNotIn...))
+	}
+	if i.DeveloperGT != nil {
+		predicates = append(predicates, model.DeveloperGT(*i.DeveloperGT))
+	}
+	if i.DeveloperGTE != nil {
+		predicates = append(predicates, model.DeveloperGTE(*i.DeveloperGTE))
+	}
+	if i.DeveloperLT != nil {
+		predicates = append(predicates, model.DeveloperLT(*i.DeveloperLT))
+	}
+	if i.DeveloperLTE != nil {
+		predicates = append(predicates, model.DeveloperLTE(*i.DeveloperLTE))
+	}
+	if i.DeveloperContains != nil {
+		predicates = append(predicates, model.DeveloperContains(*i.DeveloperContains))
+	}
+	if i.DeveloperHasPrefix != nil {
+		predicates = append(predicates, model.DeveloperHasPrefix(*i.DeveloperHasPrefix))
+	}
+	if i.DeveloperHasSuffix != nil {
+		predicates = append(predicates, model.DeveloperHasSuffix(*i.DeveloperHasSuffix))
+	}
+	if i.DeveloperEqualFold != nil {
+		predicates = append(predicates, model.DeveloperEqualFold(*i.DeveloperEqualFold))
+	}
+	if i.DeveloperContainsFold != nil {
+		predicates = append(predicates, model.DeveloperContainsFold(*i.DeveloperContainsFold))
+	}
+	if i.ModelID != nil {
+		predicates = append(predicates, model.ModelIDEQ(*i.ModelID))
+	}
+	if i.ModelIDNEQ != nil {
+		predicates = append(predicates, model.ModelIDNEQ(*i.ModelIDNEQ))
+	}
+	if len(i.ModelIDIn) > 0 {
+		predicates = append(predicates, model.ModelIDIn(i.ModelIDIn...))
+	}
+	if len(i.ModelIDNotIn) > 0 {
+		predicates = append(predicates, model.ModelIDNotIn(i.ModelIDNotIn...))
+	}
+	if i.ModelIDGT != nil {
+		predicates = append(predicates, model.ModelIDGT(*i.ModelIDGT))
+	}
+	if i.ModelIDGTE != nil {
+		predicates = append(predicates, model.ModelIDGTE(*i.ModelIDGTE))
+	}
+	if i.ModelIDLT != nil {
+		predicates = append(predicates, model.ModelIDLT(*i.ModelIDLT))
+	}
+	if i.ModelIDLTE != nil {
+		predicates = append(predicates, model.ModelIDLTE(*i.ModelIDLTE))
+	}
+	if i.ModelIDContains != nil {
+		predicates = append(predicates, model.ModelIDContains(*i.ModelIDContains))
+	}
+	if i.ModelIDHasPrefix != nil {
+		predicates = append(predicates, model.ModelIDHasPrefix(*i.ModelIDHasPrefix))
+	}
+	if i.ModelIDHasSuffix != nil {
+		predicates = append(predicates, model.ModelIDHasSuffix(*i.ModelIDHasSuffix))
+	}
+	if i.ModelIDEqualFold != nil {
+		predicates = append(predicates, model.ModelIDEqualFold(*i.ModelIDEqualFold))
+	}
+	if i.ModelIDContainsFold != nil {
+		predicates = append(predicates, model.ModelIDContainsFold(*i.ModelIDContainsFold))
+	}
+	if i.Type != nil {
+		predicates = append(predicates, model.TypeEQ(*i.Type))
+	}
+	if i.TypeNEQ != nil {
+		predicates = append(predicates, model.TypeNEQ(*i.TypeNEQ))
+	}
+	if len(i.TypeIn) > 0 {
+		predicates = append(predicates, model.TypeIn(i.TypeIn...))
+	}
+	if len(i.TypeNotIn) > 0 {
+		predicates = append(predicates, model.TypeNotIn(i.TypeNotIn...))
+	}
+	if i.Name != nil {
+		predicates = append(predicates, model.NameEQ(*i.Name))
+	}
+	if i.NameNEQ != nil {
+		predicates = append(predicates, model.NameNEQ(*i.NameNEQ))
+	}
+	if len(i.NameIn) > 0 {
+		predicates = append(predicates, model.NameIn(i.NameIn...))
+	}
+	if len(i.NameNotIn) > 0 {
+		predicates = append(predicates, model.NameNotIn(i.NameNotIn...))
+	}
+	if i.NameGT != nil {
+		predicates = append(predicates, model.NameGT(*i.NameGT))
+	}
+	if i.NameGTE != nil {
+		predicates = append(predicates, model.NameGTE(*i.NameGTE))
+	}
+	if i.NameLT != nil {
+		predicates = append(predicates, model.NameLT(*i.NameLT))
+	}
+	if i.NameLTE != nil {
+		predicates = append(predicates, model.NameLTE(*i.NameLTE))
+	}
+	if i.NameContains != nil {
+		predicates = append(predicates, model.NameContains(*i.NameContains))
+	}
+	if i.NameHasPrefix != nil {
+		predicates = append(predicates, model.NameHasPrefix(*i.NameHasPrefix))
+	}
+	if i.NameHasSuffix != nil {
+		predicates = append(predicates, model.NameHasSuffix(*i.NameHasSuffix))
+	}
+	if i.NameEqualFold != nil {
+		predicates = append(predicates, model.NameEqualFold(*i.NameEqualFold))
+	}
+	if i.NameContainsFold != nil {
+		predicates = append(predicates, model.NameContainsFold(*i.NameContainsFold))
+	}
+	if i.Icon != nil {
+		predicates = append(predicates, model.IconEQ(*i.Icon))
+	}
+	if i.IconNEQ != nil {
+		predicates = append(predicates, model.IconNEQ(*i.IconNEQ))
+	}
+	if len(i.IconIn) > 0 {
+		predicates = append(predicates, model.IconIn(i.IconIn...))
+	}
+	if len(i.IconNotIn) > 0 {
+		predicates = append(predicates, model.IconNotIn(i.IconNotIn...))
+	}
+	if i.IconGT != nil {
+		predicates = append(predicates, model.IconGT(*i.IconGT))
+	}
+	if i.IconGTE != nil {
+		predicates = append(predicates, model.IconGTE(*i.IconGTE))
+	}
+	if i.IconLT != nil {
+		predicates = append(predicates, model.IconLT(*i.IconLT))
+	}
+	if i.IconLTE != nil {
+		predicates = append(predicates, model.IconLTE(*i.IconLTE))
+	}
+	if i.IconContains != nil {
+		predicates = append(predicates, model.IconContains(*i.IconContains))
+	}
+	if i.IconHasPrefix != nil {
+		predicates = append(predicates, model.IconHasPrefix(*i.IconHasPrefix))
+	}
+	if i.IconHasSuffix != nil {
+		predicates = append(predicates, model.IconHasSuffix(*i.IconHasSuffix))
+	}
+	if i.IconEqualFold != nil {
+		predicates = append(predicates, model.IconEqualFold(*i.IconEqualFold))
+	}
+	if i.IconContainsFold != nil {
+		predicates = append(predicates, model.IconContainsFold(*i.IconContainsFold))
+	}
+	if i.Group != nil {
+		predicates = append(predicates, model.GroupEQ(*i.Group))
+	}
+	if i.GroupNEQ != nil {
+		predicates = append(predicates, model.GroupNEQ(*i.GroupNEQ))
+	}
+	if len(i.GroupIn) > 0 {
+		predicates = append(predicates, model.GroupIn(i.GroupIn...))
+	}
+	if len(i.GroupNotIn) > 0 {
+		predicates = append(predicates, model.GroupNotIn(i.GroupNotIn...))
+	}
+	if i.GroupGT != nil {
+		predicates = append(predicates, model.GroupGT(*i.GroupGT))
+	}
+	if i.GroupGTE != nil {
+		predicates = append(predicates, model.GroupGTE(*i.GroupGTE))
+	}
+	if i.GroupLT != nil {
+		predicates = append(predicates, model.GroupLT(*i.GroupLT))
+	}
+	if i.GroupLTE != nil {
+		predicates = append(predicates, model.GroupLTE(*i.GroupLTE))
+	}
+	if i.GroupContains != nil {
+		predicates = append(predicates, model.GroupContains(*i.GroupContains))
+	}
+	if i.GroupHasPrefix != nil {
+		predicates = append(predicates, model.GroupHasPrefix(*i.GroupHasPrefix))
+	}
+	if i.GroupHasSuffix != nil {
+		predicates = append(predicates, model.GroupHasSuffix(*i.GroupHasSuffix))
+	}
+	if i.GroupEqualFold != nil {
+		predicates = append(predicates, model.GroupEqualFold(*i.GroupEqualFold))
+	}
+	if i.GroupContainsFold != nil {
+		predicates = append(predicates, model.GroupContainsFold(*i.GroupContainsFold))
+	}
+	if i.Status != nil {
+		predicates = append(predicates, model.StatusEQ(*i.Status))
+	}
+	if i.StatusNEQ != nil {
+		predicates = append(predicates, model.StatusNEQ(*i.StatusNEQ))
+	}
+	if len(i.StatusIn) > 0 {
+		predicates = append(predicates, model.StatusIn(i.StatusIn...))
+	}
+	if len(i.StatusNotIn) > 0 {
+		predicates = append(predicates, model.StatusNotIn(i.StatusNotIn...))
+	}
+	if i.Remark != nil {
+		predicates = append(predicates, model.RemarkEQ(*i.Remark))
+	}
+	if i.RemarkNEQ != nil {
+		predicates = append(predicates, model.RemarkNEQ(*i.RemarkNEQ))
+	}
+	if len(i.RemarkIn) > 0 {
+		predicates = append(predicates, model.RemarkIn(i.RemarkIn...))
+	}
+	if len(i.RemarkNotIn) > 0 {
+		predicates = append(predicates, model.RemarkNotIn(i.RemarkNotIn...))
+	}
+	if i.RemarkGT != nil {
+		predicates = append(predicates, model.RemarkGT(*i.RemarkGT))
+	}
+	if i.RemarkGTE != nil {
+		predicates = append(predicates, model.RemarkGTE(*i.RemarkGTE))
+	}
+	if i.RemarkLT != nil {
+		predicates = append(predicates, model.RemarkLT(*i.RemarkLT))
+	}
+	if i.RemarkLTE != nil {
+		predicates = append(predicates, model.RemarkLTE(*i.RemarkLTE))
+	}
+	if i.RemarkContains != nil {
+		predicates = append(predicates, model.RemarkContains(*i.RemarkContains))
+	}
+	if i.RemarkHasPrefix != nil {
+		predicates = append(predicates, model.RemarkHasPrefix(*i.RemarkHasPrefix))
+	}
+	if i.RemarkHasSuffix != nil {
+		predicates = append(predicates, model.RemarkHasSuffix(*i.RemarkHasSuffix))
+	}
+	if i.RemarkIsNil {
+		predicates = append(predicates, model.RemarkIsNil())
+	}
+	if i.RemarkNotNil {
+		predicates = append(predicates, model.RemarkNotNil())
+	}
+	if i.RemarkEqualFold != nil {
+		predicates = append(predicates, model.RemarkEqualFold(*i.RemarkEqualFold))
+	}
+	if i.RemarkContainsFold != nil {
+		predicates = append(predicates, model.RemarkContainsFold(*i.RemarkContainsFold))
+	}
+
+	switch len(predicates) {
+	case 0:
+		return nil, ErrEmptyModelWhereInput
+	case 1:
+		return predicates[0], nil
+	default:
+		return model.And(predicates...), nil
 	}
 }
 

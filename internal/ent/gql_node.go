@@ -19,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
+	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -63,6 +64,11 @@ var datastorageImplementors = []string{"DataStorage", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
 func (*DataStorage) IsNode() {}
+
+var modelImplementors = []string{"Model", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*Model) IsNode() {}
 
 var projectImplementors = []string{"Project", "Node"}
 
@@ -218,6 +224,15 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 			Where(datastorage.ID(id))
 		if fc := graphql.GetFieldContext(ctx); fc != nil {
 			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, datastorageImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case model.Table:
+		query := c.Model.Query().
+			Where(model.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, modelImplementors...); err != nil {
 				return nil, err
 			}
 		}
@@ -462,6 +477,22 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 		query := c.DataStorage.Query().
 			Where(datastorage.IDIn(ids...))
 		query, err := query.CollectFields(ctx, datastorageImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case model.Table:
+		query := c.Model.Query().
+			Where(model.IDIn(ids...))
+		query, err := query.CollectFields(ctx, modelImplementors...)
 		if err != nil {
 			return nil, err
 		}
