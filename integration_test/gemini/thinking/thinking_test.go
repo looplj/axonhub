@@ -15,7 +15,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestGenerateContentWithThinkingConfig(t *testing.T) {
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "thinking")
 
 	helper.PrintHeaders(t)
 
@@ -35,7 +35,7 @@ func TestGenerateContentWithThinkingConfig(t *testing.T) {
 		},
 	}
 
-	response, err := helper.Client.Models.GenerateContent(ctx, modelName, contents, config)
+	response, err := helper.GenerateContentWithHeaders(ctx, modelName, contents, config)
 	if err != nil {
 		if isThinkingNotSupportedErr(err) {
 			t.Skipf("Skipping because model does not support thinking: %v", err)
@@ -66,7 +66,7 @@ func TestGenerateContentWithThinkingConfig(t *testing.T) {
 }
 
 func TestGenerateContentWithThinkingBudget(t *testing.T) {
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "thinking")
 
 	ctx := helper.CreateTestContext()
 	modelName := helper.GetModel()
@@ -84,7 +84,7 @@ func TestGenerateContentWithThinkingBudget(t *testing.T) {
 		},
 	}
 
-	response, err := helper.Client.Models.GenerateContent(ctx, modelName, contents, config)
+	response, err := helper.GenerateContentWithHeaders(ctx, modelName, contents, config)
 	if err != nil {
 		if isThinkingNotSupportedErr(err) {
 			t.Skipf("Skipping because model does not support thinking: %v", err)
@@ -115,7 +115,7 @@ func TestGenerateContentWithThinkingBudget(t *testing.T) {
 }
 
 func TestChatWithThinkingConfig(t *testing.T) {
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "thinking")
 
 	ctx := helper.CreateTestContext()
 	modelName := helper.GetModel()
@@ -127,7 +127,7 @@ func TestChatWithThinkingConfig(t *testing.T) {
 		},
 	}
 
-	chat, err := helper.Client.Chats.Create(ctx, modelName, config, nil)
+	chat, err := helper.CreateChatWithHeaders(ctx, modelName, config, nil)
 	if err != nil {
 		if isThinkingNotSupportedErr(err) {
 			t.Skipf("Skipping because model does not support thinking: %v", err)

@@ -11,7 +11,7 @@ import (
 
 func TestSingleThreadMultipleTraces(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "single_thread")
 
 	// Print headers for debugging
 	helper.PrintHeaders(t)
@@ -35,7 +35,7 @@ func TestSingleThreadMultipleTraces(t *testing.T) {
 		MaxTokens: 1024,
 	}
 
-	completion1, err := helper.Client.Messages.New(ctx1, params1)
+	completion1, err := helper.CreateMessageWithHeaders(ctx1, params1)
 	helper.AssertNoError(t, err, "Failed in trace 1, call 1")
 
 	helper.ValidateMessageResponse(t, completion1, "Trace 1, call 1")
@@ -53,7 +53,7 @@ func TestSingleThreadMultipleTraces(t *testing.T) {
 	messages1 = append(messages1, anthropic.NewUserMessage(anthropic.NewTextBlock("What tools and technologies should I consider for each phase?")))
 
 	params1.Messages = messages1
-	completion2, err := helper.Client.Messages.New(ctx1, params1)
+	completion2, err := helper.CreateMessageWithHeaders(ctx1, params1)
 	helper.AssertNoError(t, err, "Failed in trace 1, call 2")
 
 	helper.ValidateMessageResponse(t, completion2, "Trace 1, call 2")
@@ -83,7 +83,7 @@ func TestSingleThreadMultipleTraces(t *testing.T) {
 		MaxTokens: 1024,
 	}
 
-	completion3, err := helper2.Client.Messages.New(ctx2, params2)
+	completion3, err := helper2.CreateMessageWithHeaders(ctx2, params2)
 	helper.AssertNoError(t, err, "Failed in trace 2, call 1")
 
 	helper.ValidateMessageResponse(t, completion3, "Trace 2, call 1")
@@ -101,7 +101,7 @@ func TestSingleThreadMultipleTraces(t *testing.T) {
 	messages2 = append(messages2, anthropic.NewUserMessage(anthropic.NewTextBlock("What about the project timeline and milestones?")))
 
 	params2.Messages = messages2
-	completion4, err := helper2.Client.Messages.New(ctx2, params2)
+	completion4, err := helper2.CreateMessageWithHeaders(ctx2, params2)
 	helper.AssertNoError(t, err, "Failed in trace 2, call 2")
 
 	helper.ValidateMessageResponse(t, completion4, "Trace 2, call 2")
@@ -156,7 +156,7 @@ func TestSingleThreadMultipleTraces(t *testing.T) {
 		MaxTokens: 1024,
 	}
 
-	completion5, err := helper3.Client.Messages.New(ctx3, params3)
+	completion5, err := helper3.CreateMessageWithHeaders(ctx3, params3)
 	helper.AssertNoError(t, err, "Failed in trace 3, call 1 with tools")
 
 	helper.ValidateMessageResponse(t, completion5, "Trace 3, call 1 with tools")
@@ -212,7 +212,7 @@ func TestSingleThreadMultipleTraces(t *testing.T) {
 		// Final call with tool results
 		params3.Messages = messages3
 		params3.Tools = []anthropic.ToolUnionParam{} // Clear tools
-		completion6, err := helper3.Client.Messages.New(ctx3, params3)
+		completion6, err := helper3.CreateMessageWithHeaders(ctx3, params3)
 		helper.AssertNoError(t, err, "Failed in trace 3, call 2")
 
 		helper.ValidateMessageResponse(t, completion6, "Trace 3, call 2")

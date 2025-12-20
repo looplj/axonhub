@@ -17,7 +17,7 @@ func TestMain(m *testing.M) {
 
 func TestSingleTraceMultipleCalls(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "single_trace")
 
 	// Print headers for debugging
 	helper.PrintHeaders(t)
@@ -36,7 +36,7 @@ func TestSingleTraceMultipleCalls(t *testing.T) {
 		MaxTokens: 1024,
 	}
 
-	response1, err := helper.Client.Messages.New(ctx, params)
+	response1, err := helper.CreateMessageWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed in first trace call")
 
 	helper.ValidateMessageResponse(t, response1, "First trace call")
@@ -59,7 +59,7 @@ func TestSingleTraceMultipleCalls(t *testing.T) {
 	messages = append(messages, anthropic.NewUserMessage(anthropic.NewTextBlock("Great! I have a specific calculation I need help with.")))
 
 	params.Messages = messages
-	response2, err := helper.Client.Messages.New(ctx, params)
+	response2, err := helper.CreateMessageWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed in second trace call")
 
 	helper.ValidateMessageResponse(t, response2, "Second trace call")
@@ -97,7 +97,7 @@ func TestSingleTraceMultipleCalls(t *testing.T) {
 
 	params.Messages = messages
 	params.Tools = tools
-	response3, err := helper.Client.Messages.New(ctx, params)
+	response3, err := helper.CreateMessageWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed in third trace call with tools")
 
 	helper.ValidateMessageResponse(t, response3, "Third trace call with tools")
@@ -137,7 +137,7 @@ func TestSingleTraceMultipleCalls(t *testing.T) {
 						messages = append(messages, anthropic.NewUserMessage(anthropic.NewTextBlock("Thank you! Please confirm: what was the result of 15 * 7 + 23?")))
 						params.Messages = messages
 						params.Tools = []anthropic.ToolUnionParam{} // Clear tools
-						response4, err := helper.Client.Messages.New(ctx, params)
+						response4, err := helper.CreateMessageWithHeaders(ctx, params)
 						helper.AssertNoError(t, err, "Failed in fourth trace call")
 
 						helper.ValidateMessageResponse(t, response4, "Fourth trace call - final")

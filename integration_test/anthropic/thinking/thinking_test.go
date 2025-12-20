@@ -14,7 +14,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestExtendedThinking(t *testing.T) {
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "extended_thinking")
 
 	ctx := helper.CreateTestContext()
 
@@ -37,7 +37,7 @@ func TestExtendedThinking(t *testing.T) {
 		},
 	}
 
-	response, err := helper.Client.Messages.New(ctx, params)
+	response, err := helper.CreateMessageWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed to get extended thinking response")
 
 	helper.ValidateMessageResponse(t, response, "Extended thinking test")
@@ -80,7 +80,7 @@ func TestExtendedThinking(t *testing.T) {
 }
 
 func TestExtendedThinkingStreaming(t *testing.T) {
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "extended_thinking")
 
 	ctx := helper.CreateTestContext()
 
@@ -103,7 +103,7 @@ func TestExtendedThinkingStreaming(t *testing.T) {
 		},
 	}
 
-	stream := helper.Client.Messages.NewStreaming(ctx, params)
+	stream := helper.CreateMessageStreamWithHeaders(ctx, params)
 	defer stream.Close()
 
 	var message anthropic.Message
@@ -172,7 +172,7 @@ func TestExtendedThinkingStreaming(t *testing.T) {
 }
 
 func TestRedactedThinking(t *testing.T) {
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "extended_thinking")
 
 	ctx := helper.CreateTestContext()
 
@@ -195,7 +195,7 @@ func TestRedactedThinking(t *testing.T) {
 		},
 	}
 
-	response, err := helper.Client.Messages.New(ctx, params)
+	response, err := helper.CreateMessageWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed to get redacted thinking response")
 
 	helper.ValidateMessageResponse(t, response, "Redacted thinking test")
@@ -230,7 +230,7 @@ func TestRedactedThinking(t *testing.T) {
 }
 
 func TestRedactedThinkingStreaming(t *testing.T) {
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "extended_thinking")
 
 	ctx := helper.CreateTestContext()
 
@@ -253,7 +253,7 @@ func TestRedactedThinkingStreaming(t *testing.T) {
 		},
 	}
 
-	stream := helper.Client.Messages.NewStreaming(ctx, params)
+	stream := helper.CreateMessageStreamWithHeaders(ctx, params)
 	defer stream.Close()
 
 	var message anthropic.Message
@@ -294,7 +294,7 @@ func TestRedactedThinkingStreaming(t *testing.T) {
 }
 
 func TestExtendedThinkingWithToolUse(t *testing.T) {
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "extended_thinking")
 
 	ctx := helper.CreateTestContext()
 
@@ -337,7 +337,7 @@ func TestExtendedThinkingWithToolUse(t *testing.T) {
 		},
 	}
 
-	response, err := helper.Client.Messages.New(ctx, params)
+	response, err := helper.CreateMessageWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed to get extended thinking with tools response")
 
 	helper.ValidateMessageResponse(t, response, "Extended thinking with tools test")

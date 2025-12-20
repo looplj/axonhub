@@ -26,6 +26,11 @@ type Config struct {
 
 // DefaultConfig returns a default configuration for Gemini tests
 func DefaultConfig() *Config {
+	return DefaultConfigWithPrefix("")
+}
+
+// DefaultConfigWithPrefix returns a default configuration for Gemini tests with custom prefix for IDs
+func DefaultConfigWithPrefix(prefix string) *Config {
 	disableTrace := strings.EqualFold(getEnvOrDefault("TEST_DISABLE_TRACE", "false"), "true")
 	disableThread := strings.EqualFold(getEnvOrDefault("TEST_DISABLE_THREAD", "false"), "true")
 
@@ -41,12 +46,20 @@ func DefaultConfig() *Config {
 
 	// Only generate trace ID if not disabled
 	if !disableTrace {
-		config.TraceID = getRandomTraceID()
+		tracePrefix := "trace"
+		if prefix != "" {
+			tracePrefix = prefix
+		}
+		config.TraceID = getRandomTraceIDWithPrefix(tracePrefix)
 	}
 
 	// Only generate thread ID if not disabled
 	if !disableThread {
-		config.ThreadID = getRandomThreadID()
+		threadPrefix := "thread"
+		if prefix != "" {
+			threadPrefix = prefix
+		}
+		config.ThreadID = getRandomThreadIDWithPrefix(threadPrefix)
 	}
 
 	return config
@@ -106,12 +119,28 @@ func getRandomTraceID() string {
 	return generateRandomID("trace")
 }
 
+// getRandomTraceIDWithPrefix returns a random trace ID with custom prefix or from environment variable
+func getRandomTraceIDWithPrefix(prefix string) string {
+	if traceID := os.Getenv("TEST_TRACE_ID"); traceID != "" {
+		return traceID
+	}
+	return generateRandomID(prefix)
+}
+
 // getRandomThreadID returns a random thread ID or from environment variable
 func getRandomThreadID() string {
 	if threadID := os.Getenv("TEST_THREAD_ID"); threadID != "" {
 		return threadID
 	}
 	return generateRandomID("thread")
+}
+
+// getRandomThreadIDWithPrefix returns a random thread ID with custom prefix or from environment variable
+func getRandomThreadIDWithPrefix(prefix string) string {
+	if threadID := os.Getenv("TEST_THREAD_ID"); threadID != "" {
+		return threadID
+	}
+	return generateRandomID(prefix)
 }
 
 // GetHeaders returns the standard headers used in AxonHub
@@ -129,6 +158,18 @@ func (c *Config) GetHeaders() map[string]string {
 	}
 
 	return headers
+}
+
+// GetHTTPOptions returns HTTPOptions with the configured headers for call-time usage
+func (c *Config) GetHTTPOptions() *genai.HTTPOptions {
+	headers := c.GetHeaders()
+	httpHeaders := make(map[string][]string)
+	for k, v := range headers {
+		httpHeaders[k] = []string{v}
+	}
+	return &genai.HTTPOptions{
+		Headers: httpHeaders,
+	}
 }
 
 // Helper functions

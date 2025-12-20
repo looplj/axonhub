@@ -32,9 +32,7 @@ import (
 client := openai.NewClient(
     option.WithAPIKey("your-axonhub-api-key"),
     option.WithBaseURL("http://localhost:8090/v1"),
-    // 可选：添加自定义标头用于追踪和线程管理
-    option.WithHeader("AH-Trace-Id", "your-trace-id"),
-    option.WithHeader("AH-Thread-Id", "your-thread-id"),
+    
 )
 
 // 使用 OpenAI API 格式调用 Anthropic 模型
@@ -166,9 +164,7 @@ import (
 client := anthropic.NewClient(
     option.WithAPIKey("your-axonhub-api-key"),
     option.WithBaseURL("http://localhost:8090/anthropic"),
-    // 可选：添加自定义标头用于追踪和线程管理
-    option.WithHeader("AH-Trace-Id", "your-trace-id"),
-    option.WithHeader("AH-Thread-Id", "your-thread-id"),
+    
 )
 
 // 使用 Anthropic API 格式调用 OpenAI 模型

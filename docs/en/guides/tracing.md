@@ -59,8 +59,6 @@ func sendTracedChat(ctx context.Context, apiKey string) (*openai.ChatCompletion,
     client := openai.NewClient(
         option.WithAPIKey(apiKey),
         option.WithBaseURL("https://your-axonhub-instance/v1"),
-        option.WithHeader("AH-Trace-Id", "trace-example-123"),
-        option.WithHeader("AH-Thread-Id", "thread-example-abc"),
     )
 
     params := openai.ChatCompletionNewParams{
@@ -70,10 +68,11 @@ func sendTracedChat(ctx context.Context, apiKey string) (*openai.ChatCompletion,
         },
     }
 
-    ctx = context.WithValue(ctx, "trace_id", "trace-example-123")
-    ctx = context.WithValue(ctx, "thread_id", "thread-example-abc")
-
-    return client.Chat.Completions.New(ctx, params)
+    // Pass trace and thread headers at request level
+    return client.Chat.Completions.New(ctx, params,
+        option.WithHeader("AH-Trace-Id", "trace-example-123"),
+        option.WithHeader("AH-Thread-Id", "thread-example-abc"),
+    )
 }
 ```
 
@@ -92,8 +91,6 @@ func sendTracedMessage(ctx context.Context, apiKey string) (*anthropic.Message, 
     client := anthropic.NewClient(
         option.WithAPIKey(apiKey),
         option.WithBaseURL("https://your-axonhub-instance/anthropic"),
-        option.WithHeader("AH-Trace-Id", "trace-example-123"),
-        option.WithHeader("AH-Thread-Id", "thread-example-abc"),
     )
 
     params := anthropic.MessageNewParams{
@@ -105,10 +102,11 @@ func sendTracedMessage(ctx context.Context, apiKey string) (*anthropic.Message, 
         },
     }
 
-    ctx = context.WithValue(ctx, "trace_id", "trace-example-123")
-    ctx = context.WithValue(ctx, "thread_id", "thread-example-abc")
-
-    return client.Messages.New(ctx, params)
+    // Pass trace and thread headers at request level
+    return client.Messages.New(ctx, params,
+        option.WithHeader("AH-Trace-Id", "trace-example-123"),
+        option.WithHeader("AH-Thread-Id", "thread-example-abc"),
+    )
 }
 ```
 

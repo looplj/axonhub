@@ -19,7 +19,7 @@ func TestMain(m *testing.M) {
 
 func TestMultipleToolsSequential(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "tool_multiple")
 
 	// Print headers for debugging
 	helper.PrintHeaders(t)
@@ -78,7 +78,7 @@ func TestMultipleToolsSequential(t *testing.T) {
 	}
 
 	// Make the initial API call
-	response, err := helper.Client.Messages.New(ctx, params)
+	response, err := helper.CreateMessageWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed to get chat completion with multiple tools")
 
 	// Validate the response
@@ -132,7 +132,7 @@ func TestMultipleToolsSequential(t *testing.T) {
 
 		// Make the follow-up call
 		params.Messages = messages
-		finalResponse, err := helper.Client.Messages.New(ctx, params)
+		finalResponse, err := helper.CreateMessageWithHeaders(ctx, params)
 		helper.AssertNoError(t, err, "Failed to get final completion")
 
 		// Validate the final response
@@ -170,7 +170,7 @@ func TestMultipleToolsSequential(t *testing.T) {
 
 func TestMultipleToolsParallel(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "tool_multiple")
 
 	ctx := helper.CreateTestContext()
 
@@ -225,7 +225,7 @@ func TestMultipleToolsParallel(t *testing.T) {
 		MaxTokens: 1024,
 	}
 
-	response, err := helper.Client.Messages.New(ctx, params)
+	response, err := helper.CreateMessageWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed to get chat completion with parallel tools")
 
 	helper.ValidateMessageResponse(t, response, "Parallel tools")
@@ -274,7 +274,7 @@ func TestMultipleToolsParallel(t *testing.T) {
 		}
 
 		params.Messages = messages
-		finalResponse, err := helper.Client.Messages.New(ctx, params)
+		finalResponse, err := helper.CreateMessageWithHeaders(ctx, params)
 		helper.AssertNoError(t, err, "Failed to get parallel final completion")
 
 		finalText := ""
@@ -305,7 +305,7 @@ func TestMultipleToolsParallel(t *testing.T) {
 
 func TestToolChoiceRequired(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "tool_multiple")
 
 	ctx := helper.CreateTestContext()
 
@@ -350,7 +350,7 @@ func TestToolChoiceRequired(t *testing.T) {
 		MaxTokens: 1024,
 	}
 
-	response, err := helper.Client.Messages.New(ctx, params)
+	response, err := helper.CreateMessageWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed to get chat completion with forced tool choice")
 
 	helper.ValidateMessageResponse(t, response, "Forced tool choice")
@@ -398,7 +398,7 @@ func TestToolChoiceRequired(t *testing.T) {
 	params.Messages = messages
 	params.ToolChoice = anthropic.ToolChoiceUnionParam{}
 
-	finalResponse, err := helper.Client.Messages.New(ctx, params)
+	finalResponse, err := helper.CreateMessageWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed to get forced tool final completion")
 
 	finalText := ""

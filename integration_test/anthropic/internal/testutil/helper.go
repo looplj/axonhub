@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/anthropics/anthropic-sdk-go"
+	"github.com/anthropics/anthropic-sdk-go/option"
+	"github.com/anthropics/anthropic-sdk-go/packages/ssestream"
 )
 
 // TestHelper provides common testing utilities
@@ -15,8 +17,8 @@ type TestHelper struct {
 }
 
 // NewTestHelper creates a new test helper with default configuration
-func NewTestHelper(t *testing.T) *TestHelper {
-	config := DefaultConfig()
+func NewTestHelper(t *testing.T, name string) *TestHelper {
+	config := DefaultConfigWithPrefix(name)
 	if err := config.ValidateConfig(); err != nil {
 		t.Skipf("Skipping test due to configuration error: %v", err)
 	}
@@ -64,6 +66,23 @@ func (h *TestHelper) RunWithHeaders(t *testing.T, testFunc func(ctx context.Cont
 	}
 }
 
+// CreateMessageWithHeaders creates a message with trace headers passed at call time
+func (h *TestHelper) CreateMessageWithHeaders(ctx context.Context, params anthropic.MessageNewParams) (*anthropic.Message, error) {
+	headerOpts := h.Config.GetHeaderOptions()
+	return h.Client.Messages.New(ctx, params, headerOpts...)
+}
+
+// CreateMessageStreamWithHeaders creates a streaming message with trace headers passed at call time
+func (h *TestHelper) CreateMessageStreamWithHeaders(ctx context.Context, params anthropic.MessageNewParams) *ssestream.Stream[anthropic.MessageStreamEventUnion] {
+	headerOpts := h.Config.GetHeaderOptions()
+	return h.Client.Messages.NewStreaming(ctx, params, headerOpts...)
+}
+
+// GetHeaderOptions returns request options with the configured headers for call-time usage
+func (h *TestHelper) GetHeaderOptions() []option.RequestOption {
+	return h.Config.GetHeaderOptions()
+}
+
 // ValidateMessageResponse validates a message response
 func (h *TestHelper) ValidateMessageResponse(t *testing.T, response *anthropic.Message, description string) {
 	t.Helper()
@@ -96,15 +115,29 @@ func (h *TestHelper) SetModel(model anthropic.Model) {
 func CreateTestHelperWithNewTrace(t *testing.T, existingConfig *Config) *TestHelper {
 	t.Helper()
 
-	// Create a new config based on existing one but with new trace ID
+	// Create a new config based on existing one
 	newConfig := &Config{
-		APIKey:     existingConfig.APIKey,
-		BaseURL:    existingConfig.BaseURL,
-		TraceID:    getRandomTraceID(),      // Generate new trace ID
-		ThreadID:   existingConfig.ThreadID, // Keep same thread ID
-		Timeout:    existingConfig.Timeout,
-		MaxRetries: existingConfig.MaxRetries,
-		Model:      existingConfig.Model,
+		APIKey:        existingConfig.APIKey,
+		BaseURL:       existingConfig.BaseURL,
+		Timeout:       existingConfig.Timeout,
+		MaxRetries:    existingConfig.MaxRetries,
+		Model:         existingConfig.Model,
+		DisableTrace:  existingConfig.DisableTrace,
+		DisableThread: existingConfig.DisableThread,
+		ThreadID:      existingConfig.ThreadID, // Keep same thread ID
+	}
+
+	// Only generate new trace ID if not disabled
+	if !existingConfig.DisableTrace {
+		// Use existing trace ID prefix if available, otherwise default to "trace"
+		prefix := "trace"
+		if existingConfig.TraceID != "" {
+			// Extract prefix from existing trace ID (everything before the first hyphen)
+			if idx := strings.Index(existingConfig.TraceID, "-"); idx > 0 {
+				prefix = existingConfig.TraceID[:idx]
+			}
+		}
+		newConfig.TraceID = getRandomTraceIDWithPrefix(prefix)
 	}
 
 	client := newConfig.NewClient()

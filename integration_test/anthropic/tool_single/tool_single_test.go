@@ -19,7 +19,7 @@ func TestMain(m *testing.M) {
 
 func TestSingleToolCall(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "tool_single")
 
 	ctx := helper.CreateTestContext()
 
@@ -55,7 +55,7 @@ func TestSingleToolCall(t *testing.T) {
 		MaxTokens: 1024,
 	}
 
-	response, err := helper.Client.Messages.New(ctx, params)
+	response, err := helper.CreateMessageWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed in single tool call")
 
 	helper.ValidateMessageResponse(t, response, "Single tool call test")
@@ -85,12 +85,14 @@ func TestSingleToolCall(t *testing.T) {
 						weatherResult := simulateWeatherFunction(args)
 
 						// Continue conversation with tool result
+						// First add the model's response to maintain conversation context
+						messages = append(messages, response.ToParam())
 						toolResult := anthropic.NewToolResultBlock(toolUseBlock.ID, weatherResult, false)
 						messages = append(messages, anthropic.NewUserMessage(toolResult))
 
 						// Get final response
 						params.Messages = messages
-						response2, err := helper.Client.Messages.New(ctx, params)
+						response2, err := helper.CreateMessageWithHeaders(ctx, params)
 						helper.AssertNoError(t, err, "Failed to get tool result response")
 
 						helper.ValidateMessageResponse(t, response2, "Tool result response")
@@ -139,7 +141,7 @@ func TestSingleToolCall(t *testing.T) {
 
 func TestCalculatorTool(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "tool_single")
 
 	ctx := helper.CreateTestContext()
 
@@ -175,7 +177,7 @@ func TestCalculatorTool(t *testing.T) {
 		MaxTokens: 1024,
 	}
 
-	response, err := helper.Client.Messages.New(ctx, params)
+	response, err := helper.CreateMessageWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed in calculator tool call")
 
 	helper.ValidateMessageResponse(t, response, "Calculator tool test")
@@ -207,13 +209,15 @@ func TestCalculatorTool(t *testing.T) {
 						calcResult := simulateCalculatorFunction(args)
 
 						// Continue conversation with result
+						// First add the model's response to maintain conversation context
+						messages = append(messages, response.ToParam())
 						resultStr := fmt.Sprintf("%v", calcResult)
 						toolResult := anthropic.NewToolResultBlock(toolUseBlock.ID, resultStr, false)
 						messages = append(messages, anthropic.NewUserMessage(toolResult))
 
 						// Get final response
 						params.Messages = messages
-						response2, err := helper.Client.Messages.New(ctx, params)
+						response2, err := helper.CreateMessageWithHeaders(ctx, params)
 						helper.AssertNoError(t, err, "Failed to get calculator result response")
 
 						helper.ValidateMessageResponse(t, response2, "Calculator result response")
