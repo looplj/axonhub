@@ -20,7 +20,7 @@ func TestMain(m *testing.M) {
 
 func TestMultiTurnConversation(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestMultiTurnConversation")
 
 	// Print headers for debugging
 	helper.PrintHeaders(t)
@@ -40,7 +40,7 @@ func TestMultiTurnConversation(t *testing.T) {
 		Model:    helper.GetModel(),
 	}
 
-	completion, err := helper.Client.Chat.Completions.New(ctx, params)
+	completion, err := helper.CreateChatCompletionWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed to start conversation")
 
 	helper.ValidateChatResponse(t, completion, "First conversation turn")
@@ -54,7 +54,7 @@ func TestMultiTurnConversation(t *testing.T) {
 
 	// Second turn
 	params.Messages = messages
-	completion2, err := helper.Client.Chat.Completions.New(ctx, params)
+	completion2, err := helper.CreateChatCompletionWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed in second conversation turn")
 
 	helper.ValidateChatResponse(t, completion2, "Second conversation turn")
@@ -72,7 +72,7 @@ func TestMultiTurnConversation(t *testing.T) {
 	messages = append(messages, openai.UserMessage("Actually, let me ask: what is 365 * 24?"))
 
 	params.Messages = messages
-	completion3, err := helper.Client.Chat.Completions.New(ctx, params)
+	completion3, err := helper.CreateChatCompletionWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed in third conversation turn")
 
 	helper.ValidateChatResponse(t, completion3, "Third conversation turn")
@@ -90,7 +90,7 @@ func TestMultiTurnConversation(t *testing.T) {
 
 func TestConversationWithTools(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestConversationWithTools")
 
 	ctx := helper.CreateTestContext()
 
@@ -140,7 +140,7 @@ func TestConversationWithTools(t *testing.T) {
 		Model:    helper.GetModel(),
 	}
 
-	completion, err := helper.Client.Chat.Completions.New(ctx, params)
+	completion, err := helper.CreateChatCompletionWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed in conversation with tools")
 
 	helper.ValidateChatResponse(t, completion, "Tool conversation first turn")
@@ -185,7 +185,7 @@ func TestConversationWithTools(t *testing.T) {
 
 		// Second turn with tool results
 		params.Messages = messages
-		completion2, err := helper.Client.Chat.Completions.New(ctx, params)
+		completion2, err := helper.CreateChatCompletionWithHeaders(ctx, params)
 		helper.AssertNoError(t, err, "Failed in tool conversation second turn")
 
 		helper.ValidateChatResponse(t, completion2, "Tool conversation second turn")
@@ -202,7 +202,7 @@ func TestConversationWithTools(t *testing.T) {
 
 func TestConversationContextPreservation(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestConversationContextPreservation")
 
 	ctx := helper.CreateTestContext()
 
@@ -218,7 +218,7 @@ func TestConversationContextPreservation(t *testing.T) {
 		Model:    helper.GetModel(),
 	}
 
-	completion, err := helper.Client.Chat.Completions.New(ctx, params)
+	completion, err := helper.CreateChatCompletionWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed in context preservation turn 1")
 
 	helper.ValidateChatResponse(t, completion, "Context preservation turn 1")
@@ -236,7 +236,7 @@ func TestConversationContextPreservation(t *testing.T) {
 	conversation = append(conversation, openai.UserMessage("What about black holes? Are they really holes?"))
 
 	params.Messages = conversation
-	completion2, err := helper.Client.Chat.Completions.New(ctx, params)
+	completion2, err := helper.CreateChatCompletionWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed in context preservation turn 2")
 
 	helper.ValidateChatResponse(t, completion2, "Context preservation turn 2")
@@ -249,7 +249,7 @@ func TestConversationContextPreservation(t *testing.T) {
 	conversation = append(conversation, openai.UserMessage("How do they form?"))
 
 	params.Messages = conversation
-	completion3, err := helper.Client.Chat.Completions.New(ctx, params)
+	completion3, err := helper.CreateChatCompletionWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed in context preservation turn 3")
 
 	helper.ValidateChatResponse(t, completion3, "Context preservation turn 3")
@@ -278,7 +278,7 @@ func TestConversationContextPreservation(t *testing.T) {
 
 func TestConversationSystemPrompt(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestConversationSystemPrompt")
 
 	ctx := helper.CreateTestContext()
 
@@ -295,7 +295,7 @@ func TestConversationSystemPrompt(t *testing.T) {
 		Model:    helper.GetModel(),
 	}
 
-	completion, err := helper.Client.Chat.Completions.New(ctx, params)
+	completion, err := helper.CreateChatCompletionWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed with system prompt")
 
 	helper.ValidateChatResponse(t, completion, "System prompt test")
@@ -321,7 +321,7 @@ func TestConversationSystemPrompt(t *testing.T) {
 	messages = append(messages, openai.UserMessage("Actually, what about making pizza instead?"))
 
 	params.Messages = messages
-	completion2, err := helper.Client.Chat.Completions.New(ctx, params)
+	completion2, err := helper.CreateChatCompletionWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed in cooking conversation continuation")
 
 	helper.ValidateChatResponse(t, completion2, "Cooking conversation continuation")

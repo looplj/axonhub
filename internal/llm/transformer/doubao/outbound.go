@@ -67,7 +67,7 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 }
 
 type Request struct {
-	llm.Request
+	openai.Request
 
 	UserID    string    `json:"user_id,omitempty"`
 	RequestID string    `json:"request_id,omitempty"`
@@ -103,11 +103,12 @@ func (t *OutboundTransformer) TransformRequest(
 		return t.buildImageGenerationAPIRequest(chatReq)
 	}
 
-	chatReq.ClearHelpFields()
+	// Convert llm.Request to openai.Request first
+	oaiReq := openai.RequestFromLLM(chatReq)
 
-	// Create Doubao-specific request by removing Metadata and adding request_id/user_id
+	// Create Doubao-specific request by adding request_id/user_id
 	doubaoReq := Request{
-		Request:   *chatReq,
+		Request:   *oaiReq,
 		UserID:    "",
 		RequestID: "",
 	}
@@ -123,7 +124,7 @@ func (t *OutboundTransformer) TransformRequest(
 		doubaoReq.RequestID = fmt.Sprintf("req_%d", time.Now().Unix())
 	}
 
-	// Doubao request does not support metadata
+	// Doubao request does not support metadata (extracted to user_id/request_id)
 	doubaoReq.Metadata = nil
 
 	body, err := json.Marshal(doubaoReq)

@@ -20,7 +20,7 @@ func TestMain(m *testing.M) {
 
 func TestSingleToolCall(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestSingleToolCall")
 
 	// Print headers for debugging
 	helper.PrintHeaders(t)
@@ -63,7 +63,7 @@ func TestSingleToolCall(t *testing.T) {
 	}
 
 	// Make the initial API call
-	completion, err := helper.Client.Chat.Completions.New(ctx, params)
+	completion, err := helper.CreateChatCompletionWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed to get chat completion with tools")
 
 	// Validate the response
@@ -110,7 +110,7 @@ func TestSingleToolCall(t *testing.T) {
 	params.Messages = append(params.Messages, openai.ToolMessage(weatherResult, toolCall.ID))
 
 	// Make the follow-up call
-	finalCompletion, err := helper.Client.Chat.Completions.New(ctx, params)
+	finalCompletion, err := helper.CreateChatCompletionWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed to get final completion")
 
 	// Validate the final response
@@ -127,7 +127,7 @@ func TestSingleToolCall(t *testing.T) {
 
 func TestSingleToolCallMath(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestSingleToolCallMath")
 
 	ctx := helper.CreateTestContext()
 
@@ -161,7 +161,7 @@ func TestSingleToolCallMath(t *testing.T) {
 		Model: helper.GetModel(),
 	}
 
-	completion, err := helper.Client.Chat.Completions.New(ctx, params)
+	completion, err := helper.CreateChatCompletionWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed to get chat completion with calculator tool")
 
 	helper.ValidateChatResponse(t, completion, "Calculator tool call")
@@ -196,7 +196,7 @@ func TestSingleToolCallMath(t *testing.T) {
 	params.Messages = append(params.Messages, completion.Choices[0].Message.ToParam())
 	params.Messages = append(params.Messages, openai.ToolMessage(fmt.Sprintf("%v", result), toolCall.ID))
 
-	finalCompletion, err := helper.Client.Chat.Completions.New(ctx, params)
+	finalCompletion, err := helper.CreateChatCompletionWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed to get final calculation completion")
 
 	finalResponse := finalCompletion.Choices[0].Message.Content

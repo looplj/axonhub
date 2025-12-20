@@ -15,7 +15,7 @@ func TestMain(m *testing.M) {
 
 // TestExtraBodyWithThinkingConfig tests passing extra_body with thinking configuration
 func TestExtraBodyWithThinkingConfig(t *testing.T) {
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestExtraBodyWithThinkingConfig")
 	helper.PrintHeaders(t)
 
 	ctx := helper.CreateTestContext()
@@ -70,7 +70,7 @@ func TestExtraBodyWithThinkingConfig(t *testing.T) {
 
 // TestExtraBodyWithThinkingBudget tests passing extra_body with thinking budget
 func TestExtraBodyWithThinkingBudget(t *testing.T) {
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestExtraBodyWithThinkingBudget")
 
 	ctx := helper.CreateTestContext()
 	question := "Solve 123 + 456. Please show your reasoning."
@@ -116,7 +116,7 @@ func TestExtraBodyWithThinkingBudget(t *testing.T) {
 
 // TestExtraBodyWithStringThinkingBudget tests passing extra_body with string thinking budget
 func TestExtraBodyWithStringThinkingBudget(t *testing.T) {
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestExtraBodyWithStringThinkingBudget")
 
 	ctx := helper.CreateTestContext()
 	question := "What is 12 * 12? Please show your reasoning."
@@ -162,7 +162,7 @@ func TestExtraBodyWithStringThinkingBudget(t *testing.T) {
 
 // TestExtraBodyWithMinimalThinkingConfig tests passing extra_body with minimal thinking configuration
 func TestExtraBodyWithMinimalThinkingConfig(t *testing.T) {
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestExtraBodyWithMinimalThinkingConfig")
 
 	ctx := helper.CreateTestContext()
 	question := "What is 7 * 8? Please show your reasoning."
@@ -208,7 +208,7 @@ func TestExtraBodyWithMinimalThinkingConfig(t *testing.T) {
 
 // TestExtraBodyWithoutThinkingConfig tests passing extra_body without thinking configuration
 func TestExtraBodyWithoutThinkingConfig(t *testing.T) {
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestExtraBodyWithoutThinkingConfig")
 
 	ctx := helper.CreateTestContext()
 	question := "What is the capital of France?"
@@ -251,7 +251,7 @@ func TestExtraBodyWithoutThinkingConfig(t *testing.T) {
 
 // TestExtraBodyWithInvalidThinkingConfig tests error handling with invalid thinking configuration
 func TestExtraBodyWithInvalidThinkingConfig(t *testing.T) {
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestExtraBodyWithInvalidThinkingConfig")
 
 	ctx := helper.CreateTestContext()
 	question := "What is 2 + 2?"

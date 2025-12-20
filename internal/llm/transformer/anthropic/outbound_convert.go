@@ -323,12 +323,29 @@ func buildMessageContent(msg llm.Message) (MessageContent, bool) {
 		return MessageContent{Content: msg.Content.Content}, true
 	}
 
-	// Handle multiple content parts
-	if len(msg.Content.MultipleContent) > 0 {
-		return convertMultiplePartContent(msg)
+	var blocks []MessageContentBlock
+
+	if hasThinkingContent(msg) {
+		if block := buildThinkingBlock(msg.ReasoningContent, msg.ReasoningSignature); block != nil {
+			blocks = append(blocks, *block)
+		}
+
+		if block := buildRedactedThinkingBlock(msg.RedactedReasoningContent); block != nil {
+			blocks = append(blocks, *block)
+		}
 	}
 
-	return MessageContent{}, false
+	content, ok := convertMultiplePartContent(msg)
+
+	switch {
+	case ok && len(blocks) > 0:
+		return MessageContent{}, false
+	case len(blocks) > 0:
+		content.MultipleContent = append(blocks, content.MultipleContent...)
+		return content, true
+	}
+
+	return content, true
 }
 
 // hasThinkingContent checks if message has reasoning content.

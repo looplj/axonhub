@@ -18,7 +18,7 @@ func TestMain(m *testing.M) {
 
 func TestSimpleQA(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestSimpleQA")
 
 	// Print headers for debugging
 	helper.PrintHeaders(t)
@@ -40,7 +40,7 @@ func TestSimpleQA(t *testing.T) {
 	}
 
 	// Make the API call
-	resp, err := helper.Client.Responses.New(ctx, params)
+	resp, err := helper.CreateResponseWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed to get response")
 
 	// Validate the response
@@ -63,7 +63,7 @@ func TestSimpleQA(t *testing.T) {
 
 func TestSimpleQAWithDifferentQuestion(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestSimpleQAWithDifferentQuestion")
 
 	// Test with a different question using the same configured model
 	ctx := helper.CreateTestContext()
@@ -78,7 +78,7 @@ func TestSimpleQAWithDifferentQuestion(t *testing.T) {
 		},
 	}
 
-	resp, err := helper.Client.Responses.New(ctx, params)
+	resp, err := helper.CreateResponseWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed to get response with capital question")
 
 	if resp == nil {
@@ -100,7 +100,7 @@ func TestSimpleQAWithDifferentQuestion(t *testing.T) {
 
 func TestMultipleQuestions(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestMultipleQuestions")
 
 	ctx := helper.CreateTestContext()
 
@@ -120,7 +120,7 @@ func TestMultipleQuestions(t *testing.T) {
 			},
 		}
 
-		resp, err := helper.Client.Responses.New(ctx, params)
+		resp, err := helper.CreateResponseWithHeaders(ctx, params)
 		helper.AssertNoError(t, err, "Failed on question", i+1)
 
 		if resp == nil {

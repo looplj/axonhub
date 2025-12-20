@@ -26,3 +26,21 @@ func (u *Usage) ToLLMUsage() *llm.Usage {
 
 	return &u.Usage
 }
+
+// UsageFromLLM creates OpenAI Usage from unified llm.Usage.
+func UsageFromLLM(u *llm.Usage) *Usage {
+	if u == nil {
+		return nil
+	}
+
+	usage := &Usage{
+		Usage: *u,
+	}
+
+	// Extract CachedTokens from PromptTokensDetails if present
+	if u.PromptTokensDetails != nil {
+		usage.CachedTokens = u.PromptTokensDetails.CachedTokens
+	}
+
+	return usage
+}

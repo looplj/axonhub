@@ -59,7 +59,7 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 }
 
 type Request struct {
-	llm.Request
+	openai.Request
 
 	UserID    string    `json:"user_id,omitempty"`
 	RequestID string    `json:"request_id,omitempty"`
@@ -95,11 +95,12 @@ func (t *OutboundTransformer) TransformRequest(
 		return t.buildImageGenerationAPIRequest(chatReq)
 	}
 
-	chatReq.ClearHelpFields()
+	// Convert llm.Request to openai.Request first
+	oaiReq := openai.RequestFromLLM(chatReq)
 
-	// Create Zai-specific request by removing Metadata and adding request_id/user_id
+	// Create Zai-specific request by adding request_id/user_id
 	zaiReq := Request{
-		Request:   *chatReq,
+		Request:   *oaiReq,
 		UserID:    "",
 		RequestID: "",
 	}
@@ -116,12 +117,12 @@ func (t *OutboundTransformer) TransformRequest(
 
 	// zai only support auto tool choice.
 	if zaiReq.ToolChoice != nil {
-		zaiReq.ToolChoice = &llm.ToolChoice{
+		zaiReq.ToolChoice = &openai.ToolChoice{
 			ToolChoice: lo.ToPtr("auto"),
 		}
 	}
 
-	// zai request does not support metadata.
+	// zai request does not support metadata (extracted to user_id/request_id)
 	zaiReq.Metadata = nil
 
 	// Convert ReasoningEffort to Thinking if present

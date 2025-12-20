@@ -27,6 +27,11 @@ type Config struct {
 
 // DefaultConfig returns a default configuration for tests
 func DefaultConfig() *Config {
+	return DefaultConfigWithPrefix("")
+}
+
+// DefaultConfigWithPrefix returns a default configuration for tests with custom prefix for IDs
+func DefaultConfigWithPrefix(prefix string) *Config {
 	disableTrace := strings.EqualFold(getEnvOrDefault("TEST_DISABLE_TRACE", "false"), "true")
 	disableThread := strings.EqualFold(getEnvOrDefault("TEST_DISABLE_THREAD", "false"), "true")
 
@@ -42,12 +47,20 @@ func DefaultConfig() *Config {
 
 	// Only generate trace ID if not disabled
 	if !disableTrace {
-		config.TraceID = getRandomTraceID()
+		tracePrefix := "trace"
+		if prefix != "" {
+			tracePrefix = prefix
+		}
+		config.TraceID = getRandomTraceIDWithPrefix(tracePrefix)
 	}
 
 	// Only generate thread ID if not disabled
 	if !disableThread {
-		config.ThreadID = getRandomThreadID()
+		threadPrefix := "thread"
+		if prefix != "" {
+			threadPrefix = prefix
+		}
+		config.ThreadID = getRandomThreadIDWithPrefix(threadPrefix)
 	}
 
 	return config
@@ -63,9 +76,7 @@ func (c *Config) NewClient() openai.Client {
 		option.WithAPIKey(c.APIKey),
 		option.WithBaseURL(c.BaseURL),
 	}
-	for k, v := range c.GetHeaders() {
-		opts = append(opts, option.WithHeader(k, v))
-	}
+	// Remove headers from client initialization - they will be passed at call point
 	return openai.NewClient(opts...)
 }
 
@@ -96,12 +107,37 @@ func getRandomTraceID() string {
 	return generateRandomID("trace")
 }
 
+// getRandomTraceIDWithPrefix returns a random trace ID with custom prefix or from environment variable
+func getRandomTraceIDWithPrefix(prefix string) string {
+	if traceID := os.Getenv("TEST_TRACE_ID"); traceID != "" {
+		return traceID
+	}
+	return generateRandomID(prefix)
+}
+
 // getRandomThreadID returns a random thread ID or from environment variable
 func getRandomThreadID() string {
 	if threadID := os.Getenv("TEST_THREAD_ID"); threadID != "" {
 		return threadID
 	}
 	return generateRandomID("thread")
+}
+
+// getRandomThreadIDWithPrefix returns a random thread ID with custom prefix or from environment variable
+func getRandomThreadIDWithPrefix(prefix string) string {
+	if threadID := os.Getenv("TEST_THREAD_ID"); threadID != "" {
+		return threadID
+	}
+	return generateRandomID(prefix)
+}
+
+// GetHeaderOptions returns request options with the configured headers for call-time usage
+func (c *Config) GetHeaderOptions() []option.RequestOption {
+	var opts []option.RequestOption
+	for k, v := range c.GetHeaders() {
+		opts = append(opts, option.WithHeader(k, v))
+	}
+	return opts
 }
 
 // GetHeaders returns the standard headers used in axonhub

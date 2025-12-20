@@ -17,7 +17,7 @@ func TestMain(m *testing.M) {
 
 func TestSimpleQA(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestSimpleQA")
 
 	// Print headers for debugging
 	helper.PrintHeaders(t)
@@ -39,7 +39,7 @@ func TestSimpleQA(t *testing.T) {
 	}
 
 	// Make the API call
-	completion, err := helper.Client.Chat.Completions.New(ctx, params)
+	completion, err := helper.CreateChatCompletionWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed to get chat completion")
 
 	// Validate the response
@@ -57,7 +57,7 @@ func TestSimpleQA(t *testing.T) {
 
 func TestSimpleQAWithDifferentQuestion(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestSimpleQAWithDifferentQuestion")
 
 	// Test with a different question using the same configured model
 	ctx := helper.CreateTestContext()
@@ -72,7 +72,7 @@ func TestSimpleQAWithDifferentQuestion(t *testing.T) {
 		Model: helper.GetModel(),
 	}
 
-	completion, err := helper.Client.Chat.Completions.New(ctx, params)
+	completion, err := helper.CreateChatCompletionWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed to get chat completion with capital question")
 
 	helper.ValidateChatResponse(t, completion, "Simple Q&A with capital question")
@@ -88,7 +88,7 @@ func TestSimpleQAWithDifferentQuestion(t *testing.T) {
 
 func TestMultipleQuestions(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestMultipleQuestions")
 
 	ctx := helper.CreateTestContext()
 
@@ -108,7 +108,7 @@ func TestMultipleQuestions(t *testing.T) {
 			Model: helper.GetModel(),
 		}
 
-		completion, err := helper.Client.Chat.Completions.New(ctx, params)
+		completion, err := helper.CreateChatCompletionWithHeaders(ctx, params)
 		helper.AssertNoError(t, err, fmt.Sprintf("Failed on question %d", i+1))
 
 		helper.ValidateChatResponse(t, completion, fmt.Sprintf("Question %d", i+1))
@@ -132,11 +132,11 @@ func containsNumber(text string) bool {
 
 func contains(text, substring string) bool {
 	return len(text) >= len(substring) &&
-		   (text == substring ||
-		    len(text) > len(substring) &&
-		    (text[:len(substring)] == substring ||
-		     text[len(text)-len(substring):] == substring ||
-		     containsMiddle(text, substring)))
+		(text == substring ||
+			len(text) > len(substring) &&
+				(text[:len(substring)] == substring ||
+					text[len(text)-len(substring):] == substring ||
+					containsMiddle(text, substring)))
 }
 
 func containsMiddle(text, substring string) bool {

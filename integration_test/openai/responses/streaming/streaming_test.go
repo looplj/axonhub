@@ -19,7 +19,7 @@ func TestMain(m *testing.M) {
 
 func TestResponsesStreaming(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestResponsesStreaming")
 
 	// Print headers for debugging
 	helper.PrintHeaders(t)
@@ -40,7 +40,7 @@ func TestResponsesStreaming(t *testing.T) {
 	}
 
 	// Make streaming API call
-	stream := helper.Client.Responses.NewStreaming(ctx, params)
+	stream := helper.CreateResponseStreamingWithHeaders(ctx, params)
 	helper.AssertNoError(t, stream.Err(), "Failed to start Responses streaming")
 
 	// Read and process the stream
@@ -86,7 +86,7 @@ func TestResponsesStreaming(t *testing.T) {
 
 func TestResponsesStreamingWithTools(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestResponsesStreamingWithTools")
 
 	ctx := helper.CreateTestContext()
 
@@ -140,7 +140,7 @@ Please first introduce yourself briefly and explain how you'll approach helping 
 	}
 
 	// Make streaming API call
-	stream := helper.Client.Responses.NewStreaming(ctx, params)
+	stream := helper.CreateResponseStreamingWithHeaders(ctx, params)
 	helper.AssertNoError(t, stream.Err(), "Failed to start Responses streaming with tools")
 
 	// Process the stream
@@ -202,7 +202,7 @@ Please first introduce yourself briefly and explain how you'll approach helping 
 
 func TestResponsesStreamingLongResponse(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestResponsesStreamingLongResponse")
 
 	ctx := helper.CreateTestContext()
 
@@ -220,7 +220,7 @@ func TestResponsesStreamingLongResponse(t *testing.T) {
 		Temperature:     openai.Float(0.7), // More creative
 	}
 
-	stream := helper.Client.Responses.NewStreaming(ctx, params)
+	stream := helper.CreateResponseStreamingWithHeaders(ctx, params)
 	helper.AssertNoError(t, stream.Err(), "Failed to start long Responses streaming response")
 
 	// Collect streaming data
@@ -274,7 +274,7 @@ func TestResponsesStreamingLongResponse(t *testing.T) {
 
 func TestResponsesStreamingErrorHandling(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestResponsesStreamingErrorHandling")
 
 	ctx := helper.CreateTestContext()
 
@@ -290,7 +290,7 @@ func TestResponsesStreamingErrorHandling(t *testing.T) {
 	}
 
 	// This should fail during request creation or streaming
-	stream := helper.Client.Responses.NewStreaming(ctx, params)
+	stream := helper.CreateResponseStreamingWithHeaders(ctx, params)
 	if err := stream.Err(); err == nil {
 		// If no immediate error, try to read from stream
 		if stream.Next() {

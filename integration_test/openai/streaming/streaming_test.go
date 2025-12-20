@@ -17,7 +17,7 @@ func TestMain(m *testing.M) {
 
 func TestStreamingChatCompletion(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestStreamingChatCompletion")
 
 	// Print headers for debugging
 	helper.PrintHeaders(t)
@@ -38,7 +38,7 @@ func TestStreamingChatCompletion(t *testing.T) {
 	}
 
 	// Make streaming API call
-	stream := helper.Client.Chat.Completions.NewStreaming(ctx, params)
+	stream := helper.CreateStreamingWithHeaders(ctx, params)
 	helper.AssertNoError(t, stream.Err(), "Failed to start streaming chat completion")
 
 	var chunksReceived int
@@ -84,7 +84,7 @@ func TestStreamingChatCompletion(t *testing.T) {
 
 func TestStreamingWithTools(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestStreamingWithTools")
 
 	ctx := helper.CreateTestContext()
 
@@ -137,7 +137,7 @@ Please first introduce yourself briefly and explain how you'll approach helping 
 	}
 
 	// Make streaming API call
-	stream := helper.Client.Chat.Completions.NewStreaming(ctx, params)
+	stream := helper.CreateStreamingWithHeaders(ctx, params)
 	helper.AssertNoError(t, stream.Err(), "Failed to start streaming with tools")
 
 	var chunksReceived int
@@ -191,7 +191,7 @@ Please first introduce yourself briefly and explain how you'll approach helping 
 
 func TestStreamingToolMultipleCallsSingleTurn(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestStreamingToolMultipleCallsSingleTurn")
 
 	ctx := helper.CreateTestContext()
 
@@ -248,7 +248,7 @@ Do not answer with normal text. Only make the two tool calls.`
 		Model: helper.GetModel(),
 	}
 
-	stream := helper.Client.Chat.Completions.NewStreaming(ctx, params)
+	stream := helper.CreateStreamingWithHeaders(ctx, params)
 	helper.AssertNoError(t, stream.Err(), "Failed to start streaming request with multiple tool calls")
 
 	var chunksReceived int
@@ -288,7 +288,7 @@ Do not answer with normal text. Only make the two tool calls.`
 
 func TestStreamingLongResponse(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestStreamingLongResponse")
 
 	ctx := helper.CreateTestContext()
 
@@ -306,7 +306,7 @@ func TestStreamingLongResponse(t *testing.T) {
 		Temperature:         openai.Float(0.7), // More creative
 	}
 
-	stream := helper.Client.Chat.Completions.NewStreaming(ctx, params)
+	stream := helper.CreateStreamingWithHeaders(ctx, params)
 	helper.AssertNoError(t, stream.Err(), "Failed to start long streaming response")
 
 	var chunksReceived int
@@ -358,7 +358,7 @@ func TestStreamingLongResponse(t *testing.T) {
 
 func TestStreamingErrorHandling(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestStreamingErrorHandling")
 
 	ctx := helper.CreateTestContext()
 
@@ -374,7 +374,7 @@ func TestStreamingErrorHandling(t *testing.T) {
 	}
 
 	// This should fail during request creation or streaming
-	stream := helper.Client.Chat.Completions.NewStreaming(ctx, params)
+	stream := helper.CreateStreamingWithHeaders(ctx, params)
 	if err := stream.Err(); err == nil {
 		// If no immediate error, try to read from stream
 		var chunksReceived int

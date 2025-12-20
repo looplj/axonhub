@@ -12,7 +12,7 @@ import (
 
 func TestSingleTraceMultipleCalls(t *testing.T) {
 	// Skip test if no API key is configured
-	helper := testutil.NewTestHelper(t)
+	helper := testutil.NewTestHelper(t, "TestSingleTraceMultipleCalls")
 
 	// Print headers for debugging
 	helper.PrintHeaders(t)
@@ -32,7 +32,7 @@ func TestSingleTraceMultipleCalls(t *testing.T) {
 		Model:    helper.GetModel(),
 	}
 
-	completion, err := helper.Client.Chat.Completions.New(ctx, params)
+	completion, err := helper.CreateChatCompletionWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed in first trace call")
 
 	helper.ValidateChatResponse(t, completion, "First trace call")
@@ -45,7 +45,7 @@ func TestSingleTraceMultipleCalls(t *testing.T) {
 	messages = append(messages, openai.UserMessage("I need to perform some calculations. Can you help?"))
 
 	params.Messages = messages
-	completion2, err := helper.Client.Chat.Completions.New(ctx, params)
+	completion2, err := helper.CreateChatCompletionWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed in second trace call")
 
 	helper.ValidateChatResponse(t, completion2, "Second trace call")
@@ -80,7 +80,7 @@ func TestSingleTraceMultipleCalls(t *testing.T) {
 		Model:    helper.GetModel(),
 	}
 
-	completion3, err := helper.Client.Chat.Completions.New(ctx, params)
+	completion3, err := helper.CreateChatCompletionWithHeaders(ctx, params)
 	helper.AssertNoError(t, err, "Failed in third trace call with tools")
 
 	helper.ValidateChatResponse(t, completion3, "Third trace call with tools")
@@ -121,7 +121,7 @@ func TestSingleTraceMultipleCalls(t *testing.T) {
 		// Fourth call with tool results
 		params.Messages = messages
 		params.Tools = nil // No more tools needed
-		completion4, err := helper.Client.Chat.Completions.New(ctx, params)
+		completion4, err := helper.CreateChatCompletionWithHeaders(ctx, params)
 		helper.AssertNoError(t, err, "Failed in fourth trace call")
 
 		helper.ValidateChatResponse(t, completion4, "Fourth trace call")

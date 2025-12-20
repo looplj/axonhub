@@ -96,9 +96,9 @@ type ExtraBody struct {
 	Google *GoogleExtraBody `json:"google,omitempty"`
 }
 
-// Request extends llm.Request with Gemini-specific fields.
+// Request extends openai.Request with Gemini-specific fields.
 type Request struct {
-	llm.Request
+	openai.Request
 
 	// ExtraBody contains Gemini-specific configuration like thinking_config.
 	ExtraBody *ExtraBody `json:"extra_body,omitempty"`
@@ -264,16 +264,17 @@ func (t *OutboundTransformer) TransformRequest(
 		return nil, fmt.Errorf("chat completion request is nil")
 	}
 
-	req := *chatReq
-
 	// Validate required fields
 	if chatReq.Model == "" {
 		return nil, fmt.Errorf("model is required")
 	}
 
-	if len(req.Messages) == 0 {
+	if len(chatReq.Messages) == 0 {
 		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
 	}
+
+	// Make a copy to avoid modifying the original request
+	req := *chatReq
 
 	// Fallback: Filter out Google native tools (not supported by OpenAI-compatible endpoint)
 	// This is a graceful degradation when no native Gemini channels are available.
@@ -303,14 +304,13 @@ func (t *OutboundTransformer) TransformRequest(
 		}
 	}
 
-	geminiReq := Request{Request: req}
+	// Convert llm.Request to openai.Request
+	oaiReq := openai.RequestFromLLM(&req)
+
+	geminiReq := Request{Request: *oaiReq}
 	if extraBody != nil {
 		geminiReq.ExtraBody = extraBody
 	}
-
-	// Clear help fields
-	geminiReq.Metadata = nil
-	geminiReq.Request.ExtraBody = nil // Clear the raw extra body from llm.Request
 
 	body, err := json.Marshal(geminiReq)
 	if err != nil {
