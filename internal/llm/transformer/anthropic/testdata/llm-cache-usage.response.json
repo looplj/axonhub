@@ -3,6 +3,8 @@
   "object": "chat.completion",
   "model": "claude-3-7-sonnet-20250219",
   "created": 0,
+  "request_type": "chat",
+  "api_format": "anthropic/messages",
   "choices": [
     {
       "index": 0,

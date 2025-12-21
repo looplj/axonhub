@@ -70,7 +70,8 @@ func (t *InboundTransformer) TransformRequest(
 	// Convert to unified llm.Request
 	chatReq := oaiReq.ToLLMRequest()
 	chatReq.RawRequest = httpReq
-	chatReq.RawAPIFormat = llm.APIFormatOpenAIChatCompletion
+	chatReq.RequestType = llm.RequestTypeChat
+	chatReq.APIFormat = llm.APIFormatOpenAIChatCompletion
 
 	return chatReq, nil
 }

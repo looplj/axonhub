@@ -90,23 +90,27 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		middleware.WithTrace(server.Config.Trace, services.TraceService),
 	)
 
-	openaiGroup := apiGroup.Group("/v1")
 	{
+		openaiGroup := apiGroup.Group("/v1")
 		openaiGroup.POST("/chat/completions", handlers.OpenAI.ChatCompletion)
 		openaiGroup.POST("/responses", handlers.OpenAI.CreateResponse)
-		openaiGroup.POST("/embeddings", handlers.OpenAI.CreateEmbedding)
 		openaiGroup.GET("/models", handlers.OpenAI.ListModels)
-		openaiGroup.POST("/rerank", handlers.Rerank.Rerank)
+		openaiGroup.POST("/embeddings", handlers.OpenAI.CreateEmbedding)
 	}
 
-	anthropicGroup := apiGroup.Group("/anthropic/v1")
 	{
+		rerankGroup := apiGroup.Group("/v1")
+		rerankGroup.POST("/rerank", handlers.Rerank.Rerank)
+	}
+
+	{
+		anthropicGroup := apiGroup.Group("/anthropic/v1")
 		anthropicGroup.POST("/messages", handlers.Anthropic.CreateMessage)
 		anthropicGroup.GET("/models", handlers.Anthropic.ListModels)
 	}
 
-	geminiGroup := apiGroup.Group("/gemini/:gemini-api-version")
 	{
+		geminiGroup := apiGroup.Group("/gemini/:gemini-api-version")
 		geminiGroup.POST("/models/*action", handlers.Gemini.GenerateContent)
 	}
 }

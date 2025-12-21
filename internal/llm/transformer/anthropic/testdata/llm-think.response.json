@@ -3,6 +3,8 @@
   "object": "chat.completion",
   "model": "claude-sonnet-4-20250514",
   "created": 0,
+  "request_type": "chat",
+  "api_format": "anthropic/messages",
   "choices": [
     {
       "index": 0,
@@ -15,7 +17,7 @@
             "type": "function",
             "function": {
               "name": "get_coordinates",
-              "arguments": "{\n        \"location\": \"San Francisco, CA\"\n      }"
+              "arguments": "{\"location\":\"San Francisco, CA\"}"
             }
           },
           {
@@ -23,7 +25,7 @@
             "type": "function",
             "function": {
               "name": "get_temperature_unit",
-              "arguments": "{\n        \"country\": \"United States\"\n      }"
+              "arguments": "{\"country\":\"United States\"}"
             }
           }
         ],

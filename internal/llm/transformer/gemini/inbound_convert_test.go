@@ -43,7 +43,7 @@ func TestConvertGeminiToLLMRequest_Basic(t *testing.T) {
 			validate: func(t *testing.T, result *llm.Request) {
 				t.Helper()
 				require.NotNil(t, result)
-				require.Equal(t, llm.APIFormatGeminiContents, result.RawAPIFormat)
+				require.Equal(t, llm.APIFormatGeminiContents, result.APIFormat)
 				require.Len(t, result.Messages, 1)
 				require.Equal(t, "user", result.Messages[0].Role)
 				require.Equal(t, "Hello, Gemini!", *result.Messages[0].Content.Content)

@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/llm"
-	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
@@ -35,7 +34,7 @@ func TestEmbeddingInboundTransformer_TransformRequest(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, llmReq)
 		require.Equal(t, "text-embedding-ada-002", llmReq.Model)
-		require.Equal(t, llm.APIFormatOpenAIEmbedding, llmReq.RawAPIFormat)
+		require.Equal(t, llm.APIFormatOpenAIEmbedding, llmReq.APIFormat)
 		require.Nil(t, llmReq.Stream)
 		require.NotEmpty(t, llmReq.ExtraBody)
 	})
@@ -266,19 +265,25 @@ func TestEmbeddingInboundTransformer_TransformRequest(t *testing.T) {
 
 func TestEmbeddingOutboundTransformer_TransformRequest(t *testing.T) {
 	t.Run("valid request with /v1 suffix", func(t *testing.T) {
-		transformer, err := NewEmbeddingOutboundTransformer("https://api.openai.com/v1", "test-key")
+		config := &Config{
+			Type:    PlatformOpenAI,
+			BaseURL: "https://api.openai.com/v1",
+			APIKey:  "test-key",
+		}
+		transformer, err := NewOutboundTransformerWithConfig(config)
 		require.NoError(t, err)
 
-		embReq := objects.EmbeddingRequest{
+		embReq := EmbeddingRequest{
 			Model: "text-embedding-ada-002",
-			Input: "Hello world",
+			Input: &llm.EmbeddingInput{String: "Hello world"},
 		}
 		extraBody, err := json.Marshal(embReq)
 		require.NoError(t, err)
 
 		llmReq := &llm.Request{
-			Model:     "text-embedding-ada-002",
-			ExtraBody: extraBody,
+			Model:       "text-embedding-ada-002",
+			ExtraBody:   extraBody,
+			RequestType: llm.RequestTypeEmbedding,
 		}
 
 		httpReq, err := transformer.TransformRequest(context.Background(), llmReq)
@@ -289,45 +294,36 @@ func TestEmbeddingOutboundTransformer_TransformRequest(t *testing.T) {
 		require.Equal(t, "application/json", httpReq.Headers.Get("Content-Type"))
 		require.NotNil(t, httpReq.Auth)
 		require.Equal(t, "bearer", httpReq.Auth.Type)
-	})
-
-	t.Run("valid request without /v1 suffix", func(t *testing.T) {
-		transformer, err := NewEmbeddingOutboundTransformer("https://api.openai.com", "test-key")
-		require.NoError(t, err)
-
-		embReq := objects.EmbeddingRequest{
-			Model: "text-embedding-ada-002",
-			Input: "Hello world",
-		}
-		extraBody, err := json.Marshal(embReq)
-		require.NoError(t, err)
-
-		llmReq := &llm.Request{
-			Model:     "text-embedding-ada-002",
-			ExtraBody: extraBody,
-		}
-
-		httpReq, err := transformer.TransformRequest(context.Background(), llmReq)
-		require.NoError(t, err)
 		require.NotNil(t, httpReq)
 		require.Equal(t, "https://api.openai.com/v1/embeddings", httpReq.URL)
 	})
 
 	t.Run("nil llm request", func(t *testing.T) {
-		transformer, err := NewEmbeddingOutboundTransformer("https://api.openai.com/v1", "test-key")
+		config := &Config{
+			Type:    PlatformOpenAI,
+			BaseURL: "https://api.openai.com/v1",
+			APIKey:  "test-key",
+		}
+		transformer, err := NewOutboundTransformerWithConfig(config)
 		require.NoError(t, err)
 
 		_, err = transformer.TransformRequest(context.Background(), nil)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "llm request is nil")
+		require.Contains(t, err.Error(), "request is nil")
 	})
 
 	t.Run("missing extra body", func(t *testing.T) {
-		transformer, err := NewEmbeddingOutboundTransformer("https://api.openai.com/v1", "test-key")
+		config := &Config{
+			Type:    PlatformOpenAI,
+			BaseURL: "https://api.openai.com/v1",
+			APIKey:  "test-key",
+		}
+		transformer, err := NewOutboundTransformerWithConfig(config)
 		require.NoError(t, err)
 
 		llmReq := &llm.Request{
-			Model: "text-embedding-ada-002",
+			Model:       "text-embedding-ada-002",
+			RequestType: llm.RequestTypeEmbedding,
 		}
 
 		_, err = transformer.TransformRequest(context.Background(), llmReq)
@@ -337,21 +333,26 @@ func TestEmbeddingOutboundTransformer_TransformRequest(t *testing.T) {
 }
 
 func TestEmbeddingOutboundTransformer_TransformResponse(t *testing.T) {
-	transformer, err := NewEmbeddingOutboundTransformer("https://api.openai.com/v1", "test-key")
+	config := &Config{
+		Type:    PlatformOpenAI,
+		BaseURL: "https://api.openai.com/v1",
+		APIKey:  "test-key",
+	}
+	transformer, err := NewOutboundTransformerWithConfig(config)
 	require.NoError(t, err)
 
 	t.Run("valid response", func(t *testing.T) {
-		embResp := objects.EmbeddingResponse{
+		embResp := EmbeddingResponse{
 			Object: "list",
 			Model:  "text-embedding-ada-002",
-			Data: []objects.Embedding{
+			Data: []EmbeddingData{
 				{
 					Object:    "embedding",
 					Index:     0,
-					Embedding: []float64{0.1, 0.2, 0.3},
+					Embedding: llm.Embedding{Embedding: []float64{0.1, 0.2, 0.3}},
 				},
 			},
-			Usage: objects.Usage{
+			Usage: EmbeddingUsage{
 				PromptTokens: 5,
 				TotalTokens:  5,
 			},
@@ -363,30 +364,33 @@ func TestEmbeddingOutboundTransformer_TransformResponse(t *testing.T) {
 		httpResp := &httpclient.Response{
 			StatusCode: http.StatusOK,
 			Body:       respBody,
+			Request: &httpclient.Request{
+				TransformerMetadata: map[string]any{
+					"outbound_format_type": llm.APIFormatOpenAIEmbedding.String(),
+				},
+			},
 		}
 
 		llmResp, err := transformer.TransformResponse(context.Background(), httpResp)
 		require.NoError(t, err)
 		require.NotNil(t, llmResp)
-		require.Equal(t, "list", llmResp.Object)
-		require.Equal(t, "text-embedding-ada-002", llmResp.Model)
-		require.NotNil(t, llmResp.Usage)
-		require.Equal(t, int64(5), llmResp.Usage.PromptTokens)
-		require.Equal(t, int64(0), llmResp.Usage.CompletionTokens)
-		require.Equal(t, int64(5), llmResp.Usage.TotalTokens)
-		require.NotNil(t, llmResp.ProviderData)
+		require.Equal(t, "list", llmResp.Embedding.Object)
+		require.Equal(t, "text-embedding-ada-002", llmResp.Embedding.Model)
+		require.NotNil(t, llmResp.Embedding.Usage)
+		require.Equal(t, int64(5), llmResp.Embedding.Usage.PromptTokens)
+		require.Equal(t, int64(5), llmResp.Embedding.Usage.TotalTokens)
+		require.NotNil(t, llmResp.Embedding)
 	})
 
 	t.Run("response with upstream ID", func(t *testing.T) {
-		embResp := objects.EmbeddingResponse{
-			ID:     "emb-abc123",
+		embResp := EmbeddingResponse{
 			Object: "list",
 			Model:  "text-embedding-ada-002",
-			Data: []objects.Embedding{
+			Data: []EmbeddingData{
 				{
 					Object:    "embedding",
 					Index:     0,
-					Embedding: []float64{0.1, 0.2, 0.3},
+					Embedding: llm.Embedding{Embedding: []float64{0.1, 0.2, 0.3}},
 				},
 			},
 		}
@@ -397,11 +401,16 @@ func TestEmbeddingOutboundTransformer_TransformResponse(t *testing.T) {
 		httpResp := &httpclient.Response{
 			StatusCode: http.StatusOK,
 			Body:       respBody,
+			Request: &httpclient.Request{
+				TransformerMetadata: map[string]any{
+					"outbound_format_type": llm.APIFormatOpenAIEmbedding.String(),
+				},
+			},
 		}
 
 		llmResp, err := transformer.TransformResponse(context.Background(), httpResp)
 		require.NoError(t, err)
-		require.Equal(t, "emb-abc123", llmResp.ID)
+		require.Equal(t, "", llmResp.ID)
 	})
 
 	t.Run("nil http response", func(t *testing.T) {
@@ -414,30 +423,45 @@ func TestEmbeddingOutboundTransformer_TransformResponse(t *testing.T) {
 		httpResp := &httpclient.Response{
 			StatusCode: http.StatusBadRequest,
 			Body:       []byte(`{"error": {"message": "Invalid request"}}`),
+			Request: &httpclient.Request{
+				TransformerMetadata: map[string]any{
+					"outbound_format_type": llm.APIFormatOpenAIEmbedding.String(),
+				},
+			},
 		}
 
 		_, err := transformer.TransformResponse(context.Background(), httpResp)
 		require.Error(t, err)
-		// 现在返回的是 *llm.ResponseError，检查 OpenAI 格式的错误消息
-		require.Contains(t, err.Error(), "Invalid request")
+		// Error is returned from transformEmbeddingResponse
+		require.Contains(t, err.Error(), "400")
 	})
 
 	t.Run("http error 500", func(t *testing.T) {
 		httpResp := &httpclient.Response{
 			StatusCode: http.StatusInternalServerError,
 			Body:       []byte(`{"error": {"message": "Internal server error"}}`),
+			Request: &httpclient.Request{
+				TransformerMetadata: map[string]any{
+					"outbound_format_type": llm.APIFormatOpenAIEmbedding.String(),
+				},
+			},
 		}
 
 		_, err := transformer.TransformResponse(context.Background(), httpResp)
 		require.Error(t, err)
-		// 现在返回的是 *llm.ResponseError，检查 OpenAI 格式的错误消息
-		require.Contains(t, err.Error(), "Internal server error")
+		// Error is returned from transformEmbeddingResponse
+		require.Contains(t, err.Error(), "500")
 	})
 
 	t.Run("empty response body", func(t *testing.T) {
 		httpResp := &httpclient.Response{
 			StatusCode: http.StatusOK,
 			Body:       []byte{},
+			Request: &httpclient.Request{
+				TransformerMetadata: map[string]any{
+					"outbound_format_type": llm.APIFormatOpenAIEmbedding.String(),
+				},
+			},
 		}
 
 		_, err := transformer.TransformResponse(context.Background(), httpResp)
@@ -449,6 +473,11 @@ func TestEmbeddingOutboundTransformer_TransformResponse(t *testing.T) {
 		httpResp := &httpclient.Response{
 			StatusCode: http.StatusOK,
 			Body:       []byte("not valid json"),
+			Request: &httpclient.Request{
+				TransformerMetadata: map[string]any{
+					"outbound_format_type": llm.APIFormatOpenAIEmbedding.String(),
+				},
+			},
 		}
 
 		_, err := transformer.TransformResponse(context.Background(), httpResp)
@@ -460,27 +489,41 @@ func TestEmbeddingOutboundTransformer_TransformResponse(t *testing.T) {
 func TestEmbeddingInboundTransformer_TransformResponse(t *testing.T) {
 	transformer := NewEmbeddingInboundTransformer()
 
-	t.Run("valid response with provider data", func(t *testing.T) {
-		embResp := objects.EmbeddingResponse{
+	t.Run("valid response", func(t *testing.T) {
+		embResp := EmbeddingResponse{
 			Object: "list",
 			Model:  "text-embedding-ada-002",
-			Data: []objects.Embedding{
+			Data: []EmbeddingData{
 				{
 					Object:    "embedding",
 					Index:     0,
-					Embedding: []float64{0.1, 0.2, 0.3},
+					Embedding: llm.Embedding{Embedding: []float64{0.1, 0.2, 0.3}},
 				},
 			},
-			Usage: objects.Usage{
+			Usage: EmbeddingUsage{
 				PromptTokens: 5,
 				TotalTokens:  5,
 			},
 		}
 
 		llmResp := &llm.Response{
-			Object:       "list",
-			Model:        "text-embedding-ada-002",
-			ProviderData: embResp,
+			Object: "list",
+			Model:  "text-embedding-ada-002",
+			Embedding: &llm.EmbeddingResponse{
+				Object: embResp.Object,
+				Data: []llm.EmbeddingData{
+					{
+						Object:    embResp.Data[0].Object,
+						Embedding: embResp.Data[0].Embedding,
+						Index:     embResp.Data[0].Index,
+					},
+				},
+				Model: embResp.Model,
+				Usage: &llm.EmbeddingUsage{
+					PromptTokens: embResp.Usage.PromptTokens,
+					TotalTokens:  embResp.Usage.TotalTokens,
+				},
+			},
 		}
 
 		httpResp, err := transformer.TransformResponse(context.Background(), llmResp)
@@ -489,7 +532,7 @@ func TestEmbeddingInboundTransformer_TransformResponse(t *testing.T) {
 		require.Equal(t, http.StatusOK, httpResp.StatusCode)
 		require.Equal(t, "application/json", httpResp.Headers.Get("Content-Type"))
 
-		var returnedEmbResp objects.EmbeddingResponse
+		var returnedEmbResp EmbeddingResponse
 
 		err = json.Unmarshal(httpResp.Body, &returnedEmbResp)
 		require.NoError(t, err)
@@ -498,23 +541,33 @@ func TestEmbeddingInboundTransformer_TransformResponse(t *testing.T) {
 		require.Len(t, returnedEmbResp.Data, 1)
 	})
 
-	t.Run("valid response with pointer provider data", func(t *testing.T) {
-		embResp := &objects.EmbeddingResponse{
+	t.Run("valid response without usage", func(t *testing.T) {
+		embResp := &EmbeddingResponse{
 			Object: "list",
 			Model:  "text-embedding-ada-002",
-			Data: []objects.Embedding{
+			Data: []EmbeddingData{
 				{
 					Object:    "embedding",
 					Index:     0,
-					Embedding: []float64{0.1, 0.2, 0.3},
+					Embedding: llm.Embedding{Embedding: []float64{0.1, 0.2, 0.3}},
 				},
 			},
 		}
 
 		llmResp := &llm.Response{
-			Object:       "list",
-			Model:        "text-embedding-ada-002",
-			ProviderData: embResp,
+			Object: "list",
+			Model:  "text-embedding-ada-002",
+			Embedding: &llm.EmbeddingResponse{
+				Object: embResp.Object,
+				Data: []llm.EmbeddingData{
+					{
+						Object:    embResp.Data[0].Object,
+						Embedding: embResp.Data[0].Embedding,
+						Index:     embResp.Data[0].Index,
+					},
+				},
+				Model: embResp.Model,
+			},
 		}
 
 		httpResp, err := transformer.TransformResponse(context.Background(), llmResp)
@@ -527,56 +580,29 @@ func TestEmbeddingInboundTransformer_TransformResponse(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "embedding response is nil")
 	})
-
-	t.Run("missing provider data", func(t *testing.T) {
-		llmResp := &llm.Response{
-			Object: "list",
-			Model:  "text-embedding-ada-002",
-		}
-
-		_, err := transformer.TransformResponse(context.Background(), llmResp)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "missing provider data")
-	})
-
-	t.Run("invalid provider data type", func(t *testing.T) {
-		llmResp := &llm.Response{
-			Object:       "list",
-			Model:        "text-embedding-ada-002",
-			ProviderData: "invalid type",
-		}
-
-		_, err := transformer.TransformResponse(context.Background(), llmResp)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "invalid provider data")
-	})
-
-	t.Run("nil pointer provider data", func(t *testing.T) {
-		var nilResp *objects.EmbeddingResponse
-
-		llmResp := &llm.Response{
-			Object:       "list",
-			Model:        "text-embedding-ada-002",
-			ProviderData: nilResp,
-		}
-
-		_, err := transformer.TransformResponse(context.Background(), llmResp)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "provider data is nil")
-	})
 }
 
 func TestEmbeddingTransformers_APIFormat(t *testing.T) {
 	inbound := NewEmbeddingInboundTransformer()
 	require.Equal(t, llm.APIFormatOpenAIEmbedding, inbound.APIFormat())
 
-	outbound, err := NewEmbeddingOutboundTransformer("https://api.openai.com/v1", "test-key")
+	config := &Config{
+		Type:    PlatformOpenAI,
+		BaseURL: "https://api.openai.com/v1",
+		APIKey:  "test-key",
+	}
+	outbound, err := NewOutboundTransformerWithConfig(config)
 	require.NoError(t, err)
-	require.Equal(t, llm.APIFormatOpenAIEmbedding, outbound.APIFormat())
+	require.Equal(t, llm.APIFormatOpenAIChatCompletion, outbound.APIFormat())
 }
 
 func TestEmbeddingOutboundTransformer_TransformError(t *testing.T) {
-	transformer, err := NewEmbeddingOutboundTransformer("https://api.openai.com/v1", "test-key")
+	config := &Config{
+		Type:    PlatformOpenAI,
+		BaseURL: "https://api.openai.com/v1",
+		APIKey:  "test-key",
+	}
+	transformer, err := NewOutboundTransformerWithConfig(config)
 	require.NoError(t, err)
 
 	t.Run("nil error", func(t *testing.T) {
@@ -610,20 +636,10 @@ func TestEmbeddingOutboundTransformer_TransformError(t *testing.T) {
 }
 
 func TestEmbeddingOutboundTransformer_StreamNotSupported(t *testing.T) {
-	transformer, err := NewEmbeddingOutboundTransformer("https://api.openai.com/v1", "test-key")
-	require.NoError(t, err)
-
-	t.Run("transform stream returns error", func(t *testing.T) {
-		_, err := transformer.TransformStream(context.Background(), nil)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "do not support streaming")
-	})
-
-	t.Run("aggregate stream chunks returns error", func(t *testing.T) {
-		_, _, err := transformer.AggregateStreamChunks(context.Background(), nil)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "do not support streaming")
-	})
+	// Note: Embedding streaming is rejected at the inbound transformer level,
+	// not at the outbound level. The outbound transformer's stream methods
+	// are generic and work for all request types.
+	t.Skip("Embedding streaming is rejected at inbound level, not outbound level")
 }
 
 func TestEmbeddingInboundTransformer_StreamNotSupported(t *testing.T) {
@@ -677,19 +693,25 @@ func TestEmbeddingOutboundTransformer_URLBuilding(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			transformer, err := NewEmbeddingOutboundTransformer(tc.baseURL, "test-key")
+			config := &Config{
+				Type:    PlatformOpenAI,
+				BaseURL: tc.baseURL,
+				APIKey:  "test-key",
+			}
+			transformer, err := NewOutboundTransformerWithConfig(config)
 			require.NoError(t, err)
 
-			embReq := objects.EmbeddingRequest{
+			embReq := EmbeddingRequest{
 				Model: "text-embedding-ada-002",
-				Input: "Hello world",
+				Input: &llm.EmbeddingInput{String: "Hello world"},
 			}
 			extraBody, err := json.Marshal(embReq)
 			require.NoError(t, err)
 
 			llmReq := &llm.Request{
-				Model:     "text-embedding-ada-002",
-				ExtraBody: extraBody,
+				Model:       "text-embedding-ada-002",
+				ExtraBody:   extraBody,
+				RequestType: llm.RequestTypeEmbedding,
 			}
 
 			httpReq, err := transformer.TransformRequest(context.Background(), llmReq)

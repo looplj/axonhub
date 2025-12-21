@@ -138,28 +138,36 @@ func (t *OutboundTransformer) APIFormat() llm.APIFormat {
 // TransformRequest transforms ChatCompletionRequest to Anthropic HTTP request.
 func (t *OutboundTransformer) TransformRequest(
 	ctx context.Context,
-	chatReq *llm.Request,
+	llmReq *llm.Request,
 ) (*httpclient.Request, error) {
-	if chatReq == nil {
+	if llmReq == nil {
 		return nil, fmt.Errorf("chat completion request is nil")
 	}
 
+	//nolint:exhaustive // Checked.
+	switch llmReq.RequestType {
+	case llm.RequestTypeChat, "":
+		// continue
+	default:
+		return nil, fmt.Errorf("%w: %s is not supported", transformer.ErrInvalidRequest, llmReq.RequestType)
+	}
+
 	// Validate required fields
-	if chatReq.Model == "" {
+	if llmReq.Model == "" {
 		return nil, fmt.Errorf("model is required")
 	}
 
-	if len(chatReq.Messages) == 0 {
+	if len(llmReq.Messages) == 0 {
 		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
 	}
 
 	// Validate max_tokens
-	if chatReq.MaxTokens != nil && *chatReq.MaxTokens <= 0 {
+	if llmReq.MaxTokens != nil && *llmReq.MaxTokens <= 0 {
 		return nil, fmt.Errorf("%w: max_tokens must be positive", transformer.ErrInvalidRequest)
 	}
 
 	// Convert to Anthropic request format
-	anthropicReq := convertToAnthropicRequestWithConfig(chatReq, t.config)
+	anthropicReq := convertToAnthropicRequestWithConfig(llmReq, t.config)
 
 	// Apply platform-specific transformations
 	body, err := json.Marshal(anthropicReq)
@@ -209,7 +217,7 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	// Determine endpoint based on platform
-	url, err := t.buildFullRequestURL(chatReq)
+	url, err := t.buildFullRequestURL(llmReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build platform URL: %w", err)
 	}

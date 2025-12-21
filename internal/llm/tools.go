@@ -233,7 +233,7 @@ func ContainsAnthropicNativeTools(tools []Tool) bool {
 // 2. It's already transformed to type "web_search_20250305" (Anthropic native format).
 func IsAnthropicNativeTool(tool Tool) bool {
 	// Match function tool with web_search name (OpenAI format input)
-	if tool.Type == ToolType && tool.Function.Name == AnthropicWebSearchFunctionName {
+	if tool.Type == ToolTypeFunction && tool.Function.Name == AnthropicWebSearchFunctionName {
 		return true
 	}
 	// Match already-transformed Anthropic native tool type

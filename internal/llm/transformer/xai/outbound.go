@@ -31,8 +31,7 @@ type OutboundTransformer struct {
 	config *Config
 }
 
-// NewOutboundTransformer creates a new xAI OutboundTransformer with legacy parameters
-// Deprecated: Use NewOutboundTransformerWithConfig instead.
+// NewOutboundTransformer creates a new xAI OutboundTransformer with legacy parameters.
 func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error) {
 	if baseURL == "" {
 		baseURL = DefaultBaseURL

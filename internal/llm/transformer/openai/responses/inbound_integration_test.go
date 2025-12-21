@@ -29,7 +29,7 @@ func TestInboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 
 				// Verify basic request properties
 				require.Equal(t, "deepseek-chat", result.Model)
-				require.Equal(t, llm.APIFormatOpenAIResponse, result.RawAPIFormat)
+				require.Equal(t, llm.APIFormatOpenAIResponse, result.APIFormat)
 
 				// Verify messages
 				require.Len(t, result.Messages, 7)
@@ -57,7 +57,7 @@ func TestInboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 
 				// Verify basic request properties
 				require.Equal(t, "gpt-5.1-codex-mini", result.Model)
-				require.Equal(t, llm.APIFormatOpenAIResponse, result.RawAPIFormat)
+				require.Equal(t, llm.APIFormatOpenAIResponse, result.APIFormat)
 
 				// Verify messages: system + user + assistant(reasoning+function_call) + tool
 				require.Len(t, result.Messages, 4)
@@ -119,7 +119,7 @@ func TestInboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 			err = xtest.LoadTestData(t, tt.expectedFile, &expected)
 			require.NoError(t, err)
 
-			expected.RawAPIFormat = llm.APIFormatOpenAIResponse
+			expected.APIFormat = llm.APIFormatOpenAIResponse
 
 			// Copy TransformerMetadata from result as it contains dynamic fields (include, prompt_cache_key, etc.)
 			expected.TransformerMetadata = result.TransformerMetadata

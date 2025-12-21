@@ -442,9 +442,11 @@ const TransformerMetadataKeyGroundingMetadata = "gemini_grounding_metadata"
 // Returns the response and the next tool call index to use.
 func convertGeminiToLLMResponseWithState(geminiResp *GenerateContentResponse, isStream bool, toolCallIndexOffset int) (*llm.Response, int) {
 	resp := &llm.Response{
-		ID:      geminiResp.ResponseID,
-		Model:   geminiResp.ModelVersion,
-		Created: time.Now().Unix(),
+		ID:          geminiResp.ResponseID,
+		Model:       geminiResp.ModelVersion,
+		Created:     time.Now().Unix(),
+		RequestType: llm.RequestTypeChat,
+		APIFormat:   llm.APIFormatGeminiContents,
 	}
 
 	// Set object type based on stream mode

@@ -33,7 +33,6 @@ type OutboundTransformer struct {
 }
 
 // NewOutboundTransformer creates a new OpenRouter OutboundTransformer with legacy parameters.
-// Deprecated: Use NewOutboundTransformerWithConfig instead.
 func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error) {
 	config := &Config{
 		BaseURL: baseURL,
@@ -62,27 +61,35 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 // TransformRequest transforms ChatCompletionRequest to Request.
 func (t *OutboundTransformer) TransformRequest(
 	ctx context.Context,
-	chatReq *llm.Request,
+	llmReq *llm.Request,
 ) (*httpclient.Request, error) {
-	if chatReq == nil {
+	if llmReq == nil {
 		return nil, fmt.Errorf("chat completion request is nil")
 	}
 
+	//nolint:exhaustive // Checked.
+	switch llmReq.RequestType {
+	case llm.RequestTypeChat, "":
+		// continue
+	default:
+		return nil, fmt.Errorf("%w: %s is not supported", transformer.ErrInvalidRequest, llmReq.RequestType)
+	}
+
 	// Validate required fields
-	if chatReq.Model == "" {
+	if llmReq.Model == "" {
 		return nil, fmt.Errorf("%w: model is required", transformer.ErrInvalidRequest)
 	}
 
-	if len(chatReq.Messages) == 0 {
+	if len(llmReq.Messages) == 0 {
 		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
 	}
 
-	if chatReq.IsImageGenerationRequest() {
-		chatReq = removeImageGenerationFromRequest(chatReq)
-		chatReq.Stream = lo.ToPtr(false)
+	if llmReq.IsImageGenerationRequest() {
+		llmReq = removeImageGenerationFromRequest(llmReq)
+		llmReq.Stream = lo.ToPtr(false)
 	}
 
-	body, err := json.Marshal(chatReq)
+	body, err := json.Marshal(openai.RequestFromLLM(llmReq))
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to transform request: %w", transformer.ErrInvalidRequest, err)
 	}
@@ -156,7 +163,7 @@ func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks 
 	return AggregateStreamChunks(ctx, chunks)
 }
 
-type openrouterError struct {
+type openRouterError struct {
 	Error struct {
 		Message  string `json:"message"`
 		Code     int    `json:"code"`
@@ -166,7 +173,7 @@ type openrouterError struct {
 	} `json:"error"`
 }
 
-func (e openrouterError) ToLLMError() llm.ErrorDetail {
+func (e openRouterError) ToLLMError() llm.ErrorDetail {
 	message := cast.ToString(e.Error.Metadata.Raw)
 	if message == "" {
 		message = e.Error.Message
@@ -195,7 +202,7 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 	}
 
 	// Try to parse as OpenRouter error format first
-	var openaiError openrouterError
+	var openaiError openRouterError
 
 	err := json.Unmarshal(rawErr.Body, &openaiError)
 	if err == nil {

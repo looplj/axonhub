@@ -83,28 +83,36 @@ type Thinking struct {
 // TransformRequest transforms ChatCompletionRequest to Request.
 func (t *OutboundTransformer) TransformRequest(
 	ctx context.Context,
-	chatReq *llm.Request,
+	llmReq *llm.Request,
 ) (*httpclient.Request, error) {
-	if chatReq == nil {
+	if llmReq == nil {
 		return nil, fmt.Errorf("chat completion request is nil")
 	}
 
+	//nolint:exhaustive // Checked.
+	switch llmReq.RequestType {
+	case llm.RequestTypeChat, "":
+		// continue
+	default:
+		return nil, fmt.Errorf("%w: %s is not supported", transformer.ErrInvalidRequest, llmReq.RequestType)
+	}
+
 	// Validate required fields
-	if chatReq.Model == "" {
+	if llmReq.Model == "" {
 		return nil, fmt.Errorf("model is required")
 	}
 
-	if len(chatReq.Messages) == 0 {
+	if len(llmReq.Messages) == 0 {
 		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
 	}
 
 	// If this is an image generation request, use the Doubao Image Generation API
-	if chatReq.IsImageGenerationRequest() {
-		return t.buildImageGenerationAPIRequest(chatReq)
+	if llmReq.IsImageGenerationRequest() {
+		return t.buildImageGenerationAPIRequest(llmReq)
 	}
 
 	// Convert llm.Request to openai.Request first
-	oaiReq := openai.RequestFromLLM(chatReq)
+	oaiReq := openai.RequestFromLLM(llmReq)
 
 	// Create Doubao-specific request by adding request_id/user_id
 	doubaoReq := Request{
@@ -113,9 +121,9 @@ func (t *OutboundTransformer) TransformRequest(
 		RequestID: "",
 	}
 
-	if chatReq.Metadata != nil {
-		doubaoReq.UserID = chatReq.Metadata["user_id"]
-		doubaoReq.RequestID = chatReq.Metadata["request_id"]
+	if llmReq.Metadata != nil {
+		doubaoReq.UserID = llmReq.Metadata["user_id"]
+		doubaoReq.RequestID = llmReq.Metadata["request_id"]
 	}
 
 	// Generate request ID if not provided
@@ -156,21 +164,21 @@ func (t *OutboundTransformer) TransformRequest(
 
 // buildImageGenerationAPIRequest builds the HTTP request to call the Doubao Image Generation API.
 // Doubao uses only /images/generations API for both generation and editing.
-func (t *OutboundTransformer) buildImageGenerationAPIRequest(chatReq *llm.Request) (*httpclient.Request, error) {
-	chatReq.Stream = lo.ToPtr(false)
+func (t *OutboundTransformer) buildImageGenerationAPIRequest(llmReq *llm.Request) (*httpclient.Request, error) {
+	llmReq.Stream = lo.ToPtr(false)
 
 	// Extract prompt from messages
-	prompt, err := extractPromptFromMessages(chatReq.Messages)
+	prompt, err := extractPromptFromMessages(llmReq.Messages)
 	if err != nil {
 		return nil, err
 	}
 
 	// Check if there are images in the messages (for editing)
-	hasImages := hasImagesInMessages(chatReq.Messages)
+	hasImages := hasImagesInMessages(llmReq.Messages)
 
 	// Build request body - Doubao uses /images/generations for both generation and editing
 	reqBody := map[string]any{
-		"model":           chatReq.Model,
+		"model":           llmReq.Model,
 		"prompt":          prompt,
 		"response_format": "b64_json",
 		"stream":          false,
@@ -178,7 +186,7 @@ func (t *OutboundTransformer) buildImageGenerationAPIRequest(chatReq *llm.Reques
 
 	// Add images if present (for editing)
 	if hasImages {
-		images, err := extractImages(chatReq)
+		images, err := extractImages(llmReq)
 		if err != nil {
 			return nil, err
 		}
@@ -193,7 +201,7 @@ func (t *OutboundTransformer) buildImageGenerationAPIRequest(chatReq *llm.Reques
 	}
 
 	// Extract image generation parameters from tools
-	for _, tool := range chatReq.Tools {
+	for _, tool := range llmReq.Tools {
 		if tool.Type == "image_generation" && tool.ImageGeneration != nil {
 			// Map OpenAI parameters to Doubao parameters
 			if tool.ImageGeneration.Size != "" {
@@ -218,8 +226,8 @@ func (t *OutboundTransformer) buildImageGenerationAPIRequest(chatReq *llm.Reques
 	}
 
 	// Add user if specified
-	if chatReq.User != nil {
-		reqBody["user"] = *chatReq.User
+	if llmReq.User != nil {
+		reqBody["user"] = *llmReq.User
 	}
 
 	var (
@@ -259,7 +267,7 @@ func (t *OutboundTransformer) buildImageGenerationAPIRequest(chatReq *llm.Reques
 	}
 
 	request.TransformerMetadata["outbound_format_type"] = llm.APIFormatOpenAIImageGeneration.String()
-	request.TransformerMetadata["model"] = chatReq.Model
+	request.TransformerMetadata["model"] = llmReq.Model
 
 	return request, nil
 }
