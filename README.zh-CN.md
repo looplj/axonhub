@@ -7,7 +7,6 @@
 <div align="center">
 
 [![测试状态](https://github.com/looplj/axonhub/actions/workflows/test.yml/badge.svg)](https://github.com/looplj/axonhub/actions/workflows/test.yml)
-[![测试覆盖率](https://github.com/looplj/axonhub/wiki/coverage.svg)](https://raw.githack.com/wiki/looplj/axonhub/coverage.html)
 [![Lint 状态](https://github.com/looplj/axonhub/actions/workflows/lint.yml/badge.svg)](https://github.com/looplj/axonhub/actions/workflows/lint.yml)
 [![Go 版本](https://img.shields.io/github/go-mod/go-version/looplj/axonhub?logo=go&logoColor=white)](https://golang.org/)
 [![许可证: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
