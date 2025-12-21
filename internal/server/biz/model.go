@@ -3,7 +3,6 @@ package biz
 import (
 	"context"
 	"fmt"
-	"regexp"
 
 	"github.com/samber/lo"
 	"go.uber.org/fx"
@@ -12,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xregexp"
 )
 
 type ModelServiceParams struct {
@@ -259,7 +259,7 @@ func (svc *ModelService) matchAssociation(assoc *objects.ModelAssociation, chann
 				return c.ID == assoc.ChannelRegex.ChannelID
 			})
 			if found {
-				modelIds := matchModelsWithPattern(ch.SupportedModels, assoc.ChannelRegex.Pattern)
+				modelIds := xregexp.FilterByPattern(ch.SupportedModels, assoc.ChannelRegex.Pattern)
 				if len(modelIds) > 0 {
 					connections = append(connections, &ModelChannelConnection{
 						Channel:  ch,
@@ -271,7 +271,7 @@ func (svc *ModelService) matchAssociation(assoc *objects.ModelAssociation, chann
 	case "regex":
 		if assoc.Regex != nil {
 			for _, ch := range channels {
-				modelIds := matchModelsWithPattern(ch.SupportedModels, assoc.Regex.Pattern)
+				modelIds := xregexp.FilterByPattern(ch.SupportedModels, assoc.Regex.Pattern)
 				if len(modelIds) > 0 {
 					connections = append(connections, &ModelChannelConnection{
 						Channel:  ch,
@@ -283,26 +283,4 @@ func (svc *ModelService) matchAssociation(assoc *objects.ModelAssociation, chann
 	}
 
 	return connections
-}
-
-// matchModelsWithPattern matches model IDs against a regex pattern.
-func matchModelsWithPattern(models []string, pattern string) []string {
-	if pattern == "" {
-		return []string{}
-	}
-
-	re, err := regexp.Compile(pattern)
-	if err != nil {
-		return []string{}
-	}
-
-	matched := make([]string, 0)
-
-	for _, modelID := range models {
-		if re.MatchString(modelID) {
-			matched = append(matched, modelID)
-		}
-	}
-
-	return matched
 }

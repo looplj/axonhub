@@ -2,35 +2,21 @@ package orchestrator
 
 import (
 	"context"
-	"regexp"
-	"strings"
-	"sync"
 
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xregexp"
 )
 
-// patternCache holds compiled regex patterns and exact match flags.
-type patternCache struct {
-	regex      *regexp.Regexp
-	exactMatch bool
-	compileErr bool
-}
-
 // ModelMapper handles model mapping based on API key profiles.
-type ModelMapper struct {
-	mu    sync.RWMutex
-	cache map[string]*patternCache
-}
+type ModelMapper struct{}
 
 // NewModelMapper creates a new ModelMapper instance.
 func NewModelMapper() *ModelMapper {
-	return &ModelMapper{
-		cache: make(map[string]*patternCache),
-	}
+	return &ModelMapper{}
 }
 
 // MapModel applies model mapping from API key profiles if an active profile exists
@@ -93,69 +79,7 @@ func (m *ModelMapper) applyModelMapping(mappings []objects.ModelMapping, model s
 // matchesMapping checks if a model matches a mapping pattern using cached regex
 // Supports exact match and regex patterns (including wildcard conversion).
 func (m *ModelMapper) matchesMapping(pattern, model string) bool {
-	cached := m.getOrCreatePattern(pattern)
-
-	// If regex compilation failed, fall back to exact match
-	if cached.compileErr {
-		return cached.exactMatch && pattern == model
-	}
-
-	// Use exact match for simple patterns
-	if cached.exactMatch {
-		return pattern == model
-	}
-
-	// Use compiled regex for pattern matching
-	return cached.regex.MatchString(model)
-}
-
-// getOrCreatePattern retrieves or creates a cached pattern for the given input.
-func (m *ModelMapper) getOrCreatePattern(pattern string) *patternCache {
-	m.mu.RLock()
-
-	if cached, exists := m.cache[pattern]; exists {
-		m.mu.RUnlock()
-		return cached
-	}
-
-	m.mu.RUnlock()
-
-	// Create new pattern cache entry
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	// Double-check after acquiring write lock
-	if cached, exists := m.cache[pattern]; exists {
-		return cached
-	}
-
-	cached := &patternCache{}
-
-	// Check if it's a simple exact match (no special regex chars)
-	if !containsRegexChars(pattern) {
-		cached.exactMatch = true
-		m.cache[pattern] = cached
-
-		return cached
-	}
-
-	compiled, err := regexp.Compile("^" + pattern + "$")
-	if err != nil {
-		// Compilation failed, mark as compile error and use exact match fallback
-		cached.compileErr = true
-		cached.exactMatch = true
-	} else {
-		cached.regex = compiled
-	}
-
-	m.cache[pattern] = cached
-
-	return cached
-}
-
-// containsRegexChars checks if pattern contains regex special characters.
-func containsRegexChars(pattern string) bool {
-	return strings.ContainsAny(pattern, "*?+[]{}()^$.|\\")
+	return xregexp.MatchString(pattern, model)
 }
 
 // GetActiveProfile returns the active profile for an API key, if any.
@@ -177,20 +101,4 @@ func GetActiveProfile(apiKey *ent.APIKey) *objects.APIKeyProfile {
 func HasActiveProfile(apiKey *ent.APIKey) bool {
 	profile := GetActiveProfile(apiKey)
 	return profile != nil && len(profile.ModelMappings) > 0
-}
-
-// ClearCache clears the regex pattern cache (useful for testing or memory management).
-func (m *ModelMapper) ClearCache() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	m.cache = make(map[string]*patternCache)
-}
-
-// CacheSize returns the current number of cached patterns.
-func (m *ModelMapper) CacheSize() int {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	return len(m.cache)
 }

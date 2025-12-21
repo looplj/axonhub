@@ -126,9 +126,6 @@ type ModelChannelConnection {
   modelIds: [String!]!
 }
 
-extend type Model {
-  connectedChannelModels: [ModelChannelConnection!]!
-}
 
 extend type Query {
   queryModelChannelConnections(associations: [ModelAssociationInput!]!): [ModelChannelConnection!]!

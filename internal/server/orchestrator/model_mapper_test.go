@@ -199,13 +199,13 @@ func TestModelMapper_MatchesMapping(t *testing.T) {
 			expected: true,
 		},
 		{
-			name:     "invalid regex fallback to exact match",
+			name:     "invalid regex returns false",
 			pattern:  "[invalid",
 			str:      "[invalid",
-			expected: true,
+			expected: false,
 		},
 		{
-			name:     "invalid regex no match",
+			name:     "invalid regex returns false for any string",
 			pattern:  "[invalid",
 			str:      "other",
 			expected: false,
@@ -218,33 +218,6 @@ func TestModelMapper_MatchesMapping(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
-}
-
-func TestModelMapper_Cache(t *testing.T) {
-	mapper := NewModelMapper()
-
-	// Test cache functionality
-	assert.Equal(t, 0, mapper.CacheSize())
-
-	// Test pattern matching to populate cache
-	mapper.matchesMapping("gpt-*", "gpt-4")
-	assert.Equal(t, 1, mapper.CacheSize())
-
-	// Test same pattern uses cache
-	mapper.matchesMapping("gpt-*", "gpt-3.5")
-	assert.Equal(t, 1, mapper.CacheSize())
-
-	// Test different pattern adds to cache
-	mapper.matchesMapping("claude-*", "claude-3")
-	assert.Equal(t, 2, mapper.CacheSize())
-
-	// Test exact match pattern
-	mapper.matchesMapping("exact-model", "exact-model")
-	assert.Equal(t, 3, mapper.CacheSize())
-
-	// Test cache clear
-	mapper.ClearCache()
-	assert.Equal(t, 0, mapper.CacheSize())
 }
 
 func TestGetActiveProfile(t *testing.T) {
