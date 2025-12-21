@@ -74,26 +74,34 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 	}
 }
 
-func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm.Request) (*httpclient.Request, error) {
-	if chatReq == nil {
+func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
+	if llmReq == nil {
 		return nil, fmt.Errorf("chat request is nil")
+	}
+
+	//nolint:exhaustive // Checked.
+	switch llmReq.RequestType {
+	case llm.RequestTypeChat, "":
+		// continue
+	default:
+		return nil, fmt.Errorf("%w: %s is not supported", transformer.ErrInvalidRequest, llmReq.RequestType)
 	}
 
 	var tools []Tool
 
 	// Initialize TransformerMetadata if nil
-	if chatReq.TransformerMetadata == nil {
-		chatReq.TransformerMetadata = map[string]any{}
+	if llmReq.TransformerMetadata == nil {
+		llmReq.TransformerMetadata = map[string]any{}
 	}
 
 	// Convert tools to Responses API format
-	for _, item := range chatReq.Tools {
+	for _, item := range llmReq.Tools {
 		switch item.Type {
 		case llm.ToolTypeImageGeneration:
 			tool := convertImageGenerationToTool(item)
 			tools = append(tools, tool)
 			// Store image output format in TransformerMetadata
-			chatReq.TransformerMetadata["image_output_format"] = tool.OutputFormat
+			llmReq.TransformerMetadata["image_output_format"] = tool.OutputFormat
 		case "function":
 			tool := convertFunctionToTool(item)
 			tools = append(tools, tool)
@@ -104,29 +112,29 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm
 	}
 
 	payload := Request{
-		Model:                chatReq.Model,
-		Input:                convertInputFromMessages(chatReq.Messages),
-		Instructions:         convertInstructionsFromMessages(chatReq.Messages),
+		Model:                llmReq.Model,
+		Input:                convertInputFromMessages(llmReq.Messages),
+		Instructions:         convertInstructionsFromMessages(llmReq.Messages),
 		Tools:                tools,
-		ParallelToolCalls:    chatReq.ParallelToolCalls,
-		Stream:               chatReq.Stream,
-		Text:                 convertToTextOptions(chatReq),
-		Store:                chatReq.Store,
-		ServiceTier:          chatReq.ServiceTier,
-		SafetyIdentifier:     chatReq.SafetyIdentifier,
-		User:                 chatReq.User,
-		Metadata:             chatReq.Metadata,
-		MaxOutputTokens:      chatReq.MaxCompletionTokens,
-		TopLogprobs:          chatReq.TopLogprobs,
-		TopP:                 chatReq.TopP,
-		ToolChoice:           convertToolChoice(chatReq.ToolChoice),
-		StreamOptions:        convertStreamOptions(chatReq.StreamOptions, chatReq.TransformerMetadata),
-		Reasoning:            convertReasoning(chatReq),
-		Include:              xmap.GetStringSlice(chatReq.TransformerMetadata, "include"),
-		MaxToolCalls:         xmap.GetInt64Ptr(chatReq.TransformerMetadata, "max_tool_calls"),
-		PromptCacheKey:       xmap.GetStringPtr(chatReq.TransformerMetadata, "prompt_cache_key"),
-		PromptCacheRetention: xmap.GetStringPtr(chatReq.TransformerMetadata, "prompt_cache_retention"),
-		Truncation:           xmap.GetStringPtr(chatReq.TransformerMetadata, "truncation"),
+		ParallelToolCalls:    llmReq.ParallelToolCalls,
+		Stream:               llmReq.Stream,
+		Text:                 convertToTextOptions(llmReq),
+		Store:                llmReq.Store,
+		ServiceTier:          llmReq.ServiceTier,
+		SafetyIdentifier:     llmReq.SafetyIdentifier,
+		User:                 llmReq.User,
+		Metadata:             llmReq.Metadata,
+		MaxOutputTokens:      llmReq.MaxCompletionTokens,
+		TopLogprobs:          llmReq.TopLogprobs,
+		TopP:                 llmReq.TopP,
+		ToolChoice:           convertToolChoice(llmReq.ToolChoice),
+		StreamOptions:        convertStreamOptions(llmReq.StreamOptions, llmReq.TransformerMetadata),
+		Reasoning:            convertReasoning(llmReq),
+		Include:              xmap.GetStringSlice(llmReq.TransformerMetadata, "include"),
+		MaxToolCalls:         xmap.GetInt64Ptr(llmReq.TransformerMetadata, "max_tool_calls"),
+		PromptCacheKey:       xmap.GetStringPtr(llmReq.TransformerMetadata, "prompt_cache_key"),
+		PromptCacheRetention: xmap.GetStringPtr(llmReq.TransformerMetadata, "prompt_cache_retention"),
+		Truncation:           xmap.GetStringPtr(llmReq.TransformerMetadata, "truncation"),
 	}
 
 	body, err := json.Marshal(payload)
@@ -147,7 +155,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm
 			Type:   "bearer",
 			APIKey: t.APIKey,
 		},
-		TransformerMetadata: chatReq.TransformerMetadata,
+		TransformerMetadata: llmReq.TransformerMetadata,
 	}, nil
 }
 

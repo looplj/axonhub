@@ -23,6 +23,7 @@ var (
 
 // Request is the unified llm request model for AxonHub, to keep compatibility with major app and framework.
 // It choose to base on the OpenAI chat completion request, but add some extra fields to support more features.
+// All the fields except `Embedding`, `Rerank`, and other helper fields is for chat type request.
 type Request struct {
 	// Messages is a list of messages to send to the llm model.
 	Messages []Message `json:"messages" validator:"required,min=1"`
@@ -202,12 +203,24 @@ type Request struct {
 	// It will not be sent to the OpenAI server.
 	ExtraBody json.RawMessage `json:"extra_body,omitempty"`
 
+	// Embedding is the embedding request, will be set if the request is embedding request.
+	Embedding *EmbeddingRequest `json:"embedding,omitempty"`
+
+	// Rerank is the rerank request, will be set if the request is rerank request.
+	Rerank *RerankRequest `json:"rerank,omitempty"`
+
 	// RawRequest is the raw request from the client.
 	RawRequest *httpclient.Request `json:"raw_request,omitempty"`
 
-	// RawAPIFormat is the original format of the request.
+	// RequestType is the original inbound request type from the client.
+	// e.g. the request from the chat/completions endpoint is in the chat type.
+	// if it is embedding request, it will be embedding.
+	// Treat as chat request if it is empty.
+	RequestType RequestType `json:"request_type,omitempty"`
+
+	// APIFormat is the original inbound API format of the request.
 	// e.g. the request from the chat/completions endpoint is in the openai/chat_completion format.
-	RawAPIFormat APIFormat `json:"raw_api_format,omitempty"`
+	APIFormat APIFormat `json:"api_format,omitempty"`
 
 	// TransformerMetadata stores transformer-specific metadata for preserving format during transformations.
 	// This is a help field and will not be sent to the llm service.
@@ -408,6 +421,7 @@ type ResponseFormat struct {
 // To reduce the work of converting the response, we use the OpenAI response format.
 // And other llm provider should convert the response to this format.
 // NOTE: the OpenAI stream and non-stream response reuse same struct.
+// All the fields except `Embedding`, `Rerank`, and other helper fields is for chat type request.
 type Response struct {
 	ID string `json:"id"`
 
@@ -443,9 +457,21 @@ type Response struct {
 	// Error is the error information, will present if request to llm service failed with status >= 400.
 	Error *ResponseError `json:"error,omitempty"`
 
-	// ProviderData stores provider-specific response payloads that do not map to the chat completion schema.
-	// This field is ignored when serializing to JSON and is only used internally by transformers (e.g., embeddings).
-	ProviderData any `json:"provider_data,omitempty"`
+	// Embedding is the embedding response, will present if the request is embedding request.
+	Embedding *EmbeddingResponse `json:"embedding,omitempty"`
+
+	// Rerank is the rerank response, will present if the request is rerank request.
+	Rerank *RerankResponse `json:"rerank,omitempty"`
+
+	// RequestType is the outbound request type from the llm service.
+	// e.g. the request from the chat/completions endpoint is in the chat type.
+	// if it is embedding request, it will be embedding.
+	// Treat as chat request if it is empty.
+	RequestType RequestType `json:"request_type,omitempty"`
+
+	// APIFormat is the outbound API format of the response.
+	// e.g. the response from the chat/completions endpoint is in the openai/chat_completion format.
+	APIFormat APIFormat `json:"api_format,omitempty"`
 
 	// TransformerMetadata stores metadata from transformers that process the response.
 	// This field is ignored when serializing to JSON and is only used internally by transformers.

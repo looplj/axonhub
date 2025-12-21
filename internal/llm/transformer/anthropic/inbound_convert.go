@@ -22,7 +22,8 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 		TopP:                anthropicReq.TopP,
 		Stream:              anthropicReq.Stream,
 		Metadata:            map[string]string{},
-		RawAPIFormat:        llm.APIFormatAnthropicMessage,
+		RequestType:         llm.RequestTypeChat,
+		APIFormat:           llm.APIFormatAnthropicMessage,
 		TransformerMetadata: map[string]any{},
 	}
 	if anthropicReq.Metadata != nil {

@@ -14,7 +14,6 @@ import (
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/pipeline"
 	"github.com/looplj/axonhub/internal/llm/transformer"
-	"github.com/looplj/axonhub/internal/llm/transformer/openai"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
@@ -335,26 +334,6 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 
 	p.state.CurrentChannel = p.state.Channels[p.state.ChannelIndex]
 	p.wrapped = p.state.CurrentChannel.Outbound
-
-	// 对于 Embedding 请求，需要使用专门的 EmbeddingOutboundTransformer
-	// 因为 Channel 的默认 Outbound 会将请求发送到 /chat/completions 端点
-	if llmRequest.RawAPIFormat == llm.APIFormatOpenAIEmbedding {
-		// 检查凭证是否存在，防止 nil panic
-		if p.state.CurrentChannel.Credentials == nil {
-			return nil, fmt.Errorf("channel credentials are nil for embedding request")
-		}
-
-		embeddingOutbound, err := openai.NewEmbeddingOutboundTransformerWithConfig(&openai.Config{
-			Type:    openai.PlatformOpenAI,
-			BaseURL: p.state.CurrentChannel.BaseURL,
-			APIKey:  p.state.CurrentChannel.Credentials.APIKey,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to create embedding outbound transformer: %w", err)
-		}
-
-		p.wrapped = embeddingOutbound
-	}
 
 	// Restore original model if it was mapped.
 	if p.state.OriginalModel != "" {

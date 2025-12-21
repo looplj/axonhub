@@ -373,7 +373,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, result)
-				require.Equal(t, llm.APIFormatOpenAIResponse, result.RawAPIFormat)
+				require.Equal(t, llm.APIFormatOpenAIResponse, result.APIFormat)
 
 				if tt.validate != nil {
 					tt.validate(t, result)

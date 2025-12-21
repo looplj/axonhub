@@ -13,10 +13,19 @@ type RerankRequest struct {
 
 	// TopN is the number of most relevant documents to return. Optional.
 	TopN *int `json:"top_n,omitempty"`
+
+	// ReturnDocuments is a flag to indicate whether to return the original documents in the response. Optional.
+	ReturnDocuments *bool `json:"return_documents,omitempty"`
 }
 
 // RerankResponse represents the response from a rerank request.
 type RerankResponse struct {
+	// Model is the model ID used for reranking.
+	Model string `json:"model"`
+
+	// Object is the object type, typically "list".
+	Object string `json:"object"`
+
 	// Results contains the reranked documents with relevance scores.
 	Results []RerankResult `json:"results"`
 

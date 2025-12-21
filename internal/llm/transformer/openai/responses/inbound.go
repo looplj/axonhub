@@ -220,7 +220,7 @@ func convertToLLMRequest(req *Request) (*llm.Request, error) {
 		Temperature:         req.Temperature,
 		Stream:              req.Stream,
 		Metadata:            maps.Clone(req.Metadata),
-		RawAPIFormat:        llm.APIFormatOpenAIResponse,
+		APIFormat:           llm.APIFormatOpenAIResponse,
 		MaxCompletionTokens: req.MaxOutputTokens,
 		User:                req.User,
 		Store:               req.Store,

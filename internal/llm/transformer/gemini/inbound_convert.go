@@ -18,7 +18,8 @@ import (
 // convertGeminiToLLMRequest converts Gemini GenerateContentRequest to unified Request.
 func convertGeminiToLLMRequest(geminiReq *GenerateContentRequest) (*llm.Request, error) {
 	chatReq := &llm.Request{
-		RawAPIFormat: llm.APIFormatGeminiContents,
+		RequestType: llm.RequestTypeChat,
+		APIFormat:   llm.APIFormatGeminiContents,
 	}
 
 	// Convert generation config

@@ -258,23 +258,31 @@ func fillThinkingConfigFromReasoningEffort(tc *ThinkingConfig, reasoningEffort s
 // TransformRequest transforms ChatCompletionRequest to Request with Gemini-specific handling.
 func (t *OutboundTransformer) TransformRequest(
 	ctx context.Context,
-	chatReq *llm.Request,
+	llmReq *llm.Request,
 ) (*httpclient.Request, error) {
-	if chatReq == nil {
+	if llmReq == nil {
 		return nil, fmt.Errorf("chat completion request is nil")
 	}
 
+	//nolint:exhaustive // Checked.
+	switch llmReq.RequestType {
+	case llm.RequestTypeChat, "":
+		// continue
+	default:
+		return nil, fmt.Errorf("%w: %s is not supported", transformer.ErrInvalidRequest, llmReq.RequestType)
+	}
+
 	// Validate required fields
-	if chatReq.Model == "" {
+	if llmReq.Model == "" {
 		return nil, fmt.Errorf("model is required")
 	}
 
-	if len(chatReq.Messages) == 0 {
+	if len(llmReq.Messages) == 0 {
 		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
 	}
 
 	// Make a copy to avoid modifying the original request
-	req := *chatReq
+	req := *llmReq
 
 	// Fallback: Filter out Google native tools (not supported by OpenAI-compatible endpoint)
 	// This is a graceful degradation when no native Gemini channels are available.

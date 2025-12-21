@@ -9,7 +9,6 @@ import (
 
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer"
-	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
 )
@@ -50,7 +49,7 @@ func (t *EmbeddingInboundTransformer) TransformRequest(
 		return nil, fmt.Errorf("%w: unsupported content type: %s", transformer.ErrInvalidRequest, contentType)
 	}
 
-	var embReq objects.EmbeddingRequest
+	var embReq EmbeddingRequest
 
 	err := json.Unmarshal(httpReq.Body, &embReq)
 	if err != nil {
@@ -67,9 +66,12 @@ func (t *EmbeddingInboundTransformer) TransformRequest(
 	}
 
 	// 验证 input 不为空字符串或空数组
-	if err := validateEmbeddingInput(embReq.Input); err != nil {
+	if err := validateEmbeddingInput(*embReq.Input); err != nil {
 		return nil, err
 	}
+
+	// 转换 input 为 llm.EmbeddingInput
+	embInput := *embReq.Input
 
 	// 构建统一请求
 	// Embedding 不使用 chat messages，所以将 embedding 参数存储在 ExtraBody 中
@@ -79,12 +81,20 @@ func (t *EmbeddingInboundTransformer) TransformRequest(
 	}
 
 	llmReq := &llm.Request{
-		Model:        embReq.Model,
-		Messages:     []llm.Message{}, // Embedding 不使用 messages
-		RawRequest:   httpReq,
-		RawAPIFormat: llm.APIFormatOpenAIEmbedding,
-		ExtraBody:    extraBody,
-		Stream:       nil, // Embedding 不支持流式
+		Model:       embReq.Model,
+		Messages:    []llm.Message{}, // Embedding 不使用 messages
+		RawRequest:  httpReq,
+		RequestType: llm.RequestTypeEmbedding,
+		APIFormat:   llm.APIFormatOpenAIEmbedding,
+		ExtraBody:   extraBody,
+		Stream:      nil, // Embedding 不支持流式
+		Embedding: &llm.EmbeddingRequest{
+			Input:          embInput,
+			Model:          embReq.Model,
+			EncodingFormat: embReq.EncodingFormat,
+			Dimensions:     embReq.Dimensions,
+			User:           embReq.User,
+		},
 	}
 
 	if embReq.User != "" {
@@ -94,47 +104,52 @@ func (t *EmbeddingInboundTransformer) TransformRequest(
 	return llmReq, nil
 }
 
-// validateEmbeddingInput 验证 embedding input 不为空。
-// OpenAI 规范支持以下输入类型：
-// - string: 单个字符串
-// - []string: 字符串数组（JSON 解析后为 []any）
-// - []int: token IDs 数组（JSON 解析后为 []any，元素为 float64）
-// - [][]int: 多个 token IDs 数组（JSON 解析后为 []any，元素为 []any）
-//
-// 注意：由于 Input 字段类型为 any，json.Unmarshal 会将所有数组解析为 []any，
-// 因此只需处理 string 和 []any 两种情况。
-func validateEmbeddingInput(input any) error {
-	switch v := input.(type) {
-	case string:
-		if strings.TrimSpace(v) == "" {
-			return fmt.Errorf("%w: input cannot be empty string", transformer.ErrInvalidRequest)
-		}
-	case []any:
-		if len(v) == 0 {
+func validateEmbeddingInput(input llm.EmbeddingInput) error {
+	// Determine input type based on which field is set
+	// JSON unmarshaling only sets one field based on the input type
+
+	// String array input
+	if input.StringArray != nil {
+		if len(input.StringArray) == 0 {
 			return fmt.Errorf("%w: input cannot be empty array", transformer.ErrInvalidRequest)
 		}
-		// 检查数组中的每个元素
-		for i, item := range v {
-			switch elem := item.(type) {
-			case string:
-				// 字符串数组：检查每个字符串不为空
-				if strings.TrimSpace(elem) == "" {
-					return fmt.Errorf("%w: input[%d] cannot be empty string", transformer.ErrInvalidRequest, i)
-				}
-			case float64:
-				// token ID 数组：数字类型，不需要额外校验
-				// JSON 解析后整数会变成 float64
-				continue
-			case []any:
-				// 嵌套数组：[][]int 的情况
-				if len(elem) == 0 {
-					return fmt.Errorf("%w: input[%d] cannot be empty array", transformer.ErrInvalidRequest, i)
-				}
-			default:
-				// 其他类型，透传给上游处理
-				continue
+
+		for i, str := range input.StringArray {
+			if strings.TrimSpace(str) == "" {
+				return fmt.Errorf("%w: input[%d] cannot be empty string", transformer.ErrInvalidRequest, i)
 			}
 		}
+
+		return nil
+	}
+
+	// Integer array input
+	if input.IntArray != nil {
+		if len(input.IntArray) == 0 {
+			return fmt.Errorf("%w: input cannot be empty array", transformer.ErrInvalidRequest)
+		}
+
+		return nil
+	}
+
+	// Nested integer array input
+	if input.IntArrayArray != nil {
+		if len(input.IntArrayArray) == 0 {
+			return fmt.Errorf("%w: input cannot be empty array", transformer.ErrInvalidRequest)
+		}
+
+		for i, innerArray := range input.IntArrayArray {
+			if len(innerArray) == 0 {
+				return fmt.Errorf("%w: input[%d] cannot be empty array", transformer.ErrInvalidRequest, i)
+			}
+		}
+
+		return nil
+	}
+
+	// String input (default case)
+	if strings.TrimSpace(input.String) == "" {
+		return fmt.Errorf("%w: input cannot be empty string", transformer.ErrInvalidRequest)
 	}
 
 	return nil
@@ -149,23 +164,32 @@ func (t *EmbeddingInboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("embedding response is nil")
 	}
 
-	// 从 ProviderData 中提取 embedding 响应
+	// 从 llm.Embedding 中提取 embedding 响应
 	var body []byte
 
-	if llmResp.ProviderData != nil {
-		var embResp objects.EmbeddingResponse
+	if llmResp.Embedding != nil {
+		// 将 llm.EmbeddingResponse 转换为 OpenAI EmbeddingResponse 格式
+		embResp := EmbeddingResponse{
+			Object: llmResp.Embedding.Object,
+			Data:   make([]EmbeddingData, len(llmResp.Embedding.Data)),
+			Model:  llmResp.Embedding.Model,
+		}
 
-		switch v := llmResp.ProviderData.(type) {
-		case objects.EmbeddingResponse:
-			embResp = v
-		case *objects.EmbeddingResponse:
-			if v == nil {
-				return nil, fmt.Errorf("embedding response provider data is nil")
+		// 转换 EmbeddingData
+		for i, data := range llmResp.Embedding.Data {
+			embResp.Data[i] = EmbeddingData{
+				Object:    data.Object,
+				Embedding: data.Embedding,
+				Index:     data.Index,
 			}
+		}
 
-			embResp = *v
-		default:
-			return nil, fmt.Errorf("invalid provider data for embedding response")
+		// 转换 Usage
+		if llmResp.Embedding.Usage != nil {
+			embResp.Usage = EmbeddingUsage{
+				PromptTokens: llmResp.Embedding.Usage.PromptTokens,
+				TotalTokens:  llmResp.Embedding.Usage.TotalTokens,
+			}
 		}
 
 		var err error
@@ -175,7 +199,7 @@ func (t *EmbeddingInboundTransformer) TransformResponse(
 			return nil, fmt.Errorf("failed to marshal embedding response: %w", err)
 		}
 	} else {
-		return nil, fmt.Errorf("embedding response missing provider data")
+		return nil, fmt.Errorf("embedding response missing embedding data")
 	}
 
 	return &httpclient.Response{

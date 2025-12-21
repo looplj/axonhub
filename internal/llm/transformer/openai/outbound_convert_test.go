@@ -56,7 +56,7 @@ func TestRequestFromLLM(t *testing.T) {
 						Content:      llm.MessageContent{Content: lo.ToPtr("result")},
 					},
 				},
-				RawAPIFormat: llm.APIFormatOpenAIChatCompletion, // Helper field
+				APIFormat: llm.APIFormatOpenAIChatCompletion, // Helper field
 			},
 			validate: func(t *testing.T, req *Request) {
 				require.NotNil(t, req)
