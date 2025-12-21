@@ -5,6 +5,7 @@ package ent
 import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
+	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/role"
@@ -60,7 +61,6 @@ type CreateChannelInput struct {
 	Type             channel.Type
 	BaseURL          *string
 	Name             string
-	Status           *channel.Status
 	Credentials      *objects.ChannelCredentials
 	SupportedModels  []string
 	Tags             []string
@@ -77,9 +77,6 @@ func (i *CreateChannelInput) Mutate(m *ChannelMutation) {
 		m.SetBaseURL(*v)
 	}
 	m.SetName(i.Name)
-	if v := i.Status; v != nil {
-		m.SetStatus(*v)
-	}
 	if v := i.Credentials; v != nil {
 		m.SetCredentials(v)
 	}
@@ -337,6 +334,98 @@ func (c *DataStorageUpdate) SetInput(i UpdateDataStorageInput) *DataStorageUpdat
 
 // SetInput applies the change-set in the UpdateDataStorageInput on the DataStorageUpdateOne builder.
 func (c *DataStorageUpdateOne) SetInput(i UpdateDataStorageInput) *DataStorageUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// CreateModelInput represents a mutation input for creating models.
+type CreateModelInput struct {
+	Developer string
+	ModelID   string
+	Type      *model.Type
+	Name      string
+	Icon      string
+	Group     string
+	ModelCard *objects.ModelCard
+	Settings  *objects.ModelSettings
+	Remark    *string
+}
+
+// Mutate applies the CreateModelInput on the ModelMutation builder.
+func (i *CreateModelInput) Mutate(m *ModelMutation) {
+	m.SetDeveloper(i.Developer)
+	m.SetModelID(i.ModelID)
+	if v := i.Type; v != nil {
+		m.SetType(*v)
+	}
+	m.SetName(i.Name)
+	m.SetIcon(i.Icon)
+	m.SetGroup(i.Group)
+	if v := i.ModelCard; v != nil {
+		m.SetModelCard(v)
+	}
+	if v := i.Settings; v != nil {
+		m.SetSettings(v)
+	}
+	if v := i.Remark; v != nil {
+		m.SetRemark(*v)
+	}
+}
+
+// SetInput applies the change-set in the CreateModelInput on the ModelCreate builder.
+func (c *ModelCreate) SetInput(i CreateModelInput) *ModelCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateModelInput represents a mutation input for updating models.
+type UpdateModelInput struct {
+	Name        *string
+	Icon        *string
+	Group       *string
+	ModelCard   *objects.ModelCard
+	Settings    *objects.ModelSettings
+	Status      *model.Status
+	ClearRemark bool
+	Remark      *string
+}
+
+// Mutate applies the UpdateModelInput on the ModelMutation builder.
+func (i *UpdateModelInput) Mutate(m *ModelMutation) {
+	if v := i.Name; v != nil {
+		m.SetName(*v)
+	}
+	if v := i.Icon; v != nil {
+		m.SetIcon(*v)
+	}
+	if v := i.Group; v != nil {
+		m.SetGroup(*v)
+	}
+	if v := i.ModelCard; v != nil {
+		m.SetModelCard(v)
+	}
+	if v := i.Settings; v != nil {
+		m.SetSettings(v)
+	}
+	if v := i.Status; v != nil {
+		m.SetStatus(*v)
+	}
+	if i.ClearRemark {
+		m.ClearRemark()
+	}
+	if v := i.Remark; v != nil {
+		m.SetRemark(*v)
+	}
+}
+
+// SetInput applies the change-set in the UpdateModelInput on the ModelUpdate builder.
+func (c *ModelUpdate) SetInput(i UpdateModelInput) *ModelUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateModelInput on the ModelUpdateOne builder.
+func (c *ModelUpdateOne) SetInput(i UpdateModelInput) *ModelUpdateOne {
 	i.Mutate(c.Mutation())
 	return c
 }

@@ -1,0 +1,146 @@
+# ModelCard represents model capabilities and metadata
+type ModelCard {
+  reasoning: ModelCardReasoning!
+  toolCall: Boolean!
+  temperature: Boolean!
+  modalities: ModelCardModalities!
+  vision: Boolean
+  cost: ModelCardCost!
+  limit: ModelCardLimit!
+  knowledge: String
+  releaseDate: String
+  lastUpdated: String
+}
+
+type ModelCardReasoning {
+  supported: Boolean!
+  default: Boolean!
+}
+
+type ModelCardModalities {
+  input: [String!]!
+  output: [String!]!
+}
+
+type ModelCardCost {
+  input: Float!
+  output: Float!
+  cacheRead: Float!
+  cacheWrite: Float!
+}
+
+type ModelCardLimit {
+  context: Int!
+  output: Int!
+}
+
+# ModelSettings represents model Association configuration
+type ModelSettings {
+  associations: [ModelAssociation!]!
+}
+
+type ModelAssociation {
+  type: String!
+  channelModel: ChannelModelAssociation
+  channelRegex: ChannelRegexAssociation
+  regex: RegexAssociation
+}
+
+type ChannelModelAssociation {
+  channelId: Int!
+  modelId: String!
+}
+
+type ChannelRegexAssociation {
+  channelId: Int!
+  pattern: String!
+}
+
+type RegexAssociation {
+  pattern: String!
+}
+
+# Input types for mutations
+input ModelCardInput {
+  reasoning: ModelCardReasoningInput!
+  toolCall: Boolean!
+  temperature: Boolean!
+  modalities: ModelCardModalitiesInput!
+  vision: Boolean
+  cost: ModelCardCostInput!
+  limit: ModelCardLimitInput!
+  knowledge: String
+  releaseDate: String
+  lastUpdated: String
+}
+
+input ModelCardReasoningInput {
+  supported: Boolean!
+  default: Boolean!
+}
+
+input ModelCardModalitiesInput {
+  input: [String!]!
+  output: [String!]!
+}
+
+input ModelCardCostInput {
+  input: Float!
+  output: Float!
+  cacheRead: Float
+  cacheWrite: Float
+}
+
+input ModelCardLimitInput {
+  context: Int!
+  output: Int!
+}
+
+input ModelSettingsInput {
+  associations: [ModelAssociationInput!]!
+}
+
+input ModelAssociationInput {
+  type: String!
+  channelModel: ChannelModelAssociationInput
+  channelRegex: ChannelRegexAssociationInput
+  regex: RegexAssociationInput
+}
+
+input ChannelModelAssociationInput {
+  channelId: Int!
+  modelId: String!
+}
+
+input ChannelRegexAssociationInput {
+  channelId: Int!
+  pattern: String!
+}
+
+input RegexAssociationInput {
+  pattern: String!
+}
+
+type ModelChannelConnection {
+  channel: Channel!
+  modelIds: [String!]!
+}
+
+extend type Model {
+  connectedChannelModels: [ModelChannelConnection!]!
+}
+
+extend type Query {
+  queryModelChannelConnections(associations: [ModelAssociationInput!]!): [ModelChannelConnection!]!
+}
+
+extend type Mutation {
+  createModel(input: CreateModelInput!): Model!
+  updateModel(id: ID!, input: UpdateModelInput!): Model!
+  deleteModel(id: ID!): Boolean!
+  updateModelStatus(id: ID!, status: ModelStatus!): Boolean!
+  bulkArchiveModels(ids: [ID!]!): Boolean!
+  bulkDisableModels(ids: [ID!]!): Boolean!
+  bulkEnableModels(ids: [ID!]!): Boolean!
+  bulkDeleteModels(ids: [ID!]!): Boolean!
+}

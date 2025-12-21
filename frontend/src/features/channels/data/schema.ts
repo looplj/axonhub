@@ -341,6 +341,7 @@ export const channelOrderingItemSchema = z.object({
   baseURL: z.string(),
   orderingWeight: z.number(),
   tags: z.array(z.string()).optional().default([]).nullable(),
+  supportedModels: z.array(z.string()).optional().default([]).nullable(),
 })
 export type ChannelOrderingItem = z.infer<typeof channelOrderingItemSchema>
 

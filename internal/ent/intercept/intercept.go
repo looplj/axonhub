@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
+	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
@@ -216,6 +217,33 @@ func (f TraverseDataStorage) Traverse(ctx context.Context, q ent.Query) error {
 		return f(ctx, q)
 	}
 	return fmt.Errorf("unexpected query type %T. expect *ent.DataStorageQuery", q)
+}
+
+// The ModelFunc type is an adapter to allow the use of ordinary function as a Querier.
+type ModelFunc func(context.Context, *ent.ModelQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f ModelFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.ModelQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.ModelQuery", q)
+}
+
+// The TraverseModel type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseModel func(context.Context, *ent.ModelQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseModel) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseModel) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.ModelQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.ModelQuery", q)
 }
 
 // The ProjectFunc type is an adapter to allow the use of ordinary function as a Querier.
@@ -528,6 +556,8 @@ func NewQuery(q ent.Query) (Query, error) {
 		return &query[*ent.ChannelPerformanceQuery, predicate.ChannelPerformance, channelperformance.OrderOption]{typ: ent.TypeChannelPerformance, tq: q}, nil
 	case *ent.DataStorageQuery:
 		return &query[*ent.DataStorageQuery, predicate.DataStorage, datastorage.OrderOption]{typ: ent.TypeDataStorage, tq: q}, nil
+	case *ent.ModelQuery:
+		return &query[*ent.ModelQuery, predicate.Model, model.OrderOption]{typ: ent.TypeModel, tq: q}, nil
 	case *ent.ProjectQuery:
 		return &query[*ent.ProjectQuery, predicate.Project, project.OrderOption]{typ: ent.TypeProject, tq: q}, nil
 	case *ent.RequestQuery:

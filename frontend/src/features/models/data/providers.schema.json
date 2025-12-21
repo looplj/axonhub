@@ -1,0 +1,151 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "providers": {
+      "type": "object",
+      "patternProperties": {
+        ".*": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "api": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "doc": {
+              "type": "string"
+            },
+            "display_name": {
+              "type": "string"
+            },
+            "vision": {
+              "type": "boolean"
+            },
+            "models": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "family": {
+                    "type": "string"
+                  },
+                  "attachment": {
+                    "type": "boolean"
+                  },
+                  "reasoning": {
+                    "type": "object",
+                    "properties": {
+                      "supported": {
+                        "type": "boolean"
+                      },
+                      "default": {
+                        "type": "boolean"
+                      }
+                    }
+                  },
+                  "tool_call": {
+                    "type": "boolean"
+                  },
+                  "temperature": {
+                    "type": "boolean"
+                  },
+                  "knowledge": {
+                    "type": "string"
+                  },
+                  "release_date": {
+                    "type": "string"
+                  },
+                  "last_updated": {
+                    "type": "string"
+                  },
+                  "modalities": {
+                    "type": "object",
+                    "properties": {
+                      "input": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": ["text", "image", "audio", "video"]
+                        }
+                      },
+                      "output": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": ["text", "image", "audio", "video"]
+                        }
+                      }
+                    }
+                  },
+                  "open_weights": {
+                    "type": "boolean"
+                  },
+                  "cost": {
+                    "type": "object",
+                    "properties": {
+                      "input": {
+                        "type": "number"
+                      },
+                      "output": {
+                        "type": "number"
+                      },
+                      "cache_read": {
+                        "type": "number"
+                      },
+                      "cache_write": {
+                        "type": "number"
+                      }
+                    }
+                  },
+                  "limit": {
+                    "type": "object",
+                    "properties": {
+                      "context": {
+                        "type": "number"
+                      },
+                      "output": {
+                        "type": "number"
+                      }
+                    }
+                  },
+                  "display_name": {
+                    "type": "string"
+                  },
+                  "vision": {
+                    "type": "boolean"
+                  },
+                  "type": {
+                    "type": "string"
+                  },
+                  "metadata": {
+                    "type": "object"
+                  }
+                },
+                "additionalProperties": true
+              }
+            },
+            "metadata": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": true
+        }
+      }
+    },
+    "updated_at": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

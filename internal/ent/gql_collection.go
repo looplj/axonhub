@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
+	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -1369,6 +1370,155 @@ func newDataStoragePaginateArgs(rv map[string]any) *datastoragePaginateArgs {
 	}
 	if v, ok := rv[whereField].(*DataStorageWhereInput); ok {
 		args.opts = append(args.opts, WithDataStorageFilter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *ModelQuery) CollectFields(ctx context.Context, satisfies ...string) (*ModelQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *ModelQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(model.Columns))
+		selectedFields = []string{model.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+		case "createdAt":
+			if _, ok := fieldSeen[model.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, model.FieldCreatedAt)
+				fieldSeen[model.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[model.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, model.FieldUpdatedAt)
+				fieldSeen[model.FieldUpdatedAt] = struct{}{}
+			}
+		case "deletedAt":
+			if _, ok := fieldSeen[model.FieldDeletedAt]; !ok {
+				selectedFields = append(selectedFields, model.FieldDeletedAt)
+				fieldSeen[model.FieldDeletedAt] = struct{}{}
+			}
+		case "developer":
+			if _, ok := fieldSeen[model.FieldDeveloper]; !ok {
+				selectedFields = append(selectedFields, model.FieldDeveloper)
+				fieldSeen[model.FieldDeveloper] = struct{}{}
+			}
+		case "modelID":
+			if _, ok := fieldSeen[model.FieldModelID]; !ok {
+				selectedFields = append(selectedFields, model.FieldModelID)
+				fieldSeen[model.FieldModelID] = struct{}{}
+			}
+		case "type":
+			if _, ok := fieldSeen[model.FieldType]; !ok {
+				selectedFields = append(selectedFields, model.FieldType)
+				fieldSeen[model.FieldType] = struct{}{}
+			}
+		case "name":
+			if _, ok := fieldSeen[model.FieldName]; !ok {
+				selectedFields = append(selectedFields, model.FieldName)
+				fieldSeen[model.FieldName] = struct{}{}
+			}
+		case "icon":
+			if _, ok := fieldSeen[model.FieldIcon]; !ok {
+				selectedFields = append(selectedFields, model.FieldIcon)
+				fieldSeen[model.FieldIcon] = struct{}{}
+			}
+		case "group":
+			if _, ok := fieldSeen[model.FieldGroup]; !ok {
+				selectedFields = append(selectedFields, model.FieldGroup)
+				fieldSeen[model.FieldGroup] = struct{}{}
+			}
+		case "modelCard":
+			if _, ok := fieldSeen[model.FieldModelCard]; !ok {
+				selectedFields = append(selectedFields, model.FieldModelCard)
+				fieldSeen[model.FieldModelCard] = struct{}{}
+			}
+		case "settings":
+			if _, ok := fieldSeen[model.FieldSettings]; !ok {
+				selectedFields = append(selectedFields, model.FieldSettings)
+				fieldSeen[model.FieldSettings] = struct{}{}
+			}
+		case "status":
+			if _, ok := fieldSeen[model.FieldStatus]; !ok {
+				selectedFields = append(selectedFields, model.FieldStatus)
+				fieldSeen[model.FieldStatus] = struct{}{}
+			}
+		case "remark":
+			if _, ok := fieldSeen[model.FieldRemark]; !ok {
+				selectedFields = append(selectedFields, model.FieldRemark)
+				fieldSeen[model.FieldRemark] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type modelPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []ModelPaginateOption
+}
+
+func newModelPaginateArgs(rv map[string]any) *modelPaginateArgs {
+	args := &modelPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[orderByField]; ok {
+		switch v := v.(type) {
+		case map[string]any:
+			var (
+				err1, err2 error
+				order      = &ModelOrder{Field: &ModelOrderField{}, Direction: entgql.OrderDirectionAsc}
+			)
+			if d, ok := v[directionField]; ok {
+				err1 = order.Direction.UnmarshalGQL(d)
+			}
+			if f, ok := v[fieldField]; ok {
+				err2 = order.Field.UnmarshalGQL(f)
+			}
+			if err1 == nil && err2 == nil {
+				args.opts = append(args.opts, WithModelOrder(order))
+			}
+		case *ModelOrder:
+			if v != nil {
+				args.opts = append(args.opts, WithModelOrder(v))
+			}
+		}
+	}
+	if v, ok := rv[whereField].(*ModelWhereInput); ok {
+		args.opts = append(args.opts, WithModelFilter(v.Filter))
 	}
 	return args
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
+	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -306,6 +307,41 @@ func init() {
 	datastorageDescPrimary := datastorageFields[2].Descriptor()
 	// datastorage.DefaultPrimary holds the default value on creation for the primary field.
 	datastorage.DefaultPrimary = datastorageDescPrimary.Default.(bool)
+	modelMixin := schema.Model{}.Mixin()
+	model.Policy = privacy.NewPolicies(schema.Model{})
+	model.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := model.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	modelMixinHooks1 := modelMixin[1].Hooks()
+
+	model.Hooks[1] = modelMixinHooks1[0]
+	modelMixinInters1 := modelMixin[1].Interceptors()
+	model.Interceptors[0] = modelMixinInters1[0]
+	modelMixinFields0 := modelMixin[0].Fields()
+	_ = modelMixinFields0
+	modelMixinFields1 := modelMixin[1].Fields()
+	_ = modelMixinFields1
+	modelFields := schema.Model{}.Fields()
+	_ = modelFields
+	// modelDescCreatedAt is the schema descriptor for created_at field.
+	modelDescCreatedAt := modelMixinFields0[0].Descriptor()
+	// model.DefaultCreatedAt holds the default value on creation for the created_at field.
+	model.DefaultCreatedAt = modelDescCreatedAt.Default.(func() time.Time)
+	// modelDescUpdatedAt is the schema descriptor for updated_at field.
+	modelDescUpdatedAt := modelMixinFields0[1].Descriptor()
+	// model.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	model.DefaultUpdatedAt = modelDescUpdatedAt.Default.(func() time.Time)
+	// model.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	model.UpdateDefaultUpdatedAt = modelDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// modelDescDeletedAt is the schema descriptor for deleted_at field.
+	modelDescDeletedAt := modelMixinFields1[0].Descriptor()
+	// model.DefaultDeletedAt holds the default value on creation for the deleted_at field.
+	model.DefaultDeletedAt = modelDescDeletedAt.Default.(int)
 	projectMixin := schema.Project{}.Mixin()
 	project.Policy = privacy.NewPolicies(schema.Project{})
 	project.Hooks[0] = func(next ent.Mutator) ent.Mutator {

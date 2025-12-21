@@ -7,31 +7,81 @@ export interface Model {
 }
 
 export interface ModelsResponse {
-  models: Model[]
+  queryModels: Model[]
 }
 
-export interface ModelsInput {
+export interface QueryModelsInput {
   statusIn?: ('enabled' | 'disabled' | 'archived')[]
   includeMapping?: boolean
   includePrefix?: boolean
 }
 
+export interface ModelAssociationInput {
+  type: 'channel_model' | 'channel_regex' | 'regex'
+  channelModel?: {
+    channelId: string
+    modelId: string
+  }
+  channelRegex?: {
+    channelId: string
+    pattern: string
+  }
+  regex?: {
+    pattern: string
+  }
+}
+
+export interface ModelChannelConnection {
+  channel: {
+    id: string
+    name: string
+    type: string
+    status: string
+  }
+  modelIds: string[]
+}
+
 const MODELS_QUERY = `
-  query Models($input: ModelsInput!) {
-    models(input: $input) {
+  query Models($input: QueryModelsInput!) {
+    queryModels(input: $input) {
       id
       status
     }
   }
 `
 
+const MODEL_CHANNEL_CONNECTIONS_QUERY = `
+  query QueryModelChannelConnections($associations: [ModelAssociationInput!]!) {
+    queryModelChannelConnections(associations: $associations) {
+      channel {
+        id
+        name
+        type
+        status
+      }
+      modelIds
+    }
+  }
+`
+
 export function useQueryModels() {
   return useMutation({
-    mutationFn: async (input: ModelsInput = {}) => {
+    mutationFn: async (input: QueryModelsInput = {}) => {
       const data = await graphqlRequest<{
-        models: Model[]
+        queryModels: Model[]
       }>(MODELS_QUERY, { input })
-      return data.models
+      return data.queryModels
+    },
+  })
+}
+
+export function useQueryModelChannelConnections() {
+  return useMutation({
+    mutationFn: async (associations: ModelAssociationInput[]) => {
+      const data = await graphqlRequest<{
+        queryModelChannelConnections: ModelChannelConnection[]
+      }>(MODEL_CHANNEL_CONNECTIONS_QUERY, { associations })
+      return data.queryModelChannelConnections
     },
   })
 }

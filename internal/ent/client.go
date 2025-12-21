@@ -20,6 +20,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
+	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -48,6 +49,8 @@ type Client struct {
 	ChannelPerformance *ChannelPerformanceClient
 	// DataStorage is the client for interacting with the DataStorage builders.
 	DataStorage *DataStorageClient
+	// Model is the client for interacting with the Model builders.
+	Model *ModelClient
 	// Project is the client for interacting with the Project builders.
 	Project *ProjectClient
 	// Request is the client for interacting with the Request builders.
@@ -88,6 +91,7 @@ func (c *Client) init() {
 	c.ChannelOverrideTemplate = NewChannelOverrideTemplateClient(c.config)
 	c.ChannelPerformance = NewChannelPerformanceClient(c.config)
 	c.DataStorage = NewDataStorageClient(c.config)
+	c.Model = NewModelClient(c.config)
 	c.Project = NewProjectClient(c.config)
 	c.Request = NewRequestClient(c.config)
 	c.RequestExecution = NewRequestExecutionClient(c.config)
@@ -196,6 +200,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		ChannelOverrideTemplate: NewChannelOverrideTemplateClient(cfg),
 		ChannelPerformance:      NewChannelPerformanceClient(cfg),
 		DataStorage:             NewDataStorageClient(cfg),
+		Model:                   NewModelClient(cfg),
 		Project:                 NewProjectClient(cfg),
 		Request:                 NewRequestClient(cfg),
 		RequestExecution:        NewRequestExecutionClient(cfg),
@@ -231,6 +236,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		ChannelOverrideTemplate: NewChannelOverrideTemplateClient(cfg),
 		ChannelPerformance:      NewChannelPerformanceClient(cfg),
 		DataStorage:             NewDataStorageClient(cfg),
+		Model:                   NewModelClient(cfg),
 		Project:                 NewProjectClient(cfg),
 		Request:                 NewRequestClient(cfg),
 		RequestExecution:        NewRequestExecutionClient(cfg),
@@ -272,8 +278,8 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.APIKey, c.Channel, c.ChannelOverrideTemplate, c.ChannelPerformance,
-		c.DataStorage, c.Project, c.Request, c.RequestExecution, c.Role, c.System,
-		c.Thread, c.Trace, c.UsageLog, c.User, c.UserProject, c.UserRole,
+		c.DataStorage, c.Model, c.Project, c.Request, c.RequestExecution, c.Role,
+		c.System, c.Thread, c.Trace, c.UsageLog, c.User, c.UserProject, c.UserRole,
 	} {
 		n.Use(hooks...)
 	}
@@ -284,8 +290,8 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.APIKey, c.Channel, c.ChannelOverrideTemplate, c.ChannelPerformance,
-		c.DataStorage, c.Project, c.Request, c.RequestExecution, c.Role, c.System,
-		c.Thread, c.Trace, c.UsageLog, c.User, c.UserProject, c.UserRole,
+		c.DataStorage, c.Model, c.Project, c.Request, c.RequestExecution, c.Role,
+		c.System, c.Thread, c.Trace, c.UsageLog, c.User, c.UserProject, c.UserRole,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -304,6 +310,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.ChannelPerformance.mutate(ctx, m)
 	case *DataStorageMutation:
 		return c.DataStorage.mutate(ctx, m)
+	case *ModelMutation:
+		return c.Model.mutate(ctx, m)
 	case *ProjectMutation:
 		return c.Project.mutate(ctx, m)
 	case *RequestMutation:
@@ -1179,6 +1187,141 @@ func (c *DataStorageClient) mutate(ctx context.Context, m *DataStorageMutation) 
 		return (&DataStorageDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown DataStorage mutation op: %q", m.Op())
+	}
+}
+
+// ModelClient is a client for the Model schema.
+type ModelClient struct {
+	config
+}
+
+// NewModelClient returns a client for the Model from the given config.
+func NewModelClient(c config) *ModelClient {
+	return &ModelClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `model.Hooks(f(g(h())))`.
+func (c *ModelClient) Use(hooks ...Hook) {
+	c.hooks.Model = append(c.hooks.Model, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `model.Intercept(f(g(h())))`.
+func (c *ModelClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Model = append(c.inters.Model, interceptors...)
+}
+
+// Create returns a builder for creating a Model entity.
+func (c *ModelClient) Create() *ModelCreate {
+	mutation := newModelMutation(c.config, OpCreate)
+	return &ModelCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Model entities.
+func (c *ModelClient) CreateBulk(builders ...*ModelCreate) *ModelCreateBulk {
+	return &ModelCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ModelClient) MapCreateBulk(slice any, setFunc func(*ModelCreate, int)) *ModelCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ModelCreateBulk{err: fmt.Errorf("calling to ModelClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ModelCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ModelCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Model.
+func (c *ModelClient) Update() *ModelUpdate {
+	mutation := newModelMutation(c.config, OpUpdate)
+	return &ModelUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ModelClient) UpdateOne(_m *Model) *ModelUpdateOne {
+	mutation := newModelMutation(c.config, OpUpdateOne, withModel(_m))
+	return &ModelUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ModelClient) UpdateOneID(id int) *ModelUpdateOne {
+	mutation := newModelMutation(c.config, OpUpdateOne, withModelID(id))
+	return &ModelUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Model.
+func (c *ModelClient) Delete() *ModelDelete {
+	mutation := newModelMutation(c.config, OpDelete)
+	return &ModelDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ModelClient) DeleteOne(_m *Model) *ModelDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ModelClient) DeleteOneID(id int) *ModelDeleteOne {
+	builder := c.Delete().Where(model.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ModelDeleteOne{builder}
+}
+
+// Query returns a query builder for Model.
+func (c *ModelClient) Query() *ModelQuery {
+	return &ModelQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeModel},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Model entity by its id.
+func (c *ModelClient) Get(ctx context.Context, id int) (*Model, error) {
+	return c.Query().Where(model.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ModelClient) GetX(ctx context.Context, id int) *Model {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *ModelClient) Hooks() []Hook {
+	hooks := c.hooks.Model
+	return append(hooks[:len(hooks):len(hooks)], model.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *ModelClient) Interceptors() []Interceptor {
+	inters := c.inters.Model
+	return append(inters[:len(inters):len(inters)], model.Interceptors[:]...)
+}
+
+func (c *ModelClient) mutate(ctx context.Context, m *ModelMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ModelCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ModelUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ModelUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ModelDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Model mutation op: %q", m.Op())
 	}
 }
 
@@ -3289,12 +3432,12 @@ func (c *UserRoleClient) mutate(ctx context.Context, m *UserRoleMutation) (Value
 type (
 	hooks struct {
 		APIKey, Channel, ChannelOverrideTemplate, ChannelPerformance, DataStorage,
-		Project, Request, RequestExecution, Role, System, Thread, Trace, UsageLog,
-		User, UserProject, UserRole []ent.Hook
+		Model, Project, Request, RequestExecution, Role, System, Thread, Trace,
+		UsageLog, User, UserProject, UserRole []ent.Hook
 	}
 	inters struct {
 		APIKey, Channel, ChannelOverrideTemplate, ChannelPerformance, DataStorage,
-		Project, Request, RequestExecution, Role, System, Thread, Trace, UsageLog,
-		User, UserProject, UserRole []ent.Interceptor
+		Model, Project, Request, RequestExecution, Role, System, Thread, Trace,
+		UsageLog, User, UserProject, UserRole []ent.Interceptor
 	}
 )

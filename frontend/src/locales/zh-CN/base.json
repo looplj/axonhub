@@ -10,6 +10,7 @@
     "items": {
       "dashboard": "仪表板",
       "channels": "渠道",
+      "models": "模型",
       "dataStorages": "数据存储",
       "users": "用户",
       "roles": "角色",
@@ -153,6 +154,7 @@
     },
     "buttons": {
       "cancel": "取消",
+      "confirm": "确认",
       "save": "保存",
       "saving": "保存中...",
       "saveChanges": "保存更改",

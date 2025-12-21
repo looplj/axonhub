@@ -198,6 +198,36 @@ var (
 			},
 		},
 	}
+	// ModelsColumns holds the columns for the "models" table.
+	ModelsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "developer", Type: field.TypeString},
+		{Name: "model_id", Type: field.TypeString},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"chat", "embedding", "rerank"}, Default: "chat"},
+		{Name: "name", Type: field.TypeString},
+		{Name: "icon", Type: field.TypeString},
+		{Name: "group", Type: field.TypeString},
+		{Name: "model_card", Type: field.TypeJSON},
+		{Name: "settings", Type: field.TypeJSON},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"enabled", "disabled", "archived"}, Default: "disabled"},
+		{Name: "remark", Type: field.TypeString, Nullable: true},
+	}
+	// ModelsTable holds the schema information for the "models" table.
+	ModelsTable = &schema.Table{
+		Name:       "models",
+		Columns:    ModelsColumns,
+		PrimaryKey: []*schema.Column{ModelsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "Models_by_name",
+				Unique:  true,
+				Columns: []*schema.Column{ModelsColumns[7], ModelsColumns[3]},
+			},
+		},
+	}
 	// ProjectsColumns holds the columns for the "projects" table.
 	ProjectsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -711,6 +741,7 @@ var (
 		ChannelOverrideTemplatesTable,
 		ChannelPerformancesTable,
 		DataStoragesTable,
+		ModelsTable,
 		ProjectsTable,
 		RequestsTable,
 		RequestExecutionsTable,

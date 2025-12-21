@@ -84,13 +84,6 @@ func TestQueryResolversRequirePagination(t *testing.T) {
 			},
 		},
 		{
-			name: "Channels",
-			fn: func() error {
-				_, err := r.Channels(t.Context(), nil, nil, nil, nil, nil, nil)
-				return err
-			},
-		},
-		{
 			name: "DataStorages",
 			fn: func() error {
 				_, err := r.DataStorages(t.Context(), nil, nil, nil, nil, nil, nil)

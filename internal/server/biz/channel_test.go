@@ -188,7 +188,7 @@ func TestChannelService_ListModels(t *testing.T) {
 			require.NoError(t, err)
 
 			// Extract model IDs from result
-			actualIDs := lo.Map(result, func(m *Model, _ int) string {
+			actualIDs := lo.Map(result, func(m *ModelIdentityWithStatus, _ int) string {
 				return m.ID
 			})
 

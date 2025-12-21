@@ -341,6 +341,7 @@ const ALL_CHANNELS_QUERY = `
           baseURL
           orderingWeight
           tags
+          supportedModels
         }
       }
     }

@@ -19,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
+	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -1696,6 +1697,320 @@ func (_m *DataStorage) ToEdge(order *DataStorageOrder) *DataStorageEdge {
 		order = DefaultDataStorageOrder
 	}
 	return &DataStorageEdge{
+		Node:   _m,
+		Cursor: order.Field.toCursor(_m),
+	}
+}
+
+// ModelEdge is the edge representation of Model.
+type ModelEdge struct {
+	Node   *Model `json:"node"`
+	Cursor Cursor `json:"cursor"`
+}
+
+// ModelConnection is the connection containing edges to Model.
+type ModelConnection struct {
+	Edges      []*ModelEdge `json:"edges"`
+	PageInfo   PageInfo     `json:"pageInfo"`
+	TotalCount int          `json:"totalCount"`
+}
+
+func (c *ModelConnection) build(nodes []*Model, pager *modelPager, after *Cursor, first *int, before *Cursor, last *int) {
+	c.PageInfo.HasNextPage = before != nil
+	c.PageInfo.HasPreviousPage = after != nil
+	if first != nil && *first+1 == len(nodes) {
+		c.PageInfo.HasNextPage = true
+		nodes = nodes[:len(nodes)-1]
+	} else if last != nil && *last+1 == len(nodes) {
+		c.PageInfo.HasPreviousPage = true
+		nodes = nodes[:len(nodes)-1]
+	}
+	var nodeAt func(int) *Model
+	if last != nil {
+		n := len(nodes) - 1
+		nodeAt = func(i int) *Model {
+			return nodes[n-i]
+		}
+	} else {
+		nodeAt = func(i int) *Model {
+			return nodes[i]
+		}
+	}
+	c.Edges = make([]*ModelEdge, len(nodes))
+	for i := range nodes {
+		node := nodeAt(i)
+		c.Edges[i] = &ModelEdge{
+			Node:   node,
+			Cursor: pager.toCursor(node),
+		}
+	}
+	if l := len(c.Edges); l > 0 {
+		c.PageInfo.StartCursor = &c.Edges[0].Cursor
+		c.PageInfo.EndCursor = &c.Edges[l-1].Cursor
+	}
+	if c.TotalCount == 0 {
+		c.TotalCount = len(nodes)
+	}
+}
+
+// ModelPaginateOption enables pagination customization.
+type ModelPaginateOption func(*modelPager) error
+
+// WithModelOrder configures pagination ordering.
+func WithModelOrder(order *ModelOrder) ModelPaginateOption {
+	if order == nil {
+		order = DefaultModelOrder
+	}
+	o := *order
+	return func(pager *modelPager) error {
+		if err := o.Direction.Validate(); err != nil {
+			return err
+		}
+		if o.Field == nil {
+			o.Field = DefaultModelOrder.Field
+		}
+		pager.order = &o
+		return nil
+	}
+}
+
+// WithModelFilter configures pagination filter.
+func WithModelFilter(filter func(*ModelQuery) (*ModelQuery, error)) ModelPaginateOption {
+	return func(pager *modelPager) error {
+		if filter == nil {
+			return errors.New("ModelQuery filter cannot be nil")
+		}
+		pager.filter = filter
+		return nil
+	}
+}
+
+type modelPager struct {
+	reverse bool
+	order   *ModelOrder
+	filter  func(*ModelQuery) (*ModelQuery, error)
+}
+
+func newModelPager(opts []ModelPaginateOption, reverse bool) (*modelPager, error) {
+	pager := &modelPager{reverse: reverse}
+	for _, opt := range opts {
+		if err := opt(pager); err != nil {
+			return nil, err
+		}
+	}
+	if pager.order == nil {
+		pager.order = DefaultModelOrder
+	}
+	return pager, nil
+}
+
+func (p *modelPager) applyFilter(query *ModelQuery) (*ModelQuery, error) {
+	if p.filter != nil {
+		return p.filter(query)
+	}
+	return query, nil
+}
+
+func (p *modelPager) toCursor(_m *Model) Cursor {
+	return p.order.Field.toCursor(_m)
+}
+
+func (p *modelPager) applyCursors(query *ModelQuery, after, before *Cursor) (*ModelQuery, error) {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	for _, predicate := range entgql.CursorsPredicate(after, before, DefaultModelOrder.Field.column, p.order.Field.column, direction) {
+		query = query.Where(predicate)
+	}
+	return query, nil
+}
+
+func (p *modelPager) applyOrder(query *ModelQuery) *ModelQuery {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	query = query.Order(p.order.Field.toTerm(direction.OrderTermOption()))
+	if p.order.Field != DefaultModelOrder.Field {
+		query = query.Order(DefaultModelOrder.Field.toTerm(direction.OrderTermOption()))
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return query
+}
+
+func (p *modelPager) orderExpr(query *ModelQuery) sql.Querier {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return sql.ExprFunc(func(b *sql.Builder) {
+		b.Ident(p.order.Field.column).Pad().WriteString(string(direction))
+		if p.order.Field != DefaultModelOrder.Field {
+			b.Comma().Ident(DefaultModelOrder.Field.column).Pad().WriteString(string(direction))
+		}
+	})
+}
+
+// Paginate executes the query and returns a relay based cursor connection to Model.
+func (_m *ModelQuery) Paginate(
+	ctx context.Context, after *Cursor, first *int,
+	before *Cursor, last *int, opts ...ModelPaginateOption,
+) (*ModelConnection, error) {
+	if err := validateFirstLast(first, last); err != nil {
+		return nil, err
+	}
+	pager, err := newModelPager(opts, last != nil)
+	if err != nil {
+		return nil, err
+	}
+	if _m, err = pager.applyFilter(_m); err != nil {
+		return nil, err
+	}
+	conn := &ModelConnection{Edges: []*ModelEdge{}}
+	ignoredEdges := !hasCollectedField(ctx, edgesField)
+	if hasCollectedField(ctx, totalCountField) || hasCollectedField(ctx, pageInfoField) {
+		hasPagination := after != nil || first != nil || before != nil || last != nil
+		if hasPagination || ignoredEdges {
+			c := _m.Clone()
+			c.ctx.Fields = nil
+			if conn.TotalCount, err = c.Count(ctx); err != nil {
+				return nil, err
+			}
+			conn.PageInfo.HasNextPage = first != nil && conn.TotalCount > 0
+			conn.PageInfo.HasPreviousPage = last != nil && conn.TotalCount > 0
+		}
+	}
+	if ignoredEdges || (first != nil && *first == 0) || (last != nil && *last == 0) {
+		return conn, nil
+	}
+	if _m, err = pager.applyCursors(_m, after, before); err != nil {
+		return nil, err
+	}
+	limit := paginateLimit(first, last)
+	if limit != 0 {
+		_m.Limit(limit)
+	}
+	if field := collectedField(ctx, edgesField, nodeField); field != nil {
+		if err := _m.collectField(ctx, limit == 1, graphql.GetOperationContext(ctx), *field, []string{edgesField, nodeField}); err != nil {
+			return nil, err
+		}
+	}
+	_m = pager.applyOrder(_m)
+	nodes, err := _m.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn.build(nodes, pager, after, first, before, last)
+	return conn, nil
+}
+
+var (
+	// ModelOrderFieldCreatedAt orders Model by created_at.
+	ModelOrderFieldCreatedAt = &ModelOrderField{
+		Value: func(_m *Model) (ent.Value, error) {
+			return _m.CreatedAt, nil
+		},
+		column: model.FieldCreatedAt,
+		toTerm: model.ByCreatedAt,
+		toCursor: func(_m *Model) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.CreatedAt,
+			}
+		},
+	}
+	// ModelOrderFieldUpdatedAt orders Model by updated_at.
+	ModelOrderFieldUpdatedAt = &ModelOrderField{
+		Value: func(_m *Model) (ent.Value, error) {
+			return _m.UpdatedAt, nil
+		},
+		column: model.FieldUpdatedAt,
+		toTerm: model.ByUpdatedAt,
+		toCursor: func(_m *Model) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.UpdatedAt,
+			}
+		},
+	}
+)
+
+// String implement fmt.Stringer interface.
+func (f ModelOrderField) String() string {
+	var str string
+	switch f.column {
+	case ModelOrderFieldCreatedAt.column:
+		str = "CREATED_AT"
+	case ModelOrderFieldUpdatedAt.column:
+		str = "UPDATED_AT"
+	}
+	return str
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (f ModelOrderField) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(f.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (f *ModelOrderField) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("ModelOrderField %T must be a string", v)
+	}
+	switch str {
+	case "CREATED_AT":
+		*f = *ModelOrderFieldCreatedAt
+	case "UPDATED_AT":
+		*f = *ModelOrderFieldUpdatedAt
+	default:
+		return fmt.Errorf("%s is not a valid ModelOrderField", str)
+	}
+	return nil
+}
+
+// ModelOrderField defines the ordering field of Model.
+type ModelOrderField struct {
+	// Value extracts the ordering value from the given Model.
+	Value    func(*Model) (ent.Value, error)
+	column   string // field or computed.
+	toTerm   func(...sql.OrderTermOption) model.OrderOption
+	toCursor func(*Model) Cursor
+}
+
+// ModelOrder defines the ordering of Model.
+type ModelOrder struct {
+	Direction OrderDirection   `json:"direction"`
+	Field     *ModelOrderField `json:"field"`
+}
+
+// DefaultModelOrder is the default ordering of Model.
+var DefaultModelOrder = &ModelOrder{
+	Direction: entgql.OrderDirectionAsc,
+	Field: &ModelOrderField{
+		Value: func(_m *Model) (ent.Value, error) {
+			return _m.ID, nil
+		},
+		column: model.FieldID,
+		toTerm: model.ByID,
+		toCursor: func(_m *Model) Cursor {
+			return Cursor{ID: _m.ID}
+		},
+	},
+}
+
+// ToEdge converts Model into ModelEdge.
+func (_m *Model) ToEdge(order *ModelOrder) *ModelEdge {
+	if order == nil {
+		order = DefaultModelOrder
+	}
+	return &ModelEdge{
 		Node:   _m,
 		Cursor: order.Field.toCursor(_m),
 	}

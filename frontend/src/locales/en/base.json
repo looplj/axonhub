@@ -10,6 +10,7 @@
     "items": {
       "dashboard": "Dashboard",
       "channels": "Channels",
+      "models": "Models",
       "dataStorages": "Data Storages",
       "users": "Users",
       "roles": "Roles",
@@ -131,6 +132,7 @@
     },
     "buttons": {
       "cancel": "Cancel",
+      "confirm": "Confirm",
       "save": "Save",
       "saving": "Saving...",
       "saveChanges": "Save changes",

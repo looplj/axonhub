@@ -6,6 +6,7 @@ schema:
   - scopes.graphql
   - me.graphql
   - system.graphql
+  - model.graphql
 
 
 omit_gqlgen_version_in_file_notice: true
@@ -225,9 +226,72 @@ models:
   SpanType:
     model:
       - string
-  Model:
+  ModelIdentityWithStatus:
     model:
-      - github.com/looplj/axonhub/internal/server/biz.Model
+      - github.com/looplj/axonhub/internal/server/biz.ModelIdentityWithStatus
+  ModelCard:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelCard
+  ModelCardInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelCard
+  ModelCardReasoning:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelCardReasoning
+  ModelCardReasoningInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelCardReasoning
+  ModelCardModalities:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelCardModalities
+  ModelCardModalitiesInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelCardModalities
+  ModelCardCost:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelCardCost
+  ModelCardCostInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelCardCost
+  ModelCardLimit:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelCardLimit
+  ModelCardLimitInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelCardLimit
+  ModelSettingsInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelSettings
+  ModelSettings:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelSettings
+  ModelAssociation:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelAssociation
+  ModelAssociationInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelAssociation
+  ChannelModelAssociation:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelModelAssociation
+  ChannelModelAssociationInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelModelAssociation
+  ChannelRegexAssociation:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelRegexAssociation
+  ChannelRegexAssociationInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelRegexAssociation
+  RegexAssociation:
+    model:
+      - github.com/looplj/axonhub/internal/objects.RegexAssociation
+  RegexAssociationInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.RegexAssociation
+  ModelChannelConnection:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ModelChannelConnection
   HeaderEntry:
     model:
       - github.com/looplj/axonhub/internal/objects.HeaderEntry
