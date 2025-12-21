@@ -11,7 +11,6 @@ import (
 
 func TestRerankRequestJSON(t *testing.T) {
 	req := RerankRequest{
-		Model:     "test-model",
 		Query:     "test query",
 		Documents: []string{"doc1", "doc2", "doc3"},
 		TopN:      lo.ToPtr(2),
@@ -25,7 +24,6 @@ func TestRerankRequestJSON(t *testing.T) {
 	err = json.Unmarshal(data, &decoded)
 	require.NoError(t, err)
 
-	assert.Equal(t, req.Model, decoded.Model)
 	assert.Equal(t, req.Query, decoded.Query)
 	assert.Equal(t, req.Documents, decoded.Documents)
 	assert.Equal(t, *req.TopN, *decoded.TopN)
@@ -37,12 +35,12 @@ func TestRerankResponseJSON(t *testing.T) {
 			{
 				Index:          0,
 				RelevanceScore: 0.95,
-				Document:       "doc1",
+				Document:       &RerankDocument{Text: "doc1"},
 			},
 			{
 				Index:          1,
 				RelevanceScore: 0.85,
-				Document:       "doc2",
+				Document:       &RerankDocument{Text: "doc2"},
 			},
 		},
 		Usage: &RerankUsage{

@@ -1,4 +1,4 @@
-package openai
+package jina
 
 import (
 	"context"
@@ -13,20 +13,16 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/streams"
 )
 
-// EmbeddingInboundTransformer 实现 OpenAI embeddings 端点的入站转换器。
 type EmbeddingInboundTransformer struct{}
 
-// NewEmbeddingInboundTransformer 创建一个新的 EmbeddingInboundTransformer。
 func NewEmbeddingInboundTransformer() *EmbeddingInboundTransformer {
 	return &EmbeddingInboundTransformer{}
 }
 
 func (t *EmbeddingInboundTransformer) APIFormat() llm.APIFormat {
-	return llm.APIFormatOpenAIEmbedding
+	return llm.APIFormatJinaEmbedding
 }
 
-// TransformRequest 将 HTTP embedding 请求转换为统一的 llm.Request 格式。
-// 由于 embedding 不使用 messages，我们将 input 作为 JSON 存储在 ExtraBody 中。
 func (t *EmbeddingInboundTransformer) TransformRequest(
 	ctx context.Context,
 	httpReq *httpclient.Request,
@@ -39,7 +35,6 @@ func (t *EmbeddingInboundTransformer) TransformRequest(
 		return nil, fmt.Errorf("%w: request body is empty", transformer.ErrInvalidRequest)
 	}
 
-	// 检查 Content-Type
 	contentType := httpReq.Headers.Get("Content-Type")
 	if contentType == "" {
 		contentType = "application/json"
@@ -66,31 +61,24 @@ func (t *EmbeddingInboundTransformer) TransformRequest(
 
 	llmReq := &llm.Request{
 		Model:       embReq.Model,
-		Messages:    []llm.Message{}, // Embedding 不使用 messages
+		Messages:    []llm.Message{},
 		RawRequest:  httpReq,
 		RequestType: llm.RequestTypeEmbedding,
-		APIFormat:   llm.APIFormatOpenAIEmbedding,
-		Stream:      nil, // Embedding 不支持流式
+		APIFormat:   llm.APIFormatJinaEmbedding,
+		Stream:      nil,
 		Embedding: &llm.EmbeddingRequest{
 			Input:          embReq.Input,
+			Task:           embReq.Task,
 			EncodingFormat: embReq.EncodingFormat,
 			Dimensions:     embReq.Dimensions,
 			User:           embReq.User,
 		},
 	}
 
-	if embReq.User != "" {
-		llmReq.User = &embReq.User
-	}
-
 	return llmReq, nil
 }
 
 func validateEmbeddingInput(input llm.EmbeddingInput) error {
-	// Determine input type based on which field is set
-	// JSON unmarshaling only sets one field based on the input type
-
-	// String array input
 	if input.StringArray != nil {
 		if len(input.StringArray) == 0 {
 			return fmt.Errorf("%w: input cannot be empty array", transformer.ErrInvalidRequest)
@@ -105,7 +93,6 @@ func validateEmbeddingInput(input llm.EmbeddingInput) error {
 		return nil
 	}
 
-	// Integer array input
 	if input.IntArray != nil {
 		if len(input.IntArray) == 0 {
 			return fmt.Errorf("%w: input cannot be empty array", transformer.ErrInvalidRequest)
@@ -114,7 +101,6 @@ func validateEmbeddingInput(input llm.EmbeddingInput) error {
 		return nil
 	}
 
-	// Nested integer array input
 	if input.IntArrayArray != nil {
 		if len(input.IntArrayArray) == 0 {
 			return fmt.Errorf("%w: input cannot be empty array", transformer.ErrInvalidRequest)
@@ -129,7 +115,6 @@ func validateEmbeddingInput(input llm.EmbeddingInput) error {
 		return nil
 	}
 
-	// String input (default case)
 	if strings.TrimSpace(input.String) == "" {
 		return fmt.Errorf("%w: input cannot be empty string", transformer.ErrInvalidRequest)
 	}
@@ -137,7 +122,6 @@ func validateEmbeddingInput(input llm.EmbeddingInput) error {
 	return nil
 }
 
-// TransformResponse 将统一的 llm.Response 转换回 HTTP 响应。
 func (t *EmbeddingInboundTransformer) TransformResponse(
 	ctx context.Context,
 	llmResp *llm.Response,
@@ -146,18 +130,15 @@ func (t *EmbeddingInboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("embedding response is nil")
 	}
 
-	// 从 llm.Embedding 中提取 embedding 响应
 	var body []byte
 
 	if llmResp.Embedding != nil {
-		// 将 llm.EmbeddingResponse 转换为 OpenAI EmbeddingResponse 格式
 		embResp := EmbeddingResponse{
 			Object: llmResp.Embedding.Object,
 			Data:   make([]EmbeddingData, len(llmResp.Embedding.Data)),
 			Model:  llmResp.Model,
 		}
 
-		// 转换 EmbeddingData
 		for i, data := range llmResp.Embedding.Data {
 			embResp.Data[i] = EmbeddingData{
 				Object:    data.Object,
@@ -166,7 +147,6 @@ func (t *EmbeddingInboundTransformer) TransformResponse(
 			}
 		}
 
-		// 转换 Usage
 		if llmResp.Embedding.Usage != nil {
 			embResp.Usage = EmbeddingUsage{
 				PromptTokens: llmResp.Embedding.Usage.PromptTokens,
@@ -194,7 +174,6 @@ func (t *EmbeddingInboundTransformer) TransformResponse(
 	}, nil
 }
 
-// TransformStream Embedding 不支持流式传输。
 func (t *EmbeddingInboundTransformer) TransformStream(
 	ctx context.Context,
 	stream streams.Stream[*llm.Response],
@@ -202,7 +181,6 @@ func (t *EmbeddingInboundTransformer) TransformStream(
 	return nil, fmt.Errorf("%w: embeddings do not support streaming", transformer.ErrInvalidRequest)
 }
 
-// AggregateStreamChunks Embedding 不支持流式传输。
 func (t *EmbeddingInboundTransformer) AggregateStreamChunks(
 	ctx context.Context,
 	chunks []*httpclient.StreamEvent,
@@ -210,9 +188,7 @@ func (t *EmbeddingInboundTransformer) AggregateStreamChunks(
 	return nil, llm.ResponseMeta{}, fmt.Errorf("embeddings do not support streaming")
 }
 
-// TransformError 复用标准 OpenAI 错误格式化。
 func (t *EmbeddingInboundTransformer) TransformError(ctx context.Context, rawErr error) *httpclient.Error {
-	// 委托给标准 chat inbound transformer 以保持一致的错误处理
-	chatInbound := NewInboundTransformer()
-	return chatInbound.TransformError(ctx, rawErr)
+	rerankInbound := NewRerankInboundTransformer()
+	return rerankInbound.TransformError(ctx, rawErr)
 }

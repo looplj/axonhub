@@ -101,8 +101,15 @@ type EmbeddingRequest struct {
 	// Input is the text to embed. Can be string, []string, []int (tokens), or [][]int (multiple token arrays).
 	Input EmbeddingInput `json:"input"`
 
-	// Model is the embedding model ID to use.
-	Model string `json:"model"`
+	// Task is the task to embed.
+	// For jina embedding, it can be:
+	// text-matching
+	// retrieval.query
+	// retrieval.passag
+	// separation
+	// classification
+	// none
+	Task string `json:"task,omitempty"`
 
 	// The format to return the embeddings in. Can be either `float` or
 	// [`base64`](https://pypi.org/project/pybase64/).
@@ -127,9 +134,6 @@ type EmbeddingResponse struct {
 
 	// Data contains the embedding results.
 	Data []EmbeddingData `json:"data"`
-
-	// Model is the model used for embedding.
-	Model string `json:"model"`
 
 	// Usage contains token usage information.
 	Usage *EmbeddingUsage `json:"usage,omitempty"`

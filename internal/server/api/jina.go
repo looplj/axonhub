@@ -10,7 +10,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 )
 
-type RerankHandlersParams struct {
+type JinaHandlersParams struct {
 	fx.In
 
 	ChannelService  *biz.ChannelService
@@ -20,9 +20,9 @@ type RerankHandlersParams struct {
 	HttpClient      *httpclient.HttpClient
 }
 
-func NewRerankHandlers(params RerankHandlersParams) *RerankHandlers {
-	return &RerankHandlers{
-		ChatCompletionHandlers: &ChatCompletionHandlers{
+func NewJinaHandlers(params JinaHandlersParams) *JinaHandlers {
+	return &JinaHandlers{
+		RerankHandlers: &ChatCompletionHandlers{
 			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
 				params.ChannelService,
 				params.RequestService,
@@ -32,14 +32,29 @@ func NewRerankHandlers(params RerankHandlersParams) *RerankHandlers {
 				params.UsageLogService,
 			),
 		},
+		EmbeddingHandlers: &ChatCompletionHandlers{
+			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
+				params.ChannelService,
+				params.RequestService,
+				params.HttpClient,
+				jina.NewEmbeddingInboundTransformer(),
+				params.SystemService,
+				params.UsageLogService,
+			),
+		},
 	}
 }
 
-type RerankHandlers struct {
-	ChatCompletionHandlers *ChatCompletionHandlers
+type JinaHandlers struct {
+	RerankHandlers    *ChatCompletionHandlers
+	EmbeddingHandlers *ChatCompletionHandlers
 }
 
 // Rerank handles rerank requests.
-func (h *RerankHandlers) Rerank(c *gin.Context) {
-	h.ChatCompletionHandlers.ChatCompletion(c)
+func (h *JinaHandlers) Rerank(c *gin.Context) {
+	h.RerankHandlers.ChatCompletion(c)
+}
+
+func (h *JinaHandlers) CreateEmbedding(c *gin.Context) {
+	h.EmbeddingHandlers.ChatCompletion(c)
 }

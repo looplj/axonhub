@@ -72,7 +72,8 @@
       "aihubmix": "AiHubMix",
       "burncloud": "BurnCloud",
       "modelscope": "魔搭",
-      "bailian": "百炼"
+      "bailian": "百炼",
+      "jina": "Jina"
     },
     "providers": {
       "openai": "OpenAI",
@@ -94,7 +95,8 @@
       "aihubmix": "AiHubMix",
       "burncloud": "BurnCloud",
       "modelscope": "魔搭",
-      "bailian": "百炼"
+      "bailian": "百炼",
+      "jina": "Jina"
     },
     "actions": {
       "test": "测试",

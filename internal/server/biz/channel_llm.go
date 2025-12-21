@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/internal/llm/transformer/doubao"
 	"github.com/looplj/axonhub/internal/llm/transformer/gemini"
 	geminioai "github.com/looplj/axonhub/internal/llm/transformer/gemini/openai"
+	"github.com/looplj/axonhub/internal/llm/transformer/jina"
 	"github.com/looplj/axonhub/internal/llm/transformer/longcat"
 	"github.com/looplj/axonhub/internal/llm/transformer/modelscope"
 	"github.com/looplj/axonhub/internal/llm/transformer/openai"
@@ -459,6 +460,13 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 			APIKey:       c.Credentials.APIKey,
 			PlatformType: gemini.PlatformVertex,
 		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		return buildChannelWithTransformer(c, transformer, httpClient), nil
+	case channel.TypeJina:
+		transformer, err := jina.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
 		}

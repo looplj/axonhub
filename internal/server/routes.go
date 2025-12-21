@@ -24,7 +24,7 @@ type Handlers struct {
 	Playground *api.PlaygroundHandlers
 	System     *api.SystemHandlers
 	Auth       *api.AuthHandlers
-	Rerank     *api.RerankHandlers
+	Jina       *api.JinaHandlers
 }
 
 type Services struct {
@@ -96,11 +96,15 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		openaiGroup.POST("/responses", handlers.OpenAI.CreateResponse)
 		openaiGroup.GET("/models", handlers.OpenAI.ListModels)
 		openaiGroup.POST("/embeddings", handlers.OpenAI.CreateEmbedding)
+
+		// Compatible with OpenAI API
+		openaiGroup.POST("/rerank", handlers.Jina.Rerank)
 	}
 
 	{
-		rerankGroup := apiGroup.Group("/v1")
-		rerankGroup.POST("/rerank", handlers.Rerank.Rerank)
+		jinaGroup := apiGroup.Group("/jina/v1")
+		jinaGroup.POST("/embeddings", handlers.Jina.CreateEmbedding)
+		jinaGroup.POST("/rerank", handlers.Jina.Rerank)
 	}
 
 	{

@@ -20,7 +20,8 @@ const (
 	APIFormatAiSDKText             APIFormat = "aisdk/text"
 	APIFormatAiSDKDataStream       APIFormat = "aisdk/datastream"
 
-	APIFormatJinaRerank APIFormat = "jina/rerank"
+	APIFormatJinaRerank    APIFormat = "jina/rerank"
+	APIFormatJinaEmbedding APIFormat = "jina/embeddings"
 )
 
 func (f APIFormat) String() string {

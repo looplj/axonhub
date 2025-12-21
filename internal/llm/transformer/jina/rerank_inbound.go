@@ -59,7 +59,6 @@ func (t *RerankInboundTransformer) TransformRequest(
 
 	// Convert to unified llm.RerankRequest
 	llmRerankReq := &llm.RerankRequest{
-		Model:           jinaReq.Model,
 		Query:           jinaReq.Query,
 		Documents:       jinaReq.Documents,
 		TopN:            jinaReq.TopN,
@@ -68,9 +67,11 @@ func (t *RerankInboundTransformer) TransformRequest(
 
 	// Build unified request
 	llmReq := &llm.Request{
+		Model:       jinaReq.Model,
 		RequestType: llm.RequestTypeRerank,
 		APIFormat:   llm.APIFormatJinaRerank,
 		Rerank:      llmRerankReq,
+		RawRequest:  httpReq,
 	}
 
 	return llmReq, nil
@@ -92,17 +93,24 @@ func (t *RerankInboundTransformer) TransformResponse(
 	// Convert llm.RerankResponse to jina.RerankResponse
 	llmRerankResp := llmResp.Rerank
 	jinaResp := RerankResponse{
-		Model:   llmRerankResp.Model,
+		Model:   llmResp.Model,
 		Object:  llmRerankResp.Object,
 		Results: make([]RerankResult, len(llmRerankResp.Results)),
 	}
 
 	// Convert results
 	for i, result := range llmRerankResp.Results {
+		var doc *RerankDocument
+		if result.Document != nil {
+			doc = &RerankDocument{
+				Text: result.Document.Text,
+			}
+		}
+
 		jinaResp.Results[i] = RerankResult{
 			Index:          result.Index,
 			RelevanceScore: result.RelevanceScore,
-			Document:       result.Document,
+			Document:       doc,
 		}
 	}
 
