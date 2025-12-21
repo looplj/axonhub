@@ -278,6 +278,350 @@ if len(response2.Candidates) > 0 {
 }
 ```
 
+### 嵌入 API
+
+AxonHub 通过 OpenAI 兼容和 Jina AI 特定的 API 提供全面的文本和多模态嵌入生成支持。
+
+**端点：**
+- `POST /v1/embeddings` - OpenAI 兼容嵌入 API
+- `POST /jina/v1/embeddings` - Jina AI 特定嵌入 API
+
+**支持的输入类型：**
+- 单个文本字符串
+- 文本字符串数组
+- 令牌数组（整数）
+- 多个令牌数组
+
+**支持的编码格式：**
+- `float` - 默认，返回嵌入向量为浮点数组
+- `base64` - 返回嵌入为 base64 编码字符串
+
+#### 请求格式
+
+```json
+{
+  "input": "要嵌入的文本",
+  "model": "text-embedding-3-small",
+  "encoding_format": "float",
+  "dimensions": 1536,
+  "user": "user-id"
+}
+```
+
+**参数：**
+
+| 参数 | 类型 | 必需 | 描述 |
+|------|------|------|------|
+| `input` | string \| string[] \| number[] \| number[][] | ✅ | 要嵌入的文本。可以是单个字符串、字符串数组、令牌数组或多个令牌数组。 |
+| `model` | string | ✅ | 用于嵌入生成的模型。 |
+| `encoding_format` | string | ❌ | 返回嵌入的格式。可以是 `float` 或 `base64`。默认：`float`。 |
+| `dimensions` | integer | ❌ | 输出嵌入的维度数。 |
+| `user` | string | ❌ | 最终用户的唯一标识符。 |
+
+**Jina 特定参数：**
+
+| 参数 | 类型 | 必需 | 描述 |
+|------|------|------|------|
+| `task` | string | ❌ | Jina 嵌入的任务类型。选项：`text-matching`、`retrieval.query`、`retrieval.passage`、`separation`、`classification`、`none`。 |
+
+#### 响应格式
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "embedding",
+      "embedding": [0.123, 0.456, ...],
+      "index": 0
+    }
+  ],
+  "model": "text-embedding-3-small",
+  "usage": {
+    "prompt_tokens": 4,
+    "total_tokens": 4
+  }
+}
+```
+
+#### 示例
+
+**OpenAI SDK (Python)：**
+```python
+import openai
+
+client = openai.OpenAI(
+    api_key="your-axonhub-api-key",
+    base_url="http://localhost:8090/v1"
+)
+
+response = client.embeddings.create(
+    input="你好，世界！",
+    model="text-embedding-3-small"
+)
+
+print(response.data[0].embedding[:5])  # 前 5 个维度
+```
+
+**OpenAI SDK (Go)：**
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+
+    "github.com/openai/openai-go"
+    "github.com/openai/openai-go/option"
+)
+
+func main() {
+    client := openai.NewClient(
+        option.WithAPIKey("your-axonhub-api-key"),
+        option.WithBaseURL("http://localhost:8090/v1"),
+    )
+
+    embedding, err := client.Embeddings.New(context.TODO(), openai.EmbeddingNewParams{
+        Input: openai.Union[string](openai.String("你好，世界！")),
+        Model: openai.String("text-embedding-3-small"),
+        option.WithHeader("AH-Trace-Id", "trace-example-123"),
+        option.WithHeader("AH-Thread-Id", "thread-example-abc"),
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    fmt.Printf("嵌入维度: %d\n", len(embedding.Data[0].Embedding))
+    fmt.Printf("前 5 个值: %v\n", embedding.Data[0].Embedding[:5])
+}
+```
+
+**多个文本：**
+```python
+response = client.embeddings.create(
+    input=["你好，世界！", "你好吗？"],
+    model="text-embedding-3-small"
+)
+
+for i, data in enumerate(response.data):
+    print(f"文本 {i}: {data.embedding[:3]}...")
+```
+
+**Jina 特定任务：**
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8090/jina/v1/embeddings",
+    headers={
+        "Authorization": "Bearer your-axonhub-api-key",
+        "Content-Type": "application/json"
+    },
+    json={
+        "input": "什么是机器学习？",
+        "model": "jina-embeddings-v2-base-en",
+        "task": "retrieval.query"
+    }
+)
+
+result = response.json()
+print(result["data"][0]["embedding"][:5])
+```
+
+### 重排序 API
+
+AxonHub 通过 OpenAI 兼容和 Jina AI 特定的 API 支持文档重排序，允许您根据与查询的相关性重新排列文档。
+
+**端点：**
+- `POST /v1/rerank` - OpenAI 兼容重排序 API
+- `POST /jina/v1/rerank` - Jina AI 特定重排序 API
+
+#### 请求格式
+
+```json
+{
+  "query": "什么是机器学习？",
+  "documents": [
+    "机器学习是人工智能的一个子集...",
+    "深度学习使用神经网络...",
+    "统计学涉及数据收集和分析..."
+  ],
+  "top_n": 2,
+  "return_documents": true
+}
+```
+
+**参数：**
+
+| 参数 | 类型 | 必需 | 描述 |
+|------|------|------|------|
+| `query` | string | ✅ | 用于比较文档的搜索查询。 |
+| `documents` | string[] | ✅ | 要重排序的文档列表。最少 1 个文档。 |
+| `top_n` | integer | ❌ | 返回最相关文档的数量。如果未指定，返回所有文档。 |
+| `return_documents` | boolean | ❌ | 是否在响应中返回原始文档。默认：false。 |
+
+#### 响应格式
+
+```json
+{
+  "object": "list",
+  "results": [
+    {
+      "index": 0,
+      "relevance_score": 0.95,
+      "document": {
+        "text": "机器学习是人工智能的一个子集..."
+      }
+    },
+    {
+      "index": 1,
+      "relevance_score": 0.87,
+      "document": {
+        "text": "深度学习使用神经网络..."
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 45,
+    "total_tokens": 45
+  }
+}
+```
+
+#### 示例
+
+**OpenAI SDK (Python)：**
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8090/v1/rerank",
+    headers={
+        "Authorization": "Bearer your-axonhub-api-key",
+        "Content-Type": "application/json"
+    },
+    json={
+        "query": "什么是机器学习？",
+        "documents": [
+            "机器学习是人工智能的一个子集，使计算机能够在没有明确编程的情况下学习。",
+            "深度学习使用具有许多层的神经网络。",
+            "统计学是数据收集和分析的研究。"
+        ],
+        "top_n": 2
+    }
+)
+
+result = response.json()
+for item in result["results"]:
+    print(f"分数: {item['relevance_score']:.3f} - {item['document']['text'][:50]}...")
+```
+
+**Jina SDK (Python)：**
+```python
+import requests
+
+# Jina 特定的重排序请求
+response = requests.post(
+    "http://localhost:8090/jina/v1/rerank",
+    headers={
+        "Authorization": "Bearer your-axonhub-api-key",
+        "Content-Type": "application/json"
+    },
+    json={
+        "model": "jina-reranker-v1-base-en",
+        "query": "可再生能源的好处是什么？",
+        "documents": [
+            "太阳能从阳光中产生电力。",
+            "煤矿开采提供就业但损害环境。",
+            "风力涡轮机将风能转化为电力。",
+            "化石燃料是不可再生的并导致气候变化。"
+        ],
+        "top_n": 3,
+        "return_documents": True
+    }
+)
+
+result = response.json()
+print("重排序文档:")
+for i, item in enumerate(result["results"]):
+    print(f"{i+1}. 分数: {item['relevance_score']:.3f}")
+    print(f"   文本: {item['document']['text']}")
+```
+
+**Go 示例：**
+```go
+package main
+
+import (
+    "bytes"
+    "context"
+    "encoding/json"
+    "fmt"
+    "io"
+    "net/http"
+)
+
+type RerankRequest struct {
+    Query     string   `json:"query"`
+    Documents []string `json:"documents"`
+    TopN      *int     `json:"top_n,omitempty"`
+}
+
+type RerankResponse struct {
+    Object  string `json:"object"`
+    Results []struct {
+        Index          int     `json:"index"`
+        RelevanceScore float64 `json:"relevance_score"`
+        Document       *struct {
+            Text string `json:"text"`
+        } `json:"document,omitempty"`
+    } `json:"results"`
+}
+
+func main() {
+    req := RerankRequest{
+        Query: "什么是人工智能？",
+        Documents: []string{
+            "人工智能指的是机器执行通常需要人类智能的任务。",
+            "机器学习是人工智能的一个子集。",
+            "深度学习使用神经网络。",
+        },
+        TopN: &[]int{2}[0], // 指向 2 的指针
+    }
+
+    jsonData, _ := json.Marshal(req)
+
+    httpReq, _ := http.NewRequestWithContext(
+        context.TODO(),
+        "POST",
+        "http://localhost:8090/v1/rerank",
+        bytes.NewBuffer(jsonData),
+    )
+    httpReq.Header.Set("Authorization", "Bearer your-axonhub-api-key")
+    httpReq.Header.Set("Content-Type", "application/json")
+    httpReq.Header.Set("AH-Trace-Id", "trace-example-123")
+    httpReq.Header.Set("AH-Thread-Id", "thread-example-abc")
+
+    client := &http.Client{}
+    resp, err := client.Do(httpReq)
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+
+    body, _ := io.ReadAll(resp.Body)
+    var result RerankResponse
+    json.Unmarshal(body, &result)
+
+    for _, item := range result.Results {
+        fmt.Printf("分数: %.3f, 文本: %s\n",
+            item.RelevanceScore,
+            item.Document.Text[:50]+"...")
+    }
+}
+```
+
 ## API 转换能力
 
 AxonHub 自动在 API 格式之间进行转换，实现以下强大场景：

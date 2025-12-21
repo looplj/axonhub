@@ -26,3 +26,10 @@ jobs:
 
       - name: Test
         run: go test -v --short ./...
+
+      - name: Update coverage report
+        uses: ncruces/go-coverage-report@v0
+        continue-on-error: true
+        if: |
+          matrix.os == 'ubuntu-latest' &&
+          github.event_name == 'push'  
