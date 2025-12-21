@@ -4,10 +4,10 @@ name: Test
 on:
   push:
     branches:
-      - 'unstable'
+      - "unstable"
   pull_request:
     branches:
-      - 'unstable'
+      - "unstable"
 env:
   GO111MODULE: on
 jobs:
@@ -29,7 +29,10 @@ jobs:
 
       - name: Update coverage report
         uses: ncruces/go-coverage-report@v0
-        continue-on-error: true
+        with:
+          report: true
+          chart: true
+          amend: true
         if: |
-          matrix.os == 'ubuntu-latest' &&
-          github.event_name == 'push'  
+          github.event_name == 'push'
+        continue-on-error: true
