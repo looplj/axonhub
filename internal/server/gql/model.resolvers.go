@@ -7,18 +7,12 @@ package gql
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
-
-// ConnectedChannelModels is the resolver for the connectedChannelModels field.
-func (r *modelResolver) ConnectedChannelModels(ctx context.Context, obj *ent.Model) ([]*biz.ModelChannelConnection, error) {
-	panic(fmt.Errorf("not implemented: ConnectedChannelModels - connectedChannelModels"))
-}
 
 // CreateModel is the resolver for the createModel field.
 func (r *mutationResolver) CreateModel(ctx context.Context, input ent.CreateModelInput) (*ent.Model, error) {
