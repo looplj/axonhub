@@ -350,6 +350,350 @@ if len(response.Candidates) > 0 &&
 // AxonHub automatically translates Gemini format → OpenAI format
 ```
 
+### Embedding API
+
+AxonHub provides comprehensive support for text and multimodal embedding generation through OpenAI-compatible and Jina AI-specific APIs.
+
+**Endpoints:**
+- `POST /v1/embeddings` - OpenAI-compatible embedding API
+- `POST /jina/v1/embeddings` - Jina AI-specific embedding API
+
+**Supported Input Types:**
+- Single text string
+- Array of text strings
+- Token arrays (integers)
+- Multiple token arrays
+
+**Supported Encoding Formats:**
+- `float` - Default, returns embedding vectors as float arrays
+- `base64` - Returns embeddings as base64-encoded strings
+
+#### Request Format
+
+```json
+{
+  "input": "The text to embed",
+  "model": "text-embedding-3-small",
+  "encoding_format": "float",
+  "dimensions": 1536,
+  "user": "user-id"
+}
+```
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `input` | string \| string[] \| number[] \| number[][] | ✅ | The text(s) to embed. Can be a single string, array of strings, token array, or multiple token arrays. |
+| `model` | string | ✅ | The model to use for embedding generation. |
+| `encoding_format` | string | ❌ | Format to return embeddings in. Either `float` or `base64`. Default: `float`. |
+| `dimensions` | integer | ❌ | Number of dimensions for the output embeddings. |
+| `user` | string | ❌ | Unique identifier for the end-user. |
+
+**Jina-Specific Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `task` | string | ❌ | Task type for Jina embeddings. Options: `text-matching`, `retrieval.query`, `retrieval.passage`, `separation`, `classification`, `none`. |
+
+#### Response Format
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "embedding",
+      "embedding": [0.123, 0.456, ...],
+      "index": 0
+    }
+  ],
+  "model": "text-embedding-3-small",
+  "usage": {
+    "prompt_tokens": 4,
+    "total_tokens": 4
+  }
+}
+```
+
+#### Examples
+
+**OpenAI SDK (Python):**
+```python
+import openai
+
+client = openai.OpenAI(
+    api_key="your-axonhub-api-key",
+    base_url="http://localhost:8090/v1"
+)
+
+response = client.embeddings.create(
+    input="Hello, world!",
+    model="text-embedding-3-small"
+)
+
+print(response.data[0].embedding[:5])  # First 5 dimensions
+```
+
+**OpenAI SDK (Go):**
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+
+    "github.com/openai/openai-go"
+    "github.com/openai/openai-go/option"
+)
+
+func main() {
+    client := openai.NewClient(
+        option.WithAPIKey("your-axonhub-api-key"),
+        option.WithBaseURL("http://localhost:8090/v1"),
+    )
+
+    embedding, err := client.Embeddings.New(context.TODO(), openai.EmbeddingNewParams{
+        Input: openai.Union[string](openai.String("Hello, world!")),
+        Model: openai.String("text-embedding-3-small"),
+        option.WithHeader("AH-Trace-Id", "trace-example-123"),
+        option.WithHeader("AH-Thread-Id", "thread-example-abc"),
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    fmt.Printf("Embedding dimensions: %d\n", len(embedding.Data[0].Embedding))
+    fmt.Printf("First 5 values: %v\n", embedding.Data[0].Embedding[:5])
+}
+```
+
+**Multiple Texts:**
+```python
+response = client.embeddings.create(
+    input=["Hello, world!", "How are you?"],
+    model="text-embedding-3-small"
+)
+
+for i, data in enumerate(response.data):
+    print(f"Text {i}: {data.embedding[:3]}...")
+```
+
+**Jina-Specific Task:**
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8090/jina/v1/embeddings",
+    headers={
+        "Authorization": "Bearer your-axonhub-api-key",
+        "Content-Type": "application/json"
+    },
+    json={
+        "input": "What is machine learning?",
+        "model": "jina-embeddings-v2-base-en",
+        "task": "retrieval.query"
+    }
+)
+
+result = response.json()
+print(result["data"][0]["embedding"][:5])
+```
+
+### Rerank API
+
+AxonHub supports document reranking through OpenAI-compatible and Jina AI-specific APIs, allowing you to reorder documents based on relevance to a query.
+
+**Endpoints:**
+- `POST /v1/rerank` - OpenAI-compatible rerank API
+- `POST /jina/v1/rerank` - Jina AI-specific rerank API
+
+#### Request Format
+
+```json
+{
+  "query": "What is machine learning?",
+  "documents": [
+    "Machine learning is a subset of artificial intelligence...",
+    "Deep learning uses neural networks...",
+    "Statistics involves data analysis..."
+  ],
+  "top_n": 2,
+  "return_documents": true
+}
+```
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `query` | string | ✅ | The search query to compare documents against. |
+| `documents` | string[] | ✅ | List of documents to rerank. Minimum 1 document. |
+| `top_n` | integer | ❌ | Number of most relevant documents to return. If not specified, returns all documents. |
+| `return_documents` | boolean | ❌ | Whether to return the original documents in the response. Default: false. |
+
+#### Response Format
+
+```json
+{
+  "object": "list",
+  "results": [
+    {
+      "index": 0,
+      "relevance_score": 0.95,
+      "document": {
+        "text": "Machine learning is a subset of artificial intelligence..."
+      }
+    },
+    {
+      "index": 1,
+      "relevance_score": 0.87,
+      "document": {
+        "text": "Deep learning uses neural networks..."
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 45,
+    "total_tokens": 45
+  }
+}
+```
+
+#### Examples
+
+**OpenAI SDK (Python):**
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8090/v1/rerank",
+    headers={
+        "Authorization": "Bearer your-axonhub-api-key",
+        "Content-Type": "application/json"
+    },
+    json={
+        "query": "What is machine learning?",
+        "documents": [
+            "Machine learning is a subset of artificial intelligence that enables computers to learn without being explicitly programmed.",
+            "Deep learning uses neural networks with many layers.",
+            "Statistics is the study of data collection and analysis."
+        ],
+        "top_n": 2
+    }
+)
+
+result = response.json()
+for item in result["results"]:
+    print(f"Score: {item['relevance_score']:.3f} - {item['document']['text'][:50]}...")
+```
+
+**Jina SDK (Python):**
+```python
+import requests
+
+# Jina-specific rerank request
+response = requests.post(
+    "http://localhost:8090/jina/v1/rerank",
+    headers={
+        "Authorization": "Bearer your-axonhub-api-key",
+        "Content-Type": "application/json"
+    },
+    json={
+        "model": "jina-reranker-v1-base-en",
+        "query": "What are the benefits of renewable energy?",
+        "documents": [
+            "Solar power generates electricity from sunlight.",
+            "Coal mining provides jobs but harms the environment.",
+            "Wind turbines convert wind energy into electricity.",
+            "Fossil fuels are non-renewable and contribute to climate change."
+        ],
+        "top_n": 3,
+        "return_documents": True
+    }
+)
+
+result = response.json()
+print("Reranked documents:")
+for i, item in enumerate(result["results"]):
+    print(f"{i+1}. Score: {item['relevance_score']:.3f}")
+    print(f"   Text: {item['document']['text']}")
+```
+
+**Go Example:**
+```go
+package main
+
+import (
+    "bytes"
+    "context"
+    "encoding/json"
+    "fmt"
+    "io"
+    "net/http"
+)
+
+type RerankRequest struct {
+    Query     string   `json:"query"`
+    Documents []string `json:"documents"`
+    TopN      *int     `json:"top_n,omitempty"`
+}
+
+type RerankResponse struct {
+    Object  string `json:"object"`
+    Results []struct {
+        Index          int     `json:"index"`
+        RelevanceScore float64 `json:"relevance_score"`
+        Document       *struct {
+            Text string `json:"text"`
+        } `json:"document,omitempty"`
+    } `json:"results"`
+}
+
+func main() {
+    req := RerankRequest{
+        Query: "What is artificial intelligence?",
+        Documents: []string{
+            "AI refers to machines performing tasks that typically require human intelligence.",
+            "Machine learning is a subset of AI.",
+            "Deep learning uses neural networks.",
+        },
+        TopN: &[]int{2}[0], // pointer to 2
+    }
+
+    jsonData, _ := json.Marshal(req)
+    
+    httpReq, _ := http.NewRequestWithContext(
+        context.TODO(),
+        "POST",
+        "http://localhost:8090/v1/rerank",
+        bytes.NewBuffer(jsonData),
+    )
+    httpReq.Header.Set("Authorization", "Bearer your-axonhub-api-key")
+    httpReq.Header.Set("Content-Type", "application/json")
+    httpReq.Header.Set("AH-Trace-Id", "trace-example-123")
+    httpReq.Header.Set("AH-Thread-Id", "thread-example-abc")
+
+    client := &http.Client{}
+    resp, err := client.Do(httpReq)
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+
+    body, _ := io.ReadAll(resp.Body)
+    var result RerankResponse
+    json.Unmarshal(body, &result)
+
+    for _, item := range result.Results {
+        fmt.Printf("Score: %.3f, Text: %s\n", 
+            item.RelevanceScore, 
+            item.Document.Text[:50]+"...")
+    }
+}
+```
+
 
 | Provider               | Status     | Supported Models             | Compatible APIs |
 | ---------------------- | ---------- | ---------------------------- | --------------- |
