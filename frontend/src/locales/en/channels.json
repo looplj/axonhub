@@ -70,7 +70,8 @@
       "aihubmix": "AiHubMix",
       "burncloud": "BurnCloud",
       "modelscope": "ModelScope",
-      "bailian": "Bailian (OpenAI)"
+      "bailian": "Bailian (OpenAI)",
+      "jina": "Jina"
     },
     "providers": {
       "openai": "OpenAI",
@@ -92,7 +93,8 @@
       "aihubmix": "AiHubMix",
       "burncloud": "BurnCloud",
       "modelscope": "ModelScope",
-      "bailian": "Bailian"
+      "bailian": "Bailian",
+      "jina": "Jina"
     },
     "actions": {
       "test": "Test",

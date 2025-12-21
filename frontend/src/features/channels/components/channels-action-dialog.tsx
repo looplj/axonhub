@@ -768,6 +768,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
                   {/* Right Side - Form Fields */}
                   <div className='flex-1 space-y-6'>
+                    {selectedProvider !== 'jina' && (
                     <FormItem className='grid grid-cols-8 items-start gap-x-6'>
                       <FormLabel className='col-span-2 pt-2 text-right font-medium'>
                         {t('channels.dialogs.fields.apiFormat.label')}
@@ -809,6 +810,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         )}
                       </div>
                     </FormItem>
+                    )}
 
                     <FormField
                       control={form.control}

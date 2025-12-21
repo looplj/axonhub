@@ -3,11 +3,11 @@ package openai
 import "github.com/looplj/axonhub/internal/llm"
 
 type EmbeddingRequest struct {
-	Input          *llm.EmbeddingInput `json:"input"`
-	Model          string              `json:"model"`
-	EncodingFormat string              `json:"encoding_format,omitempty"`
-	Dimensions     *int                `json:"dimensions,omitempty"`
-	User           string              `json:"user,omitempty"`
+	Input          llm.EmbeddingInput `json:"input"`
+	Model          string             `json:"model"`
+	EncodingFormat string             `json:"encoding_format,omitempty"`
+	Dimensions     *int               `json:"dimensions,omitempty"`
+	User           string             `json:"user,omitempty"`
 }
 
 type EmbeddingResponse struct {

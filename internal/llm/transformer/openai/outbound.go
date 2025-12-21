@@ -411,22 +411,23 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 
 // transformEmbeddingRequest transforms unified llm.Request to HTTP embedding request.
 func (t *OutboundTransformer) transformEmbeddingRequest(
-	ctx context.Context,
+	_ context.Context,
 	llmReq *llm.Request,
 ) (*httpclient.Request, error) {
 	if llmReq == nil {
 		return nil, fmt.Errorf("llm request is nil")
 	}
 
-	// Parse embedding request from ExtraBody
-	var embReq EmbeddingRequest
-	if len(llmReq.ExtraBody) > 0 {
-		err := json.Unmarshal(llmReq.ExtraBody, &embReq)
-		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal embedding request from ExtraBody: %w", err)
-		}
-	} else {
-		return nil, fmt.Errorf("embedding request missing in ExtraBody")
+	if llmReq.Embedding == nil {
+		return nil, fmt.Errorf("embedding request is nil in llm.Request")
+	}
+
+	embReq := EmbeddingRequest{
+		Input:          llmReq.Embedding.Input,
+		Model:          llmReq.Model,
+		EncodingFormat: llmReq.Embedding.EncodingFormat,
+		Dimensions:     llmReq.Embedding.Dimensions,
+		User:           llmReq.Embedding.User,
 	}
 
 	// Re-marshal to JSON (ensure clean output)
@@ -560,7 +561,6 @@ func (t *OutboundTransformer) transformEmbeddingResponse(
 	llmEmbeddingResp := &llm.EmbeddingResponse{
 		Object: embResp.Object,
 		Data:   llmEmbeddingData,
-		Model:  embResp.Model,
 		Usage:  usage,
 	}
 
@@ -568,6 +568,7 @@ func (t *OutboundTransformer) transformEmbeddingResponse(
 		RequestType: llm.RequestTypeEmbedding,
 		APIFormat:   llm.APIFormatOpenAIEmbedding,
 		Embedding:   llmEmbeddingResp,
+		Model:       embResp.Model,
 	}
 
 	return llmResp, nil

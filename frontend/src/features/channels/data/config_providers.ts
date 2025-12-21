@@ -19,6 +19,7 @@ import {
   Vercel,
   ModelScope,
   Bailian,
+  Jina,
 } from '@lobehub/icons'
 import { CHANNEL_CONFIGS } from './config_channels'
 import { ApiFormat, ChannelType } from './schema'
@@ -155,6 +156,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     icon: Bailian,
     color: 'bg-green-100 text-green-800 border-green-200',
     channelTypes: ['bailian'],
+  },
+  jina: {
+    provider: 'jina',
+    icon: Jina,
+    color: 'bg-purple-100 text-purple-800 border-purple-200',
+    channelTypes: ['jina'],
   },
 }
 

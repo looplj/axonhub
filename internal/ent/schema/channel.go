@@ -70,6 +70,7 @@ func (Channel) Fields() []ent.Field {
 				"burncloud",
 				"modelscope",
 				"bailian",
+				"jina",
 			).
 			Immutable(),
 		field.String("base_url").Optional(),

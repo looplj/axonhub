@@ -19,6 +19,7 @@ import {
   Vercel,
   ModelScope,
   Bailian,
+  Jina,
 } from '@lobehub/icons'
 import { BURNCLOUD_DEFAULT_MODELS } from './burncloud-models'
 import { ApiFormat, ChannelType } from './schema'
@@ -469,6 +470,14 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-orange-100 text-orange-800 border-orange-200',
     icon: Anthropic,
   },
+  jina: {
+    channelType: 'jina',
+    baseURL: 'https://api.jina.ai/v1',
+    defaultModels: ['jina-embeddings-v3', 'jina-reranker-v3'],
+    apiFormat: OPENAI_CHAT_COMPLETIONS,
+    color: 'bg-purple-100 text-purple-800 border-purple-200',
+    icon: Jina,
+  },
 }
 
 /**
@@ -509,6 +518,7 @@ export type Provider =
   | 'burncloud'
   | 'modelscope'
   | 'bailian'
+  | 'jina'
 
 /**
  * Map channel type to provider
@@ -548,6 +558,7 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   burncloud: 'burncloud',
   modelscope: 'modelscope',
   bailian: 'bailian',
+  jina: 'jina',
 }
 
 /**
