@@ -1,6 +1,7 @@
 package openrouter
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,11 +10,13 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/spf13/cast"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/llm/transformer/openai"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/internal/pkg/streams"
 )
 
 // Config holds all configuration for the OpenRouter outbound transformer.
@@ -161,6 +164,34 @@ func (t *OutboundTransformer) TransformResponse(
 
 func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
 	return AggregateStreamChunks(ctx, chunks)
+}
+
+func (t *OutboundTransformer) TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+	return streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
+		return t.TransformStreamChunk(ctx, event)
+	}), nil
+}
+
+func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *httpclient.StreamEvent) (*llm.Response, error) {
+	if bytes.HasPrefix(event.Data, []byte("[DONE]")) {
+		return llm.DoneResponse, nil
+	}
+
+	ep := gjson.GetBytes(event.Data, "error")
+	if ep.Exists() {
+		return nil, &llm.ResponseError{
+			Detail: llm.ErrorDetail{
+				Message: ep.String(),
+			},
+		}
+	}
+
+	// Create a synthetic HTTP response for compatibility with existing logic
+	httpResp := &httpclient.Response{
+		Body: event.Data,
+	}
+
+	return t.TransformResponse(ctx, httpResp)
 }
 
 type openRouterError struct {
