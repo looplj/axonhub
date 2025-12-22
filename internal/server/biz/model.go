@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"entgo.io/ent/dialect/sql"
 	"github.com/samber/lo"
 	"go.uber.org/fx"
 
@@ -191,6 +192,7 @@ func (svc *ModelService) QueryModelChannelConnections(ctx context.Context, assoc
 	// Query all enabled/disabled channels
 	channels, err := svc.entFromContext(ctx).Channel.Query().
 		Where(channel.StatusIn(channel.StatusEnabled, channel.StatusDisabled)).
+		Order(channel.ByOrderingWeight(sql.OrderDesc())).
 		All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query channels: %w", err)
@@ -280,6 +282,19 @@ func (svc *ModelService) matchAssociation(assoc *objects.ModelAssociation, chann
 				}
 			}
 		}
+	case "model":
+		if assoc.ModelID != nil {
+			modelID := assoc.ModelID.ModelID
+			for _, ch := range channels {
+				if lo.Contains(ch.SupportedModels, modelID) {
+					connections = append(connections, &ModelChannelConnection{
+						Channel:  ch,
+						ModelIds: []string{modelID},
+					})
+				}
+			}
+		}
+
 	}
 
 	return connections

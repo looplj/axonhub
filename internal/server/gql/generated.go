@@ -370,6 +370,7 @@ type ComplexityRoot struct {
 	ModelAssociation struct {
 		ChannelModel func(childComplexity int) int
 		ChannelRegex func(childComplexity int) int
+		ModelID      func(childComplexity int) int
 		Regex        func(childComplexity int) int
 		Type         func(childComplexity int) int
 	}
@@ -423,6 +424,10 @@ type ComplexityRoot struct {
 	ModelEdge struct {
 		Cursor func(childComplexity int) int
 		Node   func(childComplexity int) int
+	}
+
+	ModelIDAssociation struct {
+		ModelID func(childComplexity int) int
 	}
 
 	ModelIdentify struct {
@@ -2434,6 +2439,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ModelAssociation.ChannelRegex(childComplexity), true
+	case "ModelAssociation.modelId":
+		if e.complexity.ModelAssociation.ModelID == nil {
+			break
+		}
+
+		return e.complexity.ModelAssociation.ModelID(childComplexity), true
 	case "ModelAssociation.regex":
 		if e.complexity.ModelAssociation.Regex == nil {
 			break
@@ -2616,6 +2627,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ModelEdge.Node(childComplexity), true
+
+	case "ModelIDAssociation.modelId":
+		if e.complexity.ModelIDAssociation.ModelID == nil {
+			break
+		}
+
+		return e.complexity.ModelIDAssociation.ModelID(childComplexity), true
 
 	case "ModelIdentify.id":
 		if e.complexity.ModelIdentify.ID == nil {
@@ -5713,6 +5731,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputModelCardLimitInput,
 		ec.unmarshalInputModelCardModalitiesInput,
 		ec.unmarshalInputModelCardReasoningInput,
+		ec.unmarshalInputModelIDAssociationInput,
 		ec.unmarshalInputModelMappingInput,
 		ec.unmarshalInputModelOrder,
 		ec.unmarshalInputModelSettingsInput,
@@ -14088,6 +14107,39 @@ func (ec *executionContext) fieldContext_ModelAssociation_regex(_ context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _ModelAssociation_modelId(ctx context.Context, field graphql.CollectedField, obj *objects.ModelAssociation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelAssociation_modelId,
+		func(ctx context.Context) (any, error) {
+			return obj.ModelID, nil
+		},
+		nil,
+		ec.marshalOModelIDAssociation2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelIDAssociation,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelAssociation_modelId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelAssociation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "modelId":
+				return ec.fieldContext_ModelIDAssociation_modelId(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ModelIDAssociation", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ModelCard_reasoning(ctx context.Context, field graphql.CollectedField, obj *objects.ModelCard) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -14985,6 +15037,35 @@ func (ec *executionContext) fieldContext_ModelEdge_cursor(_ context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _ModelIDAssociation_modelId(ctx context.Context, field graphql.CollectedField, obj *objects.ModelIDAssociation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelIDAssociation_modelId,
+		func(ctx context.Context) (any, error) {
+			return obj.ModelID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelIDAssociation_modelId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelIDAssociation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ModelIdentify_id(ctx context.Context, field graphql.CollectedField, obj *objects.ModelIdentify) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -15162,6 +15243,8 @@ func (ec *executionContext) fieldContext_ModelSettings_associations(_ context.Co
 				return ec.fieldContext_ModelAssociation_channelRegex(ctx, field)
 			case "regex":
 				return ec.fieldContext_ModelAssociation_regex(ctx, field)
+			case "modelId":
+				return ec.fieldContext_ModelAssociation_modelId(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ModelAssociation", field.Name)
 		},
@@ -38848,7 +38931,7 @@ func (ec *executionContext) unmarshalInputModelAssociationInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"type", "channelModel", "channelRegex", "regex"}
+	fieldsInOrder := [...]string{"type", "channelModel", "channelRegex", "regex", "modelId"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -38883,6 +38966,13 @@ func (ec *executionContext) unmarshalInputModelAssociationInput(ctx context.Cont
 				return it, err
 			}
 			it.Regex = data
+		case "modelId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelId"))
+			data, err := ec.unmarshalOModelIDAssociationInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelIDAssociation(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelID = data
 		}
 	}
 
@@ -39123,6 +39213,33 @@ func (ec *executionContext) unmarshalInputModelCardReasoningInput(ctx context.Co
 				return it, err
 			}
 			it.Default = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputModelIDAssociationInput(ctx context.Context, obj any) (objects.ModelIDAssociation, error) {
+	var it objects.ModelIDAssociation
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"modelId"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "modelId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelId"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelID = data
 		}
 	}
 
@@ -52611,6 +52728,8 @@ func (ec *executionContext) _ModelAssociation(ctx context.Context, sel ast.Selec
 			out.Values[i] = ec._ModelAssociation_channelRegex(ctx, field, obj)
 		case "regex":
 			out.Values[i] = ec._ModelAssociation_regex(ctx, field, obj)
+		case "modelId":
+			out.Values[i] = ec._ModelAssociation_modelId(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -52997,6 +53116,45 @@ func (ec *executionContext) _ModelEdge(ctx context.Context, sel ast.SelectionSet
 			out.Values[i] = ec._ModelEdge_node(ctx, field, obj)
 		case "cursor":
 			out.Values[i] = ec._ModelEdge_cursor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var modelIDAssociationImplementors = []string{"ModelIDAssociation"}
+
+func (ec *executionContext) _ModelIDAssociation(ctx context.Context, sel ast.SelectionSet, obj *objects.ModelIDAssociation) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, modelIDAssociationImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ModelIDAssociation")
+		case "modelId":
+			out.Values[i] = ec._ModelIDAssociation_modelId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -65092,6 +65250,21 @@ func (ec *executionContext) marshalOModelEdge2ᚖgithubᚗcomᚋloopljᚋaxonhub
 		return graphql.Null
 	}
 	return ec._ModelEdge(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOModelIDAssociation2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelIDAssociation(ctx context.Context, sel ast.SelectionSet, v *objects.ModelIDAssociation) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ModelIDAssociation(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOModelIDAssociationInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelIDAssociation(ctx context.Context, v any) (*objects.ModelIDAssociation, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputModelIDAssociationInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOModelMapping2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelMappingᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.ModelMapping) graphql.Marshaler {

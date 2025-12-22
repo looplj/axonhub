@@ -66,10 +66,12 @@ type ModelAssociation struct {
 	// channel_model: the specified model id in the specified channel
 	// channel_regex: the specified pattern in the specified channel
 	// regex: the pattern for all channels
+	// model: the specified model id
 	Type         string                   `json:"type"`
 	ChannelModel *ChannelModelAssociation `json:"channelModel"`
 	ChannelRegex *ChannelRegexAssociation `json:"channelRegex"`
 	Regex        *RegexAssociation        `json:"regex"`
+	ModelID      *ModelIDAssociation      `json:"modelId"`
 }
 
 type ChannelModelAssociation struct {
@@ -84,4 +86,8 @@ type ChannelRegexAssociation struct {
 
 type RegexAssociation struct {
 	Pattern string `json:"pattern"`
+}
+
+type ModelIDAssociation struct {
+	ModelID string `json:"modelId"`
 }

@@ -44,6 +44,7 @@ type ModelAssociation {
   channelModel: ChannelModelAssociation
   channelRegex: ChannelRegexAssociation
   regex: RegexAssociation
+  modelId: ModelIDAssociation
 }
 
 type ChannelModelAssociation {
@@ -58,6 +59,10 @@ type ChannelRegexAssociation {
 
 type RegexAssociation {
   pattern: String!
+}
+
+type ModelIDAssociation {
+  modelId: String!
 }
 
 # Input types for mutations
@@ -105,6 +110,7 @@ input ModelAssociationInput {
   channelModel: ChannelModelAssociationInput
   channelRegex: ChannelRegexAssociationInput
   regex: RegexAssociationInput
+  modelId: ModelIDAssociationInput
 }
 
 input ChannelModelAssociationInput {
@@ -119,6 +125,10 @@ input ChannelRegexAssociationInput {
 
 input RegexAssociationInput {
   pattern: String!
+}
+
+input ModelIDAssociationInput {
+  modelId: String!
 }
 
 type ModelChannelConnection {

@@ -34,7 +34,7 @@ const associationFormSchema = z.object({
   associations: z
     .array(
       z.object({
-        type: z.enum(['channel_model', 'channel_regex', 'regex']),
+        type: z.enum(['channel_model', 'channel_regex', 'model', 'regex']),
         channelId: z.number().optional(),
         modelId: z.string().optional(),
         pattern: z.string().optional(),
@@ -51,7 +51,7 @@ const associationFormSchema = z.object({
             })
           }
         }
-        if (assoc.type === 'channel_model') {
+        if (assoc.type === 'channel_model' || assoc.type === 'model') {
           if (!assoc.modelId || assoc.modelId.trim() === '') {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
@@ -174,6 +174,8 @@ export function ModelsAssociationDialog() {
               return assoc.channelId && assoc.pattern
             } else if (assoc.type === 'regex') {
               return assoc.pattern
+            } else if (assoc.type === 'model') {
+              return assoc.modelId
             }
             return false
           })
@@ -194,11 +196,18 @@ export function ModelsAssociationDialog() {
                   pattern: assoc.pattern!,
                 },
               }
-            } else {
+            } else if (assoc.type === 'regex') {
               return {
                 type: 'regex' as const,
                 regex: {
                   pattern: assoc.pattern!,
+                },
+              }
+            } else if (assoc.type === 'model') {
+              return {
+                type: 'model' as const,
+                modelId: {
+                  modelId: assoc.modelId!,
                 },
               }
             }
@@ -226,7 +235,7 @@ export function ModelsAssociationDialog() {
         associations: associations.map((assoc) => ({
           type: assoc.type,
           channelId: assoc.channelModel?.channelId || assoc.channelRegex?.channelId,
-          modelId: assoc.channelModel?.modelId,
+          modelId: assoc.channelModel?.modelId || assoc.modelId?.modelId,
           pattern: assoc.channelRegex?.pattern || assoc.regex?.pattern,
         })),
       })
@@ -247,6 +256,7 @@ export function ModelsAssociationDialog() {
             },
             channelRegex: null,
             regex: null,
+            modelId: null,
           }
         } else if (assoc.type === 'channel_regex') {
           return {
@@ -257,14 +267,26 @@ export function ModelsAssociationDialog() {
               pattern: assoc.pattern || '',
             },
             regex: null,
+            modelId: null,
           }
-        } else {
+        } else if (assoc.type === 'regex') {
           return {
             type: 'regex',
             channelModel: null,
             channelRegex: null,
             regex: {
               pattern: assoc.pattern || '',
+            },
+            modelId: null,
+          }
+        } else {
+          return {
+            type: 'model',
+            channelModel: null,
+            channelRegex: null,
+            regex: null,
+            modelId: {
+              modelId: assoc.modelId || '',
             },
           }
         }
@@ -366,7 +388,6 @@ export function ModelsAssociationDialog() {
                       channelOptions={channelOptions}
                       allModelOptions={allModelOptions}
                       onRemove={() => remove(index)}
-                      t={t}
                     />
                   ))}
                 </form>
@@ -447,21 +468,34 @@ interface AssociationRowProps {
   channelOptions: { value: number; label: string; supportedModels: string[] }[]
   allModelOptions: { value: string; label: string }[]
   onRemove: () => void
-  t: (key: string) => string
 }
 
-function AssociationRow({ index, form, channelOptions, allModelOptions, onRemove, t }: AssociationRowProps) {
+function AssociationRow({ index, form, channelOptions, allModelOptions, onRemove }: AssociationRowProps) {
+  const { t } = useTranslation()
+
   const type = form.watch(`associations.${index}.type`)
   const channelId = form.watch(`associations.${index}.channelId`)
+  const modelId = form.watch(`associations.${index}.modelId`)
+  const pattern = form.watch(`associations.${index}.pattern`)
   const [modelSearch, setModelSearch] = useState('')
 
   const showChannel = type === 'channel_model' || type === 'channel_regex'
-  const showModel = type === 'channel_model'
+  const showModel = type === 'channel_model' || type === 'model'
   const showPattern = type === 'channel_regex' || type === 'regex'
 
   // Filter model options based on selected channel's supported models
   const modelOptions = useMemo(() => {
-    if (!showModel || !channelId) {
+    if (!showModel) {
+      return []
+    }
+
+    if (type === 'model') {
+      // For 'model' type, show all available models
+      return allModelOptions
+    }
+
+    // For 'channel_model' type, use the selected channel's supported models directly
+    if (!channelId) {
       return []
     }
 
@@ -470,53 +504,37 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, onRemove
       return []
     }
 
-    // Filter all models to only include those supported by the selected channel
-    return allModelOptions.filter((model) => selectedChannel.supportedModels.includes(model.value))
-  }, [channelId, channelOptions, allModelOptions, showModel])
+    // Directly return the supported models as options
+    return selectedChannel.supportedModels.map((modelId) => ({
+      value: modelId,
+      label: modelId,
+    }))
+  }, [channelId, channelOptions, allModelOptions, showModel, type])
 
   return (
-    <div className='flex items-start gap-2 rounded-lg border p-3'>
-      {/* Type Select */}
-      <FormField
-        control={form.control}
-        name={`associations.${index}.type`}
-        render={({ field }) => (
-          <FormItem className='w-36 shrink-0'>
-            <FormControl>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger className='h-9'>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='channel_model'>{t('models.dialogs.association.types.channelModel')}</SelectItem>
-                  <SelectItem value='channel_regex'>{t('models.dialogs.association.types.channelRegex')}</SelectItem>
-                  <SelectItem value='regex'>{t('models.dialogs.association.types.regex')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+    <div className='flex flex-col gap-2 rounded-lg border p-3'>
+      <div className='flex items-center gap-2'>
+        {/* Priority Column */}
+        <div className='w-12 shrink-0 flex items-center justify-center'>
+          <span className='text-sm font-medium text-muted-foreground'>{index + 1}</span>
+        </div>
 
-      {/* Channel Select */}
-      {showChannel && (
+        {/* Type Select */}
         <FormField
           control={form.control}
-          name={`associations.${index}.channelId`}
+          name={`associations.${index}.type`}
           render={({ field }) => (
-            <FormItem className='flex-1'>
+            <FormItem className='w-36 shrink-0'>
               <FormControl>
-                <Select value={field.value?.toString() || ''} onValueChange={(value) => field.onChange(Number(value))}>
+                <Select value={field.value} onValueChange={field.onChange}>
                   <SelectTrigger className='h-9'>
-                    <SelectValue placeholder={t('models.dialogs.association.selectChannel')} />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {channelOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value.toString()}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value='channel_model'>{t('models.dialogs.association.types.channelModel')}</SelectItem>
+                    <SelectItem value='channel_regex'>{t('models.dialogs.association.types.channelRegex')}</SelectItem>
+                    <SelectItem value='model'>{t('models.dialogs.association.types.model')}</SelectItem>
+                    <SelectItem value='regex'>{t('models.dialogs.association.types.regex')}</SelectItem>
                   </SelectContent>
                 </Select>
               </FormControl>
@@ -524,70 +542,116 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, onRemove
             </FormItem>
           )}
         />
-      )}
 
-      {/* Model Select/AutoComplete */}
-      {showModel && (
-        <FormField
-          control={form.control}
-          name={`associations.${index}.modelId`}
-          render={({ field }) => (
-            <FormItem className='flex-1'>
-              <FormControl>
-                <AutoComplete
-                  selectedValue={field.value?.toString() || ''}
-                  onSelectedValueChange={(value) => {
-                    field.onChange(value)
-                    setModelSearch(value)
-                  }}
-                  searchValue={modelSearch || field.value?.toString() || ''}
-                  onSearchValueChange={setModelSearch}
-                  items={modelOptions}
-                  placeholder={t('models.dialogs.association.selectModel')}
-                  emptyMessage={
-                    modelOptions.length === 0 && channelId
-                      ? t('models.dialogs.association.noChannelModelsAvailable')
-                      : t('models.dialogs.association.selectChannelFirst')
-                  }
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      )}
+        {/* Channel Select */}
+        {showChannel && (
+          <FormField
+            control={form.control}
+            name={`associations.${index}.channelId`}
+            render={({ field }) => (
+              <FormItem className='flex-1'>
+                <FormControl>
+                  <Select value={field.value?.toString() || ''} onValueChange={(value) => field.onChange(Number(value))}>
+                    <SelectTrigger className='h-9'>
+                      <SelectValue placeholder={t('models.dialogs.association.selectChannel')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {channelOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value.toString()}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
-      {/* Pattern Input */}
-      {showPattern && (
-        <FormField
-          control={form.control}
-          name={`associations.${index}.pattern`}
-          render={({ field }) => (
-            <FormItem className='flex-1'>
-              <FormControl>
-                <Input
-                  {...field}
-                  value={field.value?.toString() || ''}
-                  placeholder={t('models.dialogs.association.patternPlaceholder')}
-                  className='h-9'
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      )}
+        {/* Model Select/AutoComplete */}
+        {showModel && (
+          <FormField
+            control={form.control}
+            name={`associations.${index}.modelId`}
+            render={({ field }) => (
+              <FormItem className='flex-1'>
+                <FormControl>
+                  <AutoComplete
+                    selectedValue={field.value?.toString() || ''}
+                    onSelectedValueChange={(value) => {
+                      field.onChange(value)
+                      setModelSearch(value)
+                    }}
+                    searchValue={modelSearch || field.value?.toString() || ''}
+                    onSearchValueChange={setModelSearch}
+                    items={modelOptions}
+                    placeholder={t('models.dialogs.association.selectModel')}
+                    emptyMessage={
+                      modelOptions.length === 0 && channelId
+                        ? t('models.dialogs.association.noChannelModelsAvailable')
+                        : t('models.dialogs.association.selectChannelFirst')
+                    }
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
-      {/* Delete Button */}
-      <Button
-        type='button'
-        variant='ghost'
-        size='sm'
-        onClick={onRemove}
-        className='text-destructive hover:text-destructive h-9 w-9 shrink-0 p-0'
-      >
-        <IconTrash className='h-4 w-4' />
-      </Button>
+        {/* Pattern Input */}
+        {showPattern && (
+          <FormField
+            control={form.control}
+            name={`associations.${index}.pattern`}
+            render={({ field }) => (
+              <FormItem className='flex-1'>
+                <FormControl>
+                  <Input
+                    {...field}
+                    value={field.value?.toString() || ''}
+                    placeholder={t('models.dialogs.association.patternPlaceholder')}
+                    className='h-9'
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
+        {/* Delete Button */}
+        <Button
+          type='button'
+          variant='ghost'
+          size='sm'
+          onClick={onRemove}
+          className='text-destructive hover:text-destructive h-9 w-9 shrink-0 p-0'
+        >
+          <IconTrash className='h-4 w-4' />
+        </Button>
+      </div>
+
+      {/* Hint */}
+      {(() => {
+        let hint = null;
+        const selectedChannel = channelOptions.find(c => c.value === channelId);
+        if (type === 'channel_model' && channelId && modelId) {
+          hint = t('models.dialogs.association.ruleHints.channelModel', { model: modelId, channel: selectedChannel?.label || channelId.toString() });
+        } else if (type === 'channel_regex' && channelId && pattern && isValidRegex(pattern)) {
+          hint = t('models.dialogs.association.ruleHints.channelRegex', { pattern, channel: selectedChannel?.label || channelId.toString() });
+        } else if (type === 'model' && modelId) {
+          hint = t('models.dialogs.association.ruleHints.model', { model: modelId });
+        } else if (type === 'regex' && pattern && isValidRegex(pattern)) {
+          hint = t('models.dialogs.association.ruleHints.regex', { pattern });
+        }
+        if (hint) {
+          return <div className='text-xs text-muted-foreground ml-14'>{hint}</div>;
+        }
+        return null;
+      })()}
     </div>
   )
 }

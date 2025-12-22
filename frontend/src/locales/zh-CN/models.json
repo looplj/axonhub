@@ -76,13 +76,15 @@
       },
       "association": {
         "title": "模型关联",
-        "description": "配置 {{name}} 的渠道和模型关联",
+        "description": "配置 {{name}} 的渠道和模型关联，模型将按照从上到下的优先级顺序进行处理。",
         "rule": "规则",
+        "priority": "优先级",
         "type": "类型",
         "types": {
           "channelModel": "渠道模型",
           "channelRegex": "渠道正则",
-          "regex": "正则"
+          "regex": "正则",
+          "model": "模型"
         },
         "channelId": "渠道 ID",
         "channelIdPlaceholder": "输入渠道 ID",
@@ -102,7 +104,13 @@
         "previewDescription": "实时预览关联的渠道和模型",
         "filterByChannel": "按渠道名称筛选...",
         "noConnections": "暂无渠道连接。添加规则以查看预览。",
-        "noFilteredConnections": "未找到匹配的渠道。"
+        "noFilteredConnections": "未找到匹配的渠道。",
+        "ruleHints": {
+          "channelModel": "使用渠道 {{channel}} 的 {{model}} 模型",
+          "channelRegex": "使用渠道 {{channel}} 匹配 {{pattern}} 的模型",
+          "model": "使用所有渠道的 {{model}} 模型",
+          "regex": "使用所有渠道匹配 {{pattern}} 的模型"
+        }
       },
       "status": {
         "enableTitle": "启用模型",

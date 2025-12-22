@@ -76,13 +76,15 @@
       },
       "association": {
         "title": "Model Association",
-        "description": "Configure channel and model associations for {{name}}",
+        "description": "Configure channel and model associations for {{name}}, models will be processed according to priority from top to bottom.",
         "rule": "Rule",
+        "priority": "Priority",
         "type": "Type",
         "types": {
           "channelModel": "Channel Model",
           "channelRegex": "Channel Regex",
-          "regex": "Regex"
+          "regex": "Regex",
+          "model": "Model"
         },
         "channelId": "Channel ID",
         "channelIdPlaceholder": "Enter channel ID",
@@ -102,7 +104,13 @@
         "previewDescription": "Real-time preview of associated channels and models",
         "filterByChannel": "Filter by channel name...",
         "noConnections": "No channel connections. Add rules to see preview.",
-        "noFilteredConnections": "No channels found matching filter."
+        "noFilteredConnections": "No channels found matching filter.",
+        "ruleHints": {
+          "channelModel": "Use {{model}} model in channel {{channel}}",
+          "channelRegex": "Use model matching {{pattern}} in channel {{channel}}",
+          "model": "Use {{model}} model in all channels",
+          "regex": "Use model matching {{pattern}} in all channels"
+        }
       },
       "status": {
         "enableTitle": "Enable Model",
