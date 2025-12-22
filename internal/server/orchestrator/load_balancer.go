@@ -101,6 +101,17 @@ type channelScore struct {
 	score   float64
 }
 
+// ScoreChannel calculates the total score for a single channel.
+// This is used when scoring AxonHub Model candidates.
+func (lb *LoadBalancer) ScoreChannel(ctx context.Context, channel *biz.Channel) float64 {
+	totalScore := 0.0
+	for _, strategy := range lb.strategies {
+		totalScore += strategy.Score(ctx, channel)
+	}
+
+	return totalScore
+}
+
 // Sort sorts channels according to the configured strategies.
 // Returns a new slice with top k channels sorted by descending priority.
 // The top k value is calculated internally based on the retry policy.

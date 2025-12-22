@@ -18,6 +18,7 @@ type PersistenceState struct {
 	ChannelService  *biz.ChannelService
 	ChannelSelector ChannelSelector
 	LoadBalancer    *LoadBalancer
+	ModelResolver   *ModelResolver
 
 	// Request state
 	ModelMapper *ModelMapper
@@ -35,6 +36,11 @@ type PersistenceState struct {
 	Channels       []*biz.Channel
 	CurrentChannel *biz.Channel
 	ChannelIndex   int
+
+	// AxonHub Model state (used by model_associate.go)
+	AxonHubModel           *ent.Model
+	ChannelModelCandidates []*ChannelModelCandidate
+	CurrentCandidate       *ChannelModelCandidate
 
 	Perf *biz.PerformanceRecord
 }

@@ -29,7 +29,7 @@ func MatchString(pattern string, str string) bool {
 	return cached.regex.MatchString(str)
 }
 
-func FilterByPattern(items []string, pattern string) []string {
+func Filter(items []string, pattern string) []string {
 	if pattern == "" {
 		return []string{}
 	}

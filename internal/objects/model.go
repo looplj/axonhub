@@ -68,6 +68,7 @@ type ModelAssociation struct {
 	// regex: the pattern for all channels
 	// model: the specified model id
 	Type         string                   `json:"type"`
+	Priority     int                      `json:"priority"` // Lower value = higher priority, default 0
 	ChannelModel *ChannelModelAssociation `json:"channelModel"`
 	ChannelRegex *ChannelRegexAssociation `json:"channelRegex"`
 	Regex        *RegexAssociation        `json:"regex"`

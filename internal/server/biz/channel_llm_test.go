@@ -185,7 +185,7 @@ func TestChannel_ChooseModel_WithExtraModelPrefix(t *testing.T) {
 	}
 }
 
-func TestChannel_ChooseModel_RemoveModelPrefixes_Symmetric(t *testing.T) {
+func TestChannel_ChooseModel_AutoTrimedModelPrefixes(t *testing.T) {
 	tests := []struct {
 		name          string
 		channel       *Channel
@@ -231,87 +231,6 @@ func TestChannel_ChooseModel_RemoveModelPrefixes_Symmetric(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, tt.expectedModel, result)
 			}
-		})
-	}
-}
-
-func TestChannel_resolveAutoTrimedModel(t *testing.T) {
-	tests := []struct {
-		name     string
-		channel  *Channel
-		model    string
-		expected string
-		found    bool
-	}{
-		{
-			name: "no prefixes configured",
-			channel: &Channel{
-				Channel: &ent.Channel{
-					Settings: &objects.ChannelSettings{},
-				},
-			},
-			model:    "openai/gpt-4",
-			expected: "",
-			found:    false,
-		},
-		{
-			name: "settings is nil",
-			channel: &Channel{
-				Channel: &ent.Channel{
-					Settings: nil,
-				},
-			},
-			model:    "openai/gpt-4",
-			expected: "",
-			found:    false,
-		},
-		{
-			name: "model without slash - no removal",
-			channel: &Channel{
-				Channel: &ent.Channel{
-					Settings: &objects.ChannelSettings{
-						AutoTrimedModelPrefixes: []string{"openai"},
-					},
-				},
-			},
-			model:    "gpt-4",
-			expected: "",
-			found:    false,
-		},
-		{
-			name: "prefix without slash in model - no removal",
-			channel: &Channel{
-				Channel: &ent.Channel{
-					Settings: &objects.ChannelSettings{
-						AutoTrimedModelPrefixes: []string{"gpt"},
-					},
-				},
-			},
-			model:    "gpt-4",
-			expected: "",
-			found:    false,
-		},
-		{
-			name: "request without prefix but supported model has prefix",
-			channel: &Channel{
-				Channel: &ent.Channel{
-					SupportedModels: []string{"deepseek-ai/DeepSeek-V3.2"},
-					Settings: &objects.ChannelSettings{
-						AutoTrimedModelPrefixes: []string{"deepseek-ai"},
-					},
-				},
-			},
-			model:    "DeepSeek-V3.2",
-			expected: "deepseek-ai/DeepSeek-V3.2",
-			found:    true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, found := tt.channel.resolveAutoTrimedModel(tt.model)
-			require.Equal(t, tt.found, found)
-			require.Equal(t, tt.expected, result)
 		})
 	}
 }

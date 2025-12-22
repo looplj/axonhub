@@ -371,6 +371,7 @@ type ComplexityRoot struct {
 		ChannelModel func(childComplexity int) int
 		ChannelRegex func(childComplexity int) int
 		ModelID      func(childComplexity int) int
+		Priority     func(childComplexity int) int
 		Regex        func(childComplexity int) int
 		Type         func(childComplexity int) int
 	}
@@ -2445,6 +2446,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ModelAssociation.ModelID(childComplexity), true
+	case "ModelAssociation.priority":
+		if e.complexity.ModelAssociation.Priority == nil {
+			break
+		}
+
+		return e.complexity.ModelAssociation.Priority(childComplexity), true
 	case "ModelAssociation.regex":
 		if e.complexity.ModelAssociation.Regex == nil {
 			break
@@ -14004,6 +14011,35 @@ func (ec *executionContext) fieldContext_ModelAssociation_type(_ context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _ModelAssociation_priority(ctx context.Context, field graphql.CollectedField, obj *objects.ModelAssociation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelAssociation_priority,
+		func(ctx context.Context) (any, error) {
+			return obj.Priority, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelAssociation_priority(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelAssociation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ModelAssociation_channelModel(ctx context.Context, field graphql.CollectedField, obj *objects.ModelAssociation) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -15237,6 +15273,8 @@ func (ec *executionContext) fieldContext_ModelSettings_associations(_ context.Co
 			switch field.Name {
 			case "type":
 				return ec.fieldContext_ModelAssociation_type(ctx, field)
+			case "priority":
+				return ec.fieldContext_ModelAssociation_priority(ctx, field)
 			case "channelModel":
 				return ec.fieldContext_ModelAssociation_channelModel(ctx, field)
 			case "channelRegex":
@@ -38931,7 +38969,7 @@ func (ec *executionContext) unmarshalInputModelAssociationInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"type", "channelModel", "channelRegex", "regex", "modelId"}
+	fieldsInOrder := [...]string{"type", "priority", "channelModel", "channelRegex", "regex", "modelId"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -38945,6 +38983,13 @@ func (ec *executionContext) unmarshalInputModelAssociationInput(ctx context.Cont
 				return it, err
 			}
 			it.Type = data
+		case "priority":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("priority"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Priority = data
 		case "channelModel":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelModel"))
 			data, err := ec.unmarshalOChannelModelAssociationInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelModelAssociation(ctx, v)
@@ -52719,6 +52764,11 @@ func (ec *executionContext) _ModelAssociation(ctx context.Context, sel ast.Selec
 			out.Values[i] = graphql.MarshalString("ModelAssociation")
 		case "type":
 			out.Values[i] = ec._ModelAssociation_type(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "priority":
+			out.Values[i] = ec._ModelAssociation_priority(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

@@ -18,6 +18,7 @@ export interface QueryModelsInput {
 
 export interface ModelAssociationInput {
   type: 'channel_model' | 'channel_regex' | 'regex'
+  priority?: number
   channelModel?: {
     channelId: string
     modelId: string

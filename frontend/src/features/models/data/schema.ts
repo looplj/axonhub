@@ -70,6 +70,7 @@ export type ModelIDAssociation = z.infer<typeof modelIDAssociationSchema>
 
 export const modelAssociationSchema = z.object({
   type: z.enum(['channel_model', 'channel_regex', 'model', 'regex',]),
+  priority: z.number().optional().default(0),
   channelModel: channelModelAssociationSchema.optional().nullable(),
   channelRegex: channelRegexAssociationSchema.optional().nullable(),
   regex: regexAssociationSchema.optional().nullable(),
