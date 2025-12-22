@@ -63,11 +63,17 @@ export const regexAssociationSchema = z.object({
 })
 export type RegexAssociation = z.infer<typeof regexAssociationSchema>
 
+export const modelIDAssociationSchema = z.object({
+  modelId: z.string(),
+})
+export type ModelIDAssociation = z.infer<typeof modelIDAssociationSchema>
+
 export const modelAssociationSchema = z.object({
-  type: z.enum(['channel_model', 'channel_regex', 'regex']),
+  type: z.enum(['channel_model', 'channel_regex', 'model', 'regex',]),
   channelModel: channelModelAssociationSchema.optional().nullable(),
   channelRegex: channelRegexAssociationSchema.optional().nullable(),
   regex: regexAssociationSchema.optional().nullable(),
+  modelId: modelIDAssociationSchema.optional().nullable(),
 })
 export type ModelAssociation = z.infer<typeof modelAssociationSchema>
 

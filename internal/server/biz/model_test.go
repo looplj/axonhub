@@ -369,4 +369,36 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 		// Model order should follow association order
 		assert.Equal(t, []string{"gpt-3.5-turbo", "gpt-4-turbo", "gpt-4"}, result[0].ModelIds)
 	})
+
+	t.Run("model association finds all channels supporting model", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type: "model",
+				ModelID: &objects.ModelIDAssociation{
+					ModelID: "gpt-4",
+				},
+			},
+		}
+
+		result, err := svc.QueryModelChannelConnections(ctx, associations)
+		require.NoError(t, err)
+		require.Len(t, result, 1)
+		assert.Equal(t, channel1.ID, result[0].Channel.ID)
+		assert.Equal(t, []string{"gpt-4"}, result[0].ModelIds)
+	})
+
+	t.Run("model association with non-existent model", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type: "model",
+				ModelID: &objects.ModelIDAssociation{
+					ModelID: "non-existent-model",
+				},
+			},
+		}
+
+		result, err := svc.QueryModelChannelConnections(ctx, associations)
+		require.NoError(t, err)
+		assert.Empty(t, result)
+	})
 }

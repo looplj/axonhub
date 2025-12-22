@@ -289,6 +289,12 @@ models:
   RegexAssociationInput:
     model:
       - github.com/looplj/axonhub/internal/objects.RegexAssociation
+  ModelIDAssociation:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelIDAssociation
+  ModelIDAssociationInput:    
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelIDAssociation
   ModelChannelConnection:
     model:
       - github.com/looplj/axonhub/internal/server/biz.ModelChannelConnection
