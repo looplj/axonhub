@@ -76,9 +76,10 @@
       },
       "association": {
         "title": "Model Association",
-        "description": "Configure channel and model associations for {{name}}, models will be processed according to priority from top to bottom.",
+        "description": "Configure channel and model associations for {{name}}. Rules are sorted by priority (lower value = higher priority).",
         "rule": "Rule",
         "priority": "Priority",
+        "priorityTooltip": "Lower value = higher priority",
         "type": "Type",
         "types": {
           "channelModel": "Channel Model",

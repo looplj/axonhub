@@ -35,6 +35,7 @@ const associationFormSchema = z.object({
     .array(
       z.object({
         type: z.enum(['channel_model', 'channel_regex', 'model', 'regex']),
+        priority: z.number().optional().default(0),
         channelId: z.number().optional(),
         modelId: z.string().optional(),
         pattern: z.string().optional(),
@@ -234,6 +235,7 @@ export function ModelsAssociationDialog() {
       form.reset({
         associations: associations.map((assoc) => ({
           type: assoc.type,
+          priority: assoc.priority ?? 0,
           channelId: assoc.channelModel?.channelId || assoc.channelRegex?.channelId,
           modelId: assoc.channelModel?.modelId || assoc.modelId?.modelId,
           pattern: assoc.channelRegex?.pattern || assoc.regex?.pattern,
@@ -250,6 +252,7 @@ export function ModelsAssociationDialog() {
         if (assoc.type === 'channel_model') {
           return {
             type: 'channel_model',
+            priority: assoc.priority ?? 0,
             channelModel: {
               channelId: assoc.channelId || 0,
               modelId: assoc.modelId || '',
@@ -261,6 +264,7 @@ export function ModelsAssociationDialog() {
         } else if (assoc.type === 'channel_regex') {
           return {
             type: 'channel_regex',
+            priority: assoc.priority ?? 0,
             channelModel: null,
             channelRegex: {
               channelId: assoc.channelId || 0,
@@ -272,6 +276,7 @@ export function ModelsAssociationDialog() {
         } else if (assoc.type === 'regex') {
           return {
             type: 'regex',
+            priority: assoc.priority ?? 0,
             channelModel: null,
             channelRegex: null,
             regex: {
@@ -282,6 +287,7 @@ export function ModelsAssociationDialog() {
         } else {
           return {
             type: 'model',
+            priority: assoc.priority ?? 0,
             channelModel: null,
             channelRegex: null,
             regex: null,
@@ -316,6 +322,7 @@ export function ModelsAssociationDialog() {
   const handleAddAssociation = useCallback(() => {
     append({
       type: 'channel_model',
+      priority: 0,
       channelId: undefined,
       modelId: '',
       pattern: '',
@@ -380,16 +387,23 @@ export function ModelsAssociationDialog() {
                     <p className='text-muted-foreground py-8 text-center text-sm'>{t('models.dialogs.association.noRules')}</p>
                   )}
 
-                  {fields.map((field, index) => (
-                    <AssociationRow
-                      key={field.id}
-                      index={index}
-                      form={form}
-                      channelOptions={channelOptions}
-                      allModelOptions={allModelOptions}
-                      onRemove={() => remove(index)}
-                    />
-                  ))}
+                  {fields
+                    .map((field, index) => ({ field, index }))
+                    .sort((a, b) => {
+                      const priorityA = form.getValues(`associations.${a.index}.priority`) ?? 0
+                      const priorityB = form.getValues(`associations.${b.index}.priority`) ?? 0
+                      return priorityA - priorityB
+                    })
+                    .map(({ field, index }) => (
+                      <AssociationRow
+                        key={field.id}
+                        index={index}
+                        form={form}
+                        channelOptions={channelOptions}
+                        allModelOptions={allModelOptions}
+                        onRemove={() => remove(index)}
+                      />
+                    ))}
                 </form>
               </Form>
             </div>
@@ -514,10 +528,26 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, onRemove
   return (
     <div className='flex flex-col gap-2 rounded-lg border p-3'>
       <div className='flex items-center gap-2'>
-        {/* Priority Column */}
-        <div className='w-12 shrink-0 flex items-center justify-center'>
-          <span className='text-sm font-medium text-muted-foreground'>{index + 1}</span>
-        </div>
+        {/* Priority Input */}
+        <FormField
+          control={form.control}
+          name={`associations.${index}.priority`}
+          render={({ field }) => (
+            <FormItem className='w-24 shrink-0'>
+              <FormControl>
+                <Input
+                  type='number'
+                  min={0}
+                  {...field}
+                  value={field.value ?? 0}
+                  onChange={(e) => field.onChange(Math.max(0, Number(e.target.value) || 0))}
+                  className='h-9 text-center'
+                  placeholder='0'
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
 
         {/* Type Select */}
         <FormField

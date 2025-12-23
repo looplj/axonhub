@@ -168,7 +168,7 @@ func TestMatchString(t *testing.T) {
 	}
 }
 
-func TestFilterByPattern(t *testing.T) {
+func TestFilter(t *testing.T) {
 	tests := []struct {
 		name     string
 		items    []string
@@ -233,7 +233,7 @@ func TestFilterByPattern(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := FilterByPattern(tt.items, tt.pattern)
+			result := Filter(tt.items, tt.pattern)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -370,6 +370,6 @@ func BenchmarkFilterByPattern(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		FilterByPattern(items, pattern)
+		Filter(items, pattern)
 	}
 }

@@ -19,8 +19,19 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
-	"github.com/looplj/axonhub/internal/pkg/xmap"
 )
+
+// ChannelModelEntry represents a model that the channel can handle.
+type ChannelModelEntry struct {
+	// RequestModel is the model name that can be used in requests
+	RequestModel string
+
+	// ActualModel is the model that will be sent to the provider
+	ActualModel string
+
+	// Source indicates how this model is supported
+	Source string // "direct", "prefix", "auto_trim", "mapping"
+}
 
 type Channel struct {
 	*ent.Channel
@@ -31,23 +42,15 @@ type Channel struct {
 	// HTTPClient is the custom HTTP client for this channel with proxy support
 	HTTPClient *httpclient.HttpClient
 
-	// CachedOverrideParams stores the parsed override parameters to avoid repeated JSON parsing
-	CachedOverrideParams map[string]any
+	// cachedOverrideParams stores the parsed override parameters to avoid repeated JSON parsing
+	cachedOverrideParams map[string]any
 
-	// CachedOverrideHeaders stores the parsed override headers to avoid repeated JSON parsing
-	CachedOverrideHeaders []objects.HeaderEntry
+	// cachedOverrideHeaders stores the parsed override headers to avoid repeated JSON parsing
+	cachedOverrideHeaders []objects.HeaderEntry
 
-	// modelSupportCache caches IsModelSupported results
-	modelSupportCache *xmap.Map[string, bool]
-
-	// chooseModelCache caches ChooseModel results
-	chooseModelCache *xmap.Map[string, chooseModelResult]
-}
-
-// chooseModelResult stores the cached result of ChooseModel.
-type chooseModelResult struct {
-	model string
-	err   error
+	// cachedModelEntries caches GetModelEntries results
+	// RequestModel -> Entry
+	cachedModelEntries map[string]ChannelModelEntry
 }
 
 type ChannelServiceParams struct {

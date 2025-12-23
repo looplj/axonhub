@@ -274,7 +274,7 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 		assert.ElementsMatch(t, []string{"gemini-1.5-pro", "gemini-1.5-flash"}, result[0].ModelIds)
 	})
 
-	t.Run("mixed associations with duplicates deduplicates models", func(t *testing.T) {
+	t.Run("mixed associations produce separate connections", func(t *testing.T) {
 		associations := []*objects.ModelAssociation{
 			{
 				Type: "channel_model",
@@ -294,13 +294,14 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 
 		result, err := svc.QueryModelChannelConnections(ctx, associations)
 		require.NoError(t, err)
-		require.Len(t, result, 1)
+		require.Len(t, result, 2)
 		assert.Equal(t, channel1.ID, result[0].Channel.ID)
-		// Should deduplicate gpt-4
 		assert.Equal(t, []string{"gpt-4"}, result[0].ModelIds)
+		assert.Equal(t, channel1.ID, result[1].Channel.ID)
+		assert.Equal(t, []string{"gpt-4"}, result[1].ModelIds)
 	})
 
-	t.Run("duplicate channel associations deduplicates channels", func(t *testing.T) {
+	t.Run("duplicate channel associations preserve order", func(t *testing.T) {
 		associations := []*objects.ModelAssociation{
 			{
 				Type: "channel_model",
@@ -327,17 +328,20 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 
 		result, err := svc.QueryModelChannelConnections(ctx, associations)
 		require.NoError(t, err)
-		require.Len(t, result, 2)
+		require.Len(t, result, 3)
 
-		// Channel order should follow first occurrence in associations
+		// Channel order follows association order
 		assert.Equal(t, channel1.ID, result[0].Channel.ID)
-		assert.Equal(t, []string{"gpt-4", "gpt-3.5-turbo"}, result[0].ModelIds)
+		assert.Equal(t, []string{"gpt-4"}, result[0].ModelIds)
 
 		assert.Equal(t, channel2.ID, result[1].Channel.ID)
 		assert.Equal(t, []string{"claude-3-opus"}, result[1].ModelIds)
+
+		assert.Equal(t, channel1.ID, result[2].Channel.ID)
+		assert.Equal(t, []string{"gpt-3.5-turbo"}, result[2].ModelIds)
 	})
 
-	t.Run("model order follows association order within channel", func(t *testing.T) {
+	t.Run("model associations produce separate connections in order", func(t *testing.T) {
 		associations := []*objects.ModelAssociation{
 			{
 				Type: "channel_model",
@@ -364,10 +368,14 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 
 		result, err := svc.QueryModelChannelConnections(ctx, associations)
 		require.NoError(t, err)
-		require.Len(t, result, 1)
+		require.Len(t, result, 3)
 		assert.Equal(t, channel1.ID, result[0].Channel.ID)
-		// Model order should follow association order
-		assert.Equal(t, []string{"gpt-3.5-turbo", "gpt-4-turbo", "gpt-4"}, result[0].ModelIds)
+		// Model connections follow association order
+		assert.Equal(t, []string{"gpt-3.5-turbo"}, result[0].ModelIds)
+		assert.Equal(t, channel1.ID, result[1].Channel.ID)
+		assert.Equal(t, []string{"gpt-4-turbo"}, result[1].ModelIds)
+		assert.Equal(t, channel1.ID, result[2].Channel.ID)
+		assert.Equal(t, []string{"gpt-4"}, result[2].ModelIds)
 	})
 
 	t.Run("model association finds all channels supporting model", func(t *testing.T) {

@@ -28,82 +28,13 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
-	"github.com/looplj/axonhub/internal/pkg/xmap"
 )
 
-func (c *Channel) resolveAutoTrimedModel(model string) (string, bool) {
-	if c.Settings == nil || len(c.Settings.AutoTrimedModelPrefixes) == 0 {
-		return "", false
-	}
-
-	for _, prefix := range c.Settings.AutoTrimedModelPrefixes {
-		prefixed := prefix + "/" + model
-		if slices.Contains(c.SupportedModels, prefixed) {
-			return prefixed, true
-		}
-	}
-
-	return "", false
-}
-
-func (c *Channel) resolvePrefixedModel(model string) (string, bool) {
-	if c.Settings == nil || c.Settings.ExtraModelPrefix == "" {
-		return "", false
-	}
-
-	prefix := c.Settings.ExtraModelPrefix + "/"
-	if !strings.HasPrefix(model, prefix) {
-		return "", false
-	}
-
-	modelWithoutPrefix := model[len(prefix):]
-	if !slices.Contains(c.SupportedModels, modelWithoutPrefix) {
-		return "", false
-	}
-
-	return modelWithoutPrefix, true
-}
-
 func (c *Channel) IsModelSupported(model string) bool {
-	// Check cache first
-	if c.modelSupportCache == nil {
-		c.modelSupportCache = xmap.New[string, bool]()
-	}
+	entries := c.GetModelEntries()
+	_, ok := entries[model]
 
-	if cached, ok := c.modelSupportCache.Load(model); ok {
-		return cached
-	}
-
-	result := c.isModelSupportedInternal(model)
-	c.modelSupportCache.Store(model, result)
-
-	return result
-}
-
-func (c *Channel) isModelSupportedInternal(model string) bool {
-	if slices.Contains(c.SupportedModels, model) {
-		return true
-	}
-
-	if c.Settings == nil {
-		return false
-	}
-
-	if _, ok := c.resolvePrefixedModel(model); ok {
-		return true
-	}
-
-	if _, ok := c.resolveAutoTrimedModel(model); ok {
-		return true
-	}
-
-	for _, mapping := range c.Settings.ModelMappings {
-		if mapping.From == model && slices.Contains(c.SupportedModels, mapping.To) {
-			return true
-		}
-	}
-
-	return false
+	return ok
 }
 
 // CustomizeExecutor implements pipeline.ChannelCustomizedExecutor interface
@@ -118,58 +49,26 @@ func (c *Channel) CustomizeExecutor(executor pipeline.Executor) pipeline.Executo
 }
 
 func (c *Channel) ChooseModel(model string) (string, error) {
-	// Check cache first
-	if c.chooseModelCache == nil {
-		c.chooseModelCache = xmap.New[string, chooseModelResult]()
-	}
+	entries := c.GetModelEntries()
 
-	if cached, ok := c.chooseModelCache.Load(model); ok {
-		result := cached
-		return result.model, result.err
-	}
-
-	resultModel, err := c.chooseModelInternal(model)
-	c.chooseModelCache.Store(model, chooseModelResult{model: resultModel, err: err})
-
-	return resultModel, err
-}
-
-func (c *Channel) chooseModelInternal(model string) (string, error) {
-	if slices.Contains(c.SupportedModels, model) {
-		return model, nil
-	}
-
-	if c.Settings == nil {
+	entry, ok := entries[model]
+	if !ok {
 		return "", fmt.Errorf("model %s not supported in channel %s", model, c.Name)
 	}
 
-	if resolved, ok := c.resolvePrefixedModel(model); ok {
-		return resolved, nil
-	}
-
-	if resolved, ok := c.resolveAutoTrimedModel(model); ok {
-		return resolved, nil
-	}
-
-	for _, mapping := range c.Settings.ModelMappings {
-		if mapping.From == model && slices.Contains(c.SupportedModels, mapping.To) {
-			return mapping.To, nil
-		}
-	}
-
-	return "", fmt.Errorf("model %s not supported in channel %s", model, c.Name)
+	return entry.ActualModel, nil
 }
 
 // GetOverrideParameters returns the cached override parameters for the channel.
 // If the parameters haven't been parsed yet, it parses and caches them.
 func (c *Channel) GetOverrideParameters() map[string]any {
-	if c.CachedOverrideParams != nil {
-		return c.CachedOverrideParams
+	if c.cachedOverrideParams != nil {
+		return c.cachedOverrideParams
 	}
 
 	if c.Settings == nil || c.Settings.OverrideParameters == "" {
-		c.CachedOverrideParams = make(map[string]any)
-		return c.CachedOverrideParams
+		c.cachedOverrideParams = make(map[string]any)
+		return c.cachedOverrideParams
 	}
 
 	var overrideParams map[string]any
@@ -179,31 +78,31 @@ func (c *Channel) GetOverrideParameters() map[string]any {
 			log.String("channel", c.Name),
 			log.Cause(err),
 		)
-		c.CachedOverrideParams = make(map[string]any)
+		c.cachedOverrideParams = make(map[string]any)
 
-		return c.CachedOverrideParams
+		return c.cachedOverrideParams
 	}
 
-	c.CachedOverrideParams = overrideParams
+	c.cachedOverrideParams = overrideParams
 
-	return c.CachedOverrideParams
+	return c.cachedOverrideParams
 }
 
 // GetOverrideHeaders returns the cached override headers for the channel.
 // If the headers haven't been loaded yet, it loads and caches them.
 func (c *Channel) GetOverrideHeaders() []objects.HeaderEntry {
-	if c.CachedOverrideHeaders != nil {
-		return c.CachedOverrideHeaders
+	if c.cachedOverrideHeaders != nil {
+		return c.cachedOverrideHeaders
 	}
 
 	if c.Settings == nil || len(c.Settings.OverrideHeaders) == 0 {
-		c.CachedOverrideHeaders = make([]objects.HeaderEntry, 0)
-		return c.CachedOverrideHeaders
+		c.cachedOverrideHeaders = make([]objects.HeaderEntry, 0)
+		return c.cachedOverrideHeaders
 	}
 
-	c.CachedOverrideHeaders = c.Settings.OverrideHeaders
+	c.cachedOverrideHeaders = c.Settings.OverrideHeaders
 
-	return c.CachedOverrideHeaders
+	return c.cachedOverrideHeaders
 }
 
 // getProxyConfig extracts proxy configuration from channel settings
@@ -225,13 +124,25 @@ func buildChannelWithTransformer(
 	transformer transformer.Outbound,
 	httpClient *httpclient.HttpClient,
 ) *Channel {
-	return &Channel{
-		Channel:           c,
-		Outbound:          transformer,
-		HTTPClient:        httpClient,
-		modelSupportCache: xmap.New[string, bool](),
-		chooseModelCache:  xmap.New[string, chooseModelResult](),
+	ch := &Channel{
+		Channel:    c,
+		Outbound:   transformer,
+		HTTPClient: httpClient,
 	}
+	entries := ch.GetModelEntries()
+
+	headers := ch.GetOverrideHeaders()
+
+	params := ch.GetOverrideParameters()
+	if log.DebugEnabled(context.Background()) {
+		log.Debug(context.Background(), "pre cached settings",
+			log.String("channel", ch.Name), log.Int("entries", len(entries)),
+			log.Int("headers", len(headers)),
+			log.Int("params", len(params)),
+		)
+	}
+
+	return ch
 }
 
 //nolint:maintidx // Simple switch statement.
@@ -490,4 +401,86 @@ func (svc *ChannelService) ChooseChannels(
 	}
 
 	return channels, nil
+}
+
+// GetModelEntries returns all models this channel can handle, RequestModel -> Entry
+// This unifies:
+// - SupportedModels (direct models)
+// - ExtraModelPrefix (prefixed models)
+// - AutoTrimedModelPrefixes (auto-trimmed models)
+// - ModelMappings (mapped models)
+// The result is cached for performance.
+func (ch *Channel) GetModelEntries() map[string]ChannelModelEntry {
+	// Return cached result if available
+	if ch.cachedModelEntries != nil {
+		return ch.cachedModelEntries
+	}
+
+	entries := make(map[string]ChannelModelEntry)
+
+	// 1. Direct models from SupportedModels
+	for _, model := range ch.SupportedModels {
+		if _, exists := entries[model]; !exists {
+			entries[model] = ChannelModelEntry{
+				RequestModel: model,
+				ActualModel:  model,
+				Source:       "direct",
+			}
+		}
+	}
+
+	if ch.Settings == nil {
+		ch.cachedModelEntries = entries
+		return entries
+	}
+
+	// 2. Prefixed models (ExtraModelPrefix)
+	if ch.Settings.ExtraModelPrefix != "" {
+		prefix := ch.Settings.ExtraModelPrefix
+		for _, model := range ch.SupportedModels {
+			prefixedModel := prefix + "/" + model
+			if _, exists := entries[prefixedModel]; !exists {
+				entries[prefixedModel] = ChannelModelEntry{
+					RequestModel: prefixedModel,
+					ActualModel:  model,
+					Source:       "prefix",
+				}
+			}
+		}
+	}
+
+	// 3. Auto-trimmed models (AutoTrimedModelPrefixes)
+	for _, prefix := range ch.Settings.AutoTrimedModelPrefixes {
+		for _, model := range ch.SupportedModels {
+			// Only process models that have the prefix
+			if strings.HasPrefix(model, prefix+"/") {
+				trimmedModel := strings.TrimPrefix(model, prefix+"/")
+				if _, exists := entries[trimmedModel]; !exists {
+					entries[trimmedModel] = ChannelModelEntry{
+						RequestModel: trimmedModel,
+						ActualModel:  model,
+						Source:       "auto_trim",
+					}
+				}
+			}
+		}
+	}
+
+	// 4. Model mappings
+	for _, mapping := range ch.Settings.ModelMappings {
+		// Only add if the target model is supported
+		if slices.Contains(ch.SupportedModels, mapping.To) {
+			if _, exists := entries[mapping.From]; !exists {
+				entries[mapping.From] = ChannelModelEntry{
+					RequestModel: mapping.From,
+					ActualModel:  mapping.To,
+					Source:       "mapping",
+				}
+			}
+		}
+	}
+
+	ch.cachedModelEntries = entries
+
+	return entries
 }

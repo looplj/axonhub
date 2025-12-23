@@ -12,7 +12,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/objects"
-	"github.com/looplj/axonhub/internal/pkg/xregexp"
 )
 
 type ModelServiceParams struct {
@@ -176,14 +175,8 @@ func (svc *ModelService) BulkDeleteModels(ctx context.Context, ids []int) error 
 	return nil
 }
 
-type ModelChannelConnection struct {
-	Channel  *ent.Channel `json:"channel"`
-	ModelIds []string     `json:"modelIds"`
-}
-
 // QueryModelChannelConnections queries channels and their models based on model associations.
-// Results are ordered by the first occurrence of each channel in the associations list,
-// and both channels and models are deduplicated.
+// Results are ordered by the matching order of associations.
 func (svc *ModelService) QueryModelChannelConnections(ctx context.Context, associations []*objects.ModelAssociation) ([]*ModelChannelConnection, error) {
 	if len(associations) == 0 {
 		return []*ModelChannelConnection{}, nil
@@ -202,100 +195,8 @@ func (svc *ModelService) QueryModelChannelConnections(ctx context.Context, assoc
 		return []*ModelChannelConnection{}, nil
 	}
 
-	result := svc.matchAssociations(associations, channels)
-
-	return result, nil
-}
-
-func (svc *ModelService) matchAssociations(associations []*objects.ModelAssociation, channels []*ent.Channel) []*ModelChannelConnection {
-	// Track channel order and connections
-	channelIndex := make(map[int]int)                           // channel ID -> result index
-	channelConnections := make(map[int]*ModelChannelConnection) // channel ID -> connection
-
-	// Process associations in order
-	for _, assoc := range associations {
-		connections := svc.matchAssociation(assoc, channels)
-		for _, conn := range connections {
-			existing, exists := channelConnections[conn.Channel.ID]
-			if !exists {
-				// New channel - assign next index and create connection
-				channelIndex[conn.Channel.ID] = len(channelIndex)
-				channelConnections[conn.Channel.ID] = conn
-			} else {
-				existing.ModelIds = append(existing.ModelIds, conn.ModelIds...)
-			}
-		}
-	}
-
-	// Build result slice in order and deduplicate models
-	result := make([]*ModelChannelConnection, len(channelIndex))
-
-	for chID, conn := range channelConnections {
-		conn.ModelIds = lo.Uniq(conn.ModelIds)
-		result[channelIndex[chID]] = conn
-	}
-
-	return result
-}
-
-// matchAssociation matches a single association against all channels and returns model channel connections.
-func (svc *ModelService) matchAssociation(assoc *objects.ModelAssociation, channels []*ent.Channel) []*ModelChannelConnection {
-	connections := make([]*ModelChannelConnection, 0)
-
-	switch assoc.Type {
-	case "channel_model":
-		if assoc.ChannelModel != nil {
-			ch, found := lo.Find(channels, func(c *ent.Channel) bool {
-				return c.ID == assoc.ChannelModel.ChannelID
-			})
-			if found && lo.Contains(ch.SupportedModels, assoc.ChannelModel.ModelID) {
-				connections = append(connections, &ModelChannelConnection{
-					Channel:  ch,
-					ModelIds: []string{assoc.ChannelModel.ModelID},
-				})
-			}
-		}
-	case "channel_regex":
-		if assoc.ChannelRegex != nil {
-			ch, found := lo.Find(channels, func(c *ent.Channel) bool {
-				return c.ID == assoc.ChannelRegex.ChannelID
-			})
-			if found {
-				modelIds := xregexp.FilterByPattern(ch.SupportedModels, assoc.ChannelRegex.Pattern)
-				if len(modelIds) > 0 {
-					connections = append(connections, &ModelChannelConnection{
-						Channel:  ch,
-						ModelIds: modelIds,
-					})
-				}
-			}
-		}
-	case "regex":
-		if assoc.Regex != nil {
-			for _, ch := range channels {
-				modelIds := xregexp.FilterByPattern(ch.SupportedModels, assoc.Regex.Pattern)
-				if len(modelIds) > 0 {
-					connections = append(connections, &ModelChannelConnection{
-						Channel:  ch,
-						ModelIds: modelIds,
-					})
-				}
-			}
-		}
-	case "model":
-		if assoc.ModelID != nil {
-			modelID := assoc.ModelID.ModelID
-			for _, ch := range channels {
-				if lo.Contains(ch.SupportedModels, modelID) {
-					connections = append(connections, &ModelChannelConnection{
-						Channel:  ch,
-						ModelIds: []string{modelID},
-					})
-				}
-			}
-		}
-
-	}
-
-	return connections
+	// Use the shared MatchAssociations function
+	return MatchAssociations(ctx, associations, lo.Map(channels, func(ch *ent.Channel, _ int) Channel {
+		return Channel{Channel: ch}
+	}))
 }

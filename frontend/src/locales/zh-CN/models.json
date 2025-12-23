@@ -76,9 +76,10 @@
       },
       "association": {
         "title": "模型关联",
-        "description": "配置 {{name}} 的渠道和模型关联，模型将按照从上到下的优先级顺序进行处理。",
+        "description": "配置 {{name}} 的渠道和模型关联。规则按优先级排序（数值越低优先级越高）。",
         "rule": "规则",
         "priority": "优先级",
+        "priorityTooltip": "数值越低优先级越高",
         "type": "类型",
         "types": {
           "channelModel": "渠道模型",
