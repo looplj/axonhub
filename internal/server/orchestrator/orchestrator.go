@@ -70,7 +70,7 @@ type ChatCompletionOrchestrator struct {
 	// The runtime fields.
 
 	// The default channel selector.
-	channelSelector ChannelSelector
+	channelSelector CandidateSelector
 	// The runtime selected channel ids.
 	selectedChannelIds []int
 	// The load balancer for channel load balancing.
@@ -84,7 +84,7 @@ type ChatCompletionOrchestrator struct {
 	proxy *objects.ProxyConfig
 }
 
-func (processor *ChatCompletionOrchestrator) WithChannelSelector(selector ChannelSelector) *ChatCompletionOrchestrator {
+func (processor *ChatCompletionOrchestrator) WithChannelSelector(selector CandidateSelector) *ChatCompletionOrchestrator {
 	c := *processor
 	c.channelSelector = selector
 

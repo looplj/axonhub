@@ -288,21 +288,22 @@ func selectChannels(inbound *PersistentInboundTransformer) pipeline.Middleware {
 			selector = NewLoadBalancedSelector(selector, inbound.state.LoadBalancer)
 		}
 
-		channels, err := selector.Select(ctx, llmRequest)
+		candidates, err := selector.Select(ctx, llmRequest)
 		if err != nil {
 			return nil, err
 		}
 
-		log.Debug(ctx, "selected channels",
-			log.Any("channels", channels),
-			log.Any("model", llmRequest.Model),
+		log.Debug(ctx, "selected candidates",
+			log.Int("candidate_count", len(candidates)),
+			log.String("model", llmRequest.Model),
 		)
 
-		if len(channels) == 0 {
-			return nil, fmt.Errorf("%w: no valid channels found for model %s", biz.ErrInvalidModel, llmRequest.Model)
+		if len(candidates) == 0 {
+			return nil, fmt.Errorf("%w: for the request model %s", biz.ErrInvalidModel, llmRequest.Model)
 		}
 
-		inbound.state.Channels = channels
+		// Extract channels from candidates for backward compatibility
+		inbound.state.Channels = extractChannelsFromCandidates(candidates)
 
 		return llmRequest, nil
 	})

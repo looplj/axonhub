@@ -99,7 +99,7 @@ type ChannelService struct {
 	Executors executors.ScheduledExecutor
 
 	// latestUpdate 记录最新的 channel 更新时间，用于优化定时加载
-	EnabledChannels []*Channel
+	enabledChannels []*Channel
 	latestUpdate    time.Time
 
 	// perfWindowSeconds is the configurable sliding window size for performance metrics (in seconds)
@@ -184,9 +184,19 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 
 	log.Info(ctx, "loaded channels", log.Int("count", len(channels)))
 
-	svc.EnabledChannels = channels
+	svc.enabledChannels = channels
 
 	return nil
+}
+
+// GetEnabledChannels returns all enabled channels.
+// This method hides the internal field and provides a stable interface.
+//
+// WARNING: The returned slice and its elements are internal cached state.
+// DO NOT modify the returned slice or any of its Channel elements.
+// Modifications will not persist and may cause data inconsistency.
+func (svc *ChannelService) GetEnabledChannels() []*Channel {
+	return svc.enabledChannels
 }
 
 // GetChannelForTest retrieves a specific channel by ID for testing purposes,
@@ -209,7 +219,7 @@ func (svc *ChannelService) GetChannelForTest(ctx context.Context, channelID int)
 func (svc *ChannelService) ListEnabledModels(ctx context.Context) []objects.ModelFacade {
 	modelSet := make(map[string]objects.ModelFacade)
 
-	for _, ch := range svc.EnabledChannels {
+	for _, ch := range svc.enabledChannels {
 		// Add all supported models
 		for _, model := range ch.SupportedModels {
 			if _, ok := modelSet[model]; ok {
