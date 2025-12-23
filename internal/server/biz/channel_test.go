@@ -325,7 +325,7 @@ func TestChannelService_ListEnabledModels(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := &ChannelService{
-				EnabledChannels: tt.channels,
+				enabledChannels: tt.channels,
 			}
 
 			result := svc.ListEnabledModels(context.Background())

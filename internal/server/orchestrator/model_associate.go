@@ -16,14 +16,6 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
-// ChannelModelCandidate represents a resolved channel and model pair.
-type ChannelModelCandidate struct {
-	Channel      *biz.Channel
-	RequestModel string
-	ActualModel  string
-	Priority     int
-}
-
 // ModelResolver resolves AxonHub Models to channel+model candidates.
 type ModelResolver struct {
 	ModelService   *biz.ModelService
@@ -83,7 +75,7 @@ func (r *ModelResolver) Resolve(ctx context.Context, modelName string) ([]*Chann
 // and converts the results to ChannelModelCandidate.
 func (r *ModelResolver) resolveAssociations(ctx context.Context, associations []*objects.ModelAssociation) ([]*ChannelModelCandidate, error) {
 	// Get all enabled channels
-	enabledChannels := r.ChannelService.EnabledChannels
+	enabledChannels := r.ChannelService.GetEnabledChannels()
 	if len(enabledChannels) == 0 {
 		return []*ChannelModelCandidate{}, nil
 	}
@@ -373,20 +365,22 @@ func selectChannelsLegacy(ctx context.Context, inbound *PersistentInboundTransfo
 		selector = NewLoadBalancedSelector(selector, inbound.state.LoadBalancer)
 	}
 
-	channels, err := selector.Select(ctx, llmRequest)
+	candidates, err := selector.Select(ctx, llmRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	log.Debug(ctx, "selected channels (legacy)",
-		log.Any("channels", channels),
-		log.Any("model", llmRequest.Model),
+	log.Debug(ctx, "selected candidates (legacy)",
+		log.Int("candidate_count", len(candidates)),
+		log.String("model", llmRequest.Model),
 	)
 
-	if len(channels) == 0 {
-		return nil, fmt.Errorf("%w: no valid channels found for model %s", biz.ErrInvalidModel, llmRequest.Model)
+	if len(candidates) == 0 {
+		return nil, fmt.Errorf("%w: no valid candidates found for model %s", biz.ErrInvalidModel, llmRequest.Model)
 	}
 
+	// Extract channels from candidates for backward compatibility
+	channels := extractChannelsFromCandidates(candidates)
 	inbound.state.Channels = channels
 
 	return llmRequest, nil

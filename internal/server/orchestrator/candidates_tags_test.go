@@ -109,8 +109,8 @@ func TestTagsFilterSelector_EmptyAllowedTags(t *testing.T) {
 
 	// 创建返回所有 channels 的 mock selector
 	mockSelector := &mockChannelSelector{
-		selectFunc: func(ctx context.Context, req *llm.Request) ([]*biz.Channel, error) {
-			return channels, nil
+		selectFunc: func(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error) {
+			return channelsToCandidates(channels, req.Model), nil
 		},
 	}
 
@@ -126,7 +126,6 @@ func TestTagsFilterSelector_EmptyAllowedTags(t *testing.T) {
 
 	// 应该返回所有 5 个渠道
 	assert.Len(t, result, 5)
-	assert.Equal(t, channels, result)
 }
 
 // TestTagsFilterSelector_NilAllowedTags 测试当 allowedTags 为 nil 时返回所有渠道.
@@ -134,8 +133,8 @@ func TestTagsFilterSelector_NilAllowedTags(t *testing.T) {
 	ctx, _, channels := setupTagsTest(t)
 
 	mockSelector := &mockChannelSelector{
-		selectFunc: func(ctx context.Context, req *llm.Request) ([]*biz.Channel, error) {
-			return channels, nil
+		selectFunc: func(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error) {
+			return channelsToCandidates(channels, req.Model), nil
 		},
 	}
 	selector := NewTagsFilterSelector(mockSelector, nil)
@@ -156,8 +155,8 @@ func TestTagsFilterSelector_SingleMatchingTag(t *testing.T) {
 	ctx, _, channels := setupTagsTest(t)
 
 	mockSelector := &mockChannelSelector{
-		selectFunc: func(ctx context.Context, req *llm.Request) ([]*biz.Channel, error) {
-			return channels, nil
+		selectFunc: func(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error) {
+			return channelsToCandidates(channels, req.Model), nil
 		},
 	}
 	selector := NewTagsFilterSelector(mockSelector, []string{"tag1"})
@@ -171,7 +170,7 @@ func TestTagsFilterSelector_SingleMatchingTag(t *testing.T) {
 
 	// 只有 Channel 1 有 tag1
 	assert.Len(t, result, 1)
-	assert.Equal(t, "Channel with tag1 and tag2", result[0].Name)
+	assert.Equal(t, "Channel with tag1 and tag2", result[0].Channel.Name)
 }
 
 // TestTagsFilterSelector_MultipleMatchingTags 测试多个匹配标签 (OR 逻辑).
@@ -179,8 +178,8 @@ func TestTagsFilterSelector_MultipleMatchingTags(t *testing.T) {
 	ctx, _, channels := setupTagsTest(t)
 
 	mockSelector := &mockChannelSelector{
-		selectFunc: func(ctx context.Context, req *llm.Request) ([]*biz.Channel, error) {
-			return channels, nil
+		selectFunc: func(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error) {
+			return channelsToCandidates(channels, req.Model), nil
 		},
 	}
 	// 允许 tag1 或 tag2
@@ -196,7 +195,7 @@ func TestTagsFilterSelector_MultipleMatchingTags(t *testing.T) {
 	// Channel 1 (tag1, tag2) 和 Channel 2 (tag2) 应该被选中
 	assert.Len(t, result, 2)
 
-	names := []string{result[0].Name, result[1].Name}
+	names := []string{result[0].Channel.Name, result[1].Channel.Name}
 	assert.Contains(t, names, "Channel with tag1 and tag2")
 	assert.Contains(t, names, "Channel with tag2 only")
 }
@@ -206,8 +205,8 @@ func TestTagsFilterSelector_NoMatchingTags(t *testing.T) {
 	ctx, _, channels := setupTagsTest(t)
 
 	mockSelector := &mockChannelSelector{
-		selectFunc: func(ctx context.Context, req *llm.Request) ([]*biz.Channel, error) {
-			return channels, nil
+		selectFunc: func(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error) {
+			return channelsToCandidates(channels, req.Model), nil
 		},
 	}
 	// 使用不存在的标签
@@ -235,8 +234,8 @@ func TestTagsFilterSelector_ChannelsWithoutTags(t *testing.T) {
 	}
 
 	mockSelector := &mockChannelSelector{
-		selectFunc: func(ctx context.Context, req *llm.Request) ([]*biz.Channel, error) {
-			return noTagChannels, nil
+		selectFunc: func(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error) {
+			return channelsToCandidates(noTagChannels, req.Model), nil
 		},
 	}
 	selector := NewTagsFilterSelector(mockSelector, []string{"tag1", "tag2", "tag3"})
@@ -257,8 +256,8 @@ func TestTagsFilterSelector_ORLogic(t *testing.T) {
 	ctx, _, channels := setupTagsTest(t)
 
 	mockSelector := &mockChannelSelector{
-		selectFunc: func(ctx context.Context, req *llm.Request) ([]*biz.Channel, error) {
-			return channels, nil
+		selectFunc: func(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error) {
+			return channelsToCandidates(channels, req.Model), nil
 		},
 	}
 	// 允许 tag1 或 tag3
@@ -275,7 +274,7 @@ func TestTagsFilterSelector_ORLogic(t *testing.T) {
 	// Channel 2 (只有 tag2) 不应该被选中
 	assert.Len(t, result, 2)
 
-	names := []string{result[0].Name, result[1].Name}
+	names := []string{result[0].Channel.Name, result[1].Channel.Name}
 	assert.Contains(t, names, "Channel with tag1 and tag2")
 	assert.Contains(t, names, "Channel with tag3 only")
 }
@@ -286,8 +285,8 @@ func TestTagsFilterSelector_WithSelectedChannelsSelector(t *testing.T) {
 
 	// 先创建一个 mock selector 返回所有渠道
 	mockSelector := &mockChannelSelector{
-		selectFunc: func(ctx context.Context, req *llm.Request) ([]*biz.Channel, error) {
-			return channels, nil
+		selectFunc: func(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error) {
+			return channelsToCandidates(channels, req.Model), nil
 		},
 	}
 
@@ -316,8 +315,8 @@ func TestTagsFilterSelector_WithSelectedChannelsSelector_NoIntersection(t *testi
 	ctx, _, channels := setupTagsTest(t)
 
 	mockSelector := &mockChannelSelector{
-		selectFunc: func(ctx context.Context, req *llm.Request) ([]*biz.Channel, error) {
-			return channels, nil
+		selectFunc: func(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error) {
+			return channelsToCandidates(channels, req.Model), nil
 		},
 	}
 
@@ -346,7 +345,7 @@ func TestTagsFilterSelector_ErrorPropagation(t *testing.T) {
 	// 创建一个会返回错误的 mock selector
 	expectedErr := assert.AnError
 	mockSelector := &mockChannelSelector{
-		selectFunc: func(ctx context.Context, req *llm.Request) ([]*biz.Channel, error) {
+		selectFunc: func(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error) {
 			return nil, expectedErr
 		},
 	}
@@ -393,8 +392,8 @@ func TestTagsFilterSelector_CaseSensitive(t *testing.T) {
 	}
 
 	mockSelector := &mockChannelSelector{
-		selectFunc: func(ctx context.Context, req *llm.Request) ([]*biz.Channel, error) {
-			return channels, nil
+		selectFunc: func(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error) {
+			return channelsToCandidates(channels, req.Model), nil
 		},
 	}
 
@@ -410,4 +409,26 @@ func TestTagsFilterSelector_CaseSensitive(t *testing.T) {
 
 	// 标签应该是大小写敏感的，所以不会匹配
 	assert.Len(t, result, 0)
+}
+
+// channelsToCandidates 辅助函数，将 []*biz.Channel 转换为 []*ChannelModelCandidate.
+func channelsToCandidates(channels []*biz.Channel, model string) []*ChannelModelCandidate {
+	candidates := make([]*ChannelModelCandidate, 0, len(channels))
+	for _, ch := range channels {
+		entries := ch.GetModelEntries()
+
+		entry, ok := entries[model]
+		if !ok {
+			continue
+		}
+
+		candidates = append(candidates, &ChannelModelCandidate{
+			Channel:      ch,
+			RequestModel: entry.RequestModel,
+			ActualModel:  entry.ActualModel,
+			Priority:     0,
+		})
+	}
+
+	return candidates
 }

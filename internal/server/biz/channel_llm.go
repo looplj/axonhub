@@ -10,7 +10,6 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
-	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/pipeline"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/llm/transformer/anthropic"
@@ -61,6 +60,10 @@ func (c *Channel) ChooseModel(model string) (string, error) {
 
 // GetOverrideParameters returns the cached override parameters for the channel.
 // If the parameters haven't been parsed yet, it parses and caches them.
+//
+// WARNING: The returned map is internal cached state.
+// DO NOT modify the returned map or its contents.
+// Modifications will not persist and may cause data inconsistency.
 func (c *Channel) GetOverrideParameters() map[string]any {
 	if c.cachedOverrideParams != nil {
 		return c.cachedOverrideParams
@@ -90,6 +93,10 @@ func (c *Channel) GetOverrideParameters() map[string]any {
 
 // GetOverrideHeaders returns the cached override headers for the channel.
 // If the headers haven't been loaded yet, it loads and caches them.
+//
+// WARNING: The returned slice is internal cached state.
+// DO NOT modify the returned slice or its elements.
+// Modifications will not persist and may cause data inconsistency.
 func (c *Channel) GetOverrideHeaders() []objects.HeaderEntry {
 	if c.cachedOverrideHeaders != nil {
 		return c.cachedOverrideHeaders
@@ -388,21 +395,6 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 	}
 }
 
-func (svc *ChannelService) ChooseChannels(
-	ctx context.Context,
-	chatReq *llm.Request,
-) ([]*Channel, error) {
-	var channels []*Channel
-
-	for _, channel := range svc.EnabledChannels {
-		if channel.IsModelSupported(chatReq.Model) {
-			channels = append(channels, channel)
-		}
-	}
-
-	return channels, nil
-}
-
 // GetModelEntries returns all models this channel can handle, RequestModel -> Entry
 // This unifies:
 // - SupportedModels (direct models)
@@ -410,6 +402,10 @@ func (svc *ChannelService) ChooseChannels(
 // - AutoTrimedModelPrefixes (auto-trimmed models)
 // - ModelMappings (mapped models)
 // The result is cached for performance.
+//
+// WARNING: The returned map is internal cached state.
+// DO NOT modify the returned map or its ChannelModelEntry values.
+// Modifications will not persist and may cause data inconsistency.
 func (ch *Channel) GetModelEntries() map[string]ChannelModelEntry {
 	// Return cached result if available
 	if ch.cachedModelEntries != nil {

@@ -254,15 +254,15 @@ func TestPersistentOutboundTransformer_TransformRequest_WithChannelSelection(t *
 
 // mockChannelSelector for testing.
 type mockChannelSelector struct {
-	selectFunc func(ctx context.Context, req *llm.Request) ([]*biz.Channel, error)
+	selectFunc func(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error)
 }
 
-func (m *mockChannelSelector) Select(ctx context.Context, req *llm.Request) ([]*biz.Channel, error) {
+func (m *mockChannelSelector) Select(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error) {
 	if m.selectFunc != nil {
 		return m.selectFunc(ctx, req)
 	}
 
-	return []*biz.Channel{}, nil
+	return []*ChannelModelCandidate{}, nil
 }
 
 func TestOverrideParametersMiddleware(t *testing.T) {

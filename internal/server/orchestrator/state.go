@@ -16,7 +16,7 @@ type PersistenceState struct {
 	RequestService  *biz.RequestService
 	UsageLogService *biz.UsageLogService
 	ChannelService  *biz.ChannelService
-	ChannelSelector ChannelSelector
+	ChannelSelector CandidateSelector
 	LoadBalancer    *LoadBalancer
 	ModelResolver   *ModelResolver
 

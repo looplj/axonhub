@@ -19,6 +19,6 @@ func NewChannelServiceForTest(client *ent.Client) *ChannelService {
 		},
 		channelPerfMetrics: make(map[int]*channelMetrics),
 		perfCh:             perfCh,
-		EnabledChannels:    []*Channel{},
+		enabledChannels:    []*Channel{},
 	}
 }

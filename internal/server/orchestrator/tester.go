@@ -101,7 +101,7 @@ func (processor *TestChannelOrchestrator) TestChannel(
 			return nil, fmt.Errorf("%w: no channels available", biz.ErrInvalidModel)
 		}
 
-		testModel = channels[0].DefaultTestModel
+		testModel = channels[0].Channel.DefaultTestModel
 	}
 
 	llmRequest := &llm.Request{
