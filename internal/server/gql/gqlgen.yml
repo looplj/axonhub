@@ -298,6 +298,9 @@ models:
   ModelChannelConnection:
     model:
       - github.com/looplj/axonhub/internal/server/biz.ModelChannelConnection
+  ChannelModelEntry:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ChannelModelEntry    
   HeaderEntry:
     model:
       - github.com/looplj/axonhub/internal/objects.HeaderEntry

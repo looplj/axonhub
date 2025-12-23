@@ -59,7 +59,7 @@ type ModelCard struct {
 }
 
 type ModelSettings struct {
-	Associations []ModelAssociation `json:"associations"`
+	Associations []*ModelAssociation `json:"associations"`
 }
 
 type ModelAssociation struct {

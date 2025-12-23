@@ -26,7 +26,7 @@ func TestLoadBalancedSelector_Select_MultipleChannels_LoadBalancing(t *testing.T
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	connectionTracker := NewDefaultConnectionTracker(10)
-	selector := newTestLoadBalancedSelector(channelService, systemService, requestService, connectionTracker)
+	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService, connectionTracker)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -74,7 +74,7 @@ func TestDefaultChannelSelector_Select_WithConnectionTracking(t *testing.T) {
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	connectionTracker := NewDefaultConnectionTracker(10)
-	selector := newTestLoadBalancedSelector(channelService, systemService, requestService, connectionTracker)
+	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService, connectionTracker)
 
 	// Add some connections to affect load balancing
 	connectionTracker.IncrementConnection(channels[0].ID) // High weight channel now has 2 connections
@@ -161,7 +161,7 @@ func TestDefaultChannelSelector_Select_WithTraceContext(t *testing.T) {
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	connectionTracker := NewDefaultConnectionTracker(10)
-	selector := newTestLoadBalancedSelector(channelService, systemService, requestService, connectionTracker)
+	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService, connectionTracker)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -206,7 +206,7 @@ func TestDefaultChannelSelector_Select_WithChannelFailures(t *testing.T) {
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	connectionTracker := NewDefaultConnectionTracker(10)
-	selector := newTestLoadBalancedSelector(channelService, systemService, requestService, connectionTracker)
+	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService, connectionTracker)
 
 	// Record failures for the high weight channel to test error awareness
 	for i := 0; i < 3; i++ {
@@ -305,7 +305,7 @@ func TestDefaultChannelSelector_Select_WeightedRoundRobin_EqualWeights(t *testin
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	connectionTracker := NewDefaultConnectionTracker(10)
-	selector := newTestLoadBalancedSelector(channelService, systemService, requestService, connectionTracker)
+	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService, connectionTracker)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -396,7 +396,7 @@ func TestDefaultChannelSelector_Select_WeightedRoundRobin(t *testing.T) {
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	connectionTracker := NewDefaultConnectionTracker(10)
-	selector := newTestLoadBalancedSelector(channelService, systemService, requestService, connectionTracker)
+	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService, connectionTracker)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -467,7 +467,7 @@ func TestDefaultChannelSelector_Select_WithDisabledChannels(t *testing.T) {
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	connectionTracker := NewDefaultConnectionTracker(10)
-	selector := newTestLoadBalancedSelector(channelService, systemService, requestService, connectionTracker)
+	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService, connectionTracker)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -508,8 +508,9 @@ func TestLoadBalancedSelector_Select(t *testing.T) {
 	}
 	loadBalancer := NewLoadBalancer(systemService, strategies...)
 
-	baseSelector := NewDefaultSelector(channelService)
-	selector := NewLoadBalancedSelector(baseSelector, loadBalancer)
+	modelService := newTestModelService(client)
+	baseSelector := NewDefaultSelector(channelService, modelService)
+	selector := WithLoadBalancedSelector(baseSelector, loadBalancer)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -553,8 +554,9 @@ func TestLoadBalancedSelector_Select_SingleChannel(t *testing.T) {
 	systemService := newTestSystemService(client)
 	loadBalancer := NewLoadBalancer(systemService)
 
-	baseSelector := NewDefaultSelector(channelService)
-	selector := NewLoadBalancedSelector(baseSelector, loadBalancer)
+	modelService := newTestModelService(client)
+	baseSelector := NewDefaultSelector(channelService, modelService)
+	selector := WithLoadBalancedSelector(baseSelector, loadBalancer)
 
 	req := &llm.Request{
 		Model: "gpt-4",

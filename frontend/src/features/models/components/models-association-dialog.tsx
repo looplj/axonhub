@@ -449,9 +449,9 @@ export function ModelsAssociationDialog() {
                         </div>
                       </div>
                       <div className='space-y-1'>
-                        {conn.modelIds.map((modelId) => (
-                          <div key={modelId} className='bg-muted rounded px-2 py-1 text-xs'>
-                            {modelId}
+                        {conn.models.map((model) => (
+                          <div key={model.requestModel} className='bg-muted rounded px-2 py-1 text-xs'>
+                            {model.requestModel}
                           </div>
                         ))}
                       </div>

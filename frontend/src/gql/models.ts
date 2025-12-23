@@ -32,6 +32,12 @@ export interface ModelAssociationInput {
   }
 }
 
+export interface ChannelModelEntry {
+  requestModel: string
+  actualModel: string
+  source: string
+}
+
 export interface ModelChannelConnection {
   channel: {
     id: string
@@ -39,7 +45,7 @@ export interface ModelChannelConnection {
     type: string
     status: string
   }
-  modelIds: string[]
+  models: ChannelModelEntry[]
 }
 
 const MODELS_QUERY = `
@@ -60,7 +66,11 @@ const MODEL_CHANNEL_CONNECTIONS_QUERY = `
         type
         status
       }
-      modelIds
+      models {
+        requestModel
+        actualModel
+        source
+      }
     }
   }
 `

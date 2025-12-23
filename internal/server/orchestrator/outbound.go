@@ -322,17 +322,19 @@ func applyOverrideRequestHeaders(outbound *PersistentOutboundTransformer) pipeli
 }
 
 func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, llmRequest *llm.Request) (*httpclient.Request, error) {
-	// Channels should already be selected by inbound transformer
-	if len(p.state.Channels) == 0 {
-		return nil, errors.New("no channels available: channels should be selected by inbound transformer")
+	// Candidates should already be selected by inbound transformer
+	if len(p.state.ChannelModelCandidates) == 0 {
+		return nil, errors.New("no candidates available: candidates should be selected by inbound transformer")
 	}
 
-	// Select current channel for this attempt
-	if p.state.ChannelIndex >= len(p.state.Channels) {
-		return nil, fmt.Errorf("%w: all channels exhausted", biz.ErrInternal)
+	// Select current candidate for this attempt
+	if p.state.ChannelIndex >= len(p.state.ChannelModelCandidates) {
+		return nil, fmt.Errorf("%w: all candidates exhausted", biz.ErrInternal)
 	}
 
-	p.state.CurrentChannel = p.state.Channels[p.state.ChannelIndex]
+	candidate := p.state.ChannelModelCandidates[p.state.ChannelIndex]
+	p.state.CurrentCandidate = candidate
+	p.state.CurrentChannel = candidate.Channel
 	p.wrapped = p.state.CurrentChannel.Outbound
 
 	// Restore original model if it was mapped.
@@ -340,18 +342,14 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		llmRequest.Model = p.state.OriginalModel
 	}
 
-	log.Debug(ctx, "using channel",
-		log.Any("channel", p.state.CurrentChannel.Name),
-		log.Any("model", llmRequest.Model),
+	log.Debug(ctx, "using candidate",
+		log.String("channel", p.state.CurrentChannel.Name),
+		log.String("model", llmRequest.Model),
+		log.String("actual_model", candidate.ActualModel),
 	)
 
-	model, err := p.state.CurrentChannel.ChooseModel(llmRequest.Model)
-	if err != nil {
-		log.Error(ctx, "Failed to choose model", log.Cause(err))
-		return nil, err
-	}
-
-	llmRequest.Model = model
+	// Use the pre-resolved ActualModel from the candidate
+	llmRequest.Model = candidate.ActualModel
 
 	channelRequest, err := p.wrapped.TransformRequest(ctx, llmRequest)
 	if err != nil {
@@ -418,26 +416,30 @@ func (p *PersistentOutboundTransformer) GetCurrentChannel() *biz.Channel {
 	return p.state.CurrentChannel
 }
 
-// HasMoreChannels returns true if there are more channels available for retry.
+// HasMoreChannels returns true if there are more candidates available for retry.
 func (p *PersistentOutboundTransformer) HasMoreChannels() bool {
-	return p.state.ChannelIndex+1 < len(p.state.Channels)
+	return p.state.ChannelIndex+1 < len(p.state.ChannelModelCandidates)
 }
 
-// NextChannel moves to the next available channel for retry.
+// NextChannel moves to the next available candidate for retry.
 func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 	p.state.ChannelIndex++
-	if p.state.ChannelIndex >= len(p.state.Channels) {
-		return errors.New("no more channels available for retry")
+	if p.state.ChannelIndex >= len(p.state.ChannelModelCandidates) {
+		return errors.New("no more candidates available for retry")
 	}
 
-	// Reset request execution for the new channel
+	// Reset request execution for the new candidate
 	p.state.RequestExec = nil
-	p.state.CurrentChannel = p.state.Channels[p.state.ChannelIndex]
+
+	candidate := p.state.ChannelModelCandidates[p.state.ChannelIndex]
+	p.state.CurrentCandidate = candidate
+	p.state.CurrentChannel = candidate.Channel
 	p.wrapped = p.state.CurrentChannel.Outbound
 
-	log.Debug(ctx, "switching to next channel for retry",
-		log.Any("channel", p.state.CurrentChannel.Name),
-		log.Any("index", p.state.ChannelIndex))
+	log.Debug(ctx, "switching to next candidate for retry",
+		log.String("channel", p.state.CurrentChannel.Name),
+		log.String("model", candidate.ActualModel),
+		log.Int("index", p.state.ChannelIndex))
 
 	return nil
 }

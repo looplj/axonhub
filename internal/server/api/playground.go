@@ -33,6 +33,7 @@ type PlaygroundHandlersParams struct {
 	fx.In
 
 	ChannelService  *biz.ChannelService
+	ModelService    *biz.ModelService
 	RequestService  *biz.RequestService
 	SystemService   *biz.SystemService
 	UsageLogService *biz.UsageLogService
@@ -49,6 +50,7 @@ func NewPlaygroundHandlers(params PlaygroundHandlersParams) *PlaygroundHandlers 
 		ChannelService: params.ChannelService,
 		ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
 			params.ChannelService,
+			params.ModelService,
 			params.RequestService,
 			params.HttpClient,
 			aisdk.NewDataStreamTransformer(),

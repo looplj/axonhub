@@ -17,8 +17,8 @@ type GoogleNativeToolsSelector struct {
 	wrapped CandidateSelector
 }
 
-// NewGoogleNativeToolsSelector creates a selector that prioritizes Google native tool compatible candidates.
-func NewGoogleNativeToolsSelector(wrapped CandidateSelector) *GoogleNativeToolsSelector {
+// WithGoogleNativeToolsSelector creates a selector that prioritizes Google native tool compatible candidates.
+func WithGoogleNativeToolsSelector(wrapped CandidateSelector) *GoogleNativeToolsSelector {
 	return &GoogleNativeToolsSelector{
 		wrapped: wrapped,
 	}

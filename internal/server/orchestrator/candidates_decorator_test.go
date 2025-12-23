@@ -29,9 +29,10 @@ func TestDecoratorChain_FullStack(t *testing.T) {
 	loadBalancer := NewLoadBalancer(systemService, strategies...)
 
 	// Build decorator chain: Default -> SelectedChannels -> LoadBalanced
-	baseSelector := NewDefaultSelector(channelService)
-	filteredSelector := NewSelectedChannelsSelector(baseSelector, []int{channels[0].ID, channels[1].ID})
-	selector := NewLoadBalancedSelector(filteredSelector, loadBalancer)
+	modelService := newTestModelService(client)
+	baseSelector := NewDefaultSelector(channelService, modelService)
+	filteredSelector := WithSelectedChannelsSelector(baseSelector, []int{channels[0].ID, channels[1].ID})
+	selector := WithLoadBalancedSelector(filteredSelector, loadBalancer)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -64,7 +65,7 @@ func TestSelectedChannelsSelector_WithAllowedChannels(t *testing.T) {
 	requestService := newTestRequestServiceForChannels(client, systemService)
 	connectionTracker := NewDefaultConnectionTracker(10)
 
-	baseSelector := newTestLoadBalancedSelector(channelService, systemService, requestService, connectionTracker)
+	baseSelector := newTestLoadBalancedSelector(channelService, client, systemService, requestService, connectionTracker)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -76,7 +77,7 @@ func TestSelectedChannelsSelector_WithAllowedChannels(t *testing.T) {
 	require.Len(t, result, 3)
 
 	// Test with allowed channels - should return only 2 channels
-	filteredSelector := NewSelectedChannelsSelector(baseSelector, []int{channels[0].ID, channels[2].ID})
+	filteredSelector := WithSelectedChannelsSelector(baseSelector, []int{channels[0].ID, channels[2].ID})
 	result, err = filteredSelector.Select(ctx, req)
 	require.NoError(t, err)
 	require.Len(t, result, 2)
@@ -98,20 +99,21 @@ func TestSelectedChannelsSelector_WithEmptyFilter(t *testing.T) {
 	channels := createTestChannels(t, ctx, client)
 
 	channelService := newTestChannelServiceForChannels(client)
-	baseSelector := NewDefaultSelector(channelService)
+	modelService := newTestModelService(client)
+	baseSelector := NewDefaultSelector(channelService, modelService)
 
 	req := &llm.Request{
 		Model: "gpt-4",
 	}
 
 	// Empty slice should return all channels from wrapped selector
-	filteredSelector := NewSelectedChannelsSelector(baseSelector, []int{})
+	filteredSelector := WithSelectedChannelsSelector(baseSelector, []int{})
 	result, err := filteredSelector.Select(ctx, req)
 	require.NoError(t, err)
 	require.Len(t, result, 3) // All 3 enabled channels
 
 	// Nil slice should also return all channels
-	filteredSelector = NewSelectedChannelsSelector(baseSelector, nil)
+	filteredSelector = WithSelectedChannelsSelector(baseSelector, nil)
 	result, err = filteredSelector.Select(ctx, req)
 	require.NoError(t, err)
 	require.Len(t, result, 3)

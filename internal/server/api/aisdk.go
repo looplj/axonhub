@@ -16,6 +16,7 @@ type AiSdkHandlersParams struct {
 	fx.In
 
 	ChannelService  *biz.ChannelService
+	ModelService    *biz.ModelService
 	RequestService  *biz.RequestService
 	SystemService   *biz.SystemService
 	UsageLogService *biz.UsageLogService
@@ -31,6 +32,7 @@ func NewAiSDKHandlers(params AiSdkHandlersParams) *AiSDKHandlers {
 		ChatCompletionHandler: &ChatCompletionHandlers{
 			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
 				params.ChannelService,
+				params.ModelService,
 				params.RequestService,
 				params.HttpClient,
 				aisdk.NewDataStreamTransformer(),

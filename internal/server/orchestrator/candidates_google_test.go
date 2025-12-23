@@ -71,8 +71,9 @@ func TestGoogleNativeToolsSelector_Select_WithGoogleNativeTools(t *testing.T) {
 	channels := createGeminiTestChannels(t, ctx, client)
 
 	channelService := newTestChannelServiceForChannels(client)
-	baseSelector := NewDefaultSelector(channelService)
-	selector := NewGoogleNativeToolsSelector(baseSelector)
+	modelService := newTestModelService(client)
+	baseSelector := NewDefaultSelector(channelService, modelService)
+	selector := WithGoogleNativeToolsSelector(baseSelector)
 
 	// Request with Google native tools
 	req := &llm.Request{
@@ -106,8 +107,9 @@ func TestGoogleNativeToolsSelector_Select_WithoutGoogleNativeTools(t *testing.T)
 	channels := createGeminiTestChannels(t, ctx, client)
 
 	channelService := newTestChannelServiceForChannels(client)
-	baseSelector := NewDefaultSelector(channelService)
-	selector := NewGoogleNativeToolsSelector(baseSelector)
+	modelService := newTestModelService(client)
+	baseSelector := NewDefaultSelector(channelService, modelService)
+	selector := WithGoogleNativeToolsSelector(baseSelector)
 
 	// Request without Google native tools (only function tools)
 	req := &llm.Request{
@@ -151,8 +153,9 @@ func TestGoogleNativeToolsSelector_Select_NoCompatibleChannels(t *testing.T) {
 	require.NoError(t, err)
 
 	channelService := newTestChannelServiceForChannels(client)
-	baseSelector := NewDefaultSelector(channelService)
-	selector := NewGoogleNativeToolsSelector(baseSelector)
+	modelService := newTestModelService(client)
+	baseSelector := NewDefaultSelector(channelService, modelService)
+	selector := WithGoogleNativeToolsSelector(baseSelector)
 
 	// Request with Google native tools
 	req := &llm.Request{
@@ -178,8 +181,9 @@ func TestGoogleNativeToolsSelector_Select_EmptyTools(t *testing.T) {
 	channels := createGeminiTestChannels(t, ctx, client)
 
 	channelService := newTestChannelServiceForChannels(client)
-	baseSelector := NewDefaultSelector(channelService)
-	selector := NewGoogleNativeToolsSelector(baseSelector)
+	modelService := newTestModelService(client)
+	baseSelector := NewDefaultSelector(channelService, modelService)
+	selector := WithGoogleNativeToolsSelector(baseSelector)
 
 	// Request with no tools
 	req := &llm.Request{
@@ -210,8 +214,9 @@ func TestGoogleNativeToolsSelector_Select_MultipleGoogleNativeTools(t *testing.T
 	channels := createGeminiTestChannels(t, ctx, client)
 
 	channelService := newTestChannelServiceForChannels(client)
-	baseSelector := NewDefaultSelector(channelService)
-	selector := NewGoogleNativeToolsSelector(baseSelector)
+	modelService := newTestModelService(client)
+	baseSelector := NewDefaultSelector(channelService, modelService)
+	selector := WithGoogleNativeToolsSelector(baseSelector)
 
 	// Request with multiple Google native tools
 	req := &llm.Request{

@@ -13,12 +13,11 @@ type PersistenceState struct {
 	APIKey *ent.APIKey
 	User   *ent.User
 
-	RequestService  *biz.RequestService
-	UsageLogService *biz.UsageLogService
-	ChannelService  *biz.ChannelService
-	ChannelSelector CandidateSelector
-	LoadBalancer    *LoadBalancer
-	ModelResolver   *ModelResolver
+	RequestService    *biz.RequestService
+	UsageLogService   *biz.UsageLogService
+	ChannelService    *biz.ChannelService
+	CandidateSelector CandidateSelector
+	LoadBalancer      *LoadBalancer
 
 	// Request state
 	ModelMapper *ModelMapper
@@ -32,15 +31,18 @@ type PersistenceState struct {
 	Request     *ent.Request
 	RequestExec *ent.RequestExecution
 
-	// Channel state
-	Channels       []*biz.Channel
-	CurrentChannel *biz.Channel
-	ChannelIndex   int
-
-	// AxonHub Model state (used by model_associate.go)
-	AxonHubModel           *ent.Model
+	// ChannelModelCandidates is the primary state for channel selection
 	ChannelModelCandidates []*ChannelModelCandidate
-	CurrentCandidate       *ChannelModelCandidate
+
+	// Candidate state - current candidate index of ChannelModelCandidates
+	ChannelIndex int
+
+	// CurrentCandidate is the currently selected candidate (includes channel and model info)
+	CurrentCandidate *ChannelModelCandidate
+
+	// CurrentChannel is kept for backward compatibility with code that uses it directly,
+	// It should equal to CurrentCandidate.Channel
+	CurrentChannel *biz.Channel
 
 	Perf *biz.PerformanceRecord
 }

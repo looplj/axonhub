@@ -115,7 +115,7 @@ func TestTagsFilterSelector_EmptyAllowedTags(t *testing.T) {
 	}
 
 	// 创建 TagsFilterSelector with empty allowedTags
-	selector := NewTagsFilterSelector(mockSelector, []string{})
+	selector := WithTagsFilterSelector(mockSelector, []string{})
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -137,7 +137,7 @@ func TestTagsFilterSelector_NilAllowedTags(t *testing.T) {
 			return channelsToCandidates(channels, req.Model), nil
 		},
 	}
-	selector := NewTagsFilterSelector(mockSelector, nil)
+	selector := WithTagsFilterSelector(mockSelector, nil)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -159,7 +159,7 @@ func TestTagsFilterSelector_SingleMatchingTag(t *testing.T) {
 			return channelsToCandidates(channels, req.Model), nil
 		},
 	}
-	selector := NewTagsFilterSelector(mockSelector, []string{"tag1"})
+	selector := WithTagsFilterSelector(mockSelector, []string{"tag1"})
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -183,7 +183,7 @@ func TestTagsFilterSelector_MultipleMatchingTags(t *testing.T) {
 		},
 	}
 	// 允许 tag1 或 tag2
-	selector := NewTagsFilterSelector(mockSelector, []string{"tag1", "tag2"})
+	selector := WithTagsFilterSelector(mockSelector, []string{"tag1", "tag2"})
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -210,7 +210,7 @@ func TestTagsFilterSelector_NoMatchingTags(t *testing.T) {
 		},
 	}
 	// 使用不存在的标签
-	selector := NewTagsFilterSelector(mockSelector, []string{"nonexistent-tag"})
+	selector := WithTagsFilterSelector(mockSelector, []string{"nonexistent-tag"})
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -238,7 +238,7 @@ func TestTagsFilterSelector_ChannelsWithoutTags(t *testing.T) {
 			return channelsToCandidates(noTagChannels, req.Model), nil
 		},
 	}
-	selector := NewTagsFilterSelector(mockSelector, []string{"tag1", "tag2", "tag3"})
+	selector := WithTagsFilterSelector(mockSelector, []string{"tag1", "tag2", "tag3"})
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -261,7 +261,7 @@ func TestTagsFilterSelector_ORLogic(t *testing.T) {
 		},
 	}
 	// 允许 tag1 或 tag3
-	selector := NewTagsFilterSelector(mockSelector, []string{"tag1", "tag3"})
+	selector := WithTagsFilterSelector(mockSelector, []string{"tag1", "tag3"})
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -292,12 +292,12 @@ func TestTagsFilterSelector_WithSelectedChannelsSelector(t *testing.T) {
 
 	// 然后用 SelectedChannelsSelector 过滤，只允许 Channel 1 和 Channel 2
 	allowedIDs := []int{channels[0].ID, channels[1].ID}
-	channelIDSelector := NewSelectedChannelsSelector(mockSelector, allowedIDs)
+	channelIDSelector := WithSelectedChannelsSelector(mockSelector, allowedIDs)
 
 	// 最后用 TagsFilterSelector 过滤，只允许 tag2
 	// Channel 1 有 tag2, Channel 2 也有 tag2
 	// 但 SelectedChannelsSelector 已经只允许这两个，所以应该都被选中
-	tagsSelector := NewTagsFilterSelector(channelIDSelector, []string{"tag2"})
+	tagsSelector := WithTagsFilterSelector(channelIDSelector, []string{"tag2"})
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -322,10 +322,10 @@ func TestTagsFilterSelector_WithSelectedChannelsSelector_NoIntersection(t *testi
 
 	// 只允许 Channel 1 (有 tag1, tag2)
 	allowedIDs := []int{channels[0].ID}
-	channelIDSelector := NewSelectedChannelsSelector(mockSelector, allowedIDs)
+	channelIDSelector := WithSelectedChannelsSelector(mockSelector, allowedIDs)
 
 	// 但 tags filter 只允许 tag3 (Channel 1 没有 tag3)
-	tagsSelector := NewTagsFilterSelector(channelIDSelector, []string{"tag3"})
+	tagsSelector := WithTagsFilterSelector(channelIDSelector, []string{"tag3"})
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -350,7 +350,7 @@ func TestTagsFilterSelector_ErrorPropagation(t *testing.T) {
 		},
 	}
 
-	selector := NewTagsFilterSelector(mockSelector, []string{"tag1"})
+	selector := WithTagsFilterSelector(mockSelector, []string{"tag1"})
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -398,7 +398,7 @@ func TestTagsFilterSelector_CaseSensitive(t *testing.T) {
 	}
 
 	// 用小写的 tag1 来过滤
-	selector := NewTagsFilterSelector(mockSelector, []string{"tag1"})
+	selector := WithTagsFilterSelector(mockSelector, []string{"tag1"})
 
 	req := &llm.Request{
 		Model: "gpt-4",
