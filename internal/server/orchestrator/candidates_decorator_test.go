@@ -32,7 +32,7 @@ func TestDecoratorChain_FullStack(t *testing.T) {
 	modelService := newTestModelService(client)
 	baseSelector := NewDefaultSelector(channelService, modelService)
 	filteredSelector := WithSelectedChannelsSelector(baseSelector, []int{channels[0].ID, channels[1].ID})
-	selector := WithLoadBalancedSelector(filteredSelector, loadBalancer)
+	selector := WithLoadBalancedSelector(filteredSelector, loadBalancer, systemService)
 
 	req := &llm.Request{
 		Model: "gpt-4",

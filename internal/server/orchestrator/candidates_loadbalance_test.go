@@ -510,7 +510,7 @@ func TestLoadBalancedSelector_Select(t *testing.T) {
 
 	modelService := newTestModelService(client)
 	baseSelector := NewDefaultSelector(channelService, modelService)
-	selector := WithLoadBalancedSelector(baseSelector, loadBalancer)
+	selector := WithLoadBalancedSelector(baseSelector, loadBalancer, systemService)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -556,7 +556,7 @@ func TestLoadBalancedSelector_Select_SingleChannel(t *testing.T) {
 
 	modelService := newTestModelService(client)
 	baseSelector := NewDefaultSelector(channelService, modelService)
-	selector := WithLoadBalancedSelector(baseSelector, loadBalancer)
+	selector := WithLoadBalancedSelector(baseSelector, loadBalancer, systemService)
 
 	req := &llm.Request{
 		Model: "gpt-4",

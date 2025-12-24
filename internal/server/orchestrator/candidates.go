@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/samber/lo"
 
@@ -41,7 +42,7 @@ func NewDefaultSelector(channelService *biz.ChannelService, modelService *biz.Mo
 }
 
 func (s *DefaultSelector) Select(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error) {
-	candidates, err := s.selectModelCandidates(ctx, req.Model)
+	candidates, err := s.selectModelCandidates(ctx, req)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			// Fallback to legacy channel selection
@@ -59,7 +60,6 @@ func (s *DefaultSelector) Select(ctx context.Context, req *llm.Request) ([]*Chan
 func (s *DefaultSelector) selectChannelCadidates(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error) {
 	channels := s.ChannelService.GetEnabledChannels()
 
-	// Single pass: filter channels supporting the model and create candidates
 	candidates := make([]*ChannelModelCandidate, 0, len(channels))
 	for _, ch := range channels {
 		entries := ch.GetModelEntries()
@@ -77,37 +77,42 @@ func (s *DefaultSelector) selectChannelCadidates(ctx context.Context, req *llm.R
 		})
 	}
 
+	if log.DebugEnabled(ctx) {
+		log.Debug(ctx, "selected channel candidates for model",
+			log.String("model", req.Model),
+			log.Int("count", len(candidates)),
+			log.Any("candidates", candidates),
+		)
+	}
+
 	return candidates, nil
 }
 
-// selectModelCandidates attempts to resolve a model name to AxonHub Model associations.
-// Returns candidates and the AxonHub Model if found, or nil values for fallback to legacy behavior.
-func (s *DefaultSelector) selectModelCandidates(ctx context.Context, modelName string) ([]*ChannelModelCandidate, error) {
-	// Query enabled AxonHub Model by model ID
-	axonhubModel, err := s.ModelService.GetModelByModelID(ctx, modelName, model.StatusEnabled)
+func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error) {
+	model, err := s.ModelService.GetModelByModelID(ctx, req.Model, model.StatusEnabled)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query AxonHub Model: %w", err)
 	}
 
-	// Model found, check for associations
-	if axonhubModel.Settings == nil || len(axonhubModel.Settings.Associations) == 0 {
+	if model.Settings == nil || len(model.Settings.Associations) == 0 {
 		if log.DebugEnabled(ctx) {
-			log.Debug(ctx, "model has no associations", log.String("model", modelName))
+			log.Debug(ctx, "model has no associations", log.String("model", req.Model))
 		}
 
 		return []*ChannelModelCandidate{}, nil
 	}
 
-	// Resolve associations to candidates
-	candidates, err := s.resolveAssociations(ctx, axonhubModel.Settings.Associations)
+	candidates, err := s.resolveAssociations(ctx, model.Settings.Associations)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve associations: %w", err)
 	}
 
-	if len(candidates) == 0 {
-		if log.DebugEnabled(ctx) {
-			log.Debug(ctx, "no candidates found for model", log.String("model", modelName))
-		}
+	if log.DebugEnabled(ctx) {
+		log.Debug(ctx, "selected model candidates for model",
+			log.String("model", req.Model),
+			log.Int("count", len(candidates)),
+			log.Any("candidates", candidates),
+		)
 	}
 
 	return candidates, nil
@@ -197,13 +202,16 @@ func (s *SelectedChannelsSelector) Select(ctx context.Context, req *llm.Request)
 type LoadBalancedSelector struct {
 	wrapped      CandidateSelector
 	loadBalancer *LoadBalancer
+	policy       RetryPolicyProvider
 }
 
 // WithLoadBalancedSelector creates a selector that applies load balancing to sort candidates.
-func WithLoadBalancedSelector(wrapped CandidateSelector, loadBalancer *LoadBalancer) *LoadBalancedSelector {
+// The policy is used to determine the retry policy for early stopping.
+func WithLoadBalancedSelector(wrapped CandidateSelector, loadBalancer *LoadBalancer, policy RetryPolicyProvider) *LoadBalancedSelector {
 	return &LoadBalancedSelector{
 		wrapped:      wrapped,
 		loadBalancer: loadBalancer,
+		policy:       policy,
 	}
 }
 
@@ -217,17 +225,59 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 		return candidates, nil
 	}
 
-	// Apply load balancing to sort candidates
-	sortedCandidates := sortCandidatesByPriorityAndScore(ctx, candidates, s.loadBalancer)
+	// Get retry policy to determine the required number of candidates
+	retryPolicy := s.policy.RetryPolicyOrDefault(ctx)
+
+	requiredCount := 1
+	if retryPolicy.Enabled {
+		requiredCount = 1 + retryPolicy.MaxChannelRetries
+	}
+
+	// Group candidates by priority first (lower priority value = higher priority)
+	priorityGroups := make(map[int][]*ChannelModelCandidate)
+	for _, c := range candidates {
+		priorityGroups[c.Priority] = append(priorityGroups[c.Priority], c)
+	}
+
+	// Get sorted priority keys (lower priority value = higher priority)
+	priorities := lo.Keys(priorityGroups)
+
+	// Sort priorities: lower value = higher priority
+	slices.Sort(priorities)
+
+	// For each priority group, apply load balancing to sort candidates within the group
+	// Stop early if we have collected enough candidates
+	var result []*ChannelModelCandidate
+
+	for _, p := range priorities {
+		group := priorityGroups[p]
+
+		// Apply load balancing to sort candidates within this priority group.
+		sortedCandidates := s.loadBalancer.Sort(ctx, group, req.Model)
+
+		// Add candidates, but stop if we have enough
+		remaining := requiredCount - len(result)
+		if remaining <= 0 {
+			break
+		}
+
+		if len(sortedCandidates) <= remaining {
+			result = append(result, sortedCandidates...)
+		} else {
+			result = append(result, sortedCandidates[:remaining]...)
+			break
+		}
+	}
 
 	if log.DebugEnabled(ctx) {
 		log.Debug(ctx, "Load balanced candidates for model",
 			log.String("model", req.Model),
 			log.Int("total_candidates", len(candidates)),
-			log.Int("sorted_candidates", len(sortedCandidates)))
+			log.Int("sorted_candidates", len(result)),
+			log.Int("required_count", requiredCount))
 	}
 
-	return sortedCandidates, nil
+	return result, nil
 }
 
 // TagsFilterSelector is a decorator that filters candidates by allowed channel tags.
@@ -263,7 +313,7 @@ func (s *TagsFilterSelector) Select(ctx context.Context, req *llm.Request) ([]*C
 	})
 
 	// Filter candidates: keep only those whose channel has at least one allowed tag (OR logic)
-	filtered := lo.Filter(candidates, func(c *ChannelModelCandidate, _ int) bool {
+	candidates = lo.Filter(candidates, func(c *ChannelModelCandidate, _ int) bool {
 		for _, tag := range c.Channel.Tags {
 			if _, ok := allowedSet[tag]; ok {
 				return true
@@ -273,7 +323,7 @@ func (s *TagsFilterSelector) Select(ctx context.Context, req *llm.Request) ([]*C
 		return false
 	})
 
-	return filtered, nil
+	return candidates, nil
 }
 
 // SpecifiedChannelSelector allows selecting specific channels (including disabled ones) for testing.
