@@ -138,16 +138,17 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	}
 
 	state := &PersistenceState{
-		APIKey:            apiKey,
-		User:              user,
-		RequestService:    processor.RequestService,
-		UsageLogService:   processor.UsageLogService,
-		ChannelService:    processor.ChannelService,
-		CandidateSelector: processor.channelSelector,
-		LoadBalancer:      loadBalancer,
-		ModelMapper:       processor.ModelMapper,
-		Proxy:             processor.proxy,
-		ChannelIndex:      0,
+		APIKey:              apiKey,
+		User:                user,
+		RequestService:      processor.RequestService,
+		UsageLogService:     processor.UsageLogService,
+		ChannelService:      processor.ChannelService,
+		RetryPolicyProvider: processor.SystemService,
+		CandidateSelector:   processor.channelSelector,
+		LoadBalancer:        loadBalancer,
+		ModelMapper:         processor.ModelMapper,
+		Proxy:               processor.proxy,
+		CandidateIndex:      0,
 	}
 
 	var pipelineOpts []pipeline.Option

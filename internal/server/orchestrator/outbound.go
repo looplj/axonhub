@@ -328,11 +328,11 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	}
 
 	// Select current candidate for this attempt
-	if p.state.ChannelIndex >= len(p.state.ChannelModelCandidates) {
+	if p.state.CandidateIndex >= len(p.state.ChannelModelCandidates) {
 		return nil, fmt.Errorf("%w: all candidates exhausted", biz.ErrInternal)
 	}
 
-	candidate := p.state.ChannelModelCandidates[p.state.ChannelIndex]
+	candidate := p.state.ChannelModelCandidates[p.state.CandidateIndex]
 	p.state.CurrentCandidate = candidate
 	p.state.CurrentChannel = candidate.Channel
 	p.wrapped = p.state.CurrentChannel.Outbound
@@ -418,20 +418,20 @@ func (p *PersistentOutboundTransformer) GetCurrentChannel() *biz.Channel {
 
 // HasMoreChannels returns true if there are more candidates available for retry.
 func (p *PersistentOutboundTransformer) HasMoreChannels() bool {
-	return p.state.ChannelIndex+1 < len(p.state.ChannelModelCandidates)
+	return p.state.CandidateIndex+1 < len(p.state.ChannelModelCandidates)
 }
 
 // NextChannel moves to the next available candidate for retry.
 func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
-	p.state.ChannelIndex++
-	if p.state.ChannelIndex >= len(p.state.ChannelModelCandidates) {
+	p.state.CandidateIndex++
+	if p.state.CandidateIndex >= len(p.state.ChannelModelCandidates) {
 		return errors.New("no more candidates available for retry")
 	}
 
 	// Reset request execution for the new candidate
 	p.state.RequestExec = nil
 
-	candidate := p.state.ChannelModelCandidates[p.state.ChannelIndex]
+	candidate := p.state.ChannelModelCandidates[p.state.CandidateIndex]
 	p.state.CurrentCandidate = candidate
 	p.state.CurrentChannel = candidate.Channel
 	p.wrapped = p.state.CurrentChannel.Outbound
@@ -439,7 +439,7 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 	log.Debug(ctx, "switching to next candidate for retry",
 		log.String("channel", p.state.CurrentChannel.Name),
 		log.String("model", candidate.ActualModel),
-		log.Int("index", p.state.ChannelIndex))
+		log.Int("index", p.state.CandidateIndex))
 
 	return nil
 }

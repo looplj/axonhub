@@ -45,7 +45,7 @@ func selectCandidates(inbound *PersistentInboundTransformer) pipeline.Middleware
 		selector = WithAnthropicNativeToolsSelector(selector)
 
 		if inbound.state.LoadBalancer != nil {
-			selector = WithLoadBalancedSelector(selector, inbound.state.LoadBalancer)
+			selector = WithLoadBalancedSelector(selector, inbound.state.LoadBalancer, inbound.state.RetryPolicyProvider)
 		}
 
 		candidates, err := selector.Select(ctx, llmRequest)

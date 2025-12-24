@@ -82,7 +82,7 @@ func TestOverrideParameters(t *testing.T) {
 		state: &PersistenceState{
 			CurrentChannel:         channel,
 			ChannelModelCandidates: []*ChannelModelCandidate{{Channel: channel, RequestModel: "gpt-4", ActualModel: "gpt-4", Priority: 0}},
-			ChannelIndex:           0,
+			CandidateIndex:         0,
 			RequestExec:            &ent.RequestExecution{ID: 1}, // Dummy to skip creation
 		},
 	}
@@ -170,8 +170,8 @@ func TestPersistentOutboundTransformer_TransformRequest_OriginalModelRestoration
 					ChannelModelCandidates: []*ChannelModelCandidate{
 						{Channel: channel, RequestModel: tt.inputModel, ActualModel: tt.actualModel, Priority: 0},
 					},
-					ChannelIndex: 0,
-					RequestExec:  &ent.RequestExecution{ID: 1}, // Dummy to skip creation
+					CandidateIndex: 0,
+					RequestExec:    &ent.RequestExecution{ID: 1}, // Dummy to skip creation
 				},
 			}
 
@@ -228,8 +228,8 @@ func TestPersistentOutboundTransformer_TransformRequest_WithChannelSelection(t *
 			ChannelModelCandidates: []*ChannelModelCandidate{
 				{Channel: testChannel, RequestModel: "gpt-3.5-turbo", ActualModel: "gpt-3.5-turbo", Priority: 0},
 			}, // Pre-populated by inbound
-			ChannelIndex: 0,
-			RequestExec:  &ent.RequestExecution{ID: 1}, // Dummy to skip creation
+			CandidateIndex: 0,
+			RequestExec:    &ent.RequestExecution{ID: 1}, // Dummy to skip creation
 		},
 	}
 
@@ -366,7 +366,7 @@ func TestOverrideParametersMiddleware(t *testing.T) {
 				state: &PersistenceState{
 					CurrentChannel:         channel,
 					ChannelModelCandidates: []*ChannelModelCandidate{{Channel: channel, RequestModel: "gpt-4", ActualModel: "gpt-4", Priority: 0}},
-					ChannelIndex:           0,
+					CandidateIndex:         0,
 				},
 			}
 
@@ -474,7 +474,7 @@ func TestOverrideParametersMiddleware_InvalidJSON(t *testing.T) {
 		state: &PersistenceState{
 			CurrentChannel:         channel,
 			ChannelModelCandidates: []*ChannelModelCandidate{{Channel: channel, RequestModel: "gpt-4", ActualModel: "gpt-4", Priority: 0}},
-			ChannelIndex:           0,
+			CandidateIndex:         0,
 		},
 	}
 
@@ -525,7 +525,7 @@ func TestOverrideParametersMiddleware_EmptySettings(t *testing.T) {
 		state: &PersistenceState{
 			CurrentChannel:         channel,
 			ChannelModelCandidates: []*ChannelModelCandidate{{Channel: channel, RequestModel: "gpt-4", ActualModel: "gpt-4", Priority: 0}},
-			ChannelIndex:           0,
+			CandidateIndex:         0,
 		},
 	}
 
@@ -677,7 +677,7 @@ func TestOverrideParametersMiddleware_AxonHubClear(t *testing.T) {
 				state: &PersistenceState{
 					CurrentChannel:         channel,
 					ChannelModelCandidates: []*ChannelModelCandidate{{Channel: channel, RequestModel: "gpt-4", ActualModel: "gpt-4", Priority: 0}},
-					ChannelIndex:           0,
+					CandidateIndex:         0,
 				},
 			}
 
@@ -823,7 +823,7 @@ func TestOverrideHeadersMiddleware(t *testing.T) {
 				state: &PersistenceState{
 					CurrentChannel:         channel,
 					ChannelModelCandidates: []*ChannelModelCandidate{{Channel: channel, RequestModel: "gpt-4", ActualModel: "gpt-4", Priority: 0}},
-					ChannelIndex:           0,
+					CandidateIndex:         0,
 					RequestExec:            &ent.RequestExecution{ID: 1}, // Dummy to skip creation
 				},
 			}
@@ -908,7 +908,7 @@ func TestOverrideHeadersMiddleware_EmptySettings(t *testing.T) {
 		state: &PersistenceState{
 			CurrentChannel:         channel,
 			ChannelModelCandidates: []*ChannelModelCandidate{{Channel: channel, RequestModel: "gpt-4", ActualModel: "gpt-4", Priority: 0}},
-			ChannelIndex:           0,
+			CandidateIndex:         0,
 			RequestExec:            &ent.RequestExecution{ID: 1}, // Dummy to skip creation
 		},
 	}
@@ -957,7 +957,7 @@ func TestOverrideHeadersMiddleware_EmptyOverrideHeaders(t *testing.T) {
 		state: &PersistenceState{
 			CurrentChannel:         channel,
 			ChannelModelCandidates: []*ChannelModelCandidate{{Channel: channel, RequestModel: "gpt-4", ActualModel: "gpt-4", Priority: 0}},
-			ChannelIndex:           0,
+			CandidateIndex:         0,
 			RequestExec:            &ent.RequestExecution{ID: 1}, // Dummy to skip creation
 		},
 	}
@@ -1008,7 +1008,7 @@ func TestOverrideHeadersMiddleware_OverrideExistingAuth(t *testing.T) {
 		state: &PersistenceState{
 			CurrentChannel:         channel,
 			ChannelModelCandidates: []*ChannelModelCandidate{{Channel: channel, RequestModel: "gpt-4", ActualModel: "gpt-4", Priority: 0}},
-			ChannelIndex:           0,
+			CandidateIndex:         0,
 			RequestExec:            &ent.RequestExecution{ID: 1},
 		},
 	}
@@ -1138,7 +1138,7 @@ func TestOverrideHeadersMiddleware_BlockedHeaders(t *testing.T) {
 				state: &PersistenceState{
 					CurrentChannel:         channel,
 					ChannelModelCandidates: []*ChannelModelCandidate{{Channel: channel, RequestModel: "gpt-4", ActualModel: "gpt-4", Priority: 0}},
-					ChannelIndex:           0,
+					CandidateIndex:         0,
 					RequestExec:            &ent.RequestExecution{ID: 1}, // Dummy to skip creation
 				},
 			}

@@ -13,11 +13,12 @@ type PersistenceState struct {
 	APIKey *ent.APIKey
 	User   *ent.User
 
-	RequestService    *biz.RequestService
-	UsageLogService   *biz.UsageLogService
-	ChannelService    *biz.ChannelService
-	CandidateSelector CandidateSelector
-	LoadBalancer      *LoadBalancer
+	RequestService      *biz.RequestService
+	UsageLogService     *biz.UsageLogService
+	ChannelService      *biz.ChannelService
+	RetryPolicyProvider RetryPolicyProvider
+	CandidateSelector   CandidateSelector
+	LoadBalancer        *LoadBalancer
 
 	// Request state
 	ModelMapper *ModelMapper
@@ -35,7 +36,7 @@ type PersistenceState struct {
 	ChannelModelCandidates []*ChannelModelCandidate
 
 	// Candidate state - current candidate index of ChannelModelCandidates
-	ChannelIndex int
+	CandidateIndex int
 
 	// CurrentCandidate is the currently selected candidate (includes channel and model info)
 	CurrentCandidate *ChannelModelCandidate
