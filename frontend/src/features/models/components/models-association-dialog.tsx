@@ -14,6 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormMessage } from '@/component
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AutoComplete } from '@/components/auto-complete'
+import { AutoCompleteSelect } from '@/components/auto-complete-select'
 import { useAllChannelsForOrdering } from '@/features/channels/data/channels'
 import { useModels } from '../context/models-context'
 import { useUpdateModel } from '../data/models'
@@ -35,12 +36,13 @@ const associationFormSchema = z.object({
     .array(
       z.object({
         type: z.enum(['channel_model', 'channel_regex', 'model', 'regex']),
-        priority: z.number().optional().default(0),
+        priority: z.number().min(0, 'Priority must be at least 0').max(10, 'Priority cannot exceed 10'),
         channelId: z.number().optional(),
         modelId: z.string().optional(),
         pattern: z.string().optional(),
       })
     )
+    .max(10, 'Cannot have more than 10 associations')
     .superRefine((associations, ctx) => {
       associations.forEach((assoc, index) => {
         if (assoc.type === 'channel_model' || assoc.type === 'channel_regex') {
@@ -167,7 +169,8 @@ export function ModelsAssociationDialog() {
 
     const fetchConnections = async () => {
       try {
-        const associations: ModelAssociationInput[] = debouncedAssociations
+        const sortedDebouncedAssociations = [...debouncedAssociations].sort((a: any, b: any) => (a.priority ?? 0) - (b.priority ?? 0))
+        const associations: ModelAssociationInput[] = sortedDebouncedAssociations
           .filter((assoc: any) => {
             if (assoc.type === 'channel_model') {
               return assoc.channelId && assoc.modelId
@@ -180,7 +183,7 @@ export function ModelsAssociationDialog() {
             }
             return false
           })
-          .map((assoc: any) => {
+          .map((assoc: any): ModelAssociationInput | undefined => {
             if (assoc.type === 'channel_model') {
               return {
                 type: 'channel_model' as const,
@@ -212,7 +215,9 @@ export function ModelsAssociationDialog() {
                 },
               }
             }
+            return undefined
           })
+          .filter((item): item is ModelAssociationInput => item !== undefined)
 
         if (associations.length > 0) {
           const result = await queryConnections(associations)
@@ -248,7 +253,8 @@ export function ModelsAssociationDialog() {
     if (!currentRow) return
 
     try {
-      const associations: ModelAssociation[] = data.associations.map((assoc) => {
+      const sortedAssociations = [...data.associations].sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0))
+      const associations: ModelAssociation[] = sortedAssociations.map((assoc) => {
         if (assoc.type === 'channel_model') {
           return {
             type: 'channel_model',
@@ -320,6 +326,7 @@ export function ModelsAssociationDialog() {
   }, [setOpen, form])
 
   const handleAddAssociation = useCallback(() => {
+    if (fields.length >= 10) return
     append({
       type: 'channel_model',
       priority: 0,
@@ -327,7 +334,7 @@ export function ModelsAssociationDialog() {
       modelId: '',
       pattern: '',
     })
-  }, [append])
+  }, [append, fields.length])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -373,7 +380,7 @@ export function ModelsAssociationDialog() {
           <div className='flex min-h-0 flex-[2] flex-col'>
             {/* Fixed Add Rule Section at Top */}
             <div className='bg-background shrink-0 border-b pb-4'>
-              <Button type='button' variant='outline' onClick={handleAddAssociation} className='w-full'>
+              <Button type='button' variant='outline' onClick={handleAddAssociation} disabled={fields.length >= 10} className='w-full'>
                 <IconPlus className='mr-2 h-4 w-4' />
                 {t('models.dialogs.association.addRule')}
               </Button>
@@ -527,21 +534,22 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, onRemove
 
   return (
     <div className='flex flex-col gap-2 rounded-lg border p-3'>
-      <div className='flex items-center gap-2'>
+      <div className={`grid items-center gap-2 ${showChannel ? 'grid-cols-[3rem_11rem_1fr_1fr_2.25rem]' : 'grid-cols-[3rem_11rem_1fr_2.25rem]'}`}>
         {/* Priority Input */}
         <FormField
           control={form.control}
           name={`associations.${index}.priority`}
           render={({ field }) => (
-            <FormItem className='w-24 shrink-0'>
+            <FormItem className='gap-0'>
               <FormControl>
                 <Input
                   type='number'
                   min={0}
+                  max={10}
                   {...field}
                   value={field.value ?? 0}
-                  onChange={(e) => field.onChange(Math.max(0, Number(e.target.value) || 0))}
-                  className='h-9 text-center'
+                  onChange={(e) => field.onChange(Math.max(0, Math.min(10, Number(e.target.value) || 0)))}
+                  className='h-9 text-center [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-inner-spin-button]:hidden'
                   placeholder='0'
                 />
               </FormControl>
@@ -554,10 +562,10 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, onRemove
           control={form.control}
           name={`associations.${index}.type`}
           render={({ field }) => (
-            <FormItem className='w-36 shrink-0'>
+            <FormItem className='gap-0'>
               <FormControl>
                 <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger className='h-9'>
+                  <SelectTrigger className='h-9 w-full text-xs'>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -578,23 +586,18 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, onRemove
           <FormField
             control={form.control}
             name={`associations.${index}.channelId`}
-            render={({ field }) => (
-              <FormItem className='flex-1'>
+            render={({ field, fieldState }) => (
+              <FormItem className='gap-0'>
                 <FormControl>
-                  <Select value={field.value?.toString() || ''} onValueChange={(value) => field.onChange(Number(value))}>
-                    <SelectTrigger className='h-9'>
-                      <SelectValue placeholder={t('models.dialogs.association.selectChannel')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {channelOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value.toString()}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <AutoCompleteSelect
+                    selectedValue={field.value?.toString() || ''}
+                    onSelectedValueChange={(value) => field.onChange(Number(value))}
+                    items={channelOptions.map((opt) => ({ value: opt.value.toString(), label: opt.label }))}
+                    placeholder={t('models.dialogs.association.selectChannel')}
+                    emptyMessage={t('models.dialogs.association.noModelsAvailable')}
+                  />
                 </FormControl>
-                <FormMessage />
+                {fieldState.error && <FormMessage>{fieldState.error.message}</FormMessage>}
               </FormItem>
             )}
           />
@@ -606,7 +609,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, onRemove
             control={form.control}
             name={`associations.${index}.modelId`}
             render={({ field }) => (
-              <FormItem className='flex-1'>
+              <FormItem className='gap-0'>
                 <FormControl>
                   <AutoComplete
                     selectedValue={field.value?.toString() || ''}
@@ -637,7 +640,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, onRemove
             control={form.control}
             name={`associations.${index}.pattern`}
             render={({ field }) => (
-              <FormItem className='flex-1'>
+              <FormItem className='gap-0'>
                 <FormControl>
                   <Input
                     {...field}
@@ -658,7 +661,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, onRemove
           variant='ghost'
           size='sm'
           onClick={onRemove}
-          className='text-destructive hover:text-destructive h-9 w-9 shrink-0 p-0'
+          className='text-destructive hover:text-destructive h-9 w-9 p-0'
         >
           <IconTrash className='h-4 w-4' />
         </Button>

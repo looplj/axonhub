@@ -609,7 +609,7 @@ function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModel
           </FormItem>
         )}
       />
-      <span className='text-muted-foreground'>→</span>
+      <span className='text-muted-foreground flex items-center h-10'>→</span>
       <FormField
         control={form.control}
         name={toFieldName}

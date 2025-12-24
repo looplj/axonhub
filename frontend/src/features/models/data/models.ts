@@ -61,6 +61,7 @@ const MODELS_QUERY = `
           settings {
             associations {
               type
+              priority
               channelModel {
                 channelId
                 modelId
@@ -71,6 +72,9 @@ const MODELS_QUERY = `
               }
               regex {
                 pattern
+              }
+              modelId {
+                modelId
               }
             }
           }
@@ -131,6 +135,7 @@ const CREATE_MODEL_MUTATION = `
       settings {
         associations {
           type
+          priority
           channelModel {
             channelId
             modelId
@@ -141,6 +146,9 @@ const CREATE_MODEL_MUTATION = `
           }
           regex {
             pattern
+          }
+          modelId {
+            modelId
           }
         }
       }
@@ -191,6 +199,7 @@ const UPDATE_MODEL_MUTATION = `
       settings {
         associations {
           type
+          priority
           channelModel {
             channelId
             modelId
@@ -201,6 +210,9 @@ const UPDATE_MODEL_MUTATION = `
           }
           regex {
             pattern
+          }
+          modelId {
+            modelId
           }
         }
       }

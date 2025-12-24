@@ -17,18 +17,21 @@ export interface QueryModelsInput {
 }
 
 export interface ModelAssociationInput {
-  type: 'channel_model' | 'channel_regex' | 'regex'
+  type: 'channel_model' | 'channel_regex' | 'regex' | 'model'
   priority?: number
   channelModel?: {
-    channelId: string
+    channelId: number
     modelId: string
   }
   channelRegex?: {
-    channelId: string
+    channelId: number
     pattern: string
   }
   regex?: {
     pattern: string
+  }
+  modelId?: {
+    modelId: string
   }
 }
 
