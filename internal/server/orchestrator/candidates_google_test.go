@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -72,7 +71,8 @@ func TestGoogleNativeToolsSelector_Select_WithGoogleNativeTools(t *testing.T) {
 
 	channelService := newTestChannelServiceForChannels(client)
 	modelService := newTestModelService(client)
-	baseSelector := NewDefaultSelector(channelService, modelService)
+	systemService := newTestSystemService(client)
+	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
 	selector := WithGoogleNativeToolsSelector(baseSelector)
 
 	// Request with Google native tools
@@ -95,9 +95,9 @@ func TestGoogleNativeToolsSelector_Select_WithGoogleNativeTools(t *testing.T) {
 		channelIDs[i] = ch.Channel.ID
 	}
 
-	assert.Contains(t, channelIDs, channels[0].ID, "Gemini native channel should be included")
-	assert.Contains(t, channelIDs, channels[2].ID, "Gemini Vertex channel should be included")
-	assert.NotContains(t, channelIDs, channels[1].ID, "Gemini OpenAI channel should be excluded")
+	require.Contains(t, channelIDs, channels[0].ID, "Gemini native channel should be included")
+	require.Contains(t, channelIDs, channels[2].ID, "Gemini Vertex channel should be included")
+	require.NotContains(t, channelIDs, channels[1].ID, "Gemini OpenAI channel should be excluded")
 }
 
 // TestGoogleNativeToolsSelector_Select_WithoutGoogleNativeTools tests that all channels are returned when no Google native tools.
@@ -108,7 +108,8 @@ func TestGoogleNativeToolsSelector_Select_WithoutGoogleNativeTools(t *testing.T)
 
 	channelService := newTestChannelServiceForChannels(client)
 	modelService := newTestModelService(client)
-	baseSelector := NewDefaultSelector(channelService, modelService)
+	systemService := newTestSystemService(client)
+	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
 	selector := WithGoogleNativeToolsSelector(baseSelector)
 
 	// Request without Google native tools (only function tools)
@@ -131,9 +132,9 @@ func TestGoogleNativeToolsSelector_Select_WithoutGoogleNativeTools(t *testing.T)
 		channelIDs[i] = ch.Channel.ID
 	}
 
-	assert.Contains(t, channelIDs, channels[0].ID, "Gemini native channel should be included")
-	assert.Contains(t, channelIDs, channels[1].ID, "Gemini OpenAI channel should be included")
-	assert.Contains(t, channelIDs, channels[2].ID, "Gemini Vertex channel should be included")
+	require.Contains(t, channelIDs, channels[0].ID, "Gemini native channel should be included")
+	require.Contains(t, channelIDs, channels[1].ID, "Gemini OpenAI channel should be included")
+	require.Contains(t, channelIDs, channels[2].ID, "Gemini Vertex channel should be included")
 }
 
 // TestGoogleNativeToolsSelector_Select_NoCompatibleChannels tests fallback when no compatible channels exist.
@@ -154,7 +155,8 @@ func TestGoogleNativeToolsSelector_Select_NoCompatibleChannels(t *testing.T) {
 
 	channelService := newTestChannelServiceForChannels(client)
 	modelService := newTestModelService(client)
-	baseSelector := NewDefaultSelector(channelService, modelService)
+	systemService := newTestSystemService(client)
+	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
 	selector := WithGoogleNativeToolsSelector(baseSelector)
 
 	// Request with Google native tools
@@ -171,7 +173,7 @@ func TestGoogleNativeToolsSelector_Select_NoCompatibleChannels(t *testing.T) {
 	// Should fallback to all channels when no compatible channels exist
 	// (downstream outbound will handle the fallback)
 	require.Len(t, result, 1)
-	assert.Equal(t, ch.ID, result[0].Channel.ID)
+	require.Equal(t, ch.ID, result[0].Channel.ID)
 }
 
 // TestGoogleNativeToolsSelector_Select_EmptyTools tests that all channels are returned when tools are empty.
@@ -182,7 +184,8 @@ func TestGoogleNativeToolsSelector_Select_EmptyTools(t *testing.T) {
 
 	channelService := newTestChannelServiceForChannels(client)
 	modelService := newTestModelService(client)
-	baseSelector := NewDefaultSelector(channelService, modelService)
+	systemService := newTestSystemService(client)
+	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
 	selector := WithGoogleNativeToolsSelector(baseSelector)
 
 	// Request with no tools
@@ -202,9 +205,9 @@ func TestGoogleNativeToolsSelector_Select_EmptyTools(t *testing.T) {
 		channelIDs[i] = ch.Channel.ID
 	}
 
-	assert.Contains(t, channelIDs, channels[0].ID)
-	assert.Contains(t, channelIDs, channels[1].ID)
-	assert.Contains(t, channelIDs, channels[2].ID)
+	require.Contains(t, channelIDs, channels[0].ID)
+	require.Contains(t, channelIDs, channels[1].ID)
+	require.Contains(t, channelIDs, channels[2].ID)
 }
 
 // TestGoogleNativeToolsSelector_Select_MultipleGoogleNativeTools tests filtering with multiple Google native tools.
@@ -215,7 +218,8 @@ func TestGoogleNativeToolsSelector_Select_MultipleGoogleNativeTools(t *testing.T
 
 	channelService := newTestChannelServiceForChannels(client)
 	modelService := newTestModelService(client)
-	baseSelector := NewDefaultSelector(channelService, modelService)
+	systemService := newTestSystemService(client)
+	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
 	selector := WithGoogleNativeToolsSelector(baseSelector)
 
 	// Request with multiple Google native tools
@@ -239,7 +243,7 @@ func TestGoogleNativeToolsSelector_Select_MultipleGoogleNativeTools(t *testing.T
 		channelIDs[i] = ch.Channel.ID
 	}
 
-	assert.Contains(t, channelIDs, channels[0].ID, "Gemini native channel should be included")
-	assert.Contains(t, channelIDs, channels[2].ID, "Gemini Vertex channel should be included")
-	assert.NotContains(t, channelIDs, channels[1].ID, "Gemini OpenAI channel should be excluded")
+	require.Contains(t, channelIDs, channels[0].ID, "Gemini native channel should be included")
+	require.Contains(t, channelIDs, channels[2].ID, "Gemini Vertex channel should be included")
+	require.NotContains(t, channelIDs, channels[1].ID, "Gemini OpenAI channel should be excluded")
 }

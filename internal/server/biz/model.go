@@ -3,6 +3,7 @@ package biz
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"github.com/samber/lo"
@@ -11,13 +12,16 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/model"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
 type ModelServiceParams struct {
 	fx.In
 
-	Ent *ent.Client
+	ChannelService *ChannelService
+	SystemService  *SystemService
+	Ent            *ent.Client
 }
 
 func NewModelService(params ModelServiceParams) *ModelService {
@@ -25,11 +29,16 @@ func NewModelService(params ModelServiceParams) *ModelService {
 		AbstractService: &AbstractService{
 			db: params.Ent,
 		},
+		channelService: params.ChannelService,
+		systemService:  params.SystemService,
 	}
 }
 
 type ModelService struct {
 	*AbstractService
+
+	channelService *ChannelService
+	systemService  *SystemService
 }
 
 // CreateModel creates a new model with the provided input.
@@ -209,4 +218,88 @@ func (svc *ModelService) GetModelByModelID(ctx context.Context, modelID string, 
 			model.StatusEQ(status),
 		).
 		First(ctx)
+}
+
+// ListConfiguredModels retrieves all models that have explicit Model entity configuration.
+// Returns models with their status.
+func (svc *ModelService) ListConfiguredModels(ctx context.Context, statusIn []model.Status) ([]*ModelIdentityWithStatus, error) {
+	query := svc.entFromContext(ctx).Model.Query()
+
+	// Apply status filter if provided
+	if len(statusIn) > 0 {
+		query = query.Where(model.StatusIn(statusIn...))
+	} else {
+		// Default to enabled models only
+		query = query.Where(model.StatusEQ(model.StatusEnabled))
+	}
+
+	models, err := query.All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query configured models: %w", err)
+	}
+
+	// Convert to ModelIdentityWithStatus
+	result := make([]*ModelIdentityWithStatus, 0, len(models))
+	for _, m := range models {
+		result = append(result, &ModelIdentityWithStatus{
+			ID:     m.ModelID,
+			Status: channel.Status(m.Status.String()),
+		})
+	}
+
+	return result, nil
+}
+
+// ListEnabledModels returns all unique models across all enabled channels,
+// considering model mappings, prefixes, and auto-trimmed models.
+// It uses GetModelEntries to reduce code duplication.
+// When QueryAllChannelModels in system settings is false, it returns configured models instead.
+func (svc *ModelService) ListEnabledModels(ctx context.Context) []objects.ModelFacade {
+	// Read system settings to determine whether to query all channels
+	settings := svc.systemService.ModelSettingsOrDefault(ctx)
+	queryAllChannels := settings.QueryAllChannelModels
+
+	if !queryAllChannels {
+		// Return configured models when queryAllChannels is false
+		configuredModels, err := svc.ListConfiguredModels(ctx, nil)
+		if err != nil {
+			log.Warn(ctx, "failed to list configured models", log.Cause(err))
+			return nil
+		}
+
+		result := make([]objects.ModelFacade, 0, len(configuredModels))
+		for _, m := range configuredModels {
+			result = append(result, objects.ModelFacade{
+				ID:          m.ID,
+				DisplayName: m.ID,
+				CreatedAt:   time.Time{},
+				Created:     0,
+				OwnedBy:     "configured",
+			})
+		}
+
+		return result
+	}
+
+	modelSet := make(map[string]objects.ModelFacade)
+
+	for _, ch := range svc.channelService.GetEnabledChannels() {
+		entries := ch.GetModelEntries()
+
+		for requestModel := range entries {
+			if _, ok := modelSet[requestModel]; ok {
+				continue
+			}
+
+			modelSet[requestModel] = objects.ModelFacade{
+				ID:          requestModel,
+				DisplayName: requestModel,
+				CreatedAt:   ch.CreatedAt,
+				Created:     ch.CreatedAt.Unix(),
+				OwnedBy:     ch.Channel.Type.String(),
+			}
+		}
+	}
+
+	return lo.Values(modelSet)
 }

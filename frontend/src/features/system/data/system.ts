@@ -391,3 +391,64 @@ export function useCheckForUpdate() {
     staleTime: 5 * 60 * 1000, // 5 minutes
   })
 }
+
+// Model Settings
+const MODEL_SETTINGS_QUERY = `
+  query ModelSettings {
+    systemModelSettings {
+      fallbackToChannelsOnModelNotFound
+      queryAllChannelModels
+    }
+  }
+`
+
+const UPDATE_MODEL_SETTINGS_MUTATION = `
+  mutation UpdateModelSettings($input: UpdateSystemModelSettingsInput!) {
+    updateSystemModelSettings(input: $input)
+  }
+`
+
+export interface ModelSettings {
+  fallbackToChannelsOnModelNotFound: boolean
+  queryAllChannelModels: boolean
+}
+
+export interface UpdateModelSettingsInput {
+  fallbackToChannelsOnModelNotFound?: boolean
+  queryAllChannelModels?: boolean
+}
+
+export function useModelSettings() {
+  const { handleError } = useErrorHandler()
+
+  return useQuery({
+    queryKey: ['modelSettings'],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ systemModelSettings: ModelSettings }>(MODEL_SETTINGS_QUERY)
+        return data.systemModelSettings
+      } catch (error) {
+        handleError(error, i18n.t('common.errors.internalServerError'))
+        throw error
+      }
+    },
+  })
+}
+
+export function useUpdateModelSettings() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (input: UpdateModelSettingsInput) => {
+      const data = await graphqlRequest<{ updateSystemModelSettings: boolean }>(UPDATE_MODEL_SETTINGS_MUTATION, { input })
+      return data.updateSystemModelSettings
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['modelSettings'] })
+      toast.success(i18n.t('common.success.systemUpdated'))
+    },
+    onError: () => {
+      toast.error(i18n.t('common.errors.systemUpdateFailed'))
+    },
+  })
+}

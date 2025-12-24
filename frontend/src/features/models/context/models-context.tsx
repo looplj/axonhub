@@ -7,6 +7,7 @@ type DialogType =
   | 'delete'
   | 'archive'
   | 'association'
+  | 'settings'
   | null
 
 interface ModelsContextType {

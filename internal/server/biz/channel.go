@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/samber/lo"
 	"github.com/zhenzou/executors"
 	"go.uber.org/fx"
 
@@ -211,70 +210,6 @@ func (svc *ChannelService) GetChannelForTest(ctx context.Context, channelID int)
 	}
 
 	return svc.buildChannel(entity)
-}
-
-// ListEnabledModels returns all unique models across all enabled channels,
-// considering model mappings. It returns both the original model names
-// from SupportedModels and the "From" names from model mappings.
-func (svc *ChannelService) ListEnabledModels(ctx context.Context) []objects.ModelFacade {
-	modelSet := make(map[string]objects.ModelFacade)
-
-	for _, ch := range svc.enabledChannels {
-		// Add all supported models
-		for _, model := range ch.SupportedModels {
-			if _, ok := modelSet[model]; ok {
-				continue
-			}
-
-			modelSet[model] = objects.ModelFacade{
-				ID:          model,
-				DisplayName: model,
-				CreatedAt:   ch.CreatedAt,
-				Created:     ch.CreatedAt.Unix(),
-				OwnedBy:     ch.Channel.Type.String(),
-			}
-		}
-
-		// Add all "From" models from model mappings
-		if ch.Settings != nil {
-			for _, mapping := range ch.Settings.ModelMappings {
-				// Only add the mapping if the target model is supported
-				if slices.Contains(ch.SupportedModels, mapping.To) {
-					if _, ok := modelSet[mapping.From]; ok {
-						continue
-					}
-
-					modelSet[mapping.From] = objects.ModelFacade{
-						ID:          mapping.From,
-						DisplayName: mapping.From,
-						CreatedAt:   ch.CreatedAt,
-						Created:     ch.CreatedAt.Unix(),
-						OwnedBy:     ch.Channel.Type.String(),
-					}
-				}
-			}
-
-			// Add models with extra prefix
-			if ch.Settings.ExtraModelPrefix != "" {
-				for _, model := range ch.SupportedModels {
-					prefixedModel := ch.Settings.ExtraModelPrefix + "/" + model
-					if _, ok := modelSet[prefixedModel]; ok {
-						continue
-					}
-
-					modelSet[prefixedModel] = objects.ModelFacade{
-						ID:          prefixedModel,
-						DisplayName: prefixedModel,
-						CreatedAt:   ch.CreatedAt,
-						Created:     ch.CreatedAt.Unix(),
-						OwnedBy:     ch.Channel.Type.String(),
-					}
-				}
-			}
-		}
-	}
-
-	return lo.Values(modelSet)
 }
 
 // ListModelsInput represents the input for listing models with filters.

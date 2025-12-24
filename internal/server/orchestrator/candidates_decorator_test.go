@@ -3,7 +3,6 @@ package orchestrator
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/llm"
@@ -30,7 +29,7 @@ func TestDecoratorChain_FullStack(t *testing.T) {
 
 	// Build decorator chain: Default -> SelectedChannels -> LoadBalanced
 	modelService := newTestModelService(client)
-	baseSelector := NewDefaultSelector(channelService, modelService)
+	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
 	filteredSelector := WithSelectedChannelsSelector(baseSelector, []int{channels[0].ID, channels[1].ID})
 	selector := WithLoadBalancedSelector(filteredSelector, loadBalancer, systemService)
 
@@ -49,9 +48,9 @@ func TestDecoratorChain_FullStack(t *testing.T) {
 		channelIDs[i] = ch.Channel.ID
 	}
 
-	assert.Contains(t, channelIDs, channels[0].ID)
-	assert.Contains(t, channelIDs, channels[1].ID)
-	assert.NotContains(t, channelIDs, channels[2].ID, "Filtered channel should not be included")
+	require.Contains(t, channelIDs, channels[0].ID)
+	require.Contains(t, channelIDs, channels[1].ID)
+	require.NotContains(t, channelIDs, channels[2].ID, "Filtered channel should not be included")
 }
 
 // TestSelectedChannelsSelector_WithAllowedChannels tests filtering with allowed channel IDs.
@@ -87,9 +86,9 @@ func TestSelectedChannelsSelector_WithAllowedChannels(t *testing.T) {
 		channelIDs[i] = ch.Channel.ID
 	}
 
-	assert.Contains(t, channelIDs, channels[0].ID)
-	assert.Contains(t, channelIDs, channels[2].ID)
-	assert.NotContains(t, channelIDs, channels[1].ID)
+	require.Contains(t, channelIDs, channels[0].ID)
+	require.Contains(t, channelIDs, channels[2].ID)
+	require.NotContains(t, channelIDs, channels[1].ID)
 }
 
 // TestSelectedChannelsSelector_WithEmptyFilter tests that empty filter returns all channels.
@@ -100,7 +99,8 @@ func TestSelectedChannelsSelector_WithEmptyFilter(t *testing.T) {
 
 	channelService := newTestChannelServiceForChannels(client)
 	modelService := newTestModelService(client)
-	baseSelector := NewDefaultSelector(channelService, modelService)
+	systemService := newTestSystemService(client)
+	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -124,7 +124,7 @@ func TestSelectedChannelsSelector_WithEmptyFilter(t *testing.T) {
 		channelIDs[i] = ch.Channel.ID
 	}
 
-	assert.Contains(t, channelIDs, channels[0].ID)
-	assert.Contains(t, channelIDs, channels[1].ID)
-	assert.Contains(t, channelIDs, channels[2].ID)
+	require.Contains(t, channelIDs, channels[0].ID)
+	require.Contains(t, channelIDs, channels[1].ID)
+	require.Contains(t, channelIDs, channels[2].ID)
 }

@@ -56,7 +56,7 @@ func newTestLoadBalancedSelector(
 	loadBalancer := NewLoadBalancer(systemService, strategies...)
 
 	modelService := newTestModelService(client)
-	baseSelector := NewDefaultSelector(channelService, modelService)
+	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
 
 	return WithLoadBalancedSelector(baseSelector, loadBalancer, systemService)
 }

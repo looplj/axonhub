@@ -288,8 +288,8 @@
           "searchPlaceholder": "搜索模型...",
           "showAddedOnly": "仅显示已添加",
           "added": "已添加",
-          "clearAllTitle": "清空全部支持的模型？",
-          "clearAllDescription": "确定要清空全部 {{count}} 个模型吗？",
+          "clearAllTitle": "清空所有支持的模型？",
+          "clearAllDescription": "确定要清空所有 {{count}} 个模型吗？",
           "willRemove": "将移除",
           "allModels": "全部模型 ({{count}})"
         },
@@ -353,6 +353,7 @@
         "testing": "测试中...",
         "add": "添加",
         "batchAdd": "批量添加",
+        "batchAddTooltip": "输入多个模型，用逗号分隔，例如：gpt-4, gpt-3.5-turbo, claude-3-opus",
         "addSelected": "添加",
         "confirmSelection": "确定选中",
         "fetchModels": "获取",

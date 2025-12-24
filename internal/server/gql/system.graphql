@@ -70,6 +70,16 @@ input UpdateRetryPolicyInput {
   enabled: Boolean
 }
 
+type SystemModelSettings {
+  fallbackToChannelsOnModelNotFound: Boolean!
+  queryAllChannelModels: Boolean!
+}
+
+input UpdateSystemModelSettingsInput {
+  fallbackToChannelsOnModelNotFound: Boolean
+  queryAllChannelModels: Boolean
+}
+
 input UpdateDefaultDataStorageInput {
   dataStorageID: ID!
 }
@@ -88,6 +98,7 @@ extend type Mutation {
   updateBrandSettings(input: UpdateBrandSettingsInput!): Boolean!
   updateStoragePolicy(input: UpdateStoragePolicyInput!): Boolean!
   updateRetryPolicy(input: UpdateRetryPolicyInput!): Boolean!
+  updateSystemModelSettings(input: UpdateSystemModelSettingsInput!): Boolean!
   updateDefaultDataStorage(input: UpdateDefaultDataStorageInput!): Boolean!
   completeOnboarding(input: CompleteOnboardingInput!): Boolean!
 }
@@ -113,6 +124,7 @@ extend type Query {
   brandSettings: BrandSettings!
   storagePolicy: StoragePolicy!
   retryPolicy: RetryPolicy!
+  systemModelSettings: SystemModelSettings!
   defaultDataStorageID: ID
   onboardingInfo: OnboardingInfo
   systemVersion: SystemVersion!

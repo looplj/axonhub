@@ -26,6 +26,8 @@ type OpenAIHandlersParams struct {
 
 type OpenAIHandlers struct {
 	ChannelService             *biz.ChannelService
+	ModelService               *biz.ModelService
+	SystemService              *biz.SystemService
 	ChatCompletionHandlers     *ChatCompletionHandlers
 	ResponseCompletionHandlers *ChatCompletionHandlers
 	EmbeddingHandlers          *ChatCompletionHandlers
@@ -67,6 +69,8 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 			),
 		},
 		ChannelService: params.ChannelService,
+		ModelService:   params.ModelService,
+		SystemService:  params.SystemService,
 	}
 }
 
@@ -88,10 +92,17 @@ type OpenAIModel struct {
 	OwnedBy string `json:"owned_by"`
 }
 
-// ListModels returns all available models from enabled channels.
+// ListModels returns all available models.
 // This endpoint is compatible with OpenAI's /v1/models API.
+// It uses QueryAllChannelModels setting from system config to determine model source.
 func (handlers *OpenAIHandlers) ListModels(c *gin.Context) {
-	models := handlers.ChannelService.ListEnabledModels(c.Request.Context())
+	ctx := c.Request.Context()
+
+	models := handlers.ModelService.ListEnabledModels(ctx)
+	if models == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list models"})
+		return
+	}
 
 	openaiModels := make([]OpenAIModel, 0, len(models))
 	for _, model := range models {

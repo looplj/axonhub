@@ -447,10 +447,15 @@ func (ch *Channel) GetModelEntries() map[string]ChannelModelEntry {
 
 	// 3. Auto-trimmed models (AutoTrimedModelPrefixes)
 	for _, prefix := range ch.Settings.AutoTrimedModelPrefixes {
+		if prefix == "" {
+			continue
+		}
+
+		prefix += "/"
 		for _, model := range ch.SupportedModels {
 			// Only process models that have the prefix
-			if strings.HasPrefix(model, prefix+"/") {
-				trimmedModel := strings.TrimPrefix(model, prefix+"/")
+			if after, ok := strings.CutPrefix(model, prefix); ok {
+				trimmedModel := after
 				if _, exists := entries[trimmedModel]; !exists {
 					entries[trimmedModel] = ChannelModelEntry{
 						RequestModel: trimmedModel,

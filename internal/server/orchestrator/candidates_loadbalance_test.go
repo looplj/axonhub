@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/contexts"
@@ -44,9 +43,9 @@ func TestLoadBalancedSelector_Select_MultipleChannels_LoadBalancing(t *testing.T
 
 	// Verify all channels are enabled
 	for i, ch := range result {
-		assert.Equal(t, channel.StatusEnabled, ch.Channel.Status, "Channel %d should be enabled", i)
-		assert.Equal(t, channel.TypeOpenai, ch.Channel.Type, "Channel %d should be OpenAI type", i)
-		assert.Contains(t, ch.Channel.SupportedModels, "gpt-4", "Channel %d should support gpt-4", i)
+		require.Equal(t, channel.StatusEnabled, ch.Channel.Status, "Channel %d should be enabled", i)
+		require.Equal(t, channel.TypeOpenai, ch.Channel.Type, "Channel %d should be OpenAI type", i)
+		require.Contains(t, ch.Channel.SupportedModels, "gpt-4", "Channel %d should support gpt-4", i)
 	}
 
 	// Verify disabled channel is not included
@@ -55,12 +54,12 @@ func TestLoadBalancedSelector_Select_MultipleChannels_LoadBalancing(t *testing.T
 		channelIDs[i] = ch.Channel.ID
 	}
 
-	assert.NotContains(t, channelIDs, channels[3].ID, "Disabled channel should not be included")
+	require.NotContains(t, channelIDs, channels[3].ID, "Disabled channel should not be included")
 
 	// Verify all enabled channels are present
-	assert.Contains(t, channelIDs, channels[0].ID, "High weight channel should be included")
-	assert.Contains(t, channelIDs, channels[1].ID, "Medium weight channel should be included")
-	assert.Contains(t, channelIDs, channels[2].ID, "Low weight channel should be included")
+	require.Contains(t, channelIDs, channels[0].ID, "High weight channel should be included")
+	require.Contains(t, channelIDs, channels[1].ID, "Medium weight channel should be included")
+	require.Contains(t, channelIDs, channels[2].ID, "Low weight channel should be included")
 }
 
 // TestDefaultChannelSelector_Select_WithConnectionTracking tests connection tracking integration.
@@ -96,9 +95,9 @@ func TestDefaultChannelSelector_Select_WithConnectionTracking(t *testing.T) {
 		channelIDs[i] = ch.Channel.ID
 	}
 
-	assert.Contains(t, channelIDs, channels[0].ID)
-	assert.Contains(t, channelIDs, channels[1].ID)
-	assert.Contains(t, channelIDs, channels[2].ID)
+	require.Contains(t, channelIDs, channels[0].ID)
+	require.Contains(t, channelIDs, channels[1].ID)
+	require.Contains(t, channelIDs, channels[2].ID)
 
 	// Due to connection awareness, the channel with no connections (ch3)
 	// should get a boost from the ConnectionAwareStrategy
@@ -107,9 +106,9 @@ func TestDefaultChannelSelector_Select_WithConnectionTracking(t *testing.T) {
 	// But ch3 might get boosted due to no connections
 
 	// Let's verify the connection counts are correctly tracked
-	assert.Equal(t, 2, connectionTracker.GetActiveConnections(channels[0].ID), "Channel 0 should have 2 connections")
-	assert.Equal(t, 1, connectionTracker.GetActiveConnections(channels[1].ID), "Channel 1 should have 1 connection")
-	assert.Equal(t, 0, connectionTracker.GetActiveConnections(channels[2].ID), "Channel 2 should have 0 connections")
+	require.Equal(t, 2, connectionTracker.GetActiveConnections(channels[0].ID), "Channel 0 should have 2 connections")
+	require.Equal(t, 1, connectionTracker.GetActiveConnections(channels[1].ID), "Channel 1 should have 1 connection")
+	require.Equal(t, 0, connectionTracker.GetActiveConnections(channels[2].ID), "Channel 2 should have 0 connections")
 
 	// Log the actual ordering for debugging
 	t.Logf("Channel ordering with connections: ch0(2 conn)=%d, ch1(1 conn)=%d, ch2(0 conn)=%d",
@@ -117,8 +116,8 @@ func TestDefaultChannelSelector_Select_WithConnectionTracking(t *testing.T) {
 
 	// Verify channel properties in the result
 	for i, ch := range result {
-		assert.Equal(t, channel.StatusEnabled, ch.Channel.Status, "Channel %d should be enabled", i)
-		assert.Contains(t, ch.Channel.SupportedModels, "gpt-4", "Channel %d should support gpt-4", i)
+		require.Equal(t, channel.StatusEnabled, ch.Channel.Status, "Channel %d should be enabled", i)
+		require.Contains(t, ch.Channel.SupportedModels, "gpt-4", "Channel %d should support gpt-4", i)
 	}
 }
 
@@ -172,21 +171,21 @@ func TestDefaultChannelSelector_Select_WithTraceContext(t *testing.T) {
 	require.Len(t, result, 3)
 
 	// Channel 2 should be ranked first due to trace awareness (high boost score from TraceAwareStrategy)
-	assert.Equal(t, channels[1].ID, result[0].Channel.ID, "Channel from trace should be ranked first")
+	require.Equal(t, channels[1].ID, result[0].Channel.ID, "Channel from trace should be ranked first")
 
 	// The other channels should follow in weight order (ch1 > ch3)
-	assert.Contains(t, []int{result[1].Channel.ID, result[2].Channel.ID}, channels[0].ID, "High weight channel should be in top 3")
-	assert.Contains(t, []int{result[1].Channel.ID, result[2].Channel.ID}, channels[2].ID, "Low weight channel should be in top 3")
+	require.Contains(t, []int{result[1].Channel.ID, result[2].Channel.ID}, channels[0].ID, "High weight channel should be in top 3")
+	require.Contains(t, []int{result[1].Channel.ID, result[2].Channel.ID}, channels[2].ID, "Low weight channel should be in top 3")
 
 	// Verify all channels are enabled and support the model
 	for i, ch := range result {
-		assert.Equal(t, channel.StatusEnabled, ch.Channel.Status, "Channel %d should be enabled", i)
-		assert.Contains(t, ch.Channel.SupportedModels, "gpt-4", "Channel %d should support gpt-4", i)
+		require.Equal(t, channel.StatusEnabled, ch.Channel.Status, "Channel %d should be enabled", i)
+		require.Contains(t, ch.Channel.SupportedModels, "gpt-4", "Channel %d should support gpt-4", i)
 	}
 
 	// Verify the trace channel is indeed channel 2 (medium weight)
-	assert.Equal(t, "Medium Weight Channel", result[0].Channel.Name, "First channel should be the medium weight channel from trace")
-	assert.Equal(t, 50, result[0].Channel.OrderingWeight, "First channel should have medium weight (50)")
+	require.Equal(t, "Medium Weight Channel", result[0].Channel.Name, "First channel should be the medium weight channel from trace")
+	require.Equal(t, 50, result[0].Channel.OrderingWeight, "First channel should have medium weight (50)")
 
 	// Log the ordering to verify trace awareness is working
 	t.Logf("Channel ordering with trace context: %s (weight=%d), %s (weight=%d), %s (weight=%d)",
@@ -231,24 +230,24 @@ func TestDefaultChannelSelector_Select_WithChannelFailures(t *testing.T) {
 
 	// The failing channel (channels[0]) should be ranked lower due to consecutive failures
 	// With 3 consecutive failures, ErrorAwareStrategy should significantly penalize it
-	assert.NotEqual(t, channels[0].ID, result[0].Channel.ID, "Failing channel should not be ranked first")
+	require.NotEqual(t, channels[0].ID, result[0].Channel.ID, "Failing channel should not be ranked first")
 
 	// The healthy channels should be ranked higher
 	// We expect either ch2 (medium weight) or ch3 (low weight) to be first
 	// Since ch2 has higher weight and no failures, it should be first
-	assert.Equal(t, channels[1].ID, result[0].Channel.ID, "Medium weight healthy channel should be first")
+	require.Equal(t, channels[1].ID, result[0].Channel.ID, "Medium weight healthy channel should be first")
 
 	// Verify all channels are still included (just reordered)
 	channelIDs := make([]int, len(result))
 	for i, ch := range result {
 		channelIDs[i] = ch.Channel.ID
-		assert.Equal(t, channel.StatusEnabled, ch.Channel.Status, "Channel %d should be enabled", i)
-		assert.Contains(t, ch.Channel.SupportedModels, "gpt-4", "Channel %d should support gpt-4", i)
+		require.Equal(t, channel.StatusEnabled, ch.Channel.Status, "Channel %d should be enabled", i)
+		require.Contains(t, ch.Channel.SupportedModels, "gpt-4", "Channel %d should support gpt-4", i)
 	}
 
-	assert.Contains(t, channelIDs, channels[0].ID, "Failing channel should still be included")
-	assert.Contains(t, channelIDs, channels[1].ID, "Medium weight channel should be included")
-	assert.Contains(t, channelIDs, channels[2].ID, "Low weight channel should be included")
+	require.Contains(t, channelIDs, channels[0].ID, "Failing channel should still be included")
+	require.Contains(t, channelIDs, channels[1].ID, "Medium weight channel should be included")
+	require.Contains(t, channelIDs, channels[2].ID, "Low weight channel should be included")
 
 	// Log the ordering to verify error awareness is working
 	t.Logf("Channel ordering with failures: %s (3 failures), %s (0 failures), %s (0 failures)",
@@ -332,9 +331,9 @@ func TestDefaultChannelSelector_Select_WeightedRoundRobin_EqualWeights(t *testin
 		firstSelectionIDs[i] = ch.Channel.ID
 	}
 
-	assert.Contains(t, firstSelectionIDs, channels[0].ID, "First selection should contain channel 1")
-	assert.Contains(t, firstSelectionIDs, channels[1].ID, "First selection should contain channel 2")
-	assert.Contains(t, firstSelectionIDs, channels[2].ID, "First selection should contain channel 3")
+	require.Contains(t, firstSelectionIDs, channels[0].ID, "First selection should contain channel 1")
+	require.Contains(t, firstSelectionIDs, channels[1].ID, "First selection should contain channel 2")
+	require.Contains(t, firstSelectionIDs, channels[2].ID, "First selection should contain channel 3")
 
 	// Track which channel appears first most often to verify round-robin
 	firstChannelCounts := make(map[int]int)
@@ -358,12 +357,12 @@ func TestDefaultChannelSelector_Select_WeightedRoundRobin_EqualWeights(t *testin
 		channelIDs := make([]int, len(selection))
 		for j, ch := range selection {
 			channelIDs[j] = ch.Channel.ID
-			assert.Equal(t, channel.StatusEnabled, ch.Channel.Status, "Channel %d in selection %d should be enabled", j, i)
+			require.Equal(t, channel.StatusEnabled, ch.Channel.Status, "Channel %d in selection %d should be enabled", j, i)
 		}
 
-		assert.Contains(t, channelIDs, channels[0].ID, "Selection %d should contain channel 1", i)
-		assert.Contains(t, channelIDs, channels[1].ID, "Selection %d should contain channel 2", i)
-		assert.Contains(t, channelIDs, channels[2].ID, "Selection %d should contain channel 3", i)
+		require.Contains(t, channelIDs, channels[0].ID, "Selection %d should contain channel 1", i)
+		require.Contains(t, channelIDs, channels[1].ID, "Selection %d should contain channel 2", i)
+		require.Contains(t, channelIDs, channels[2].ID, "Selection %d should contain channel 3", i)
 	}
 
 	// We should see more order changes with equal weights
@@ -425,9 +424,9 @@ func TestDefaultChannelSelector_Select_WeightedRoundRobin(t *testing.T) {
 			channelIDs[j] = ch.Channel.ID
 		}
 
-		assert.Contains(t, channelIDs, channels[0].ID, "Selection %d should contain high weight channel", i)
-		assert.Contains(t, channelIDs, channels[1].ID, "Selection %d should contain medium weight channel", i)
-		assert.Contains(t, channelIDs, channels[2].ID, "Selection %d should contain low weight channel", i)
+		require.Contains(t, channelIDs, channels[0].ID, "Selection %d should contain high weight channel", i)
+		require.Contains(t, channelIDs, channels[1].ID, "Selection %d should contain medium weight channel", i)
+		require.Contains(t, channelIDs, channels[2].ID, "Selection %d should contain low weight channel", i)
 	}
 
 	// Test that the round-robin effect accumulates over time
@@ -480,12 +479,12 @@ func TestDefaultChannelSelector_Select_WithDisabledChannels(t *testing.T) {
 	require.Len(t, result, 3)
 
 	for _, ch := range result {
-		assert.Equal(t, channel.StatusEnabled, ch.Channel.Status, "All returned channels should be enabled")
+		require.Equal(t, channel.StatusEnabled, ch.Channel.Status, "All returned channels should be enabled")
 	}
 
 	// Verify disabled channel is not included
 	for _, ch := range result {
-		assert.NotEqual(t, channels[3].ID, ch.Channel.ID, "Disabled channel should not be included")
+		require.NotEqual(t, channels[3].ID, ch.Channel.ID, "Disabled channel should not be included")
 	}
 }
 
@@ -509,7 +508,7 @@ func TestLoadBalancedSelector_Select(t *testing.T) {
 	loadBalancer := NewLoadBalancer(systemService, strategies...)
 
 	modelService := newTestModelService(client)
-	baseSelector := NewDefaultSelector(channelService, modelService)
+	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
 	selector := WithLoadBalancedSelector(baseSelector, loadBalancer, systemService)
 
 	req := &llm.Request{
@@ -526,12 +525,12 @@ func TestLoadBalancedSelector_Select(t *testing.T) {
 	channelIDs := make([]int, len(result))
 	for i, ch := range result {
 		channelIDs[i] = ch.Channel.ID
-		assert.Equal(t, channel.StatusEnabled, ch.Channel.Status)
+		require.Equal(t, channel.StatusEnabled, ch.Channel.Status)
 	}
 
-	assert.Contains(t, channelIDs, channels[0].ID)
-	assert.Contains(t, channelIDs, channels[1].ID)
-	assert.Contains(t, channelIDs, channels[2].ID)
+	require.Contains(t, channelIDs, channels[0].ID)
+	require.Contains(t, channelIDs, channels[1].ID)
+	require.Contains(t, channelIDs, channels[2].ID)
 }
 
 // TestLoadBalancedSelector_Select_SingleChannel tests LoadBalancedSelector with single channel skips sorting.
@@ -555,7 +554,7 @@ func TestLoadBalancedSelector_Select_SingleChannel(t *testing.T) {
 	loadBalancer := NewLoadBalancer(systemService)
 
 	modelService := newTestModelService(client)
-	baseSelector := NewDefaultSelector(channelService, modelService)
+	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
 	selector := WithLoadBalancedSelector(baseSelector, loadBalancer, systemService)
 
 	req := &llm.Request{
@@ -565,5 +564,5 @@ func TestLoadBalancedSelector_Select_SingleChannel(t *testing.T) {
 	result, err := selector.Select(ctx, req)
 	require.NoError(t, err)
 	require.Len(t, result, 1)
-	assert.Equal(t, ch.ID, result[0].Channel.ID)
+	require.Equal(t, ch.ID, result[0].Channel.ID)
 }
