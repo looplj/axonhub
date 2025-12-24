@@ -76,9 +76,9 @@ export function AutoCompleteSelect<T extends string>({
   }, [labels, selectedValue])
 
   return (
-    <div className='flex flex-1 items-center'>
+    <div className='flex w-full items-center min-w-0'>
       <Popover open={open} onOpenChange={setOpen}>
-        <Command shouldFilter={false} className='flex-1 bg-transparent'>
+        <Command shouldFilter={false} className='w-full bg-transparent'>
           <PopoverAnchor asChild>
             <CommandPrimitive.Input
               asChild
