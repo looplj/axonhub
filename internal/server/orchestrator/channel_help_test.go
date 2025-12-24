@@ -32,9 +32,17 @@ func newTestChannelServiceForChannels(client *ent.Client) *biz.ChannelService {
 	})
 }
 
-// newTestLoadBalancedSelector creates a load-balanced selector for testing.
+// newTestModelService creates a minimal model service for testing.
+func newTestModelService(client *ent.Client) *biz.ModelService {
+	return biz.NewModelService(biz.ModelServiceParams{
+		Ent: client,
+	})
+}
+
+// newTestLoadBalancedSelector creates a load-balanced selector with ModelService for testing.
 func newTestLoadBalancedSelector(
 	channelService *biz.ChannelService,
+	client *ent.Client,
 	systemService *biz.SystemService,
 	requestService *biz.RequestService,
 	connectionTracker *DefaultConnectionTracker,
@@ -47,9 +55,10 @@ func newTestLoadBalancedSelector(
 	}
 	loadBalancer := NewLoadBalancer(systemService, strategies...)
 
-	baseSelector := NewDefaultSelector(channelService)
+	modelService := newTestModelService(client)
+	baseSelector := NewDefaultSelector(channelService, modelService)
 
-	return NewLoadBalancedSelector(baseSelector, loadBalancer)
+	return WithLoadBalancedSelector(baseSelector, loadBalancer)
 }
 
 // newTestSystemService creates a minimal system service for testing.

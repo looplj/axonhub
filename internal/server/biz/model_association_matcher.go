@@ -10,12 +10,12 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xregexp"
 )
 
-// ModelChannelConnection represents a channel and its matched model IDs.
+// ModelChannelConnection represents a channel and its matched model entries.
 // This is used to return association match results.
 type ModelChannelConnection struct {
-	Channel  *ent.Channel `json:"channel"`
-	ModelIds []string     `json:"modelIds"`
-	Priority int          `json:"priority"`
+	Channel  *ent.Channel        `json:"channel"`
+	Models   []ChannelModelEntry `json:"models"`
+	Priority int                 `json:"priority"`
 }
 
 // MatchAssociations matches associations against channels and their supported models.
@@ -24,7 +24,7 @@ type ModelChannelConnection struct {
 func MatchAssociations(
 	ctx context.Context,
 	associations []*objects.ModelAssociation,
-	channels []Channel,
+	channels []*Channel,
 ) ([]*ModelChannelConnection, error) {
 	result := make([]*ModelChannelConnection, 0)
 
@@ -39,7 +39,7 @@ func MatchAssociations(
 // matchSingleAssociation matches a single association against all channels.
 func matchSingleAssociation(
 	assoc *objects.ModelAssociation,
-	channels []Channel,
+	channels []*Channel,
 ) []*ModelChannelConnection {
 	connections := make([]*ModelChannelConnection, 0)
 
@@ -58,12 +58,12 @@ func matchSingleAssociation(
 }
 
 // matchChannelModel handles channel_model type association.
-func matchChannelModel(assoc *objects.ModelAssociation, channels []Channel) []*ModelChannelConnection {
+func matchChannelModel(assoc *objects.ModelAssociation, channels []*Channel) []*ModelChannelConnection {
 	if assoc.ChannelModel == nil {
 		return nil
 	}
 
-	ch, found := lo.Find(channels, func(c Channel) bool {
+	ch, found := lo.Find(channels, func(c *Channel) bool {
 		return c.ID == assoc.ChannelModel.ChannelID
 	})
 	if !found {
@@ -71,7 +71,7 @@ func matchChannelModel(assoc *objects.ModelAssociation, channels []Channel) []*M
 	}
 
 	entries := ch.GetModelEntries()
-	_, contains := entries[assoc.ChannelModel.ModelID]
+	entry, contains := entries[assoc.ChannelModel.ModelID]
 
 	if !contains {
 		return nil
@@ -80,41 +80,50 @@ func matchChannelModel(assoc *objects.ModelAssociation, channels []Channel) []*M
 	return []*ModelChannelConnection{
 		{
 			Channel:  ch.Channel,
-			ModelIds: []string{assoc.ChannelModel.ModelID},
+			Models:   []ChannelModelEntry{entry},
 			Priority: assoc.Priority,
 		},
 	}
 }
 
 // matchChannelRegex handles channel_regex type association.
-func matchChannelRegex(assoc *objects.ModelAssociation, channels []Channel) []*ModelChannelConnection {
+func matchChannelRegex(assoc *objects.ModelAssociation, channels []*Channel) []*ModelChannelConnection {
 	if assoc.ChannelRegex == nil {
 		return nil
 	}
 
-	ch, found := lo.Find(channels, func(c Channel) bool {
+	ch, found := lo.Find(channels, func(c *Channel) bool {
 		return c.ID == assoc.ChannelRegex.ChannelID
 	})
 	if !found {
 		return nil
 	}
 
-	modelIds := xregexp.Filter(lo.Keys(ch.GetModelEntries()), assoc.ChannelRegex.Pattern)
-	if len(modelIds) == 0 {
+	entries := ch.GetModelEntries()
+
+	var models []ChannelModelEntry
+
+	for modelID, entry := range entries {
+		if xregexp.MatchString(assoc.ChannelRegex.Pattern, modelID) {
+			models = append(models, entry)
+		}
+	}
+
+	if len(models) == 0 {
 		return nil
 	}
 
 	return []*ModelChannelConnection{
 		{
 			Channel:  ch.Channel,
-			ModelIds: modelIds,
+			Models:   models,
 			Priority: assoc.Priority,
 		},
 	}
 }
 
 // matchRegex handles regex type association.
-func matchRegex(assoc *objects.ModelAssociation, channels []Channel) []*ModelChannelConnection {
+func matchRegex(assoc *objects.ModelAssociation, channels []*Channel) []*ModelChannelConnection {
 	if assoc.Regex == nil {
 		return nil
 	}
@@ -122,14 +131,23 @@ func matchRegex(assoc *objects.ModelAssociation, channels []Channel) []*ModelCha
 	connections := make([]*ModelChannelConnection, 0)
 
 	for _, ch := range channels {
-		modelIds := xregexp.Filter(lo.Keys(ch.GetModelEntries()), assoc.Regex.Pattern)
-		if len(modelIds) == 0 {
+		entries := ch.GetModelEntries()
+
+		var models []ChannelModelEntry
+
+		for modelID, entry := range entries {
+			if xregexp.MatchString(assoc.Regex.Pattern, modelID) {
+				models = append(models, entry)
+			}
+		}
+
+		if len(models) == 0 {
 			continue
 		}
 
 		connections = append(connections, &ModelChannelConnection{
 			Channel:  ch.Channel,
-			ModelIds: modelIds,
+			Models:   models,
 			Priority: assoc.Priority,
 		})
 	}
@@ -138,7 +156,7 @@ func matchRegex(assoc *objects.ModelAssociation, channels []Channel) []*ModelCha
 }
 
 // matchModel handles model type association.
-func matchModel(assoc *objects.ModelAssociation, channels []Channel) []*ModelChannelConnection {
+func matchModel(assoc *objects.ModelAssociation, channels []*Channel) []*ModelChannelConnection {
 	if assoc.ModelID == nil {
 		return nil
 	}
@@ -148,7 +166,7 @@ func matchModel(assoc *objects.ModelAssociation, channels []Channel) []*ModelCha
 
 	for _, ch := range channels {
 		entries := ch.GetModelEntries()
-		_, contains := entries[modelID]
+		entry, contains := entries[modelID]
 
 		if !contains {
 			continue
@@ -156,7 +174,7 @@ func matchModel(assoc *objects.ModelAssociation, channels []Channel) []*ModelCha
 
 		connections = append(connections, &ModelChannelConnection{
 			Channel:  ch.Channel,
-			ModelIds: []string{modelID},
+			Models:   []ChannelModelEntry{entry},
 			Priority: assoc.Priority,
 		})
 	}

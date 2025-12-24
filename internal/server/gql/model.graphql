@@ -135,7 +135,14 @@ input ModelIDAssociationInput {
 
 type ModelChannelConnection {
   channel: Channel!
-  modelIds: [String!]!
+  models: [ChannelModelEntry!]!
+  priority: Int!
+}
+
+type ChannelModelEntry {
+  requestModel: String!
+  actualModel: String!
+  source: String!
 }
 
 

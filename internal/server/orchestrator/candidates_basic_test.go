@@ -31,7 +31,7 @@ func TestDefaultChannelSelector_Select_SingleChannel(t *testing.T) {
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	connectionTracker := NewDefaultConnectionTracker(10)
-	selector := newTestLoadBalancedSelector(channelService, systemService, requestService, connectionTracker)
+	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService, connectionTracker)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -50,7 +50,8 @@ func TestDefaultSelector_Select(t *testing.T) {
 	channels := createTestChannels(t, ctx, client)
 
 	channelService := newTestChannelServiceForChannels(client)
-	selector := NewDefaultSelector(channelService)
+	modelService := newTestModelService(client)
+	selector := NewDefaultSelector(channelService, modelService)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -83,7 +84,7 @@ func TestDefaultChannelSelector_Select_NoChannelsAvailable(t *testing.T) {
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	connectionTracker := NewDefaultConnectionTracker(10)
-	selector := newTestLoadBalancedSelector(channelService, systemService, requestService, connectionTracker)
+	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService, connectionTracker)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -115,7 +116,7 @@ func TestDefaultChannelSelector_Select_ModelNotSupported(t *testing.T) {
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	connectionTracker := NewDefaultConnectionTracker(10)
-	selector := newTestLoadBalancedSelector(channelService, systemService, requestService, connectionTracker)
+	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService, connectionTracker)
 
 	req := &llm.Request{
 		Model: "gpt-4", // This model is not supported by the channel
@@ -137,7 +138,7 @@ func TestDefaultChannelSelector_Select_EmptyRequest(t *testing.T) {
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	connectionTracker := NewDefaultConnectionTracker(10)
-	selector := newTestLoadBalancedSelector(channelService, systemService, requestService, connectionTracker)
+	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService, connectionTracker)
 
 	// Empty request should still work
 	req := &llm.Request{}
@@ -228,11 +229,12 @@ func TestSelectedChannelsSelector_Select_WithFilter(t *testing.T) {
 	channels := createTestChannels(t, ctx, client)
 
 	channelService := newTestChannelServiceForChannels(client)
-	baseSelector := NewDefaultSelector(channelService)
+	modelService := newTestModelService(client)
+	baseSelector := NewDefaultSelector(channelService, modelService)
 
 	// Only allow channels 0 and 2
 	allowedIDs := []int{channels[0].ID, channels[2].ID}
-	selector := NewSelectedChannelsSelector(baseSelector, allowedIDs)
+	selector := WithSelectedChannelsSelector(baseSelector, allowedIDs)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -261,10 +263,11 @@ func TestSelectedChannelsSelector_Select_EmptyFilter(t *testing.T) {
 	channels := createTestChannels(t, ctx, client)
 
 	channelService := newTestChannelServiceForChannels(client)
-	baseSelector := NewDefaultSelector(channelService)
+	modelService := newTestModelService(client)
+	baseSelector := NewDefaultSelector(channelService, modelService)
 
 	// Empty filter should return all channels
-	selector := NewSelectedChannelsSelector(baseSelector, nil)
+	selector := WithSelectedChannelsSelector(baseSelector, nil)
 
 	req := &llm.Request{
 		Model: "gpt-4",

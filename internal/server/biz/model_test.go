@@ -76,7 +76,7 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, result, 1)
 		assert.Equal(t, channel1.ID, result[0].Channel.ID)
-		assert.Equal(t, []string{"gpt-4"}, result[0].ModelIds)
+		assert.Equal(t, []ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4", Source: "direct"}}, result[0].Models)
 	})
 
 	t.Run("channel_model association with non-existent model", func(t *testing.T) {
@@ -110,7 +110,10 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, result, 1)
 		assert.Equal(t, channel1.ID, result[0].Channel.ID)
-		assert.ElementsMatch(t, []string{"gpt-4", "gpt-4-turbo"}, result[0].ModelIds)
+		assert.ElementsMatch(t, []ChannelModelEntry{
+			{RequestModel: "gpt-4", ActualModel: "gpt-4", Source: "direct"},
+			{RequestModel: "gpt-4-turbo", ActualModel: "gpt-4-turbo", Source: "direct"},
+		}, result[0].Models)
 	})
 
 	t.Run("regex association matches all channels", func(t *testing.T) {
@@ -129,7 +132,10 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 
 		// Only channel3 has models matching the pattern
 		assert.Equal(t, channel3.ID, result[0].Channel.ID)
-		assert.ElementsMatch(t, []string{"gemini-pro", "gemini-1.5-pro"}, result[0].ModelIds)
+		assert.ElementsMatch(t, []ChannelModelEntry{
+			{RequestModel: "gemini-pro", ActualModel: "gemini-pro", Source: "direct"},
+			{RequestModel: "gemini-1.5-pro", ActualModel: "gemini-1.5-pro", Source: "direct"},
+		}, result[0].Models)
 	})
 
 	t.Run("multiple associations preserves order", func(t *testing.T) {
@@ -156,10 +162,14 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 
 		// Verify order matches associations order
 		assert.Equal(t, channel1.ID, result[0].Channel.ID)
-		assert.Equal(t, []string{"gpt-4"}, result[0].ModelIds)
+		assert.Equal(t, []ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4", Source: "direct"}}, result[0].Models)
 
 		assert.Equal(t, channel2.ID, result[1].Channel.ID)
-		assert.ElementsMatch(t, []string{"claude-3-opus", "claude-3-sonnet", "claude-3-haiku"}, result[1].ModelIds)
+		assert.ElementsMatch(t, []ChannelModelEntry{
+			{RequestModel: "claude-3-opus", ActualModel: "claude-3-opus", Source: "direct"},
+			{RequestModel: "claude-3-sonnet", ActualModel: "claude-3-sonnet", Source: "direct"},
+			{RequestModel: "claude-3-haiku", ActualModel: "claude-3-haiku", Source: "direct"},
+		}, result[1].Models)
 	})
 
 	t.Run("multiple associations reverse order", func(t *testing.T) {
@@ -187,10 +197,14 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 
 		// Verify order matches associations order (channel2 first, then channel1)
 		assert.Equal(t, channel2.ID, result[0].Channel.ID)
-		assert.ElementsMatch(t, []string{"claude-3-opus", "claude-3-sonnet", "claude-3-haiku"}, result[0].ModelIds)
+		assert.ElementsMatch(t, []ChannelModelEntry{
+			{RequestModel: "claude-3-opus", ActualModel: "claude-3-opus", Source: "direct"},
+			{RequestModel: "claude-3-sonnet", ActualModel: "claude-3-sonnet", Source: "direct"},
+			{RequestModel: "claude-3-haiku", ActualModel: "claude-3-haiku", Source: "direct"},
+		}, result[0].Models)
 
 		assert.Equal(t, channel1.ID, result[1].Channel.ID)
-		assert.Equal(t, []string{"gpt-4"}, result[1].ModelIds)
+		assert.Equal(t, []ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4", Source: "direct"}}, result[1].Models)
 	})
 
 	t.Run("invalid regex pattern", func(t *testing.T) {
@@ -234,7 +248,7 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, result, 1)
 		assert.Equal(t, disabledChannel.ID, result[0].Channel.ID)
-		assert.Equal(t, []string{"gpt-4-disabled"}, result[0].ModelIds)
+		assert.Equal(t, []ChannelModelEntry{{RequestModel: "gpt-4-disabled", ActualModel: "gpt-4-disabled", Source: "direct"}}, result[0].Models)
 	})
 
 	t.Run("regex matches models across multiple channels", func(t *testing.T) {
@@ -253,7 +267,11 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 
 		// Only channel2 (anthropic) has models matching the pattern
 		assert.Equal(t, channel2.ID, result[0].Channel.ID)
-		assert.ElementsMatch(t, []string{"claude-3-opus", "claude-3-sonnet", "claude-3-haiku"}, result[0].ModelIds)
+		assert.ElementsMatch(t, []ChannelModelEntry{
+			{RequestModel: "claude-3-opus", ActualModel: "claude-3-opus", Source: "direct"},
+			{RequestModel: "claude-3-sonnet", ActualModel: "claude-3-sonnet", Source: "direct"},
+			{RequestModel: "claude-3-haiku", ActualModel: "claude-3-haiku", Source: "direct"},
+		}, result[0].Models)
 	})
 
 	t.Run("channel_regex with specific channel", func(t *testing.T) {
@@ -271,7 +289,10 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, result, 1)
 		assert.Equal(t, channel3.ID, result[0].Channel.ID)
-		assert.ElementsMatch(t, []string{"gemini-1.5-pro", "gemini-1.5-flash"}, result[0].ModelIds)
+		assert.ElementsMatch(t, []ChannelModelEntry{
+			{RequestModel: "gemini-1.5-pro", ActualModel: "gemini-1.5-pro", Source: "direct"},
+			{RequestModel: "gemini-1.5-flash", ActualModel: "gemini-1.5-flash", Source: "direct"},
+		}, result[0].Models)
 	})
 
 	t.Run("mixed associations produce separate connections", func(t *testing.T) {
@@ -296,9 +317,9 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, result, 2)
 		assert.Equal(t, channel1.ID, result[0].Channel.ID)
-		assert.Equal(t, []string{"gpt-4"}, result[0].ModelIds)
+		assert.Equal(t, []ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4", Source: "direct"}}, result[0].Models)
 		assert.Equal(t, channel1.ID, result[1].Channel.ID)
-		assert.Equal(t, []string{"gpt-4"}, result[1].ModelIds)
+		assert.Equal(t, []ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4", Source: "direct"}}, result[1].Models)
 	})
 
 	t.Run("duplicate channel associations preserve order", func(t *testing.T) {
@@ -332,13 +353,13 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 
 		// Channel order follows association order
 		assert.Equal(t, channel1.ID, result[0].Channel.ID)
-		assert.Equal(t, []string{"gpt-4"}, result[0].ModelIds)
+		assert.Equal(t, []ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4", Source: "direct"}}, result[0].Models)
 
 		assert.Equal(t, channel2.ID, result[1].Channel.ID)
-		assert.Equal(t, []string{"claude-3-opus"}, result[1].ModelIds)
+		assert.Equal(t, []ChannelModelEntry{{RequestModel: "claude-3-opus", ActualModel: "claude-3-opus", Source: "direct"}}, result[1].Models)
 
 		assert.Equal(t, channel1.ID, result[2].Channel.ID)
-		assert.Equal(t, []string{"gpt-3.5-turbo"}, result[2].ModelIds)
+		assert.Equal(t, []ChannelModelEntry{{RequestModel: "gpt-3.5-turbo", ActualModel: "gpt-3.5-turbo", Source: "direct"}}, result[2].Models)
 	})
 
 	t.Run("model associations produce separate connections in order", func(t *testing.T) {
@@ -371,11 +392,11 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 		require.Len(t, result, 3)
 		assert.Equal(t, channel1.ID, result[0].Channel.ID)
 		// Model connections follow association order
-		assert.Equal(t, []string{"gpt-3.5-turbo"}, result[0].ModelIds)
+		assert.Equal(t, []ChannelModelEntry{{RequestModel: "gpt-3.5-turbo", ActualModel: "gpt-3.5-turbo", Source: "direct"}}, result[0].Models)
 		assert.Equal(t, channel1.ID, result[1].Channel.ID)
-		assert.Equal(t, []string{"gpt-4-turbo"}, result[1].ModelIds)
+		assert.Equal(t, []ChannelModelEntry{{RequestModel: "gpt-4-turbo", ActualModel: "gpt-4-turbo", Source: "direct"}}, result[1].Models)
 		assert.Equal(t, channel1.ID, result[2].Channel.ID)
-		assert.Equal(t, []string{"gpt-4"}, result[2].ModelIds)
+		assert.Equal(t, []ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4", Source: "direct"}}, result[2].Models)
 	})
 
 	t.Run("model association finds all channels supporting model", func(t *testing.T) {
@@ -392,7 +413,7 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, result, 1)
 		assert.Equal(t, channel1.ID, result[0].Channel.ID)
-		assert.Equal(t, []string{"gpt-4"}, result[0].ModelIds)
+		assert.Equal(t, []ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4", Source: "direct"}}, result[0].Models)
 	})
 
 	t.Run("model association with non-existent model", func(t *testing.T) {

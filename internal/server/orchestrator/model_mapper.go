@@ -2,14 +2,59 @@ package orchestrator
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/llm/pipeline"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xregexp"
+	"github.com/looplj/axonhub/internal/server/biz"
 )
+
+// applyApiKeyModelMapping creates a middleware that applies model mapping from API key profiles.
+// This is the first step in the inbound pipeline.
+func applyApiKeyModelMapping(inbound *PersistentInboundTransformer) pipeline.Middleware {
+	return pipeline.OnLlmRequest("apply-model-mapping", func(ctx context.Context, llmRequest *llm.Request) (*llm.Request, error) {
+		if llmRequest.Model == "" {
+			return nil, fmt.Errorf("%w: request model is empty", biz.ErrInvalidModel)
+		}
+
+		// Apply model mapping from API key profiles if active profile exists
+		if inbound.state.APIKey == nil {
+			return llmRequest, nil
+		}
+
+		originalModel := llmRequest.Model
+		mappedModel := inbound.state.ModelMapper.MapModel(ctx, inbound.state.APIKey, originalModel)
+
+		if mappedModel != originalModel {
+			llmRequest.Model = mappedModel
+			log.Debug(ctx, "applied model mapping from API key profile",
+				log.String("api_key_name", inbound.state.APIKey.Name),
+				log.String("original_model", originalModel),
+				log.String("mapped_model", mappedModel))
+		}
+
+		// Save the model for later use, e.g. retry from next channels, should use the original model to choose channel model.
+		// This should be done after the api key level model mapping.
+		// This should be done before the request is created.
+		// The outbound transformer will restore the original model if it was mapped.
+		if inbound.state.OriginalModel == "" {
+			inbound.state.OriginalModel = llmRequest.Model
+		} else {
+			// Restore original model if it was mapped
+			// This should not happen, the inbound should not be called twice.
+			// Just in case, restore the original model.
+			llmRequest.Model = inbound.state.OriginalModel
+		}
+
+		return llmRequest, nil
+	})
+}
 
 // ModelMapper handles model mapping based on API key profiles.
 type ModelMapper struct{}

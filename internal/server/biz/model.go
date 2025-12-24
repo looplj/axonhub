@@ -196,7 +196,17 @@ func (svc *ModelService) QueryModelChannelConnections(ctx context.Context, assoc
 	}
 
 	// Use the shared MatchAssociations function
-	return MatchAssociations(ctx, associations, lo.Map(channels, func(ch *ent.Channel, _ int) Channel {
-		return Channel{Channel: ch}
+	return MatchAssociations(ctx, associations, lo.Map(channels, func(ch *ent.Channel, _ int) *Channel {
+		return &Channel{Channel: ch}
 	}))
+}
+
+// GetModelByModelID retrieves a model by its modelId and status.
+func (svc *ModelService) GetModelByModelID(ctx context.Context, modelID string, status model.Status) (*ent.Model, error) {
+	return svc.entFromContext(ctx).Model.Query().
+		Where(
+			model.ModelID(modelID),
+			model.StatusEQ(status),
+		).
+		First(ctx)
 }

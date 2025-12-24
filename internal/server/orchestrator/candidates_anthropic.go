@@ -17,8 +17,8 @@ type AnthropicNativeToolsSelector struct {
 	wrapped CandidateSelector
 }
 
-// NewAnthropicNativeToolsSelector creates a selector that prioritizes Anthropic native tool compatible candidates.
-func NewAnthropicNativeToolsSelector(wrapped CandidateSelector) *AnthropicNativeToolsSelector {
+// WithAnthropicNativeToolsSelector creates a selector that prioritizes Anthropic native tool compatible candidates.
+func WithAnthropicNativeToolsSelector(wrapped CandidateSelector) *AnthropicNativeToolsSelector {
 	return &AnthropicNativeToolsSelector{
 		wrapped: wrapped,
 	}
