@@ -60,6 +60,10 @@ const (
 	// SystemKeyOnboarded is the key used to store the onboarding status and version.
 	// The value is JSON-encoded OnboardingInfo struct.
 	SystemKeyOnboarded = "system_onboarded"
+
+	// SystemKeyModelSettings is the key used to store model-related settings.
+	// The value is JSON-encoded ModelSettings struct.
+	SystemKeyModelSettings = "system_model_settings"
 )
 
 // StoragePolicy represents the storage policy configuration.
@@ -90,6 +94,22 @@ type RetryPolicy struct {
 	LoadBalancerStrategy string `json:"load_balancer_strategy"`
 	// Enabled controls whether retry policy is active
 	Enabled bool `json:"enabled"`
+}
+
+// ModelSettings represents model-related configuration settings.
+type ModelSettings struct {
+	// FallbackToChannelsOnModelNotFound controls whether to fall back to legacy channel
+	// selection when the requested model is not found in AxonHub Model associations.
+	// When true, if a model has no associations or doesn't exist, the system will
+	// attempt to find enabled channels that support the requested model directly.
+	// When false, such requests will return an error instead of falling back.
+	FallbackToChannelsOnModelNotFound bool `json:"fallback_to_channels_on_model_not_found"`
+
+	// QueryAllChannelModels controls whether models API returns all models from channels
+	// or only configured models (models with explicit Model entity configuration).
+	// When true, the models API will return all models supported by enabled channels.
+	// When false, only models that have explicit Model entity configuration will be returned.
+	QueryAllChannelModels bool `json:"query_all_channel_models"`
 }
 
 // OnboardingInfo represents the onboarding status and version information.
@@ -412,6 +432,11 @@ var defaultRetryPolicy = RetryPolicy{
 	Enabled:                 true,
 }
 
+var defaultModelSettings = ModelSettings{
+	FallbackToChannelsOnModelNotFound: true,
+	QueryAllChannelModels:             true,
+}
+
 // StoragePolicy retrieves the storage policy configuration.
 func (s *SystemService) StoragePolicy(ctx context.Context) (*StoragePolicy, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
@@ -506,6 +531,55 @@ func (s *SystemService) SetRetryPolicy(ctx context.Context, policy *RetryPolicy)
 	}
 
 	return s.setSystemValue(ctx, SystemKeyRetryPolicy, string(jsonBytes))
+}
+
+// ModelSettings retrieves the model settings configuration.
+func (s *SystemService) ModelSettings(ctx context.Context) (*ModelSettings, error) {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	value, err := s.getSystemValue(ctx, SystemKeyModelSettings)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return lo.ToPtr(defaultModelSettings), nil
+		}
+
+		return nil, fmt.Errorf("failed to get model settings: %w", err)
+	}
+
+	var settings ModelSettings
+	if err := json.Unmarshal([]byte(value), &settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal model settings: %w", err)
+	}
+
+	return &settings, nil
+}
+
+// ModelSettingsOrDefault retrieves the model settings or returns the default if not available.
+func (s *SystemService) ModelSettingsOrDefault(ctx context.Context) *ModelSettings {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	settings, err := s.ModelSettings(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return lo.ToPtr(defaultModelSettings)
+		}
+
+		log.Warn(ctx, "failed to get model settings", log.Cause(err))
+
+		return lo.ToPtr(defaultModelSettings)
+	}
+
+	return settings
+}
+
+// SetModelSettings sets the model settings configuration.
+func (s *SystemService) SetModelSettings(ctx context.Context, settings ModelSettings) error {
+	jsonBytes, err := json.Marshal(settings)
+	if err != nil {
+		return fmt.Errorf("failed to marshal model settings: %w", err)
+	}
+
+	return s.setSystemValue(ctx, SystemKeyModelSettings, string(jsonBytes))
 }
 
 // DefaultDataStorageID retrieves the default data storage ID from system settings.

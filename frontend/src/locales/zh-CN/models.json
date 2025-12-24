@@ -39,7 +39,8 @@
     "actions": {
       "create": "添加模型",
       "addAssociation": "添加",
-      "manageAssociation": "管理关联"
+      "manageAssociation": "管理关联",
+      "settings": "设置"
     },
     "filters": {
       "filterByName": "按名称筛选..."
@@ -118,6 +119,18 @@
         "enableDescription": "确定要启用 {{name}} 吗？",
         "disableTitle": "禁用模型",
         "disableDescription": "确定要禁用 {{name}} 吗？"
+      },
+      "settings": {
+        "title": "模型设置",
+        "description": "配置全局模型相关设置",
+        "fallbackToChannels": {
+          "label": "回退到渠道",
+          "description": "启用后，如果请求的模型在模型关联中找不到，系统将尝试直接查找支持该请求模型的已启用渠道。"
+        },
+        "queryAllChannelModels": {
+          "label": "查询所有渠道模型",
+          "description": "启用后，模型 API 将返回所有已启用渠道的模型。禁用后，仅返回具有显式模型实体配置的模型。"
+        }
       }
     },
     "modelCard": {

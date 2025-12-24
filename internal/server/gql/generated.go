@@ -506,6 +506,7 @@ type ComplexityRoot struct {
 		UpdateRetryPolicy             func(childComplexity int, input biz.RetryPolicy) int
 		UpdateRole                    func(childComplexity int, id objects.GUID, input ent.UpdateRoleInput) int
 		UpdateStoragePolicy           func(childComplexity int, input biz.StoragePolicy) int
+		UpdateSystemModelSettings     func(childComplexity int, input biz.ModelSettings) int
 		UpdateUser                    func(childComplexity int, id objects.GUID, input ent.UpdateUserInput) int
 		UpdateUserStatus              func(childComplexity int, id objects.GUID, status user.Status) int
 	}
@@ -591,6 +592,7 @@ type ComplexityRoot struct {
 		RetryPolicy                   func(childComplexity int) int
 		Roles                         func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RoleOrder, where *ent.RoleWhereInput) int
 		StoragePolicy                 func(childComplexity int) int
+		SystemModelSettings           func(childComplexity int) int
 		SystemStatus                  func(childComplexity int) int
 		SystemVersion                 func(childComplexity int) int
 		Systems                       func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.SystemOrder, where *ent.SystemWhereInput) int
@@ -852,6 +854,11 @@ type ComplexityRoot struct {
 	SystemEdge struct {
 		Cursor func(childComplexity int) int
 		Node   func(childComplexity int) int
+	}
+
+	SystemModelSettings struct {
+		FallbackToChannelsOnModelNotFound func(childComplexity int) int
+		QueryAllChannelModels             func(childComplexity int) int
 	}
 
 	SystemStatus struct {
@@ -1129,6 +1136,7 @@ type MutationResolver interface {
 	UpdateBrandSettings(ctx context.Context, input UpdateBrandSettingsInput) (bool, error)
 	UpdateStoragePolicy(ctx context.Context, input biz.StoragePolicy) (bool, error)
 	UpdateRetryPolicy(ctx context.Context, input biz.RetryPolicy) (bool, error)
+	UpdateSystemModelSettings(ctx context.Context, input biz.ModelSettings) (bool, error)
 	UpdateDefaultDataStorage(ctx context.Context, input UpdateDefaultDataStorageInput) (bool, error)
 	CompleteOnboarding(ctx context.Context, input CompleteOnboardingInput) (bool, error)
 	CreateModel(ctx context.Context, input ent.CreateModelInput) (*ent.Model, error)
@@ -1181,6 +1189,7 @@ type QueryResolver interface {
 	BrandSettings(ctx context.Context) (*BrandSettings, error)
 	StoragePolicy(ctx context.Context) (*biz.StoragePolicy, error)
 	RetryPolicy(ctx context.Context) (*biz.RetryPolicy, error)
+	SystemModelSettings(ctx context.Context) (*biz.ModelSettings, error)
 	DefaultDataStorageID(ctx context.Context) (*objects.GUID, error)
 	OnboardingInfo(ctx context.Context) (*biz.OnboardingInfo, error)
 	SystemVersion(ctx context.Context) (*build.Info, error)
@@ -3253,6 +3262,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdateStoragePolicy(childComplexity, args["input"].(biz.StoragePolicy)), true
+	case "Mutation.updateSystemModelSettings":
+		if e.complexity.Mutation.UpdateSystemModelSettings == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateSystemModelSettings_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateSystemModelSettings(childComplexity, args["input"].(biz.ModelSettings)), true
 	case "Mutation.updateUser":
 		if e.complexity.Mutation.UpdateUser == nil {
 			break
@@ -3779,6 +3799,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.StoragePolicy(childComplexity), true
+	case "Query.systemModelSettings":
+		if e.complexity.Query.SystemModelSettings == nil {
+			break
+		}
+
+		return e.complexity.Query.SystemModelSettings(childComplexity), true
 	case "Query.systemStatus":
 		if e.complexity.Query.SystemStatus == nil {
 			break
@@ -4813,6 +4839,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.SystemEdge.Node(childComplexity), true
 
+	case "SystemModelSettings.fallbackToChannelsOnModelNotFound":
+		if e.complexity.SystemModelSettings.FallbackToChannelsOnModelNotFound == nil {
+			break
+		}
+
+		return e.complexity.SystemModelSettings.FallbackToChannelsOnModelNotFound(childComplexity), true
+	case "SystemModelSettings.queryAllChannelModels":
+		if e.complexity.SystemModelSettings.QueryAllChannelModels == nil {
+			break
+		}
+
+		return e.complexity.SystemModelSettings.QueryAllChannelModels(childComplexity), true
+
 	case "SystemStatus.isInitialized":
 		if e.complexity.SystemStatus.IsInitialized == nil {
 			break
@@ -5814,6 +5853,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputUpdateRoleInput,
 		ec.unmarshalInputUpdateStoragePolicyInput,
 		ec.unmarshalInputUpdateSystemInput,
+		ec.unmarshalInputUpdateSystemModelSettingsInput,
 		ec.unmarshalInputUpdateThreadInput,
 		ec.unmarshalInputUpdateTraceInput,
 		ec.unmarshalInputUpdateUsageLogInput,
@@ -6756,6 +6796,17 @@ func (ec *executionContext) field_Mutation_updateStoragePolicy_args(ctx context.
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateStoragePolicyInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐStoragePolicy)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateSystemModelSettings_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateSystemModelSettingsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐModelSettings)
 	if err != nil {
 		return nil, err
 	}
@@ -17885,6 +17936,47 @@ func (ec *executionContext) fieldContext_Mutation_updateRetryPolicy(ctx context.
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_updateSystemModelSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_updateSystemModelSettings,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().UpdateSystemModelSettings(ctx, fc.Args["input"].(biz.ModelSettings))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateSystemModelSettings(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateSystemModelSettings_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_updateDefaultDataStorage(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -21052,6 +21144,41 @@ func (ec *executionContext) fieldContext_Query_retryPolicy(_ context.Context, fi
 				return ec.fieldContext_RetryPolicy_enabled(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RetryPolicy", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_systemModelSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_systemModelSettings,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().SystemModelSettings(ctx)
+		},
+		nil,
+		ec.marshalNSystemModelSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐModelSettings,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_systemModelSettings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "fallbackToChannelsOnModelNotFound":
+				return ec.fieldContext_SystemModelSettings_fallbackToChannelsOnModelNotFound(ctx, field)
+			case "queryAllChannelModels":
+				return ec.fieldContext_SystemModelSettings_queryAllChannelModels(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SystemModelSettings", field.Name)
 		},
 	}
 	return fc, nil
@@ -26453,6 +26580,64 @@ func (ec *executionContext) fieldContext_SystemEdge_cursor(_ context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Cursor does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SystemModelSettings_fallbackToChannelsOnModelNotFound(ctx context.Context, field graphql.CollectedField, obj *biz.ModelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SystemModelSettings_fallbackToChannelsOnModelNotFound,
+		func(ctx context.Context) (any, error) {
+			return obj.FallbackToChannelsOnModelNotFound, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SystemModelSettings_fallbackToChannelsOnModelNotFound(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SystemModelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SystemModelSettings_queryAllChannelModels(ctx context.Context, field graphql.CollectedField, obj *biz.ModelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SystemModelSettings_queryAllChannelModels,
+		func(ctx context.Context) (any, error) {
+			return obj.QueryAllChannelModels, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SystemModelSettings_queryAllChannelModels(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SystemModelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -46819,6 +47004,40 @@ func (ec *executionContext) unmarshalInputUpdateSystemInput(ctx context.Context,
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdateSystemModelSettingsInput(ctx context.Context, obj any) (biz.ModelSettings, error) {
+	var it biz.ModelSettings
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"fallbackToChannelsOnModelNotFound", "queryAllChannelModels"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "fallbackToChannelsOnModelNotFound":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fallbackToChannelsOnModelNotFound"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FallbackToChannelsOnModelNotFound = data
+		case "queryAllChannelModels":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("queryAllChannelModels"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.QueryAllChannelModels = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateThreadInput(ctx context.Context, obj any) (ent.UpdateThreadInput, error) {
 	var it ent.UpdateThreadInput
 	asMap := map[string]any{}
@@ -53915,6 +54134,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "updateSystemModelSettings":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateSystemModelSettings(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "updateDefaultDataStorage":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateDefaultDataStorage(ctx, field)
@@ -55393,6 +55619,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_retryPolicy(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "systemModelSettings":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_systemModelSettings(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -58279,6 +58527,50 @@ func (ec *executionContext) _SystemEdge(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._SystemEdge_node(ctx, field, obj)
 		case "cursor":
 			out.Values[i] = ec._SystemEdge_cursor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var systemModelSettingsImplementors = []string{"SystemModelSettings"}
+
+func (ec *executionContext) _SystemModelSettings(ctx context.Context, sel ast.SelectionSet, obj *biz.ModelSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, systemModelSettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SystemModelSettings")
+		case "fallbackToChannelsOnModelNotFound":
+			out.Values[i] = ec._SystemModelSettings_fallbackToChannelsOnModelNotFound(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "queryAllChannelModels":
+			out.Values[i] = ec._SystemModelSettings_queryAllChannelModels(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -63236,6 +63528,20 @@ func (ec *executionContext) marshalNSystemConnection2ᚖgithubᚗcomᚋloopljᚋ
 	return ec._SystemConnection(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNSystemModelSettings2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐModelSettings(ctx context.Context, sel ast.SelectionSet, v biz.ModelSettings) graphql.Marshaler {
+	return ec._SystemModelSettings(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNSystemModelSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐModelSettings(ctx context.Context, sel ast.SelectionSet, v *biz.ModelSettings) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SystemModelSettings(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNSystemOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐSystemOrderField(ctx context.Context, v any) (*ent.SystemOrderField, error) {
 	var res = new(ent.SystemOrderField)
 	err := res.UnmarshalGQL(v)
@@ -63525,6 +63831,11 @@ func (ec *executionContext) unmarshalNUpdateRoleInput2githubᚗcomᚋloopljᚋax
 
 func (ec *executionContext) unmarshalNUpdateStoragePolicyInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐStoragePolicy(ctx context.Context, v any) (biz.StoragePolicy, error) {
 	res, err := ec.unmarshalInputUpdateStoragePolicyInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateSystemModelSettingsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐModelSettings(ctx context.Context, v any) (biz.ModelSettings, error) {
+	res, err := ec.unmarshalInputUpdateSystemModelSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 

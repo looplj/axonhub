@@ -39,7 +39,8 @@
     "actions": {
       "create": "Add Model",
       "addAssociation": "Add",
-      "manageAssociation": "Manage Association"
+      "manageAssociation": "Manage Association",
+      "settings": "Settings"
     },
     "filters": {
       "filterByName": "Filter by name..."
@@ -118,6 +119,18 @@
         "enableDescription": "Are you sure you want to enable {{name}}?",
         "disableTitle": "Disable Model",
         "disableDescription": "Are you sure you want to disable {{name}}?"
+      },
+      "settings": {
+        "title": "Model Settings",
+        "description": "Configure global model-related settings",
+        "fallbackToChannels": {
+          "label": "Fallback to Channels",
+          "description": "When enabled, if a requested model is not found in model associations, the system will attempt to find enabled channels that support the requested model directly."
+        },
+        "queryAllChannelModels": {
+          "label": "Query All Channel Models",
+          "description": "When enabled, models API returns all models from enabled channels. When disabled, only models with explicit Model entity configuration will be returned."
+        }
       }
     },
     "modelCard": {

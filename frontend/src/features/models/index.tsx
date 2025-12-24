@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SortingState } from '@tanstack/react-table'
-import { IconPlus } from '@tabler/icons-react'
+import { IconPlus, IconSettings } from '@tabler/icons-react'
 import { useDebounce } from '@/hooks/use-debounce'
 import { usePaginationSearch } from '@/hooks/use-pagination-search'
 import { Header } from '@/components/layout/header'
@@ -108,12 +108,33 @@ function ModelsContent() {
 function CreateButton() {
   const { t } = useTranslation()
   const { setOpen } = useModels()
-  
+
   return (
     <Button onClick={() => setOpen('create')}>
       <IconPlus className='mr-2 h-4 w-4' />
       {t('models.actions.create')}
     </Button>
+  )
+}
+
+function SettingsButton() {
+  const { t } = useTranslation()
+  const { setOpen } = useModels()
+
+  return (
+    <Button variant='outline' onClick={() => setOpen('settings')}>
+      <IconSettings className='mr-2 h-4 w-4' />
+      {t('models.actions.settings')}
+    </Button>
+  )
+}
+
+function ActionButtons() {
+  return (
+    <div className='flex gap-2'>
+      <SettingsButton />
+      <CreateButton />
+    </div>
   )
 }
 
@@ -130,7 +151,7 @@ export default function ModelsManagement() {
             <h2 className='text-2xl font-bold tracking-tight'>{t('models.title')}</h2>
             <p className='text-muted-foreground'>{t('models.description')}</p>
           </div>
-          <CreateButton />
+          <ActionButtons />
         </div>
         <ModelsContent />
       </Main>

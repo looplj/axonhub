@@ -310,3 +310,9 @@ models:
   SystemVersion:
     model:
       - github.com/looplj/axonhub/internal/build.Info
+  SystemModelSettings:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ModelSettings
+  UpdateSystemModelSettingsInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ModelSettings

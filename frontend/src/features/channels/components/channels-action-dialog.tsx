@@ -20,8 +20,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { AutoCompleteSelect } from '@/components/auto-complete-select'
 import { SelectDropdown } from '@/components/select-dropdown'
-import { TagsInput } from '@/components/ui/tags-input'
-import { useCreateChannel, useUpdateChannel, useFetchModels, useBulkCreateChannels, useAllChannelNames } from '../data/channels'
+import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input'
+import { useCreateChannel, useUpdateChannel, useFetchModels, useBulkCreateChannels, useAllChannelNames, useAllChannelTags } from '../data/channels'
 import { getDefaultBaseURL, getDefaultModels, CHANNEL_CONFIGS, OPENAI_CHAT_COMPLETIONS } from '../data/config_channels'
 import {
   PROVIDER_CONFIGS,
@@ -73,6 +73,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const updateChannel = useUpdateChannel()
   const fetchModels = useFetchModels()
   const { data: allChannelNames = [], isSuccess: allChannelNamesLoaded } = useAllChannelNames({ enabled: open && isDuplicate })
+  const { data: allTags = [], isLoading: isLoadingTags } = useAllChannelTags()
   const [supportedModels, setSupportedModels] = useState<string[]>(() => initialRow?.supportedModels || [])
   const [newModel, setNewModel] = useState('')
   const [selectedDefaultModels, setSelectedDefaultModels] = useState<string[]>([])
@@ -1074,9 +1075,16 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           <Button type='button' onClick={addModel} size='sm'>
                             {t('channels.dialogs.buttons.add')}
                           </Button>
-                          <Button type='button' onClick={batchAddModels} size='sm' variant='outline'>
-                            {t('channels.dialogs.buttons.batchAdd')}
-                          </Button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button type='button' onClick={batchAddModels} size='sm' variant='outline'>
+                                {t('channels.dialogs.buttons.batchAdd')}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{t('channels.dialogs.buttons.batchAddTooltip')}</p>
+                            </TooltipContent>
+                          </Tooltip>
                         </div>
 
                         {supportedModels.length === 0 && (
@@ -1189,11 +1197,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             {t('channels.dialogs.fields.tags.label')}
                           </FormLabel>
                           <div className='col-span-6 space-y-1'>
-                            <TagsInput
+                            <TagsAutocompleteInput
                               value={field.value || []}
                               onChange={field.onChange}
                               placeholder={t('channels.dialogs.fields.tags.placeholder')}
-                              data-testid='channel-tags-input'
+                              suggestions={allTags}
+                              isLoading={isLoadingTags}
                             />
                             <p className='text-muted-foreground text-xs'>{t('channels.dialogs.fields.tags.description')}</p>
                             <FormMessage />
@@ -1272,9 +1281,16 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         }`}
                       >
                         <Checkbox checked={isSelected} onCheckedChange={() => toggleFetchedModelSelection(model)} />
-                        <span className='flex-1 cursor-pointer truncate' onClick={() => toggleFetchedModelSelection(model)}>
-                          {model}
-                        </span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className='flex-1 cursor-pointer truncate' onClick={() => toggleFetchedModelSelection(model)}>
+                              {model}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className='max-w-xs break-all'>{model}</p>
+                          </TooltipContent>
+                        </Tooltip>
                         {isAdded && !isSelected && (
                           <Badge variant='secondary' className='text-xs'>
                             {t('channels.dialogs.fields.supportedModels.added')}

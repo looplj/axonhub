@@ -49,7 +49,7 @@ func NewChatCompletionOrchestrator(
 		},
 		PipelineFactory:      pipeline.NewFactory(httpClient),
 		ModelMapper:          NewModelMapper(),
-		channelSelector:      NewDefaultSelector(channelService, modelService),
+		channelSelector:      NewDefaultSelector(channelService, modelService, systemService),
 		selectedChannelIds:   []int{},
 		connectionTracker:    connectionTracker,
 		adaptiveLoadBalancer: adaptiveLoadBalancer,

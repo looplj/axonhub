@@ -55,6 +55,16 @@ func (r *mutationResolver) UpdateRetryPolicy(ctx context.Context, input biz.Retr
 	return true, nil
 }
 
+// UpdateSystemModelSettings is the resolver for the updateSystemModelSettings field.
+func (r *mutationResolver) UpdateSystemModelSettings(ctx context.Context, input biz.ModelSettings) (bool, error) {
+	err := r.systemService.SetModelSettings(ctx, input)
+	if err != nil {
+		return false, fmt.Errorf("failed to update system model settings: %w", err)
+	}
+
+	return true, nil
+}
+
 // UpdateDefaultDataStorage is the resolver for the updateDefaultDataStorage field.
 func (r *mutationResolver) UpdateDefaultDataStorage(ctx context.Context, input UpdateDefaultDataStorageInput) (bool, error) {
 	err := r.systemService.SetDefaultDataStorageID(ctx, input.DataStorageID.ID)
@@ -115,6 +125,16 @@ func (r *queryResolver) StoragePolicy(ctx context.Context) (*biz.StoragePolicy, 
 // RetryPolicy is the resolver for the retryPolicy field.
 func (r *queryResolver) RetryPolicy(ctx context.Context) (*biz.RetryPolicy, error) {
 	return r.systemService.RetryPolicy(ctx)
+}
+
+// SystemModelSettings is the resolver for the systemModelSettings field.
+func (r *queryResolver) SystemModelSettings(ctx context.Context) (*biz.ModelSettings, error) {
+	settings, err := r.systemService.ModelSettings(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get system model settings: %w", err)
+	}
+
+	return settings, nil
 }
 
 // DefaultDataStorageID is the resolver for the defaultDataStorageID field.

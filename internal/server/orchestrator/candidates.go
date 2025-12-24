@@ -32,12 +32,14 @@ type CandidateSelector interface {
 type DefaultSelector struct {
 	ChannelService *biz.ChannelService
 	ModelService   *biz.ModelService // Optional: for AxonHub Model resolution
+	SystemService  *biz.SystemService
 }
 
-func NewDefaultSelector(channelService *biz.ChannelService, modelService *biz.ModelService) *DefaultSelector {
+func NewDefaultSelector(channelService *biz.ChannelService, modelService *biz.ModelService, systemService *biz.SystemService) *DefaultSelector {
 	return &DefaultSelector{
 		ChannelService: channelService,
 		ModelService:   modelService,
+		SystemService:  systemService,
 	}
 }
 
@@ -45,9 +47,13 @@ func (s *DefaultSelector) Select(ctx context.Context, req *llm.Request) ([]*Chan
 	candidates, err := s.selectModelCandidates(ctx, req)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			// Fallback to legacy channel selection
-			// TODO: add a setting to enable/disable legacy channel selection
-			return s.selectChannelCadidates(ctx, req)
+			// Check if fallback to legacy channel selection is allowed
+			settings := s.SystemService.ModelSettingsOrDefault(ctx)
+			if settings.FallbackToChannelsOnModelNotFound {
+				return s.selectChannelCadidates(ctx, req)
+			}
+			// Fallback disabled, return the error
+			return nil, fmt.Errorf("model %q not found and fallback to channels is disabled", req.Model)
 		}
 
 		return nil, err

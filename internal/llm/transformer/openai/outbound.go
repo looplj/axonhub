@@ -388,14 +388,20 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 
 	// Try to parse as OpenAI error format first
 	var openaiError struct {
-		Error llm.ErrorDetail `json:"error"`
+		Error  llm.ErrorDetail `json:"error"`
+		Errors llm.ErrorDetail `json:"errors"`
 	}
 
 	err := json.Unmarshal(rawErr.Body, &openaiError)
-	if err == nil && openaiError.Error.Message != "" {
+	if err == nil && (openaiError.Error.Message != "" || openaiError.Errors.Message != "") {
+		errDetail := openaiError.Error
+		if errDetail.Message == "" {
+			errDetail = openaiError.Errors
+		}
+
 		return &llm.ResponseError{
 			StatusCode: rawErr.StatusCode,
-			Detail:     openaiError.Error,
+			Detail:     errDetail,
 		}
 	}
 

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/pipeline"
 	"github.com/looplj/axonhub/internal/log"
@@ -53,13 +55,24 @@ func selectCandidates(inbound *PersistentInboundTransformer) pipeline.Middleware
 			return nil, err
 		}
 
-		log.Debug(ctx, "selected candidates",
-			log.Int("candidate_count", len(candidates)),
-			log.String("model", llmRequest.Model),
-		)
+		if log.DebugEnabled(ctx) {
+			log.Debug(ctx, "selected candidates",
+				log.Int("candidate_count", len(candidates)),
+				log.String("model", llmRequest.Model),
+				log.Any("candidates", lo.Map(candidates, func(candidate *ChannelModelCandidate, _ int) map[string]any {
+					return map[string]any{
+						"channel_name":  candidate.Channel.Name,
+						"channel_id":    candidate.Channel.ID,
+						"request_model": candidate.RequestModel,
+						"actual_model":  candidate.ActualModel,
+						"priority":      candidate.Priority,
+					}
+				})),
+			)
+		}
 
 		if len(candidates) == 0 {
-			return nil, fmt.Errorf("%w: no valid candidates found for model %s", biz.ErrInvalidModel, llmRequest.Model)
+			return nil, fmt.Errorf("%w: %s", biz.ErrInvalidModel, llmRequest.Model)
 		}
 
 		// Store candidates directly (no need to extract channels)

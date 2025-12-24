@@ -245,7 +245,7 @@ export function ModelsActionDialog() {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent ref={setDialogContent} className='flex max-h-[90vh] flex-col sm:max-w-6xl'>
+      <DialogContent ref={setDialogContent} className='flex max-h-[90vh] flex-col overflow-hidden sm:max-w-6xl'>
         <DialogHeader className='flex-shrink-0 text-left'>
           <DialogTitle>{isEdit ? t('models.dialogs.edit.title') : t('models.dialogs.create.title')}</DialogTitle>
           <DialogDescription>{isEdit ? t('models.dialogs.edit.description') : t('models.dialogs.create.description')}</DialogDescription>

@@ -10,17 +10,19 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/server/biz"
-	"github.com/samber/lo"
 )
 
 // CreateChannel is the resolver for the createChannel field.
@@ -352,16 +354,35 @@ func (r *queryResolver) FetchModels(ctx context.Context, input biz.FetchModelsIn
 }
 
 // QueryModels is the resolver for the queryModels field.
+// When QueryAllChannelModels is true, returns all models from channels.
+// When false, returns only configured models (models with explicit Model entity configuration).
 func (r *queryResolver) QueryModels(ctx context.Context, input QueryModelsInput) ([]*biz.ModelIdentityWithStatus, error) {
-	// Convert GraphQL input to biz layer input
-	bizInput := biz.ListModelsInput{
-		StatusIn:       input.StatusIn,
-		IncludeMapping: lo.FromPtrOr(input.IncludeMapping, false),
-		IncludePrefix:  lo.FromPtrOr(input.IncludePrefix, false),
+	// Check the QueryAllChannelModels setting
+	settings := r.systemService.ModelSettingsOrDefault(ctx)
+
+	if settings.QueryAllChannelModels {
+		// Convert GraphQL input to biz layer input
+		bizInput := biz.ListModelsInput{
+			StatusIn:       input.StatusIn,
+			IncludeMapping: lo.FromPtrOr(input.IncludeMapping, false),
+			IncludePrefix:  lo.FromPtrOr(input.IncludePrefix, false),
+		}
+
+		// Return all models from channels
+		return r.channelService.ListModels(ctx, bizInput)
 	}
 
-	// Call the biz layer method directly
-	return r.channelService.ListModels(ctx, bizInput)
+	// Return only configured models
+	// Convert channel status to model status
+	var modelStatusIn []model.Status
+
+	if len(input.StatusIn) > 0 {
+		for _, status := range input.StatusIn {
+			modelStatusIn = append(modelStatusIn, model.Status(status.String()))
+		}
+	}
+
+	return r.modelService.ListConfiguredModels(ctx, modelStatusIn)
 }
 
 // AllChannelTags is the resolver for the allChannelTags field.
@@ -493,5 +514,7 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Segment returns SegmentResolver implementation.
 func (r *Resolver) Segment() SegmentResolver { return &segmentResolver{r} }
 
-type mutationResolver struct{ *Resolver }
-type segmentResolver struct{ *Resolver }
+type (
+	mutationResolver struct{ *Resolver }
+	segmentResolver  struct{ *Resolver }
+)

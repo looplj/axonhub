@@ -3,7 +3,6 @@ package orchestrator
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -40,7 +39,7 @@ func TestDefaultChannelSelector_Select_SingleChannel(t *testing.T) {
 	result, err := selector.Select(ctx, req)
 	require.NoError(t, err)
 	require.Len(t, result, 1)
-	assert.Equal(t, ch.ID, result[0].Channel.ID)
+	require.Equal(t, ch.ID, result[0].Channel.ID)
 }
 
 // TestDefaultSelector_Select tests DefaultSelector returns all enabled channels supporting the model.
@@ -51,7 +50,8 @@ func TestDefaultSelector_Select(t *testing.T) {
 
 	channelService := newTestChannelServiceForChannels(client)
 	modelService := newTestModelService(client)
-	selector := NewDefaultSelector(channelService, modelService)
+	systemService := newTestSystemService(client)
+	selector := NewDefaultSelector(channelService, modelService, systemService)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -69,10 +69,10 @@ func TestDefaultSelector_Select(t *testing.T) {
 		channelIDs[i] = ch.Channel.ID
 	}
 
-	assert.NotContains(t, channelIDs, channels[3].ID, "Disabled channel should not be included")
-	assert.Contains(t, channelIDs, channels[0].ID, "High weight channel should be included")
-	assert.Contains(t, channelIDs, channels[1].ID, "Medium weight channel should be included")
-	assert.Contains(t, channelIDs, channels[2].ID, "Low weight channel should be included")
+	require.NotContains(t, channelIDs, channels[3].ID, "Disabled channel should not be included")
+	require.Contains(t, channelIDs, channels[0].ID, "High weight channel should be included")
+	require.Contains(t, channelIDs, channels[1].ID, "Medium weight channel should be included")
+	require.Contains(t, channelIDs, channels[2].ID, "Low weight channel should be included")
 }
 
 // TestDefaultChannelSelector_Select_NoChannelsAvailable tests error when no channels are available.
@@ -174,7 +174,7 @@ func TestSpecifiedChannelSelector_Select_ValidChannel(t *testing.T) {
 	result, err := selector.Select(ctx, req)
 	require.NoError(t, err)
 	require.Len(t, result, 1)
-	assert.Equal(t, ch.ID, result[0].Channel.ID)
+	require.Equal(t, ch.ID, result[0].Channel.ID)
 }
 
 // TestSpecifiedChannelSelector_Select_ModelNotSupported tests SpecifiedChannelSelector with unsupported model.
@@ -201,8 +201,8 @@ func TestSpecifiedChannelSelector_Select_ModelNotSupported(t *testing.T) {
 
 	result, err := selector.Select(ctx, req)
 	require.Error(t, err)
-	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "model gpt-4 not supported")
+	require.Nil(t, result)
+	require.Contains(t, err.Error(), "model gpt-4 not supported")
 }
 
 // TestSpecifiedChannelSelector_Select_ChannelNotFound tests SpecifiedChannelSelector with non-existent channel.
@@ -218,8 +218,8 @@ func TestSpecifiedChannelSelector_Select_ChannelNotFound(t *testing.T) {
 
 	result, err := selector.Select(ctx, req)
 	require.Error(t, err)
-	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "failed to get channel for test")
+	require.Nil(t, result)
+	require.Contains(t, err.Error(), "failed to get channel for test")
 }
 
 // TestSelectedChannelsSelector_Select_WithFilter tests SelectedChannelsSelector filters by allowed channel IDs.
@@ -230,7 +230,8 @@ func TestSelectedChannelsSelector_Select_WithFilter(t *testing.T) {
 
 	channelService := newTestChannelServiceForChannels(client)
 	modelService := newTestModelService(client)
-	baseSelector := NewDefaultSelector(channelService, modelService)
+	systemService := newTestSystemService(client)
+	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
 
 	// Only allow channels 0 and 2
 	allowedIDs := []int{channels[0].ID, channels[2].ID}
@@ -251,9 +252,9 @@ func TestSelectedChannelsSelector_Select_WithFilter(t *testing.T) {
 		channelIDs[i] = ch.Channel.ID
 	}
 
-	assert.Contains(t, channelIDs, channels[0].ID, "Allowed channel 0 should be included")
-	assert.Contains(t, channelIDs, channels[2].ID, "Allowed channel 2 should be included")
-	assert.NotContains(t, channelIDs, channels[1].ID, "Non-allowed channel 1 should not be included")
+	require.Contains(t, channelIDs, channels[0].ID, "Allowed channel 0 should be included")
+	require.Contains(t, channelIDs, channels[2].ID, "Allowed channel 2 should be included")
+	require.NotContains(t, channelIDs, channels[1].ID, "Non-allowed channel 1 should not be included")
 }
 
 // TestSelectedChannelsSelector_Select_EmptyFilter tests SelectedChannelsSelector with empty filter returns all.
@@ -264,7 +265,8 @@ func TestSelectedChannelsSelector_Select_EmptyFilter(t *testing.T) {
 
 	channelService := newTestChannelServiceForChannels(client)
 	modelService := newTestModelService(client)
-	baseSelector := NewDefaultSelector(channelService, modelService)
+	systemService := newTestSystemService(client)
+	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
 
 	// Empty filter should return all channels
 	selector := WithSelectedChannelsSelector(baseSelector, nil)
@@ -284,7 +286,7 @@ func TestSelectedChannelsSelector_Select_EmptyFilter(t *testing.T) {
 		channelIDs[i] = ch.Channel.ID
 	}
 
-	assert.Contains(t, channelIDs, channels[0].ID)
-	assert.Contains(t, channelIDs, channels[1].ID)
-	assert.Contains(t, channelIDs, channels[2].ID)
+	require.Contains(t, channelIDs, channels[0].ID)
+	require.Contains(t, channelIDs, channels[1].ID)
+	require.Contains(t, channelIDs, channels[2].ID)
 }

@@ -199,6 +199,22 @@ When introducing a new provider channel, keep backend and frontend changes align
 - Run `make generate` from the project root after schema changes
 - Use GraphQL input filtering instead of frontend filtering for data queries
 
+#### Adding New GraphQL Types
+When adding new types or inputs to the GraphQL schema, you need to:
+
+1. **Add the type/input definition** in the appropriate `.graphql` file in `internal/server/gql/`
+2. **Add type mapping in `gqlgen.yml`** under the `models:` section - map the GraphQL type to the Go type:
+   ```yaml
+   MyNewType:
+     model:
+       - github.com/looplj/axonhub/internal/package.MyType
+   MyNewInput:
+     model:
+       - github.com/looplj/axonhub/internal/package.MyInput
+   ```
+3. **Run `make generate`** to regenerate the code
+4. **Implement the resolver** in the appropriate `*_resolvers.go` file
+
 ## Testing
 
 - **Backend**: Go unit tests with testify
