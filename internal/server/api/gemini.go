@@ -1,6 +1,8 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/gin-contrib/sse"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
@@ -25,6 +27,8 @@ type GeminiHandlersParams struct {
 }
 
 type GeminiHandlers struct {
+	ChannelService         *biz.ChannelService
+	ModelService           *biz.ModelService
 	ChatCompletionHandlers *ChatCompletionHandlers
 }
 
@@ -41,6 +45,8 @@ func NewGeminiHandlers(params GeminiHandlersParams) *GeminiHandlers {
 				params.UsageLogService,
 			),
 		),
+		ChannelService: params.ChannelService,
+		ModelService:   params.ModelService,
 	}
 }
 
@@ -155,4 +161,42 @@ func prependSpace(b []byte) []byte {
 	copy(result[1:], b)
 
 	return result
+}
+
+// GeminiModel represents a model in the list models response.
+type GeminiModel struct {
+	Name        string `json:"name"`
+	BaseModelID string `json:"baseModelId"`
+	Version     string `json:"version"`
+	DisplayName string `json:"displayName"`
+	Description string `json:"description"`
+}
+
+// ListModels returns all available Gemini models.
+// This endpoint is compatible with Gemini's /v1/models API.
+// It uses QueryAllChannelModels setting from system config to determine model source.
+func (handlers *GeminiHandlers) ListModels(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	models := handlers.ModelService.ListEnabledModels(ctx)
+	if models == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list models"})
+		return
+	}
+
+	geminiModels := make([]GeminiModel, 0, len(models))
+	for _, model := range models {
+		geminiModels = append(geminiModels, GeminiModel{
+			Name:        "models/" + model.ID,
+			BaseModelID: model.ID,
+			Version:     "001",
+			DisplayName: model.DisplayName,
+			Description: "",
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"object": "list",
+		"data":   geminiModels,
+	})
 }

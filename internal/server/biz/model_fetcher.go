@@ -180,7 +180,11 @@ func (f *ModelFetcher) prepareModelsEndpoint(channelType channel.Type, baseURL s
 }
 
 type GeminiModelResponse struct {
-	Name string `json:"name"`
+	Name        string `json:"name"`
+	BaseModelID string `json:"baseModelId"`
+	Version     string `json:"version"`
+	DisplayName string `json:"displayName"`
+	Description string `json:"description"`
 }
 
 // parseModelsResponse parses the models response from the provider API.

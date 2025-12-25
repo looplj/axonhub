@@ -1205,7 +1205,7 @@ func TestInboundTransformer_TransformError(t *testing.T) {
 			expected: &httpclient.Error{
 				StatusCode: http.StatusInternalServerError,
 				Status:     "Internal Server Error",
-				Body:       []byte(`{"error":{"message":"some error","type":"test_error"},"request_id":"123456"}`),
+				Body:       []byte(`{"type":"test_error","error":{"message":"some error","type":"test_error"},"request_id":"123456"}`),
 			},
 		},
 		{
@@ -1214,7 +1214,7 @@ func TestInboundTransformer_TransformError(t *testing.T) {
 			expected: &httpclient.Error{
 				StatusCode: http.StatusInternalServerError,
 				Status:     "Internal Server Error",
-				Body:       []byte(`{"message":"internal server error","request_id":""}`),
+				Body:       []byte(`{"type":"error","error":{"message":"internal server error","type":""},"request_id":""}`),
 			},
 		},
 	}

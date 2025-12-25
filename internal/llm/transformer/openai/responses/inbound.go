@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
+	"github.com/looplj/axonhub/internal/pkg/xjson"
 	"github.com/looplj/axonhub/internal/pkg/xmap"
 	"github.com/looplj/axonhub/internal/pkg/xurl"
 )
@@ -86,13 +87,23 @@ func (t *InboundTransformer) TransformResponse(ctx context.Context, chatResp *ll
 	}, nil
 }
 
+type ResponseError struct {
+	Error ResponseErrorDetail `json:"error"`
+}
+
+type ResponseErrorDetail struct {
+	Message string `json:"message"`
+	Type    string `json:"type"`
+	Code    string `json:"code,omitempty"`
+}
+
 // TransformError transforms LLM error response to HTTP error response in Responses API format.
 func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *httpclient.Error {
 	if rawErr == nil {
 		return &httpclient.Error{
 			StatusCode: http.StatusInternalServerError,
 			Status:     http.StatusText(http.StatusInternalServerError),
-			Body:       []byte(`{"error":{"message":"internal server error","type":"internal_error"}}`),
+			Body:       xjson.MustMarshal(&ResponseError{Error: ResponseErrorDetail{Message: "internal server error", Type: "internal_error"}}),
 		}
 	}
 
@@ -100,47 +111,23 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 		return &httpclient.Error{
 			StatusCode: http.StatusUnprocessableEntity,
 			Status:     http.StatusText(http.StatusUnprocessableEntity),
-			Body: []byte(
-				fmt.Sprintf(
-					`{"error":{"message":"%s","type":"invalid_model_error"}}`,
-					strings.TrimPrefix(rawErr.Error(), transformer.ErrInvalidModel.Error()+": "),
-				),
-			),
+			Body:       xjson.MustMarshal(&ResponseError{Error: ResponseErrorDetail{Message: rawErr.Error(), Type: "invalid_model_error"}}),
 		}
 	}
 
 	if llmErr, ok := xerrors.As[*llm.ResponseError](rawErr); ok {
-		errResp := struct {
-			Error struct {
-				Message string `json:"message"`
-				Type    string `json:"type"`
-				Code    string `json:"code,omitempty"`
-			} `json:"error"`
-		}{
-			Error: struct {
-				Message string `json:"message"`
-				Type    string `json:"type"`
-				Code    string `json:"code,omitempty"`
-			}{
+		errResp := ResponseError{
+			Error: ResponseErrorDetail{
 				Message: llmErr.Detail.Message,
 				Type:    llmErr.Detail.Type,
 				Code:    llmErr.Detail.Code,
 			},
 		}
 
-		body, err := json.Marshal(errResp)
-		if err != nil {
-			return &httpclient.Error{
-				StatusCode: http.StatusInternalServerError,
-				Status:     http.StatusText(http.StatusInternalServerError),
-				Body:       []byte(`{"error":{"message":"internal server error","type":"internal_error"}}`),
-			}
-		}
-
 		return &httpclient.Error{
 			StatusCode: llmErr.StatusCode,
 			Status:     http.StatusText(llmErr.StatusCode),
-			Body:       body,
+			Body:       xjson.MustMarshal(&errResp),
 		}
 	}
 
@@ -150,66 +137,31 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 
 	// Handle validation errors
 	if errors.Is(rawErr, transformer.ErrInvalidRequest) {
-		errResp := struct {
-			Error struct {
-				Message string `json:"message"`
-				Type    string `json:"type"`
-			} `json:"error"`
-		}{
-			Error: struct {
-				Message string `json:"message"`
-				Type    string `json:"type"`
-			}{
-				Message: strings.TrimPrefix(rawErr.Error(), transformer.ErrInvalidRequest.Error()+": "),
+		errResp := ResponseError{
+			Error: ResponseErrorDetail{
+				Message: rawErr.Error(),
 				Type:    "invalid_request_error",
 			},
-		}
-
-		body, err := json.Marshal(errResp)
-		if err != nil {
-			return &httpclient.Error{
-				StatusCode: http.StatusInternalServerError,
-				Status:     http.StatusText(http.StatusInternalServerError),
-				Body:       []byte(`{"error":{"message":"internal server error","type":"internal_error"}}`),
-			}
 		}
 
 		return &httpclient.Error{
 			StatusCode: http.StatusBadRequest,
 			Status:     http.StatusText(http.StatusBadRequest),
-			Body:       body,
+			Body:       xjson.MustMarshal(&errResp),
 		}
 	}
 
-	// Default error response
-	errResp := struct {
-		Error struct {
-			Message string `json:"message"`
-			Type    string `json:"type"`
-		} `json:"error"`
-	}{
-		Error: struct {
-			Message string `json:"message"`
-			Type    string `json:"type"`
-		}{
+	errResp := ResponseError{
+		Error: ResponseErrorDetail{
 			Message: rawErr.Error(),
 			Type:    "internal_error",
 		},
 	}
 
-	body, err := json.Marshal(errResp)
-	if err != nil {
-		return &httpclient.Error{
-			StatusCode: http.StatusInternalServerError,
-			Status:     http.StatusText(http.StatusInternalServerError),
-			Body:       []byte(`{"error":{"message":"internal server error","type":"internal_error"}}`),
-		}
-	}
-
 	return &httpclient.Error{
 		StatusCode: http.StatusInternalServerError,
 		Status:     http.StatusText(http.StatusInternalServerError),
-		Body:       body,
+		Body:       xjson.MustMarshal(&errResp),
 	}
 }
 
@@ -767,8 +719,9 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 				Content: &Input{
 					Items: []Item{
 						{
-							Type: "output_text",
-							Text: &text,
+							Type:        "output_text",
+							Text:        &text,
+							Annotations: []Annotation{},
 						},
 					},
 				},
@@ -783,8 +736,9 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 					if part.Text != nil {
 						text := *part.Text
 						contentItems = append(contentItems, Item{
-							Type: "output_text",
-							Text: &text,
+							Type:        "output_text",
+							Text:        &text,
+							Annotations: []Annotation{},
 						})
 					}
 				case "image_url":
@@ -843,8 +797,9 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 				Content: &Input{
 					Items: []Item{
 						{
-							Type: "output_text",
-							Text: &emptyText,
+							Type:        "output_text",
+							Text:        &emptyText,
+							Annotations: []Annotation{},
 						},
 					},
 				},

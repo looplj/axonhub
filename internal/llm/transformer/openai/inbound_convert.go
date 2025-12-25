@@ -189,7 +189,7 @@ func ResponseFromLLM(r *llm.Response) *Response {
 
 	// Convert error
 	if r.Error != nil {
-		resp.Error = &ResponseError{
+		resp.Error = &OpenAIError{
 			StatusCode: r.Error.StatusCode,
 			Detail:     r.Error.Detail,
 		}

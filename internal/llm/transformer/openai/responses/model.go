@@ -323,6 +323,8 @@ func (i Input) MarshalJSON() ([]byte, error) {
 	return json.Marshal(i.Items)
 }
 
+type Annotation struct{}
+
 // Item is a unified structure for both input and output items in the Responses API.
 // This follows the openai-go pattern where input and output items share the same structure.
 // Reference: github.com/openai/openai-go/v3/responses.ResponseOutputItemUnion.
@@ -333,6 +335,9 @@ type Item struct {
 	// Any of "message", "input_text", "input_image", "input_audio", "output_text",
 	// "function_call", "function_call_output", "image_generation_call", "reasoning".
 	Type string `json:"type,omitempty"`
+
+	// The annotations of the text output.
+	Annotations []Annotation `json:"annotations,omitzero"`
 
 	// Any of "system", "user", "assistant", "developer".
 	Role string `json:"role,omitempty"`

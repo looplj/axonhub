@@ -174,7 +174,7 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 			Body: xjson.MustMarshal(&GeminiError{
 				Error: ErrorDetail{
 					Code:    http.StatusBadRequest,
-					Message: strings.TrimPrefix(rawErr.Error(), transformer.ErrInvalidRequest.Error()+": "),
+					Message: rawErr.Error(),
 					Status:  mapHTTPStatusToGeminiStatus(http.StatusBadRequest),
 				},
 			}),

@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
+	"github.com/looplj/axonhub/internal/pkg/xjson"
 )
 
 // InboundTransformer implements transformer.Inbound for OpenAI format.
@@ -184,7 +185,7 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 		return &httpclient.Error{
 			StatusCode: http.StatusInternalServerError,
 			Status:     http.StatusText(http.StatusInternalServerError),
-			Body:       []byte(`{"error":{"message":"An unexpected error occurred","type":"unexpected_error"}}`),
+			Body:       xjson.MustMarshal(&OpenAIError{Detail: llm.ErrorDetail{Message: "An unexpected error occurred", Type: "unexpected_error"}}),
 		}
 	}
 
@@ -192,12 +193,7 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 		return &httpclient.Error{
 			StatusCode: http.StatusUnprocessableEntity,
 			Status:     http.StatusText(http.StatusUnprocessableEntity),
-			Body: []byte(
-				fmt.Sprintf(
-					`{"error":{"message":"%s","type":"invalid_model_error"}}`,
-					strings.TrimPrefix(rawErr.Error(), transformer.ErrInvalidModel.Error()+": "),
-				),
-			),
+			Body:       xjson.MustMarshal(&OpenAIError{Detail: llm.ErrorDetail{Message: rawErr.Error(), Type: "invalid_model_error"}}),
 		}
 	}
 
@@ -210,35 +206,21 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 		return &httpclient.Error{
 			StatusCode: http.StatusBadRequest,
 			Status:     http.StatusText(http.StatusBadRequest),
-			Body: []byte(
-				fmt.Sprintf(
-					`{"error":{"message":"%s","type":"invalid_request_error"}}`,
-					strings.TrimPrefix(rawErr.Error(), transformer.ErrInvalidRequest.Error()+": "),
-				),
-			),
+			Body:       xjson.MustMarshal(&OpenAIError{Detail: llm.ErrorDetail{Message: rawErr.Error(), Type: "invalid_request_error"}}),
 		}
 	}
 
 	if llmErr, ok := xerrors.As[*llm.ResponseError](rawErr); ok {
-		body, err := json.Marshal(llmErr)
-		if err != nil {
-			return &httpclient.Error{
-				StatusCode: http.StatusInternalServerError,
-				Status:     http.StatusText(http.StatusInternalServerError),
-				Body:       []byte(`{"error":{"message":"internal server error","type":"internal_server_error"}}`),
-			}
-		}
-
 		return &httpclient.Error{
 			StatusCode: llmErr.StatusCode,
 			Status:     http.StatusText(llmErr.StatusCode),
-			Body:       body,
+			Body:       xjson.MustMarshal(&OpenAIError{Detail: llmErr.Detail}),
 		}
 	}
 
 	return &httpclient.Error{
 		StatusCode: http.StatusInternalServerError,
 		Status:     http.StatusText(http.StatusInternalServerError),
-		Body:       []byte(fmt.Sprintf(`{"error":{"message":"%s","type":"internal_server_error"}}`, rawErr.Error())),
+		Body:       xjson.MustMarshal(&OpenAIError{Detail: llm.ErrorDetail{Message: rawErr.Error(), Type: "internal_server_error"}}),
 	}
 }

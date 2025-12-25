@@ -577,8 +577,9 @@ func (s *responsesInboundStream) closeMessageItem() error {
 		Role:   "assistant",
 		Content: &Input{
 			Items: []Item{{
-				Type: "output_text",
-				Text: &fullText,
+				Type:        "output_text",
+				Text:        &fullText,
+				Annotations: []Annotation{},
 			}},
 		},
 	}

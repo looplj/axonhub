@@ -222,7 +222,7 @@ type Response struct {
 	SystemFingerprint string `json:"system_fingerprint,omitempty"`
 	ServiceTier       string `json:"service_tier,omitempty"`
 
-	Error *ResponseError `json:"error,omitempty"`
+	Error *OpenAIError `json:"error,omitempty"`
 }
 
 // Choice represents a choice in the response.
@@ -254,8 +254,8 @@ type TopLogprob struct {
 	Bytes   []int   `json:"bytes,omitempty"`
 }
 
-// ResponseError represents an error response.
-type ResponseError struct {
+// OpenAIError represents an error response.
+type OpenAIError struct {
 	StatusCode int             `json:"-"`
 	Detail     llm.ErrorDetail `json:"error"`
 }

@@ -162,15 +162,17 @@ func convertAssistantMessage(msg llm.Message) []Item {
 
 	if msg.Content.Content != nil {
 		contentItems = append(contentItems, Item{
-			Type: "output_text",
-			Text: msg.Content.Content,
+			Type:        "output_text",
+			Text:        msg.Content.Content,
+			Annotations: []Annotation{},
 		})
 	} else {
 		for _, p := range msg.Content.MultipleContent {
 			if p.Type == "text" && p.Text != nil {
 				contentItems = append(contentItems, Item{
-					Type: "output_text",
-					Text: p.Text,
+					Type:        "output_text",
+					Text:        p.Text,
+					Annotations: []Annotation{},
 				})
 			}
 		}
