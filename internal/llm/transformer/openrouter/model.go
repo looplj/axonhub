@@ -1,6 +1,8 @@
 package openrouter
 
 import (
+	"strings"
+
 	"github.com/looplj/axonhub/internal/llm/transformer/openai"
 )
 
@@ -46,12 +48,32 @@ func (c *Choice) ToOpenAIChoice() openai.Choice {
 type Message struct {
 	openai.Message
 
-	Reasoning *string `json:"reasoning,omitempty"`
-	Images    []Image `json:"images,omitempty"`
+	Reasoning        *string           `json:"reasoning,omitempty"`
+	ReasoningDetails []ReasoningDetail `json:"reasoning_details,omitempty"`
+	Images           []Image           `json:"images,omitempty"`
+}
+
+type ReasoningDetail struct {
+	Type   string `json:"type"`
+	Text   string `json:"text"`
+	Format string `json:"format"`
+	Index  int    `json:"index"`
 }
 
 func (m *Message) ToOpenAIMessage() openai.Message {
-	m.ReasoningContent = m.Reasoning
+	// Handle reasoning content - prefer reasoning_details if available, fallback to reasoning
+	if len(m.ReasoningDetails) > 0 {
+		var reasoningText strings.Builder
+		for _, detail := range m.ReasoningDetails {
+			reasoningText.WriteString(detail.Text)
+		}
+
+		reasoning := reasoningText.String()
+		m.ReasoningContent = &reasoning
+	} else {
+		m.ReasoningContent = m.Reasoning
+	}
+
 	if len(m.Images) > 0 {
 		var parts []openai.MessageContentPart
 		if m.Content.Content != nil && *m.Content.Content != "" {
