@@ -102,7 +102,8 @@
     "previousPage": "上一页",
     "nextPage": "下一页",
     "hasPrevious": "有上一页",
-    "hasNext": "有下一页"
+    "hasNext": "有下一页",
+    "showing": "显示第 {{start}} - {{end}} 条，共 {{total}} 条"
   },
   "common": {
     "refresh": "刷新",
