@@ -10,6 +10,7 @@
       "content": [
         {
           "type": "output_text",
+          "annotations": [],
           "text": "I currently do not have real-time access to weather data or the internet. To get the latest weather information for New York City, I recommend checking reliable sources such as [Weather.com](https://www.weather.com), [AccuWeather](https://www.accuweather.com), or your preferred weather app."
         }
       ],

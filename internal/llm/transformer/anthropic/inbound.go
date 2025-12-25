@@ -12,6 +12,7 @@ import (
 	transformer "github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
+	"github.com/looplj/axonhub/internal/pkg/xjson"
 )
 
 // InboundTransformer implements transformer.Inbound for Anthropic format.
@@ -118,7 +119,9 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 		return &httpclient.Error{
 			StatusCode: http.StatusInternalServerError,
 			Status:     http.StatusText(http.StatusInternalServerError),
-			Body:       []byte(`{"message":"internal server error","request_id":""}`),
+			Body: xjson.MustMarshal(
+				&AnthropicError{Type: "error", StatusCode: http.StatusInternalServerError, RequestID: "", Error: ErrorDetail{Message: "internal server error"}},
+			),
 		}
 	}
 
@@ -126,35 +129,24 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 		return &httpclient.Error{
 			StatusCode: http.StatusUnprocessableEntity,
 			Status:     http.StatusText(http.StatusUnprocessableEntity),
-			Body: []byte(
-				fmt.Sprintf(
-					`{"message":"%s","type":"invalid_model_error"}`,
-					strings.TrimPrefix(rawErr.Error(), transformer.ErrInvalidModel.Error()+": "),
-				),
+			Body: xjson.MustMarshal(
+				&AnthropicError{Type: "invalid_model_error", StatusCode: http.StatusUnprocessableEntity, RequestID: "", Error: ErrorDetail{Message: rawErr.Error()}},
 			),
 		}
 	}
 
 	if llmErr, ok := xerrors.As[*llm.ResponseError](rawErr); ok {
-		aErr := &AnthropicError{
-			StatusCode: llmErr.StatusCode,
-			RequestID:  llmErr.Detail.RequestID,
-			Error:      ErrorDetail{Type: llmErr.Detail.Type, Message: llmErr.Detail.Message},
-		}
-
-		body, err := json.Marshal(aErr)
-		if err != nil {
-			return &httpclient.Error{
-				StatusCode: http.StatusInternalServerError,
-				Status:     http.StatusText(http.StatusInternalServerError),
-				Body:       []byte(`{"message":"internal server error","type":"internal_server_error"}`),
-			}
-		}
-
 		return &httpclient.Error{
 			StatusCode: llmErr.StatusCode,
 			Status:     http.StatusText(llmErr.StatusCode),
-			Body:       body,
+			Body: xjson.MustMarshal(
+				&AnthropicError{
+					Type:       llmErr.Detail.Type,
+					StatusCode: llmErr.StatusCode,
+					RequestID:  llmErr.Detail.RequestID,
+					Error:      ErrorDetail{Type: llmErr.Detail.Type, Message: llmErr.Detail.Message},
+				},
+			),
 		}
 	}
 
@@ -164,46 +156,30 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 
 	// Handle validation errors
 	if errors.Is(rawErr, transformer.ErrInvalidRequest) {
-		aErr := &AnthropicError{
-			StatusCode: http.StatusBadRequest,
-			Error:      ErrorDetail{Type: "invalid_request_error", Message: strings.TrimPrefix(rawErr.Error(), transformer.ErrInvalidRequest.Error()+": ")},
-			RequestID:  "",
-		}
-
-		body, err := json.Marshal(aErr)
-		if err != nil {
-			return &httpclient.Error{
-				StatusCode: http.StatusInternalServerError,
-				Status:     http.StatusText(http.StatusInternalServerError),
-				Body:       []byte(`{"message":"internal server error","type":"internal_server_error"}`),
-			}
-		}
-
 		return &httpclient.Error{
 			StatusCode: http.StatusBadRequest,
 			Status:     http.StatusText(http.StatusBadRequest),
-			Body:       body,
-		}
-	}
-
-	aErr := &AnthropicError{
-		StatusCode: http.StatusInternalServerError,
-		RequestID:  "",
-		Error:      ErrorDetail{Type: "internal_server_error", Message: rawErr.Error()},
-	}
-
-	body, err := json.Marshal(aErr)
-	if err != nil {
-		return &httpclient.Error{
-			StatusCode: http.StatusInternalServerError,
-			Status:     http.StatusText(http.StatusInternalServerError),
-			Body:       []byte(`{"message":"internal server error","type":"internal_server_error"}`),
+			Body: xjson.MustMarshal(
+				&AnthropicError{
+					Type:       "invalid_request_error",
+					StatusCode: http.StatusBadRequest,
+					RequestID:  "",
+					Error:      ErrorDetail{Type: "invalid_request_error", Message: rawErr.Error()},
+				},
+			),
 		}
 	}
 
 	return &httpclient.Error{
 		StatusCode: http.StatusInternalServerError,
 		Status:     http.StatusText(http.StatusInternalServerError),
-		Body:       body,
+		Body: xjson.MustMarshal(
+			&AnthropicError{
+				Type:       "internal_server_error",
+				StatusCode: http.StatusInternalServerError,
+				RequestID:  "",
+				Error:      ErrorDetail{Type: "internal_server_error", Message: rawErr.Error()},
+			},
+		),
 	}
 }

@@ -52,11 +52,11 @@ func (s *DefaultSelector) Select(ctx context.Context, req *llm.Request) ([]*Chan
 			if settings.FallbackToChannelsOnModelNotFound {
 				return s.selectChannelCadidates(ctx, req)
 			}
-			// Fallback disabled, return the error
-			return nil, fmt.Errorf("model %q not found and fallback to channels is disabled", req.Model)
+
+			return nil, fmt.Errorf("%w: %q", biz.ErrInvalidModel, req.Model)
 		}
 
-		return nil, err
+		return nil, fmt.Errorf("%w: %q", err, req.Model)
 	}
 
 	return candidates, nil
