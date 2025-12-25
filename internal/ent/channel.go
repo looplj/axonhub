@@ -38,6 +38,8 @@ type Channel struct {
 	Credentials *objects.ChannelCredentials `json:"-"`
 	// SupportedModels holds the value of the "supported_models" field.
 	SupportedModels []string `json:"supported_models,omitempty"`
+	// AutoSyncSupportedModels holds the value of the "auto_sync_supported_models" field.
+	AutoSyncSupportedModels bool `json:"auto_sync_supported_models,omitempty"`
 	// Tags holds the value of the "tags" field.
 	Tags []string `json:"tags,omitempty"`
 	// DefaultTestModel holds the value of the "default_test_model" field.
@@ -122,6 +124,8 @@ func (*Channel) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case channel.FieldCredentials, channel.FieldSupportedModels, channel.FieldTags, channel.FieldSettings:
 			values[i] = new([]byte)
+		case channel.FieldAutoSyncSupportedModels:
+			values[i] = new(sql.NullBool)
 		case channel.FieldID, channel.FieldDeletedAt, channel.FieldOrderingWeight:
 			values[i] = new(sql.NullInt64)
 		case channel.FieldType, channel.FieldBaseURL, channel.FieldName, channel.FieldStatus, channel.FieldDefaultTestModel, channel.FieldErrorMessage, channel.FieldRemark:
@@ -206,6 +210,12 @@ func (_m *Channel) assignValues(columns []string, values []any) error {
 				if err := json.Unmarshal(*value, &_m.SupportedModels); err != nil {
 					return fmt.Errorf("unmarshal field supported_models: %w", err)
 				}
+			}
+		case channel.FieldAutoSyncSupportedModels:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field auto_sync_supported_models", values[i])
+			} else if value.Valid {
+				_m.AutoSyncSupportedModels = value.Bool
 			}
 		case channel.FieldTags:
 			if value, ok := values[i].(*[]byte); !ok {
@@ -330,6 +340,9 @@ func (_m *Channel) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("supported_models=")
 	builder.WriteString(fmt.Sprintf("%v", _m.SupportedModels))
+	builder.WriteString(", ")
+	builder.WriteString("auto_sync_supported_models=")
+	builder.WriteString(fmt.Sprintf("%v", _m.AutoSyncSupportedModels))
 	builder.WriteString(", ")
 	builder.WriteString("tags=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Tags))

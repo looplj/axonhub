@@ -81,6 +81,7 @@ func (Channel) Fields() []ent.Field {
 			),
 		field.JSON("credentials", &objects.ChannelCredentials{}).Sensitive().Default(&objects.ChannelCredentials{}),
 		field.Strings("supported_models"),
+		field.Bool("auto_sync_supported_models").Default(false),
 		field.Strings("tags").Optional().Default([]string{}),
 		field.String("default_test_model"),
 		field.JSON("settings", &objects.ChannelSettings{}).

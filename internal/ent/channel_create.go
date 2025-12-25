@@ -121,6 +121,20 @@ func (_c *ChannelCreate) SetSupportedModels(v []string) *ChannelCreate {
 	return _c
 }
 
+// SetAutoSyncSupportedModels sets the "auto_sync_supported_models" field.
+func (_c *ChannelCreate) SetAutoSyncSupportedModels(v bool) *ChannelCreate {
+	_c.mutation.SetAutoSyncSupportedModels(v)
+	return _c
+}
+
+// SetNillableAutoSyncSupportedModels sets the "auto_sync_supported_models" field if the given value is not nil.
+func (_c *ChannelCreate) SetNillableAutoSyncSupportedModels(v *bool) *ChannelCreate {
+	if v != nil {
+		_c.SetAutoSyncSupportedModels(*v)
+	}
+	return _c
+}
+
 // SetTags sets the "tags" field.
 func (_c *ChannelCreate) SetTags(v []string) *ChannelCreate {
 	_c.mutation.SetTags(v)
@@ -308,6 +322,10 @@ func (_c *ChannelCreate) defaults() error {
 		v := channel.DefaultCredentials
 		_c.mutation.SetCredentials(v)
 	}
+	if _, ok := _c.mutation.AutoSyncSupportedModels(); !ok {
+		v := channel.DefaultAutoSyncSupportedModels
+		_c.mutation.SetAutoSyncSupportedModels(v)
+	}
 	if _, ok := _c.mutation.Tags(); !ok {
 		v := channel.DefaultTags
 		_c.mutation.SetTags(v)
@@ -358,6 +376,9 @@ func (_c *ChannelCreate) check() error {
 	}
 	if _, ok := _c.mutation.SupportedModels(); !ok {
 		return &ValidationError{Name: "supported_models", err: errors.New(`ent: missing required field "Channel.supported_models"`)}
+	}
+	if _, ok := _c.mutation.AutoSyncSupportedModels(); !ok {
+		return &ValidationError{Name: "auto_sync_supported_models", err: errors.New(`ent: missing required field "Channel.auto_sync_supported_models"`)}
 	}
 	if _, ok := _c.mutation.DefaultTestModel(); !ok {
 		return &ValidationError{Name: "default_test_model", err: errors.New(`ent: missing required field "Channel.default_test_model"`)}
@@ -427,6 +448,10 @@ func (_c *ChannelCreate) createSpec() (*Channel, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.SupportedModels(); ok {
 		_spec.SetField(channel.FieldSupportedModels, field.TypeJSON, value)
 		_node.SupportedModels = value
+	}
+	if value, ok := _c.mutation.AutoSyncSupportedModels(); ok {
+		_spec.SetField(channel.FieldAutoSyncSupportedModels, field.TypeBool, value)
+		_node.AutoSyncSupportedModels = value
 	}
 	if value, ok := _c.mutation.Tags(); ok {
 		_spec.SetField(channel.FieldTags, field.TypeJSON, value)
@@ -661,6 +686,18 @@ func (u *ChannelUpsert) SetSupportedModels(v []string) *ChannelUpsert {
 // UpdateSupportedModels sets the "supported_models" field to the value that was provided on create.
 func (u *ChannelUpsert) UpdateSupportedModels() *ChannelUpsert {
 	u.SetExcluded(channel.FieldSupportedModels)
+	return u
+}
+
+// SetAutoSyncSupportedModels sets the "auto_sync_supported_models" field.
+func (u *ChannelUpsert) SetAutoSyncSupportedModels(v bool) *ChannelUpsert {
+	u.Set(channel.FieldAutoSyncSupportedModels, v)
+	return u
+}
+
+// UpdateAutoSyncSupportedModels sets the "auto_sync_supported_models" field to the value that was provided on create.
+func (u *ChannelUpsert) UpdateAutoSyncSupportedModels() *ChannelUpsert {
+	u.SetExcluded(channel.FieldAutoSyncSupportedModels)
 	return u
 }
 
@@ -923,6 +960,20 @@ func (u *ChannelUpsertOne) SetSupportedModels(v []string) *ChannelUpsertOne {
 func (u *ChannelUpsertOne) UpdateSupportedModels() *ChannelUpsertOne {
 	return u.Update(func(s *ChannelUpsert) {
 		s.UpdateSupportedModels()
+	})
+}
+
+// SetAutoSyncSupportedModels sets the "auto_sync_supported_models" field.
+func (u *ChannelUpsertOne) SetAutoSyncSupportedModels(v bool) *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetAutoSyncSupportedModels(v)
+	})
+}
+
+// UpdateAutoSyncSupportedModels sets the "auto_sync_supported_models" field to the value that was provided on create.
+func (u *ChannelUpsertOne) UpdateAutoSyncSupportedModels() *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateAutoSyncSupportedModels()
 	})
 }
 
@@ -1368,6 +1419,20 @@ func (u *ChannelUpsertBulk) SetSupportedModels(v []string) *ChannelUpsertBulk {
 func (u *ChannelUpsertBulk) UpdateSupportedModels() *ChannelUpsertBulk {
 	return u.Update(func(s *ChannelUpsert) {
 		s.UpdateSupportedModels()
+	})
+}
+
+// SetAutoSyncSupportedModels sets the "auto_sync_supported_models" field.
+func (u *ChannelUpsertBulk) SetAutoSyncSupportedModels(v bool) *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetAutoSyncSupportedModels(v)
+	})
+}
+
+// UpdateAutoSyncSupportedModels sets the "auto_sync_supported_models" field to the value that was provided on create.
+func (u *ChannelUpsertBulk) UpdateAutoSyncSupportedModels() *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateAutoSyncSupportedModels()
 	})
 }
 

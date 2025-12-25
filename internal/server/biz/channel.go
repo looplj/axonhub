@@ -86,6 +86,14 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 		),
 	)
 
+	// Schedule model sync every hour
+	xerrors.NoErr2(
+		params.Executor.ScheduleFuncAtCronRate(
+			svc.syncChannelModels,
+			executors.CRONRule{Expr: "11 * * * *"},
+		),
+	)
+
 	// Start performance metrics background flush
 	go svc.startPerformanceProcess()
 
@@ -308,6 +316,7 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 		SetCredentials(input.Credentials).
 		SetSupportedModels(input.SupportedModels).
 		SetDefaultTestModel(input.DefaultTestModel).
+		SetNillableAutoSyncSupportedModels(input.AutoSyncSupportedModels).
 		SetSettings(input.Settings)
 
 	if input.Tags != nil {
@@ -376,7 +385,8 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		SetNillableBaseURL(input.BaseURL).
 		SetNillableName(input.Name).
 		SetNillableDefaultTestModel(input.DefaultTestModel).
-		SetNillableOrderingWeight(input.OrderingWeight)
+		SetNillableOrderingWeight(input.OrderingWeight).
+		SetNillableAutoSyncSupportedModels(input.AutoSyncSupportedModels)
 
 	if input.SupportedModels != nil {
 		mut.SetSupportedModels(input.SupportedModels)

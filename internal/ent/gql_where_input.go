@@ -572,6 +572,10 @@ type ChannelWhereInput struct {
 	StatusIn    []channel.Status `json:"statusIn,omitempty"`
 	StatusNotIn []channel.Status `json:"statusNotIn,omitempty"`
 
+	// "auto_sync_supported_models" field predicates.
+	AutoSyncSupportedModels    *bool `json:"autoSyncSupportedModels,omitempty"`
+	AutoSyncSupportedModelsNEQ *bool `json:"autoSyncSupportedModelsNEQ,omitempty"`
+
 	// "default_test_model" field predicates.
 	DefaultTestModel             *string  `json:"defaultTestModel,omitempty"`
 	DefaultTestModelNEQ          *string  `json:"defaultTestModelNEQ,omitempty"`
@@ -922,6 +926,12 @@ func (i *ChannelWhereInput) P() (predicate.Channel, error) {
 	}
 	if len(i.StatusNotIn) > 0 {
 		predicates = append(predicates, channel.StatusNotIn(i.StatusNotIn...))
+	}
+	if i.AutoSyncSupportedModels != nil {
+		predicates = append(predicates, channel.AutoSyncSupportedModelsEQ(*i.AutoSyncSupportedModels))
+	}
+	if i.AutoSyncSupportedModelsNEQ != nil {
+		predicates = append(predicates, channel.AutoSyncSupportedModelsNEQ(*i.AutoSyncSupportedModelsNEQ))
 	}
 	if i.DefaultTestModel != nil {
 		predicates = append(predicates, channel.DefaultTestModelEQ(*i.DefaultTestModel))

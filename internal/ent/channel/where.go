@@ -80,6 +80,11 @@ func Name(v string) predicate.Channel {
 	return predicate.Channel(sql.FieldEQ(FieldName, v))
 }
 
+// AutoSyncSupportedModels applies equality check predicate on the "auto_sync_supported_models" field. It's identical to AutoSyncSupportedModelsEQ.
+func AutoSyncSupportedModels(v bool) predicate.Channel {
+	return predicate.Channel(sql.FieldEQ(FieldAutoSyncSupportedModels, v))
+}
+
 // DefaultTestModel applies equality check predicate on the "default_test_model" field. It's identical to DefaultTestModelEQ.
 func DefaultTestModel(v string) predicate.Channel {
 	return predicate.Channel(sql.FieldEQ(FieldDefaultTestModel, v))
@@ -398,6 +403,16 @@ func StatusIn(vs ...Status) predicate.Channel {
 // StatusNotIn applies the NotIn predicate on the "status" field.
 func StatusNotIn(vs ...Status) predicate.Channel {
 	return predicate.Channel(sql.FieldNotIn(FieldStatus, vs...))
+}
+
+// AutoSyncSupportedModelsEQ applies the EQ predicate on the "auto_sync_supported_models" field.
+func AutoSyncSupportedModelsEQ(v bool) predicate.Channel {
+	return predicate.Channel(sql.FieldEQ(FieldAutoSyncSupportedModels, v))
+}
+
+// AutoSyncSupportedModelsNEQ applies the NEQ predicate on the "auto_sync_supported_models" field.
+func AutoSyncSupportedModelsNEQ(v bool) predicate.Channel {
+	return predicate.Channel(sql.FieldNEQ(FieldAutoSyncSupportedModels, v))
 }
 
 // TagsIsNil applies the IsNil predicate on the "tags" field.

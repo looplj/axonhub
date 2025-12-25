@@ -65,21 +65,22 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 		Type: "Channel",
 		Fields: map[string]*sqlgraph.FieldSpec{
-			channel.FieldCreatedAt:        {Type: field.TypeTime, Column: channel.FieldCreatedAt},
-			channel.FieldUpdatedAt:        {Type: field.TypeTime, Column: channel.FieldUpdatedAt},
-			channel.FieldDeletedAt:        {Type: field.TypeInt, Column: channel.FieldDeletedAt},
-			channel.FieldType:             {Type: field.TypeEnum, Column: channel.FieldType},
-			channel.FieldBaseURL:          {Type: field.TypeString, Column: channel.FieldBaseURL},
-			channel.FieldName:             {Type: field.TypeString, Column: channel.FieldName},
-			channel.FieldStatus:           {Type: field.TypeEnum, Column: channel.FieldStatus},
-			channel.FieldCredentials:      {Type: field.TypeJSON, Column: channel.FieldCredentials},
-			channel.FieldSupportedModels:  {Type: field.TypeJSON, Column: channel.FieldSupportedModels},
-			channel.FieldTags:             {Type: field.TypeJSON, Column: channel.FieldTags},
-			channel.FieldDefaultTestModel: {Type: field.TypeString, Column: channel.FieldDefaultTestModel},
-			channel.FieldSettings:         {Type: field.TypeJSON, Column: channel.FieldSettings},
-			channel.FieldOrderingWeight:   {Type: field.TypeInt, Column: channel.FieldOrderingWeight},
-			channel.FieldErrorMessage:     {Type: field.TypeString, Column: channel.FieldErrorMessage},
-			channel.FieldRemark:           {Type: field.TypeString, Column: channel.FieldRemark},
+			channel.FieldCreatedAt:               {Type: field.TypeTime, Column: channel.FieldCreatedAt},
+			channel.FieldUpdatedAt:               {Type: field.TypeTime, Column: channel.FieldUpdatedAt},
+			channel.FieldDeletedAt:               {Type: field.TypeInt, Column: channel.FieldDeletedAt},
+			channel.FieldType:                    {Type: field.TypeEnum, Column: channel.FieldType},
+			channel.FieldBaseURL:                 {Type: field.TypeString, Column: channel.FieldBaseURL},
+			channel.FieldName:                    {Type: field.TypeString, Column: channel.FieldName},
+			channel.FieldStatus:                  {Type: field.TypeEnum, Column: channel.FieldStatus},
+			channel.FieldCredentials:             {Type: field.TypeJSON, Column: channel.FieldCredentials},
+			channel.FieldSupportedModels:         {Type: field.TypeJSON, Column: channel.FieldSupportedModels},
+			channel.FieldAutoSyncSupportedModels: {Type: field.TypeBool, Column: channel.FieldAutoSyncSupportedModels},
+			channel.FieldTags:                    {Type: field.TypeJSON, Column: channel.FieldTags},
+			channel.FieldDefaultTestModel:        {Type: field.TypeString, Column: channel.FieldDefaultTestModel},
+			channel.FieldSettings:                {Type: field.TypeJSON, Column: channel.FieldSettings},
+			channel.FieldOrderingWeight:          {Type: field.TypeInt, Column: channel.FieldOrderingWeight},
+			channel.FieldErrorMessage:            {Type: field.TypeString, Column: channel.FieldErrorMessage},
+			channel.FieldRemark:                  {Type: field.TypeString, Column: channel.FieldRemark},
 		},
 	}
 	graph.Nodes[2] = &sqlgraph.Node{
@@ -1257,6 +1258,11 @@ func (f *ChannelFilter) WhereCredentials(p entql.BytesP) {
 // WhereSupportedModels applies the entql json.RawMessage predicate on the supported_models field.
 func (f *ChannelFilter) WhereSupportedModels(p entql.BytesP) {
 	f.Where(p.Field(channel.FieldSupportedModels))
+}
+
+// WhereAutoSyncSupportedModels applies the entql bool predicate on the auto_sync_supported_models field.
+func (f *ChannelFilter) WhereAutoSyncSupportedModels(p entql.BoolP) {
+	f.Where(p.Field(channel.FieldAutoSyncSupportedModels))
 }
 
 // WhereTags applies the entql json.RawMessage predicate on the tags field.

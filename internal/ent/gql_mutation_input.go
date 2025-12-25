@@ -58,16 +58,17 @@ func (c *APIKeyUpdateOne) SetInput(i UpdateAPIKeyInput) *APIKeyUpdateOne {
 
 // CreateChannelInput represents a mutation input for creating channels.
 type CreateChannelInput struct {
-	Type             channel.Type
-	BaseURL          *string
-	Name             string
-	Credentials      *objects.ChannelCredentials
-	SupportedModels  []string
-	Tags             []string
-	DefaultTestModel string
-	Settings         *objects.ChannelSettings
-	OrderingWeight   *int
-	Remark           *string
+	Type                    channel.Type
+	BaseURL                 *string
+	Name                    string
+	Credentials             *objects.ChannelCredentials
+	SupportedModels         []string
+	AutoSyncSupportedModels *bool
+	Tags                    []string
+	DefaultTestModel        string
+	Settings                *objects.ChannelSettings
+	OrderingWeight          *int
+	Remark                  *string
 }
 
 // Mutate applies the CreateChannelInput on the ChannelMutation builder.
@@ -82,6 +83,9 @@ func (i *CreateChannelInput) Mutate(m *ChannelMutation) {
 	}
 	if v := i.SupportedModels; v != nil {
 		m.SetSupportedModels(v)
+	}
+	if v := i.AutoSyncSupportedModels; v != nil {
+		m.SetAutoSyncSupportedModels(*v)
 	}
 	if v := i.Tags; v != nil {
 		m.SetTags(v)
@@ -106,24 +110,25 @@ func (c *ChannelCreate) SetInput(i CreateChannelInput) *ChannelCreate {
 
 // UpdateChannelInput represents a mutation input for updating channels.
 type UpdateChannelInput struct {
-	ClearBaseURL          bool
-	BaseURL               *string
-	Name                  *string
-	Status                *channel.Status
-	Credentials           *objects.ChannelCredentials
-	SupportedModels       []string
-	AppendSupportedModels []string
-	ClearTags             bool
-	Tags                  []string
-	AppendTags            []string
-	DefaultTestModel      *string
-	ClearSettings         bool
-	Settings              *objects.ChannelSettings
-	OrderingWeight        *int
-	ClearErrorMessage     bool
-	ErrorMessage          *string
-	ClearRemark           bool
-	Remark                *string
+	ClearBaseURL            bool
+	BaseURL                 *string
+	Name                    *string
+	Status                  *channel.Status
+	Credentials             *objects.ChannelCredentials
+	SupportedModels         []string
+	AppendSupportedModels   []string
+	AutoSyncSupportedModels *bool
+	ClearTags               bool
+	Tags                    []string
+	AppendTags              []string
+	DefaultTestModel        *string
+	ClearSettings           bool
+	Settings                *objects.ChannelSettings
+	OrderingWeight          *int
+	ClearErrorMessage       bool
+	ErrorMessage            *string
+	ClearRemark             bool
+	Remark                  *string
 }
 
 // Mutate applies the UpdateChannelInput on the ChannelMutation builder.
@@ -148,6 +153,9 @@ func (i *UpdateChannelInput) Mutate(m *ChannelMutation) {
 	}
 	if i.AppendSupportedModels != nil {
 		m.AppendSupportedModels(i.SupportedModels)
+	}
+	if v := i.AutoSyncSupportedModels; v != nil {
+		m.SetAutoSyncSupportedModels(*v)
 	}
 	if i.ClearTags {
 		m.ClearTags()

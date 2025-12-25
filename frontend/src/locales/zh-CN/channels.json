@@ -283,7 +283,6 @@
           "required": "请至少添加一个支持的模型",
           "defaultModelsLabel": "快速添加模型",
           "fetchedModelsLabel": "已获取的模型",
-          "largeListHint": "已获取 {{count}} 个模型。使用上方搜索查找特定模型。",
           "showMore": "+{{count}} 个更多",
           "searchPlaceholder": "搜索模型...",
           "showAddedOnly": "仅显示已添加",
@@ -292,6 +291,10 @@
           "clearAllDescription": "确定要清空所有 {{count}} 个模型吗？",
           "willRemove": "将移除",
           "allModels": "全部模型 ({{count}})"
+        },
+        "autoSyncSupportedModels": {
+          "label": "自动同步支持的模型",
+          "description": "每小时自动从提供商 API 同步支持的模型列表"
         },
         "defaultTestModel": {
           "label": "默认测试模型",

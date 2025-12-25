@@ -1,0 +1,54 @@
+name: Sync Model Developers
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch and filter model developers data
+        run: |
+          node scripts/sync-model-developers.js
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet frontend/src/features/models/data/providers.json; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request
+        if: steps.check_changes.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: sync model developers data'
+          title: 'chore: sync model developers data'
+          body: |
+            Automated sync of model developers data from upstream source.
+            
+            Source: https://raw.githubusercontent.com/ThinkInAIXYZ/PublicProviderConf/refs/heads/dev/dist/all.json
+            
+            This PR was automatically created by the weekly sync workflow.
+          branch: sync-model-developers
+          delete-branch: true
+          labels: automated, dependencies

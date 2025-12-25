@@ -128,6 +128,20 @@ func (_u *ChannelUpdate) AppendSupportedModels(v []string) *ChannelUpdate {
 	return _u
 }
 
+// SetAutoSyncSupportedModels sets the "auto_sync_supported_models" field.
+func (_u *ChannelUpdate) SetAutoSyncSupportedModels(v bool) *ChannelUpdate {
+	_u.mutation.SetAutoSyncSupportedModels(v)
+	return _u
+}
+
+// SetNillableAutoSyncSupportedModels sets the "auto_sync_supported_models" field if the given value is not nil.
+func (_u *ChannelUpdate) SetNillableAutoSyncSupportedModels(v *bool) *ChannelUpdate {
+	if v != nil {
+		_u.SetAutoSyncSupportedModels(*v)
+	}
+	return _u
+}
+
 // SetTags sets the "tags" field.
 func (_u *ChannelUpdate) SetTags(v []string) *ChannelUpdate {
 	_u.mutation.SetTags(v)
@@ -473,6 +487,9 @@ func (_u *ChannelUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			sqljson.Append(u, channel.FieldSupportedModels, value)
 		})
 	}
+	if value, ok := _u.mutation.AutoSyncSupportedModels(); ok {
+		_spec.SetField(channel.FieldAutoSyncSupportedModels, field.TypeBool, value)
+	}
 	if value, ok := _u.mutation.Tags(); ok {
 		_spec.SetField(channel.FieldTags, field.TypeJSON, value)
 	}
@@ -787,6 +804,20 @@ func (_u *ChannelUpdateOne) SetSupportedModels(v []string) *ChannelUpdateOne {
 // AppendSupportedModels appends value to the "supported_models" field.
 func (_u *ChannelUpdateOne) AppendSupportedModels(v []string) *ChannelUpdateOne {
 	_u.mutation.AppendSupportedModels(v)
+	return _u
+}
+
+// SetAutoSyncSupportedModels sets the "auto_sync_supported_models" field.
+func (_u *ChannelUpdateOne) SetAutoSyncSupportedModels(v bool) *ChannelUpdateOne {
+	_u.mutation.SetAutoSyncSupportedModels(v)
+	return _u
+}
+
+// SetNillableAutoSyncSupportedModels sets the "auto_sync_supported_models" field if the given value is not nil.
+func (_u *ChannelUpdateOne) SetNillableAutoSyncSupportedModels(v *bool) *ChannelUpdateOne {
+	if v != nil {
+		_u.SetAutoSyncSupportedModels(*v)
+	}
 	return _u
 }
 
@@ -1164,6 +1195,9 @@ func (_u *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err er
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
 			sqljson.Append(u, channel.FieldSupportedModels, value)
 		})
+	}
+	if value, ok := _u.mutation.AutoSyncSupportedModels(); ok {
+		_spec.SetField(channel.FieldAutoSyncSupportedModels, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.Tags(); ok {
 		_spec.SetField(channel.FieldTags, field.TypeJSON, value)
