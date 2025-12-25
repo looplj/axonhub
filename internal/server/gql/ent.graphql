@@ -244,6 +244,7 @@ type Channel implements Node {
   name: String!
   status: ChannelStatus!
   supportedModels: [String!]!
+  autoSyncSupportedModels: Boolean!
   tags: [String!]
   defaultTestModel: String!
   settings: ChannelSettings
@@ -1109,6 +1110,11 @@ input ChannelWhereInput {
   statusIn: [ChannelStatus!]
   statusNotIn: [ChannelStatus!]
   """
+  auto_sync_supported_models field predicates
+  """
+  autoSyncSupportedModels: Boolean
+  autoSyncSupportedModelsNEQ: Boolean
+  """
   default_test_model field predicates
   """
   defaultTestModel: String
@@ -1210,6 +1216,7 @@ input CreateChannelInput {
   name: String!
   credentials: ChannelCredentialsInput
   supportedModels: [String!]!
+  autoSyncSupportedModels: Boolean
   tags: [String!]
   defaultTestModel: String!
   settings: ChannelSettingsInput
@@ -4317,6 +4324,7 @@ input UpdateChannelInput {
   credentials: ChannelCredentialsInput
   supportedModels: [String!]
   appendSupportedModels: [String!]
+  autoSyncSupportedModels: Boolean
   tags: [String!]
   appendTags: [String!]
   clearTags: Boolean

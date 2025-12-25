@@ -201,6 +201,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             baseURL: currentRow.baseURL,
             name: currentRow.name,
             supportedModels: currentRow.supportedModels,
+            autoSyncSupportedModels: currentRow.autoSyncSupportedModels,
             defaultTestModel: currentRow.defaultTestModel,
             tags: currentRow.tags || [],
             credentials: {
@@ -223,6 +224,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               baseURL: duplicateFromRow.baseURL,
               name: duplicateFromRow.name,
               supportedModels: duplicateFromRow.supportedModels,
+              autoSyncSupportedModels: duplicateFromRow.autoSyncSupportedModels,
               defaultTestModel: duplicateFromRow.defaultTestModel,
               tags: duplicateFromRow.tags || [],
               settings: duplicateFromRow.settings ?? undefined,
@@ -1115,6 +1117,31 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               })}
                             </Button>
                           )}
+                        </div>
+
+                        {/* Auto sync checkbox */}
+                        <div className='pt-3'>
+                          <FormField
+                            control={form.control}
+                            name='autoSyncSupportedModels'
+                            render={({ field }) => (
+                              <FormItem className='flex items-center gap-2'>
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                  data-testid='auto-sync-supported-models-checkbox'
+                                />
+                                <div className='space-y-0.5'>
+                                  <FormLabel className='cursor-pointer text-sm font-normal'>
+                                    {t('channels.dialogs.fields.autoSyncSupportedModels.label')}
+                                  </FormLabel>
+                                  <p className='text-muted-foreground text-xs'>
+                                    {t('channels.dialogs.fields.autoSyncSupportedModels.description')}
+                                  </p>
+                                </div>
+                              </FormItem>
+                            )}
+                          />
                         </div>
 
                         {/* Quick add models section */}

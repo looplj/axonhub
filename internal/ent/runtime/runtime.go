@@ -120,16 +120,20 @@ func init() {
 	channelDescCredentials := channelFields[4].Descriptor()
 	// channel.DefaultCredentials holds the default value on creation for the credentials field.
 	channel.DefaultCredentials = channelDescCredentials.Default.(*objects.ChannelCredentials)
+	// channelDescAutoSyncSupportedModels is the schema descriptor for auto_sync_supported_models field.
+	channelDescAutoSyncSupportedModels := channelFields[6].Descriptor()
+	// channel.DefaultAutoSyncSupportedModels holds the default value on creation for the auto_sync_supported_models field.
+	channel.DefaultAutoSyncSupportedModels = channelDescAutoSyncSupportedModels.Default.(bool)
 	// channelDescTags is the schema descriptor for tags field.
-	channelDescTags := channelFields[6].Descriptor()
+	channelDescTags := channelFields[7].Descriptor()
 	// channel.DefaultTags holds the default value on creation for the tags field.
 	channel.DefaultTags = channelDescTags.Default.([]string)
 	// channelDescSettings is the schema descriptor for settings field.
-	channelDescSettings := channelFields[8].Descriptor()
+	channelDescSettings := channelFields[9].Descriptor()
 	// channel.DefaultSettings holds the default value on creation for the settings field.
 	channel.DefaultSettings = channelDescSettings.Default.(*objects.ChannelSettings)
 	// channelDescOrderingWeight is the schema descriptor for ordering_weight field.
-	channelDescOrderingWeight := channelFields[9].Descriptor()
+	channelDescOrderingWeight := channelFields[10].Descriptor()
 	// channel.DefaultOrderingWeight holds the default value on creation for the ordering_weight field.
 	channel.DefaultOrderingWeight = channelDescOrderingWeight.Default.(int)
 	channeloverridetemplateMixin := schema.ChannelOverrideTemplate{}.Mixin()

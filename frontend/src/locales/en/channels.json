@@ -280,7 +280,6 @@
           "required": "Please add at least one supported model",
           "defaultModelsLabel": "Quick Add Models",
           "fetchedModelsLabel": "Fetched Models",
-          "largeListHint": "Fetched {{count}} models. Use the search above to find specific models.",
           "showMore": "+{{count}} more",
           "searchPlaceholder": "Search models...",
           "showAddedOnly": "Show added only",
@@ -289,6 +288,10 @@
           "clearAllTitle": "Clear all supported models?",
           "clearAllDescription": "Are you sure you want to clear all {{count}} models?",
           "willRemove": "Will remove"
+        },
+        "autoSyncSupportedModels": {
+          "label": "Auto-sync supported models",
+          "description": "Automatically sync supported models list every hour from the provider API"
         },
         "defaultTestModel": {
           "label": "Test Model",

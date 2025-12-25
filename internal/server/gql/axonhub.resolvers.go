@@ -10,8 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/samber/lo"
-
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
@@ -23,6 +21,7 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/samber/lo"
 )
 
 // CreateChannel is the resolver for the createChannel field.
@@ -514,7 +513,5 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Segment returns SegmentResolver implementation.
 func (r *Resolver) Segment() SegmentResolver { return &segmentResolver{r} }
 
-type (
-	mutationResolver struct{ *Resolver }
-	segmentResolver  struct{ *Resolver }
-)
+type mutationResolver struct{ *Resolver }
+type segmentResolver struct{ *Resolver }
