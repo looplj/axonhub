@@ -152,6 +152,7 @@ extend type Query {
 
 extend type Mutation {
   createModel(input: CreateModelInput!): Model!
+  bulkCreateModels(inputs: [CreateModelInput!]!): [Model!]!
   updateModel(id: ID!, input: UpdateModelInput!): Model!
   deleteModel(id: ID!): Boolean!
   updateModelStatus(id: ID!, status: ModelStatus!): Boolean!

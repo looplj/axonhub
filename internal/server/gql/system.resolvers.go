@@ -85,6 +85,16 @@ func (r *mutationResolver) CompleteOnboarding(ctx context.Context, input Complet
 	return true, nil
 }
 
+// CompleteSystemModelSettingOnboarding is the resolver for the completeSystemModelSettingOnboarding field.
+func (r *mutationResolver) CompleteSystemModelSettingOnboarding(ctx context.Context, input CompleteSystemModelSettingOnboardingInput) (bool, error) {
+	err := r.systemService.CompleteSystemModelSettingOnboarding(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to complete system model setting onboarding: %w", err)
+	}
+
+	return true, nil
+}
+
 // SystemStatus is the resolver for the systemStatus field.
 func (r *queryResolver) SystemStatus(ctx context.Context) (*SystemStatus, error) {
 	isInitialized, err := r.systemService.IsInitialized(ctx)
@@ -155,13 +165,30 @@ func (r *queryResolver) DefaultDataStorageID(ctx context.Context) (*objects.GUID
 }
 
 // OnboardingInfo is the resolver for the onboardingInfo field.
-func (r *queryResolver) OnboardingInfo(ctx context.Context) (*biz.OnboardingInfo, error) {
+func (r *queryResolver) OnboardingInfo(ctx context.Context) (*OnboardingInfo, error) {
 	info, err := r.systemService.OnboardingInfo(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get onboarding info: %w", err)
 	}
 
-	return info, nil
+	if info == nil {
+		return nil, nil
+	}
+
+	result := &OnboardingInfo{
+		Onboarded:   info.Onboarded,
+		Version:     info.Version,
+		CompletedAt: info.CompletedAt,
+	}
+
+	if info.SystemModelSetting != nil {
+		result.SystemModelSetting = &SystemModelSettingOnboarding{
+			Onboarded:   info.SystemModelSetting.Onboarded,
+			CompletedAt: info.SystemModelSetting.CompletedAt,
+		}
+	}
+
+	return result, nil
 }
 
 // SystemVersion is the resolver for the systemVersion field.

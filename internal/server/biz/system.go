@@ -112,14 +112,20 @@ type ModelSettings struct {
 	QueryAllChannelModels bool `json:"query_all_channel_models"`
 }
 
-// OnboardingInfo represents the onboarding status and version information.
-type OnboardingInfo struct {
-	// Onboarded indicates whether the user has completed onboarding
+// OnboardingRecord represents the onboarding status and version information.
+type OnboardingRecord struct {
+	// Onboarded indicates whether the user has completed onboarding for the system.
 	Onboarded bool `json:"onboarded"`
 	// Version is the system version when onboarding was completed
 	Version string `json:"version"`
 	// CompletedAt is the timestamp when onboarding was completed
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
+
+	// SystemModelSetting tracks the onboarding status for system model configuration
+	SystemModelSetting *struct {
+		Onboarded   bool       `json:"onboarded"`
+		CompletedAt *time.Time `json:"completed_at,omitempty"`
+	} `json:"system_model_setting"`
 }
 
 type SystemServiceParams struct {
@@ -633,7 +639,7 @@ func (s *SystemService) SetVersion(ctx context.Context, version string) error {
 
 // OnboardingInfo retrieves the onboarding information from system settings.
 // Returns nil if not set.
-func (s *SystemService) OnboardingInfo(ctx context.Context) (*OnboardingInfo, error) {
+func (s *SystemService) OnboardingInfo(ctx context.Context) (*OnboardingRecord, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	value, err := s.getSystemValue(ctx, SystemKeyOnboarded)
@@ -645,7 +651,7 @@ func (s *SystemService) OnboardingInfo(ctx context.Context) (*OnboardingInfo, er
 		return nil, fmt.Errorf("failed to get onboarding info: %w", err)
 	}
 
-	var info OnboardingInfo
+	var info OnboardingRecord
 	if err := json.Unmarshal([]byte(value), &info); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal onboarding info: %w", err)
 	}
@@ -654,7 +660,7 @@ func (s *SystemService) OnboardingInfo(ctx context.Context) (*OnboardingInfo, er
 }
 
 // SetOnboardingInfo sets the onboarding information.
-func (s *SystemService) SetOnboardingInfo(ctx context.Context, info *OnboardingInfo) error {
+func (s *SystemService) SetOnboardingInfo(ctx context.Context, info *OnboardingRecord) error {
 	jsonBytes, err := json.Marshal(info)
 	if err != nil {
 		return fmt.Errorf("failed to marshal onboarding info: %w", err)
@@ -690,10 +696,45 @@ func (s *SystemService) CompleteOnboarding(ctx context.Context) error {
 		return fmt.Errorf("failed to get current version: %w", err)
 	}
 
-	info := &OnboardingInfo{
+	existingInfo, err := s.OnboardingInfo(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get existing onboarding info: %w", err)
+	}
+
+	info := &OnboardingRecord{
 		Onboarded:   true,
 		Version:     currentVersion,
 		CompletedAt: lo.ToPtr(time.Now()),
+	}
+
+	if existingInfo != nil && existingInfo.SystemModelSetting != nil {
+		info.SystemModelSetting = existingInfo.SystemModelSetting
+	}
+
+	return s.SetOnboardingInfo(ctx, info)
+}
+
+// CompleteSystemModelSettingOnboarding marks system model setting onboarding as completed.
+func (s *SystemService) CompleteSystemModelSettingOnboarding(ctx context.Context) error {
+	existingInfo, err := s.OnboardingInfo(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get existing onboarding info: %w", err)
+	}
+
+	info := &OnboardingRecord{}
+	if existingInfo != nil {
+		info.Onboarded = existingInfo.Onboarded
+		info.Version = existingInfo.Version
+		info.CompletedAt = existingInfo.CompletedAt
+	}
+
+	now := time.Now()
+	info.SystemModelSetting = &struct {
+		Onboarded   bool       `json:"onboarded"`
+		CompletedAt *time.Time `json:"completed_at,omitempty"`
+	}{
+		Onboarded:   true,
+		CompletedAt: &now,
 	}
 
 	return s.SetOnboardingInfo(ctx, info)

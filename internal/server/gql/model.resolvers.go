@@ -19,6 +19,11 @@ func (r *mutationResolver) CreateModel(ctx context.Context, input ent.CreateMode
 	return r.modelService.CreateModel(ctx, input)
 }
 
+// BulkCreateModels is the resolver for the bulkCreateModels field.
+func (r *mutationResolver) BulkCreateModels(ctx context.Context, inputs []*ent.CreateModelInput) ([]*ent.Model, error) {
+	return r.modelService.BulkCreateModels(ctx, inputs)
+}
+
 // UpdateModel is the resolver for the updateModel field.
 func (r *mutationResolver) UpdateModel(ctx context.Context, id objects.GUID, input ent.UpdateModelInput) (*ent.Model, error) {
 	return r.modelService.UpdateModel(ctx, id.ID, &input)

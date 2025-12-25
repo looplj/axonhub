@@ -158,6 +158,70 @@ const CREATE_MODEL_MUTATION = `
   }
 `
 
+const BULK_CREATE_MODELS_MUTATION = `
+  mutation BulkCreateModels($inputs: [CreateModelInput!]!) {
+    bulkCreateModels(inputs: $inputs) {
+      id
+      createdAt
+      updatedAt
+      developer
+      modelID
+      icon
+      type
+      name
+      group
+      modelCard {
+        reasoning {
+          supported
+          default
+        }
+        toolCall
+        temperature
+        modalities {
+          input
+          output
+        }
+        vision
+        cost {
+          input
+          output
+          cacheRead
+          cacheWrite
+        }
+        limit {
+          context
+          output
+        }
+        knowledge
+        releaseDate
+        lastUpdated
+      }
+      settings {
+        associations {
+          type
+          priority
+          channelModel {
+            channelId
+            modelId
+          }
+          channelRegex {
+            channelId
+            pattern
+          }
+          regex {
+            pattern
+          }
+          modelId {
+            modelId
+          }
+        }
+      }
+      status
+      remark
+    }
+  }
+`
+
 const UPDATE_MODEL_MUTATION = `
   mutation UpdateModel($id: ID!, $input: UpdateModelInput!) {
     updateModel(id: $id, input: $input) {
@@ -228,6 +292,18 @@ const DELETE_MODEL_MUTATION = `
   }
 `
 
+const BULK_DISABLE_MODELS_MUTATION = `
+  mutation BulkDisableModels($ids: [ID!]!) {
+    bulkDisableModels(ids: $ids)
+  }
+`
+
+const BULK_ENABLE_MODELS_MUTATION = `
+  mutation BulkEnableModels($ids: [ID!]!) {
+    bulkEnableModels(ids: $ids)
+  }
+`
+
 interface QueryModelsArgs {
   first?: number
   after?: string
@@ -269,6 +345,25 @@ export function useCreateModel() {
   })
 }
 
+export function useBulkCreateModels() {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (inputs: CreateModelInput[]) => {
+      const data = await graphqlRequest<{ bulkCreateModels: Model[] }>(BULK_CREATE_MODELS_MUTATION, { inputs })
+      return data.bulkCreateModels.map((model) => modelSchema.parse(model))
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['models'] })
+      toast.success(t('models.messages.bulkCreateSuccess', { count: variables.length }))
+    },
+    onError: (error: Error) => {
+      toast.error(t('models.messages.bulkCreateError', { error: error.message }))
+    },
+  })
+}
+
 export function useUpdateModel() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -302,6 +397,44 @@ export function useDeleteModel() {
     },
     onError: (error: Error) => {
       toast.error(t('models.messages.deleteError', { error: error.message }))
+    },
+  })
+}
+
+export function useBulkDisableModels() {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const data = await graphqlRequest<{ bulkDisableModels: boolean }>(BULK_DISABLE_MODELS_MUTATION, { ids })
+      return data.bulkDisableModels
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['models'] })
+      toast.success(t('models.messages.bulkDisableSuccess', { count: variables.length }))
+    },
+    onError: (error: Error) => {
+      toast.error(t('models.messages.bulkDisableError', { error: error.message }))
+    },
+  })
+}
+
+export function useBulkEnableModels() {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const data = await graphqlRequest<{ bulkEnableModels: boolean }>(BULK_ENABLE_MODELS_MUTATION, { ids })
+      return data.bulkEnableModels
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['models'] })
+      toast.success(t('models.messages.bulkEnableSuccess', { count: variables.length }))
+    },
+    onError: (error: Error) => {
+      toast.error(t('models.messages.bulkEnableError', { error: error.message }))
     },
   })
 }

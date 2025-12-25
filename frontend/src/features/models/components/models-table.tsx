@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { format } from 'date-fns'
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -15,13 +16,12 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
+import { IconBan, IconCheck, IconX, IconTrash } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
-import { format } from 'date-fns'
-import { IconCheck, IconX, IconTrash } from '@tabler/icons-react'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ServerSidePagination } from '@/components/server-side-pagination'
 import { useModels } from '../context/models-context'
 import { Model, ModelConnection } from '../data/schema'
@@ -70,9 +70,7 @@ export function ModelsTable({
     setColumnFilters(newColumnFilters)
   }, [nameFilter])
 
-  const handleColumnFiltersChange = (
-    updater: ColumnFiltersState | ((prev: ColumnFiltersState) => ColumnFiltersState)
-  ) => {
+  const handleColumnFiltersChange = (updater: ColumnFiltersState | ((prev: ColumnFiltersState) => ColumnFiltersState)) => {
     const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater
     setColumnFilters(newFilters)
 
@@ -111,10 +109,7 @@ export function ModelsTable({
     manualFiltering: true,
   })
 
-  const filteredSelectedRows = useMemo(
-    () => table.getFilteredSelectedRowModel().rows,
-    [table, rowSelection, data]
-  )
+  const filteredSelectedRows = useMemo(() => table.getFilteredSelectedRowModel().rows, [table, rowSelection, data])
 
   const selectedCount = filteredSelectedRows.length
 
@@ -141,7 +136,7 @@ export function ModelsTable({
       const dataIds = new Set(data.map((model) => model.id))
       const selectedIds = Object.keys(rowSelection)
       const anySelectedIdMissing = selectedIds.some((id) => !dataIds.has(id))
-      
+
       if (anySelectedIdMissing) {
         setRowSelection({})
       }
@@ -150,7 +145,7 @@ export function ModelsTable({
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
-      <div className='flex items-center justify-between mb-4'>
+      <div className='mb-4 flex items-center justify-between'>
         <div className='flex flex-1 items-center space-x-2'>
           <Input
             placeholder={t('models.filters.filterByName')}
@@ -161,18 +156,14 @@ export function ModelsTable({
         </div>
       </div>
 
-      <div className='flex-1 overflow-auto rounded-md border relative'>
+      <div className='relative flex-1 overflow-auto rounded-md border'>
         <Table data-testid='models-table'>
           <TableHeader className='bg-background sticky top-0 z-10'>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className='group/row'>
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead
-                      key={header.id}
-                      colSpan={header.colSpan}
-                      className={header.column.columnDef.meta?.className ?? ''}
-                    >
+                    <TableHead key={header.id} colSpan={header.colSpan} className={header.column.columnDef.meta?.className ?? ''}>
                       {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
                   )
@@ -208,11 +199,11 @@ export function ModelsTable({
                                     <span className='text-muted-foreground'>{t('models.columns.modelId')}:</span>
                                     <span className='font-mono text-xs'>{model.modelID}</span>
                                   </div>
-                                  <div className='flex justify-between items-center'>
+                                  <div className='flex items-center justify-between'>
                                     <span className='text-muted-foreground'>{t('models.columns.developer')}:</span>
                                     <Badge variant='outline'>{model.developer}</Badge>
                                   </div>
-                                  <div className='flex justify-between items-center'>
+                                  <div className='flex items-center justify-between'>
                                     <span className='text-muted-foreground'>{t('models.columns.group')}:</span>
                                     <span>{model.group}</span>
                                   </div>
@@ -239,15 +230,15 @@ export function ModelsTable({
                               <div className='space-y-3'>
                                 <h4 className='text-sm font-semibold'>{t('models.expandedRow.capabilities')}</h4>
                                 <div className='space-y-2 text-sm'>
-                                  <div className='flex justify-between items-center'>
+                                  <div className='flex items-center justify-between'>
                                     <span className='text-muted-foreground'>{t('models.modelCard.toolCall')}:</span>
                                     <span>{modelCard?.toolCall ? <IconCheck className='h-4 w-4 text-green-600' /> : '-'}</span>
                                   </div>
-                                  <div className='flex justify-between items-center'>
+                                  <div className='flex items-center justify-between'>
                                     <span className='text-muted-foreground'>{t('models.modelCard.vision')}:</span>
                                     <span>{modelCard?.vision ? <IconCheck className='h-4 w-4 text-green-600' /> : '-'}</span>
                                   </div>
-                                  <div className='flex justify-between items-center'>
+                                  <div className='flex items-center justify-between'>
                                     <span className='text-muted-foreground'>{t('models.modelCard.temperature')}:</span>
                                     <span>{modelCard?.temperature ? <IconCheck className='h-4 w-4 text-green-600' /> : '-'}</span>
                                   </div>
@@ -255,13 +246,17 @@ export function ModelsTable({
                                   <div className='space-y-1'>
                                     <span className='text-muted-foreground'>{t('models.modelCard.reasoning')}:</span>
                                     <div className='ml-4 space-y-1'>
-                                      <div className='flex justify-between items-center'>
+                                      <div className='flex items-center justify-between'>
                                         <span className='text-muted-foreground text-xs'>{t('models.modelCard.reasoningSupported')}:</span>
-                                        <span>{modelCard?.reasoning?.supported ? <IconCheck className='h-4 w-4 text-green-600' /> : '-'}</span>
+                                        <span>
+                                          {modelCard?.reasoning?.supported ? <IconCheck className='h-4 w-4 text-green-600' /> : '-'}
+                                        </span>
                                       </div>
-                                      <div className='flex justify-between items-center'>
+                                      <div className='flex items-center justify-between'>
                                         <span className='text-muted-foreground text-xs'>{t('models.modelCard.reasoningDefault')}:</span>
-                                        <span>{modelCard?.reasoning?.default ? <IconCheck className='h-4 w-4 text-green-600' /> : '-'}</span>
+                                        <span>
+                                          {modelCard?.reasoning?.default ? <IconCheck className='h-4 w-4 text-green-600' /> : '-'}
+                                        </span>
                                       </div>
                                     </div>
                                   </div>
@@ -270,7 +265,7 @@ export function ModelsTable({
                             </div>
 
                             {/* Middle Section: Modalities + Limits (left) | Cost (right) */}
-                            <div className='grid grid-cols-1 gap-6 md:grid-cols-2 border-t pt-4'>
+                            <div className='grid grid-cols-1 gap-6 border-t pt-4 md:grid-cols-2'>
                               {/* Left: Modalities + Limits */}
                               <div className='space-y-4'>
                                 {/* Modalities */}
@@ -280,21 +275,25 @@ export function ModelsTable({
                                     <div className='flex items-start gap-2'>
                                       <span className='text-muted-foreground shrink-0'>{t('models.modelCard.input')}:</span>
                                       <div className='flex flex-wrap gap-1'>
-                                        {modelCard?.modalities?.input?.length ? (
-                                          modelCard.modalities.input.map((m) => (
-                                            <Badge key={m} variant='outline' className='text-xs'>{m}</Badge>
-                                          ))
-                                        ) : '-'}
+                                        {modelCard?.modalities?.input?.length
+                                          ? modelCard.modalities.input.map((m) => (
+                                              <Badge key={m} variant='outline' className='text-xs'>
+                                                {m}
+                                              </Badge>
+                                            ))
+                                          : '-'}
                                       </div>
                                     </div>
                                     <div className='flex items-start gap-2'>
                                       <span className='text-muted-foreground shrink-0'>{t('models.modelCard.output')}:</span>
                                       <div className='flex flex-wrap gap-1'>
-                                        {modelCard?.modalities?.output?.length ? (
-                                          modelCard.modalities.output.map((m) => (
-                                            <Badge key={m} variant='outline' className='text-xs'>{m}</Badge>
-                                          ))
-                                        ) : '-'}
+                                        {modelCard?.modalities?.output?.length
+                                          ? modelCard.modalities.output.map((m) => (
+                                              <Badge key={m} variant='outline' className='text-xs'>
+                                                {m}
+                                              </Badge>
+                                            ))
+                                          : '-'}
                                       </div>
                                     </div>
                                   </div>
@@ -346,7 +345,7 @@ export function ModelsTable({
 
                             {/* Bottom Section: Dates */}
                             <div className='border-t pt-4'>
-                              <h4 className='text-sm font-semibold mb-3'>{t('models.modelCard.dates')}</h4>
+                              <h4 className='mb-3 text-sm font-semibold'>{t('models.modelCard.dates')}</h4>
                               <div className='flex gap-6 text-sm'>
                                 <div className='flex gap-2'>
                                   <span className='text-muted-foreground'>{t('models.modelCard.knowledge')}:</span>
@@ -394,29 +393,41 @@ export function ModelsTable({
       </div>
 
       {selectedCount > 0 && (
-        <div className='fixed bottom-6 left-1/2 -translate-x-1/2 z-50'>
-          <div className='flex items-center gap-2 rounded-lg border bg-background px-4 py-2 shadow-lg'>
-            <Button
-              variant='ghost'
-              size='icon'
-              className='h-8 w-8'
-              onClick={() => setRowSelection({})}
-            >
+        <div className='fixed bottom-6 left-1/2 z-50 -translate-x-1/2'>
+          <div className='bg-background flex items-center gap-2 rounded-lg border px-4 py-2 shadow-lg'>
+            <div className='bg-border mx-2 h-6 w-px' />
+            <Button variant='ghost' size='icon' className='h-8 w-8' onClick={() => setRowSelection({})}>
               <IconX className='h-4 w-4' />
             </Button>
             <div className='flex items-center gap-1.5 px-2'>
-              <span className='flex h-6 min-w-6 items-center justify-center rounded bg-primary px-1.5 text-xs font-medium text-primary-foreground'>
+              <span className='bg-primary text-primary-foreground flex h-6 min-w-6 items-center justify-center rounded px-1.5 text-xs font-medium'>
                 {selectedCount}
               </span>
-              <span className='text-sm text-muted-foreground'>
-                {t('common.selected')}
-              </span>
+              <span className='text-muted-foreground text-sm'>{t('common.selected')}</span>
             </div>
-            <div className='mx-2 h-6 w-px bg-border' />
+            <div className='bg-border mx-2 h-6 w-px' />
             <Button
               variant='ghost'
               size='icon'
-              className='h-8 w-8 text-destructive hover:bg-red-100 hover:text-red-700'
+              className='h-8 w-8 text-green-600 hover:bg-green-100 hover:text-green-700'
+              onClick={() => setOpen('bulkEnable')}
+              title={t('common.buttons.enable')}
+            >
+              <IconCheck className='h-4 w-4' />
+            </Button>
+            <Button
+              variant='ghost'
+              size='icon'
+              className='h-8 w-8 text-amber-600 hover:bg-amber-100 hover:text-amber-700'
+              onClick={() => setOpen('bulkDisable')}
+              title={t('common.buttons.disable')}
+            >
+              <IconBan className='h-4 w-4' />
+            </Button>
+            <Button
+              variant='ghost'
+              size='icon'
+              className='text-destructive h-8 w-8 hover:bg-red-100 hover:text-red-700'
               onClick={() => setOpen('delete')}
               title={t('common.buttons.delete')}
             >

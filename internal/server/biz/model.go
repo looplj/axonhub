@@ -80,6 +80,74 @@ func (svc *ModelService) CreateModel(ctx context.Context, input ent.CreateModelI
 	return model, nil
 }
 
+// BulkCreateModels creates multiple models with the provided inputs.
+func (svc *ModelService) BulkCreateModels(ctx context.Context, inputs []*ent.CreateModelInput) ([]*ent.Model, error) {
+	// Check for duplicates in the input
+	inputMap := make(map[string]bool)
+
+	for _, input := range inputs {
+		key := fmt.Sprintf("%s:%s", input.Developer, input.ModelID)
+		if inputMap[key] {
+			return nil, fmt.Errorf("duplicate model in input: developer '%s' and modelId '%s'", input.Developer, input.ModelID)
+		}
+
+		inputMap[key] = true
+	}
+
+	// Check if any models already exist
+	existingModels, err := svc.entFromContext(ctx).Model.Query().
+		Where(func(s *sql.Selector) {
+			var predicates []*sql.Predicate
+			for _, input := range inputs {
+				predicates = append(predicates, sql.And(
+					sql.EQ(model.FieldDeveloper, input.Developer),
+					sql.EQ(model.FieldModelID, input.ModelID),
+				))
+			}
+
+			s.Where(sql.Or(predicates...))
+		}).
+		All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check existing models: %w", err)
+	}
+
+	if len(existingModels) > 0 {
+		existingKeys := lo.Map(existingModels, func(m *ent.Model, _ int) string {
+			return fmt.Sprintf("%s:%s", m.Developer, m.ModelID)
+		})
+
+		return nil, fmt.Errorf("models already exist: %v", existingKeys)
+	}
+
+	// Create all models in a transaction
+	bulk := make([]*ent.ModelCreate, len(inputs))
+	for i, input := range inputs {
+		createBuilder := svc.entFromContext(ctx).Model.Create().
+			SetDeveloper(input.Developer).
+			SetModelID(input.ModelID).
+			SetIcon(input.Icon).
+			SetType(*input.Type).
+			SetName(input.Name).
+			SetGroup(input.Group).
+			SetModelCard(input.ModelCard).
+			SetSettings(input.Settings)
+
+		if input.Remark != nil {
+			createBuilder.SetRemark(*input.Remark)
+		}
+
+		bulk[i] = createBuilder
+	}
+
+	models, err := svc.entFromContext(ctx).Model.CreateBulk(bulk...).Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to bulk create models: %w", err)
+	}
+
+	return models, nil
+}
+
 // UpdateModel updates an existing model with the provided input.
 func (svc *ModelService) UpdateModel(ctx context.Context, id int, input *ent.UpdateModelInput) (*ent.Model, error) {
 	mut := svc.entFromContext(ctx).Model.UpdateOneID(id).

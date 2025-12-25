@@ -3,11 +3,14 @@ import { Model } from '../data/schema'
 
 type DialogType =
   | 'create'
+  | 'batchCreate'
   | 'edit'
   | 'delete'
   | 'archive'
   | 'association'
   | 'settings'
+  | 'bulkEnable'
+  | 'bulkDisable'
   | null
 
 interface ModelsContextType {

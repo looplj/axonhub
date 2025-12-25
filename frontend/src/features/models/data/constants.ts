@@ -1,15 +1,15 @@
 export const DEVELOPER_IDS = [
   'deepseek',
+  'zai',
   'openai',
+  'moonshot',
   'anthropic',
   'google',
-  'moonshot',
   'minimax',
   'xiaomi',
   'longcat',
   'mistral',
   'xai',
-  'zai',
 ]
 
 export const DEVELOPER_ICONS: Record<string, string> = {

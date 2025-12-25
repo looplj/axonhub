@@ -38,6 +38,7 @@
     },
     "actions": {
       "create": "添加模型",
+      "bulkAdd": "批量添加",
       "addAssociation": "添加",
       "manageAssociation": "管理关联",
       "settings": "设置"
@@ -69,6 +70,14 @@
       "edit": {
         "title": "编辑模型",
         "description": "更新模型配置和设置"
+      },
+      "batchCreate": {
+        "title": "批量添加模型",
+        "description": "通过输入模型 ID 一次添加多个模型",
+        "addRow": "添加行",
+        "required": "必填",
+        "validationError": "请填写每行的所有必填字段（开发者、模型 ID、名称、图标）",
+        "maxRowsReached": "最多允许添加 {{max}} 行"
       },
       "delete": {
         "title": "删除模型",
@@ -120,6 +129,16 @@
         "disableTitle": "禁用模型",
         "disableDescription": "确定要禁用 {{name}} 吗？"
       },
+      "bulkDisable": {
+        "title": "批量禁用模型",
+        "description": "确定要禁用 {{count}} 个模型吗？",
+        "warning": "禁用的模型将不会用于 AI 请求，直到重新启用。"
+      },
+      "bulkEnable": {
+        "title": "批量启用模型",
+        "description": "确定要启用 {{count}} 个模型吗？",
+        "warning": "启用模型后将允许它们用于 AI 请求。"
+      },
       "settings": {
         "title": "模型设置",
         "description": "配置全局模型相关设置",
@@ -168,10 +187,41 @@
     "messages": {
       "createSuccess": "模型创建成功",
       "createError": "创建模型失败：{{error}}",
+      "bulkCreateSuccess": "已成功创建 {{count}} 个模型",
+      "bulkCreateError": "批量创建模型失败：{{error}}",
       "updateSuccess": "模型更新成功",
       "updateError": "更新模型失败：{{error}}",
       "deleteSuccess": "模型删除成功",
-      "deleteError": "删除模型失败：{{error}}"
+      "deleteError": "删除模型失败：{{error}}",
+      "bulkDisableSuccess": "已成功禁用 {{count}} 个模型",
+      "bulkDisableError": "禁用模型失败：{{error}}",
+      "bulkEnableSuccess": "已成功启用 {{count}} 个模型",
+      "bulkEnableError": "启用模型失败：{{error}}"
+    },
+    "onboarding": {
+      "title": "欢迎来到模型管理",
+      "description": "让我们快速了解一下模型设置功能",
+      "startTour": "开始导览",
+      "skipTour": "跳过导览",
+      "completeTour": "导览完成！",
+      "steps": {
+        "welcome": {
+          "title": "模型管理",
+          "description": "这里是管理所有 AI 模型的地方。您可以配置模型关联、设置等。"
+        },
+        "settingsButton": {
+          "title": "模型设置",
+          "description": "点击这里访问全局模型设置。让我们一起探索您可以配置的内容。"
+        },
+        "fallbackEnabled": {
+          "title": "回退到渠道",
+          "description": "启用后，如果请求的模型在模型关联中找不到，系统将尝试直接查找支持该请求模型的已启用渠道。"
+        },
+        "queryAllChannelModels": {
+          "title": "查询所有渠道模型",
+          "description": "启用后，模型 API 将返回所有已启用渠道的模型。禁用后，仅返回具有显式模型实体配置的模型。"
+        }
+      }
     }
   }
 }

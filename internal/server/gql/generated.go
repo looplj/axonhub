@@ -458,64 +458,67 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		AddUserToProject              func(childComplexity int, input AddUserToProjectInput) int
-		ApplyChannelOverrideTemplate  func(childComplexity int, input ApplyChannelOverrideTemplateInput) int
-		BulkArchiveAPIKeys            func(childComplexity int, ids []*objects.GUID) int
-		BulkArchiveChannels           func(childComplexity int, ids []*objects.GUID) int
-		BulkArchiveModels             func(childComplexity int, ids []*objects.GUID) int
-		BulkCreateChannels            func(childComplexity int, input biz.BulkCreateChannelsInput) int
-		BulkDeleteChannels            func(childComplexity int, ids []*objects.GUID) int
-		BulkDeleteModels              func(childComplexity int, ids []*objects.GUID) int
-		BulkDeleteRoles               func(childComplexity int, ids []*objects.GUID) int
-		BulkDisableAPIKeys            func(childComplexity int, ids []*objects.GUID) int
-		BulkDisableChannels           func(childComplexity int, ids []*objects.GUID) int
-		BulkDisableModels             func(childComplexity int, ids []*objects.GUID) int
-		BulkEnableChannels            func(childComplexity int, ids []*objects.GUID) int
-		BulkEnableModels              func(childComplexity int, ids []*objects.GUID) int
-		BulkImportChannels            func(childComplexity int, input BulkImportChannelsInput) int
-		BulkUpdateChannelOrdering     func(childComplexity int, input BulkUpdateChannelOrderingInput) int
-		CompleteOnboarding            func(childComplexity int, input CompleteOnboardingInput) int
-		CreateAPIKey                  func(childComplexity int, input ent.CreateAPIKeyInput) int
-		CreateChannel                 func(childComplexity int, input ent.CreateChannelInput) int
-		CreateChannelOverrideTemplate func(childComplexity int, input ent.CreateChannelOverrideTemplateInput) int
-		CreateDataStorage             func(childComplexity int, input ent.CreateDataStorageInput) int
-		CreateModel                   func(childComplexity int, input ent.CreateModelInput) int
-		CreateProject                 func(childComplexity int, input ent.CreateProjectInput) int
-		CreateRole                    func(childComplexity int, input ent.CreateRoleInput) int
-		CreateUser                    func(childComplexity int, input ent.CreateUserInput) int
-		DeleteChannel                 func(childComplexity int, id objects.GUID) int
-		DeleteChannelOverrideTemplate func(childComplexity int, id objects.GUID) int
-		DeleteModel                   func(childComplexity int, id objects.GUID) int
-		DeleteRole                    func(childComplexity int, id objects.GUID) int
-		RemoveUserFromProject         func(childComplexity int, input RemoveUserFromProjectInput) int
-		TestChannel                   func(childComplexity int, input TestChannelInput) int
-		UpdateAPIKey                  func(childComplexity int, id objects.GUID, input ent.UpdateAPIKeyInput) int
-		UpdateAPIKeyProfiles          func(childComplexity int, id objects.GUID, input objects.APIKeyProfiles) int
-		UpdateAPIKeyStatus            func(childComplexity int, id objects.GUID, status apikey.Status) int
-		UpdateBrandSettings           func(childComplexity int, input UpdateBrandSettingsInput) int
-		UpdateChannel                 func(childComplexity int, id objects.GUID, input ent.UpdateChannelInput) int
-		UpdateChannelOverrideTemplate func(childComplexity int, id objects.GUID, input ent.UpdateChannelOverrideTemplateInput) int
-		UpdateChannelStatus           func(childComplexity int, id objects.GUID, status channel.Status) int
-		UpdateDataStorage             func(childComplexity int, id objects.GUID, input ent.UpdateDataStorageInput) int
-		UpdateDefaultDataStorage      func(childComplexity int, input UpdateDefaultDataStorageInput) int
-		UpdateMe                      func(childComplexity int, input UpdateMeInput) int
-		UpdateModel                   func(childComplexity int, id objects.GUID, input ent.UpdateModelInput) int
-		UpdateModelStatus             func(childComplexity int, id objects.GUID, status model.Status) int
-		UpdateProject                 func(childComplexity int, id objects.GUID, input ent.UpdateProjectInput) int
-		UpdateProjectStatus           func(childComplexity int, id objects.GUID, status project.Status) int
-		UpdateProjectUser             func(childComplexity int, input UpdateProjectUserInput) int
-		UpdateRetryPolicy             func(childComplexity int, input biz.RetryPolicy) int
-		UpdateRole                    func(childComplexity int, id objects.GUID, input ent.UpdateRoleInput) int
-		UpdateStoragePolicy           func(childComplexity int, input biz.StoragePolicy) int
-		UpdateSystemModelSettings     func(childComplexity int, input biz.ModelSettings) int
-		UpdateUser                    func(childComplexity int, id objects.GUID, input ent.UpdateUserInput) int
-		UpdateUserStatus              func(childComplexity int, id objects.GUID, status user.Status) int
+		AddUserToProject                     func(childComplexity int, input AddUserToProjectInput) int
+		ApplyChannelOverrideTemplate         func(childComplexity int, input ApplyChannelOverrideTemplateInput) int
+		BulkArchiveAPIKeys                   func(childComplexity int, ids []*objects.GUID) int
+		BulkArchiveChannels                  func(childComplexity int, ids []*objects.GUID) int
+		BulkArchiveModels                    func(childComplexity int, ids []*objects.GUID) int
+		BulkCreateChannels                   func(childComplexity int, input biz.BulkCreateChannelsInput) int
+		BulkCreateModels                     func(childComplexity int, inputs []*ent.CreateModelInput) int
+		BulkDeleteChannels                   func(childComplexity int, ids []*objects.GUID) int
+		BulkDeleteModels                     func(childComplexity int, ids []*objects.GUID) int
+		BulkDeleteRoles                      func(childComplexity int, ids []*objects.GUID) int
+		BulkDisableAPIKeys                   func(childComplexity int, ids []*objects.GUID) int
+		BulkDisableChannels                  func(childComplexity int, ids []*objects.GUID) int
+		BulkDisableModels                    func(childComplexity int, ids []*objects.GUID) int
+		BulkEnableChannels                   func(childComplexity int, ids []*objects.GUID) int
+		BulkEnableModels                     func(childComplexity int, ids []*objects.GUID) int
+		BulkImportChannels                   func(childComplexity int, input BulkImportChannelsInput) int
+		BulkUpdateChannelOrdering            func(childComplexity int, input BulkUpdateChannelOrderingInput) int
+		CompleteOnboarding                   func(childComplexity int, input CompleteOnboardingInput) int
+		CompleteSystemModelSettingOnboarding func(childComplexity int, input CompleteSystemModelSettingOnboardingInput) int
+		CreateAPIKey                         func(childComplexity int, input ent.CreateAPIKeyInput) int
+		CreateChannel                        func(childComplexity int, input ent.CreateChannelInput) int
+		CreateChannelOverrideTemplate        func(childComplexity int, input ent.CreateChannelOverrideTemplateInput) int
+		CreateDataStorage                    func(childComplexity int, input ent.CreateDataStorageInput) int
+		CreateModel                          func(childComplexity int, input ent.CreateModelInput) int
+		CreateProject                        func(childComplexity int, input ent.CreateProjectInput) int
+		CreateRole                           func(childComplexity int, input ent.CreateRoleInput) int
+		CreateUser                           func(childComplexity int, input ent.CreateUserInput) int
+		DeleteChannel                        func(childComplexity int, id objects.GUID) int
+		DeleteChannelOverrideTemplate        func(childComplexity int, id objects.GUID) int
+		DeleteModel                          func(childComplexity int, id objects.GUID) int
+		DeleteRole                           func(childComplexity int, id objects.GUID) int
+		RemoveUserFromProject                func(childComplexity int, input RemoveUserFromProjectInput) int
+		TestChannel                          func(childComplexity int, input TestChannelInput) int
+		UpdateAPIKey                         func(childComplexity int, id objects.GUID, input ent.UpdateAPIKeyInput) int
+		UpdateAPIKeyProfiles                 func(childComplexity int, id objects.GUID, input objects.APIKeyProfiles) int
+		UpdateAPIKeyStatus                   func(childComplexity int, id objects.GUID, status apikey.Status) int
+		UpdateBrandSettings                  func(childComplexity int, input UpdateBrandSettingsInput) int
+		UpdateChannel                        func(childComplexity int, id objects.GUID, input ent.UpdateChannelInput) int
+		UpdateChannelOverrideTemplate        func(childComplexity int, id objects.GUID, input ent.UpdateChannelOverrideTemplateInput) int
+		UpdateChannelStatus                  func(childComplexity int, id objects.GUID, status channel.Status) int
+		UpdateDataStorage                    func(childComplexity int, id objects.GUID, input ent.UpdateDataStorageInput) int
+		UpdateDefaultDataStorage             func(childComplexity int, input UpdateDefaultDataStorageInput) int
+		UpdateMe                             func(childComplexity int, input UpdateMeInput) int
+		UpdateModel                          func(childComplexity int, id objects.GUID, input ent.UpdateModelInput) int
+		UpdateModelStatus                    func(childComplexity int, id objects.GUID, status model.Status) int
+		UpdateProject                        func(childComplexity int, id objects.GUID, input ent.UpdateProjectInput) int
+		UpdateProjectStatus                  func(childComplexity int, id objects.GUID, status project.Status) int
+		UpdateProjectUser                    func(childComplexity int, input UpdateProjectUserInput) int
+		UpdateRetryPolicy                    func(childComplexity int, input biz.RetryPolicy) int
+		UpdateRole                           func(childComplexity int, id objects.GUID, input ent.UpdateRoleInput) int
+		UpdateStoragePolicy                  func(childComplexity int, input biz.StoragePolicy) int
+		UpdateSystemModelSettings            func(childComplexity int, input biz.ModelSettings) int
+		UpdateUser                           func(childComplexity int, id objects.GUID, input ent.UpdateUserInput) int
+		UpdateUserStatus                     func(childComplexity int, id objects.GUID, status user.Status) int
 	}
 
 	OnboardingInfo struct {
-		CompletedAt func(childComplexity int) int
-		Onboarded   func(childComplexity int) int
-		Version     func(childComplexity int) int
+		CompletedAt        func(childComplexity int) int
+		Onboarded          func(childComplexity int) int
+		SystemModelSetting func(childComplexity int) int
+		Version            func(childComplexity int) int
 	}
 
 	PageInfo struct {
@@ -857,6 +860,11 @@ type ComplexityRoot struct {
 		Node   func(childComplexity int) int
 	}
 
+	SystemModelSettingOnboarding struct {
+		CompletedAt func(childComplexity int) int
+		Onboarded   func(childComplexity int) int
+	}
+
 	SystemModelSettings struct {
 		FallbackToChannelsOnModelNotFound func(childComplexity int) int
 		QueryAllChannelModels             func(childComplexity int) int
@@ -1140,7 +1148,9 @@ type MutationResolver interface {
 	UpdateSystemModelSettings(ctx context.Context, input biz.ModelSettings) (bool, error)
 	UpdateDefaultDataStorage(ctx context.Context, input UpdateDefaultDataStorageInput) (bool, error)
 	CompleteOnboarding(ctx context.Context, input CompleteOnboardingInput) (bool, error)
+	CompleteSystemModelSettingOnboarding(ctx context.Context, input CompleteSystemModelSettingOnboardingInput) (bool, error)
 	CreateModel(ctx context.Context, input ent.CreateModelInput) (*ent.Model, error)
+	BulkCreateModels(ctx context.Context, inputs []*ent.CreateModelInput) ([]*ent.Model, error)
 	UpdateModel(ctx context.Context, id objects.GUID, input ent.UpdateModelInput) (*ent.Model, error)
 	DeleteModel(ctx context.Context, id objects.GUID) (bool, error)
 	UpdateModelStatus(ctx context.Context, id objects.GUID, status model.Status) (bool, error)
@@ -1192,7 +1202,7 @@ type QueryResolver interface {
 	RetryPolicy(ctx context.Context) (*biz.RetryPolicy, error)
 	SystemModelSettings(ctx context.Context) (*biz.ModelSettings, error)
 	DefaultDataStorageID(ctx context.Context) (*objects.GUID, error)
-	OnboardingInfo(ctx context.Context) (*biz.OnboardingInfo, error)
+	OnboardingInfo(ctx context.Context) (*OnboardingInfo, error)
 	SystemVersion(ctx context.Context) (*build.Info, error)
 	CheckForUpdate(ctx context.Context) (*VersionCheck, error)
 	QueryModelChannelConnections(ctx context.Context, associations []*objects.ModelAssociation) ([]*biz.ModelChannelConnection, error)
@@ -2796,6 +2806,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.BulkCreateChannels(childComplexity, args["input"].(biz.BulkCreateChannelsInput)), true
+	case "Mutation.bulkCreateModels":
+		if e.complexity.Mutation.BulkCreateModels == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_bulkCreateModels_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.BulkCreateModels(childComplexity, args["inputs"].([]*ent.CreateModelInput)), true
 	case "Mutation.bulkDeleteChannels":
 		if e.complexity.Mutation.BulkDeleteChannels == nil {
 			break
@@ -2917,6 +2938,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.CompleteOnboarding(childComplexity, args["input"].(CompleteOnboardingInput)), true
+	case "Mutation.completeSystemModelSettingOnboarding":
+		if e.complexity.Mutation.CompleteSystemModelSettingOnboarding == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_completeSystemModelSettingOnboarding_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CompleteSystemModelSettingOnboarding(childComplexity, args["input"].(CompleteSystemModelSettingOnboardingInput)), true
 	case "Mutation.createAPIKey":
 		if e.complexity.Mutation.CreateAPIKey == nil {
 			break
@@ -3315,6 +3347,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.OnboardingInfo.Onboarded(childComplexity), true
+	case "OnboardingInfo.systemModelSetting":
+		if e.complexity.OnboardingInfo.SystemModelSetting == nil {
+			break
+		}
+
+		return e.complexity.OnboardingInfo.SystemModelSetting(childComplexity), true
 	case "OnboardingInfo.version":
 		if e.complexity.OnboardingInfo.Version == nil {
 			break
@@ -4846,6 +4884,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.SystemEdge.Node(childComplexity), true
 
+	case "SystemModelSettingOnboarding.completedAt":
+		if e.complexity.SystemModelSettingOnboarding.CompletedAt == nil {
+			break
+		}
+
+		return e.complexity.SystemModelSettingOnboarding.CompletedAt(childComplexity), true
+	case "SystemModelSettingOnboarding.onboarded":
+		if e.complexity.SystemModelSettingOnboarding.Onboarded == nil {
+			break
+		}
+
+		return e.complexity.SystemModelSettingOnboarding.Onboarded(childComplexity), true
+
 	case "SystemModelSettings.fallbackToChannelsOnModelNotFound":
 		if e.complexity.SystemModelSettings.FallbackToChannelsOnModelNotFound == nil {
 			break
@@ -5788,6 +5839,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputChannelWhereInput,
 		ec.unmarshalInputCleanupOptionInput,
 		ec.unmarshalInputCompleteOnboardingInput,
+		ec.unmarshalInputCompleteSystemModelSettingOnboardingInput,
 		ec.unmarshalInputCountChannelsByTypeInput,
 		ec.unmarshalInputCreateAPIKeyInput,
 		ec.unmarshalInputCreateChannelInput,
@@ -6277,6 +6329,17 @@ func (ec *executionContext) field_Mutation_bulkCreateChannels_args(ctx context.C
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_bulkCreateModels_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "inputs", ec.unmarshalNCreateModelInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐCreateModelInputᚄ)
+	if err != nil {
+		return nil, err
+	}
+	args["inputs"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_bulkDeleteChannels_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -6391,6 +6454,17 @@ func (ec *executionContext) field_Mutation_completeOnboarding_args(ctx context.C
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCompleteOnboardingInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐCompleteOnboardingInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_completeSystemModelSettingOnboarding_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCompleteSystemModelSettingOnboardingInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐCompleteSystemModelSettingOnboardingInput)
 	if err != nil {
 		return nil, err
 	}
@@ -18115,6 +18189,47 @@ func (ec *executionContext) fieldContext_Mutation_completeOnboarding(ctx context
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_completeSystemModelSettingOnboarding(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_completeSystemModelSettingOnboarding,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().CompleteSystemModelSettingOnboarding(ctx, fc.Args["input"].(CompleteSystemModelSettingOnboardingInput))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_completeSystemModelSettingOnboarding(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_completeSystemModelSettingOnboarding_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_createModel(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -18180,6 +18295,77 @@ func (ec *executionContext) fieldContext_Mutation_createModel(ctx context.Contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_createModel_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_bulkCreateModels(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_bulkCreateModels,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().BulkCreateModels(ctx, fc.Args["inputs"].([]*ent.CreateModelInput))
+		},
+		nil,
+		ec.marshalNModel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐModelᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_bulkCreateModels(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Model_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Model_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Model_updatedAt(ctx, field)
+			case "deletedAt":
+				return ec.fieldContext_Model_deletedAt(ctx, field)
+			case "developer":
+				return ec.fieldContext_Model_developer(ctx, field)
+			case "modelID":
+				return ec.fieldContext_Model_modelID(ctx, field)
+			case "type":
+				return ec.fieldContext_Model_type(ctx, field)
+			case "name":
+				return ec.fieldContext_Model_name(ctx, field)
+			case "icon":
+				return ec.fieldContext_Model_icon(ctx, field)
+			case "group":
+				return ec.fieldContext_Model_group(ctx, field)
+			case "modelCard":
+				return ec.fieldContext_Model_modelCard(ctx, field)
+			case "settings":
+				return ec.fieldContext_Model_settings(ctx, field)
+			case "status":
+				return ec.fieldContext_Model_status(ctx, field)
+			case "remark":
+				return ec.fieldContext_Model_remark(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Model", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_bulkCreateModels_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -18503,7 +18689,7 @@ func (ec *executionContext) fieldContext_Mutation_bulkDeleteModels(ctx context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _OnboardingInfo_onboarded(ctx context.Context, field graphql.CollectedField, obj *biz.OnboardingInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _OnboardingInfo_onboarded(ctx context.Context, field graphql.CollectedField, obj *OnboardingInfo) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -18532,7 +18718,7 @@ func (ec *executionContext) fieldContext_OnboardingInfo_onboarded(_ context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _OnboardingInfo_version(ctx context.Context, field graphql.CollectedField, obj *biz.OnboardingInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _OnboardingInfo_version(ctx context.Context, field graphql.CollectedField, obj *OnboardingInfo) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -18561,7 +18747,7 @@ func (ec *executionContext) fieldContext_OnboardingInfo_version(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _OnboardingInfo_completedAt(ctx context.Context, field graphql.CollectedField, obj *biz.OnboardingInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _OnboardingInfo_completedAt(ctx context.Context, field graphql.CollectedField, obj *OnboardingInfo) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -18585,6 +18771,41 @@ func (ec *executionContext) fieldContext_OnboardingInfo_completedAt(_ context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OnboardingInfo_systemModelSetting(ctx context.Context, field graphql.CollectedField, obj *OnboardingInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OnboardingInfo_systemModelSetting,
+		func(ctx context.Context) (any, error) {
+			return obj.SystemModelSetting, nil
+		},
+		nil,
+		ec.marshalOSystemModelSettingOnboarding2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐSystemModelSettingOnboarding,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OnboardingInfo_systemModelSetting(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OnboardingInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "onboarded":
+				return ec.fieldContext_SystemModelSettingOnboarding_onboarded(ctx, field)
+			case "completedAt":
+				return ec.fieldContext_SystemModelSettingOnboarding_completedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SystemModelSettingOnboarding", field.Name)
 		},
 	}
 	return fc, nil
@@ -21279,7 +21500,7 @@ func (ec *executionContext) _Query_onboardingInfo(ctx context.Context, field gra
 			return ec.resolvers.Query().OnboardingInfo(ctx)
 		},
 		nil,
-		ec.marshalOOnboardingInfo2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐOnboardingInfo,
+		ec.marshalOOnboardingInfo2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐOnboardingInfo,
 		true,
 		false,
 	)
@@ -21299,6 +21520,8 @@ func (ec *executionContext) fieldContext_Query_onboardingInfo(_ context.Context,
 				return ec.fieldContext_OnboardingInfo_version(ctx, field)
 			case "completedAt":
 				return ec.fieldContext_OnboardingInfo_completedAt(ctx, field)
+			case "systemModelSetting":
+				return ec.fieldContext_OnboardingInfo_systemModelSetting(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type OnboardingInfo", field.Name)
 		},
@@ -26640,6 +26863,64 @@ func (ec *executionContext) fieldContext_SystemEdge_cursor(_ context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Cursor does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SystemModelSettingOnboarding_onboarded(ctx context.Context, field graphql.CollectedField, obj *SystemModelSettingOnboarding) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SystemModelSettingOnboarding_onboarded,
+		func(ctx context.Context) (any, error) {
+			return obj.Onboarded, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SystemModelSettingOnboarding_onboarded(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SystemModelSettingOnboarding",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SystemModelSettingOnboarding_completedAt(ctx context.Context, field graphql.CollectedField, obj *SystemModelSettingOnboarding) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SystemModelSettingOnboarding_completedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.CompletedAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_SystemModelSettingOnboarding_completedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SystemModelSettingOnboarding",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -37492,6 +37773,33 @@ func (ec *executionContext) unmarshalInputCleanupOptionInput(ctx context.Context
 
 func (ec *executionContext) unmarshalInputCompleteOnboardingInput(ctx context.Context, obj any) (CompleteOnboardingInput, error) {
 	var it CompleteOnboardingInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"dummy"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "dummy":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dummy"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Dummy = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputCompleteSystemModelSettingOnboardingInput(ctx context.Context, obj any) (CompleteSystemModelSettingOnboardingInput, error) {
+	var it CompleteSystemModelSettingOnboardingInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -54250,9 +54558,23 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "completeSystemModelSettingOnboarding":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_completeSystemModelSettingOnboarding(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "createModel":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createModel(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "bulkCreateModels":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_bulkCreateModels(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -54331,7 +54653,7 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 
 var onboardingInfoImplementors = []string{"OnboardingInfo"}
 
-func (ec *executionContext) _OnboardingInfo(ctx context.Context, sel ast.SelectionSet, obj *biz.OnboardingInfo) graphql.Marshaler {
+func (ec *executionContext) _OnboardingInfo(ctx context.Context, sel ast.SelectionSet, obj *OnboardingInfo) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, onboardingInfoImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -54352,6 +54674,8 @@ func (ec *executionContext) _OnboardingInfo(ctx context.Context, sel ast.Selecti
 			}
 		case "completedAt":
 			out.Values[i] = ec._OnboardingInfo_completedAt(ctx, field, obj)
+		case "systemModelSetting":
+			out.Values[i] = ec._OnboardingInfo_systemModelSetting(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -58648,6 +58972,47 @@ func (ec *executionContext) _SystemEdge(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var systemModelSettingOnboardingImplementors = []string{"SystemModelSettingOnboarding"}
+
+func (ec *executionContext) _SystemModelSettingOnboarding(ctx context.Context, sel ast.SelectionSet, obj *SystemModelSettingOnboarding) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, systemModelSettingOnboardingImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SystemModelSettingOnboarding")
+		case "onboarded":
+			out.Values[i] = ec._SystemModelSettingOnboarding_onboarded(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "completedAt":
+			out.Values[i] = ec._SystemModelSettingOnboarding_completedAt(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var systemModelSettingsImplementors = []string{"SystemModelSettings"}
 
 func (ec *executionContext) _SystemModelSettings(ctx context.Context, sel ast.SelectionSet, obj *biz.ModelSettings) graphql.Marshaler {
@@ -62135,6 +62500,11 @@ func (ec *executionContext) unmarshalNCompleteOnboardingInput2githubᚗcomᚋloo
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNCompleteSystemModelSettingOnboardingInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐCompleteSystemModelSettingOnboardingInput(ctx context.Context, v any) (CompleteSystemModelSettingOnboardingInput, error) {
+	res, err := ec.unmarshalInputCompleteSystemModelSettingOnboardingInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNCountChannelsByTypeInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐCountChannelsByTypeInput(ctx context.Context, v any) (CountChannelsByTypeInput, error) {
 	res, err := ec.unmarshalInputCountChannelsByTypeInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -62163,6 +62533,26 @@ func (ec *executionContext) unmarshalNCreateDataStorageInput2githubᚗcomᚋloop
 func (ec *executionContext) unmarshalNCreateModelInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐCreateModelInput(ctx context.Context, v any) (ent.CreateModelInput, error) {
 	res, err := ec.unmarshalInputCreateModelInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNCreateModelInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐCreateModelInputᚄ(ctx context.Context, v any) ([]*ent.CreateModelInput, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*ent.CreateModelInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNCreateModelInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐCreateModelInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNCreateModelInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐCreateModelInput(ctx context.Context, v any) (*ent.CreateModelInput, error) {
+	res, err := ec.unmarshalInputCreateModelInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNCreateProjectInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐCreateProjectInput(ctx context.Context, v any) (ent.CreateProjectInput, error) {
@@ -62552,6 +62942,50 @@ func (ec *executionContext) marshalNJSONRawMessageInput2githubᚗcomᚋloopljᚋ
 
 func (ec *executionContext) marshalNModel2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐModel(ctx context.Context, sel ast.SelectionSet, v ent.Model) graphql.Marshaler {
 	return ec._Model(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNModel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐModelᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.Model) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNModel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐModel(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalNModel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐModel(ctx context.Context, sel ast.SelectionSet, v *ent.Model) graphql.Marshaler {
@@ -66245,7 +66679,7 @@ func (ec *executionContext) marshalONode2githubᚗcomᚋloopljᚋaxonhubᚋinter
 	return ec._Node(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOOnboardingInfo2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐOnboardingInfo(ctx context.Context, sel ast.SelectionSet, v *biz.OnboardingInfo) graphql.Marshaler {
+func (ec *executionContext) marshalOOnboardingInfo2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐOnboardingInfo(ctx context.Context, sel ast.SelectionSet, v *OnboardingInfo) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -67364,6 +67798,13 @@ func (ec *executionContext) marshalOSystemEdge2ᚖgithubᚗcomᚋloopljᚋaxonhu
 		return graphql.Null
 	}
 	return ec._SystemEdge(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOSystemModelSettingOnboarding2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐSystemModelSettingOnboarding(ctx context.Context, sel ast.SelectionSet, v *SystemModelSettingOnboarding) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SystemModelSettingOnboarding(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOSystemOrder2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐSystemOrder(ctx context.Context, v any) (*ent.SystemOrder, error) {

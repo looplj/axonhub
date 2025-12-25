@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SortingState } from '@tanstack/react-table'
 import { IconPlus, IconSettings } from '@tabler/icons-react'
@@ -10,8 +10,10 @@ import { Button } from '@/components/ui/button'
 import { createColumns } from './components/models-columns'
 import { ModelsDialogs } from './components/models-dialogs'
 import { ModelsTable } from './components/models-table'
+import { ModelsOnboardingFlow } from './components/models-onboarding-flow'
 import ModelsProvider, { useModels } from './context/models-context'
 import { useQueryModels } from './data/models'
+import { useOnboardingInfo } from '@/features/system/data/system'
 
 function ModelsContent() {
   const { t } = useTranslation()
@@ -117,12 +119,24 @@ function CreateButton() {
   )
 }
 
+function BulkAddButton() {
+  const { t } = useTranslation()
+  const { setOpen } = useModels()
+
+  return (
+    <Button variant='outline' onClick={() => setOpen('batchCreate')}>
+      <IconPlus className='mr-2 h-4 w-4' />
+      {t('models.actions.bulkAdd')}
+    </Button>
+  )
+}
+
 function SettingsButton() {
   const { t } = useTranslation()
   const { setOpen } = useModels()
 
   return (
-    <Button variant='outline' onClick={() => setOpen('settings')}>
+    <Button variant='outline' onClick={() => setOpen('settings')} data-settings-button>
       <IconSettings className='mr-2 h-4 w-4' />
       {t('models.actions.settings')}
     </Button>
@@ -133,6 +147,7 @@ function ActionButtons() {
   return (
     <div className='flex gap-2'>
       <SettingsButton />
+      <BulkAddButton />
       <CreateButton />
     </div>
   )
@@ -140,6 +155,20 @@ function ActionButtons() {
 
 export default function ModelsManagement() {
   const { t } = useTranslation()
+  const { data: onboardingInfo } = useOnboardingInfo()
+  const [showOnboarding, setShowOnboarding] = useState(false)
+
+  const shouldShowOnboarding = onboardingInfo && !onboardingInfo.systemModelSetting?.onboarded
+
+  useEffect(() => {
+    if (shouldShowOnboarding) {
+      setShowOnboarding(true)
+    }
+  }, [shouldShowOnboarding])
+
+  const handleOnboardingComplete = useCallback(() => {
+    setShowOnboarding(false)
+  }, [])
 
   return (
     <ModelsProvider>
@@ -156,6 +185,7 @@ export default function ModelsManagement() {
         <ModelsContent />
       </Main>
       <ModelsDialogs />
+      {showOnboarding && <ModelsOnboardingFlow onComplete={handleOnboardingComplete} />}
     </ModelsProvider>
   )
 }
