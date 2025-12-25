@@ -1,25 +1,29 @@
 import { useMemo } from 'react'
 import { Cross2Icon } from '@radix-ui/react-icons'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, X } from 'lucide-react'
 import { Table } from '@tanstack/react-table'
+import { DateRange } from 'react-day-picker'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter'
+import { DateRangePicker } from '@/components/date-range-picker'
 import { useMe } from '@/features/auth/data/auth'
 import { useQueryChannels } from '@/features/channels/data/channels'
 import { RequestStatus } from '../data/schema'
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>
+  dateRange?: DateRange
+  onDateRangeChange?: (range: DateRange | undefined) => void
   onRefresh?: () => void
   showRefresh?: boolean
 }
 
-export function DataTableToolbar<TData>({ table, onRefresh, showRefresh = false }: DataTableToolbarProps<TData>) {
+export function DataTableToolbar<TData>({ table, dateRange, onDateRangeChange, onRefresh, showRefresh = false }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation()
-  const isFiltered = table.getState().columnFilters.length > 0
+  const isFiltered = table.getState().columnFilters.length > 0 || !!dateRange
 
   // Get current user and permissions
   const { user: authUser } = useAuthStore((state) => state.auth)
@@ -116,8 +120,26 @@ export function DataTableToolbar<TData>({ table, onRefresh, showRefresh = false 
             options={channelOptions}
           />
         )}
+        <DateRangePicker value={dateRange} onChange={onDateRangeChange} />
+        {dateRange && (
+          <Button 
+            variant='ghost' 
+            onClick={() => onDateRangeChange?.(undefined)} 
+            className='h-8 px-2'
+            size='sm'
+          >
+            <X className='h-4 w-4' />
+          </Button>
+        )}
         {isFiltered && (
-          <Button variant='ghost' onClick={() => table.resetColumnFilters()} className='h-8 px-2 lg:px-3'>
+          <Button 
+            variant='ghost' 
+            onClick={() => {
+              table.resetColumnFilters()
+              onDateRangeChange?.(undefined)
+            }} 
+            className='h-8 px-2 lg:px-3'
+          >
             {t('common.filters.reset')}
             <Cross2Icon className='ml-2 h-4 w-4' />
           </Button>

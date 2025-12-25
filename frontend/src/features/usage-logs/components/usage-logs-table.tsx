@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { DateRange } from 'react-day-picker'
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -43,11 +44,13 @@ interface UsageLogsTableProps {
   totalCount?: number
   sourceFilter: string[]
   channelFilter: string[]
+  dateRange?: DateRange
   onNextPage: () => void
   onPreviousPage: () => void
   onPageSizeChange: (pageSize: number) => void
   onSourceFilterChange: (filters: string[]) => void
   onChannelFilterChange: (filters: string[]) => void
+  onDateRangeChange: (range: DateRange | undefined) => void
   onRefresh: () => void
   showRefresh: boolean
 }
@@ -60,11 +63,13 @@ export function UsageLogsTable({
   pageSize,
   sourceFilter,
   channelFilter,
+  dateRange,
   onNextPage,
   onPreviousPage,
   onPageSizeChange,
   onSourceFilterChange,
   onChannelFilterChange,
+  onDateRangeChange,
   onRefresh,
   showRefresh,
 }: UsageLogsTableProps) {
@@ -121,7 +126,13 @@ export function UsageLogsTable({
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
-      <DataTableToolbar table={table} onRefresh={onRefresh} showRefresh={showRefresh} />
+      <DataTableToolbar 
+        table={table} 
+        dateRange={dateRange}
+        onDateRangeChange={onDateRangeChange}
+        onRefresh={onRefresh} 
+        showRefresh={showRefresh} 
+      />
       <div className='mt-4 flex-1 overflow-auto rounded-md border'>
         <Table>
           <TableHeader className='sticky top-0 z-10 bg-background'>

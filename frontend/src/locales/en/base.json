@@ -163,7 +163,9 @@
       "delete": "Delete"
     },
     "filters": {
-      "reset": "Reset"
+      "reset": "Reset",
+      "dateRange": "Pick date range",
+      "clearDateRange": "Clear date range"
     },
     "routeGuard": {
       "accessDenied": "Access Denied",

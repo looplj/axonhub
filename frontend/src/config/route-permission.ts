@@ -100,8 +100,8 @@ export const routeConfigs: RouteGroup[] = [
         // Profile 设置所有用户都可以访问
       },
       {
-        path: '/settings/account',
-        // Account 设置所有用户都可以访问
+        path: '/settings/profile',
+        // Profile 设置所有用户都可以访问
       },
       {
         path: '/settings/appearance',

@@ -170,7 +170,9 @@
       "delete": "删除"
     },
     "filters": {
-      "reset": "重置"
+      "reset": "重置",
+      "dateRange": "选择日期范围",
+      "clearDateRange": "清除日期范围"
     },
     "routeGuard": {
       "accessDenied": "访问被拒绝",

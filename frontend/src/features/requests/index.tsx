@@ -1,11 +1,13 @@
 import { useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { DateRange } from 'react-day-picker'
 import { usePaginationSearch } from '@/hooks/use-pagination-search'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { RequestsTable } from './components'
 import { RequestsProvider } from './context'
 import { useRequests } from './data'
+import { buildDateRangeWhereClause } from '@/utils/date-range'
 
 function RequestsContent() {
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs, cursorHistory } = usePaginationSearch({
@@ -14,10 +16,13 @@ function RequestsContent() {
   const [statusFilter, setStatusFilter] = useState<string[]>([])
   const [sourceFilter, setSourceFilter] = useState<string[]>([])
   const [channelFilter, setChannelFilter] = useState<string[]>([])
+  const [dateRange, setDateRange] = useState<DateRange | undefined>()
 
   // Build where clause with filters
   const whereClause = (() => {
-    const where: any = {}
+    const where: { [key: string]: any } = {
+      ...buildDateRangeWhereClause(dateRange),
+    }
     if (statusFilter.length > 0) {
       where.statusIn = statusFilter
     }
@@ -25,8 +30,6 @@ function RequestsContent() {
       where.sourceIn = sourceFilter
     }
     if (channelFilter.length > 0) {
-      // Add channel filter - assuming the backend supports filtering by channel IDs
-      // This might need to be adjusted based on the actual GraphQL schema
       where.channelIDIn = channelFilter
     }
     return Object.keys(where).length > 0 ? where : undefined
@@ -82,6 +85,14 @@ function RequestsContent() {
     [resetCursor]
   )
 
+  const handleDateRangeChange = useCallback(
+    (range: DateRange | undefined) => {
+      setDateRange(range)
+      resetCursor()
+    },
+    [resetCursor]
+  )
+
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
       <RequestsTable
@@ -93,12 +104,14 @@ function RequestsContent() {
         statusFilter={statusFilter}
         sourceFilter={sourceFilter}
         channelFilter={channelFilter}
+        dateRange={dateRange}
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         onPageSizeChange={setPageSize}
         onStatusFilterChange={handleStatusFilterChange}
         onSourceFilterChange={handleSourceFilterChange}
         onChannelFilterChange={handleChannelFilterChange}
+        onDateRangeChange={handleDateRangeChange}
         onRefresh={refetch}
         showRefresh={isFirstPage}
       />

@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
+import { DateRange } from 'react-day-picker'
 import {
   ColumnFiltersState,
   RowData,
@@ -42,12 +43,14 @@ interface RequestsTableProps {
   statusFilter: string[]
   sourceFilter: string[]
   channelFilter: string[]
+  dateRange?: DateRange
   onNextPage: () => void
   onPreviousPage: () => void
   onPageSizeChange: (pageSize: number) => void
   onStatusFilterChange: (filters: string[]) => void
   onSourceFilterChange: (filters: string[]) => void
   onChannelFilterChange: (filters: string[]) => void
+  onDateRangeChange: (range: DateRange | undefined) => void
   onRefresh: () => void
   showRefresh: boolean
 }
@@ -61,12 +64,14 @@ export function RequestsTable({
   statusFilter,
   sourceFilter,
   channelFilter,
+  dateRange,
   onNextPage,
   onPreviousPage,
   onPageSizeChange,
   onStatusFilterChange,
   onSourceFilterChange,
   onChannelFilterChange,
+  onDateRangeChange,
   onRefresh,
   showRefresh,
 }: RequestsTableProps) {
@@ -145,10 +150,12 @@ export function RequestsTable({
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
-      <DataTableToolbar
-        table={table}
-        onRefresh={onRefresh}
-        showRefresh={showRefresh}
+      <DataTableToolbar 
+        table={table} 
+        dateRange={dateRange}
+        onDateRangeChange={onDateRangeChange}
+        onRefresh={onRefresh} 
+        showRefresh={showRefresh} 
       />
       <div className='mt-4 flex-1 overflow-auto rounded-md border'>
         <Table>

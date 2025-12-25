@@ -1,18 +1,35 @@
+import { useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { DateRange } from 'react-day-picker'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { TracesTable } from './components'
 import { TracesProvider } from './context'
 import { useTraces } from './data'
 import { usePaginationSearch } from '@/hooks/use-pagination-search'
+import { useDebounce } from '@/hooks/use-debounce'
+import { buildDateRangeWhereClause } from '@/utils/date-range'
 
 function TracesContent() {
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs, cursorHistory } = usePaginationSearch({
     defaultPageSize: 20,
   })
+  const [dateRange, setDateRange] = useState<DateRange | undefined>()
+  const [traceIdFilter, setTraceIdFilter] = useState<string>('')
+  const debouncedTraceIdFilter = useDebounce(traceIdFilter, 300)
 
   // Build where clause with filters
-  const whereClause = undefined
+  const whereClause = (() => {
+    const where: { [key: string]: any } = {
+      ...buildDateRangeWhereClause(dateRange),
+    }
+    
+    if (debouncedTraceIdFilter.trim()) {
+      where.traceIDContains = debouncedTraceIdFilter.trim()
+    }
+    
+    return Object.keys(where).length > 0 ? where : undefined
+  })()
 
   const { data, isLoading, refetch } = useTraces({
     ...paginationArgs,
@@ -44,6 +61,22 @@ function TracesContent() {
     resetCursor()
   }
 
+  const handleDateRangeChange = useCallback(
+    (range: DateRange | undefined) => {
+      setDateRange(range)
+      resetCursor()
+    },
+    [resetCursor]
+  )
+
+  const handleTraceIdFilterChange = useCallback(
+    (traceId: string) => {
+      setTraceIdFilter(traceId)
+      resetCursor()
+    },
+    [resetCursor]
+  )
+
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
       <TracesTable
@@ -52,9 +85,13 @@ function TracesContent() {
         pageInfo={pageInfo}
         pageSize={pageSize}
         totalCount={data?.totalCount}
+        dateRange={dateRange}
+        traceIdFilter={traceIdFilter}
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         onPageSizeChange={handlePageSizeChange}
+        onDateRangeChange={handleDateRangeChange}
+        onTraceIdFilterChange={handleTraceIdFilterChange}
         onRefresh={refetch}
         showRefresh={isFirstPage}
       />

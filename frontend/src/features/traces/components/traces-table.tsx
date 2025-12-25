@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { DateRange } from 'react-day-picker'
 import {
   ColumnFiltersState,
   RowData,
@@ -39,9 +40,13 @@ interface TracesTableProps {
   pageInfo?: TraceConnection['pageInfo']
   pageSize: number
   totalCount?: number
+  dateRange?: DateRange
+  traceIdFilter: string
   onNextPage: () => void
   onPreviousPage: () => void
   onPageSizeChange: (pageSize: number) => void
+  onDateRangeChange: (range: DateRange | undefined) => void
+  onTraceIdFilterChange: (traceId: string) => void
   onRefresh: () => void
   showRefresh: boolean
 }
@@ -52,9 +57,13 @@ export function TracesTable({
   pageInfo,
   totalCount,
   pageSize,
+  dateRange,
+  traceIdFilter,
   onNextPage,
   onPreviousPage,
   onPageSizeChange,
+  onDateRangeChange,
+  onTraceIdFilterChange,
   onRefresh,
   showRefresh,
 }: TracesTableProps) {
@@ -89,7 +98,15 @@ export function TracesTable({
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
-      <DataTableToolbar table={table} onRefresh={onRefresh} showRefresh={showRefresh} />
+      <DataTableToolbar 
+        table={table} 
+        dateRange={dateRange}
+        onDateRangeChange={onDateRangeChange}
+        traceIdFilter={traceIdFilter}
+        onTraceIdFilterChange={onTraceIdFilterChange}
+        onRefresh={onRefresh} 
+        showRefresh={showRefresh} 
+      />
       <div className='mt-4 flex-1 overflow-auto rounded-md border'>
         <Table>
           <TableHeader className='sticky top-0 z-10 bg-background'>
