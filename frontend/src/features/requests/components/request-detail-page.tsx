@@ -13,8 +13,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { JsonViewer } from '@/components/json-tree-view'
+import { ChunksDialog } from './chunks-dialog'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { useUsageLogs } from '../../usage-logs/data/usage-logs'
@@ -30,7 +30,8 @@ export default function RequestDetailPage() {
 
   const [showResponseChunks, setShowResponseChunks] = useState(false)
   const [showExecutionChunks, setShowExecutionChunks] = useState(false)
-  const [selectedChunks, setSelectedChunks] = useState<any[]>([])
+  const [selectedResponseChunks, setSelectedResponseChunks] = useState<any[]>([])
+  const [selectedExecutionChunks, setSelectedExecutionChunks] = useState<any[]>([])
 
   const { data: request, isLoading } = useRequest(requestId)
   const { data: executions } = useRequestExecutions(requestId, {
@@ -50,14 +51,14 @@ export default function RequestDetailPage() {
 
   const showResponseChunksModal = useCallback(() => {
     if (request?.responseChunks) {
-      setSelectedChunks(request.responseChunks)
+      setSelectedResponseChunks(request.responseChunks)
       setShowResponseChunks(true)
     }
   }, [request])
 
   const showExecutionChunksModal = useCallback((chunks: any[]) => {
     if (chunks && chunks.length > 0) {
-      setSelectedChunks(chunks)
+      setSelectedExecutionChunks(chunks)
       setShowExecutionChunks(true)
     }
   }, [])
@@ -604,88 +605,20 @@ export default function RequestDetailPage() {
       </Main>
 
       {/* Response Chunks Modal */}
-      <Dialog open={showResponseChunks} onOpenChange={setShowResponseChunks}>
-        <DialogContent className='sm:max-w-4xl max-h-[80vh] flex flex-col'>
-          <DialogHeader>
-            <DialogTitle className='flex items-center gap-2'>
-              <Layers className='h-5 w-5' />
-              {t('requests.dialogs.jsonViewer.responseChunks')}
-            </DialogTitle>
-          </DialogHeader>
-          <div className='bg-muted/20 h-[400px] w-full overflow-auto rounded-lg border p-4'>
-            {selectedChunks.length > 0 ? (
-              <div className='space-y-4'>
-                {selectedChunks.map((chunk, index) => (
-                  <div key={index} className='bg-background rounded-lg border p-4'>
-                    <div className='flex items-start gap-4'>
-                      <div className='flex-shrink-0'>
-                        <span className='text-sm font-medium text-muted-foreground'>Chunk {index + 1}</span>
-                      </div>
-                      <div className='flex-1 min-w-0'>
-                        <JsonViewer
-                          data={chunk}
-                          rootName=''
-                          defaultExpanded={false}
-                          className='text-sm'
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className='flex h-full items-center justify-center'>
-                <div className='space-y-3 text-center'>
-                  <Layers className='text-muted-foreground mx-auto h-12 w-12' />
-                  <p className='text-muted-foreground text-base'>{t('requests.detail.noResponse')}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ChunksDialog
+        open={showResponseChunks}
+        onOpenChange={setShowResponseChunks}
+        chunks={selectedResponseChunks}
+        title={t('requests.dialogs.jsonViewer.responseChunks')}
+      />
 
       {/* Execution Chunks Modal */}
-      <Dialog open={showExecutionChunks} onOpenChange={setShowExecutionChunks}>
-        <DialogContent className='sm:max-w-4xl max-h-[80vh] flex flex-col'>
-          <DialogHeader>
-            <DialogTitle className='flex items-center gap-2'>
-              <Layers className='h-5 w-5' />
-              {t('requests.dialogs.jsonViewer.responseChunks')}
-            </DialogTitle>
-          </DialogHeader>
-          <div className='bg-muted/20 h-[400px] w-full overflow-auto rounded-lg border p-4'>
-            {selectedChunks.length > 0 ? (
-              <div className='space-y-4'>
-                {selectedChunks.map((chunk, index) => (
-                  <div key={index} className='bg-background rounded-lg border p-4'>
-                    <div className='flex items-start gap-4'>
-                      <div className='flex-shrink-0'>
-                        <span className='text-sm font-medium text-muted-foreground'>Chunk {index + 1}</span>
-                      </div>
-                      <div className='flex-1 min-w-0'>
-                        <JsonViewer
-                          data={chunk}
-                          rootName=''
-                          defaultExpanded={false}
-                          className='text-sm'
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className='flex h-full items-center justify-center'>
-                <div className='space-y-3 text-center'>
-                  <Layers className='text-muted-foreground mx-auto h-12 w-12' />
-                  <p className='text-muted-foreground text-base'>{t('requests.detail.noResponse')}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ChunksDialog
+        open={showExecutionChunks}
+        onOpenChange={setShowExecutionChunks}
+        chunks={selectedExecutionChunks}
+        title={t('requests.dialogs.jsonViewer.responseChunks')}
+      />
     </div>
   )
 }

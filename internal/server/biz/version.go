@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -21,7 +22,18 @@ type GitHubRelease struct {
 // FetchLatestGitHubRelease fetches the latest stable release tag from GitHub.
 // It skips beta, rc, and prerelease versions.
 func FetchLatestGitHubRelease(ctx context.Context) (string, error) {
-	const apiURL = "https://api.github.com/repos/looplj/axonhub/releases"
+	baseURL := "https://api.github.com/repos/looplj/axonhub/releases"
+
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse URL: %w", err)
+	}
+
+	q := u.Query()
+	q.Set("per_page", "5")
+	q.Set("page", "1")
+	u.RawQuery = q.Encode()
+	apiURL := u.String()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {

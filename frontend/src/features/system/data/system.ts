@@ -388,7 +388,7 @@ export function useCheckForUpdate() {
       return data.checkForUpdate
     },
     retry: false,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 60 * 60 * 1000, // 1 hour
   })
 }
 

@@ -7,6 +7,8 @@ import { CHECK_FOR_UPDATE_QUERY, type VersionCheck } from '@/features/system/dat
 import i18n from '@/lib/i18n'
 
 const VERSION_CHECK_STORAGE_KEY = 'axonhub_dismissed_version'
+const VERSION_CHECK_TIMESTAMP_KEY = 'axonhub_version_check_timestamp'
+const VERSION_CHECK_INTERVAL = 10 * 60 * 1000 // 10 minutes in milliseconds
 
 /**
  * Hook to check for new versions and show toast notification.
@@ -16,15 +18,30 @@ export function useVersionCheck() {
   const user = useAuthStore((state) => state.auth.user)
   const isOwner = user?.isOwner ?? false
 
+  const shouldCheckVersion = useCallback(() => {
+    if (!isOwner) return false
+
+    const lastCheckTime = localStorage.getItem(VERSION_CHECK_TIMESTAMP_KEY)
+    if (!lastCheckTime) return true
+
+    const timeSinceLastCheck = Date.now() - parseInt(lastCheckTime, 10)
+    return timeSinceLastCheck >= VERSION_CHECK_INTERVAL
+  }, [isOwner])
+
   const { data: updateCheck } = useQuery({
-    queryKey: ['versionCheckOnce'],
+    queryKey: ['versionCheck'],
     queryFn: async () => {
       const data = await graphqlRequest<{ checkForUpdate: VersionCheck }>(CHECK_FOR_UPDATE_QUERY)
       return data.checkForUpdate
     },
-    enabled: isOwner,
+    //@ts-ignore
+    onSuccess: () => {
+      // Store the timestamp after successful check
+      localStorage.setItem(VERSION_CHECK_TIMESTAMP_KEY, Date.now().toString())
+    },
+    enabled: shouldCheckVersion(),
     retry: false,
-    staleTime: Infinity, // Only fetch once per session
+    staleTime: Infinity,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
     refetchOnReconnect: false,

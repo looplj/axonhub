@@ -94,7 +94,8 @@
     "previousPage": "Go to previous page",
     "nextPage": "Go to next page",
     "hasPrevious": "Has previous",
-    "hasNext": "Has next"
+    "hasNext": "Has next",
+    "showing": "Showing {{start}}-{{end}} of {{total}}"
   },
   "common": {
     "refresh": "Refresh",
