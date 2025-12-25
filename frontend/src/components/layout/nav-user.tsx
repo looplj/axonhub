@@ -92,7 +92,7 @@ export function NavUser({
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link to='/settings/account'>
+                <Link to='/settings/profile'>
                   <BadgeCheck />
                   {t('sidebar.userMenu.account')}
                 </Link>

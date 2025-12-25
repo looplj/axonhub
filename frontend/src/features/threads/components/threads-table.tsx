@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { DateRange } from 'react-day-picker'
 import {
   ColumnFiltersState,
   RowData,
@@ -39,9 +40,13 @@ interface ThreadsTableProps {
   pageInfo?: ThreadConnection['pageInfo']
   pageSize: number
   totalCount?: number
+  dateRange?: DateRange
+  threadIdFilter: string
   onNextPage: () => void
   onPreviousPage: () => void
   onPageSizeChange: (pageSize: number) => void
+  onDateRangeChange: (range: DateRange | undefined) => void
+  onThreadIdFilterChange: (threadId: string) => void
   onRefresh: () => void
   showRefresh: boolean
 }
@@ -52,9 +57,13 @@ export function ThreadsTable({
   pageInfo,
   totalCount,
   pageSize,
+  dateRange,
+  threadIdFilter,
   onNextPage,
   onPreviousPage,
   onPageSizeChange,
+  onDateRangeChange,
+  onThreadIdFilterChange,
   onRefresh,
   showRefresh,
 }: ThreadsTableProps) {
@@ -89,7 +98,15 @@ export function ThreadsTable({
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
-      <ThreadsTableToolbar table={table} onRefresh={onRefresh} showRefresh={showRefresh} />
+      <ThreadsTableToolbar 
+        table={table} 
+        dateRange={dateRange}
+        onDateRangeChange={onDateRangeChange}
+        threadIdFilter={threadIdFilter}
+        onThreadIdFilterChange={onThreadIdFilterChange}
+        onRefresh={onRefresh} 
+        showRefresh={showRefresh} 
+      />
       <div className='mt-4 flex-1 overflow-auto rounded-md border'>
         <Table>
           <TableHeader className='sticky top-0 z-10 bg-background'>

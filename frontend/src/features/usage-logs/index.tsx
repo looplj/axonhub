@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { DateRange } from 'react-day-picker'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { useUsageLogs } from './data'
@@ -9,6 +10,7 @@ import {
 } from './components'
 import { UsageLogsProvider, useUsageLogsContext } from './context'
 import { usePaginationSearch } from '@/hooks/use-pagination-search'
+import { buildDateRangeWhereClause } from '@/utils/date-range'
 
 function UsageLogsContent() {
   const { t } = useTranslation()
@@ -17,17 +19,20 @@ function UsageLogsContent() {
   })
   const [sourceFilter, setSourceFilter] = useState<string[]>([])
   const [channelFilter, setChannelFilter] = useState<string[]>([])
+  const [dateRange, setDateRange] = useState<DateRange | undefined>()
   
   // Build where clause with filters
   const whereClause = (() => {
-    const where: any = {}
+    const where: { [key: string]: any } = {
+      ...buildDateRangeWhereClause(dateRange),
+    }
     
     if (sourceFilter.length > 0) {
       where.sourceIn = sourceFilter
     }
     
     if (channelFilter.length > 0) {
-      where.channelIDIn = channelFilter;
+      where.channelIDIn = channelFilter
     }
     
     return Object.keys(where).length > 0 ? where : undefined
@@ -64,15 +69,29 @@ function UsageLogsContent() {
     setPageSize(newPageSize)
   }
 
-  const handleSourceFilterChange = (filters: string[]) => {
-    setSourceFilter(filters)
-    resetCursor()
-  }
+  const handleSourceFilterChange = useCallback(
+    (filters: string[]) => {
+      setSourceFilter(filters)
+      resetCursor()
+    },
+    [resetCursor]
+  )
 
-  const handleChannelFilterChange = (filters: string[]) => {
-    setChannelFilter(filters)
-    resetCursor()
-  }
+  const handleChannelFilterChange = useCallback(
+    (filters: string[]) => {
+      setChannelFilter(filters)
+      resetCursor()
+    },
+    [resetCursor]
+  )
+
+  const handleDateRangeChange = useCallback(
+    (range: DateRange | undefined) => {
+      setDateRange(range)
+      resetCursor()
+    },
+    [resetCursor]
+  )
 
   if (error) {
     return (
@@ -94,11 +113,13 @@ function UsageLogsContent() {
         totalCount={data?.totalCount}
         sourceFilter={sourceFilter}
         channelFilter={channelFilter}
+        dateRange={dateRange}
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         onPageSizeChange={handlePageSizeChange}
         onSourceFilterChange={handleSourceFilterChange}
         onChannelFilterChange={handleChannelFilterChange}
+        onDateRangeChange={handleDateRangeChange}
         onRefresh={refetch}
         showRefresh={isFirstPage}
       />
