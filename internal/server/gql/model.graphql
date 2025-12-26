@@ -60,46 +60,53 @@ type ChannelRegexAssociation {
 
 type RegexAssociation {
   pattern: String!
+  exclude: [ExcludeAssociation!]
 }
 
 type ModelIDAssociation {
   modelId: String!
+  exclude: [ExcludeAssociation!]
+}
+
+type ExcludeAssociation {
+  channelNamePattern: String
+  channelIds: [Int!]
 }
 
 # Input types for mutations
 input ModelCardInput {
-  reasoning: ModelCardReasoningInput!
-  toolCall: Boolean!
-  temperature: Boolean!
-  modalities: ModelCardModalitiesInput!
+  reasoning: ModelCardReasoningInput
+  toolCall: Boolean
+  temperature: Boolean
+  modalities: ModelCardModalitiesInput
   vision: Boolean
-  cost: ModelCardCostInput!
-  limit: ModelCardLimitInput!
+  cost: ModelCardCostInput
+  limit: ModelCardLimitInput
   knowledge: String
   releaseDate: String
   lastUpdated: String
 }
 
 input ModelCardReasoningInput {
-  supported: Boolean!
-  default: Boolean!
+  supported: Boolean
+  default: Boolean
 }
 
 input ModelCardModalitiesInput {
-  input: [String!]!
-  output: [String!]!
+  input: [String!]
+  output: [String!]
 }
 
 input ModelCardCostInput {
-  input: Float!
-  output: Float!
+  input: Float
+  output: Float
   cacheRead: Float
   cacheWrite: Float
 }
 
 input ModelCardLimitInput {
-  context: Int!
-  output: Int!
+  context: Int
+  output: Int
 }
 
 input ModelSettingsInput {
@@ -127,10 +134,17 @@ input ChannelRegexAssociationInput {
 
 input RegexAssociationInput {
   pattern: String!
+  exclude: [ExcludeAssociationInput!]
 }
 
 input ModelIDAssociationInput {
   modelId: String!
+  exclude: [ExcludeAssociationInput!]
+}
+
+input ExcludeAssociationInput {
+  channelNamePattern: String
+  channelIds: [Int!]
 }
 
 type ModelChannelConnection {

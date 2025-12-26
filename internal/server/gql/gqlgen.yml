@@ -295,6 +295,12 @@ models:
   ModelIDAssociationInput:    
     model:
       - github.com/looplj/axonhub/internal/objects.ModelIDAssociation
+  ExcludeAssociation:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ExcludeAssociation
+  ExcludeAssociationInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ExcludeAssociation
   ModelChannelConnection:
     model:
       - github.com/looplj/axonhub/internal/server/biz.ModelChannelConnection

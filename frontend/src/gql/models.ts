@@ -29,10 +29,17 @@ export interface ModelAssociationInput {
   }
   regex?: {
     pattern: string
+    exclude?: ExcludeAssociationInput[]
   }
   modelId?: {
     modelId: string
+    exclude?: ExcludeAssociationInput[]
   }
+}
+
+export interface ExcludeAssociationInput {
+  channelNamePattern?: string
+  channelIds?: number[]
 }
 
 export interface ChannelModelEntry {

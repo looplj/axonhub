@@ -116,6 +116,10 @@
         "filterByChannel": "Filter by channel name...",
         "noConnections": "No channel connections. Add rules to see preview.",
         "noFilteredConnections": "No channels found matching filter.",
+        "excludeSection": "Exclude Channels",
+        "excludeChannelNamePattern": "Exclude channel name (regex)",
+        "excludeChannelIds": "Exclude channels",
+        "noChannelsAvailable": "No channels available",
         "ruleHints": {
           "channelModel": "Use model {{model}} in channel {{channel}}",
           "channelRegex": "Use model matching {{pattern}} in channel {{channel}}",

@@ -11,7 +11,7 @@ globs: *.go
 
 3. Change any ent schema or graphql schema, need to run `make generate` to regenerate models and resolvers.
 
-4. Use `make generate` command to generate GraphQL and Ent code, which will automatically enter the gql directory and run go generate.
+4. Add or update struct in the objects, should update the mapping in the gqlgen.yml
 
 5. Use `enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")` to create a new client for test.
 

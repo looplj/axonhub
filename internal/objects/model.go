@@ -75,6 +75,11 @@ type ModelAssociation struct {
 	ModelID      *ModelIDAssociation      `json:"modelId"`
 }
 
+type ExcludeAssociation struct {
+	ChannelNamePattern string `json:"channelNamePattern"`
+	ChannelIds         []int  `json:"channelIds"`
+}
+
 type ChannelModelAssociation struct {
 	ChannelID int    `json:"channelId"`
 	ModelID   string `json:"modelId"`
@@ -86,9 +91,11 @@ type ChannelRegexAssociation struct {
 }
 
 type RegexAssociation struct {
-	Pattern string `json:"pattern"`
+	Pattern string                `json:"pattern"`
+	Exclude []*ExcludeAssociation `json:"exclude"`
 }
 
 type ModelIDAssociation struct {
-	ModelID string `json:"modelId"`
+	ModelID string                `json:"modelId"`
+	Exclude []*ExcludeAssociation `json:"exclude"`
 }

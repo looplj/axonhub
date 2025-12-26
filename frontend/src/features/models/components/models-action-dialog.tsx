@@ -206,7 +206,8 @@ export function ModelsActionDialog() {
         form.setValue('modelCard', modelCard)
         setSelectedModelCard(modelCard)
       } else {
-        setSelectedModelCard({})
+        const currentModelCard = form.getValues('modelCard')
+        setSelectedModelCard(currentModelCard || {})
       }
     },
     [selectedProviderModels, selectedProvider, form]

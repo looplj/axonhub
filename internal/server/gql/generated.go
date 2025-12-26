@@ -325,6 +325,11 @@ type ComplexityRoot struct {
 		S3        func(childComplexity int) int
 	}
 
+	ExcludeAssociation struct {
+		ChannelIds         func(childComplexity int) int
+		ChannelNamePattern func(childComplexity int) int
+	}
+
 	FetchModelsPayload struct {
 		Error  func(childComplexity int) int
 		Models func(childComplexity int) int
@@ -436,6 +441,7 @@ type ComplexityRoot struct {
 	}
 
 	ModelIDAssociation struct {
+		Exclude func(childComplexity int) int
 		ModelID func(childComplexity int) int
 	}
 
@@ -609,6 +615,7 @@ type ComplexityRoot struct {
 	}
 
 	RegexAssociation struct {
+		Exclude func(childComplexity int) int
 		Pattern func(childComplexity int) int
 	}
 
@@ -2305,6 +2312,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.DataStorageSettings.S3(childComplexity), true
 
+	case "ExcludeAssociation.channelIds":
+		if e.complexity.ExcludeAssociation.ChannelIds == nil {
+			break
+		}
+
+		return e.complexity.ExcludeAssociation.ChannelIds(childComplexity), true
+	case "ExcludeAssociation.channelNamePattern":
+		if e.complexity.ExcludeAssociation.ChannelNamePattern == nil {
+			break
+		}
+
+		return e.complexity.ExcludeAssociation.ChannelNamePattern(childComplexity), true
+
 	case "FetchModelsPayload.error":
 		if e.complexity.FetchModelsPayload.Error == nil {
 			break
@@ -2693,6 +2713,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ModelEdge.Node(childComplexity), true
 
+	case "ModelIDAssociation.exclude":
+		if e.complexity.ModelIDAssociation.Exclude == nil {
+			break
+		}
+
+		return e.complexity.ModelIDAssociation.Exclude(childComplexity), true
 	case "ModelIDAssociation.modelId":
 		if e.complexity.ModelIDAssociation.ModelID == nil {
 			break
@@ -3935,6 +3961,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.Users(childComplexity, args["after"].(*entgql.Cursor[int]), args["first"].(*int), args["before"].(*entgql.Cursor[int]), args["last"].(*int), args["orderBy"].(*ent.UserOrder), args["where"].(*ent.UserWhereInput)), true
 
+	case "RegexAssociation.exclude":
+		if e.complexity.RegexAssociation.Exclude == nil {
+			break
+		}
+
+		return e.complexity.RegexAssociation.Exclude(childComplexity), true
 	case "RegexAssociation.pattern":
 		if e.complexity.RegexAssociation.Pattern == nil {
 			break
@@ -5857,6 +5889,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputDataStorageOrder,
 		ec.unmarshalInputDataStorageSettingsInput,
 		ec.unmarshalInputDataStorageWhereInput,
+		ec.unmarshalInputExcludeAssociationInput,
 		ec.unmarshalInputFetchModelsInput,
 		ec.unmarshalInputGCPCredentialInput,
 		ec.unmarshalInputGCSInput,
@@ -13392,6 +13425,64 @@ func (ec *executionContext) fieldContext_DataStorageSettings_gcs(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _ExcludeAssociation_channelNamePattern(ctx context.Context, field graphql.CollectedField, obj *objects.ExcludeAssociation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ExcludeAssociation_channelNamePattern,
+		func(ctx context.Context) (any, error) {
+			return obj.ChannelNamePattern, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ExcludeAssociation_channelNamePattern(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExcludeAssociation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExcludeAssociation_channelIds(ctx context.Context, field graphql.CollectedField, obj *objects.ExcludeAssociation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ExcludeAssociation_channelIds,
+		func(ctx context.Context) (any, error) {
+			return obj.ChannelIds, nil
+		},
+		nil,
+		ec.marshalOInt2ᚕintᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ExcludeAssociation_channelIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExcludeAssociation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _FetchModelsPayload_models(ctx context.Context, field graphql.CollectedField, obj *FetchModelsPayload) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -14426,6 +14517,8 @@ func (ec *executionContext) fieldContext_ModelAssociation_regex(_ context.Contex
 			switch field.Name {
 			case "pattern":
 				return ec.fieldContext_RegexAssociation_pattern(ctx, field)
+			case "exclude":
+				return ec.fieldContext_RegexAssociation_exclude(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RegexAssociation", field.Name)
 		},
@@ -14459,6 +14552,8 @@ func (ec *executionContext) fieldContext_ModelAssociation_modelId(_ context.Cont
 			switch field.Name {
 			case "modelId":
 				return ec.fieldContext_ModelIDAssociation_modelId(ctx, field)
+			case "exclude":
+				return ec.fieldContext_ModelIDAssociation_exclude(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ModelIDAssociation", field.Name)
 		},
@@ -15426,6 +15521,41 @@ func (ec *executionContext) fieldContext_ModelIDAssociation_modelId(_ context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelIDAssociation_exclude(ctx context.Context, field graphql.CollectedField, obj *objects.ModelIDAssociation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelIDAssociation_exclude,
+		func(ctx context.Context) (any, error) {
+			return obj.Exclude, nil
+		},
+		nil,
+		ec.marshalOExcludeAssociation2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐExcludeAssociationᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelIDAssociation_exclude(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelIDAssociation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "channelNamePattern":
+				return ec.fieldContext_ExcludeAssociation_channelNamePattern(ctx, field)
+			case "channelIds":
+				return ec.fieldContext_ExcludeAssociation_channelIds(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ExcludeAssociation", field.Name)
 		},
 	}
 	return fc, nil
@@ -21792,6 +21922,41 @@ func (ec *executionContext) fieldContext_RegexAssociation_pattern(_ context.Cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RegexAssociation_exclude(ctx context.Context, field graphql.CollectedField, obj *objects.RegexAssociation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RegexAssociation_exclude,
+		func(ctx context.Context) (any, error) {
+			return obj.Exclude, nil
+		},
+		nil,
+		ec.marshalOExcludeAssociation2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐExcludeAssociationᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RegexAssociation_exclude(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RegexAssociation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "channelNamePattern":
+				return ec.fieldContext_ExcludeAssociation_channelNamePattern(ctx, field)
+			case "channelIds":
+				return ec.fieldContext_ExcludeAssociation_channelIds(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ExcludeAssociation", field.Name)
 		},
 	}
 	return fc, nil
@@ -39480,6 +39645,40 @@ func (ec *executionContext) unmarshalInputDataStorageWhereInput(ctx context.Cont
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputExcludeAssociationInput(ctx context.Context, obj any) (objects.ExcludeAssociation, error) {
+	var it objects.ExcludeAssociation
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"channelNamePattern", "channelIds"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "channelNamePattern":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelNamePattern"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelNamePattern = data
+		case "channelIds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelIds"))
+			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelIds = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputFetchModelsInput(ctx context.Context, obj any) (biz.FetchModelsInput, error) {
 	var it biz.FetchModelsInput
 	asMap := map[string]any{}
@@ -39774,14 +39973,14 @@ func (ec *executionContext) unmarshalInputModelCardCostInput(ctx context.Context
 		switch k {
 		case "input":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			data, err := ec.unmarshalOFloat2float64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Input = data
 		case "output":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("output"))
-			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			data, err := ec.unmarshalOFloat2float64(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -39822,28 +40021,28 @@ func (ec *executionContext) unmarshalInputModelCardInput(ctx context.Context, ob
 		switch k {
 		case "reasoning":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoning"))
-			data, err := ec.unmarshalNModelCardReasoningInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCardReasoning(ctx, v)
+			data, err := ec.unmarshalOModelCardReasoningInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCardReasoning(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Reasoning = data
 		case "toolCall":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("toolCall"))
-			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.ToolCall = data
 		case "temperature":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("temperature"))
-			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Temperature = data
 		case "modalities":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modalities"))
-			data, err := ec.unmarshalNModelCardModalitiesInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCardModalities(ctx, v)
+			data, err := ec.unmarshalOModelCardModalitiesInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCardModalities(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -39857,14 +40056,14 @@ func (ec *executionContext) unmarshalInputModelCardInput(ctx context.Context, ob
 			it.Vision = data
 		case "cost":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cost"))
-			data, err := ec.unmarshalNModelCardCostInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCardCost(ctx, v)
+			data, err := ec.unmarshalOModelCardCostInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCardCost(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Cost = data
 		case "limit":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
-			data, err := ec.unmarshalNModelCardLimitInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCardLimit(ctx, v)
+			data, err := ec.unmarshalOModelCardLimitInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCardLimit(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -39912,14 +40111,14 @@ func (ec *executionContext) unmarshalInputModelCardLimitInput(ctx context.Contex
 		switch k {
 		case "context":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("context"))
-			data, err := ec.unmarshalNInt2int(ctx, v)
+			data, err := ec.unmarshalOInt2int(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Context = data
 		case "output":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("output"))
-			data, err := ec.unmarshalNInt2int(ctx, v)
+			data, err := ec.unmarshalOInt2int(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -39946,14 +40145,14 @@ func (ec *executionContext) unmarshalInputModelCardModalitiesInput(ctx context.C
 		switch k {
 		case "input":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Input = data
 		case "output":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("output"))
-			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -39980,14 +40179,14 @@ func (ec *executionContext) unmarshalInputModelCardReasoningInput(ctx context.Co
 		switch k {
 		case "supported":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("supported"))
-			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Supported = data
 		case "default":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("default"))
-			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -40005,7 +40204,7 @@ func (ec *executionContext) unmarshalInputModelIDAssociationInput(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"modelId"}
+	fieldsInOrder := [...]string{"modelId", "exclude"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -40019,6 +40218,13 @@ func (ec *executionContext) unmarshalInputModelIDAssociationInput(ctx context.Co
 				return it, err
 			}
 			it.ModelID = data
+		case "exclude":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("exclude"))
+			data, err := ec.unmarshalOExcludeAssociationInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐExcludeAssociationᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Exclude = data
 		}
 	}
 
@@ -41928,7 +42134,7 @@ func (ec *executionContext) unmarshalInputRegexAssociationInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"pattern"}
+	fieldsInOrder := [...]string{"pattern", "exclude"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -41942,6 +42148,13 @@ func (ec *executionContext) unmarshalInputRegexAssociationInput(ctx context.Cont
 				return it, err
 			}
 			it.Pattern = data
+		case "exclude":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("exclude"))
+			data, err := ec.unmarshalOExcludeAssociationInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐExcludeAssociationᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Exclude = data
 		}
 	}
 
@@ -53183,6 +53396,44 @@ func (ec *executionContext) _DataStorageSettings(ctx context.Context, sel ast.Se
 	return out
 }
 
+var excludeAssociationImplementors = []string{"ExcludeAssociation"}
+
+func (ec *executionContext) _ExcludeAssociation(ctx context.Context, sel ast.SelectionSet, obj *objects.ExcludeAssociation) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, excludeAssociationImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ExcludeAssociation")
+		case "channelNamePattern":
+			out.Values[i] = ec._ExcludeAssociation_channelNamePattern(ctx, field, obj)
+		case "channelIds":
+			out.Values[i] = ec._ExcludeAssociation_channelIds(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var fetchModelsPayloadImplementors = []string{"FetchModelsPayload"}
 
 func (ec *executionContext) _FetchModelsPayload(ctx context.Context, sel ast.SelectionSet, obj *FetchModelsPayload) graphql.Marshaler {
@@ -54042,6 +54293,8 @@ func (ec *executionContext) _ModelIDAssociation(ctx context.Context, sel ast.Sel
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "exclude":
+			out.Values[i] = ec._ModelIDAssociation_exclude(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -56223,6 +56476,8 @@ func (ec *executionContext) _RegexAssociation(ctx context.Context, sel ast.Selec
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "exclude":
+			out.Values[i] = ec._RegexAssociation_exclude(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -62732,6 +62987,21 @@ func (ec *executionContext) unmarshalNDataStorageWhereInput2ᚖgithubᚗcomᚋlo
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNExcludeAssociation2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐExcludeAssociation(ctx context.Context, sel ast.SelectionSet, v *objects.ExcludeAssociation) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ExcludeAssociation(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNExcludeAssociationInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐExcludeAssociation(ctx context.Context, v any) (*objects.ExcludeAssociation, error) {
+	res, err := ec.unmarshalInputExcludeAssociationInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNFetchModelsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐFetchModelsInput(ctx context.Context, v any) (biz.FetchModelsInput, error) {
 	res, err := ec.unmarshalInputFetchModelsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -63086,11 +63356,6 @@ func (ec *executionContext) marshalNModelCardCost2githubᚗcomᚋloopljᚋaxonhu
 	return ec._ModelCardCost(ctx, sel, &v)
 }
 
-func (ec *executionContext) unmarshalNModelCardCostInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCardCost(ctx context.Context, v any) (objects.ModelCardCost, error) {
-	res, err := ec.unmarshalInputModelCardCostInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
 func (ec *executionContext) unmarshalNModelCardInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCard(ctx context.Context, v any) (*objects.ModelCard, error) {
 	res, err := ec.unmarshalInputModelCardInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
@@ -63100,27 +63365,12 @@ func (ec *executionContext) marshalNModelCardLimit2githubᚗcomᚋloopljᚋaxonh
 	return ec._ModelCardLimit(ctx, sel, &v)
 }
 
-func (ec *executionContext) unmarshalNModelCardLimitInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCardLimit(ctx context.Context, v any) (objects.ModelCardLimit, error) {
-	res, err := ec.unmarshalInputModelCardLimitInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
 func (ec *executionContext) marshalNModelCardModalities2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCardModalities(ctx context.Context, sel ast.SelectionSet, v objects.ModelCardModalities) graphql.Marshaler {
 	return ec._ModelCardModalities(ctx, sel, &v)
 }
 
-func (ec *executionContext) unmarshalNModelCardModalitiesInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCardModalities(ctx context.Context, v any) (objects.ModelCardModalities, error) {
-	res, err := ec.unmarshalInputModelCardModalitiesInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
 func (ec *executionContext) marshalNModelCardReasoning2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCardReasoning(ctx context.Context, sel ast.SelectionSet, v objects.ModelCardReasoning) graphql.Marshaler {
 	return ec._ModelCardReasoning(ctx, sel, &v)
-}
-
-func (ec *executionContext) unmarshalNModelCardReasoningInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCardReasoning(ctx context.Context, v any) (objects.ModelCardReasoning, error) {
-	res, err := ec.unmarshalInputModelCardReasoningInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNModelChannelConnection2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐModelChannelConnectionᚄ(ctx context.Context, sel ast.SelectionSet, v []*biz.ModelChannelConnection) graphql.Marshaler {
@@ -65878,6 +66128,71 @@ func (ec *executionContext) unmarshalODataStorageWhereInput2ᚖgithubᚗcomᚋlo
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalOExcludeAssociation2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐExcludeAssociationᚄ(ctx context.Context, sel ast.SelectionSet, v []*objects.ExcludeAssociation) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNExcludeAssociation2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐExcludeAssociation(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOExcludeAssociationInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐExcludeAssociationᚄ(ctx context.Context, v any) ([]*objects.ExcludeAssociation, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*objects.ExcludeAssociation, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNExcludeAssociationInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐExcludeAssociation(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
 func (ec *executionContext) unmarshalOFloat2float64(ctx context.Context, v any) (float64, error) {
 	res, err := graphql.UnmarshalFloatContext(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -66332,12 +66647,32 @@ func (ec *executionContext) marshalOModel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋi
 	return ec._Model(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalOModelCardCostInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCardCost(ctx context.Context, v any) (objects.ModelCardCost, error) {
+	res, err := ec.unmarshalInputModelCardCostInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalOModelCardInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCard(ctx context.Context, v any) (*objects.ModelCard, error) {
 	if v == nil {
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputModelCardInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOModelCardLimitInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCardLimit(ctx context.Context, v any) (objects.ModelCardLimit, error) {
+	res, err := ec.unmarshalInputModelCardLimitInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOModelCardModalitiesInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCardModalities(ctx context.Context, v any) (objects.ModelCardModalities, error) {
+	res, err := ec.unmarshalInputModelCardModalitiesInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOModelCardReasoningInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCardReasoning(ctx context.Context, v any) (objects.ModelCardReasoning, error) {
+	res, err := ec.unmarshalInputModelCardReasoningInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOModelEdge2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐModelEdge(ctx context.Context, sel ast.SelectionSet, v []*ent.ModelEdge) graphql.Marshaler {
