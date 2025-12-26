@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/samber/lo"
 
@@ -18,18 +19,41 @@ type ModelChannelConnection struct {
 	Priority int                 `json:"priority"`
 }
 
+// deduplicationTracker tracks which (channelID, modelID) combinations have been added.
+type deduplicationTracker map[string]bool
+
+// makeKey creates a unique key for (channelID, modelID) combination.
+func (d deduplicationTracker) makeKey(channelID int, modelID string) string {
+	return fmt.Sprintf("%d:%s", channelID, modelID)
+}
+
+// add marks a (channelID, modelID) combination as added.
+// Returns true if it was newly added, false if it already existed.
+func (d deduplicationTracker) add(channelID int, modelID string) bool {
+	key := d.makeKey(channelID, modelID)
+	if d[key] {
+		return false
+	}
+
+	d[key] = true
+
+	return true
+}
+
 // MatchAssociations matches associations against channels and their supported models.
 // Returns ModelChannelConnection with priority for each match.
 // Results are ordered by the matching order of associations.
+// Deduplication: Same (channel, model) combination will only appear once.
 func MatchAssociations(
 	ctx context.Context,
 	associations []*objects.ModelAssociation,
 	channels []*Channel,
 ) ([]*ModelChannelConnection, error) {
 	result := make([]*ModelChannelConnection, 0)
+	tracker := make(deduplicationTracker)
 
 	for _, assoc := range associations {
-		connections := matchSingleAssociation(assoc, channels)
+		connections := matchSingleAssociation(assoc, channels, tracker)
 		result = append(result, connections...)
 	}
 
@@ -40,25 +64,26 @@ func MatchAssociations(
 func matchSingleAssociation(
 	assoc *objects.ModelAssociation,
 	channels []*Channel,
+	tracker deduplicationTracker,
 ) []*ModelChannelConnection {
 	connections := make([]*ModelChannelConnection, 0)
 
 	switch assoc.Type {
 	case "channel_model":
-		connections = matchChannelModel(assoc, channels)
+		connections = matchChannelModel(assoc, channels, tracker)
 	case "channel_regex":
-		connections = matchChannelRegex(assoc, channels)
+		connections = matchChannelRegex(assoc, channels, tracker)
 	case "regex":
-		connections = matchRegex(assoc, channels)
+		connections = matchRegex(assoc, channels, tracker)
 	case "model":
-		connections = matchModel(assoc, channels)
+		connections = matchModel(assoc, channels, tracker)
 	}
 
 	return connections
 }
 
 // matchChannelModel handles channel_model type association.
-func matchChannelModel(assoc *objects.ModelAssociation, channels []*Channel) []*ModelChannelConnection {
+func matchChannelModel(assoc *objects.ModelAssociation, channels []*Channel, tracker deduplicationTracker) []*ModelChannelConnection {
 	if assoc.ChannelModel == nil {
 		return nil
 	}
@@ -77,6 +102,11 @@ func matchChannelModel(assoc *objects.ModelAssociation, channels []*Channel) []*
 		return nil
 	}
 
+	// Check deduplication
+	if !tracker.add(ch.ID, assoc.ChannelModel.ModelID) {
+		return nil
+	}
+
 	return []*ModelChannelConnection{
 		{
 			Channel:  ch.Channel,
@@ -87,7 +117,7 @@ func matchChannelModel(assoc *objects.ModelAssociation, channels []*Channel) []*
 }
 
 // matchChannelRegex handles channel_regex type association.
-func matchChannelRegex(assoc *objects.ModelAssociation, channels []*Channel) []*ModelChannelConnection {
+func matchChannelRegex(assoc *objects.ModelAssociation, channels []*Channel, tracker deduplicationTracker) []*ModelChannelConnection {
 	if assoc.ChannelRegex == nil {
 		return nil
 	}
@@ -105,7 +135,10 @@ func matchChannelRegex(assoc *objects.ModelAssociation, channels []*Channel) []*
 
 	for modelID, entry := range entries {
 		if xregexp.MatchString(assoc.ChannelRegex.Pattern, modelID) {
-			models = append(models, entry)
+			// Check deduplication
+			if tracker.add(ch.ID, modelID) {
+				models = append(models, entry)
+			}
 		}
 	}
 
@@ -123,7 +156,7 @@ func matchChannelRegex(assoc *objects.ModelAssociation, channels []*Channel) []*
 }
 
 // matchRegex handles regex type association.
-func matchRegex(assoc *objects.ModelAssociation, channels []*Channel) []*ModelChannelConnection {
+func matchRegex(assoc *objects.ModelAssociation, channels []*Channel, tracker deduplicationTracker) []*ModelChannelConnection {
 	if assoc.Regex == nil {
 		return nil
 	}
@@ -137,7 +170,10 @@ func matchRegex(assoc *objects.ModelAssociation, channels []*Channel) []*ModelCh
 
 		for modelID, entry := range entries {
 			if xregexp.MatchString(assoc.Regex.Pattern, modelID) {
-				models = append(models, entry)
+				// Check deduplication
+				if tracker.add(ch.ID, modelID) {
+					models = append(models, entry)
+				}
 			}
 		}
 
@@ -156,7 +192,7 @@ func matchRegex(assoc *objects.ModelAssociation, channels []*Channel) []*ModelCh
 }
 
 // matchModel handles model type association.
-func matchModel(assoc *objects.ModelAssociation, channels []*Channel) []*ModelChannelConnection {
+func matchModel(assoc *objects.ModelAssociation, channels []*Channel, tracker deduplicationTracker) []*ModelChannelConnection {
 	if assoc.ModelID == nil {
 		return nil
 	}
@@ -169,6 +205,11 @@ func matchModel(assoc *objects.ModelAssociation, channels []*Channel) []*ModelCh
 		entry, contains := entries[modelID]
 
 		if !contains {
+			continue
+		}
+
+		// Check deduplication
+		if !tracker.add(ch.ID, modelID) {
 			continue
 		}
 
