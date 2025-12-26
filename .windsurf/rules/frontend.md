@@ -27,3 +27,7 @@ globs: *.ts,*.tsx
 ## React
 
 1. use useCallback to wrap the callback function to reduce rerender
+
+## UI Components
+
+1. When using AutoComplete or AutoCompleteSelect inside a Dialog, MUST pass `portalContainer` prop pointing to the Dialog's container element to fix scrolling issues.

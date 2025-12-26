@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useCallback, useState } from 'react'
+import { useEffect, useMemo, useCallback, useState, useRef } from 'react'
 import { z } from 'zod'
 import { useForm, useFieldArray, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { IconPlus, IconTrash } from '@tabler/icons-react'
+import { IconPlus, IconTrash, IconChevronDown, IconChevronUp } from '@tabler/icons-react'
 import { useQueryModels, useQueryModelChannelConnections, ModelAssociationInput, ModelChannelConnection } from '@/gql/models'
 import { useTranslation } from 'react-i18next'
 import { extractNumberIDAsNumber } from '@/lib/utils'
@@ -20,17 +20,6 @@ import { useModels } from '../context/models-context'
 import { useUpdateModel } from '../data/models'
 import { ModelAssociation } from '../data/schema'
 
-// Helper function to validate regex pattern
-const isValidRegex = (pattern: string): boolean => {
-  if (!pattern) return true
-  try {
-    new RegExp(pattern)
-    return true
-  } catch {
-    return false
-  }
-}
-
 const associationFormSchema = z.object({
   associations: z
     .array(
@@ -40,6 +29,8 @@ const associationFormSchema = z.object({
         channelId: z.number().optional(),
         modelId: z.string().optional(),
         pattern: z.string().optional(),
+        excludeChannelNamePattern: z.string().optional(),
+        excludeChannelIds: z.array(z.number()).optional(),
       })
     )
     .max(10, 'Cannot have more than 10 associations')
@@ -70,12 +61,6 @@ const associationFormSchema = z.object({
               message: 'Pattern is required',
               path: [index, 'pattern'],
             })
-          } else if (!isValidRegex(assoc.pattern)) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: 'Invalid regex pattern',
-              path: [index, 'pattern'],
-            })
           }
         }
       })
@@ -93,6 +78,7 @@ export function ModelsAssociationDialog() {
   const { mutateAsync: queryConnections } = useQueryModelChannelConnections()
   const [connections, setConnections] = useState<ModelChannelConnection[]>([])
   const [channelFilter, setChannelFilter] = useState('')
+  const dialogContentRef = useRef<HTMLDivElement>(null)
 
   const isOpen = open === 'association'
 
@@ -184,6 +170,12 @@ export function ModelsAssociationDialog() {
             return false
           })
           .map((assoc: any): ModelAssociationInput | undefined => {
+            const hasExclude = assoc.excludeChannelNamePattern || (assoc.excludeChannelIds && assoc.excludeChannelIds.length > 0)
+            const exclude = hasExclude ? [{
+              channelNamePattern: assoc.excludeChannelNamePattern || null,
+              channelIds: assoc.excludeChannelIds || null,
+            }] : undefined
+
             if (assoc.type === 'channel_model') {
               return {
                 type: 'channel_model' as const,
@@ -205,6 +197,7 @@ export function ModelsAssociationDialog() {
                 type: 'regex' as const,
                 regex: {
                   pattern: assoc.pattern!,
+                  exclude,
                 },
               }
             } else if (assoc.type === 'model') {
@@ -212,6 +205,7 @@ export function ModelsAssociationDialog() {
                 type: 'model' as const,
                 modelId: {
                   modelId: assoc.modelId!,
+                  exclude,
                 },
               }
             }
@@ -238,13 +232,18 @@ export function ModelsAssociationDialog() {
     if (isOpen && currentRow) {
       const associations = currentRow.settings?.associations || []
       form.reset({
-        associations: associations.map((assoc) => ({
-          type: assoc.type,
-          priority: assoc.priority ?? 0,
-          channelId: assoc.channelModel?.channelId || assoc.channelRegex?.channelId,
-          modelId: assoc.channelModel?.modelId || assoc.modelId?.modelId,
-          pattern: assoc.channelRegex?.pattern || assoc.regex?.pattern,
-        })),
+        associations: associations.map((assoc) => {
+          const exclude = assoc.regex?.exclude?.[0] || assoc.modelId?.exclude?.[0]
+          return {
+            type: assoc.type,
+            priority: assoc.priority ?? 0,
+            channelId: assoc.channelModel?.channelId || assoc.channelRegex?.channelId,
+            modelId: assoc.channelModel?.modelId || assoc.modelId?.modelId,
+            pattern: assoc.channelRegex?.pattern || assoc.regex?.pattern,
+            excludeChannelNamePattern: exclude?.channelNamePattern || '',
+            excludeChannelIds: exclude?.channelIds || [],
+          }
+        }),
       })
     }
   }, [isOpen, currentRow, form])
@@ -280,6 +279,11 @@ export function ModelsAssociationDialog() {
             modelId: null,
           }
         } else if (assoc.type === 'regex') {
+          const hasExclude = assoc.excludeChannelNamePattern || (assoc.excludeChannelIds && assoc.excludeChannelIds.length > 0)
+          const exclude = hasExclude ? [{
+            channelNamePattern: assoc.excludeChannelNamePattern || null,
+            channelIds: assoc.excludeChannelIds || null,
+          }] : null
           return {
             type: 'regex',
             priority: assoc.priority ?? 0,
@@ -287,10 +291,16 @@ export function ModelsAssociationDialog() {
             channelRegex: null,
             regex: {
               pattern: assoc.pattern || '',
+              exclude,
             },
             modelId: null,
           }
         } else {
+          const hasExclude = assoc.excludeChannelNamePattern || (assoc.excludeChannelIds && assoc.excludeChannelIds.length > 0)
+          const exclude = hasExclude ? [{
+            channelNamePattern: assoc.excludeChannelNamePattern || null,
+            channelIds: assoc.excludeChannelIds || null,
+          }] : null
           return {
             type: 'model',
             priority: assoc.priority ?? 0,
@@ -299,6 +309,7 @@ export function ModelsAssociationDialog() {
             regex: null,
             modelId: {
               modelId: assoc.modelId || '',
+              exclude,
             },
           }
         }
@@ -333,6 +344,8 @@ export function ModelsAssociationDialog() {
       channelId: undefined,
       modelId: '',
       pattern: '',
+      excludeChannelNamePattern: '',
+      excludeChannelIds: [],
     })
   }, [append, fields.length])
 
@@ -369,7 +382,7 @@ export function ModelsAssociationDialog() {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className='flex h-[85vh] max-h-[800px] flex-col sm:max-w-6xl'>
+      <DialogContent ref={dialogContentRef} className='flex h-[85vh] max-h-[800px] flex-col sm:max-w-6xl'>
         <DialogHeader className='shrink-0 text-left'>
           <DialogTitle>{t('models.dialogs.association.title')}</DialogTitle>
           <DialogDescription>{t('models.dialogs.association.description', { name: currentRow?.name })}</DialogDescription>
@@ -401,6 +414,7 @@ export function ModelsAssociationDialog() {
                         channelOptions={channelOptions}
                         allModelOptions={allModelOptions}
                         onRemove={() => remove(index)}
+                        portalContainer={dialogContentRef.current}
                       />
                     ))}
                 </form>
@@ -489,20 +503,33 @@ interface AssociationRowProps {
   channelOptions: { value: number; label: string; supportedModels: string[] }[]
   allModelOptions: { value: string; label: string }[]
   onRemove: () => void
+  portalContainer: HTMLElement | null
 }
 
-function AssociationRow({ index, form, channelOptions, allModelOptions, onRemove }: AssociationRowProps) {
+function AssociationRow({ index, form, channelOptions, allModelOptions, onRemove, portalContainer }: AssociationRowProps) {
   const { t } = useTranslation()
 
   const type = form.watch(`associations.${index}.type`)
   const channelId = form.watch(`associations.${index}.channelId`)
   const modelId = form.watch(`associations.${index}.modelId`)
   const pattern = form.watch(`associations.${index}.pattern`)
+  const excludeChannelIds = form.watch(`associations.${index}.excludeChannelIds`)
+  const excludeChannelNamePattern = form.watch(`associations.${index}.excludeChannelNamePattern`)
   const [modelSearch, setModelSearch] = useState('')
+  const [excludeExpanded, setExcludeExpanded] = useState(false)
 
   const showChannel = type === 'channel_model' || type === 'channel_regex'
   const showModel = type === 'channel_model' || type === 'model'
   const showPattern = type === 'channel_regex' || type === 'regex'
+  const showExclude = type === 'regex' || type === 'model'
+  const hasExcludeData = excludeChannelNamePattern || (excludeChannelIds && excludeChannelIds.length > 0)
+
+  // Auto-expand if has exclude data
+  useEffect(() => {
+    if (hasExcludeData) {
+      setExcludeExpanded(true)
+    }
+  }, [hasExcludeData])
 
   // Filter model options based on selected channel's supported models
   const modelOptions = useMemo(() => {
@@ -595,6 +622,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, onRemove
                     items={channelOptions.map((opt) => ({ value: opt.value.toString(), label: opt.label }))}
                     placeholder={t('models.dialogs.association.selectChannel')}
                     emptyMessage={t('models.dialogs.association.noModelsAvailable')}
+                    portalContainer={portalContainer}
                   />
                 </FormControl>
                 {fieldState.error && <FormMessage>{fieldState.error.message}</FormMessage>}
@@ -626,6 +654,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, onRemove
                         ? t('models.dialogs.association.noChannelModelsAvailable')
                         : t('models.dialogs.association.selectChannelFirst')
                     }
+                    portalContainer={portalContainer}
                   />
                 </FormControl>
                 <FormMessage />
@@ -667,18 +696,108 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, onRemove
         </Button>
       </div>
 
+      {/* Exclude Section */}
+      {showExclude && (
+        <div className='ml-14 pt-2 border-t'>
+          <Button
+            type='button'
+            variant='ghost'
+            size='sm'
+            onClick={() => setExcludeExpanded(!excludeExpanded)}
+            className='h-7 px-2 text-xs text-muted-foreground hover:text-foreground mb-2'
+          >
+            {excludeExpanded ? <IconChevronUp className='h-3 w-3 mr-1' /> : <IconChevronDown className='h-3 w-3 mr-1' />}
+            {t('models.dialogs.association.excludeSection')}
+            {hasExcludeData && !excludeExpanded && (
+              <Badge variant='secondary' className='ml-2 h-4 px-1 text-[10px]'>
+                {(excludeChannelNamePattern ? 1 : 0) + (excludeChannelIds?.length || 0)}
+              </Badge>
+            )}
+          </Button>
+          {excludeExpanded && (
+            <div className='grid grid-cols-[11rem_1fr] gap-2'>
+              <FormField
+                control={form.control}
+                name={`associations.${index}.excludeChannelNamePattern`}
+                render={({ field }) => (
+                  <FormItem className='gap-0'>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        value={field.value?.toString() || ''}
+                        placeholder={t('models.dialogs.association.excludeChannelNamePattern')}
+                        className='h-8 text-xs'
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name={`associations.${index}.excludeChannelIds`}
+                render={({ field }) => (
+                  <FormItem className='gap-0'>
+                    <div className='space-y-1'>
+                      <AutoCompleteSelect
+                        selectedValue=''
+                        onSelectedValueChange={(value) => {
+                          if (!value) return
+                          const channelId = Number(value)
+                          if (isNaN(channelId)) return
+                          const currentIds = field.value || []
+                          if (!currentIds.includes(channelId)) {
+                            field.onChange([...currentIds, channelId])
+                          }
+                        }}
+                        items={channelOptions
+                          .filter((opt) => !(field.value || []).includes(opt.value))
+                          .map((opt) => ({
+                            value: opt.value.toString(),
+                            label: opt.label,
+                          }))}
+                        placeholder={t('models.dialogs.association.excludeChannelIds')}
+                        emptyMessage={t('models.dialogs.association.noChannelsAvailable')}
+                        portalContainer={portalContainer}
+                      />
+                      {field.value && field.value.length > 0 && (
+                        <div className='flex flex-wrap gap-1'>
+                          {field.value.map((channelId: number) => {
+                            const channel = channelOptions.find((opt) => opt.value === channelId)
+                            return (
+                              <Badge
+                                key={channelId}
+                                variant='secondary'
+                                className='h-6 px-2 text-xs cursor-pointer hover:bg-destructive hover:text-destructive-foreground'
+                                onClick={() => {
+                                  field.onChange(field?.value?.filter((id: number) => id !== channelId))
+                                }}
+                              >
+                                {channel?.label || channelId}
+                                <span className='ml-1'>×</span>
+                              </Badge>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Hint */}
-      {(() => {
+      {!showExclude && (() => {
         let hint = null;
         const selectedChannel = channelOptions.find(c => c.value === channelId);
         if (type === 'channel_model' && channelId && modelId) {
           hint = t('models.dialogs.association.ruleHints.channelModel', { model: modelId, channel: selectedChannel?.label || channelId.toString() });
-        } else if (type === 'channel_regex' && channelId && pattern && isValidRegex(pattern)) {
+        } else if (type === 'channel_regex' && channelId && pattern) {
           hint = t('models.dialogs.association.ruleHints.channelRegex', { pattern, channel: selectedChannel?.label || channelId.toString() });
-        } else if (type === 'model' && modelId) {
-          hint = t('models.dialogs.association.ruleHints.model', { model: modelId });
-        } else if (type === 'regex' && pattern && isValidRegex(pattern)) {
-          hint = t('models.dialogs.association.ruleHints.regex', { pattern });
         }
         if (hint) {
           return <div className='text-xs text-muted-foreground ml-14'>{hint}</div>;

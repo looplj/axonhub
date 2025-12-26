@@ -116,6 +116,10 @@
         "filterByChannel": "按渠道名称筛选...",
         "noConnections": "暂无渠道连接。添加规则以查看预览。",
         "noFilteredConnections": "未找到匹配的渠道。",
+        "excludeSection": "排除渠道",
+        "excludeChannelNamePattern": "排除渠道名称（正则）",
+        "excludeChannelIds": "排除渠道",
+        "noChannelsAvailable": "暂无可用渠道",
         "ruleHints": {
           "channelModel": "使用渠道 {{channel}} 的 {{model}} 模型",
           "channelRegex": "使用渠道 {{channel}} 匹配 {{pattern}} 的模型",

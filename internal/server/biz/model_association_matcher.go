@@ -164,6 +164,11 @@ func matchRegex(assoc *objects.ModelAssociation, channels []*Channel, tracker de
 	connections := make([]*ModelChannelConnection, 0)
 
 	for _, ch := range channels {
+		// Check if channel should be excluded
+		if shouldExcludeChannel(ch, assoc.Regex.Exclude) {
+			continue
+		}
+
 		entries := ch.GetModelEntries()
 
 		var models []ChannelModelEntry
@@ -201,6 +206,11 @@ func matchModel(assoc *objects.ModelAssociation, channels []*Channel, tracker de
 	connections := make([]*ModelChannelConnection, 0)
 
 	for _, ch := range channels {
+		// Check if channel should be excluded
+		if shouldExcludeChannel(ch, assoc.ModelID.Exclude) {
+			continue
+		}
+
 		entries := ch.GetModelEntries()
 		entry, contains := entries[modelID]
 
@@ -221,4 +231,29 @@ func matchModel(assoc *objects.ModelAssociation, channels []*Channel, tracker de
 	}
 
 	return connections
+}
+
+// shouldExcludeChannel checks if a channel should be excluded based on exclude rules.
+func shouldExcludeChannel(ch *Channel, excludes []*objects.ExcludeAssociation) bool {
+	if len(excludes) == 0 {
+		return false
+	}
+
+	for _, exclude := range excludes {
+		// Check channel name pattern
+		if exclude.ChannelNamePattern != "" {
+			if xregexp.MatchString(exclude.ChannelNamePattern, ch.Name) {
+				return true
+			}
+		}
+
+		// Check channel IDs
+		if len(exclude.ChannelIds) > 0 {
+			if lo.Contains(exclude.ChannelIds, ch.ID) {
+				return true
+			}
+		}
+	}
+
+	return false
 }

@@ -72,9 +72,17 @@ const MODELS_QUERY = `
               }
               regex {
                 pattern
+                exclude {
+                  channelNamePattern
+                  channelIds
+                }
               }
               modelId {
                 modelId
+                exclude {
+                  channelNamePattern
+                  channelIds
+                }
               }
             }
           }
@@ -146,9 +154,17 @@ const CREATE_MODEL_MUTATION = `
           }
           regex {
             pattern
+            exclude {
+              channelNamePattern
+              channelIds
+            }
           }
           modelId {
             modelId
+            exclude {
+              channelNamePattern
+              channelIds
+            }
           }
         }
       }
@@ -210,9 +226,17 @@ const BULK_CREATE_MODELS_MUTATION = `
           }
           regex {
             pattern
+            exclude {
+              channelNamePattern
+              channelIds
+            }
           }
           modelId {
             modelId
+            exclude {
+              channelNamePattern
+              channelIds
+            }
           }
         }
       }
@@ -274,9 +298,17 @@ const UPDATE_MODEL_MUTATION = `
           }
           regex {
             pattern
+            exclude {
+              channelNamePattern
+              channelIds
+            }
           }
           modelId {
             modelId
+            exclude {
+              channelNamePattern
+              channelIds
+            }
           }
         }
       }

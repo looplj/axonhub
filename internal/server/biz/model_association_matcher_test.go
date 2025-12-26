@@ -346,3 +346,221 @@ func countModel(models []ChannelModelEntry, modelID string) int {
 
 	return count
 }
+
+func TestMatchAssociations_ExcludeChannels(t *testing.T) {
+	ctx := context.Background()
+
+	channels := []*Channel{
+		{
+			Channel: &ent.Channel{
+				ID:              1,
+				Name:            "openai-primary",
+				Type:            channel.TypeOpenai,
+				SupportedModels: []string{"gpt-4", "gpt-3.5-turbo"},
+			},
+		},
+		{
+			Channel: &ent.Channel{
+				ID:              2,
+				Name:            "openai-backup",
+				Type:            channel.TypeOpenai,
+				SupportedModels: []string{"gpt-4", "gpt-3.5-turbo"},
+			},
+		},
+		{
+			Channel: &ent.Channel{
+				ID:              3,
+				Name:            "anthropic-primary",
+				Type:            channel.TypeAnthropic,
+				SupportedModels: []string{"claude-3-opus"},
+			},
+		},
+	}
+
+	t.Run("regex exclude by channel name pattern", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "regex",
+				Priority: 1,
+				Regex: &objects.RegexAssociation{
+					Pattern: "gpt-.*",
+					Exclude: []*objects.ExcludeAssociation{
+						{
+							ChannelNamePattern: ".*backup",
+						},
+					},
+				},
+			},
+		}
+
+		result, err := MatchAssociations(ctx, associations, channels)
+		assert.NoError(t, err)
+
+		// Should only match openai-primary, not openai-backup
+		assert.Len(t, result, 1)
+		assert.Equal(t, 1, result[0].Channel.ID)
+		assert.Equal(t, "openai-primary", result[0].Channel.Name)
+	})
+
+	t.Run("regex exclude by channel IDs", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "regex",
+				Priority: 1,
+				Regex: &objects.RegexAssociation{
+					Pattern: "gpt-.*",
+					Exclude: []*objects.ExcludeAssociation{
+						{
+							ChannelIds: []int{2},
+						},
+					},
+				},
+			},
+		}
+
+		result, err := MatchAssociations(ctx, associations, channels)
+		assert.NoError(t, err)
+
+		// Should only match channel 1, not channel 2
+		assert.Len(t, result, 1)
+		assert.Equal(t, 1, result[0].Channel.ID)
+	})
+
+	t.Run("model exclude by channel name pattern", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "model",
+				Priority: 1,
+				ModelID: &objects.ModelIDAssociation{
+					ModelID: "gpt-4",
+					Exclude: []*objects.ExcludeAssociation{
+						{
+							ChannelNamePattern: "openai-backup",
+						},
+					},
+				},
+			},
+		}
+
+		result, err := MatchAssociations(ctx, associations, channels)
+		assert.NoError(t, err)
+
+		// Should only match openai-primary
+		assert.Len(t, result, 1)
+		assert.Equal(t, 1, result[0].Channel.ID)
+		assert.Equal(t, "gpt-4", result[0].Models[0].RequestModel)
+	})
+
+	t.Run("model exclude by channel IDs", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "model",
+				Priority: 1,
+				ModelID: &objects.ModelIDAssociation{
+					ModelID: "gpt-4",
+					Exclude: []*objects.ExcludeAssociation{
+						{
+							ChannelIds: []int{1, 2},
+						},
+					},
+				},
+			},
+		}
+
+		result, err := MatchAssociations(ctx, associations, channels)
+		assert.NoError(t, err)
+
+		// Should exclude both openai channels, no results
+		assert.Len(t, result, 0)
+	})
+
+	t.Run("exclude with both pattern and IDs", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "regex",
+				Priority: 1,
+				Regex: &objects.RegexAssociation{
+					Pattern: ".*",
+					Exclude: []*objects.ExcludeAssociation{
+						{
+							ChannelNamePattern: ".*backup",
+							ChannelIds:         []int{3},
+						},
+					},
+				},
+			},
+		}
+
+		result, err := MatchAssociations(ctx, associations, channels)
+		assert.NoError(t, err)
+
+		// Should only match openai-primary (channel 1)
+		// Excludes: openai-backup (by pattern), anthropic-primary (by ID)
+		assert.Len(t, result, 1)
+		assert.Equal(t, 1, result[0].Channel.ID)
+	})
+
+	t.Run("multiple exclude rules", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "model",
+				Priority: 1,
+				ModelID: &objects.ModelIDAssociation{
+					ModelID: "gpt-4",
+					Exclude: []*objects.ExcludeAssociation{
+						{
+							ChannelNamePattern: ".*primary",
+						},
+						{
+							ChannelIds: []int{2},
+						},
+					},
+				},
+			},
+		}
+
+		result, err := MatchAssociations(ctx, associations, channels)
+		assert.NoError(t, err)
+
+		// Should exclude all channels: 1 by pattern, 2 by ID
+		assert.Len(t, result, 0)
+	})
+
+	t.Run("no exclude when list is empty", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "regex",
+				Priority: 1,
+				Regex: &objects.RegexAssociation{
+					Pattern: "gpt-.*",
+					Exclude: []*objects.ExcludeAssociation{},
+				},
+			},
+		}
+
+		result, err := MatchAssociations(ctx, associations, channels)
+		assert.NoError(t, err)
+
+		// Should match both openai channels
+		assert.Len(t, result, 2)
+	})
+
+	t.Run("no exclude when nil", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "model",
+				Priority: 1,
+				ModelID: &objects.ModelIDAssociation{
+					ModelID: "gpt-4",
+					Exclude: nil,
+				},
+			},
+		}
+
+		result, err := MatchAssociations(ctx, associations, channels)
+		assert.NoError(t, err)
+
+		// Should match both openai channels
+		assert.Len(t, result, 2)
+	})
+}
