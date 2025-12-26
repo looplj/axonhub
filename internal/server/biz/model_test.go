@@ -296,7 +296,7 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 		}, result[0].Models)
 	})
 
-	t.Run("mixed associations produce separate connections", func(t *testing.T) {
+	t.Run("mixed associations with global deduplication", func(t *testing.T) {
 		associations := []*objects.ModelAssociation{
 			{
 				Type: "channel_model",
@@ -316,11 +316,10 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 
 		result, err := svc.QueryModelChannelConnections(ctx, associations)
 		require.NoError(t, err)
-		require.Len(t, result, 2)
+		// Global deduplication: same (channel, model) only appears once
+		require.Len(t, result, 1)
 		require.Equal(t, channel1.ID, result[0].Channel.ID)
 		require.Equal(t, []ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4", Source: "direct"}}, result[0].Models)
-		require.Equal(t, channel1.ID, result[1].Channel.ID)
-		require.Equal(t, []ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4", Source: "direct"}}, result[1].Models)
 	})
 
 	t.Run("duplicate channel associations preserve order", func(t *testing.T) {

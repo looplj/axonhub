@@ -407,20 +407,21 @@ export function ModelsBatchCreateDialog() {
               </div>
             ))}
           </div>
+        </div>
 
-          <Button type='button' variant='outline' className='mt-3 w-full' onClick={handleAddRow} disabled={rows.length >= MAX_ROWS}>
+        <div className='flex flex-shrink-0 flex-col gap-3 border-t pt-4'>
+          <Button type='button' variant='outline' onClick={handleAddRow} disabled={rows.length >= MAX_ROWS}>
             <IconPlus className='mr-2 h-4 w-4' />
             {t('models.dialogs.batchCreate.addRow')} ({rows.length}/{MAX_ROWS})
           </Button>
-        </div>
-
-        <div className='flex flex-shrink-0 justify-end gap-2 border-t pt-4'>
-          <Button type='button' variant='outline' onClick={handleClose}>
-            {t('common.buttons.cancel')}
-          </Button>
-          <Button type='button' onClick={handleSubmit} disabled={bulkCreateModels.isPending}>
-            {t('common.buttons.create')}
-          </Button>
+          <div className='flex justify-end gap-2'>
+            <Button type='button' variant='outline' onClick={handleClose}>
+              {t('common.buttons.cancel')}
+            </Button>
+            <Button type='button' onClick={handleSubmit} disabled={bulkCreateModels.isPending}>
+              {t('common.buttons.create')}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

@@ -378,14 +378,6 @@ export function ModelsAssociationDialog() {
         <div className='flex min-h-0 flex-1 gap-6'>
           {/* Left Side - Association Rules */}
           <div className='flex min-h-0 flex-[2] flex-col'>
-            {/* Fixed Add Rule Section at Top */}
-            <div className='bg-background shrink-0 border-b pb-4'>
-              <Button type='button' variant='outline' onClick={handleAddAssociation} disabled={fields.length >= 10} className='w-full'>
-                <IconPlus className='mr-2 h-4 w-4' />
-                {t('models.dialogs.association.addRule')}
-              </Button>
-            </div>
-
             {/* Scrollable Rules Section */}
             <div className='flex-1 overflow-y-auto py-4'>
               <Form {...form}>
@@ -413,6 +405,14 @@ export function ModelsAssociationDialog() {
                     ))}
                 </form>
               </Form>
+            </div>
+
+            {/* Fixed Add Rule Section at Bottom */}
+            <div className='bg-background shrink-0 border-t pt-4'>
+              <Button type='button' variant='outline' onClick={handleAddAssociation} disabled={fields.length >= 10} className='w-full'>
+                <IconPlus className='mr-2 h-4 w-4' />
+                {t('models.dialogs.association.addRule')}
+              </Button>
             </div>
           </div>
 
