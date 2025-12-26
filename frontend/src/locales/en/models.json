@@ -38,6 +38,7 @@
     },
     "actions": {
       "create": "Add Model",
+      "bulkAdd": "Bulk Add",
       "addAssociation": "Add",
       "manageAssociation": "Manage Association",
       "settings": "Settings"
@@ -69,6 +70,14 @@
       "edit": {
         "title": "Edit Model",
         "description": "Update model configuration and settings"
+      },
+      "batchCreate": {
+        "title": "Batch Add Models",
+        "description": "Add multiple models at once by entering model IDs",
+        "addRow": "Add Row",
+        "required": "Required",
+        "validationError": "Please fill in all required fields (Developer, Model ID, Name, Icon) for each row",
+        "maxRowsReached": "Maximum {{max}} rows allowed"
       },
       "delete": {
         "title": "Delete Model",
@@ -120,6 +129,16 @@
         "disableTitle": "Disable Model",
         "disableDescription": "Are you sure you want to disable {{name}}?"
       },
+      "bulkDisable": {
+        "title": "Bulk Disable Models",
+        "description": "Are you sure you want to disable {{count}} models?",
+        "warning": "Disabled models will not be used for AI requests until they are re-enabled."
+      },
+      "bulkEnable": {
+        "title": "Bulk Enable Models",
+        "description": "Are you sure you want to enable {{count}} models?",
+        "warning": "Enabling models will allow them to be used for AI requests."
+      },
       "settings": {
         "title": "Model Settings",
         "description": "Configure global model-related settings",
@@ -168,10 +187,41 @@
     "messages": {
       "createSuccess": "Model created successfully",
       "createError": "Failed to create model: {{error}}",
+      "bulkCreateSuccess": "Successfully created {{count}} models",
+      "bulkCreateError": "Failed to create models: {{error}}",
       "updateSuccess": "Model updated successfully",
       "updateError": "Failed to update model: {{error}}",
       "deleteSuccess": "Model deleted successfully",
-      "deleteError": "Failed to delete model: {{error}}"
+      "deleteError": "Failed to delete model: {{error}}",
+      "bulkDisableSuccess": "Successfully disabled {{count}} models",
+      "bulkDisableError": "Failed to disable models: {{error}}",
+      "bulkEnableSuccess": "Successfully enabled {{count}} models",
+      "bulkEnableError": "Failed to enable models: {{error}}"
+    },
+    "onboarding": {
+      "title": "Welcome to Models",
+      "description": "Let's take a quick tour to help you understand model settings",
+      "startTour": "Start Tour",
+      "skipTour": "Skip Tour",
+      "completeTour": "Onboarding completed!",
+      "steps": {
+        "welcome": {
+          "title": "Models Management",
+          "description": "This is where you manage all your AI models. You can configure model associations, settings, and more."
+        },
+        "settingsButton": {
+          "title": "Model Settings",
+          "description": "Click here to access global model settings. Let's explore what you can configure."
+        },
+        "fallbackEnabled": {
+          "title": "Fallback to Channels",
+          "description": "When enabled, if a requested model is not found in model associations, the system will attempt to find enabled channels that support the requested model directly."
+        },
+        "queryAllChannelModels": {
+          "title": "Query All Channel Models",
+          "description": "When enabled, the models API returns all models from enabled channels. When disabled, only models with explicit Model entity configuration will be returned."
+        }
+      }
     }
   }
 }

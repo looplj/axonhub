@@ -68,11 +68,11 @@ export function ModelsActionDialog() {
   }, [selectedProvider, providers])
 
   const developerOptions = useMemo(() => {
-    return providers.map((p) => ({
-      value: p.id,
-      label: p.id,
+    return DEVELOPER_IDS.map((id) => ({
+      value: id,
+      label: id,
     }))
-  }, [providers])
+  }, [])
 
   const modelIdOptions = useMemo(() => {
     return selectedProviderModels.map((m) => ({

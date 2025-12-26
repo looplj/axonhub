@@ -19,7 +19,7 @@ export function ModelsDeleteDialog() {
 
   const isOpen = open === 'delete'
   const isBulk = selectedModels.length > 1
-  const modelToDelete = isBulk ? selectedModels : currentRow ? [currentRow] : []
+  const modelToDelete = selectedModels.length > 0 ? selectedModels : currentRow ? [currentRow] : []
 
   const handleDelete = async () => {
     try {

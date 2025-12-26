@@ -101,6 +101,10 @@ const ONBOARDING_INFO_QUERY = `
       onboarded
       version
       completedAt
+      systemModelSetting {
+        onboarded
+        completedAt
+      }
     }
   }
 `
@@ -108,6 +112,12 @@ const ONBOARDING_INFO_QUERY = `
 const COMPLETE_ONBOARDING_MUTATION = `
   mutation CompleteOnboarding($input: CompleteOnboardingInput!) {
     completeOnboarding(input: $input)
+  }
+`
+
+const COMPLETE_SYSTEM_MODEL_SETTING_ONBOARDING_MUTATION = `
+  mutation CompleteSystemModelSettingOnboarding($input: CompleteSystemModelSettingOnboardingInput!) {
+    completeSystemModelSettingOnboarding(input: $input)
   }
 `
 
@@ -168,13 +178,23 @@ export interface UpdateDefaultDataStorageInput {
   dataStorageID: string
 }
 
+export interface SystemModelSettingOnboarding {
+  onboarded: boolean
+  completedAt?: string
+}
+
 export interface OnboardingInfo {
   onboarded: boolean
   version: string
   completedAt?: string
+  systemModelSetting?: SystemModelSettingOnboarding
 }
 
 export interface CompleteOnboardingInput {
+  dummy?: string
+}
+
+export interface CompleteSystemModelSettingOnboardingInput {
   dummy?: string
 }
 
@@ -360,6 +380,26 @@ export function useCompleteOnboarding() {
     mutationFn: async (input?: CompleteOnboardingInput) => {
       const data = await graphqlRequest<{ completeOnboarding: boolean }>(COMPLETE_ONBOARDING_MUTATION, { input: input || {} })
       return data.completeOnboarding
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['onboardingInfo'] })
+    },
+    onError: () => {
+      toast.error(i18n.t('common.errors.onboardingFailed'))
+    },
+  })
+}
+
+export function useCompleteSystemModelSettingOnboarding() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (input?: CompleteSystemModelSettingOnboardingInput) => {
+      const data = await graphqlRequest<{ completeSystemModelSettingOnboarding: boolean }>(
+        COMPLETE_SYSTEM_MODEL_SETTING_ONBOARDING_MUTATION,
+        { input: input || {} }
+      )
+      return data.completeSystemModelSettingOnboarding
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['onboardingInfo'] })
