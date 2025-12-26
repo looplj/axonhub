@@ -431,16 +431,19 @@ print(result["data"][0]["embedding"][:5])
 
 ### 重排序 API
 
-AxonHub 通过 OpenAI 兼容和 Jina AI 特定的 API 支持文档重排序，允许您根据与查询的相关性重新排列文档。
+AxonHub 通过 Jina AI 重排序 API 支持文档重排序，允许您根据与查询的相关性重新排列文档。
 
 **端点：**
-- `POST /v1/rerank` - OpenAI 兼容重排序 API
+- `POST /v1/rerank` - Jina 兼容重排序 API（便捷端点）
 - `POST /jina/v1/rerank` - Jina AI 特定重排序 API
+
+> **注意**：OpenAI 不提供原生重排序 API。两个端点都使用 Jina 的重排序格式。
 
 #### 请求格式
 
 ```json
 {
+  "model": "jina-reranker-v1-base-en",
   "query": "什么是机器学习？",
   "documents": [
     "机器学习是人工智能的一个子集...",
@@ -456,6 +459,7 @@ AxonHub 通过 OpenAI 兼容和 Jina AI 特定的 API 支持文档重排序，�
 
 | 参数 | 类型 | 必需 | 描述 |
 |------|------|------|------|
+| `model` | string | ✅ | 用于重排序的模型（例如 `jina-reranker-v1-base-en`）。 |
 | `query` | string | ✅ | 用于比较文档的搜索查询。 |
 | `documents` | string[] | ✅ | 要重排序的文档列表。最少 1 个文档。 |
 | `top_n` | integer | ❌ | 返回最相关文档的数量。如果未指定，返回所有文档。 |
@@ -465,6 +469,7 @@ AxonHub 通过 OpenAI 兼容和 Jina AI 特定的 API 支持文档重排序，�
 
 ```json
 {
+  "model": "jina-reranker-v1-base-en",
   "object": "list",
   "results": [
     {
@@ -491,7 +496,7 @@ AxonHub 通过 OpenAI 兼容和 Jina AI 特定的 API 支持文档重排序，�
 
 #### 示例
 
-**OpenAI SDK (Python)：**
+**Python 示例：**
 ```python
 import requests
 
@@ -502,6 +507,7 @@ response = requests.post(
         "Content-Type": "application/json"
     },
     json={
+        "model": "jina-reranker-v1-base-en",
         "query": "什么是机器学习？",
         "documents": [
             "机器学习是人工智能的一个子集，使计算机能够在没有明确编程的情况下学习。",
@@ -517,7 +523,7 @@ for item in result["results"]:
     print(f"分数: {item['relevance_score']:.3f} - {item['document']['text'][:50]}...")
 ```
 
-**Jina SDK (Python)：**
+**Jina 端点 (Python)：**
 ```python
 import requests
 
@@ -563,12 +569,14 @@ import (
 )
 
 type RerankRequest struct {
+    Model     string   `json:"model,omitempty"`
     Query     string   `json:"query"`
     Documents []string `json:"documents"`
     TopN      *int     `json:"top_n,omitempty"`
 }
 
 type RerankResponse struct {
+    Model   string `json:"model"`
     Object  string `json:"object"`
     Results []struct {
         Index          int     `json:"index"`
@@ -581,6 +589,7 @@ type RerankResponse struct {
 
 func main() {
     req := RerankRequest{
+        Model: "jina-reranker-v1-base-en",
         Query: "什么是人工智能？",
         Documents: []string{
             "人工智能指的是机器执行通常需要人类智能的任务。",
@@ -693,13 +702,14 @@ if len(response.Candidates) > 0 &&
 
 | 提供商                   | 状态       | 支持模型示例                 | 兼容 API |
 | ------------------------ | ---------- | ---------------------------- | --------------- |
-| **OpenAI**               | ✅ 已完成  | GPT-4、GPT-4o、GPT-5 等      | OpenAI, Anthropic |
+| **OpenAI**               | ✅ 已完成  | GPT-4、GPT-4o、GPT-5 等      | OpenAI, Anthropic, Embedding |
 | **Anthropic**            | ✅ 已完成  | Claude 3.5、Claude 3.0 等    | OpenAI, Anthropic |
 | **智谱 AI（Zhipu）**     | ✅ 已完成  | GLM-4.5、GLM-4.5-air 等      | OpenAI, Anthropic |
 | **月之暗面（Moonshot）** | ✅ 已完成  | kimi-k2 等                   | OpenAI, Anthropic |
 | **DeepSeek**             | ✅ 已完成  | DeepSeek-V3.1 等             | OpenAI, Anthropic |
 | **字节跳动豆包**         | ✅ 已完成  | doubao-1.6 等                | OpenAI, Anthropic |
 | **Gemini**               | ✅ 已完成  | Gemini 2.5 等                | OpenAI, Anthropic |
+| **Jina AI**              | ✅ 已完成  | Embeddings、Reranker 等      | Jina Embedding, Jina Rerank |
 | **AWS Bedrock**          | 🔄 测试中  | Claude on AWS                | OpenAI, Anthropic |
 | **Google Cloud**         | 🔄 测试中  | Claude on GCP                | OpenAI, Anthropic |
 
