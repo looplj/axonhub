@@ -32,10 +32,10 @@ type CandidateSelector interface {
 
 // associationCacheEntry stores cached association resolution results.
 type associationCacheEntry struct {
-	candidates       []*ChannelModelCandidate
-	channelCount     int
-	latestUpdateTime time.Time
-	cachedAt         time.Time
+	candidates              []*ChannelModelCandidate
+	channelCount            int
+	latestChannelUpdateTime time.Time
+	cachedAt                time.Time
 }
 
 const (
@@ -167,7 +167,7 @@ func (s *DefaultSelector) resolveAssociations(ctx context.Context, modelID strin
 		// 2. No channel has been updated
 		// 3. Cache hasn't expired (5 minutes)
 		if entry.channelCount == channelCount &&
-			entry.latestUpdateTime.Equal(latestUpdateTime) &&
+			entry.latestChannelUpdateTime.Equal(latestUpdateTime) &&
 			time.Since(entry.cachedAt) < associationCacheTTL {
 			s.cacheMu.RUnlock()
 
@@ -217,10 +217,10 @@ func (s *DefaultSelector) resolveAssociations(ctx context.Context, modelID strin
 	// Update cache
 	s.cacheMu.Lock()
 	s.associationCache[modelID] = &associationCacheEntry{
-		candidates:       candidates,
-		channelCount:     channelCount,
-		latestUpdateTime: latestUpdateTime,
-		cachedAt:         time.Now(),
+		candidates:              candidates,
+		channelCount:            channelCount,
+		latestChannelUpdateTime: latestUpdateTime,
+		cachedAt:                time.Now(),
 	}
 	s.cacheMu.Unlock()
 

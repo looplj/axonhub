@@ -50,6 +50,7 @@ const CHANNELS_QUERY = `
               to
             }
             autoTrimedModelPrefixes
+            hideOriginalModels
             overrideParameters
             proxy {
               type
@@ -135,6 +136,7 @@ const CREATE_CHANNEL_MUTATION = `
           to
         }
         autoTrimedModelPrefixes
+        hideOriginalModels
         overrideParameters
         proxy {
           type
@@ -144,6 +146,7 @@ const CREATE_CHANNEL_MUTATION = `
         }
       }
       orderingWeight
+      remark
     }
   }
 `
@@ -169,6 +172,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
           to
         }
         autoTrimedModelPrefixes
+        hideOriginalModels
         overrideParameters
         proxy {
           type
@@ -178,6 +182,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
         }
       }
       orderingWeight
+      remark
     }
   }
 `
@@ -203,6 +208,7 @@ const UPDATE_CHANNEL_MUTATION = `
           to
         }
         autoTrimedModelPrefixes
+        hideOriginalModels
         overrideParameters
         proxy {
           type
@@ -213,6 +219,7 @@ const UPDATE_CHANNEL_MUTATION = `
       }
       orderingWeight
       errorMessage
+      remark
     }
   }
 `
@@ -293,6 +300,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
             to
           }
           autoTrimedModelPrefixes
+          hideOriginalModels
           overrideParameters
         }
       }
@@ -324,6 +332,7 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
             to
           }
           autoTrimedModelPrefixes
+          hideOriginalModels
         }
       }
     }
@@ -349,6 +358,11 @@ const ALL_CHANNELS_QUERY = `
           tags
           supportedModels
           autoSyncSupportedModels
+          allModelEntries {
+            requestModel
+            actualModel
+            source
+          }
         }
       }
     }
@@ -404,6 +418,7 @@ const QUERY_CHANNELS_QUERY = `
               to
             }
             autoTrimedModelPrefixes
+            hideOriginalModels
             overrideParameters
             overrideHeaders{
               key

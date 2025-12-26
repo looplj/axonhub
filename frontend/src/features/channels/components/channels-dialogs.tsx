@@ -13,7 +13,6 @@ import { ChannelsErrorResolvedDialog } from './channels-error-resolved-dialog'
 import { ChannelsModelMappingDialog } from './channels-model-mapping-dialog'
 import { ChannelsOverrideDialog } from './channels-override-dialog'
 import { ChannelsProxyDialog } from './channels-proxy-dialog'
-import { ChannelsRemarkDialog } from './channels-remark-dialog'
 import { ChannelsStatusDialog } from './channels-status-dialog'
 import { ChannelsTestDialog } from './channels-test-dialog'
 import { ChannelsWeightDialog } from './channels-weight-dialog'
@@ -245,8 +244,6 @@ export function ChannelsDialogs() {
               }
             }}
           />
-
-          <ChannelsRemarkDialog />
         </>
       )}
     </>

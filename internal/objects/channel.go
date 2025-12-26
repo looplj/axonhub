@@ -48,6 +48,10 @@ type ChannelSettings struct {
 	// e.g. {"from": "deepseek-chat", "to": "deepseek/deepseek-chat"} will add a alias "deepseek-chat" for "deepseek/deepseek-chat".
 	ModelMappings []ModelMapping `json:"modelMappings"`
 
+	// HideOriginalModels hides the original models from the model list when model mappings are configured.
+	// When enabled, only the mapped model names (from field) will be exposed, not the actual model names (to field).
+	HideOriginalModels bool `json:"hideOriginalModels"`
+
 	// OverrideParameters sets the channel override the request body.
 	// A json string.
 	// e.g. {"max_tokens": 100}, {"temperature": 0.7}

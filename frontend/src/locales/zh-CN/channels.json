@@ -305,6 +305,11 @@
           "placeholder": "添加标签...",
           "description": "添加标签来分类和过滤渠道。按回车键、逗号或空格来添加标签。"
         },
+        "remark": {
+          "label": "备注",
+          "placeholder": "为此渠道输入备注或说明...",
+          "description": "添加关于此渠道的备注或说明以供参考"
+        },
         "modelName": {
           "label": "模型名称",
           "placeholder": "输入模型名称"
@@ -418,7 +423,11 @@
           "validationRequired": "别名和目标模型都不能为空",
           "targetInvalid": "目标模型必须在支持的模型列表中",
           "duplicateAlias": "每个别名只能映射一次",
-          "useSuggestion": "使用 {{alias}}"
+          "useSuggestion": "使用 {{alias}}",
+          "hideOriginalModels": {
+            "label": "隐藏原始模型",
+            "description": "启用后，模型列表中将只显示转换后的模型名称，隐藏原始模型名称。包括添加了前缀的模型、自动移除前缀后的模型以及别名。注意：建议不要同时设置额外模型前缀和自动裁剪模型前缀。"
+          }
         },
         "overrides": {
           "action": "覆盖设置",

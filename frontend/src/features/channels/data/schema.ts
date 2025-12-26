@@ -89,17 +89,26 @@ export const channelSettingsSchema = z.object({
   extraModelPrefix: z.string().optional(),
   modelMappings: z.array(modelMappingSchema).nullable(),
   autoTrimedModelPrefixes: z.array(z.string()).optional().nullable(),
+  hideOriginalModels: z.boolean().optional(),
   overrideParameters: z.string().optional(),
   overrideHeaders: z.array(headerEntrySchema).optional().nullable(),
   proxy: proxyConfigSchema.optional().nullable(),
 })
 export type ChannelSettings = z.infer<typeof channelSettingsSchema>
 
+// Channel Model Entry
+export const channelModelEntrySchema = z.object({
+  requestModel: z.string(),
+  actualModel: z.string(),
+  source: z.string(),
+})
+export type ChannelModelEntry = z.infer<typeof channelModelEntrySchema>
+
 // Channel
 export const channelSchema = z.object({
   id: z.string(),
-  createdAt: z.coerce.date(),
-  updatedAt: z.coerce.date(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
   type: channelTypeSchema,
   baseURL: z.string(),
   name: z.string(),
@@ -109,10 +118,11 @@ export const channelSchema = z.object({
   tags: z.array(z.string()).optional().default([]).nullable(),
   defaultTestModel: z.string(),
   settings: channelSettingsSchema.optional().nullable(),
-  orderingWeight: z.number().default(0),
+  orderingWeight: z.number().optional().default(0),
   errorMessage: z.string().optional().nullable(),
   remark: z.string().optional().nullable(),
   channelPerformance: channelPerformanceSchema.optional().nullable(),
+  allModelEntries: z.array(channelModelEntrySchema).optional(),
 })
 export type Channel = z.infer<typeof channelSchema>
 
@@ -126,6 +136,7 @@ export const createChannelInputSchema = z
     autoSyncSupportedModels: z.boolean().optional().default(false),
     tags: z.array(z.string()).optional().default([]),
     defaultTestModel: z.string().min(1, 'Please select a default test model'),
+    remark: z.string().optional(),
     settings: channelSettingsSchema.optional(),
     credentials: z.object({
       apiKey: z.string().min(1, 'API Key is required'),
@@ -346,6 +357,7 @@ export const channelOrderingItemSchema = z.object({
   orderingWeight: z.number(),
   tags: z.array(z.string()).optional().default([]).nullable(),
   supportedModels: z.array(z.string()).optional().default([]).nullable(),
+  allModelEntries: z.array(channelModelEntrySchema).optional(),
 })
 export type ChannelOrderingItem = z.infer<typeof channelOrderingItemSchema>
 

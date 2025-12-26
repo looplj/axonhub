@@ -204,6 +204,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             autoSyncSupportedModels: currentRow.autoSyncSupportedModels,
             defaultTestModel: currentRow.defaultTestModel,
             tags: currentRow.tags || [],
+            remark: currentRow.remark || '',
             credentials: {
               apiKey: '', // credentials字段是敏感字段，不从API返回
               aws: {
@@ -227,6 +228,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               autoSyncSupportedModels: duplicateFromRow.autoSyncSupportedModels,
               defaultTestModel: duplicateFromRow.defaultTestModel,
               tags: duplicateFromRow.tags || [],
+              remark: duplicateFromRow.remark || '',
               settings: duplicateFromRow.settings ?? undefined,
               credentials: {
                 apiKey: '',
@@ -262,6 +264,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             supportedModels: [],
             defaultTestModel: '',
             tags: [],
+            remark: '',
             settings: undefined,
           },
   })
@@ -1232,6 +1235,28 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               isLoading={isLoadingTags}
                             />
                             <p className='text-muted-foreground text-xs'>{t('channels.dialogs.fields.tags.description')}</p>
+                            <FormMessage />
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name='remark'
+                      render={({ field }) => (
+                        <FormItem className='grid grid-cols-8 items-start gap-x-6'>
+                          <FormLabel className='col-span-2 pt-2 text-right font-medium'>
+                            {t('channels.dialogs.fields.remark.label')}
+                          </FormLabel>
+                          <div className='col-span-6 space-y-1'>
+                            <Textarea
+                              placeholder={t('channels.dialogs.fields.remark.placeholder')}
+                              className='min-h-[80px] resize-y'
+                              {...field}
+                              value={field.value || ''}
+                            />
+                            <p className='text-muted-foreground text-xs'>{t('channels.dialogs.fields.remark.description')}</p>
                             <FormMessage />
                           </div>
                         </FormItem>

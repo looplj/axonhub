@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
@@ -72,6 +73,7 @@ const createModelMappingFormSchema = (supportedModels: string[]) =>
         }
       ),
     autoTrimedModelPrefixes: z.array(z.string()).optional(),
+    hideOriginalModels: z.boolean().optional(),
   })
 
 const extractAliasFromModelPath = (modelPath: string): string => {
@@ -101,6 +103,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
       extraModelPrefix: currentRow.settings?.extraModelPrefix || '',
       modelMappings: currentRow.settings?.modelMappings || [],
       autoTrimedModelPrefixes: currentRow.settings?.autoTrimedModelPrefixes || [],
+      hideOriginalModels: currentRow.settings?.hideOriginalModels || false,
     },
   })
 
@@ -161,6 +164,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
       extraModelPrefix: nextExtraModelPrefix,
       modelMappings: nextMappings,
       autoTrimedModelPrefixes: currentRow.settings?.autoTrimedModelPrefixes || [],
+      hideOriginalModels: currentRow.settings?.hideOriginalModels || false,
     })
     exitInlineEditing()
   }, [currentRow, open, form])
@@ -243,6 +247,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
         extraModelPrefix: values.extraModelPrefix,
         modelMappings: values.modelMappings,
         autoTrimedModelPrefixes: values.autoTrimedModelPrefixes || [],
+        hideOriginalModels: values.hideOriginalModels,
       })
 
       await updateChannel.mutateAsync({
@@ -297,6 +302,28 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
 
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <div className='space-y-6'>
+            <Card>
+              <CardHeader>
+                <CardTitle className='text-lg'>{t('channels.dialogs.settings.modelMapping.hideOriginalModels.label')}</CardTitle>
+                <CardDescription>{t('channels.dialogs.settings.modelMapping.hideOriginalModels.description')}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className='flex items-start gap-3'>
+                  <Checkbox
+                    id='hideOriginalModels'
+                    checked={form.watch('hideOriginalModels') || false}
+                    onCheckedChange={(checked) => form.setValue('hideOriginalModels', checked === true)}
+                  />
+                  <label
+                    htmlFor='hideOriginalModels'
+                    className='text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer'
+                  >
+                    {t('channels.dialogs.settings.modelMapping.hideOriginalModels.label')}
+                  </label>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle className='text-lg'>{t('channels.dialogs.settings.extraModelPrefix.title')}</CardTitle>

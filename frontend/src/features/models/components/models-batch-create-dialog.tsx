@@ -37,6 +37,10 @@ interface ValidationErrors {
 
 const MAX_ROWS = 10
 
+function generateId(): string {
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+}
+
 function isDeveloper(provider: string) {
   return DEVELOPER_IDS.includes(provider)
 }
@@ -90,7 +94,7 @@ export function ModelsBatchCreateDialog() {
     if (isOpen && rows.length === 0) {
       setRows([
         {
-          id: crypto.randomUUID(),
+          id: generateId(),
           modelId: '',
           developer: '',
           name: '',
@@ -110,7 +114,7 @@ export function ModelsBatchCreateDialog() {
     setRows((prev) => [
       ...prev,
       {
-        id: crypto.randomUUID(),
+        id: generateId(),
         modelId: '',
         developer: '',
         name: '',
