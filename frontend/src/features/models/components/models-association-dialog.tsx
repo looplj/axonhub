@@ -93,12 +93,12 @@ export function ModelsAssociationDialog() {
   }, [isOpen, fetchModels])
 
   // Build channel options for select
-  const channelOptions = useMemo(() => {
+  const channelOptions = useMemo((): { value: number; label: string; allModelEntries: Array<{ requestModel: string; actualModel: string; source: string }> }[] => {
     if (!channelsData?.edges) return []
     return channelsData.edges.map((edge) => ({
       value: extractNumberIDAsNumber(edge.node.id),
       label: edge.node.name,
-      supportedModels: edge.node.supportedModels || [],
+      allModelEntries: edge.node.allModelEntries || [],
     }))
   }, [channelsData])
 
@@ -500,7 +500,7 @@ export function ModelsAssociationDialog() {
 interface AssociationRowProps {
   index: number
   form: ReturnType<typeof useForm<AssociationFormData>>
-  channelOptions: { value: number; label: string; supportedModels: string[] }[]
+  channelOptions: { value: number; label: string; allModelEntries: Array<{ requestModel: string; actualModel: string; source: string }> }[]
   allModelOptions: { value: string; label: string }[]
   onRemove: () => void
   portalContainer: HTMLElement | null
@@ -531,7 +531,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, onRemove
     }
   }, [hasExcludeData])
 
-  // Filter model options based on selected channel's supported models
+  // Filter model options based on selected channel's model entries
   const modelOptions = useMemo(() => {
     if (!showModel) {
       return []
@@ -542,20 +542,20 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, onRemove
       return allModelOptions
     }
 
-    // For 'channel_model' type, use the selected channel's supported models directly
+    // For 'channel_model' type, use the selected channel's model entries
     if (!channelId) {
       return []
     }
 
     const selectedChannel = channelOptions.find((option) => option.value === channelId)
-    if (!selectedChannel?.supportedModels?.length) {
+    if (!selectedChannel?.allModelEntries?.length) {
       return []
     }
 
-    // Directly return the supported models as options
-    return selectedChannel.supportedModels.map((modelId) => ({
-      value: modelId,
-      label: modelId,
+    // Return model entries as options (using requestModel)
+    return selectedChannel.allModelEntries.map((entry: { requestModel: string; actualModel: string; source: string }) => ({
+      value: entry.requestModel,
+      label: entry.requestModel,
     }))
   }, [channelId, channelOptions, allModelOptions, showModel, type])
 

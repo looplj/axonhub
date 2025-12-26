@@ -66,6 +66,7 @@ export function mergeChannelSettingsForUpdate(
     extraModelPrefix: pick('extraModelPrefix', existing?.extraModelPrefix ?? ''),
     modelMappings: pick('modelMappings', existing?.modelMappings ?? []),
     autoTrimedModelPrefixes: pick('autoTrimedModelPrefixes', existing?.autoTrimedModelPrefixes ?? []),
+    hideOriginalModels: pick('hideOriginalModels', existing?.hideOriginalModels ?? false),
     overrideParameters: pick('overrideParameters', existing?.overrideParameters ?? ''),
     overrideHeaders: pick('overrideHeaders', existing?.overrideHeaders ?? []),
     proxy: pick('proxy', existing?.proxy ?? null),

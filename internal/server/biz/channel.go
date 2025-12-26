@@ -312,6 +312,7 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 	createBuilder := svc.entFromContext(ctx).Channel.Create().
 		SetType(input.Type).
 		SetNillableBaseURL(input.BaseURL).
+		SetNillableRemark(input.Remark).
 		SetName(input.Name).
 		SetCredentials(input.Credentials).
 		SetSupportedModels(input.SupportedModels).

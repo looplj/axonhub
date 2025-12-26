@@ -481,6 +481,17 @@ func (ch *Channel) GetModelEntries() map[string]ChannelModelEntry {
 		}
 	}
 
+	// 5. Hide original models if configured
+	// When hideOriginalModels is enabled, remove direct models from the entries
+	// This allows only transformed models (prefix, auto_trim, mapping) to be exposed
+	if ch.Settings.HideOriginalModels {
+		for key, entry := range entries {
+			if entry.Source == "direct" {
+				delete(entries, key)
+			}
+		}
+	}
+
 	ch.cachedModelEntries = entries
 
 	return entries

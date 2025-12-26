@@ -686,6 +686,9 @@ func TestChannelMetrics_GetOrCreateTimeSlot(t *testing.T) {
 }
 
 func TestChannelService_RecordPerformance_UnrecoverableError(t *testing.T) {
+	// Disabled the feature for now.
+	t.SkipNow()
+
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 

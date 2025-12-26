@@ -15,6 +15,7 @@ globs: *.go
 
 5. Use `enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")` to create a new client for test.
 
+6. DO NOT EDIT ent.graphql directly, add graphql in other graphql file.
 
 #  Golang rules
 

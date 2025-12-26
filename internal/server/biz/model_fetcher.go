@@ -126,7 +126,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	}
 
 	return &FetchModelsResult{
-		Models: models,
+		Models: lo.Uniq(models),
 		Error:  nil,
 	}, nil
 }

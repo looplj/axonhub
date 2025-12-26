@@ -93,7 +93,14 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 		Cache: lru.New[string](1024),
 	})
 	gqlSrv.Use(&loggingTracer{})
-	gqlSrv.Use(entgql.Transactioner{TxOpener: deps.Ent})
+	gqlSrv.Use(entgql.Transactioner{
+		TxOpener: deps.Ent,
+		// Skip transaction for TestChannel mutation to avoid transaction conflicts
+		// when multiple test requests are sent in parallel from the frontend.
+		// TestChannel performs LLM API calls which can be long-running, and the
+		// database operations within don't require transactional consistency.
+		SkipTxFunc: entgql.SkipOperations("TestChannel"),
+	})
 
 	return &GraphqlHandler{
 		Graphql:    gqlSrv,

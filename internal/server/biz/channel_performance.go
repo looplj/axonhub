@@ -459,11 +459,12 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 		}
 	}()
 
-	// Check for unrecoverable errors and disable channel immediately
-	if !perf.Success && !isRecoverable(perf.ErrorStatusCode) {
-		svc.markChannelUnavailable(ctx, perf.ChannelID, perf.ErrorStatusCode)
-		return
-	}
+	// // Check for unrecoverable errors and disable channel immediately
+	// Disable for now to avoid disalbe mistaken
+	// if !perf.Success && !isRecoverable(perf.ErrorStatusCode) {
+	// 	svc.markChannelUnavailable(ctx, perf.ChannelID, perf.ErrorStatusCode)
+	// 	return
+	// }
 
 	// Get or create channel metrics
 	svc.channelPerfMetricsLock.Lock()

@@ -136,7 +136,7 @@ func TestDefaultSelector_SelectModelCandidates_Cache(t *testing.T) {
 		selector.cacheMu.RUnlock()
 
 		require.NotNil(t, entry)
-		require.True(t, entry.latestUpdateTime.After(now), "cache should reflect new update time")
+		require.True(t, entry.latestChannelUpdateTime.After(now), "cache should reflect new update time")
 	})
 
 	t.Run("different models use different cache entries", func(t *testing.T) {
