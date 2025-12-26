@@ -503,16 +503,19 @@ print(result["data"][0]["embedding"][:5])
 
 ### Rerank API
 
-AxonHub supports document reranking through OpenAI-compatible and Jina AI-specific APIs, allowing you to reorder documents based on relevance to a query.
+AxonHub supports document reranking through Jina AI rerank API, allowing you to reorder documents based on relevance to a query.
 
 **Endpoints:**
-- `POST /v1/rerank` - OpenAI-compatible rerank API
+- `POST /v1/rerank` - Jina-compatible rerank API (convenience endpoint)
 - `POST /jina/v1/rerank` - Jina AI-specific rerank API
+
+> **Note**: OpenAI does not provide a native rerank API. Both endpoints use Jina's rerank format.
 
 #### Request Format
 
 ```json
 {
+  "model": "jina-reranker-v1-base-en",
   "query": "What is machine learning?",
   "documents": [
     "Machine learning is a subset of artificial intelligence...",
@@ -528,6 +531,7 @@ AxonHub supports document reranking through OpenAI-compatible and Jina AI-specif
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
+| `model` | string | ✅ | The model to use for reranking (e.g., `jina-reranker-v1-base-en`). |
 | `query` | string | ✅ | The search query to compare documents against. |
 | `documents` | string[] | ✅ | List of documents to rerank. Minimum 1 document. |
 | `top_n` | integer | ❌ | Number of most relevant documents to return. If not specified, returns all documents. |
@@ -537,6 +541,7 @@ AxonHub supports document reranking through OpenAI-compatible and Jina AI-specif
 
 ```json
 {
+  "model": "jina-reranker-v1-base-en",
   "object": "list",
   "results": [
     {
@@ -563,7 +568,7 @@ AxonHub supports document reranking through OpenAI-compatible and Jina AI-specif
 
 #### Examples
 
-**OpenAI SDK (Python):**
+**Python Example:**
 ```python
 import requests
 
@@ -574,6 +579,7 @@ response = requests.post(
         "Content-Type": "application/json"
     },
     json={
+        "model": "jina-reranker-v1-base-en",
         "query": "What is machine learning?",
         "documents": [
             "Machine learning is a subset of artificial intelligence that enables computers to learn without being explicitly programmed.",
@@ -589,7 +595,7 @@ for item in result["results"]:
     print(f"Score: {item['relevance_score']:.3f} - {item['document']['text'][:50]}...")
 ```
 
-**Jina SDK (Python):**
+**Jina Endpoint (Python):**
 ```python
 import requests
 
@@ -635,12 +641,14 @@ import (
 )
 
 type RerankRequest struct {
+    Model     string   `json:"model,omitempty"`
     Query     string   `json:"query"`
     Documents []string `json:"documents"`
     TopN      *int     `json:"top_n,omitempty"`
 }
 
 type RerankResponse struct {
+    Model   string `json:"model"`
     Object  string `json:"object"`
     Results []struct {
         Index          int     `json:"index"`
@@ -653,6 +661,7 @@ type RerankResponse struct {
 
 func main() {
     req := RerankRequest{
+        Model: "jina-reranker-v1-base-en",
         Query: "What is artificial intelligence?",
         Documents: []string{
             "AI refers to machines performing tasks that typically require human intelligence.",
@@ -697,13 +706,14 @@ func main() {
 
 | Provider               | Status     | Supported Models             | Compatible APIs |
 | ---------------------- | ---------- | ---------------------------- | --------------- |
-| **OpenAI**             | ✅ Done    | GPT-4, GPT-4o, GPT-5, etc.   | OpenAI, Anthropic, Gemini |
+| **OpenAI**             | ✅ Done    | GPT-4, GPT-4o, GPT-5, etc.   | OpenAI, Anthropic, Gemini, Embedding |
 | **Anthropic**          | ✅ Done    | Claude 3.5, Claude 3.0, etc. | OpenAI, Anthropic, Gemini |
 | **Zhipu AI**           | ✅ Done    | GLM-4.5, GLM-4.5-air, etc.   | OpenAI, Anthropic, Gemini |
 | **Moonshot AI (Kimi)** | ✅ Done    | kimi-k2, etc.                | OpenAI, Anthropic, Gemini |
 | **DeepSeek**           | ✅ Done    | DeepSeek-V3.1, etc.          | OpenAI, Anthropic, Gemini |
 | **ByteDance Doubao**   | ✅ Done    | doubao-1.6, etc.             | OpenAI, Anthropic, Gemini |
 | **Gemini**             | ✅ Done    | Gemini 2.5, etc.             | OpenAI, Anthropic, Gemini |
+| **Jina AI**            | ✅ Done    | Embeddings, Reranker, etc.   | Jina Embedding, Jina Rerank |
 | **AWS Bedrock**        | 🔄 Testing | Claude on AWS                | OpenAI, Anthropic, Gemini |
 | **Google Cloud**       | 🔄 Testing | Claude on GCP                | OpenAI, Anthropic, Gemini |
 

@@ -122,9 +122,9 @@ AxonHub 是一个 All-in-one AI 开发平台，提供统一的 API 网关、项�
 |---------|--------|-------------|--------|
 | **文本生成（Text Generation）** | ✅ Done | 对话交互接口 | [Unified API](docs/zh/api-reference/unified-api.md) |
 | **图片生成（Image Generation）** | ⚠️ Partial | 图片生成 | [Image Generation](docs/zh/api-reference/image-generation.md) |
-| **重排序（Rerank）** | 📝 Todo | 结果排序 | - |
+| **重排序（Rerank）** | ✅ Done | 结果排序 | [Unified API](docs/zh/api-reference/unified-api.md#重排序-api) |
+| **嵌入（Embedding）** | ✅ Done | 向量嵌入生成 | [Unified API](docs/zh/api-reference/unified-api.md#嵌入-api) |
 | **实时对话（Realtime）** | 📝 Todo | 实时对话功能 | - |
-| **嵌入（Embedding）** | 📝 Todo | 向量嵌入生成 | - |
 
 ---
 

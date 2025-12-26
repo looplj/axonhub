@@ -121,8 +121,8 @@ Here are some screenshots of AxonHub in action:
 | -------------------- | ---------- | ------------------------------ | -------------------------------------------- |
 | **Text Generation**  | ✅ Done    | Conversational interface       | [Unified API](docs/en/api-reference/unified-api.md) |
 | **Image Generation** | ⚠️ Partial | Image generation               | [Image Generation](docs/en/api-reference/image-generation.md) |
-| **Rerank**           | 📝 Todo    | Results ranking                | -                                            |
-| **Embedding**        | 📝 Todo    | Vector embedding generation    | -                                            |
+| **Rerank**           | ✅ Done    | Results ranking                | [Unified API](docs/en/api-reference/unified-api.md#rerank-api) |
+| **Embedding**        | ✅ Done    | Vector embedding generation    | [Unified API](docs/en/api-reference/unified-api.md#embedding-api) |
 | **Realtime**         | 📝 Todo    | Live conversation capabilities | -                                            |
 
 ---
