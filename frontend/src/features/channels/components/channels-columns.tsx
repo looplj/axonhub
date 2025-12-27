@@ -202,7 +202,6 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       enableSorting: false,
       enableHiding: false,
     },
-
     {
       accessorKey: 'tags',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.tags')} />,
@@ -242,10 +241,12 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       filterFn: () => true, // Server-side filtering, always return true
       enableSorting: false,
       enableHiding: true,
+      enableColumnFilter: false,
+      enableGlobalFilter: false,
     },
     {
       accessorKey: 'channelPerformance',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.performance')} />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.channelPerformance')} />,
       cell: ({ row }) => {
         const performance = row.getValue('channelPerformance') as any
         if (!performance) {
@@ -327,11 +328,11 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.test')} />,
       cell: TestCell,
       enableSorting: false,
-      enableHiding: false,
+      enableHiding: true,
     },
     {
       accessorKey: 'orderingWeight',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.weight')} />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.orderingWeight')} />,
       cell: ({ row }) => {
         const weight = row.getValue('orderingWeight') as number | null
         if (weight == null) {
@@ -344,7 +345,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       },
       sortingFn: 'alphanumeric',
       enableSorting: true,
-      enableHiding: false,
+      enableHiding: true,
     },
     {
       accessorKey: 'createdAt',

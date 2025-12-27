@@ -759,6 +759,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, onRemove
                         placeholder={t('models.dialogs.association.excludeChannelIds')}
                         emptyMessage={t('models.dialogs.association.noChannelsAvailable')}
                         portalContainer={portalContainer}
+                        inputClassName='h-8 text-xs'
                       />
                       {field.value && field.value.length > 0 && (
                         <div className='flex flex-wrap gap-1'>

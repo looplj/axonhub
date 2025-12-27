@@ -110,7 +110,7 @@ func (processor *TestChannelOrchestrator) TestChannel(
 			{
 				Role: "user",
 				Content: llm.MessageContent{
-					Content: lo.ToPtr("Hello, this is a test message. Please respond with 'Test successful'."),
+					Content: lo.ToPtr("Hello world, I'm AxonHub. Please tell me who you are?"),
 				},
 			},
 		},

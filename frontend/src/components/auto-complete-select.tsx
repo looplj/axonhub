@@ -17,6 +17,8 @@ type Props<T extends string> = {
   placeholder?: string
   /** 指定 Popover Portal 的容器元素，用于解决在 Dialog 内无法滚动的问题 */
   portalContainer?: HTMLElement | null
+  /** 自定义输入框的 className */
+  inputClassName?: string
 }
 
 // AutoCompleteSelect: strictly selects from provided items. No free-form values are allowed.
@@ -28,6 +30,7 @@ export function AutoCompleteSelect<T extends string>({
   emptyMessage = 'No items.',
   placeholder = 'Search...',
   portalContainer,
+  inputClassName,
 }: Props<T>) {
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
@@ -96,7 +99,7 @@ export function AutoCompleteSelect<T extends string>({
               onFocus={() => setOpen(true)}
               onBlur={onInputBlur}
             >
-              <Input placeholder={placeholder} className='w-full' />
+              <Input placeholder={placeholder} className={cn('w-full', inputClassName)} />
             </CommandPrimitive.Input>
           </PopoverAnchor>
           {!open && <CommandList aria-hidden='true' className='hidden' />}

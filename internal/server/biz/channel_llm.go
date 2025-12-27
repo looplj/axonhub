@@ -496,3 +496,24 @@ func (ch *Channel) GetModelEntries() map[string]ChannelModelEntry {
 
 	return entries
 }
+
+// GetDirectModelEntries returns the direct models this channel can handle.
+// This is used for testing purposes where we need to see all available models
+// regardless of the HideOriginalModels setting.
+// The difference from GetModelEntries is that this method does NOT filter out
+// direct models when HideOriginalModels is enabled.
+func (ch *Channel) GetDirectModelEntries() map[string]ChannelModelEntry {
+	entries := make(map[string]ChannelModelEntry)
+
+	for _, model := range ch.SupportedModels {
+		if _, exists := entries[model]; !exists {
+			entries[model] = ChannelModelEntry{
+				RequestModel: model,
+				ActualModel:  model,
+				Source:       "direct",
+			}
+		}
+	}
+
+	return entries
+}

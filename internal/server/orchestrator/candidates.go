@@ -436,16 +436,11 @@ func (s *SpecifiedChannelSelector) Select(ctx context.Context, req *llm.Request)
 		return nil, fmt.Errorf("failed to get channel for test: %w", err)
 	}
 
-	if !channel.IsModelSupported(req.Model) {
-		return nil, fmt.Errorf("model %s not supported in channel %s", req.Model, channel.Name)
-	}
-
-	// Get model entry and create candidate
-	entries := channel.GetModelEntries()
+	entries := channel.GetDirectModelEntries()
 
 	entry, ok := entries[req.Model]
 	if !ok {
-		return nil, fmt.Errorf("model %s not found in channel %s", req.Model, channel.Name)
+		return nil, fmt.Errorf("model %s not supported in channel %s", req.Model, channel.Name)
 	}
 
 	candidate := &ChannelModelCandidate{

@@ -384,6 +384,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   }, [availableApiFormats, selectedApiFormat, handleApiFormatChange, isEdit])
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    // Check if there are selected fetched models that haven't been confirmed
+    if (selectedFetchedModels.length > 0) {
+      toast.error(t('channels.dialogs.messages.modelsNotConfirmed'))
+      return
+    }
+
     try {
       const valuesForSubmit =
         isEdit
@@ -536,19 +542,20 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     }
 
     try {
-      // Only use the first API key when multiple keys are provided
-      const firstApiKey = isEdit
-        ? undefined
-        : apiKey
-            ?.split('\n')
-            .map((key) => key.trim())
-            .filter((key) => key.length > 0)[0] || ''
+      // Extract first API key from potentially multi-line input
+      const firstApiKey = apiKey
+        ?.split('\n')
+        .map((key) => key.trim())
+        .filter((key) => key.length > 0)[0] || ''
 
+      // If in edit mode and user has provided a new API key, use it instead of channelID
+      const hasEditedApiKey = isEdit && firstApiKey && firstApiKey.length > 0
+      
       const result = await fetchModels.mutateAsync({
         channelType,
         baseURL,
-        apiKey: firstApiKey,
-        channelID: isEdit ? currentRow?.id : undefined,
+        apiKey: hasEditedApiKey || !isEdit ? firstApiKey : undefined,
+        channelID: hasEditedApiKey || !isEdit ? undefined : currentRow?.id,
       })
 
       if (result.error) {

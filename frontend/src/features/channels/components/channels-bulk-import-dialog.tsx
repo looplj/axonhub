@@ -208,14 +208,14 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
           {/* Format Instructions */}
           <Card className='flex-shrink-0'>
             <CardHeader className='pb-4'>
-              <CardTitle className='text-lg font-bold'>{t('channels.dialogs.bulkImport.formatTitle')}</CardTitle>
-              <CardDescription className='space-y-3 text-sm'>
-                <div className='font-semibold'>{t('channels.dialogs.bulkImport.formatDescription')}</div>
+              <CardTitle className='text-base font-semibold'>{t('channels.dialogs.bulkImport.formatTitle')}</CardTitle>
+              <CardDescription className='space-y-2 text-sm'>
+                <div>{t('channels.dialogs.bulkImport.formatDescription')}</div>
                 <div>{t('channels.dialogs.bulkImport.formatNote')}</div>
               </CardDescription>
             </CardHeader>
             <CardContent className='pt-0'>
-              <div className='bg-muted border-muted-foreground/40 rounded-xl border-2 border-dashed p-6 font-mono text-sm whitespace-pre-line'>
+              <div className='bg-muted rounded-md border p-4 font-mono text-xs whitespace-pre-line'>
                 {exampleText}
               </div>
             </CardContent>
@@ -235,17 +235,17 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
                     <FormControl>
                       <Textarea
                         placeholder={t('channels.dialogs.bulkImport.inputPlaceholder')}
-                        className='focus:border-primary min-h-[250px] resize-none border-2 p-4 font-mono text-sm'
+                        className='min-h-[250px] resize-none p-4 font-mono text-sm'
                         {...field}
                       />
                     </FormControl>
                     <FormDescription
                       asChild
-                      className='rounded-lg border border-blue-200 bg-blue-50/80 p-4 text-sm dark:border-blue-800 dark:bg-blue-950/30'
+                      className='rounded-md border bg-blue-50/50 p-3 text-sm dark:bg-blue-950/20'
                     >
                       <div className='space-y-2'>
                         {isLoadingChannelNames && (
-                          <div className='flex items-center gap-2 text-blue-700 dark:text-blue-300'>
+                          <div className='flex items-center gap-2'>
                             <Loader2 className='h-4 w-4 animate-spin' />
                             {t('channels.dialogs.bulkImport.loadingChannelNames')}
                           </div>
@@ -262,40 +262,40 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
 
           {/* Preview Results */}
           {showPreview && (
-            <Card className='bg-card border-border flex min-h-0 flex-1 flex-col'>
+            <Card className='flex min-h-0 flex-1 flex-col'>
               <CardHeader
-                className={`border-border flex-shrink-0 border-b pb-4 ${
+                className={`flex-shrink-0 border-b pb-4 ${
                   parseErrors.length > 0 ? 'bg-red-50/30 dark:bg-red-950/10' : 'bg-muted/20'
                 }`}
               >
-                <CardTitle className='text-foreground flex items-center gap-3 text-lg font-bold'>
+                <CardTitle className='flex items-center gap-3 text-base font-semibold'>
                   {t('channels.dialogs.bulkImport.previewTitle')}
                   {parsedChannels.length > 0 && (
                     <Badge
                       variant='secondary'
-                      className='border border-green-300 bg-green-100 px-4 py-2 text-sm text-green-800 dark:border-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      className='bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
                     >
-                      ✅ {t('channels.dialogs.bulkImport.validRecords', { count: parsedChannels.length })}
+                      {t('channels.dialogs.bulkImport.validRecords', { count: parsedChannels.length })}
                     </Badge>
                   )}
                   {parseErrors.length > 0 && (
                     <Badge
                       variant='destructive'
-                      className='border border-red-300 bg-red-100 px-4 py-2 text-sm text-red-800 dark:border-red-700 dark:bg-red-900/30 dark:text-red-400'
+                      className='bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
                     >
-                      ❌ {t('channels.dialogs.bulkImport.errors', { count: parseErrors.length })}
+                      {t('channels.dialogs.bulkImport.errors', { count: parseErrors.length })}
                     </Badge>
                   )}
                   {/* Import Status Indicator */}
                   {showPreview && (
                     <div className='ml-auto'>
                       {parseErrors.length > 0 ? (
-                        <div className='flex items-center gap-2 rounded-md border border-red-300 bg-red-50 px-3 py-1 text-sm font-medium text-red-600 dark:border-red-700 dark:bg-red-950/20 dark:text-red-400'>
-                          🚫 {t('channels.dialogs.bulkImport.status.blocked')}
+                        <div className='flex items-center gap-2 rounded-md border bg-red-50 px-3 py-1 text-sm font-medium text-red-600 dark:bg-red-950/20 dark:text-red-400'>
+                          {t('channels.dialogs.bulkImport.status.blocked')}
                         </div>
                       ) : parsedChannels.length > 0 ? (
-                        <div className='flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-1 text-sm font-medium text-green-600 dark:border-green-800 dark:bg-green-950/20 dark:text-green-400'>
-                          ✅ {t('channels.dialogs.bulkImport.status.ready')}
+                        <div className='flex items-center gap-2 rounded-md border bg-green-50 px-3 py-1 text-sm font-medium text-green-600 dark:bg-green-950/20 dark:text-green-400'>
+                          {t('channels.dialogs.bulkImport.status.ready')}
                         </div>
                       ) : null}
                     </div>
@@ -310,9 +310,9 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
                   {/* Errors */}
                   {parseErrors.length > 0 && (
                     <div className='space-y-3 rounded-lg border-2 border-red-200 bg-red-50/50 p-4 dark:border-red-800 dark:bg-red-950/20'>
-                      <div className='mb-4 flex items-center gap-2 px-2 py-3 text-base font-semibold text-red-700 dark:text-red-400'>
-                        ❌ {t('channels.dialogs.bulkImport.errorMessages')}
-                        <div className='flex items-center gap-2 rounded-md border border-red-300 bg-red-100 px-3 py-1 text-sm font-medium text-red-800 dark:border-red-700 dark:bg-red-900/40 dark:text-red-300'>
+                      <div className='mb-4 flex items-center gap-2 text-sm font-semibold text-red-700 dark:text-red-400'>
+                        {t('channels.dialogs.bulkImport.errorMessages')}
+                        <div className='ml-auto rounded-md border bg-red-100 px-2 py-1 text-xs font-medium text-red-800 dark:bg-red-900/40 dark:text-red-300'>
                           {t('channels.dialogs.bulkImport.status.blockedHint')}
                         </div>
                       </div>
@@ -320,10 +320,10 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
                         <Alert
                           key={index}
                           variant='destructive'
-                          className='border-red-300 bg-red-50/70 dark:border-red-700 dark:bg-red-950/30'
+                          className='bg-red-50/70 dark:bg-red-950/30'
                         >
                           <XCircle className='h-4 w-4' />
-                          <AlertDescription className='text-sm font-medium text-red-800 dark:text-red-300'>
+                          <AlertDescription className='text-sm'>
                             {error}
                           </AlertDescription>
                         </Alert>
@@ -333,15 +333,15 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
 
                   {/* Valid Channels */}
                   {parsedChannels.length > 0 && (
-                    <div className='bg-muted/30 border-border space-y-4 rounded-lg border p-4'>
-                      <div className='mb-4 flex items-center gap-2 px-2 py-3 text-base font-semibold text-green-600 dark:text-green-400'>
-                        ✅ {t('channels.dialogs.bulkImport.validChannels')}
+                    <div className='space-y-4 rounded-lg border p-4 bg-muted/30'>
+                      <div className='mb-4 text-sm font-semibold text-green-600 dark:text-green-400'>
+                        {t('channels.dialogs.bulkImport.validChannels')}
                       </div>
                       <div className='grid gap-4'>
                         {parsedChannels.map((channel, index) => (
                           <div
                             key={index}
-                            className='border-border bg-background hover:bg-muted/50 space-y-3 rounded-lg border p-4 transition-colors duration-200'
+                            className='space-y-3 rounded-lg border bg-background p-4 hover:bg-muted/50 transition-colors'
                           >
                             <div className='flex items-center gap-3'>
                               <Badge variant='outline' className='px-3 py-1 text-sm font-medium'>
