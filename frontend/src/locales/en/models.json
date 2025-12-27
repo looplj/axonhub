@@ -119,6 +119,7 @@
         "excludeSection": "Exclude Channels",
         "excludeChannelNamePattern": "Exclude channel name (regex)",
         "excludeChannelIds": "Exclude channels",
+        "excludeChannelTags": "Exclude channel tags",
         "noChannelsAvailable": "No channels available",
         "ruleHints": {
           "channelModel": "Use model {{model}} in channel {{channel}}",

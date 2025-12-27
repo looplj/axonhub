@@ -24,7 +24,7 @@
       "tokensPerSecond": "TPS",
       "firstTokenLatencyFull": "首Token延迟",
       "tokensPerSecondFull": "Token/秒",
-      "weight": "权重",
+      "orderingWeight": "权重",
       "test": "测试",
       "createdAt": "创建时间",
       "updatedAt": "更新时间",

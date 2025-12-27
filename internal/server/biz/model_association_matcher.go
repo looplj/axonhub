@@ -253,6 +253,15 @@ func shouldExcludeChannel(ch *Channel, excludes []*objects.ExcludeAssociation) b
 				return true
 			}
 		}
+
+		// Check channel tags
+		if len(exclude.ChannelTags) > 0 {
+			for _, excludedTag := range exclude.ChannelTags {
+				if lo.Contains(ch.Tags, excludedTag) {
+					return true
+				}
+			}
+		}
 	}
 
 	return false

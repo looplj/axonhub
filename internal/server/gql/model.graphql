@@ -71,6 +71,7 @@ type ModelIDAssociation {
 type ExcludeAssociation {
   channelNamePattern: String
   channelIds: [Int!]
+  channelTags: [String!]
 }
 
 # Input types for mutations
@@ -145,6 +146,7 @@ input ModelIDAssociationInput {
 input ExcludeAssociationInput {
   channelNamePattern: String
   channelIds: [Int!]
+  channelTags: [String!]
 }
 
 type ModelChannelConnection {
