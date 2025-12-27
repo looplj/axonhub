@@ -159,10 +159,16 @@ func TestMatchString(t *testing.T) {
 			expected: true,
 		},
 		{
-			name:     "partial match with model modifer",
+			name:     "partial match with model modifer no match",
 			pattern:  "(?i)^(?=.*gpt-5)(?!.*mini)(?!.*nano).*$",
 			str:      "gpt-5.1-codex-mini",
 			expected: false,
+		},
+		{
+			name:     "partial match with model modifer match",
+			pattern:  "(?i)^(?=.*gpt-5)(?!.*mini)(?!.*nano).*$",
+			str:      "gpt-5.1-codex",
+			expected: true,
 		},
 	}
 
@@ -342,6 +348,72 @@ func TestPatternCacheTypes(t *testing.T) {
 	assert.False(t, cached.exactMatch)
 	assert.Nil(t, cached.regex)
 	assert.True(t, cached.compileErr)
+}
+
+func TestEnsureAnchored(t *testing.T) {
+	tests := []struct {
+		name     string
+		pattern  string
+		expected string
+	}{
+		{
+			name:     "no anchors",
+			pattern:  "gpt-.*",
+			expected: "^gpt-.*$",
+		},
+		{
+			name:     "start anchor only",
+			pattern:  "^gpt-.*",
+			expected: "^gpt-.*$",
+		},
+		{
+			name:     "end anchor only",
+			pattern:  "gpt-.*$",
+			expected: "^gpt-.*$",
+		},
+		{
+			name:     "both anchors",
+			pattern:  "^gpt-.*$",
+			expected: "^gpt-.*$",
+		},
+		{
+			name:     "case insensitive with start anchor",
+			pattern:  "(?i)^gpt-.*",
+			expected: "(?i)^gpt-.*$",
+		},
+		{
+			name:     "case insensitive with both anchors",
+			pattern:  "(?i)^gpt-.*$",
+			expected: "(?i)^gpt-.*$",
+		},
+		{
+			name:     "complex pattern with anchors",
+			pattern:  "(?i)^(?=.*gpt-5)(?!.*mini)(?!.*nano).*$",
+			expected: "(?i)^(?=.*gpt-5)(?!.*mini)(?!.*nano).*$",
+		},
+		{
+			name:     "multiline modifier with start anchor",
+			pattern:  "(?m)^gpt-.*",
+			expected: "(?m)^gpt-.*$",
+		},
+		{
+			name:     "singleline modifier with start anchor",
+			pattern:  "(?s)^gpt-.*",
+			expected: "(?s)^gpt-.*$",
+		},
+		{
+			name:     "multiple modifiers with start anchor",
+			pattern:  "(?is)^gpt-.*",
+			expected: "(?is)^gpt-.*$",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ensureAnchored(tt.pattern)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
 }
 
 func BenchmarkMatchStringExact(b *testing.B) {
