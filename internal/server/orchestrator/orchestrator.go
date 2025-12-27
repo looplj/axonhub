@@ -226,8 +226,6 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 			); updateErr != nil {
 				log.Warn(persistCtx, "Failed to update request status from error", log.Cause(updateErr))
 			}
-		} else {
-			log.Warn(persistCtx, "Request is nil, cannot update request status from error")
 		}
 
 		return ChatCompletionResult{}, err

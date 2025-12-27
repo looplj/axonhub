@@ -187,6 +187,7 @@ func (t *OutboundTransformer) buildFullRequestURL(llmReq *llm.Request) string {
 		if strings.HasPrefix(baseURL, "https://gateway.ai.cloudflare.com") {
 			return fmt.Sprintf("%s/publishers/google/models/%s:%s", baseURL, llmReq.Model, action)
 		}
+
 		return fmt.Sprintf("%s/v1/publishers/google/models/%s:%s", baseURL, llmReq.Model, action)
 	}
 

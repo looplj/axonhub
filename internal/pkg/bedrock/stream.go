@@ -55,7 +55,12 @@ func (d *AWSEventStreamDecoder) Next() bool {
 
 	msg, err := d.Decoder.Decode(d.rc, nil)
 	if err != nil {
-		d.err = err
+		if errors.Is(err, io.EOF) {
+			_ = d.Close()
+
+			return false
+		}
+
 		return false
 	}
 

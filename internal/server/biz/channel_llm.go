@@ -268,13 +268,10 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		return buildChannelWithTransformer(c, transformer, httpClient), nil
 
 	case channel.TypeAnthropicAWS:
-		// For anthropic_aws, we need to create a transformer with AWS credentials
-		// The transformer will handle AWS Bedrock integration
 		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
-			Type:            anthropic.PlatformBedrock,
-			Region:          c.Credentials.AWS.Region,
-			AccessKeyID:     c.Credentials.AWS.AccessKeyID,
-			SecretAccessKey: c.Credentials.AWS.SecretAccessKey,
+			Type:    anthropic.PlatformBedrock,
+			BaseURL: c.BaseURL,
+			APIKey:  c.Credentials.APIKey,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
