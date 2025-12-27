@@ -1,6 +1,8 @@
 {
   "channels": {
     "title": "Channel Management",
+    "view": "Column Settings",
+    "toggleColumns": "Toggle columns",
     "description": "Manage your AI model channels and configurations.",
     "addChannel": "Add Channel",
     "importChannels": "Bulk Import",
@@ -16,8 +18,10 @@
       "provider": "Provider",
       "status": "Status",
       "tags": "Tags",
+      "model": "Model",
       "baseURL": "Base URL",
       "supportedModels": "Models",
+      "channelPerformance": "channel Performance",
       "performance": "Performance",
       "firstTokenLatency": "FTL",
       "tokensPerSecond": "TPS",

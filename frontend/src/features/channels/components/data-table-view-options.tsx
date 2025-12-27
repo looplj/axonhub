@@ -25,11 +25,11 @@ export function DataTableViewOptions<TData>({
       <DropdownMenuTrigger asChild>
         <Button variant='outline' size='sm'>
           <MixerHorizontalIcon className='mr-2 h-4 w-4' />
-          {t('common.view')}
+          {t('channels.view')}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align='end' className='w-[150px]'>
-        <DropdownMenuLabel>{t('common.toggleColumns')}</DropdownMenuLabel>
+        <DropdownMenuLabel>{t('channels.toggleColumns')}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {table
           .getAllColumns()

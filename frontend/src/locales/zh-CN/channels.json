@@ -1,7 +1,7 @@
 {
   "channels": {
     "title": "渠道管理",
-    "view": "视图",
+    "view": "列设置",
     "toggleColumns": "切换列",
     "description": "管理您的 AI 模型渠道和配置。",
     "addChannel": "添加渠道",
@@ -18,8 +18,10 @@
       "provider": "服务商",
       "status": "状态",
       "tags": "标签",
+      "model": "模型",
       "baseURL": "Base URL",
       "supportedModels": "支持的模型",
+      "channelPerformance": "渠道性能",
       "performance": "性能",
       "firstTokenLatency": "FTL",
       "tokensPerSecond": "TPS",
