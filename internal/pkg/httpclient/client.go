@@ -270,7 +270,7 @@ func (hc *HttpClient) buildHttpRequest(
 		httpReq.Header.Set("User-Agent", "axonhub/1.0")
 	}
 
-	for k := range blockedHeaders {
+	for k := range libManagedHeaders {
 		httpReq.Header.Del(k)
 	}
 

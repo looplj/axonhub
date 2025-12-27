@@ -71,19 +71,55 @@ func TestMergeHTTPHeaders(t *testing.T) {
 			},
 		},
 		{
-			name: "should not override existing dest headers",
+			name: "should add non-duplicate values to existing headers",
 			dest: http.Header{
 				"Content-Type": []string{"application/json"},
-				"User-Agent":   []string{"AxonHub/1.0"},
+				"Accept":       []string{"application/json"},
 			},
 			src: http.Header{
+				"Accept":     []string{"text/plain", "application/json"},
 				"User-Agent": []string{"Mozilla/5.0"},
-				"Accept":     []string{"*/*"},
 			},
 			want: http.Header{
 				"Content-Type": []string{"application/json"},
-				"User-Agent":   []string{"AxonHub/1.0"},
-				"Accept":       []string{"*/*"},
+				"Accept":       []string{"application/json", "text/plain"},
+				"User-Agent":   []string{"Mozilla/5.0"},
+			},
+		},
+		{
+			name: "should add all non-duplicate values from multiple values",
+			dest: http.Header{
+				"Accept": []string{"application/json"},
+			},
+			src: http.Header{
+				"Accept": []string{"text/plain", "application/xml", "text/html"},
+			},
+			want: http.Header{
+				"Accept": []string{"application/json", "text/plain", "application/xml", "text/html"},
+			},
+		},
+		{
+			name: "should skip all duplicate values",
+			dest: http.Header{
+				"Accept": []string{"application/json", "text/plain"},
+			},
+			src: http.Header{
+				"Accept": []string{"application/json", "text/plain"},
+			},
+			want: http.Header{
+				"Accept": []string{"application/json", "text/plain"},
+			},
+		},
+		{
+			name: "should skip only duplicate values and add new ones",
+			dest: http.Header{
+				"Accept": []string{"application/json", "text/plain"},
+			},
+			src: http.Header{
+				"Accept": []string{"text/plain", "application/xml", "application/json"},
+			},
+			want: http.Header{
+				"Accept": []string{"application/json", "text/plain", "application/xml"},
 			},
 		},
 		{
@@ -162,7 +198,7 @@ func TestMergeHTTPHeaders(t *testing.T) {
 			},
 		},
 		{
-			name: "should not override existing dest headers",
+			name: "should add non-duplicate values when header exists",
 			dest: http.Header{
 				"User-Agent": []string{"AxonHub/1.0"},
 			},
@@ -172,9 +208,8 @@ func TestMergeHTTPHeaders(t *testing.T) {
 				"Accept":       []string{"*/*"},
 			},
 			want: http.Header{
-				"Content-Type": []string{"application/json"},
-				"User-Agent":   []string{"AxonHub/1.0"},
-				"Accept":       []string{"*/*"},
+				"User-Agent": []string{"AxonHub/1.0", "Mozilla/5.0"},
+				"Accept":     []string{"*/*"},
 			},
 		},
 	}

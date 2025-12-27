@@ -248,6 +248,11 @@
             "description": "Use Google Cloud Vertex AI instead of the standard Gemini API",
             "editDisabled": "Vertex AI setting cannot be changed"
           },
+          "anthropicAWS": {
+            "label": "Use AWS Bedrock",
+            "description": "Use AWS Bedrock instead of the standard Anthropic API",
+            "editDisabled": "AWS Bedrock setting cannot be changed"
+          },
           "formats": {
             "openai/chat_completions": "OpenAI (Chat Completions)",
             "openai/responses": "OpenAI (Responses)",

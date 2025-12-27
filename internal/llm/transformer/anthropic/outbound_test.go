@@ -1045,41 +1045,6 @@ func TestOutboundTransformer_WebSearchBetaHeader(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "web-search-2025-03-05", result.Headers.Get("Anthropic-Beta"))
 	})
-
-	t.Run("Bedrock platform with web_search tool - no Beta header", func(t *testing.T) {
-		transformer := &OutboundTransformer{
-			config: &Config{},
-		}
-		transformer.ConfigureForBedrock("us-east-1")
-
-		chatReq := &llm.Request{
-			Model:     "anthropic.claude-3-sonnet-20240229-v1:0",
-			MaxTokens: func() *int64 { v := int64(1024); return &v }(),
-			Messages: []llm.Message{
-				{
-					Role: "user",
-					Content: llm.MessageContent{
-						Content: func() *string { s := "What's the weather?"; return &s }(),
-					},
-				},
-			},
-			Tools: []llm.Tool{
-				{
-					Type: "function",
-					Function: llm.Function{
-						Name:        "web_search",
-						Description: "Search the web",
-					},
-				},
-			},
-		}
-
-		result, err := transformer.TransformRequest(t.Context(), chatReq)
-		require.NoError(t, err)
-		// Bedrock should NOT have Beta header even with web_search tool
-		require.Empty(t, result.Headers.Get("Anthropic-Beta"))
-	})
-
 	t.Run("Vertex platform with web_search tool - no Beta header", func(t *testing.T) {
 		transformer := &OutboundTransformer{
 			config: &Config{},

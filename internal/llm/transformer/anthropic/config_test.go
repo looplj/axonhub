@@ -22,32 +22,12 @@ func TestOutboundTransformer_PlatformConfigurations(t *testing.T) {
 		{
 			name: "Direct Anthropic API",
 			setupFunc: func(transformer *OutboundTransformer) {
-				// Default configuration - no setup needed
+				transformer.config.BaseURL = "https://api.anthropic.com"
 			},
 			expectedURL:    "https://api.anthropic.com/v1/messages",
 			expectedHeader: "2023-06-01",
 			model:          "claude-3-sonnet-20240229",
 			stream:         false,
-		},
-		{
-			name: "AWS Bedrock - Non-streaming",
-			setupFunc: func(transformer *OutboundTransformer) {
-				transformer.ConfigureForBedrock("us-east-1")
-			},
-			expectedURL:    "https://bedrock-runtime.us-east-1.amazonaws.com/model/claude-3-sonnet-20240229/invoke",
-			expectedHeader: "bedrock-2023-05-31",
-			model:          "claude-3-sonnet-20240229",
-			stream:         false,
-		},
-		{
-			name: "AWS Bedrock - Streaming",
-			setupFunc: func(transformer *OutboundTransformer) {
-				transformer.ConfigureForBedrock("us-west-2")
-			},
-			expectedURL:    "https://bedrock-runtime.us-west-2.amazonaws.com/model/claude-3-sonnet-20240229/invoke-with-response-stream",
-			expectedHeader: "bedrock-2023-05-31",
-			model:          "claude-3-sonnet-20240229",
-			stream:         true,
 		},
 		{
 			name: "Google Vertex AI - Non-streaming",

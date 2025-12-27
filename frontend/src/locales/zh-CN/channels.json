@@ -250,6 +250,11 @@
             "description": "使用 Google Cloud Vertex AI 替代标准 Gemini API",
             "editDisabled": "无法更改 Vertex AI 设置"
           },
+          "anthropicAWS": {
+            "label": "使用 AWS Bedrock",
+            "description": "使用 AWS Bedrock 替代标准 Anthropic API",
+            "editDisabled": "无法更改 AWS Bedrock 设置"
+          },
           "formats": {
             "openai/chat_completions": "OpenAI (Chat Completions)",
             "openai/responses": "OpenAI (Responses)",

@@ -180,31 +180,6 @@ export const createChannelInputSchema = z
     }),
   })
   .superRefine((data, ctx) => {
-    // 如果是 anthropic_aws 类型，AWS 字段必填（精确到字段级报错）
-    if (data.type === 'anthropic_aws') {
-      const aws = data.credentials?.aws
-      if (!aws?.accessKeyID) {
-        ctx.addIssue({
-          code: 'custom',
-          message: 'AWS Access Key ID is required',
-          path: ['credentials', 'aws', 'accessKeyID'],
-        })
-      }
-      if (!aws?.secretAccessKey) {
-        ctx.addIssue({
-          code: 'custom',
-          message: 'AWS Secret Access Key is required',
-          path: ['credentials', 'aws', 'secretAccessKey'],
-        })
-      }
-      if (!aws?.region) {
-        ctx.addIssue({
-          code: 'custom',
-          message: 'AWS Region is required',
-          path: ['credentials', 'aws', 'region'],
-        })
-      }
-    }
     // 如果是 anthropic_gcp 类型，GCP 字段必填（精确到字段级报错）
     if (data.type === 'anthropic_gcp') {
       const gcp = data.credentials?.gcp
@@ -268,31 +243,6 @@ export const updateChannelInputSchema = z
     orderingWeight: z.number().optional(),
   })
   .superRefine((data, ctx) => {
-    // 如果是 anthropic_aws 类型且提供了 credentials，AWS 字段必填（字段级报错）
-    if (data.type === 'anthropic_aws' && data.credentials) {
-      const aws = data.credentials.aws
-      if (!aws?.accessKeyID) {
-        ctx.addIssue({
-          code: 'custom',
-          message: 'AWS Access Key ID is required',
-          path: ['credentials', 'aws', 'accessKeyID'],
-        })
-      }
-      if (!aws?.secretAccessKey) {
-        ctx.addIssue({
-          code: 'custom',
-          message: 'AWS Secret Access Key is required',
-          path: ['credentials', 'aws', 'secretAccessKey'],
-        })
-      }
-      if (!aws?.region) {
-        ctx.addIssue({
-          code: 'custom',
-          message: 'AWS Region is required',
-          path: ['credentials', 'aws', 'region'],
-        })
-      }
-    }
     // 如果是 anthropic_gcp 类型且提供了 credentials，GCP 字段必填（字段级报错）
     if (data.type === 'anthropic_gcp' && data.credentials) {
       const gcp = data.credentials.gcp

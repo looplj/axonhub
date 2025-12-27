@@ -9,7 +9,8 @@ import (
 
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer"
-	"github.com/looplj/axonhub/internal/pkg/bedrock"
+	// Import bedrock package to register its decoder.
+	_ "github.com/looplj/axonhub/internal/pkg/bedrock"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/vertex"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
@@ -35,9 +36,7 @@ type Config struct {
 	// Platform configuration
 	Type PlatformType `json:"type"`
 
-	Region          string `json:"region,omitempty"`          // For Bedrock and Vertex
-	AccessKeyID     string `json:"accessKeyID,omitempty"`     // For Bedrock
-	SecretAccessKey string `json:"secretAccessKey,omitempty"` // For Bedrock
+	Region string `json:"region,omitempty"` // For Vertex
 
 	ProjectID string `json:"project_id,omitempty"` // For Vertex
 	JSONData  string `json:"json_data,omitempty"`  // For Vertex
@@ -70,24 +69,8 @@ func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error
 
 // NewOutboundTransformerWithConfig creates a new Anthropic OutboundTransformer with unified configuration.
 func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, error) {
-	if config.BaseURL == "" {
-		config.BaseURL = getDefaultBaseURL(config)
-	}
-
 	var t transformer.Outbound = &OutboundTransformer{
 		config: config,
-	}
-
-	if config.Type == PlatformBedrock {
-		executor, err := bedrock.NewExecutor(config.Region, config.AccessKeyID, config.SecretAccessKey)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create bedrock executor: %w", err)
-		}
-
-		t = &BedrockTransformer{
-			Outbound: t,
-			bedrock:  executor,
-		}
 	}
 
 	if config.Type == PlatformVertex {
@@ -103,31 +86,6 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 	}
 
 	return t, nil
-}
-
-// getDefaultBaseURL returns the default base URL for the given platform configuration.
-func getDefaultBaseURL(config *Config) string {
-	//nolint:exhaustive // Checked.
-	switch config.Type {
-	case PlatformBedrock:
-		if config.Region != "" {
-			return fmt.Sprintf("https://bedrock-runtime.%s.amazonaws.com", config.Region)
-		}
-
-		return "https://bedrock-runtime.us-east-1.amazonaws.com"
-	case PlatformVertex:
-		if config.Region != "" {
-			if config.Region == "global" {
-				return "https://aiplatform.googleapis.com"
-			}
-
-			return fmt.Sprintf("https://%s-aiplatform.googleapis.com", config.Region)
-		}
-
-		return "https://us-central1-aiplatform.googleapis.com"
-	default:
-		return "https://api.anthropic.com/v1"
-	}
 }
 
 // APIFormat returns the API format of the transformer.
@@ -169,10 +127,10 @@ func (t *OutboundTransformer) TransformRequest(
 	// Convert to Anthropic request format
 	anthropicReq := convertToAnthropicRequestWithConfig(llmReq, t.config)
 
-	// Apply platform-specific transformations
-	body, err := json.Marshal(anthropicReq)
+	// Determine endpoint based on platform
+	url, err := t.buildFullRequestURL(llmReq)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal anthropic request: %w", err)
+		return nil, fmt.Errorf("failed to build platform URL: %w", err)
 	}
 
 	// Prepare headers
@@ -184,25 +142,43 @@ func (t *OutboundTransformer) TransformRequest(
 	switch t.config.Type {
 	case PlatformBedrock:
 		headers.Set("Anthropic-Version", "bedrock-2023-05-31")
+
+		anthropicReq.AnthropicVersion = "bedrock-2023-05-31"
+		// Clear the model as it's not used with Bedrock
+		anthropicReq.Model = ""
+		// Clear stream as it's not used with Bedrock
+		anthropicReq.Stream = nil
 	case PlatformVertex:
 		headers.Set("Anthropic-Version", "vertex-2023-10-16")
 	default:
 		headers.Set("Anthropic-Version", "2023-06-01")
 	}
 
+	// Apply platform-specific transformations
+	body, err := json.Marshal(anthropicReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal anthropic request: %w", err)
+	}
+
 	// Add beta header for web search feature only when:
 	// 1. Native web search tool is present, AND
-	// 2. Platform is direct Anthropic API (not Bedrock/Vertex which may not support this beta)
-	if containsNativeWebSearchTool(anthropicReq.Tools) && t.config.Type != PlatformBedrock && t.config.Type != PlatformVertex {
-		headers.Set("Anthropic-Beta", "web-search-2025-03-05")
+	// 2. Platform is direct Anthropic API or Bedrock (not Vertex which may not support this beta)
+	if containsNativeWebSearchTool(anthropicReq.Tools) {
+		//nolint:exhaustive // Checked.
+		switch t.config.Type {
+		case PlatformDirect:
+			headers.Add("Anthropic-Beta", "web-search-2025-03-05")
+		case PlatformBedrock:
+			anthropicReq.AnthropicBeta = append(anthropicReq.AnthropicBeta, "web-search-2025-03-05")
+		}
 	}
 
 	// Prepare authentication
 	var auth *httpclient.AuthConfig
 
-	if t.config.APIKey != "" && (t.config.Type != PlatformBedrock && t.config.Type != PlatformVertex) {
+	if t.config.APIKey != "" && t.config.Type != PlatformVertex {
 		// LongCat uses Bearer token authentication instead of X-API-Key
-		if t.config.Type == PlatformLongCat {
+		if t.config.Type == PlatformLongCat || t.config.Type == PlatformBedrock {
 			auth = &httpclient.AuthConfig{
 				Type:   httpclient.AuthTypeBearer,
 				APIKey: t.config.APIKey,
@@ -214,12 +190,6 @@ func (t *OutboundTransformer) TransformRequest(
 				HeaderKey: "X-API-Key",
 			}
 		}
-	}
-
-	// Determine endpoint based on platform
-	url, err := t.buildFullRequestURL(llmReq)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build platform URL: %w", err)
 	}
 
 	return &httpclient.Request{
@@ -337,20 +307,6 @@ func (t *OutboundTransformer) SetConfig(config *Config) {
 	}
 
 	t.config = config
-}
-
-// ConfigureForBedrock configures the transformer for AWS Bedrock.
-func (t *OutboundTransformer) ConfigureForBedrock(region string) {
-	if region == "" {
-		region = "us-east-1"
-	}
-
-	t.config.Type = PlatformBedrock
-	t.config.Region = region
-	t.config.ProjectID = "" // Clear project ID for Bedrock
-
-	// Update base URL for Bedrock
-	t.config.BaseURL = fmt.Sprintf("https://bedrock-runtime.%s.amazonaws.com", region)
 }
 
 // ConfigureForVertex configures the transformer for Google Vertex AI.

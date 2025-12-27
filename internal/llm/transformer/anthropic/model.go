@@ -18,6 +18,11 @@ type MessageRequest struct {
 	// It is required for bedrock and vertex.
 	AnthropicVersion string `json:"anthropic_version,omitempty"`
 
+	// A list of beta features to use for this request, for bedrock only.
+	//
+	// For example: ["web-search-2025-03-05"].
+	AnthropicBeta []string `json:"anthropic_beta,omitempty"`
+
 	// Amount of randomness injected into the response.
 	//
 	// Defaults to `1.0`. Ranges from `0.0` to `1.0`. Use `temperature` closer to `0.0`

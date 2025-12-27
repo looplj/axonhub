@@ -5,6 +5,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/samber/lo"
 )
 
 func ReadHTTPRequest(rawReq *http.Request) (*Request, error) {
@@ -49,12 +51,16 @@ func IsHTTPStatusCodeRetryable(statusCode int) bool {
 	return false // Non-error status codes don't need retrying
 }
 
-// The client will handle the headers automatically.
-var blockedHeaders = map[string]bool{
+// The golang std http client will handle the headers automatically.
+var libManagedHeaders = map[string]bool{
 	"Content-Length":    true,
 	"Transfer-Encoding": true,
 	"Accept-Encoding":   true,
 	"Host":              true,
+}
+
+var blockedHeaders = map[string]bool{
+	"Content-Type": true,
 }
 
 var sensitiveHeaders = map[string]bool{
@@ -104,21 +110,20 @@ func FinalizeAuthHeaders(req *Request) (*Request, error) {
 	return req, nil
 }
 
-// MergeHTTPHeaders merges the source headers into the destination headers if the key not present in the destination headers.
+// MergeHTTPHeaders merges the source headers into the destination headers.
+// If a header already exists in the destination, it adds non-duplicate values from the source.
 // Blocked headers are not merged.
 func MergeHTTPHeaders(dest, src http.Header) http.Header {
 	for k, v := range src {
-		// Skip if the header is already present in the destination headers.
-		if _, ok := dest[k]; ok {
+		if sensitiveHeaders[k] || libManagedHeaders[k] || blockedHeaders[k] {
 			continue
 		}
 
-		// Skip if the header is blocked or sensitive.
-		if sensitiveHeaders[k] || blockedHeaders[k] {
-			continue
+		if existingValues, ok := dest[k]; ok {
+			dest[k] = lo.Uniq(append(existingValues, v...))
+		} else {
+			dest[k] = v
 		}
-
-		dest[k] = v
 	}
 
 	return dest
