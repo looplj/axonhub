@@ -564,3 +564,269 @@ func TestMatchAssociations_ExcludeChannels(t *testing.T) {
 		assert.Len(t, result, 2)
 	})
 }
+
+func TestMatchAssociations_ExcludeChannelsByTags(t *testing.T) {
+	ctx := context.Background()
+
+	channels := []*Channel{
+		{
+			Channel: &ent.Channel{
+				ID:              1,
+				Name:            "openai-primary",
+				Type:            channel.TypeOpenai,
+				SupportedModels: []string{"gpt-4", "gpt-3.5-turbo"},
+				Tags:            []string{"production", "openai"},
+			},
+		},
+		{
+			Channel: &ent.Channel{
+				ID:              2,
+				Name:            "openai-backup",
+				Type:            channel.TypeOpenai,
+				SupportedModels: []string{"gpt-4", "gpt-3.5-turbo"},
+				Tags:            []string{"backup", "openai"},
+			},
+		},
+		{
+			Channel: &ent.Channel{
+				ID:              3,
+				Name:            "anthropic-primary",
+				Type:            channel.TypeAnthropic,
+				SupportedModels: []string{"claude-3-opus"},
+				Tags:            []string{"production", "anthropic"},
+			},
+		},
+		{
+			Channel: &ent.Channel{
+				ID:              4,
+				Name:            "development-channel",
+				Type:            channel.TypeOpenai,
+				SupportedModels: []string{"gpt-4"},
+				Tags:            []string{"development", "test"},
+			},
+		},
+	}
+
+	t.Run("regex exclude by single channel tag", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "regex",
+				Priority: 1,
+				Regex: &objects.RegexAssociation{
+					Pattern: "gpt-.*",
+					Exclude: []*objects.ExcludeAssociation{
+						{
+							ChannelTags: []string{"backup"},
+						},
+					},
+				},
+			},
+		}
+
+		result, err := MatchAssociations(ctx, associations, channels)
+		assert.NoError(t, err)
+
+		// Should exclude openai-backup (tag: backup), match others
+		assert.Len(t, result, 2)
+
+		channelIDs := make([]int, 0, len(result))
+		for _, conn := range result {
+			channelIDs = append(channelIDs, conn.Channel.ID)
+		}
+
+		assert.Contains(t, channelIDs, 1)    // openai-primary
+		assert.Contains(t, channelIDs, 4)    // development-channel
+		assert.NotContains(t, channelIDs, 2) // openai-backup excluded
+	})
+
+	t.Run("regex exclude by multiple channel tags", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "regex",
+				Priority: 1,
+				Regex: &objects.RegexAssociation{
+					Pattern: ".*",
+					Exclude: []*objects.ExcludeAssociation{
+						{
+							ChannelTags: []string{"backup", "development"},
+						},
+					},
+				},
+			},
+		}
+
+		result, err := MatchAssociations(ctx, associations, channels)
+		assert.NoError(t, err)
+
+		// Should exclude channels with backup or development tags
+		assert.Len(t, result, 2)
+
+		channelIDs := make([]int, 0, len(result))
+		for _, conn := range result {
+			channelIDs = append(channelIDs, conn.Channel.ID)
+		}
+
+		assert.Contains(t, channelIDs, 1)    // openai-primary
+		assert.Contains(t, channelIDs, 3)    // anthropic-primary
+		assert.NotContains(t, channelIDs, 2) // openai-backup excluded
+		assert.NotContains(t, channelIDs, 4) // development-channel excluded
+	})
+
+	t.Run("model exclude by channel tag", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "model",
+				Priority: 1,
+				ModelID: &objects.ModelIDAssociation{
+					ModelID: "gpt-4",
+					Exclude: []*objects.ExcludeAssociation{
+						{
+							ChannelTags: []string{"production"},
+						},
+					},
+				},
+			},
+		}
+
+		result, err := MatchAssociations(ctx, associations, channels)
+		assert.NoError(t, err)
+
+		// Should exclude channels with production tag (1 and 3), match backup and development
+		assert.Len(t, result, 2)
+
+		channelIDs := make([]int, 0, len(result))
+		for _, conn := range result {
+			channelIDs = append(channelIDs, conn.Channel.ID)
+		}
+
+		assert.Contains(t, channelIDs, 2)    // openai-backup
+		assert.Contains(t, channelIDs, 4)    // development-channel
+		assert.NotContains(t, channelIDs, 1) // openai-primary excluded
+		assert.NotContains(t, channelIDs, 3) // anthropic-primary excluded
+	})
+
+	t.Run("exclude with tags, pattern, and IDs combined", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "regex",
+				Priority: 1,
+				Regex: &objects.RegexAssociation{
+					Pattern: ".*",
+					Exclude: []*objects.ExcludeAssociation{
+						{
+							ChannelNamePattern: ".*primary",
+							ChannelIds:         []int{4},
+							ChannelTags:        []string{"backup"},
+						},
+					},
+				},
+			},
+		}
+
+		result, err := MatchAssociations(ctx, associations, channels)
+		assert.NoError(t, err)
+
+		// Should exclude:
+		// - Channel 1 and 3 by pattern (.*primary)
+		// - Channel 4 by ID
+		// - Channel 2 by tag (backup)
+		// All channels excluded, no results
+		assert.Len(t, result, 0)
+	})
+
+	t.Run("multiple exclude rules with tags", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "model",
+				Priority: 1,
+				ModelID: &objects.ModelIDAssociation{
+					ModelID: "gpt-4",
+					Exclude: []*objects.ExcludeAssociation{
+						{
+							ChannelTags: []string{"production"},
+						},
+						{
+							ChannelTags: []string{"development"},
+						},
+					},
+				},
+			},
+		}
+
+		result, err := MatchAssociations(ctx, associations, channels)
+		assert.NoError(t, err)
+
+		// Should exclude channels with production or development tags (1, 3, 4)
+		// Only channel 2 (backup) should remain
+		assert.Len(t, result, 1)
+		assert.Equal(t, 2, result[0].Channel.ID)
+		assert.Equal(t, "openai-backup", result[0].Channel.Name)
+	})
+
+	t.Run("exclude with non-existent tag", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "regex",
+				Priority: 1,
+				Regex: &objects.RegexAssociation{
+					Pattern: "gpt-.*",
+					Exclude: []*objects.ExcludeAssociation{
+						{
+							ChannelTags: []string{"non-existent"},
+						},
+					},
+				},
+			},
+		}
+
+		result, err := MatchAssociations(ctx, associations, channels)
+		assert.NoError(t, err)
+
+		// Should match all channels with gpt models since no channel has the non-existent tag
+		assert.Len(t, result, 3) // channels 1, 2, 4 have gpt models
+	})
+
+	t.Run("channel with no tags", func(t *testing.T) {
+		// Add a channel with no tags
+		channelsWithNoTags := append(channels, &Channel{
+			Channel: &ent.Channel{
+				ID:              5,
+				Name:            "no-tags-channel",
+				Type:            channel.TypeOpenai,
+				SupportedModels: []string{"gpt-4"},
+				Tags:            []string{},
+			},
+		})
+
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "regex",
+				Priority: 1,
+				Regex: &objects.RegexAssociation{
+					Pattern: "gpt-.*",
+					Exclude: []*objects.ExcludeAssociation{
+						{
+							ChannelTags: []string{"production"},
+						},
+					},
+				},
+			},
+		}
+
+		result, err := MatchAssociations(ctx, associations, channelsWithNoTags)
+		assert.NoError(t, err)
+
+		// Should exclude production channels (1), but include others including no-tags channel
+		assert.Len(t, result, 3) // channels 2, 4, 5
+
+		channelIDs := make([]int, 0, len(result))
+		for _, conn := range result {
+			channelIDs = append(channelIDs, conn.Channel.ID)
+		}
+
+		assert.Contains(t, channelIDs, 2)    // openai-backup
+		assert.Contains(t, channelIDs, 4)    // development-channel
+		assert.Contains(t, channelIDs, 5)    // no-tags-channel
+		assert.NotContains(t, channelIDs, 1) // openai-primary excluded
+	})
+}

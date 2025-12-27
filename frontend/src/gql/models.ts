@@ -40,6 +40,7 @@ export interface ModelAssociationInput {
 export interface ExcludeAssociationInput {
   channelNamePattern?: string
   channelIds?: number[]
+  channelTags?: string[]
 }
 
 export interface ChannelModelEntry {

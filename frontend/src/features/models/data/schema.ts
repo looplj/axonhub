@@ -61,6 +61,7 @@ export type ChannelRegexAssociation = z.infer<typeof channelRegexAssociationSche
 export const excludeAssociationSchema = z.object({
   channelNamePattern: z.string().optional().nullable(),
   channelIds: z.array(z.number()).optional().nullable(),
+  channelTags: z.array(z.string()).optional().nullable(),
 })
 export type ExcludeAssociation = z.infer<typeof excludeAssociationSchema>
 

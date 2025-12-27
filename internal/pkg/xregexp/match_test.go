@@ -158,6 +158,12 @@ func TestMatchString(t *testing.T) {
 			str:      "prefix-gpt-4-suffix",
 			expected: true,
 		},
+		{
+			name:     "partial match with model modifer",
+			pattern:  "(?i)^(?=.*gpt-5)(?!.*mini)(?!.*nano).*$",
+			str:      "gpt-5.1-codex-mini",
+			expected: false,
+		},
 	}
 
 	for _, tt := range tests {

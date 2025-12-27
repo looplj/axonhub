@@ -76,8 +76,9 @@ type ModelAssociation struct {
 }
 
 type ExcludeAssociation struct {
-	ChannelNamePattern string `json:"channelNamePattern"`
-	ChannelIds         []int  `json:"channelIds"`
+	ChannelNamePattern string   `json:"channelNamePattern"`
+	ChannelIds         []int    `json:"channelIds"`
+	ChannelTags        []string `json:"channelTags"`
 }
 
 type ChannelModelAssociation struct {

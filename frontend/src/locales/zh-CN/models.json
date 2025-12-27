@@ -119,6 +119,7 @@
         "excludeSection": "排除渠道",
         "excludeChannelNamePattern": "排除渠道名称（正则）",
         "excludeChannelIds": "排除渠道",
+        "excludeChannelTags": "排除渠道标签",
         "noChannelsAvailable": "暂无可用渠道",
         "ruleHints": {
           "channelModel": "使用渠道 {{channel}} 的 {{model}} 模型",

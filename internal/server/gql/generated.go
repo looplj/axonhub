@@ -331,6 +331,7 @@ type ComplexityRoot struct {
 	ExcludeAssociation struct {
 		ChannelIds         func(childComplexity int) int
 		ChannelNamePattern func(childComplexity int) int
+		ChannelTags        func(childComplexity int) int
 	}
 
 	FetchModelsPayload struct {
@@ -2348,6 +2349,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ExcludeAssociation.ChannelNamePattern(childComplexity), true
+	case "ExcludeAssociation.channelTags":
+		if e.complexity.ExcludeAssociation.ChannelTags == nil {
+			break
+		}
+
+		return e.complexity.ExcludeAssociation.ChannelTags(childComplexity), true
 
 	case "FetchModelsPayload.error":
 		if e.complexity.FetchModelsPayload.Error == nil {
@@ -13632,6 +13639,35 @@ func (ec *executionContext) fieldContext_ExcludeAssociation_channelIds(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _ExcludeAssociation_channelTags(ctx context.Context, field graphql.CollectedField, obj *objects.ExcludeAssociation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ExcludeAssociation_channelTags,
+		func(ctx context.Context) (any, error) {
+			return obj.ChannelTags, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ExcludeAssociation_channelTags(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExcludeAssociation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _FetchModelsPayload_models(ctx context.Context, field graphql.CollectedField, obj *FetchModelsPayload) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -15707,6 +15743,8 @@ func (ec *executionContext) fieldContext_ModelIDAssociation_exclude(_ context.Co
 				return ec.fieldContext_ExcludeAssociation_channelNamePattern(ctx, field)
 			case "channelIds":
 				return ec.fieldContext_ExcludeAssociation_channelIds(ctx, field)
+			case "channelTags":
+				return ec.fieldContext_ExcludeAssociation_channelTags(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ExcludeAssociation", field.Name)
 		},
@@ -22124,6 +22162,8 @@ func (ec *executionContext) fieldContext_RegexAssociation_exclude(_ context.Cont
 				return ec.fieldContext_ExcludeAssociation_channelNamePattern(ctx, field)
 			case "channelIds":
 				return ec.fieldContext_ExcludeAssociation_channelIds(ctx, field)
+			case "channelTags":
+				return ec.fieldContext_ExcludeAssociation_channelTags(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ExcludeAssociation", field.Name)
 		},
@@ -39840,7 +39880,7 @@ func (ec *executionContext) unmarshalInputExcludeAssociationInput(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"channelNamePattern", "channelIds"}
+	fieldsInOrder := [...]string{"channelNamePattern", "channelIds", "channelTags"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -39861,6 +39901,13 @@ func (ec *executionContext) unmarshalInputExcludeAssociationInput(ctx context.Co
 				return it, err
 			}
 			it.ChannelIds = data
+		case "channelTags":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelTags"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelTags = data
 		}
 	}
 
@@ -53670,6 +53717,8 @@ func (ec *executionContext) _ExcludeAssociation(ctx context.Context, sel ast.Sel
 			out.Values[i] = ec._ExcludeAssociation_channelNamePattern(ctx, field, obj)
 		case "channelIds":
 			out.Values[i] = ec._ExcludeAssociation_channelIds(ctx, field, obj)
+		case "channelTags":
+			out.Values[i] = ec._ExcludeAssociation_channelTags(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

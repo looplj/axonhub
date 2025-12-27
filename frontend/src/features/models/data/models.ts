@@ -75,6 +75,7 @@ const MODELS_QUERY = `
                 exclude {
                   channelNamePattern
                   channelIds
+                  channelTags
                 }
               }
               modelId {
@@ -82,6 +83,7 @@ const MODELS_QUERY = `
                 exclude {
                   channelNamePattern
                   channelIds
+                  channelTags
                 }
               }
             }
@@ -157,6 +159,7 @@ const CREATE_MODEL_MUTATION = `
             exclude {
               channelNamePattern
               channelIds
+              channelTags
             }
           }
           modelId {
@@ -164,6 +167,7 @@ const CREATE_MODEL_MUTATION = `
             exclude {
               channelNamePattern
               channelIds
+              channelTags
             }
           }
         }
@@ -229,6 +233,7 @@ const BULK_CREATE_MODELS_MUTATION = `
             exclude {
               channelNamePattern
               channelIds
+              channelTags
             }
           }
           modelId {
@@ -236,6 +241,7 @@ const BULK_CREATE_MODELS_MUTATION = `
             exclude {
               channelNamePattern
               channelIds
+              channelTags
             }
           }
         }
@@ -301,6 +307,7 @@ const UPDATE_MODEL_MUTATION = `
             exclude {
               channelNamePattern
               channelIds
+              channelTags
             }
           }
           modelId {
@@ -308,6 +315,7 @@ const UPDATE_MODEL_MUTATION = `
             exclude {
               channelNamePattern
               channelIds
+              channelTags
             }
           }
         }

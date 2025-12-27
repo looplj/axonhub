@@ -106,10 +106,10 @@ export function DataTableToolbar<TData>({
         {table.getColumn('status') && (
           <DataTableFacetedFilter column={table.getColumn('status')} title={t('channels.filters.status')} options={channelStatuses} />
         )}
-        {table.getColumn('tags') && tagOptions?.length && (
+        {table.getColumn('tags') && tagOptions?.length > 0 && (
           <DataTableFacetedFilter column={table.getColumn('tags')} title={t('channels.filters.tags')} options={tagOptions} singleSelect />
         )}
-        {table.getColumn('model') && modelOptions?.length && (
+        {table.getColumn('model') && modelOptions?.length > 0 && (
           <DataTableFacetedFilter
             column={table.getColumn('model')}
             title={t('channels.filters.model')}
