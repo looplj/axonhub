@@ -1,7 +1,6 @@
 {
   "channels": {
     "title": "渠道管理",
-    "view": "视图",
     "toggleColumns": "切换列",
     "description": "管理您的 AI 模型渠道和配置。",
     "addChannel": "添加渠道",
@@ -20,7 +19,7 @@
       "tags": "标签",
       "baseURL": "Base URL",
       "supportedModels": "支持的模型",
-      "performance": "性能",
+      "channelPerformance": "性能",
       "firstTokenLatency": "FTL",
       "tokensPerSecond": "TPS",
       "firstTokenLatencyFull": "首Token延迟",
@@ -147,6 +146,7 @@
       "fetchModelsSuccessLarge": "成功获取 {{count}} 个模型。使用搜索查找特定模型。",
       "fetchModelsError": "获取模型失败：{{error}}",
       "fetchTypesError": "获取渠道类型失败：{{error}}",
+      "modelsNotConfirmed": "您已选择了模型但未确认，请先点击\"确定选中\"按钮确认选择的模型，或取消选择后再保存。",
       "batchCreateSuccess": "成功创建 {{count}} 个渠道",
       "batchCreateError": "批量创建失败：{{error}}",
       "errorResolvedSuccess": "渠道错误解决成功",

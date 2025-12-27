@@ -93,9 +93,20 @@ export function ChannelsTable({
   const { setSelectedChannels, setResetRowSelection, setOpen } = useChannels()
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const [expanded, setExpanded] = useState<ExpandedState>({})
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
-    tags: false, // Hide tags column by default but keep it for filtering
+  
+  // Load column visibility from localStorage
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
+    const stored = localStorage.getItem('channels-table-column-visibility')
+    if (stored) {
+      try {
+        return JSON.parse(stored)
+      } catch {
+        return { tags: false }
+      }
+    }
+    return { tags: false } // Hide tags column by default but keep it for filtering
   })
+  
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
 
   // Sync server state to local column filters using useEffect
@@ -120,6 +131,11 @@ export function ChannelsTable({
 
     setColumnFilters(newColumnFilters)
   }, [nameFilter, typeFilter, statusFilter, tagFilter, modelFilter])
+
+  // Save column visibility to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('channels-table-column-visibility', JSON.stringify(columnVisibility))
+  }, [columnVisibility])
 
   // Handle column filter changes and sync with server
   const handleColumnFiltersChange = (

@@ -15,11 +15,9 @@ interface DataTableViewOptionsProps<TData> {
   table: Table<TData>
 }
 
-export function DataTableViewOptions<TData>({
-  table,
-}: DataTableViewOptionsProps<TData>) {
+export function DataTableViewOptions<TData>({ table }: DataTableViewOptionsProps<TData>) {
   const { t } = useTranslation()
-  
+
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
@@ -33,10 +31,8 @@ export function DataTableViewOptions<TData>({
         <DropdownMenuSeparator />
         {table
           .getAllColumns()
-          .filter(
-            (column) =>
-              typeof column.accessorFn !== 'undefined' && column.getCanHide()
-          )
+          .filter((column) => typeof column.accessorFn !== 'undefined' && column.getCanHide())
+          .filter((column) => column?.columnDef.id != 'tags' && column?.columnDef.id != 'model')
           .map((column) => {
             return (
               <DropdownMenuCheckboxItem
@@ -45,7 +41,7 @@ export function DataTableViewOptions<TData>({
                 checked={column.getIsVisible()}
                 onCheckedChange={(value) => column.toggleVisibility(!!value)}
               >
-                {t(`channels.columns.${column.id}`) || column.id}
+                {t(`channels.columns.${column.id}`)}
               </DropdownMenuCheckboxItem>
             )
           })}
