@@ -1,7 +1,7 @@
 'use client'
 
 import { useTranslation } from 'react-i18next'
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts'
+import { Line, LineChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts'
 import { formatNumber } from '@/utils/format-number'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useDailyRequestStats } from '../data/dashboard'
@@ -33,18 +33,36 @@ export function DailyRequestStats() {
         month: 'short',
         day: 'numeric',
       }),
-      total: formatNumber(stat.count),
+      total: stat.count,
     })) || []
+
+  // Calculate max value for Y-axis domain
+  const maxValue = Math.max(...chartData.map((d) => d.total), 0)
+  const yAxisMax = Math.max(10, Math.ceil(maxValue * 1.1))
 
   return (
     <ResponsiveContainer width='100%' height={350}>
-      <BarChart data={chartData}>
+      <LineChart data={chartData}>
         <CartesianGrid strokeDasharray='3 3' />
         <XAxis dataKey='name' stroke='#888888' fontSize={12} tickLine={false} axisLine={false} />
-        <YAxis stroke='#888888' fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
-        <Tooltip />
-        <Bar dataKey='total' fill='var(--chart-1)' radius={[4, 4, 0, 0]} />
-      </BarChart>
+        <YAxis
+          stroke='#888888'
+          fontSize={12}
+          tickLine={false}
+          axisLine={false}
+          domain={[0, yAxisMax]}
+          tickFormatter={(value) => formatNumber(value)}
+        />
+        <Tooltip formatter={(value) => formatNumber(Number(value))} />
+        <Line
+          type='monotone'
+          dataKey='total'
+          stroke='var(--chart-1)'
+          strokeWidth={2}
+          dot={{ fill: 'var(--chart-1)', r: 3 }}
+          activeDot={{ r: 5 }}
+        />
+      </LineChart>
     </ResponsiveContainer>
   )
 }

@@ -526,8 +526,12 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
   const excludeChannelIds = form.watch(`associations.${index}.excludeChannelIds`)
   const excludeChannelNamePattern = form.watch(`associations.${index}.excludeChannelNamePattern`)
   const excludeChannelTags = form.watch(`associations.${index}.excludeChannelTags`)
-  const [modelSearch, setModelSearch] = useState('')
+  const [modelSearch, setModelSearch] = useState(modelId?.toString() || '')
   const [excludeExpanded, setExcludeExpanded] = useState(false)
+
+  useEffect(() => {
+    setModelSearch(modelId?.toString() || '')
+  }, [modelId])
 
   const showChannel = type === 'channel_model' || type === 'channel_regex'
   const showModel = type === 'channel_model' || type === 'model'
@@ -654,9 +658,8 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
                     selectedValue={field.value?.toString() || ''}
                     onSelectedValueChange={(value) => {
                       field.onChange(value)
-                      setModelSearch(value)
                     }}
-                    searchValue={modelSearch || field.value?.toString() || ''}
+                    searchValue={modelSearch}
                     onSearchValueChange={setModelSearch}
                     items={modelOptions}
                     placeholder={t('models.dialogs.association.selectModel')}

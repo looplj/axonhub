@@ -556,14 +556,22 @@ interface MappingRowProps {
 }
 
 function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModels, t, portalContainer }: MappingRowProps) {
-  const [fromSearch, setFromSearch] = useState('')
-  const [toSearch, setToSearch] = useState('')
-
   const fromFieldName = `profiles.${profileIndex}.modelMappings.${mappingIndex}.from` as const
   const toFieldName = `profiles.${profileIndex}.modelMappings.${mappingIndex}.to` as const
 
   const fromValue = form.watch(fromFieldName)
   const toValue = form.watch(toFieldName)
+
+  const [fromSearch, setFromSearch] = useState(fromValue || '')
+  const [toSearch, setToSearch] = useState(toValue || '')
+
+  useEffect(() => {
+    setFromSearch(fromValue || '')
+  }, [fromValue])
+
+  useEffect(() => {
+    setToSearch(toValue || '')
+  }, [toValue])
 
   useEffect(() => {
     form.trigger(fromFieldName)
@@ -594,9 +602,8 @@ function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModel
                 selectedValue={field.value || ''}
                 onSelectedValueChange={(value) => {
                   field.onChange(value)
-                  setFromSearch(value)
                 }}
-                searchValue={fromSearch || field.value || ''}
+                searchValue={fromSearch}
                 onSearchValueChange={setFromSearch}
                 items={filteredFromModels}
                 placeholder={t('apikeys.profiles.sourceModel')}
@@ -620,9 +627,8 @@ function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModel
                 selectedValue={field.value || ''}
                 onSelectedValueChange={(value) => {
                   field.onChange(value)
-                  setToSearch(value)
                 }}
-                searchValue={toSearch || field.value || ''}
+                searchValue={toSearch}
                 onSearchValueChange={setToSearch}
                 items={filteredToModels}
                 placeholder={t('apikeys.profiles.targetModel')}
