@@ -104,6 +104,28 @@ export const channelModelEntrySchema = z.object({
 })
 export type ChannelModelEntry = z.infer<typeof channelModelEntrySchema>
 
+// Channel Credentials
+export const channelCredentialsSchema = z.object({
+  apiKey: z.string().optional().nullable(),
+  aws: z
+    .object({
+      accessKeyID: z.string(),
+      secretAccessKey: z.string(),
+      region: z.string(),
+    })
+    .optional()
+    .nullable(),
+  gcp: z
+    .object({
+      region: z.string(),
+      projectID: z.string(),
+      jsonData: z.string(),
+    })
+    .optional()
+    .nullable(),
+})
+export type ChannelCredentials = z.infer<typeof channelCredentialsSchema>
+
 // Channel
 export const channelSchema = z.object({
   id: z.string(),
@@ -113,6 +135,7 @@ export const channelSchema = z.object({
   baseURL: z.string(),
   name: z.string(),
   status: channelStatusSchema,
+  credentials: channelCredentialsSchema.optional().nullable(),
   supportedModels: z.array(z.string()),
   autoSyncSupportedModels: z.boolean().default(false),
   tags: z.array(z.string()).optional().default([]).nullable(),

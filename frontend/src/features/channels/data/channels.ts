@@ -407,6 +407,19 @@ const QUERY_CHANNELS_QUERY = `
           baseURL
           name
           status
+          credentials {
+            apiKey
+            aws {
+              accessKeyID
+              secretAccessKey
+              region
+            }
+            gcp {
+              region
+              projectID
+              jsonData
+            }
+          }
           supportedModels
           autoSyncSupportedModels
           tags

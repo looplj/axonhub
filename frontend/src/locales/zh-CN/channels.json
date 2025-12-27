@@ -110,6 +110,7 @@
       "exitErrorOnlyButton": "退出错误模式"
     },
     "messages": {
+      "credentialsCopied": "权限凭证已经复制到剪贴板",
       "addAtLeastOneModel": "请至少添加一个支持的模型",
       "createDescription": "在此创建新的 Channel。",
       "editDescription": "在此更新 Channel 信息。",

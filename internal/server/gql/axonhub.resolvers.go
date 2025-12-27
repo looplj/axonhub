@@ -10,8 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/samber/lo"
-
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
@@ -22,7 +20,9 @@ import (
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/samber/lo"
 )
 
 // AllModelEntries is the resolver for the allModelEntries field.
@@ -32,6 +32,16 @@ func (r *channelResolver) AllModelEntries(ctx context.Context, obj *ent.Channel)
 	result := lo.Values(entries)
 
 	return lo.ToSlicePtr(result), nil
+}
+
+// Credentials is the resolver for the credentials field.
+func (r *channelResolver) Credentials(ctx context.Context, obj *ent.Channel) (*objects.ChannelCredentials, error) {
+	hasScope := scopes.UserHasScope(ctx, scopes.ScopeWriteChannels)
+	if hasScope {
+		return obj.Credentials, nil
+	}
+
+	return nil, nil
 }
 
 // CreateChannel is the resolver for the createChannel field.
@@ -523,7 +533,5 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Segment returns SegmentResolver implementation.
 func (r *Resolver) Segment() SegmentResolver { return &segmentResolver{r} }
 
-type (
-	mutationResolver struct{ *Resolver }
-	segmentResolver  struct{ *Resolver }
-)
+type mutationResolver struct{ *Resolver }
+type segmentResolver struct{ *Resolver }

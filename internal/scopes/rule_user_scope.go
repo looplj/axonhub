@@ -75,3 +75,16 @@ func WithUserScopeDecision(ctx context.Context, requiredScope ScopeSlug) context
 
 	return privacy.DecisionContext(ctx, privacy.Deny)
 }
+
+func UserHasScope(ctx context.Context, requiredScope ScopeSlug) bool {
+	user, ok := contexts.GetUser(ctx)
+	if !ok {
+		return false
+	}
+
+	if userHasScope(user, requiredScope) {
+		return true
+	}
+
+	return false
+}
