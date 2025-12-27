@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { X, RefreshCw, Search, ChevronLeft, ChevronRight, PanelLeft, Plus, Trash2 } from 'lucide-react'
+import { X, RefreshCw, Search, ChevronLeft, ChevronRight, PanelLeft, Plus, Trash2, Eye, EyeOff, Copy } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -91,6 +91,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [supportedModelsExpanded, setSupportedModelsExpanded] = useState(false)
   const [showClearAllPopover, setShowClearAllPopover] = useState(false)
   const hasAutoSetDuplicateNameRef = useRef(false)
+  const [showApiKey, setShowApiKey] = useState(false)
+  const [showAwsAccessKey, setShowAwsAccessKey] = useState(false)
+  const [showAwsSecretKey, setShowAwsSecretKey] = useState(false)
+  const [showGcpJsonData, setShowGcpJsonData] = useState(false)
 
   // Provider-based selection state
   const [selectedProvider, setSelectedProvider] = useState<string>(() => {
@@ -206,16 +210,16 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             tags: currentRow.tags || [],
             remark: currentRow.remark || '',
             credentials: {
-              apiKey: '', // credentials字段是敏感字段，不从API返回
+              apiKey: currentRow.credentials?.apiKey || '',
               aws: {
-                accessKeyID: '',
-                secretAccessKey: '',
-                region: '',
+                accessKeyID: currentRow.credentials?.aws?.accessKeyID || '',
+                secretAccessKey: currentRow.credentials?.aws?.secretAccessKey || '',
+                region: currentRow.credentials?.aws?.region || '',
               },
               gcp: {
-                region: '',
-                projectID: '',
-                jsonData: '',
+                region: currentRow.credentials?.gcp?.region || '',
+                projectID: currentRow.credentials?.gcp?.projectID || '',
+                jsonData: currentRow.credentials?.gcp?.jsonData || '',
               },
             },
           }
@@ -880,15 +884,42 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             </FormLabel>
                             <div className='col-span-6 space-y-1'>
                               {isEdit ? (
-                                <Input
-                                  type='password'
-                                  placeholder={t('channels.dialogs.fields.apiKey.editPlaceholder')}
-                                  className='col-span-6'
-                                  autoComplete='off'
-                                  aria-invalid={!!fieldState.error}
-                                  data-testid='channel-api-key-input'
-                                  {...field}
-                                />
+                                <div className='relative'>
+                                  <Input
+                                    type={showApiKey ? 'text' : 'password'}
+                                    placeholder={t('channels.dialogs.fields.apiKey.editPlaceholder')}
+                                    className='col-span-6 pr-20'
+                                    autoComplete='off'
+                                    aria-invalid={!!fieldState.error}
+                                    data-testid='channel-api-key-input'
+                                    {...field}
+                                  />
+                                  <div className='absolute right-1 top-1/2 flex -translate-y-1/2 gap-1'>
+                                    <Button
+                                      type='button'
+                                      variant='ghost'
+                                      size='sm'
+                                      className='h-7 w-7 p-0'
+                                      onClick={() => setShowApiKey(!showApiKey)}
+                                    >
+                                      {showApiKey ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
+                                    </Button>
+                                    <Button
+                                      type='button'
+                                      variant='ghost'
+                                      size='sm'
+                                      className='h-7 w-7 p-0'
+                                      onClick={() => {
+                                        if (field.value) {
+                                          navigator.clipboard.writeText(field.value)
+                                          toast.success(t('channels.messages.credentialsCopied'))
+                                        }
+                                      }}
+                                    >
+                                      <Copy className='h-4 w-4' />
+                                    </Button>
+                                  </div>
+                                </div>
                               ) : (
                                 <>
                                   <Textarea
@@ -920,14 +951,41 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 {t('channels.dialogs.fields.awsAccessKeyID.label')}
                               </FormLabel>
                               <div className='col-span-6 space-y-1'>
-                                <Input
-                                  type='password'
-                                  placeholder={t('channels.dialogs.fields.awsAccessKeyID.placeholder')}
-                                  className='col-span-6'
-                                  autoComplete='off'
-                                  aria-invalid={!!fieldState.error}
-                                  {...field}
-                                />
+                                <div className='relative'>
+                                  <Input
+                                    type={showAwsAccessKey ? 'text' : 'password'}
+                                    placeholder={t('channels.dialogs.fields.awsAccessKeyID.placeholder')}
+                                    className='col-span-6 pr-20'
+                                    autoComplete='off'
+                                    aria-invalid={!!fieldState.error}
+                                    {...field}
+                                  />
+                                  <div className='absolute right-1 top-1/2 flex -translate-y-1/2 gap-1'>
+                                    <Button
+                                      type='button'
+                                      variant='ghost'
+                                      size='sm'
+                                      className='h-7 w-7 p-0'
+                                      onClick={() => setShowAwsAccessKey(!showAwsAccessKey)}
+                                    >
+                                      {showAwsAccessKey ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
+                                    </Button>
+                                    <Button
+                                      type='button'
+                                      variant='ghost'
+                                      size='sm'
+                                      className='h-7 w-7 p-0'
+                                      onClick={() => {
+                                        if (field.value) {
+                                          navigator.clipboard.writeText(field.value)
+                                          toast.success(t('common.copied'))
+                                        }
+                                      }}
+                                    >
+                                      <Copy className='h-4 w-4' />
+                                    </Button>
+                                  </div>
+                                </div>
                                 <FormMessage />
                               </div>
                             </FormItem>
@@ -943,14 +1001,41 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 {t('channels.dialogs.fields.awsSecretAccessKey.label')}
                               </FormLabel>
                               <div className='col-span-6 space-y-1'>
-                                <Input
-                                  type='password'
-                                  placeholder={t('channels.dialogs.fields.awsSecretAccessKey.placeholder')}
-                                  className='col-span-6'
-                                  autoComplete='off'
-                                  aria-invalid={!!fieldState.error}
-                                  {...field}
-                                />
+                                <div className='relative'>
+                                  <Input
+                                    type={showAwsSecretKey ? 'text' : 'password'}
+                                    placeholder={t('channels.dialogs.fields.awsSecretAccessKey.placeholder')}
+                                    className='col-span-6 pr-20'
+                                    autoComplete='off'
+                                    aria-invalid={!!fieldState.error}
+                                    {...field}
+                                  />
+                                  <div className='absolute right-1 top-1/2 flex -translate-y-1/2 gap-1'>
+                                    <Button
+                                      type='button'
+                                      variant='ghost'
+                                      size='sm'
+                                      className='h-7 w-7 p-0'
+                                      onClick={() => setShowAwsSecretKey(!showAwsSecretKey)}
+                                    >
+                                      {showAwsSecretKey ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
+                                    </Button>
+                                    <Button
+                                      type='button'
+                                      variant='ghost'
+                                      size='sm'
+                                      className='h-7 w-7 p-0'
+                                      onClick={() => {
+                                        if (field.value) {
+                                          navigator.clipboard.writeText(field.value)
+                                          toast.success(t('common.copied'))
+                                        }
+                                      }}
+                                    >
+                                      <Copy className='h-4 w-4' />
+                                    </Button>
+                                  </div>
+                                </div>
                                 <FormMessage />
                               </div>
                             </FormItem>
@@ -1036,8 +1121,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 {t('channels.dialogs.fields.gcpJsonData.label')}
                               </FormLabel>
                               <div className='col-span-6 space-y-1'>
-                                <Textarea
-                                  placeholder={`{
+                                <div className='relative'>
+                                  <Textarea
+                                    placeholder={`{
   "type": "service_account",
   "project_id": "project-123",
   "private_key_id": "fdfd",
@@ -1050,10 +1136,38 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/xxx-compute%40developer.gserviceaccount.com",
   "universe_domain": "googleapis.com"
 }`}
-                                  className='col-span-6 min-h-[200px] resize-y font-mono text-xs'
-                                  aria-invalid={!!fieldState.error}
-                                  {...field}
-                                />
+                                    className='col-span-6 min-h-[200px] resize-y pr-10 font-mono text-xs'
+                                    aria-invalid={!!fieldState.error}
+                                    {...field}
+                                  />
+                                  {isEdit && field.value && (
+                                    <div className='absolute right-1 top-1 flex flex-col gap-1'>
+                                      <Button
+                                        type='button'
+                                        variant='ghost'
+                                        size='sm'
+                                        className='h-7 w-7 p-0'
+                                        onClick={() => setShowGcpJsonData(!showGcpJsonData)}
+                                      >
+                                        {showGcpJsonData ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
+                                      </Button>
+                                      <Button
+                                        type='button'
+                                        variant='ghost'
+                                        size='sm'
+                                        className='h-7 w-7 p-0'
+                                        onClick={() => {
+                                          if (field.value) {
+                                            navigator.clipboard.writeText(field.value)
+                                            toast.success(t('common.copied'))
+                                          }
+                                        }}
+                                      >
+                                        <Copy className='h-4 w-4' />
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
                                 <FormMessage />
                               </div>
                             </FormItem>

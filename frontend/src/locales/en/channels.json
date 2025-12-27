@@ -116,6 +116,7 @@
       "filterByName": "Search by name"
     },
     "messages": {
+      "credentialsCopied": "Credentials copied to clipboard",
       "addAtLeastOneModel": "Please add at least one supported model",
       "createDescription": "Create a new Channel here.",
       "editDescription": "Update Channel information here.",
