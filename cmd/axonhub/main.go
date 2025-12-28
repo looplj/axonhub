@@ -214,6 +214,10 @@ func validateConfig(config conf.Config) []string {
 		errors = append(errors, "log.name cannot be empty")
 	}
 
+	if config.APIServer.CORS.Enabled && len(config.APIServer.CORS.AllowedOrigins) == 0 {
+		errors = append(errors, "server.cors.allowed_origins cannot be empty when CORS is enabled")
+	}
+
 	return errors
 }
 

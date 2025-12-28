@@ -14,6 +14,32 @@ server:
     extra_trace_headers: [] # Extra trace headers (env: AXONHUB_SERVER_TRACE_EXTRA_TRACE_HEADERS)
     claude_code_trace_enabled: false # Enable extracting trace IDs from Claude Code request metadata (env: AXONHUB_SERVER_TRACE_CLAUDE_CODE_TRACE_ENABLED)
   debug: false                  # Enable debug mode (env: AXONHUB_SERVER_DEBUG)
+  cors:
+    enabled: true               # Enable CORS middleware (env: AXONHUB_SERVER_CORS_ENABLED)
+    debug: false                # Enable CORS debug logging (env: AXONHUB_SERVER_CORS_DEBUG)
+    allowed_origins:            # Allowed origins for CORS (env: AXONHUB_SERVER_CORS_ALLOWED_ORIGINS)
+      - "http://localhost:3000"
+      - "http://localhost:5173"
+    allowed_methods:            # Allowed HTTP methods (env: AXONHUB_SERVER_CORS_ALLOWED_METHODS)
+      - "GET"
+      - "POST"
+      - "DELETE"
+      - "PATCH"
+      - "PUT"
+      - "OPTIONS"
+      - "HEAD"
+    allowed_headers:            # Allowed headers (env: AXONHUB_SERVER_CORS_ALLOWED_HEADERS)
+      - "Content-Type"
+      - "Authorization"
+      - "X-API-Key"
+      - "X-Goog-Api-Key"
+      - "X-Project-ID"
+      - "AH-Thread-Id"
+      - "AH-Trace-Id"
+      # Add any other headers your frontend sends
+    exposed_headers: []         # Exposed headers (env: AXONHUB_SERVER_CORS_EXPOSED_HEADERS)
+    allow_credentials: true     # Allow credentials (env: AXONHUB_SERVER_CORS_ALLOW_CREDENTIALS)
+    max_age: 1m                  # Max age for preflight cache in seconds (env: AXONHUB_SERVER_CORS_MAX_AGE)
 
 # Database configuration
 db:

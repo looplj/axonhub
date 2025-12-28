@@ -130,6 +130,16 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.trace.claude_code_trace_enabled", false)
 	v.SetDefault("server.debug", false)
 
+	// CORS defaults
+	v.SetDefault("server.cors.enabled", false)
+	v.SetDefault("server.cors.debug", false)
+	v.SetDefault("server.cors.allowed_origins", []string{"http://localhost:8090"})
+	v.SetDefault("server.cors.allowed_methods", []string{"GET", "POST", "DELETE", "PATCH", "PUT", "OPTIONS", "HEAD"})
+	v.SetDefault("server.cors.allowed_headers", []string{"Content-Type", "Authorization", "X-API-Key", "X-Goog-Api-Key", "X-Project-ID", "X-Thread-ID", "X-Trace-ID"})
+	v.SetDefault("server.cors.exposed_headers", []string{})
+	v.SetDefault("server.cors.allow_credentials", false)
+	v.SetDefault("server.cors.max_age", "30m")
+
 	// Database defaults
 	v.SetDefault("db.dialect", "sqlite3")
 	v.SetDefault("db.dsn", "file:axonhub.db?cache=shared&_fk=1&journal_mode=WAL")
