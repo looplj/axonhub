@@ -708,6 +708,191 @@ func (s *RequestService) AppendRequestChunk(
 	return nil
 }
 
+// SaveRequestExecutionChunks saves all response chunks to request execution at once.
+// Only stores chunks if the system StoreChunks setting is enabled.
+func (s *RequestService) SaveRequestExecutionChunks(
+	ctx context.Context,
+	executionID int,
+	chunks []*httpclient.StreamEvent,
+) error {
+	if len(chunks) == 0 {
+		return nil
+	}
+
+	// Check if chunk storage is enabled
+	storeChunks, err := s.SystemService.StoreChunks(ctx)
+	if err != nil {
+		log.Warn(ctx, "Failed to get StoreChunks setting, defaulting to false", log.Cause(err))
+
+		storeChunks = false
+	}
+
+	// Only store chunks if enabled
+	if !storeChunks {
+		return nil
+	}
+
+	// Convert chunks to JSON format, filtering out done events
+	var chunkBytes []objects.JSONRawMessage
+
+	for _, chunk := range chunks {
+		if bytes.Equal(chunk.Data, llm.DoneStreamEvent.Data) {
+			continue
+		}
+
+		b, err := xjson.Marshal(jsonStreamEvent{
+			LastEventID: chunk.LastEventID,
+			Type:        chunk.Type,
+			Data:        chunk.Data,
+		})
+		if err != nil {
+			log.Warn(ctx, "Failed to marshal chunk, skipping", log.Cause(err))
+
+			continue
+		}
+
+		chunkBytes = append(chunkBytes, b)
+	}
+
+	if len(chunkBytes) == 0 {
+		return nil
+	}
+
+	client := s.entFromContext(ctx)
+
+	// Get the execution to check data storage
+	execution, err := client.RequestExecution.Get(ctx, executionID)
+	if err != nil {
+		return fmt.Errorf("failed to get request execution: %w", err)
+	}
+
+	// Get data storage if set
+	var dataStorage *ent.DataStorage
+	if execution.DataStorageID != 0 {
+		dataStorage, err = client.DataStorage.Get(ctx, execution.DataStorageID)
+		if err != nil {
+			log.Warn(ctx, "Failed to get data storage", log.Cause(err))
+		}
+	}
+
+	// Check if we should use external storage
+	if s.shouldUseExternalStorage(ctx, dataStorage) {
+		key := GenerateExecutionResponseChunksKey(execution.ProjectID, execution.RequestID, executionID)
+
+		allChunksBytes, err := json.Marshal(chunkBytes)
+		if err != nil {
+			return fmt.Errorf("failed to marshal all chunks: %w", err)
+		}
+
+		_, err = s.DataStorageService.SaveData(ctx, dataStorage, key, allChunksBytes)
+		if err != nil {
+			return fmt.Errorf("failed to save chunks to external storage: %w", err)
+		}
+	} else {
+		// Store in database
+		_, err = client.RequestExecution.UpdateOneID(executionID).
+			SetResponseChunks(chunkBytes).
+			Save(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to save response chunks: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// SaveRequestChunks saves all response chunks to request at once.
+// Only stores chunks if the system StoreChunks setting is enabled.
+func (s *RequestService) SaveRequestChunks(
+	ctx context.Context,
+	requestID int,
+	chunks []*httpclient.StreamEvent,
+) error {
+	if len(chunks) == 0 {
+		return nil
+	}
+
+	storeChunks, err := s.SystemService.StoreChunks(ctx)
+	if err != nil {
+		log.Warn(ctx, "Failed to get StoreChunks setting, defaulting to false", log.Cause(err))
+
+		storeChunks = false
+	}
+
+	// Only store chunks if enabled
+	if !storeChunks {
+		return nil
+	}
+
+	// Convert chunks to JSON format, filtering out done events
+	var chunkBytes []objects.JSONRawMessage
+
+	for _, chunk := range chunks {
+		if bytes.Equal(chunk.Data, llm.DoneStreamEvent.Data) {
+			continue
+		}
+
+		b, err := xjson.Marshal(jsonStreamEvent{
+			LastEventID: chunk.LastEventID,
+			Type:        chunk.Type,
+			Data:        chunk.Data,
+		})
+		if err != nil {
+			log.Warn(ctx, "Failed to marshal chunk, skipping", log.Cause(err))
+
+			continue
+		}
+
+		chunkBytes = append(chunkBytes, b)
+	}
+
+	if len(chunkBytes) == 0 {
+		return nil
+	}
+
+	client := s.entFromContext(ctx)
+
+	// Get the request to check data storage
+	req, err := client.Request.Get(ctx, requestID)
+	if err != nil {
+		return fmt.Errorf("failed to get request: %w", err)
+	}
+
+	// Get data storage if set
+	var dataStorage *ent.DataStorage
+	if req.DataStorageID != 0 {
+		dataStorage, err = client.DataStorage.Get(ctx, req.DataStorageID)
+		if err != nil {
+			log.Warn(ctx, "Failed to get data storage", log.Cause(err))
+		}
+	}
+
+	// Check if we should use external storage
+	if s.shouldUseExternalStorage(ctx, dataStorage) {
+		key := GenerateResponseChunksKey(req.ProjectID, requestID)
+
+		allChunksBytes, err := json.Marshal(chunkBytes)
+		if err != nil {
+			return fmt.Errorf("failed to marshal all chunks: %w", err)
+		}
+
+		_, err = s.DataStorageService.SaveData(ctx, dataStorage, key, allChunksBytes)
+		if err != nil {
+			return fmt.Errorf("failed to save chunks to external storage: %w", err)
+		}
+	} else {
+		// Store in database
+		_, err = client.Request.UpdateOneID(requestID).
+			SetResponseChunks(chunkBytes).
+			Save(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to save response chunks: %w", err)
+		}
+	}
+
+	return nil
+}
+
 // MarkRequestCanceled updates request status to canceled.
 func (s *RequestService) MarkRequestCanceled(ctx context.Context, requestID int) error {
 	return s.UpdateRequestStatus(ctx, requestID, request.StatusCanceled)

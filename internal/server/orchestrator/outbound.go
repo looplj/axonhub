@@ -75,15 +75,6 @@ func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
 	event := ts.stream.Current()
 	if event != nil {
 		ts.responseChunks = append(ts.responseChunks, event)
-
-		err := ts.RequestService.AppendRequestExecutionChunk(
-			ts.ctx,
-			ts.requestExec.ID,
-			event,
-		)
-		if err != nil {
-			log.Warn(ts.ctx, "Failed to append request execution chunk", log.Cause(err))
-		}
 	}
 
 	return event
@@ -145,6 +136,14 @@ func (ts *OutboundPersistentStream) persistResponseChunks(ctx context.Context) {
 			return
 		}
 
+		// Try to create usage log from aggregated response
+		if usage := meta.Usage; usage != nil {
+			_, err = ts.UsageLogService.CreateUsageLogFromRequest(persistCtx, ts.request, ts.requestExec, usage)
+			if err != nil {
+				log.Warn(persistCtx, "Failed to create usage log from request", log.Cause(err))
+			}
+		}
+
 		// Build latency metrics from performance record
 		var metrics *biz.LatencyMetrics
 
@@ -174,12 +173,9 @@ func (ts *OutboundPersistentStream) persistResponseChunks(ctx context.Context) {
 			)
 		}
 
-		// Try to create usage log from aggregated response
-		if usage := meta.Usage; usage != nil {
-			_, err = ts.UsageLogService.CreateUsageLogFromRequest(persistCtx, ts.request, ts.requestExec, usage)
-			if err != nil {
-				log.Warn(persistCtx, "Failed to create usage log from request", log.Cause(err))
-			}
+		// Save all response chunks at once
+		if err := ts.RequestService.SaveRequestExecutionChunks(persistCtx, ts.requestExec.ID, ts.responseChunks); err != nil {
+			log.Warn(persistCtx, "Failed to save request execution chunks", log.Cause(err))
 		}
 	}
 }

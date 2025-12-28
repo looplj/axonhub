@@ -381,7 +381,6 @@ func (s *DataStorageService) createS3Fs(ctx context.Context, s3Config *objects.S
 	})
 
 	baseFs := s3fs.NewFsFromClient(s3Config.BucketName, client)
-
 	cachedFs := afero.NewCacheOnReadFs(baseFs, afero.NewMemMapFs(), 5*time.Minute)
 
 	return cachedFs, nil
@@ -463,10 +462,12 @@ func (s *DataStorageService) SaveData(ctx context.Context, ds *ent.DataStorage, 
 				return "", fmt.Errorf("failed to create directory: %w, key: %s", err, key)
 			}
 		} else {
-			_, err = fs.Create(key)
+			f, err := fs.Create(key)
 			if err != nil {
 				return "", fmt.Errorf("failed to create file: %w, key: %s", err, key)
 			}
+
+			_ = f.Close()
 		}
 
 		// Write data to file
