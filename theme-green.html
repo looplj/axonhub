@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Gateway Dashboard - Soft UI</title>
+    
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 引入 ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    
+    <!-- 引入图标库 (Phosphor Icons) -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- 配置 Tailwind 主题颜色 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        sage: {
+                            50: '#f4f7f4',
+                            100: '#e3ebe3',
+                            200: '#c5dacc',
+                            300: '#9cbfa6',
+                            400: '#75a281',
+                            500: '#6da67c', // 主色调
+                            600: '#4d805d',
+                            700: '#3e664b',
+                        },
+                        dark: {
+                            900: '#1a1c1a',
+                            800: '#2d3436',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+                    },
+                    boxShadow: {
+                        'soft': '0 20px 40px -15px rgba(109, 166, 124, 0.15)',
+                        'glow': '0 0 20px rgba(109, 166, 124, 0.3)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* 导入字体 */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+        body {
+            background-color: #F0F2F0; /* 极淡的暖灰绿背景 */
+        }
+
+        /* 隐藏滚动条但保留功能 */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        /* 卡片悬浮动画 */
+        .hover-card {
+            transition: all 0.3s ease;
+        }
+        .hover-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 25px 50px -12px rgba(109, 166, 124, 0.25);
+        }
+    </style>
+</head>
+<body class="text-dark-800 h-screen flex overflow-hidden font-sans">
+
+    <!-- 左侧悬浮导航栏 -->
+    <aside class="w-24 py-6 pl-6 flex flex-col items-center justify-center shrink-0 z-20">
+        <div class="bg-white/80 backdrop-blur-xl h-full w-full rounded-[32px] shadow-soft border border-white flex flex-col items-center py-8 gap-8">
+            <!-- Logo -->
+            <div class="text-sage-600 text-3xl">
+                <i class="ph-fill ph-brain"></i>
+            </div>
+
+            <!-- 导航菜单 -->
+            <nav class="flex flex-col gap-6 w-full items-center flex-1 justify-center">
+                <a href="#" class="w-12 h-12 rounded-2xl bg-sage-500 text-white flex items-center justify-center shadow-glow transition-all">
+                    <i class="ph ph-house text-xl"></i>
+                </a>
+                <a href="#" class="w-12 h-12 rounded-2xl text-gray-400 hover:bg-sage-50 hover:text-sage-600 flex items-center justify-center transition-all">
+                    <i class="ph ph-chart-bar text-xl"></i>
+                </a>
+                <a href="#" class="w-12 h-12 rounded-2xl text-gray-400 hover:bg-sage-50 hover:text-sage-600 flex items-center justify-center transition-all">
+                    <i class="ph ph-cube text-xl"></i>
+                </a>
+                <a href="#" class="w-12 h-12 rounded-2xl text-gray-400 hover:bg-sage-50 hover:text-sage-600 flex items-center justify-center transition-all">
+                    <i class="ph ph-users text-xl"></i>
+                </a>
+            </nav>
+
+            <!-- 底部设置 -->
+            <div class="flex flex-col gap-4">
+                <a href="#" class="w-12 h-12 rounded-2xl text-gray-400 hover:bg-sage-50 hover:text-sage-600 flex items-center justify-center transition-all">
+                    <i class="ph ph-gear text-xl"></i>
+                </a>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 主内容区 -->
+    <main class="flex-1 p-6 h-full overflow-y-auto no-scrollbar">
+        <div class="max-w-7xl mx-auto space-y-6">
+            
+            <!-- 顶部 Header -->
+            <header class="flex justify-between items-center mb-2">
+                <div>
+                    <h1 class="text-2xl font-semibold text-dark-900">仪表盘</h1>
+                    <p class="text-gray-500 text-sm">欢迎回来，今日系统运行平稳。</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span class="px-4 py-2 bg-white rounded-full text-sm font-medium shadow-sm text-sage-700 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-sage-500 animate-pulse"></span>
+                        Status: Online
+                    </span>
+                    <button class="w-10 h-10 bg-white rounded-full shadow-sm flex items-center justify-center hover:bg-gray-50">
+                        <i class="ph ph-bell text-lg"></i>
+                    </button>
+                    <div class="w-10 h-10 rounded-full bg-sage-200 overflow-hidden border-2 border-white shadow-sm">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="User">
+                    </div>
+                </div>
+            </header>
+
+            <!-- 核心指标卡片 (Grid) -->
+            <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- 卡片 1: 总请求 -->
+                <div class="bg-white rounded-[24px] p-6 shadow-soft border border-white hover-card relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <i class="ph-fill ph-wave-sine text-6xl text-sage-500"></i>
+                    </div>
+                    <div class="flex flex-col h-full justify-between">
+                        <div class="flex items-center gap-2 text-gray-500 mb-2">
+                            <i class="ph ph-lightning"></i>
+                            <span class="text-sm font-medium">总请求数</span>
+                        </div>
+                        <div>
+                            <div class="text-3xl font-bold font-mono text-dark-900">887</div>
+                            <div class="flex items-center gap-1 text-xs font-medium text-sage-600 mt-1">
+                                <i class="ph-bold ph-arrow-up-right"></i>
+                                <span>+12.5% 较昨日</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 卡片 2: 成功率 -->
+                <div class="bg-white rounded-[24px] p-6 shadow-soft border border-white hover-card">
+                    <div class="flex flex-col h-full justify-between">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-2 text-gray-500">
+                                <i class="ph ph-check-circle"></i>
+                                <span class="text-sm font-medium">成功率</span>
+                            </div>
+                            <div class="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-xs font-bold">A+</div>
+                        </div>
+                        <div class="flex items-end justify-between">
+                            <div class="text-3xl font-bold font-mono text-dark-900">77.5<span class="text-lg text-gray-400">%</span></div>
+                            <!-- 迷你进度条 -->
+                            <div class="w-16 h-1 bg-gray-100 rounded-full mb-2">
+                                <div class="w-[77%] h-full bg-sage-500 rounded-full"></div>
+                            </div>
+                        </div>
+                        <div class="text-xs text-red-400 mt-1">200 次失败请求</div>
+                    </div>
+                </div>
+
+                <!-- 卡片 3: Token 消耗 -->
+                <div class="bg-white rounded-[24px] p-6 shadow-soft border border-white hover-card">
+                    <div class="flex items-center gap-2 text-gray-500 mb-4">
+                        <i class="ph ph-coins"></i>
+                        <span class="text-sm font-medium">Token 消耗</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <div class="text-xs text-gray-400 uppercase tracking-wider">Input</div>
+                            <div class="text-xl font-bold font-mono text-dark-900">17.3K</div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-gray-400 uppercase tracking-wider">Output</div>
+                            <div class="text-xl font-bold font-mono text-dark-900">16.2K</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 卡片 4: 实时状态 -->
+                <div class="bg-gradient-to-br from-sage-500 to-sage-600 rounded-[24px] p-6 shadow-lg shadow-sage-500/30 text-white hover-card">
+                    <div class="flex flex-col h-full justify-between">
+                        <div class="flex items-center gap-2 opacity-90">
+                            <i class="ph ph-clock"></i>
+                            <span class="text-sm font-medium">今日实时</span>
+                        </div>
+                        <div>
+                            <div class="text-4xl font-bold font-mono">29</div>
+                            <div class="text-sm opacity-80 mt-1">New Requests</div>
+                        </div>
+                        <div class="w-full bg-white/20 h-[1px] my-2"></div>
+                        <div class="flex justify-between text-xs opacity-90">
+                            <span>Avg Latency</span>
+                            <span class="font-mono">124ms</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 主图表区: 每日请求 -->
+            <section class="bg-white rounded-[32px] p-8 shadow-soft border border-white">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-lg font-bold text-dark-900">每日请求概览</h2>
+                        <p class="text-sm text-gray-500">过去 30 天的流量趋势</p>
+                    </div>
+                    <!-- 简单的 Tab 切换 -->
+                    <div class="bg-gray-100 rounded-full p-1 flex">
+                        <button class="px-4 py-1.5 rounded-full bg-white text-xs font-semibold shadow-sm text-dark-900">30 Days</button>
+                        <button class="px-4 py-1.5 rounded-full text-xs font-medium text-gray-500 hover:text-dark-900">7 Days</button>
+                        <button class="px-4 py-1.5 rounded-full text-xs font-medium text-gray-500 hover:text-dark-900">24 Hours</button>
+                    </div>
+                </div>
+                <!-- ECharts 容器 -->
+                <div id="mainChart" class="w-full h-[320px]"></div>
+            </section>
+
+            <!-- 底部：热力图 & 列表 -->
+            <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- 左侧: 系统健康度/热力图 (类似图2中间的格子) -->
+                <div class="lg:col-span-2 bg-white rounded-[32px] p-8 shadow-soft border border-white">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="p-2 bg-sage-50 rounded-lg text-sage-600">
+                            <i class="ph-fill ph-squares-four text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-dark-900">系统负载热力图</h3>
+                            <p class="text-xs text-gray-500">基于每小时请求密度</p>
+                        </div>
+                    </div>
+                    <div id="heatmapChart" class="w-full h-[200px]"></div>
+                </div>
+
+                <!-- 右侧: 活跃项目排行 -->
+                <div class="bg-white rounded-[32px] p-8 shadow-soft border border-white flex flex-col">
+                    <h3 class="font-bold text-dark-900 mb-6 flex items-center gap-2">
+                        <i class="ph-fill ph-trophy text-yellow-500"></i> 活跃项目 Top 3
+                    </h3>
+                    
+                    <div class="flex-1 flex flex-col gap-4">
+                        <!-- Item 1 -->
+                        <div class="flex items-center justify-between p-3 rounded-2xl bg-gray-50 hover:bg-sage-50 transition-colors cursor-pointer group">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-xl">🚀</div>
+                                <div>
+                                    <div class="text-sm font-bold text-dark-900">Default Project</div>
+                                    <div class="text-xs text-gray-500">Production</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-sm font-mono font-bold text-sage-600">529</div>
+                                <div class="text-[10px] text-gray-400">reqs</div>
+                            </div>
+                        </div>
+
+                        <!-- Item 2 -->
+                        <div class="flex items-center justify-between p-3 rounded-2xl bg-white border border-gray-100 hover:border-sage-200 transition-colors cursor-pointer">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-xl">🤖</div>
+                                <div>
+                                    <div class="text-sm font-bold text-dark-900">GPT-4 Proxy</div>
+                                    <div class="text-xs text-gray-500">Dev</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-sm font-mono font-bold text-gray-600">214</div>
+                                <div class="text-[10px] text-gray-400">reqs</div>
+                            </div>
+                        </div>
+
+                        <!-- Item 3 -->
+                        <div class="flex items-center justify-between p-3 rounded-2xl bg-white border border-gray-100 hover:border-sage-200 transition-colors cursor-pointer">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-xl">🧪</div>
+                                <div>
+                                    <div class="text-sm font-bold text-dark-900">Claude Test</div>
+                                    <div class="text-xs text-gray-500">Staging</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-sm font-mono font-bold text-gray-600">144</div>
+                                <div class="text-[10px] text-gray-400">reqs</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- 图表初始化脚本 -->
+    <script>
+        // --- 1. 主图表 (平滑面积图) ---
+        const mainChart = echarts.init(document.getElementById('mainChart'));
+        
+        // 模拟数据
+        const dates = Array.from({length: 15}, (_, i) => `Dec ${12+i}`);
+        const values = [20, 45, 32, 12, 5, 25, 60, 45, 30, 35, 20, 10, 25, 50, 65];
+
+        const mainOption = {
+            grid: { top: 20, right: 20, bottom: 20, left: 40, containLabel: true },
+            tooltip: {
+                trigger: 'axis',
+                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                borderColor: '#e3ebe3',
+                textStyle: { color: '#2d3436', fontFamily: 'Inter' },
+                formatter: '{b0}<br /> <span style="display:inline-block;margin-right:5px;border-radius:10px;width:10px;height:10px;background-color:#6da67c;"></span> 请求数: <b>{c0}</b>'
+            },
+            xAxis: {
+                type: 'category',
+                boundaryGap: false,
+                data: dates,
+                axisLine: { show: false },
+                axisTick: { show: false },
+                axisLabel: { color: '#9ca3af', fontFamily: 'Inter', fontSize: 12 }
+            },
+            yAxis: {
+                type: 'value',
+                splitLine: { 
+                    show: true, 
+                    lineStyle: { type: 'dashed', color: '#f3f4f6' } 
+                },
+                axisLabel: { color: '#9ca3af', fontFamily: 'JetBrains Mono' }
+            },
+            series: [{
+                data: values,
+                type: 'line',
+                smooth: true, // 关键：平滑曲线
+                showSymbol: false,
+                symbolSize: 8,
+                itemStyle: { color: '#6da67c', borderColor: '#fff', borderWidth: 2 },
+                lineStyle: { width: 3, color: '#6da67c' },
+                areaStyle: {
+                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        { offset: 0, color: 'rgba(109, 166, 124, 0.4)' }, // 顶部浓绿
+                        { offset: 1, color: 'rgba(109, 166, 124, 0.0)' }  // 底部透明
+                    ])
+                },
+                emphasis: { focus: 'series' }
+            }]
+        };
+        mainChart.setOption(mainOption);
+
+        // --- 2. 热力图 (GitHub 风格格子) ---
+        const heatmapChart = echarts.init(document.getElementById('heatmapChart'));
+        
+        // 生成模拟热力数据
+        function getVirtualData(year) {
+            year = year || '2025';
+            var date = +echarts.number.parseDate(year + '-01-01');
+            var end = +echarts.number.parseDate(year + '-04-01');
+            var dayTime = 3600 * 24 * 1000;
+            var data = [];
+            for (var time = date; time < end; time += dayTime) {
+                data.push([
+                    echarts.format.formatTime('yyyy-MM-dd', time),
+                    Math.floor(Math.random() * 100)
+                ]);
+            }
+            return data;
+        }
+
+        const heatmapOption = {
+            tooltip: {
+                position: 'top',
+                formatter: function (p) {
+                    var format = echarts.format.formatTime('yyyy-MM-dd', p.data[0]);
+                    return format + ': ' + p.data[1] + ' reqs';
+                },
+                backgroundColor: 'rgba(0,0,0,0.7)',
+                textStyle: { color: '#fff' }
+            },
+            visualMap: {
+                min: 0,
+                max: 100,
+                calculable: false,
+                orient: 'horizontal',
+                left: 'center',
+                bottom: '0',
+                show: false, // 隐藏图例条，保持极简
+                inRange: {
+                    // 从浅灰绿到深鼠尾草绿
+                    color: ['#f4f7f4', '#c5dacc', '#9cbfa6', '#6da67c', '#3e664b']
+                }
+            },
+            calendar: {
+                top: 20,
+                left: 30,
+                right: 30,
+                cellSize: ['auto', 18], // 格子大小
+                range: ['2025-01-01', '2025-03-31'],
+                itemStyle: {
+                    borderWidth: 4, // 增加边距模拟圆角格子间距
+                    borderColor: '#fff', 
+                    color: '#f4f7f4'
+                },
+                splitLine: { show: false },
+                yearLabel: { show: false },
+                dayLabel: { nameMap: 'en', color: '#9ca3af', fontSize: 10 },
+                monthLabel: { nameMap: 'en', color: '#9ca3af', fontSize: 12 }
+            },
+            series: [{
+                type: 'heatmap',
+                coordinateSystem: 'calendar',
+                data: getVirtualData('2025'),
+                itemStyle: {
+                    borderRadius: 4 // 格子圆角
+                }
+            }]
+        };
+        heatmapChart.setOption(heatmapOption);
+
+        // 响应式调整
+        window.addEventListener('resize', function() {
+            mainChart.resize();
+            heatmapChart.resize();
+        });
+    </script>
+</body>
+</html>

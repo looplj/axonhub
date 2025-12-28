@@ -92,47 +92,45 @@ export function DataTableToolbar<TData>({
   )
 
   return (
-    <div className='flex items-center justify-between'>
-      <div className='flex flex-1 items-center space-x-2'>
+    <div className='flex items-center gap-4'>
+      <div className='relative flex-1'>
+        <i className='ph ph-magnifying-glass absolute left-3 top-2.5 text-gray-400'></i>
         <Input
           placeholder={t('channels.filters.filterByName')}
           value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
           onChange={(event) => table.getColumn('name')?.setFilterValue(event.target.value)}
-          className='h-8 w-[150px] lg:w-[250px]'
+          className='w-full bg-white pl-10 pr-4 py-2 rounded-xl text-sm border border-warm-200 focus:ring-2 focus:ring-brand-200 focus:outline-none transition-all placeholder-gray-400 text-warm-800 shadow-sm'
         />
-        {/* {table.getColumn('type') && selectedTypeTab === 'all' && (
-          <DataTableFacetedFilter column={table.getColumn('type')} title={t('channels.filters.type')} options={channelTypes} />
-        )} */}
-        {table.getColumn('status') && (
-          <DataTableFacetedFilter column={table.getColumn('status')} title={t('channels.filters.status')} options={channelStatuses} />
-        )}
-        {table.getColumn('tags') && tagOptions?.length > 0 && (
-          <DataTableFacetedFilter column={table.getColumn('tags')} title={t('channels.filters.tags')} options={tagOptions} singleSelect />
-        )}
-        {table.getColumn('model') && modelOptions?.length > 0 && (
-          <DataTableFacetedFilter
-            column={table.getColumn('model')}
-            title={t('channels.filters.model')}
-            options={modelOptions}
-            singleSelect
-          />
-        )}
-        {isFiltered && (
-          <Button variant='ghost' onClick={() => table.resetColumnFilters()} className='h-8 px-2 lg:px-3'>
-            {t('common.filters.reset')}
-            <Cross2Icon className='ml-2 h-4 w-4' />
-          </Button>
-        )}
-        {showErrorOnly && onExitErrorOnlyMode && (
-          <Button
-            variant='outline'
-            onClick={onExitErrorOnlyMode}
-            className='h-8 border-orange-600 text-orange-600 hover:bg-orange-600 hover:text-white'
-          >
-            {t('channels.errorBanner.exitErrorOnlyButton')}
-          </Button>
-        )}
       </div>
+      {table.getColumn('status') && (
+        <DataTableFacetedFilter column={table.getColumn('status')} title={t('channels.filters.status')} options={channelStatuses} />
+      )}
+      {table.getColumn('tags') && tagOptions?.length > 0 && (
+        <DataTableFacetedFilter column={table.getColumn('tags')} title={t('channels.filters.tags')} options={tagOptions} singleSelect />
+      )}
+      {table.getColumn('model') && modelOptions?.length > 0 && (
+        <DataTableFacetedFilter
+          column={table.getColumn('model')}
+          title={t('channels.filters.model')}
+          options={modelOptions}
+          singleSelect
+        />
+      )}
+      {isFiltered && (
+        <Button variant='ghost' onClick={() => table.resetColumnFilters()} className='h-8 px-2 lg:px-3'>
+          {t('common.filters.reset')}
+          <Cross2Icon className='ml-2 h-4 w-4' />
+        </Button>
+      )}
+      {showErrorOnly && onExitErrorOnlyMode && (
+        <Button
+          variant='outline'
+          onClick={onExitErrorOnlyMode}
+          className='h-8 border-orange-600 text-orange-600 hover:bg-orange-600 hover:text-white'
+        >
+          {t('channels.errorBanner.exitErrorOnlyButton')}
+        </Button>
+      )}
       <DataTableViewOptions table={table} />
     </div>
   )

@@ -9,7 +9,7 @@ type IProps = React.ComponentProps<typeof Sidebar> & {
 
 export function AppSidebar({ sidebarData, ...props }: IProps) {
   return (
-    <Sidebar collapsible='icon' variant='sidebar' {...props}>
+    <Sidebar collapsible='icon' variant='floating' {...props}>
       <SidebarContent>
         {sidebarData.navGroups.map((props) => (
           <NavGroup key={props.title} {...props} />

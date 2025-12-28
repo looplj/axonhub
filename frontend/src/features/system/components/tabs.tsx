@@ -26,7 +26,7 @@ export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
 
   return (
     <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as SystemTabKey)} className='w-full'>
-      <TabsList className='grid w-full grid-cols-4'>
+      <TabsList className='grid w-full grid-cols-4 rounded-2xl shadow-soft border border-white bg-white'>
         <TabsTrigger value='brand' data-value='brand'>
           {t('system.tabs.brand')}
         </TabsTrigger>
@@ -40,18 +40,20 @@ export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
           {t('system.tabs.about')}
         </TabsTrigger>
       </TabsList>
-      <TabsContent value='brand' className='mt-6'>
-        <BrandSettings />
-      </TabsContent>
-      <TabsContent value='storage' className='mt-6'>
-        <StorageSettings />
-      </TabsContent>
-      <TabsContent value='retry' className='mt-6'>
-        <RetrySettings />
-      </TabsContent>
-      <TabsContent value='about' className='mt-6'>
-        <AboutSettings />
-      </TabsContent>
+      <div className='mt-6 rounded-2xl shadow-soft border border-white bg-white p-6'>
+        <TabsContent value='brand' className='mt-0 p-0'>
+          <BrandSettings />
+        </TabsContent>
+        <TabsContent value='storage' className='mt-0 p-0'>
+          <StorageSettings />
+        </TabsContent>
+        <TabsContent value='retry' className='mt-0 p-0'>
+          <RetrySettings />
+        </TabsContent>
+        <TabsContent value='about' className='mt-0 p-0'>
+          <AboutSettings />
+        </TabsContent>
+      </div>
     </Tabs>
   )
 }

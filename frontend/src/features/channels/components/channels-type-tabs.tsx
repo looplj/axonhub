@@ -70,22 +70,19 @@ export function ChannelsTypeTabs({ typeCounts, selectedTab, onTabChange }: Chann
   }
 
   return (
-    <div className="w-full mb-4">
-      <div className="flex gap-1 border-b overflow-x-auto">
+    <div className="w-full mb-6">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 hide-scroll">
         {/* All tab */}
         <button
           onClick={() => onTabChange('all')}
           className={cn(
-            'flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors relative',
+            'px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all flex items-center gap-2',
             selectedTab === 'all'
-              ? 'text-foreground'
-              : 'text-muted-foreground hover:text-foreground'
+              ? 'bg-primary text-white shadow-md shadow-primary/20'
+              : 'bg-white border border-warm-200 text-gray-600 hover:border-brand-300 hover:text-brand-600'
           )}
         >
-          {t('channels.tabs.all')} ({totalCount})
-          {selectedTab === 'all' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
-          )}
+          {t('channels.tabs.all')} <span className={cn('ml-1 text-xs px-1.5 rounded-full bg-gray-100 text-gray-500', selectedTab === 'all' && 'bg-white/20 text-white')}>{totalCount}</span>
         </button>
 
         {/* Type tabs */}
@@ -96,17 +93,14 @@ export function ChannelsTypeTabs({ typeCounts, selectedTab, onTabChange }: Chann
               key={prefix}
               onClick={() => onTabChange(prefix)}
               className={cn(
-                'flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors relative',
+                'px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all flex items-center gap-2',
                 selectedTab === prefix
-                  ? 'text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'bg-primary text-white shadow-md shadow-primary/20'
+                  : 'bg-white border border-warm-200 text-gray-600 hover:border-brand-300 hover:text-brand-600'
               )}
             >
               {Icon && <Icon size={16} />}
-              {t(`channels.types.${prefix}`)} ({totalCount})
-              {selectedTab === prefix && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
-              )}
+              {t(`channels.types.${prefix}`)} <span className={cn('bg-gray-100 px-1.5 rounded-full text-xs text-gray-500', selectedTab === prefix && 'bg-white/20 text-white')}>{totalCount}</span>
             </button>
           )
         })}

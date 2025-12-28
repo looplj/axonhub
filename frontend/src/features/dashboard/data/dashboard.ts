@@ -6,6 +6,7 @@ import { z } from 'zod'
 export const requestStatsSchema = z.object({
   requestsToday: z.number(),
   requestsThisWeek: z.number(),
+  requestsLastWeek: z.number(),
   requestsThisMonth: z.number(),
 })
 
@@ -87,6 +88,7 @@ const DASHBOARD_STATS_QUERY = `
       requestStats {
         requestsToday
         requestsThisWeek
+        requestsLastWeek
         requestsThisMonth
       }
       failedRequests

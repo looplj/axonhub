@@ -118,17 +118,17 @@ export function ProjectsTable({
   return (
     <div className='flex flex-1 flex-col overflow-hidden' data-testid='projects-table'>
       <DataTableToolbar table={table} />
-      <div className='mt-4 flex-1 overflow-auto rounded-md border'>
-        <Table>
-          <TableHeader className='sticky top-0 z-10 bg-background'>
+      <div className='mt-4 flex-1 overflow-auto rounded-2xl shadow-soft border border-[var(--table-border)] relative'>
+        <Table data-testid='projects-table' className='bg-background rounded-2xl border-separate border-spacing-0'>
+          <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
               {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id} className='group/row'>
+                <TableRow key={headerGroup.id} className='group/row border-0'>
                   {headerGroup.headers.map((header) => {
                     return (
                       <TableHead
                         key={header.id}
                         colSpan={header.colSpan}
-                        className={header.column.columnDef.meta?.className ?? ''}
+                        className={`${header.column.columnDef.meta?.className ?? ''} text-xs font-semibold text-muted-foreground uppercase tracking-wider border-0`}
                       >
                         {header.isPlaceholder
                           ? null
@@ -142,12 +142,12 @@ export function ProjectsTable({
                 </TableRow>
               ))}
             </TableHeader>
-          <TableBody>
+          <TableBody className='p-2 space-y-1 !bg-background'>
                 {loading ? (
-                  <TableRow>
+                  <TableRow className='border-0 !bg-background'>
                     <TableCell
                       colSpan={columns.length}
-                      className='h-24 text-center'
+                      className='h-24 text-center border-0 !bg-background'
                     >
                       {t('common.loading')}
                     </TableCell>
@@ -157,12 +157,12 @@ export function ProjectsTable({
                     <TableRow
                       key={row.id}
                       data-state={row.getIsSelected() && 'selected'}
-                      className='group/row'
+                      className='group/row table-row-hover rounded-xl !bg-background border-0 transition-all duration-200 ease-in-out'
                     >
                       {row.getVisibleCells().map((cell) => (
                         <TableCell
                           key={cell.id}
-                          className={cell.column.columnDef.meta?.className ?? ''}
+                          className={`${cell.column.columnDef.meta?.className ?? ''} px-4 py-3 border-0 !bg-background`}
                         >
                           {flexRender(
                             cell.column.columnDef.cell,
@@ -173,12 +173,12 @@ export function ProjectsTable({
                     </TableRow>
                   ))
                 ) : (
-                  <TableRow>
+                  <TableRow className='!bg-background'>
                     <TableCell
                       colSpan={columns.length}
-                      className='h-24 text-center'
+                      className='h-24 text-center !bg-background'
                     >
-                      暂无数据
+                      {t('common.noData')}
                     </TableCell>
                   </TableRow>
                 )}
