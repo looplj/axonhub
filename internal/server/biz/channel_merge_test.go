@@ -50,46 +50,189 @@ func TestMergeOverrideHeaders(t *testing.T) {
 			},
 		},
 		{
-			name: "clear header with directive",
+			name: "clear header directive treated as regular override",
 			existing: []objects.HeaderEntry{
 				{Key: "Authorization", Value: "Bearer token1"},
 				{Key: "X-API-Key", Value: "key123"},
 			},
 			template: []objects.HeaderEntry{
-				{Key: "Authorization", Value: clearHeaderDirective},
+				{Key: "Authorization", Value: ClearHeaderDirective},
 			},
 			expected: []objects.HeaderEntry{
+				{Key: "Authorization", Value: ClearHeaderDirective},
 				{Key: "X-API-Key", Value: "key123"},
 			},
 		},
 		{
-			name: "clear non-existent header has no effect",
+			name: "clear non-existent header adds it with directive",
 			existing: []objects.HeaderEntry{
 				{Key: "X-API-Key", Value: "key123"},
 			},
 			template: []objects.HeaderEntry{
-				{Key: "Authorization", Value: clearHeaderDirective},
+				{Key: "Authorization", Value: ClearHeaderDirective},
 			},
 			expected: []objects.HeaderEntry{
 				{Key: "X-API-Key", Value: "key123"},
+				{Key: "Authorization", Value: ClearHeaderDirective},
 			},
 		},
 		{
-			name: "complex merge with add, override, and clear",
+			name: "complex merge with add, override, and directive as value",
 			existing: []objects.HeaderEntry{
 				{Key: "Authorization", Value: "Bearer token1"},
 				{Key: "X-API-Key", Value: "key123"},
 				{Key: "Content-Type", Value: "application/json"},
 			},
 			template: []objects.HeaderEntry{
-				{Key: "Authorization", Value: clearHeaderDirective},
+				{Key: "Authorization", Value: ClearHeaderDirective},
 				{Key: "X-API-Key", Value: "newkey456"},
 				{Key: "X-Custom-Header", Value: "custom"},
 			},
 			expected: []objects.HeaderEntry{
+				{Key: "Authorization", Value: ClearHeaderDirective},
 				{Key: "X-API-Key", Value: "newkey456"},
 				{Key: "Content-Type", Value: "application/json"},
 				{Key: "X-Custom-Header", Value: "custom"},
+			},
+		},
+		{
+			name: "multiple directive overrides",
+			existing: []objects.HeaderEntry{
+				{Key: "Authorization", Value: "Bearer token1"},
+				{Key: "X-API-Key", Value: "key123"},
+				{Key: "Content-Type", Value: "application/json"},
+				{Key: "User-Agent", Value: "test-agent"},
+			},
+			template: []objects.HeaderEntry{
+				{Key: "Authorization", Value: ClearHeaderDirective},
+				{Key: "Content-Type", Value: ClearHeaderDirective},
+			},
+			expected: []objects.HeaderEntry{
+				{Key: "Authorization", Value: ClearHeaderDirective},
+				{Key: "X-API-Key", Value: "key123"},
+				{Key: "Content-Type", Value: ClearHeaderDirective},
+				{Key: "User-Agent", Value: "test-agent"},
+			},
+		},
+		{
+			name: "directive override case-insensitive",
+			existing: []objects.HeaderEntry{
+				{Key: "Authorization", Value: "Bearer token1"},
+				{Key: "X-API-Key", Value: "key123"},
+			},
+			template: []objects.HeaderEntry{
+				{Key: "authorization", Value: ClearHeaderDirective},
+			},
+			expected: []objects.HeaderEntry{
+				{Key: "authorization", Value: ClearHeaderDirective},
+				{Key: "X-API-Key", Value: "key123"},
+			},
+		},
+		{
+			name: "multiple overrides of same header",
+			existing: []objects.HeaderEntry{
+				{Key: "Authorization", Value: "Bearer token1"},
+			},
+			template: []objects.HeaderEntry{
+				{Key: "Authorization", Value: ClearHeaderDirective},
+				{Key: "Authorization", Value: "Bearer token2"},
+			},
+			expected: []objects.HeaderEntry{
+				{Key: "Authorization", Value: "Bearer token2"},
+			},
+		},
+		{
+			name: "empty string values are preserved",
+			existing: []objects.HeaderEntry{
+				{Key: "Authorization", Value: "Bearer token1"},
+			},
+			template: []objects.HeaderEntry{
+				{Key: "X-Empty-Header", Value: ""},
+			},
+			expected: []objects.HeaderEntry{
+				{Key: "Authorization", Value: "Bearer token1"},
+				{Key: "X-Empty-Header", Value: ""},
+			},
+		},
+		{
+			name: "all headers with directive values",
+			existing: []objects.HeaderEntry{
+				{Key: "Authorization", Value: "Bearer token1"},
+				{Key: "X-API-Key", Value: "key123"},
+				{Key: "Content-Type", Value: "application/json"},
+			},
+			template: []objects.HeaderEntry{
+				{Key: "Authorization", Value: ClearHeaderDirective},
+				{Key: "X-API-Key", Value: ClearHeaderDirective},
+				{Key: "Content-Type", Value: ClearHeaderDirective},
+			},
+			expected: []objects.HeaderEntry{
+				{Key: "Authorization", Value: ClearHeaderDirective},
+				{Key: "X-API-Key", Value: ClearHeaderDirective},
+				{Key: "Content-Type", Value: ClearHeaderDirective},
+			},
+		},
+		{
+			name:     "template with only directives adds new headers",
+			existing: []objects.HeaderEntry{},
+			template: []objects.HeaderEntry{
+				{Key: "NewHeader", Value: ClearHeaderDirective},
+			},
+			expected: []objects.HeaderEntry{
+				{Key: "NewHeader", Value: ClearHeaderDirective},
+			},
+		},
+		{
+			name: "preserve order of non-overridden headers",
+			existing: []objects.HeaderEntry{
+				{Key: "Header1", Value: "value1"},
+				{Key: "Header2", Value: "value2"},
+				{Key: "Header3", Value: "value3"},
+			},
+			template: []objects.HeaderEntry{
+				{Key: "Header2", Value: "newvalue2"},
+			},
+			expected: []objects.HeaderEntry{
+				{Key: "Header1", Value: "value1"},
+				{Key: "Header2", Value: "newvalue2"},
+				{Key: "Header3", Value: "value3"},
+			},
+		},
+		{
+			name: "mixed case header keys",
+			existing: []objects.HeaderEntry{
+				{Key: "Content-Type", Value: "application/json"},
+				{Key: "x-api-key", Value: "key123"},
+			},
+			template: []objects.HeaderEntry{
+				{Key: "CONTENT-TYPE", Value: "text/plain"},
+				{Key: "X-API-KEY", Value: "newkey"},
+			},
+			expected: []objects.HeaderEntry{
+				{Key: "CONTENT-TYPE", Value: "text/plain"},
+				{Key: "X-API-KEY", Value: "newkey"},
+			},
+		},
+		{
+			name: "large number of headers merge",
+			existing: []objects.HeaderEntry{
+				{Key: "H1", Value: "v1"},
+				{Key: "H2", Value: "v2"},
+				{Key: "H3", Value: "v3"},
+				{Key: "H4", Value: "v4"},
+				{Key: "H5", Value: "v5"},
+			},
+			template: []objects.HeaderEntry{
+				{Key: "H3", Value: "newv3"}, {Key: "H6", Value: "v6"}, {Key: "H7", Value: "v7"},
+			},
+			expected: []objects.HeaderEntry{
+				{Key: "H1", Value: "v1"},
+				{Key: "H2", Value: "v2"},
+				{Key: "H3", Value: "newv3"},
+				{Key: "H4", Value: "v4"},
+				{Key: "H5", Value: "v5"},
+				{Key: "H6", Value: "v6"},
+				{Key: "H7", Value: "v7"},
 			},
 		},
 	}

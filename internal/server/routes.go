@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 
@@ -44,6 +45,21 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 	server.Use(middleware.WithLoggingTracing(server.Config.Trace))
 	server.Use(middleware.WithMetrics())
 
+	// Setup CORS middleware at server level if enabled
+	if server.Config.CORS.Enabled {
+		corsConfig := cors.DefaultConfig()
+		corsConfig.AllowOrigins = server.Config.CORS.AllowedOrigins
+		corsConfig.AllowMethods = server.Config.CORS.AllowedMethods
+		corsConfig.AllowHeaders = server.Config.CORS.AllowedHeaders
+		corsConfig.ExposeHeaders = server.Config.CORS.ExposedHeaders
+		corsConfig.AllowCredentials = server.Config.CORS.AllowCredentials
+		corsConfig.MaxAge = server.Config.CORS.MaxAge
+
+		corsHandler := cors.New(corsConfig)
+		server.Use(corsHandler)
+		server.OPTIONS("*any", corsHandler)
+	}
+
 	publicGroup := server.Group("", middleware.WithTimeout(server.Config.RequestTimeout))
 	{
 		// Favicon API - DO NOT AUTH
@@ -52,9 +68,7 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		publicGroup.GET("/health", handlers.System.Health)
 	}
 
-	unSecureAdminGroup := server.Group("/admin",
-		middleware.WithTimeout(server.Config.RequestTimeout),
-	)
+	unSecureAdminGroup := server.Group("/admin", middleware.WithTimeout(server.Config.RequestTimeout))
 	{
 		// System Status and Initialize - DO NOT AUTH
 		unSecureAdminGroup.GET("/system/status", handlers.System.GetSystemStatus)

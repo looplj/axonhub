@@ -5,43 +5,31 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/objects"
 )
 
-const clearHeaderDirective = "__AXONHUB_CLEAR__"
+const ClearHeaderDirective = "__AXONHUB_CLEAR__"
 
 // MergeOverrideHeaders merges existing headers with a template.
 // - Header key comparison is case-insensitive (strings.EqualFold).
 // - Template entries override existing ones with the same key.
-// - Template entries with value "__AXONHUB_CLEAR__" remove the header.
 // - Existing headers not mentioned in the template are preserved.
 func MergeOverrideHeaders(existing, template []objects.HeaderEntry) []objects.HeaderEntry {
 	result := make([]objects.HeaderEntry, 0, len(existing)+len(template))
 	result = append(result, existing...)
 
 	for _, header := range template {
-		index := -1
-
-		for i, item := range result {
-			if strings.EqualFold(item.Key, header.Key) {
-				index = i
-				break
-			}
-		}
-
-		if header.Value == clearHeaderDirective {
-			if index >= 0 {
-				result = append(result[:index], result[index+1:]...)
-			}
-
+		_, index, found := lo.FindIndexOf(result, func(item objects.HeaderEntry) bool {
+			return strings.EqualFold(item.Key, header.Key)
+		})
+		if !found {
+			result = append(result, header)
 			continue
 		}
 
-		if index >= 0 {
-			result[index] = header
-		} else {
-			result = append(result, header)
-		}
+		result[index] = header
 	}
 
 	return result

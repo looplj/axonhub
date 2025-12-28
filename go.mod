@@ -31,6 +31,7 @@ require (
 	github.com/dlclark/regexp2 v1.11.5
 	github.com/eko/gocache/lib/v4 v4.2.2
 	github.com/eko/gocache/store/go_cache/v4 v4.2.3
+	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-contrib/sse v1.1.0
 	github.com/gin-contrib/static v1.1.5
 	github.com/gin-gonic/gin v1.11.0
