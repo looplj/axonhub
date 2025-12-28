@@ -22,11 +22,10 @@ type Config struct {
 	MaxBackups int `conf:"max_backups" yaml:"max_backups" json:"max_backups"`
 }
 
-// DefaultConfig returns the default configuration for the dumper.
 func DefaultConfig() Config {
 	return Config{
 		Enabled:    false,
-		DumpPath:   "./dumps",
+		DumpPath:   "/tmp/dumps",
 		MaxSize:    100, // 100 MB
 		MaxAge:     24 * time.Hour,
 		MaxBackups: 10,

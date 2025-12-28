@@ -10,18 +10,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
 func TestDumper_DumpStruct(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir := t.TempDir()
-
-	// Create a logger for testing
-	logger := log.New(log.Config{
-		Level: 0, // Debug level
-	})
 
 	// Create a dumper with test config
 	config := Config{
@@ -32,7 +26,7 @@ func TestDumper_DumpStruct(t *testing.T) {
 		MaxBackups: 10,
 	}
 
-	dumper := New(config, logger)
+	dumper := New(config)
 
 	// Test data to dump
 	testData := struct {
@@ -58,11 +52,6 @@ func TestDumper_DumpStreamEvents(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir := t.TempDir()
 
-	// Create a logger for testing
-	logger := log.New(log.Config{
-		Level: 0, // Debug level
-	})
-
 	// Create a dumper with test config
 	config := Config{
 		Enabled:    true,
@@ -72,7 +61,7 @@ func TestDumper_DumpStreamEvents(t *testing.T) {
 		MaxBackups: 10,
 	}
 
-	dumper := New(config, logger)
+	dumper := New(config)
 
 	// Test data to dump
 	events := []*httpclient.StreamEvent{
@@ -96,11 +85,6 @@ func TestDumper_Disabled(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir := t.TempDir()
 
-	// Create a logger for testing
-	logger := log.New(log.Config{
-		Level: 0, // Debug level
-	})
-
 	// Create a dumper with test config (disabled)
 	config := Config{
 		Enabled:    false,
@@ -110,7 +94,7 @@ func TestDumper_Disabled(t *testing.T) {
 		MaxBackups: 10,
 	}
 
-	dumper := New(config, logger)
+	dumper := New(config)
 
 	// Test data to dump
 	testData := struct {

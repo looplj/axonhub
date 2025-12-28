@@ -14,7 +14,6 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/zap/zapcore"
 
-	"github.com/looplj/axonhub/internal/dumper"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/metrics"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
@@ -30,7 +29,6 @@ type Config struct {
 	Log       log.Config     `conf:"log" yaml:"log" json:"log"`
 	APIServer server.Config  `conf:"server" yaml:"server" json:"server"`
 	Metrics   metrics.Config `conf:"metrics" yaml:"metrics" json:"metrics"`
-	Dumper    dumper.Config  `conf:"dumper" yaml:"dumper" json:"dumper"`
 	GC        gc.Config      `conf:"gc" yaml:"gc" json:"gc"`
 	Cache     xcache.Config  `conf:"cache" yaml:"cache" json:"cache"`
 }
@@ -167,13 +165,6 @@ func setDefaults(v *viper.Viper) {
 
 	// Metrics defaults
 	v.SetDefault("metrics.enabled", false)
-
-	// Dumper defaults
-	v.SetDefault("dumper.enabled", false)
-	v.SetDefault("dumper.dump_path", "./dumps")
-	v.SetDefault("dumper.max_size", 100)
-	v.SetDefault("dumper.max_age", "24h")
-	v.SetDefault("dumper.max_backups", 10)
 
 	// GC defaults
 	v.SetDefault("gc.cron", "0 2 * * *") // Daily at 2:00 AM
