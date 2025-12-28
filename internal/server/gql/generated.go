@@ -367,20 +367,21 @@ type ComplexityRoot struct {
 	}
 
 	Model struct {
-		CreatedAt func(childComplexity int) int
-		DeletedAt func(childComplexity int) int
-		Developer func(childComplexity int) int
-		Group     func(childComplexity int) int
-		ID        func(childComplexity int) int
-		Icon      func(childComplexity int) int
-		ModelCard func(childComplexity int) int
-		ModelID   func(childComplexity int) int
-		Name      func(childComplexity int) int
-		Remark    func(childComplexity int) int
-		Settings  func(childComplexity int) int
-		Status    func(childComplexity int) int
-		Type      func(childComplexity int) int
-		UpdatedAt func(childComplexity int) int
+		AssociatedChannelCount func(childComplexity int) int
+		CreatedAt              func(childComplexity int) int
+		DeletedAt              func(childComplexity int) int
+		Developer              func(childComplexity int) int
+		Group                  func(childComplexity int) int
+		ID                     func(childComplexity int) int
+		Icon                   func(childComplexity int) int
+		ModelCard              func(childComplexity int) int
+		ModelID                func(childComplexity int) int
+		Name                   func(childComplexity int) int
+		Remark                 func(childComplexity int) int
+		Settings               func(childComplexity int) int
+		Status                 func(childComplexity int) int
+		Type                   func(childComplexity int) int
+		UpdatedAt              func(childComplexity int) int
 	}
 
 	ModelAssociation struct {
@@ -1116,6 +1117,8 @@ type DataStorageResolver interface {
 }
 type ModelResolver interface {
 	ID(ctx context.Context, obj *ent.Model) (*objects.GUID, error)
+
+	AssociatedChannelCount(ctx context.Context, obj *ent.Model) (int, error)
 }
 type MutationResolver interface {
 	CreateChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error)
@@ -2446,6 +2449,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.InitializeSystemPayload.User(childComplexity), true
 
+	case "Model.associatedChannelCount":
+		if e.complexity.Model.AssociatedChannelCount == nil {
+			break
+		}
+
+		return e.complexity.Model.AssociatedChannelCount(childComplexity), true
 	case "Model.createdAt":
 		if e.complexity.Model.CreatedAt == nil {
 			break
@@ -14548,6 +14557,35 @@ func (ec *executionContext) fieldContext_Model_remark(_ context.Context, field g
 	return fc, nil
 }
 
+func (ec *executionContext) _Model_associatedChannelCount(ctx context.Context, field graphql.CollectedField, obj *ent.Model) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Model_associatedChannelCount,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Model().AssociatedChannelCount(ctx, obj)
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Model_associatedChannelCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Model",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ModelAssociation_type(ctx context.Context, field graphql.CollectedField, obj *objects.ModelAssociation) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -15650,6 +15688,8 @@ func (ec *executionContext) fieldContext_ModelEdge_node(_ context.Context, field
 				return ec.fieldContext_Model_status(ctx, field)
 			case "remark":
 				return ec.fieldContext_Model_remark(ctx, field)
+			case "associatedChannelCount":
+				return ec.fieldContext_Model_associatedChannelCount(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Model", field.Name)
 		},
@@ -18620,6 +18660,8 @@ func (ec *executionContext) fieldContext_Mutation_createModel(ctx context.Contex
 				return ec.fieldContext_Model_status(ctx, field)
 			case "remark":
 				return ec.fieldContext_Model_remark(ctx, field)
+			case "associatedChannelCount":
+				return ec.fieldContext_Model_associatedChannelCount(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Model", field.Name)
 		},
@@ -18691,6 +18733,8 @@ func (ec *executionContext) fieldContext_Mutation_bulkCreateModels(ctx context.C
 				return ec.fieldContext_Model_status(ctx, field)
 			case "remark":
 				return ec.fieldContext_Model_remark(ctx, field)
+			case "associatedChannelCount":
+				return ec.fieldContext_Model_associatedChannelCount(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Model", field.Name)
 		},
@@ -18762,6 +18806,8 @@ func (ec *executionContext) fieldContext_Mutation_updateModel(ctx context.Contex
 				return ec.fieldContext_Model_status(ctx, field)
 			case "remark":
 				return ec.fieldContext_Model_remark(ctx, field)
+			case "associatedChannelCount":
+				return ec.fieldContext_Model_associatedChannelCount(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Model", field.Name)
 		},
@@ -54116,6 +54162,42 @@ func (ec *executionContext) _Model(ctx context.Context, sel ast.SelectionSet, ob
 			}
 		case "remark":
 			out.Values[i] = ec._Model_remark(ctx, field, obj)
+		case "associatedChannelCount":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Model_associatedChannelCount(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

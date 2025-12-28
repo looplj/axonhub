@@ -371,3 +371,32 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) []objects.ModelF
 
 	return lo.Values(modelSet)
 }
+
+// CountAssociatedChannels counts the number of unique channels associated with the given model associations.
+func (svc *ModelService) CountAssociatedChannels(ctx context.Context, associations []*objects.ModelAssociation) (int, error) {
+	if len(associations) == 0 {
+		return 0, nil
+	}
+
+	// Query all enabled/disabled channels
+	channels, err := svc.entFromContext(ctx).Channel.Query().
+		Where(channel.StatusIn(channel.StatusEnabled, channel.StatusDisabled)).
+		All(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("failed to query channels: %w", err)
+	}
+
+	if len(channels) == 0 {
+		return 0, nil
+	}
+
+	// Use the shared MatchAssociations function
+	connections, err := MatchAssociations(ctx, associations, lo.Map(channels, func(ch *ent.Channel, _ int) *Channel {
+		return &Channel{Channel: ch}
+	}))
+	if err != nil {
+		return 0, err
+	}
+
+	return len(connections), nil
+}

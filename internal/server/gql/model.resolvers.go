@@ -14,6 +14,11 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
+// AssociatedChannelCount is the resolver for the associatedChannelCount field.
+func (r *modelResolver) AssociatedChannelCount(ctx context.Context, obj *ent.Model) (int, error) {
+	return r.modelService.CountAssociatedChannels(ctx, obj.Settings.Associations)
+}
+
 // CreateModel is the resolver for the createModel field.
 func (r *mutationResolver) CreateModel(ctx context.Context, input ent.CreateModelInput) (*ent.Model, error) {
 	return r.modelService.CreateModel(ctx, input)
