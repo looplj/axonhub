@@ -13,6 +13,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/build"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/server/assets"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
@@ -147,14 +148,20 @@ func (h *SystemHandlers) GetFavicon(c *gin.Context) {
 	brandLogo, err := h.SystemService.BrandLogo(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to get brand logo", log.Cause(err))
-		JSONError(c, http.StatusInternalServerError, errors.New("Failed to get brand logo"))
-
-		return
 	}
 
-	// 如果没有设置品牌标识，返回 404
+	// 如果没有设置品牌标识，返回默认 favicon
 	if brandLogo == "" {
-		c.Status(http.StatusNotFound)
+		defaultFaviconData, err := assets.Favicon.ReadFile("favicon.ico")
+		if err != nil {
+			JSONError(c, http.StatusInternalServerError, errors.New("Failed to read default favicon"))
+			return
+		}
+
+		c.Header("Content-Type", "image/x-icon")
+		c.Header("Cache-Control", "public, max-age=3600")
+		c.Data(http.StatusOK, "image/x-icon", defaultFaviconData)
+
 		return
 	}
 

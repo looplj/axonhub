@@ -2,8 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <!-- Dynamic favicon will be set by JavaScript -->
-    <link id="favicon" rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/x-icon" href="/favicon" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <!-- Primary Meta Tags -->
@@ -33,34 +32,6 @@
     />
 
     <meta name="theme-color" content="#fff" />
-    
-    <!-- Dynamic Favicon Script -->
-    <script>
-      // 动态设置 favicon
-      function setDynamicFavicon() {
-        const faviconLink = document.getElementById('favicon');
-        
-         fetch('/v1/favicon')
-           .then(response => {
-             if (response.ok) {
-               const contentType = response.headers.get('content-type') || 'image/png';
-               return response.blob().then(blob => ({ blob, contentType }));
-             }
-             throw new Error('No custom favicon available');
-           })
-           .then(({ blob, contentType }) => {
-             const url = URL.createObjectURL(blob);
-             faviconLink.href = url;
-             faviconLink.type = contentType;
-           })
-          .catch(error => {
-            console.log('Using default favicon:', error.message);
-          });
-      }
-      
-      // 页面加载完成后设置 favicon
-      document.addEventListener('DOMContentLoaded', setDynamicFavicon);
-    </script>
   </head>
 
   <body class="group/body">
