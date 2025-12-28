@@ -869,7 +869,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             </label>
                           </div>
                         )}
-                        {selectedApiFormat === 'anthropic/messages' && (
+                        {selectedApiFormat === 'anthropic/messages' && selectedProvider === 'anthropic' && (
                           <div className='mt-3'>
                             <label
                               className={`flex items-center gap-2 text-sm ${
