@@ -3,7 +3,7 @@ package biz
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/objects"
@@ -232,7 +232,7 @@ func TestChannel_GetUnifiedModels(t *testing.T) {
 				resultSlice = append(resultSlice, entry)
 			}
 
-			assert.ElementsMatch(t, tt.expected, resultSlice)
+			require.ElementsMatch(t, tt.expected, resultSlice)
 		})
 	}
 }
@@ -246,10 +246,10 @@ func TestChannel_GetUnifiedModels_CachesResult(t *testing.T) {
 
 	// First call computes the result
 	result1 := ch.GetModelEntries()
-	assert.Len(t, result1, 2)
-	assert.NotNil(t, ch.cachedModelEntries)
+	require.Len(t, result1, 2)
+	require.NotNil(t, ch.cachedModelEntries)
 
 	// Second call should return the same cached map
 	result2 := ch.GetModelEntries()
-	assert.Equal(t, result1, result2)
+	require.Equal(t, result1, result2)
 }

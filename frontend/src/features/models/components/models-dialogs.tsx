@@ -6,6 +6,7 @@ import { ModelsBulkEnableDialog } from './models-bulk-enable-dialog'
 import { ModelsDeleteDialog } from './models-delete-dialog'
 import { ModelsAssociationDialog } from './models-association-dialog'
 import { ModelSettingsDialog } from './models-settings-dialog'
+import { ModelsUnassociatedDialog } from './models-unassociated-dialog'
 
 export function ModelsDialogs() {
   const { open } = useModels()
@@ -17,6 +18,7 @@ export function ModelsDialogs() {
       {open === 'delete' && <ModelsDeleteDialog />}
       {open === 'association' && <ModelsAssociationDialog />}
       {open === 'settings' && <ModelSettingsDialog />}
+      {open === 'unassociated' && <ModelsUnassociatedDialog />}
       <ModelsBulkDisableDialog />
       <ModelsBulkEnableDialog />
     </>

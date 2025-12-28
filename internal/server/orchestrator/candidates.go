@@ -185,10 +185,7 @@ func (s *DefaultSelector) resolveAssociations(ctx context.Context, modelID strin
 	s.cacheMu.RUnlock()
 
 	// Cache miss or invalid, resolve associations
-	connections, err := biz.MatchAssociations(ctx, associations, channels)
-	if err != nil {
-		return nil, fmt.Errorf("failed to match associations: %w", err)
-	}
+	connections := biz.MatchAssociations(associations, channels)
 
 	// Build channel lookup map for O(1) access
 	channelMap := make(map[int]*biz.Channel, len(channels))

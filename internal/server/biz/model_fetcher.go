@@ -39,7 +39,7 @@ type FetchModelsInput struct {
 
 // FetchModelsResult represents the result of fetching models.
 type FetchModelsResult struct {
-	Models []objects.ModelIdentify
+	Models []ModelIdentify
 	Error  *string
 }
 
@@ -48,7 +48,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	// do not support volcengine for now.
 	if input.ChannelType == channel.TypeVolcengine.String() {
 		return &FetchModelsResult{
-			Models: []objects.ModelIdentify{},
+			Models: []ModelIdentify{},
 		}, nil
 	}
 	// Get API key from channel if not provided
@@ -65,7 +65,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		ch, err := f.channelService.entFromContext(ctx).Channel.Get(ctx, *input.ChannelID)
 		if err != nil {
 			return &FetchModelsResult{
-				Models: []objects.ModelIdentify{},
+				Models: []ModelIdentify{},
 				Error:  lo.ToPtr(fmt.Sprintf("failed to get channel: %v", err)),
 			}, nil
 		}
@@ -76,7 +76,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 
 	if apiKey == "" {
 		return &FetchModelsResult{
-			Models: []objects.ModelIdentify{},
+			Models: []ModelIdentify{},
 			Error:  lo.ToPtr("API key is required"),
 		}, nil
 	}
@@ -85,7 +85,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	channelType := channel.Type(input.ChannelType)
 	if err := channel.TypeValidator(channelType); err != nil {
 		return &FetchModelsResult{
-			Models: []objects.ModelIdentify{},
+			Models: []ModelIdentify{},
 			Error:  lo.ToPtr(fmt.Sprintf("invalid channel type: %v", err)),
 		}, nil
 	}
@@ -116,14 +116,14 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	resp, err := httpClient.Do(ctx, req)
 	if err != nil {
 		return &FetchModelsResult{
-			Models: []objects.ModelIdentify{},
+			Models: []ModelIdentify{},
 			Error:  lo.ToPtr(fmt.Sprintf("failed to fetch models: %v", err)),
 		}, nil
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		return &FetchModelsResult{
-			Models: []objects.ModelIdentify{},
+			Models: []ModelIdentify{},
 			Error:  lo.ToPtr(fmt.Sprintf("failed to fetch models: %v", resp.StatusCode)),
 		}, nil
 	}
@@ -131,7 +131,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	models, err := f.parseModelsResponse(resp.Body)
 	if err != nil {
 		return &FetchModelsResult{
-			Models: []objects.ModelIdentify{},
+			Models: []ModelIdentify{},
 			Error:  lo.ToPtr(fmt.Sprintf("failed to parse models response: %v", err)),
 		}, nil
 	}
@@ -195,11 +195,11 @@ type GeminiModelResponse struct {
 }
 
 // parseModelsResponse parses the models response from the provider API.
-func (f *ModelFetcher) parseModelsResponse(body []byte) ([]objects.ModelIdentify, error) {
+func (f *ModelFetcher) parseModelsResponse(body []byte) ([]ModelIdentify, error) {
 	// Most providers use OpenAI-compatible format
 	var response struct {
-		Data   []objects.ModelIdentify `json:"data"`
-		Models []GeminiModelResponse   `json:"models"`
+		Data   []ModelIdentify       `json:"data"`
+		Models []GeminiModelResponse `json:"models"`
 	}
 
 	if err := json.Unmarshal(body, &response); err != nil {
@@ -209,7 +209,7 @@ func (f *ModelFetcher) parseModelsResponse(body []byte) ([]objects.ModelIdentify
 	if len(response.Models) > 0 {
 		for _, model := range response.Models {
 			// remove "models/" prefix for gemini.
-			response.Data = append(response.Data, objects.ModelIdentify{
+			response.Data = append(response.Data, ModelIdentify{
 				ID: strings.TrimPrefix(model.Name, "models/"),
 			})
 		}

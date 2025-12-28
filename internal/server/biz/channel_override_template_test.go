@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -53,12 +52,12 @@ func TestChannelOverrideTemplateService_CreateTemplate(t *testing.T) {
 		)
 
 		require.NoError(t, err)
-		assert.Equal(t, "Test Template", template.Name)
-		assert.Equal(t, "Test description", template.Description)
-		assert.Equal(t, channel.TypeOpenai.String(), template.ChannelType)
-		assert.Equal(t, params, template.OverrideParameters)
-		assert.Equal(t, headers, template.OverrideHeaders)
-		assert.Equal(t, user.ID, template.UserID)
+		require.Equal(t, "Test Template", template.Name)
+		require.Equal(t, "Test description", template.Description)
+		require.Equal(t, channel.TypeOpenai.String(), template.ChannelType)
+		require.Equal(t, params, template.OverrideParameters)
+		require.Equal(t, headers, template.OverrideHeaders)
+		require.Equal(t, user.ID, template.UserID)
 	})
 
 	t.Run("reject invalid parameters", func(t *testing.T) {
@@ -78,8 +77,8 @@ func TestChannelOverrideTemplateService_CreateTemplate(t *testing.T) {
 			input,
 		)
 
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid override parameters")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid override parameters")
 	})
 
 	t.Run("reject stream parameter", func(t *testing.T) {
@@ -99,8 +98,8 @@ func TestChannelOverrideTemplateService_CreateTemplate(t *testing.T) {
 			input,
 		)
 
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "stream")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "stream")
 	})
 
 	t.Run("reject invalid headers", func(t *testing.T) {
@@ -123,8 +122,8 @@ func TestChannelOverrideTemplateService_CreateTemplate(t *testing.T) {
 			input,
 		)
 
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid override headers")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid override headers")
 	})
 }
 
@@ -162,8 +161,8 @@ func TestChannelOverrideTemplateService_UpdateTemplate(t *testing.T) {
 		updated, err := service.UpdateTemplate(ctx, template.ID, input)
 
 		require.NoError(t, err)
-		assert.Equal(t, newName, updated.Name)
-		assert.Equal(t, "Original description", updated.Description)
+		require.Equal(t, newName, updated.Name)
+		require.Equal(t, "Original description", updated.Description)
 	})
 
 	t.Run("update parameters", func(t *testing.T) {
@@ -174,7 +173,7 @@ func TestChannelOverrideTemplateService_UpdateTemplate(t *testing.T) {
 		updated, err := service.UpdateTemplate(ctx, template.ID, input)
 
 		require.NoError(t, err)
-		assert.Equal(t, newParams, updated.OverrideParameters)
+		require.Equal(t, newParams, updated.OverrideParameters)
 	})
 
 	t.Run("update headers", func(t *testing.T) {
@@ -185,7 +184,7 @@ func TestChannelOverrideTemplateService_UpdateTemplate(t *testing.T) {
 		updated, err := service.UpdateTemplate(ctx, template.ID, input)
 
 		require.NoError(t, err)
-		assert.Equal(t, newHeaders, updated.OverrideHeaders)
+		require.Equal(t, newHeaders, updated.OverrideHeaders)
 	})
 
 	t.Run("reject invalid parameters on update", func(t *testing.T) {
@@ -195,8 +194,8 @@ func TestChannelOverrideTemplateService_UpdateTemplate(t *testing.T) {
 		}
 		_, err := service.UpdateTemplate(ctx, template.ID, input)
 
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid override parameters")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid override parameters")
 	})
 }
 
@@ -260,17 +259,17 @@ func TestChannelOverrideTemplateService_ApplyTemplate(t *testing.T) {
 		updated, err := service.ApplyTemplate(ctx, template.ID, []int{ch1.ID, ch2.ID})
 
 		require.NoError(t, err)
-		assert.Len(t, updated, 2)
+		require.Len(t, updated, 2)
 
 		// Verify channel 1 merged correctly
-		assert.JSONEq(t, `{"temperature": 0.9, "max_tokens": 2000, "top_p": 0.9}`, updated[0].Settings.OverrideParameters)
-		assert.Len(t, updated[0].Settings.OverrideHeaders, 2)
-		assert.Contains(t, updated[0].Settings.OverrideHeaders, objects.HeaderEntry{Key: "Authorization", Value: "Bearer token"})
-		assert.Contains(t, updated[0].Settings.OverrideHeaders, objects.HeaderEntry{Key: "X-Custom-Header", Value: "custom-value"})
+		require.JSONEq(t, `{"temperature": 0.9, "max_tokens": 2000, "top_p": 0.9}`, updated[0].Settings.OverrideParameters)
+		require.Len(t, updated[0].Settings.OverrideHeaders, 2)
+		require.Contains(t, updated[0].Settings.OverrideHeaders, objects.HeaderEntry{Key: "Authorization", Value: "Bearer token"})
+		require.Contains(t, updated[0].Settings.OverrideHeaders, objects.HeaderEntry{Key: "X-Custom-Header", Value: "custom-value"})
 
 		// Verify channel 2 merged correctly
-		assert.JSONEq(t, `{"temperature": 0.9, "max_tokens": 2000}`, updated[1].Settings.OverrideParameters)
-		assert.Equal(t, []objects.HeaderEntry{{Key: "X-Custom-Header", Value: "custom-value"}}, updated[1].Settings.OverrideHeaders)
+		require.JSONEq(t, `{"temperature": 0.9, "max_tokens": 2000}`, updated[1].Settings.OverrideParameters)
+		require.Equal(t, []objects.HeaderEntry{{Key: "X-Custom-Header", Value: "custom-value"}}, updated[1].Settings.OverrideHeaders)
 	})
 
 	t.Run("reject mismatched channel type", func(t *testing.T) {
@@ -285,15 +284,15 @@ func TestChannelOverrideTemplateService_ApplyTemplate(t *testing.T) {
 
 		_, err := service.ApplyTemplate(ctx, template.ID, []int{ch.ID})
 
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "does not match template type")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "does not match template type")
 	})
 
 	t.Run("reject non-existent channel", func(t *testing.T) {
 		_, err := service.ApplyTemplate(ctx, template.ID, []int{999999})
 
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "not found")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "not found")
 	})
 
 	t.Run("rollback on partial failure", func(t *testing.T) {
@@ -311,14 +310,14 @@ func TestChannelOverrideTemplateService_ApplyTemplate(t *testing.T) {
 		_, err := service.ApplyTemplate(ctx, template.ID, []int{ch.ID, 999999})
 
 		// Should fail and rollback
-		assert.Error(t, err)
+		require.Error(t, err)
 
 		// Verify original channel wasn't modified
 		reloaded := client.Channel.GetX(ctx, ch.ID)
 		// Channel will have empty settings, not nil
 		if reloaded.Settings != nil {
-			assert.Empty(t, reloaded.Settings.OverrideParameters)
-			assert.Empty(t, reloaded.Settings.OverrideHeaders)
+			require.Empty(t, reloaded.Settings.OverrideParameters)
+			require.Empty(t, reloaded.Settings.OverrideHeaders)
 		}
 	})
 }
@@ -350,7 +349,7 @@ func TestChannelOverrideTemplateService_DeleteTemplate(t *testing.T) {
 
 	// Verify soft delete
 	_, err = client.ChannelOverrideTemplate.Get(ctx, template.ID)
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func TestChannelOverrideTemplateService_QueryTemplates(t *testing.T) {
@@ -396,7 +395,7 @@ func TestChannelOverrideTemplateService_QueryTemplates(t *testing.T) {
 
 		conn, err := service.QueryTemplates(ctx, input)
 		require.NoError(t, err)
-		assert.Len(t, conn.Edges, 3)
+		require.Len(t, conn.Edges, 3)
 	})
 
 	t.Run("filter by channel type", func(t *testing.T) {
@@ -409,7 +408,7 @@ func TestChannelOverrideTemplateService_QueryTemplates(t *testing.T) {
 
 		conn, err := service.QueryTemplates(ctx, input)
 		require.NoError(t, err)
-		assert.Len(t, conn.Edges, 2)
+		require.Len(t, conn.Edges, 2)
 	})
 
 	t.Run("search by name", func(t *testing.T) {
@@ -422,7 +421,7 @@ func TestChannelOverrideTemplateService_QueryTemplates(t *testing.T) {
 
 		conn, err := service.QueryTemplates(ctx, input)
 		require.NoError(t, err)
-		assert.Len(t, conn.Edges, 1)
-		assert.Contains(t, conn.Edges[0].Node.Name, "Anthropic")
+		require.Len(t, conn.Edges, 1)
+		require.Contains(t, conn.Edges[0].Node.Name, "Anthropic")
 	})
 }

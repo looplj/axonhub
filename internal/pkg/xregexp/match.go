@@ -1,6 +1,7 @@
 package xregexp
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/dlclark/regexp2"
@@ -119,6 +120,19 @@ func ensureAnchored(pattern string) string {
 	}
 
 	return pattern
+}
+
+func ValidateRegex(pattern string) error {
+	if pattern == "" {
+		return nil
+	}
+
+	cached := getOrCreatePattern(pattern)
+	if cached.compileErr {
+		return fmt.Errorf("invalid regex pattern: %s", pattern)
+	}
+
+	return nil
 }
 
 func containsRegexChars(pattern string) bool {

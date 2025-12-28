@@ -161,6 +161,10 @@ type ChannelModelEntry {
   source: String!
 }
 
+type UnassociatedChannel {
+  channel: Channel!
+  models: [String!]!
+}
 
 extend type Model {
   associatedChannelCount: Int! @goField(forceResolver: true)
@@ -168,6 +172,7 @@ extend type Model {
 
 extend type Query {
   queryModelChannelConnections(associations: [ModelAssociationInput!]!): [ModelChannelConnection!]!
+  queryUnassociatedChannels: [UnassociatedChannel!]!
 }
 
 extend type Mutation {

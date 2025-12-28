@@ -361,7 +361,7 @@ func (r *queryResolver) FetchModels(ctx context.Context, input biz.FetchModelsIn
 	}
 
 	// Convert result to GraphQL payload
-	models := make([]*objects.ModelIdentify, len(result.Models))
+	models := make([]*biz.ModelIdentify, len(result.Models))
 	for i := range result.Models {
 		models[i] = &result.Models[i]
 	}

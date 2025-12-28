@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xregexp"
 )
 
 type ModelServiceParams struct {
@@ -41,8 +42,61 @@ type ModelService struct {
 	systemService  *SystemService
 }
 
+// validateModelSettings validates regex patterns in model settings.
+func (svc *ModelService) validateModelSettings(settings *objects.ModelSettings) error {
+	if settings == nil || len(settings.Associations) == 0 {
+		return nil
+	}
+
+	for _, assoc := range settings.Associations {
+		// Validate ChannelRegex pattern
+		if assoc.ChannelRegex != nil && assoc.ChannelRegex.Pattern != "" {
+			if err := xregexp.ValidateRegex(assoc.ChannelRegex.Pattern); err != nil {
+				return fmt.Errorf("invalid regex pattern in channel_regex association: %w", err)
+			}
+		}
+
+		// Validate Regex pattern
+		if assoc.Regex != nil && assoc.Regex.Pattern != "" {
+			if err := xregexp.ValidateRegex(assoc.Regex.Pattern); err != nil {
+				return fmt.Errorf("invalid regex pattern in regex association: %w", err)
+			}
+		}
+
+		// Validate Exclude patterns
+		if assoc.Regex != nil && len(assoc.Regex.Exclude) > 0 {
+			for _, exclude := range assoc.Regex.Exclude {
+				if exclude.ChannelNamePattern != "" {
+					if err := xregexp.ValidateRegex(exclude.ChannelNamePattern); err != nil {
+						return fmt.Errorf("invalid regex pattern in exclude rule: %w", err)
+					}
+				}
+			}
+		}
+
+		if assoc.ModelID != nil && len(assoc.ModelID.Exclude) > 0 {
+			for _, exclude := range assoc.ModelID.Exclude {
+				if exclude.ChannelNamePattern != "" {
+					if err := xregexp.ValidateRegex(exclude.ChannelNamePattern); err != nil {
+						return fmt.Errorf("invalid regex pattern in exclude rule: %w", err)
+					}
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 // CreateModel creates a new model with the provided input.
 func (svc *ModelService) CreateModel(ctx context.Context, input ent.CreateModelInput) (*ent.Model, error) {
+	// Validate regex patterns in settings if provided
+	if input.Settings != nil {
+		if err := svc.validateModelSettings(input.Settings); err != nil {
+			return nil, err
+		}
+	}
+
 	// Check if a model with the same developer and modelId already exists
 	existing, err := svc.entFromContext(ctx).Model.Query().
 		Where(
@@ -150,6 +204,13 @@ func (svc *ModelService) BulkCreateModels(ctx context.Context, inputs []*ent.Cre
 
 // UpdateModel updates an existing model with the provided input.
 func (svc *ModelService) UpdateModel(ctx context.Context, id int, input *ent.UpdateModelInput) (*ent.Model, error) {
+	// Validate regex patterns in settings if provided
+	if input.Settings != nil {
+		if err := svc.validateModelSettings(input.Settings); err != nil {
+			return nil, err
+		}
+	}
+
 	mut := svc.entFromContext(ctx).Model.UpdateOneID(id).
 		SetNillableName(input.Name).
 		SetNillableGroup(input.Group).
@@ -273,9 +334,9 @@ func (svc *ModelService) QueryModelChannelConnections(ctx context.Context, assoc
 	}
 
 	// Use the shared MatchAssociations function
-	return MatchAssociations(ctx, associations, lo.Map(channels, func(ch *ent.Channel, _ int) *Channel {
+	return MatchAssociations(associations, lo.Map(channels, func(ch *ent.Channel, _ int) *Channel {
 		return &Channel{Channel: ch}
-	}))
+	})), nil
 }
 
 // GetModelByModelID retrieves a model by its modelId and status.
@@ -322,7 +383,7 @@ func (svc *ModelService) ListConfiguredModels(ctx context.Context, statusIn []mo
 // considering model mappings, prefixes, and auto-trimmed models.
 // It uses GetModelEntries to reduce code duplication.
 // When QueryAllChannelModels in system settings is false, it returns configured models instead.
-func (svc *ModelService) ListEnabledModels(ctx context.Context) []objects.ModelFacade {
+func (svc *ModelService) ListEnabledModels(ctx context.Context) []ModelFacade {
 	// Read system settings to determine whether to query all channels
 	settings := svc.systemService.ModelSettingsOrDefault(ctx)
 	queryAllChannels := settings.QueryAllChannelModels
@@ -335,9 +396,9 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) []objects.ModelF
 			return nil
 		}
 
-		result := make([]objects.ModelFacade, 0, len(configuredModels))
+		result := make([]ModelFacade, 0, len(configuredModels))
 		for _, m := range configuredModels {
-			result = append(result, objects.ModelFacade{
+			result = append(result, ModelFacade{
 				ID:          m.ID,
 				DisplayName: m.ID,
 				CreatedAt:   time.Time{},
@@ -349,7 +410,7 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) []objects.ModelF
 		return result
 	}
 
-	modelSet := make(map[string]objects.ModelFacade)
+	modelSet := make(map[string]ModelFacade)
 
 	for _, ch := range svc.channelService.GetEnabledChannels() {
 		entries := ch.GetModelEntries()
@@ -359,7 +420,7 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) []objects.ModelF
 				continue
 			}
 
-			modelSet[requestModel] = objects.ModelFacade{
+			modelSet[requestModel] = ModelFacade{
 				ID:          requestModel,
 				DisplayName: requestModel,
 				CreatedAt:   ch.CreatedAt,
@@ -391,12 +452,122 @@ func (svc *ModelService) CountAssociatedChannels(ctx context.Context, associatio
 	}
 
 	// Use the shared MatchAssociations function
-	connections, err := MatchAssociations(ctx, associations, lo.Map(channels, func(ch *ent.Channel, _ int) *Channel {
+	connections := MatchAssociations(associations, lo.Map(channels, func(ch *ent.Channel, _ int) *Channel {
 		return &Channel{Channel: ch}
 	}))
-	if err != nil {
-		return 0, err
-	}
+
+	// Remove duplicate channels
+	connections = lo.UniqBy(connections, func(conn *ModelChannelConnection) int {
+		return conn.Channel.ID
+	})
 
 	return len(connections), nil
+}
+
+func (svc *ModelService) QueryUnassociatedChannels(ctx context.Context) ([]*UnassociatedChannel, error) {
+	channels, err := svc.entFromContext(ctx).Channel.Query().
+		Where(channel.StatusIn(channel.StatusEnabled, channel.StatusDisabled)).
+		All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query channels: %w", err)
+	}
+
+	if len(channels) == 0 {
+		return []*UnassociatedChannel{}, nil
+	}
+
+	models, err := svc.entFromContext(ctx).Model.Query().
+		Where(model.StatusIn(model.StatusEnabled, model.StatusDisabled)).
+		All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query models: %w", err)
+	}
+
+	allAssociations := make([]*objects.ModelAssociation, 0)
+
+	for _, m := range models {
+		if m.Settings != nil && len(m.Settings.Associations) > 0 {
+			allAssociations = append(allAssociations, m.Settings.Associations...)
+		}
+	}
+
+	return findUnassociatedChannels(channels, allAssociations), nil
+}
+
+func findUnassociatedChannels(channels []*ent.Channel, associations []*objects.ModelAssociation) []*UnassociatedChannel {
+	if len(channels) == 0 {
+		return []*UnassociatedChannel{}
+	}
+
+	// Wrap channels
+	channelWrappers := make([]*Channel, 0, len(channels))
+	for _, ch := range channels {
+		channelWrappers = append(channelWrappers, &Channel{Channel: ch})
+	}
+
+	// Use MatchAssociations to get all associated models
+	connections := MatchAssociations(associations, channelWrappers)
+
+	// Build a map of associated (channelID, modelID) combinations
+	associatedMap := make(map[ChannelModelKey]bool)
+
+	for _, conn := range connections {
+		for _, entry := range conn.Models {
+			key := ChannelModelKey{
+				ChannelID: conn.Channel.ID,
+				ModelID:   entry.RequestModel,
+			}
+			associatedMap[key] = true
+		}
+	}
+
+	// Check each channel for unassociated models
+	result := make([]*UnassociatedChannel, 0)
+
+	for _, ch := range channels {
+		channelWrapper := &Channel{Channel: ch}
+		entries := channelWrapper.GetDirectModelEntries()
+
+		unassociatedModels := make([]string, 0)
+
+		for modelID := range entries {
+			key := ChannelModelKey{
+				ChannelID: ch.ID,
+				ModelID:   modelID,
+			}
+			if !associatedMap[key] {
+				unassociatedModels = append(unassociatedModels, modelID)
+			}
+		}
+
+		if len(unassociatedModels) > 0 {
+			result = append(result, &UnassociatedChannel{
+				Channel: ch,
+				Models:  unassociatedModels,
+			})
+		}
+	}
+
+	return result
+}
+
+type ModelIdentify struct {
+	ID string `json:"id"`
+}
+
+type UnassociatedChannel struct {
+	Channel *ent.Channel `json:"channel"`
+	Models  []string     `json:"models"`
+}
+
+type ModelFacade struct {
+	ID string `json:"id"`
+	// Display name, for user-friendly display from anthropic API.
+	DisplayName string `json:"display_name"`
+	// Created time in seconds.
+	Created int64 `json:"created"`
+	// Created time in time.Time.
+	CreatedAt time.Time `json:"created_at"`
+	// Owned by
+	OwnedBy string `json:"owned_by"`
 }

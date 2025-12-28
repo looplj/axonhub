@@ -42,7 +42,8 @@
       "bulkAdd": "批量添加",
       "addAssociation": "添加",
       "manageAssociation": "管理关联",
-      "settings": "设置"
+      "settings": "设置",
+      "detectUnassociated": "检测未关联"
     },
     "filters": {
       "filterByName": "按名称筛选..."
@@ -157,6 +158,14 @@
           "description": "启用后，模型 API 将返回所有已启用渠道的模型。禁用后，仅返回具有显式模型实体配置的模型。"
         }
       }
+    },
+    "unassociated": {
+      "title": "未关联渠道检测",
+      "description": "检测渠道中未与任何模型配置关联的模型",
+      "summary": "发现 {{channelCount}} 个渠道有 {{modelCount}} 个未关联的模型",
+      "noUnassociated": "所有渠道模型都已正确关联",
+      "searchPlaceholder": "搜索模型...",
+      "noSearchResults": "未找到匹配的模型"
     },
     "modelCard": {
       "title": "模型卡片",

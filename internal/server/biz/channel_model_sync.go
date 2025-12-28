@@ -10,7 +10,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/log"
-	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
@@ -81,7 +80,7 @@ func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *
 	}
 
 	// Extract model IDs
-	modelIDs := lo.Map(result.Models, func(m objects.ModelIdentify, _ int) string {
+	modelIDs := lo.Map(result.Models, func(m ModelIdentify, _ int) string {
 		return m.ID
 	})
 

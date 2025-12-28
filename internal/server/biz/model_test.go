@@ -651,3 +651,207 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 		require.True(t, resultMap["gpt-3.5-turbo"], "Auto-trimmed model should be included")
 	})
 }
+
+func TestFindUnassociatedChannels(t *testing.T) {
+	// Create test channels
+	channel1 := &ent.Channel{
+		ID:              1,
+		Type:            "openai",
+		Name:            "OpenAI Channel",
+		Status:          "enabled",
+		SupportedModels: []string{"gpt-4", "gpt-3.5-turbo"},
+	}
+
+	channel2 := &ent.Channel{
+		ID:              2,
+		Type:            "anthropic",
+		Name:            "Anthropic Channel",
+		Status:          "enabled",
+		SupportedModels: []string{"claude-3-opus", "claude-3-sonnet"},
+	}
+
+	channel3 := &ent.Channel{
+		ID:              3,
+		Type:            "gemini",
+		Name:            "Gemini Channel",
+		Status:          "disabled",
+		SupportedModels: []string{"gemini-pro", "gemini-1.5-pro"},
+	}
+
+	channels := []*ent.Channel{channel1, channel2, channel3}
+
+	t.Run("no associations - all channels unassociated", func(t *testing.T) {
+		result := findUnassociatedChannels(channels, []*objects.ModelAssociation{})
+		require.Len(t, result, 3)
+
+		// Verify all channels have unassociated models
+		for _, info := range result {
+			require.NotEmpty(t, info.Models)
+		}
+	})
+
+	t.Run("channel_model association", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type: "channel_model",
+				ChannelModel: &objects.ChannelModelAssociation{
+					ChannelID: 1,
+					ModelID:   "gpt-4",
+				},
+			},
+		}
+
+		result := findUnassociatedChannels(channels, associations)
+
+		// Find channel1 in results
+		var channel1Info *UnassociatedChannel
+
+		for _, info := range result {
+			if info.Channel.ID == 1 {
+				channel1Info = info
+				break
+			}
+		}
+
+		require.NotNil(t, channel1Info)
+		// gpt-4 should be associated, so only gpt-3.5-turbo should be unassociated
+		require.Contains(t, channel1Info.Models, "gpt-3.5-turbo")
+		require.NotContains(t, channel1Info.Models, "gpt-4")
+	})
+
+	t.Run("regex association", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type: "regex",
+				Regex: &objects.RegexAssociation{
+					Pattern: "^claude-3-.*",
+				},
+			},
+		}
+
+		result := findUnassociatedChannels(channels, associations)
+
+		// Find channel2 in results
+		var channel2Info *UnassociatedChannel
+
+		for _, info := range result {
+			if info.Channel.ID == 2 {
+				channel2Info = info
+				break
+			}
+		}
+
+		// claude-3-opus and claude-3-sonnet should be associated by regex
+		if channel2Info != nil {
+			require.NotContains(t, channel2Info.Models, "claude-3-opus")
+			require.NotContains(t, channel2Info.Models, "claude-3-sonnet")
+		}
+	})
+
+	t.Run("model association with exclude", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type: "model",
+				ModelID: &objects.ModelIDAssociation{
+					ModelID: "gemini-pro",
+					Exclude: []*objects.ExcludeAssociation{
+						{
+							ChannelIds: []int{3},
+						},
+					},
+				},
+			},
+		}
+
+		result := findUnassociatedChannels(channels, associations)
+
+		// Find channel3 in results
+		var channel3Info *UnassociatedChannel
+
+		for _, info := range result {
+			if info.Channel.ID == 3 {
+				channel3Info = info
+				break
+			}
+		}
+
+		require.NotNil(t, channel3Info)
+		// gemini-pro should be unassociated in channel3 due to exclude
+		require.Contains(t, channel3Info.Models, "gemini-pro")
+	})
+
+	t.Run("channel_regex association", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type: "channel_regex",
+				ChannelRegex: &objects.ChannelRegexAssociation{
+					ChannelID: 1,
+					Pattern:   "^gpt-.*",
+				},
+			},
+		}
+
+		result := findUnassociatedChannels(channels, associations)
+
+		// Find channel1 in results
+		var channel1Info *UnassociatedChannel
+
+		for _, info := range result {
+			if info.Channel.ID == 1 {
+				channel1Info = info
+				break
+			}
+		}
+
+		// Both gpt-4 and gpt-3.5-turbo should be associated by regex
+		if channel1Info != nil {
+			require.NotContains(t, channel1Info.Models, "gpt-4")
+			require.NotContains(t, channel1Info.Models, "gpt-3.5-turbo")
+		}
+	})
+
+	t.Run("multiple associations", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type: "model",
+				ModelID: &objects.ModelIDAssociation{
+					ModelID: "gpt-4",
+				},
+			},
+			{
+				Type: "model",
+				ModelID: &objects.ModelIDAssociation{
+					ModelID: "gpt-3.5-turbo",
+				},
+			},
+			{
+				Type: "regex",
+				Regex: &objects.RegexAssociation{
+					Pattern: "^claude-3-.*",
+				},
+			},
+			{
+				Type: "model",
+				ModelID: &objects.ModelIDAssociation{
+					ModelID: "gemini-pro",
+				},
+			},
+			{
+				Type: "model",
+				ModelID: &objects.ModelIDAssociation{
+					ModelID: "gemini-1.5-pro",
+				},
+			},
+		}
+
+		result := findUnassociatedChannels(channels, associations)
+
+		// All models should be associated
+		require.Empty(t, result)
+	})
+
+	t.Run("no channels", func(t *testing.T) {
+		result := findUnassociatedChannels([]*ent.Channel{}, []*objects.ModelAssociation{})
+		require.Empty(t, result)
+	})
+}

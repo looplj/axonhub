@@ -3,7 +3,6 @@ package biz
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/objects"
@@ -240,7 +239,7 @@ func TestMergeOverrideHeaders(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := MergeOverrideHeaders(tt.existing, tt.template)
-			assert.Equal(t, tt.expected, result)
+			require.Equal(t, tt.expected, result)
 		})
 	}
 }
@@ -325,10 +324,10 @@ func TestMergeOverrideParameters(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := MergeOverrideParameters(tt.existing, tt.template)
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				assert.JSONEq(t, tt.expected, result)
+				require.JSONEq(t, tt.expected, result)
 			}
 		})
 	}
@@ -381,9 +380,9 @@ func TestValidateOverrideParameters(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidateOverrideParameters(tt.params)
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -444,9 +443,9 @@ func TestValidateOverrideHeaders(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidateOverrideHeaders(tt.headers)
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}

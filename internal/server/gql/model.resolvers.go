@@ -101,3 +101,8 @@ func (r *mutationResolver) BulkDeleteModels(ctx context.Context, ids []*objects.
 func (r *queryResolver) QueryModelChannelConnections(ctx context.Context, associations []*objects.ModelAssociation) ([]*biz.ModelChannelConnection, error) {
 	return r.modelService.QueryModelChannelConnections(ctx, associations)
 }
+
+// QueryUnassociatedChannels is the resolver for the queryUnassociatedChannels field.
+func (r *queryResolver) QueryUnassociatedChannels(ctx context.Context) ([]*biz.UnassociatedChannel, error) {
+	return r.modelService.QueryUnassociatedChannels(ctx)
+}
