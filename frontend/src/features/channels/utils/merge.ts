@@ -1,6 +1,5 @@
 // Utility functions for merging channel override configurations
 // Mirrors backend merge logic in internal/server/biz/channel_merge.go
-
 import type { ChannelSettings, HeaderEntry } from '../data/schema'
 
 const CLEAR_HEADER_DIRECTIVE = '__AXONHUB_CLEAR__'
@@ -19,7 +18,6 @@ export function normalizeOverrideParameters(params: string): string {
 /**
  * Merges override headers with template headers.
  * - Template entries override existing ones with the same key (case-insensitive)
- * - Template entries with value "__AXONHUB_CLEAR__" remove the header
  * - Existing headers not mentioned in template are preserved
  */
 export function mergeOverrideHeaders(existing: HeaderEntry[], template: HeaderEntry[]): HeaderEntry[] {
@@ -28,14 +26,6 @@ export function mergeOverrideHeaders(existing: HeaderEntry[], template: HeaderEn
   for (const templateHeader of template) {
     // Find existing header with same key (case-insensitive)
     const index = result.findIndex((h) => h.key.toLowerCase() === templateHeader.key.toLowerCase())
-
-    if (templateHeader.value === CLEAR_HEADER_DIRECTIVE) {
-      // Remove header if it exists
-      if (index >= 0) {
-        result.splice(index, 1)
-      }
-      continue
-    }
 
     if (index >= 0) {
       // Override existing header
@@ -59,7 +49,7 @@ export function mergeChannelSettingsForUpdate(
       return fallback
     }
     const value = patch[key]
-    return (value === undefined ? fallback : (value as ChannelSettings[K]))
+    return value === undefined ? fallback : (value as ChannelSettings[K])
   }
 
   return {

@@ -106,6 +106,7 @@ export const modelSchema = z.object({
   settings: modelSettingsSchema,
   status: modelStatusSchema,
   remark: z.string().optional().nullable(),
+  associatedChannelCount: z.number(),
 })
 export type Model = z.infer<typeof modelSchema>
 

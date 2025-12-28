@@ -245,8 +245,8 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       enableHiding: false,
     },
     {
-      id: 'association',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('models.columns.association')} />,
+      id: 'associationRules',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('models.columns.associationRules')} />,
       cell: ({ row }) => {
         const model = row.original
         const { setOpen, setCurrentRow } = useModels()
@@ -263,6 +263,21 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
             <IconLink className='mr-1 h-3 w-3' />
             {associationCount > 0 ? `${associationCount}` : t('models.actions.addAssociation')}
           </Button>
+        )
+      },
+      enableSorting: false,
+    },
+    {
+      id: 'associatedChannels',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('models.columns.associatedChannels')} />,
+      cell: ({ row }) => {
+        const model = row.original
+        const channelCount = model.associatedChannelCount || 0
+
+        return (
+          <div className='flex justify-center'>
+            <Badge variant='secondary'>{channelCount}</Badge>
+          </div>
         )
       },
       enableSorting: false,

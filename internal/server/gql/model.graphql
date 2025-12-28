@@ -162,6 +162,10 @@ type ChannelModelEntry {
 }
 
 
+extend type Model {
+  associatedChannelCount: Int! @goField(forceResolver: true)
+}
+
 extend type Query {
   queryModelChannelConnections(associations: [ModelAssociationInput!]!): [ModelChannelConnection!]!
 }
