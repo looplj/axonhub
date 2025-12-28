@@ -60,7 +60,15 @@ var libManagedHeaders = map[string]bool{
 }
 
 var blockedHeaders = map[string]bool{
-	"Content-Type": true,
+	"Content-Type":      true,
+	"Connection":        true,
+	"X-Channel-Id":      true,
+	"X-Project-Id":      true,
+	"X-Real-IP":         true,
+	"X-Forwarded-For":   true,
+	"X-Forwarded-Proto": true,
+	"X-Forwarded-Host":  true,
+	"X-Forwarded-Port":  true,
 }
 
 var sensitiveHeaders = map[string]bool{
@@ -69,6 +77,7 @@ var sensitiveHeaders = map[string]bool{
 	"X-Api-Key":     true,
 	"X-Api-Secret":  true,
 	"X-Api-Token":   true,
+	"Cookie":        true,
 }
 
 func MergeInboundRequest(dest, src *Request) *Request {
