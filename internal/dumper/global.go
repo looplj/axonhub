@@ -2,28 +2,45 @@ package dumper
 
 import (
 	"context"
+	"os"
 
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
-var Global *Dumper
+var global *Dumper
 
-func SetGlobal(d *Dumper) {
-	Global = d
+func init() {
+	if os.Getenv("AXONHUB_DEBUG_DUMPER_ENABLED") == "true" {
+		// Create default config when enabled via environment variable
+		config := DefaultConfig()
+		config.Enabled = true
+
+		global = New(config)
+	}
 }
 
 func Enabled() bool {
-	return Global != nil && Global.config.Enabled
+	if global == nil {
+		return false
+	}
+
+	return global.config.Enabled
 }
 
 func DumpStreamEvents(ctx context.Context, events []*httpclient.StreamEvent, filename string) {
-	Global.DumpStreamEvents(ctx, events, filename)
+	if global != nil {
+		global.DumpStreamEvents(ctx, events, filename)
+	}
 }
 
 func DumpObject(ctx context.Context, obj any, filename string) {
-	Global.DumpStruct(ctx, obj, filename)
+	if global != nil {
+		global.DumpStruct(ctx, obj, filename)
+	}
 }
 
 func DumpBytes(ctx context.Context, data []byte, filename string) {
-	Global.DumpBytes(ctx, data, filename)
+	if global != nil {
+		global.DumpBytes(ctx, data, filename)
+	}
 }
