@@ -96,12 +96,15 @@
         "types": {
           "channelModel": "Channel Exact Match",
           "channelRegex": "Channel Regex Match",
+          "channelTagsModel": "Channel Tags Exact Match",
+          "channelTagsRegex": "Channel Tags Regex Match",
           "regex": "Global Regex Match",
           "model": "Global Exact Match"
         },
         "channelId": "Channel ID",
         "channelIdPlaceholder": "Enter channel ID",
         "selectChannel": "Select channel",
+        "selectChannelTags": "Select channel tags",
         "modelId": "Model ID",
         "modelIdPlaceholder": "Enter model ID",
         "selectModel": "Select model",
@@ -126,6 +129,8 @@
         "ruleHints": {
           "channelModel": "Use model {{model}} in channel {{channel}}",
           "channelRegex": "Use model matching {{pattern}} in channel {{channel}}",
+          "channelTagsModel": "Use model {{model}} in channels with tags: {{tags}}",
+          "channelTagsRegex": "Use model matching {{pattern}} in channels with tags: {{tags}}",
           "model": "Use model {{model}} across all channels",
           "regex": "Use model matching {{pattern}} across all channels"
         }

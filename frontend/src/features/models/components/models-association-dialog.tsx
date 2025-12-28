@@ -25,9 +25,10 @@ const associationFormSchema = z.object({
   associations: z
     .array(
       z.object({
-        type: z.enum(['channel_model', 'channel_regex', 'model', 'regex']),
+        type: z.enum(['channel_model', 'channel_regex', 'model', 'regex', 'channel_tags_model', 'channel_tags_regex']),
         priority: z.number().min(0, 'Priority must be at least 0').max(10, 'Priority cannot exceed 10'),
         channelId: z.number().optional(),
+        channelTags: z.array(z.string()).optional(),
         modelId: z.string().optional(),
         pattern: z.string().optional(),
         excludeChannelNamePattern: z.string().optional(),
@@ -47,7 +48,16 @@ const associationFormSchema = z.object({
             })
           }
         }
-        if (assoc.type === 'channel_model' || assoc.type === 'model') {
+        if (assoc.type === 'channel_tags_model' || assoc.type === 'channel_tags_regex') {
+          if (!assoc.channelTags || assoc.channelTags.length === 0) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: 'Channel tags are required',
+              path: [index, 'channelTags'],
+            })
+          }
+        }
+        if (assoc.type === 'channel_model' || assoc.type === 'model' || assoc.type === 'channel_tags_model') {
           if (!assoc.modelId || assoc.modelId.trim() === '') {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
@@ -56,7 +66,7 @@ const associationFormSchema = z.object({
             })
           }
         }
-        if (assoc.type === 'channel_regex' || assoc.type === 'regex') {
+        if (assoc.type === 'channel_regex' || assoc.type === 'regex' || assoc.type === 'channel_tags_regex') {
           if (!assoc.pattern || assoc.pattern.trim() === '') {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
@@ -169,6 +179,10 @@ export function ModelsAssociationDialog() {
               return assoc.pattern
             } else if (assoc.type === 'model') {
               return assoc.modelId
+            } else if (assoc.type === 'channel_tags_model') {
+              return assoc.channelTags && assoc.channelTags.length > 0 && assoc.modelId
+            } else if (assoc.type === 'channel_tags_regex') {
+              return assoc.channelTags && assoc.channelTags.length > 0 && assoc.pattern
             }
             return false
           })
@@ -212,6 +226,22 @@ export function ModelsAssociationDialog() {
                   exclude,
                 },
               }
+            } else if (assoc.type === 'channel_tags_model') {
+              return {
+                type: 'channel_tags_model' as const,
+                channelTagsModel: {
+                  channelTags: assoc.channelTags!,
+                  modelId: assoc.modelId!,
+                },
+              }
+            } else if (assoc.type === 'channel_tags_regex') {
+              return {
+                type: 'channel_tags_regex' as const,
+                channelTagsRegex: {
+                  channelTags: assoc.channelTags!,
+                  pattern: assoc.pattern!,
+                },
+              }
             }
             return undefined
           })
@@ -242,8 +272,9 @@ export function ModelsAssociationDialog() {
             type: assoc.type,
             priority: assoc.priority ?? 0,
             channelId: assoc.channelModel?.channelId || assoc.channelRegex?.channelId,
-            modelId: assoc.channelModel?.modelId || assoc.modelId?.modelId,
-            pattern: assoc.channelRegex?.pattern || assoc.regex?.pattern,
+            channelTags: assoc.channelTagsModel?.channelTags || assoc.channelTagsRegex?.channelTags || [],
+            modelId: assoc.channelModel?.modelId || assoc.modelId?.modelId || assoc.channelTagsModel?.modelId,
+            pattern: assoc.channelRegex?.pattern || assoc.regex?.pattern || assoc.channelTagsRegex?.pattern,
             excludeChannelNamePattern: exclude?.channelNamePattern || '',
             excludeChannelIds: exclude?.channelIds || [],
             excludeChannelTags: exclude?.channelTags || [],
@@ -270,6 +301,8 @@ export function ModelsAssociationDialog() {
             channelRegex: null,
             regex: null,
             modelId: null,
+            channelTagsModel: null,
+            channelTagsRegex: null,
           }
         } else if (assoc.type === 'channel_regex') {
           return {
@@ -282,6 +315,36 @@ export function ModelsAssociationDialog() {
             },
             regex: null,
             modelId: null,
+            channelTagsModel: null,
+            channelTagsRegex: null,
+          }
+        } else if (assoc.type === 'channel_tags_model') {
+          return {
+            type: 'channel_tags_model',
+            priority: assoc.priority ?? 0,
+            channelModel: null,
+            channelRegex: null,
+            regex: null,
+            modelId: null,
+            channelTagsModel: {
+              channelTags: assoc.channelTags || [],
+              modelId: assoc.modelId || '',
+            },
+            channelTagsRegex: null,
+          }
+        } else if (assoc.type === 'channel_tags_regex') {
+          return {
+            type: 'channel_tags_regex',
+            priority: assoc.priority ?? 0,
+            channelModel: null,
+            channelRegex: null,
+            regex: null,
+            modelId: null,
+            channelTagsModel: null,
+            channelTagsRegex: {
+              channelTags: assoc.channelTags || [],
+              pattern: assoc.pattern || '',
+            },
           }
         } else if (assoc.type === 'regex') {
           const hasExclude = assoc.excludeChannelNamePattern || (assoc.excludeChannelIds && assoc.excludeChannelIds.length > 0) || (assoc.excludeChannelTags && assoc.excludeChannelTags.length > 0)
@@ -300,6 +363,8 @@ export function ModelsAssociationDialog() {
               exclude,
             },
             modelId: null,
+            channelTagsModel: null,
+            channelTagsRegex: null,
           }
         } else {
           const hasExclude = assoc.excludeChannelNamePattern || (assoc.excludeChannelIds && assoc.excludeChannelIds.length > 0) || (assoc.excludeChannelTags && assoc.excludeChannelTags.length > 0)
@@ -318,6 +383,8 @@ export function ModelsAssociationDialog() {
               modelId: assoc.modelId || '',
               exclude,
             },
+            channelTagsModel: null,
+            channelTagsRegex: null,
           }
         }
       })
@@ -349,6 +416,7 @@ export function ModelsAssociationDialog() {
       type: 'channel_model',
       priority: 0,
       channelId: undefined,
+      channelTags: [],
       modelId: '',
       pattern: '',
       excludeChannelNamePattern: '',
@@ -521,6 +589,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
 
   const type = form.watch(`associations.${index}.type`)
   const channelId = form.watch(`associations.${index}.channelId`)
+  const channelTags = form.watch(`associations.${index}.channelTags`)
   const modelId = form.watch(`associations.${index}.modelId`)
   const pattern = form.watch(`associations.${index}.pattern`)
   const excludeChannelIds = form.watch(`associations.${index}.excludeChannelIds`)
@@ -534,8 +603,9 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
   }, [modelId])
 
   const showChannel = type === 'channel_model' || type === 'channel_regex'
-  const showModel = type === 'channel_model' || type === 'model'
-  const showPattern = type === 'channel_regex' || type === 'regex'
+  const showChannelTags = type === 'channel_tags_model' || type === 'channel_tags_regex'
+  const showModel = type === 'channel_model' || type === 'model' || type === 'channel_tags_model'
+  const showPattern = type === 'channel_regex' || type === 'regex' || type === 'channel_tags_regex'
   const showExclude = type === 'regex' || type === 'model'
   const hasExcludeData = excludeChannelNamePattern || (excludeChannelIds && excludeChannelIds.length > 0) || (excludeChannelTags && excludeChannelTags.length > 0)
 
@@ -552,8 +622,8 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
       return []
     }
 
-    if (type === 'model') {
-      // For 'model' type, show all available models
+    if (type === 'model' || type === 'channel_tags_model') {
+      // For 'model' and 'channel_tags_model' types, show all available models
       return allModelOptions
     }
 
@@ -613,6 +683,8 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
                   <SelectContent>
                     <SelectItem value='channel_model'>{t('models.dialogs.association.types.channelModel')}</SelectItem>
                     <SelectItem value='channel_regex'>{t('models.dialogs.association.types.channelRegex')}</SelectItem>
+                    <SelectItem value='channel_tags_model'>{t('models.dialogs.association.types.channelTagsModel')}</SelectItem>
+                    <SelectItem value='channel_tags_regex'>{t('models.dialogs.association.types.channelTagsRegex')}</SelectItem>
                     <SelectItem value='model'>{t('models.dialogs.association.types.model')}</SelectItem>
                     <SelectItem value='regex'>{t('models.dialogs.association.types.regex')}</SelectItem>
                   </SelectContent>
@@ -653,6 +725,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
             name={`associations.${index}.modelId`}
             render={({ field }) => (
               <FormItem className='gap-0'>
+                {/* <FormLabel className='text-xs'>{t('models.dialogs.association.selectModel')}</FormLabel> */}
                 <FormControl>
                   <AutoComplete
                     selectedValue={field.value?.toString() || ''}
@@ -671,7 +744,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
                     portalContainer={portalContainer}
                   />
                 </FormControl>
-                <FormMessage />
+                {/* <FormMessage /> */}
               </FormItem>
             )}
           />
@@ -684,6 +757,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
             name={`associations.${index}.pattern`}
             render={({ field }) => (
               <FormItem className='gap-0'>
+                {/* <FormLabel className='text-xs'>{t('models.dialogs.association.pattern')}</FormLabel> */}
                 <FormControl>
                   <Input
                     {...field}
@@ -692,7 +766,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
                     className='h-9'
                   />
                 </FormControl>
-                <FormMessage />
+                {/* <FormMessage /> */}
               </FormItem>
             )}
           />
@@ -709,6 +783,31 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
           <IconTrash className='h-4 w-4' />
         </Button>
       </div>
+
+      {/* Channel Tags Input - Second Row */}
+      {showChannelTags && (
+        <div className='ml-14 grid gap-2'>
+          <FormField
+            control={form.control}
+            name={`associations.${index}.channelTags`}
+            render={({ field, fieldState }) => (
+              <FormItem className='space-y-1'>
+                <FormLabel className='text-xs'>{t('models.dialogs.association.selectChannelTags')}</FormLabel>
+                <FormControl>
+                  <TagsAutocompleteInput
+                    value={field.value || []}
+                    onChange={field.onChange}
+                    placeholder={t('models.dialogs.association.selectChannelTags')}
+                    suggestions={allTags}
+                    className='min-h-9 h-auto py-1'
+                  />
+                </FormControl>
+                {fieldState.error && <FormMessage>{fieldState.error.message}</FormMessage>}
+              </FormItem>
+            )}
+          />
+        </div>
+      )}
 
       {/* Exclude Section */}
       {showExclude && (
@@ -735,14 +834,14 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
                 control={form.control}
                 name={`associations.${index}.excludeChannelNamePattern`}
                 render={({ field }) => (
-                  <FormItem className='gap-0'>
+                  <FormItem className='space-y-1'>
                     <FormLabel className='text-xs'>{t('models.dialogs.association.excludeChannelNamePattern')}</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
                         value={field.value?.toString() || ''}
                         placeholder={t('models.dialogs.association.excludeChannelNamePattern')}
-                        className='h-8 text-xs'
+                        className='h-9'
                       />
                     </FormControl>
                     <FormMessage />
@@ -753,7 +852,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
                 control={form.control}
                 name={`associations.${index}.excludeChannelTags`}
                 render={({ field }) => (
-                  <FormItem className='gap-0'>
+                  <FormItem className='space-y-1'>
                     <FormLabel className='text-xs'>{t('models.dialogs.association.excludeChannelTags')}</FormLabel>
                     <FormControl>
                       <TagsAutocompleteInput
@@ -761,6 +860,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
                         onChange={field.onChange}
                         placeholder={t('models.dialogs.association.excludeChannelTags')}
                         suggestions={allTags}
+                        className='min-h-9 h-auto py-1'
                       />
                     </FormControl>
                     <FormMessage />
@@ -772,7 +872,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
                 control={form.control}
                 name={`associations.${index}.excludeChannelIds`}
                 render={({ field }) => (
-                  <FormItem className='gap-0'>
+                  <FormItem className='space-y-1'>
                     <FormLabel className='text-xs'>{t('models.dialogs.association.excludeChannelIds')}</FormLabel>
                     <FormControl>
                       <TagsAutocompleteInput
@@ -789,6 +889,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
                         }}
                         placeholder={t('models.dialogs.association.excludeChannelIds')}
                         suggestions={channelOptions.map((opt) => opt.label)}
+                        className='min-h-9 h-auto py-1'
                       />
                     </FormControl>
                     <FormMessage />
@@ -808,6 +909,10 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
           hint = t('models.dialogs.association.ruleHints.channelModel', { model: modelId, channel: selectedChannel?.label || channelId.toString() });
         } else if (type === 'channel_regex' && channelId && pattern) {
           hint = t('models.dialogs.association.ruleHints.channelRegex', { pattern, channel: selectedChannel?.label || channelId.toString() });
+        } else if (type === 'channel_tags_model' && channelTags && channelTags.length > 0 && modelId) {
+          hint = t('models.dialogs.association.ruleHints.channelTagsModel', { model: modelId, tags: channelTags.join(', ') });
+        } else if (type === 'channel_tags_regex' && channelTags && channelTags.length > 0 && pattern) {
+          hint = t('models.dialogs.association.ruleHints.channelTagsRegex', { pattern, tags: channelTags.join(', ') });
         }
         if (hint) {
           return <div className='text-xs text-muted-foreground ml-14'>{hint}</div>;

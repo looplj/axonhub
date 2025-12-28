@@ -39,6 +39,13 @@ func TestModelService_ValidateModelSettings(t *testing.T) {
 					},
 				},
 				{
+					Type: "channel_tags_regex",
+					ChannelTagsRegex: &objects.ChannelTagsRegexAssociation{
+						ChannelTags: []string{"production", "test"},
+						Pattern:     "claude-.*",
+					},
+				},
+				{
 					Type: "regex",
 					Regex: &objects.RegexAssociation{
 						Pattern: "claude-.*",
@@ -83,6 +90,24 @@ func TestModelService_ValidateModelSettings(t *testing.T) {
 		err := svc.validateModelSettings(settings)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "invalid regex pattern in channel_regex association")
+	})
+
+	t.Run("invalid regex pattern in channel_tags_regex", func(t *testing.T) {
+		settings := &objects.ModelSettings{
+			Associations: []*objects.ModelAssociation{
+				{
+					Type: "channel_tags_regex",
+					ChannelTagsRegex: &objects.ChannelTagsRegexAssociation{
+						ChannelTags: []string{"production"},
+						Pattern:     "(?P<invalid", // invalid regex
+					},
+				},
+			},
+		}
+
+		err := svc.validateModelSettings(settings)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid regex pattern in channel_tags_regex association")
 	})
 
 	t.Run("invalid regex pattern in regex association", func(t *testing.T) {
@@ -146,6 +171,13 @@ func TestModelService_ValidateModelSettings(t *testing.T) {
 					ChannelRegex: &objects.ChannelRegexAssociation{
 						ChannelID: 1,
 						Pattern:   "", // empty pattern
+					},
+				},
+				{
+					Type: "channel_tags_regex",
+					ChannelTagsRegex: &objects.ChannelTagsRegexAssociation{
+						ChannelTags: []string{"test"},
+						Pattern:     "", // empty pattern
 					},
 				},
 				{

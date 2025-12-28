@@ -301,6 +301,18 @@ models:
   ExcludeAssociationInput:
     model:
       - github.com/looplj/axonhub/internal/objects.ExcludeAssociation
+  ChannelTagsModelAssociation:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelTagsModelAssociation
+  ChannelTagsModelAssociationInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelTagsModelAssociation
+  ChannelTagsRegexAssociation:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelTagsRegexAssociation
+  ChannelTagsRegexAssociationInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelTagsRegexAssociation
   ModelChannelConnection:
     model:
       - github.com/looplj/axonhub/internal/server/biz.ModelChannelConnection
