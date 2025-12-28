@@ -533,7 +533,7 @@ func findUnassociatedChannels(channels []*ent.Channel, associations []*objects.M
 
 	for _, ch := range channels {
 		channelWrapper := &Channel{Channel: ch}
-		entries := channelWrapper.GetDirectModelEntries()
+		entries := channelWrapper.GetModelEntries()
 
 		unassociatedModels := make([]string, 0)
 
