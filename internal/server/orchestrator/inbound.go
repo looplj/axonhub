@@ -61,15 +61,6 @@ func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 	event := ts.stream.Current()
 	if event != nil {
 		ts.responseChunks = append(ts.responseChunks, event)
-
-		err := ts.requestService.AppendRequestChunk(
-			ts.ctx,
-			ts.request.ID,
-			event,
-		)
-		if err != nil {
-			log.Warn(ts.ctx, "Failed to append request chunk", log.Cause(err))
-		}
 	}
 
 	return event
@@ -149,6 +140,11 @@ func (ts *InboundPersistentStream) persistResponseChunks(ctx context.Context) {
 		err = ts.requestService.UpdateRequestCompleted(persistCtx, ts.request.ID, meta.ID, responseBody, metrics)
 		if err != nil {
 			log.Warn(persistCtx, "Failed to update request status to completed", log.Cause(err))
+		}
+
+		// Save all response chunks at once
+		if err := ts.requestService.SaveRequestChunks(persistCtx, ts.request.ID, ts.responseChunks); err != nil {
+			log.Warn(persistCtx, "Failed to save request chunks", log.Cause(err))
 		}
 	}
 }
