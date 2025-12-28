@@ -53,6 +53,9 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	}
 	// Get API key from channel if not provided
 	apiKey := ""
+
+	var proxyConfig *objects.ProxyConfig
+
 	if input.APIKey != nil && *input.APIKey != "" {
 		apiKey = *input.APIKey
 	} else if input.ChannelID != nil {
@@ -68,6 +71,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		}
 
 		apiKey = ch.Credentials.APIKey
+		proxyConfig = ch.Settings.Proxy
 	}
 
 	if apiKey == "" {
@@ -102,7 +106,14 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		req.Headers.Set("Authorization", "Bearer "+apiKey)
 	}
 
-	resp, err := f.httpClient.Do(ctx, req)
+	var httpClient *httpclient.HttpClient
+	if proxyConfig != nil {
+		httpClient = httpclient.NewHttpClientWithProxy(proxyConfig)
+	} else {
+		httpClient = f.httpClient
+	}
+
+	resp, err := httpClient.Do(ctx, req)
 	if err != nil {
 		return &FetchModelsResult{
 			Models: []objects.ModelIdentify{},
@@ -161,17 +172,13 @@ func (f *ModelFetcher) prepareModelsEndpoint(channelType channel.Type, baseURL s
 
 		return baseURL + "/v1/models", headers
 	case channelType.IsGemini():
-		if strings.HasSuffix(baseURL, "/v1beta") {
-			return baseURL + "/models", headers
-		}
-
-		if strings.HasSuffix(baseURL, "/v1") {
+		if strings.Contains(baseURL, "/v1") {
 			return baseURL + "/models", headers
 		}
 
 		return baseURL + "/v1beta/models", headers
 	default:
-		if strings.HasSuffix(baseURL, "/v1") {
+		if strings.Contains(baseURL, "/v1") {
 			return baseURL + "/models", headers
 		}
 

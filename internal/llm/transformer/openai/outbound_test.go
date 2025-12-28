@@ -119,6 +119,25 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 				return req.URL == "https://api.openai.com/v1/chat/completions"
 			},
 		},
+		{
+			name:        "URL with /v1/ ",
+			transformer: createTransformer("https://api.deepinfra.com/v1/openai", "test-key"),
+			request: &llm.Request{
+				Model: "gpt-4",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello, world!"),
+						},
+					},
+				},
+			},
+			wantErr: false,
+			validate: func(req *httpclient.Request) bool {
+				return req.URL == "https://api.deepinfra.com/v1/openai/chat/completions"
+			},
+		},
 	}
 
 	for _, tt := range tests {

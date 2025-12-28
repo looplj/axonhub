@@ -20,6 +20,7 @@ import {
   ModelScope,
   Bailian,
   Jina,
+  DeepInfra,
 } from '@lobehub/icons'
 import { BURNCLOUD_DEFAULT_MODELS } from './burncloud-models'
 import { ApiFormat, ChannelType } from './schema'
@@ -87,6 +88,14 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     apiFormat: ANTHROPIC_MESSAGES,
     color: 'bg-blue-100 text-blue-800 border-blue-200',
     icon: DeepSeek,
+  },
+  deepinfra: {
+    channelType: 'deepinfra',
+    baseURL: 'https://api.deepinfra.com/v1/openai',
+    defaultModels: ['deepseek-ai/DeepSeek-V3.2', 'moonshotai/Kimi-K2-Thinking'],
+    apiFormat: OPENAI_CHAT_COMPLETIONS,
+    color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    icon: DeepInfra,
   },
   anthropic: {
     channelType: 'anthropic',
@@ -501,6 +510,7 @@ export type Provider =
   | 'openai'
   | 'anthropic'
   | 'deepseek'
+  | 'deepinfra'
   | 'gemini'
   | 'moonshot'
   | 'zhipu'
@@ -533,6 +543,7 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   anthropic_fake: 'anthropic',
   deepseek: 'deepseek',
   deepseek_anthropic: 'deepseek',
+  deepinfra: 'deepinfra',
   gemini: 'gemini',
   gemini_openai: 'gemini',
   gemini_vertex: 'gemini',

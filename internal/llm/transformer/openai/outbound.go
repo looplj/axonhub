@@ -295,6 +295,11 @@ func (t *OutboundTransformer) buildPlatformURL(_ *llm.Request) (string, error) {
 			t.config.BaseURL, t.config.APIVersion), nil
 	default:
 		// Standard OpenAI API
+		// Check if URL already contains /v1/ in the path (e.g., https://api.deepinfra.com/v1/openai)
+		if strings.Contains(t.config.BaseURL, "/v1/") {
+			return t.config.BaseURL + "/chat/completions", nil
+		}
+
 		if strings.HasSuffix(t.config.BaseURL, "/v1") {
 			return t.config.BaseURL + "/chat/completions", nil
 		}
@@ -507,6 +512,11 @@ func (t *OutboundTransformer) buildEmbeddingURL() string {
 			t.config.BaseURL, t.config.APIVersion)
 	default:
 		// Standard OpenAI API
+		// Check if URL already contains /v1/ in the path (e.g., https://api.deepinfra.com/v1/openai)
+		if strings.Contains(t.config.BaseURL, "/v1/") {
+			return t.config.BaseURL + "/embeddings"
+		}
+
 		if strings.HasSuffix(t.config.BaseURL, "/v1") {
 			return t.config.BaseURL + "/embeddings"
 		}

@@ -20,6 +20,7 @@ import {
   ModelScope,
   Bailian,
   Jina,
+  DeepInfra,
 } from '@lobehub/icons'
 import { CHANNEL_CONFIGS } from './config_channels'
 import { ApiFormat, ChannelType } from './schema'
@@ -49,6 +50,7 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     color: 'bg-blue-100 text-blue-800 border-blue-200',
     channelTypes: ['deepseek', 'deepseek_anthropic'],
   },
+
   gemini: {
     provider: 'gemini',
     icon: Google,
@@ -114,6 +116,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     icon: Vercel,
     color: 'bg-black-100 text-black-800 border-black-200',
     channelTypes: ['vercel'],
+  },
+  deepinfra: {
+    provider: 'deepinfra',
+    icon: DeepInfra,
+    color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    channelTypes: ['deepinfra'],
   },
   ppio: {
     provider: 'ppio',
