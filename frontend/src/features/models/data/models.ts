@@ -86,6 +86,14 @@ const MODELS_QUERY = `
                   channelTags
                 }
               }
+              channelTagsModel {
+                channelTags
+                modelId
+              }
+              channelTagsRegex {
+                channelTags
+                pattern
+              }
             }
           }
           status

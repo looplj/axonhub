@@ -46,6 +46,8 @@ type ModelAssociation {
   channelRegex: ChannelRegexAssociation
   regex: RegexAssociation
   modelId: ModelIDAssociation
+  channelTagsModel: ChannelTagsModelAssociation
+  channelTagsRegex: ChannelTagsRegexAssociation
 }
 
 type ChannelModelAssociation {
@@ -72,6 +74,16 @@ type ExcludeAssociation {
   channelNamePattern: String
   channelIds: [Int!]
   channelTags: [String!]
+}
+
+type ChannelTagsModelAssociation {
+  channelTags: [String!]!
+  modelId: String!
+}
+
+type ChannelTagsRegexAssociation {
+  channelTags: [String!]!
+  pattern: String!
 }
 
 # Input types for mutations
@@ -121,6 +133,8 @@ input ModelAssociationInput {
   channelRegex: ChannelRegexAssociationInput
   regex: RegexAssociationInput
   modelId: ModelIDAssociationInput
+  channelTagsModel: ChannelTagsModelAssociationInput
+  channelTagsRegex: ChannelTagsRegexAssociationInput
 }
 
 input ChannelModelAssociationInput {
@@ -147,6 +161,16 @@ input ExcludeAssociationInput {
   channelNamePattern: String
   channelIds: [Int!]
   channelTags: [String!]
+}
+
+input ChannelTagsModelAssociationInput {
+  channelTags: [String!]!
+  modelId: String!
+}
+
+input ChannelTagsRegexAssociationInput {
+  channelTags: [String!]!
+  pattern: String!
 }
 
 type ModelChannelConnection {

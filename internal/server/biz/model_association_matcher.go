@@ -93,6 +93,10 @@ func matchSingleAssociation(
 		connections = matchRegex(assoc, channels, tracker)
 	case "model":
 		connections = matchModel(assoc, channels, tracker)
+	case "channel_tags_model":
+		connections = matchChannelTagsModel(assoc, channels, tracker)
+	case "channel_tags_regex":
+		connections = matchChannelTagsRegex(assoc, channels, tracker)
 	}
 
 	return connections
@@ -281,4 +285,111 @@ func shouldExcludeChannel(ch *Channel, excludes []*objects.ExcludeAssociation) b
 	}
 
 	return false
+}
+
+// matchChannelTagsModel handles channel_tags_model type association.
+// Matches channels that have any of the specified tags (OR logic) and returns the specified model.
+func matchChannelTagsModel(assoc *objects.ModelAssociation, channels []*Channel, tracker *DuplicateKeyTracker) []*ModelChannelConnection {
+	if assoc.ChannelTagsModel == nil {
+		return nil
+	}
+
+	if len(assoc.ChannelTagsModel.ChannelTags) == 0 {
+		return nil
+	}
+
+	connections := make([]*ModelChannelConnection, 0)
+	modelID := assoc.ChannelTagsModel.ModelID
+
+	for _, ch := range channels {
+		// Check if channel has any of the specified tags (OR logic)
+		hasTag := false
+
+		for _, tag := range assoc.ChannelTagsModel.ChannelTags {
+			if lo.Contains(ch.Tags, tag) {
+				hasTag = true
+				break
+			}
+		}
+
+		if !hasTag {
+			continue
+		}
+
+		// Check if channel has the specified model
+		entries := ch.GetModelEntries()
+		entry, contains := entries[modelID]
+
+		if !contains {
+			continue
+		}
+
+		// Check deduplication
+		if !tracker.Add(ch.ID, modelID) {
+			continue
+		}
+
+		connections = append(connections, &ModelChannelConnection{
+			Channel:  ch.Channel,
+			Models:   []ChannelModelEntry{entry},
+			Priority: assoc.Priority,
+		})
+	}
+
+	return connections
+}
+
+// matchChannelTagsRegex handles channel_tags_regex type association.
+// Matches channels that have any of the specified tags (OR logic) and returns models matching the pattern.
+func matchChannelTagsRegex(assoc *objects.ModelAssociation, channels []*Channel, tracker *DuplicateKeyTracker) []*ModelChannelConnection {
+	if assoc.ChannelTagsRegex == nil {
+		return nil
+	}
+
+	if len(assoc.ChannelTagsRegex.ChannelTags) == 0 {
+		return nil
+	}
+
+	connections := make([]*ModelChannelConnection, 0)
+
+	for _, ch := range channels {
+		// Check if channel has any of the specified tags (OR logic)
+		hasTag := false
+
+		for _, tag := range assoc.ChannelTagsRegex.ChannelTags {
+			if lo.Contains(ch.Tags, tag) {
+				hasTag = true
+				break
+			}
+		}
+
+		if !hasTag {
+			continue
+		}
+
+		entries := ch.GetModelEntries()
+
+		var models []ChannelModelEntry
+
+		for modelID, entry := range entries {
+			if xregexp.MatchString(assoc.ChannelTagsRegex.Pattern, modelID) {
+				// Check deduplication
+				if tracker.Add(ch.ID, modelID) {
+					models = append(models, entry)
+				}
+			}
+		}
+
+		if len(models) == 0 {
+			continue
+		}
+
+		connections = append(connections, &ModelChannelConnection{
+			Channel:  ch.Channel,
+			Models:   models,
+			Priority: assoc.Priority,
+		})
+	}
+
+	return connections
 }

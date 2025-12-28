@@ -798,3 +798,480 @@ func TestMatchAssociations_ExcludeChannelsByTags(t *testing.T) {
 		require.NotContains(t, channelIDs, 1) // openai-primary excluded
 	})
 }
+
+func TestMatchAssociations_ChannelTagsModel(t *testing.T) {
+	channels := []*Channel{
+		{
+			Channel: &ent.Channel{
+				ID:              1,
+				Name:            "openai-primary",
+				Type:            channel.TypeOpenai,
+				SupportedModels: []string{"gpt-4", "gpt-3.5-turbo"},
+				Tags:            []string{"production", "openai"},
+			},
+		},
+		{
+			Channel: &ent.Channel{
+				ID:              2,
+				Name:            "openai-backup",
+				Type:            channel.TypeOpenai,
+				SupportedModels: []string{"gpt-4", "gpt-3.5-turbo"},
+				Tags:            []string{"backup", "openai"},
+			},
+		},
+		{
+			Channel: &ent.Channel{
+				ID:              3,
+				Name:            "anthropic-primary",
+				Type:            channel.TypeAnthropic,
+				SupportedModels: []string{"claude-3-opus"},
+				Tags:            []string{"production", "anthropic"},
+			},
+		},
+		{
+			Channel: &ent.Channel{
+				ID:              4,
+				Name:            "development-channel",
+				Type:            channel.TypeOpenai,
+				SupportedModels: []string{"gpt-4"},
+				Tags:            []string{"development", "test"},
+			},
+		},
+	}
+
+	t.Run("match single tag", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "channel_tags_model",
+				Priority: 1,
+				ChannelTagsModel: &objects.ChannelTagsModelAssociation{
+					ChannelTags: []string{"production"},
+					ModelID:     "gpt-4",
+				},
+			},
+		}
+
+		result := MatchAssociations(associations, channels)
+
+		// Should match channels with production tag that have gpt-4
+		require.Len(t, result, 1)
+		require.Equal(t, 1, result[0].Channel.ID)
+		require.Equal(t, "openai-primary", result[0].Channel.Name)
+		require.Len(t, result[0].Models, 1)
+		require.Equal(t, "gpt-4", result[0].Models[0].RequestModel)
+	})
+
+	t.Run("match multiple tags OR logic", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "channel_tags_model",
+				Priority: 1,
+				ChannelTagsModel: &objects.ChannelTagsModelAssociation{
+					ChannelTags: []string{"backup", "development"},
+					ModelID:     "gpt-4",
+				},
+			},
+		}
+
+		result := MatchAssociations(associations, channels)
+
+		// Should match channels with backup OR development tag that have gpt-4
+		require.Len(t, result, 2)
+
+		channelIDs := make([]int, 0, len(result))
+		for _, conn := range result {
+			channelIDs = append(channelIDs, conn.Channel.ID)
+			require.Len(t, conn.Models, 1)
+			require.Equal(t, "gpt-4", conn.Models[0].RequestModel)
+		}
+
+		require.Contains(t, channelIDs, 2) // openai-backup
+		require.Contains(t, channelIDs, 4) // development-channel
+	})
+
+	t.Run("no match when model not available", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "channel_tags_model",
+				Priority: 1,
+				ChannelTagsModel: &objects.ChannelTagsModelAssociation{
+					ChannelTags: []string{"production"},
+					ModelID:     "non-existent-model",
+				},
+			},
+		}
+
+		result := MatchAssociations(associations, channels)
+
+		// Should have no matches since model doesn't exist
+		require.Len(t, result, 0)
+	})
+
+	t.Run("no match when tag not found", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "channel_tags_model",
+				Priority: 1,
+				ChannelTagsModel: &objects.ChannelTagsModelAssociation{
+					ChannelTags: []string{"non-existent-tag"},
+					ModelID:     "gpt-4",
+				},
+			},
+		}
+
+		result := MatchAssociations(associations, channels)
+
+		// Should have no matches since tag doesn't exist
+		require.Len(t, result, 0)
+	})
+
+	t.Run("deduplication with other association types", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "channel_model",
+				Priority: 1,
+				ChannelModel: &objects.ChannelModelAssociation{
+					ChannelID: 1,
+					ModelID:   "gpt-4",
+				},
+			},
+			{
+				Type:     "channel_tags_model",
+				Priority: 2,
+				ChannelTagsModel: &objects.ChannelTagsModelAssociation{
+					ChannelTags: []string{"production"},
+					ModelID:     "gpt-4",
+				},
+			},
+		}
+
+		result := MatchAssociations(associations, channels)
+
+		// Should only have one connection for channel 1 with gpt-4
+		require.Len(t, result, 1)
+		require.Equal(t, 1, result[0].Channel.ID)
+		require.Len(t, result[0].Models, 1)
+		require.Equal(t, "gpt-4", result[0].Models[0].RequestModel)
+		require.Equal(t, 1, result[0].Priority) // First association's priority
+	})
+
+	t.Run("empty channel tags", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "channel_tags_model",
+				Priority: 1,
+				ChannelTagsModel: &objects.ChannelTagsModelAssociation{
+					ChannelTags: []string{},
+					ModelID:     "gpt-4",
+				},
+			},
+		}
+
+		result := MatchAssociations(associations, channels)
+
+		// Should have no matches when tags are empty
+		require.Len(t, result, 0)
+	})
+
+	t.Run("channel with no tags should not match", func(t *testing.T) {
+		channelsWithNoTags := append(channels, &Channel{
+			Channel: &ent.Channel{
+				ID:              5,
+				Name:            "no-tags-channel",
+				Type:            channel.TypeOpenai,
+				SupportedModels: []string{"gpt-4"},
+				Tags:            []string{},
+			},
+		})
+
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "channel_tags_model",
+				Priority: 1,
+				ChannelTagsModel: &objects.ChannelTagsModelAssociation{
+					ChannelTags: []string{"production"},
+					ModelID:     "gpt-4",
+				},
+			},
+		}
+
+		result := MatchAssociations(associations, channelsWithNoTags)
+
+		// Should only match channel 1, not the no-tags channel
+		require.Len(t, result, 1)
+		require.Equal(t, 1, result[0].Channel.ID)
+	})
+}
+
+func TestMatchAssociations_ChannelTagsRegex(t *testing.T) {
+	channels := []*Channel{
+		{
+			Channel: &ent.Channel{
+				ID:              1,
+				Name:            "openai-primary",
+				Type:            channel.TypeOpenai,
+				SupportedModels: []string{"gpt-4", "gpt-3.5-turbo", "gpt-4-turbo"},
+				Tags:            []string{"production", "openai"},
+			},
+		},
+		{
+			Channel: &ent.Channel{
+				ID:              2,
+				Name:            "openai-backup",
+				Type:            channel.TypeOpenai,
+				SupportedModels: []string{"gpt-4", "gpt-3.5-turbo"},
+				Tags:            []string{"backup", "openai"},
+			},
+		},
+		{
+			Channel: &ent.Channel{
+				ID:              3,
+				Name:            "anthropic-primary",
+				Type:            channel.TypeAnthropic,
+				SupportedModels: []string{"claude-3-opus", "claude-3-sonnet"},
+				Tags:            []string{"production", "anthropic"},
+			},
+		},
+		{
+			Channel: &ent.Channel{
+				ID:              4,
+				Name:            "development-channel",
+				Type:            channel.TypeOpenai,
+				SupportedModels: []string{"gpt-4"},
+				Tags:            []string{"development", "test"},
+			},
+		},
+	}
+
+	t.Run("match single tag with pattern", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "channel_tags_regex",
+				Priority: 1,
+				ChannelTagsRegex: &objects.ChannelTagsRegexAssociation{
+					ChannelTags: []string{"production"},
+					Pattern:     "gpt-.*",
+				},
+			},
+		}
+
+		result := MatchAssociations(associations, channels)
+
+		// Should match channel 1 (production tag) with gpt models
+		require.Len(t, result, 1)
+		require.Equal(t, 1, result[0].Channel.ID)
+		require.Equal(t, "openai-primary", result[0].Channel.Name)
+		require.Len(t, result[0].Models, 3) // gpt-4, gpt-3.5-turbo, gpt-4-turbo
+
+		modelIDs := make([]string, 0, len(result[0].Models))
+		for _, model := range result[0].Models {
+			modelIDs = append(modelIDs, model.RequestModel)
+		}
+
+		require.Contains(t, modelIDs, "gpt-4")
+		require.Contains(t, modelIDs, "gpt-3.5-turbo")
+		require.Contains(t, modelIDs, "gpt-4-turbo")
+	})
+
+	t.Run("match multiple tags OR logic with pattern", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "channel_tags_regex",
+				Priority: 1,
+				ChannelTagsRegex: &objects.ChannelTagsRegexAssociation{
+					ChannelTags: []string{"backup", "development"},
+					Pattern:     "gpt-4",
+				},
+			},
+		}
+
+		result := MatchAssociations(associations, channels)
+
+		// Should match channels 2 and 4 (backup OR development tag) with gpt-4
+		require.Len(t, result, 2)
+
+		channelIDs := make([]int, 0, len(result))
+		for _, conn := range result {
+			channelIDs = append(channelIDs, conn.Channel.ID)
+			require.Len(t, conn.Models, 1)
+			require.Equal(t, "gpt-4", conn.Models[0].RequestModel)
+		}
+
+		require.Contains(t, channelIDs, 2) // openai-backup
+		require.Contains(t, channelIDs, 4) // development-channel
+	})
+
+	t.Run("match all models with wildcard pattern", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "channel_tags_regex",
+				Priority: 1,
+				ChannelTagsRegex: &objects.ChannelTagsRegexAssociation{
+					ChannelTags: []string{"anthropic"},
+					Pattern:     ".*",
+				},
+			},
+		}
+
+		result := MatchAssociations(associations, channels)
+
+		// Should match channel 3 with all claude models
+		require.Len(t, result, 1)
+		require.Equal(t, 3, result[0].Channel.ID)
+		require.Len(t, result[0].Models, 2) // claude-3-opus, claude-3-sonnet
+	})
+
+	t.Run("no match when pattern doesn't match any model", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "channel_tags_regex",
+				Priority: 1,
+				ChannelTagsRegex: &objects.ChannelTagsRegexAssociation{
+					ChannelTags: []string{"production"},
+					Pattern:     "non-existent-.*",
+				},
+			},
+		}
+
+		result := MatchAssociations(associations, channels)
+
+		// Should have no matches since pattern doesn't match any model
+		require.Len(t, result, 0)
+	})
+
+	t.Run("no match when tag not found", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "channel_tags_regex",
+				Priority: 1,
+				ChannelTagsRegex: &objects.ChannelTagsRegexAssociation{
+					ChannelTags: []string{"non-existent-tag"},
+					Pattern:     "gpt-.*",
+				},
+			},
+		}
+
+		result := MatchAssociations(associations, channels)
+
+		// Should have no matches since tag doesn't exist
+		require.Len(t, result, 0)
+	})
+
+	t.Run("deduplication with other association types", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "channel_regex",
+				Priority: 1,
+				ChannelRegex: &objects.ChannelRegexAssociation{
+					ChannelID: 1,
+					Pattern:   "gpt-4$", // exact match
+				},
+			},
+			{
+				Type:     "channel_tags_regex",
+				Priority: 2,
+				ChannelTagsRegex: &objects.ChannelTagsRegexAssociation{
+					ChannelTags: []string{"production"},
+					Pattern:     "gpt-4$", // exact match
+				},
+			},
+		}
+
+		result := MatchAssociations(associations, channels)
+
+		// Should have one connection: channel 1 (matched by both associations)
+		// Channel 3 has production tag but no gpt-4 model, so it won't match
+		// gpt-4 in channel 1 should be deduplicated
+		require.Len(t, result, 1)
+		require.Equal(t, 1, result[0].Channel.ID)
+
+		// Count gpt-4 occurrences in channel 1 - should be only once
+		gpt4Count := 0
+
+		for _, model := range result[0].Models {
+			if model.RequestModel == "gpt-4" {
+				gpt4Count++
+			}
+		}
+
+		require.Equal(t, 1, gpt4Count, "gpt-4 should appear only once in channel 1")
+	})
+
+	t.Run("empty channel tags", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "channel_tags_regex",
+				Priority: 1,
+				ChannelTagsRegex: &objects.ChannelTagsRegexAssociation{
+					ChannelTags: []string{},
+					Pattern:     "gpt-.*",
+				},
+			},
+		}
+
+		result := MatchAssociations(associations, channels)
+
+		// Should have no matches when tags are empty
+		require.Len(t, result, 0)
+	})
+
+	t.Run("channel with no tags should not match", func(t *testing.T) {
+		channelsWithNoTags := append(channels, &Channel{
+			Channel: &ent.Channel{
+				ID:              5,
+				Name:            "no-tags-channel",
+				Type:            channel.TypeOpenai,
+				SupportedModels: []string{"gpt-4"},
+				Tags:            []string{},
+			},
+		})
+
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "channel_tags_regex",
+				Priority: 1,
+				ChannelTagsRegex: &objects.ChannelTagsRegexAssociation{
+					ChannelTags: []string{"production"},
+					Pattern:     "gpt-.*",
+				},
+			},
+		}
+
+		result := MatchAssociations(associations, channelsWithNoTags)
+
+		// Should only match channel 1, not the no-tags channel
+		require.Len(t, result, 1)
+		require.Equal(t, 1, result[0].Channel.ID)
+	})
+
+	t.Run("complex scenario with multiple tags and patterns", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "channel_tags_regex",
+				Priority: 1,
+				ChannelTagsRegex: &objects.ChannelTagsRegexAssociation{
+					ChannelTags: []string{"openai", "anthropic"},
+					Pattern:     ".*-4.*",
+				},
+			},
+		}
+
+		result := MatchAssociations(associations, channels)
+
+		// Should match channels with openai OR anthropic tag that have models matching .*-4.*
+		// Channel 1 (openai tag): gpt-4, gpt-4-turbo
+		// Channel 2 (openai tag): gpt-4
+		// Channel 3 (anthropic tag): claude-3-opus, claude-3-sonnet (no match for pattern)
+		// Channel 4 (no openai/anthropic tag): not matched
+		// So only channel 1 and 2 should match
+		require.Len(t, result, 2)
+
+		for _, conn := range result {
+			require.Contains(t, []int{1, 2}, conn.Channel.ID)
+
+			for _, model := range conn.Models {
+				require.Contains(t, model.RequestModel, "-4")
+			}
+		}
+	})
+}

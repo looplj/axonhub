@@ -56,6 +56,13 @@ func (svc *ModelService) validateModelSettings(settings *objects.ModelSettings) 
 			}
 		}
 
+		// Validate ChannelTagsRegex pattern
+		if assoc.ChannelTagsRegex != nil && assoc.ChannelTagsRegex.Pattern != "" {
+			if err := xregexp.ValidateRegex(assoc.ChannelTagsRegex.Pattern); err != nil {
+				return fmt.Errorf("invalid regex pattern in channel_tags_regex association: %w", err)
+			}
+		}
+
 		// Validate Regex pattern
 		if assoc.Regex != nil && assoc.Regex.Pattern != "" {
 			if err := xregexp.ValidateRegex(assoc.Regex.Pattern); err != nil {

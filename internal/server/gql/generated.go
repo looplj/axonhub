@@ -271,6 +271,16 @@ type ComplexityRoot struct {
 		Proxy                   func(childComplexity int) int
 	}
 
+	ChannelTagsModelAssociation struct {
+		ChannelTags func(childComplexity int) int
+		ModelID     func(childComplexity int) int
+	}
+
+	ChannelTagsRegexAssociation struct {
+		ChannelTags func(childComplexity int) int
+		Pattern     func(childComplexity int) int
+	}
+
 	ChannelTypeCount struct {
 		Count func(childComplexity int) int
 		Type  func(childComplexity int) int
@@ -385,12 +395,14 @@ type ComplexityRoot struct {
 	}
 
 	ModelAssociation struct {
-		ChannelModel func(childComplexity int) int
-		ChannelRegex func(childComplexity int) int
-		ModelID      func(childComplexity int) int
-		Priority     func(childComplexity int) int
-		Regex        func(childComplexity int) int
-		Type         func(childComplexity int) int
+		ChannelModel     func(childComplexity int) int
+		ChannelRegex     func(childComplexity int) int
+		ChannelTagsModel func(childComplexity int) int
+		ChannelTagsRegex func(childComplexity int) int
+		ModelID          func(childComplexity int) int
+		Priority         func(childComplexity int) int
+		Regex            func(childComplexity int) int
+		Type             func(childComplexity int) int
 	}
 
 	ModelCard struct {
@@ -2131,6 +2143,32 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ChannelSettings.Proxy(childComplexity), true
 
+	case "ChannelTagsModelAssociation.channelTags":
+		if e.complexity.ChannelTagsModelAssociation.ChannelTags == nil {
+			break
+		}
+
+		return e.complexity.ChannelTagsModelAssociation.ChannelTags(childComplexity), true
+	case "ChannelTagsModelAssociation.modelId":
+		if e.complexity.ChannelTagsModelAssociation.ModelID == nil {
+			break
+		}
+
+		return e.complexity.ChannelTagsModelAssociation.ModelID(childComplexity), true
+
+	case "ChannelTagsRegexAssociation.channelTags":
+		if e.complexity.ChannelTagsRegexAssociation.ChannelTags == nil {
+			break
+		}
+
+		return e.complexity.ChannelTagsRegexAssociation.ChannelTags(childComplexity), true
+	case "ChannelTagsRegexAssociation.pattern":
+		if e.complexity.ChannelTagsRegexAssociation.Pattern == nil {
+			break
+		}
+
+		return e.complexity.ChannelTagsRegexAssociation.Pattern(childComplexity), true
+
 	case "ChannelTypeCount.count":
 		if e.complexity.ChannelTypeCount.Count == nil {
 			break
@@ -2559,6 +2597,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ModelAssociation.ChannelRegex(childComplexity), true
+	case "ModelAssociation.channelTagsModel":
+		if e.complexity.ModelAssociation.ChannelTagsModel == nil {
+			break
+		}
+
+		return e.complexity.ModelAssociation.ChannelTagsModel(childComplexity), true
+	case "ModelAssociation.channelTagsRegex":
+		if e.complexity.ModelAssociation.ChannelTagsRegex == nil {
+			break
+		}
+
+		return e.complexity.ModelAssociation.ChannelTagsRegex(childComplexity), true
 	case "ModelAssociation.modelId":
 		if e.complexity.ModelAssociation.ModelID == nil {
 			break
@@ -5934,6 +5984,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputChannelPerformanceWhereInput,
 		ec.unmarshalInputChannelRegexAssociationInput,
 		ec.unmarshalInputChannelSettingsInput,
+		ec.unmarshalInputChannelTagsModelAssociationInput,
+		ec.unmarshalInputChannelTagsRegexAssociationInput,
 		ec.unmarshalInputChannelWhereInput,
 		ec.unmarshalInputCleanupOptionInput,
 		ec.unmarshalInputCompleteOnboardingInput,
@@ -12547,6 +12599,122 @@ func (ec *executionContext) fieldContext_ChannelSettings_proxy(_ context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _ChannelTagsModelAssociation_channelTags(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelTagsModelAssociation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelTagsModelAssociation_channelTags,
+		func(ctx context.Context) (any, error) {
+			return obj.ChannelTags, nil
+		},
+		nil,
+		ec.marshalNString2ᚕstringᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelTagsModelAssociation_channelTags(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelTagsModelAssociation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelTagsModelAssociation_modelId(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelTagsModelAssociation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelTagsModelAssociation_modelId,
+		func(ctx context.Context) (any, error) {
+			return obj.ModelID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelTagsModelAssociation_modelId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelTagsModelAssociation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelTagsRegexAssociation_channelTags(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelTagsRegexAssociation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelTagsRegexAssociation_channelTags,
+		func(ctx context.Context) (any, error) {
+			return obj.ChannelTags, nil
+		},
+		nil,
+		ec.marshalNString2ᚕstringᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelTagsRegexAssociation_channelTags(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelTagsRegexAssociation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelTagsRegexAssociation_pattern(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelTagsRegexAssociation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelTagsRegexAssociation_pattern,
+		func(ctx context.Context) (any, error) {
+			return obj.Pattern, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelTagsRegexAssociation_pattern(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelTagsRegexAssociation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ChannelTypeCount_type(ctx context.Context, field graphql.CollectedField, obj *ChannelTypeCount) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -14810,6 +14978,76 @@ func (ec *executionContext) fieldContext_ModelAssociation_modelId(_ context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _ModelAssociation_channelTagsModel(ctx context.Context, field graphql.CollectedField, obj *objects.ModelAssociation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelAssociation_channelTagsModel,
+		func(ctx context.Context) (any, error) {
+			return obj.ChannelTagsModel, nil
+		},
+		nil,
+		ec.marshalOChannelTagsModelAssociation2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelTagsModelAssociation,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelAssociation_channelTagsModel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelAssociation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "channelTags":
+				return ec.fieldContext_ChannelTagsModelAssociation_channelTags(ctx, field)
+			case "modelId":
+				return ec.fieldContext_ChannelTagsModelAssociation_modelId(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ChannelTagsModelAssociation", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelAssociation_channelTagsRegex(ctx context.Context, field graphql.CollectedField, obj *objects.ModelAssociation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelAssociation_channelTagsRegex,
+		func(ctx context.Context) (any, error) {
+			return obj.ChannelTagsRegex, nil
+		},
+		nil,
+		ec.marshalOChannelTagsRegexAssociation2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelTagsRegexAssociation,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelAssociation_channelTagsRegex(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelAssociation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "channelTags":
+				return ec.fieldContext_ChannelTagsRegexAssociation_channelTags(ctx, field)
+			case "pattern":
+				return ec.fieldContext_ChannelTagsRegexAssociation_pattern(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ChannelTagsRegexAssociation", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ModelCard_reasoning(ctx context.Context, field graphql.CollectedField, obj *objects.ModelCard) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -15999,6 +16237,10 @@ func (ec *executionContext) fieldContext_ModelSettings_associations(_ context.Co
 				return ec.fieldContext_ModelAssociation_regex(ctx, field)
 			case "modelId":
 				return ec.fieldContext_ModelAssociation_modelId(ctx, field)
+			case "channelTagsModel":
+				return ec.fieldContext_ModelAssociation_channelTagsModel(ctx, field)
+			case "channelTagsRegex":
+				return ec.fieldContext_ModelAssociation_channelTagsRegex(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ModelAssociation", field.Name)
 		},
@@ -37358,6 +37600,74 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputChannelTagsModelAssociationInput(ctx context.Context, obj any) (objects.ChannelTagsModelAssociation, error) {
+	var it objects.ChannelTagsModelAssociation
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"channelTags", "modelId"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "channelTags":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelTags"))
+			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelTags = data
+		case "modelId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelId"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelID = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputChannelTagsRegexAssociationInput(ctx context.Context, obj any) (objects.ChannelTagsRegexAssociation, error) {
+	var it objects.ChannelTagsRegexAssociation
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"channelTags", "pattern"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "channelTags":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelTags"))
+			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelTags = data
+		case "pattern":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("pattern"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Pattern = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputChannelWhereInput(ctx context.Context, obj any) (ent.ChannelWhereInput, error) {
 	var it ent.ChannelWhereInput
 	asMap := map[string]any{}
@@ -40348,7 +40658,7 @@ func (ec *executionContext) unmarshalInputModelAssociationInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"type", "priority", "channelModel", "channelRegex", "regex", "modelId"}
+	fieldsInOrder := [...]string{"type", "priority", "channelModel", "channelRegex", "regex", "modelId", "channelTagsModel", "channelTagsRegex"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -40397,6 +40707,20 @@ func (ec *executionContext) unmarshalInputModelAssociationInput(ctx context.Cont
 				return it, err
 			}
 			it.ModelID = data
+		case "channelTagsModel":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelTagsModel"))
+			data, err := ec.unmarshalOChannelTagsModelAssociationInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelTagsModelAssociation(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelTagsModel = data
+		case "channelTagsRegex":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelTagsRegex"))
+			data, err := ec.unmarshalOChannelTagsRegexAssociationInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelTagsRegexAssociation(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelTagsRegex = data
 		}
 	}
 
@@ -53404,6 +53728,94 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 	return out
 }
 
+var channelTagsModelAssociationImplementors = []string{"ChannelTagsModelAssociation"}
+
+func (ec *executionContext) _ChannelTagsModelAssociation(ctx context.Context, sel ast.SelectionSet, obj *objects.ChannelTagsModelAssociation) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, channelTagsModelAssociationImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ChannelTagsModelAssociation")
+		case "channelTags":
+			out.Values[i] = ec._ChannelTagsModelAssociation_channelTags(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "modelId":
+			out.Values[i] = ec._ChannelTagsModelAssociation_modelId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var channelTagsRegexAssociationImplementors = []string{"ChannelTagsRegexAssociation"}
+
+func (ec *executionContext) _ChannelTagsRegexAssociation(ctx context.Context, sel ast.SelectionSet, obj *objects.ChannelTagsRegexAssociation) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, channelTagsRegexAssociationImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ChannelTagsRegexAssociation")
+		case "channelTags":
+			out.Values[i] = ec._ChannelTagsRegexAssociation_channelTags(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "pattern":
+			out.Values[i] = ec._ChannelTagsRegexAssociation_pattern(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var channelTypeCountImplementors = []string{"ChannelTypeCount"}
 
 func (ec *executionContext) _ChannelTypeCount(ctx context.Context, sel ast.SelectionSet, obj *ChannelTypeCount) graphql.Marshaler {
@@ -54415,6 +54827,10 @@ func (ec *executionContext) _ModelAssociation(ctx context.Context, sel ast.Selec
 			out.Values[i] = ec._ModelAssociation_regex(ctx, field, obj)
 		case "modelId":
 			out.Values[i] = ec._ModelAssociation_modelId(ctx, field, obj)
+		case "channelTagsModel":
+			out.Values[i] = ec._ModelAssociation_channelTagsModel(ctx, field, obj)
+		case "channelTagsRegex":
+			out.Values[i] = ec._ModelAssociation_channelTagsRegex(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -66462,6 +66878,36 @@ func (ec *executionContext) marshalOChannelStatus2ᚖgithubᚗcomᚋloopljᚋaxo
 		return graphql.Null
 	}
 	return v
+}
+
+func (ec *executionContext) marshalOChannelTagsModelAssociation2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelTagsModelAssociation(ctx context.Context, sel ast.SelectionSet, v *objects.ChannelTagsModelAssociation) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ChannelTagsModelAssociation(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOChannelTagsModelAssociationInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelTagsModelAssociation(ctx context.Context, v any) (*objects.ChannelTagsModelAssociation, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputChannelTagsModelAssociationInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOChannelTagsRegexAssociation2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelTagsRegexAssociation(ctx context.Context, sel ast.SelectionSet, v *objects.ChannelTagsRegexAssociation) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ChannelTagsRegexAssociation(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOChannelTagsRegexAssociationInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelTagsRegexAssociation(ctx context.Context, v any) (*objects.ChannelTagsRegexAssociation, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputChannelTagsRegexAssociationInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOChannelType2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelᚐTypeᚄ(ctx context.Context, v any) ([]channel.Type, error) {

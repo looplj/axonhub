@@ -17,7 +17,7 @@ export interface QueryModelsInput {
 }
 
 export interface ModelAssociationInput {
-  type: 'channel_model' | 'channel_regex' | 'regex' | 'model'
+  type: 'channel_model' | 'channel_regex' | 'regex' | 'model' | 'channel_tags_model' | 'channel_tags_regex'
   priority?: number
   channelModel?: {
     channelId: number
@@ -34,6 +34,14 @@ export interface ModelAssociationInput {
   modelId?: {
     modelId: string
     exclude?: ExcludeAssociationInput[]
+  }
+  channelTagsModel?: {
+    channelTags: string[]
+    modelId: string
+  }
+  channelTagsRegex?: {
+    channelTags: string[]
+    pattern: string
   }
 }
 

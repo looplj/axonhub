@@ -77,13 +77,27 @@ export const modelIDAssociationSchema = z.object({
 })
 export type ModelIDAssociation = z.infer<typeof modelIDAssociationSchema>
 
+export const channelTagsModelAssociationSchema = z.object({
+  channelTags: z.array(z.string()),
+  modelId: z.string(),
+})
+export type ChannelTagsModelAssociation = z.infer<typeof channelTagsModelAssociationSchema>
+
+export const channelTagsRegexAssociationSchema = z.object({
+  channelTags: z.array(z.string()),
+  pattern: z.string(),
+})
+export type ChannelTagsRegexAssociation = z.infer<typeof channelTagsRegexAssociationSchema>
+
 export const modelAssociationSchema = z.object({
-  type: z.enum(['channel_model', 'channel_regex', 'model', 'regex',]),
+  type: z.enum(['channel_model', 'channel_regex', 'model', 'regex', 'channel_tags_model', 'channel_tags_regex']),
   priority: z.number().min(0).max(100).optional().default(0),
   channelModel: channelModelAssociationSchema.optional().nullable(),
   channelRegex: channelRegexAssociationSchema.optional().nullable(),
   regex: regexAssociationSchema.optional().nullable(),
   modelId: modelIDAssociationSchema.optional().nullable(),
+  channelTagsModel: channelTagsModelAssociationSchema.optional().nullable(),
+  channelTagsRegex: channelTagsRegexAssociationSchema.optional().nullable(),
 })
 export type ModelAssociation = z.infer<typeof modelAssociationSchema>
 

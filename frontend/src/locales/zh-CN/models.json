@@ -96,12 +96,15 @@
         "types": {
           "channelModel": "渠道内精准匹配模型",
           "channelRegex": "渠道内正则匹配模型",
+          "channelTagsModel": "渠道标签精准匹配模型",
+          "channelTagsRegex": "渠道标签正则匹配模型",
           "regex": "全局正则匹配模型",
           "model": "全局精准匹配模型"
         },
         "channelId": "渠道 ID",
         "channelIdPlaceholder": "输入渠道 ID",
         "selectChannel": "选择渠道",
+        "selectChannelTags": "选择渠道标签",
         "modelId": "模型 ID",
         "modelIdPlaceholder": "输入模型 ID",
         "selectModel": "选择模型",
@@ -126,6 +129,8 @@
         "ruleHints": {
           "channelModel": "使用渠道 {{channel}} 的 {{model}} 模型",
           "channelRegex": "使用渠道 {{channel}} 匹配 {{pattern}} 的模型",
+          "channelTagsModel": "使用标签为 {{tags}} 的渠道的 {{model}} 模型",
+          "channelTagsRegex": "使用标签为 {{tags}} 的渠道匹配 {{pattern}} 的模型",
           "model": "使用所有渠道的 {{model}} 模型",
           "regex": "使用所有渠道匹配 {{pattern}} 的模型"
         }
