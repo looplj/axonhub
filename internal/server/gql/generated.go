@@ -600,6 +600,7 @@ type ComplexityRoot struct {
 		QueryChannels                 func(childComplexity int, input biz.QueryChannelsInput) int
 		QueryModelChannelConnections  func(childComplexity int, associations []*objects.ModelAssociation) int
 		QueryModels                   func(childComplexity int, input QueryModelsInput) int
+		QueryUnassociatedChannels     func(childComplexity int) int
 		RequestStats                  func(childComplexity int) int
 		RequestStatsByChannel         func(childComplexity int) int
 		RequestStatsByModel           func(childComplexity int) int
@@ -970,6 +971,11 @@ type ComplexityRoot struct {
 		Node   func(childComplexity int) int
 	}
 
+	UnassociatedChannel struct {
+		Channel func(childComplexity int) int
+		Models  func(childComplexity int) int
+	}
+
 	UsageLog struct {
 		Channel                            func(childComplexity int) int
 		ChannelID                          func(childComplexity int) int
@@ -1223,6 +1229,7 @@ type QueryResolver interface {
 	SystemVersion(ctx context.Context) (*build.Info, error)
 	CheckForUpdate(ctx context.Context) (*VersionCheck, error)
 	QueryModelChannelConnections(ctx context.Context, associations []*objects.ModelAssociation) ([]*biz.ModelChannelConnection, error)
+	QueryUnassociatedChannels(ctx context.Context) ([]*biz.UnassociatedChannel, error)
 }
 type RequestResolver interface {
 	ID(ctx context.Context, obj *ent.Request) (*objects.GUID, error)
@@ -3858,6 +3865,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.QueryModels(childComplexity, args["input"].(QueryModelsInput)), true
+	case "Query.queryUnassociatedChannels":
+		if e.complexity.Query.QueryUnassociatedChannels == nil {
+			break
+		}
+
+		return e.complexity.Query.QueryUnassociatedChannels(childComplexity), true
 	case "Query.requestStats":
 		if e.complexity.Query.RequestStats == nil {
 			break
@@ -5332,6 +5345,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TraceEdge.Node(childComplexity), true
+
+	case "UnassociatedChannel.channel":
+		if e.complexity.UnassociatedChannel.Channel == nil {
+			break
+		}
+
+		return e.complexity.UnassociatedChannel.Channel(childComplexity), true
+	case "UnassociatedChannel.models":
+		if e.complexity.UnassociatedChannel.Models == nil {
+			break
+		}
+
+		return e.complexity.UnassociatedChannel.Models(childComplexity), true
 
 	case "UsageLog.channel":
 		if e.complexity.UsageLog.Channel == nil {
@@ -13687,7 +13713,7 @@ func (ec *executionContext) _FetchModelsPayload_models(ctx context.Context, fiel
 			return obj.Models, nil
 		},
 		nil,
-		ec.marshalNModelIdentify2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelIdentifyᚄ,
+		ec.marshalNModelIdentify2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐModelIdentifyᚄ,
 		true,
 		true,
 	)
@@ -15792,7 +15818,7 @@ func (ec *executionContext) fieldContext_ModelIDAssociation_exclude(_ context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _ModelIdentify_id(ctx context.Context, field graphql.CollectedField, obj *objects.ModelIdentify) (ret graphql.Marshaler) {
+func (ec *executionContext) _ModelIdentify_id(ctx context.Context, field graphql.CollectedField, obj *biz.ModelIdentify) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -22039,6 +22065,41 @@ func (ec *executionContext) fieldContext_Query_queryModelChannelConnections(ctx 
 	if fc.Args, err = ec.field_Query_queryModelChannelConnections_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_queryUnassociatedChannels(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_queryUnassociatedChannels,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().QueryUnassociatedChannels(ctx)
+		},
+		nil,
+		ec.marshalNUnassociatedChannel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐUnassociatedChannelᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_queryUnassociatedChannels(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "channel":
+				return ec.fieldContext_UnassociatedChannel_channel(ctx, field)
+			case "models":
+				return ec.fieldContext_UnassociatedChannel_models(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type UnassociatedChannel", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -29224,6 +29285,110 @@ func (ec *executionContext) fieldContext_TraceEdge_cursor(_ context.Context, fie
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Cursor does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UnassociatedChannel_channel(ctx context.Context, field graphql.CollectedField, obj *biz.UnassociatedChannel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UnassociatedChannel_channel,
+		func(ctx context.Context) (any, error) {
+			return obj.Channel, nil
+		},
+		nil,
+		ec.marshalNChannel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannel,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_UnassociatedChannel_channel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UnassociatedChannel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Channel_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Channel_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Channel_updatedAt(ctx, field)
+			case "deletedAt":
+				return ec.fieldContext_Channel_deletedAt(ctx, field)
+			case "type":
+				return ec.fieldContext_Channel_type(ctx, field)
+			case "baseURL":
+				return ec.fieldContext_Channel_baseURL(ctx, field)
+			case "name":
+				return ec.fieldContext_Channel_name(ctx, field)
+			case "status":
+				return ec.fieldContext_Channel_status(ctx, field)
+			case "supportedModels":
+				return ec.fieldContext_Channel_supportedModels(ctx, field)
+			case "autoSyncSupportedModels":
+				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
+			case "tags":
+				return ec.fieldContext_Channel_tags(ctx, field)
+			case "defaultTestModel":
+				return ec.fieldContext_Channel_defaultTestModel(ctx, field)
+			case "settings":
+				return ec.fieldContext_Channel_settings(ctx, field)
+			case "orderingWeight":
+				return ec.fieldContext_Channel_orderingWeight(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_Channel_errorMessage(ctx, field)
+			case "remark":
+				return ec.fieldContext_Channel_remark(ctx, field)
+			case "requests":
+				return ec.fieldContext_Channel_requests(ctx, field)
+			case "executions":
+				return ec.fieldContext_Channel_executions(ctx, field)
+			case "usageLogs":
+				return ec.fieldContext_Channel_usageLogs(ctx, field)
+			case "channelPerformance":
+				return ec.fieldContext_Channel_channelPerformance(ctx, field)
+			case "allModelEntries":
+				return ec.fieldContext_Channel_allModelEntries(ctx, field)
+			case "credentials":
+				return ec.fieldContext_Channel_credentials(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UnassociatedChannel_models(ctx context.Context, field graphql.CollectedField, obj *biz.UnassociatedChannel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UnassociatedChannel_models,
+		func(ctx context.Context) (any, error) {
+			return obj.Models, nil
+		},
+		nil,
+		ec.marshalNString2ᚕstringᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_UnassociatedChannel_models(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UnassociatedChannel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -54710,7 +54875,7 @@ func (ec *executionContext) _ModelIDAssociation(ctx context.Context, sel ast.Sel
 
 var modelIdentifyImplementors = []string{"ModelIdentify"}
 
-func (ec *executionContext) _ModelIdentify(ctx context.Context, sel ast.SelectionSet, obj *objects.ModelIdentify) graphql.Marshaler {
+func (ec *executionContext) _ModelIdentify(ctx context.Context, sel ast.SelectionSet, obj *biz.ModelIdentify) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, modelIdentifyImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -56807,6 +56972,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_queryModelChannelConnections(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "queryUnassociatedChannels":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_queryUnassociatedChannels(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -60777,6 +60964,50 @@ func (ec *executionContext) _TraceEdge(ctx context.Context, sel ast.SelectionSet
 	return out
 }
 
+var unassociatedChannelImplementors = []string{"UnassociatedChannel"}
+
+func (ec *executionContext) _UnassociatedChannel(ctx context.Context, sel ast.SelectionSet, obj *biz.UnassociatedChannel) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, unassociatedChannelImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("UnassociatedChannel")
+		case "channel":
+			out.Values[i] = ec._UnassociatedChannel_channel(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "models":
+			out.Values[i] = ec._UnassociatedChannel_models(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var usageLogImplementors = []string{"UsageLog", "Node"}
 
 func (ec *executionContext) _UsageLog(ctx context.Context, sel ast.SelectionSet, obj *ent.UsageLog) graphql.Marshaler {
@@ -63885,7 +64116,7 @@ func (ec *executionContext) marshalNModelConnection2ᚖgithubᚗcomᚋloopljᚋa
 	return ec._ModelConnection(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNModelIdentify2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelIdentifyᚄ(ctx context.Context, sel ast.SelectionSet, v []*objects.ModelIdentify) graphql.Marshaler {
+func (ec *executionContext) marshalNModelIdentify2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐModelIdentifyᚄ(ctx context.Context, sel ast.SelectionSet, v []*biz.ModelIdentify) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -63909,7 +64140,7 @@ func (ec *executionContext) marshalNModelIdentify2ᚕᚖgithubᚗcomᚋloopljᚋ
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNModelIdentify2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelIdentify(ctx, sel, v[i])
+			ret[i] = ec.marshalNModelIdentify2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐModelIdentify(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -63929,7 +64160,7 @@ func (ec *executionContext) marshalNModelIdentify2ᚕᚖgithubᚗcomᚋloopljᚋ
 	return ret
 }
 
-func (ec *executionContext) marshalNModelIdentify2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelIdentify(ctx context.Context, sel ast.SelectionSet, v *objects.ModelIdentify) graphql.Marshaler {
+func (ec *executionContext) marshalNModelIdentify2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐModelIdentify(ctx context.Context, sel ast.SelectionSet, v *biz.ModelIdentify) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
@@ -64985,6 +65216,60 @@ func (ec *executionContext) marshalNTraceOrderField2ᚖgithubᚗcomᚋloopljᚋa
 func (ec *executionContext) unmarshalNTraceWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐTraceWhereInput(ctx context.Context, v any) (*ent.TraceWhereInput, error) {
 	res, err := ec.unmarshalInputTraceWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNUnassociatedChannel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐUnassociatedChannelᚄ(ctx context.Context, sel ast.SelectionSet, v []*biz.UnassociatedChannel) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNUnassociatedChannel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐUnassociatedChannel(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNUnassociatedChannel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐUnassociatedChannel(ctx context.Context, sel ast.SelectionSet, v *biz.UnassociatedChannel) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._UnassociatedChannel(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNUpdateAPIKeyInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐUpdateAPIKeyInput(ctx context.Context, v any) (ent.UpdateAPIKeyInput, error) {

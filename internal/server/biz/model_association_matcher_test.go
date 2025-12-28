@@ -1,37 +1,34 @@
 package biz
 
 import (
-	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
-func TestDeduplicationTracker(t *testing.T) {
-	tracker := make(deduplicationTracker)
+func TestDuplicateKeyTracker(t *testing.T) {
+	tracker := NewDuplicateKeyTracker()
 
 	// First add should return true
-	assert.True(t, tracker.add(1, "model-a"))
-	assert.True(t, tracker.add(1, "model-b"))
-	assert.True(t, tracker.add(2, "model-a"))
+	require.True(t, tracker.Add(1, "model-a"))
+	require.True(t, tracker.Add(1, "model-b"))
+	require.True(t, tracker.Add(2, "model-a"))
 
 	// Duplicate adds should return false
-	assert.False(t, tracker.add(1, "model-a"))
-	assert.False(t, tracker.add(1, "model-b"))
-	assert.False(t, tracker.add(2, "model-a"))
+	require.False(t, tracker.Add(1, "model-a"))
+	require.False(t, tracker.Add(1, "model-b"))
+	require.False(t, tracker.Add(2, "model-a"))
 
 	// Verify key format
-	assert.Equal(t, "1:model-a", tracker.makeKey(1, "model-a"))
-	assert.Equal(t, "2:model-b", tracker.makeKey(2, "model-b"))
+	require.Equal(t, "1:model-a", ChannelModelKey{ChannelID: 1, ModelID: "model-a"}.String())
+	require.Equal(t, "2:model-b", ChannelModelKey{ChannelID: 2, ModelID: "model-b"}.String())
 }
 
 func TestMatchAssociations_Deduplication(t *testing.T) {
-	ctx := context.Background()
-
 	// Create test channels
 	channels := []*Channel{
 		{
@@ -72,13 +69,12 @@ func TestMatchAssociations_Deduplication(t *testing.T) {
 			},
 		}
 
-		result, err := MatchAssociations(ctx, associations, channels)
-		assert.NoError(t, err)
-		assert.Len(t, result, 1, "should only have one connection")
-		assert.Equal(t, 1, result[0].Channel.ID)
-		assert.Len(t, result[0].Models, 1)
-		assert.Equal(t, "gpt-4", result[0].Models[0].RequestModel)
-		assert.Equal(t, 1, result[0].Priority, "should use first association's priority")
+		result := MatchAssociations(associations, channels)
+		require.Len(t, result, 1, "should only have one connection")
+		require.Equal(t, 1, result[0].Channel.ID)
+		require.Len(t, result[0].Models, 1)
+		require.Equal(t, "gpt-4", result[0].Models[0].RequestModel)
+		require.Equal(t, 1, result[0].Priority, "should use first association's priority")
 	})
 
 	t.Run("different channels same model should not duplicate", func(t *testing.T) {
@@ -92,14 +88,13 @@ func TestMatchAssociations_Deduplication(t *testing.T) {
 			},
 		}
 
-		result, err := MatchAssociations(ctx, associations, channels)
-		assert.NoError(t, err)
-		assert.Len(t, result, 2, "should have two connections for two channels")
+		result := MatchAssociations(associations, channels)
+		require.Len(t, result, 2, "should have two connections for two channels")
 
 		// Verify each channel has gpt-4 only once
 		for _, conn := range result {
-			assert.Len(t, conn.Models, 1)
-			assert.Equal(t, "gpt-4", conn.Models[0].RequestModel)
+			require.Len(t, conn.Models, 1)
+			require.Equal(t, "gpt-4", conn.Models[0].RequestModel)
 		}
 	})
 
@@ -123,10 +118,10 @@ func TestMatchAssociations_Deduplication(t *testing.T) {
 			},
 		}
 
-		result, err := MatchAssociations(ctx, associations, channels)
-		assert.NoError(t, err)
-		assert.Len(t, result, 1, "should have one connection")
-		assert.Equal(t, 1, result[0].Channel.ID)
+		result := MatchAssociations(associations, channels)
+
+		require.Len(t, result, 1, "should have one connection")
+		require.Equal(t, 1, result[0].Channel.ID)
 
 		// Count gpt-4 occurrences
 		gpt4Count := 0
@@ -137,7 +132,7 @@ func TestMatchAssociations_Deduplication(t *testing.T) {
 			}
 		}
 
-		assert.Equal(t, 1, gpt4Count, "gpt-4 should appear only once")
+		require.Equal(t, 1, gpt4Count, "gpt-4 should appear only once")
 	})
 
 	t.Run("multiple regex patterns deduplication", func(t *testing.T) {
@@ -158,14 +153,13 @@ func TestMatchAssociations_Deduplication(t *testing.T) {
 			},
 		}
 
-		result, err := MatchAssociations(ctx, associations, channels)
-		assert.NoError(t, err)
+		result := MatchAssociations(associations, channels)
 
 		// Verify no duplicates within each channel
 		for _, conn := range result {
 			modelSet := make(map[string]bool)
 			for _, model := range conn.Models {
-				assert.False(t, modelSet[model.RequestModel], "model %s should not duplicate in channel %d", model.RequestModel, conn.Channel.ID)
+				require.False(t, modelSet[model.RequestModel], "model %s should not duplicate in channel %d", model.RequestModel, conn.Channel.ID)
 				modelSet[model.RequestModel] = true
 			}
 		}
@@ -173,8 +167,6 @@ func TestMatchAssociations_Deduplication(t *testing.T) {
 }
 
 func TestMatchAssociations_EmptyConnectionFiltering(t *testing.T) {
-	ctx := context.Background()
-
 	channels := []*Channel{
 		{
 			Channel: &ent.Channel{
@@ -206,11 +198,10 @@ func TestMatchAssociations_EmptyConnectionFiltering(t *testing.T) {
 			},
 		}
 
-		result, err := MatchAssociations(ctx, associations, channels)
-		assert.NoError(t, err)
-		assert.Len(t, result, 1, "should have one connection")
-		assert.Len(t, result[0].Models, 1, "should have one model")
-		assert.Equal(t, "gpt-4", result[0].Models[0].RequestModel)
+		result := MatchAssociations(associations, channels)
+		require.Len(t, result, 1, "should have one connection")
+		require.Len(t, result[0].Models, 1, "should have one model")
+		require.Equal(t, "gpt-4", result[0].Models[0].RequestModel)
 	})
 
 	t.Run("no empty connections in result", func(t *testing.T) {
@@ -225,15 +216,12 @@ func TestMatchAssociations_EmptyConnectionFiltering(t *testing.T) {
 			},
 		}
 
-		result, err := MatchAssociations(ctx, associations, channels)
-		assert.NoError(t, err)
-		assert.Len(t, result, 0, "should have no connections")
+		result := MatchAssociations(associations, channels)
+		require.Len(t, result, 0, "should have no connections")
 	})
 }
 
 func TestMatchAssociations_ComplexScenario(t *testing.T) {
-	ctx := context.Background()
-
 	channels := []*Channel{
 		{
 			Channel: &ent.Channel{
@@ -294,8 +282,7 @@ func TestMatchAssociations_ComplexScenario(t *testing.T) {
 		},
 	}
 
-	result, err := MatchAssociations(ctx, associations, channels)
-	assert.NoError(t, err)
+	result := MatchAssociations(associations, channels)
 
 	// Verify no duplicates within each connection
 	for _, conn := range result {
@@ -303,7 +290,7 @@ func TestMatchAssociations_ComplexScenario(t *testing.T) {
 
 		for _, model := range conn.Models {
 			key := model.RequestModel
-			assert.False(t, modelSet[key], "model %s should not duplicate in channel %d", key, conn.Channel.ID)
+			require.False(t, modelSet[key], "model %s should not duplicate in channel %d", key, conn.Channel.ID)
 			modelSet[key] = true
 		}
 	}
@@ -320,9 +307,9 @@ func TestMatchAssociations_ComplexScenario(t *testing.T) {
 	}
 
 	// Verify each model appears only once across all connections for channel 1
-	assert.Equal(t, 1, channel1Models["gpt-4"], "gpt-4 should appear only once in channel 1")
-	assert.Equal(t, 1, channel1Models["gpt-3.5-turbo"], "gpt-3.5-turbo should appear only once in channel 1")
-	assert.Equal(t, 1, channel1Models["gpt-4-turbo"], "gpt-4-turbo should appear only once in channel 1")
+	require.Equal(t, 1, channel1Models["gpt-4"], "gpt-4 should appear only once in channel 1")
+	require.Equal(t, 1, channel1Models["gpt-3.5-turbo"], "gpt-3.5-turbo should appear only once in channel 1")
+	require.Equal(t, 1, channel1Models["gpt-4-turbo"], "gpt-4-turbo should appear only once in channel 1")
 }
 
 func findConnection(connections []*ModelChannelConnection, channelID int) *ModelChannelConnection {
@@ -348,8 +335,6 @@ func countModel(models []ChannelModelEntry, modelID string) int {
 }
 
 func TestMatchAssociations_ExcludeChannels(t *testing.T) {
-	ctx := context.Background()
-
 	channels := []*Channel{
 		{
 			Channel: &ent.Channel{
@@ -393,13 +378,12 @@ func TestMatchAssociations_ExcludeChannels(t *testing.T) {
 			},
 		}
 
-		result, err := MatchAssociations(ctx, associations, channels)
-		assert.NoError(t, err)
+		result := MatchAssociations(associations, channels)
 
 		// Should only match openai-primary, not openai-backup
-		assert.Len(t, result, 1)
-		assert.Equal(t, 1, result[0].Channel.ID)
-		assert.Equal(t, "openai-primary", result[0].Channel.Name)
+		require.Len(t, result, 1)
+		require.Equal(t, 1, result[0].Channel.ID)
+		require.Equal(t, "openai-primary", result[0].Channel.Name)
 	})
 
 	t.Run("regex exclude by channel IDs", func(t *testing.T) {
@@ -418,12 +402,11 @@ func TestMatchAssociations_ExcludeChannels(t *testing.T) {
 			},
 		}
 
-		result, err := MatchAssociations(ctx, associations, channels)
-		assert.NoError(t, err)
+		result := MatchAssociations(associations, channels)
 
 		// Should only match channel 1, not channel 2
-		assert.Len(t, result, 1)
-		assert.Equal(t, 1, result[0].Channel.ID)
+		require.Len(t, result, 1)
+		require.Equal(t, 1, result[0].Channel.ID)
 	})
 
 	t.Run("model exclude by channel name pattern", func(t *testing.T) {
@@ -442,13 +425,12 @@ func TestMatchAssociations_ExcludeChannels(t *testing.T) {
 			},
 		}
 
-		result, err := MatchAssociations(ctx, associations, channels)
-		assert.NoError(t, err)
+		result := MatchAssociations(associations, channels)
 
 		// Should only match openai-primary
-		assert.Len(t, result, 1)
-		assert.Equal(t, 1, result[0].Channel.ID)
-		assert.Equal(t, "gpt-4", result[0].Models[0].RequestModel)
+		require.Len(t, result, 1)
+		require.Equal(t, 1, result[0].Channel.ID)
+		require.Equal(t, "gpt-4", result[0].Models[0].RequestModel)
 	})
 
 	t.Run("model exclude by channel IDs", func(t *testing.T) {
@@ -467,11 +449,10 @@ func TestMatchAssociations_ExcludeChannels(t *testing.T) {
 			},
 		}
 
-		result, err := MatchAssociations(ctx, associations, channels)
-		assert.NoError(t, err)
+		result := MatchAssociations(associations, channels)
 
 		// Should exclude both openai channels, no results
-		assert.Len(t, result, 0)
+		require.Len(t, result, 0)
 	})
 
 	t.Run("exclude with both pattern and IDs", func(t *testing.T) {
@@ -491,13 +472,12 @@ func TestMatchAssociations_ExcludeChannels(t *testing.T) {
 			},
 		}
 
-		result, err := MatchAssociations(ctx, associations, channels)
-		assert.NoError(t, err)
+		result := MatchAssociations(associations, channels)
 
 		// Should only match openai-primary (channel 1)
 		// Excludes: openai-backup (by pattern), anthropic-primary (by ID)
-		assert.Len(t, result, 1)
-		assert.Equal(t, 1, result[0].Channel.ID)
+		require.Len(t, result, 1)
+		require.Equal(t, 1, result[0].Channel.ID)
 	})
 
 	t.Run("multiple exclude rules", func(t *testing.T) {
@@ -519,11 +499,10 @@ func TestMatchAssociations_ExcludeChannels(t *testing.T) {
 			},
 		}
 
-		result, err := MatchAssociations(ctx, associations, channels)
-		assert.NoError(t, err)
+		result := MatchAssociations(associations, channels)
 
 		// Should exclude all channels: 1 by pattern, 2 by ID
-		assert.Len(t, result, 0)
+		require.Len(t, result, 0)
 	})
 
 	t.Run("no exclude when list is empty", func(t *testing.T) {
@@ -538,11 +517,10 @@ func TestMatchAssociations_ExcludeChannels(t *testing.T) {
 			},
 		}
 
-		result, err := MatchAssociations(ctx, associations, channels)
-		assert.NoError(t, err)
+		result := MatchAssociations(associations, channels)
 
 		// Should match both openai channels
-		assert.Len(t, result, 2)
+		require.Len(t, result, 2)
 	})
 
 	t.Run("no exclude when nil", func(t *testing.T) {
@@ -557,17 +535,14 @@ func TestMatchAssociations_ExcludeChannels(t *testing.T) {
 			},
 		}
 
-		result, err := MatchAssociations(ctx, associations, channels)
-		assert.NoError(t, err)
+		result := MatchAssociations(associations, channels)
 
 		// Should match both openai channels
-		assert.Len(t, result, 2)
+		require.Len(t, result, 2)
 	})
 }
 
 func TestMatchAssociations_ExcludeChannelsByTags(t *testing.T) {
-	ctx := context.Background()
-
 	channels := []*Channel{
 		{
 			Channel: &ent.Channel{
@@ -623,20 +598,19 @@ func TestMatchAssociations_ExcludeChannelsByTags(t *testing.T) {
 			},
 		}
 
-		result, err := MatchAssociations(ctx, associations, channels)
-		assert.NoError(t, err)
+		result := MatchAssociations(associations, channels)
 
 		// Should exclude openai-backup (tag: backup), match others
-		assert.Len(t, result, 2)
+		require.Len(t, result, 2)
 
 		channelIDs := make([]int, 0, len(result))
 		for _, conn := range result {
 			channelIDs = append(channelIDs, conn.Channel.ID)
 		}
 
-		assert.Contains(t, channelIDs, 1)    // openai-primary
-		assert.Contains(t, channelIDs, 4)    // development-channel
-		assert.NotContains(t, channelIDs, 2) // openai-backup excluded
+		require.Contains(t, channelIDs, 1)    // openai-primary
+		require.Contains(t, channelIDs, 4)    // development-channel
+		require.NotContains(t, channelIDs, 2) // openai-backup excluded
 	})
 
 	t.Run("regex exclude by multiple channel tags", func(t *testing.T) {
@@ -655,21 +629,20 @@ func TestMatchAssociations_ExcludeChannelsByTags(t *testing.T) {
 			},
 		}
 
-		result, err := MatchAssociations(ctx, associations, channels)
-		assert.NoError(t, err)
+		result := MatchAssociations(associations, channels)
 
 		// Should exclude channels with backup or development tags
-		assert.Len(t, result, 2)
+		require.Len(t, result, 2)
 
 		channelIDs := make([]int, 0, len(result))
 		for _, conn := range result {
 			channelIDs = append(channelIDs, conn.Channel.ID)
 		}
 
-		assert.Contains(t, channelIDs, 1)    // openai-primary
-		assert.Contains(t, channelIDs, 3)    // anthropic-primary
-		assert.NotContains(t, channelIDs, 2) // openai-backup excluded
-		assert.NotContains(t, channelIDs, 4) // development-channel excluded
+		require.Contains(t, channelIDs, 1)    // openai-primary
+		require.Contains(t, channelIDs, 3)    // anthropic-primary
+		require.NotContains(t, channelIDs, 2) // openai-backup excluded
+		require.NotContains(t, channelIDs, 4) // development-channel excluded
 	})
 
 	t.Run("model exclude by channel tag", func(t *testing.T) {
@@ -688,21 +661,20 @@ func TestMatchAssociations_ExcludeChannelsByTags(t *testing.T) {
 			},
 		}
 
-		result, err := MatchAssociations(ctx, associations, channels)
-		assert.NoError(t, err)
+		result := MatchAssociations(associations, channels)
 
 		// Should exclude channels with production tag (1 and 3), match backup and development
-		assert.Len(t, result, 2)
+		require.Len(t, result, 2)
 
 		channelIDs := make([]int, 0, len(result))
 		for _, conn := range result {
 			channelIDs = append(channelIDs, conn.Channel.ID)
 		}
 
-		assert.Contains(t, channelIDs, 2)    // openai-backup
-		assert.Contains(t, channelIDs, 4)    // development-channel
-		assert.NotContains(t, channelIDs, 1) // openai-primary excluded
-		assert.NotContains(t, channelIDs, 3) // anthropic-primary excluded
+		require.Contains(t, channelIDs, 2)    // openai-backup
+		require.Contains(t, channelIDs, 4)    // development-channel
+		require.NotContains(t, channelIDs, 1) // openai-primary excluded
+		require.NotContains(t, channelIDs, 3) // anthropic-primary excluded
 	})
 
 	t.Run("exclude with tags, pattern, and IDs combined", func(t *testing.T) {
@@ -723,15 +695,14 @@ func TestMatchAssociations_ExcludeChannelsByTags(t *testing.T) {
 			},
 		}
 
-		result, err := MatchAssociations(ctx, associations, channels)
-		assert.NoError(t, err)
+		result := MatchAssociations(associations, channels)
 
 		// Should exclude:
 		// - Channel 1 and 3 by pattern (.*primary)
 		// - Channel 4 by ID
 		// - Channel 2 by tag (backup)
 		// All channels excluded, no results
-		assert.Len(t, result, 0)
+		require.Len(t, result, 0)
 	})
 
 	t.Run("multiple exclude rules with tags", func(t *testing.T) {
@@ -753,14 +724,13 @@ func TestMatchAssociations_ExcludeChannelsByTags(t *testing.T) {
 			},
 		}
 
-		result, err := MatchAssociations(ctx, associations, channels)
-		assert.NoError(t, err)
+		result := MatchAssociations(associations, channels)
 
 		// Should exclude channels with production or development tags (1, 3, 4)
 		// Only channel 2 (backup) should remain
-		assert.Len(t, result, 1)
-		assert.Equal(t, 2, result[0].Channel.ID)
-		assert.Equal(t, "openai-backup", result[0].Channel.Name)
+		require.Len(t, result, 1)
+		require.Equal(t, 2, result[0].Channel.ID)
+		require.Equal(t, "openai-backup", result[0].Channel.Name)
 	})
 
 	t.Run("exclude with non-existent tag", func(t *testing.T) {
@@ -779,11 +749,10 @@ func TestMatchAssociations_ExcludeChannelsByTags(t *testing.T) {
 			},
 		}
 
-		result, err := MatchAssociations(ctx, associations, channels)
-		assert.NoError(t, err)
+		result := MatchAssociations(associations, channels)
 
 		// Should match all channels with gpt models since no channel has the non-existent tag
-		assert.Len(t, result, 3) // channels 1, 2, 4 have gpt models
+		require.Len(t, result, 3) // channels 1, 2, 4 have gpt models
 	})
 
 	t.Run("channel with no tags", func(t *testing.T) {
@@ -813,20 +782,19 @@ func TestMatchAssociations_ExcludeChannelsByTags(t *testing.T) {
 			},
 		}
 
-		result, err := MatchAssociations(ctx, associations, channelsWithNoTags)
-		assert.NoError(t, err)
+		result := MatchAssociations(associations, channelsWithNoTags)
 
 		// Should exclude production channels (1), but include others including no-tags channel
-		assert.Len(t, result, 3) // channels 2, 4, 5
+		require.Len(t, result, 3) // channels 2, 4, 5
 
 		channelIDs := make([]int, 0, len(result))
 		for _, conn := range result {
 			channelIDs = append(channelIDs, conn.Channel.ID)
 		}
 
-		assert.Contains(t, channelIDs, 2)    // openai-backup
-		assert.Contains(t, channelIDs, 4)    // development-channel
-		assert.Contains(t, channelIDs, 5)    // no-tags-channel
-		assert.NotContains(t, channelIDs, 1) // openai-primary excluded
+		require.Contains(t, channelIDs, 2)    // openai-backup
+		require.Contains(t, channelIDs, 4)    // development-channel
+		require.Contains(t, channelIDs, 5)    // no-tags-channel
+		require.NotContains(t, channelIDs, 1) // openai-primary excluded
 	})
 }

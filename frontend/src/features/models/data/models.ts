@@ -348,6 +348,20 @@ const BULK_ENABLE_MODELS_MUTATION = `
   }
 `
 
+const QUERY_UNASSOCIATED_CHANNELS = `
+  query QueryUnassociatedChannels {
+    queryUnassociatedChannels {
+      channel {
+        id
+        name
+        type
+        status
+      }
+      models
+    }
+  }
+`
+
 interface QueryModelsArgs {
   first?: number
   after?: string
@@ -480,5 +494,28 @@ export function useBulkEnableModels() {
     onError: (error: Error) => {
       toast.error(t('models.messages.bulkEnableError', { error: error.message }))
     },
+  })
+}
+
+export interface UnassociatedChannel {
+  channel: {
+    id: string
+    name: string
+    type: string
+    status: string
+  }
+  models: string[]
+}
+
+export function useQueryUnassociatedChannels() {
+  return useQuery({
+    queryKey: ['unassociatedChannels'],
+    queryFn: async () => {
+      const data = await graphqlRequest<{ queryUnassociatedChannels: UnassociatedChannel[] }>(
+        QUERY_UNASSOCIATED_CHANNELS
+      )
+      return data.queryUnassociatedChannels
+    },
+    enabled: false,
   })
 }

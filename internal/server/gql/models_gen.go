@@ -86,8 +86,8 @@ type DashboardOverview struct {
 }
 
 type FetchModelsPayload struct {
-	Models []*objects.ModelIdentify `json:"models"`
-	Error  *string                  `json:"error,omitempty"`
+	Models []*biz.ModelIdentify `json:"models"`
+	Error  *string              `json:"error,omitempty"`
 }
 
 type HourlyRequestStats struct {

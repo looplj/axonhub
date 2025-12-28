@@ -42,7 +42,8 @@
       "bulkAdd": "Bulk Add",
       "addAssociation": "Add",
       "manageAssociation": "Manage Association",
-      "settings": "Settings"
+      "settings": "Settings",
+      "detectUnassociated": "Detect Unassociated"
     },
     "filters": {
       "filterByName": "Filter by name..."
@@ -157,6 +158,14 @@
           "description": "When enabled, models API returns all models from enabled channels. When disabled, only models with explicit Model entity configuration will be returned."
         }
       }
+    },
+    "unassociated": {
+      "title": "Unassociated Channels Detection",
+      "description": "Detect channels with models that are not associated with any model configuration",
+      "summary": "Found {{channelCount}} channels with {{modelCount}} unassociated models",
+      "noUnassociated": "All channel models are properly associated",
+      "searchPlaceholder": "Search models...",
+      "noSearchResults": "No models found matching your search"
     },
     "modelCard": {
       "title": "Model Card",

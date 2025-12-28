@@ -98,6 +98,7 @@
     "showing": "Showing {{start}}-{{end}} of {{total}}"
   },
   "common": {
+    "close": "Close",
     "refresh": "Refresh",
     "selected": "selected",
     "selectedItems": "{{count}} selected",

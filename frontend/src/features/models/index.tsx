@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SortingState } from '@tanstack/react-table'
-import { IconPlus, IconSettings } from '@tabler/icons-react'
+import { IconPlus, IconSettings, IconAlertCircle } from '@tabler/icons-react'
 import { useDebounce } from '@/hooks/use-debounce'
 import { usePaginationSearch } from '@/hooks/use-pagination-search'
 import { Header } from '@/components/layout/header'
@@ -143,9 +143,22 @@ function SettingsButton() {
   )
 }
 
+function DetectUnassociatedButton() {
+  const { t } = useTranslation()
+  const { setOpen } = useModels()
+
+  return (
+    <Button variant='outline' onClick={() => setOpen('unassociated')}>
+      <IconAlertCircle className='mr-2 h-4 w-4' />
+      {t('models.actions.detectUnassociated')}
+    </Button>
+  )
+}
+
 function ActionButtons() {
   return (
     <div className='flex gap-2'>
+      <DetectUnassociatedButton />
       <SettingsButton />
       <BulkAddButton />
       <CreateButton />

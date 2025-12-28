@@ -106,6 +106,7 @@
     "showing": "显示第 {{start}} - {{end}} 条，共 {{total}} 条"
   },
   "common": {
+    "close": "关闭",
     "refresh": "刷新",
     "selected": "已选择",
     "selectedItems": "已选择 {{count}} 项",

@@ -153,7 +153,7 @@ models:
       - github.com/looplj/axonhub/internal/objects.JSONRawMessage
   ModelIdentify:
     model:
-      - github.com/looplj/axonhub/internal/objects.ModelIdentify
+      - github.com/looplj/axonhub/internal/server/biz.ModelIdentify
   UserInfo:
     model:
       - github.com/looplj/axonhub/internal/objects.UserInfo
@@ -306,7 +306,10 @@ models:
       - github.com/looplj/axonhub/internal/server/biz.ModelChannelConnection
   ChannelModelEntry:
     model:
-      - github.com/looplj/axonhub/internal/server/biz.ChannelModelEntry    
+      - github.com/looplj/axonhub/internal/server/biz.ChannelModelEntry
+  UnassociatedChannel:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.UnassociatedChannel
   HeaderEntry:
     model:
       - github.com/looplj/axonhub/internal/objects.HeaderEntry

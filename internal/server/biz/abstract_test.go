@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"entgo.io/ent/dialect"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -41,7 +40,7 @@ func TestAbstractService_RunInTransaction(t *testing.T) {
 		require.NoError(t, err)
 
 		got := client.User.GetX(ctx, userID)
-		assert.Equal(t, userID, got.ID)
+		require.Equal(t, userID, got.ID)
 	})
 
 	t.Run("rollback on error", func(t *testing.T) {
@@ -57,17 +56,17 @@ func TestAbstractService_RunInTransaction(t *testing.T) {
 
 			return expectedErr
 		})
-		assert.ErrorIs(t, err, expectedErr)
+		require.ErrorIs(t, err, expectedErr)
 
 		count := client.User.Query().CountX(ctx)
-		assert.Equal(t, 0, count)
+		require.Equal(t, 0, count)
 	})
 
 	t.Run("rollback on panic", func(t *testing.T) {
 		client, svc, ctx := newSvc(t)
 		defer client.Close()
 
-		assert.Panics(t, func() {
+		require.Panics(t, func() {
 			_ = svc.RunInTransaction(ctx, func(txCtx context.Context) error {
 				ent.FromContext(txCtx).User.Create().
 					SetEmail("test@example.com").
@@ -78,7 +77,7 @@ func TestAbstractService_RunInTransaction(t *testing.T) {
 		})
 
 		count := client.User.Query().CountX(ctx)
-		assert.Equal(t, 0, count)
+		require.Equal(t, 0, count)
 	})
 
 	t.Run("existing tx context", func(t *testing.T) {
@@ -103,6 +102,6 @@ func TestAbstractService_RunInTransaction(t *testing.T) {
 		require.NoError(t, tx.Rollback())
 
 		count := client.User.Query().CountX(ctx)
-		assert.Equal(t, 0, count)
+		require.Equal(t, 0, count)
 	})
 }
