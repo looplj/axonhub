@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/log"
@@ -41,6 +41,31 @@ func getTraceIDFromHeader(c *gin.Context, config tracing.Config) string {
 	return ""
 }
 
+func tryGetTraceIDFromBody(c *gin.Context, config tracing.Config) (string, error) {
+	if len(config.ExtraTraceBodyFields) == 0 {
+		return "", nil
+	}
+
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read request body: %w", err)
+	}
+
+	c.Request.Body = io.NopCloser(bytes.NewReader(body))
+	if len(body) == 0 {
+		return "", nil
+	}
+
+	for _, field := range config.ExtraTraceBodyFields {
+		result := gjson.GetBytes(body, field)
+		if result.Exists() && result.String() != "" {
+			return result.String(), nil
+		}
+	}
+
+	return "", nil
+}
+
 // WithTrace is a middleware that extracts the X-Trace-ID header and
 // gets or creates the corresponding trace entity in the database.
 func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.HandlerFunc {
@@ -50,6 +75,16 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 			var err error
 
 			traceID, err = tryExtractTraceIDFromClaudeCodeRequest(c, config)
+			if err != nil {
+				AbortWithError(c, http.StatusBadRequest, err)
+				return
+			}
+		}
+
+		if traceID == "" && len(config.ExtraTraceBodyFields) > 0 {
+			var err error
+
+			traceID, err = tryGetTraceIDFromBody(c, config)
 			if err != nil {
 				AbortWithError(c, http.StatusBadRequest, err)
 				return
@@ -95,12 +130,6 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 	}
 }
 
-type claudeCodePayload struct {
-	Metadata struct {
-		UserID string `json:"user_id"`
-	} `json:"metadata"`
-}
-
 func tryExtractTraceIDFromClaudeCodeRequest(c *gin.Context, config tracing.Config) (string, error) {
 	if c.Request.Method != http.MethodPost || !strings.HasSuffix(c.Request.URL.Path, "/anthropic/v1/messages") {
 		return "", nil
@@ -115,18 +144,12 @@ func tryExtractTraceIDFromClaudeCodeRequest(c *gin.Context, config tracing.Confi
 		return "", fmt.Errorf("failed to read request body: %w", err)
 	}
 
-	// Restore the body for downstream handlers regardless of parsing outcome.
 	c.Request.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 	if len(bodyBytes) == 0 {
 		return "", nil
 	}
 
-	var payload claudeCodePayload
-	if err := json.Unmarshal(bodyBytes, &payload); err != nil {
-		return "", fmt.Errorf("failed to parse claude code payload: %w", err)
-	}
-
-	userID := payload.Metadata.UserID
+	userID := gjson.GetBytes(bodyBytes, "metadata.user_id").String()
 	if userID == "" {
 		return "", nil
 	}
