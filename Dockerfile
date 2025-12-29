@@ -16,7 +16,9 @@ COPY ./frontend .
 ENV NODE_OPTIONS="--max-old-space-size=8192"
 RUN pnpm build
 
-FROM golang:1.23-alpine AS backend-builder
+FROM golang:1.25-alpine AS backend-builder
+
+ARG TARGETARCH=amd64
 
 WORKDIR /build
 
@@ -29,7 +31,7 @@ COPY --from=frontend-builder /build/dist /build/internal/server/static/dist
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \
     GOOS=linux \
-    GOARCH=${TARGETARCH:-amd64}
+    GOARCH=${TARGETARCH}
 
 ARG VERSION=dev
 ARG BUILD_TIME
