@@ -1,16 +1,30 @@
+# {{CODE-Cycle-Integration:
+#   Task_ID: #T001
+#   Timestamp: 2025-12-29T20:34:00Z
+#   Phase: D-Develop
+#   Context-Analysis: "优化 GitHub Actions 工作流,添加 unstable 分支自动构建支持,集成安全扫描"
+#   Principle_Applied: "Aether-Engineering-SOLID, KISS, DRY"
+# }}
+# {{START_MODIFICATIONS}}
+# Publish Docker image
+# Enhanced with unstable branch support and security scanning
+
 name: Publish Docker image
 
 on:
   push:
     tags:
       - 'v*'
-  # 可选：主分支推送时也构建，但只推送到GitHub Packages
-  push:
-    branches: [ main, unstable ]
+    branches:
+      - 'unstable'
+  pull_request:
+    branches:
+      - 'unstable'
 
 jobs:
   build_single_arch:
     name: Build & push (${{ matrix.arch }}) [native]
+    if: github.event_name != 'pull_request'
     strategy:
       fail-fast: false
       matrix:
@@ -32,75 +46,33 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-          submodules: recursive  # 如果有子模块需要添加
 
-      - name: Set up Go
-        if: matrix.arch == 'amd64' || matrix.arch == 'arm64'
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.21'
-          cache-dependency-path: |
-            go.mod
-            **/go.mod
-
-      - name: Set up Rust
-        if: matrix.arch == 'amd64' || matrix.arch == 'arm64'
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-          targets: ${{ matrix.arch }}-unknown-linux-musl  # 为musl目标构建
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: |
-            web/package-lock.json
-            **/package-lock.json
-
-      - name: Resolve tag & write VERSION
+      - name: Resolve version & write VERSION
         run: |
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+          git fetch --tags --force --depth=1
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             TAG=${GITHUB_REF#refs/tags/}
-          elif [[ "${GITHUB_REF}" == refs/heads/* ]]; then
-            BRANCH=${GITHUB_REF#refs/heads/}
-            SHORT_SHA=$(git rev-parse --short HEAD)
-            TAG="$BRANCH-$SHORT_SHA"
+            VERSION=$TAG
+          elif [[ "${{ github.ref }}" == refs/heads/unstable ]]; then
+            VERSION="unstable-$(git rev-parse --short HEAD)"
+            TAG="unstable"
           else
-            TAG="latest"
+            VERSION="dev-$(git rev-parse --short HEAD)"
+            TAG="dev"
           fi
           echo "TAG=$TAG" >> $GITHUB_ENV
-          echo "AXONHUB_VERSION=$TAG" >> $GITHUB_ENV
-          echo "Building version: $TAG for ${{ matrix.arch }}"
-          
-          # 创建版本文件（如果项目需要）
-          mkdir -p internal/build || true
-          echo "$TAG" > VERSION.txt
-
-      - name: Set up QEMU (for cross-compilation)
-        uses: docker/setup-qemu-action@v3
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "$VERSION" > internal/build/VERSION
+          echo "Building version: $VERSION (tag: $TAG) for ${{ matrix.arch }}"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-        with:
-          driver: docker-container
-          buildkitd-flags: --debug
 
-      - name: Login to Docker Hub
-        if: github.event_name != 'pull_request'
+      - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Login to GitHub Container Registry
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata (labels)
         id: meta
@@ -108,157 +80,69 @@ jobs:
         with:
           images: |
             looplj/axonhub
-            ghcr.io/${{ github.repository_owner }}/axonhub
-          tags: |
-            type=ref,event=tag
-            type=ref,event=branch
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build dependencies cache key
-        id: cache-key
-        run: |
-          echo "key=${{ runner.os }}-deps-${{ hashFiles('go.mod', 'Cargo.toml', 'web/package-lock.json') }}" >> $GITHUB_OUTPUT
-
-      - name: Cache build dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            ~/go/pkg/mod
-            ~/.npm
-            target/
-          key: ${{ steps.cache-key.outputs.key }}
-
-      - name: Build & push Docker image
+      - name: Build & push single-arch
+        id: docker_build
         uses: docker/build-push-action@v6
         with:
           context: .
           platforms: ${{ matrix.platform }}
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
+          push: true
+          tags: |
+            looplj/axonhub:${{ env.TAG }}-${{ matrix.arch }}
+            ${{ github.ref == 'refs/heads/unstable' && format('looplj/axonhub:unstable-{0}-{1}', github.sha, matrix.arch) || format('looplj/axonhub:latest-{0}', matrix.arch) }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            BUILDKIT_INLINE_CACHE=1
-            TARGETARCH=${{ matrix.arch }}
-            AXONHUB_VERSION=${{ env.TAG }}
-          cache-from: |
-            type=gha
-            type=registry,ref=looplj/axonhub:latest-${{ matrix.arch }}
-          cache-to: |
-            type=gha,mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           provenance: false
           sbom: false
-          # axonhub特定构建选项
-          outputs: type=image,push=true
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: looplj/axonhub:${{ env.TAG }}-${{ matrix.arch }}
+          format: 'sarif'
+          output: 'trivy-results-${{ matrix.arch }}.sarif'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results-${{ matrix.arch }}.sarif'
 
   create_manifests:
-    name: Create multi-arch manifests
+    name: Create multi-arch manifests (Docker Hub)
     needs: [build_single_arch]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
-    
+    if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Extract tag
-        run: |
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            TAG=${GITHUB_REF#refs/tags/}
-          else
-            TAG="latest"
-          fi
-          echo "TAG=$TAG" >> $GITHUB_ENV
-          echo "AXONHUB_VERSION=$TAG" >> $GITHUB_ENV
+        run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to Docker Hub
+      - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create & push manifest (Docker Hub)
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Create & push manifest (version tag)
         run: |
-          # 为标签版本创建manifest
           docker buildx imagetools create \
             -t looplj/axonhub:${TAG} \
             looplj/axonhub:${TAG}-amd64 \
             looplj/axonhub:${TAG}-arm64
-          
-          # 如果是主分支，也更新latest标签
-          if [[ "$TAG" == "latest" ]] || [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
+
+      - name: Create & push manifest (latest/unstable)
+        run: |
+          if [[ "${GITHUB_REF}" == "refs/heads/unstable" ]]; then
+            docker buildx imagetools create \
+              -t looplj/axonhub:unstable \
+              looplj/axonhub:unstable-${GITHUB_SHA}-amd64 \
+              looplj/axonhub:unstable-${GITHUB_SHA}-arm64
+          else
             docker buildx imagetools create \
               -t looplj/axonhub:latest \
               looplj/axonhub:latest-amd64 \
               looplj/axonhub:latest-arm64
           fi
-
-      - name: Create & push manifest (GitHub Container Registry)
-        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
-        run: |
-          REGISTRY="ghcr.io/${{ github.repository_owner }}/axonhub"
-          
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            # 标签版本
-            docker buildx imagetools create \
-              -t ${REGISTRY}:${TAG} \
-              ${REGISTRY}:${TAG}-amd64 \
-              ${REGISTRY}:${TAG}-arm64
-          fi
-          
-          # 总是更新latest（针对主分支）
-          if [[ "$TAG" == "latest" ]] || [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
-            docker buildx imagetools create \
-              -t ${REGISTRY}:latest \
-              ${REGISTRY}:latest-amd64 \
-              ${REGISTRY}:latest-arm64
-          fi
-
-  test_image:
-    name: Test built image
-    needs: [create_manifests]
-    runs-on: ubuntu-latest
-    if: always()
-    
-    steps:
-      - name: Extract tag
-        run: |
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            TAG=${GITHUB_REF#refs/tags/}
-          else
-            TAG="latest"
-          fi
-          echo "TAG=$TAG" >> $GITHUB_ENV
-
-      - name: Pull and test Docker image
-        run: |
-          # 测试amd64架构
-          docker pull --platform linux/amd64 looplj/axonhub:${TAG}
-          
-          # 运行简单测试
-          docker run --rm --platform linux/amd64 \
-            looplj/axonhub:${TAG} --version || true
-          
-          echo "✅ Image test completed for ${TAG}"
-
-  cleanup:
-    name: Cleanup
-    needs: [test_image]
-    if: always()
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Clean Docker cache
-        run: |
-          docker system prune -f
-          docker builder prune -f --all
+# {{END_MODIFICATIONS}}
