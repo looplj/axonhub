@@ -1,13 +1,12 @@
-# Publish Docker image
-# Copy from new-api 
-# https://github.com/QuantumNous/new-api/blob/main/.github/workflows/docker-image-arm64.yml
-
 name: Publish Docker image
 
 on:
   push:
     tags:
       - 'v*'
+  # 可选：主分支推送时也构建，但只推送到GitHub Packages
+  push:
+    branches: [ main, unstable ]
 
 jobs:
   build_single_arch:
@@ -33,23 +32,75 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          submodules: recursive  # 如果有子模块需要添加
+
+      - name: Set up Go
+        if: matrix.arch == 'amd64' || matrix.arch == 'arm64'
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache-dependency-path: |
+            go.mod
+            **/go.mod
+
+      - name: Set up Rust
+        if: matrix.arch == 'amd64' || matrix.arch == 'arm64'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: ${{ matrix.arch }}-unknown-linux-musl  # 为musl目标构建
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: |
+            web/package-lock.json
+            **/package-lock.json
 
       - name: Resolve tag & write VERSION
         run: |
-          git fetch --tags --force --depth=1
-          TAG=${GITHUB_REF#refs/tags/}
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG=${GITHUB_REF#refs/tags/}
+          elif [[ "${GITHUB_REF}" == refs/heads/* ]]; then
+            BRANCH=${GITHUB_REF#refs/heads/}
+            SHORT_SHA=$(git rev-parse --short HEAD)
+            TAG="$BRANCH-$SHORT_SHA"
+          else
+            TAG="latest"
+          fi
           echo "TAG=$TAG" >> $GITHUB_ENV
-          echo "$TAG" > internal/build/VERSION
-          echo "Building tag: $TAG for ${{ matrix.arch }}"
+          echo "AXONHUB_VERSION=$TAG" >> $GITHUB_ENV
+          echo "Building version: $TAG for ${{ matrix.arch }}"
+          
+          # 创建版本文件（如果项目需要）
+          mkdir -p internal/build || true
+          echo "$TAG" > VERSION.txt
+
+      - name: Set up QEMU (for cross-compilation)
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
+          buildkitd-flags: --debug
 
-      - name: Log in to Docker Hub
+      - name: Login to Docker Hub
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata (labels)
         id: meta
@@ -57,47 +108,157 @@ jobs:
         with:
           images: |
             looplj/axonhub
+            ghcr.io/${{ github.repository_owner }}/axonhub
+          tags: |
+            type=ref,event=tag
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build & push single-arch (to both registries)
+      - name: Build dependencies cache key
+        id: cache-key
+        run: |
+          echo "key=${{ runner.os }}-deps-${{ hashFiles('go.mod', 'Cargo.toml', 'web/package-lock.json') }}" >> $GITHUB_OUTPUT
+
+      - name: Cache build dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/go/pkg/mod
+            ~/.npm
+            target/
+          key: ${{ steps.cache-key.outputs.key }}
+
+      - name: Build & push Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
           platforms: ${{ matrix.platform }}
-          push: true
-          tags: |
-            looplj/axonhub:${{ env.TAG }}-${{ matrix.arch }}
-            looplj/axonhub:latest-${{ matrix.arch }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+            TARGETARCH=${{ matrix.arch }}
+            AXONHUB_VERSION=${{ env.TAG }}
+          cache-from: |
+            type=gha
+            type=registry,ref=looplj/axonhub:latest-${{ matrix.arch }}
+          cache-to: |
+            type=gha,mode=max
           provenance: false
           sbom: false
+          # axonhub特定构建选项
+          outputs: type=image,push=true
 
   create_manifests:
-    name: Create multi-arch manifests (Docker Hub)
+    name: Create multi-arch manifests
     needs: [build_single_arch]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
+    
     steps:
       - name: Extract tag
-        run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG=${GITHUB_REF#refs/tags/}
+          else
+            TAG="latest"
+          fi
+          echo "TAG=$TAG" >> $GITHUB_ENV
+          echo "AXONHUB_VERSION=$TAG" >> $GITHUB_ENV
 
-      - name: Log in to Docker Hub
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Create & push manifest (Docker Hub - version)
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create & push manifest (Docker Hub)
+        if: startsWith(github.ref, 'refs/tags/')
         run: |
+          # 为标签版本创建manifest
           docker buildx imagetools create \
             -t looplj/axonhub:${TAG} \
             looplj/axonhub:${TAG}-amd64 \
             looplj/axonhub:${TAG}-arm64
+          
+          # 如果是主分支，也更新latest标签
+          if [[ "$TAG" == "latest" ]] || [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
+            docker buildx imagetools create \
+              -t looplj/axonhub:latest \
+              looplj/axonhub:latest-amd64 \
+              looplj/axonhub:latest-arm64
+          fi
 
-      - name: Create & push manifest (Docker Hub - latest)
+      - name: Create & push manifest (GitHub Container Registry)
+        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
         run: |
-          docker buildx imagetools create \
-            -t looplj/axonhub:latest \
-            looplj/axonhub:latest-amd64 \
-            looplj/axonhub:latest-arm64
+          REGISTRY="ghcr.io/${{ github.repository_owner }}/axonhub"
+          
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            # 标签版本
+            docker buildx imagetools create \
+              -t ${REGISTRY}:${TAG} \
+              ${REGISTRY}:${TAG}-amd64 \
+              ${REGISTRY}:${TAG}-arm64
+          fi
+          
+          # 总是更新latest（针对主分支）
+          if [[ "$TAG" == "latest" ]] || [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
+            docker buildx imagetools create \
+              -t ${REGISTRY}:latest \
+              ${REGISTRY}:latest-amd64 \
+              ${REGISTRY}:latest-arm64
+          fi
+
+  test_image:
+    name: Test built image
+    needs: [create_manifests]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Extract tag
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG=${GITHUB_REF#refs/tags/}
+          else
+            TAG="latest"
+          fi
+          echo "TAG=$TAG" >> $GITHUB_ENV
+
+      - name: Pull and test Docker image
+        run: |
+          # 测试amd64架构
+          docker pull --platform linux/amd64 looplj/axonhub:${TAG}
+          
+          # 运行简单测试
+          docker run --rm --platform linux/amd64 \
+            looplj/axonhub:${TAG} --version || true
+          
+          echo "✅ Image test completed for ${TAG}"
+
+  cleanup:
+    name: Cleanup
+    needs: [test_image]
+    if: always()
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Clean Docker cache
+        run: |
+          docker system prune -f
+          docker builder prune -f --all
