@@ -64,6 +64,19 @@ function filterProviders(data, allowedIds) {
   return { providers: filtered };
 }
 
+function sortModelsByDate(data) {
+  for (const provider of Object.values(data.providers)) {
+    if (provider.models && Array.isArray(provider.models)) {
+      provider.models.sort((a, b) => {
+        const dateA = a.release_date ? new Date(a.release_date) : new Date(0);
+        const dateB = b.release_date ? new Date(b.release_date) : new Date(0);
+        return dateB - dateA;
+      });
+    }
+  }
+  return data;
+}
+
 async function main() {
   try {
     console.log('Fetching model developers data from:', SOURCE_URL);
@@ -78,6 +91,9 @@ async function main() {
     
     const providerCount = Object.keys(filtered.providers).length;
     console.log(`Filtered to ${providerCount} providers`);
+    
+    console.log('Sorting models by release date...');
+    sortModelsByDate(filtered);
     
     console.log('Writing to:', OUTPUT_PATH);
     fs.writeFileSync(OUTPUT_PATH, JSON.stringify(filtered, null, 2) + '\n');
