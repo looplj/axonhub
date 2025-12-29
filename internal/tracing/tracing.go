@@ -28,6 +28,11 @@ type Config struct {
 	// Default to nil.
 	ExtraTraceHeaders []string `conf:"extra_trace_headers" yaml:"extra_trace_headers" json:"extra_trace_headers"`
 
+	// ExtraTraceBodyFields is the extra body fields names for trace ID.
+	// It will use if primary trace header is not found in request body.
+	// Default to nil.
+	ExtraTraceBodyFields []string `conf:"extra_trace_body_fields" yaml:"extra_trace_body_fields" json:"extra_trace_body_fields"`
+
 	// ClaudeCodeTraceEnabled enables extracting trace IDs from Claude Code request metadata.
 	// Default to false.
 	ClaudeCodeTraceEnabled bool `conf:"claude_code_trace_enabled" yaml:"claude_code_trace_enabled" json:"claude_code_trace_enabled"`

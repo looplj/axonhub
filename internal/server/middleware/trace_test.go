@@ -534,3 +534,222 @@ func TestWithTraceID_Idempotent(t *testing.T) {
 	// Should return the same trace
 	require.Equal(t, trace1.ID, trace2.ID)
 }
+
+func TestWithTrace_ExtraTraceBodyFields(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	config := tracing.Config{
+		ExtraTraceBodyFields: []string{"trace_id", "metadata.trace_id"},
+	}
+
+	router, client, traceService := setupTestTraceMiddleware(t)
+	defer client.Close()
+
+	ctx := privacy.DecisionContext(httptest.NewRequest(http.MethodGet, "/", nil).Context(), privacy.Allow)
+	ctx = ent.NewContext(ctx, client)
+
+	// Create a test project
+	testProject, err := client.Project.Create().
+		SetName("test-project").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	router.Use(func(c *gin.Context) {
+		ctx := privacy.DecisionContext(c.Request.Context(), privacy.Allow)
+		ctx = ent.NewContext(ctx, client)
+		ctx = contexts.WithProjectID(ctx, testProject.ID)
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.Use(WithTrace(config, traceService))
+
+	var capturedBody []byte
+
+	router.POST("/test", func(c *gin.Context) {
+		genericReq, err := httpclient.ReadHTTPRequest(c.Request)
+		require.NoError(t, err)
+
+		capturedBody = genericReq.Body
+
+		trace, ok := contexts.GetTrace(c.Request.Context())
+		require.True(t, ok)
+		require.Equal(t, "trace-from-body-123", trace.TraceID)
+
+		c.Status(http.StatusOK)
+	})
+
+	payload := map[string]any{
+		"trace_id": "trace-from-body-123",
+		"message":  "test",
+	}
+	body, err := json.Marshal(payload)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodPost, "/test", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.JSONEq(t, string(body), string(capturedBody))
+}
+
+func TestWithTrace_ExtraTraceBodyFields_Nested(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	config := tracing.Config{
+		ExtraTraceBodyFields: []string{"metadata.trace_id"},
+	}
+
+	router, client, traceService := setupTestTraceMiddleware(t)
+	defer client.Close()
+
+	ctx := privacy.DecisionContext(httptest.NewRequest(http.MethodGet, "/", nil).Context(), privacy.Allow)
+	ctx = ent.NewContext(ctx, client)
+
+	// Create a test project
+	testProject, err := client.Project.Create().
+		SetName("test-project").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	router.Use(func(c *gin.Context) {
+		ctx := privacy.DecisionContext(c.Request.Context(), privacy.Allow)
+		ctx = ent.NewContext(ctx, client)
+		ctx = contexts.WithProjectID(ctx, testProject.ID)
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.Use(WithTrace(config, traceService))
+
+	var capturedBody []byte
+
+	router.POST("/test", func(c *gin.Context) {
+		genericReq, err := httpclient.ReadHTTPRequest(c.Request)
+		require.NoError(t, err)
+
+		capturedBody = genericReq.Body
+
+		trace, ok := contexts.GetTrace(c.Request.Context())
+		require.True(t, ok)
+		require.Equal(t, "nested-trace-456", trace.TraceID)
+
+		c.Status(http.StatusOK)
+	})
+
+	payload := map[string]any{
+		"metadata": map[string]any{
+			"trace_id": "nested-trace-456",
+		},
+		"message": "test",
+	}
+	body, err := json.Marshal(payload)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodPost, "/test", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.JSONEq(t, string(body), string(capturedBody))
+}
+
+func TestWithTrace_ExtraTraceBodyFields_Priority(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	config := tracing.Config{
+		TraceHeader:          "AH-Trace-Id",
+		ExtraTraceBodyFields: []string{"trace_id"},
+	}
+
+	router, client, traceService := setupTestTraceMiddleware(t)
+	defer client.Close()
+
+	ctx := privacy.DecisionContext(httptest.NewRequest(http.MethodGet, "/", nil).Context(), privacy.Allow)
+	ctx = ent.NewContext(ctx, client)
+
+	// Create a test project
+	testProject, err := client.Project.Create().
+		SetName("test-project").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	router.Use(func(c *gin.Context) {
+		ctx := privacy.DecisionContext(c.Request.Context(), privacy.Allow)
+		ctx = ent.NewContext(ctx, client)
+		ctx = contexts.WithProjectID(ctx, testProject.ID)
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.Use(WithTrace(config, traceService))
+
+	router.POST("/test", func(c *gin.Context) {
+		trace, ok := contexts.GetTrace(c.Request.Context())
+		require.True(t, ok)
+		require.Equal(t, "header-trace-789", trace.TraceID)
+
+		c.Status(http.StatusOK)
+	})
+
+	payload := map[string]any{
+		"trace_id": "body-trace-789",
+		"message":  "test",
+	}
+	body, err := json.Marshal(payload)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodPost, "/test", bytes.NewReader(body))
+	req.Header.Set("Ah-Trace-Id", "header-trace-789")
+
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestWithTrace_ExtraTraceBodyFields_InvalidJSON(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	config := tracing.Config{
+		ExtraTraceBodyFields: []string{"trace_id"},
+	}
+
+	router, client, traceService := setupTestTraceMiddleware(t)
+	defer client.Close()
+
+	ctx := privacy.DecisionContext(httptest.NewRequest(http.MethodGet, "/", nil).Context(), privacy.Allow)
+	ctx = ent.NewContext(ctx, client)
+
+	// Create a test project
+	testProject, err := client.Project.Create().
+		SetName("test-project").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	router.Use(func(c *gin.Context) {
+		ctx := privacy.DecisionContext(c.Request.Context(), privacy.Allow)
+		ctx = ent.NewContext(ctx, client)
+		ctx = contexts.WithProjectID(ctx, testProject.ID)
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.Use(WithTrace(config, traceService))
+
+	router.GET("/test", func(c *gin.Context) {
+		_, ok := contexts.GetTrace(c.Request.Context())
+		c.JSON(200, gin.H{"has_trace": ok})
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+}
