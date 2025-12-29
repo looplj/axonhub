@@ -43,10 +43,6 @@ jobs:
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
 
-    permissions:
-      packages: write
-      contents: read
-
     steps:
       - name: Check out (shallow)
         uses: actions/checkout@v4
