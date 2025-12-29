@@ -1,5 +1,4 @@
 import { useMemo, useState, useEffect } from 'react'
-import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -60,12 +59,7 @@ export function TraceDrawer({ open, onOpenChange, traceId }: TraceDrawerProps) {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side='right' className='w-full sm:max-w-[min(90vw,calc(100vw-400px))] p-0'>
         <SheetHeader className='border-b px-6 py-4'>
-          <div className='flex items-center justify-between'>
-            <SheetTitle>{t('traces.detail.title')}</SheetTitle>
-            <Button variant='ghost' size='sm' onClick={() => onOpenChange(false)}>
-              <X className='h-4 w-4' />
-            </Button>
-          </div>
+          <SheetTitle>{t('traces.detail.title')}</SheetTitle>
         </SheetHeader>
 
         {isLoading ? (
