@@ -56,12 +56,23 @@ type TopRequestsProjects {
   requestCount: Int!
 }
 
+type ChannelSuccessRate {
+  channelId: ID!
+  channelName: String!
+  channelType: String!
+  successCount: Int!
+  failedCount: Int!
+  totalCount: Int!
+  successRate: Float!
+}
+
 extend type Query {
   dashboardOverview: DashboardOverview!
   requestStats: RequestStats!
   requestStatsByChannel: [RequestStatsByChannel!]!
   requestStatsByModel: [RequestStatsByModel!]!
-  dailyRequestStats(days: Int = 30): [DailyRequestStats!]!
-  topRequestsProjects(limit: Int = 10): [TopRequestsProjects!]!
+  dailyRequestStats: [DailyRequestStats!]!
+  topRequestsProjects: [TopRequestsProjects!]!
   tokenStats: TokenStats!
+  channelSuccessRates: [ChannelSuccessRate!]!
 }

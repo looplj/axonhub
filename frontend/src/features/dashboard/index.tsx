@@ -8,7 +8,7 @@ import { DailyRequestStats } from './components/daily-requests-stats'
 import { RequestsByChannelChart } from './components/requests-by-channel-chart'
 import { RequestsByModelChart } from './components/requests-by-model-chart'
 import { TokenStatsCard } from './components/token-stats-card'
-import { TopProjects } from './components/top-projects'
+import { ChannelSuccessRate } from './components/channel-success-rate'
 import { OverviewCard } from './components/overview-card'
 import { RequestsByTimeCard } from './components/requests-by-time-card'
 import { useDashboardStats } from './data/dashboard'
@@ -76,11 +76,11 @@ export default function DashboardPage() {
             </Card>
             <Card className='col-span-3'>
               <CardHeader>
-                <CardTitle>{t('dashboard.charts.topProjects')}</CardTitle>
-                <CardDescription>{t('dashboard.stats.projectsWithMostRequests')}</CardDescription>
+                <CardTitle>{t('dashboard.charts.channelSuccessRate')}</CardTitle>
+                <CardDescription>{t('dashboard.charts.channelSuccessRateDescription')}</CardDescription>
               </CardHeader>
               <CardContent>
-                <TopProjects />
+                <ChannelSuccessRate />
               </CardContent>
             </Card>
           </div>

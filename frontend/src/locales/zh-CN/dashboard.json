@@ -17,6 +17,7 @@
       "topProjects": "活跃项目",
       "requestsByChannel": "按渠道分组的请求",
       "requestsByModel": "按模型分组的请求",
+      "channelSuccessRate": "渠道成功率",
       "errorLoadingChart": "加载图表数据失败:",
       "errorLoadingTopUsers": "加载活跃用户失败:",
       "errorLoadingTopProjects": "加载活跃项目失败:",
@@ -27,7 +28,8 @@
       "noChannelData": "暂无渠道数据",
       "noModelData": "暂无模型数据",
       "requestsByChannelDescription": "不同渠道的请求分布情况。",
-      "requestsByModelDescription": "不同AI模型的请求分布情况。"
+      "requestsByModelDescription": "不同AI模型的请求分布情况。",
+      "channelSuccessRateDescription": "不同渠道的请求成功率情况。"
     },
     "stats": {
       "totalUsersInSystem": "系统总用户数",

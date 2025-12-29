@@ -45,6 +45,16 @@ export const topProjectsSchema = z.object({
   requestCount: z.number(),
 })
 
+export const channelSuccessRateSchema = z.object({
+  channelId: z.string(),
+  channelName: z.string(),
+  channelType: z.string(),
+  successCount: z.number(),
+  failedCount: z.number(),
+  totalCount: z.number(),
+  successRate: z.number(),
+})
+
 export type RequestStats = z.infer<typeof requestStatsSchema>
 export type DashboardStats = z.infer<typeof dashboardStatsSchema>
 export type RequestsByChannel = z.infer<typeof requestsByChannelSchema>
@@ -52,6 +62,7 @@ export type RequestsByModel = z.infer<typeof requestsByModelSchema>
 export type DailyRequestStats = z.infer<typeof dailyRequestStatsSchema>
 export type HourlyRequestStats = z.infer<typeof hourlyRequestStatsSchema>
 export type TopProjects = z.infer<typeof topProjectsSchema>
+export type ChannelSuccessRate = z.infer<typeof channelSuccessRateSchema>
 
 export const tokenStatsSchema = z.object({
   totalInputTokensToday: z.number(),
@@ -104,8 +115,8 @@ const REQUESTS_BY_MODEL_QUERY = `
 `
 
 const DAILY_REQUEST_STATS_QUERY = `
-  query GetDailyRequestStats($days: Int) {
-    dailyRequestStats(days: $days) {
+  query GetDailyRequestStats {
+    dailyRequestStats {
       date
       count
     }
@@ -122,12 +133,26 @@ const HOURLY_REQUEST_STATS_QUERY = `
 `
 
 const TOP_PROJECTS_QUERY = `
-  query GetTopProjects($limit: Int) {
-    topRequestsProjects(limit: $limit) {
+  query GetTopProjects {
+    topRequestsProjects {
       projectId
       projectName
       projectDescription
       requestCount
+    }
+  }
+`
+
+const CHANNEL_SUCCESS_RATES_QUERY = `
+  query GetChannelSuccessRates {
+    channelSuccessRates {
+      channelId
+      channelName
+      channelType
+      successCount
+      failedCount
+      totalCount
+      successRate
     }
   }
 `
@@ -191,13 +216,12 @@ export function useRequestsByModel() {
   })
 }
 
-export function useDailyRequestStats(days?: number) {
+export function useDailyRequestStats() {
   return useQuery({
-    queryKey: ['dailyRequestStats', days],
+    queryKey: ['dailyRequestStats'],
     queryFn: async () => {
       const data = await graphqlRequest<{ dailyRequestStats: DailyRequestStats[] }>(
-        DAILY_REQUEST_STATS_QUERY,
-        { days }
+        DAILY_REQUEST_STATS_QUERY
       )
       return data.dailyRequestStats.map(item => dailyRequestStatsSchema.parse(item))
     },
@@ -219,13 +243,12 @@ export function useHourlyRequestStats(date?: string) {
   })
 }
 
-export function useTopProjects(limit?: number) {
+export function useTopProjects() {
   return useQuery({
-    queryKey: ['topRequestsProjects', limit],
+    queryKey: ['topRequestsProjects'],
     queryFn: async () => {
       const data = await graphqlRequest<{ topRequestsProjects: TopProjects[] }>(
-        TOP_PROJECTS_QUERY,
-        { limit }
+        TOP_PROJECTS_QUERY
       )
       return data.topRequestsProjects.map(item => topProjectsSchema.parse(item))
     },
@@ -241,5 +264,18 @@ export function useTokenStats() {
       return tokenStatsSchema.parse(data.tokenStats)
     },
     refetchInterval: 300000, // Refetch every 5 minutes
+  })
+}
+
+export function useChannelSuccessRates() {
+  return useQuery({
+    queryKey: ['channelSuccessRates'],
+    queryFn: async () => {
+      const data = await graphqlRequest<{ channelSuccessRates: ChannelSuccessRate[] }>(
+        CHANNEL_SUCCESS_RATES_QUERY
+      )
+      return data.channelSuccessRates.map(item => channelSuccessRateSchema.parse(item))
+    },
+    refetchInterval: 300000,
   })
 }

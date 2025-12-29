@@ -8,7 +8,7 @@ import { useDailyRequestStats } from '../data/dashboard'
 
 export function DailyRequestStats() {
   const { t } = useTranslation()
-  const { data: dailyStats, isLoading, error } = useDailyRequestStats(30)
+  const { data: dailyStats, isLoading, error } = useDailyRequestStats()
 
   if (isLoading) {
     return (

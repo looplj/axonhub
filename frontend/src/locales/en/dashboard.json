@@ -17,6 +17,7 @@
       "topProjects": "Top Projects",
       "requestsByChannel": "Requests by Channel",
       "requestsByModel": "Requests by Model",
+      "channelSuccessRate": "Channel Success Rate",
       "errorLoadingChart": "Error loading chart data:",
       "errorLoadingTopUsers": "Error loading top users:",
       "errorLoadingTopProjects": "Error loading top projects:",
@@ -27,7 +28,8 @@
       "noChannelData": "No channel data available",
       "noModelData": "No model data available",
       "requestsByChannelDescription": "Distribution of requests across different channels.",
-      "requestsByModelDescription": "Distribution of requests across different AI models."
+      "requestsByModelDescription": "Distribution of requests across different AI models.",
+      "channelSuccessRateDescription": "Success rate of requests across different channels."
     },
     "stats": {
       "totalUsersInSystem": "Total users in system",
