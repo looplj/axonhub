@@ -140,6 +140,7 @@ func WriteGeminiSSEStream(c *gin.Context, stream streams.Stream[*httpclient.Stre
 				cur := stream.Current()
 				c.SSEvent(cur.Type, prependSpace(cur.Data))
 				log.Debug(ctx, "write stream event", log.Any("event", cur))
+				c.Writer.Flush()
 			} else {
 				if stream.Err() != nil {
 					log.Error(ctx, "Error in stream", log.Cause(stream.Err()))
