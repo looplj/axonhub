@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/samber/lo"
@@ -194,16 +195,36 @@ type GeminiModelResponse struct {
 	Description string `json:"description"`
 }
 
-// parseModelsResponse parses the models response from the provider API.
-func (f *ModelFetcher) parseModelsResponse(body []byte) ([]ModelIdentify, error) {
-	// Most providers use OpenAI-compatible format
-	var response struct {
-		Data   []ModelIdentify       `json:"data"`
-		Models []GeminiModelResponse `json:"models"`
+type commonModelsResponse struct {
+	Data   []ModelIdentify       `json:"data"`
+	Models []GeminiModelResponse `json:"models"`
+}
+
+var jsonArrayRegex = regexp.MustCompile(`\[[^\]]*\]`)
+
+// ExtractJSONArray uses regex to extract JSON array from body and unmarshal to target.
+func ExtractJSONArray(body []byte, target interface{}) error {
+	matches := jsonArrayRegex.FindAll(body, -1)
+	if len(matches) == 0 {
+		return fmt.Errorf("no JSON array found in response")
 	}
 
+	for _, match := range matches {
+		if err := json.Unmarshal(match, target); err == nil {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("failed to unmarshal any JSON array")
+}
+
+// parseModelsResponse parses the models response from the provider API.
+func (f *ModelFetcher) parseModelsResponse(body []byte) ([]ModelIdentify, error) {
+	var response commonModelsResponse
 	if err := json.Unmarshal(body, &response); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+		if err := ExtractJSONArray(body, &response.Data); err != nil {
+			return nil, fmt.Errorf("failed to parse response: %w", err)
+		}
 	}
 
 	if len(response.Models) > 0 {
