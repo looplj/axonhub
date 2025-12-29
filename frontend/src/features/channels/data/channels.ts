@@ -530,6 +530,8 @@ export function useQueryChannels(
       variables?.orderBy?.direction,
       variables?.hasTag,
       variables?.model,
+      variables?.first,
+      variables?.last,
       variables?.after,
       variables?.before,
     ],

@@ -11,7 +11,16 @@ import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter'
 import { DateRangePicker } from '@/components/date-range-picker'
 import { useMe } from '@/features/auth/data/auth'
 import { useQueryChannels } from '@/features/channels/data/channels'
+import { useApiKeys } from '@/features/apikeys/data'
 import { RequestStatus } from '../data/schema'
+
+interface ApiKeyEdge {
+  node: {
+    id: string
+    name: string
+  }
+  cursor: string
+}
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>
@@ -19,34 +28,43 @@ interface DataTableToolbarProps<TData> {
   onDateRangeChange?: (range: DateRange | undefined) => void
   onRefresh?: () => void
   showRefresh?: boolean
+  apiKeyFilter?: string[]
+  onApiKeyFilterChange?: (filters: string[]) => void
 }
 
-export function DataTableToolbar<TData>({ table, dateRange, onDateRangeChange, onRefresh, showRefresh = false }: DataTableToolbarProps<TData>) {
+export function DataTableToolbar<TData>({ table, dateRange, onDateRangeChange, onRefresh, showRefresh = false, apiKeyFilter, onApiKeyFilterChange }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation()
   const isFiltered = table.getState().columnFilters.length > 0 || !!dateRange
 
-  // Get current user and permissions
   const { user: authUser } = useAuthStore((state) => state.auth)
   const { data: meData } = useMe()
   const user = meData || authUser
   const userScopes = user?.scopes || []
   const isOwner = user?.isOwner || false
 
-  // Check if user has permission to view channels
   const canViewChannels = isOwner || userScopes.includes('*') || userScopes.includes('read_channels')
+  const canViewApiKeys = isOwner || userScopes.includes('*') || userScopes.includes('read_api_keys')
 
-  // Fetch channels data if user has permission
   const { data: channelsData } = useQueryChannels(
     {
       first: 100,
       orderBy: { field: 'CREATED_AT', direction: 'DESC' },
     },
     {
-      disableAutoFetch: !canViewChannels, // Disable auto-fetch if user doesn't have permission
+      disableAutoFetch: !canViewChannels,
     }
   )
 
-  // Prepare channel options for filter
+  const { data: apiKeysData } = useApiKeys(
+    {
+      first: 100,
+      orderBy: { field: 'CREATED_AT', direction: 'DESC' },
+    },
+    {
+      disableAutoFetch: !canViewApiKeys,
+    }
+  )
+
   const channelOptions = useMemo(() => {
     if (!canViewChannels || !channelsData?.edges) return []
 
@@ -55,6 +73,15 @@ export function DataTableToolbar<TData>({ table, dateRange, onDateRangeChange, o
       label: edge.node.name,
     }))
   }, [canViewChannels, channelsData])
+
+  const apiKeyOptions = useMemo(() => {
+    if (!canViewApiKeys || !apiKeysData?.edges) return []
+
+    return apiKeysData.edges.map((edge) => ({
+      value: edge.node.id,
+      label: edge.node.name,
+    }))
+  }, [canViewApiKeys, apiKeysData])
 
   const requestStatuses = [
     {
@@ -106,18 +133,25 @@ export function DataTableToolbar<TData>({ table, dateRange, onDateRangeChange, o
             options={requestStatuses}
           />
         )}
-        {table.getColumn('source') && (
+        {/* {table.getColumn('source') && (
           <DataTableFacetedFilter
             column={table.getColumn('source')}
             title={t('requests.filters.source')}
             options={requestSources}
           />
-        )}
+        )} */}
         {canViewChannels && table.getColumn('channel') && channelOptions.length > 0 && (
           <DataTableFacetedFilter
             column={table.getColumn('channel')}
             title={t('requests.filters.channel')}
             options={channelOptions}
+          />
+        )}
+        {canViewApiKeys && table.getColumn('apiKey') && apiKeyOptions.length > 0 && (
+          <DataTableFacetedFilter
+            column={table.getColumn('apiKey')}
+            title={t('requests.filters.apiKey')}
+            options={apiKeyOptions}
           />
         )}
         <DateRangePicker value={dateRange} onChange={onDateRangeChange} />

@@ -52,7 +52,8 @@
       "status": "Status",
       "source": "Source",
       "channel": "Channel",
-      "user": "User"
+      "user": "User",
+      "apiKey": "API Key"
     },
     "detail": {
       "title": "Request Details",

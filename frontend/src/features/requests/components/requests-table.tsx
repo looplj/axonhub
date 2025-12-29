@@ -43,6 +43,7 @@ interface RequestsTableProps {
   statusFilter: string[]
   sourceFilter: string[]
   channelFilter: string[]
+  apiKeyFilter: string[]
   dateRange?: DateRange
   onNextPage: () => void
   onPreviousPage: () => void
@@ -50,6 +51,7 @@ interface RequestsTableProps {
   onStatusFilterChange: (filters: string[]) => void
   onSourceFilterChange: (filters: string[]) => void
   onChannelFilterChange: (filters: string[]) => void
+  onApiKeyFilterChange: (filters: string[]) => void
   onDateRangeChange: (range: DateRange | undefined) => void
   onRefresh: () => void
   showRefresh: boolean
@@ -64,6 +66,7 @@ export function RequestsTable({
   statusFilter,
   sourceFilter,
   channelFilter,
+  apiKeyFilter,
   dateRange,
   onNextPage,
   onPreviousPage,
@@ -71,6 +74,7 @@ export function RequestsTable({
   onStatusFilterChange,
   onSourceFilterChange,
   onChannelFilterChange,
+  onApiKeyFilterChange,
   onDateRangeChange,
   onRefresh,
   showRefresh,
@@ -87,27 +91,29 @@ export function RequestsTable({
     const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater
     setColumnFilters(newFilters)
     
-    // Find and sync filters with the server
     const statusFilterValue = newFilters.find((filter: any) => filter.id === 'status')?.value
     const sourceFilterValue = newFilters.find((filter: any) => filter.id === 'source')?.value
     const channelFilterValue = newFilters.find((filter: any) => filter.id === 'channel')?.value
+    const apiKeyFilterValue = newFilters.find((filter: any) => filter.id === 'apiKey')?.value
     
-    // Handle status filter
     const statusFilterArray = Array.isArray(statusFilterValue) ? statusFilterValue : []
     if (JSON.stringify(statusFilterArray.sort()) !== JSON.stringify(statusFilter.sort())) {
       onStatusFilterChange(statusFilterArray)
     }
     
-    // Handle source filter
     const sourceFilterArray = Array.isArray(sourceFilterValue) ? sourceFilterValue : []
     if (JSON.stringify(sourceFilterArray.sort()) !== JSON.stringify(sourceFilter.sort())) {
       onSourceFilterChange(sourceFilterArray)
     }
     
-    // Handle channel filter
     const channelFilterArray = Array.isArray(channelFilterValue) ? channelFilterValue : []
     if (JSON.stringify(channelFilterArray.sort()) !== JSON.stringify(channelFilter.sort())) {
       onChannelFilterChange(channelFilterArray)
+    }
+    
+    const apiKeyFilterArray = Array.isArray(apiKeyFilterValue) ? apiKeyFilterValue : []
+    if (JSON.stringify(apiKeyFilterArray.sort()) !== JSON.stringify(apiKeyFilter.sort())) {
+      onApiKeyFilterChange(apiKeyFilterArray)
     }
   }
 
@@ -122,6 +128,9 @@ export function RequestsTable({
   if (channelFilter.length > 0) {
     initialColumnFilters.push({ id: 'channel', value: channelFilter })
   }
+  if (apiKeyFilter.length > 0) {
+    initialColumnFilters.push({ id: 'apiKey', value: apiKeyFilter })
+  }
 
 
   const table = useReactTable({
@@ -131,7 +140,7 @@ export function RequestsTable({
       sorting,
       columnVisibility,
       rowSelection,
-      columnFilters: columnFilters.length === 0 && (statusFilter.length > 0 || sourceFilter.length > 0 || channelFilter.length > 0) ? initialColumnFilters : columnFilters,
+      columnFilters: columnFilters.length === 0 && (statusFilter.length > 0 || sourceFilter.length > 0 || channelFilter.length > 0 || apiKeyFilter.length > 0) ? initialColumnFilters : columnFilters,
     },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
@@ -156,6 +165,8 @@ export function RequestsTable({
         onDateRangeChange={onDateRangeChange}
         onRefresh={onRefresh} 
         showRefresh={showRefresh} 
+        apiKeyFilter={apiKeyFilter}
+        onApiKeyFilterChange={onApiKeyFilterChange}
       />
       <div className='mt-4 flex-1 overflow-auto rounded-md border'>
         <Table>
