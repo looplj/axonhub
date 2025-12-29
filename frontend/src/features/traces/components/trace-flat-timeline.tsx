@@ -389,7 +389,6 @@ function SpanRow({ span, totalDuration, segmentSequentialOffset, onSelectSpan, s
           {spanDisplay?.secondary && (
             <span className='text-muted-foreground truncate text-xs'>{spanDisplay.secondary}</span>
           )}
-          <span className='text-muted-foreground text-[11px]'>{formatDuration(span.duration)}</span>
         </div>
 
         <div className='bg-muted/30 relative h-5 w-[180px] min-w-[180px] rounded'>

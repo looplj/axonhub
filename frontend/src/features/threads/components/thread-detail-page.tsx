@@ -151,7 +151,7 @@ export default function ThreadDetailPage() {
       </Header>
 
       <Main className='flex-1 overflow-hidden'>
-        <div className='flex flex-col gap-4 p-6'>
+        <div className='flex flex-col gap-4 h-full overflow-y-auto p-6'>
           {/* <Card className='border-0 shadow-sm'>
             <CardContent className='grid gap-4 p-6 md:grid-cols-3'>
               <div>
