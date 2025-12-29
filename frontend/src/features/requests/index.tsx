@@ -16,6 +16,7 @@ function RequestsContent() {
   const [statusFilter, setStatusFilter] = useState<string[]>([])
   const [sourceFilter, setSourceFilter] = useState<string[]>([])
   const [channelFilter, setChannelFilter] = useState<string[]>([])
+  const [apiKeyFilter, setApiKeyFilter] = useState<string[]>([])
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
 
   // Build where clause with filters
@@ -31,6 +32,9 @@ function RequestsContent() {
     }
     if (channelFilter.length > 0) {
       where.channelIDIn = channelFilter
+    }
+    if (apiKeyFilter.length > 0) {
+      where.apiKeyIDIn = apiKeyFilter
     }
     return Object.keys(where).length > 0 ? where : undefined
   })()
@@ -85,6 +89,14 @@ function RequestsContent() {
     [resetCursor]
   )
 
+  const handleApiKeyFilterChange = useCallback(
+    (filters: string[]) => {
+      setApiKeyFilter(filters)
+      resetCursor()
+    },
+    [resetCursor]
+  )
+
   const handleDateRangeChange = useCallback(
     (range: DateRange | undefined) => {
       setDateRange(range)
@@ -104,6 +116,7 @@ function RequestsContent() {
         statusFilter={statusFilter}
         sourceFilter={sourceFilter}
         channelFilter={channelFilter}
+        apiKeyFilter={apiKeyFilter}
         dateRange={dateRange}
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
@@ -111,6 +124,7 @@ function RequestsContent() {
         onStatusFilterChange={handleStatusFilterChange}
         onSourceFilterChange={handleSourceFilterChange}
         onChannelFilterChange={handleChannelFilterChange}
+        onApiKeyFilterChange={handleApiKeyFilterChange}
         onDateRangeChange={handleDateRangeChange}
         onRefresh={refetch}
         showRefresh={isFirstPage}

@@ -6,13 +6,7 @@ import { useSelectedProjectId } from '@/stores/projectStore'
 import { extractNumberID } from '@/lib/utils'
 import { useErrorHandler } from '@/hooks/use-error-handler'
 import { useRequestPermissions } from '../../../hooks/useRequestPermissions'
-import type {
-  ApiKey,
-  ApiKeyConnection,
-  CreateApiKeyInput,
-  UpdateApiKeyInput,
-  UpdateApiKeyProfilesInput,
-} from './schema'
+import type { ApiKey, ApiKeyConnection, CreateApiKeyInput, UpdateApiKeyInput, UpdateApiKeyProfilesInput } from './schema'
 import { apiKeyConnectionSchema, apiKeySchema } from './schema'
 
 // Dynamic GraphQL query builders
@@ -179,18 +173,23 @@ const BULK_ARCHIVE_APIKEYS_MUTATION = `
 `
 
 // React Query hooks
-export function useApiKeys(variables?: {
-  first?: number
-  after?: string
-  orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' }
-  where?: {
-    nameContainsFold?: string
-    status?: string
-    userID?: string
-    projectID?: string
-    [key: string]: any
+export function useApiKeys(
+  variables?: {
+    first?: number
+    after?: string
+    orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' }
+    where?: {
+      nameContainsFold?: string
+      status?: string
+      userID?: string
+      projectID?: string
+      [key: string]: any
+    }
+  },
+  options?: {
+    disableAutoFetch?: boolean
   }
-}) {
+) {
   const { t } = useTranslation()
   const { handleError } = useErrorHandler()
   const permissions = useRequestPermissions()
@@ -209,7 +208,7 @@ export function useApiKeys(variables?: {
         throw error
       }
     },
-    enabled: !!selectedProjectId, // Only query when a project is selected
+    enabled: !options?.disableAutoFetch && !!selectedProjectId, // Only query when a project is selected
   })
 }
 

@@ -52,7 +52,8 @@
       "status": "状态",
       "source": "来源",
       "channel": "渠道",
-      "user": "用户"
+      "user": "用户",
+      "apiKey": "API密钥"
     },
     "detail": {
       "title": "请求详情",
