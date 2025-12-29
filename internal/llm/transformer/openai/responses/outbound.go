@@ -113,7 +113,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	payload := Request{
 		Model:                llmReq.Model,
-		Input:                convertInputFromMessages(llmReq.Messages),
+		Input:                convertInputFromMessages(llmReq.Messages, llmReq.TransformerMetadata),
 		Instructions:         convertInstructionsFromMessages(llmReq.Messages),
 		Tools:                tools,
 		ParallelToolCalls:    llmReq.ParallelToolCalls,

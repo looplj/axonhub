@@ -1,6 +1,7 @@
 package responses
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -87,11 +88,11 @@ func TestOutboundTransformer_TransformResponse_Integration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Load the OpenAI Responses API response
-			responseData, err := loadTestDataRaw(t, tt.responseFile)
-			if err != nil {
-				t.Skipf("Test data file %s not found, skipping test", tt.responseFile)
+			var responseData json.RawMessage
 
+			err := xtest.LoadTestData(t, tt.responseFile, &responseData)
+			if err != nil {
+				t.Errorf("Test data file %s not found, skipping test", tt.responseFile)
 				return
 			}
 
