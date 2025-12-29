@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"os"
 	"testing"
 
 	"github.com/samber/lo"
@@ -740,21 +739,6 @@ func TestOutboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 	}
 }
 
-// loadTestDataRaw loads raw test data from a file in testdata directory.
-func loadTestDataRaw(t *testing.T, filename string) ([]byte, error) {
-	t.Helper()
-
-	// Try to read from testdata directory
-	testdataPath := "testdata/" + filename
-
-	data, err := os.ReadFile(testdataPath)
-	if err != nil {
-		return nil, err
-	}
-
-	return data, nil
-}
-
 func TestOutboundTransformer_TransformResponse_WithTestData(t *testing.T) {
 	transformer, _ := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 
@@ -782,10 +766,11 @@ func TestOutboundTransformer_TransformResponse_WithTestData(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var responseData json.RawMessage
 			// Load the test response data
-			responseData, err := loadTestDataRaw(t, tt.responseFile)
+			err := xtest.LoadTestData(t, tt.responseFile, &responseData)
 			if err != nil {
-				t.Skipf("Test data file %s not found, skipping test", tt.responseFile)
+				t.Errorf("Test data file %s not found, skipping test", tt.responseFile)
 				return
 			}
 

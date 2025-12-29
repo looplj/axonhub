@@ -646,13 +646,13 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
 
   return (
     <div className='flex flex-col gap-2 rounded-lg border p-3'>
-      <div className={`grid items-center gap-2 ${showChannel ? 'grid-cols-[3rem_11rem_1fr_1fr_2.25rem]' : 'grid-cols-[3rem_11rem_1fr_2.25rem]'}`}>
+      <div className={`grid items-center gap-2 ${showChannel ? 'grid-cols-[3rem_14rem_1fr_1fr_2.25rem]' : 'grid-cols-[3rem_14rem_1fr_2.25rem]'}`}>
         {/* Priority Input */}
         <FormField
           control={form.control}
           name={`associations.${index}.priority`}
           render={({ field }) => (
-            <FormItem className='gap-0'>
+            <FormItem className='gap-0 min-w-0'>
               <FormControl>
                 <Input
                   type='number'
@@ -674,7 +674,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
           control={form.control}
           name={`associations.${index}.type`}
           render={({ field }) => (
-            <FormItem className='gap-0'>
+            <FormItem className='gap-0 min-w-0'>
               <FormControl>
                 <Select value={field.value} onValueChange={field.onChange}>
                   <SelectTrigger className='h-9 w-full text-xs'>
@@ -701,7 +701,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
             control={form.control}
             name={`associations.${index}.channelId`}
             render={({ field, fieldState }) => (
-              <FormItem className='gap-0'>
+              <FormItem className='gap-0 min-w-0'>
                 <FormControl>
                   <AutoCompleteSelect
                     selectedValue={field.value?.toString() || ''}
@@ -724,7 +724,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
             control={form.control}
             name={`associations.${index}.modelId`}
             render={({ field }) => (
-              <FormItem className='gap-0'>
+              <FormItem className='gap-0 min-w-0'>
                 {/* <FormLabel className='text-xs'>{t('models.dialogs.association.selectModel')}</FormLabel> */}
                 <FormControl>
                   <AutoComplete
@@ -756,7 +756,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
             control={form.control}
             name={`associations.${index}.pattern`}
             render={({ field }) => (
-              <FormItem className='gap-0'>
+              <FormItem className='gap-0 min-w-0'>
                 {/* <FormLabel className='text-xs'>{t('models.dialogs.association.pattern')}</FormLabel> */}
                 <FormControl>
                   <Input

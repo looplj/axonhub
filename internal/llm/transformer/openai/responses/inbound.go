@@ -241,6 +241,10 @@ func convertToLLMRequest(req *Request) (*llm.Request, error) {
 	}
 
 	// Convert input to messages
+	if req.Input.Items != nil {
+		chatReq.TransformerMetadata["openai_responses_input_array_format"] = "true"
+	}
+
 	inputMessages, err := convertInputToMessages(&req.Input)
 	if err != nil {
 		return nil, err

@@ -1,0 +1,14 @@
+{
+  "input": [
+    {
+      "content": [
+        {
+          "text": "My name is Alice.",
+          "type": "input_text"
+        }
+      ],
+      "role": "user"
+    }
+  ],
+  "model": "deepseek-chat"
+}
