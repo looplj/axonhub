@@ -25,6 +25,12 @@ jobs:
   build_single_arch:
     name: Build & push (${{ matrix.arch }}) [native]
     if: github.event_name != 'pull_request'
+    
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    
     strategy:
       fail-fast: false
       matrix:
@@ -99,14 +105,16 @@ jobs:
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
+        continue-on-error: true
         with:
           image-ref: looplj/axonhub:${{ env.TAG }}-${{ matrix.arch }}
           format: 'sarif'
           output: 'trivy-results-${{ matrix.arch }}.sarif'
 
       - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        if: always() && hashFiles('trivy-results-${{ matrix.arch }}.sarif') != ''
+        continue-on-error: true
         with:
           sarif_file: 'trivy-results-${{ matrix.arch }}.sarif'
 
@@ -114,7 +122,12 @@ jobs:
     name: Create multi-arch manifests (Docker Hub)
     needs: [build_single_arch]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/unstable'
+    
+    permissions:
+      contents: read
+      packages: write
+    
     steps:
       - name: Extract tag
         run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
