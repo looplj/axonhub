@@ -731,6 +731,7 @@ type ComplexityRoot struct {
 	}
 
 	RequestStats struct {
+		RequestsLastWeek  func(childComplexity int) int
 		RequestsThisMonth func(childComplexity int) int
 		RequestsThisWeek  func(childComplexity int) int
 		RequestsToday     func(childComplexity int) int
@@ -4511,6 +4512,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.RequestMetadata.TotalTokens(childComplexity), true
 
+	case "RequestStats.requestsLastWeek":
+		if e.complexity.RequestStats.RequestsLastWeek == nil {
+			break
+		}
+
+		return e.complexity.RequestStats.RequestsLastWeek(childComplexity), true
 	case "RequestStats.requestsThisMonth":
 		if e.complexity.RequestStats.RequestsThisMonth == nil {
 			break
@@ -13236,6 +13243,8 @@ func (ec *executionContext) fieldContext_DashboardOverview_requestStats(_ contex
 				return ec.fieldContext_RequestStats_requestsToday(ctx, field)
 			case "requestsThisWeek":
 				return ec.fieldContext_RequestStats_requestsThisWeek(ctx, field)
+			case "requestsLastWeek":
+				return ec.fieldContext_RequestStats_requestsLastWeek(ctx, field)
 			case "requestsThisMonth":
 				return ec.fieldContext_RequestStats_requestsThisMonth(ctx, field)
 			}
@@ -21772,6 +21781,8 @@ func (ec *executionContext) fieldContext_Query_requestStats(_ context.Context, f
 				return ec.fieldContext_RequestStats_requestsToday(ctx, field)
 			case "requestsThisWeek":
 				return ec.fieldContext_RequestStats_requestsThisWeek(ctx, field)
+			case "requestsLastWeek":
+				return ec.fieldContext_RequestStats_requestsLastWeek(ctx, field)
 			case "requestsThisMonth":
 				return ec.fieldContext_RequestStats_requestsThisMonth(ctx, field)
 			}
@@ -25044,6 +25055,35 @@ func (ec *executionContext) _RequestStats_requestsThisWeek(ctx context.Context, 
 }
 
 func (ec *executionContext) fieldContext_RequestStats_requestsThisWeek(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequestStats_requestsLastWeek(ctx context.Context, field graphql.CollectedField, obj *RequestStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RequestStats_requestsLastWeek,
+		func(ctx context.Context) (any, error) {
+			return obj.RequestsLastWeek, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RequestStats_requestsLastWeek(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RequestStats",
 		Field:      field,
@@ -59109,6 +59149,11 @@ func (ec *executionContext) _RequestStats(ctx context.Context, sel ast.Selection
 			}
 		case "requestsThisWeek":
 			out.Values[i] = ec._RequestStats_requestsThisWeek(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "requestsLastWeek":
+			out.Values[i] = ec._RequestStats_requestsLastWeek(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

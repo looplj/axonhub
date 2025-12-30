@@ -11,6 +11,7 @@ type DashboardOverview {
 type RequestStats {
   requestsToday: Int!
   requestsThisWeek: Int!
+  requestsLastWeek: Int!
   requestsThisMonth: Int!
 }
 

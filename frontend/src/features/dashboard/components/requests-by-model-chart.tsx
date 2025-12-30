@@ -99,7 +99,7 @@ export function RequestsByModelChart() {
     <div className='space-y-6'>
       <ResponsiveContainer width='100%' height={320}>
         <BarChart data={chartData} barSize={32}>
-          <CartesianGrid strokeDasharray='3 3' vertical={false} />
+          <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' vertical={false} />
           <XAxis dataKey='name' hide />
           <YAxis
             tickLine={false}

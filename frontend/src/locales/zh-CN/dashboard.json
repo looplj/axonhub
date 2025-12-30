@@ -32,24 +32,31 @@
       "channelSuccessRateDescription": "不同渠道的请求成功率情况。"
     },
     "stats": {
-      "totalUsersInSystem": "系统总用户数",
-      "allTimeRequests": "历史总请求数",
+      "totalUsersInSystem": "系统用户总数",
+      "allTimeRequests": "总请求数",
       "thisMonth": "本月",
       "thisWeek": "本周",
       "today": "今天",
+      "this": "本",
+      "month": "月",
+      "week": "周",
+      "day": "日",
       "failedRequests": "失败请求",
       "fromLastMonth": "较上月",
       "sinceYesterday": "较昨日",
-      "usersWithMostRequests": "本月请求最多的用户。",
-      "projectsWithMostRequests": "本月请求最多的项目。",
-      "requests": "次请求",
-      "inputTokens": "输入令牌",
-      "outputTokens": "输出令牌",
-      "cachedTokens": "缓存令牌",
-      "totalTokens": "总令牌数",
+      "usersWithMostRequests": "本月请求量最多的用户。",
+      "projectsWithMostRequests": "本月请求量最多的项目。",
+      "requests": "请求",
+      "inputTokens": "输入Token",
+      "outputTokens": "输出Token",
+      "cachedTokens": "缓存Token",
+      "totalTokens": "总Token",
       "input": "输入",
       "output": "输出",
-      "cached": "缓存"
+      "cached": "缓存",
+      "vsLastWeek": "较上周",
+      "average": "平均值",
+      "todayRequests": "今日请求"
     }
   }
 }

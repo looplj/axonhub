@@ -16,6 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { PermissionGuard } from '@/components/permission-guard'
 import { useModels } from '../context/models-context'
 import { Model } from '../data/schema'
 
@@ -42,7 +43,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align='end' className='w-[160px]'>
-        {channelPermissions.canEdit && (
+        <PermissionGuard requiredScope='write_channels'>
           <DropdownMenuItem
             onClick={() => {
               setCurrentRow(row.original)
@@ -52,9 +53,9 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             <IconEdit size={16} className='mr-2' />
             {t('common.actions.edit')}
           </DropdownMenuItem>
-        )}
+        </PermissionGuard>
 
-        {channelPermissions.canWrite && (
+        <PermissionGuard requiredScope='write_channels'>
           <DropdownMenuItem
             onClick={() => {
               setCurrentRow(row.original)
@@ -64,24 +65,29 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             <IconNote size={16} className='mr-2' />
             {t('models.actions.manageAssociation')}
           </DropdownMenuItem>
-        )}
+        </PermissionGuard>
 
         {channelPermissions.canRead && channelPermissions.canWrite && <DropdownMenuSeparator />}
 
-        {channelPermissions.canWrite && model.status !== 'archived' && (
-          <DropdownMenuItem
-            onClick={() => {
-              setCurrentRow(row.original)
-              setOpen('archive')
-            }}
-            className='text-orange-500!'
-          >
-            <IconArchive size={16} className='mr-2' />
-            {t('common.buttons.archive')}
-          </DropdownMenuItem>
-        )}
+        <PermissionGuard
+          requiredScope='write_channels'
+          render={(hasPermission) =>
+            hasPermission && model.status !== 'archived' ? (
+              <DropdownMenuItem
+                onClick={() => {
+                  setCurrentRow(row.original)
+                  setOpen('archive')
+                }}
+                className='text-orange-500!'
+              >
+                <IconArchive size={16} className='mr-2' />
+                {t('common.buttons.archive')}
+              </DropdownMenuItem>
+            ) : null
+          }
+        />
 
-        {channelPermissions.canWrite && (
+        <PermissionGuard requiredScope='write_channels'>
           <DropdownMenuItem
             onClick={() => {
               setCurrentRow(row.original)
@@ -92,7 +98,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             <IconTrash size={16} className='mr-2' />
             {t('common.buttons.delete')}
           </DropdownMenuItem>
-        )}
+        </PermissionGuard>
       </DropdownMenuContent>
     </DropdownMenu>
   )

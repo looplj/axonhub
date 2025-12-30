@@ -4,13 +4,19 @@ import { ThemeSwitch } from '@/components/theme-switch'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { ProjectSwitcher } from './project-switcher'
 import { SidebarTrigger } from '@/components/ui/sidebar'
+import { PermissionGuard } from '@/components/permission-guard'
+import { Button } from '@/components/ui/button'
+import { IconSettings } from '@tabler/icons-react'
+import { useTranslation } from 'react-i18next'
+import { Link } from '@tanstack/react-router'
 
 export function AppHeader() {
   const { data: brandSettings } = useBrandSettings()
+  const { t } = useTranslation()
   const displayName = brandSettings?.brandName || 'AxonHub'
 
   return (
-    <header className='fixed top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60'>
+    <header className='fixed top-0 z-50 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60'>
       <div className='flex h-14 items-center justify-between'>
         {/* Logo + Project Switcher - 左侧对齐 */}
         <div className='flex items-center gap-2 pl-6'>
@@ -53,6 +59,13 @@ export function AppHeader() {
 
         {/* 右侧控件 */}
         <div className='flex items-center gap-2 pr-6'>
+          <PermissionGuard requiredSystemScope='read_system'>
+            <Link to='/system'>
+              <Button variant='ghost' size='icon' className='size-8'>
+                <IconSettings className='h-4 w-4' />
+              </Button>
+            </Link>
+          </PermissionGuard>
           <LanguageSwitch />
           <ThemeSwitch />
           <ProfileDropdown />

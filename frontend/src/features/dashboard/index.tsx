@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next'
-import { formatNumber } from '@/utils/format-number'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
@@ -9,13 +8,14 @@ import { RequestsByChannelChart } from './components/requests-by-channel-chart'
 import { RequestsByModelChart } from './components/requests-by-model-chart'
 import { TokenStatsCard } from './components/token-stats-card'
 import { ChannelSuccessRate } from './components/channel-success-rate'
-import { OverviewCard } from './components/overview-card'
-import { RequestsByTimeCard } from './components/requests-by-time-card'
+import { TotalRequestsCard } from './components/total-requests-card'
+import { SuccessRateCard } from './components/success-rate-card'
+import { TodayRequestsCard } from './components/today-requests-card'
 import { useDashboardStats } from './data/dashboard'
 
 export default function DashboardPage() {
   const { t } = useTranslation()
-  const { data: stats, isLoading, error } = useDashboardStats()
+  const { isLoading, error } = useDashboardStats()
 
   if (isLoading) {
     return (
@@ -30,10 +30,11 @@ export default function DashboardPage() {
         <Tabs defaultValue='overview' className='space-y-4'>
           <Skeleton className='h-10 w-[400px]' />
           <div className='space-y-4'>
-            <div className='grid gap-4 md:grid-cols-1 lg:grid-cols-3'>
-              <Skeleton className='h-[120px]' />
-              <Skeleton className='h-[120px]' />
-              <Skeleton className='h-[120px]' />
+            <div className='grid gap-4 md:grid-cols-1 lg:grid-cols-4'>
+              <Skeleton className='h-[180px]' />
+              <Skeleton className='h-[180px]' />
+              <Skeleton className='h-[180px]' />
+              <Skeleton className='h-[180px]' />
             </div>
             <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-7'>
               <Skeleton className='col-span-4 h-[300px]' />
@@ -60,13 +61,14 @@ export default function DashboardPage() {
       <Header>{/* <TopNav links={topNav} /> */}</Header>
       <Tabs defaultValue='overview' className='space-y-4'>
         <TabsContent value='overview' className='space-y-4'>
-          <div className='grid gap-4 md:grid-cols-1 lg:grid-cols-3'>
-            <OverviewCard />
-            <RequestsByTimeCard />
-            <TokenStatsCard />
-          </div>
+          <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-4'>
+          <TotalRequestsCard />
+          <SuccessRateCard />
+          <TokenStatsCard />
+          <TodayRequestsCard />
+        </div>
           <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-7'>
-            <Card className='col-span-4'>
+            <Card className='col-span-4 hover-card'>
               <CardHeader>
                 <CardTitle>{t('dashboard.charts.dailyRequestOverview')}</CardTitle>
               </CardHeader>
@@ -74,7 +76,7 @@ export default function DashboardPage() {
                 <DailyRequestStats />
               </CardContent>
             </Card>
-            <Card className='col-span-3'>
+            <Card className='col-span-3 hover-card'>
               <CardHeader>
                 <CardTitle>{t('dashboard.charts.channelSuccessRate')}</CardTitle>
                 <CardDescription>{t('dashboard.charts.channelSuccessRateDescription')}</CardDescription>
@@ -85,7 +87,7 @@ export default function DashboardPage() {
             </Card>
           </div>
           <div className='grid gap-4 md:grid-cols-2'>
-            <Card>
+            <Card className='hover-card'>
               <CardHeader>
                 <CardTitle>{t('dashboard.charts.requestsByChannel')}</CardTitle>
                 <CardDescription>{t('dashboard.charts.requestsByChannelDescription')}</CardDescription>
@@ -94,7 +96,7 @@ export default function DashboardPage() {
                 <RequestsByChannelChart />
               </CardContent>
             </Card>
-            <Card>
+            <Card className='hover-card'>
               <CardHeader>
                 <CardTitle>{t('dashboard.charts.requestsByModel')}</CardTitle>
                 <CardDescription>{t('dashboard.charts.requestsByModelDescription')}</CardDescription>
