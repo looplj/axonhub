@@ -81,7 +81,7 @@ export function ChannelsWeightDialog({ open, onOpenChange }: ChannelsWeightDialo
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="weight" className="text-right">
-              {t('channels.columns.weight')}
+              {t('channels.columns.orderingWeight')}
             </Label>
             <Input
               id="weight"

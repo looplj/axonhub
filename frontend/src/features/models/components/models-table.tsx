@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ServerSidePagination } from '@/components/server-side-pagination'
+import { PermissionGuard } from '@/components/permission-guard'
 import { useModels } from '../context/models-context'
 import { Model, ModelConnection } from '../data/schema'
 
@@ -156,14 +157,14 @@ export function ModelsTable({
         </div>
       </div>
 
-      <div className='relative flex-1 overflow-auto rounded-md border'>
-        <Table data-testid='models-table'>
-          <TableHeader className='bg-background sticky top-0 z-10'>
+      <div className='mt-4 flex-1 overflow-auto rounded-2xl shadow-soft border border-[var(--table-border)] relative'>
+        <Table data-testid='models-table' className='bg-background rounded-2xl border-separate border-spacing-0'>
+          <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className='group/row'>
+              <TableRow key={headerGroup.id} className='group/row border-0'>
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id} colSpan={header.colSpan} className={header.column.columnDef.meta?.className ?? ''}>
+                    <TableHead key={header.id} colSpan={header.colSpan} className={`${header.column.columnDef.meta?.className ?? ''} text-xs font-semibold text-muted-foreground uppercase tracking-wider border-0`}>
                       {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
                   )
@@ -171,16 +172,16 @@ export function ModelsTable({
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody>
+          <TableBody className='p-2 space-y-1 !bg-background'>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => {
                 const model = row.original
                 const modelCard = model.modelCard
                 return (
                   <React.Fragment key={row.id}>
-                    <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'} className='group/row'>
+                    <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'} className='group/row table-row-hover rounded-xl !bg-background border-0 transition-all duration-200 ease-in-out'>
                       {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id} className={cell.column.columnDef.meta?.className ?? ''}>
+                        <TableCell key={cell.id} className={`${cell.column.columnDef.meta?.className ?? ''} px-4 py-3 border-0 !bg-background`}>
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </TableCell>
                       ))}
@@ -369,8 +370,8 @@ export function ModelsTable({
                 )
               })
             ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className='h-24 text-center'>
+              <TableRow className='!bg-background'>
+                <TableCell colSpan={columns.length} className='h-24 text-center !bg-background'>
                   {t('common.noData')}
                 </TableCell>
               </TableRow>
@@ -406,33 +407,39 @@ export function ModelsTable({
               <span className='text-muted-foreground text-sm'>{t('common.selected')}</span>
             </div>
             <div className='bg-border mx-2 h-6 w-px' />
-            <Button
-              variant='ghost'
-              size='icon'
-              className='h-8 w-8 text-green-600 hover:bg-green-100 hover:text-green-700'
-              onClick={() => setOpen('bulkEnable')}
-              title={t('common.buttons.enable')}
-            >
-              <IconCheck className='h-4 w-4' />
-            </Button>
-            <Button
-              variant='ghost'
-              size='icon'
-              className='h-8 w-8 text-amber-600 hover:bg-amber-100 hover:text-amber-700'
-              onClick={() => setOpen('bulkDisable')}
-              title={t('common.buttons.disable')}
-            >
-              <IconBan className='h-4 w-4' />
-            </Button>
-            <Button
-              variant='ghost'
-              size='icon'
-              className='text-destructive h-8 w-8 hover:bg-red-100 hover:text-red-700'
-              onClick={() => setOpen('delete')}
-              title={t('common.buttons.delete')}
-            >
-              <IconTrash className='h-4 w-4' />
-            </Button>
+            <PermissionGuard requiredScope='write_channels'>
+              <Button
+                variant='ghost'
+                size='icon'
+                className='h-8 w-8 text-green-600 hover:bg-green-100 hover:text-green-700'
+                onClick={() => setOpen('bulkEnable')}
+                title={t('common.buttons.enable')}
+              >
+                <IconCheck className='h-4 w-4' />
+              </Button>
+            </PermissionGuard>
+            <PermissionGuard requiredScope='write_channels'>
+              <Button
+                variant='ghost'
+                size='icon'
+                className='h-8 w-8 text-amber-600 hover:bg-amber-100 hover:text-amber-700'
+                onClick={() => setOpen('bulkDisable')}
+                title={t('common.buttons.disable')}
+              >
+                <IconBan className='h-4 w-4' />
+              </Button>
+            </PermissionGuard>
+            <PermissionGuard requiredScope='write_channels'>
+              <Button
+                variant='ghost'
+                size='icon'
+                className='text-destructive h-8 w-8 hover:bg-red-100 hover:text-red-700'
+                onClick={() => setOpen('delete')}
+                title={t('common.buttons.delete')}
+              >
+                <IconTrash className='h-4 w-4' />
+              </Button>
+            </PermissionGuard>
           </div>
         </div>
       )}

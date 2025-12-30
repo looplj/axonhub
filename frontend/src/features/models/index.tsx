@@ -7,6 +7,7 @@ import { usePaginationSearch } from '@/hooks/use-pagination-search'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { Button } from '@/components/ui/button'
+import { PermissionGuard } from '@/components/permission-guard'
 import { createColumns } from './components/models-columns'
 import { ModelsDialogs } from './components/models-dialogs'
 import { ModelsTable } from './components/models-table'
@@ -158,10 +159,18 @@ function DetectUnassociatedButton() {
 function ActionButtons() {
   return (
     <div className='flex gap-2'>
-      <DetectUnassociatedButton />
-      <SettingsButton />
-      <BulkAddButton />
-      <CreateButton />
+      <PermissionGuard requiredScope='write_channels'>
+        <DetectUnassociatedButton />
+      </PermissionGuard>
+      <PermissionGuard requiredScope='write_channels'>
+        <SettingsButton />
+      </PermissionGuard>
+      <PermissionGuard requiredScope='write_channels'>
+        <BulkAddButton />
+      </PermissionGuard>
+      <PermissionGuard requiredScope='write_channels'>
+        <CreateButton />
+      </PermissionGuard>
     </div>
   )
 }

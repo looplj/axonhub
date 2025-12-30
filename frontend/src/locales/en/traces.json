@@ -75,6 +75,8 @@
       "error": "Error",
       "image": "Generated Image",
       "imageAlt": "Generated span image",
+      "userImage": "User Image",
+      "userImageAlt": "User uploaded image",
       "systemInstruction": "System Instruction",
       "noSpanContent": "No additional content for this span.",
       "selectSpanHint": "Select a span from the timeline to inspect its detail.",

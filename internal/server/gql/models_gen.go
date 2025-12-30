@@ -141,6 +141,7 @@ type RemoveUserFromProjectInput struct {
 type RequestStats struct {
 	RequestsToday     int `json:"requestsToday"`
 	RequestsThisWeek  int `json:"requestsThisWeek"`
+	RequestsLastWeek  int `json:"requestsLastWeek"`
 	RequestsThisMonth int `json:"requestsThisMonth"`
 }
 

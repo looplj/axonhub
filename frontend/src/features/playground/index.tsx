@@ -271,7 +271,7 @@ export default function Playground() {
       <div className='bg-background flex h-screen w-full'>
         {/* Settings Sidebar */}
 
-        <div className='bg-muted/40 flex w-80 flex-col border-r'>
+        <div className='bg-muted/40 flex w-80 flex-col border-r rounded-2xl shadow-soft border border-border bg-card m-4'>
           <div className='border-b p-6'>
             <h1 className='text-2xl font-bold tracking-tight'>{t('playground.title')}</h1>
             <p className='text-muted-foreground mt-2 text-sm leading-relaxed'>{t('playground.description')}</p>
@@ -381,8 +381,8 @@ export default function Playground() {
         </div>
 
         {/* Chat Area */}
-        <div className='flex flex-1 flex-col p-6'>
-          <div className='flex h-full flex-col'>
+        <div className='flex flex-1 flex-col p-4'>
+          <div className='flex h-full flex-col rounded-2xl shadow-soft border border-border bg-card p-6'>
             <Conversation className='flex-1'>
               <ConversationContent>
                 {messages.length === 0 ? (

@@ -23,6 +23,7 @@
       "errorLoadingTopProjects": "Error loading top projects:",
       "errorLoadingChannelData": "Error loading channel data:",
       "errorLoadingModelData": "Error loading model data:",
+      "errorLoadingChannelSuccessRate": "Failed to load channel success rate:",
       "noUserData": "No user data available",
       "noProjectData": "No project data available",
       "noChannelData": "No channel data available",
@@ -37,6 +38,10 @@
       "thisMonth": "This month",
       "thisWeek": "This week",
       "today": "Today",
+      "this": "This",
+      "month": "MO",
+      "week": "WK",
+      "day": "Day",
       "failedRequests": "Failed requests",
       "fromLastMonth": "from last month",
       "sinceYesterday": "since yesterday",
@@ -49,7 +54,10 @@
       "totalTokens": "Total Tokens",
       "input": "Input",
       "output": "Output",
-      "cached": "Cached"
+      "cached": "Cached",
+      "vsLastWeek": "vs last week",
+      "average": "Average",
+      "todayRequests": "Today's Requests"
     }
   }
 }

@@ -375,7 +375,8 @@
         "deselectAll": "Deselect All",
         "addSelectedCount": "Add Selected ({{count}})",
         "removeDeprecated": "Clean ({{count}})",
-        "clearAll": "Clear all"
+        "clearAll": "Clear all",
+        "addMappingButton": "Add Mapping"
       },
       "status": {
         "enable": {

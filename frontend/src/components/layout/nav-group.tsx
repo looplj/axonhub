@@ -84,9 +84,10 @@ const SidebarMenuLink = ({ item, href }: { item: NavLink; href: string }) => {
         asChild
         isActive={checkIsActive(href, item)}
         tooltip={item.title}
+        className='rounded-2xl h-12 transition-all'
       >
         <Link to={item.url} onClick={() => setOpenMobile(false)}>
-          {item.icon && <item.icon />}
+          {item.icon && <item.icon className='text-xl' />}
           <span>{item.title}</span>
           {item.badge && <NavBadge>{item.badge}</NavBadge>}
         </Link>
@@ -114,8 +115,11 @@ const SidebarMenuCollapsible = ({
     >
       <SidebarMenuItem>
         <CollapsibleTrigger asChild>
-          <SidebarMenuButton tooltip={item.title}>
-            {item.icon && <item.icon />}
+          <SidebarMenuButton
+            tooltip={item.title}
+            className='rounded-2xl h-12 transition-all'
+          >
+            {item.icon && <item.icon className='text-xl' />}
             <span>{item.title}</span>
             {item.badge && <NavBadge>{item.badge}</NavBadge>}
             <ChevronRight className='ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90' />
@@ -161,8 +165,9 @@ const SidebarMenuCollapsedDropdown = ({
           <SidebarMenuButton
             tooltip={item.title}
             isActive={checkIsActive(href, item)}
+            className='rounded-2xl h-12 transition-all'
           >
-            {item.icon && <item.icon />}
+            {item.icon && <item.icon className='text-xl' />}
             <span>{item.title}</span>
             {item.badge && <NavBadge>{item.badge}</NavBadge>}
             <ChevronRight className='ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90' />

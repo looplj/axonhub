@@ -13,8 +13,6 @@ import (
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
-	"github.com/samber/lo"
-
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/project"
@@ -25,6 +23,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/scopes"
+	"github.com/samber/lo"
 )
 
 // DashboardOverview is the resolver for the dashboardOverview field.
@@ -59,6 +58,7 @@ func (r *queryResolver) DashboardOverview(ctx context.Context) (*DashboardOvervi
 		stats.RequestStats = &RequestStats{
 			RequestsToday:     0,
 			RequestsThisWeek:  0,
+			RequestsLastWeek:  0,
 			RequestsThisMonth: 0,
 		}
 	} else {
@@ -87,15 +87,16 @@ func (r *queryResolver) RequestStats(ctx context.Context) (*RequestStats, error)
 	stats := &RequestStats{
 		RequestsToday:     0,
 		RequestsThisWeek:  0,
+		RequestsLastWeek:  0,
 		RequestsThisMonth: 0,
 	}
 
 	now := time.Now()
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	weekAgo := today.AddDate(0, 0, -7)
+	twoWeeksAgo := today.AddDate(0, 0, -14)
 	monthAgo := today.AddDate(0, -1, 0)
 
-	// Get requests for today
 	if requestsToday, err := r.client.Request.Query().
 		Where(request.CreatedAtGTE(today)).
 		Count(ctx); err != nil {
@@ -104,7 +105,6 @@ func (r *queryResolver) RequestStats(ctx context.Context) (*RequestStats, error)
 		stats.RequestsToday = requestsToday
 	}
 
-	// Get requests for this week
 	if requestsThisWeek, err := r.client.Request.Query().
 		Where(request.CreatedAtGTE(weekAgo)).
 		Count(ctx); err != nil {
@@ -113,7 +113,14 @@ func (r *queryResolver) RequestStats(ctx context.Context) (*RequestStats, error)
 		stats.RequestsThisWeek = requestsThisWeek
 	}
 
-	// Get requests for this month
+	if requestsLastWeek, err := r.client.Request.Query().
+		Where(request.CreatedAtGTE(twoWeeksAgo), request.CreatedAtLT(weekAgo)).
+		Count(ctx); err != nil {
+		log.Warn(ctx, "failed to count last week's requests", log.Cause(err))
+	} else {
+		stats.RequestsLastWeek = requestsLastWeek
+	}
+
 	if requestsThisMonth, err := r.client.Request.Query().
 		Where(request.CreatedAtGTE(monthAgo)).
 		Count(ctx); err != nil {

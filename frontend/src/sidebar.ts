@@ -99,12 +99,6 @@ export function useSidebarData(): SidebarData {
           url: '/roles',
           icon: IconShield,
         } as NavLink,
-
-        {
-          title: t('sidebar.items.system'),
-          url: '/system',
-          icon: IconSettings,
-        } as NavLink,
         // {
         //   title: 'Permission Demo',
         //   url: '/permission-demo',
