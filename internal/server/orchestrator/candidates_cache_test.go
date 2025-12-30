@@ -139,6 +139,88 @@ func TestDefaultSelector_SelectModelCandidates_Cache(t *testing.T) {
 		require.True(t, entry.latestChannelUpdateTime.After(now), "cache should reflect new update time")
 	})
 
+	t.Run("cache invalidated when model updated", func(t *testing.T) {
+		// Get initial cache entry
+		selector.cacheMu.RLock()
+		initialEntry := selector.associationCache[modelID]
+		selector.cacheMu.RUnlock()
+
+		// Update model's UpdatedAt timestamp
+		updatedModel, err := client.Model.Query().
+			Where(model.ModelID(modelID)).
+			First(ctx)
+		require.NoError(t, err)
+
+		_, err = client.Model.UpdateOneID(updatedModel.ID).
+			SetUpdatedAt(now.Add(2 * time.Hour)).
+			Save(ctx)
+		require.NoError(t, err)
+
+		// Call again - should refresh cache due to model update
+		req := &llm.Request{Model: modelID}
+		candidates, err := selector.selectModelCandidates(ctx, req)
+		require.NoError(t, err)
+		require.NotEmpty(t, candidates)
+
+		// Verify cache was refreshed with new model update time
+		selector.cacheMu.RLock()
+		currentEntry := selector.associationCache[modelID]
+		selector.cacheMu.RUnlock()
+
+		require.NotSame(t, initialEntry, currentEntry, "cache entry should be refreshed when model is updated")
+		require.True(t, currentEntry.latestModelUpdatedAt.After(initialEntry.latestModelUpdatedAt), "model update time should be newer")
+	})
+
+	t.Run("cache invalidated when model associations updated", func(t *testing.T) {
+		// Get initial cache entry
+		selector.cacheMu.RLock()
+		initialEntry := selector.associationCache[modelID]
+		selector.cacheMu.RUnlock()
+
+		// Wait a bit to ensure timestamp difference
+		time.Sleep(10 * time.Millisecond)
+
+		// Update model's associations (this will also update UpdatedAt)
+		updatedModel, err := client.Model.Query().
+			Where(model.ModelID(modelID)).
+			First(ctx)
+		require.NoError(t, err)
+
+		newAssociations := []*objects.ModelAssociation{
+			{
+				Type:     "regex",
+				Priority: 2,
+				Regex: &objects.RegexAssociation{
+					Pattern: "claude-.*",
+				},
+			},
+		}
+
+		_, err = client.Model.UpdateOneID(updatedModel.ID).
+			SetSettings(&objects.ModelSettings{
+				Associations: newAssociations,
+			}).
+			Save(ctx)
+		require.NoError(t, err)
+
+		// Call again - should refresh cache due to model update
+		req := &llm.Request{Model: modelID}
+		_, err = selector.selectModelCandidates(ctx, req)
+		require.NoError(t, err)
+
+		// Verify cache was refreshed with new model update time
+		selector.cacheMu.RLock()
+		currentEntry := selector.associationCache[modelID]
+		selector.cacheMu.RUnlock()
+
+		require.NotSame(t, initialEntry, currentEntry, "cache entry should be refreshed when model associations are updated")
+		require.True(
+			t,
+			currentEntry.latestModelUpdatedAt.After(initialEntry.latestModelUpdatedAt) || !currentEntry.latestModelUpdatedAt.Equal(initialEntry.latestModelUpdatedAt),
+			"model update time should be newer or different",
+		)
+	})
+
 	t.Run("different models use different cache entries", func(t *testing.T) {
 		differentModelID := "different-model"
 		differentAssociations := []*objects.ModelAssociation{
@@ -185,13 +267,14 @@ func TestDefaultSelector_SelectModelCandidates_Cache(t *testing.T) {
 		require.NoError(t, err)
 
 		// Create a new channel service to force fresh data
-		newChannelService := newTestChannelServiceForChannels(client)
-		selector.ChannelService = newChannelService
+		newChannelService := biz.NewChannelServiceForTest(client)
 
 		// Clear cache to force refresh
 		selector.cacheMu.Lock()
 		selector.associationCache = make(map[string]*associationCacheEntry)
 		selector.cacheMu.Unlock()
+
+		selector.ChannelService = newChannelService
 
 		req := &llm.Request{Model: modelID}
 		candidates, err := selector.selectModelCandidates(ctx, req)

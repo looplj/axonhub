@@ -35,6 +35,7 @@ type associationCacheEntry struct {
 	candidates              []*ChannelModelCandidate
 	channelCount            int
 	latestChannelUpdateTime time.Time
+	latestModelUpdatedAt    time.Time
 	cachedAt                time.Time
 }
 
@@ -116,12 +117,12 @@ func (s *DefaultSelector) selectChannelCadidates(ctx context.Context, req *llm.R
 }
 
 func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error) {
-	axonModel, err := s.ModelService.GetModelByModelID(ctx, req.Model, model.StatusEnabled)
+	model, err := s.ModelService.GetModelByModelID(ctx, req.Model, model.StatusEnabled)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query AxonHub Model: %w", err)
 	}
 
-	if axonModel.Settings == nil || len(axonModel.Settings.Associations) == 0 {
+	if model.Settings == nil || len(model.Settings.Associations) == 0 {
 		if log.DebugEnabled(ctx) {
 			log.Debug(ctx, "model has no associations", log.String("model", req.Model))
 		}
@@ -129,7 +130,7 @@ func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Re
 		return []*ChannelModelCandidate{}, nil
 	}
 
-	candidates, err := s.resolveAssociations(ctx, axonModel.ModelID, axonModel.Settings.Associations)
+	candidates, err := s.resolveAssociations(ctx, model, model.Settings.Associations)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve associations: %w", err)
 	}
@@ -147,16 +148,18 @@ func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Re
 
 // resolveAssociations uses biz.MatchAssociations to resolve model associations
 // and converts the results to ChannelModelCandidate.
-// Results are cached per model ID and invalidated when channel count or latest update time changes.
-func (s *DefaultSelector) resolveAssociations(ctx context.Context, modelID string, associations []*objects.ModelAssociation) ([]*ChannelModelCandidate, error) {
+// Results are cached per model ID and invalidated when channel count, latest update time, or model update time changes.
+func (s *DefaultSelector) resolveAssociations(ctx context.Context, model *ent.Model, associations []*objects.ModelAssociation) ([]*ChannelModelCandidate, error) {
 	channels := s.ChannelService.GetEnabledChannels()
 	if len(channels) == 0 {
 		return []*ChannelModelCandidate{}, nil
 	}
 
 	// Use model ID as cache key
+	modelID := model.ModelID
 	channelCount := len(channels)
-	latestUpdateTime := s.getLatestChannelUpdateTime(channels)
+	latestChannelUpdateTime := s.getLatestChannelUpdateTime(channels)
+	latestModelUpdatedAt := model.UpdatedAt
 
 	// Try to get from cache
 	s.cacheMu.RLock()
@@ -165,9 +168,11 @@ func (s *DefaultSelector) resolveAssociations(ctx context.Context, modelID strin
 		// Check if cache is still valid:
 		// 1. Channel count hasn't changed
 		// 2. No channel has been updated
-		// 3. Cache hasn't expired (5 minutes)
+		// 3. Model hasn't been updated
+		// 4. Cache hasn't expired (5 minutes)
 		if entry.channelCount == channelCount &&
-			entry.latestChannelUpdateTime.Equal(latestUpdateTime) &&
+			entry.latestChannelUpdateTime.Equal(latestChannelUpdateTime) &&
+			entry.latestModelUpdatedAt.Equal(latestModelUpdatedAt) &&
 			time.Since(entry.cachedAt) < associationCacheTTL {
 			s.cacheMu.RUnlock()
 
@@ -216,7 +221,8 @@ func (s *DefaultSelector) resolveAssociations(ctx context.Context, modelID strin
 	s.associationCache[modelID] = &associationCacheEntry{
 		candidates:              candidates,
 		channelCount:            channelCount,
-		latestChannelUpdateTime: latestUpdateTime,
+		latestChannelUpdateTime: latestChannelUpdateTime,
+		latestModelUpdatedAt:    latestModelUpdatedAt,
 		cachedAt:                time.Now(),
 	}
 	s.cacheMu.Unlock()
