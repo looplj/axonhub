@@ -72,7 +72,9 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		}
 
 		apiKey = ch.Credentials.APIKey
-		proxyConfig = ch.Settings.Proxy
+		if ch.Settings != nil {
+			proxyConfig = ch.Settings.Proxy
+		}
 	}
 
 	if apiKey == "" {
