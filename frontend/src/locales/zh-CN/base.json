@@ -130,6 +130,7 @@
     "moveToBottom": "移动到底部",
     "dragging": "拖拽中",
     "unsavedChanges": "您有未保存的更改",
+    "copied": "已复制",
     "sort": {
       "ascending": "升序",
       "descending": "降序",

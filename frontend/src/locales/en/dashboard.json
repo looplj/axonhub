@@ -23,6 +23,7 @@
       "errorLoadingTopProjects": "Error loading top projects:",
       "errorLoadingChannelData": "Error loading channel data:",
       "errorLoadingModelData": "Error loading model data:",
+      "errorLoadingChannelSuccessRate": "Failed to load channel success rate:",
       "noUserData": "No user data available",
       "noProjectData": "No project data available",
       "noChannelData": "No channel data available",

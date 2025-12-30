@@ -75,6 +75,8 @@
       "error": "错误",
       "image": "生成图像",
       "imageAlt": "追踪片段图像",
+      "userImage": "用户图片",
+      "userImageAlt": "用户上传的图片",
       "systemInstruction": "系统指令",
       "noSpanContent": "该片段没有额外内容。",
       "selectSpanHint": "请从时间线选择片段查看详情。",

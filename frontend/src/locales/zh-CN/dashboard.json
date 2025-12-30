@@ -23,6 +23,7 @@
       "errorLoadingTopProjects": "加载活跃项目失败:",
       "errorLoadingChannelData": "加载渠道数据失败:",
       "errorLoadingModelData": "加载模型数据失败:",
+      "errorLoadingChannelSuccessRate": "加载渠道成功率失败:",
       "noUserData": "暂无用户数据",
       "noProjectData": "暂无项目数据",
       "noChannelData": "暂无渠道数据",

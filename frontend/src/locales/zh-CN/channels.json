@@ -377,7 +377,8 @@
         "deselectAll": "取消全选",
         "clearAll": "清空全部",
         "addSelectedCount": "确定选中 ({{count}})",
-        "removeDeprecated": "清理 ({{count}})"
+        "removeDeprecated": "清理 ({{count}})",
+        "addMappingButton": "添加映射"
       },
       "status": {
         "enable": {

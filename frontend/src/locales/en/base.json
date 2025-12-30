@@ -122,6 +122,7 @@
     "moveToBottom": "Move to bottom",
     "dragging": "Dragging",
     "unsavedChanges": "You have unsaved changes",
+    "copied": "Copied",
     "sort": {
       "ascending": "Ascending",
       "descending": "Descending",
