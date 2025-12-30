@@ -351,7 +351,7 @@ export function ChannelsTable({
                                   <h4 className='text-sm font-semibold'>{t('channels.expandedRow.additional')}</h4>
                                   <div className='space-y-2 text-sm'>
                                     <div className='flex justify-between items-center'>
-                                      <span className='text-muted-foreground'>{t('channels.columns.weight')}:</span>
+                                      <span className='text-muted-foreground'>{t('channels.columns.orderingWeight')}:</span>
                                       <span className='font-mono text-xs'>{channel.orderingWeight ?? 0}</span>
                                     </div>
                                     <div className='flex justify-between'>
