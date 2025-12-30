@@ -108,9 +108,24 @@ func (processor *TestChannelOrchestrator) TestChannel(
 		Model: testModel,
 		Messages: []llm.Message{
 			{
+				Role: "system",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("You are a helpful assistant."),
+				},
+			},
+			{
 				Role: "user",
 				Content: llm.MessageContent{
-					Content: lo.ToPtr("Hello world, I'm AxonHub. Please tell me who you are?"),
+					MultipleContent: []llm.MessageContentPart{
+						{
+							Type: "text",
+							Text: lo.ToPtr("Hello world, I'm AxonHub."),
+						},
+						{
+							Type: "text",
+							Text: lo.ToPtr("Please tell me who you are?"),
+						},
+					},
 				},
 			},
 		},
