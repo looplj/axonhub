@@ -68,8 +68,23 @@ func tryGetTraceIDFromBody(c *gin.Context, config tracing.Config) (string, error
 
 // WithTrace is a middleware that extracts the X-Trace-ID header and
 // gets or creates the corresponding trace entity in the database.
+// 仅当请求有效时才记录追踪（需要有效的 project ID 且请求未被中止）
 func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// 检查请求是否已被中止（例如认证失败）
+		if c.IsAborted() {
+			c.Next()
+			return
+		}
+
+		// 检查是否有有效的 project ID（表示请求已通过认证）
+		projectID, ok := contexts.GetProjectID(c.Request.Context())
+		if !ok {
+			// 没有 project ID，说明请求无效，不记录追踪
+			c.Next()
+			return
+		}
+
 		traceID := getTraceIDFromHeader(c, config)
 		if traceID == "" && config.ClaudeCodeTraceEnabled {
 			var err error
@@ -91,16 +106,12 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 			}
 		}
 
+		// 如果请求头不含 trace ID，生成一个
 		if traceID == "" {
-			c.Next()
-			return
-		}
-
-		// Get project ID from context
-		projectID, ok := contexts.GetProjectID(c.Request.Context())
-		if !ok {
-			c.Next()
-			return
+			traceID = tracing.GenerateTraceID()
+			// Store the generated trace ID in context for logging
+			ctx := tracing.WithTraceID(c.Request.Context(), traceID)
+			c.Request = c.Request.WithContext(ctx)
 		}
 
 		// Get thread ID from context if available
@@ -114,17 +125,18 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 		if err != nil {
 			log.Warn(c.Request.Context(), "Failed to get or create trace", log.Cause(err))
 			c.Next()
-
 			return
 		}
 
-		// Store trace in context
-		if log.DebugEnabled(c.Request.Context()) {
-			log.Debug(c.Request.Context(), "Trace created", log.Any("trace", trace))
-		}
+		// Store trace in context if found or created
+		if trace != nil {
+			if log.DebugEnabled(c.Request.Context()) {
+				log.Debug(c.Request.Context(), "Trace found or created", log.Any("trace", trace))
+			}
 
-		ctx := contexts.WithTrace(c.Request.Context(), trace)
-		c.Request = c.Request.WithContext(ctx)
+			ctx := contexts.WithTrace(c.Request.Context(), trace)
+			c.Request = c.Request.WithContext(ctx)
+		}
 
 		c.Next()
 	}
