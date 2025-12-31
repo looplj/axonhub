@@ -1,6 +1,6 @@
 import { format } from 'date-fns'
 import { ColumnDef, Row } from '@tanstack/react-table'
-import { IconPlayerPlay, IconChevronDown, IconChevronRight, IconAlertTriangle } from '@tabler/icons-react'
+import { IconPlayerPlay, IconChevronDown, IconChevronRight, IconAlertTriangle, IconEdit } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 import { useCallback, useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -12,9 +12,10 @@ import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useChannels } from '../context/channels-context'
 import { useTestChannel } from '../data/channels'
+import { usePermissions } from '@/hooks/usePermissions'
 import { CHANNEL_CONFIGS, getProvider } from '../data/config_channels'
 import { Channel, ChannelType } from '../data/schema'
-import { DataTableColumnHeader } from './data-table-column-header'
+import { DataTableColumnHeader } from '@/components/data-table-column-header'
 import { DataTableRowActions } from './data-table-row-actions'
 import { ChannelsStatusDialog } from './channels-status-dialog'
 
@@ -51,22 +52,21 @@ function StatusSwitchCell({ row }: { row: Row<Channel> }) {
   )
 }
 
-// Test Cell Component to handle hooks properly
-function TestCell({ row }: { row: Row<Channel> }) {
+// Action Cell Component to handle hooks properly
+function ActionCell({ row }: { row: Row<Channel> }) {
   const { t } = useTranslation()
   const channel = row.original
   const { setOpen, setCurrentRow } = useChannels()
+  const { channelPermissions } = usePermissions()
   const testChannel = useTestChannel()
 
   const handleDefaultTest = async () => {
-    // Test with default test model
     try {
       await testChannel.mutateAsync({
         channelID: channel.id,
         modelID: channel.defaultTestModel || undefined,
       })
     } catch (_error) {
-      // Error is already handled by the useTestChannel hook via toast
     }
   }
 
@@ -75,11 +75,20 @@ function TestCell({ row }: { row: Row<Channel> }) {
     setOpen('test')
   }, [channel, setCurrentRow, setOpen])
 
+  const handleEdit = useCallback(() => {
+    setCurrentRow(channel)
+    setOpen('edit')
+  }, [channel, setCurrentRow, setOpen])
+
   return (
     <div className='flex items-center gap-1'>
+      {channelPermissions.canEdit && (
+        <Button size='sm' variant='outline' className='h-8 w-8 p-0' onClick={handleEdit}>
+          <IconEdit className='h-3 w-3' />
+        </Button>
+      )}
       <Button size='sm' variant='outline' className='h-8 px-3' onClick={handleDefaultTest} disabled={testChannel.isPending}>
         <IconPlayerPlay className='mr-1 h-3 w-3' />
-        {t('channels.actions.test')}
       </Button>
       <Button size='sm' variant='outline' className='h-8 w-8 p-0' onClick={handleOpenTestDialog}>
         <IconChevronDown className='h-3 w-3' />
@@ -324,9 +333,9 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
     },
 
     {
-      id: 'test',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.test')} />,
-      cell: TestCell,
+      id: 'action',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.action')} />,
+      cell: ActionCell,
       enableSorting: false,
       enableHiding: true,
     },
