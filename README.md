@@ -81,14 +81,21 @@ Here are some screenshots of AxonHub in action:
       Channel Management
     </td>
     <td align="center">
+      <a href="docs/screenshots/axonhub-models.png">
+        <img src="docs/screenshots/axonhub-models.png" alt="Models" width="250"/>
+      </a>
+      <br/>
+      Models
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
       <a href="docs/screenshots/axonhub-trace.png">
         <img src="docs/screenshots/axonhub-trace.png" alt="Trace Viewer" width="250"/>
       </a>
       <br/>
       Trace Viewer
     </td>
-  </tr>
-  <tr>
     <td align="center">
       <a href="docs/screenshots/axonhub-requests.png">
         <img src="docs/screenshots/axonhub-requests.png" alt="Request Monitoring" width="250"/>
@@ -102,13 +109,6 @@ Here are some screenshots of AxonHub in action:
       </a>
       <br/>
       Usage Logs
-    </td>
-    <td align="center">
-      <a href="docs/screenshots/axonhub-system.png">
-        <img src="docs/screenshots/axonhub-system.png" alt="System Dashboard" width="250"/>
-      </a>
-      <br/>
-      System Setting
     </td>
   </tr>
 </table>
@@ -356,164 +356,39 @@ AxonHub provides a unified API gateway that supports both OpenAI Chat Completion
 
 ### 2. Channel Configuration
 
-Configure AI provider channels in the management interface:
+Configure AI provider channels in the management interface. For detailed information on channel configuration, including model mappings, parameter overrides, and troubleshooting, see the [Channel Configuration Guide](docs/en/guides/channel-management.md).
 
-```yaml
-# OpenAI channel example
-name: "openai"
-type: "openai"
-base_url: "https://api.openai.com/v1"
-credentials:
-  api_key: "your-openai-key"
-supported_models: ["gpt-5", "gpt-4o"]
-```
+### 3. Model Management
 
-#### 2.1 Test Connection
+AxonHub provides a flexible model management system that supports mapping abstract models to specific channels and model implementations through Model Associations. This enables:
 
-Click the test button. If the test is successful, the configuration is correct.
+- **Unified Model Interface** - Use abstract model IDs (e.g., `gpt-4`, `claude-3-opus`) instead of channel-specific names
+- **Intelligent Channel Selection** - Automatically route requests to optimal channels based on association rules and load balancing
+- **Flexible Mapping Strategies** - Support for precise channel-model matching, regex patterns, and tag-based selection
+- **Priority-based Fallback** - Configure multiple associations with priorities for automatic failover
 
-#### 2.2 Enable Channel
+For comprehensive information on model management, including association types, configuration examples, and best practices, see the [Model Management Guide](docs/en/guides/model-management.md).
 
-After successful testing, click the enable button to activate the channel.
+### 4. Create API Keys
 
-#### 2.3 Model Mappings
+Create API keys to authenticate your applications with AxonHub. Each API key can be configured with multiple profiles that define:
 
-Use model mappings when the requested model name differs from the upstream provider's supported names. AxonHub transparently rewrites the request model before it leaves the gateway.
+- **Model Mappings** - Transform user-requested models to actual available models using exact match or regex patterns
+- **Channel Restrictions** - Limit which channels an API key can use by channel IDs or tags
+- **Model Access Control** - Control which models are accessible through a specific profile
+- **Profile Switching** - Change behavior on-the-fly by activating different profiles
 
-- Map unsupported or legacy model IDs to the closest available alternative
-- Implement failover by configuring multiple channels with different providers
+For detailed information on API key profiles, including configuration examples, validation rules, and best practices, see the [API Key Profile Guide](docs/en/guides/api-key-profiles.md).
 
-```yaml
-# Example: map product-specific aliases to upstream models
-settings:
-  modelMappings:
-    - from: "gpt-4o-mini"
-      to: "gpt-4o"
-    - from: "claude-3-sonnet"
-      to: "claude-3.5-sonnet"
-```
+### 5. Claude Code/Codex Integration
 
-> AxonHub only accepts mappings where the `to` model is already declared in `supported_models`.
-
-#### 2.4 Override Parameters
-
-Override parameters let you enforce channel-specific defaults regardless of incoming request payloads. Provide a JSON object that will be merged into every outbound request.
-
-- Supports top-level settings (for example `temperature`, `max_tokens`, `top_p`)
-- Supports dot-notation keys for nested fields such as `response_format.type`
-- Invalid JSON logs a warning and falls back to the original payload
-
-```yaml
-# Example: enforce deterministic JSON responses
-settings:
-  overrideParameters: |
-    {
-      "temperature": 0.3,
-      "max_tokens": 1024,
-      "response_format.type": "json_object"
-    }
-```
-
-### 3. Add Users
-
-1. Create user accounts
-2. Assign roles and permissions
-3. Create API keys
-
-### 4. Claude Code/Codex Integration
-
-See the dedicated [Claude Code & Codex Integration Guide](docs/en/guides/claude-code-integration.md) for detailed setup steps, troubleshooting, and tips on combining these tools with AxonHub model profiles. 
+See the dedicated [Claude Code & Codex Integration Guide](docs/en/guides/claude-code-integration.md) for detailed setup steps, troubleshooting, and tips on combining these tools with AxonHub model profiles.
 
 ---
 
-### 5. SDK Usage
+### 6. SDK Usage
 
-#### Python SDK - OpenAI API Format
-
-```python
-from openai import OpenAI
-
-client = OpenAI(
-    api_key="your-axonhub-api-key",
-    base_url="http://localhost:8090/v1"
-)
-
-# Call OpenAI model
-response = client.chat.completions.create(
-    model="gpt-4o",
-    messages=[{"role": "user", "content": "Hello!"}]
-)
-print(response.choices[0].message.content)
-
-# Call Anthropic model using OpenAI API
-response = client.chat.completions.create(
-    model="claude-3-5-sonnet",
-    messages=[{"role": "user", "content": "Hello, Claude!"}]
-)
-print(response.choices[0].message.content)
-```
-
-#### Python SDK - Anthropic API Format
-
-```python
-import requests
-
-# Call Anthropic model
-response = requests.post(
-    "http://localhost:8090/anthropic/v1/messages",
-    headers={
-        "Content-Type": "application/json",
-        "X-API-Key": "your-axonhub-api-key"
-    },
-    json={
-        "model": "claude-3-5-sonnet",
-        "max_tokens": 512,
-        "messages": [
-            {
-                "role": "user",
-                "content": [{"type": "text", "text": "Hello, Claude!"}]
-            }
-        ]
-    }
-)
-print(response.json()["content"][0]["text"])
-
-# Call OpenAI model using Anthropic API
-response = requests.post(
-    "http://localhost:8090/anthropic/v1/messages",
-    headers={
-        "Content-Type": "application/json",
-        "X-API-Key": "your-axonhub-api-key"
-    },
-    json={
-        "model": "gpt-4o",
-        "max_tokens": 512,
-        "messages": [
-            {
-                "role": "user",
-                "content": [{"type": "text", "text": "Hello, GPT!"}]
-            }
-        ]
-    }
-)
-print(response.json()["content"][0]["text"])
-```
-
-#### Node.js SDK
-
-```javascript
-import OpenAI from "openai";
-
-const openai = new OpenAI({
-  apiKey: "your-axonhub-api-key",
-  baseURL: "http://localhost:8090/v1",
-});
-
-const completion = await openai.chat.completions.create({
-  messages: [{ role: "user", content: "Hello!" }],
-  model: "gpt-4o",
-});
-```
+For detailed SDK usage examples and code samples, please refer to the [Unified API documentation](docs/en/api-reference/unified-api.md).
 
 ## 🛠️ Development Guide
 

@@ -42,7 +42,7 @@ AxonHub 的 LLM Pipeline 采用**转换器链（Transformer Chain）**模式，�
 **关键步骤**：
 1. **请求转换** - 解析 HTTP 请求并转换为内部 LLM 格式
 2. **模型映射** - 根据 API Key Profile 映射模型名称（如 `gpt-4o` → `custom-model`）
-3. **通道选择** - 基于健康状态和可用性选择合适的 AI 提供商通道
+3. **渠道选择** - 基于健康状态和可用性选择合适的 AI 提供商渠道
 4. **持久化** - 创建请求记录，生成唯一 Request ID
 
 ---
@@ -60,7 +60,7 @@ AxonHub 的 LLM Pipeline 采用**转换器链（Transformer Chain）**模式，�
 
 **关键步骤**：
 1. **格式转换** - 将统一格式转换为提供商特定格式（OpenAI、Anthropic、AI SDK）
-2. **参数覆盖** - 应用通道配置中的覆盖参数（MaxTokens、温度等）
+2. **参数覆盖** - 应用渠道配置中的覆盖参数（MaxTokens、温度等）
 3. **HTTP 执行** - 发送请求到 AI 提供商
 4. **响应转换** - 将提供商响应转换回统一格式
 
@@ -73,7 +73,7 @@ AxonHub 的 LLM Pipeline 采用**转换器链（Transformer Chain）**模式，�
 │                             请求生命周期                                      │
 │                                                                             │
 │  1. 入站转换 (标准化)                                                        │
-│      └─▶ 请求验证 → 模型映射 → 通道选择 → 创建记录                            │
+│      └─▶ 请求验证 → 模型映射 → 渠道选择 → 创建记录                            │
 │                                                                             │
 │  2. 中间件处理 (可选)                                                        │
 │      └─▶ MaxToken 限制 → 使用统计 → 请求日志                                │
@@ -83,13 +83,13 @@ AxonHub 的 LLM Pipeline 采用**转换器链（Transformer Chain）**模式，�
 │                                                                             │
 │  4. Pipeline 执行（核心）                                                    │
 │      ┌─────────────────────────────────────────────────────────────┐         │
-│      │ 通道 1 (首选)                                                │         │
+│      │ 渠道 1 (首选)                                                │         │
 │      │   ├─▶ 发送请求 → 接收响应 → 处理结果                       │         │
-│      │   └─▶ 失败？→ 判断重试策略 → 重试或切换通道               │         │
+│      │   └─▶ 失败？→ 判断重试策略 → 重试或切换渠道               │         │
 │      └─────────────────────────────────────────────────────────────┘         │
-│                              ↓ (跨通道重试)                                 │
+│                              ↓ (跨渠道重试)                                 │
 │      ┌─────────────────────────────────────────────────────────────┐         │
-│      │ 通道 2 (备选)                                              │         │
+│      │ 渠道 2 (备选)                                              │         │
 │      │   └─▶ 重复上述流程                                       │         │
 │      └─────────────────────────────────────────────────────────────┘         │
 │                              ↓ (继续切换直到成功或耗尽)                       │
@@ -110,8 +110,8 @@ AxonHub 的 LLM Pipeline 采用**转换器链（Transformer Chain）**模式，�
 
 | 类型 | 触发条件 | 行为 |
 |------|---------|------|
-| **同通道重试** | 限流错误（429）、临时网络错误 | 等待后退时间后，同一通道重试 |
-| **跨通道重试** | 通道不可用、模型不存在、认证失败 | 立即切换到下一个备选通道 |
+| **同渠道重试** | 限流错误（429）、临时网络错误 | 等待后退时间后，同一渠道重试 |
+| **跨渠道重试** | 渠道不可用、模型不存在、认证失败 | 立即切换到下一个备选渠道 |
 
 **默认策略**：
 - 最多 3 次尝试（初始 + 2 次重试）
@@ -171,7 +171,7 @@ AxonHub 的 LLM Pipeline 采用**转换器链（Transformer Chain）**模式，�
 1. **MaxToken 限制** - 限制单次请求的最大 Token 数
 2. **使用统计** - 实时跟踪 Token 消耗
 3. **请求日志** - 记录详细的请求响应信息
-4. **通道切换** - 重试时自动切换通道
+4. **渠道切换** - 重试时自动切换渠道
 
 **中间件执行点**：
 - 入站请求转换后
@@ -188,11 +188,11 @@ AxonHub 的 LLM Pipeline 采用**转换器链（Transformer Chain）**模式，�
 **Request 记录**：
 - 请求元数据（ID、时间、用户）
 - 原始请求体（JSON）
-- 使用的模型和通道
+- 使用的模型和渠道
 
 **执行记录（RequestExecution）**：
 - 每次尝试的详细信息
-- 通道配置快照
+- 渠道配置快照
 - 是否成功、错误信息
 
 **流式块（StreamChunk）**：
@@ -209,7 +209,7 @@ AxonHub 的 LLM Pipeline 采用**转换器链（Transformer Chain）**模式，�
 - 客户端代码无需修改
 
 ### 2. 高可用性
-- 自动故障转移（通道切换）
+- 自动故障转移（渠道切换）
 - 智能重试策略
 - 健康检查和负载均衡
 
@@ -221,7 +221,7 @@ AxonHub 的 LLM Pipeline 采用**转换器链（Transformer Chain）**模式，�
 ### 4. 可扩展性
 - 中间件机制灵活扩展
 - 配置驱动无需代码修改
-- 支持自定义通道策略
+- 支持自定义渠道策略
 
 ---
 
@@ -240,8 +240,8 @@ AxonHub 的 LLM Pipeline 采用**转换器链（Transformer Chain）**模式，�
    }
    ```
 
-3. **配置通道**
-   - 在管理界面添加新通道
+3. **配置渠道**
+   - 在管理界面添加新渠道
    - 选择提供商类型
    - 填写认证信息
 
@@ -277,7 +277,7 @@ AxonHub 的 LLM Pipeline 采用**转换器链（Transformer Chain）**模式，�
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         中间件处理                                     │
 │  - Model Mapping (模型名称映射)                                       │
-│  - Channel Selection (通道选择)                                       │
+│  - Channel Selection (渠道选择)                                       │
 │  - MaxToken Enforcement (Token 限制)                                 │
 │  - Request Persistence (请求持久化)                                   │
 └──────────────────────────────┬──────────────────────────────────────┘
@@ -298,7 +298,7 @@ AxonHub 的 LLM Pipeline 采用**转换器链（Transformer Chain）**模式，�
                                │
                                ▼
 ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐
-│                Transformer (根据通道类型选择)                           │
+│                Transformer (根据渠道类型选择)                           │
 │                                                                        │
 │   ┌─────────────────┐        ┌─────────────────┐        ┌──────────┐│
 │   │ OpenAI          │        │ Anthropic       │        │ AI SDK   ││
@@ -328,7 +328,7 @@ AxonHub 的 LLM Pipeline 采用**转换器链（Transformer Chain）**模式，�
 │                         中间件处理                                     │
 │  - Response Persistence (响应持久化)                                  │
 │  - Usage Tracking (使用统计)                                          │
-│  - Channel Switching (通道切换，重试时)                               │
+│  - Channel Switching (渠道切换，重试时)                               │
 └──────────────────────────────┬──────────────────────────────────────┘
                                │
                                ▼
@@ -361,7 +361,7 @@ AxonHub 的 LLM Pipeline 采用**转换器链（Transformer Chain）**模式，�
 ### 业务逻辑
 - `internal/server/chat/` - Chat 处理和持久化
 - `internal/server/api/chat.go` - HTTP 处理器
-- `internal/server/biz/channel.go` - 通道管理
+- `internal/server/biz/channel.go` - 渠道管理
 
 ### 工具
 - `internal/pkg/httpclient/` - HTTP 客户端工具
@@ -384,7 +384,7 @@ AxonHub 的 LLM Pipeline 采用**转换器链（Transformer Chain）**模式，�
 ### 业务逻辑
 - `internal/server/chat/` - Chat 处理和持久化
 - `internal/server/api/chat.go` - HTTP 处理器
-- `internal/server/biz/channel.go` - 通道管理
+- `internal/server/biz/channel.go` - 渠道管理
 
 ### 工具
 - `internal/pkg/httpclient/` - HTTP 客户端工具
@@ -423,7 +423,7 @@ AxonHub 的 LLM Pipeline 采用**转换器链（Transformer Chain）**模式，�
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         中间件处理                                     │
 │  - Model Mapping (模型名称映射)                                       │
-│  - Channel Selection (通道选择)                                       │
+│  - Channel Selection (渠道选择)                                       │
 │  - MaxToken Enforcement (Token 限制)                                 │
 │  - Request Persistence (请求持久化)                                   │
 └──────────────────────────────┬──────────────────────────────────────┘
@@ -444,7 +444,7 @@ AxonHub 的 LLM Pipeline 采用**转换器链（Transformer Chain）**模式，�
                                │
                                ▼
 ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐
-│                Transformer (根据通道类型选择)                           │
+│                Transformer (根据渠道类型选择)                           │
 │                                                                        │
 │   ┌─────────────────┐        ┌─────────────────┐        ┌──────────┐│
 │   │ OpenAI          │        │ Anthropic       │        │ AI SDK   ││
@@ -474,7 +474,7 @@ AxonHub 的 LLM Pipeline 采用**转换器链（Transformer Chain）**模式，�
 │                         中间件处理                                     │
 │  - Response Persistence (响应持久化)                                  │
 │  - Usage Tracking (使用统计)                                          │
-│  - Channel Switching (通道切换，重试时)                               │
+│  - Channel Switching (渠道切换，重试时)                               │
 └──────────────────────────────┬──────────────────────────────────────┘
                                │
                                ▼
