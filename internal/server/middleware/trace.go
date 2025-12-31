@@ -125,17 +125,18 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 		if err != nil {
 			log.Warn(c.Request.Context(), "Failed to get or create trace", log.Cause(err))
 			c.Next()
-
 			return
 		}
 
-		// Store trace in context
-		if log.DebugEnabled(c.Request.Context()) {
-			log.Debug(c.Request.Context(), "Trace created", log.Any("trace", trace))
-		}
+		// Store trace in context if found or created
+		if trace != nil {
+			if log.DebugEnabled(c.Request.Context()) {
+				log.Debug(c.Request.Context(), "Trace found or created", log.Any("trace", trace))
+			}
 
-		ctx := contexts.WithTrace(c.Request.Context(), trace)
-		c.Request = c.Request.WithContext(ctx)
+			ctx := contexts.WithTrace(c.Request.Context(), trace)
+			c.Request = c.Request.WithContext(ctx)
+		}
 
 		c.Next()
 	}
