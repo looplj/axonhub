@@ -24,7 +24,7 @@
       "firstTokenLatencyFull": "First Token Latency",
       "tokensPerSecondFull": "Tokens/Second",
       "orderingWeight": "Weight",
-      "test": "Test",
+      "action": "Action",
       "createdAt": "Created At",
       "updatedAt": "Updated At",
       "actions": "Actions",

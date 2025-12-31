@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import LongText from '@/components/long-text'
 import { ApiKey } from '../data/schema'
-import { DataTableColumnHeader } from './data-table-column-header'
+import { DataTableColumnHeader } from '@/components/data-table-column-header'
 import { DataTableRowActions } from './data-table-row-actions'
 import { useApiKeysContext } from '../context/apikeys-context'
 

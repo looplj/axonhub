@@ -1,6 +1,5 @@
 export { UsageLogsTable } from './usage-logs-table'
 export { UsageDetailDialog } from './usage-detail-dialog'
-export { DataTableColumnHeader } from './data-table-column-header'
 export { DataTableToolbar } from './data-table-toolbar'
 export { DataTableViewOptions } from './data-table-view-options'
 export { useUsageLogsColumns } from './usage-logs-columns'

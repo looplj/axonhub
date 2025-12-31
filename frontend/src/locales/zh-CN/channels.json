@@ -25,7 +25,7 @@
       "firstTokenLatencyFull": "首Token延迟",
       "tokensPerSecondFull": "Token/秒",
       "orderingWeight": "权重",
-      "test": "测试",
+      "action": "操作",
       "createdAt": "创建时间",
       "updatedAt": "更新时间",
       "actions": "操作",

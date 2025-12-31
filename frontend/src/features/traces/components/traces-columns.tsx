@@ -11,7 +11,7 @@ import { usePaginationSearch } from '@/hooks/use-pagination-search'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Trace } from '../data/schema'
-import { DataTableColumnHeader } from './data-table-column-header'
+import { DataTableColumnHeader } from '@/components/data-table-column-header'
 
 export function useTracesColumns(): ColumnDef<Trace>[] {
   const { t, i18n } = useTranslation()

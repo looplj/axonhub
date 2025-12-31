@@ -10,7 +10,7 @@ import { usePaginationSearch } from '@/hooks/use-pagination-search'
 import { Badge } from '@/components/ui/badge'
 import { useRequestPermissions } from '../../../hooks/useRequestPermissions'
 import { Request } from '../data/schema'
-import { DataTableColumnHeader } from './data-table-column-header'
+import { DataTableColumnHeader } from '@/components/data-table-column-header'
 import { getStatusColor } from './help'
 import { formatDuration } from '@/utils/format-duration'
 

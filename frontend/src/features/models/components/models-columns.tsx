@@ -2,7 +2,6 @@ import { useCallback, useState } from 'react'
 import { format } from 'date-fns'
 import { ColumnDef, Row } from '@tanstack/react-table'
 import { IconCheck, IconX, IconLink, IconChevronDown, IconChevronRight } from '@tabler/icons-react'
-import { toc } from '@lobehub/icons'
 import * as Icons from '@lobehub/icons'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
@@ -12,7 +11,7 @@ import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useModels } from '../context/models-context'
 import { Model } from '../data/schema'
-import { DataTableColumnHeader } from './data-table-column-header'
+import { DataTableColumnHeader } from '@/components/data-table-column-header'
 import { DataTableRowActions } from './data-table-row-actions'
 import { ModelsStatusDialog } from './models-status-dialog'
 
@@ -114,7 +113,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
         className: 'md:table-cell min-w-48',
       },
       enableHiding: false,
-      enableSorting: true,
+      enableSorting: false,
     },
     {
       accessorKey: 'modelID',
@@ -125,7 +124,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       meta: {
         className: 'min-w-48',
       },
-      enableSorting: true,
+      enableSorting: false,
     },
     {
       accessorKey: 'developer',
@@ -261,7 +260,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
         return (
           <Button size='sm' variant='outline' className='h-8 px-3' onClick={handleOpenAssociationDialog}>
             <IconLink className='mr-1 h-3 w-3' />
-            {associationCount > 0 ? `${associationCount}` : t('models.actions.addAssociation')}
+            {`${associationCount}`}
           </Button>
         )
       },

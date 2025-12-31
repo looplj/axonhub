@@ -13,7 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useUsageLogPermissions } from '../../../gql/useUsageLogPermissions'
 import { useUsageLogsContext } from '../context'
 import { UsageLog, UsageLogSource } from '../data/schema'
-import { DataTableColumnHeader } from './data-table-column-header'
+import { DataTableColumnHeader } from '@/components/data-table-column-header'
 
 // Source color mapping for badges
 const getSourceColor = (source: UsageLogSource) => {
