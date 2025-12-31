@@ -2,6 +2,8 @@ package biz
 
 import (
 	"testing"
+
+	"github.com/looplj/axonhub/internal/ent/channel"
 )
 
 func TestExtractJSONArray(t *testing.T) {
@@ -149,6 +151,260 @@ func TestExtractJSONArrayWithGeminiModels(t *testing.T) {
 
 		if models[0].Name != "models/gemini-pro" {
 			t.Errorf("model.Name = %q, want %q", models[0].Name, "models/gemini-pro")
+		}
+	})
+}
+
+func TestPrepareModelsEndpoint(t *testing.T) {
+	fetcher := NewModelFetcher(nil, nil)
+
+	tests := []struct {
+		name        string
+		channelType channel.Type
+		baseURL     string
+		expectedURL string
+		checkHeader bool
+		headerKey   string
+		headerValue string
+	}{
+		{
+			name:        "Anthropic with /v1 suffix",
+			channelType: channel.TypeAnthropic,
+			baseURL:     "https://api.anthropic.com/v1",
+			expectedURL: "https://api.anthropic.com/v1/models",
+			checkHeader: true,
+			headerKey:   "Anthropic-Version",
+			headerValue: "2023-06-01",
+		},
+		{
+			name:        "Anthropic without /v1 suffix",
+			channelType: channel.TypeAnthropic,
+			baseURL:     "https://api.anthropic.com",
+			expectedURL: "https://api.anthropic.com/v1/models",
+			checkHeader: true,
+			headerKey:   "Anthropic-Version",
+			headerValue: "2023-06-01",
+		},
+		{
+			name:        "Anthropic with /anthropic suffix",
+			channelType: channel.TypeAnthropic,
+			baseURL:     "https://api.example.com/anthropic",
+			expectedURL: "https://api.example.com/v1/models",
+			checkHeader: true,
+			headerKey:   "Anthropic-Version",
+			headerValue: "2023-06-01",
+		},
+		{
+			name:        "Anthropic with /claude suffix",
+			channelType: channel.TypeAnthropic,
+			baseURL:     "https://api.example.com/claude",
+			expectedURL: "https://api.example.com/v1/models",
+			checkHeader: true,
+			headerKey:   "Anthropic-Version",
+			headerValue: "2023-06-01",
+		},
+		{
+			name:        "Anthropic with raw URL marker (#)",
+			channelType: channel.TypeAnthropic,
+			baseURL:     "https://api.example.com/custom/path#",
+			expectedURL: "https://api.example.com/custom/path/models",
+			checkHeader: true,
+			headerKey:   "Anthropic-Version",
+			headerValue: "2023-06-01",
+		},
+		{
+			name:        "ZhipuAnthropic",
+			channelType: channel.TypeZhipuAnthropic,
+			baseURL:     "https://open.bigmodel.cn/api/anthropic",
+			expectedURL: "https://open.bigmodel.cn/api/paas/v4/models",
+		},
+		{
+			name:        "ZaiAnthropic",
+			channelType: channel.TypeZaiAnthropic,
+			baseURL:     "https://api.zai.ai/anthropic",
+			expectedURL: "https://api.zai.ai/paas/v4/models",
+		},
+		{
+			name:        "Zai",
+			channelType: channel.TypeZai,
+			baseURL:     "https://api.zai.ai/v4",
+			expectedURL: "https://api.zai.ai/v4/models",
+		},
+		{
+			name:        "Zhipu",
+			channelType: channel.TypeZhipu,
+			baseURL:     "https://open.bigmodel.cn/api",
+			expectedURL: "https://open.bigmodel.cn/api/v4/models",
+		},
+		{
+			name:        "DeepseekAnthropic",
+			channelType: channel.TypeDeepseekAnthropic,
+			baseURL:     "https://api.deepseek.com/anthropic",
+			expectedURL: "https://api.deepseek.com/v1/models",
+		},
+		{
+			name:        "MoonshotAnthropic",
+			channelType: channel.TypeMoonshotAnthropic,
+			baseURL:     "https://api.moonshot.cn/claude",
+			expectedURL: "https://api.moonshot.cn/v1/models",
+		},
+		{
+			name:        "Gemini with /v1 suffix",
+			channelType: channel.TypeGemini,
+			baseURL:     "https://generativelanguage.googleapis.com/v1",
+			expectedURL: "https://generativelanguage.googleapis.com/v1/models",
+		},
+		{
+			name:        "Gemini without /v1 suffix",
+			channelType: channel.TypeGemini,
+			baseURL:     "https://generativelanguage.googleapis.com",
+			expectedURL: "https://generativelanguage.googleapis.com/v1beta/models",
+		},
+		{
+			name:        "OpenAI with /v1 suffix",
+			channelType: channel.TypeOpenai,
+			baseURL:     "https://api.openai.com/v1",
+			expectedURL: "https://api.openai.com/v1/models",
+		},
+		{
+			name:        "OpenAI without /v1 suffix",
+			channelType: channel.TypeOpenai,
+			baseURL:     "https://api.openai.com",
+			expectedURL: "https://api.openai.com/v1/models",
+		},
+		{
+			name:        "OpenAI with raw URL marker (#)",
+			channelType: channel.TypeOpenai,
+			baseURL:     "https://custom.api.com/custom/path#",
+			expectedURL: "https://custom.api.com/custom/path/models",
+		},
+		{
+			name:        "Deepseek",
+			channelType: channel.TypeDeepseek,
+			baseURL:     "https://api.deepseek.com",
+			expectedURL: "https://api.deepseek.com/v1/models",
+		},
+		{
+			name:        "Vercel",
+			channelType: channel.TypeVercel,
+			baseURL:     "https://api.vercel.com",
+			expectedURL: "https://api.vercel.com/v1/models",
+		},
+		{
+			name:        "Openrouter",
+			channelType: channel.TypeOpenrouter,
+			baseURL:     "https://openrouter.ai/api",
+			expectedURL: "https://openrouter.ai/api/v1/models",
+		},
+		{
+			name:        "Xai",
+			channelType: channel.TypeXai,
+			baseURL:     "https://api.x.ai",
+			expectedURL: "https://api.x.ai/v1/models",
+		},
+		{
+			name:        "Siliconflow",
+			channelType: channel.TypeSiliconflow,
+			baseURL:     "https://api.siliconflow.cn",
+			expectedURL: "https://api.siliconflow.cn/v1/models",
+		},
+		{
+			name:        "URL with trailing slash",
+			channelType: channel.TypeOpenai,
+			baseURL:     "https://api.openai.com/",
+			expectedURL: "https://api.openai.com/v1/models",
+		},
+		{
+			name:        "URL with double trailing slash",
+			channelType: channel.TypeOpenai,
+			baseURL:     "https://api.openai.com//",
+			expectedURL: "https://api.openai.com//v1/models",
+		},
+		{
+			name:        "Gemini Openai",
+			channelType: channel.TypeGeminiOpenai,
+			baseURL:     "https://generativelanguage.googleapis.com",
+			expectedURL: "https://generativelanguage.googleapis.com/v1/models",
+		},
+		{
+			name:        "Gemini Vertex",
+			channelType: channel.TypeGeminiVertex,
+			baseURL:     "https://us-central1-aiplatform.googleapis.com",
+			expectedURL: "https://us-central1-aiplatform.googleapis.com/v1/models",
+		},
+		{
+			name:        "Longcat Anthropic",
+			channelType: channel.TypeLongcatAnthropic,
+			baseURL:     "https://api.longcat.ai/anthropic",
+			expectedURL: "https://api.longcat.ai/v1/models",
+		},
+		{
+			name:        "Minimax Anthropic",
+			channelType: channel.TypeMinimaxAnthropic,
+			baseURL:     "https://api.minimax.ai/claude",
+			expectedURL: "https://api.minimax.ai/v1/models",
+		},
+		{
+			name:        "Doubao Anthropic",
+			channelType: channel.TypeDoubaoAnthropic,
+			baseURL:     "https://ark.cn-beijing.volces.com/anthropic",
+			expectedURL: "https://ark.cn-beijing.volces.com/v1/models",
+		},
+		{
+			name:        "Doubao",
+			channelType: channel.TypeDoubao,
+			baseURL:     "https://ark.cn-beijing.volces.com",
+			expectedURL: "https://ark.cn-beijing.volces.com/v1/models",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			url, headers := fetcher.prepareModelsEndpoint(tt.channelType, tt.baseURL)
+
+			if url != tt.expectedURL {
+				t.Errorf("prepareModelsEndpoint() URL = %q, want %q", url, tt.expectedURL)
+			}
+
+			if tt.checkHeader {
+				if headers == nil {
+					t.Errorf("prepareModelsEndpoint() headers is nil, expected header %q", tt.headerKey)
+				} else if headers.Get(tt.headerKey) != tt.headerValue {
+					t.Errorf("prepareModelsEndpoint() header %q = %q, want %q", tt.headerKey, headers.Get(tt.headerKey), tt.headerValue)
+				}
+			}
+		})
+	}
+}
+
+func TestPrepareModelsEndpointHeaders(t *testing.T) {
+	fetcher := NewModelFetcher(nil, nil)
+
+	t.Run("Anthropic sets correct version header", func(t *testing.T) {
+		_, headers := fetcher.prepareModelsEndpoint(channel.TypeAnthropic, "https://api.anthropic.com")
+		if headers.Get("Anthropic-Version") != "2023-06-01" {
+			t.Errorf("Expected Anthropic-Version header to be 2023-06-01, got %q", headers.Get("Anthropic-Version"))
+		}
+	})
+
+	t.Run("OpenAI does not set special headers", func(t *testing.T) {
+		_, headers := fetcher.prepareModelsEndpoint(channel.TypeOpenai, "https://api.openai.com")
+		if headers.Get("Anthropic-Version") != "" {
+			t.Errorf("Expected no Anthropic-Version header for OpenAI, got %q", headers.Get("Anthropic-Version"))
+		}
+	})
+
+	t.Run("Gemini does not set special headers", func(t *testing.T) {
+		_, headers := fetcher.prepareModelsEndpoint(channel.TypeGemini, "https://generativelanguage.googleapis.com")
+		if headers.Get("Anthropic-Version") != "" {
+			t.Errorf("Expected no Anthropic-Version header for Gemini, got %q", headers.Get("Anthropic-Version"))
+		}
+	})
+
+	t.Run("Anthropic-like channels do not set version header", func(t *testing.T) {
+		_, headers := fetcher.prepareModelsEndpoint(channel.TypeDeepseekAnthropic, "https://api.deepseek.com")
+		if headers.Get("Anthropic-Version") != "" {
+			t.Errorf("Expected no Anthropic-Version header for Anthropic-like channels, got %q", headers.Get("Anthropic-Version"))
 		}
 	})
 }

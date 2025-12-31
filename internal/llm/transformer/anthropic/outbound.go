@@ -41,9 +41,15 @@ type Config struct {
 	ProjectID string `json:"project_id,omitempty"` // For Vertex
 	JSONData  string `json:"json_data,omitempty"`  // For Vertex
 
-	// API configuration
-	BaseURL string `json:"base_url,omitempty"` // Custom base URL (optional)
-	APIKey  string `json:"api_key,omitempty"`  // API key for direct Anthropic API
+	// BaseURL is the base URL for the Anthropic API, required.
+	BaseURL string `json:"base_url,omitempty"`
+
+	// RawURL is whether to use raw URL for requests, default is false.
+	// If true, the base URL will be used as is, without appending the version.
+	RawURL bool `json:"raw_url,omitempty"`
+
+	// APIKey is the API key for authentication, required.
+	APIKey string `json:"api_key,omitempty"`
 
 	// Thinking configuration
 	// Maps ReasoningEffort values to Anthropic thinking budget tokens
@@ -83,6 +89,11 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 			Outbound: t,
 			executor: executor,
 		}
+	}
+
+	if before, ok := strings.CutSuffix(config.BaseURL, "#"); ok {
+		config.BaseURL = before
+		config.RawURL = true
 	}
 
 	return t, nil
@@ -241,6 +252,11 @@ func (t *OutboundTransformer) buildFullRequestURL(chatReq *llm.Request) (string,
 		return baseURL + endpoint, nil
 
 	default:
+		// RawURL is true, use the base URL as is
+		if t.config.RawURL {
+			return baseURL + "/messages", nil
+		}
+
 		// Direct Anthropic API
 		if strings.HasSuffix(baseURL, "/v1") {
 			return baseURL + "/messages", nil
@@ -307,30 +323,6 @@ func (t *OutboundTransformer) SetConfig(config *Config) {
 	}
 
 	t.config = config
-}
-
-// ConfigureForVertex configures the transformer for Google Vertex AI.
-func (t *OutboundTransformer) ConfigureForVertex(region, projectID string) error {
-	if region == "" {
-		return fmt.Errorf("region is required for Vertex AI")
-	}
-
-	if projectID == "" {
-		return fmt.Errorf("project ID is required for Vertex AI")
-	}
-
-	t.config.Type = PlatformVertex
-	t.config.Region = region
-	t.config.ProjectID = projectID
-
-	// Update base URL for Vertex AI
-	if region == "global" {
-		t.config.BaseURL = "https://aiplatform.googleapis.com"
-	} else {
-		t.config.BaseURL = fmt.Sprintf("https://%s-aiplatform.googleapis.com", region)
-	}
-
-	return nil
 }
 
 // GetConfig returns the current configuration.

@@ -63,7 +63,7 @@ func TestClenupConfig(t *testing.T) {
 			},
 			expected: Config{
 				BaseURL:    "https://generativelanguage.googleapis.com",
-				APIVersion: "v1beta",
+				APIVersion: "v1",
 			},
 		},
 		{
@@ -73,8 +73,8 @@ func TestClenupConfig(t *testing.T) {
 				APIVersion: "v1",
 			},
 			expected: Config{
-				BaseURL:    "https://example.com",
-				APIVersion: "v1beta",
+				BaseURL:    "https://example.com/v1beta",
+				APIVersion: "v1",
 			},
 		},
 		{

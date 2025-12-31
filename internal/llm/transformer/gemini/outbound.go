@@ -63,9 +63,7 @@ func clenupConfig(config Config) Config {
 
 	if config.APIVersion == "" {
 		config.APIVersion = DefaultAPIVersion
-		config.BaseURL = strings.TrimSuffix(config.BaseURL, "/v1beta")
-		config.BaseURL = strings.TrimSuffix(config.BaseURL, "/v1")
-	} else {
+
 		if strings.HasSuffix(config.BaseURL, "/v1beta") {
 			config.APIVersion = "v1beta"
 			config.BaseURL = strings.TrimSuffix(config.BaseURL, "/v1beta")
@@ -75,6 +73,8 @@ func clenupConfig(config Config) Config {
 			config.APIVersion = "v1"
 			config.BaseURL = strings.TrimSuffix(config.BaseURL, "/v1")
 		}
+	} else {
+		config.BaseURL = strings.TrimSuffix(config.BaseURL, "/"+config.APIVersion)
 	}
 
 	return config
