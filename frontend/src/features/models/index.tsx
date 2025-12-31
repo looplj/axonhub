@@ -22,9 +22,21 @@ function ModelsContent() {
     defaultPageSize: 20,
   })
   const [nameFilter, setNameFilter] = useState<string>('')
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: 'createdAt', desc: true },
-  ])
+  const [sorting, setSorting] = useState<SortingState>(() => {
+    const stored = localStorage.getItem('models-table-sorting')
+    if (stored) {
+      try {
+        return JSON.parse(stored)
+      } catch {
+        return [{ id: 'createdAt', desc: true }]
+      }
+    }
+    return [{ id: 'createdAt', desc: true }]
+  })
+
+  useEffect(() => {
+    localStorage.setItem('models-table-sorting', JSON.stringify(sorting))
+  }, [sorting])
 
   const debouncedNameFilter = useDebounce(nameFilter, 300)
 

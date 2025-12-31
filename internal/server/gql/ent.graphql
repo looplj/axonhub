@@ -401,6 +401,7 @@ Properties by which Channel connections can be ordered.
 enum ChannelOrderField {
   CREATED_AT
   UPDATED_AT
+  NAME
   ORDERING_WEIGHT
 }
 type ChannelOverrideTemplate implements Node {
@@ -1854,6 +1855,7 @@ Properties by which Model connections can be ordered.
 enum ModelOrderField {
   CREATED_AT
   UPDATED_AT
+  NAME
 }
 """
 ModelStatus is enum for the field status
