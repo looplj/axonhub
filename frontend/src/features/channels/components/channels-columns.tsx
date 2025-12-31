@@ -309,9 +309,9 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
 
         return (
           <div className='flex items-center gap-2'>
-            <div className='flex max-w-48 flex-wrap gap-1'>
+            <div className='flex max-w-48 flex-wrap gap-1 overflow-hidden'>
               {models.slice(0, 2).map((model) => (
-                <Badge key={model} variant='secondary' className='text-xs'>
+                <Badge key={model} variant='secondary' className='text-xs truncate max-w-32'>
                   {model}
                 </Badge>
               ))}

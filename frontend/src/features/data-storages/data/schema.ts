@@ -49,8 +49,8 @@ export type DataStorageEdge = z.infer<typeof dataStorageEdgeSchema>
 export const pageInfoSchema = z.object({
   hasNextPage: z.boolean(),
   hasPreviousPage: z.boolean(),
-  startCursor: z.string().optional(),
-  endCursor: z.string().optional(),
+  startCursor: z.string().optional().nullable(),
+  endCursor: z.string().optional().nullable(),
 })
 export type PageInfo = z.infer<typeof pageInfoSchema>
 
