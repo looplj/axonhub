@@ -12,6 +12,9 @@ FROM golang:alpine AS backend-builder
 
 WORKDIR /build
 
+# 使用国内镜像加速 Go 模块下载
+ENV GOPROXY=https://goproxy.cn,direct
+
 COPY go.mod go.sum ./
 RUN go mod download
 
