@@ -625,13 +625,6 @@ func TestEmbeddingOutboundTransformer_TransformError(t *testing.T) {
 	})
 }
 
-func TestEmbeddingOutboundTransformer_StreamNotSupported(t *testing.T) {
-	// Note: Embedding streaming is rejected at the inbound transformer level,
-	// not at the outbound level. The outbound transformer's stream methods
-	// are generic and work for all request types.
-	t.Skip("Embedding streaming is rejected at inbound level, not outbound level")
-}
-
 func TestEmbeddingInboundTransformer_StreamNotSupported(t *testing.T) {
 	transformer := NewEmbeddingInboundTransformer()
 
@@ -702,6 +695,92 @@ func TestEmbeddingOutboundTransformer_URLBuilding(t *testing.T) {
 			httpReq, err := transformer.TransformRequest(context.Background(), llmReq)
 			require.NoError(t, err)
 			require.Equal(t, tc.expectedURL, httpReq.URL)
+		})
+	}
+}
+
+func TestOutboundTransformer_RawURL_Embedding(t *testing.T) {
+	tests := []struct {
+		name        string
+		config      *Config
+		request     *llm.Request
+		expectedURL string
+	}{
+		{
+			name: "raw URL enabled for embedding",
+			config: &Config{
+				Type:    PlatformOpenAI,
+				BaseURL: "https://custom.api.com/v100",
+				APIKey:  "test-key",
+				RawURL:  true,
+			},
+			request: &llm.Request{
+				RequestType: llm.RequestTypeEmbedding,
+				Model:       "text-embedding-ada-002",
+				Embedding: &llm.EmbeddingRequest{
+					Input: llm.EmbeddingInput{
+						StringArray: []string{"hello", "world"},
+					},
+				},
+			},
+			expectedURL: "https://custom.api.com/v100/embeddings",
+		},
+		{
+			name: "raw URL auto-enabled with # suffix for embedding",
+			config: &Config{
+				Type:    PlatformOpenAI,
+				BaseURL: "https://custom.api.com/v20#",
+				APIKey:  "test-key",
+			},
+			request: &llm.Request{
+				RequestType: llm.RequestTypeEmbedding,
+				Model:       "text-embedding-ada-002",
+				Embedding: &llm.EmbeddingRequest{
+					Input: llm.EmbeddingInput{
+						StringArray: []string{"hello", "world"},
+					},
+				},
+			},
+			expectedURL: "https://custom.api.com/v20/embeddings",
+		},
+		{
+			name: "raw URL false for embedding",
+			config: &Config{
+				Type:    PlatformOpenAI,
+				BaseURL: "https://api.openai.com",
+				APIKey:  "test-key",
+				RawURL:  false,
+			},
+			request: &llm.Request{
+				RequestType: llm.RequestTypeEmbedding,
+				Model:       "text-embedding-ada-002",
+				Embedding: &llm.EmbeddingRequest{
+					Input: llm.EmbeddingInput{
+						StringArray: []string{"hello", "world"},
+					},
+				},
+			},
+			expectedURL: "https://api.openai.com/v1/embeddings",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			transformerInterface, err := NewOutboundTransformerWithConfig(tt.config)
+			if err != nil {
+				t.Fatalf("Failed to create transformer: %v", err)
+			}
+
+			transformer := transformerInterface.(*OutboundTransformer)
+
+			result, err := transformer.TransformRequest(t.Context(), tt.request)
+			if err != nil {
+				t.Fatalf("TransformRequest() unexpected error = %v", err)
+			}
+
+			if result.URL != tt.expectedURL {
+				t.Errorf("Expected URL %s, got %s", tt.expectedURL, result.URL)
+			}
 		})
 	}
 }

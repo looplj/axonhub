@@ -153,12 +153,23 @@ func (f *ModelFetcher) prepareModelsEndpoint(channelType channel.Type, baseURL s
 
 	baseURL = strings.TrimSuffix(baseURL, "/")
 
+	useRawURL := false
+
+	if before, ok := strings.CutSuffix(baseURL, "#"); ok {
+		baseURL = before
+		useRawURL = true
+	}
+
 	switch {
 	case channelType.IsAnthropic():
 		headers.Set("Anthropic-Version", "2023-06-01")
 
 		baseURL = strings.TrimSuffix(baseURL, "/anthropic")
 		baseURL = strings.TrimSuffix(baseURL, "/claude")
+
+		if useRawURL {
+			return baseURL + "/models", headers
+		}
 
 		if strings.HasSuffix(baseURL, "/v1") {
 			return baseURL + "/models", headers
@@ -183,6 +194,10 @@ func (f *ModelFetcher) prepareModelsEndpoint(channelType channel.Type, baseURL s
 
 		return baseURL + "/v1beta/models", headers
 	default:
+		if useRawURL {
+			return baseURL + "/models", headers
+		}
+
 		if strings.Contains(baseURL, "/v1") {
 			return baseURL + "/models", headers
 		}

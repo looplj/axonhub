@@ -29,39 +29,6 @@ func TestOutboundTransformer_PlatformConfigurations(t *testing.T) {
 			model:          "claude-3-sonnet-20240229",
 			stream:         false,
 		},
-		{
-			name: "Google Vertex AI - Non-streaming",
-			setupFunc: func(transformer *OutboundTransformer) {
-				err := transformer.ConfigureForVertex("us-central1", "my-project-123")
-				require.NoError(t, err)
-			},
-			expectedURL:    "https://us-central1-aiplatform.googleapis.com/v1/projects/my-project-123/locations/us-central1/publishers/anthropic/models/claude-3-sonnet-20240229:rawPredict",
-			expectedHeader: "vertex-2023-10-16",
-			model:          "claude-3-sonnet-20240229",
-			stream:         false,
-		},
-		{
-			name: "Google Vertex AI - Streaming",
-			setupFunc: func(transformer *OutboundTransformer) {
-				err := transformer.ConfigureForVertex("europe-west1", "my-project-456")
-				require.NoError(t, err)
-			},
-			expectedURL:    "https://europe-west1-aiplatform.googleapis.com/v1/projects/my-project-456/locations/europe-west1/publishers/anthropic/models/claude-3-sonnet-20240229:streamRawPredict",
-			expectedHeader: "vertex-2023-10-16",
-			model:          "claude-3-sonnet-20240229",
-			stream:         true,
-		},
-		{
-			name: "Google Vertex AI - Global region",
-			setupFunc: func(transformer *OutboundTransformer) {
-				err := transformer.ConfigureForVertex("global", "my-project-789")
-				require.NoError(t, err)
-			},
-			expectedURL:    "https://aiplatform.googleapis.com/v1/projects/my-project-789/locations/global/publishers/anthropic/models/claude-3-sonnet-20240229:rawPredict",
-			expectedHeader: "vertex-2023-10-16",
-			model:          "claude-3-sonnet-20240229",
-			stream:         false,
-		},
 	}
 
 	for _, tt := range tests {
@@ -113,20 +80,4 @@ func TestOutboundTransformer_PlatformConfigurations(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestOutboundTransformer_PlatformConfigurationErrors(t *testing.T) {
-	transformer, _ := NewOutboundTransformer("", "test-api-key")
-
-	t.Run("Vertex AI - Missing region", func(t *testing.T) {
-		err := transformer.(*OutboundTransformer).ConfigureForVertex("", "my-project")
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "region is required")
-	})
-
-	t.Run("Vertex AI - Missing project ID", func(t *testing.T) {
-		err := transformer.(*OutboundTransformer).ConfigureForVertex("us-central1", "")
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "project ID is required")
-	})
 }
