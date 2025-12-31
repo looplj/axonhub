@@ -36,7 +36,10 @@ func (Model) Fields() []ent.Field {
 		field.String("developer").Immutable().Comment("developer of the model, eg. deeepseek"),
 		field.String("model_id").Immutable().Comment("model id, eg. deeepseek-chat"),
 		field.Enum("type").Immutable().Values("chat", "embedding", "rerank").Default("chat").Comment("model type"),
-		field.String("name").Comment("model name, eg. DeepSeek Chat"),
+		field.String("name").Comment("model name, eg. DeepSeek Chat").
+			Annotations(
+				entgql.OrderField("NAME"),
+			),
 		field.String("icon").Comment("icon of the model from the lobe-icons, eg. DeepSeek"),
 		field.String("group").Comment("model group, eg. deepseek"),
 		field.JSON("model_card", &objects.ModelCard{}),

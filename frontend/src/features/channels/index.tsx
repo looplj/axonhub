@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SortingState } from '@tanstack/react-table'
 import { useDebounce } from '@/hooks/use-debounce'
@@ -26,9 +26,21 @@ function ChannelsContent() {
   const [modelFilter, setModelFilter] = useState<string>('')
   const [selectedTypeTab, setSelectedTypeTab] = useState<string>('all')
   const [showErrorOnly, setShowErrorOnly] = useState<boolean>(false)
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: 'createdAt', desc: true },
-  ])
+  const [sorting, setSorting] = useState<SortingState>(() => {
+    const stored = localStorage.getItem('channels-table-sorting')
+    if (stored) {
+      try {
+        return JSON.parse(stored)
+      } catch {
+        return [{ id: 'createdAt', desc: true }]
+      }
+    }
+    return [{ id: 'createdAt', desc: true }]
+  })
+
+  useEffect(() => {
+    localStorage.setItem('channels-table-sorting', JSON.stringify(sorting))
+  }, [sorting])
 
   // Fetch channel types for tabs
   const { data: channelTypeCounts = [] } = useChannelTypes(statusFilter.length > 0 ? statusFilter : ['enabled', 'disabled'])

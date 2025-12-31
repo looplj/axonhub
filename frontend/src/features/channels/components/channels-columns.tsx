@@ -178,7 +178,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
         className: 'md:table-cell min-w-48',
       },
       enableHiding: false,
-      enableSorting: false,
+      enableSorting: true,
     },
     {
       id: 'provider',

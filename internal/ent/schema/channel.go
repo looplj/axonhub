@@ -75,7 +75,10 @@ func (Channel) Fields() []ent.Field {
 			).
 			Immutable(),
 		field.String("base_url").Optional(),
-		field.String("name"),
+		field.String("name").
+			Annotations(
+				entgql.OrderField("NAME"),
+			),
 		field.Enum("status").Values("enabled", "disabled", "archived").Default("disabled").
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput),
@@ -89,9 +92,10 @@ func (Channel) Fields() []ent.Field {
 			Default(&objects.ChannelSettings{
 				ModelMappings: []objects.ModelMapping{},
 			}).Optional().Annotations(),
-		field.Int("ordering_weight").Default(0).Comment("Ordering weight for display sorting").Annotations(
-			entgql.OrderField("ORDERING_WEIGHT"),
-		),
+		field.Int("ordering_weight").Default(0).Comment("Ordering weight for display sorting").
+			Annotations(
+				entgql.OrderField("ORDERING_WEIGHT"),
+			),
 		field.String("error_message").
 			Optional().Nillable().
 			Annotations(
