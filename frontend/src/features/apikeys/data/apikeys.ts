@@ -73,6 +73,7 @@ function buildApiKeyQuery(permissions: { canViewUsers: boolean }) {
             modelMappings { from to }
             channelIDs
             channelTags
+            modelIDs
           }
         }
       }
@@ -154,6 +155,7 @@ const UPDATE_APIKEY_PROFILES_MUTATION = `
           }
           channelIDs
           channelTags
+          modelIDs
         }
       }
     }

@@ -579,3 +579,167 @@ func TestNewOutboundTransformer(t *testing.T) {
 		})
 	}
 }
+
+func TestOutboundTransformer_RawURL(t *testing.T) {
+	tests := []struct {
+		name           string
+		config         *Config
+		request        *llm.Request
+		expectedURL    string
+		expectedRawURL bool
+	}{
+		{
+			name: "raw URL enabled with Config",
+			config: &Config{
+				Type:    PlatformOpenAI,
+				BaseURL: "https://custom.api.com/v1",
+				APIKey:  "test-key",
+				RawURL:  true,
+			},
+			request: &llm.Request{
+				Model: "gpt-4",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello, world!"),
+						},
+					},
+				},
+			},
+			expectedURL:    "https://custom.api.com/v1/chat/completions",
+			expectedRawURL: true,
+		},
+		{
+			name: "raw URL auto-enabled with # suffix",
+			config: &Config{
+				Type:    PlatformOpenAI,
+				BaseURL: "https://custom.api.com/v100#",
+				APIKey:  "test-key",
+			},
+			request: &llm.Request{
+				Model: "gpt-4",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello, world!"),
+						},
+					},
+				},
+			},
+			expectedURL:    "https://custom.api.com/v100/chat/completions",
+			expectedRawURL: true,
+		},
+		{
+			name: "raw URL with full path",
+			config: &Config{
+				Type:    PlatformOpenAI,
+				BaseURL: "https://custom.api.com/v1/chat/completions#",
+				APIKey:  "test-key",
+			},
+			request: &llm.Request{
+				Model: "gpt-4",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello, world!"),
+						},
+					},
+				},
+			},
+			expectedURL:    "https://custom.api.com/v1/chat/completions/chat/completions",
+			expectedRawURL: true,
+		},
+		{
+			name: "raw URL false with standard URL",
+			config: &Config{
+				Type:    PlatformOpenAI,
+				BaseURL: "https://api.openai.com",
+				APIKey:  "test-key",
+				RawURL:  false,
+			},
+			request: &llm.Request{
+				Model: "gpt-4",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello, world!"),
+						},
+					},
+				},
+			},
+			expectedURL:    "https://api.openai.com/v1/chat/completions",
+			expectedRawURL: false,
+		},
+		{
+			name: "raw URL false with v1 already in URL",
+			config: &Config{
+				Type:    PlatformOpenAI,
+				BaseURL: "https://api.openai.com/v1",
+				APIKey:  "test-key",
+				RawURL:  false,
+			},
+			request: &llm.Request{
+				Model: "gpt-4",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello, world!"),
+						},
+					},
+				},
+			},
+			expectedURL:    "https://api.openai.com/v1/chat/completions",
+			expectedRawURL: false,
+		},
+		{
+			name: "raw URL with custom endpoint without version",
+			config: &Config{
+				Type:    PlatformOpenAI,
+				BaseURL: "https://custom-endpoint.com/api/llm#",
+				APIKey:  "test-key",
+			},
+			request: &llm.Request{
+				Model: "gpt-4",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello, world!"),
+						},
+					},
+				},
+			},
+			expectedURL:    "https://custom-endpoint.com/api/llm/chat/completions",
+			expectedRawURL: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			transformerInterface, err := NewOutboundTransformerWithConfig(tt.config)
+			if err != nil {
+				t.Fatalf("Failed to create transformer: %v", err)
+			}
+
+			transformer := transformerInterface.(*OutboundTransformer)
+
+			if transformer.config.RawURL != tt.expectedRawURL {
+				t.Errorf("Expected RawURL to be %v, got %v", tt.expectedRawURL, transformer.config.RawURL)
+			}
+
+			result, err := transformer.TransformRequest(t.Context(), tt.request)
+			if err != nil {
+				t.Fatalf("TransformRequest() unexpected error = %v", err)
+			}
+
+			if result.URL != tt.expectedURL {
+				t.Errorf("Expected URL %s, got %s", tt.expectedURL, result.URL)
+			}
+		})
+	}
+}

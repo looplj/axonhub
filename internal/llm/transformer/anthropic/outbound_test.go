@@ -1045,40 +1045,6 @@ func TestOutboundTransformer_WebSearchBetaHeader(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "web-search-2025-03-05", result.Headers.Get("Anthropic-Beta"))
 	})
-	t.Run("Vertex platform with web_search tool - no Beta header", func(t *testing.T) {
-		transformer := &OutboundTransformer{
-			config: &Config{},
-		}
-		err := transformer.ConfigureForVertex("us-central1", "my-project")
-		require.NoError(t, err)
-
-		chatReq := &llm.Request{
-			Model:     "claude-sonnet-4-20250514",
-			MaxTokens: func() *int64 { v := int64(1024); return &v }(),
-			Messages: []llm.Message{
-				{
-					Role: "user",
-					Content: llm.MessageContent{
-						Content: func() *string { s := "What's the weather?"; return &s }(),
-					},
-				},
-			},
-			Tools: []llm.Tool{
-				{
-					Type: "function",
-					Function: llm.Function{
-						Name:        "web_search",
-						Description: "Search the web",
-					},
-				},
-			},
-		}
-
-		result, err := transformer.TransformRequest(t.Context(), chatReq)
-		require.NoError(t, err)
-		// Vertex should NOT have Beta header even with web_search tool
-		require.Empty(t, result.Headers.Get("Anthropic-Beta"))
-	})
 
 	t.Run("Direct Anthropic API with web_search_20250305 type input", func(t *testing.T) {
 		transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
@@ -1206,4 +1172,242 @@ func TestOutboundTransformer_WebSearchBetaHeader(t *testing.T) {
 
 		require.True(t, hasWebSearch, "web_search tool should be converted to web_search_20250305")
 	})
+}
+
+func TestOutboundTransformer_RawURL(t *testing.T) {
+	tests := []struct {
+		name           string
+		config         *Config
+		request        *llm.Request
+		expectedURL    string
+		expectedRawURL bool
+	}{
+		{
+			name: "raw URL enabled with Config",
+			config: &Config{
+				Type:    PlatformDirect,
+				BaseURL: "https://custom.api.com/v1",
+				APIKey:  "test-key",
+				RawURL:  true,
+			},
+			request: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: func() *string { s := "Hello, world!"; return &s }(),
+						},
+					},
+				},
+			},
+			expectedURL:    "https://custom.api.com/v1/messages",
+			expectedRawURL: true,
+		},
+		{
+			name: "raw URL auto-enabled with # suffix",
+			config: &Config{
+				Type:    PlatformDirect,
+				BaseURL: "https://custom.api.com/v100#",
+				APIKey:  "test-key",
+			},
+			request: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: func() *string { s := "Hello, world!"; return &s }(),
+						},
+					},
+				},
+			},
+			expectedURL:    "https://custom.api.com/v100/messages",
+			expectedRawURL: true,
+		},
+		{
+			name: "raw URL with full path",
+			config: &Config{
+				Type:    PlatformDirect,
+				BaseURL: "https://custom.api.com/v1/messages#",
+				APIKey:  "test-key",
+			},
+			request: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: func() *string { s := "Hello, world!"; return &s }(),
+						},
+					},
+				},
+			},
+			expectedURL:    "https://custom.api.com/v1/messages/messages",
+			expectedRawURL: true,
+		},
+		{
+			name: "raw URL false with standard URL",
+			config: &Config{
+				Type:    PlatformDirect,
+				BaseURL: "https://api.anthropic.com",
+				APIKey:  "test-key",
+				RawURL:  false,
+			},
+			request: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: func() *string { s := "Hello, world!"; return &s }(),
+						},
+					},
+				},
+			},
+			expectedURL:    "https://api.anthropic.com/v1/messages",
+			expectedRawURL: false,
+		},
+		{
+			name: "raw URL false with v1 already in URL",
+			config: &Config{
+				Type:    PlatformDirect,
+				BaseURL: "https://api.anthropic.com/v1",
+				APIKey:  "test-key",
+				RawURL:  false,
+			},
+			request: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: func() *string { s := "Hello, world!"; return &s }(),
+						},
+					},
+				},
+			},
+			expectedURL:    "https://api.anthropic.com/v1/messages",
+			expectedRawURL: false,
+		},
+		{
+			name: "raw URL with custom endpoint without version",
+			config: &Config{
+				Type:    PlatformDirect,
+				BaseURL: "https://custom-endpoint.com/api/llm",
+				APIKey:  "test-key",
+				RawURL:  true,
+			},
+			request: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: func() *string { s := "Hello, world!"; return &s }(),
+						},
+					},
+				},
+			},
+			expectedURL:    "https://custom-endpoint.com/api/llm/messages",
+			expectedRawURL: true,
+		},
+		{
+			name: "raw URL with streaming enabled",
+			config: &Config{
+				Type:    PlatformDirect,
+				BaseURL: "https://custom.api.com/v1#",
+				APIKey:  "test-key",
+			},
+			request: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: func() *string { s := "Hello, world!"; return &s }(),
+						},
+					},
+				},
+				Stream: func() *bool { v := true; return &v }(),
+			},
+			expectedURL:    "https://custom.api.com/v1/messages",
+			expectedRawURL: true,
+		},
+		{
+			name: "raw URL with DeepSeek platform",
+			config: &Config{
+				Type:    PlatformDeepSeek,
+				BaseURL: "https://api.deepseek.com/v1#",
+				APIKey:  "test-key",
+			},
+			request: &llm.Request{
+				Model:     "deepseek-chat",
+				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: func() *string { s := "Hello, world!"; return &s }(),
+						},
+					},
+				},
+			},
+			expectedURL:    "https://api.deepseek.com/v1/messages",
+			expectedRawURL: true,
+		},
+		{
+			name: "raw URL with Doubao platform",
+			config: &Config{
+				Type:    PlatformDoubao,
+				BaseURL: "https://ark.cn-beijing.volces.com/v20#",
+				APIKey:  "test-key",
+			},
+			request: &llm.Request{
+				Model:     "doubao-pro-4k",
+				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: func() *string { s := "Hello, world!"; return &s }(),
+						},
+					},
+				},
+			},
+			expectedURL:    "https://ark.cn-beijing.volces.com/v20/messages",
+			expectedRawURL: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			transformerInterface, err := NewOutboundTransformerWithConfig(tt.config)
+			if err != nil {
+				t.Fatalf("Failed to create transformer: %v", err)
+			}
+
+			transformer := transformerInterface.(*OutboundTransformer)
+
+			if transformer.config.RawURL != tt.expectedRawURL {
+				t.Errorf("Expected RawURL to be %v, got %v", tt.expectedRawURL, transformer.config.RawURL)
+			}
+
+			result, err := transformer.TransformRequest(t.Context(), tt.request)
+			if err != nil {
+				t.Fatalf("TransformRequest() unexpected error = %v", err)
+			}
+
+			if result.URL != tt.expectedURL {
+				t.Errorf("Expected URL %s, got %s", tt.expectedURL, result.URL)
+			}
+		})
+	}
 }

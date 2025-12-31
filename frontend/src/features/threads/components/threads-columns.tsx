@@ -10,7 +10,7 @@ import { extractNumberID } from '@/lib/utils'
 import { usePaginationSearch } from '@/hooks/use-pagination-search'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { DataTableColumnHeader } from '@/features/traces/components/data-table-column-header'
+import { DataTableColumnHeader } from '@/components/data-table-column-header'
 import type { Thread } from '../data/schema'
 
 export function useThreadsColumns(): ColumnDef<Thread>[] {

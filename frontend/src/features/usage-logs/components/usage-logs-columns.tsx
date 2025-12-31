@@ -13,7 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useUsageLogPermissions } from '../../../gql/useUsageLogPermissions'
 import { useUsageLogsContext } from '../context'
 import { UsageLog, UsageLogSource } from '../data/schema'
-import { DataTableColumnHeader } from './data-table-column-header'
+import { DataTableColumnHeader } from '@/components/data-table-column-header'
 
 // Source color mapping for badges
 const getSourceColor = (source: UsageLogSource) => {
@@ -92,7 +92,7 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
     {
       id: 'modelId',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('usageLogs.columns.modelId')} />,
-      cell: ({ row }) => <div className='max-w-[200px] truncate font-mono text-sm'>{row.original.modelID}</div>,
+      cell: ({ row }) => <div className='max-w-[200px] truncate font-medium text-sm'>{row.original.modelID}</div>,
       enableSorting: false,
       filterFn: (row, _id, value) => {
         // For client-side filtering, check if the model ID matches any of the selected values

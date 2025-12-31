@@ -177,6 +177,7 @@ input APIKeyProfileInput {
   modelMappings: [ModelMappingInput!]
   channelIDs: [Int!]
   channelTags: [String!]
+  modelIDs: [String!]
 }
 
 type APIKeyProfiles {
@@ -189,6 +190,7 @@ type APIKeyProfile {
   modelMappings: [ModelMapping!]
   channelIDs: [Int!]
   channelTags: [String!]
+  modelIDs: [String!]
 }
 
 input FetchModelsInput {
@@ -298,7 +300,7 @@ extend type Channel {
   All model entries this channel can handle, including direct models, prefixed models, auto-trimmed models, and mapped models
   """
   allModelEntries: [ChannelModelEntry!]! @goField(forceResolver: true)
-  
+
   """
   Channel credentials, will be null if user can not access the the credentials
   """

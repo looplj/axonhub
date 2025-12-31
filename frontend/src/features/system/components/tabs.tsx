@@ -26,7 +26,7 @@ export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
 
   return (
     <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as SystemTabKey)} className='w-full'>
-      <TabsList className='grid w-full grid-cols-4 rounded-2xl shadow-soft border border-white bg-white'>
+      <TabsList className='grid w-full grid-cols-4 rounded-2xl shadow-soft border border-border bg-background'>
         <TabsTrigger value='brand' data-value='brand'>
           {t('system.tabs.brand')}
         </TabsTrigger>
@@ -40,7 +40,7 @@ export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
           {t('system.tabs.about')}
         </TabsTrigger>
       </TabsList>
-      <div className='mt-6 rounded-2xl shadow-soft border border-white bg-white p-6'>
+      <div className='mt-6 rounded-2xl shadow-soft border border-border bg-card p-6'>
         <TabsContent value='brand' className='mt-0 p-0'>
           <BrandSettings />
         </TabsContent>

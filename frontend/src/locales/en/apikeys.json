@@ -154,7 +154,10 @@
       "noChannelsAvailable": "No channels available",
       "allowedChannelTags": "Allowed Channel Tags",
       "allowedChannelTagsDescription": "Select tags to filter channels for this profile. Channels with any of the selected tags will be allowed. If none selected, tag filtering is disabled.",
-      "noTagsAvailable": "No tags available"
+      "noTagsAvailable": "No tags available",
+      "allowedModels": "Allowed Models",
+      "allowedModelsDescription": "Select models that this profile can use. If none selected, all models are allowed.",
+      "noModelsAvailable": "No models available"
     }
   }
 }
