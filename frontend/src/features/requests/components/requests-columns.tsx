@@ -53,7 +53,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
       enableSorting: false,
       cell: ({ row }) => {
         const request = row.original
-        return <div className='font-mono text-xs'>{request.modelID || t('requests.columns.unknown')}</div>
+        return <div className='font-medium text-sm'>{request.modelID || t('requests.columns.unknown')}</div>
       },
     },
 

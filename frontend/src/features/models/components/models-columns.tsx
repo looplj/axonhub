@@ -119,7 +119,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       accessorKey: 'modelID',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('models.columns.modelId')} />,
       cell: ({ row }) => {
-        return <span className='font-mono text-sm'>{row.getValue('modelID')}</span>
+        return <span className='font-medium text-sm'>{row.getValue('modelID')}</span>
       },
       meta: {
         className: 'min-w-48',
