@@ -7,6 +7,7 @@ import (
 	"entgo.io/ent/dialect"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
@@ -649,6 +650,200 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 
 		require.True(t, resultMap["gpt-4"], "Auto-trimmed model should be included")
 		require.True(t, resultMap["gpt-3.5-turbo"], "Auto-trimmed model should be included")
+	})
+
+	t.Run("API key with active profile modelIDs returns only specified models", func(t *testing.T) {
+		// Create API key with active profile that restricts models
+		apiKey := &ent.APIKey{
+			ID:   1,
+			Name: "test-api-key",
+			Profiles: &objects.APIKeyProfiles{
+				ActiveProfile: "production",
+				Profiles: []objects.APIKeyProfile{
+					{
+						Name:     "production",
+						ModelIDs: []string{"gpt-4", "claude-3-opus"},
+					},
+				},
+			},
+		}
+
+		// Add API key to context
+		ctx := contexts.WithAPIKey(ctx, apiKey)
+
+		result := modelSvc.ListEnabledModels(ctx)
+
+		// Should only return models specified in the profile
+		require.Len(t, result, 2, "Should only return 2 models from profile")
+
+		resultMap := make(map[string]bool)
+		for _, model := range result {
+			resultMap[model.ID] = true
+		}
+
+		require.True(t, resultMap["gpt-4"], "gpt-4 should be in result")
+		require.True(t, resultMap["claude-3-opus"], "claude-3-opus should be in result")
+		require.False(t, resultMap["gpt-3.5-turbo"], "gpt-3.5-turbo should not be in result")
+		require.False(t, resultMap["deepseek-chat"], "deepseek-chat should not be in result")
+
+		// Verify owned by is api_key_profile
+		for _, model := range result {
+			require.Equal(t, "api_key_profile", model.OwnedBy)
+		}
+	})
+
+	t.Run("API key with active profile but empty modelIDs returns all models", func(t *testing.T) {
+		// Create API key with active profile but no modelIDs
+		apiKey := &ent.APIKey{
+			ID:   2,
+			Name: "test-api-key-2",
+			Profiles: &objects.APIKeyProfiles{
+				ActiveProfile: "development",
+				Profiles: []objects.APIKeyProfile{
+					{
+						Name:          "development",
+						ModelIDs:      []string{},
+						ModelMappings: []objects.ModelMapping{{From: "gpt-4", To: "gpt-4"}},
+					},
+				},
+			},
+		}
+
+		ctx := contexts.WithAPIKey(ctx, apiKey)
+
+		result := modelSvc.ListEnabledModels(ctx)
+
+		// Should return all models (not restricted)
+		resultMap := make(map[string]bool)
+		for _, model := range result {
+			resultMap[model.ID] = true
+		}
+
+		require.True(t, resultMap["gpt-4"], "gpt-4 should be in result")
+		require.True(t, resultMap["gpt-3.5-turbo"], "gpt-3.5-turbo should be in result")
+		require.True(t, resultMap["claude-3-opus-20240229"], "claude-3-opus-20240229 should be in result")
+	})
+
+	t.Run("API key without profiles returns all models", func(t *testing.T) {
+		// Create API key without profiles
+		apiKey := &ent.APIKey{
+			ID:   3,
+			Name: "test-api-key-3",
+		}
+
+		ctx := contexts.WithAPIKey(ctx, apiKey)
+
+		result := modelSvc.ListEnabledModels(ctx)
+
+		// Should return all models
+		resultMap := make(map[string]bool)
+		for _, model := range result {
+			resultMap[model.ID] = true
+		}
+
+		require.True(t, resultMap["gpt-4"], "gpt-4 should be in result")
+		require.True(t, resultMap["gpt-3.5-turbo"], "gpt-3.5-turbo should be in result")
+	})
+
+	t.Run("API key with nil profiles returns all models", func(t *testing.T) {
+		// Create API key with nil profiles
+		apiKey := &ent.APIKey{
+			ID:       4,
+			Name:     "test-api-key-4",
+			Profiles: nil,
+		}
+
+		ctx := contexts.WithAPIKey(ctx, apiKey)
+
+		result := modelSvc.ListEnabledModels(ctx)
+
+		// Should return all models
+		resultMap := make(map[string]bool)
+		for _, model := range result {
+			resultMap[model.ID] = true
+		}
+
+		require.True(t, resultMap["gpt-4"], "gpt-4 should be in result")
+		require.True(t, resultMap["gpt-3.5-turbo"], "gpt-3.5-turbo should be in result")
+	})
+
+	t.Run("API key with empty active profile returns all models", func(t *testing.T) {
+		// Create API key with empty active profile
+		apiKey := &ent.APIKey{
+			ID:   5,
+			Name: "test-api-key-5",
+			Profiles: &objects.APIKeyProfiles{
+				ActiveProfile: "",
+				Profiles: []objects.APIKeyProfile{
+					{
+						Name:     "production",
+						ModelIDs: []string{"gpt-4"},
+					},
+				},
+			},
+		}
+
+		ctx := contexts.WithAPIKey(ctx, apiKey)
+
+		result := modelSvc.ListEnabledModels(ctx)
+
+		// Should return all models when active profile is empty
+		resultMap := make(map[string]bool)
+		for _, model := range result {
+			resultMap[model.ID] = true
+		}
+
+		require.True(t, resultMap["gpt-4"], "gpt-4 should be in result")
+		require.True(t, resultMap["gpt-3.5-turbo"], "gpt-3.5-turbo should be in result")
+	})
+
+	t.Run("API key with non-existent active profile returns all models", func(t *testing.T) {
+		// Create API key with active profile that doesn't exist
+		apiKey := &ent.APIKey{
+			ID:   6,
+			Name: "test-api-key-6",
+			Profiles: &objects.APIKeyProfiles{
+				ActiveProfile: "non-existent",
+				Profiles: []objects.APIKeyProfile{
+					{
+						Name:     "production",
+						ModelIDs: []string{"gpt-4"},
+					},
+				},
+			},
+		}
+
+		ctx := contexts.WithAPIKey(ctx, apiKey)
+
+		result := modelSvc.ListEnabledModels(ctx)
+
+		// Should return all models when active profile doesn't exist
+		resultMap := make(map[string]bool)
+		for _, model := range result {
+			resultMap[model.ID] = true
+		}
+
+		require.True(t, resultMap["gpt-4"], "gpt-4 should be in result")
+		require.True(t, resultMap["gpt-3.5-turbo"], "gpt-3.5-turbo should be in result")
+	})
+
+	t.Run("no API key in context returns all models", func(t *testing.T) {
+		// Context without API key
+		ctxNoAPIKey := context.Background()
+		ctxNoAPIKey = ent.NewContext(ctxNoAPIKey, client)
+		ctxNoAPIKey = privacy.DecisionContext(ctxNoAPIKey, privacy.Allow)
+
+		result := modelSvc.ListEnabledModels(ctxNoAPIKey)
+
+		// Should return all models
+		resultMap := make(map[string]bool)
+		for _, model := range result {
+			resultMap[model.ID] = true
+		}
+
+		require.True(t, resultMap["gpt-4"], "gpt-4 should be in result")
+		require.True(t, resultMap["gpt-3.5-turbo"], "gpt-3.5-turbo should be in result")
+		require.True(t, resultMap["claude-3-opus-20240229"], "claude-3-opus-20240229 should be in result")
 	})
 }
 

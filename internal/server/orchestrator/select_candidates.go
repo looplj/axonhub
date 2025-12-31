@@ -24,7 +24,7 @@ func selectCandidates(inbound *PersistentInboundTransformer) pipeline.Middleware
 
 		selector := inbound.state.CandidateSelector
 
-		if profile := GetActiveProfile(inbound.state.APIKey); profile != nil {
+		if profile := inbound.state.APIKey.GetActiveProfile(); profile != nil {
 			// 先应用 ChannelIDs 过滤
 			if len(profile.ChannelIDs) > 0 {
 				selector = WithSelectedChannelsSelector(selector, profile.ChannelIDs)

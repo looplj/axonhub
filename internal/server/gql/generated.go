@@ -111,6 +111,7 @@ type ComplexityRoot struct {
 	APIKeyProfile struct {
 		ChannelIDs    func(childComplexity int) int
 		ChannelTags   func(childComplexity int) int
+		ModelIDs      func(childComplexity int) int
 		ModelMappings func(childComplexity int) int
 		Name          func(childComplexity int) int
 	}
@@ -1498,6 +1499,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.APIKeyProfile.ChannelTags(childComplexity), true
+	case "APIKeyProfile.modelIDs":
+		if e.complexity.APIKeyProfile.ModelIDs == nil {
+			break
+		}
+
+		return e.complexity.APIKeyProfile.ModelIDs(childComplexity), true
 	case "APIKeyProfile.modelMappings":
 		if e.complexity.APIKeyProfile.ModelMappings == nil {
 			break
@@ -9157,6 +9164,35 @@ func (ec *executionContext) fieldContext_APIKeyProfile_channelTags(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _APIKeyProfile_modelIDs(ctx context.Context, field graphql.CollectedField, obj *objects.APIKeyProfile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_APIKeyProfile_modelIDs,
+		func(ctx context.Context) (any, error) {
+			return obj.ModelIDs, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_APIKeyProfile_modelIDs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIKeyProfile",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _APIKeyProfiles_activeProfile(ctx context.Context, field graphql.CollectedField, obj *objects.APIKeyProfiles) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -9218,6 +9254,8 @@ func (ec *executionContext) fieldContext_APIKeyProfiles_profiles(_ context.Conte
 				return ec.fieldContext_APIKeyProfile_channelIDs(ctx, field)
 			case "channelTags":
 				return ec.fieldContext_APIKeyProfile_channelTags(ctx, field)
+			case "modelIDs":
+				return ec.fieldContext_APIKeyProfile_modelIDs(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type APIKeyProfile", field.Name)
 		},
@@ -34432,7 +34470,7 @@ func (ec *executionContext) unmarshalInputAPIKeyProfileInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "modelMappings", "channelIDs", "channelTags"}
+	fieldsInOrder := [...]string{"name", "modelMappings", "channelIDs", "channelTags", "modelIDs"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -34467,6 +34505,13 @@ func (ec *executionContext) unmarshalInputAPIKeyProfileInput(ctx context.Context
 				return it, err
 			}
 			it.ChannelTags = data
+		case "modelIDs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDs"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDs = data
 		}
 	}
 
@@ -52557,6 +52602,8 @@ func (ec *executionContext) _APIKeyProfile(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._APIKeyProfile_channelIDs(ctx, field, obj)
 		case "channelTags":
 			out.Values[i] = ec._APIKeyProfile_channelTags(ctx, field, obj)
+		case "modelIDs":
+			out.Values[i] = ec._APIKeyProfile_modelIDs(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

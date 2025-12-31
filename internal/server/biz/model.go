@@ -9,6 +9,7 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/fx"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/model"
@@ -390,7 +391,28 @@ func (svc *ModelService) ListConfiguredModels(ctx context.Context, statusIn []mo
 // considering model mappings, prefixes, and auto-trimmed models.
 // It uses GetModelEntries to reduce code duplication.
 // When QueryAllChannelModels in system settings is false, it returns configured models instead.
+// If an API key is present in context and has an active profile with modelIDs configured,
+// only those models will be returned.
 func (svc *ModelService) ListEnabledModels(ctx context.Context) []ModelFacade {
+	// Check if API key has restricted model IDs
+	if apiKey, ok := contexts.GetAPIKey(ctx); ok && apiKey != nil {
+		if profile := apiKey.GetActiveProfile(); profile != nil && len(profile.ModelIDs) > 0 {
+			// Return only the models specified in the profile
+			result := make([]ModelFacade, 0, len(profile.ModelIDs))
+			for _, modelID := range profile.ModelIDs {
+				result = append(result, ModelFacade{
+					ID:          modelID,
+					DisplayName: modelID,
+					CreatedAt:   apiKey.CreatedAt,
+					Created:     apiKey.CreatedAt.Unix(),
+					OwnedBy:     "api_key_profile",
+				})
+			}
+
+			return result
+		}
+	}
+
 	// Read system settings to determine whether to query all channels
 	settings := svc.systemService.ModelSettingsOrDefault(ctx)
 	queryAllChannels := settings.QueryAllChannelModels
