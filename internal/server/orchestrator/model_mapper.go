@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/samber/lo"
-
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/pipeline"
@@ -15,8 +13,6 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
-// applyApiKeyModelMapping creates a middleware that applies model mapping from API key profiles.
-// This is the first step in the inbound pipeline.
 func applyApiKeyModelMapping(inbound *PersistentInboundTransformer) pipeline.Middleware {
 	return pipeline.OnLlmRequest("apply-model-mapping", func(ctx context.Context, llmRequest *llm.Request) (*llm.Request, error) {
 		if llmRequest.Model == "" {
@@ -77,12 +73,8 @@ func (m *ModelMapper) MapModel(ctx context.Context, apiKey *ent.APIKey, original
 		return originalModel
 	}
 
-	// Find the active profile
-	activeProfile, ok := lo.Find(profiles.Profiles, func(profile objects.APIKeyProfile) bool {
-		return profile.Name == profiles.ActiveProfile
-	})
-
-	if !ok {
+	activeProfile := apiKey.GetActiveProfile()
+	if activeProfile == nil {
 		log.Warn(ctx, "Active profile not found in profiles list",
 			log.String("active_profile", profiles.ActiveProfile),
 			log.String("api_key_name", apiKey.Name))
@@ -125,25 +117,4 @@ func (m *ModelMapper) applyModelMapping(mappings []objects.ModelMapping, model s
 // Supports exact match and regex patterns (including wildcard conversion).
 func (m *ModelMapper) matchesMapping(pattern, model string) bool {
 	return xregexp.MatchString(pattern, model)
-}
-
-// GetActiveProfile returns the active profile for an API key, if any.
-func GetActiveProfile(apiKey *ent.APIKey) *objects.APIKeyProfile {
-	if apiKey == nil || apiKey.Profiles == nil || apiKey.Profiles.ActiveProfile == "" {
-		return nil
-	}
-
-	for i := range apiKey.Profiles.Profiles {
-		if apiKey.Profiles.Profiles[i].Name == apiKey.Profiles.ActiveProfile {
-			return &apiKey.Profiles.Profiles[i]
-		}
-	}
-
-	return nil
-}
-
-// HasActiveProfile checks if an API key has an active profile with model mappings.
-func HasActiveProfile(apiKey *ent.APIKey) bool {
-	profile := GetActiveProfile(apiKey)
-	return profile != nil && len(profile.ModelMappings) > 0
 }

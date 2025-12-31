@@ -29,6 +29,7 @@ export const apiKeySchema = z.object({
           ),
           channelIDs: z.array(z.number()).optional().nullable(),
           channelTags: z.array(z.string()).optional().nullable(),
+          modelIDs: z.array(z.string()).optional().nullable(),
         })
       ).nullable(),
     })
@@ -96,6 +97,7 @@ export const apiKeyProfileSchema = z.object({
   modelMappings: z.array(modelMappingSchema),
   channelIDs: z.array(z.number()).optional().nullable(),
   channelTags: z.array(z.string()).optional().nullable(),
+  modelIDs: z.array(z.string()).optional().nullable(),
 })
 export type ApiKeyProfile = z.infer<typeof apiKeyProfileSchema>
 
@@ -117,6 +119,7 @@ export const updateApiKeyProfilesInputSchemaFactory = (t: (key: string) => strin
     })),
     channelIDs: z.array(z.number()).optional().nullable(),
     channelTags: z.array(z.string()).optional().nullable(),
+    modelIDs: z.array(z.string()).optional().nullable(),
   })).min(1, t('apikeys.validation.atLeastOneProfile')),
 }).refine(
   (data) => data.profiles.some(profile => profile.name === data.activeProfile),
@@ -146,6 +149,7 @@ export const updateApiKeyProfilesInputSchema = z.object({
     })),
     channelIDs: z.array(z.number()).optional().nullable(),
     channelTags: z.array(z.string()).optional().nullable(),
+    modelIDs: z.array(z.string()).optional().nullable(),
   })),
 })
 export type UpdateApiKeyProfilesInput = z.infer<typeof updateApiKeyProfilesInputSchema>

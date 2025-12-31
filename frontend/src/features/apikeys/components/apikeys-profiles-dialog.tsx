@@ -4,22 +4,19 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { IconPlus, IconTrash, IconSettings, IconChevronDown, IconChevronUp } from '@tabler/icons-react'
 import { useQueryModels } from '@/gql/models'
 import { useTranslation } from 'react-i18next'
+import { extractNumberID } from '@/lib/utils'
 import { useDebounce } from '@/hooks/use-debounce'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input'
 import { AutoComplete } from '@/components/auto-complete'
+import { useAllChannelsForOrdering } from '@/features/channels/data/channels'
 import { useApiKeysContext } from '../context/apikeys-context'
 import { updateApiKeyProfilesInputSchemaFactory, type UpdateApiKeyProfilesInput, type ApiKeyProfile } from '../data/schema'
-import { useAllChannelsForOrdering } from '@/features/channels/data/channels'
-import { extractNumberID } from '@/lib/utils'
-
-type DialogContentRef = HTMLDivElement | null
 
 interface ApiKeyProfilesDialogProps {
   open: boolean
@@ -143,6 +140,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
       modelMappings: [],
       channelIDs: [],
       channelTags: [],
+      modelIDs: [],
     })
   }, [appendProfile, profileFields])
 
@@ -224,7 +222,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
           )}
 
           {/* Fixed Active Profile Section at Bottom */}
-          <div className='bg-background shrink-0 border-t mt-4 px-4 py-2'>
+          <div className='bg-background mt-4 shrink-0 border-t px-4 py-2'>
             <Form {...form}>
               <FormField
                 control={form.control}
@@ -294,7 +292,16 @@ interface ProfileCardProps {
   portalContainer?: HTMLElement | null
 }
 
-function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels, t, defaultExpanded = false, portalContainer }: ProfileCardProps) {
+function ProfileCard({
+  profileIndex,
+  form,
+  onRemove,
+  canRemove,
+  availableModels,
+  t,
+  defaultExpanded = false,
+  portalContainer,
+}: ProfileCardProps) {
   const [localProfileName, setLocalProfileName] = useState('')
   const [isCollapsed, setIsCollapsed] = useState(!defaultExpanded)
   const { data: channelsData } = useAllChannelsForOrdering({ enabled: true })
@@ -366,7 +373,7 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels,
     <Card>
       <CardHeader className='pb-3'>
         <div className='flex items-center justify-between gap-2'>
-          <CardTitle className='text-base flex-1 min-w-0'>
+          <CardTitle className='min-w-0 flex-1 text-base'>
             <FormField
               control={form.control}
               name={`profiles.${profileIndex}.name`}
@@ -382,7 +389,7 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels,
                       }}
                       onBlur={field.onBlur}
                       placeholder={t('apikeys.profiles.profileName')}
-                      className='font-medium w-full md:w-[12em]'
+                      className='w-full font-medium md:w-[12em]'
                     />
                   </FormControl>
                   <FormMessage />
@@ -390,7 +397,7 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels,
               )}
             />
           </CardTitle>
-          <div className='flex items-center gap-1 shrink-0'>
+          <div className='flex shrink-0 items-center gap-1'>
             <Button
               type='button'
               variant='ghost'
@@ -420,7 +427,9 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels,
             </Button>
           </div>
 
-          {mappingFields.length === 0 && <p className='text-muted-foreground py-4 text-center text-sm'>{t('apikeys.profiles.noMappings')}</p>}
+          {mappingFields.length === 0 && (
+            <p className='text-muted-foreground py-4 text-center text-sm'>{t('apikeys.profiles.noMappings')}</p>
+          )}
 
           <div className='space-y-3'>
             {mappingFields.map((mapping, mappingIndex) => (
@@ -437,51 +446,58 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels,
             ))}
           </div>
 
+          {/* Model IDs Restrictions Section */}
+          <div className='mt-4 border-t pt-4'>
+            <h4 className='mb-3 text-sm font-medium'>{t('apikeys.profiles.allowedModels')}</h4>
+            <p className='text-muted-foreground mb-3 text-xs'>{t('apikeys.profiles.allowedModelsDescription')}</p>
+            <FormField
+              control={form.control}
+              name={`profiles.${profileIndex}.modelIDs`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <TagsAutocompleteInput
+                      value={field.value || []}
+                      onChange={field.onChange}
+                      placeholder={t('apikeys.profiles.allowedModels')}
+                      suggestions={availableModels}
+                      className='h-auto min-h-9 py-1'
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
           {/* Channel Restrictions Section */}
           <div className='border-t pt-4'>
-            <h4 className='text-sm font-medium mb-3'>{t('apikeys.profiles.allowedChannels')}</h4>
-            <p className='text-muted-foreground text-xs mb-3'>{t('apikeys.profiles.allowedChannelsDescription')}</p>
+            <h4 className='mb-3 text-sm font-medium'>{t('apikeys.profiles.allowedChannels')}</h4>
+            <p className='text-muted-foreground mb-3 text-xs'>{t('apikeys.profiles.allowedChannelsDescription')}</p>
             <FormField
               control={form.control}
               name={`profiles.${profileIndex}.channelIDs`}
               render={({ field }) => (
                 <FormItem>
                   <FormControl>
-                    <div className='grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border rounded-md p-2'>
-                      {channelsData?.edges?.map((edge) => {
-                        const channel = edge.node
-                        const channelId = parseInt(extractNumberID(channel.id), 10)
-                        const isChecked = (field.value || []).includes(channelId)
-                        return (
-                          <div key={channel.id} className='flex items-center space-x-2'>
-                            <Checkbox
-                              id={`channel-${profileIndex}-${channel.id}`}
-                              checked={isChecked}
-                              onCheckedChange={(checked) => {
-                                const currentValue: number[] = field.value || []
-                                if (checked) {
-                                  field.onChange([...currentValue, channelId])
-                                } else {
-                                  field.onChange(currentValue.filter((id) => id !== channelId))
-                                }
-                              }}
-                            />
-                            <Label
-                              htmlFor={`channel-${profileIndex}-${channel.id}`}
-                              className='text-sm font-normal cursor-pointer truncate'
-                              title={channel.name}
-                            >
-                              {channel.name}
-                            </Label>
-                          </div>
-                        )
+                    <TagsAutocompleteInput
+                      value={(field.value || []).map((id) => {
+                        const channel = channelsData?.edges?.find((edge) => parseInt(extractNumberID(edge.node.id), 10) === id)
+                        return channel?.node.name || id.toString()
                       })}
-                      {(!channelsData?.edges || channelsData.edges.length === 0) && (
-                        <p className='text-muted-foreground text-sm col-span-2 text-center py-2'>
-                          {t('apikeys.profiles.noChannelsAvailable')}
-                        </p>
-                      )}
-                    </div>
+                      onChange={(tags) => {
+                        const ids = tags
+                          .map((tag) => {
+                            const channel = channelsData?.edges?.find((edge) => edge.node.name === tag)
+                            return channel ? parseInt(extractNumberID(channel.node.id), 10) : parseInt(tag)
+                          })
+                          .filter((id) => !isNaN(id))
+                        field.onChange(ids)
+                      }}
+                      placeholder={t('apikeys.profiles.allowedChannels')}
+                      suggestions={channelsData?.edges?.map((edge) => edge.node.name) || []}
+                      className='h-auto min-h-9 py-1'
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -490,48 +506,22 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels,
           </div>
 
           {/* Channel Tags Restrictions Section */}
-          <div className='border-t pt-4 mt-4'>
-            <h4 className='text-sm font-medium mb-3'>{t('apikeys.profiles.allowedChannelTags')}</h4>
-            <p className='text-muted-foreground text-xs mb-3'>{t('apikeys.profiles.allowedChannelTagsDescription')}</p>
+          <div className='mt-4 border-t pt-4'>
+            <h4 className='mb-3 text-sm font-medium'>{t('apikeys.profiles.allowedChannelTags')}</h4>
+            <p className='text-muted-foreground mb-3 text-xs'>{t('apikeys.profiles.allowedChannelTagsDescription')}</p>
             <FormField
               control={form.control}
               name={`profiles.${profileIndex}.channelTags`}
               render={({ field }) => (
                 <FormItem>
                   <FormControl>
-                    <div className='grid grid-cols-3 gap-2 max-h-40 overflow-y-auto border rounded-md p-2'>
-                      {allTags.map((tag) => {
-                        const isChecked = (field.value || []).includes(tag)
-                        return (
-                          <div key={tag} className='flex items-center space-x-2'>
-                            <Checkbox
-                              id={`tag-${profileIndex}-${tag}`}
-                              checked={isChecked}
-                              onCheckedChange={(checked) => {
-                                const currentValue: string[] = field.value || []
-                                if (checked) {
-                                  field.onChange([...currentValue, tag])
-                                } else {
-                                  field.onChange(currentValue.filter((t) => t !== tag))
-                                }
-                              }}
-                            />
-                            <Label
-                              htmlFor={`tag-${profileIndex}-${tag}`}
-                              className='text-sm font-normal cursor-pointer truncate'
-                              title={tag}
-                            >
-                              {tag}
-                            </Label>
-                          </div>
-                        )
-                      })}
-                      {allTags.length === 0 && (
-                        <p className='text-muted-foreground text-sm col-span-3 text-center py-2'>
-                          {t('apikeys.profiles.noTagsAvailable')}
-                        </p>
-                      )}
-                    </div>
+                    <TagsAutocompleteInput
+                      value={field.value || []}
+                      onChange={field.onChange}
+                      placeholder={t('apikeys.profiles.allowedChannelTags')}
+                      suggestions={allTags}
+                      className='h-auto min-h-9 py-1'
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -616,7 +606,7 @@ function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModel
           </FormItem>
         )}
       />
-      <span className='text-muted-foreground flex items-center h-10'>→</span>
+      <span className='text-muted-foreground flex h-10 items-center'>→</span>
       <FormField
         control={form.control}
         name={toFieldName}

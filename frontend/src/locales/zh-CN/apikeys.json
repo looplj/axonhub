@@ -156,7 +156,10 @@
       "noChannelsAvailable": "暂无可用渠道",
       "allowedChannelTags": "允许的渠道标签",
       "allowedChannelTagsDescription": "选择标签来过滤此配置可用的渠道。包含任一所选标签的渠道将被允许使用。如果未选择任何标签，则禁用标签过滤。",
-      "noTagsAvailable": "暂无可用标签"
+      "noTagsAvailable": "暂无可用标签",
+      "allowedModels": "允许的模型",
+      "allowedModelsDescription": "选择此配置可以使用的模型。如果未选择任何模型，则允许使用所有模型。",
+      "noModelsAvailable": "暂无可用模型"
     }
   }
 }
