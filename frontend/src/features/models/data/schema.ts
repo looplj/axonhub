@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { pageInfoSchema } from '@/gql/pagination'
 
 export const modelTypeSchema = z.enum(['chat', 'embedding', 'rerank'])
 export type ModelType = z.infer<typeof modelTypeSchema>
@@ -156,12 +157,7 @@ export const modelConnectionSchema = z.object({
       cursor: z.string(),
     })
   ),
-  pageInfo: z.object({
-    hasNextPage: z.boolean(),
-    hasPreviousPage: z.boolean(),
-    startCursor: z.string().nullable(),
-    endCursor: z.string().nullable(),
-  }),
+  pageInfo: pageInfoSchema,
   totalCount: z.number(),
 })
 export type ModelConnection = z.infer<typeof modelConnectionSchema>

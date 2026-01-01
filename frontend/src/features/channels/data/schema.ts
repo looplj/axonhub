@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { pageInfoSchema } from '@/gql/pagination'
 
 const apiFormatSchema = z.enum(['openai/chat_completions', 'openai/responses', 'anthropic/messages', 'gemini/contents'])
 
@@ -280,12 +281,7 @@ export const channelConnectionSchema = z.object({
       cursor: z.string(),
     })
   ),
-  pageInfo: z.object({
-    hasNextPage: z.boolean(),
-    hasPreviousPage: z.boolean(),
-    startCursor: z.string().nullable(),
-    endCursor: z.string().nullable(),
-  }),
+  pageInfo: pageInfoSchema,
   totalCount: z.number(),
 })
 export type ChannelConnection = z.infer<typeof channelConnectionSchema>

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { pageInfoSchema } from '@/gql/pagination'
 
 // Project schema based on GraphQL schema
 export const projectSchema = z.object({
@@ -15,13 +16,6 @@ export type Project = z.infer<typeof projectSchema>
 export const projectEdgeSchema = z.object({
   node: projectSchema,
   cursor: z.string(),
-})
-
-export const pageInfoSchema = z.object({
-  hasNextPage: z.boolean(),
-  hasPreviousPage: z.boolean(),
-  startCursor: z.string().nullable(),
-  endCursor: z.string().nullable(),
 })
 
 export const projectConnectionSchema = z.object({
