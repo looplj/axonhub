@@ -271,16 +271,16 @@ export default function Playground() {
       <div className='bg-background flex h-screen w-full'>
         {/* Settings Sidebar */}
 
-        <div className='bg-muted/40 flex w-80 flex-col border-r rounded-2xl shadow-soft border border-border bg-card m-4'>
-          <div className='border-b p-6'>
-            <h1 className='text-2xl font-bold tracking-tight'>{t('playground.title')}</h1>
-            <p className='text-muted-foreground mt-2 text-sm leading-relaxed'>{t('playground.description')}</p>
+        <div className='bg-muted/40 flex w-[340px] min-w-[280px] max-w-[400px] flex-col border-r rounded-2xl shadow-soft border border-border bg-card m-4'>
+          <div className='border-b p-4'>
+            <h1 className='text-xl font-bold tracking-tight'>{t('playground.title')}</h1>
+            <p className='text-muted-foreground mt-1 text-xs leading-relaxed'>{t('playground.description')}</p>
           </div>
 
-          <ScrollArea className='flex-1 p-6'>
-            <div className='space-y-8'>
-              <div className='space-y-4'>
-                <Label htmlFor='model' className='text-sm font-semibold'>
+          <ScrollArea className='flex-1 p-4'>
+            <div className='space-y-6'>
+              <div className='space-y-3'>
+                <Label htmlFor='model' className='text-xs font-semibold'>
                   {t('playground.settings.model')}
                 </Label>
                 <AutoCompleteSelect
@@ -291,9 +291,9 @@ export default function Playground() {
                   emptyMessage={t('playground.errors.noChannelsAvailable')}
                   placeholder={channelsLoading ? t('loading') : t('playground.settings.selectModel')}
                 />
-                {channelsLoading && <p className='text-muted-foreground text-xs'>{t('loading')}...</p>}
+                {channelsLoading && <p className='text-muted-foreground text-[10px]'>{t('loading')}...</p>}
                 {!channelsLoading && modelOptions.length > 0 && (
-                  <p className='text-muted-foreground text-xs'>
+                  <p className='text-muted-foreground text-[10px]'>
                     {t('playground.modelsAvailable', {
                       count: modelOptions.length,
                       channels: groupedModels.length,
@@ -302,11 +302,11 @@ export default function Playground() {
                 )}
               </div>
 
-              <div className='space-y-4'>
-                <Label htmlFor='temperature' className='text-sm font-semibold'>
+              <div className='space-y-3'>
+                <Label htmlFor='temperature' className='text-xs font-semibold'>
                   {t('playground.settings.temperature')}: {temperature}
                 </Label>
-                <div className='px-2'>
+                <div className='px-1'>
                   <Input
                     id='temperature'
                     type='range'
@@ -317,7 +317,7 @@ export default function Playground() {
                     onChange={(e) => setTemperature(parseFloat(e.target.value))}
                     className='bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg'
                   />
-                  <div className='text-muted-foreground mt-1 flex justify-between text-xs'>
+                  <div className='text-muted-foreground mt-1 flex justify-between text-[10px]'>
                     <span>0</span>
                     <span>1</span>
                     <span>2</span>
@@ -325,8 +325,8 @@ export default function Playground() {
                 </div>
               </div>
 
-              <div className='space-y-4'>
-                <Label htmlFor='maxTokens' className='text-sm font-semibold'>
+              <div className='space-y-3'>
+                <Label htmlFor='maxTokens' className='text-xs font-semibold'>
                   {t('playground.settings.maxTokens')}
                 </Label>
                 <Input
@@ -336,12 +336,12 @@ export default function Playground() {
                   max='4000'
                   value={maxTokens}
                   onChange={(e) => setMaxTokens(parseInt(e.target.value))}
-                  className='h-10'
+                  className='h-9'
                 />
               </div>
 
-              <div className='space-y-4'>
-                <Label htmlFor='systemPrompt' className='text-sm font-semibold'>
+              <div className='space-y-3'>
+                <Label htmlFor='systemPrompt' className='text-xs font-semibold'>
                   {t('playground.settings.systemPrompt')}
                 </Label>
                 <Textarea
@@ -350,20 +350,20 @@ export default function Playground() {
                   value={systemPrompt}
                   onChange={(e) => setSystemPrompt(e.target.value)}
                   rows={4}
-                  className='min-h-[100px] resize-none'
+                  className='min-h-[80px] resize-none text-sm'
                 />
               </div>
             </div>
           </ScrollArea>
 
-          <div className='space-y-3 border-t p-6'>
+          <div className='space-y-2 border-t p-4'>
             <Button
               onClick={handleRetry}
               variant='outline'
-              className='h-10 w-full'
+              className='h-9 w-full text-xs'
               disabled={isLoading || messages.length === 0 || messages.every((msg) => msg.role !== 'assistant')}
             >
-              <IconRefresh className='mr-2 h-4 w-4' />
+              <IconRefresh className='mr-2 h-3 w-3' />
               {isLoading
                 ? t('playground.chat.generating')
                 : messages.length === 0
@@ -373,8 +373,8 @@ export default function Playground() {
                     : t('playground.chat.retry')}
             </Button>
 
-            <Button onClick={handleClear} variant='outline' className='h-10 w-full' disabled={isLoading}>
-              <IconTrash className='mr-2 h-4 w-4' />
+            <Button onClick={handleClear} variant='outline' className='h-9 w-full text-xs' disabled={isLoading}>
+              <IconTrash className='mr-2 h-3 w-3' />
               {t('playground.chat.clear')}
             </Button>
           </div>

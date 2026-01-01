@@ -9,7 +9,7 @@ generate:
 # Build the backend application
 build-backend:
 	@echo "Building axonhub backend..."
-	go build -tags=nomsgpack -o axonhub ./cmd/axonhub
+	go build -ldflags "-s -w" -tags=nomsgpack -o axonhub ./cmd/axonhub
 	@echo "Backend build completed!"
 
 # Build the frontend application
@@ -17,6 +17,7 @@ build-frontend:
 	@echo "Building axonhub frontend..."
 	cd frontend && pnpm vite build
 	@echo "Copying frontend dist to server static directory..."
+	rm -rf internal/server/static/dist/assets
 	mkdir -p internal/server/static/dist
 	cp -r frontend/dist/* internal/server/static/dist/
 	@echo "Frontend build completed!"
