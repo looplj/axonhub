@@ -108,6 +108,8 @@
   "common": {
     "close": "关闭",
     "refresh": "刷新",
+    "autoRefresh": "自动刷新",
+    "autoRefreshEvery": "每 {{seconds}} 秒自动刷新",
     "selected": "已选择",
     "selectedItems": "已选择 {{count}} 项",
     "noResultsFound": "未找到结果",

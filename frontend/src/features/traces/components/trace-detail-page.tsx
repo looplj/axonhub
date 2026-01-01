@@ -2,11 +2,13 @@ import { useMemo, useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import { useParams, useNavigate } from '@tanstack/react-router'
 import { zhCN, enUS } from 'date-fns/locale'
-import { ArrowLeft, FileText, Activity } from 'lucide-react'
+import { ArrowLeft, FileText, Activity, RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { extractNumberID } from '@/lib/utils'
 import { usePaginationSearch } from '@/hooks/use-pagination-search'
+import useInterval from '@/hooks/useInterval'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Header } from '@/components/layout/header'
@@ -24,9 +26,10 @@ export default function TraceDetailPage() {
   const [selectedTrace, setSelectedTrace] = useState<Segment | null>(null)
   const [selectedSpan, setSelectedSpan] = useState<Span | null>(null)
   const [selectedSpanType, setSelectedSpanType] = useState<'request' | 'response' | null>(null)
+  const [autoRefresh, setAutoRefresh] = useState(false)
   const { getSearchParams } = usePaginationSearch({ defaultPageSize: 20 })
 
-  const { data: trace, isLoading } = useTraceWithSegments(traceId)
+  const { data: trace, isLoading, refetch } = useTraceWithSegments(traceId)
 
   // Parse rawRootSegment JSON once per trace
   // 仅解析 rawRootSegment（完整 JSON）
@@ -47,6 +50,13 @@ export default function TraceDetailPage() {
       }
     }
   }, [effectiveRootSegment, selectedSpan])
+
+  useInterval(
+    () => {
+      refetch()
+    },
+    autoRefresh ? 30000 : null
+  )
 
   const handleSpanSelect = (parentTrace: Segment, span: Span, type: 'request' | 'response') => {
     setSelectedTrace(parentTrace)
@@ -101,29 +111,50 @@ export default function TraceDetailPage() {
 
   return (
     <div className='flex h-screen flex-col'>
-      <Header className='bg-background/95 supports-[backdrop-filter]:bg-background/60 border-b backdrop-blur'>
-        <div className='flex items-center space-x-4'>
-          <Button variant='ghost' size='sm' onClick={handleBack} className='hover:bg-accent'>
-            <ArrowLeft className='mr-2 h-4 w-4' />
-            {t('common.back')}
-          </Button>
-          <Separator orientation='vertical' className='h-6' />
-          <div className='flex items-center space-x-3'>
-            <div className='bg-primary/10 flex h-8 w-8 items-center justify-center rounded-lg'>
-              <Activity className='text-primary h-4 w-4' />
-            </div>
-            <div>
-              <h1 className='text-lg leading-none font-semibold'>
-                {t('traces.detail.title')} #{extractNumberID(trace.id) || trace.traceID}
-              </h1>
-              <div className='mt-1 flex items-center gap-2'>
-                <p className='text-muted-foreground text-sm'>{trace.traceID}</p>
-                <span className='text-muted-foreground text-xs'>•</span>
-                <p className='text-muted-foreground text-xs'>
-                  {format(new Date(trace.createdAt), 'yyyy-MM-dd HH:mm:ss', { locale })}
-                </p>
+      <Header className='bg-background/95 supports-[backdrop-filter]:bg-background/60 border-b backdrop-blur w-full'>
+        <div className='flex items-center justify-between w-full'>
+          <div className='flex items-center space-x-4'>
+            <Button variant='ghost' size='sm' onClick={handleBack} className='hover:bg-accent'>
+              <ArrowLeft className='mr-2 h-4 w-4' />
+              {t('common.back')}
+            </Button>
+            <Separator orientation='vertical' className='h-6' />
+            <div className='flex items-center space-x-3'>
+              <div className='bg-primary/10 flex h-8 w-8 items-center justify-center rounded-lg'>
+                <Activity className='text-primary h-4 w-4' />
+              </div>
+              <div>
+                <h1 className='text-lg leading-none font-semibold'>
+                  {t('traces.detail.title')} #{extractNumberID(trace.id) || trace.traceID}
+                </h1>
+                <div className='mt-1 flex items-center gap-2'>
+                  <p className='text-muted-foreground text-sm'>{trace.traceID}</p>
+                  <span className='text-muted-foreground text-xs'>•</span>
+                  <p className='text-muted-foreground text-xs'>
+                    {format(new Date(trace.createdAt), 'yyyy-MM-dd HH:mm:ss', { locale })}
+                  </p>
+                </div>
               </div>
             </div>
+          </div>
+          <div className='flex items-center space-x-2'>
+            <div className='flex items-center space-x-2'>
+              <Switch 
+                checked={autoRefresh} 
+                onCheckedChange={setAutoRefresh}
+                id='auto-refresh-switch'
+              />
+              <label 
+                htmlFor='auto-refresh-switch' 
+                className='text-sm text-muted-foreground cursor-pointer'
+              >
+                {t('common.autoRefresh')}
+              </label>
+            </div>
+            <Button variant='outline' size='sm' onClick={() => refetch()} disabled={isLoading}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${isLoading || autoRefresh ? 'animate-spin' : ''}`} />
+              {t('common.refresh')}
+            </Button>
           </div>
         </div>
       </Header>

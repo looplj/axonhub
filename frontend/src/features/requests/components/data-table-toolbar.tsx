@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter'
 import { DateRangePicker } from '@/components/date-range-picker'
+import { Switch } from '@/components/ui/switch'
 import { useMe } from '@/features/auth/data/auth'
 import { useQueryChannels } from '@/features/channels/data/channels'
 import { useApiKeys } from '@/features/apikeys/data'
@@ -30,9 +31,11 @@ interface DataTableToolbarProps<TData> {
   showRefresh?: boolean
   apiKeyFilter?: string[]
   onApiKeyFilterChange?: (filters: string[]) => void
+  autoRefresh?: boolean
+  onAutoRefreshChange?: (enabled: boolean) => void
 }
 
-export function DataTableToolbar<TData>({ table, dateRange, onDateRangeChange, onRefresh, showRefresh = false, apiKeyFilter, onApiKeyFilterChange }: DataTableToolbarProps<TData>) {
+export function DataTableToolbar<TData>({ table, dateRange, onDateRangeChange, onRefresh, showRefresh = false, apiKeyFilter, onApiKeyFilterChange, autoRefresh = false, onAutoRefreshChange }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation()
   const isFiltered = table.getState().columnFilters.length > 0 || !!dateRange
 
@@ -180,9 +183,24 @@ export function DataTableToolbar<TData>({ table, dateRange, onDateRangeChange, o
         )}
       </div>
       <div className='flex items-center space-x-2'>
+        {showRefresh && onAutoRefreshChange && (
+          <div className='flex items-center space-x-2'>
+            <Switch 
+              checked={autoRefresh} 
+              onCheckedChange={onAutoRefreshChange}
+              id='auto-refresh-switch'
+            />
+            <label 
+              htmlFor='auto-refresh-switch' 
+              className='text-sm text-muted-foreground cursor-pointer'
+            >
+              {t('common.autoRefresh')}
+            </label>
+          </div>
+        )}
         {showRefresh && onRefresh && (
           <Button variant='outline' size='sm' onClick={onRefresh}>
-            <RefreshCw className='mr-2 h-4 w-4' />
+            <RefreshCw className={`mr-2 h-4 w-4 ${autoRefresh ? 'animate-spin' : ''}`} />
             {t('common.refresh')}
           </Button>
         )}

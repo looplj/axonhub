@@ -4,7 +4,6 @@ import { z } from 'zod'
 export {
   roleSchema,
   roleEdgeSchema,
-  pageInfoSchema,
   roleConnectionSchema,
   updateRoleInputSchema,
   roleListSchema,

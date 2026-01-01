@@ -6,6 +6,7 @@ import { DateRange } from 'react-day-picker'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter'
 import { DateRangePicker } from '@/components/date-range-picker'
 import { useUsageLogPermissions } from '../../../gql/useUsageLogPermissions'
@@ -19,9 +20,11 @@ interface DataTableToolbarProps<TData> {
   onDateRangeChange?: (range: DateRange | undefined) => void
   onRefresh?: () => void
   showRefresh?: boolean
+  autoRefresh?: boolean
+  onAutoRefreshChange?: (value: boolean) => void
 }
 
-export function DataTableToolbar<TData>({ table, dateRange, onDateRangeChange, onRefresh, showRefresh = false }: DataTableToolbarProps<TData>) {
+export function DataTableToolbar<TData>({ table, dateRange, onDateRangeChange, onRefresh, showRefresh = false, autoRefresh = false, onAutoRefreshChange }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation()
   const permissions = useUsageLogPermissions()
   const { canViewChannels } = permissions
@@ -72,13 +75,13 @@ export function DataTableToolbar<TData>({ table, dateRange, onDateRangeChange, o
           onChange={(event) => table.getColumn('id')?.setFilterValue(event.target.value)}
           className='h-8 w-[150px] lg:w-[250px]'
         />
-        {table.getColumn('source') && (
+        {/* {table.getColumn('source') && (
           <DataTableFacetedFilter
             column={table.getColumn('source')}
             title={t('usageLogs.filters.source')}
             options={usageLogSources}
           />
-        )}
+        )} */}
         {canViewChannels && table.getColumn('channel') && channelOptions.length > 0 && channelsData?.edges && (
           <DataTableFacetedFilter
             column={table.getColumn('channel')}
@@ -112,9 +115,24 @@ export function DataTableToolbar<TData>({ table, dateRange, onDateRangeChange, o
         )}
       </div>
       <div className='flex items-center space-x-2'>
+        {showRefresh && onAutoRefreshChange && (
+          <div className='flex items-center space-x-2'>
+            <Switch 
+              checked={autoRefresh} 
+              onCheckedChange={onAutoRefreshChange}
+              id='auto-refresh-switch'
+            />
+            <label 
+              htmlFor='auto-refresh-switch' 
+              className='text-sm text-muted-foreground cursor-pointer'
+            >
+              {t('common.autoRefresh')}
+            </label>
+          </div>
+        )}
         {showRefresh && onRefresh && (
           <Button variant='outline' size='sm' onClick={onRefresh}>
-            <RefreshCw className='mr-2 h-4 w-4' />
+            <RefreshCw className={`mr-2 h-4 w-4 ${autoRefresh ? 'animate-spin' : ''}`} />
             {t('common.refresh')}
           </Button>
         )}

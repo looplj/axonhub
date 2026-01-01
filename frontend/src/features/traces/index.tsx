@@ -8,6 +8,7 @@ import { TracesProvider } from './context'
 import { useTraces } from './data'
 import { usePaginationSearch } from '@/hooks/use-pagination-search'
 import { useDebounce } from '@/hooks/use-debounce'
+import useInterval from '@/hooks/useInterval'
 import { buildDateRangeWhereClause } from '@/utils/date-range'
 
 function TracesContent() {
@@ -16,6 +17,7 @@ function TracesContent() {
   })
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
   const [traceIdFilter, setTraceIdFilter] = useState<string>('')
+  const [autoRefresh, setAutoRefresh] = useState(false)
   const debouncedTraceIdFilter = useDebounce(traceIdFilter, 300)
 
   // Build where clause with filters
@@ -43,6 +45,13 @@ function TracesContent() {
   const traces = data?.edges?.map((edge) => edge.node) || []
   const pageInfo = data?.pageInfo
   const isFirstPage = !paginationArgs.after && cursorHistory.length === 0
+
+  useInterval(
+    () => {
+      refetch()
+    },
+    autoRefresh && isFirstPage ? 30000 : null
+  )
 
   const handleNextPage = () => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
@@ -94,6 +103,8 @@ function TracesContent() {
         onTraceIdFilterChange={handleTraceIdFilterChange}
         onRefresh={refetch}
         showRefresh={isFirstPage}
+        autoRefresh={autoRefresh}
+        onAutoRefreshChange={setAutoRefresh}
       />
     </div>
   )

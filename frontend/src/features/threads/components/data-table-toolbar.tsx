@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DateRangePicker } from '@/components/date-range-picker'
+import { Switch } from '@/components/ui/switch'
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>
@@ -15,6 +16,8 @@ interface DataTableToolbarProps<TData> {
   onThreadIdFilterChange: (threadId: string) => void
   onRefresh?: () => void
   showRefresh?: boolean
+  autoRefresh?: boolean
+  onAutoRefreshChange?: (enabled: boolean) => void
 }
 
 export function ThreadsTableToolbar<TData>({
@@ -25,6 +28,8 @@ export function ThreadsTableToolbar<TData>({
   onThreadIdFilterChange,
   onRefresh,
   showRefresh = false,
+  autoRefresh = false,
+  onAutoRefreshChange,
 }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation()
   const isFiltered = table.getState().columnFilters.length > 0 || !!dateRange || !!threadIdFilter.trim()
@@ -65,9 +70,24 @@ export function ThreadsTableToolbar<TData>({
         )}
       </div>
       <div className='flex items-center space-x-2'>
+        {showRefresh && onAutoRefreshChange && (
+          <div className='flex items-center space-x-2'>
+            <Switch 
+              checked={autoRefresh} 
+              onCheckedChange={onAutoRefreshChange}
+              id='auto-refresh-switch'
+            />
+            <label 
+              htmlFor='auto-refresh-switch' 
+              className='text-sm text-muted-foreground cursor-pointer'
+            >
+              {t('common.autoRefresh')}
+            </label>
+          </div>
+        )}
         {showRefresh && onRefresh && (
           <Button variant='outline' size='sm' onClick={onRefresh}>
-            <RefreshCw className='mr-2 h-4 w-4' />
+            <RefreshCw className={`mr-2 h-4 w-4 ${autoRefresh ? 'animate-spin' : ''}`} />
             {t('common.refresh')}
           </Button>
         )}

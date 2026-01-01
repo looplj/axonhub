@@ -14,7 +14,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
-	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/user"
@@ -350,58 +349,6 @@ func (r *mutationResolver) ApplyChannelOverrideTemplate(ctx context.Context, inp
 		Updated:  len(updatedChannels),
 		Channels: updatedChannels,
 	}, nil
-}
-
-// FetchModels is the resolver for the fetchModels field.
-func (r *queryResolver) FetchModels(ctx context.Context, input biz.FetchModelsInput) (*FetchModelsPayload, error) {
-	// Call the model fetcher service
-	result, err := r.modelFetcher.FetchModels(ctx, input)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch models: %w", err)
-	}
-
-	// Convert result to GraphQL payload
-	models := make([]*biz.ModelIdentify, len(result.Models))
-	for i := range result.Models {
-		models[i] = &result.Models[i]
-	}
-
-	return &FetchModelsPayload{
-		Models: models,
-		Error:  result.Error,
-	}, nil
-}
-
-// QueryModels is the resolver for the queryModels field.
-// When QueryAllChannelModels is true, returns all models from channels.
-// When false, returns only configured models (models with explicit Model entity configuration).
-func (r *queryResolver) QueryModels(ctx context.Context, input QueryModelsInput) ([]*biz.ModelIdentityWithStatus, error) {
-	// Check the QueryAllChannelModels setting
-	settings := r.systemService.ModelSettingsOrDefault(ctx)
-
-	if settings.QueryAllChannelModels {
-		// Convert GraphQL input to biz layer input
-		bizInput := biz.ListModelsInput{
-			StatusIn:       input.StatusIn,
-			IncludeMapping: lo.FromPtrOr(input.IncludeMapping, false),
-			IncludePrefix:  lo.FromPtrOr(input.IncludePrefix, false),
-		}
-
-		// Return all models from channels
-		return r.channelService.ListModels(ctx, bizInput)
-	}
-
-	// Return only configured models
-	// Convert channel status to model status
-	var modelStatusIn []model.Status
-
-	if len(input.StatusIn) > 0 {
-		for _, status := range input.StatusIn {
-			modelStatusIn = append(modelStatusIn, model.Status(status.String()))
-		}
-	}
-
-	return r.modelService.ListConfiguredModels(ctx, modelStatusIn)
 }
 
 // AllChannelTags is the resolver for the allChannelTags field.
