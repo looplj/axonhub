@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { pageInfoSchema } from '@/gql/pagination'
 import { passwordSchema } from '@/lib/validation'
 
 export const userStatusSchema = z.enum(['activated', 'deactivated'])
@@ -72,12 +73,7 @@ export const userConnectionSchema = z.object({
       node: userSchema,
     })
   ),
-  pageInfo: z.object({
-    hasNextPage: z.boolean(),
-    hasPreviousPage: z.boolean(),
-    startCursor: z.string().nullable(),
-    endCursor: z.string().nullable(),
-  }),
+  pageInfo: pageInfoSchema,
 })
 
 // 前端表单验证模式（包含 confirmPassword）

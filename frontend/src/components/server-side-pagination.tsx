@@ -5,13 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { usePaginationSearch } from '@/hooks/use-pagination-search'
-
-interface PageInfo {
-  hasNextPage: boolean
-  hasPreviousPage: boolean
-  startCursor?: string | null
-  endCursor?: string | null
-}
+import type { PageInfo } from '@/gql/pagination'
 
 interface ServerSidePaginationProps {
   pageInfo?: PageInfo

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { channelSchema } from '@/features/channels/data'
+import { pageInfoSchema } from '@/gql/pagination'
 
 // Usage Log Source
 export const usageLogSourceSchema = z.enum([
@@ -38,13 +39,6 @@ export const usageLogEdgeSchema = z.object({
   cursor: z.string(),
 })
 
-export const pageInfoSchema = z.object({
-  hasNextPage: z.boolean(),
-  hasPreviousPage: z.boolean(),
-  startCursor: z.string().nullable(),
-  endCursor: z.string().nullable(),
-})
-
 export const usageLogConnectionSchema = z.object({
   edges: z.array(usageLogEdgeSchema),
   pageInfo: pageInfoSchema,
@@ -54,9 +48,6 @@ export type UsageLogConnection = z.infer<typeof usageLogConnectionSchema>
 
 // Usage Log Edge type
 export type UsageLogEdge = z.infer<typeof usageLogEdgeSchema>
-
-// Page Info type
-export type PageInfo = z.infer<typeof pageInfoSchema>
 
 // Usage Log List schema for table display
 export const usageLogListSchema = z.array(usageLogSchema)

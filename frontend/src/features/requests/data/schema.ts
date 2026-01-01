@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { apiKeySchema } from '@/features/apikeys/data/schema'
 import { channelSchema } from '@/features/channels/data'
+import { pageInfoSchema } from '@/gql/pagination'
 
 // Request Status
 export const requestStatusSchema = z.enum(['pending', 'processing', 'completed', 'failed', 'canceled'])
@@ -60,12 +61,7 @@ export const requestSchema = z.object({
           cursor: z.string(),
         })
       ),
-      pageInfo: z.object({
-        hasNextPage: z.boolean(),
-        hasPreviousPage: z.boolean(),
-        startCursor: z.string().nullable(),
-        endCursor: z.string().nullable(),
-      }),
+      pageInfo: pageInfoSchema,
       totalCount: z.number(),
     })
     .optional(),
@@ -81,12 +77,7 @@ export const requestConnectionSchema = z.object({
       cursor: z.string(),
     })
   ),
-  pageInfo: z.object({
-    hasNextPage: z.boolean(),
-    hasPreviousPage: z.boolean(),
-    startCursor: z.string().nullable(),
-    endCursor: z.string().nullable(),
-  }),
+  pageInfo: pageInfoSchema,
   totalCount: z.number(),
 })
 export type RequestConnection = z.infer<typeof requestConnectionSchema>
@@ -99,12 +90,7 @@ export const requestExecutionConnectionSchema = z.object({
       cursor: z.string(),
     })
   ),
-  pageInfo: z.object({
-    hasNextPage: z.boolean(),
-    hasPreviousPage: z.boolean(),
-    startCursor: z.string().nullable(),
-    endCursor: z.string().nullable(),
-  }),
+  pageInfo: pageInfoSchema,
   totalCount: z.number(),
 })
 export type RequestExecutionConnection = z.infer<typeof requestExecutionConnectionSchema>

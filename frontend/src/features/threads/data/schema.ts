@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { pageInfoSchema } from '@/gql/pagination'
 import { traceConnectionSchema } from '@/features/traces/data/schema'
 
 const projectSchema = z
@@ -35,12 +36,7 @@ export const threadConnectionSchema = z.object({
       cursor: z.string(),
     }),
   ),
-  pageInfo: z.object({
-    hasNextPage: z.boolean(),
-    hasPreviousPage: z.boolean(),
-    startCursor: z.string().nullable(),
-    endCursor: z.string().nullable(),
-  }),
+  pageInfo: pageInfoSchema,
   totalCount: z.number(),
 })
 

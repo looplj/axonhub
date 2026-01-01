@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ServerSidePagination } from '@/components/server-side-pagination'
 import { DataStorage } from '../data/data-storages'
-import { PageInfo } from '../data/schema'
+import type { PageInfo } from '@/gql/pagination'
 
 interface DataStoragesTableProps {
   data: DataStorage[]

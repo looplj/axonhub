@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { userSchema } from '@/features/users/data/schema'
+import { pageInfoSchema } from '@/gql/pagination'
 
 // API Key Status
 export const apiKeyStatusSchema = z.enum(['enabled', 'disabled', 'archived'])
@@ -42,13 +43,6 @@ export type ApiKey = z.infer<typeof apiKeySchema>
 export const apiKeyEdgeSchema = z.object({
   node: apiKeySchema,
   cursor: z.string(),
-})
-
-export const pageInfoSchema = z.object({
-  hasNextPage: z.boolean(),
-  hasPreviousPage: z.boolean(),
-  startCursor: z.string().nullable(),
-  endCursor: z.string().nullable(),
 })
 
 export const apiKeyConnectionSchema = z.object({

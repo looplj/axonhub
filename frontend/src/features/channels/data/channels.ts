@@ -4,6 +4,7 @@ import { graphqlRequest } from '@/gql/graphql'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { useErrorHandler } from '@/hooks/use-error-handler'
+import { pageInfoSchema } from '@/gql/pagination'
 import {
   Channel,
   ChannelConnection,
@@ -108,9 +109,9 @@ const channelNamesConnectionSchema = z.object({
       cursor: z.string(),
     })
   ),
-  pageInfo: z.object({
-    hasNextPage: z.boolean(),
-    endCursor: z.string().nullable(),
+  pageInfo: pageInfoSchema.pick({
+    hasNextPage: true,
+    endCursor: true,
   }),
 })
 

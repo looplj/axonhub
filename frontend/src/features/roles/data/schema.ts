@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { pageInfoSchema } from '@/gql/pagination'
 
 // Role schema based on GraphQL schema
 export const roleSchema = z.object({
@@ -14,13 +15,6 @@ export type Role = z.infer<typeof roleSchema>
 export const roleEdgeSchema = z.object({
   node: roleSchema,
   cursor: z.string(),
-})
-
-export const pageInfoSchema = z.object({
-  hasNextPage: z.boolean(),
-  hasPreviousPage: z.boolean(),
-  startCursor: z.string().nullable(),
-  endCursor: z.string().nullable(),
 })
 
 export const roleConnectionSchema = z.object({

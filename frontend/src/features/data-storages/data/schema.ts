@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { pageInfoSchema } from '@/gql/pagination'
 
 // S3 Settings schema (without sensitive credentials for list queries)
 export const s3SettingsSchema = z.object({
@@ -44,15 +45,6 @@ export const dataStorageEdgeSchema = z.object({
   node: dataStorageSchema,
 })
 export type DataStorageEdge = z.infer<typeof dataStorageEdgeSchema>
-
-// Page Info schema
-export const pageInfoSchema = z.object({
-  hasNextPage: z.boolean(),
-  hasPreviousPage: z.boolean(),
-  startCursor: z.string().optional().nullable(),
-  endCursor: z.string().optional().nullable(),
-})
-export type PageInfo = z.infer<typeof pageInfoSchema>
 
 // Data Storages Connection schema (for GraphQL pagination)
 export const dataStoragesConnectionSchema = z.object({

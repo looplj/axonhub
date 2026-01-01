@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { useErrorHandler } from '@/hooks/use-error-handler'
 import { z } from 'zod'
 import { ChannelType, HeaderEntry } from './schema'
+import { pageInfoSchema } from '@/gql/pagination'
 
 // Zod Schemas for Template Types
 export const channelOverrideTemplateSchema = z.object({
@@ -32,12 +33,7 @@ export const channelOverrideTemplateConnectionSchema = z.object({
       cursor: z.string(),
     })
   ),
-  pageInfo: z.object({
-    hasNextPage: z.boolean(),
-    hasPreviousPage: z.boolean(),
-    startCursor: z.string().nullable(),
-    endCursor: z.string().nullable(),
-  }),
+  pageInfo: pageInfoSchema,
   totalCount: z.number(),
 })
 export type ChannelOverrideTemplateConnection = z.infer<typeof channelOverrideTemplateConnectionSchema>
