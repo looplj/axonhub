@@ -108,7 +108,7 @@ export function TracesTable({
         showRefresh={showRefresh} 
       />
       <div className='mt-4 flex-1 overflow-auto rounded-2xl shadow-soft border border-[var(--table-border)] relative'>
-        <Table data-testid='traces-table' className='bg-background rounded-2xl border-separate border-spacing-0'>
+        <Table data-testid='traces-table' className='bg-[var(--table-background)] rounded-2xl border-separate border-spacing-0'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className='group/row border-0'>
@@ -131,12 +131,12 @@ export function TracesTable({
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody className='p-2 space-y-1 !bg-background'>
+          <TableBody className='p-2 space-y-1 !bg-[var(--table-background)]'>
             {loading ? (
-              <TableRow className='border-0 !bg-background'>
+              <TableRow className='border-0 !bg-[var(--table-background)]'>
                 <TableCell
                   colSpan={tracesColumns.length}
-                  className='h-24 text-center border-0 !bg-background'
+                  className='h-24 text-center border-0 !bg-[var(--table-background)]'
                 >
                   {t('common.loading')}
                 </TableCell>
@@ -146,12 +146,12 @@ export function TracesTable({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && 'selected'}
-                  className='group/row table-row-hover rounded-xl !bg-background border-0 transition-all duration-200 ease-in-out'
+                  className='group/row table-row-hover rounded-xl !bg-[var(--table-background)] border-0 transition-all duration-200 ease-in-out'
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
-                      className={`${cell.column.columnDef.meta?.className ?? ''} px-4 py-3 border-0 !bg-background`}
+                      className={`${cell.column.columnDef.meta?.className ?? ''} px-4 py-3 border-0 !bg-[var(--table-background)]`}
                     >
                       {flexRender(
                         cell.column.columnDef.cell,
@@ -162,10 +162,10 @@ export function TracesTable({
                 </TableRow>
               ))
             ) : (
-              <TableRow className='!bg-background'>
+              <TableRow className='!bg-[var(--table-background)]'>
                 <TableCell
                   colSpan={tracesColumns.length}
-                  className='h-24 text-center !bg-background'
+                  className='h-24 text-center !bg-[var(--table-background)]'
                 >
                   {t('common.noData')}
                 </TableCell>

@@ -94,12 +94,12 @@ export function DataTableToolbar<TData>({
   return (
     <div className='flex items-center gap-4'>
       <div className='relative flex-1'>
-        <i className='ph ph-magnifying-glass absolute left-3 top-2.5 text-gray-400'></i>
+        <i className='ph ph-magnifying-glass absolute left-3 top-2.5 text-muted-foreground'></i>
         <Input
           placeholder={t('channels.filters.filterByName')}
           value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
           onChange={(event) => table.getColumn('name')?.setFilterValue(event.target.value)}
-          className='w-full bg-white pl-10 pr-4 py-2 rounded-xl text-sm border border-warm-200 focus:ring-2 focus:ring-brand-200 focus:outline-none transition-all placeholder-gray-400 text-warm-800 shadow-sm'
+          className='w-full bg-card pl-10 pr-4 py-2 rounded-xl text-sm border border-border focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all placeholder-muted-foreground text-foreground shadow-sm'
         />
       </div>
       {table.getColumn('status') && (

@@ -57,7 +57,7 @@ export function DataStoragesTable({
       </div>
 
       <div className='mt-4 flex-1 overflow-auto rounded-2xl shadow-soft border border-[var(--table-border)] relative'>
-        <Table className='bg-background rounded-2xl border-separate border-spacing-0'>
+        <Table className='bg-[var(--table-background)] rounded-2xl border-separate border-spacing-0'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className='group/row border-0'>
@@ -69,20 +69,20 @@ export function DataStoragesTable({
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody className='p-2 space-y-1 !bg-background'>
+          <TableBody className='p-2 space-y-1 !bg-[var(--table-background)]'>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'} className='group/row table-row-hover rounded-xl !bg-background border-0 transition-all duration-200 ease-in-out'>
+                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'} className='group/row table-row-hover rounded-xl !bg-[var(--table-background)] border-0 transition-all duration-200 ease-in-out'>
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className='px-4 py-3 border-0 !bg-background'>
+                    <TableCell key={cell.id} className='px-4 py-3 border-0 !bg-[var(--table-background)]'>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
-              <TableRow className='!bg-background'>
-                <TableCell colSpan={columns.length} className='h-24 text-center !bg-background'>
+              <TableRow className='!bg-[var(--table-background)]'>
+                <TableCell colSpan={columns.length} className='h-24 text-center !bg-[var(--table-background)]'>
                   {t('common.noData')}
                 </TableCell>
               </TableRow>

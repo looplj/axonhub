@@ -158,7 +158,7 @@ export function ModelsTable({
       </div>
 
       <div className='mt-4 flex-1 overflow-auto rounded-2xl shadow-soft border border-[var(--table-border)] relative'>
-        <Table data-testid='models-table' className='bg-background rounded-2xl border-separate border-spacing-0'>
+        <Table data-testid='models-table' className='bg-[var(--table-background)] rounded-2xl border-separate border-spacing-0'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className='group/row border-0'>
@@ -172,16 +172,16 @@ export function ModelsTable({
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody className='p-2 space-y-1 !bg-background'>
+          <TableBody className='p-2 space-y-1 !bg-[var(--table-background)]'>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => {
                 const model = row.original
                 const modelCard = model.modelCard
                 return (
                   <React.Fragment key={row.id}>
-                    <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'} className='group/row table-row-hover rounded-xl !bg-background border-0 transition-all duration-200 ease-in-out'>
+                    <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'} className='group/row table-row-hover rounded-xl !bg-[var(--table-background)] border-0 transition-all duration-200 ease-in-out'>
                       {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id} className={`${cell.column.columnDef.meta?.className ?? ''} px-4 py-3 border-0 !bg-background`}>
+                        <TableCell key={cell.id} className={`${cell.column.columnDef.meta?.className ?? ''} px-4 py-3 border-0 !bg-[var(--table-background)]`}>
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </TableCell>
                       ))}
@@ -370,8 +370,8 @@ export function ModelsTable({
                 )
               })
             ) : (
-              <TableRow className='!bg-background'>
-                <TableCell colSpan={columns.length} className='h-24 text-center !bg-background'>
+              <TableRow className='!bg-[var(--table-background)]'>
+                <TableCell colSpan={columns.length} className='h-24 text-center !bg-[var(--table-background)]'>
                   {t('common.noData')}
                 </TableCell>
               </TableRow>
@@ -395,7 +395,7 @@ export function ModelsTable({
 
       {selectedCount > 0 && (
         <div className='fixed bottom-6 left-1/2 z-50 -translate-x-1/2'>
-          <div className='bg-background flex items-center gap-2 rounded-lg border px-4 py-2 shadow-lg'>
+          <div className='bg-[var(--table-background)] flex items-center gap-2 rounded-lg border px-4 py-2 shadow-lg'>
             <div className='bg-border mx-2 h-6 w-px' />
             <Button variant='ghost' size='icon' className='h-8 w-8' onClick={() => setRowSelection({})}>
               <IconX className='h-4 w-4' />
