@@ -17,6 +17,7 @@ function UsageLogsContent() {
   const { t } = useTranslation()
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs, cursorHistory } = usePaginationSearch({
     defaultPageSize: 20,
+    pageSizeStorageKey: 'usage-logs-table-page-size',
   })
   const [sourceFilter, setSourceFilter] = useState<string[]>([])
   const [channelFilter, setChannelFilter] = useState<string[]>([])

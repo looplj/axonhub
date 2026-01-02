@@ -19,6 +19,7 @@ function ApiKeysContent() {
   const { t } = useTranslation()
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
     defaultPageSize: 20,
+    pageSizeStorageKey: 'apikeys-table-page-size',
   })
 
   const [activeTab, setActiveTab] = useState<ApiKeyTabKey>('all')

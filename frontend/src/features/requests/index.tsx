@@ -12,6 +12,7 @@ import { buildDateRangeWhereClause } from '@/utils/date-range'
 function RequestsContent() {
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs, cursorHistory } = usePaginationSearch({
     defaultPageSize: 20,
+    pageSizeStorageKey: 'requests-table-page-size',
   })
   const [statusFilter, setStatusFilter] = useState<string[]>([])
   const [sourceFilter, setSourceFilter] = useState<string[]>([])

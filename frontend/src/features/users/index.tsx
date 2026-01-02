@@ -17,6 +17,7 @@ function UsersContent() {
   const { userPermissions } = usePermissions()
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
     defaultPageSize: 20,
+    pageSizeStorageKey: 'users-table-page-size',
   })
 
   // Filter states

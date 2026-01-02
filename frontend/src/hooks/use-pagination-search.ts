@@ -8,6 +8,7 @@ interface UsePaginationSearchOptions {
   pageSizeKey?: string
   directionKey?: string
   cursorHistoryKey?: string
+  pageSizeStorageKey?: string
   defaultDirection?: CursorDirection
   replace?: boolean
 }
@@ -62,6 +63,7 @@ export function usePaginationSearch(
     pageSizeKey = DEFAULT_PAGE_SIZE_KEY,
     directionKey = DEFAULT_DIRECTION_KEY,
     cursorHistoryKey = DEFAULT_CURSOR_HISTORY_KEY,
+    pageSizeStorageKey,
     defaultDirection = DEFAULT_DIRECTION,
     replace = true,
   } = options
@@ -114,16 +116,32 @@ export function usePaginationSearch(
       return []
     })()
 
+    let finalPageSize = parsedPageSize ?? defaultPageSize
+    
+    if (parsedPageSize === undefined && pageSizeStorageKey) {
+      try {
+        const storedPageSize = localStorage.getItem(pageSizeStorageKey)
+        if (storedPageSize) {
+          const parsed = Number.parseInt(storedPageSize, 10)
+          if (Number.isFinite(parsed) && parsed > 0) {
+            finalPageSize = Math.floor(parsed)
+          }
+        }
+      } catch {
+        // Invalid storage value, use default
+      }
+    }
+
     return {
       startCursor: parsedStartCursor,
       endCursor: parsedEndCursor,
-      pageSize: parsedPageSize ?? defaultPageSize,
+      pageSize: finalPageSize,
       pageSizeFromSearch: parsedPageSize,
       cursorDirection: parsedDirection,
       cursorHistory: parsedCursorHistory,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rawStartCursor, rawEndCursor, rawPageSize, rawDirection, rawCursorHistory, defaultPageSize, defaultDirection])
+  }, [rawStartCursor, rawEndCursor, rawPageSize, rawDirection, rawCursorHistory, defaultPageSize, defaultDirection, pageSizeStorageKey])
 
   const updateSearch = useCallback(
     (updater: (draft: Record<string, unknown>) => Record<string, unknown>) => {
@@ -209,6 +227,14 @@ export function usePaginationSearch(
       const normalized = Math.floor(nextPageSize)
       if (normalized === pageSizeFromSearch && normalized === pageSize) return
 
+      if (pageSizeStorageKey) {
+        try {
+          localStorage.setItem(pageSizeStorageKey, normalized.toString())
+        } catch {
+          // Storage might be full or unavailable, ignore
+        }
+      }
+
       updateSearch((draft) => {
         draft[pageSizeKey] = normalized
         delete draft[startCursorKey]
@@ -218,7 +244,7 @@ export function usePaginationSearch(
         return draft
       })
     },
-    [startCursorKey, endCursorKey, directionKey, cursorHistoryKey, pageSize, pageSizeFromSearch, pageSizeKey, updateSearch]
+    [startCursorKey, endCursorKey, directionKey, cursorHistoryKey, pageSize, pageSizeFromSearch, pageSizeKey, updateSearch, pageSizeStorageKey]
   )
 
   const resetCursor = useCallback(() => {

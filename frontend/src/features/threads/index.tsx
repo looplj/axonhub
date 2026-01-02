@@ -21,6 +21,7 @@ function ThreadsContent() {
     cursorHistory,
   } = usePaginationSearch({
     defaultPageSize: 20,
+    pageSizeStorageKey: 'threads-table-page-size',
   })
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
   const [threadIdFilter, setThreadIdFilter] = useState<string>('')

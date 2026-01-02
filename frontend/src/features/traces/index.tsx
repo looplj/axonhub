@@ -14,6 +14,7 @@ import { buildDateRangeWhereClause } from '@/utils/date-range'
 function TracesContent() {
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs, cursorHistory } = usePaginationSearch({
     defaultPageSize: 20,
+    pageSizeStorageKey: 'traces-table-page-size',
   })
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
   const [traceIdFilter, setTraceIdFilter] = useState<string>('')

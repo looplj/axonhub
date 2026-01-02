@@ -18,6 +18,7 @@ function ChannelsContent() {
   const { t } = useTranslation()
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
     defaultPageSize: 20,
+    pageSizeStorageKey: 'channels-table-page-size',
   })
   const [nameFilter, setNameFilter] = useState<string>('')
   const [typeFilter, setTypeFilter] = useState<string[]>([])
@@ -211,31 +212,32 @@ function ChannelsContent() {
       />
       <ChannelsTypeTabs typeCounts={channelTypeCounts} selectedTab={selectedTypeTab} onTabChange={handleTabChange} />
       <ChannelsTable
-        // loading={isLoading}
-        data={data?.edges?.map((edge) => edge.node) || []}
-        columns={columns}
-        pageInfo={data?.pageInfo}
-        pageSize={pageSize}
-        totalCount={data?.totalCount}
-        nameFilter={nameFilter}
-        typeFilter={typeFilter}
-        statusFilter={statusFilter}
-        tagFilter={tagFilter}
-        modelFilter={modelFilter}
-        selectedTypeTab={selectedTypeTab}
-        showErrorOnly={showErrorOnly}
-        sorting={sorting}
-        onSortingChange={setSorting}
-        onExitErrorOnlyMode={handleExitErrorOnlyMode}
-        onNextPage={handleNextPage}
-        onPreviousPage={handlePreviousPage}
-        onPageSizeChange={handlePageSizeChange}
-        onNameFilterChange={handleNameFilterChange}
-        onTypeFilterChange={handleTypeFilterChange}
-        onStatusFilterChange={handleStatusFilterChange}
-        onTagFilterChange={handleTagFilterChange}
-        onModelFilterChange={handleModelFilterChange}
-      />
+          // loading={isLoading}
+          data={data?.edges?.map((edge) => edge.node) || []}
+          columns={columns}
+          pageInfo={data?.pageInfo}
+          pageSize={pageSize}
+          totalCount={data?.totalCount}
+          nameFilter={nameFilter}
+          typeFilter={typeFilter}
+          statusFilter={statusFilter}
+          tagFilter={tagFilter}
+          modelFilter={modelFilter}
+          selectedTypeTab={selectedTypeTab}
+          showErrorOnly={showErrorOnly}
+          sorting={sorting}
+          onSortingChange={setSorting}
+          onExitErrorOnlyMode={handleExitErrorOnlyMode}
+          onNextPage={handleNextPage}
+          onPreviousPage={handlePreviousPage}
+          onPageSizeChange={handlePageSizeChange}
+          onResetCursor={resetCursor}
+          onNameFilterChange={handleNameFilterChange}
+          onTypeFilterChange={handleTypeFilterChange}
+          onStatusFilterChange={handleStatusFilterChange}
+          onTagFilterChange={handleTagFilterChange}
+          onModelFilterChange={handleModelFilterChange}
+        />
     </div>
   )
 }
