@@ -157,12 +157,12 @@ export function RolesTable({
                     <TableRow
                       key={row.id}
                       data-state={row.getIsSelected() && 'selected'}
-                      className='group/row table-row-hover rounded-xl !bg-[var(--table-background)] border-0 transition-all duration-200 ease-in-out'
+                      className='group/row table-row-hover rounded-xl border-0 transition-all duration-200 ease-in-out !bg-[var(--table-background)]'
                     >
                       {row.getVisibleCells().map((cell) => (
                         <TableCell
                           key={cell.id}
-                          className={`${cell.column.columnDef.meta?.className ?? ''} px-4 py-3 border-0 !bg-[var(--table-background)]`}
+                          className={`${cell.column.columnDef.meta?.className ?? ''} px-4 py-3 border-0 bg-inherit`}
                         >
                           {flexRender(
                             cell.column.columnDef.cell,
