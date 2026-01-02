@@ -633,6 +633,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
   const showModel = type === 'channel_model' || type === 'model' || type === 'channel_tags_model';
   const showPattern = type === 'channel_regex' || type === 'regex' || type === 'channel_tags_regex';
   const showExclude = type === 'regex' || type === 'model';
+  const showModelPatternOnSecondRow = type === 'channel_model' || type === 'channel_regex';
   const hasExcludeData =
     excludeChannelNamePattern ||
     (excludeChannelIds && excludeChannelIds.length > 0) ||
@@ -676,7 +677,13 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
   return (
     <div className='flex flex-col gap-2 rounded-lg border p-3'>
       <div
-        className={`grid items-center gap-2 ${showChannel ? 'grid-cols-[3rem_14rem_1fr_1fr_2.25rem]' : 'grid-cols-[3rem_14rem_1fr_2.25rem]'}`}
+        className={`grid items-center gap-2 ${
+          showChannel
+            ? 'grid-cols-[3rem_14rem_1fr_2.25rem]'
+            : showModel && showPattern
+            ? 'grid-cols-[3rem_14rem_1fr_1fr_2.25rem]'
+            : 'grid-cols-[3rem_14rem_1fr_2.25rem]'
+        }`}
       >
         {/* Priority Input */}
         <FormField
@@ -749,8 +756,8 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
           />
         )}
 
-        {/* Model Select/AutoComplete */}
-        {showModel && (
+        {/* Model Select/AutoComplete - Only show if NOT on second row */}
+        {showModel && !showModelPatternOnSecondRow && (
           <FormField
             control={form.control}
             name={`associations.${index}.modelId`}
@@ -781,8 +788,8 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
           />
         )}
 
-        {/* Pattern Input */}
-        {showPattern && (
+        {/* Pattern Input - Only show if NOT on second row */}
+        {showPattern && !showModelPatternOnSecondRow && (
           <FormField
             control={form.control}
             name={`associations.${index}.pattern`}
@@ -808,6 +815,58 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
           <IconTrash className='h-4 w-4' />
         </Button>
       </div>
+
+      {/* Model and Pattern on Second Row for channel_model and channel_regex */}
+      {showModelPatternOnSecondRow && (
+        <div className='ml-14 grid gap-2'>
+          {showModel && (
+            <FormField
+              control={form.control}
+              name={`associations.${index}.modelId`}
+              render={({ field }) => (
+                <FormItem className='min-w-0 gap-0'>
+                  <FormControl>
+                    <AutoComplete
+                      selectedValue={field.value?.toString() || ''}
+                      onSelectedValueChange={(value) => {
+                        field.onChange(value);
+                      }}
+                      searchValue={modelSearch}
+                      onSearchValueChange={setModelSearch}
+                      items={modelOptions}
+                      placeholder={t('models.dialogs.association.selectModel')}
+                      emptyMessage={
+                        modelOptions.length === 0 && channelId
+                          ? t('models.dialogs.association.noChannelModelsAvailable')
+                          : t('models.dialogs.association.selectChannelFirst')
+                      }
+                      portalContainer={portalContainer}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          )}
+          {showPattern && (
+            <FormField
+              control={form.control}
+              name={`associations.${index}.pattern`}
+              render={({ field }) => (
+                <FormItem className='min-w-0 gap-0'>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      value={field.value?.toString() || ''}
+                      placeholder={t('models.dialogs.association.patternPlaceholder')}
+                      className='h-9'
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          )}
+        </div>
+      )}
 
       {/* Channel Tags Input - Second Row */}
       {showChannelTags && (
