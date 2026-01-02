@@ -19,6 +19,7 @@ function RolesContent() {
   const { rolePermissions } = usePermissions()
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
     defaultPageSize: 20,
+    pageSizeStorageKey: 'project-roles-table-page-size',
   })
 
   // Filter states - search by name

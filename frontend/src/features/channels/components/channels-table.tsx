@@ -56,6 +56,7 @@ interface DataTableProps {
   onNextPage: () => void
   onPreviousPage: () => void
   onPageSizeChange: (pageSize: number) => void
+  onResetCursor?: () => void
   onNameFilterChange: (filter: string) => void
   onTypeFilterChange: (filters: string[]) => void
   onStatusFilterChange: (filters: string[]) => void
@@ -83,6 +84,7 @@ export function ChannelsTable({
   onNextPage,
   onPreviousPage,
   onPageSizeChange,
+  onResetCursor,
   onNameFilterChange,
   onTypeFilterChange,
   onStatusFilterChange,
@@ -455,6 +457,7 @@ export function ChannelsTable({
           onNextPage={onNextPage}
           onPreviousPage={onPreviousPage}
           onPageSizeChange={onPageSizeChange}
+          onResetCursor={onResetCursor}
         />
       </div>
       {/* Floating Bulk Actions Bar */}

@@ -16,6 +16,7 @@ function DataStoragesContent() {
   const { t } = useTranslation()
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
     defaultPageSize: 20,
+    pageSizeStorageKey: 'data-storages-table-page-size',
   })
   const [nameFilter, setNameFilter] = useState<string>('')
   const [typeFilter, setTypeFilter] = useState<string[]>([])

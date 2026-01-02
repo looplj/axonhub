@@ -19,6 +19,7 @@ function ProjectsContent() {
   const { projectPermissions } = usePermissions()
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
     defaultPageSize: 20,
+    pageSizeStorageKey: 'projects-table-page-size',
   })
 
   // Filter states - combined search for name or slug

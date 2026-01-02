@@ -17,6 +17,7 @@ interface ServerSidePaginationProps {
   onPreviousPage: () => void
   onFirstPage?: () => void
   onPageSizeChange: (pageSize: number) => void
+  onResetCursor?: () => void
 }
 
 export function ServerSidePagination({
@@ -29,6 +30,7 @@ export function ServerSidePagination({
   onPreviousPage,
   onFirstPage,
   onPageSizeChange,
+  onResetCursor,
 }: ServerSidePaginationProps) {
   const { t } = useTranslation()
   const { resetCursor } = usePaginationSearch({
@@ -76,11 +78,11 @@ export function ServerSidePagination({
         </div>
         <div className='flex items-center space-x-2'>
           <Button
-            variant='outline'
-            className='hidden h-8 w-8 p-0 lg:flex'
-            onClick={onFirstPage || resetCursor}
-            disabled={!pageInfo?.hasPreviousPage}
-          >
+          variant='outline'
+          className='hidden h-8 w-8 p-0 lg:flex'
+          onClick={onFirstPage || (onResetCursor || resetCursor)}
+          disabled={!pageInfo?.hasPreviousPage}
+        >
             <span className='sr-only'>{t('pagination.firstPage')}</span>
             <DoubleArrowLeftIcon className='h-4 w-4' />
           </Button>

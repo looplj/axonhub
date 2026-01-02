@@ -16,6 +16,7 @@ function UsersContent() {
   const { userPermissions, rolePermissions } = usePermissions()
   const { pageSize, setCursors, setPageSize, paginationArgs } = usePaginationSearch({
     defaultPageSize: 20,
+    pageSizeStorageKey: 'project-users-table-page-size',
   })
 
   // Memoize columns to prevent infinite re-renders

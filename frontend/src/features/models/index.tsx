@@ -20,6 +20,7 @@ function ModelsContent() {
   const { t } = useTranslation()
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
     defaultPageSize: 20,
+    pageSizeStorageKey: 'models-table-page-size',
   })
   const [nameFilter, setNameFilter] = useState<string>('')
   const [sorting, setSorting] = useState<SortingState>(() => {
