@@ -326,6 +326,21 @@ export function ModelsBatchCreateDialog() {
 
         <div className='min-h-0 flex-1 overflow-y-auto pr-2'>
           <div className='space-y-2'>
+            <div className='flex items-start gap-2 px-2 pb-2'>
+              <div className='flex-[2]'>
+                <Label className='text-sm font-medium'>{t('models.fields.developer')}</Label>
+              </div>
+              <div className='flex-[3]'>
+                <Label className='text-sm font-medium'>{t('models.fields.modelId')}</Label>
+              </div>
+              <div className='flex-[2]'>
+                <Label className='text-sm font-medium'>{t('models.fields.name')}</Label>
+              </div>
+              <div className='flex-[3]'>
+                <Label className='text-sm font-medium'>{t('models.fields.icon')}</Label>
+              </div>
+              <div className='w-8 flex-shrink-0'></div>
+            </div>
             {rows.map((row) => (
               <div key={row.id} className='rounded-lg border p-2'>
                 <div className='flex items-start gap-2'>
