@@ -245,16 +245,16 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               remark: duplicateFromRow.remark || '',
               settings: duplicateFromRow.settings ?? undefined,
               credentials: {
-                apiKey: '',
+                apiKey: duplicateFromRow.credentials?.apiKey || '',
                 aws: {
-                  accessKeyID: '',
-                  secretAccessKey: '',
-                  region: '',
+                  accessKeyID: duplicateFromRow.credentials?.aws?.accessKeyID || '',
+                  secretAccessKey: duplicateFromRow.credentials?.aws?.secretAccessKey || '',
+                  region: duplicateFromRow.credentials?.aws?.region || '',
                 },
                 gcp: {
-                  region: '',
-                  projectID: '',
-                  jsonData: '',
+                  region: duplicateFromRow.credentials?.gcp?.region || '',
+                  projectID: duplicateFromRow.credentials?.gcp?.projectID || '',
+                  jsonData: duplicateFromRow.credentials?.gcp?.jsonData || '',
                 },
               },
             }
