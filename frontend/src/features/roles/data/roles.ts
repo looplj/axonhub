@@ -72,7 +72,7 @@ export function useRoles(
     first?: number
     after?: string
     orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' }
-    where?: any
+    where?: Record<string, unknown>
   } = {}
 ) {
   const { handleError } = useErrorHandler()

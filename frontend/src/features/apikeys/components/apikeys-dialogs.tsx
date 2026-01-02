@@ -10,6 +10,7 @@ import { ApiKeysStatusDialog } from './apikeys-status-dialog'
 import { ApiKeysViewDialog } from './apikeys-view-dialog'
 import { ApiKeysBulkDisableDialog } from './apikeys-bulk-disable-dialog'
 import { ApiKeysBulkArchiveDialog } from './apikeys-bulk-archive-dialog'
+import { ApiKeysBulkEnableDialog } from './apikeys-bulk-enable-dialog'
 
 export function ApiKeysDialogs() {
   return (
@@ -23,6 +24,7 @@ export function ApiKeysDialogs() {
       <ApiKeysProfilesDialogWrapper />
       <ApiKeysBulkDisableDialog />
       <ApiKeysBulkArchiveDialog />
+      <ApiKeysBulkEnableDialog />
     </>
   )
 }

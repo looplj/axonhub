@@ -9,7 +9,7 @@ import { ApiKey } from '../data/schema'
 
 export function ApiKeysBulkArchiveDialog() {
   const { t } = useTranslation()
-  const { isDialogOpen, closeDialog, selectedApiKeys, resetRowSelection } = useApiKeysContext()
+  const { isDialogOpen, closeDialog, selectedApiKeys, resetRowSelection, setSelectedApiKeys } = useApiKeysContext()
   const bulkArchiveApiKeys = useBulkArchiveApiKeys()
 
   if (!selectedApiKeys || selectedApiKeys.length === 0) return null
@@ -18,8 +18,9 @@ export function ApiKeysBulkArchiveDialog() {
     try {
       const ids = selectedApiKeys.map(apiKey => apiKey.id)
       await bulkArchiveApiKeys.mutateAsync(ids)
-      closeDialog('bulkArchive')
-      resetRowSelection() // 清空选中的行
+      resetRowSelection()
+      setSelectedApiKeys([])
+      closeDialog()
     } catch (error) {
       console.error('Failed to bulk archive API keys:', error)
     }

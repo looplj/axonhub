@@ -175,6 +175,12 @@ const BULK_DISABLE_APIKEYS_MUTATION = `
   }
 `
 
+const BULK_ENABLE_APIKEYS_MUTATION = `
+  mutation BulkEnableAPIKeys($ids: [ID!]!) {
+    bulkEnableAPIKeys(ids: $ids)
+  }
+`
+
 const BULK_ARCHIVE_APIKEYS_MUTATION = `
   mutation BulkArchiveAPIKeys($ids: [ID!]!) {
     bulkArchiveAPIKeys(ids: $ids)
@@ -364,6 +370,28 @@ export function useBulkDisableApiKeys() {
     onError: (error) => {
       toast.error(t('apikeys.messages.bulkDisableError'))
       console.error('Bulk disable API keys error:', error)
+    },
+  })
+}
+
+export function useBulkEnableApiKeys() {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const selectedProjectId = useSelectedProjectId()
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined
+      const data = await graphqlRequest<{ bulkEnableAPIKeys: boolean }>(BULK_ENABLE_APIKEYS_MUTATION, { ids }, headers)
+      return data.bulkEnableAPIKeys
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['apiKeys'] })
+      toast.success(t('apikeys.messages.bulkEnableSuccess', { count: variables.length }))
+    },
+    onError: (error) => {
+      toast.error(t('apikeys.messages.bulkEnableError'))
+      console.error('Bulk enable API keys error:', error)
     },
   })
 }

@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useRef } from 'react'
 import { ApiKey } from '../data/schema'
 
-type ApiKeyDialogType = 'create' | 'edit' | 'delete' | 'status' | 'view' | 'profiles' | 'archive' | 'bulkDisable' | 'bulkArchive'
+type ApiKeyDialogType = 'create' | 'edit' | 'delete' | 'status' | 'view' | 'profiles' | 'archive' | 'bulkDisable' | 'bulkArchive' | 'bulkEnable'
 
 interface ApiKeysContextType {
   selectedApiKey: ApiKey | null
@@ -30,6 +30,7 @@ export function ApiKeysProvider({ children }: { children: React.ReactNode }) {
     archive: false,
     bulkDisable: false,
     bulkArchive: false,
+    bulkEnable: false,
   })
   const resetRowSelectionRef = useRef<() => void>(() => {})
 
@@ -50,10 +51,7 @@ export function ApiKeysProvider({ children }: { children: React.ReactNode }) {
       if (type === 'delete' || type === 'edit' || type === 'view' || type === 'archive' || type === 'status' || type === 'profiles') {
         setSelectedApiKey(null)
       }
-      if (type === 'bulkDisable') {
-        setSelectedApiKeys([])
-      }
-      if (type === 'bulkArchive') {
+      if (type === 'bulkDisable' || type === 'bulkArchive' || type === 'bulkEnable') {
         setSelectedApiKeys([])
       }
     } else {
@@ -68,6 +66,7 @@ export function ApiKeysProvider({ children }: { children: React.ReactNode }) {
         archive: false,
         bulkDisable: false,
         bulkArchive: false,
+        bulkEnable: false,
       })
       setSelectedApiKey(null)
       setSelectedApiKeys([])

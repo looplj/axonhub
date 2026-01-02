@@ -6,13 +6,13 @@ import { useRolesContext } from '../context/roles-context'
 
 export function RolesPrimaryButtons() {
   const { t } = useTranslation()
-  const { setIsCreateDialogOpen } = useRolesContext()
+  const { openDialog } = useRolesContext()
 
   return (
     <div className='flex items-center space-x-2'>
       {/* Create Role - requires write_roles permission */}
       <PermissionGuard requiredScope='write_roles'>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
+        <Button onClick={() => openDialog('create')}>
           <IconPlus className='mr-2 h-4 w-4' />
           {t('roles.createRole')}
         </Button>

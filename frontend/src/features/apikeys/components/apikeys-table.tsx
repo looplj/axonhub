@@ -1,8 +1,10 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
+import { IconX, IconUserOff, IconArchive, IconCheck } from '@tabler/icons-react'
 import {
   ColumnDef,
   ColumnFiltersState,
   RowData,
+  RowSelectionState,
   SortingState,
   VisibilityState,
   flexRender,
@@ -13,6 +15,7 @@ import {
 } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
 import { ServerSidePagination } from '@/components/server-side-pagination'
 import { useApiKeysContext } from '../context/apikeys-context'
 import { ApiKey, ApiKeyConnection } from '../data/schema'
@@ -42,7 +45,6 @@ interface DataTableProps {
   onStatusFilterChange: (value: string[]) => void
   onUserFilterChange: (value: string[]) => void
   onResetFilters?: () => void
-  onBulkDisable?: (apiKeys: ApiKey[]) => void
 }
 
 export function ApiKeysTable({
@@ -62,21 +64,21 @@ export function ApiKeysTable({
   onStatusFilterChange,
   onUserFilterChange,
   onResetFilters,
-  onBulkDisable,
 }: DataTableProps) {
   const { t } = useTranslation()
-  const { setResetRowSelection } = useApiKeysContext()
-  const [rowSelection, setRowSelection] = useState({})
+  const { setResetRowSelection, setSelectedApiKeys, openDialog } = useApiKeysContext()
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [sorting, setSorting] = useState<SortingState>([])
 
-  // 注册重置选择的方法到 context
-  React.useEffect(() => {
-    setResetRowSelection(() => () => setRowSelection({}))
-  }, [setRowSelection])
+  useEffect(() => {
+    const resetFn = () => {
+      setRowSelection({})
+    }
+    setResetRowSelection(resetFn)
+  }, [setResetRowSelection])
 
-  // Sync server state to local column filters (for UI display)
   React.useEffect(() => {
     const newFilters: ColumnFiltersState = []
     if (nameFilter) {
@@ -97,12 +99,10 @@ export function ApiKeysTable({
     const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater
     setColumnFilters(newFilters)
 
-    // Extract filter values
     const nameFilterValue = newFilters.find((f) => f.id === 'name')?.value
     const statusFilterValue = newFilters.find((f) => f.id === 'status')?.value
     const userFilterValue = newFilters.find((f) => f.id === 'creator')?.value
 
-    // Only update if values actually change to prevent reset issues
     const newNameFilter = typeof nameFilterValue === 'string' ? nameFilterValue : ''
     if (newNameFilter !== nameFilter) {
       onNameFilterChange(newNameFilter)
@@ -138,8 +138,40 @@ export function ApiKeysTable({
     manualFiltering: true,
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
-    getRowId: (row) => row.id, // 使用API Key的ID作为行ID
+    getRowId: (row) => row.id,
   })
+
+  const filteredSelectedRows = useMemo(
+    () => table.getFilteredSelectedRowModel().rows,
+    [table, rowSelection, data]
+  )
+
+  const selectedCount = filteredSelectedRows.length
+
+  useEffect(() => {
+    const selected = filteredSelectedRows.map((row) => row.original as ApiKey)
+    setSelectedApiKeys(selected)
+  }, [filteredSelectedRows, setSelectedApiKeys])
+
+  useEffect(() => {
+    if (selectedCount === 0) {
+      setSelectedApiKeys([])
+    }
+  }, [selectedCount, setSelectedApiKeys])
+
+  // Clear rowSelection when data changes and selected rows no longer exist
+  useEffect(() => {
+    if (Object.keys(rowSelection).length > 0 && data.length > 0) {
+      const dataIds = new Set(data.map((apiKey) => apiKey.id))
+      const selectedIds = Object.keys(rowSelection)
+      const anySelectedIdMissing = selectedIds.some((id) => !dataIds.has(id))
+      
+      if (anySelectedIdMissing) {
+        // Some selected rows no longer exist in the new data, clear selection
+        setRowSelection({})
+      }
+    }
+  }, [data, rowSelection])
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
@@ -202,6 +234,56 @@ export function ApiKeysTable({
           onPageSizeChange={onPageSizeChange}
         />
       </div>
+      {selectedCount > 0 && (
+        <div className='fixed bottom-6 left-1/2 -translate-x-1/2 z-50'>
+          <div className='flex items-center gap-2 rounded-lg border bg-background px-4 py-2 shadow-lg'>
+            <Button
+              variant='ghost'
+              size='icon'
+              className='h-8 w-8'
+              onClick={() => setRowSelection({})}
+            >
+              <IconX className='h-4 w-4' />
+            </Button>
+            <div className='flex items-center gap-1.5 px-2'>
+              <span className='flex h-6 min-w-6 items-center justify-center rounded bg-primary px-1.5 text-xs font-medium text-primary-foreground'>
+                {selectedCount}
+              </span>
+              <span className='text-sm text-muted-foreground'>
+                {t('common.selected')}
+              </span>
+            </div>
+            <div className='mx-2 h-6 w-px bg-border' />
+            <Button
+              variant='ghost'
+              size='icon'
+              className='h-8 w-8 text-destructive hover:bg-red-100 hover:text-red-700'
+              onClick={() => openDialog('bulkDisable')}
+              title={t('common.buttons.disable')}
+            >
+              <IconUserOff className='h-4 w-4' />
+            </Button>
+            <Button
+              variant='ghost'
+              size='icon'
+              className='h-8 w-8 text-green-600 hover:bg-green-100 hover:text-green-700'
+              onClick={() => openDialog('bulkEnable')}
+              title={t('common.buttons.enable')}
+            >
+              <IconCheck className='h-4 w-4' />
+            </Button>
+            <Button
+              variant='ghost'
+              size='icon'
+              className='h-8 w-8 text-orange-600 hover:bg-orange-100 hover:text-orange-700'
+              onClick={() => openDialog('bulkArchive')}
+              title={t('common.buttons.archive')}
+            >
+              <IconArchive className='h-4 w-4' />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

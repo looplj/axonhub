@@ -1,8 +1,10 @@
 import React, { useMemo, useState, useEffect } from 'react'
+import { IconX, IconTrash } from '@tabler/icons-react'
 import {
   ColumnDef,
   ColumnFiltersState,
   RowData,
+  RowSelectionState,
   SortingState,
   VisibilityState,
   flexRender,
@@ -13,6 +15,7 @@ import {
 } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
 import { ServerSidePagination } from '@/components/server-side-pagination'
 import { useRolesContext } from '../context/roles-context'
 import { Role, RoleConnection } from '../data/schema'
@@ -53,8 +56,8 @@ export function RolesTable({
   onSearchFilterChange,
 }: DataTableProps) {
   const { t } = useTranslation()
-  const { setResetRowSelection } = useRolesContext()
-  const [rowSelection, setRowSelection] = useState({})
+  const { setResetRowSelection, setSelectedRoles, openDialog } = useRolesContext()
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [sorting, setSorting] = useState<SortingState>([])
@@ -121,18 +124,34 @@ export function RolesTable({
   const isFiltered = columnFilters.length > 0
 
   useEffect(() => {
+    const selected = filteredSelectedRows.map((row) => row.original as Role)
+    setSelectedRoles(selected)
+  }, [filteredSelectedRows, setSelectedRoles])
+
+  useEffect(() => {
     if (selectedCount === 0) {
-      table.resetRowSelection()
+      setSelectedRoles([])
     }
-  }, [selectedCount, table])
+  }, [selectedCount, setSelectedRoles])
+
+  // Clear rowSelection when data changes and selected rows no longer exist
+  useEffect(() => {
+    if (Object.keys(rowSelection).length > 0 && data.length > 0) {
+      const dataIds = new Set(data.map((role) => role.id))
+      const selectedIds = Object.keys(rowSelection)
+      const anySelectedIdMissing = selectedIds.some((id) => !dataIds.has(id))
+      
+      if (anySelectedIdMissing) {
+        setRowSelection({})
+      }
+    }
+  }, [data, rowSelection])
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden' data-testid='roles-table'>
       <DataTableToolbar
         table={table}
         isFiltered={isFiltered}
-        selectedCount={selectedCount}
-        selectedRoles={selectedRoles}
       />
       <div className='mt-4 flex-1 overflow-auto rounded-2xl shadow-soft border border-[var(--table-border)] relative'>
         <Table data-testid='roles-table' className='bg-[var(--table-background)] rounded-2xl border-separate border-spacing-0'>
@@ -193,6 +212,38 @@ export function RolesTable({
           data-testid='pagination'
         />
       </div>
+      {selectedCount > 0 && (
+        <div className='fixed bottom-6 left-1/2 -translate-x-1/2 z-50'>
+          <div className='flex items-center gap-2 rounded-lg border bg-background px-4 py-2 shadow-lg'>
+            <Button
+              variant='ghost'
+              size='icon'
+              className='h-8 w-8'
+              onClick={() => setRowSelection({})}
+            >
+              <IconX className='h-4 w-4' />
+            </Button>
+            <div className='flex items-center gap-1.5 px-2'>
+              <span className='flex h-6 min-w-6 items-center justify-center rounded bg-primary px-1.5 text-xs font-medium text-primary-foreground'>
+                {selectedCount}
+              </span>
+              <span className='text-sm text-muted-foreground'>
+                {t('common.selected')}
+              </span>
+            </div>
+            <div className='mx-2 h-6 w-px bg-border' />
+            <Button
+              variant='ghost'
+              size='icon'
+              className='h-8 w-8 text-destructive hover:bg-red-100 hover:text-red-700'
+              onClick={() => openDialog('bulkDelete')}
+              title={t('common.buttons.delete')}
+            >
+              <IconTrash className='h-4 w-4' />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -199,6 +199,18 @@ func (r *mutationResolver) BulkDisableAPIKeys(ctx context.Context, ids []*object
 	return true, nil
 }
 
+// BulkEnableAPIKeys is the resolver for the bulkEnableAPIKeys field.
+func (r *mutationResolver) BulkEnableAPIKeys(ctx context.Context, ids []*objects.GUID) (bool, error) {
+	apiKeyIDs := objects.IntGuids(ids)
+
+	err := r.apiKeyService.BulkEnableAPIKeys(ctx, apiKeyIDs)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 // BulkArchiveAPIKeys is the resolver for the bulkArchiveAPIKeys field.
 func (r *mutationResolver) BulkArchiveAPIKeys(ctx context.Context, ids []*objects.GUID) (bool, error) {
 	apiKeyIDs := objects.IntGuids(ids)
