@@ -10,6 +10,7 @@ import {
 } from './components'
 import { UsageLogsProvider, useUsageLogsContext } from './context'
 import { usePaginationSearch } from '@/hooks/use-pagination-search'
+import useInterval from '@/hooks/useInterval'
 import { buildDateRangeWhereClause } from '@/utils/date-range'
 
 function UsageLogsContent() {
@@ -20,6 +21,7 @@ function UsageLogsContent() {
   const [sourceFilter, setSourceFilter] = useState<string[]>([])
   const [channelFilter, setChannelFilter] = useState<string[]>([])
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
+  const [autoRefresh, setAutoRefresh] = useState(false)
   
   // Build where clause with filters
   const whereClause = (() => {
@@ -52,6 +54,13 @@ function UsageLogsContent() {
   const usageLogs = data?.edges?.map(edge => edge.node) || []
   const pageInfo = data?.pageInfo
   const isFirstPage = !paginationArgs.after && cursorHistory.length === 0
+
+  useInterval(
+    () => {
+      refetch()
+    },
+    autoRefresh && isFirstPage ? 10000 : null
+  )
 
   const handleNextPage = () => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
@@ -122,6 +131,8 @@ function UsageLogsContent() {
         onDateRangeChange={handleDateRangeChange}
         onRefresh={refetch}
         showRefresh={isFirstPage}
+        autoRefresh={autoRefresh}
+        onAutoRefreshChange={setAutoRefresh}
       />
     </div>
   )

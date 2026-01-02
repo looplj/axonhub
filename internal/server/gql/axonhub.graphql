@@ -539,8 +539,6 @@ input CountChannelsByTypeInput {
 }
 
 extend type Query {
-  fetchModels(input: FetchModelsInput!): FetchModelsPayload!
-  queryModels(input: QueryModelsInput!): [ModelIdentityWithStatus!]!
   allChannelTags: [String!]!
   countChannelsByType(input: CountChannelsByTypeInput!): [ChannelTypeCount!]!
   """

@@ -26,6 +26,10 @@ import { useTranslation } from 'react-i18next'
 import { Thread, ThreadConnection } from '../data/schema'
 import { useThreadsColumns } from './threads-columns'
 import { ThreadsTableToolbar } from './data-table-toolbar'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useAnimatedList } from '@/hooks/useAnimatedList'
+
+const MotionTableRow = motion(TableRow)
 
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -49,6 +53,8 @@ interface ThreadsTableProps {
   onThreadIdFilterChange: (threadId: string) => void
   onRefresh: () => void
   showRefresh: boolean
+  autoRefresh?: boolean
+  onAutoRefreshChange?: (enabled: boolean) => void
 }
 
 export function ThreadsTable({
@@ -66,6 +72,8 @@ export function ThreadsTable({
   onThreadIdFilterChange,
   onRefresh,
   showRefresh,
+  autoRefresh = false,
+  onAutoRefreshChange,
 }: ThreadsTableProps) {
   const { t } = useTranslation()
   const threadsColumns = useThreadsColumns()
@@ -74,8 +82,11 @@ export function ThreadsTable({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = useState({})
 
+  const displayedData = useAnimatedList(data, autoRefresh)
+
   const table = useReactTable({
-    data,
+    data: displayedData,
+    getRowId: (row) => row.id,
     columns: threadsColumns,
     state: {
       sorting,
@@ -94,6 +105,7 @@ export function ThreadsTable({
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     manualPagination: true,
+    manualFiltering: true,
   })
 
   return (
@@ -105,7 +117,9 @@ export function ThreadsTable({
         threadIdFilter={threadIdFilter}
         onThreadIdFilterChange={onThreadIdFilterChange}
         onRefresh={onRefresh} 
-        showRefresh={showRefresh} 
+        showRefresh={showRefresh}
+        autoRefresh={autoRefresh}
+        onAutoRefreshChange={onAutoRefreshChange}
       />
       <div className='mt-4 flex-1 overflow-auto rounded-2xl shadow-soft border border-[var(--table-border)] relative'>
         <Table data-testid='threads-table' className='bg-[var(--table-background)] rounded-2xl border-separate border-spacing-0'>
@@ -134,19 +148,32 @@ export function ThreadsTable({
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && 'selected'}
-                  className='group/row table-row-hover rounded-xl !bg-[var(--table-background)] border-0 transition-all duration-200 ease-in-out'
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className={`${cell.column.columnDef.meta?.className ?? ''} px-4 py-3 border-0 !bg-[var(--table-background)]`}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              <AnimatePresence initial={false} mode="popLayout">
+                {table.getRowModel().rows.map((row) => (
+                  <MotionTableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && 'selected'}
+                    initial={{ opacity: 0, y: -20, height: 0 }}
+                    animate={{ opacity: 1, y: 0, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ 
+                      type: 'spring', 
+                      stiffness: 500, 
+                      damping: 30, 
+                      mass: 1,
+                      opacity: { duration: 0.2 }
+                    }}
+                    layout
+                    className='group/row hover:bg-muted/50 data-[state=selected]:bg-muted'
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id} className={`${cell.column.columnDef.meta?.className ?? ''} py-3 border-b border-[var(--table-border)] group-last/row:border-0`}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+                  </MotionTableRow>
+                ))}
+              </AnimatePresence>
             ) : (
               <TableRow className='!bg-[var(--table-background)]'>
                 <TableCell colSpan={threadsColumns.length} className='h-24 text-center !bg-[var(--table-background)]'>

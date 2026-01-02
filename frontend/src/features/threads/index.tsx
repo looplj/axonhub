@@ -8,6 +8,7 @@ import { useThreads } from './data/threads'
 import type { Thread } from './data/schema'
 import { usePaginationSearch } from '@/hooks/use-pagination-search'
 import { useDebounce } from '@/hooks/use-debounce'
+import useInterval from '@/hooks/useInterval'
 import { buildDateRangeWhereClause } from '@/utils/date-range'
 
 function ThreadsContent() {
@@ -23,6 +24,7 @@ function ThreadsContent() {
   })
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
   const [threadIdFilter, setThreadIdFilter] = useState<string>('')
+  const [autoRefresh, setAutoRefresh] = useState(false)
   const debouncedThreadIdFilter = useDebounce(threadIdFilter, 300)
 
   const whereClause = (() => {
@@ -49,6 +51,13 @@ function ThreadsContent() {
   const threads: Thread[] = data ? data.edges.map(({ node }) => node) : []
   const pageInfo = data?.pageInfo
   const isFirstPage = !paginationArgs.after && cursorHistory.length === 0
+
+  useInterval(
+    () => {
+      refetch()
+    },
+    autoRefresh && isFirstPage ? 30000 : null
+  )
 
   const handleNextPage = () => {
     if (pageInfo?.hasNextPage && pageInfo.endCursor) {
@@ -100,6 +109,8 @@ function ThreadsContent() {
         onThreadIdFilterChange={handleThreadIdFilterChange}
         onRefresh={refetch}
         showRefresh={isFirstPage}
+        autoRefresh={autoRefresh}
+        onAutoRefreshChange={setAutoRefresh}
       />
     </div>
   )

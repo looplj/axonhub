@@ -515,6 +515,57 @@ export interface UnassociatedChannel {
   models: string[]
 }
 
+export interface ModelAssociationInput {
+  type: 'channel_model' | 'channel_regex' | 'regex' | 'model' | 'channel_tags_model' | 'channel_tags_regex'
+  priority?: number
+  channelModel?: {
+    channelId: number
+    modelId: string
+  }
+  channelRegex?: {
+    channelId: number
+    pattern: string
+  }
+  regex?: {
+    pattern: string
+    exclude?: ExcludeAssociationInput[]
+  }
+  modelId?: {
+    modelId: string
+    exclude?: ExcludeAssociationInput[]
+  }
+  channelTagsModel?: {
+    channelTags: string[]
+    modelId: string
+  }
+  channelTagsRegex?: {
+    channelTags: string[]
+    pattern: string
+  }
+}
+
+export interface ExcludeAssociationInput {
+  channelNamePattern?: string
+  channelIds?: number[]
+  channelTags?: string[]
+}
+
+export interface ChannelModelEntry {
+  requestModel: string
+  actualModel: string
+  source: string
+}
+
+export interface ModelChannelConnection {
+  channel: {
+    id: string
+    name: string
+    type: string
+    status: string
+  }
+  models: ChannelModelEntry[]
+}
+
 export function useQueryUnassociatedChannels() {
   return useQuery({
     queryKey: ['unassociatedChannels'],
@@ -525,5 +576,34 @@ export function useQueryUnassociatedChannels() {
       return data.queryUnassociatedChannels
     },
     enabled: false,
+  })
+}
+
+const MODEL_CHANNEL_CONNECTIONS_QUERY = `
+  query QueryModelChannelConnections($associations: [ModelAssociationInput!]!) {
+    queryModelChannelConnections(associations: $associations) {
+      channel {
+        id
+        name
+        type
+        status
+      }
+      models {
+        requestModel
+        actualModel
+        source
+      }
+    }
+  }
+`
+
+export function useQueryModelChannelConnections() {
+  return useMutation({
+    mutationFn: async (associations: ModelAssociationInput[]) => {
+      const data = await graphqlRequest<{
+        queryModelChannelConnections: ModelChannelConnection[]
+      }>(MODEL_CHANNEL_CONNECTIONS_QUERY, { associations })
+      return data.queryModelChannelConnections
+    },
   })
 }

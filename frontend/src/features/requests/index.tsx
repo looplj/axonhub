@@ -2,11 +2,11 @@ import { useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DateRange } from 'react-day-picker'
 import { usePaginationSearch } from '@/hooks/use-pagination-search'
-import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { RequestsTable } from './components'
 import { RequestsProvider } from './context'
 import { useRequests } from './data'
+import useInterval from '@/hooks/useInterval'
 import { buildDateRangeWhereClause } from '@/utils/date-range'
 
 function RequestsContent() {
@@ -18,6 +18,7 @@ function RequestsContent() {
   const [channelFilter, setChannelFilter] = useState<string[]>([])
   const [apiKeyFilter, setApiKeyFilter] = useState<string[]>([])
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
+  const [autoRefresh, setAutoRefresh] = useState(false)
 
   // Build where clause with filters
   const whereClause = (() => {
@@ -52,6 +53,13 @@ function RequestsContent() {
   const pageInfo = data?.pageInfo
 
   const isFirstPage = !paginationArgs.after && cursorHistory.length === 0
+
+  useInterval(
+    () => {
+      refetch()
+    },
+    autoRefresh && isFirstPage ? 10000 : null
+  )
 
   const handleNextPage = () => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
@@ -128,6 +136,8 @@ function RequestsContent() {
         onDateRangeChange={handleDateRangeChange}
         onRefresh={refetch}
         showRefresh={isFirstPage}
+        autoRefresh={autoRefresh}
+        onAutoRefreshChange={setAutoRefresh}
       />
     </div>
   )
