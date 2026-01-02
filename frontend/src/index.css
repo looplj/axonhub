@@ -526,13 +526,16 @@
   transition: all 0.2s ease;
 }
 .table-row-hover:hover {
-  background-color: var(--accent);
+  background-color: var(--accent) !important;
   transform: scale(1.005);
   box-shadow: var(--shadow-sm);
   border-color: var(--primary);
   z-index: 10;
   position: relative;
   border-radius: 12px;
+}
+.table-row-hover:hover > * {
+  background-color: var(--accent) !important;
 }
 
 /* 隐藏默认复选框，使用自定义样式 */

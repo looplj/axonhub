@@ -72,9 +72,9 @@ export function DataStoragesTable({
           <TableBody className='p-2 space-y-1 !bg-[var(--table-background)]'>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'} className='group/row table-row-hover rounded-xl !bg-[var(--table-background)] border-0 transition-all duration-200 ease-in-out'>
+                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'} className='group/row table-row-hover rounded-xl border-0 transition-all duration-200 ease-in-out !bg-[var(--table-background)]'>
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className='px-4 py-3 border-0 !bg-[var(--table-background)]'>
+                    <TableCell key={cell.id} className='px-4 py-3 border-0 bg-inherit'>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
