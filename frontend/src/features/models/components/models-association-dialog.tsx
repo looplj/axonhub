@@ -557,19 +557,17 @@ export function ModelsAssociationDialog() {
                   {filteredConnections.map((conn) => (
                     <div key={conn.channel.id} className='rounded-lg border p-3'>
                       <div className='mb-2 flex items-start justify-between gap-2'>
-                        <div className='flex flex-col gap-1.5'>
+                        <div className='flex items-center gap-1.5 flex-wrap'>
                           <span className='text-sm font-medium'>{conn.channel.name}</span>
-                          <div className='flex items-center gap-1.5'>
-                            <Badge variant='outline' className={`h-5 px-1.5 text-[10px] font-normal ${getTypeColor(conn.channel.type)}`}>
-                              {t(`channels.types.${conn.channel.type}`, conn.channel.type)}
-                            </Badge>
-                            <Badge
-                              variant='outline'
-                              className={`h-5 px-1.5 text-[10px] font-normal ${getStatusColor(conn.channel.status)}`}
-                            >
-                              {t(`channels.status.${conn.channel.status}`)}
-                            </Badge>
-                          </div>
+                          <Badge variant='outline' className={`h-5 px-1.5 text-[10px] font-normal ${getTypeColor(conn.channel.type)}`}>
+                            {t(`channels.types.${conn.channel.type}`, conn.channel.type)}
+                          </Badge>
+                          <Badge
+                            variant='outline'
+                            className={`h-5 px-1.5 text-[10px] font-normal ${getStatusColor(conn.channel.status)}`}
+                          >
+                            {t(`channels.status.${conn.channel.status}`)}
+                          </Badge>
                         </div>
                       </div>
                       <div className='space-y-1'>
