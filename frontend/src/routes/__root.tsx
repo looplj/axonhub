@@ -1,16 +1,16 @@
-import { QueryClient } from '@tanstack/react-query'
-import { createRootRouteWithContext, Outlet } from '@tanstack/react-router'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-import { CommandMenu } from '@/components/command-menu'
-import { Toaster } from '@/components/ui/sonner'
-import { InitializationGuard } from '@/components/initialization-guard'
-import { NavigationProgress } from '@/components/navigation-progress'
-import GeneralError from '@/features/errors/general-error'
-import NotFoundError from '@/features/errors/not-found-error'
+import { QueryClient } from '@tanstack/react-query';
+import { createRootRouteWithContext, Outlet } from '@tanstack/react-router';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
+import { Toaster } from '@/components/ui/sonner';
+import { CommandMenu } from '@/components/command-menu';
+import { InitializationGuard } from '@/components/initialization-guard';
+import { NavigationProgress } from '@/components/navigation-progress';
+import GeneralError from '@/features/errors/general-error';
+import NotFoundError from '@/features/errors/not-found-error';
 
 export const Route = createRootRouteWithContext<{
-  queryClient: QueryClient
+  queryClient: QueryClient;
 }>()({
   component: () => {
     return (
@@ -28,8 +28,8 @@ export const Route = createRootRouteWithContext<{
           </>
         )} */}
       </>
-    )
+    );
   },
   notFoundComponent: NotFoundError,
   errorComponent: GeneralError,
-})
+});

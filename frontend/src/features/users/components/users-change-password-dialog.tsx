@@ -1,44 +1,37 @@
-'use client'
+'use client';
 
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { graphqlRequest } from '@/gql/graphql'
-import { UPDATE_USER_MUTATION } from '@/gql/users'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { User, changePasswordFormSchema } from '../data/schema'
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { graphqlRequest } from '@/gql/graphql';
+import { UPDATE_USER_MUTATION } from '@/gql/users';
+import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { User, changePasswordFormSchema } from '../data/schema';
 
 interface Props {
-  currentRow?: User
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  currentRow?: User;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 export function UsersChangePasswordDialog({ currentRow, open, onOpenChange }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation();
   const form = useForm({
     resolver: zodResolver(changePasswordFormSchema(t)),
     defaultValues: {
       newPassword: '',
       confirmPassword: '',
     },
-  })
+  });
 
   const onSubmit = async (values: any) => {
     try {
       if (!currentRow?.id) {
-        throw new Error('No user selected')
+        throw new Error('No user selected');
       }
 
       // 使用 GraphQL updateUser mutation 进行真正的密码修改
@@ -47,25 +40,25 @@ export function UsersChangePasswordDialog({ currentRow, open, onOpenChange }: Pr
         input: {
           password: values.newPassword,
         },
-      })
+      });
 
-      toast.success(t('users.messages.passwordChangeSuccess'))
-      form.reset()
-      onOpenChange(false)
+      toast.success(t('users.messages.passwordChangeSuccess'));
+      form.reset();
+      onOpenChange(false);
     } catch (error) {
-      console.error('Failed to change password:', error)
-      toast.error(t('users.messages.passwordChangeError'))
+      console.error('Failed to change password:', error);
+      toast.error(t('users.messages.passwordChangeError'));
     }
-  }
+  };
 
   return (
     <Dialog
       open={open}
       onOpenChange={(state) => {
         if (!state) {
-          form.reset()
+          form.reset();
         }
-        onOpenChange(state)
+        onOpenChange(state);
       }}
     >
       <DialogContent className='sm:max-w-md'>
@@ -90,11 +83,7 @@ export function UsersChangePasswordDialog({ currentRow, open, onOpenChange }: Pr
                 <FormItem>
                   <FormLabel>{t('users.form.newPassword')}</FormLabel>
                   <FormControl>
-                    <Input
-                      type='password'
-                      placeholder={t('users.form.placeholders.newPasswordPlaceholder')}
-                      {...field}
-                    />
+                    <Input type='password' placeholder={t('users.form.placeholders.newPasswordPlaceholder')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -108,11 +97,7 @@ export function UsersChangePasswordDialog({ currentRow, open, onOpenChange }: Pr
                 <FormItem>
                   <FormLabel>{t('users.form.confirmNewPassword')}</FormLabel>
                   <FormControl>
-                    <Input
-                      type='password'
-                      placeholder={t('users.form.placeholders.confirmNewPasswordPlaceholder')}
-                      {...field}
-                    />
+                    <Input type='password' placeholder={t('users.form.placeholders.confirmNewPasswordPlaceholder')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -131,5 +116,5 @@ export function UsersChangePasswordDialog({ currentRow, open, onOpenChange }: Pr
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

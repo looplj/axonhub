@@ -1,38 +1,38 @@
-import { useState, useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
-import { DateRange } from 'react-day-picker'
-import { Header } from '@/components/layout/header'
-import { Main } from '@/components/layout/main'
-import { TracesTable } from './components'
-import { TracesProvider } from './context'
-import { useTraces } from './data'
-import { usePaginationSearch } from '@/hooks/use-pagination-search'
-import { useDebounce } from '@/hooks/use-debounce'
-import useInterval from '@/hooks/useInterval'
-import { buildDateRangeWhereClause } from '@/utils/date-range'
+import { useState, useCallback } from 'react';
+import { DateRange } from 'react-day-picker';
+import { useTranslation } from 'react-i18next';
+import { buildDateRangeWhereClause } from '@/utils/date-range';
+import { useDebounce } from '@/hooks/use-debounce';
+import { usePaginationSearch } from '@/hooks/use-pagination-search';
+import useInterval from '@/hooks/useInterval';
+import { Header } from '@/components/layout/header';
+import { Main } from '@/components/layout/main';
+import { TracesTable } from './components';
+import { TracesProvider } from './context';
+import { useTraces } from './data';
 
 function TracesContent() {
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs, cursorHistory } = usePaginationSearch({
     defaultPageSize: 20,
     pageSizeStorageKey: 'traces-table-page-size',
-  })
-  const [dateRange, setDateRange] = useState<DateRange | undefined>()
-  const [traceIdFilter, setTraceIdFilter] = useState<string>('')
-  const [autoRefresh, setAutoRefresh] = useState(false)
-  const debouncedTraceIdFilter = useDebounce(traceIdFilter, 300)
+  });
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [traceIdFilter, setTraceIdFilter] = useState<string>('');
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const debouncedTraceIdFilter = useDebounce(traceIdFilter, 300);
 
   // Build where clause with filters
   const whereClause = (() => {
     const where: { [key: string]: any } = {
       ...buildDateRangeWhereClause(dateRange),
-    }
-    
+    };
+
     if (debouncedTraceIdFilter.trim()) {
-      where.traceIDContains = debouncedTraceIdFilter.trim()
+      where.traceIDContains = debouncedTraceIdFilter.trim();
     }
-    
-    return Object.keys(where).length > 0 ? where : undefined
-  })()
+
+    return Object.keys(where).length > 0 ? where : undefined;
+  })();
 
   const { data, isLoading, refetch } = useTraces({
     ...paginationArgs,
@@ -41,51 +41,51 @@ function TracesContent() {
       field: 'CREATED_AT',
       direction: 'DESC',
     },
-  })
+  });
 
-  const traces = data?.edges?.map((edge) => edge.node) || []
-  const pageInfo = data?.pageInfo
-  const isFirstPage = !paginationArgs.after && cursorHistory.length === 0
+  const traces = data?.edges?.map((edge) => edge.node) || [];
+  const pageInfo = data?.pageInfo;
+  const isFirstPage = !paginationArgs.after && cursorHistory.length === 0;
 
   useInterval(
     () => {
-      refetch()
+      refetch();
     },
     autoRefresh && isFirstPage ? 30000 : null
-  )
+  );
 
   const handleNextPage = () => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
-      setCursors(data.pageInfo.startCursor ?? undefined, data.pageInfo.endCursor ?? undefined, 'after')
+      setCursors(data.pageInfo.startCursor ?? undefined, data.pageInfo.endCursor ?? undefined, 'after');
     }
-  }
+  };
 
   const handlePreviousPage = () => {
     if (data?.pageInfo?.hasPreviousPage) {
-      setCursors(data.pageInfo.startCursor ?? undefined, data.pageInfo.endCursor ?? undefined, 'before')
+      setCursors(data.pageInfo.startCursor ?? undefined, data.pageInfo.endCursor ?? undefined, 'before');
     }
-  }
+  };
 
   const handlePageSizeChange = (newPageSize: number) => {
-    setPageSize(newPageSize)
-    resetCursor()
-  }
+    setPageSize(newPageSize);
+    resetCursor();
+  };
 
   const handleDateRangeChange = useCallback(
     (range: DateRange | undefined) => {
-      setDateRange(range)
-      resetCursor()
+      setDateRange(range);
+      resetCursor();
     },
     [resetCursor]
-  )
+  );
 
   const handleTraceIdFilterChange = useCallback(
     (traceId: string) => {
-      setTraceIdFilter(traceId)
-      resetCursor()
+      setTraceIdFilter(traceId);
+      resetCursor();
     },
     [resetCursor]
-  )
+  );
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
@@ -108,16 +108,15 @@ function TracesContent() {
         onAutoRefreshChange={setAutoRefresh}
       />
     </div>
-  )
+  );
 }
 
 export default function TracesManagement() {
-  const { t } = useTranslation()
+  const { t } = useTranslation();
 
   return (
     <TracesProvider>
-      <Header fixed>
-      </Header>
+      <Header fixed></Header>
 
       <Main fixed>
         <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
@@ -129,5 +128,5 @@ export default function TracesManagement() {
         <TracesContent />
       </Main>
     </TracesProvider>
-  )
+  );
 }

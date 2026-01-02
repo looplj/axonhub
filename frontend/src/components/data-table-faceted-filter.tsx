@@ -1,31 +1,23 @@
-import * as React from 'react'
-import { CheckIcon, PlusCircledIcon } from '@radix-ui/react-icons'
-import { Column } from '@tanstack/react-table'
-import { useTranslation } from 'react-i18next'
-import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from '@/components/ui/command'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Separator } from '@/components/ui/separator'
+import * as React from 'react';
+import { CheckIcon, PlusCircledIcon } from '@radix-ui/react-icons';
+import { Column } from '@tanstack/react-table';
+import { useTranslation } from 'react-i18next';
+import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Separator } from '@/components/ui/separator';
 
 interface DataTableFacetedFilterProps<TData, TValue> {
-  column?: Column<TData, TValue>
-  title?: string
+  column?: Column<TData, TValue>;
+  title?: string;
   options?: {
-    label: string
-    value: string
-    icon?: React.ComponentType<{ className?: string }>
-  }[]
-  singleSelect?: boolean
+    label: string;
+    value: string;
+    icon?: React.ComponentType<{ className?: string }>;
+  }[];
+  singleSelect?: boolean;
 }
 
 export function DataTableFacetedFilter<TData, TValue>({
@@ -34,14 +26,12 @@ export function DataTableFacetedFilter<TData, TValue>({
   options = [],
   singleSelect = false,
 }: DataTableFacetedFilterProps<TData, TValue>) {
-  const { t } = useTranslation()
+  const { t } = useTranslation();
 
-  const facets = column?.getFacetedUniqueValues() || new Map()
-  const filterValue = column?.getFilterValue()
-  const selectedValues = singleSelect 
-    ? new Set(filterValue ? [filterValue as string] : [])
-    : new Set((filterValue || []) as string[])
-  
+  const facets = column?.getFacetedUniqueValues() || new Map();
+  const filterValue = column?.getFilterValue();
+  const selectedValues = singleSelect ? new Set(filterValue ? [filterValue as string] : []) : new Set((filterValue || []) as string[]);
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -80,23 +70,23 @@ export function DataTableFacetedFilter<TData, TValue>({
             <CommandEmpty>{t('common.noResultsFound')}</CommandEmpty>
             <CommandGroup>
               {options?.map((option) => {
-                const isSelected = selectedValues.has(option.value)
+                const isSelected = selectedValues.has(option.value);
                 return (
                   <CommandItem
                     key={option.value}
                     onSelect={() => {
                       if (singleSelect) {
                         // Single select mode: set value directly or clear if already selected
-                        column?.setFilterValue(isSelected ? undefined : option.value)
+                        column?.setFilterValue(isSelected ? undefined : option.value);
                       } else {
                         // Multi select mode: toggle selection
                         if (isSelected) {
-                          selectedValues.delete(option.value)
+                          selectedValues.delete(option.value);
                         } else {
-                          selectedValues.add(option.value)
+                          selectedValues.add(option.value);
                         }
-                        const filterValues = Array.from(selectedValues)
-                        column?.setFilterValue(filterValues?.length ? filterValues : undefined)
+                        const filterValues = Array.from(selectedValues);
+                        column?.setFilterValue(filterValues?.length ? filterValues : undefined);
                       }
                     }}
                   >
@@ -111,22 +101,17 @@ export function DataTableFacetedFilter<TData, TValue>({
                     {option.icon && <option.icon className='text-muted-foreground h-4 w-4' />}
                     <span>{option.label}</span>
                     {facets?.has(option.value) && (
-                      <span className='ml-auto flex h-4 w-4 items-center justify-center font-mono text-xs'>
-                        {facets.get(option.value)}
-                      </span>
+                      <span className='ml-auto flex h-4 w-4 items-center justify-center font-mono text-xs'>{facets.get(option.value)}</span>
                     )}
                   </CommandItem>
-                )
+                );
               })}
             </CommandGroup>
             {selectedValues.size > 0 && (
               <>
                 <CommandSeparator />
                 <CommandGroup>
-                  <CommandItem
-                    onSelect={() => column?.setFilterValue(undefined)}
-                    className='justify-center text-center'
-                  >
+                  <CommandItem onSelect={() => column?.setFilterValue(undefined)} className='justify-center text-center'>
                     {t('common.clearFilters')}
                   </CommandItem>
                 </CommandGroup>
@@ -136,5 +121,5 @@ export function DataTableFacetedFilter<TData, TValue>({
         </Command>
       </PopoverContent>
     </Popover>
-  )
+  );
 }

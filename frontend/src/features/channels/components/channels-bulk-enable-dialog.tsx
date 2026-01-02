@@ -1,47 +1,47 @@
-'use client'
+'use client';
 
-import { IconAlertTriangle, IconCheck } from '@tabler/icons-react'
-import { useTranslation } from 'react-i18next'
-import { ConfirmDialog } from '@/components/confirm-dialog'
-import { useChannels } from '../context/channels-context'
-import { useBulkEnableChannels } from '../data/channels'
+import { IconAlertTriangle, IconCheck } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
+import { ConfirmDialog } from '@/components/confirm-dialog';
+import { useChannels } from '../context/channels-context';
+import { useBulkEnableChannels } from '../data/channels';
 
 export function ChannelsBulkEnableDialog() {
-  const { t } = useTranslation()
-  const { open, setOpen, selectedChannels, resetRowSelection, setSelectedChannels } = useChannels()
-  const bulkEnableChannels = useBulkEnableChannels()
+  const { t } = useTranslation();
+  const { open, setOpen, selectedChannels, resetRowSelection, setSelectedChannels } = useChannels();
+  const bulkEnableChannels = useBulkEnableChannels();
 
-  const isDialogOpen = open === 'bulkEnable'
-  const selectedCount = selectedChannels.length
+  const isDialogOpen = open === 'bulkEnable';
+  const selectedCount = selectedChannels.length;
 
   if (selectedCount === 0 && !isDialogOpen) {
-    return null
+    return null;
   }
 
   const handleConfirm = async () => {
     try {
-      const ids = selectedChannels.map((channel) => channel.id)
+      const ids = selectedChannels.map((channel) => channel.id);
       if (ids.length === 0) {
-        return
+        return;
       }
 
-      await bulkEnableChannels.mutateAsync(ids)
-      resetRowSelection()
-      setSelectedChannels([])
-      setOpen(null)
+      await bulkEnableChannels.mutateAsync(ids);
+      resetRowSelection();
+      setSelectedChannels([]);
+      setOpen(null);
     } catch (error) {
-      console.error('Failed to bulk enable channels:', error)
+      console.error('Failed to bulk enable channels:', error);
     }
-  }
+  };
 
   return (
     <ConfirmDialog
       open={isDialogOpen}
       onOpenChange={(isOpen) => {
         if (!isOpen) {
-          setOpen(null)
+          setOpen(null);
         } else {
-          setOpen('bulkEnable')
+          setOpen('bulkEnable');
         }
       }}
       handleConfirm={handleConfirm}
@@ -64,5 +64,5 @@ export function ChannelsBulkEnableDialog() {
         </div>
       </div>
     </ConfirmDialog>
-  )
+  );
 }

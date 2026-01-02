@@ -1,44 +1,44 @@
-'use client'
+'use client';
 
-import React, { useState } from 'react'
-import { Loader2, Save } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
-import { useDataStorages } from '@/features/data-storages/data/data-storages'
-import { useSystemContext } from '../context/system-context'
+import React, { useState } from 'react';
+import { Loader2, Save } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { useDataStorages } from '@/features/data-storages/data/data-storages';
+import { useSystemContext } from '../context/system-context';
 import {
   useStoragePolicy,
   useUpdateStoragePolicy,
   useDefaultDataStorageID,
   useUpdateDefaultDataStorage,
   CleanupOption,
-} from '../data/system'
+} from '../data/system';
 
 export function StorageSettings() {
-  const { t } = useTranslation()
-  const { data: storagePolicy, isLoading: isLoadingStoragePolicy } = useStoragePolicy()
-  const { data: defaultDataStorageID, isLoading: isLoadingDefaultDataStorage } = useDefaultDataStorageID()
+  const { t } = useTranslation();
+  const { data: storagePolicy, isLoading: isLoadingStoragePolicy } = useStoragePolicy();
+  const { data: defaultDataStorageID, isLoading: isLoadingDefaultDataStorage } = useDefaultDataStorageID();
   const { data: dataStorages } = useDataStorages({
     first: 100,
     where: { statusIn: ['active'] },
-  })
-  const updateStoragePolicy = useUpdateStoragePolicy()
-  const updateDefaultDataStorage = useUpdateDefaultDataStorage()
-  const { isLoading, setIsLoading } = useSystemContext()
+  });
+  const updateStoragePolicy = useUpdateStoragePolicy();
+  const updateDefaultDataStorage = useUpdateDefaultDataStorage();
+  const { isLoading, setIsLoading } = useSystemContext();
 
   const [storagePolicyState, setStoragePolicyState] = useState({
     storeChunks: storagePolicy?.storeChunks ?? false,
     storeRequestBody: storagePolicy?.storeRequestBody ?? true,
     storeResponseBody: storagePolicy?.storeResponseBody ?? true,
     cleanupOptions: storagePolicy?.cleanupOptions ?? [],
-  })
+  });
 
-  const [selectedDataStorageID, setSelectedDataStorageID] = useState<string | undefined>(defaultDataStorageID || undefined)
+  const [selectedDataStorageID, setSelectedDataStorageID] = useState<string | undefined>(defaultDataStorageID || undefined);
 
   // Update local state when storage policy is loaded
   React.useEffect(() => {
@@ -48,19 +48,19 @@ export function StorageSettings() {
         storeRequestBody: storagePolicy.storeRequestBody,
         storeResponseBody: storagePolicy.storeResponseBody,
         cleanupOptions: storagePolicy.cleanupOptions,
-      })
+      });
     }
-  }, [storagePolicy])
+  }, [storagePolicy]);
 
   // Update selected data storage when loaded
   React.useEffect(() => {
     if (defaultDataStorageID) {
-      setSelectedDataStorageID(defaultDataStorageID)
+      setSelectedDataStorageID(defaultDataStorageID);
     }
-  }, [defaultDataStorageID])
+  }, [defaultDataStorageID]);
 
   const handleSaveStoragePolicy = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
       await updateStoragePolicy.mutateAsync({
         storeChunks: storagePolicyState.storeChunks,
@@ -71,45 +71,45 @@ export function StorageSettings() {
           enabled: option.enabled,
           cleanupDays: option.cleanupDays,
         })),
-      })
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleSaveDefaultDataStorage = async () => {
-    if (!selectedDataStorageID) return
+    if (!selectedDataStorageID) return;
 
-    setIsLoading(true)
+    setIsLoading(true);
     try {
       await updateDefaultDataStorage.mutateAsync({
         dataStorageID: selectedDataStorageID,
-      })
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleCleanupOptionChange = (index: number, field: keyof CleanupOption, value: any) => {
-    const newOptions = [...storagePolicyState.cleanupOptions]
+    const newOptions = [...storagePolicyState.cleanupOptions];
     newOptions[index] = {
       ...newOptions[index],
       [field]: value,
-    }
+    };
     setStoragePolicyState({
       ...storagePolicyState,
       cleanupOptions: newOptions,
-    })
-  }
+    });
+  };
 
   const hasStoragePolicyChanges =
     storagePolicy &&
     (storagePolicy.storeChunks !== storagePolicyState.storeChunks ||
       storagePolicy.storeRequestBody !== storagePolicyState.storeRequestBody ||
       storagePolicy.storeResponseBody !== storagePolicyState.storeResponseBody ||
-      JSON.stringify(storagePolicy.cleanupOptions) !== JSON.stringify(storagePolicyState.cleanupOptions))
+      JSON.stringify(storagePolicy.cleanupOptions) !== JSON.stringify(storagePolicyState.cleanupOptions));
 
-  const hasDataStorageChanges = defaultDataStorageID !== selectedDataStorageID
+  const hasDataStorageChanges = defaultDataStorageID !== selectedDataStorageID;
 
   if (isLoadingStoragePolicy || isLoadingDefaultDataStorage) {
     return (
@@ -117,7 +117,7 @@ export function StorageSettings() {
         <Loader2 className='h-6 w-6 animate-spin' />
         <span className='text-muted-foreground ml-2'>{t('common.loading')}</span>
       </div>
-    )
+    );
   }
 
   return (
@@ -285,5 +285,5 @@ export function StorageSettings() {
         </div>
       )}
     </div>
-  )
+  );
 }

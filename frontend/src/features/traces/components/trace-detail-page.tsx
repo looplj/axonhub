@@ -1,75 +1,75 @@
-import { useMemo, useState, useEffect } from 'react'
-import { format } from 'date-fns'
-import { useParams, useNavigate } from '@tanstack/react-router'
-import { zhCN, enUS } from 'date-fns/locale'
-import { ArrowLeft, FileText, Activity, RefreshCw } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-import { extractNumberID } from '@/lib/utils'
-import { usePaginationSearch } from '@/hooks/use-pagination-search'
-import useInterval from '@/hooks/useInterval'
-import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
-import { Card, CardContent } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
-import { Header } from '@/components/layout/header'
-import { Main } from '@/components/layout/main'
-import { useTraceWithSegments } from '../data'
-import { Segment, Span, parseRawRootSegment } from '../data/schema'
-import { SpanSection } from './span-section'
-import { TraceFlatTimeline } from './trace-flat-timeline'
+import { useMemo, useState, useEffect } from 'react';
+import { format } from 'date-fns';
+import { useParams, useNavigate } from '@tanstack/react-router';
+import { zhCN, enUS } from 'date-fns/locale';
+import { ArrowLeft, FileText, Activity, RefreshCw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { extractNumberID } from '@/lib/utils';
+import { usePaginationSearch } from '@/hooks/use-pagination-search';
+import useInterval from '@/hooks/useInterval';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import { Header } from '@/components/layout/header';
+import { Main } from '@/components/layout/main';
+import { useTraceWithSegments } from '../data';
+import { Segment, Span, parseRawRootSegment } from '../data/schema';
+import { SpanSection } from './span-section';
+import { TraceFlatTimeline } from './trace-flat-timeline';
 
 export default function TraceDetailPage() {
-  const { t, i18n } = useTranslation()
-  const { traceId } = useParams({ from: '/_authenticated/project/traces/$traceId' })
-  const navigate = useNavigate()
-  const locale = i18n.language === 'zh' ? zhCN : enUS
-  const [selectedTrace, setSelectedTrace] = useState<Segment | null>(null)
-  const [selectedSpan, setSelectedSpan] = useState<Span | null>(null)
-  const [selectedSpanType, setSelectedSpanType] = useState<'request' | 'response' | null>(null)
-  const [autoRefresh, setAutoRefresh] = useState(false)
-  const { getSearchParams } = usePaginationSearch({ defaultPageSize: 20 })
+  const { t, i18n } = useTranslation();
+  const { traceId } = useParams({ from: '/_authenticated/project/traces/$traceId' });
+  const navigate = useNavigate();
+  const locale = i18n.language === 'zh' ? zhCN : enUS;
+  const [selectedTrace, setSelectedTrace] = useState<Segment | null>(null);
+  const [selectedSpan, setSelectedSpan] = useState<Span | null>(null);
+  const [selectedSpanType, setSelectedSpanType] = useState<'request' | 'response' | null>(null);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const { getSearchParams } = usePaginationSearch({ defaultPageSize: 20 });
 
-  const { data: trace, isLoading, refetch } = useTraceWithSegments(traceId)
+  const { data: trace, isLoading, refetch } = useTraceWithSegments(traceId);
 
   // Parse rawRootSegment JSON once per trace
   // 仅解析 rawRootSegment（完整 JSON）
   const effectiveRootSegment = useMemo(() => {
-    if (!trace?.rawRootSegment) return null
-    return parseRawRootSegment(trace.rawRootSegment)
-  }, [trace])
+    if (!trace?.rawRootSegment) return null;
+    return parseRawRootSegment(trace.rawRootSegment);
+  }, [trace]);
 
   // Auto-select first span when trace loads
   useEffect(() => {
     if (effectiveRootSegment && !selectedSpan) {
-      const firstSpan = effectiveRootSegment.requestSpans?.[0] || effectiveRootSegment.responseSpans?.[0]
+      const firstSpan = effectiveRootSegment.requestSpans?.[0] || effectiveRootSegment.responseSpans?.[0];
       if (firstSpan) {
-        const spanType = effectiveRootSegment.requestSpans?.[0] ? 'request' : 'response'
-        setSelectedTrace(effectiveRootSegment)
-        setSelectedSpan(firstSpan)
-        setSelectedSpanType(spanType)
+        const spanType = effectiveRootSegment.requestSpans?.[0] ? 'request' : 'response';
+        setSelectedTrace(effectiveRootSegment);
+        setSelectedSpan(firstSpan);
+        setSelectedSpanType(spanType);
       }
     }
-  }, [effectiveRootSegment, selectedSpan])
+  }, [effectiveRootSegment, selectedSpan]);
 
   useInterval(
     () => {
-      refetch()
+      refetch();
     },
     autoRefresh ? 30000 : null
-  )
+  );
 
   const handleSpanSelect = (parentTrace: Segment, span: Span, type: 'request' | 'response') => {
-    setSelectedTrace(parentTrace)
-    setSelectedSpan(span)
-    setSelectedSpanType(type)
-  }
+    setSelectedTrace(parentTrace);
+    setSelectedSpan(span);
+    setSelectedSpanType(type);
+  };
 
   const handleBack = () => {
     navigate({
       to: '/project/traces',
       search: getSearchParams(),
-    })
-  }
+    });
+  };
 
   if (isLoading) {
     return (
@@ -84,7 +84,7 @@ export default function TraceDetailPage() {
           </div>
         </Main>
       </div>
-    )
+    );
   }
 
   if (!trace) {
@@ -106,13 +106,13 @@ export default function TraceDetailPage() {
           </div>
         </Main>
       </div>
-    )
+    );
   }
 
   return (
     <div className='flex h-screen flex-col'>
-      <Header className='bg-background/95 supports-[backdrop-filter]:bg-background/60 border-b backdrop-blur w-full'>
-        <div className='flex items-center justify-between w-full'>
+      <Header className='bg-background/95 supports-[backdrop-filter]:bg-background/60 w-full border-b backdrop-blur'>
+        <div className='flex w-full items-center justify-between'>
           <div className='flex items-center space-x-4'>
             <Button variant='ghost' size='sm' onClick={handleBack} className='hover:bg-accent'>
               <ArrowLeft className='mr-2 h-4 w-4' />
@@ -130,24 +130,15 @@ export default function TraceDetailPage() {
                 <div className='mt-1 flex items-center gap-2'>
                   <p className='text-muted-foreground text-sm'>{trace.traceID}</p>
                   <span className='text-muted-foreground text-xs'>•</span>
-                  <p className='text-muted-foreground text-xs'>
-                    {format(new Date(trace.createdAt), 'yyyy-MM-dd HH:mm:ss', { locale })}
-                  </p>
+                  <p className='text-muted-foreground text-xs'>{format(new Date(trace.createdAt), 'yyyy-MM-dd HH:mm:ss', { locale })}</p>
                 </div>
               </div>
             </div>
           </div>
           <div className='flex items-center space-x-2'>
             <div className='flex items-center space-x-2'>
-              <Switch 
-                checked={autoRefresh} 
-                onCheckedChange={setAutoRefresh}
-                id='auto-refresh-switch'
-              />
-              <label 
-                htmlFor='auto-refresh-switch' 
-                className='text-sm text-muted-foreground cursor-pointer'
-              >
+              <Switch checked={autoRefresh} onCheckedChange={setAutoRefresh} id='auto-refresh-switch' />
+              <label htmlFor='auto-refresh-switch' className='text-muted-foreground cursor-pointer text-sm'>
                 {t('common.autoRefresh')}
               </label>
             </div>
@@ -173,11 +164,7 @@ export default function TraceDetailPage() {
 
             {/* Right: Span Detail */}
             <div className='border-border bg-background w-[500px] overflow-y-auto border-l'>
-              <SpanSection
-                selectedTrace={selectedTrace}
-                selectedSpan={selectedSpan}
-                selectedSpanType={selectedSpanType}
-              />
+              <SpanSection selectedTrace={selectedTrace} selectedSpan={selectedSpan} selectedSpanType={selectedSpanType} />
             </div>
           </div>
         ) : (
@@ -196,5 +183,5 @@ export default function TraceDetailPage() {
         )}
       </Main>
     </div>
-  )
+  );
 }

@@ -1,72 +1,67 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { IconTrash, IconRefresh } from '@tabler/icons-react'
-import { useChat } from '@ai-sdk/react'
-import { DefaultChatTransport } from 'ai'
-import { MessageSquare, RefreshCcw, Copy } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/authStore'
-import { useSelectedProjectId } from '@/stores/projectStore'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Textarea } from '@/components/ui/textarea'
-import { TooltipProvider } from '@/components/ui/tooltip'
-import { Actions, Action } from '@/components/ai-elements/actions'
-import {
-  Conversation,
-  ConversationContent,
-  ConversationEmptyState,
-  ConversationScrollButton,
-} from '@/components/ai-elements/conversation'
-import { Loader } from '@/components/ai-elements/loader'
-import { Message, MessageContent } from '@/components/ai-elements/message'
-import { PromptInput, PromptInputTextarea, PromptInputSubmit } from '@/components/ai-elements/prompt-input'
-import { Reasoning, ReasoningTrigger, ReasoningContent } from '@/components/ai-elements/reasoning'
-import { Response as UIResponse } from '@/components/ai-elements/response'
-import { AutoCompleteSelect } from '@/components/auto-complete-select'
-import { useQueryChannels } from '@/features/channels/data/channels'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { IconTrash, IconRefresh } from '@tabler/icons-react';
+import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport } from 'ai';
+import { MessageSquare, RefreshCcw, Copy } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+import { useAuthStore } from '@/stores/authStore';
+import { useSelectedProjectId } from '@/stores/projectStore';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { Actions, Action } from '@/components/ai-elements/actions';
+import { Conversation, ConversationContent, ConversationEmptyState, ConversationScrollButton } from '@/components/ai-elements/conversation';
+import { Loader } from '@/components/ai-elements/loader';
+import { Message, MessageContent } from '@/components/ai-elements/message';
+import { PromptInput, PromptInputTextarea, PromptInputSubmit } from '@/components/ai-elements/prompt-input';
+import { Reasoning, ReasoningTrigger, ReasoningContent } from '@/components/ai-elements/reasoning';
+import { Response as UIResponse } from '@/components/ai-elements/response';
+import { AutoCompleteSelect } from '@/components/auto-complete-select';
+import { useQueryChannels } from '@/features/channels/data/channels';
 
 export default function Playground() {
-  const { t } = useTranslation()
-  const [selectedGroupModel, setSelectedGroupModel] = useState('')
-  const [model, setModel] = useState('gpt-4o')
-  const [selectedChannel, setSelectedChannel] = useState<string | null>(null)
-  const [temperature, setTemperature] = useState(0.6)
-  const [maxTokens, setMaxTokens] = useState(4096)
-  const [systemPrompt, setSystemPrompt] = useState(t('playground.settings.defaultSystemPrompt'))
+  const { t } = useTranslation();
+  const [selectedGroupModel, setSelectedGroupModel] = useState('');
+  const [model, setModel] = useState('gpt-4o');
+  const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
+  const [temperature, setTemperature] = useState(0.6);
+  const [maxTokens, setMaxTokens] = useState(4096);
+  const [systemPrompt, setSystemPrompt] = useState(t('playground.settings.defaultSystemPrompt'));
 
   // useRef hooks for direct access to current values
-  const modelRef = useRef(model)
-  const temperatureRef = useRef(temperature)
-  const maxTokensRef = useRef(maxTokens)
-  const systemPromptRef = useRef(systemPrompt)
-  const selectedChannelRef = useRef(selectedChannel)
+  const modelRef = useRef(model);
+  const temperatureRef = useRef(temperature);
+  const maxTokensRef = useRef(maxTokens);
+  const systemPromptRef = useRef(systemPrompt);
+  const selectedChannelRef = useRef(selectedChannel);
 
   // Keep refs synchronized with state
   useEffect(() => {
-    modelRef.current = model
-  }, [model])
+    modelRef.current = model;
+  }, [model]);
 
   useEffect(() => {
-    temperatureRef.current = temperature
-  }, [temperature])
+    temperatureRef.current = temperature;
+  }, [temperature]);
 
   useEffect(() => {
-    maxTokensRef.current = maxTokens
-  }, [maxTokens])
+    maxTokensRef.current = maxTokens;
+  }, [maxTokens]);
 
   useEffect(() => {
-    systemPromptRef.current = systemPrompt
-  }, [systemPrompt])
+    systemPromptRef.current = systemPrompt;
+  }, [systemPrompt]);
 
   useEffect(() => {
-    selectedChannelRef.current = selectedChannel
-  }, [selectedChannel])
+    selectedChannelRef.current = selectedChannel;
+  }, [selectedChannel]);
 
-  const { accessToken } = useAuthStore((state) => state.auth)
-  const selectedProjectId = useSelectedProjectId()
+  const { accessToken } = useAuthStore((state) => state.auth);
+  const selectedProjectId = useSelectedProjectId();
 
   // 获取 channels 数据
   const { data: channelsData, isLoading: channelsLoading } = useQueryChannels({
@@ -75,9 +70,9 @@ export default function Playground() {
     where: {
       statusIn: ['enabled', 'disabled'],
     },
-  })
+  });
 
-  const [input, setInput] = useState('')
+  const [input, setInput] = useState('');
 
   const { messages, sendMessage, status, setMessages, regenerate, stop } = useChat({
     transport: new DefaultChatTransport({
@@ -88,7 +83,7 @@ export default function Playground() {
           Authorization: 'Bearer ' + accessToken,
           'X-Channel-ID': selectedChannelRef.current || '',
           'X-Project-ID': selectedProjectId || '',
-        }
+        };
       },
       body: () => {
         return {
@@ -96,121 +91,121 @@ export default function Playground() {
           temperature: temperatureRef.current,
           max_tokens: maxTokensRef.current,
           system: systemPromptRef.current,
-        }
+        };
       },
       fetch: async (url, init) => {
-        const res = await fetch(url, init)
+        const res = await fetch(url, init);
         if (!res.ok) {
-          let message = res.statusText || 'Request failed'
-          let code: number | undefined = res.status
+          let message = res.statusText || 'Request failed';
+          let code: number | undefined = res.status;
           try {
-            const body = await res.clone().json()
-            const upstream = body?.error?.message || body?.message
-            const upstreamCode = typeof body?.error?.code === 'number' ? body.error.code : undefined
-            if (upstream) message = upstream
-            if (typeof upstreamCode === 'number') code = upstreamCode
+            const body = await res.clone().json();
+            const upstream = body?.error?.message || body?.message;
+            const upstreamCode = typeof body?.error?.code === 'number' ? body.error.code : undefined;
+            if (upstream) message = upstream;
+            if (typeof upstreamCode === 'number') code = upstreamCode;
           } catch {
             // ignore JSON parse errors
           }
-          const err: any = new Error(message)
-          err.status = res.status
-          err.code = code
-          err.response = res
-          throw err
+          const err: any = new Error(message);
+          err.status = res.status;
+          err.code = code;
+          err.response = res;
+          throw err;
         }
-        return res
+        return res;
       },
     }),
     onError: (error) => {
-      const anyErr = error as any
-      const status = anyErr?.status
-      const codeFromError = typeof anyErr?.code === 'number' ? anyErr.code : undefined
+      const anyErr = error as any;
+      const status = anyErr?.status;
+      const codeFromError = typeof anyErr?.code === 'number' ? anyErr.code : undefined;
 
       // If the error includes a fetch Response, try to parse JSON body
-      const response: Response | undefined = anyErr?.response instanceof Response ? anyErr.response : undefined
+      const response: Response | undefined = anyErr?.response instanceof Response ? anyErr.response : undefined;
       if (response) {
         response
           .clone()
           .json()
           .then((data: any) => {
-            const upstreamMsg = data?.error?.message || data?.message
-            const upstreamCode = typeof data?.error?.code === 'number' ? data.error.code : undefined
-            const code = upstreamCode ?? codeFromError ?? status
-            const message = upstreamMsg || error.message || 'Unknown error'
-            const title = code ? `${code} ${message}` : message
-            toast.error(title)
+            const upstreamMsg = data?.error?.message || data?.message;
+            const upstreamCode = typeof data?.error?.code === 'number' ? data.error.code : undefined;
+            const code = upstreamCode ?? codeFromError ?? status;
+            const message = upstreamMsg || error.message || 'Unknown error';
+            const title = code ? `${code} ${message}` : message;
+            toast.error(title);
           })
           .catch(() => {
-            const upstreamMsg = anyErr?.error?.message || anyErr?.response?.error?.message
-            const code = codeFromError ?? status
-            const message = upstreamMsg || error.message || 'Unknown error'
-            const title = code ? `${code} ${message}` : message
-            toast.error(title)
-          })
-        return
+            const upstreamMsg = anyErr?.error?.message || anyErr?.response?.error?.message;
+            const code = codeFromError ?? status;
+            const message = upstreamMsg || error.message || 'Unknown error';
+            const title = code ? `${code} ${message}` : message;
+            toast.error(title);
+          });
+        return;
       }
 
       try {
-        const upstreamMsg = anyErr?.error?.message || anyErr?.response?.error?.message
-        const code = codeFromError ?? status
-        const message = upstreamMsg || error.message || 'Unknown error'
-        const title = code ? `${code} ${message}` : message
-        toast.error(title)
+        const upstreamMsg = anyErr?.error?.message || anyErr?.response?.error?.message;
+        const code = codeFromError ?? status;
+        const message = upstreamMsg || error.message || 'Unknown error';
+        const title = code ? `${code} ${message}` : message;
+        toast.error(title);
       } catch {
-        toast.error(error.message)
+        toast.error(error.message);
       }
     },
-  })
-  const isLoading = status === 'submitted' || status === 'streaming'
+  });
+  const isLoading = status === 'submitted' || status === 'streaming';
 
   // Handle form submission
   const handleSubmit = useCallback(
     (message: { text?: string }, e: React.FormEvent) => {
-      e.preventDefault()
+      e.preventDefault();
       // block submit while a request is in-flight
-      if (isLoading) return
+      if (isLoading) return;
       if (message.text?.trim()) {
-        sendMessage({ text: message.text })
-        setInput('')
+        sendMessage({ text: message.text });
+        setInput('');
       }
     },
     [sendMessage, selectedChannel, isLoading]
-  )
+  );
 
   const handleClear = useCallback(() => {
-    setMessages([])
-  }, [setMessages])
+    setMessages([]);
+  }, [setMessages]);
 
   const handleRetry = useCallback(() => {
-    if (messages.length === 0) return
+    if (messages.length === 0) return;
 
     // 找到最后一个助手消息的索引
-    let lastAssistantIndex = -1
+    let lastAssistantIndex = -1;
     for (let i = messages.length - 1; i >= 0; i--) {
       if (messages[i].role === 'assistant') {
-        lastAssistantIndex = i
-        break
+        lastAssistantIndex = i;
+        break;
       }
     }
 
     if (lastAssistantIndex !== -1) {
       // 移除最后一个助手消息及其之后的所有消息
-      const newMessages = messages.slice(0, lastAssistantIndex)
-      setMessages(newMessages)
+      const newMessages = messages.slice(0, lastAssistantIndex);
+      setMessages(newMessages);
 
       // 使用 setTimeout 确保状态更新后再调用 regenerate
       setTimeout(() => {
-        regenerate()
-      }, 100)
+        regenerate();
+      }, 100);
     } else {
       // 如果没有助手消息，直接重新发送
-      regenerate()
+      regenerate();
     }
-  }, [messages, regenerate, setMessages])
+  }, [messages, regenerate, setMessages]);
 
   // 获取按 channel 分组的模型列表
   const groupedModels = useMemo(() => {
-    if (!channelsData?.edges) return []
+    if (!channelsData?.edges) return [];
 
     const channelGroups = channelsData.edges.map((edge) => ({
       channelName: edge.node.name,
@@ -220,36 +215,33 @@ export default function Playground() {
         label: model,
         channel: edge.node,
       })),
-    }))
+    }));
 
-    return channelGroups.filter((group) => group.models.length > 0)
-  }, [channelsData])
+    return channelGroups.filter((group) => group.models.length > 0);
+  }, [channelsData]);
 
   // 为选择准备的平面化模型项（value: channelId|model, label: "model — channel"）
   const modelOptions = useMemo(
-    () =>
-      groupedModels.flatMap((group) =>
-        group.models.map((m) => ({ value: m.value, label: `${group.channelName} - ${m.label}` }))
-      ),
+    () => groupedModels.flatMap((group) => group.models.map((m) => ({ value: m.value, label: `${group.channelName} - ${m.label}` }))),
     [groupedModels]
-  )
+  );
 
   // 处理模型选择，同时设置对应的 channel
   const handleModelChange = useCallback(
     (newModel: string) => {
-      setSelectedGroupModel(newModel)
-      const parts = newModel.split('|')
-      setModel(parts[1])
-      setSelectedChannel(parts[0])
+      setSelectedGroupModel(newModel);
+      const parts = newModel.split('|');
+      setModel(parts[1]);
+      setSelectedChannel(parts[0]);
     },
     [setSelectedGroupModel, setModel, setSelectedChannel]
-  )
+  );
 
   useEffect(() => {
     if (!selectedGroupModel && groupedModels.length > 0 && groupedModels[0].models.length > 0) {
-      handleModelChange(groupedModels[0].models[0].value)
+      handleModelChange(groupedModels[0].models[0].value);
     }
-  }, [groupedModels, handleModelChange, selectedGroupModel])
+  }, [groupedModels, handleModelChange, selectedGroupModel]);
 
   return (
     <TooltipProvider>
@@ -271,7 +263,7 @@ export default function Playground() {
       <div className='bg-background flex h-screen w-full'>
         {/* Settings Sidebar */}
 
-        <div className='bg-muted/40 flex w-[340px] min-w-[280px] max-w-[400px] flex-col border-r rounded-2xl shadow-soft border border-border bg-card m-4'>
+        <div className='bg-muted/40 shadow-soft border-border bg-card m-4 flex w-[340px] max-w-[400px] min-w-[280px] flex-col rounded-2xl border border-r'>
           <div className='border-b p-4'>
             <h1 className='text-xl font-bold tracking-tight'>{t('playground.title')}</h1>
             <p className='text-muted-foreground mt-1 text-xs leading-relaxed'>{t('playground.description')}</p>
@@ -382,7 +374,7 @@ export default function Playground() {
 
         {/* Chat Area */}
         <div className='flex flex-1 flex-col p-4'>
-          <div className='flex h-full flex-col rounded-2xl shadow-soft border border-border bg-card p-6'>
+          <div className='shadow-soft border-border bg-card flex h-full flex-col rounded-2xl border p-6'>
             <Conversation className='flex-1'>
               <ConversationContent>
                 {messages.length === 0 ? (
@@ -395,22 +387,22 @@ export default function Playground() {
                   (() => {
                     const lastAssistantIndex = (() => {
                       for (let i = messages.length - 1; i >= 0; i--) {
-                        if (messages[i].role === 'assistant') return i
+                        if (messages[i].role === 'assistant') return i;
                       }
-                      return -1
-                    })()
+                      return -1;
+                    })();
                     return messages.map((message, messageIndex) => {
-                      const isLastAssistant = message.role === 'assistant' && messageIndex === lastAssistantIndex
+                      const isLastAssistant = message.role === 'assistant' && messageIndex === lastAssistantIndex;
                       const textContent = message.parts
                         ?.filter((p) => p.type === 'text')
                         .map((p: any) => p.text)
-                        .join('\n')
+                        .join('\n');
                       return (
                         <Message from={message.role} key={message.id}>
                           <MessageContent>
                             {message.parts?.map((part, index) => {
                               if (part.type === 'text') {
-                                return <UIResponse key={index}>{part.text}</UIResponse>
+                                return <UIResponse key={index}>{part.text}</UIResponse>;
                               }
                               if (part.type === 'reasoning') {
                                 return (
@@ -418,9 +410,9 @@ export default function Playground() {
                                     <ReasoningTrigger />
                                     <ReasoningContent>{part.text}</ReasoningContent>
                                   </Reasoning>
-                                )
+                                );
                               }
-                              return null
+                              return null;
                             })}
                             {isLastAssistant && textContent ? (
                               <Actions className='mt-2'>
@@ -434,8 +426,8 @@ export default function Playground() {
                             ) : null}
                           </MessageContent>
                         </Message>
-                      )
-                    })
+                      );
+                    });
                   })()
                 )}
                 {status === 'submitted' && <Loader />}
@@ -458,8 +450,8 @@ export default function Playground() {
                 onClick={(e) => {
                   // When not ready (submitted/streaming/error), treat click as cancel
                   if (status !== 'ready') {
-                    e.preventDefault()
-                    stop()
+                    e.preventDefault();
+                    stop();
                   }
                 }}
               />
@@ -468,5 +460,5 @@ export default function Playground() {
         </div>
       </div>
     </TooltipProvider>
-  )
+  );
 }

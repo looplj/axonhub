@@ -1,4 +1,4 @@
-import type { ComponentType } from 'react'
+import type { ComponentType } from 'react';
 import {
   OpenAI,
   Anthropic,
@@ -21,16 +21,16 @@ import {
   Bailian,
   Jina,
   DeepInfra,
-} from '@lobehub/icons'
-import { CHANNEL_CONFIGS } from './config_channels'
-import { ApiFormat, ChannelType } from './schema'
+} from '@lobehub/icons';
+import { CHANNEL_CONFIGS } from './config_channels';
+import { ApiFormat, ChannelType } from './schema';
 
 export interface ProviderConfig {
-  provider: string
-  icon: ComponentType<{ size?: number; className?: string }>
-  color: string
+  provider: string;
+  icon: ComponentType<{ size?: number; className?: string }>;
+  color: string;
   /** Channel types supported by this provider, ordered by API format preference */
-  channelTypes: ChannelType[]
+  channelTypes: ChannelType[];
 }
 
 /**
@@ -171,7 +171,7 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     color: 'bg-purple-100 text-purple-800 border-purple-200',
     channelTypes: ['jina'],
   },
-}
+};
 
 /**
  * Get provider key from channel type
@@ -179,41 +179,41 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
 export const getProviderFromChannelType = (channelType: ChannelType): string | undefined => {
   for (const [providerKey, config] of Object.entries(PROVIDER_CONFIGS)) {
     if (config.channelTypes.includes(channelType)) {
-      return providerKey
+      return providerKey;
     }
   }
-  return undefined
-}
+  return undefined;
+};
 
 /**
  * Get channel type for a provider with specific API format
  */
 export const getChannelTypeForApiFormat = (provider: string, apiFormat: ApiFormat): ChannelType | undefined => {
-  const providerConfig = PROVIDER_CONFIGS[provider]
-  if (!providerConfig) return undefined
+  const providerConfig = PROVIDER_CONFIGS[provider];
+  if (!providerConfig) return undefined;
 
   for (const channelType of providerConfig.channelTypes) {
-    const channelConfig = CHANNEL_CONFIGS[channelType]
+    const channelConfig = CHANNEL_CONFIGS[channelType];
     if (channelConfig?.apiFormat === apiFormat) {
-      return channelType
+      return channelType;
     }
   }
-  return undefined
-}
+  return undefined;
+};
 
 /**
  * Get available API formats for a provider
  */
 export const getApiFormatsForProvider = (provider: string): ApiFormat[] => {
-  const providerConfig = PROVIDER_CONFIGS[provider]
-  if (!providerConfig) return []
+  const providerConfig = PROVIDER_CONFIGS[provider];
+  if (!providerConfig) return [];
 
-  const formats: ApiFormat[] = []
+  const formats: ApiFormat[] = [];
   for (const channelType of providerConfig.channelTypes) {
-    const channelConfig = CHANNEL_CONFIGS[channelType]
+    const channelConfig = CHANNEL_CONFIGS[channelType];
     if (channelConfig?.apiFormat && !formats.includes(channelConfig.apiFormat)) {
-      formats.push(channelConfig.apiFormat)
+      formats.push(channelConfig.apiFormat);
     }
   }
-  return formats
-}
+  return formats;
+};

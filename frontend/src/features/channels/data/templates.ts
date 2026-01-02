@@ -1,11 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { graphqlRequest } from '@/gql/graphql'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-import { useErrorHandler } from '@/hooks/use-error-handler'
-import { z } from 'zod'
-import { ChannelType, HeaderEntry } from './schema'
-import { pageInfoSchema } from '@/gql/pagination'
+import { z } from 'zod';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { graphqlRequest } from '@/gql/graphql';
+import { pageInfoSchema } from '@/gql/pagination';
+import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+import { useErrorHandler } from '@/hooks/use-error-handler';
+import { ChannelType, HeaderEntry } from './schema';
 
 // Zod Schemas for Template Types
 export const channelOverrideTemplateSchema = z.object({
@@ -23,8 +23,8 @@ export const channelOverrideTemplateSchema = z.object({
       value: z.string(),
     })
   ),
-})
-export type ChannelOverrideTemplate = z.infer<typeof channelOverrideTemplateSchema>
+});
+export type ChannelOverrideTemplate = z.infer<typeof channelOverrideTemplateSchema>;
 
 export const channelOverrideTemplateConnectionSchema = z.object({
   edges: z.array(
@@ -35,22 +35,24 @@ export const channelOverrideTemplateConnectionSchema = z.object({
   ),
   pageInfo: pageInfoSchema,
   totalCount: z.number(),
-})
-export type ChannelOverrideTemplateConnection = z.infer<typeof channelOverrideTemplateConnectionSchema>
+});
+export type ChannelOverrideTemplateConnection = z.infer<typeof channelOverrideTemplateConnectionSchema>;
 
 export const createChannelOverrideTemplateInputSchema = z.object({
   name: z.string().min(1, 'Template name is required'),
   description: z.string().optional(),
   channelType: z.string() as z.ZodType<ChannelType>,
   overrideParameters: z.string().optional(),
-  overrideHeaders: z.array(
-    z.object({
-      key: z.string(),
-      value: z.string(),
-    })
-  ).optional(),
-})
-export type CreateChannelOverrideTemplateInput = z.infer<typeof createChannelOverrideTemplateInputSchema>
+  overrideHeaders: z
+    .array(
+      z.object({
+        key: z.string(),
+        value: z.string(),
+      })
+    )
+    .optional(),
+});
+export type CreateChannelOverrideTemplateInput = z.infer<typeof createChannelOverrideTemplateInputSchema>;
 
 export const updateChannelOverrideTemplateInputSchema = z.object({
   name: z.string().min(1, 'Template name is required').optional(),
@@ -58,28 +60,30 @@ export const updateChannelOverrideTemplateInputSchema = z.object({
   clearDescription: z.boolean().optional(),
   channelType: z.string().optional() as z.ZodType<ChannelType | undefined>,
   overrideParameters: z.string().optional(),
-  overrideHeaders: z.array(
-    z.object({
-      key: z.string(),
-      value: z.string(),
-    })
-  ).optional(),
-})
-export type UpdateChannelOverrideTemplateInput = z.infer<typeof updateChannelOverrideTemplateInputSchema>
+  overrideHeaders: z
+    .array(
+      z.object({
+        key: z.string(),
+        value: z.string(),
+      })
+    )
+    .optional(),
+});
+export type UpdateChannelOverrideTemplateInput = z.infer<typeof updateChannelOverrideTemplateInputSchema>;
 
 export const applyChannelOverrideTemplateInputSchema = z.object({
   templateID: z.string(),
   channelIDs: z.array(z.string()).min(1, 'At least one channel is required'),
   mode: z.enum(['MERGE']).optional(),
-})
-export type ApplyChannelOverrideTemplateInput = z.infer<typeof applyChannelOverrideTemplateInputSchema>
+});
+export type ApplyChannelOverrideTemplateInput = z.infer<typeof applyChannelOverrideTemplateInputSchema>;
 
 export const applyChannelOverrideTemplatePayloadSchema = z.object({
   success: z.boolean(),
   updated: z.number(),
   channels: z.array(z.any()), // Channel schema is complex, just mark as any here
-})
-export type ApplyChannelOverrideTemplatePayload = z.infer<typeof applyChannelOverrideTemplatePayloadSchema>
+});
+export type ApplyChannelOverrideTemplatePayload = z.infer<typeof applyChannelOverrideTemplatePayloadSchema>;
 
 // GraphQL Fragments
 const TEMPLATE_FRAGMENT = `
@@ -97,7 +101,7 @@ const TEMPLATE_FRAGMENT = `
       value
     }
   }
-`
+`;
 
 // GraphQL Queries
 const QUERY_CHANNEL_OVERRIDE_TEMPLATES = `
@@ -119,7 +123,7 @@ const QUERY_CHANNEL_OVERRIDE_TEMPLATES = `
       totalCount
     }
   }
-`
+`;
 
 // GraphQL Mutations
 const CREATE_CHANNEL_OVERRIDE_TEMPLATE = `
@@ -129,7 +133,7 @@ const CREATE_CHANNEL_OVERRIDE_TEMPLATE = `
       ...TemplateFields
     }
   }
-`
+`;
 
 const UPDATE_CHANNEL_OVERRIDE_TEMPLATE = `
   ${TEMPLATE_FRAGMENT}
@@ -138,13 +142,13 @@ const UPDATE_CHANNEL_OVERRIDE_TEMPLATE = `
       ...TemplateFields
     }
   }
-`
+`;
 
 const DELETE_CHANNEL_OVERRIDE_TEMPLATE = `
   mutation DeleteChannelOverrideTemplate($id: ID!) {
     deleteChannelOverrideTemplate(id: $id)
   }
-`
+`;
 
 const APPLY_CHANNEL_OVERRIDE_TEMPLATE = `
   mutation ApplyChannelOverrideTemplate($input: ApplyChannelOverrideTemplateInput!) {
@@ -156,23 +160,23 @@ const APPLY_CHANNEL_OVERRIDE_TEMPLATE = `
       }
     }
   }
-`
+`;
 
 // React Query Hooks
 
 export function useChannelOverrideTemplates(
   variables?: {
-    channelType?: ChannelType
-    search?: string
-    first?: number
-    after?: string
+    channelType?: ChannelType;
+    search?: string;
+    first?: number;
+    after?: string;
   },
   options?: {
-    enabled?: boolean
+    enabled?: boolean;
   }
 ) {
-  const { handleError } = useErrorHandler()
-  const { t } = useTranslation()
+  const { handleError } = useErrorHandler();
+  const { t } = useTranslation();
 
   return useQuery({
     enabled: options?.enabled !== false,
@@ -182,100 +186,96 @@ export function useChannelOverrideTemplates(
         const data = await graphqlRequest<{ queryChannelOverrideTemplates: ChannelOverrideTemplateConnection }>(
           QUERY_CHANNEL_OVERRIDE_TEMPLATES,
           { input: variables }
-        )
-        return channelOverrideTemplateConnectionSchema.parse(data?.queryChannelOverrideTemplates)
+        );
+        return channelOverrideTemplateConnectionSchema.parse(data?.queryChannelOverrideTemplates);
       } catch (error) {
-        handleError(error, t('channels.templates.errors.fetchList'))
-        throw error
+        handleError(error, t('channels.templates.errors.fetchList'));
+        throw error;
       }
     },
-  })
+  });
 }
 
 export function useCreateChannelOverrideTemplate() {
-  const queryClient = useQueryClient()
-  const { t } = useTranslation()
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
   return useMutation({
     mutationFn: async (input: CreateChannelOverrideTemplateInput) => {
-      const data = await graphqlRequest<{ createChannelOverrideTemplate: ChannelOverrideTemplate }>(
-        CREATE_CHANNEL_OVERRIDE_TEMPLATE,
-        { input }
-      )
-      return channelOverrideTemplateSchema.parse(data.createChannelOverrideTemplate)
+      const data = await graphqlRequest<{ createChannelOverrideTemplate: ChannelOverrideTemplate }>(CREATE_CHANNEL_OVERRIDE_TEMPLATE, {
+        input,
+      });
+      return channelOverrideTemplateSchema.parse(data.createChannelOverrideTemplate);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['channelOverrideTemplates'] })
-      toast.success(t('channels.templates.messages.createSuccess'))
+      queryClient.invalidateQueries({ queryKey: ['channelOverrideTemplates'] });
+      toast.success(t('channels.templates.messages.createSuccess'));
     },
     onError: (error) => {
-      toast.error(t('channels.templates.messages.createError', { error: error.message }))
+      toast.error(t('channels.templates.messages.createError', { error: error.message }));
     },
-  })
+  });
 }
 
 export function useUpdateChannelOverrideTemplate() {
-  const queryClient = useQueryClient()
-  const { t } = useTranslation()
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
   return useMutation({
     mutationFn: async ({ id, input }: { id: string; input: UpdateChannelOverrideTemplateInput }) => {
-      const data = await graphqlRequest<{ updateChannelOverrideTemplate: ChannelOverrideTemplate }>(
-        UPDATE_CHANNEL_OVERRIDE_TEMPLATE,
-        { id, input }
-      )
-      return channelOverrideTemplateSchema.parse(data.updateChannelOverrideTemplate)
+      const data = await graphqlRequest<{ updateChannelOverrideTemplate: ChannelOverrideTemplate }>(UPDATE_CHANNEL_OVERRIDE_TEMPLATE, {
+        id,
+        input,
+      });
+      return channelOverrideTemplateSchema.parse(data.updateChannelOverrideTemplate);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['channelOverrideTemplates'] })
-      toast.success(t('channels.templates.messages.updateSuccess'))
+      queryClient.invalidateQueries({ queryKey: ['channelOverrideTemplates'] });
+      toast.success(t('channels.templates.messages.updateSuccess'));
     },
     onError: (error) => {
-      toast.error(t('channels.templates.messages.updateError', { error: error.message }))
+      toast.error(t('channels.templates.messages.updateError', { error: error.message }));
     },
-  })
+  });
 }
 
 export function useDeleteChannelOverrideTemplate() {
-  const queryClient = useQueryClient()
-  const { t } = useTranslation()
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const data = await graphqlRequest<{ deleteChannelOverrideTemplate: boolean }>(
-        DELETE_CHANNEL_OVERRIDE_TEMPLATE,
-        { id }
-      )
-      return data.deleteChannelOverrideTemplate
+      const data = await graphqlRequest<{ deleteChannelOverrideTemplate: boolean }>(DELETE_CHANNEL_OVERRIDE_TEMPLATE, { id });
+      return data.deleteChannelOverrideTemplate;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['channelOverrideTemplates'] })
-      toast.success(t('channels.templates.messages.deleteSuccess'))
+      queryClient.invalidateQueries({ queryKey: ['channelOverrideTemplates'] });
+      toast.success(t('channels.templates.messages.deleteSuccess'));
     },
     onError: (error) => {
-      toast.error(t('channels.templates.messages.deleteError', { error: error.message }))
+      toast.error(t('channels.templates.messages.deleteError', { error: error.message }));
     },
-  })
+  });
 }
 
 export function useApplyChannelOverrideTemplate() {
-  const queryClient = useQueryClient()
-  const { t } = useTranslation()
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
   return useMutation({
     mutationFn: async (input: ApplyChannelOverrideTemplateInput) => {
       const data = await graphqlRequest<{ applyChannelOverrideTemplate: ApplyChannelOverrideTemplatePayload }>(
         APPLY_CHANNEL_OVERRIDE_TEMPLATE,
         { input }
-      )
-      return applyChannelOverrideTemplatePayloadSchema.parse(data.applyChannelOverrideTemplate)
+      );
+      return applyChannelOverrideTemplatePayloadSchema.parse(data.applyChannelOverrideTemplate);
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['channels'] })
-      toast.success(t('channels.templates.messages.applySuccess', { count: data.updated }))
+      queryClient.invalidateQueries({ queryKey: ['channels'] });
+      toast.success(t('channels.templates.messages.applySuccess', { count: data.updated }));
     },
     onError: (error) => {
-      toast.error(t('channels.templates.messages.applyError', { error: error.message }))
+      toast.error(t('channels.templates.messages.applyError', { error: error.message }));
     },
-  })
+  });
 }

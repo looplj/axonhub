@@ -1,37 +1,32 @@
-import { DotsHorizontalIcon } from '@radix-ui/react-icons'
-import { Row } from '@tanstack/react-table'
-import {
-  IconEdit,
-  IconArchive,
-  IconTrash,
-  IconNote,
-} from '@tabler/icons-react'
-import { useTranslation } from 'react-i18next'
-import { usePermissions } from '@/hooks/usePermissions'
-import { Button } from '@/components/ui/button'
+import { DotsHorizontalIcon } from '@radix-ui/react-icons';
+import { Row } from '@tanstack/react-table';
+import { IconEdit, IconArchive, IconTrash, IconNote } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
+import { usePermissions } from '@/hooks/usePermissions';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { PermissionGuard } from '@/components/permission-guard'
-import { useModels } from '../context/models-context'
-import { Model } from '../data/schema'
+} from '@/components/ui/dropdown-menu';
+import { PermissionGuard } from '@/components/permission-guard';
+import { useModels } from '../context/models-context';
+import { Model } from '../data/schema';
 
 interface DataTableRowActionsProps {
-  row: Row<Model>
+  row: Row<Model>;
 }
 
 export function DataTableRowActions({ row }: DataTableRowActionsProps) {
-  const { t } = useTranslation()
-  const { setOpen, setCurrentRow } = useModels()
-  const { channelPermissions } = usePermissions()
-  const model = row.original
+  const { t } = useTranslation();
+  const { setOpen, setCurrentRow } = useModels();
+  const { channelPermissions } = usePermissions();
+  const model = row.original;
 
   if (!channelPermissions.canWrite) {
-    return null
+    return null;
   }
 
   return (
@@ -46,8 +41,8 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         <PermissionGuard requiredScope='write_channels'>
           <DropdownMenuItem
             onClick={() => {
-              setCurrentRow(row.original)
-              setOpen('edit')
+              setCurrentRow(row.original);
+              setOpen('edit');
             }}
           >
             <IconEdit size={16} className='mr-2' />
@@ -58,8 +53,8 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         <PermissionGuard requiredScope='write_channels'>
           <DropdownMenuItem
             onClick={() => {
-              setCurrentRow(row.original)
-              setOpen('association')
+              setCurrentRow(row.original);
+              setOpen('association');
             }}
           >
             <IconNote size={16} className='mr-2' />
@@ -75,8 +70,8 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             hasPermission && model.status !== 'archived' ? (
               <DropdownMenuItem
                 onClick={() => {
-                  setCurrentRow(row.original)
-                  setOpen('archive')
+                  setCurrentRow(row.original);
+                  setOpen('archive');
                 }}
                 className='text-orange-500!'
               >
@@ -90,8 +85,8 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         <PermissionGuard requiredScope='write_channels'>
           <DropdownMenuItem
             onClick={() => {
-              setCurrentRow(row.original)
-              setOpen('delete')
+              setCurrentRow(row.original);
+              setOpen('delete');
             }}
             className='text-red-500!'
           >
@@ -101,5 +96,5 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         </PermissionGuard>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }

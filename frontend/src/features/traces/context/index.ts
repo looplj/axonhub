@@ -1,1 +1,1 @@
-export { default as TracesProvider, useTracesContext } from './traces-context'
+export { default as TracesProvider, useTracesContext } from './traces-context';

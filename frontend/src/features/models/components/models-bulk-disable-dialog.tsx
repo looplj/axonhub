@@ -1,47 +1,47 @@
-'use client'
+'use client';
 
-import { IconAlertTriangle, IconBan } from '@tabler/icons-react'
-import { useTranslation } from 'react-i18next'
-import { ConfirmDialog } from '@/components/confirm-dialog'
-import { useModels } from '../context/models-context'
-import { useBulkDisableModels } from '../data/models'
+import { IconAlertTriangle, IconBan } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
+import { ConfirmDialog } from '@/components/confirm-dialog';
+import { useModels } from '../context/models-context';
+import { useBulkDisableModels } from '../data/models';
 
 export function ModelsBulkDisableDialog() {
-  const { t } = useTranslation()
-  const { open, setOpen, selectedModels, resetRowSelection, setSelectedModels } = useModels()
-  const bulkDisableModels = useBulkDisableModels()
+  const { t } = useTranslation();
+  const { open, setOpen, selectedModels, resetRowSelection, setSelectedModels } = useModels();
+  const bulkDisableModels = useBulkDisableModels();
 
-  const isDialogOpen = open === 'bulkDisable'
-  const selectedCount = selectedModels.length
+  const isDialogOpen = open === 'bulkDisable';
+  const selectedCount = selectedModels.length;
 
   if (selectedCount === 0 && !isDialogOpen) {
-    return null
+    return null;
   }
 
   const handleConfirm = async () => {
     try {
-      const ids = selectedModels.map((model) => model.id)
+      const ids = selectedModels.map((model) => model.id);
       if (ids.length === 0) {
-        return
+        return;
       }
 
-      await bulkDisableModels.mutateAsync(ids)
-      resetRowSelection()
-      setSelectedModels([])
-      setOpen(null)
+      await bulkDisableModels.mutateAsync(ids);
+      resetRowSelection();
+      setSelectedModels([]);
+      setOpen(null);
     } catch (error) {
-      console.error('Failed to bulk disable models:', error)
+      console.error('Failed to bulk disable models:', error);
     }
-  }
+  };
 
   return (
     <ConfirmDialog
       open={isDialogOpen}
       onOpenChange={(isOpen) => {
         if (!isOpen) {
-          setOpen(null)
+          setOpen(null);
         } else {
-          setOpen('bulkDisable')
+          setOpen('bulkDisable');
         }
       }}
       handleConfirm={handleConfirm}
@@ -64,5 +64,5 @@ export function ModelsBulkDisableDialog() {
         </div>
       </div>
     </ConfirmDialog>
-  )
+  );
 }

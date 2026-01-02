@@ -1,55 +1,55 @@
-import { useEffect, useState, useMemo, useCallback } from 'react'
-import { format } from 'date-fns'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { toc } from '@lobehub/icons'
-import { CalendarIcon } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-import { cn } from '@/lib/utils'
-import { formatNumber } from '@/utils/format-number'
-import { Button } from '@/components/ui/button'
-import { Calendar } from '@/components/ui/calendar'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
-import { AutoComplete } from '@/components/auto-complete'
-import { AutoCompleteSelect } from '@/components/auto-complete-select'
-import { useModels } from '../context/models-context'
-import { DEVELOPER_IDS, DEVELOPER_ICONS } from '../data/constants'
-import { useCreateModel, useUpdateModel } from '../data/models'
-import providersDataRaw from '../data/providers.json'
-import { providersDataSchema, type ProvidersData } from '../data/providers.schema'
-import { CreateModelInput, createModelInputSchema, UpdateModelInput, ModelCard, updateModelInputSchema } from '../data/schema'
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import { format } from 'date-fns';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { toc } from '@lobehub/icons';
+import { CalendarIcon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { cn } from '@/lib/utils';
+import { formatNumber } from '@/utils/format-number';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { AutoComplete } from '@/components/auto-complete';
+import { AutoCompleteSelect } from '@/components/auto-complete-select';
+import { useModels } from '../context/models-context';
+import { DEVELOPER_IDS, DEVELOPER_ICONS } from '../data/constants';
+import { useCreateModel, useUpdateModel } from '../data/models';
+import providersDataRaw from '../data/providers.json';
+import { providersDataSchema, type ProvidersData } from '../data/providers.schema';
+import { CreateModelInput, createModelInputSchema, UpdateModelInput, ModelCard, updateModelInputSchema } from '../data/schema';
 
 function isDeveloper(provider: string) {
-  return DEVELOPER_IDS.includes(provider)
+  return DEVELOPER_IDS.includes(provider);
 }
 
 export function ModelsActionDialog() {
-  const { t } = useTranslation()
-  const { open, setOpen, currentRow } = useModels()
-  const createModel = useCreateModel()
-  const updateModel = useUpdateModel()
-  const [selectedProvider, setSelectedProvider] = useState<string>('')
-  const [developerSearchValue, setDeveloperSearchValue] = useState<string>('')
-  const [modelIdInput, setModelIdInput] = useState<string>('')
-  const [modelIdSearchValue, setModelIdSearchValue] = useState<string>('')
-  const [_selectedModelCard, setSelectedModelCard] = useState<ModelCard>({})
+  const { t } = useTranslation();
+  const { open, setOpen, currentRow } = useModels();
+  const createModel = useCreateModel();
+  const updateModel = useUpdateModel();
+  const [selectedProvider, setSelectedProvider] = useState<string>('');
+  const [developerSearchValue, setDeveloperSearchValue] = useState<string>('');
+  const [modelIdInput, setModelIdInput] = useState<string>('');
+  const [modelIdSearchValue, setModelIdSearchValue] = useState<string>('');
+  const [_selectedModelCard, setSelectedModelCard] = useState<ModelCard>({});
 
   // 用于解决 Dialog 内 Popover 无法滚动的问题
-  const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null)
+  const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null);
 
-  const isEdit = open === 'edit'
-  const isOpen = open === 'create' || open === 'edit'
+  const isEdit = open === 'edit';
+  const isOpen = open === 'create' || open === 'edit';
 
   // Parse and validate providers data with Zod schema
   const providersData = useMemo((): ProvidersData => {
-    return providersDataSchema.parse(providersDataRaw)
-  }, [])
+    return providersDataSchema.parse(providersDataRaw);
+  }, []);
 
   const providers = useMemo(() => {
     return Object.entries(providersData.providers)
@@ -58,28 +58,28 @@ export function ModelsActionDialog() {
         id: key,
         name: provider.display_name || provider.name,
         models: provider.models || [],
-      }))
-  }, [providersData])
+      }));
+  }, [providersData]);
 
   const selectedProviderModels = useMemo(() => {
-    if (!selectedProvider) return []
-    const provider = providers.find((p) => p.id === selectedProvider)
-    return provider?.models || []
-  }, [selectedProvider, providers])
+    if (!selectedProvider) return [];
+    const provider = providers.find((p) => p.id === selectedProvider);
+    return provider?.models || [];
+  }, [selectedProvider, providers]);
 
   const developerOptions = useMemo(() => {
     return DEVELOPER_IDS.map((id) => ({
       value: id,
       label: id,
-    }))
-  }, [])
+    }));
+  }, []);
 
   const modelIdOptions = useMemo(() => {
     return selectedProviderModels.map((m) => ({
       value: m.id,
       label: m.id,
-    }))
-  }, [selectedProviderModels])
+    }));
+  }, [selectedProviderModels]);
 
   const iconOptions = useMemo(() => {
     return (
@@ -92,8 +92,8 @@ export function ModelsActionDialog() {
           // @ts-ignore
           label: value.id,
         }))
-    )
-  }, [])
+    );
+  }, []);
 
   const form = useForm<CreateModelInput>({
     resolver: zodResolver(isEdit ? updateModelInputSchema : createModelInputSchema) as any,
@@ -108,7 +108,7 @@ export function ModelsActionDialog() {
       settings: { associations: [] },
       remark: '',
     },
-  })
+  });
 
   useEffect(() => {
     if (isEdit && currentRow) {
@@ -122,12 +122,12 @@ export function ModelsActionDialog() {
         modelCard: currentRow.modelCard,
         settings: currentRow.settings,
         remark: currentRow.remark || '',
-      })
-      setSelectedProvider(currentRow.developer)
-      setDeveloperSearchValue(currentRow.developer)
-      setModelIdInput(currentRow.modelID)
-      setModelIdSearchValue(currentRow.modelID)
-      setSelectedModelCard(currentRow.modelCard || {})
+      });
+      setSelectedProvider(currentRow.developer);
+      setDeveloperSearchValue(currentRow.developer);
+      setModelIdInput(currentRow.modelID);
+      setModelIdSearchValue(currentRow.modelID);
+      setSelectedModelCard(currentRow.modelCard || {});
     } else if (!isEdit) {
       form.reset({
         developer: '',
@@ -139,44 +139,44 @@ export function ModelsActionDialog() {
         modelCard: {},
         settings: { associations: [] },
         remark: '',
-      })
-      setSelectedProvider('')
-      setDeveloperSearchValue('')
-      setModelIdInput('')
-      setModelIdSearchValue('')
-      setSelectedModelCard({})
+      });
+      setSelectedProvider('');
+      setDeveloperSearchValue('');
+      setModelIdInput('');
+      setModelIdSearchValue('');
+      setSelectedModelCard({});
     }
-  }, [isEdit, currentRow, form, isOpen])
+  }, [isEdit, currentRow, form, isOpen]);
 
   const handleProviderChange = useCallback(
     (providerId: string) => {
-      setSelectedProvider(providerId)
-      setDeveloperSearchValue(providerId)
-      form.setValue('developer', providerId)
-      const icon = DEVELOPER_ICONS[providerId] || providerId
-      form.setValue('icon', icon)
-      setModelIdInput('')
-      setModelIdSearchValue('')
-      form.setValue('modelID', '')
-      form.setValue('name', '')
-      form.setValue('group', '')
-      form.setValue('modelCard', {})
-      setSelectedModelCard({})
+      setSelectedProvider(providerId);
+      setDeveloperSearchValue(providerId);
+      form.setValue('developer', providerId);
+      const icon = DEVELOPER_ICONS[providerId] || providerId;
+      form.setValue('icon', icon);
+      setModelIdInput('');
+      setModelIdSearchValue('');
+      form.setValue('modelID', '');
+      form.setValue('name', '');
+      form.setValue('group', '');
+      form.setValue('modelCard', {});
+      setSelectedModelCard({});
     },
     [form]
-  )
+  );
 
   const handleModelIdChange = useCallback(
     (modelId: string) => {
-      setModelIdInput(modelId)
-      setModelIdSearchValue(modelId)
-      form.setValue('modelID', modelId)
+      setModelIdInput(modelId);
+      setModelIdSearchValue(modelId);
+      form.setValue('modelID', modelId);
 
-      const selectedModel = selectedProviderModels.find((m) => m.id === modelId)
+      const selectedModel = selectedProviderModels.find((m) => m.id === modelId);
 
       if (selectedModel) {
-        form.setValue('name', selectedModel.display_name || selectedModel.name || '')
-        form.setValue('group', selectedModel.family || selectedProvider)
+        form.setValue('name', selectedModel.display_name || selectedModel.name || '');
+        form.setValue('group', selectedModel.family || selectedProvider);
         const modelCard: ModelCard = {
           reasoning: {
             supported: selectedModel.reasoning?.supported || false,
@@ -202,16 +202,16 @@ export function ModelsActionDialog() {
           knowledge: selectedModel.knowledge,
           releaseDate: selectedModel.release_date,
           lastUpdated: selectedModel.last_updated,
-        }
-        form.setValue('modelCard', modelCard)
-        setSelectedModelCard(modelCard)
+        };
+        form.setValue('modelCard', modelCard);
+        setSelectedModelCard(modelCard);
       } else {
-        const currentModelCard = form.getValues('modelCard')
-        setSelectedModelCard(currentModelCard || {})
+        const currentModelCard = form.getValues('modelCard');
+        setSelectedModelCard(currentModelCard || {});
       }
     },
     [selectedProviderModels, selectedProvider, form]
-  )
+  );
 
   const onSubmit = async (data: CreateModelInput) => {
     try {
@@ -223,26 +223,26 @@ export function ModelsActionDialog() {
           modelCard: data.modelCard,
           settings: data.settings,
           remark: data.remark,
-        }
-        await updateModel.mutateAsync({ id: currentRow.id, input: updateData })
+        };
+        await updateModel.mutateAsync({ id: currentRow.id, input: updateData });
       } else {
-        await createModel.mutateAsync(data)
+        await createModel.mutateAsync(data);
       }
-      handleClose()
+      handleClose();
     } catch (_error) {
       // Error is handled by mutation
     }
-  }
+  };
 
   const handleClose = useCallback(() => {
-    setOpen(null)
-    form.reset()
-    setSelectedProvider('')
-    setDeveloperSearchValue('')
-    setModelIdInput('')
-    setModelIdSearchValue('')
-    setSelectedModelCard({})
-  }, [form, setOpen])
+    setOpen(null);
+    form.reset();
+    setSelectedProvider('');
+    setDeveloperSearchValue('');
+    setModelIdInput('');
+    setModelIdSearchValue('');
+    setSelectedModelCard({});
+  }, [form, setOpen]);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -495,7 +495,7 @@ export function ModelsActionDialog() {
                         control={form.control}
                         name='modelCard.modalities.input'
                         render={({ field }) => {
-                          const modalityOptions = ['text', 'image', 'audio', 'video']
+                          const modalityOptions = ['text', 'image', 'audio', 'video'];
                           return (
                             <FormItem>
                               <FormLabel className='text-xs'>{t('models.modelCard.input')}</FormLabel>
@@ -506,11 +506,11 @@ export function ModelsActionDialog() {
                                       <Checkbox
                                         checked={field.value?.includes(modality) || false}
                                         onCheckedChange={(checked) => {
-                                          const current = field.value || []
+                                          const current = field.value || [];
                                           if (checked) {
-                                            field.onChange([...current, modality])
+                                            field.onChange([...current, modality]);
                                           } else {
-                                            field.onChange(current.filter((v) => v !== modality))
+                                            field.onChange(current.filter((v) => v !== modality));
                                           }
                                         }}
                                       />
@@ -521,14 +521,14 @@ export function ModelsActionDialog() {
                               </div>
                               <FormMessage />
                             </FormItem>
-                          )
+                          );
                         }}
                       />
                       <FormField
                         control={form.control}
                         name='modelCard.modalities.output'
                         render={({ field }) => {
-                          const modalityOptions = ['text', 'image', 'audio', 'video']
+                          const modalityOptions = ['text', 'image', 'audio', 'video'];
                           return (
                             <FormItem>
                               <FormLabel className='text-xs'>{t('models.modelCard.output')}</FormLabel>
@@ -539,11 +539,11 @@ export function ModelsActionDialog() {
                                       <Checkbox
                                         checked={field.value?.includes(modality) || false}
                                         onCheckedChange={(checked) => {
-                                          const current = field.value || []
+                                          const current = field.value || [];
                                           if (checked) {
-                                            field.onChange([...current, modality])
+                                            field.onChange([...current, modality]);
                                           } else {
-                                            field.onChange(current.filter((v) => v !== modality))
+                                            field.onChange(current.filter((v) => v !== modality));
                                           }
                                         }}
                                       />
@@ -554,7 +554,7 @@ export function ModelsActionDialog() {
                               </div>
                               <FormMessage />
                             </FormItem>
-                          )
+                          );
                         }}
                       />
                     </div>
@@ -672,7 +672,7 @@ export function ModelsActionDialog() {
                               )}
                               <FormMessage />
                             </FormItem>
-                          )
+                          );
                         }}
                       />
                       <FormField
@@ -698,7 +698,7 @@ export function ModelsActionDialog() {
                               )}
                               <FormMessage />
                             </FormItem>
-                          )
+                          );
                         }}
                       />
                     </div>
@@ -824,5 +824,5 @@ export function ModelsActionDialog() {
         </Form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

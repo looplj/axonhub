@@ -1,40 +1,25 @@
-'use client'
+'use client';
 
-import React from 'react'
-import { z } from 'zod'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { useProjectsContext } from '../context/projects-context'
-import { useCreateProject, useUpdateProject, useArchiveProject, useActivateProject } from '../data/projects'
-import { createProjectInputSchema, updateProjectInputSchema } from '../data/schema'
-import { ConfirmDialog } from '@/components/confirm-dialog'
+import React from 'react';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { ConfirmDialog } from '@/components/confirm-dialog';
+import { useProjectsContext } from '../context/projects-context';
+import { useCreateProject, useUpdateProject, useArchiveProject, useActivateProject } from '../data/projects';
+import { createProjectInputSchema, updateProjectInputSchema } from '../data/schema';
 
 // Create Project Dialog
 export function CreateProjectDialog() {
-  const { t } = useTranslation()
-  const { isCreateDialogOpen, setIsCreateDialogOpen } = useProjectsContext()
-  const createProject = useCreateProject()
+  const { t } = useTranslation();
+  const { isCreateDialogOpen, setIsCreateDialogOpen } = useProjectsContext();
+  const createProject = useCreateProject();
 
   const form = useForm<z.infer<typeof createProjectInputSchema>>({
     resolver: zodResolver(createProjectInputSchema),
@@ -42,31 +27,29 @@ export function CreateProjectDialog() {
       name: '',
       description: '',
     },
-  })
+  });
 
   const onSubmit = async (values: z.infer<typeof createProjectInputSchema>) => {
     try {
-      await createProject.mutateAsync(values)
-      setIsCreateDialogOpen(false)
-      form.reset()
+      await createProject.mutateAsync(values);
+      setIsCreateDialogOpen(false);
+      form.reset();
     } catch (error) {
       // Error is handled by the mutation
     }
-  }
+  };
 
   const handleClose = () => {
-    setIsCreateDialogOpen(false)
-    form.reset()
-  }
+    setIsCreateDialogOpen(false);
+    form.reset();
+  };
 
   return (
     <Dialog open={isCreateDialogOpen} onOpenChange={handleClose}>
       <DialogContent className='max-w-2xl'>
         <DialogHeader>
           <DialogTitle>{t('projects.dialogs.create.title')}</DialogTitle>
-          <DialogDescription>
-            {t('projects.dialogs.create.description')}
-          </DialogDescription>
+          <DialogDescription>{t('projects.dialogs.create.description')}</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
@@ -77,22 +60,16 @@ export function CreateProjectDialog() {
                 <FormItem>
                   <FormLabel>{t('projects.dialogs.fields.name.label')}</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder={t('projects.dialogs.fields.name.placeholder')} 
-                      aria-invalid={!!fieldState.error}
-                      {...field} 
-                    />
+                    <Input placeholder={t('projects.dialogs.fields.name.placeholder')} aria-invalid={!!fieldState.error} {...field} />
                   </FormControl>
-                  <FormDescription>
-                    {t('projects.dialogs.fields.name.description')}
-                  </FormDescription>
+                  <FormDescription>{t('projects.dialogs.fields.name.description')}</FormDescription>
                   <div className='min-h-[1.25rem]'>
                     <FormMessage />
                   </div>
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name='description'
@@ -100,22 +77,20 @@ export function CreateProjectDialog() {
                 <FormItem>
                   <FormLabel>{t('projects.dialogs.fields.description.label')}</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder={t('projects.dialogs.fields.description.placeholder')} 
+                    <Textarea
+                      placeholder={t('projects.dialogs.fields.description.placeholder')}
                       aria-invalid={!!fieldState.error}
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
-                  <FormDescription>
-                    {t('projects.dialogs.fields.description.description')}
-                  </FormDescription>
+                  <FormDescription>{t('projects.dialogs.fields.description.description')}</FormDescription>
                   <div className='min-h-[1.25rem]'>
                     <FormMessage />
                   </div>
                 </FormItem>
               )}
             />
-            
+
             <DialogFooter>
               <Button type='button' variant='outline' onClick={handleClose}>
                 {t('common.buttons.cancel')}
@@ -128,14 +103,14 @@ export function CreateProjectDialog() {
         </Form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
 // Edit Project Dialog
 export function EditProjectDialog() {
-  const { t } = useTranslation()
-  const { editingProject, setEditingProject } = useProjectsContext()
-  const updateProject = useUpdateProject()
+  const { t } = useTranslation();
+  const { editingProject, setEditingProject } = useProjectsContext();
+  const updateProject = useUpdateProject();
 
   const form = useForm<z.infer<typeof updateProjectInputSchema>>({
     resolver: zodResolver(updateProjectInputSchema),
@@ -143,43 +118,41 @@ export function EditProjectDialog() {
       name: '',
       description: '',
     },
-  })
+  });
 
   React.useEffect(() => {
     if (editingProject) {
       form.reset({
         name: editingProject.name,
         description: editingProject.description || '',
-      })
+      });
     }
-  }, [editingProject, form])
+  }, [editingProject, form]);
 
   const onSubmit = async (values: z.infer<typeof updateProjectInputSchema>) => {
-    if (!editingProject) return
-    
+    if (!editingProject) return;
+
     try {
-      await updateProject.mutateAsync({ id: editingProject.id, input: values })
-      setEditingProject(null)
+      await updateProject.mutateAsync({ id: editingProject.id, input: values });
+      setEditingProject(null);
     } catch (error) {
       // Error is handled by the mutation
     }
-  }
+  };
 
   const handleClose = () => {
-    setEditingProject(null)
-    form.reset()
-  }
+    setEditingProject(null);
+    form.reset();
+  };
 
-  if (!editingProject) return null
+  if (!editingProject) return null;
 
   return (
     <Dialog open={!!editingProject} onOpenChange={handleClose}>
       <DialogContent className='max-w-2xl'>
         <DialogHeader>
           <DialogTitle>{t('projects.dialogs.edit.title')}</DialogTitle>
-          <DialogDescription>
-            {t('projects.dialogs.edit.description')}
-          </DialogDescription>
+          <DialogDescription>{t('projects.dialogs.edit.description')}</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
@@ -190,22 +163,16 @@ export function EditProjectDialog() {
                 <FormItem>
                   <FormLabel>{t('projects.dialogs.fields.name.label')}</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder={t('projects.dialogs.fields.name.placeholder')} 
-                      aria-invalid={!!fieldState.error}
-                      {...field} 
-                    />
+                    <Input placeholder={t('projects.dialogs.fields.name.placeholder')} aria-invalid={!!fieldState.error} {...field} />
                   </FormControl>
-                  <FormDescription>
-                    {t('projects.dialogs.fields.name.description')}
-                  </FormDescription>
+                  <FormDescription>{t('projects.dialogs.fields.name.description')}</FormDescription>
                   <div className='min-h-[1.25rem]'>
                     <FormMessage />
                   </div>
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name='description'
@@ -213,22 +180,20 @@ export function EditProjectDialog() {
                 <FormItem>
                   <FormLabel>{t('projects.dialogs.fields.description.label')}</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder={t('projects.dialogs.fields.description.placeholder')} 
+                    <Textarea
+                      placeholder={t('projects.dialogs.fields.description.placeholder')}
                       aria-invalid={!!fieldState.error}
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
-                  <FormDescription>
-                    {t('projects.dialogs.fields.description.description')}
-                  </FormDescription>
+                  <FormDescription>{t('projects.dialogs.fields.description.description')}</FormDescription>
                   <div className='min-h-[1.25rem]'>
                     <FormMessage />
                   </div>
                 </FormItem>
               )}
             />
-            
+
             <DialogFooter>
               <Button type='button' variant='outline' onClick={handleClose}>
                 {t('common.buttons.cancel')}
@@ -241,25 +206,25 @@ export function EditProjectDialog() {
         </Form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
 // Archive Project Dialog
 export function ArchiveProjectDialog() {
-  const { t } = useTranslation()
-  const { archivingProject, setArchivingProject } = useProjectsContext()
-  const archiveProject = useArchiveProject()
+  const { t } = useTranslation();
+  const { archivingProject, setArchivingProject } = useProjectsContext();
+  const archiveProject = useArchiveProject();
 
   const handleConfirm = async () => {
-    if (!archivingProject) return
-    
+    if (!archivingProject) return;
+
     try {
-      await archiveProject.mutateAsync(archivingProject.id)
-      setArchivingProject(null)
+      await archiveProject.mutateAsync(archivingProject.id);
+      setArchivingProject(null);
     } catch (error) {
       // Error is handled by the mutation
     }
-  }
+  };
 
   return (
     <ConfirmDialog
@@ -273,25 +238,25 @@ export function ArchiveProjectDialog() {
       isLoading={archiveProject.isPending}
       destructive
     />
-  )
+  );
 }
 
 // Activate Project Dialog
 export function ActivateProjectDialog() {
-  const { t } = useTranslation()
-  const { activatingProject, setActivatingProject } = useProjectsContext()
-  const activateProject = useActivateProject()
+  const { t } = useTranslation();
+  const { activatingProject, setActivatingProject } = useProjectsContext();
+  const activateProject = useActivateProject();
 
   const handleConfirm = async () => {
-    if (!activatingProject) return
-    
+    if (!activatingProject) return;
+
     try {
-      await activateProject.mutateAsync(activatingProject.id)
-      setActivatingProject(null)
+      await activateProject.mutateAsync(activatingProject.id);
+      setActivatingProject(null);
     } catch (error) {
       // Error is handled by the mutation
     }
-  }
+  };
 
   return (
     <ConfirmDialog
@@ -304,7 +269,7 @@ export function ActivateProjectDialog() {
       handleConfirm={handleConfirm}
       isLoading={activateProject.isPending}
     />
-  )
+  );
 }
 
 // Combined Dialogs Component
@@ -316,5 +281,5 @@ export function ProjectsDialogs() {
       <ArchiveProjectDialog />
       <ActivateProjectDialog />
     </>
-  )
+  );
 }

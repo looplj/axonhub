@@ -1,46 +1,46 @@
-'use client'
+'use client';
 
-import React, { useState, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useDebounce } from '@/hooks/use-debounce'
-import { usePermissions } from '@/hooks/usePermissions'
-import { usePaginationSearch } from '@/hooks/use-pagination-search'
-import { Header } from '@/components/layout/header'
-import { Main } from '@/components/layout/main'
-import { ProjectsDialogs } from './components/projects-action-dialog'
-import { createColumns } from './components/projects-columns'
-import { ProjectsPrimaryButtons } from './components/projects-primary-buttons'
-import { ProjectsTable } from './components/projects-table'
-import ProjectsProvider from './context/projects-context'
-import { useProjects } from './data/projects'
+import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useDebounce } from '@/hooks/use-debounce';
+import { usePaginationSearch } from '@/hooks/use-pagination-search';
+import { usePermissions } from '@/hooks/usePermissions';
+import { Header } from '@/components/layout/header';
+import { Main } from '@/components/layout/main';
+import { ProjectsDialogs } from './components/projects-action-dialog';
+import { createColumns } from './components/projects-columns';
+import { ProjectsPrimaryButtons } from './components/projects-primary-buttons';
+import { ProjectsTable } from './components/projects-table';
+import ProjectsProvider from './context/projects-context';
+import { useProjects } from './data/projects';
 
 function ProjectsContent() {
-  const { t } = useTranslation()
-  const { projectPermissions } = usePermissions()
+  const { t } = useTranslation();
+  const { projectPermissions } = usePermissions();
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
     defaultPageSize: 20,
     pageSizeStorageKey: 'projects-table-page-size',
-  })
+  });
 
   // Filter states - combined search for name or slug
-  const [searchFilter, setSearchFilter] = useState<string>('')
+  const [searchFilter, setSearchFilter] = useState<string>('');
 
-  const debouncedSearchFilter = useDebounce(searchFilter, 300)
+  const debouncedSearchFilter = useDebounce(searchFilter, 300);
 
   // Memoize columns to prevent infinite re-renders
-  const columns = useMemo(() => createColumns(t, projectPermissions.canWrite), [t, projectPermissions.canWrite])
+  const columns = useMemo(() => createColumns(t, projectPermissions.canWrite), [t, projectPermissions.canWrite]);
 
   // Build where clause for API filtering with OR logic
   const whereClause = (() => {
     if (!debouncedSearchFilter) {
-      return undefined
+      return undefined;
     }
 
     // Use OR logic to search in both name and slug fields
     return {
       or: [{ nameContainsFold: debouncedSearchFilter }],
-    }
-  })()
+    };
+  })();
 
   const {
     data,
@@ -49,28 +49,28 @@ function ProjectsContent() {
   } = useProjects({
     ...paginationArgs,
     where: whereClause,
-  })
+  });
 
   // Reset cursor when filters change
   React.useEffect(() => {
-    resetCursor()
-  }, [debouncedSearchFilter, resetCursor])
+    resetCursor();
+  }, [debouncedSearchFilter, resetCursor]);
 
   const handleNextPage = () => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
-      setCursors(data.pageInfo.startCursor ?? undefined, data.pageInfo.endCursor ?? undefined, 'after')
+      setCursors(data.pageInfo.startCursor ?? undefined, data.pageInfo.endCursor ?? undefined, 'after');
     }
-  }
+  };
 
   const handlePreviousPage = () => {
     if (data?.pageInfo?.hasPreviousPage) {
-      setCursors(data.pageInfo.startCursor ?? undefined, data.pageInfo.endCursor ?? undefined, 'before')
+      setCursors(data.pageInfo.startCursor ?? undefined, data.pageInfo.endCursor ?? undefined, 'before');
     }
-  }
+  };
 
   const handlePageSizeChange = (newPageSize: number) => {
-    setPageSize(newPageSize)
-  }
+    setPageSize(newPageSize);
+  };
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
@@ -88,11 +88,11 @@ function ProjectsContent() {
         onSearchFilterChange={setSearchFilter}
       />
     </div>
-  )
+  );
 }
 
 export default function ProjectsPage() {
-  const { t } = useTranslation()
+  const { t } = useTranslation();
 
   return (
     <ProjectsProvider>
@@ -110,5 +110,5 @@ export default function ProjectsPage() {
       </Main>
       <ProjectsDialogs />
     </ProjectsProvider>
-  )
+  );
 }

@@ -1,12 +1,10 @@
-import { DataTablePagination as CommonDataTablePagination } from '@/components/data-table-pagination'
-import { Table } from '@tanstack/react-table'
+import { Table } from '@tanstack/react-table';
+import { DataTablePagination as CommonDataTablePagination } from '@/components/data-table-pagination';
 
 interface DataTablePaginationProps<TData> {
-  table: Table<TData>
+  table: Table<TData>;
 }
 
-export function DataTablePagination<TData>({
-  table,
-}: DataTablePaginationProps<TData>) {
-  return <CommonDataTablePagination table={table} />
+export function DataTablePagination<TData>({ table }: DataTablePaginationProps<TData>) {
+  return <CommonDataTablePagination table={table} />;
 }

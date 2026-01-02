@@ -1,9 +1,6 @@
-import { toast } from 'sonner'
+import { toast } from 'sonner';
 
-export function showSubmittedData(
-  data: unknown,
-  title: string = 'You submitted the following values:'
-) {
+export function showSubmittedData(data: unknown, title: string = 'You submitted the following values:') {
   toast.message(title, {
     description: (
       // w-[340px]
@@ -11,5 +8,5 @@ export function showSubmittedData(
         <code className='text-white'>{JSON.stringify(data, null, 2)}</code>
       </pre>
     ),
-  })
+  });
 }

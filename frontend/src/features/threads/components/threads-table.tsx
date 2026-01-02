@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { DateRange } from 'react-day-picker'
+import { useState } from 'react';
 import {
   ColumnFiltersState,
   RowData,
@@ -12,49 +11,43 @@ import {
   getFilteredRowModel,
   getSortedRowModel,
   useReactTable,
-} from '@tanstack/react-table'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { ServerSidePagination } from '@/components/server-side-pagination'
-import { useTranslation } from 'react-i18next'
-import { Thread, ThreadConnection } from '../data/schema'
-import { useThreadsColumns } from './threads-columns'
-import { ThreadsTableToolbar } from './data-table-toolbar'
-import { motion, AnimatePresence } from 'framer-motion'
-import { useAnimatedList } from '@/hooks/useAnimatedList'
+} from '@tanstack/react-table';
+import { motion, AnimatePresence } from 'framer-motion';
+import { DateRange } from 'react-day-picker';
+import { useTranslation } from 'react-i18next';
+import { useAnimatedList } from '@/hooks/useAnimatedList';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ServerSidePagination } from '@/components/server-side-pagination';
+import { Thread, ThreadConnection } from '../data/schema';
+import { ThreadsTableToolbar } from './data-table-toolbar';
+import { useThreadsColumns } from './threads-columns';
 
-const MotionTableRow = motion(TableRow)
+const MotionTableRow = motion(TableRow);
 
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData extends RowData, TValue> {
-    className: string
+    className: string;
   }
 }
 
 interface ThreadsTableProps {
-  data: Thread[]
-  loading?: boolean
-  pageInfo?: ThreadConnection['pageInfo']
-  pageSize: number
-  totalCount?: number
-  dateRange?: DateRange
-  threadIdFilter: string
-  onNextPage: () => void
-  onPreviousPage: () => void
-  onPageSizeChange: (pageSize: number) => void
-  onDateRangeChange: (range: DateRange | undefined) => void
-  onThreadIdFilterChange: (threadId: string) => void
-  onRefresh: () => void
-  showRefresh: boolean
-  autoRefresh?: boolean
-  onAutoRefreshChange?: (enabled: boolean) => void
+  data: Thread[];
+  loading?: boolean;
+  pageInfo?: ThreadConnection['pageInfo'];
+  pageSize: number;
+  totalCount?: number;
+  dateRange?: DateRange;
+  threadIdFilter: string;
+  onNextPage: () => void;
+  onPreviousPage: () => void;
+  onPageSizeChange: (pageSize: number) => void;
+  onDateRangeChange: (range: DateRange | undefined) => void;
+  onThreadIdFilterChange: (threadId: string) => void;
+  onRefresh: () => void;
+  showRefresh: boolean;
+  autoRefresh?: boolean;
+  onAutoRefreshChange?: (enabled: boolean) => void;
 }
 
 export function ThreadsTable({
@@ -75,14 +68,14 @@ export function ThreadsTable({
   autoRefresh = false,
   onAutoRefreshChange,
 }: ThreadsTableProps) {
-  const { t } = useTranslation()
-  const threadsColumns = useThreadsColumns()
-  const [sorting, setSorting] = useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
-  const [rowSelection, setRowSelection] = useState({})
+  const { t } = useTranslation();
+  const threadsColumns = useThreadsColumns();
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [rowSelection, setRowSelection] = useState({});
 
-  const displayedData = useAnimatedList(data, autoRefresh)
+  const displayedData = useAnimatedList(data, autoRefresh);
 
   const table = useReactTable({
     data: displayedData,
@@ -106,23 +99,23 @@ export function ThreadsTable({
     getFacetedUniqueValues: getFacetedUniqueValues(),
     manualPagination: true,
     manualFiltering: true,
-  })
+  });
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
-      <ThreadsTableToolbar 
-        table={table} 
+      <ThreadsTableToolbar
+        table={table}
         dateRange={dateRange}
         onDateRangeChange={onDateRangeChange}
         threadIdFilter={threadIdFilter}
         onThreadIdFilterChange={onThreadIdFilterChange}
-        onRefresh={onRefresh} 
+        onRefresh={onRefresh}
         showRefresh={showRefresh}
         autoRefresh={autoRefresh}
         onAutoRefreshChange={onAutoRefreshChange}
       />
-      <div className='mt-4 flex-1 overflow-auto rounded-2xl shadow-soft border border-[var(--table-border)] relative'>
-        <Table data-testid='threads-table' className='bg-[var(--table-background)] rounded-2xl border-separate border-spacing-0'>
+      <div className='shadow-soft relative mt-4 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
+        <Table data-testid='threads-table' className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className='group/row border-0'>
@@ -130,25 +123,23 @@ export function ThreadsTable({
                   <TableHead
                     key={header.id}
                     colSpan={header.colSpan}
-                    className={`${header.column.columnDef.meta?.className ?? ''} text-xs font-semibold text-muted-foreground uppercase tracking-wider border-0`}
+                    className={`${header.column.columnDef.meta?.className ?? ''} text-muted-foreground border-0 text-xs font-semibold tracking-wider uppercase`}
                   >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
+                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody className='p-2 space-y-1 !bg-[var(--table-background)]'>
+          <TableBody className='space-y-1 !bg-[var(--table-background)] p-2'>
             {loading ? (
               <TableRow className='border-0 !bg-[var(--table-background)]'>
-                <TableCell colSpan={threadsColumns.length} className='h-24 text-center border-0 !bg-[var(--table-background)]'>
+                <TableCell colSpan={threadsColumns.length} className='h-24 border-0 !bg-[var(--table-background)] text-center'>
                   {t('common.loading')}
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows?.length ? (
-              <AnimatePresence initial={false} mode="popLayout">
+              <AnimatePresence initial={false} mode='popLayout'>
                 {table.getRowModel().rows.map((row) => (
                   <MotionTableRow
                     key={row.id}
@@ -156,18 +147,21 @@ export function ThreadsTable({
                     initial={{ opacity: 0, y: -20, height: 0 }}
                     animate={{ opacity: 1, y: 0, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
-                    transition={{ 
-                      type: 'spring', 
-                      stiffness: 500, 
-                      damping: 30, 
+                    transition={{
+                      type: 'spring',
+                      stiffness: 500,
+                      damping: 30,
                       mass: 1,
-                      opacity: { duration: 0.2 }
+                      opacity: { duration: 0.2 },
                     }}
                     layout
                     className='group/row hover:bg-muted/50 data-[state=selected]:bg-muted'
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id} className={`${cell.column.columnDef.meta?.className ?? ''} py-3 border-b border-[var(--table-border)] group-last/row:border-0`}>
+                      <TableCell
+                        key={cell.id}
+                        className={`${cell.column.columnDef.meta?.className ?? ''} border-b border-[var(--table-border)] py-3 group-last/row:border-0`}
+                      >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
                     ))}
@@ -176,7 +170,7 @@ export function ThreadsTable({
               </AnimatePresence>
             ) : (
               <TableRow className='!bg-[var(--table-background)]'>
-                <TableCell colSpan={threadsColumns.length} className='h-24 text-center !bg-[var(--table-background)]'>
+                <TableCell colSpan={threadsColumns.length} className='h-24 !bg-[var(--table-background)] text-center'>
                   {t('common.noData')}
                 </TableCell>
               </TableRow>
@@ -197,5 +191,5 @@ export function ThreadsTable({
         />
       </div>
     </div>
-  )
+  );
 }

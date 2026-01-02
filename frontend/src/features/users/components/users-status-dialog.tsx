@@ -1,37 +1,37 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { IconUserCheck, IconUserOff } from '@tabler/icons-react'
-import { toast } from 'sonner'
-import { useTranslation } from 'react-i18next'
-import { ConfirmDialog } from '@/components/confirm-dialog'
-import { User } from '../data/schema'
-import { useUpdateUserStatus } from '../data/users'
+import { useState } from 'react';
+import { IconUserCheck, IconUserOff } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/confirm-dialog';
+import { User } from '../data/schema';
+import { useUpdateUserStatus } from '../data/users';
 
 interface Props {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  currentRow: User
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  currentRow: User;
 }
 
 export function UsersStatusDialog({ open, onOpenChange, currentRow }: Props) {
-  const { t } = useTranslation()
-  const updateUserStatus = useUpdateUserStatus()
-  const isActivated = currentRow.status === 'activated'
-  const newStatus = isActivated ? 'deactivated' : 'activated'
-  const actionText = isActivated ? t('users.actions.deactivate') : t('users.actions.activate')
-  
+  const { t } = useTranslation();
+  const updateUserStatus = useUpdateUserStatus();
+  const isActivated = currentRow.status === 'activated';
+  const newStatus = isActivated ? 'deactivated' : 'activated';
+  const actionText = isActivated ? t('users.actions.deactivate') : t('users.actions.activate');
+
   const handleStatusChange = async () => {
     try {
       await updateUserStatus.mutateAsync({
         id: currentRow.id,
-        status: newStatus
-      })
-      onOpenChange(false)
+        status: newStatus,
+      });
+      onOpenChange(false);
     } catch (error) {
-      console.error('Failed to update user status:', error)
+      console.error('Failed to update user status:', error);
     }
-  }
+  };
 
   return (
     <ConfirmDialog
@@ -52,21 +52,18 @@ export function UsersStatusDialog({ open, onOpenChange, currentRow }: Props) {
       desc={
         <div className='space-y-2'>
           <p>
-            {t('users.dialogs.statusChange.confirmMessage', { 
-              action: actionText, 
-              name: `${currentRow.firstName} ${currentRow.lastName}` 
+            {t('users.dialogs.statusChange.confirmMessage', {
+              action: actionText,
+              name: `${currentRow.firstName} ${currentRow.lastName}`,
             })}
           </p>
-          <p className='text-sm text-muted-foreground'>
-            {isActivated 
-              ? t('users.dialogs.statusChange.deactivateWarning') 
-              : t('users.dialogs.statusChange.activateInfo')
-            }
+          <p className='text-muted-foreground text-sm'>
+            {isActivated ? t('users.dialogs.statusChange.deactivateWarning') : t('users.dialogs.statusChange.activateInfo')}
           </p>
         </div>
       }
       confirmText={actionText}
       cancelBtnText={t('common.buttons.cancel')}
     />
-  )
+  );
 }

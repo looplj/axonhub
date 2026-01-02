@@ -1,31 +1,24 @@
-import { useCallback, useState } from 'react'
-import { z } from 'zod'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { X, Plus, Trash2 } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useUpdateChannel } from '../data/channels'
-import { Channel, ModelMapping } from '../data/schema'
-import { mergeChannelSettingsForUpdate } from '../utils/merge'
+import { useCallback, useState } from 'react';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { X, Plus, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useUpdateChannel } from '../data/channels';
+import { Channel, ModelMapping } from '../data/schema';
+import { mergeChannelSettingsForUpdate } from '../utils/merge';
 
 interface Props {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  currentRow: Channel
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  currentRow: Channel;
 }
 
 // 扩展 schema 以包含模型映射的校验规则
@@ -42,8 +35,8 @@ const createChannelSettingsFormSchema = (supportedModels: string[]) =>
       .refine(
         (mappings) => {
           // 检查是否所有 from 字段都是唯一的
-          const fromValues = mappings.map((m) => m.from)
-          return new Set(fromValues).size === fromValues.length
+          const fromValues = mappings.map((m) => m.from);
+          return new Set(fromValues).size === fromValues.length;
         },
         {
           message: 'Each original model can only be mapped once',
@@ -52,38 +45,39 @@ const createChannelSettingsFormSchema = (supportedModels: string[]) =>
       .refine(
         (mappings) => {
           // 检查所有目标模型是否在支持的模型列表中
-          return mappings.every((m) => supportedModels.includes(m.to))
+          return mappings.every((m) => supportedModels.includes(m.to));
         },
         {
           message: 'Target model must be in supported models',
         }
       ),
-    overrideParameters: z.string().optional().refine(
-      (val) => {
-        if (!val || val.trim() === '') return true
-        try {
-          JSON.parse(val)
-          return true
-        } catch {
-          return false
+    overrideParameters: z
+      .string()
+      .optional()
+      .refine(
+        (val) => {
+          if (!val || val.trim() === '') return true;
+          try {
+            JSON.parse(val);
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        {
+          message: 'channels.validation.overrideParametersInvalidJson',
         }
-      },
-      {
-        message: 'channels.validation.overrideParametersInvalidJson',
-      }
-    ),
-  })
+      ),
+  });
 
 export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props) {
-  const { t } = useTranslation()
-  const updateChannel = useUpdateChannel()
-  const [modelMappings, setModelMappings] = useState<ModelMapping[]>(currentRow.settings?.modelMappings || [])
-  const [newMapping, setNewMapping] = useState({ from: '', to: '' })
-  const [overrideParametersText, setOverrideParametersText] = useState<string>(
-    currentRow.settings?.overrideParameters || ''
-  )
+  const { t } = useTranslation();
+  const updateChannel = useUpdateChannel();
+  const [modelMappings, setModelMappings] = useState<ModelMapping[]>(currentRow.settings?.modelMappings || []);
+  const [newMapping, setNewMapping] = useState({ from: '', to: '' });
+  const [overrideParametersText, setOverrideParametersText] = useState<string>(currentRow.settings?.overrideParameters || '');
 
-  const channelSettingsFormSchema = createChannelSettingsFormSchema(currentRow.supportedModels)
+  const channelSettingsFormSchema = createChannelSettingsFormSchema(currentRow.supportedModels);
 
   const form = useForm<z.infer<typeof channelSettingsFormSchema>>({
     resolver: zodResolver(channelSettingsFormSchema),
@@ -92,76 +86,76 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
       modelMappings: currentRow.settings?.modelMappings || [],
       overrideParameters: currentRow.settings?.overrideParameters || '',
     },
-  })
+  });
 
   const onSubmit = async (values: z.infer<typeof channelSettingsFormSchema>) => {
     // 检查是否有未添加的映射
     if (newMapping.from.trim() || newMapping.to.trim()) {
-      toast.warning(t('channels.messages.pendingMappingWarning'))
-      return
+      toast.warning(t('channels.messages.pendingMappingWarning'));
+      return;
     }
 
     try {
       // Parse overrideParameters if provided
-      let overrideParameters: string | undefined
+      let overrideParameters: string | undefined;
       if (values.overrideParameters && values.overrideParameters.trim()) {
-        overrideParameters = values.overrideParameters
+        overrideParameters = values.overrideParameters;
       }
 
       const nextSettings = mergeChannelSettingsForUpdate(currentRow.settings, {
         extraModelPrefix: values.extraModelPrefix,
         modelMappings: values.modelMappings,
         overrideParameters,
-      })
+      });
 
       await updateChannel.mutateAsync({
         id: currentRow.id,
         input: {
           settings: nextSettings,
         },
-      })
-      toast.success(t('channels.messages.updateSuccess'))
-      onOpenChange(false)
+      });
+      toast.success(t('channels.messages.updateSuccess'));
+      onOpenChange(false);
     } catch (_error) {
-      toast.error(t('channels.messages.updateError'))
+      toast.error(t('channels.messages.updateError'));
     }
-  }
+  };
 
   const addMapping = useCallback(() => {
     if (newMapping.from.trim() && newMapping.to.trim()) {
-      const exists = modelMappings.some((mapping) => mapping.from === newMapping.from.trim())
+      const exists = modelMappings.some((mapping) => mapping.from === newMapping.from.trim());
       if (!exists) {
-        const newMappings = [...modelMappings, { from: newMapping.from.trim(), to: newMapping.to.trim() }]
-        setModelMappings(newMappings)
-        form.setValue('modelMappings', newMappings)
-        form.clearErrors('modelMappings')
-        setNewMapping({ from: '', to: '' })
+        const newMappings = [...modelMappings, { from: newMapping.from.trim(), to: newMapping.to.trim() }];
+        setModelMappings(newMappings);
+        form.setValue('modelMappings', newMappings);
+        form.clearErrors('modelMappings');
+        setNewMapping({ from: '', to: '' });
       } else {
-        toast.warning(t('channels.messages.duplicateMappingWarning'))
+        toast.warning(t('channels.messages.duplicateMappingWarning'));
       }
     }
-  }, [form, modelMappings, setModelMappings, newMapping, t])
+  }, [form, modelMappings, setModelMappings, newMapping, t]);
 
   const removeMapping = useCallback(
     (index: number) => {
-      const newMappings = modelMappings.filter((_, i) => i !== index)
-      setModelMappings(newMappings)
-      form.setValue('modelMappings', newMappings)
-      form.clearErrors('modelMappings')
+      const newMappings = modelMappings.filter((_, i) => i !== index);
+      setModelMappings(newMappings);
+      form.setValue('modelMappings', newMappings);
+      form.clearErrors('modelMappings');
     },
     [form, modelMappings, setModelMappings]
-  )
+  );
 
   return (
     <Dialog
       open={open}
       onOpenChange={(state) => {
         if (!state) {
-          setModelMappings(currentRow.settings?.modelMappings || [])
-          setNewMapping({ from: '', to: '' })
-          setOverrideParametersText(currentRow.settings?.overrideParameters || '')
+          setModelMappings(currentRow.settings?.modelMappings || []);
+          setNewMapping({ from: '', to: '' });
+          setOverrideParametersText(currentRow.settings?.overrideParameters || '');
         }
-        onOpenChange(state)
+        onOpenChange(state);
       }}
     >
       <DialogContent className='sm:max-w-2xl'>
@@ -220,7 +214,7 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
                 onChange={(e) => form.setValue('extraModelPrefix', e.target.value)}
               />
               {form.formState.errors.extraModelPrefix?.message && (
-                <p className='text-destructive text-sm mt-2'>{form.formState.errors.extraModelPrefix.message.toString()}</p>
+                <p className='text-destructive mt-2 text-sm'>{form.formState.errors.extraModelPrefix.message.toString()}</p>
               )}
             </CardContent>
           </Card>
@@ -251,12 +245,7 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
                     ))}
                   </SelectContent>
                 </Select>
-                <Button
-                  type='button'
-                  onClick={addMapping}
-                  size='sm'
-                  disabled={!newMapping.from.trim() || !newMapping.to.trim()}
-                >
+                <Button type='button' onClick={addMapping} size='sm' disabled={!newMapping.from.trim() || !newMapping.to.trim()}>
                   <Plus size={16} />
                 </Button>
                 {(newMapping.from.trim() || newMapping.to.trim()) && (
@@ -273,9 +262,7 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
 
               <div className='space-y-2'>
                 {modelMappings.length === 0 ? (
-                  <p className='text-muted-foreground py-4 text-center text-sm'>
-                    {t('channels.dialogs.settings.modelMapping.noMappings')}
-                  </p>
+                  <p className='text-muted-foreground py-4 text-center text-sm'>{t('channels.dialogs.settings.modelMapping.noMappings')}</p>
                 ) : (
                   modelMappings.map((mapping, index) => (
                     <div key={index} className='flex items-center justify-between rounded-lg border p-3'>
@@ -302,26 +289,22 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
 
           <Card>
             <CardHeader>
-              <CardTitle className='text-lg'>
-                {t('channels.dialogs.settings.overrides.parameters.title')}
-              </CardTitle>
-              <CardDescription>
-                {t('channels.dialogs.settings.overrides.parameters.description')}
-              </CardDescription>
+              <CardTitle className='text-lg'>{t('channels.dialogs.settings.overrides.parameters.title')}</CardTitle>
+              <CardDescription>{t('channels.dialogs.settings.overrides.parameters.description')}</CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'>
               <div>
                 <textarea
-                  className='font-mono text-sm w-full min-h-[200px] rounded-md border border-input bg-background px-3 py-2 ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
+                  className='border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring min-h-[200px] w-full rounded-md border px-3 py-2 font-mono text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50'
                   placeholder={t('{"temperature": 0.7,"max_tokens": 8192}')}
                   value={overrideParametersText}
                   onChange={(e) => {
-                    setOverrideParametersText(e.target.value)
-                    form.setValue('overrideParameters', e.target.value)
+                    setOverrideParametersText(e.target.value);
+                    form.setValue('overrideParameters', e.target.value);
                   }}
                 />
                 {form.formState.errors.overrideParameters?.message && (
-                  <p className='text-destructive text-sm mt-2'>{form.formState.errors.overrideParameters.message.toString()}</p>
+                  <p className='text-destructive mt-2 text-sm'>{form.formState.errors.overrideParameters.message.toString()}</p>
                 )}
               </div>
             </CardContent>
@@ -338,5 +321,5 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

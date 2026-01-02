@@ -1,51 +1,47 @@
-import React from 'react'
+import React from 'react';
 
 interface SearchContextType {
-  open: boolean
-  setOpen: React.Dispatch<React.SetStateAction<boolean>>
+  open: boolean;
+  setOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-const SearchContext = React.createContext<SearchContextType | null>(null)
+const SearchContext = React.createContext<SearchContextType | null>(null);
 
 interface Props {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 export function SearchProvider({ children }: Props) {
-  const [open, setOpen] = React.useState(false)
+  const [open, setOpen] = React.useState(false);
 
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        setOpen((open) => !open)
+        e.preventDefault();
+        setOpen((open) => !open);
       }
-    }
-    document.addEventListener('keydown', down)
-    return () => document.removeEventListener('keydown', down)
-  }, [])
+    };
+    document.addEventListener('keydown', down);
+    return () => document.removeEventListener('keydown', down);
+  }, []);
 
-  return (
-    <SearchContext.Provider value={{ open, setOpen }}>
-      {children}
-    </SearchContext.Provider>
-  )
+  return <SearchContext.Provider value={{ open, setOpen }}>{children}</SearchContext.Provider>;
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const useSearch = () => {
-  const searchContext = React.useContext(SearchContext)
+  const searchContext = React.useContext(SearchContext);
 
   if (!searchContext) {
     // Provide a fallback to prevent crashes during HMR or component re-renders
-    console.warn('useSearch called outside of SearchContext.Provider, using fallback')
+    console.warn('useSearch called outside of SearchContext.Provider, using fallback');
     return {
       open: false,
       setOpen: () => {
-        console.warn('Search functionality not available outside of SearchContext.Provider')
-      }
-    }
+        console.warn('Search functionality not available outside of SearchContext.Provider');
+      },
+    };
   }
 
-  return searchContext
-}
+  return searchContext;
+};

@@ -1,44 +1,37 @@
-import { useState, useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
-import { DateRange } from 'react-day-picker'
-import { Header } from '@/components/layout/header'
-import { Main } from '@/components/layout/main'
-import { ThreadsTable } from './components/threads-table'
-import { useThreads } from './data/threads'
-import type { Thread } from './data/schema'
-import { usePaginationSearch } from '@/hooks/use-pagination-search'
-import { useDebounce } from '@/hooks/use-debounce'
-import useInterval from '@/hooks/useInterval'
-import { buildDateRangeWhereClause } from '@/utils/date-range'
+import { useState, useCallback } from 'react';
+import { DateRange } from 'react-day-picker';
+import { useTranslation } from 'react-i18next';
+import { buildDateRangeWhereClause } from '@/utils/date-range';
+import { useDebounce } from '@/hooks/use-debounce';
+import { usePaginationSearch } from '@/hooks/use-pagination-search';
+import useInterval from '@/hooks/useInterval';
+import { Header } from '@/components/layout/header';
+import { Main } from '@/components/layout/main';
+import { ThreadsTable } from './components/threads-table';
+import type { Thread } from './data/schema';
+import { useThreads } from './data/threads';
 
 function ThreadsContent() {
-  const {
-    pageSize,
-    setCursors,
-    setPageSize,
-    resetCursor,
-    paginationArgs,
-    cursorHistory,
-  } = usePaginationSearch({
+  const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs, cursorHistory } = usePaginationSearch({
     defaultPageSize: 20,
     pageSizeStorageKey: 'threads-table-page-size',
-  })
-  const [dateRange, setDateRange] = useState<DateRange | undefined>()
-  const [threadIdFilter, setThreadIdFilter] = useState<string>('')
-  const [autoRefresh, setAutoRefresh] = useState(false)
-  const debouncedThreadIdFilter = useDebounce(threadIdFilter, 300)
+  });
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [threadIdFilter, setThreadIdFilter] = useState<string>('');
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const debouncedThreadIdFilter = useDebounce(threadIdFilter, 300);
 
   const whereClause = (() => {
     const where: { [key: string]: any } = {
       ...buildDateRangeWhereClause(dateRange),
-    }
-    
+    };
+
     if (debouncedThreadIdFilter.trim()) {
-      where.threadIDContains = debouncedThreadIdFilter.trim()
+      where.threadIDContains = debouncedThreadIdFilter.trim();
     }
-    
-    return Object.keys(where).length > 0 ? where : undefined
-  })()
+
+    return Object.keys(where).length > 0 ? where : undefined;
+  })();
 
   const { data, isLoading, refetch } = useThreads({
     ...paginationArgs,
@@ -47,51 +40,51 @@ function ThreadsContent() {
       field: 'CREATED_AT',
       direction: 'DESC',
     },
-  })
+  });
 
-  const threads: Thread[] = data ? data.edges.map(({ node }) => node) : []
-  const pageInfo = data?.pageInfo
-  const isFirstPage = !paginationArgs.after && cursorHistory.length === 0
+  const threads: Thread[] = data ? data.edges.map(({ node }) => node) : [];
+  const pageInfo = data?.pageInfo;
+  const isFirstPage = !paginationArgs.after && cursorHistory.length === 0;
 
   useInterval(
     () => {
-      refetch()
+      refetch();
     },
     autoRefresh && isFirstPage ? 30000 : null
-  )
+  );
 
   const handleNextPage = () => {
     if (pageInfo?.hasNextPage && pageInfo.endCursor) {
-      setCursors(pageInfo.startCursor ?? undefined, pageInfo.endCursor ?? undefined, 'after')
+      setCursors(pageInfo.startCursor ?? undefined, pageInfo.endCursor ?? undefined, 'after');
     }
-  }
+  };
 
   const handlePreviousPage = () => {
     if (pageInfo?.hasPreviousPage) {
-      setCursors(pageInfo.startCursor ?? undefined, pageInfo.endCursor ?? undefined, 'before')
+      setCursors(pageInfo.startCursor ?? undefined, pageInfo.endCursor ?? undefined, 'before');
     }
-  }
+  };
 
   const handlePageSizeChange = (newPageSize: number) => {
-    setPageSize(newPageSize)
-    resetCursor()
-  }
+    setPageSize(newPageSize);
+    resetCursor();
+  };
 
   const handleDateRangeChange = useCallback(
     (range: DateRange | undefined) => {
-      setDateRange(range)
-      resetCursor()
+      setDateRange(range);
+      resetCursor();
     },
     [resetCursor]
-  )
+  );
 
   const handleThreadIdFilterChange = useCallback(
     (threadId: string) => {
-      setThreadIdFilter(threadId)
-      resetCursor()
+      setThreadIdFilter(threadId);
+      resetCursor();
     },
     [resetCursor]
-  )
+  );
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
@@ -114,11 +107,11 @@ function ThreadsContent() {
         onAutoRefreshChange={setAutoRefresh}
       />
     </div>
-  )
+  );
 }
 
 export default function ThreadsManagement() {
-  const { t } = useTranslation()
+  const { t } = useTranslation();
 
   return (
     <>
@@ -134,5 +127,5 @@ export default function ThreadsManagement() {
         <ThreadsContent />
       </Main>
     </>
-  )
+  );
 }

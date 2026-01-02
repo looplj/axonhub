@@ -1,7 +1,7 @@
-import { useCallback, useMemo } from 'react'
-import { useAuthStore } from '@/stores/authStore'
-import { useMe } from '@/features/auth/data/auth'
-import { useSelectedProjectId } from '@/stores/projectStore'
+import { useCallback, useMemo } from 'react';
+import { useAuthStore } from '@/stores/authStore';
+import { useSelectedProjectId } from '@/stores/projectStore';
+import { useMe } from '@/features/auth/data/auth';
 
 /**
  * Hook for checking user permissions based on scopes
@@ -9,100 +9,100 @@ import { useSelectedProjectId } from '@/stores/projectStore'
  * Supports both system-level and project-level scopes
  */
 export function usePermissions() {
-  const { user: authUser } = useAuthStore((state) => state.auth)
-  const { data: meData } = useMe()
-  const selectedProjectId = useSelectedProjectId()
+  const { user: authUser } = useAuthStore((state) => state.auth);
+  const { data: meData } = useMe();
+  const selectedProjectId = useSelectedProjectId();
 
   // Use data from me query if available, otherwise fall back to auth store
-  const user = meData || authUser
-  const isOwner = user?.isOwner || false
+  const user = meData || authUser;
+  const isOwner = user?.isOwner || false;
 
   // Get project-level scopes for the selected project
   const projectScopes = useMemo(() => {
     if (!selectedProjectId || !user?.projects) {
-      return []
+      return [];
     }
-    const project = user.projects.find(p => p.projectID === selectedProjectId)
-    return project?.scopes || []
-  }, [selectedProjectId, user?.projects])
+    const project = user.projects.find((p) => p.projectID === selectedProjectId);
+    return project?.scopes || [];
+  }, [selectedProjectId, user?.projects]);
 
   // Check if user has a specific scope at system level only
   const hasSystemScope = useCallback(
     (requiredScope: string): boolean => {
       // Owner has all permissions
       if (isOwner) {
-        return true
+        return true;
       }
 
       // Check for wildcard permission at system level
       if (user?.scopes?.includes('*')) {
-        return true
+        return true;
       }
 
       // Check for specific scope at system level only
       if (user?.scopes?.includes(requiredScope)) {
-        return true
+        return true;
       }
 
-      return false
+      return false;
     },
     [user, isOwner]
-  )
+  );
 
   // Check if user has a specific scope at project level only
   const hasProjectScope = useCallback(
     (requiredScope: string): boolean => {
       // Owner has all permissions
       if (isOwner) {
-        return true
+        return true;
       }
 
       // Check for wildcard permission at system level (applies to all projects)
       if (user?.scopes?.includes('*')) {
-        return true
+        return true;
       }
 
       // Check for specific scope at project level only
       if (projectScopes.includes(requiredScope)) {
-        return true
+        return true;
       }
 
-      return false
+      return false;
     },
     [user, isOwner, projectScopes]
-  )
+  );
 
   // Check if user has a specific scope (system-level or project-level)
   const hasScope = useCallback(
     (requiredScope: string): boolean => {
-      return hasSystemScope(requiredScope) || hasProjectScope(requiredScope)
+      return hasSystemScope(requiredScope) || hasProjectScope(requiredScope);
     },
     [hasSystemScope, hasProjectScope]
-  )
+  );
 
   // Check if user has any of the required scopes
   const hasAnyScope = useCallback(
     (requiredScopes: string[]): boolean => {
       if (requiredScopes.length === 0) {
-        return true
+        return true;
       }
 
-      return requiredScopes.some((scope) => hasScope(scope))
+      return requiredScopes.some((scope) => hasScope(scope));
     },
     [hasScope]
-  )
+  );
 
   // Check if user has all of the required scopes
   const hasAllScopes = useCallback(
     (requiredScopes: string[]): boolean => {
       if (requiredScopes.length === 0) {
-        return true
+        return true;
       }
 
-      return requiredScopes.every((scope) => hasScope(scope))
+      return requiredScopes.every((scope) => hasScope(scope));
     },
     [hasScope]
-  )
+  );
 
   // Common permission checks for channel operations
   const channelPermissions = useMemo(
@@ -117,7 +117,7 @@ export function usePermissions() {
       canOrder: hasScope('write_channels'), // Ordering requires write permission
     }),
     [hasScope]
-  )
+  );
 
   // Common permission checks for user operations
   const userPermissions = useMemo(
@@ -129,7 +129,7 @@ export function usePermissions() {
       canDelete: hasScope('write_users'),
     }),
     [hasScope]
-  )
+  );
 
   // Common permission checks for role operations
   const rolePermissions = useMemo(
@@ -141,7 +141,7 @@ export function usePermissions() {
       canDelete: hasScope('write_roles'),
     }),
     [hasScope]
-  )
+  );
 
   // Common permission checks for API key operations
   const apiKeyPermissions = useMemo(
@@ -153,7 +153,7 @@ export function usePermissions() {
       canDelete: hasScope('write_api_keys'),
     }),
     [hasScope]
-  )
+  );
 
   // Common permission checks for project operations
   const projectPermissions = useMemo(
@@ -165,7 +165,7 @@ export function usePermissions() {
       canDelete: hasScope('write_projects'),
     }),
     [hasScope]
-  )
+  );
 
   return {
     user,
@@ -180,5 +180,5 @@ export function usePermissions() {
     rolePermissions,
     apiKeyPermissions,
     projectPermissions,
-  }
+  };
 }

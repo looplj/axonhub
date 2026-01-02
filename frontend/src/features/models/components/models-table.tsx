@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react'
-import { format } from 'date-fns'
+import React, { useState, useEffect, useMemo } from 'react';
+import { format } from 'date-fns';
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -15,31 +15,31 @@ import {
   getFilteredRowModel,
   getSortedRowModel,
   useReactTable,
-} from '@tanstack/react-table'
-import { IconBan, IconCheck, IconX, IconTrash } from '@tabler/icons-react'
-import { useTranslation } from 'react-i18next'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { ServerSidePagination } from '@/components/server-side-pagination'
-import { PermissionGuard } from '@/components/permission-guard'
-import { useModels } from '../context/models-context'
-import { Model, ModelConnection } from '../data/schema'
+} from '@tanstack/react-table';
+import { IconBan, IconCheck, IconX, IconTrash } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { PermissionGuard } from '@/components/permission-guard';
+import { ServerSidePagination } from '@/components/server-side-pagination';
+import { useModels } from '../context/models-context';
+import { Model, ModelConnection } from '../data/schema';
 
 interface ModelsTableProps {
-  columns: ColumnDef<Model>[]
-  data: Model[]
-  pageInfo?: ModelConnection['pageInfo']
-  pageSize: number
-  totalCount?: number
-  nameFilter: string
-  sorting: SortingState
-  onSortingChange: (updater: SortingState | ((prev: SortingState) => SortingState)) => void
-  onNextPage: () => void
-  onPreviousPage: () => void
-  onPageSizeChange: (pageSize: number) => void
-  onNameFilterChange: (filter: string) => void
+  columns: ColumnDef<Model>[];
+  data: Model[];
+  pageInfo?: ModelConnection['pageInfo'];
+  pageSize: number;
+  totalCount?: number;
+  nameFilter: string;
+  sorting: SortingState;
+  onSortingChange: (updater: SortingState | ((prev: SortingState) => SortingState)) => void;
+  onNextPage: () => void;
+  onPreviousPage: () => void;
+  onPageSizeChange: (pageSize: number) => void;
+  onNameFilterChange: (filter: string) => void;
 }
 
 export function ModelsTable({
@@ -56,32 +56,32 @@ export function ModelsTable({
   onPageSizeChange,
   onNameFilterChange,
 }: ModelsTableProps) {
-  const { t } = useTranslation()
-  const { setSelectedModels, setResetRowSelection, setOpen } = useModels()
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
-  const [expanded, setExpanded] = useState<ExpandedState>({})
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const { t } = useTranslation();
+  const { setSelectedModels, setResetRowSelection, setOpen } = useModels();
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [expanded, setExpanded] = useState<ExpandedState>({});
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   useEffect(() => {
-    const newColumnFilters: ColumnFiltersState = []
+    const newColumnFilters: ColumnFiltersState = [];
     if (nameFilter) {
-      newColumnFilters.push({ id: 'name', value: nameFilter })
+      newColumnFilters.push({ id: 'name', value: nameFilter });
     }
-    setColumnFilters(newColumnFilters)
-  }, [nameFilter])
+    setColumnFilters(newColumnFilters);
+  }, [nameFilter]);
 
   const handleColumnFiltersChange = (updater: ColumnFiltersState | ((prev: ColumnFiltersState) => ColumnFiltersState)) => {
-    const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater
-    setColumnFilters(newFilters)
+    const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater;
+    setColumnFilters(newFilters);
 
-    const nameFilterValue = newFilters.find((filter) => filter.id === 'name')?.value as string
-    const newNameFilter = nameFilterValue || ''
+    const nameFilterValue = newFilters.find((filter) => filter.id === 'name')?.value as string;
+    const newNameFilter = nameFilterValue || '';
 
     if (newNameFilter !== nameFilter) {
-      onNameFilterChange(newNameFilter)
+      onNameFilterChange(newNameFilter);
     }
-  }
+  };
 
   const table = useReactTable({
     data,
@@ -108,41 +108,41 @@ export function ModelsTable({
     getExpandedRowModel: getExpandedRowModel(),
     manualPagination: true,
     manualFiltering: true,
-  })
+  });
 
-  const filteredSelectedRows = useMemo(() => table.getFilteredSelectedRowModel().rows, [table, rowSelection, data])
+  const filteredSelectedRows = useMemo(() => table.getFilteredSelectedRowModel().rows, [table, rowSelection, data]);
 
-  const selectedCount = filteredSelectedRows.length
+  const selectedCount = filteredSelectedRows.length;
 
   useEffect(() => {
     const resetFn = () => {
-      setRowSelection({})
-    }
-    setResetRowSelection(resetFn)
-  }, [setResetRowSelection])
+      setRowSelection({});
+    };
+    setResetRowSelection(resetFn);
+  }, [setResetRowSelection]);
 
   useEffect(() => {
-    const selected = filteredSelectedRows.map((row) => row.original as Model)
-    setSelectedModels(selected)
-  }, [filteredSelectedRows, setSelectedModels])
+    const selected = filteredSelectedRows.map((row) => row.original as Model);
+    setSelectedModels(selected);
+  }, [filteredSelectedRows, setSelectedModels]);
 
   useEffect(() => {
     if (selectedCount === 0) {
-      setSelectedModels([])
+      setSelectedModels([]);
     }
-  }, [selectedCount, setSelectedModels])
+  }, [selectedCount, setSelectedModels]);
 
   useEffect(() => {
     if (Object.keys(rowSelection).length > 0 && data.length > 0) {
-      const dataIds = new Set(data.map((model) => model.id))
-      const selectedIds = Object.keys(rowSelection)
-      const anySelectedIdMissing = selectedIds.some((id) => !dataIds.has(id))
+      const dataIds = new Set(data.map((model) => model.id));
+      const selectedIds = Object.keys(rowSelection);
+      const anySelectedIdMissing = selectedIds.some((id) => !dataIds.has(id));
 
       if (anySelectedIdMissing) {
-        setRowSelection({})
+        setRowSelection({});
       }
     }
-  }, [data, rowSelection])
+  }, [data, rowSelection]);
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
@@ -157,31 +157,39 @@ export function ModelsTable({
         </div>
       </div>
 
-      <div className='mt-4 flex-1 overflow-auto rounded-2xl shadow-soft border border-[var(--table-border)] relative'>
-        <Table data-testid='models-table' className='bg-[var(--table-background)] rounded-2xl border-separate border-spacing-0'>
+      <div className='shadow-soft relative mt-4 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
+        <Table data-testid='models-table' className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className='group/row border-0'>
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id} colSpan={header.colSpan} className={`${header.column.columnDef.meta?.className ?? ''} text-xs font-semibold text-muted-foreground uppercase tracking-wider border-0`}>
+                    <TableHead
+                      key={header.id}
+                      colSpan={header.colSpan}
+                      className={`${header.column.columnDef.meta?.className ?? ''} text-muted-foreground border-0 text-xs font-semibold tracking-wider uppercase`}
+                    >
                       {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
-                  )
+                  );
                 })}
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody className='p-2 space-y-1 !bg-[var(--table-background)]'>
+          <TableBody className='space-y-1 !bg-[var(--table-background)] p-2'>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => {
-                const model = row.original
-                const modelCard = model.modelCard
+                const model = row.original;
+                const modelCard = model.modelCard;
                 return (
                   <React.Fragment key={row.id}>
-                    <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'} className='group/row table-row-hover rounded-xl border-0 transition-all duration-200 ease-in-out !bg-[var(--table-background)]'>
+                    <TableRow
+                      key={row.id}
+                      data-state={row.getIsSelected() && 'selected'}
+                      className='group/row table-row-hover rounded-xl border-0 !bg-[var(--table-background)] transition-all duration-200 ease-in-out'
+                    >
                       {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id} className={`${cell.column.columnDef.meta?.className ?? ''} px-4 py-3 border-0 bg-inherit`}>
+                        <TableCell key={cell.id} className={`${cell.column.columnDef.meta?.className ?? ''} border-0 bg-inherit px-4 py-3`}>
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </TableCell>
                       ))}
@@ -367,11 +375,11 @@ export function ModelsTable({
                       </TableRow>
                     )}
                   </React.Fragment>
-                )
+                );
               })
             ) : (
               <TableRow className='!bg-[var(--table-background)]'>
-                <TableCell colSpan={columns.length} className='h-24 text-center !bg-[var(--table-background)]'>
+                <TableCell colSpan={columns.length} className='h-24 !bg-[var(--table-background)] text-center'>
                   {t('common.noData')}
                 </TableCell>
               </TableRow>
@@ -395,7 +403,7 @@ export function ModelsTable({
 
       {selectedCount > 0 && (
         <div className='fixed bottom-6 left-1/2 z-50 -translate-x-1/2'>
-          <div className='bg-[var(--table-background)] flex items-center gap-2 rounded-lg border px-4 py-2 shadow-lg'>
+          <div className='flex items-center gap-2 rounded-lg border bg-[var(--table-background)] px-4 py-2 shadow-lg'>
             <div className='bg-border mx-2 h-6 w-px' />
             <Button variant='ghost' size='icon' className='h-8 w-8' onClick={() => setRowSelection({})}>
               <IconX className='h-4 w-4' />
@@ -444,5 +452,5 @@ export function ModelsTable({
         </div>
       )}
     </div>
-  )
+  );
 }

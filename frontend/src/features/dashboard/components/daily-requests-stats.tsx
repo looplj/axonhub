@@ -1,21 +1,21 @@
-'use client'
+'use client';
 
-import { useTranslation } from 'react-i18next'
-import { CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, Area, AreaChart } from 'recharts'
-import { formatNumber } from '@/utils/format-number'
-import { Skeleton } from '@/components/ui/skeleton'
-import { useDailyRequestStats } from '../data/dashboard'
+import { useTranslation } from 'react-i18next';
+import { CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, Area, AreaChart } from 'recharts';
+import { formatNumber } from '@/utils/format-number';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useDailyRequestStats } from '../data/dashboard';
 
 export function DailyRequestStats() {
-  const { t } = useTranslation()
-  const { data: dailyStats, isLoading, error } = useDailyRequestStats()
+  const { t } = useTranslation();
+  const { data: dailyStats, isLoading, error } = useDailyRequestStats();
 
   if (isLoading) {
     return (
       <div className='flex h-[350px] items-center justify-center'>
         <Skeleton className='h-full w-full' />
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -23,7 +23,7 @@ export function DailyRequestStats() {
       <div className='flex h-[350px] items-center justify-center text-red-500'>
         {t('dashboard.charts.errorLoadingChart')} {error.message}
       </div>
-    )
+    );
   }
 
   // Transform data for the chart
@@ -34,11 +34,11 @@ export function DailyRequestStats() {
         day: '2-digit',
       }),
       total: stat.count,
-    })) || []
+    })) || [];
 
   // Calculate max value for Y-axis domain
-  const maxValue = Math.max(...chartData.map((d) => d.total), 0)
-  const yAxisMax = Math.max(10, Math.ceil(maxValue * 1.1))
+  const maxValue = Math.max(...chartData.map((d) => d.total), 0);
+  const yAxisMax = Math.max(10, Math.ceil(maxValue * 1.1));
 
   return (
     <ResponsiveContainer width='100%' height={350}>
@@ -72,5 +72,5 @@ export function DailyRequestStats() {
         />
       </AreaChart>
     </ResponsiveContainer>
-  )
+  );
 }

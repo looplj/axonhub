@@ -1,23 +1,23 @@
-import { Cross2Icon } from '@radix-ui/react-icons'
-import { RefreshCw, X } from 'lucide-react'
-import { Table } from '@tanstack/react-table'
-import { DateRange } from 'react-day-picker'
-import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { DateRangePicker } from '@/components/date-range-picker'
-import { Switch } from '@/components/ui/switch'
+import { Cross2Icon } from '@radix-ui/react-icons';
+import { Table } from '@tanstack/react-table';
+import { RefreshCw, X } from 'lucide-react';
+import { DateRange } from 'react-day-picker';
+import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { DateRangePicker } from '@/components/date-range-picker';
 
 interface DataTableToolbarProps<TData> {
-  table: Table<TData>
-  dateRange?: DateRange
-  onDateRangeChange?: (range: DateRange | undefined) => void
-  threadIdFilter: string
-  onThreadIdFilterChange: (threadId: string) => void
-  onRefresh?: () => void
-  showRefresh?: boolean
-  autoRefresh?: boolean
-  onAutoRefreshChange?: (enabled: boolean) => void
+  table: Table<TData>;
+  dateRange?: DateRange;
+  onDateRangeChange?: (range: DateRange | undefined) => void;
+  threadIdFilter: string;
+  onThreadIdFilterChange: (threadId: string) => void;
+  onRefresh?: () => void;
+  showRefresh?: boolean;
+  autoRefresh?: boolean;
+  onAutoRefreshChange?: (enabled: boolean) => void;
 }
 
 export function ThreadsTableToolbar<TData>({
@@ -31,8 +31,8 @@ export function ThreadsTableToolbar<TData>({
   autoRefresh = false,
   onAutoRefreshChange,
 }: DataTableToolbarProps<TData>) {
-  const { t } = useTranslation()
-  const isFiltered = table.getState().columnFilters.length > 0 || !!dateRange || !!threadIdFilter.trim()
+  const { t } = useTranslation();
+  const isFiltered = table.getState().columnFilters.length > 0 || !!dateRange || !!threadIdFilter.trim();
 
   return (
     <div className='flex items-center justify-between'>
@@ -45,12 +45,7 @@ export function ThreadsTableToolbar<TData>({
         />
         <DateRangePicker value={dateRange} onChange={onDateRangeChange} />
         {dateRange && (
-          <Button 
-            variant='ghost' 
-            onClick={() => onDateRangeChange?.(undefined)} 
-            className='h-8 px-2'
-            size='sm'
-          >
+          <Button variant='ghost' onClick={() => onDateRangeChange?.(undefined)} className='h-8 px-2' size='sm'>
             <X className='h-4 w-4' />
           </Button>
         )}
@@ -58,9 +53,9 @@ export function ThreadsTableToolbar<TData>({
           <Button
             variant='ghost'
             onClick={() => {
-              table.resetColumnFilters()
-              onDateRangeChange?.(undefined)
-              onThreadIdFilterChange('')
+              table.resetColumnFilters();
+              onDateRangeChange?.(undefined);
+              onThreadIdFilterChange('');
             }}
             className='h-8 px-2 lg:px-3'
           >
@@ -72,15 +67,8 @@ export function ThreadsTableToolbar<TData>({
       <div className='flex items-center space-x-2'>
         {showRefresh && onAutoRefreshChange && (
           <div className='flex items-center space-x-2'>
-            <Switch 
-              checked={autoRefresh} 
-              onCheckedChange={onAutoRefreshChange}
-              id='auto-refresh-switch'
-            />
-            <label 
-              htmlFor='auto-refresh-switch' 
-              className='text-sm text-muted-foreground cursor-pointer'
-            >
+            <Switch checked={autoRefresh} onCheckedChange={onAutoRefreshChange} id='auto-refresh-switch' />
+            <label htmlFor='auto-refresh-switch' className='text-muted-foreground cursor-pointer text-sm'>
               {t('common.autoRefresh')}
             </label>
           </div>
@@ -93,5 +81,5 @@ export function ThreadsTableToolbar<TData>({
         )}
       </div>
     </div>
-  )
+  );
 }

@@ -1,5 +1,5 @@
-import { z } from 'zod'
-import { pageInfoSchema } from '@/gql/pagination'
+import { z } from 'zod';
+import { pageInfoSchema } from '@/gql/pagination';
 
 const threadSchema = z
   .object({
@@ -7,14 +7,14 @@ const threadSchema = z
     threadID: z.string().nullable().optional(),
   })
   .nullable()
-  .optional()
+  .optional();
 
 export const traceRequestsSummarySchema = z
   .object({
     totalCount: z.number().nullable().optional(),
   })
   .nullable()
-  .optional()
+  .optional();
 
 export const traceSchema = z.object({
   id: z.string(),
@@ -25,9 +25,9 @@ export const traceSchema = z.object({
   requests: traceRequestsSummarySchema,
   firstUserQuery: z.string().nullable().optional(),
   firstText: z.string().nullable().optional(),
-})
+});
 
-export type Trace = z.infer<typeof traceSchema>
+export type Trace = z.infer<typeof traceSchema>;
 
 export const traceConnectionSchema = z.object({
   edges: z.array(
@@ -38,51 +38,51 @@ export const traceConnectionSchema = z.object({
   ),
   pageInfo: pageInfoSchema,
   totalCount: z.number(),
-})
+});
 
-export type TraceConnection = z.infer<typeof traceConnectionSchema>
+export type TraceConnection = z.infer<typeof traceConnectionSchema>;
 
 const spanSystemInstructionSchema = z
   .object({
     instruction: z.string().nullable().optional(),
   })
   .nullable()
-  .optional()
+  .optional();
 
 const spanUserQuerySchema = z
   .object({
     text: z.string().nullable().optional(),
   })
   .nullable()
-  .optional()
+  .optional();
 
 const spanUserImageURLSchema = z
   .object({
     url: z.string().nullable().optional(),
   })
   .nullable()
-  .optional()
+  .optional();
 
 const spanTextSchema = z
   .object({
     text: z.string().nullable().optional(),
   })
   .nullable()
-  .optional()
+  .optional();
 
 const spanImageURLSchema = z
   .object({
     url: z.string().nullable().optional(),
   })
   .nullable()
-  .optional()
+  .optional();
 
 const spanThinkingSchema = z
   .object({
     thinking: z.string().nullable().optional(),
   })
   .nullable()
-  .optional()
+  .optional();
 
 const spanToolUseSchema = z
   .object({
@@ -91,7 +91,7 @@ const spanToolUseSchema = z
     arguments: z.string().nullable().optional(),
   })
   .nullable()
-  .optional()
+  .optional();
 
 const spanToolResultSchema = z
   .object({
@@ -100,7 +100,7 @@ const spanToolResultSchema = z
     text: z.string().nullable().optional(),
   })
   .nullable()
-  .optional()
+  .optional();
 
 const spanValueSchema = z
   .object({
@@ -114,7 +114,7 @@ const spanValueSchema = z
     toolResult: spanToolResultSchema,
   })
   .nullable()
-  .optional()
+  .optional();
 
 export const spanSchema = z.object({
   id: z.string(),
@@ -122,9 +122,9 @@ export const spanSchema = z.object({
   startTime: z.coerce.date().nullable().optional(),
   endTime: z.coerce.date().nullable().optional(),
   value: spanValueSchema,
-})
+});
 
-export type Span = z.infer<typeof spanSchema>
+export type Span = z.infer<typeof spanSchema>;
 
 const requestMetadataSchema = z
   .object({
@@ -135,9 +135,9 @@ const requestMetadataSchema = z
     cachedTokens: z.number().nullable().optional(),
   })
   .nullable()
-  .optional()
+  .optional();
 
-export type RequestMetadata = z.infer<typeof requestMetadataSchema>
+export type RequestMetadata = z.infer<typeof requestMetadataSchema>;
 
 export const segmentSchema: z.ZodType<any> = z.lazy(() =>
   z.object({
@@ -152,9 +152,9 @@ export const segmentSchema: z.ZodType<any> = z.lazy(() =>
     responseSpans: z.array(spanSchema).nullable().optional().default([]),
     children: z.array(segmentSchema).nullable().optional().default([]),
   })
-)
+);
 
-export type Segment = z.infer<typeof segmentSchema>
+export type Segment = z.infer<typeof segmentSchema>;
 
 export const traceDetailSchema = z.object({
   id: z.string(),
@@ -164,28 +164,28 @@ export const traceDetailSchema = z.object({
   thread: threadSchema,
   requests: traceRequestsSummarySchema,
   rawRootSegment: z.any().nullable().optional(),
-})
+});
 
-export type TraceDetail = z.infer<typeof traceDetailSchema>
+export type TraceDetail = z.infer<typeof traceDetailSchema>;
 
 // Helper function to parse rawRootSegment JSON string into Segment object
 export function parseRawRootSegment(rawRootSegment: any | null | undefined): Segment | null {
   if (!rawRootSegment) {
-    return null
+    return null;
   }
   if (typeof rawRootSegment === 'string') {
     try {
-      const parsed = JSON.parse(rawRootSegment)
-      return segmentSchema.parse(parsed)
+      const parsed = JSON.parse(rawRootSegment);
+      return segmentSchema.parse(parsed);
     } catch (error) {
-      console.error('Failed to parse rawRootSegment:', error)
-      return null
+      console.error('Failed to parse rawRootSegment:', error);
+      return null;
     }
   }
 
   if (typeof rawRootSegment === 'object') {
-    return segmentSchema.parse(rawRootSegment)
+    return segmentSchema.parse(rawRootSegment);
   }
 
-  throw new Error('Invalid rawRootSegment type')
+  throw new Error('Invalid rawRootSegment type');
 }

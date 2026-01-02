@@ -1,84 +1,72 @@
-import { format } from 'date-fns'
-import { ColumnDef, Row } from '@tanstack/react-table'
-import { IconPlayerPlay, IconChevronDown, IconChevronRight, IconAlertTriangle, IconEdit } from '@tabler/icons-react'
-import { useTranslation } from 'react-i18next'
-import { useCallback, useState } from 'react'
-import { cn } from '@/lib/utils'
-import { formatDuration } from '@/utils/format-duration'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Switch } from '@/components/ui/switch'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { useChannels } from '../context/channels-context'
-import { useTestChannel } from '../data/channels'
-import { usePermissions } from '@/hooks/usePermissions'
-import { CHANNEL_CONFIGS, getProvider } from '../data/config_channels'
-import { Channel, ChannelType } from '../data/schema'
-import { DataTableColumnHeader } from '@/components/data-table-column-header'
-import { DataTableRowActions } from './data-table-row-actions'
-import { ChannelsStatusDialog } from './channels-status-dialog'
+import { useCallback, useState } from 'react';
+import { format } from 'date-fns';
+import { ColumnDef, Row } from '@tanstack/react-table';
+import { IconPlayerPlay, IconChevronDown, IconChevronRight, IconAlertTriangle, IconEdit } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
+import { cn } from '@/lib/utils';
+import { formatDuration } from '@/utils/format-duration';
+import { usePermissions } from '@/hooks/usePermissions';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { DataTableColumnHeader } from '@/components/data-table-column-header';
+import { useChannels } from '../context/channels-context';
+import { useTestChannel } from '../data/channels';
+import { CHANNEL_CONFIGS, getProvider } from '../data/config_channels';
+import { Channel, ChannelType } from '../data/schema';
+import { ChannelsStatusDialog } from './channels-status-dialog';
+import { DataTableRowActions } from './data-table-row-actions';
 
 // Status Switch Cell Component to handle status toggle with confirmation dialog
 function StatusSwitchCell({ row }: { row: Row<Channel> }) {
-  const channel = row.original
-  const [dialogOpen, setDialogOpen] = useState(false)
-  
-  const isEnabled = channel.status === 'enabled'
-  const isArchived = channel.status === 'archived'
+  const channel = row.original;
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  const isEnabled = channel.status === 'enabled';
+  const isArchived = channel.status === 'archived';
 
   const handleSwitchClick = useCallback(() => {
     if (!isArchived) {
-      setDialogOpen(true)
+      setDialogOpen(true);
     }
-  }, [isArchived])
+  }, [isArchived]);
 
   return (
     <>
-      <Switch
-        checked={isEnabled}
-        onCheckedChange={handleSwitchClick}
-        disabled={isArchived}
-        data-testid="channel-status-switch"
-      />
-      {dialogOpen && (
-        <ChannelsStatusDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          currentRow={channel}
-        />
-      )}
+      <Switch checked={isEnabled} onCheckedChange={handleSwitchClick} disabled={isArchived} data-testid='channel-status-switch' />
+      {dialogOpen && <ChannelsStatusDialog open={dialogOpen} onOpenChange={setDialogOpen} currentRow={channel} />}
     </>
-  )
+  );
 }
 
 // Action Cell Component to handle hooks properly
 function ActionCell({ row }: { row: Row<Channel> }) {
-  const { t } = useTranslation()
-  const channel = row.original
-  const { setOpen, setCurrentRow } = useChannels()
-  const { channelPermissions } = usePermissions()
-  const testChannel = useTestChannel()
+  const { t } = useTranslation();
+  const channel = row.original;
+  const { setOpen, setCurrentRow } = useChannels();
+  const { channelPermissions } = usePermissions();
+  const testChannel = useTestChannel();
 
   const handleDefaultTest = async () => {
     try {
       await testChannel.mutateAsync({
         channelID: channel.id,
         modelID: channel.defaultTestModel || undefined,
-      })
-    } catch (_error) {
-    }
-  }
+      });
+    } catch (_error) {}
+  };
 
   const handleOpenTestDialog = useCallback(() => {
-    setCurrentRow(channel)
-    setOpen('test')
-  }, [channel, setCurrentRow, setOpen])
+    setCurrentRow(channel);
+    setOpen('test');
+  }, [channel, setCurrentRow, setOpen]);
 
   const handleEdit = useCallback(() => {
-    setCurrentRow(channel)
-    setOpen('edit')
-  }, [channel, setCurrentRow, setOpen])
+    setCurrentRow(channel);
+    setOpen('edit');
+  }, [channel, setCurrentRow, setOpen]);
 
   return (
     <div className='flex items-center gap-1'>
@@ -94,7 +82,7 @@ function ActionCell({ row }: { row: Row<Channel> }) {
         <IconChevronDown className='h-3 w-3' />
       </Button>
     </div>
-  )
+  );
 }
 
 export const createColumns = (t: ReturnType<typeof useTranslation>['t']): ColumnDef<Channel>[] => {
@@ -106,17 +94,8 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
         className: 'w-8 min-w-8',
       },
       cell: ({ row }) => (
-        <Button
-          variant='ghost'
-          size='sm'
-          className='h-6 w-6 p-0'
-          onClick={() => row.toggleExpanded()}
-        >
-          {row.getIsExpanded() ? (
-            <IconChevronDown className='h-4 w-4' />
-          ) : (
-            <IconChevronRight className='h-4 w-4' />
-          )}
+        <Button variant='ghost' size='sm' className='h-6 w-6 p-0' onClick={() => row.toggleExpanded()}>
+          {row.getIsExpanded() ? <IconChevronDown className='h-4 w-4' /> : <IconChevronRight className='h-4 w-4' />}
         </Button>
       ),
       enableSorting: false,
@@ -147,32 +126,30 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       accessorKey: 'name',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.name')} />,
       cell: ({ row }) => {
-        const channel = row.original
-        const hasError = !!channel.errorMessage
+        const channel = row.original;
+        const hasError = !!channel.errorMessage;
 
         const content = (
           <div className='flex max-w-56 items-center gap-2'>
             {hasError && <IconAlertTriangle className='text-destructive h-4 w-4 shrink-0' />}
-            <div className={cn('font-medium truncate', hasError && 'text-destructive')}>{row.getValue('name')}</div>
+            <div className={cn('truncate font-medium', hasError && 'text-destructive')}>{row.getValue('name')}</div>
           </div>
-        )
+        );
 
         if (hasError) {
           return (
             <Tooltip>
-              <TooltipTrigger asChild>
-                {content}
-              </TooltipTrigger>
+              <TooltipTrigger asChild>{content}</TooltipTrigger>
               <TooltipContent>
                 <div className='space-y-1'>
                   <p className='text-destructive text-sm'>{t(`channels.messages.${channel.errorMessage}`)}</p>
                 </div>
               </TooltipContent>
             </Tooltip>
-          )
+          );
         }
 
-        return content
+        return content;
       },
       meta: {
         className: 'md:table-cell min-w-48',
@@ -185,10 +162,10 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       accessorKey: 'type',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.provider')} />,
       cell: ({ row }) => {
-        const type = row.original.type
-        const config = CHANNEL_CONFIGS[type]
-        const provider = getProvider(type)
-        const IconComponent = config.icon
+        const type = row.original.type;
+        const config = CHANNEL_CONFIGS[type];
+        const provider = getProvider(type);
+        const IconComponent = config.icon;
         return (
           <Badge variant='outline' className={cn('capitalize', config.color)}>
             <div className='flex items-center gap-2'>
@@ -196,10 +173,10 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
               <span>{t(`channels.providers.${provider}`)}</span>
             </div>
           </Badge>
-        )
+        );
       },
       filterFn: (row, id, value) => {
-        return value.includes(row.original.type)
+        return value.includes(row.original.type);
       },
       enableSorting: false,
       enableHiding: false,
@@ -215,9 +192,9 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       accessorKey: 'tags',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.tags')} />,
       cell: ({ row }) => {
-        const tags = (row.getValue('tags') as string[]) || []
+        const tags = (row.getValue('tags') as string[]) || [];
         if (tags.length === 0) {
-          return <span className='text-muted-foreground text-xs'>-</span>
+          return <span className='text-muted-foreground text-xs'>-</span>;
         }
         return (
           <div className='flex max-w-48 flex-wrap gap-1'>
@@ -232,12 +209,12 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
               </Badge>
             )}
           </div>
-        )
+        );
       },
       filterFn: (row, id, value) => {
-        const tags = (row.getValue(id) as string[]) || []
+        const tags = (row.getValue(id) as string[]) || [];
         // Single select: value is a string, not an array
-        return tags.includes(value as string)
+        return tags.includes(value as string);
       },
       enableSorting: false,
       enableHiding: true,
@@ -257,13 +234,13 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       accessorKey: 'channelPerformance',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.channelPerformance')} />,
       cell: ({ row }) => {
-        const performance = row.getValue('channelPerformance') as any
+        const performance = row.getValue('channelPerformance') as any;
         if (!performance) {
-          return <span className='text-muted-foreground text-xs'>-</span>
+          return <span className='text-muted-foreground text-xs'>-</span>;
         }
 
-        const avgLatency = performance.avgStreamFirstTokenLatencyMs || performance.avgLatencyMs || 0
-        const avgTokensPerSec = performance.avgStreamTokenPerSecond || performance.avgTokenPerSecond || 0
+        const avgLatency = performance.avgStreamFirstTokenLatencyMs || performance.avgLatencyMs || 0;
+        const avgTokensPerSec = performance.avgStreamTokenPerSecond || performance.avgTokenPerSecond || 0;
 
         return (
           <div className='space-y-1'>
@@ -290,7 +267,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
               </TooltipContent>
             </Tooltip>
           </div>
-        )
+        );
       },
       enableSorting: false,
     },
@@ -298,27 +275,27 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       accessorKey: 'supportedModels',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.supportedModels')} />,
       cell: ({ row }) => {
-        const channel = row.original
-        const models = row.getValue('supportedModels') as string[]
-        const { setOpen, setCurrentRow } = useChannels()
+        const channel = row.original;
+        const models = row.getValue('supportedModels') as string[];
+        const { setOpen, setCurrentRow } = useChannels();
 
         const handleOpenModelsDialog = useCallback(() => {
-          setCurrentRow(channel)
-          setOpen('viewModels')
-        }, [channel, setCurrentRow, setOpen])
+          setCurrentRow(channel);
+          setOpen('viewModels');
+        }, [channel, setCurrentRow, setOpen]);
 
         return (
           <div className='flex items-center gap-2'>
             <div className='flex max-w-48 flex-wrap gap-1 overflow-hidden'>
               {models.slice(0, 2).map((model) => (
-                <Badge key={model} variant='secondary' className='text-xs truncate max-w-32 text-left block'>
+                <Badge key={model} variant='secondary' className='block max-w-32 truncate text-left text-xs'>
                   {model}
                 </Badge>
               ))}
               {models.length > 2 && (
                 <Badge
                   variant='secondary'
-                  className='text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors'
+                  className='hover:bg-primary hover:text-primary-foreground cursor-pointer text-xs transition-colors'
                   onClick={handleOpenModelsDialog}
                   title={t('channels.actions.viewModels')}
                 >
@@ -327,7 +304,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
               )}
             </div>
           </div>
-        )
+        );
       },
       enableSorting: false,
     },
@@ -343,11 +320,11 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       accessorKey: 'orderingWeight',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.orderingWeight')} />,
       cell: ({ row }) => {
-        const weight = row.getValue('orderingWeight') as number | null
+        const weight = row.getValue('orderingWeight') as number | null;
         if (weight == null) {
-          return <span className='text-muted-foreground text-xs'>-</span>
+          return <span className='text-muted-foreground text-xs'>-</span>;
         }
-        return <span className='font-mono text-sm'>{weight}</span>
+        return <span className='font-mono text-sm'>{weight}</span>;
       },
       meta: {
         className: 'w-20 min-w-20 text-right',
@@ -360,21 +337,21 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       accessorKey: 'createdAt',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.createdAt')} />,
       cell: ({ row }) => {
-        const raw = row.getValue('createdAt') as unknown
-        const date = raw instanceof Date ? raw : new Date(raw as string)
+        const raw = row.getValue('createdAt') as unknown;
+        const date = raw instanceof Date ? raw : new Date(raw as string);
 
         if (Number.isNaN(date.getTime())) {
-          return <span className='text-muted-foreground text-xs'>-</span>
+          return <span className='text-muted-foreground text-xs'>-</span>;
         }
 
         return (
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className='text-muted-foreground text-sm cursor-help'>{format(date, 'yyyy-MM-dd')}</div>
+              <div className='text-muted-foreground cursor-help text-sm'>{format(date, 'yyyy-MM-dd')}</div>
             </TooltipTrigger>
             <TooltipContent>{format(date, 'yyyy-MM-dd HH:mm:ss')}</TooltipContent>
           </Tooltip>
-        )
+        );
       },
       enableSorting: true,
       enableHiding: false,
@@ -389,5 +366,5 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       enableSorting: false,
       enableHiding: false,
     },
-  ]
-}
+  ];
+};

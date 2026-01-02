@@ -1,15 +1,9 @@
-import React from 'react'
-import { useNavigate, useRouter } from '@tanstack/react-router'
-import {
-  IconArrowRightDashed,
-  IconChevronRight,
-  IconDeviceLaptop,
-  IconMoon,
-  IconSun,
-} from '@tabler/icons-react'
-import { useTranslation } from 'react-i18next'
-import { useSearch } from '@/context/search-context'
-import { useTheme } from '@/context/theme-context'
+import React from 'react';
+import { useNavigate, useRouter } from '@tanstack/react-router';
+import { IconArrowRightDashed, IconChevronRight, IconDeviceLaptop, IconMoon, IconSun } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
+import { useSearch } from '@/context/search-context';
+import { useTheme } from '@/context/theme-context';
 import {
   CommandDialog,
   CommandEmpty,
@@ -18,31 +12,31 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
-} from '@/components/ui/command'
-import { useSidebarData } from '../sidebar'
-import { ScrollArea } from './ui/scroll-area'
+} from '@/components/ui/command';
+import { useSidebarData } from '../sidebar';
+import { ScrollArea } from './ui/scroll-area';
 
 export function CommandMenu() {
-  const router = useRouter()
-  const { setTheme } = useTheme()
-  const { open, setOpen } = useSearch()
-  const sidebarData = useSidebarData()
-  const { t } = useTranslation()
+  const router = useRouter();
+  const { setTheme } = useTheme();
+  const { open, setOpen } = useSearch();
+  const sidebarData = useSidebarData();
+  const { t } = useTranslation();
 
   // Don't render if router is not available
   if (!router) {
-    return null
+    return null;
   }
 
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   const runCommand = React.useCallback(
     (command: () => unknown) => {
-      setOpen(false)
-      command()
+      setOpen(false);
+      command();
     },
     [setOpen]
-  )
+  );
 
   return (
     <CommandDialog modal open={open} onOpenChange={setOpen}>
@@ -59,7 +53,7 @@ export function CommandMenu() {
                       key={`${navItem.url}-${i}`}
                       value={navItem.title}
                       onSelect={() => {
-                        runCommand(() => navigate({ to: navItem.url }))
+                        runCommand(() => navigate({ to: navItem.url }));
                       }}
                     >
                       <div className='mr-2 flex h-4 w-4 items-center justify-center'>
@@ -67,14 +61,14 @@ export function CommandMenu() {
                       </div>
                       {navItem.title}
                     </CommandItem>
-                  )
+                  );
 
                 return navItem.items?.map((subItem, i) => (
                   <CommandItem
                     key={`${navItem.title}-${subItem.url}-${i}`}
                     value={`${navItem.title}-${subItem.url}`}
                     onSelect={() => {
-                      runCommand(() => navigate({ to: subItem.url }))
+                      runCommand(() => navigate({ to: subItem.url }));
                     }}
                   >
                     <div className='mr-2 flex h-4 w-4 items-center justify-center'>
@@ -82,7 +76,7 @@ export function CommandMenu() {
                     </div>
                     {navItem.title} <IconChevronRight /> {subItem.title}
                   </CommandItem>
-                ))
+                ));
               })}
             </CommandGroup>
           ))}
@@ -103,5 +97,5 @@ export function CommandMenu() {
         </ScrollArea>
       </CommandList>
     </CommandDialog>
-  )
+  );
 }

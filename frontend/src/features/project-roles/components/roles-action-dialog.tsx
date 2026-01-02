@@ -1,46 +1,37 @@
-'use client'
+'use client';
 
-import React from 'react'
-import { z } from 'zod'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useAllScopes } from '@/gql/scopes'
-import { useTranslation } from 'react-i18next'
-import { useSelectedProjectId } from '@/stores/projectStore'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { ConfirmDialog } from '@/components/confirm-dialog'
-import { useRolesContext } from '../context/roles-context'
-import { useCreateRole, useUpdateRole, useDeleteRole } from '../data/roles'
-import { createRoleInputSchema, updateRoleInputSchema } from '../data/schema'
-import { useAuthStore } from '@/stores/authStore'
-import { filterGrantableScopes } from '@/lib/permission-utils'
+import React from 'react';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useAllScopes } from '@/gql/scopes';
+import { useTranslation } from 'react-i18next';
+import { useAuthStore } from '@/stores/authStore';
+import { useSelectedProjectId } from '@/stores/projectStore';
+import { filterGrantableScopes } from '@/lib/permission-utils';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { ConfirmDialog } from '@/components/confirm-dialog';
+import { useRolesContext } from '../context/roles-context';
+import { useCreateRole, useUpdateRole, useDeleteRole } from '../data/roles';
+import { createRoleInputSchema, updateRoleInputSchema } from '../data/schema';
 
 // Create Role Dialog
 export function CreateRoleDialog() {
-  const { t } = useTranslation()
-  const currentUser = useAuthStore((state) => state.auth.user)
-  const { isCreateDialogOpen, setIsCreateDialogOpen } = useRolesContext()
-  const { data: allScopes = [] } = useAllScopes('project')
-  const createRole = useCreateRole()
-  const selectedProjectId = useSelectedProjectId()
+  const { t } = useTranslation();
+  const currentUser = useAuthStore((state) => state.auth.user);
+  const { isCreateDialogOpen, setIsCreateDialogOpen } = useRolesContext();
+  const { data: allScopes = [] } = useAllScopes('project');
+  const createRole = useCreateRole();
+  const selectedProjectId = useSelectedProjectId();
 
   // 过滤当前用户可以授予的权限
-  const scopes = allScopes.filter((scope) =>
-    filterGrantableScopes(currentUser, [scope.scope], selectedProjectId).includes(scope.scope)
-  )
+  const scopes = allScopes.filter((scope) => filterGrantableScopes(currentUser, [scope.scope], selectedProjectId).includes(scope.scope));
 
   const form = useForm<z.infer<typeof createRoleInputSchema>>({
     resolver: zodResolver(createRoleInputSchema),
@@ -49,29 +40,29 @@ export function CreateRoleDialog() {
       name: '',
       scopes: [],
     },
-  })
+  });
 
   // Update projectID when selectedProjectId changes
   React.useEffect(() => {
     if (selectedProjectId) {
-      form.setValue('projectID', selectedProjectId)
+      form.setValue('projectID', selectedProjectId);
     }
-  }, [selectedProjectId, form])
+  }, [selectedProjectId, form]);
 
   const onSubmit = async (values: z.infer<typeof createRoleInputSchema>) => {
     try {
-      await createRole.mutateAsync(values)
-      setIsCreateDialogOpen(false)
-      form.reset()
+      await createRole.mutateAsync(values);
+      setIsCreateDialogOpen(false);
+      form.reset();
     } catch (error) {
       // Error is handled by the mutation
     }
-  }
+  };
 
   const handleClose = () => {
-    setIsCreateDialogOpen(false)
-    form.reset()
-  }
+    setIsCreateDialogOpen(false);
+    form.reset();
+  };
 
   return (
     <Dialog open={isCreateDialogOpen} onOpenChange={handleClose}>
@@ -89,11 +80,7 @@ export function CreateRoleDialog() {
                 <FormItem>
                   <FormLabel>{t('roles.dialogs.fields.name.label')}</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder={t('roles.dialogs.fields.name.placeholder')}
-                      aria-invalid={!!fieldState.error}
-                      {...field}
-                    />
+                    <Input placeholder={t('roles.dialogs.fields.name.placeholder')} aria-invalid={!!fieldState.error} {...field} />
                   </FormControl>
                   <FormDescription>{t('roles.dialogs.fields.name.description')}</FormDescription>
                   <div className='min-h-[1.25rem]'>
@@ -126,10 +113,10 @@ export function CreateRoleDialog() {
                                   <Checkbox
                                     checked={field.value?.includes(scope.scope)}
                                     onCheckedChange={(checked) => {
-                                      const currentValue = field.value || []
+                                      const currentValue = field.value || [];
                                       return checked
                                         ? field.onChange([...currentValue, scope.scope])
-                                        : field.onChange(currentValue.filter((value) => value !== scope.scope))
+                                        : field.onChange(currentValue.filter((value) => value !== scope.scope));
                                     }}
                                   />
                                 </FormControl>
@@ -142,7 +129,7 @@ export function CreateRoleDialog() {
                                   </FormLabel>
                                 </div>
                               </FormItem>
-                            )
+                            );
                           }}
                         />
                       ))}
@@ -165,22 +152,20 @@ export function CreateRoleDialog() {
         </Form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
 // Edit Role Dialog
 export function EditRoleDialog() {
-  const { t } = useTranslation()
-  const currentUser = useAuthStore((state) => state.auth.user)
-  const { editingRole, setEditingRole } = useRolesContext()
-  const { data: allScopes = [] } = useAllScopes('project')
-  const updateRole = useUpdateRole()
-  const selectedProjectId = useSelectedProjectId()
+  const { t } = useTranslation();
+  const currentUser = useAuthStore((state) => state.auth.user);
+  const { editingRole, setEditingRole } = useRolesContext();
+  const { data: allScopes = [] } = useAllScopes('project');
+  const updateRole = useUpdateRole();
+  const selectedProjectId = useSelectedProjectId();
 
   // 过滤当前用户可以授予的权限
-  const scopes = allScopes.filter((scope) =>
-    filterGrantableScopes(currentUser, [scope.scope], selectedProjectId).includes(scope.scope)
-  )
+  const scopes = allScopes.filter((scope) => filterGrantableScopes(currentUser, [scope.scope], selectedProjectId).includes(scope.scope));
 
   const form = useForm<z.infer<typeof updateRoleInputSchema>>({
     resolver: zodResolver(updateRoleInputSchema),
@@ -188,34 +173,34 @@ export function EditRoleDialog() {
       name: '',
       scopes: [],
     },
-  })
+  });
 
   React.useEffect(() => {
     if (editingRole) {
       form.reset({
         name: editingRole.name,
         scopes: editingRole.scopes?.map((scope: string) => scope) || [],
-      })
+      });
     }
-  }, [editingRole, form])
+  }, [editingRole, form]);
 
   const onSubmit = async (values: z.infer<typeof updateRoleInputSchema>) => {
-    if (!editingRole) return
+    if (!editingRole) return;
 
     try {
-      await updateRole.mutateAsync({ id: editingRole.id, input: values })
-      setEditingRole(null)
+      await updateRole.mutateAsync({ id: editingRole.id, input: values });
+      setEditingRole(null);
     } catch (error) {
       // Error is handled by the mutation
     }
-  }
+  };
 
   const handleClose = () => {
-    setEditingRole(null)
-    form.reset()
-  }
+    setEditingRole(null);
+    form.reset();
+  };
 
-  if (!editingRole) return null
+  if (!editingRole) return null;
 
   return (
     <Dialog open={!!editingRole} onOpenChange={handleClose}>
@@ -233,11 +218,7 @@ export function EditRoleDialog() {
                 <FormItem>
                   <FormLabel>{t('roles.dialogs.fields.name.label')}</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder={t('roles.dialogs.fields.name.placeholder')}
-                      aria-invalid={!!fieldState.error}
-                      {...field}
-                    />
+                    <Input placeholder={t('roles.dialogs.fields.name.placeholder')} aria-invalid={!!fieldState.error} {...field} />
                   </FormControl>
                   <FormDescription>{t('roles.dialogs.fields.name.description')}</FormDescription>
                   <div className='min-h-[1.25rem]'>
@@ -270,10 +251,10 @@ export function EditRoleDialog() {
                                   <Checkbox
                                     checked={field.value?.includes(scope.scope)}
                                     onCheckedChange={(checked) => {
-                                      const currentValue = field.value || []
+                                      const currentValue = field.value || [];
                                       return checked
                                         ? field.onChange([...currentValue, scope.scope])
-                                        : field.onChange(currentValue.filter((value) => value !== scope.scope))
+                                        : field.onChange(currentValue.filter((value) => value !== scope.scope));
                                     }}
                                   />
                                 </FormControl>
@@ -286,7 +267,7 @@ export function EditRoleDialog() {
                                   </FormLabel>
                                 </div>
                               </FormItem>
-                            )
+                            );
                           }}
                         />
                       ))}
@@ -309,25 +290,25 @@ export function EditRoleDialog() {
         </Form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
 // Delete Role Dialog
 export function DeleteRoleDialog() {
-  const { t } = useTranslation()
-  const { deletingRole, setDeletingRole } = useRolesContext()
-  const deleteRole = useDeleteRole()
+  const { t } = useTranslation();
+  const { deletingRole, setDeletingRole } = useRolesContext();
+  const deleteRole = useDeleteRole();
 
   const handleConfirm = async () => {
-    if (!deletingRole) return
+    if (!deletingRole) return;
 
     try {
-      await deleteRole.mutateAsync(deletingRole.id)
-      setDeletingRole(null)
+      await deleteRole.mutateAsync(deletingRole.id);
+      setDeletingRole(null);
     } catch (error) {
       // Error is handled by the mutation
     }
-  }
+  };
 
   return (
     <ConfirmDialog
@@ -341,7 +322,7 @@ export function DeleteRoleDialog() {
       isLoading={deleteRole.isPending}
       destructive
     />
-  )
+  );
 }
 
 // Combined Dialogs Component
@@ -352,5 +333,5 @@ export function RolesDialogs() {
       <EditRoleDialog />
       <DeleteRoleDialog />
     </>
-  )
+  );
 }

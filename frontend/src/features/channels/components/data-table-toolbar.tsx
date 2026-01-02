@@ -1,22 +1,22 @@
-import { useMemo, useEffect } from 'react'
-import { Cross2Icon } from '@radix-ui/react-icons'
-import { Table } from '@tanstack/react-table'
-import { useQueryModels } from '@/gql/models'
-import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter'
-import { useAllChannelTags } from '../data/channels'
-import { CHANNEL_CONFIGS } from '../data/config_channels'
-import { DataTableViewOptions } from './data-table-view-options'
+import { useMemo, useEffect } from 'react';
+import { Cross2Icon } from '@radix-ui/react-icons';
+import { Table } from '@tanstack/react-table';
+import { useQueryModels } from '@/gql/models';
+import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter';
+import { useAllChannelTags } from '../data/channels';
+import { CHANNEL_CONFIGS } from '../data/config_channels';
+import { DataTableViewOptions } from './data-table-view-options';
 
 interface DataTableToolbarProps<TData> {
-  table: Table<TData>
-  isFiltered?: boolean
-  selectedCount?: number
-  selectedTypeTab?: string
-  showErrorOnly?: boolean
-  onExitErrorOnlyMode?: () => void
+  table: Table<TData>;
+  isFiltered?: boolean;
+  selectedCount?: number;
+  selectedTypeTab?: string;
+  showErrorOnly?: boolean;
+  onExitErrorOnlyMode?: () => void;
 }
 
 export function DataTableToolbar<TData>({
@@ -27,15 +27,15 @@ export function DataTableToolbar<TData>({
   showErrorOnly,
   onExitErrorOnlyMode,
 }: DataTableToolbarProps<TData>) {
-  const { t } = useTranslation()
-  const tableState = table.getState()
-  const isFiltered = externalIsFiltered ?? tableState.columnFilters.length > 0
+  const { t } = useTranslation();
+  const tableState = table.getState();
+  const isFiltered = externalIsFiltered ?? tableState.columnFilters.length > 0;
 
   // Get all channel tags from GraphQL
-  const { data: allTags = [] } = useAllChannelTags()
+  const { data: allTags = [] } = useAllChannelTags();
 
   // Fetch models using the models query
-  const { mutate: fetchModels, data: modelsData } = useQueryModels()
+  const { mutate: fetchModels, data: modelsData } = useQueryModels();
 
   // Fetch models on component mount
   useEffect(() => {
@@ -43,8 +43,8 @@ export function DataTableToolbar<TData>({
       statusIn: ['enabled', 'disabled'],
       includeMapping: true,
       includePrefix: true,
-    })
-  }, [fetchModels])
+    });
+  }, [fetchModels]);
 
   const tagOptions = useMemo(
     () =>
@@ -53,15 +53,15 @@ export function DataTableToolbar<TData>({
         label: tag,
       })),
     [allTags]
-  )
+  );
 
   const modelOptions = useMemo(() => {
-    if (!modelsData) return []
+    if (!modelsData) return [];
     return modelsData.map((model) => ({
       value: model.id,
       label: model.id,
-    }))
-  }, [modelsData])
+    }));
+  }, [modelsData]);
 
   // Generate channel types from CHANNEL_CONFIGS
   const channelTypes = useMemo(
@@ -71,7 +71,7 @@ export function DataTableToolbar<TData>({
         label: t(`channels.types.${config.channelType}`),
       })),
     [t]
-  )
+  );
 
   const channelStatuses = useMemo(
     () => [
@@ -89,17 +89,17 @@ export function DataTableToolbar<TData>({
       },
     ],
     [t]
-  )
+  );
 
   return (
     <div className='flex items-center gap-4'>
       <div className='relative flex-1'>
-        <i className='ph ph-magnifying-glass absolute left-3 top-2.5 text-muted-foreground'></i>
+        <i className='ph ph-magnifying-glass text-muted-foreground absolute top-2.5 left-3'></i>
         <Input
           placeholder={t('channels.filters.filterByName')}
           value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
           onChange={(event) => table.getColumn('name')?.setFilterValue(event.target.value)}
-          className='w-full bg-card pl-10 pr-4 py-2 rounded-xl text-sm border border-border focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all placeholder-muted-foreground text-foreground shadow-sm'
+          className='bg-card border-border focus:ring-primary/20 placeholder-muted-foreground text-foreground w-full rounded-xl border py-2 pr-4 pl-10 text-sm shadow-sm transition-all focus:ring-2 focus:outline-none'
         />
       </div>
       {table.getColumn('status') && (
@@ -109,12 +109,7 @@ export function DataTableToolbar<TData>({
         <DataTableFacetedFilter column={table.getColumn('tags')} title={t('channels.filters.tags')} options={tagOptions} singleSelect />
       )}
       {table.getColumn('model') && modelOptions?.length > 0 && (
-        <DataTableFacetedFilter
-          column={table.getColumn('model')}
-          title={t('channels.filters.model')}
-          options={modelOptions}
-          singleSelect
-        />
+        <DataTableFacetedFilter column={table.getColumn('model')} title={t('channels.filters.model')} options={modelOptions} singleSelect />
       )}
       {isFiltered && (
         <Button variant='ghost' onClick={() => table.resetColumnFilters()} className='h-8 px-2 lg:px-3'>
@@ -133,5 +128,5 @@ export function DataTableToolbar<TData>({
       )}
       <DataTableViewOptions table={table} />
     </div>
-  )
+  );
 }

@@ -1,106 +1,106 @@
-'use client'
+'use client';
 
-import { forwardRef, useCallback, useEffect, useRef, useState } from 'react'
-import { Check } from 'lucide-react'
-import { X } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { Popover, PopoverContent, PopoverTrigger } from './popover'
-import { TruncatedText } from '@/components/truncated-text'
+import { forwardRef, useCallback, useEffect, useRef, useState } from 'react';
+import { Check } from 'lucide-react';
+import { X } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { TruncatedText } from '@/components/truncated-text';
+import { Popover, PopoverContent, PopoverTrigger } from './popover';
 
 interface TagsAutocompleteInputProps {
-  value: string[]
-  onChange: (tags: string[]) => void
-  placeholder?: string
-  className?: string
-  suggestions?: string[]
-  isLoading?: boolean
+  value: string[];
+  onChange: (tags: string[]) => void;
+  placeholder?: string;
+  className?: string;
+  suggestions?: string[];
+  isLoading?: boolean;
 }
 
 export const TagsAutocompleteInput = forwardRef<HTMLDivElement, TagsAutocompleteInputProps>(
   ({ value = [], onChange, placeholder, className, suggestions = [], isLoading }, ref) => {
-    const [inputValue, setInputValue] = useState('')
-    const [open, setOpen] = useState(false)
-    const [isComposing, setIsComposing] = useState(false)
-    const containerRef = useRef<HTMLDivElement>(null)
-    const inputRef = useRef<HTMLInputElement>(null)
+    const [inputValue, setInputValue] = useState('');
+    const [open, setOpen] = useState(false);
+    const [isComposing, setIsComposing] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
 
     // Filter suggestions based on input and not already selected
     const filteredSuggestions = suggestions.filter((s) => {
-      if (value.includes(s)) return false
-      if (!inputValue.trim()) return true
-      return s.toLowerCase().includes(inputValue.toLowerCase())
-    })
+      if (value.includes(s)) return false;
+      if (!inputValue.trim()) return true;
+      return s.toLowerCase().includes(inputValue.toLowerCase());
+    });
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      setInputValue(e.target.value)
+      setInputValue(e.target.value);
       if (e.target.value && !open && suggestions.length > 0) {
-        setOpen(true)
+        setOpen(true);
       } else if (!e.target.value) {
-        setOpen(false)
+        setOpen(false);
       }
-    }
+    };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (isComposing) return
+      if (isComposing) return;
 
       if (e.key === 'Enter' || e.key === ',') {
-        e.preventDefault()
-        const newTag = inputValue.trim()
+        e.preventDefault();
+        const newTag = inputValue.trim();
         if (newTag && !value.includes(newTag)) {
-          onChange([...value, newTag])
+          onChange([...value, newTag]);
         }
-        setInputValue('')
-        setOpen(false)
+        setInputValue('');
+        setOpen(false);
       } else if (e.key === 'Backspace' && !inputValue && value.length > 0) {
-        onChange(value.slice(0, -1))
+        onChange(value.slice(0, -1));
       } else if (e.key === 'Escape') {
-        setOpen(false)
+        setOpen(false);
       }
-    }
+    };
 
     const removeTag = (tagToRemove: string) => {
-      onChange(value.filter((tag) => tag !== tagToRemove))
-    }
+      onChange(value.filter((tag) => tag !== tagToRemove));
+    };
 
     const handleSelectSuggestion = (suggestion: string) => {
       if (!value.includes(suggestion)) {
-        onChange([...value, suggestion])
+        onChange([...value, suggestion]);
       }
-      setInputValue('')
-      setOpen(false)
-      inputRef.current?.focus()
-    }
+      setInputValue('');
+      setOpen(false);
+      inputRef.current?.focus();
+    };
 
     const handleInputBlur = () => {
-      if (isComposing) return
-      const newTag = inputValue.trim()
+      if (isComposing) return;
+      const newTag = inputValue.trim();
       if (newTag && !value.includes(newTag)) {
-        onChange([...value, newTag])
+        onChange([...value, newTag]);
       }
-      setInputValue('')
-      setOpen(false)
-    }
+      setInputValue('');
+      setOpen(false);
+    };
 
     // Focus input when clicking on the container
     const handleContainerClick = () => {
-      inputRef.current?.focus()
+      inputRef.current?.focus();
       if (suggestions.length > 0 && inputValue) {
-        setOpen(true)
+        setOpen(true);
       }
-    }
+    };
 
     // Close popover when clicking outside
     useEffect(() => {
       const handleClickOutside = (e: MouseEvent) => {
-        const target = e.target as HTMLElement
+        const target = e.target as HTMLElement;
         if (!target.closest('[data-tags-input-container]')) {
-          setOpen(false)
+          setOpen(false);
         }
-      }
+      };
 
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
-    }, [])
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     return (
       <div
@@ -136,7 +136,7 @@ export const TagsAutocompleteInput = forwardRef<HTMLDivElement, TagsAutocomplete
               onBlur={handleInputBlur}
               onFocus={() => {
                 if (suggestions.length > 0 && inputValue) {
-                  setOpen(true)
+                  setOpen(true);
                 }
               }}
               onCompositionStart={() => setIsComposing(true)}
@@ -154,33 +154,31 @@ export const TagsAutocompleteInput = forwardRef<HTMLDivElement, TagsAutocomplete
             >
               <div className='max-h-[200px] overflow-y-auto p-1'>
                 {isLoading ? (
-                  <div className='p-2 text-sm text-muted-foreground'>Loading...</div>
+                  <div className='text-muted-foreground p-2 text-sm'>Loading...</div>
                 ) : filteredSuggestions.length > 0 ? (
                   filteredSuggestions.map((suggestion) => (
                     <div
                       key={suggestion}
                       className='hover:bg-accent flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm'
                       onMouseDown={(e) => {
-                        e.preventDefault()
-                        handleSelectSuggestion(suggestion)
+                        e.preventDefault();
+                        handleSelectSuggestion(suggestion);
                       }}
                     >
-                      <Check className='h-4 w-4 shrink-0 text-muted-foreground' />
+                      <Check className='text-muted-foreground h-4 w-4 shrink-0' />
                       <TruncatedText className='flex-1'>{suggestion}</TruncatedText>
                     </div>
                   ))
                 ) : inputValue.trim() ? (
-                  <div className='p-2 text-sm text-muted-foreground'>
-                    Press Enter to add &quot;{inputValue}&quot;
-                  </div>
+                  <div className='text-muted-foreground p-2 text-sm'>Press Enter to add &quot;{inputValue}&quot;</div>
                 ) : null}
               </div>
             </PopoverContent>
           )}
         </Popover>
       </div>
-    )
+    );
   }
-)
+);
 
-TagsAutocompleteInput.displayName = 'TagsAutocompleteInput'
+TagsAutocompleteInput.displayName = 'TagsAutocompleteInput';

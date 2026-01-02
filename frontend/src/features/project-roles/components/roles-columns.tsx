@@ -1,17 +1,14 @@
-'use client'
+'use client';
 
-import { ColumnDef } from '@tanstack/react-table'
-import { useTranslation } from 'react-i18next'
-import { format } from 'date-fns'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Badge } from '@/components/ui/badge'
-import { Role } from '../data/schema'
-import { DataTableRowActions } from './data-table-row-actions'
+import { format } from 'date-fns';
+import { ColumnDef } from '@tanstack/react-table';
+import { useTranslation } from 'react-i18next';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Role } from '../data/schema';
+import { DataTableRowActions } from './data-table-row-actions';
 
-export const createColumns = (
-  t: ReturnType<typeof useTranslation>['t'],
-  canWrite: boolean = false
-): ColumnDef<Role>[] => {
+export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrite: boolean = false): ColumnDef<Role>[] => {
   const columns: ColumnDef<Role>[] = [
     {
       id: 'search',
@@ -23,7 +20,7 @@ export const createColumns = (
       enableGlobalFilter: false,
       getUniqueValues: () => [],
     },
-  ]
+  ];
 
   // Only show select column if user has write permissions (for potential bulk operations)
   if (canWrite) {
@@ -31,10 +28,7 @@ export const createColumns = (
       id: 'select',
       header: ({ table }) => (
         <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && 'indeterminate')
-          }
+          checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
           aria-label={t('roles.columns.selectAll')}
           className='translate-y-[2px]'
@@ -50,7 +44,7 @@ export const createColumns = (
       ),
       enableSorting: false,
       enableHiding: false,
-    })
+    });
   }
 
   // Add other columns
@@ -59,21 +53,17 @@ export const createColumns = (
       accessorKey: 'name',
       header: t('roles.columns.name'),
       cell: ({ row }) => {
-        const name = row.getValue('name') as string
-        return (
-          <div className='font-medium'>
-            {name}
-          </div>
-        )
+        const name = row.getValue('name') as string;
+        return <div className='font-medium'>{name}</div>;
       },
     },
     {
       accessorKey: 'scopes',
       header: t('roles.columns.scopes'),
       cell: ({ row }) => {
-        const scopes = row.getValue('scopes') as string[]
+        const scopes = row.getValue('scopes') as string[];
         return (
-          <div className='flex flex-wrap gap-1 max-w-[300px]'>
+          <div className='flex max-w-[300px] flex-wrap gap-1'>
             {scopes.slice(0, 3).map((scope) => (
               <Badge key={scope} variant='secondary' className='text-xs'>
                 {scope}
@@ -85,38 +75,30 @@ export const createColumns = (
               </Badge>
             )}
           </div>
-        )
+        );
       },
     },
     {
       accessorKey: 'createdAt',
       header: t('roles.columns.createdAt'),
       cell: ({ row }) => {
-        const date = row.getValue('createdAt') as Date
-        return (
-          <div className='text-muted-foreground'>
-            {format(date, 'yyyy-MM-dd HH:mm')}
-          </div>
-        )
+        const date = row.getValue('createdAt') as Date;
+        return <div className='text-muted-foreground'>{format(date, 'yyyy-MM-dd HH:mm')}</div>;
       },
     },
     {
       accessorKey: 'updatedAt',
       header: t('roles.columns.updatedAt'),
       cell: ({ row }) => {
-        const date = row.getValue('updatedAt') as Date
-        return (
-          <div className='text-muted-foreground'>
-            {format(date, 'yyyy-MM-dd HH:mm')}
-          </div>
-        )
+        const date = row.getValue('updatedAt') as Date;
+        return <div className='text-muted-foreground'>{format(date, 'yyyy-MM-dd HH:mm')}</div>;
       },
     },
     {
       id: 'actions',
       cell: ({ row }) => <DataTableRowActions row={row} />,
-    },
-  )
+    }
+  );
 
-  return columns
-}
+  return columns;
+};

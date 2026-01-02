@@ -1,40 +1,23 @@
-'use client'
+'use client';
 
-import { useTranslation } from 'react-i18next'
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-  type TooltipProps,
-} from 'recharts'
-import { formatNumber } from '@/utils/format-number'
-import { Skeleton } from '@/components/ui/skeleton'
-import { useRequestsByChannel } from '../data/dashboard'
+import { useTranslation } from 'react-i18next';
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
+import { formatNumber } from '@/utils/format-number';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useRequestsByChannel } from '../data/dashboard';
 
-const COLORS = [
-  'var(--chart-1)',
-  'var(--chart-2)',
-  'var(--chart-3)',
-  'var(--chart-4)',
-  'var(--chart-5)',
-  'var(--chart-1)',
-]
+const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)', 'var(--chart-1)'];
 
 export function RequestsByChannelChart() {
-  const { t } = useTranslation()
-  const { data: channelData, isLoading, error } = useRequestsByChannel()
+  const { t } = useTranslation();
+  const { data: channelData, isLoading, error } = useRequestsByChannel();
 
   if (isLoading) {
     return (
       <div className='flex h-[300px] items-center justify-center'>
         <Skeleton className='h-[250px] w-[250px] rounded-full' />
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -44,7 +27,7 @@ export function RequestsByChannelChart() {
           {t('dashboard.charts.errorLoadingChannelData')} {error.message}
         </div>
       </div>
-    )
+    );
   }
 
   if (!channelData || channelData.length === 0) {
@@ -52,38 +35,38 @@ export function RequestsByChannelChart() {
       <div className='flex h-[300px] items-center justify-center'>
         <div className='text-muted-foreground text-sm'>{t('dashboard.charts.noChannelData')}</div>
       </div>
-    )
+    );
   }
 
-  const total = channelData.reduce((sum, item) => sum + item.count, 0)
+  const total = channelData.reduce((sum, item) => sum + item.count, 0);
   const chartData = channelData
     .map((item) => ({
       name: item.channelName,
       value: item.count,
     }))
-    .sort((a, b) => b.value - a.value)
+    .sort((a, b) => b.value - a.value);
 
   const legendItems = chartData.map((item, index) => ({
     ...item,
     index: index + 1,
     color: COLORS[index % COLORS.length],
     percent: total ? (item.value / total) * 100 : 0,
-  }))
+  }));
 
   type ChannelTooltipProps = TooltipProps<number, string> & {
     payload?: Array<{
-      name?: string
-      value?: number
-    }>
-  }
+      name?: string;
+      value?: number;
+    }>;
+  };
 
   const tooltipContent = (props: ChannelTooltipProps) => {
-    const payload = props.payload
+    const payload = props.payload;
 
-    if (!props.active || !payload?.length) return null
+    if (!props.active || !payload?.length) return null;
 
-    const [{ name, value }] = payload
-    const percent = total ? ((value ?? 0) / total) * 100 : 0
+    const [{ name, value }] = payload;
+    const percent = total ? ((value ?? 0) / total) * 100 : 0;
 
     return (
       <div className='bg-background/90 rounded-md border px-3 py-2 text-xs shadow-sm backdrop-blur'>
@@ -92,8 +75,8 @@ export function RequestsByChannelChart() {
           {value?.toLocaleString()} ({percent.toFixed(0)}%)
         </div>
       </div>
-    )
-  }
+    );
+  };
 
   return (
     <div className='space-y-6'>
@@ -101,12 +84,7 @@ export function RequestsByChannelChart() {
         <BarChart data={chartData} barSize={32}>
           <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' vertical={false} />
           <XAxis dataKey='name' hide />
-          <YAxis
-            tickLine={false}
-            axisLine={false}
-            width={60}
-            tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
-          />
+          <YAxis tickLine={false} axisLine={false} width={60} tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }} />
           <Tooltip content={tooltipContent} cursor={{ fill: 'var(--muted)' }} />
           <Bar dataKey='value' radius={[6, 6, 0, 0]}>
             {chartData.map((_, index) => (
@@ -132,5 +110,5 @@ export function RequestsByChannelChart() {
         ))}
       </div>
     </div>
-  )
+  );
 }

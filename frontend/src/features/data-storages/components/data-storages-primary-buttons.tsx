@@ -1,15 +1,15 @@
-'use client'
+'use client';
 
-import { useNavigate } from '@tanstack/react-router'
-import { Plus, Settings } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
-import { useDataStoragesContext } from '../context/data-storages-context'
+import { useNavigate } from '@tanstack/react-router';
+import { Plus, Settings } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
+import { useDataStoragesContext } from '../context/data-storages-context';
 
 export function DataStoragesPrimaryButtons() {
-  const { t } = useTranslation()
-  const navigate = useNavigate()
-  const { setIsCreateDialogOpen } = useDataStoragesContext()
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { setIsCreateDialogOpen } = useDataStoragesContext();
 
   return (
     <div className='flex flex-wrap items-center gap-2'>
@@ -22,5 +22,5 @@ export function DataStoragesPrimaryButtons() {
         {t('dataStorages.buttons.create')}
       </Button>
     </div>
-  )
+  );
 }

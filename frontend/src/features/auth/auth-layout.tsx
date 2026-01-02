@@ -1,7 +1,7 @@
-import { LanguageSwitch } from '@/components/language-switch'
+import { LanguageSwitch } from '@/components/language-switch';
 
 interface Props {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 const particles = Array.from({ length: 80 }).map((_, i) => ({
@@ -15,21 +15,16 @@ const particles = Array.from({ length: 80 }).map((_, i) => ({
 }));
 
 export default function AuthLayout({ children }: Props) {
-  
   return (
-    <div className='relative min-h-screen overflow-hidden bg-[#1A1A1A] tech'>
+    <div className='tech relative min-h-screen overflow-hidden bg-[#1A1A1A]'>
       {/* Tech grid background */}
-      <div className='absolute inset-0 tech-grid opacity-30'></div>
-      
+      <div className='tech-grid absolute inset-0 opacity-30'></div>
+
       {/* Low-poly network pattern */}
-      <div className='absolute inset-0 low-poly-network'></div>
+      <div className='low-poly-network absolute inset-0'></div>
 
       {/* Fullscreen Connection Lines */}
-      <svg
-        className='absolute inset-0 w-full h-full z-0 opacity-40'
-        preserveAspectRatio='xMidYMid slice'
-        viewBox='0 0 1920 1080'
-      >
+      <svg className='absolute inset-0 z-0 h-full w-full opacity-40' preserveAspectRatio='xMidYMid slice' viewBox='0 0 1920 1080'>
         <defs>
           <linearGradient id='dataFlow' x1='0%' y1='0%' x2='100%' y2='0%'>
             <stop offset='0%' stopColor='#00C77E' stopOpacity='0' />
@@ -38,46 +33,62 @@ export default function AuthLayout({ children }: Props) {
           </linearGradient>
         </defs>
         <line x1='0' y1='0' x2='960' y2='540' stroke='url(#dataFlow)' strokeWidth='2' className='animate-data-flow' />
-        <line x1='1920' y1='0' x2='960' y2='540' stroke='url(#dataFlow)' strokeWidth='2' className='animate-data-flow animation-delay-1000' />
-        <line x1='0' y1='1080' x2='960' y2='540' stroke='url(#dataFlow)' strokeWidth='2' className='animate-data-flow animation-delay-2000' />
-        <line x1='1920' y1='1080' x2='960' y2='540' stroke='url(#dataFlow)' strokeWidth='2' className='animate-data-flow animation-delay-3000' />
+        <line
+          x1='1920'
+          y1='0'
+          x2='960'
+          y2='540'
+          stroke='url(#dataFlow)'
+          strokeWidth='2'
+          className='animate-data-flow animation-delay-1000'
+        />
+        <line
+          x1='0'
+          y1='1080'
+          x2='960'
+          y2='540'
+          stroke='url(#dataFlow)'
+          strokeWidth='2'
+          className='animate-data-flow animation-delay-2000'
+        />
+        <line
+          x1='1920'
+          y1='1080'
+          x2='960'
+          y2='540'
+          stroke='url(#dataFlow)'
+          strokeWidth='2'
+          className='animate-data-flow animation-delay-3000'
+        />
       </svg>
-      
+
       {/* Top Navigation (overlay) */}
-      <nav className='absolute top-0 left-0 right-0 z-50 flex items-center justify-between p-6'>
+      <nav className='absolute top-0 right-0 left-0 z-50 flex items-center justify-between p-6'>
         <div className='flex items-center space-x-3'>
-          <img
-            src='/logo.jpg'
-            alt='AxonHub logo'
-            className='h-8 w-8 rounded-sm shadow-sm ring-1 ring-emerald-400/20'
-          />
-          <h1 className='text-2xl font-semibold bg-gradient-to-r from-emerald-300 to-teal-200 bg-clip-text text-transparent'>
-            AxonHub
-          </h1>
+          <img src='/logo.jpg' alt='AxonHub logo' className='h-8 w-8 rounded-sm shadow-sm ring-1 ring-emerald-400/20' />
+          <h1 className='bg-gradient-to-r from-emerald-300 to-teal-200 bg-clip-text text-2xl font-semibold text-transparent'>AxonHub</h1>
         </div>
-        
+
         <div className='flex items-center space-x-2'>
           <LanguageSwitch />
         </div>
       </nav>
-      
+
       {/* Main Content Area - children control layout; full height since header overlays */}
-      <main className='relative z-10 min-h-screen'>
-        {children}
-      </main>
-      
+      <main className='relative z-10 min-h-screen'>{children}</main>
+
       {/* Micro-light Particles Background */}
-      <div className='absolute inset-0 overflow-hidden pointer-events-none z-0'>
+      <div className='pointer-events-none absolute inset-0 z-0 overflow-hidden'>
         {/* Matrix Rain Effect */}
         {/* <div className='absolute top-0 left-1/4 w-px h-full bg-gradient-to-b from-transparent via-[#00C77E]/30 to-transparent animate-matrix-rain'></div>
         <div className='absolute top-0 left-3/4 w-px h-full bg-gradient-to-b from-transparent via-[#00C77E]/20 to-transparent animate-matrix-rain animation-delay-2000'></div>
         <div className='absolute top-0 left-1/2 w-px h-full bg-gradient-to-b from-transparent via-[#FF2E4D]/20 to-transparent animate-matrix-rain animation-delay-4000'></div> */}
-        
+
         {/* Floating Particles */}
         {particles.map((p) => (
           <div
             key={p.id}
-            className='absolute rounded-full animate-particle-float'
+            className='animate-particle-float absolute rounded-full'
             style={{
               left: p.left,
               top: p.top,
@@ -92,5 +103,5 @@ export default function AuthLayout({ children }: Props) {
         ))}
       </div>
     </div>
-  )
+  );
 }

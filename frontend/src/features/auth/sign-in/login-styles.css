@@ -20,7 +20,8 @@
 
 /* Floating animation for particles */
 @keyframes float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px);
     opacity: 0.7;
   }
@@ -54,7 +55,8 @@
 
 /* Glow animation for logo */
 @keyframes glow {
-  0%, 100% {
+  0%,
+  100% {
     filter: drop-shadow(0 0 5px rgba(34, 211, 238, 0.4));
   }
   50% {
@@ -64,7 +66,8 @@
 
 /* Enhanced glow animation for pulsing orbs */
 @keyframes pulse-glow {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.4;
     transform: scale(1);
     filter: blur(1px) drop-shadow(0 0 8px currentColor);
@@ -156,24 +159,37 @@
 
 /* Silver glow pulse */
 @keyframes neon-pulse {
-  0%, 100% {
-    box-shadow: 0 0 5px #E8E8E8, 0 0 10px #E8E8E8, 0 0 15px #E8E8E8;
-    text-shadow: 0 0 5px #E8E8E8;
+  0%,
+  100% {
+    box-shadow:
+      0 0 5px #e8e8e8,
+      0 0 10px #e8e8e8,
+      0 0 15px #e8e8e8;
+    text-shadow: 0 0 5px #e8e8e8;
   }
   50% {
-    box-shadow: 0 0 10px #E8E8E8, 0 0 20px #E8E8E8, 0 0 30px #E8E8E8;
-    text-shadow: 0 0 10px #E8E8E8;
+    box-shadow:
+      0 0 10px #e8e8e8,
+      0 0 20px #e8e8e8,
+      0 0 30px #e8e8e8;
+    text-shadow: 0 0 10px #e8e8e8;
   }
 }
 
 /* Breathing glow for buttons */
 @keyframes breathing-glow {
-  0%, 100% {
-    box-shadow: 0 0 5px #FF2E4D, 0 0 10px #FF2E4D;
+  0%,
+  100% {
+    box-shadow:
+      0 0 5px #ff2e4d,
+      0 0 10px #ff2e4d;
     transform: scale(1);
   }
   50% {
-    box-shadow: 0 0 15px #FF2E4D, 0 0 25px #FF2E4D, 0 0 35px #FF2E4D;
+    box-shadow:
+      0 0 15px #ff2e4d,
+      0 0 25px #ff2e4d,
+      0 0 35px #ff2e4d;
     transform: scale(1.02);
   }
 }
@@ -181,10 +197,13 @@
 /* Hover glow expansion */
 @keyframes hover-glow {
   0% {
-    box-shadow: 0 0 5px #E8E8E8;
+    box-shadow: 0 0 5px #e8e8e8;
   }
   100% {
-    box-shadow: 0 0 20px #E8E8E8, 0 0 30px #E8E8E8, 0 0 40px #E8E8E8;
+    box-shadow:
+      0 0 20px #e8e8e8,
+      0 0 30px #e8e8e8,
+      0 0 40px #e8e8e8;
   }
 }
 
@@ -322,7 +341,7 @@
   left: -2px;
   right: -2px;
   bottom: -2px;
-  background: linear-gradient(45deg, transparent, #E8E8E8, transparent);
+  background: linear-gradient(45deg, transparent, #e8e8e8, transparent);
   border-radius: inherit;
   z-index: -1;
   animation: neon-pulse 1s ease-in-out;
@@ -332,7 +351,8 @@
 
 /* Geometric line pulse animation */
 @keyframes geometric-pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.2;
     stroke-width: 1;
   }
@@ -344,7 +364,8 @@
 
 /* Geometric point glow animation */
 @keyframes geometric-glow {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.3;
     r: 2;
     filter: drop-shadow(0 0 2px currentColor);
@@ -358,7 +379,8 @@
 
 /* Geometric fade animation for connection lines */
 @keyframes geometric-fade {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.1;
   }
   50% {
