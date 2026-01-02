@@ -76,6 +76,11 @@
         "title": "Bulk Archive API Keys",
         "description": "Are you sure you want to archive {{count}} selected API keys? This action cannot be undone."
       },
+      "bulkEnable": {
+        "title": "Bulk Enable API Keys",
+        "description": "Are you sure you want to enable {{count}} selected API keys?",
+        "warning": "This action will enable all selected API keys. They will be able to make requests to the system."
+      },
       "fields": {
         "name": {
           "label": "Name",
@@ -126,7 +131,9 @@
       "bulkDisableSuccess": "Successfully disabled {{count}} API keys",
       "bulkDisableError": "Failed to disable API keys",
       "bulkArchiveSuccess": "Successfully archived {{count}} API keys",
-      "bulkArchiveError": "Failed to archive API keys"
+      "bulkArchiveError": "Failed to archive API keys",
+      "bulkEnableSuccess": "Successfully enabled {{count}} API keys",
+      "bulkEnableError": "Failed to enable API keys"
     },
     "errors": {
       "fetchData": "Failed to fetch API key data",

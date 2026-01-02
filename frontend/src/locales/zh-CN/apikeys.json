@@ -76,6 +76,11 @@
         "title": "批量归档 API Keys",
         "description": "确定要归档 {{count}} 个选定的 API Keys 吗？此操作无法撤销。"
       },
+      "bulkEnable": {
+        "title": "批量启用 API Keys",
+        "description": "确定要启用 {{count}} 个选定的 API Keys 吗？",
+        "warning": "此操作将启用所有选定的 API Keys。它们将能够向系统发出请求。"
+      },
       "fields": {
         "name": {
           "label": "名称",
@@ -126,7 +131,9 @@
       "bulkDisableSuccess": "成功禁用了 {{count}} 个 API Keys",
       "bulkDisableError": "禁用 API Keys 失败",
       "bulkArchiveSuccess": "成功归档了 {{count}} 个 API Keys",
-      "bulkArchiveError": "归档 API Keys 失败"
+      "bulkArchiveError": "归档 API Keys 失败",
+      "bulkEnableSuccess": "成功启用了 {{count}} 个 API Keys",
+      "bulkEnableError": "启用 API Keys 失败"
     },
     "errors": {
       "fetchData": "获取API密钥数据",

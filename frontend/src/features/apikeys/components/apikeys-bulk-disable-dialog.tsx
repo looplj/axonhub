@@ -9,7 +9,7 @@ import { ApiKey } from '../data/schema'
 
 export function ApiKeysBulkDisableDialog() {
   const { t } = useTranslation()
-  const { isDialogOpen, closeDialog, selectedApiKeys, resetRowSelection } = useApiKeysContext()
+  const { isDialogOpen, closeDialog, selectedApiKeys, resetRowSelection, setSelectedApiKeys } = useApiKeysContext()
   const bulkDisableApiKeys = useBulkDisableApiKeys()
 
   if (!selectedApiKeys || selectedApiKeys.length === 0) return null
@@ -18,8 +18,9 @@ export function ApiKeysBulkDisableDialog() {
     try {
       const ids = selectedApiKeys.map(apiKey => apiKey.id)
       await bulkDisableApiKeys.mutateAsync(ids)
-      closeDialog('bulkDisable')
-      resetRowSelection() // 清空选中的行
+      resetRowSelection()
+      setSelectedApiKeys([])
+      closeDialog()
     } catch (error) {
       console.error('Failed to bulk disable API keys:', error)
     }

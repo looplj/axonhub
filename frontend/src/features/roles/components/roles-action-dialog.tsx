@@ -31,7 +31,7 @@ import { filterGrantableScopes } from '@/lib/permission-utils'
 export function CreateRoleDialog() {
   const { t } = useTranslation()
   const currentUser = useAuthStore((state) => state.auth.user)
-  const { isCreateDialogOpen, setIsCreateDialogOpen } = useRolesContext()
+  const { isDialogOpen, closeDialog } = useRolesContext()
   const { data: allScopes = [] } = useAllScopes()
   const createRole = useCreateRole()
 
@@ -51,20 +51,20 @@ export function CreateRoleDialog() {
   const onSubmit = async (values: z.infer<typeof createRoleInputSchema>) => {
     try {
       await createRole.mutateAsync(values)
-      setIsCreateDialogOpen(false)
+      closeDialog('create')
       form.reset()
-    } catch (error) {
+    } catch (_error) {
       // Error is handled by the mutation
     }
   }
 
   const handleClose = () => {
-    setIsCreateDialogOpen(false)
+    closeDialog('create')
     form.reset()
   }
 
   return (
-    <Dialog open={isCreateDialogOpen} onOpenChange={handleClose}>
+    <Dialog open={isDialogOpen.create} onOpenChange={handleClose}>
       <DialogContent className='max-w-2xl'>
         <DialogHeader>
           <DialogTitle>{t('roles.dialogs.create.title')}</DialogTitle>
@@ -162,7 +162,7 @@ export function CreateRoleDialog() {
 export function EditRoleDialog() {
   const { t } = useTranslation()
   const currentUser = useAuthStore((state) => state.auth.user)
-  const { editingRole, setEditingRole } = useRolesContext()
+  const { editingRole, isDialogOpen, closeDialog } = useRolesContext()
   const { data: allScopes = [] } = useAllScopes()
   const updateRole = useUpdateRole()
 
@@ -193,21 +193,21 @@ export function EditRoleDialog() {
 
     try {
       await updateRole.mutateAsync({ id: editingRole.id, input: values })
-      setEditingRole(null)
-    } catch (error) {
+      closeDialog('edit')
+    } catch (_error) {
       // Error is handled by the mutation
     }
   }
 
   const handleClose = () => {
-    setEditingRole(null)
+    closeDialog('edit')
     form.reset()
   }
 
   if (!editingRole) return null
 
   return (
-    <Dialog open={!!editingRole} onOpenChange={handleClose}>
+    <Dialog open={isDialogOpen.edit} onOpenChange={handleClose}>
       <DialogContent className='max-w-2xl'>
         <DialogHeader>
           <DialogTitle>{t('roles.dialogs.edit.title')}</DialogTitle>
@@ -304,7 +304,7 @@ export function EditRoleDialog() {
 // Delete Role Dialog
 export function DeleteRoleDialog() {
   const { t } = useTranslation()
-  const { deletingRole, setDeletingRole } = useRolesContext()
+  const { deletingRole, isDialogOpen, closeDialog } = useRolesContext()
   const deleteRole = useDeleteRole()
 
   const handleConfirm = async () => {
@@ -312,16 +312,16 @@ export function DeleteRoleDialog() {
 
     try {
       await deleteRole.mutateAsync(deletingRole.id)
-      setDeletingRole(null)
-    } catch (error) {
+      closeDialog('delete')
+    } catch (_error) {
       // Error is handled by the mutation
     }
   }
 
   return (
     <ConfirmDialog
-      open={!!deletingRole}
-      onOpenChange={() => setDeletingRole(null)}
+      open={isDialogOpen.delete}
+      onOpenChange={() => closeDialog('delete')}
       title={t('roles.dialogs.delete.title')}
       desc={t('roles.dialogs.delete.description', { name: deletingRole?.name })}
       confirmText={t('common.buttons.delete')}
@@ -336,28 +336,28 @@ export function DeleteRoleDialog() {
 // Bulk Delete Roles Dialog
 export function BulkDeleteRolesDialog() {
   const { t } = useTranslation()
-  const { deletingRoles, setDeletingRoles, resetRowSelection } = useRolesContext()
+  const { isDialogOpen, closeDialog, selectedRoles, resetRowSelection } = useRolesContext()
   const bulkDeleteRoles = useBulkDeleteRoles()
 
   const handleConfirm = async () => {
-    if (deletingRoles.length === 0) return
+    if (selectedRoles.length === 0) return
 
     try {
-      const ids = deletingRoles.map((role) => role.id)
+      const ids = selectedRoles.map((role) => role.id)
       await bulkDeleteRoles.mutateAsync(ids)
-      setDeletingRoles([])
-      resetRowSelection() // 清空选中的行
-    } catch (error) {
+      resetRowSelection()
+      closeDialog('bulkDelete')
+    } catch (_error) {
       // Error is handled by the mutation
     }
   }
 
   return (
     <ConfirmDialog
-      open={deletingRoles.length > 0}
-      onOpenChange={() => setDeletingRoles([])}
+      open={isDialogOpen.bulkDelete}
+      onOpenChange={() => closeDialog('bulkDelete')}
       title={t('roles.dialogs.bulkDelete.title')}
-      desc={t('roles.dialogs.bulkDelete.description', { count: deletingRoles.length })}
+      desc={t('roles.dialogs.bulkDelete.description', { count: selectedRoles.length })}
       confirmText={t('common.buttons.delete')}
       cancelBtnText={t('common.buttons.cancel')}
       handleConfirm={handleConfirm}

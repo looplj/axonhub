@@ -457,6 +457,7 @@ type Mutation {
   updateAPIKeyStatus(id: ID!, status: APIKeyStatus!): APIKey!
   updateAPIKeyProfiles(id: ID!, input: UpdateAPIKeyProfilesInput!): APIKey!
   bulkDisableAPIKeys(ids: [ID!]!): Boolean!
+  bulkEnableAPIKeys(ids: [ID!]!): Boolean!
   bulkArchiveAPIKeys(ids: [ID!]!): Boolean!
 
   createUser(input: CreateUserInput!): User!
