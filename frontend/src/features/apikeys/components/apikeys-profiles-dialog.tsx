@@ -60,6 +60,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
   });
 
   const lastInitialDataRef = useRef<string | null>(null);
+  const profileRefs = useRef<(HTMLDivElement | null)[]>([]);
   const normalizedInitialData = useMemo(() => {
     if (initialData?.profiles?.length) {
       const fallbackActiveProfile = initialData.activeProfile?.trim()
@@ -124,6 +125,44 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
     form.reset(normalizedInitialData);
     lastInitialDataRef.current = normalizedSerialized;
   }, [open, loading, form, normalizedInitialData, normalizedSerialized]);
+
+  // Scroll to active profile after profiles rendered
+  useEffect(() => {
+    if (!open || loading || profileFields.length === 0) {
+      return;
+    }
+
+    const scrollToActiveProfile = (retryCount = 0) => {
+      const maxRetries = 10;
+      const activeProfileName = form.getValues('activeProfile');
+
+      if (!activeProfileName) {
+        return;
+      }
+
+      const activeIndex = profileFields.findIndex((field) => field.name === activeProfileName);
+
+      if (activeIndex < 0) {
+        return;
+      }
+
+      const targetRef = profileRefs.current[activeIndex];
+
+      if (targetRef) {
+        targetRef.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else if (retryCount < maxRetries) {
+        // Retry after a short delay if ref not yet available
+        requestAnimationFrame(() => {
+          setTimeout(() => scrollToActiveProfile(retryCount + 1), 50);
+        });
+      }
+    };
+
+    // Wait for next frame to ensure rendering
+    requestAnimationFrame(() => {
+      setTimeout(scrollToActiveProfile, 100);
+    });
+  }, [open, loading, profileFields, form]);
 
   const handleSubmit = useCallback(
     (data: UpdateApiKeyProfilesInput) => {
@@ -200,20 +239,31 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
                 <form onSubmit={form.handleSubmit(handleSubmit)} className='space-y-6 px-4'>
                   <div className='space-y-4'>
                     <div className='space-y-4'>
-                      {profileFields.map((profile, profileIndex) => (
-                        <div key={profile.id} className={profileIndex === 0 ? 'mt-4' : ''}>
-                          <ProfileCard
-                            profileIndex={profileIndex}
-                            form={form}
-                            onRemove={() => removeProfileHandler(profileIndex)}
-                            canRemove={profileFields.length > 1}
-                            availableModels={availableModels?.map((model) => model.id) || []}
-                            t={t}
-                            defaultExpanded={profileIndex === 0}
-                            portalContainer={dialogContent}
-                          />
-                        </div>
-                      ))}
+                      {profileFields.map((profile, profileIndex) => {
+                        const activeProfileName = form.getValues('activeProfile');
+                        const isActive = profile.name === activeProfileName;
+
+                        return (
+                          <div
+                            key={profile.id}
+                            className={profileIndex === 0 ? 'mt-4' : ''}
+                            ref={(el) => {
+                              profileRefs.current[profileIndex] = el;
+                            }}
+                          >
+                            <ProfileCard
+                              profileIndex={profileIndex}
+                              form={form}
+                              onRemove={() => removeProfileHandler(profileIndex)}
+                              canRemove={profileFields.length > 1}
+                              availableModels={availableModels?.map((model) => model.id) || []}
+                              t={t}
+                              defaultExpanded={isActive}
+                              portalContainer={dialogContent}
+                            />
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </form>
