@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDebounce } from '@/hooks/use-debounce'
 import { usePaginationSearch } from '@/hooks/use-pagination-search'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { createColumns } from './components/apikeys-columns'
@@ -10,12 +11,17 @@ import { ApiKeysPrimaryButtons } from './components/apikeys-primary-buttons'
 import { ApiKeysTable } from './components/apikeys-table'
 import ApiKeysProvider from './context/apikeys-context'
 import { useApiKeys } from './data/apikeys'
+import { ApiKeyType } from './data/schema'
+
+type ApiKeyTabKey = ApiKeyType | 'all'
 
 function ApiKeysContent() {
   const { t } = useTranslation()
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
     defaultPageSize: 20,
   })
+
+  const [activeTab, setActiveTab] = useState<ApiKeyTabKey>('all')
 
   // Filter states - following the same pattern as roles and users
   const [nameFilter, setNameFilter] = useState<string>('')
@@ -29,6 +35,9 @@ function ApiKeysContent() {
     const where: Record<string, string | string[]> = {}
     if (debouncedNameFilter) {
       where.nameContainsFold = debouncedNameFilter
+    }
+    if (activeTab !== 'all') {
+      where.typeIn = [activeTab]
     }
     if (statusFilter.length > 0) {
       where.statusIn = statusFilter
@@ -51,7 +60,7 @@ function ApiKeysContent() {
   // Reset cursor when filters change
   React.useEffect(() => {
     resetCursor()
-  }, [debouncedNameFilter, statusFilter, userFilter, resetCursor])
+  }, [debouncedNameFilter, activeTab, statusFilter, userFilter, resetCursor])
 
   const handleNextPage = () => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
@@ -78,24 +87,39 @@ function ApiKeysContent() {
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
-      <ApiKeysTable
-        data={data?.edges?.map((edge) => edge.node) || []}
-        loading={isLoading}
-        columns={createColumns(t)}
-        pageInfo={data?.pageInfo}
-        pageSize={pageSize}
-        totalCount={data?.totalCount}
-        nameFilter={nameFilter}
-        statusFilter={statusFilter}
-        userFilter={userFilter}
-        onNextPage={handleNextPage}
-        onPreviousPage={handlePreviousPage}
-        onPageSizeChange={handlePageSizeChange}
-        onNameFilterChange={setNameFilter}
-        onStatusFilterChange={setStatusFilter}
-        onUserFilterChange={setUserFilter}
-        onResetFilters={handleResetFilters}
-      />
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ApiKeyTabKey)} className='w-full'>
+        <TabsList className='shadow-soft border-border bg-background grid w-full grid-cols-3 rounded-2xl border'>
+          <TabsTrigger value='all' data-value='all'>
+            {t('apikeys.tabs.all')}
+          </TabsTrigger>
+          <TabsTrigger value='user' data-value='user'>
+            {t('apikeys.type.user')}
+          </TabsTrigger>
+          <TabsTrigger value='service_account' data-value='service_account'>
+            {t('apikeys.type.service_account')}
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+      <div className='mt-6 flex-1 overflow-y-auto'>
+        <ApiKeysTable
+          data={data?.edges?.map((edge) => edge.node) || []}
+          loading={isLoading}
+          columns={createColumns(t)}
+          pageInfo={data?.pageInfo}
+          pageSize={pageSize}
+          totalCount={data?.totalCount}
+          nameFilter={nameFilter}
+          statusFilter={statusFilter}
+          userFilter={userFilter}
+          onNextPage={handleNextPage}
+          onPreviousPage={handlePreviousPage}
+          onPageSizeChange={handlePageSizeChange}
+          onNameFilterChange={setNameFilter}
+          onStatusFilterChange={setStatusFilter}
+          onUserFilterChange={setUserFilter}
+          onResetFilters={handleResetFilters}
+        />
+      </div>
     </div>
   )
 }

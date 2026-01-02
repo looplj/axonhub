@@ -49,6 +49,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			apikey.FieldProjectID: {Type: field.TypeInt, Column: apikey.FieldProjectID},
 			apikey.FieldKey:       {Type: field.TypeString, Column: apikey.FieldKey},
 			apikey.FieldName:      {Type: field.TypeString, Column: apikey.FieldName},
+			apikey.FieldType:      {Type: field.TypeEnum, Column: apikey.FieldType},
 			apikey.FieldStatus:    {Type: field.TypeEnum, Column: apikey.FieldStatus},
 			apikey.FieldScopes:    {Type: field.TypeJSON, Column: apikey.FieldScopes},
 			apikey.FieldProfiles:  {Type: field.TypeJSON, Column: apikey.FieldProfiles},
@@ -1116,6 +1117,11 @@ func (f *APIKeyFilter) WhereKey(p entql.StringP) {
 // WhereName applies the entql string predicate on the name field.
 func (f *APIKeyFilter) WhereName(p entql.StringP) {
 	f.Where(p.Field(apikey.FieldName))
+}
+
+// WhereType applies the entql string predicate on the type field.
+func (f *APIKeyFilter) WhereType(p entql.StringP) {
+	f.Where(p.Field(apikey.FieldType))
 }
 
 // WhereStatus applies the entql string predicate on the status field.

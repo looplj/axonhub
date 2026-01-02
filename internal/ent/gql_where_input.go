@@ -116,6 +116,12 @@ type APIKeyWhereInput struct {
 	NameEqualFold    *string  `json:"nameEqualFold,omitempty"`
 	NameContainsFold *string  `json:"nameContainsFold,omitempty"`
 
+	// "type" field predicates.
+	Type      *apikey.Type  `json:"type,omitempty"`
+	TypeNEQ   *apikey.Type  `json:"typeNEQ,omitempty"`
+	TypeIn    []apikey.Type `json:"typeIn,omitempty"`
+	TypeNotIn []apikey.Type `json:"typeNotIn,omitempty"`
+
 	// "status" field predicates.
 	Status      *apikey.Status  `json:"status,omitempty"`
 	StatusNEQ   *apikey.Status  `json:"statusNEQ,omitempty"`
@@ -403,6 +409,18 @@ func (i *APIKeyWhereInput) P() (predicate.APIKey, error) {
 	}
 	if i.NameContainsFold != nil {
 		predicates = append(predicates, apikey.NameContainsFold(*i.NameContainsFold))
+	}
+	if i.Type != nil {
+		predicates = append(predicates, apikey.TypeEQ(*i.Type))
+	}
+	if i.TypeNEQ != nil {
+		predicates = append(predicates, apikey.TypeNEQ(*i.TypeNEQ))
+	}
+	if len(i.TypeIn) > 0 {
+		predicates = append(predicates, apikey.TypeIn(i.TypeIn...))
+	}
+	if len(i.TypeNotIn) > 0 {
+		predicates = append(predicates, apikey.TypeNotIn(i.TypeNotIn...))
 	}
 	if i.Status != nil {
 		predicates = append(predicates, apikey.StatusEQ(*i.Status))

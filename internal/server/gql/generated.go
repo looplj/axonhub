@@ -92,6 +92,7 @@ type ComplexityRoot struct {
 		Requests  func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestOrder, where *ent.RequestWhereInput) int
 		Scopes    func(childComplexity int) int
 		Status    func(childComplexity int) int
+		Type      func(childComplexity int) int
 		UpdatedAt func(childComplexity int) int
 		User      func(childComplexity int) int
 		UserID    func(childComplexity int) int
@@ -1436,6 +1437,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.APIKey.Status(childComplexity), true
+	case "APIKey.type":
+		if e.complexity.APIKey.Type == nil {
+			break
+		}
+
+		return e.complexity.APIKey.Type(childComplexity), true
 	case "APIKey.updatedAt":
 		if e.complexity.APIKey.UpdatedAt == nil {
 			break
@@ -6114,6 +6121,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputTraceWhereInput,
 		ec.unmarshalInputUpdateAPIKeyInput,
 		ec.unmarshalInputUpdateAPIKeyProfilesInput,
+		ec.unmarshalInputUpdateAPIKeyScopesInput,
 		ec.unmarshalInputUpdateBrandSettingsInput,
 		ec.unmarshalInputUpdateChannelInput,
 		ec.unmarshalInputUpdateChannelOverrideTemplateInput,
@@ -8581,6 +8589,35 @@ func (ec *executionContext) fieldContext_APIKey_name(_ context.Context, field gr
 	return fc, nil
 }
 
+func (ec *executionContext) _APIKey_type(ctx context.Context, field graphql.CollectedField, obj *ent.APIKey) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_APIKey_type,
+		func(ctx context.Context) (any, error) {
+			return obj.Type, nil
+		},
+		nil,
+		ec.marshalNAPIKeyType2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋapikeyᚐType,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_APIKey_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIKey",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type APIKeyType does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _APIKey_status(ctx context.Context, field graphql.CollectedField, obj *ent.APIKey) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -8994,6 +9031,8 @@ func (ec *executionContext) fieldContext_APIKeyEdge_node(_ context.Context, fiel
 				return ec.fieldContext_APIKey_key(ctx, field)
 			case "name":
 				return ec.fieldContext_APIKey_name(ctx, field)
+			case "type":
+				return ec.fieldContext_APIKey_type(ctx, field)
 			case "status":
 				return ec.fieldContext_APIKey_status(ctx, field)
 			case "scopes":
@@ -17274,6 +17313,8 @@ func (ec *executionContext) fieldContext_Mutation_createAPIKey(ctx context.Conte
 				return ec.fieldContext_APIKey_key(ctx, field)
 			case "name":
 				return ec.fieldContext_APIKey_name(ctx, field)
+			case "type":
+				return ec.fieldContext_APIKey_type(ctx, field)
 			case "status":
 				return ec.fieldContext_APIKey_status(ctx, field)
 			case "scopes":
@@ -17345,6 +17386,8 @@ func (ec *executionContext) fieldContext_Mutation_updateAPIKey(ctx context.Conte
 				return ec.fieldContext_APIKey_key(ctx, field)
 			case "name":
 				return ec.fieldContext_APIKey_name(ctx, field)
+			case "type":
+				return ec.fieldContext_APIKey_type(ctx, field)
 			case "status":
 				return ec.fieldContext_APIKey_status(ctx, field)
 			case "scopes":
@@ -17416,6 +17459,8 @@ func (ec *executionContext) fieldContext_Mutation_updateAPIKeyStatus(ctx context
 				return ec.fieldContext_APIKey_key(ctx, field)
 			case "name":
 				return ec.fieldContext_APIKey_name(ctx, field)
+			case "type":
+				return ec.fieldContext_APIKey_type(ctx, field)
 			case "status":
 				return ec.fieldContext_APIKey_status(ctx, field)
 			case "scopes":
@@ -17487,6 +17532,8 @@ func (ec *executionContext) fieldContext_Mutation_updateAPIKeyProfiles(ctx conte
 				return ec.fieldContext_APIKey_key(ctx, field)
 			case "name":
 				return ec.fieldContext_APIKey_name(ctx, field)
+			case "type":
+				return ec.fieldContext_APIKey_type(ctx, field)
 			case "status":
 				return ec.fieldContext_APIKey_status(ctx, field)
 			case "scopes":
@@ -23413,6 +23460,8 @@ func (ec *executionContext) fieldContext_Request_apiKey(_ context.Context, field
 				return ec.fieldContext_APIKey_key(ctx, field)
 			case "name":
 				return ec.fieldContext_APIKey_name(ctx, field)
+			case "type":
+				return ec.fieldContext_APIKey_type(ctx, field)
 			case "status":
 				return ec.fieldContext_APIKey_status(ctx, field)
 			case "scopes":
@@ -34525,7 +34574,7 @@ func (ec *executionContext) unmarshalInputAPIKeyWhereInput(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "key", "keyNEQ", "keyIn", "keyNotIn", "keyGT", "keyGTE", "keyLT", "keyLTE", "keyContains", "keyHasPrefix", "keyHasSuffix", "keyEqualFold", "keyContainsFold", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "hasUser", "hasUserWith", "hasProject", "hasProjectWith", "hasRequests", "hasRequestsWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "key", "keyNEQ", "keyIn", "keyNotIn", "keyGT", "keyGTE", "keyLT", "keyLTE", "keyContains", "keyHasPrefix", "keyHasSuffix", "keyEqualFold", "keyContainsFold", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "type", "typeNEQ", "typeIn", "typeNotIn", "status", "statusNEQ", "statusIn", "statusNotIn", "hasUser", "hasUserWith", "hasProject", "hasProjectWith", "hasRequests", "hasRequestsWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -35079,6 +35128,34 @@ func (ec *executionContext) unmarshalInputAPIKeyWhereInput(ctx context.Context, 
 				return it, err
 			}
 			it.NameContainsFold = data
+		case "type":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			data, err := ec.unmarshalOAPIKeyType2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋapikeyᚐType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Type = data
+		case "typeNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("typeNEQ"))
+			data, err := ec.unmarshalOAPIKeyType2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋapikeyᚐType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TypeNEQ = data
+		case "typeIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("typeIn"))
+			data, err := ec.unmarshalOAPIKeyType2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋapikeyᚐTypeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TypeIn = data
+		case "typeNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("typeNotIn"))
+			data, err := ec.unmarshalOAPIKeyType2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋapikeyᚐTypeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TypeNotIn = data
 		case "status":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
 			data, err := ec.unmarshalOAPIKeyStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋapikeyᚐStatus(ctx, v)
@@ -39111,7 +39188,7 @@ func (ec *executionContext) unmarshalInputCreateAPIKeyInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "projectID"}
+	fieldsInOrder := [...]string{"name", "type", "scopes", "projectID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -39125,6 +39202,20 @@ func (ec *executionContext) unmarshalInputCreateAPIKeyInput(ctx context.Context,
 				return it, err
 			}
 			it.Name = data
+		case "type":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			data, err := ec.unmarshalOAPIKeyType2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋapikeyᚐType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Type = data
+		case "scopes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("scopes"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Scopes = data
 		case "projectID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectID"))
 			data, err := ec.unmarshalNID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
@@ -47714,7 +47805,7 @@ func (ec *executionContext) unmarshalInputUpdateAPIKeyInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name"}
+	fieldsInOrder := [...]string{"name", "scopes", "appendScopes", "clearScopes"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -47728,6 +47819,27 @@ func (ec *executionContext) unmarshalInputUpdateAPIKeyInput(ctx context.Context,
 				return it, err
 			}
 			it.Name = data
+		case "scopes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("scopes"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Scopes = data
+		case "appendScopes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("appendScopes"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AppendScopes = data
+		case "clearScopes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearScopes"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClearScopes = data
 		}
 	}
 
@@ -47762,6 +47874,33 @@ func (ec *executionContext) unmarshalInputUpdateAPIKeyProfilesInput(ctx context.
 				return it, err
 			}
 			it.Profiles = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpdateAPIKeyScopesInput(ctx context.Context, obj any) (UpdateAPIKeyScopesInput, error) {
+	var it UpdateAPIKeyScopesInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"scopes"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "scopes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("scopes"))
+			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Scopes = data
 		}
 	}
 
@@ -52350,6 +52489,11 @@ func (ec *executionContext) _APIKey(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "name":
 			out.Values[i] = ec._APIKey_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "type":
+			out.Values[i] = ec._APIKey_type(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
@@ -63743,6 +63887,16 @@ func (ec *executionContext) marshalNAPIKeyStatus2githubᚗcomᚋloopljᚋaxonhub
 	return v
 }
 
+func (ec *executionContext) unmarshalNAPIKeyType2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋapikeyᚐType(ctx context.Context, v any) (apikey.Type, error) {
+	var res apikey.Type
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNAPIKeyType2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋapikeyᚐType(ctx context.Context, sel ast.SelectionSet, v apikey.Type) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) unmarshalNAPIKeyWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAPIKeyWhereInput(ctx context.Context, v any) (*ent.APIKeyWhereInput, error) {
 	res, err := ec.unmarshalInputAPIKeyWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
@@ -66967,6 +67121,87 @@ func (ec *executionContext) unmarshalOAPIKeyStatus2ᚖgithubᚗcomᚋloopljᚋax
 }
 
 func (ec *executionContext) marshalOAPIKeyStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋapikeyᚐStatus(ctx context.Context, sel ast.SelectionSet, v *apikey.Status) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
+func (ec *executionContext) unmarshalOAPIKeyType2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋapikeyᚐTypeᚄ(ctx context.Context, v any) ([]apikey.Type, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]apikey.Type, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNAPIKeyType2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋapikeyᚐType(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOAPIKeyType2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋapikeyᚐTypeᚄ(ctx context.Context, sel ast.SelectionSet, v []apikey.Type) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNAPIKeyType2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋapikeyᚐType(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOAPIKeyType2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋapikeyᚐType(ctx context.Context, v any) (*apikey.Type, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(apikey.Type)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOAPIKeyType2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋapikeyᚐType(ctx context.Context, sel ast.SelectionSet, v *apikey.Type) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}

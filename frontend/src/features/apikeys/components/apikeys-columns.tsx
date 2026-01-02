@@ -143,6 +143,34 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
     enableSorting: false,
   },
   {
+    accessorKey: 'type',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={t('apikeys.columns.type')} />
+    ),
+    cell: ({ row }) => {
+      const type = row.getValue('type') as string
+      const typeText = {
+        user: t('apikeys.type.user'),
+        service_account: t('apikeys.type.service_account'),
+      }[type] || type
+
+      const typeColor = {
+        user: 'text-blue-600',
+        service_account: 'text-purple-600',
+      }[type] || 'text-muted-foreground'
+
+      return (
+        <div className={`text-sm ${typeColor}`}>
+          {typeText}
+        </div>
+      )
+    },
+    filterFn: (row, _id, value) => {
+      return value.includes(row.getValue('type'))
+    },
+    enableSorting: false,
+  },
+  {
     accessorKey: 'status',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title={t('apikeys.columns.status')} />

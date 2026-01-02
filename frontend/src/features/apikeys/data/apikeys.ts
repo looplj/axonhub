@@ -3,7 +3,6 @@ import { graphqlRequest } from '@/gql/graphql'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { useSelectedProjectId } from '@/stores/projectStore'
-import { extractNumberID } from '@/lib/utils'
 import { useErrorHandler } from '@/hooks/use-error-handler'
 import { useRequestPermissions } from '../../../hooks/useRequestPermissions'
 import type { ApiKey, ApiKeyConnection, CreateApiKeyInput, UpdateApiKeyInput, UpdateApiKeyProfilesInput } from './schema'
@@ -30,7 +29,9 @@ function buildApiKeysQuery(permissions: { canViewUsers: boolean }) {
             updatedAt${userFields}
             key
             name
+            type
             status
+            scopes
           }
           cursor
         }
@@ -65,7 +66,9 @@ function buildApiKeyQuery(permissions: { canViewUsers: boolean }) {
         updatedAt${userFields}
         key
         name
+        type
         status
+        scopes
         profiles {
           activeProfile
           profiles {
@@ -100,7 +103,9 @@ function buildCreateApiKeyMutation(permissions: { canViewUsers: boolean }) {
         updatedAt${userFields}
         key
         name
+        type
         status
+        scopes
       }
     }
   `
@@ -124,7 +129,9 @@ function buildUpdateApiKeyMutation(permissions: { canViewUsers: boolean }) {
         updatedAt${userFields}
         key
         name
+        type
         status
+        scopes
       }
     }
   `
