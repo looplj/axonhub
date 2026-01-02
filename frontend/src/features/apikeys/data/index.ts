@@ -1,2 +1,2 @@
-export * from './apikeys'
-export * from './schema'
+export * from './apikeys';
+export * from './schema';

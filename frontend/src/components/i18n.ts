@@ -65,7 +65,7 @@ export const translations = {
     enterYourPassword: '输入您的密码',
     enterCaptchaPlaceholder: '输入验证码',
   },
-}
+};
 
-export type Language = keyof typeof translations
-export type TranslationKey = keyof (typeof translations)['en']
+export type Language = keyof typeof translations;
+export type TranslationKey = keyof (typeof translations)['en'];

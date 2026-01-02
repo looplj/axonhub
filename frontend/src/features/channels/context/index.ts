@@ -1,2 +1,2 @@
-export * from './channels-context'
-export { default as ChannelsProvider } from './channels-context'
+export * from './channels-context';
+export { default as ChannelsProvider } from './channels-context';

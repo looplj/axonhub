@@ -1,22 +1,22 @@
-import { ThumbsUp, ThumbsDown } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import type { Trace } from '@/features/traces/data/schema'
+import { ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import type { Trace } from '@/features/traces/data/schema';
 
 interface TraceCardProps {
-  trace: Trace
-  onViewTrace: (traceId: string) => void
+  trace: Trace;
+  onViewTrace: (traceId: string) => void;
 }
 
 export function TraceCard({ trace, onViewTrace }: TraceCardProps) {
   return (
-    <Card className='border-0 shadow-sm hover:shadow-md transition-shadow'>
+    <Card className='border-0 shadow-sm transition-shadow hover:shadow-md'>
       <CardContent className='p-6'>
         <div className='space-y-4'>
           {/* User Query */}
           {trace.firstUserQuery && (
             <div className='flex justify-end'>
-              <div className='bg-indigo-50 text-indigo-900 rounded-2xl px-4 py-2 max-w-[80%]'>
+              <div className='max-w-[80%] rounded-2xl bg-indigo-50 px-4 py-2 text-indigo-900'>
                 <p className='text-sm'>{trace.firstUserQuery}</p>
               </div>
             </div>
@@ -25,7 +25,7 @@ export function TraceCard({ trace, onViewTrace }: TraceCardProps) {
           {/* Assistant Response */}
           {trace.firstText && (
             <div className='flex justify-start'>
-              <div className='bg-gray-50 text-gray-900 rounded-2xl px-4 py-2 max-w-[80%]'>
+              <div className='max-w-[80%] rounded-2xl bg-gray-50 px-4 py-2 text-gray-900'>
                 <p className='text-sm whitespace-pre-wrap'>{trace.firstText}</p>
               </div>
             </div>
@@ -45,7 +45,7 @@ export function TraceCard({ trace, onViewTrace }: TraceCardProps) {
               variant='ghost'
               size='sm'
               onClick={() => onViewTrace(trace.id)}
-              className='text-sm text-muted-foreground hover:text-foreground'
+              className='text-muted-foreground hover:text-foreground text-sm'
             >
               View trace
             </Button>
@@ -53,5 +53,5 @@ export function TraceCard({ trace, onViewTrace }: TraceCardProps) {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

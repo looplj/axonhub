@@ -1,2 +1,2 @@
-export * from './schema'
-export * from './channels'
+export * from './schema';
+export * from './channels';

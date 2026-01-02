@@ -1,40 +1,40 @@
-import { useCallback, useState } from 'react'
-import { format } from 'date-fns'
-import { ColumnDef, Row } from '@tanstack/react-table'
-import { IconCheck, IconX, IconLink, IconChevronDown, IconChevronRight } from '@tabler/icons-react'
-import * as Icons from '@lobehub/icons'
-import { useTranslation } from 'react-i18next'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Switch } from '@/components/ui/switch'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { useModels } from '../context/models-context'
-import { Model } from '../data/schema'
-import { DataTableColumnHeader } from '@/components/data-table-column-header'
-import { DataTableRowActions } from './data-table-row-actions'
-import { ModelsStatusDialog } from './models-status-dialog'
+import { useCallback, useState } from 'react';
+import { format } from 'date-fns';
+import { ColumnDef, Row } from '@tanstack/react-table';
+import { IconCheck, IconX, IconLink, IconChevronDown, IconChevronRight } from '@tabler/icons-react';
+import * as Icons from '@lobehub/icons';
+import { useTranslation } from 'react-i18next';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { DataTableColumnHeader } from '@/components/data-table-column-header';
+import { useModels } from '../context/models-context';
+import { Model } from '../data/schema';
+import { DataTableRowActions } from './data-table-row-actions';
+import { ModelsStatusDialog } from './models-status-dialog';
 
 // Status Switch Cell Component to handle status toggle with confirmation dialog
 function StatusSwitchCell({ row }: { row: Row<Model> }) {
-  const model = row.original
-  const [dialogOpen, setDialogOpen] = useState(false)
+  const model = row.original;
+  const [dialogOpen, setDialogOpen] = useState(false);
 
-  const isEnabled = model.status === 'enabled'
-  const isArchived = model.status === 'archived'
+  const isEnabled = model.status === 'enabled';
+  const isArchived = model.status === 'archived';
 
   const handleSwitchClick = useCallback(() => {
     if (!isArchived) {
-      setDialogOpen(true)
+      setDialogOpen(true);
     }
-  }, [isArchived])
+  }, [isArchived]);
 
   return (
     <>
       <Switch checked={isEnabled} onCheckedChange={handleSwitchClick} disabled={isArchived} data-testid='model-status-switch' />
       {dialogOpen && <ModelsStatusDialog open={dialogOpen} onOpenChange={setDialogOpen} currentRow={model} />}
     </>
-  )
+  );
 }
 
 export const createColumns = (t: ReturnType<typeof useTranslation>['t']): ColumnDef<Model>[] => {
@@ -78,9 +78,9 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       accessorKey: 'icon',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('models.columns.icon')} />,
       cell: ({ row }) => {
-        const model = row.original
-        const iconName = model.icon
-        const IconComponent = iconName && Icons[iconName as keyof typeof Icons]
+        const model = row.original;
+        const iconName = model.icon;
+        const IconComponent = iconName && Icons[iconName as keyof typeof Icons];
 
         return (
           <div className='flex items-center justify-center'>
@@ -91,7 +91,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
               <span className='text-muted-foreground text-xs'>-</span>
             )}
           </div>
-        )
+        );
       },
       enableSorting: false,
       meta: {
@@ -102,12 +102,12 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       accessorKey: 'name',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('models.columns.name')} />,
       cell: ({ row }) => {
-        const model = row.original
+        const model = row.original;
         return (
           <div className='flex max-w-56 items-center gap-2'>
             <div className='truncate font-medium'>{model.name}</div>
           </div>
-        )
+        );
       },
       meta: {
         className: 'md:table-cell min-w-48',
@@ -119,7 +119,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       accessorKey: 'modelID',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('models.columns.modelId')} />,
       cell: ({ row }) => {
-        return <span className='font-medium text-sm'>{row.getValue('modelID')}</span>
+        return <span className='text-sm font-medium'>{row.getValue('modelID')}</span>;
       },
       meta: {
         className: 'min-w-48',
@@ -130,7 +130,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       accessorKey: 'developer',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('models.columns.developer')} />,
       cell: ({ row }) => {
-        return <Badge variant='outline'>{row.getValue('developer')}</Badge>
+        return <Badge variant='outline'>{row.getValue('developer')}</Badge>;
       },
       enableSorting: false,
     },
@@ -138,8 +138,8 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       accessorKey: 'type',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('models.columns.type')} />,
       cell: ({ row }) => {
-        const type = row.getValue('type') as string
-        return <Badge variant='secondary'>{t(`models.types.${type}`)}</Badge>
+        const type = row.getValue('type') as string;
+        return <Badge variant='secondary'>{t(`models.types.${type}`)}</Badge>;
       },
       enableSorting: false,
     },
@@ -185,14 +185,14 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       id: 'toolCall',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('models.columns.toolCall')} />,
       cell: ({ row }) => {
-        const model = row.original
-        const toolCall = model.modelCard?.toolCall
+        const model = row.original;
+        const toolCall = model.modelCard?.toolCall;
 
         return (
           <div className='flex justify-center'>
             {toolCall ? <IconCheck className='h-4 w-4 text-green-600' /> : <IconX className='text-muted-foreground h-4 w-4' />}
           </div>
-        )
+        );
       },
       enableSorting: false,
     },
@@ -247,22 +247,22 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       id: 'associationRules',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('models.columns.associationRules')} />,
       cell: ({ row }) => {
-        const model = row.original
-        const { setOpen, setCurrentRow } = useModels()
+        const model = row.original;
+        const { setOpen, setCurrentRow } = useModels();
 
         const handleOpenAssociationDialog = useCallback(() => {
-          setCurrentRow(model)
-          setOpen('association')
-        }, [model, setCurrentRow, setOpen])
+          setCurrentRow(model);
+          setOpen('association');
+        }, [model, setCurrentRow, setOpen]);
 
-        const associationCount = model.settings?.associations?.length || 0
+        const associationCount = model.settings?.associations?.length || 0;
 
         return (
           <Button size='sm' variant='outline' className='h-8 px-3' onClick={handleOpenAssociationDialog}>
             <IconLink className='mr-1 h-3 w-3' />
             {`${associationCount}`}
           </Button>
-        )
+        );
       },
       enableSorting: false,
     },
@@ -270,14 +270,14 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       id: 'associatedChannels',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('models.columns.associatedChannels')} />,
       cell: ({ row }) => {
-        const model = row.original
-        const channelCount = model.associatedChannelCount || 0
+        const model = row.original;
+        const channelCount = model.associatedChannelCount || 0;
 
         return (
           <div className='flex justify-center'>
             <Badge variant='secondary'>{channelCount}</Badge>
           </div>
-        )
+        );
       },
       enableSorting: false,
     },
@@ -286,11 +286,11 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       accessorKey: 'createdAt',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('models.columns.createdAt')} />,
       cell: ({ row }) => {
-        const raw = row.getValue('createdAt') as unknown
-        const date = raw instanceof Date ? raw : new Date(raw as string)
+        const raw = row.getValue('createdAt') as unknown;
+        const date = raw instanceof Date ? raw : new Date(raw as string);
 
         if (Number.isNaN(date.getTime())) {
-          return <span className='text-muted-foreground text-xs'>-</span>
+          return <span className='text-muted-foreground text-xs'>-</span>;
         }
 
         return (
@@ -300,7 +300,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
             </TooltipTrigger>
             <TooltipContent>{format(date, 'yyyy-MM-dd HH:mm:ss')}</TooltipContent>
           </Tooltip>
-        )
+        );
       },
       enableSorting: true,
       enableHiding: false,
@@ -315,5 +315,5 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       enableSorting: false,
       enableHiding: false,
     },
-  ]
-}
+  ];
+};

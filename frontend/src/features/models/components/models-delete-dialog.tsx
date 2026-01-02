@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from 'react-i18next';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -8,33 +8,33 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import { useModels } from '../context/models-context'
-import { useDeleteModel } from '../data/models'
+} from '@/components/ui/alert-dialog';
+import { useModels } from '../context/models-context';
+import { useDeleteModel } from '../data/models';
 
 export function ModelsDeleteDialog() {
-  const { t } = useTranslation()
-  const { open, setOpen, currentRow, selectedModels } = useModels()
-  const deleteModel = useDeleteModel()
+  const { t } = useTranslation();
+  const { open, setOpen, currentRow, selectedModels } = useModels();
+  const deleteModel = useDeleteModel();
 
-  const isOpen = open === 'delete'
-  const isBulk = selectedModels.length > 1
-  const modelToDelete = selectedModels.length > 0 ? selectedModels : currentRow ? [currentRow] : []
+  const isOpen = open === 'delete';
+  const isBulk = selectedModels.length > 1;
+  const modelToDelete = selectedModels.length > 0 ? selectedModels : currentRow ? [currentRow] : [];
 
   const handleDelete = async () => {
     try {
       for (const model of modelToDelete) {
-        await deleteModel.mutateAsync(model.id)
+        await deleteModel.mutateAsync(model.id);
       }
-      setOpen(null)
+      setOpen(null);
     } catch (error) {
-      console.error('Failed to delete model:', error)
+      console.error('Failed to delete model:', error);
     }
-  }
+  };
 
   const handleClose = () => {
-    setOpen(null)
-  }
+    setOpen(null);
+  };
 
   return (
     <AlertDialog open={isOpen} onOpenChange={handleClose}>
@@ -49,11 +49,15 @@ export function ModelsDeleteDialog() {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>{t('common.buttons.cancel')}</AlertDialogCancel>
-          <AlertDialogAction onClick={handleDelete} disabled={deleteModel.isPending} className='bg-destructive text-destructive-foreground hover:bg-destructive/90'>
+          <AlertDialogAction
+            onClick={handleDelete}
+            disabled={deleteModel.isPending}
+            className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
+          >
             {t('common.buttons.delete')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  )
+  );
 }

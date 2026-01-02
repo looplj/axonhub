@@ -1,6 +1,6 @@
 {
   "arrowParens": "always",
-  "semi": false,
+  "semi": true,
   "tabWidth": 2,
   "printWidth": 140,
   "singleQuote": true,
@@ -8,10 +8,7 @@
   "trailingComma": "es5",
   "bracketSpacing": true,
   "endOfLine": "lf",
-  "plugins": [
-    "@trivago/prettier-plugin-sort-imports",
-    "prettier-plugin-tailwindcss"
-  ],
+  "plugins": ["@trivago/prettier-plugin-sort-imports", "prettier-plugin-tailwindcss"],
   "importOrder": [
     "^path$",
     "^vite$",

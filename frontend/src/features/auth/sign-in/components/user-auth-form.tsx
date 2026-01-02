@@ -1,68 +1,53 @@
-import { HTMLAttributes, useState } from 'react'
-import { z } from 'zod'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { Link } from '@tanstack/react-router'
-import { useTranslation } from 'react-i18next'
-import { cn } from '@/lib/utils'
-import { passwordSchema } from '@/lib/validation'
-import { Button } from '@/components/ui/button'
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { PasswordInput } from '@/components/password-input'
-import { useSignIn } from '@/features/auth/data/auth'
+import { HTMLAttributes, useState } from 'react';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Link } from '@tanstack/react-router';
+import { useTranslation } from 'react-i18next';
+import { cn } from '@/lib/utils';
+import { passwordSchema } from '@/lib/validation';
+import { Button } from '@/components/ui/button';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/password-input';
+import { useSignIn } from '@/features/auth/data/auth';
 
-type UserAuthFormProps = HTMLAttributes<HTMLFormElement>
+type UserAuthFormProps = HTMLAttributes<HTMLFormElement>;
 
 // Create form schema with dynamic validation messages
 const createFormSchema = (t: (key: string) => string) =>
   z.object({
-    email: z
-      .email()
-      .min(1, { message: t('auth.signIn.validation.emailRequired') }),
+    email: z.email().min(1, { message: t('auth.signIn.validation.emailRequired') }),
     password: passwordSchema(t),
-  })
+  });
 
 export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
-  const { t } = useTranslation()
-  const signInMutation = useSignIn()
-  const [rememberMe, setRememberMe] = useState(false)
+  const { t } = useTranslation();
+  const signInMutation = useSignIn();
+  const [rememberMe, setRememberMe] = useState(false);
 
-  const formSchema = createFormSchema(t)
+  const formSchema = createFormSchema(t);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: '',
       password: '',
     },
-  })
+  });
 
   function onSubmit(data: z.infer<typeof formSchema>) {
-    signInMutation.mutate(data)
+    signInMutation.mutate(data);
   }
 
   return (
     <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(onSubmit)}
-        className={cn('grid gap-6', className)}
-        {...props}
-      >
+      <form onSubmit={form.handleSubmit(onSubmit)} className={cn('grid gap-6', className)} {...props}>
         <FormField
           control={form.control}
           name='email'
           render={({ field }) => (
             <FormItem>
-              <FormLabel className='text-sm font-medium text-slate-700'>
-                {t('auth.signIn.form.email.label')}
-              </FormLabel>
+              <FormLabel className='text-sm font-medium text-slate-700'>{t('auth.signIn.form.email.label')}</FormLabel>
               <FormControl>
                 <Input
                   type='email'
@@ -83,9 +68,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
           render={({ field }) => (
             <FormItem className='relative'>
               <div className='flex items-center justify-between'>
-                <FormLabel className='text-sm font-medium text-slate-700'>
-                  {t('auth.signIn.form.password.label')}
-                </FormLabel>
+                <FormLabel className='text-sm font-medium text-slate-700'>{t('auth.signIn.form.password.label')}</FormLabel>
                 <Link
                   to='/forgot-password'
                   className='text-sm font-medium text-slate-500 transition-colors hover:text-slate-700 hover:underline'
@@ -110,12 +93,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
         <div className='flex items-center justify-between'>
           <label className='flex cursor-pointer items-center space-x-3'>
             <div className='relative'>
-              <input
-                type='checkbox'
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className='sr-only'
-              />
+              <input type='checkbox' checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className='sr-only' />
               <div
                 className={`h-6 w-12 rounded-full border-2 transition-all duration-300 ${rememberMe ? 'border-slate-600 bg-slate-600' : 'border-slate-300 bg-slate-100'}`}
               >
@@ -124,9 +102,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                 ></div>
               </div>
             </div>
-            <span className='text-sm text-slate-700'>
-              {t('auth.signIn.form.rememberMe')}
-            </span>
+            <span className='text-sm text-slate-700'>{t('auth.signIn.form.rememberMe')}</span>
           </label>
         </div>
 
@@ -148,5 +124,5 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
         </Button>
       </form>
     </Form>
-  )
+  );
 }

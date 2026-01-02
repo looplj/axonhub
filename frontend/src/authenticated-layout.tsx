@@ -1,25 +1,25 @@
-import Cookies from 'js-cookie'
-import { Outlet } from '@tanstack/react-router'
-import { cn } from '@/lib/utils'
-import { SidebarProvider } from '@/components/ui/sidebar'
-import { AppSidebar } from '@/components/layout/app-sidebar'
-import { AppHeader } from '@/components/layout/app-header'
-import SkipToMain from '@/components/skip-to-main'
-import { useSidebarData } from './sidebar'
-import { OnboardingProvider } from '@/features/onboarding'
-import { useVersionCheck } from '@/hooks/use-version-check'
+import Cookies from 'js-cookie';
+import { Outlet } from '@tanstack/react-router';
+import { cn } from '@/lib/utils';
+import { useVersionCheck } from '@/hooks/use-version-check';
+import { SidebarProvider } from '@/components/ui/sidebar';
+import { AppHeader } from '@/components/layout/app-header';
+import { AppSidebar } from '@/components/layout/app-sidebar';
+import SkipToMain from '@/components/skip-to-main';
+import { OnboardingProvider } from '@/features/onboarding';
+import { useSidebarData } from './sidebar';
 
 interface Props {
-  children?: React.ReactNode
+  children?: React.ReactNode;
 }
 
 export function AuthenticatedLayout({ children }: Props) {
-  const defaultOpen = Cookies.get('sidebar_state') !== 'false'
-  const sidebarData = useSidebarData()
-  
+  const defaultOpen = Cookies.get('sidebar_state') !== 'false';
+  const sidebarData = useSidebarData();
+
   // Check for new version on mount (only for owners)
-  useVersionCheck()
-  
+  useVersionCheck();
+
   return (
     <SidebarProvider defaultOpen={defaultOpen} className='h-screen flex-col overflow-hidden'>
       <AppHeader />
@@ -33,16 +33,14 @@ export function AuthenticatedLayout({ children }: Props) {
             'peer-data-[state=collapsed]:w-[calc(100%-var(--sidebar-width-icon)-1rem)]',
             'peer-data-[state=expanded]:w-[calc(100%-var(--sidebar-width))]',
             'sm:transition-[width] sm:duration-200 sm:ease-linear',
-            'flex flex-1 min-h-0 min-w-0 flex-col overflow-auto pt-14 has-[main.fixed-main]:overflow-hidden',
+            'flex min-h-0 min-w-0 flex-1 flex-col overflow-auto pt-14 has-[main.fixed-main]:overflow-hidden',
             'group-data-[scroll-locked=1]/body:h-full',
             'has-[main.fixed-main]:group-data-[scroll-locked=1]/body:h-svh'
           )}
         >
-          <OnboardingProvider>
-            {children ? children : <Outlet />}
-          </OnboardingProvider>
+          <OnboardingProvider>{children ? children : <Outlet />}</OnboardingProvider>
         </div>
       </div>
     </SidebarProvider>
-  )
+  );
 }

@@ -6,7 +6,7 @@ const SkipToMain = () => {
     >
       Skip to Main
     </a>
-  )
-}
+  );
+};
 
-export default SkipToMain
+export default SkipToMain;

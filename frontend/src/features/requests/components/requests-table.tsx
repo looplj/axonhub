@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { DateRange } from 'react-day-picker'
+import { useState } from 'react';
 import {
   ColumnFiltersState,
   RowData,
@@ -12,55 +11,49 @@ import {
   getFilteredRowModel,
   getSortedRowModel,
   useReactTable,
-} from '@tanstack/react-table'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Request, RequestConnection } from '../data/schema'
-import { DataTableToolbar } from './data-table-toolbar'
-import { ServerSidePagination } from '@/components/server-side-pagination'
-import { useRequestsColumns } from './requests-columns'
-import { useTranslation } from 'react-i18next'
-import { motion, AnimatePresence } from 'framer-motion'
-import { useAnimatedList } from '@/hooks/useAnimatedList'
+} from '@tanstack/react-table';
+import { motion, AnimatePresence } from 'framer-motion';
+import { DateRange } from 'react-day-picker';
+import { useTranslation } from 'react-i18next';
+import { useAnimatedList } from '@/hooks/useAnimatedList';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ServerSidePagination } from '@/components/server-side-pagination';
+import { Request, RequestConnection } from '../data/schema';
+import { DataTableToolbar } from './data-table-toolbar';
+import { useRequestsColumns } from './requests-columns';
 
-const MotionTableRow = motion(TableRow)
+const MotionTableRow = motion(TableRow);
 
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData extends RowData, TValue> {
-    className: string
+    className: string;
   }
 }
 
 interface RequestsTableProps {
-  data: Request[]
-  loading?: boolean
-  pageInfo?: RequestConnection['pageInfo']
-  pageSize: number
-  totalCount?: number
-  statusFilter: string[]
-  sourceFilter: string[]
-  channelFilter: string[]
-  apiKeyFilter: string[]
-  dateRange?: DateRange
-  onNextPage: () => void
-  onPreviousPage: () => void
-  onPageSizeChange: (pageSize: number) => void
-  onStatusFilterChange: (filters: string[]) => void
-  onSourceFilterChange: (filters: string[]) => void
-  onChannelFilterChange: (filters: string[]) => void
-  onApiKeyFilterChange: (filters: string[]) => void
-  onDateRangeChange: (range: DateRange | undefined) => void
-  onRefresh: () => void
-  showRefresh: boolean
-  autoRefresh?: boolean
-  onAutoRefreshChange?: (enabled: boolean) => void
+  data: Request[];
+  loading?: boolean;
+  pageInfo?: RequestConnection['pageInfo'];
+  pageSize: number;
+  totalCount?: number;
+  statusFilter: string[];
+  sourceFilter: string[];
+  channelFilter: string[];
+  apiKeyFilter: string[];
+  dateRange?: DateRange;
+  onNextPage: () => void;
+  onPreviousPage: () => void;
+  onPageSizeChange: (pageSize: number) => void;
+  onStatusFilterChange: (filters: string[]) => void;
+  onSourceFilterChange: (filters: string[]) => void;
+  onChannelFilterChange: (filters: string[]) => void;
+  onApiKeyFilterChange: (filters: string[]) => void;
+  onDateRangeChange: (range: DateRange | undefined) => void;
+  onRefresh: () => void;
+  showRefresh: boolean;
+  autoRefresh?: boolean;
+  onAutoRefreshChange?: (enabled: boolean) => void;
 }
 
 export function RequestsTable({
@@ -87,61 +80,60 @@ export function RequestsTable({
   autoRefresh = false,
   onAutoRefreshChange,
 }: RequestsTableProps) {
-  const { t } = useTranslation()
-  const requestsColumns = useRequestsColumns()
-  const [sorting, setSorting] = useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
-  const [rowSelection, setRowSelection] = useState({})
+  const { t } = useTranslation();
+  const requestsColumns = useRequestsColumns();
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [rowSelection, setRowSelection] = useState({});
 
-  const displayedData = useAnimatedList(data, autoRefresh)
+  const displayedData = useAnimatedList(data, autoRefresh);
 
   // Sync filters with the server state
   const handleColumnFiltersChange = (updater: any) => {
-    const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater
-    setColumnFilters(newFilters)
-    
-    const statusFilterValue = newFilters.find((filter: any) => filter.id === 'status')?.value
-    const sourceFilterValue = newFilters.find((filter: any) => filter.id === 'source')?.value
-    const channelFilterValue = newFilters.find((filter: any) => filter.id === 'channel')?.value
-    const apiKeyFilterValue = newFilters.find((filter: any) => filter.id === 'apiKey')?.value
-    
-    const statusFilterArray = Array.isArray(statusFilterValue) ? statusFilterValue : []
+    const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater;
+    setColumnFilters(newFilters);
+
+    const statusFilterValue = newFilters.find((filter: any) => filter.id === 'status')?.value;
+    const sourceFilterValue = newFilters.find((filter: any) => filter.id === 'source')?.value;
+    const channelFilterValue = newFilters.find((filter: any) => filter.id === 'channel')?.value;
+    const apiKeyFilterValue = newFilters.find((filter: any) => filter.id === 'apiKey')?.value;
+
+    const statusFilterArray = Array.isArray(statusFilterValue) ? statusFilterValue : [];
     if (JSON.stringify(statusFilterArray.sort()) !== JSON.stringify(statusFilter.sort())) {
-      onStatusFilterChange(statusFilterArray)
+      onStatusFilterChange(statusFilterArray);
     }
-    
-    const sourceFilterArray = Array.isArray(sourceFilterValue) ? sourceFilterValue : []
+
+    const sourceFilterArray = Array.isArray(sourceFilterValue) ? sourceFilterValue : [];
     if (JSON.stringify(sourceFilterArray.sort()) !== JSON.stringify(sourceFilter.sort())) {
-      onSourceFilterChange(sourceFilterArray)
+      onSourceFilterChange(sourceFilterArray);
     }
-    
-    const channelFilterArray = Array.isArray(channelFilterValue) ? channelFilterValue : []
+
+    const channelFilterArray = Array.isArray(channelFilterValue) ? channelFilterValue : [];
     if (JSON.stringify(channelFilterArray.sort()) !== JSON.stringify(channelFilter.sort())) {
-      onChannelFilterChange(channelFilterArray)
+      onChannelFilterChange(channelFilterArray);
     }
-    
-    const apiKeyFilterArray = Array.isArray(apiKeyFilterValue) ? apiKeyFilterValue : []
+
+    const apiKeyFilterArray = Array.isArray(apiKeyFilterValue) ? apiKeyFilterValue : [];
     if (JSON.stringify(apiKeyFilterArray.sort()) !== JSON.stringify(apiKeyFilter.sort())) {
-      onApiKeyFilterChange(apiKeyFilterArray)
+      onApiKeyFilterChange(apiKeyFilterArray);
     }
-  }
+  };
 
   // Initialize filters in column filters if they exist
-  const initialColumnFilters = []
+  const initialColumnFilters = [];
   if (statusFilter.length > 0) {
-    initialColumnFilters.push({ id: 'status', value: statusFilter })
+    initialColumnFilters.push({ id: 'status', value: statusFilter });
   }
   if (sourceFilter.length > 0) {
-    initialColumnFilters.push({ id: 'source', value: sourceFilter })
+    initialColumnFilters.push({ id: 'source', value: sourceFilter });
   }
   if (channelFilter.length > 0) {
-    initialColumnFilters.push({ id: 'channel', value: channelFilter })
+    initialColumnFilters.push({ id: 'channel', value: channelFilter });
   }
   if (apiKeyFilter.length > 0) {
-    initialColumnFilters.push({ id: 'apiKey', value: apiKeyFilter })
+    initialColumnFilters.push({ id: 'apiKey', value: apiKeyFilter });
   }
-
 
   const table = useReactTable({
     data: displayedData,
@@ -151,7 +143,11 @@ export function RequestsTable({
       sorting,
       columnVisibility,
       rowSelection,
-      columnFilters: columnFilters.length === 0 && (statusFilter.length > 0 || sourceFilter.length > 0 || channelFilter.length > 0 || apiKeyFilter.length > 0) ? initialColumnFilters : columnFilters,
+      columnFilters:
+        columnFilters.length === 0 &&
+        (statusFilter.length > 0 || sourceFilter.length > 0 || channelFilter.length > 0 || apiKeyFilter.length > 0)
+          ? initialColumnFilters
+          : columnFilters,
     },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
@@ -166,23 +162,23 @@ export function RequestsTable({
     // Disable client-side pagination since we're using server-side
     manualPagination: true,
     manualFiltering: true, // Enable manual filtering for server-side filtering
-  })
+  });
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
-      <DataTableToolbar 
-        table={table} 
+      <DataTableToolbar
+        table={table}
         dateRange={dateRange}
         onDateRangeChange={onDateRangeChange}
-        onRefresh={onRefresh} 
-        showRefresh={showRefresh} 
+        onRefresh={onRefresh}
+        showRefresh={showRefresh}
         apiKeyFilter={apiKeyFilter}
         onApiKeyFilterChange={onApiKeyFilterChange}
         autoRefresh={autoRefresh}
         onAutoRefreshChange={onAutoRefreshChange}
       />
-      <div className='mt-4 flex-1 overflow-auto rounded-2xl shadow-soft border border-[var(--table-border)] relative'>
-        <Table data-testid='requests-table' className='bg-[var(--table-background)] rounded-2xl border-separate border-spacing-0'>
+      <div className='shadow-soft relative mt-4 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
+        <Table data-testid='requests-table' className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className='group/row border-0'>
@@ -191,32 +187,24 @@ export function RequestsTable({
                     <TableHead
                       key={header.id}
                       colSpan={header.colSpan}
-                      className={`${header.column.columnDef.meta?.className ?? ''} text-xs font-semibold text-muted-foreground uppercase tracking-wider border-0`}
+                      className={`${header.column.columnDef.meta?.className ?? ''} text-muted-foreground border-0 text-xs font-semibold tracking-wider uppercase`}
                     >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
-                  )
+                  );
                 })}
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody className='p-2 space-y-1 !bg-[var(--table-background)]'>
+          <TableBody className='space-y-1 !bg-[var(--table-background)] p-2'>
             {loading ? (
               <TableRow className='border-0 !bg-[var(--table-background)]'>
-                <TableCell
-                  colSpan={requestsColumns.length}
-                  className='h-24 text-center border-0 !bg-[var(--table-background)]'
-                >
+                <TableCell colSpan={requestsColumns.length} className='h-24 border-0 !bg-[var(--table-background)] text-center'>
                   {t('common.loading')}
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows?.length ? (
-              <AnimatePresence initial={false} mode="popLayout">
+              <AnimatePresence initial={false} mode='popLayout'>
                 {table.getRowModel().rows.map((row) => (
                   <MotionTableRow
                     key={row.id}
@@ -224,22 +212,22 @@ export function RequestsTable({
                     initial={{ opacity: 0, y: -20, height: 0 }}
                     animate={{ opacity: 1, y: 0, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
-                    transition={{ 
-                      type: 'spring', 
-                      stiffness: 500, 
-                      damping: 30, 
+                    transition={{
+                      type: 'spring',
+                      stiffness: 500,
+                      damping: 30,
                       mass: 1,
-                      opacity: { duration: 0.2 }
+                      opacity: { duration: 0.2 },
                     }}
                     layout
                     className='group/row hover:bg-muted/50 data-[state=selected]:bg-muted'
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id} className={`${cell.column.columnDef.meta?.className ?? ''} py-3 border-b border-[var(--table-border)] group-last/row:border-0`}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
+                      <TableCell
+                        key={cell.id}
+                        className={`${cell.column.columnDef.meta?.className ?? ''} border-b border-[var(--table-border)] py-3 group-last/row:border-0`}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
                     ))}
                   </MotionTableRow>
@@ -247,10 +235,7 @@ export function RequestsTable({
               </AnimatePresence>
             ) : (
               <TableRow className='!bg-[var(--table-background)]'>
-                <TableCell
-                  colSpan={requestsColumns.length}
-                  className='h-24 text-center !bg-[var(--table-background)]'
-                >
+                <TableCell colSpan={requestsColumns.length} className='h-24 !bg-[var(--table-background)] text-center'>
                   {t('common.noData')}
                 </TableCell>
               </TableRow>
@@ -271,5 +256,5 @@ export function RequestsTable({
         />
       </div>
     </div>
-  )
+  );
 }

@@ -1,72 +1,72 @@
-'use client'
+'use client';
 
-import { forwardRef, InputHTMLAttributes, useCallback, useRef, useState } from 'react'
-import { X } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { forwardRef, InputHTMLAttributes, useCallback, useRef, useState } from 'react';
+import { X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export interface TagsInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> {
-  value: string[]
-  onChange: (tags: string[]) => void
-  placeholder?: string
-  className?: string
+  value: string[];
+  onChange: (tags: string[]) => void;
+  placeholder?: string;
+  className?: string;
 }
 
 export const TagsInput = forwardRef<HTMLDivElement, TagsInputProps>(({ value = [], onChange, placeholder, className, ...props }, ref) => {
-  const [inputValue, setInputValue] = useState('')
-  const inputRef = useRef<HTMLInputElement>(null)
-  const isComposingRef = useRef(false)
+  const [inputValue, setInputValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const isComposingRef = useRef(false);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(e.target.value)
-  }, [])
+    setInputValue(e.target.value);
+  }, []);
 
   const handleCompositionStart = useCallback(() => {
-    isComposingRef.current = true
-  }, [])
+    isComposingRef.current = true;
+  }, []);
 
   const handleCompositionEnd = useCallback(() => {
-    isComposingRef.current = false
-  }, [])
+    isComposingRef.current = false;
+  }, []);
 
   const handleInputKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
-      const nativeEvent = e.nativeEvent as unknown as { isComposing?: boolean; keyCode?: number }
+      const nativeEvent = e.nativeEvent as unknown as { isComposing?: boolean; keyCode?: number };
       if (isComposingRef.current || nativeEvent.isComposing || nativeEvent.keyCode === 229) {
-        return
+        return;
       }
 
       if (e.key === 'Enter' || e.key === ',' || e.key === ' ') {
-        e.preventDefault()
-        const newTag = inputValue.trim()
+        e.preventDefault();
+        const newTag = inputValue.trim();
         if (newTag && !value.includes(newTag)) {
-          onChange([...value, newTag])
-          setInputValue('')
+          onChange([...value, newTag]);
+          setInputValue('');
         }
       } else if (e.key === 'Backspace' && !inputValue && value.length > 0) {
         // Remove the last tag when backspace is pressed on empty input
-        onChange(value.slice(0, -1))
+        onChange(value.slice(0, -1));
       }
     },
     [inputValue, value, onChange]
-  )
+  );
 
   const removeTag = useCallback(
     (tagToRemove: string) => {
       // 标签在组件内已去重，按值删除更稳定（避免索引变更导致误删）
-      onChange(value.filter((tag) => tag !== tagToRemove))
+      onChange(value.filter((tag) => tag !== tagToRemove));
     },
     [value, onChange]
-  )
+  );
 
   const handleInputBlur = useCallback(() => {
-    if (isComposingRef.current) return
+    if (isComposingRef.current) return;
 
-    const newTag = inputValue.trim()
+    const newTag = inputValue.trim();
     if (newTag && !value.includes(newTag)) {
-      onChange([...value, newTag])
+      onChange([...value, newTag]);
     }
-    setInputValue('')
-  }, [inputValue, value, onChange])
+    setInputValue('');
+  }, [inputValue, value, onChange]);
 
   return (
     <div
@@ -104,7 +104,7 @@ export const TagsInput = forwardRef<HTMLDivElement, TagsInputProps>(({ value = [
         {...props}
       />
     </div>
-  )
-})
+  );
+});
 
-TagsInput.displayName = 'TagsInput'
+TagsInput.displayName = 'TagsInput';

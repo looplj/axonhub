@@ -1,32 +1,31 @@
-import { useMemo } from 'react'
-import { Cross2Icon } from '@radix-ui/react-icons'
-import { Table } from '@tanstack/react-table'
-import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter'
-import { useMe } from '@/features/auth/data/auth'
-import { useUsers } from '@/features/users/data/users'
-import { useAuthStore } from '@/stores/authStore'
-import { ApiKeyStatus } from '../data/schema'
+import { useMemo } from 'react';
+import { Cross2Icon } from '@radix-ui/react-icons';
+import { Table } from '@tanstack/react-table';
+import { useTranslation } from 'react-i18next';
+import { useAuthStore } from '@/stores/authStore';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter';
+import { useMe } from '@/features/auth/data/auth';
+import { useUsers } from '@/features/users/data/users';
+import { ApiKeyStatus } from '../data/schema';
 
 interface DataTableToolbarProps<TData> {
-  table: Table<TData>
-  onResetFilters?: () => void
+  table: Table<TData>;
+  onResetFilters?: () => void;
 }
 
 export function DataTableToolbar<TData>({ table, onResetFilters }: DataTableToolbarProps<TData>) {
-  const { t } = useTranslation()
-  const isFiltered = table.getState().columnFilters.length > 0
+  const { t } = useTranslation();
+  const isFiltered = table.getState().columnFilters.length > 0;
 
-  const { user: authUser } = useAuthStore((state) => state.auth)
-  const { data: meData } = useMe()
-  const user = meData || authUser
-  const userScopes = user?.scopes || []
-  const isOwner = user?.isOwner || false
+  const { user: authUser } = useAuthStore((state) => state.auth);
+  const { data: meData } = useMe();
+  const user = meData || authUser;
+  const userScopes = user?.scopes || [];
+  const isOwner = user?.isOwner || false;
 
-  const canViewUsers =
-    isOwner || userScopes.includes('*') || (userScopes.includes('read_users') && userScopes.includes('read_apikeys'))
+  const canViewUsers = isOwner || userScopes.includes('*') || (userScopes.includes('read_users') && userScopes.includes('read_apikeys'));
 
   const { data: usersData } = useUsers(
     {
@@ -36,16 +35,16 @@ export function DataTableToolbar<TData>({ table, onResetFilters }: DataTableTool
     {
       disableAutoFetch: !canViewUsers,
     }
-  )
+  );
 
   const userOptions = useMemo(() => {
-    if (!canViewUsers || !usersData?.edges) return []
+    if (!canViewUsers || !usersData?.edges) return [];
 
     return usersData.edges.map((edge) => ({
       value: edge.node.id,
       label: `${edge.node.firstName} ${edge.node.lastName} (${edge.node.email})`,
-    }))
-  }, [canViewUsers, usersData])
+    }));
+  }, [canViewUsers, usersData]);
 
   const statusOptions = [
     {
@@ -60,7 +59,7 @@ export function DataTableToolbar<TData>({ table, onResetFilters }: DataTableTool
       value: 'archived' as ApiKeyStatus,
       label: t('apikeys.status.archived'),
     },
-  ]
+  ];
 
   return (
     <div className='flex items-center justify-between'>
@@ -72,25 +71,17 @@ export function DataTableToolbar<TData>({ table, onResetFilters }: DataTableTool
           className='h-8 w-[150px] lg:w-[250px]'
         />
         {table.getColumn('status') && (
-          <DataTableFacetedFilter
-            column={table.getColumn('status')}
-            title={t('apikeys.filters.status')}
-            options={statusOptions}
-          />
+          <DataTableFacetedFilter column={table.getColumn('status')} title={t('apikeys.filters.status')} options={statusOptions} />
         )}
         {canViewUsers && table.getColumn('creator') && userOptions.length > 0 && usersData?.edges && (
-          <DataTableFacetedFilter
-            column={table.getColumn('creator')}
-            title={t('apikeys.filters.creator')}
-            options={userOptions}
-          />
+          <DataTableFacetedFilter column={table.getColumn('creator')} title={t('apikeys.filters.creator')} options={userOptions} />
         )}
         {isFiltered && (
           <Button
             variant='ghost'
             onClick={() => {
-              table.resetColumnFilters()
-              onResetFilters?.()
+              table.resetColumnFilters();
+              onResetFilters?.();
             }}
             className='h-8 px-2 lg:px-3'
           >
@@ -100,5 +91,5 @@ export function DataTableToolbar<TData>({ table, onResetFilters }: DataTableTool
         )}
       </div>
     </div>
-  )
+  );
 }

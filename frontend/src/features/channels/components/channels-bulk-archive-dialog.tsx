@@ -1,47 +1,47 @@
-'use client'
+'use client';
 
-import { IconAlertTriangle, IconArchive } from '@tabler/icons-react'
-import { useTranslation } from 'react-i18next'
-import { ConfirmDialog } from '@/components/confirm-dialog'
-import { useChannels } from '../context/channels-context'
-import { useBulkArchiveChannels } from '../data/channels'
+import { IconAlertTriangle, IconArchive } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
+import { ConfirmDialog } from '@/components/confirm-dialog';
+import { useChannels } from '../context/channels-context';
+import { useBulkArchiveChannels } from '../data/channels';
 
 export function ChannelsBulkArchiveDialog() {
-  const { t } = useTranslation()
-  const { open, setOpen, selectedChannels, resetRowSelection, setSelectedChannels } = useChannels()
-  const bulkArchiveChannels = useBulkArchiveChannels()
+  const { t } = useTranslation();
+  const { open, setOpen, selectedChannels, resetRowSelection, setSelectedChannels } = useChannels();
+  const bulkArchiveChannels = useBulkArchiveChannels();
 
-  const isDialogOpen = open === 'bulkArchive'
-  const selectedCount = selectedChannels.length
+  const isDialogOpen = open === 'bulkArchive';
+  const selectedCount = selectedChannels.length;
 
   if (selectedCount === 0 && !isDialogOpen) {
-    return null
+    return null;
   }
 
   const handleConfirm = async () => {
     try {
-      const ids = selectedChannels.map((channel) => channel.id)
+      const ids = selectedChannels.map((channel) => channel.id);
       if (ids.length === 0) {
-        return
+        return;
       }
 
-      await bulkArchiveChannels.mutateAsync(ids)
-      resetRowSelection()
-      setSelectedChannels([])
-      setOpen(null)
+      await bulkArchiveChannels.mutateAsync(ids);
+      resetRowSelection();
+      setSelectedChannels([]);
+      setOpen(null);
     } catch (error) {
-      console.error('Failed to bulk archive channels:', error)
+      console.error('Failed to bulk archive channels:', error);
     }
-  }
+  };
 
   return (
     <ConfirmDialog
       open={isDialogOpen}
       onOpenChange={(isOpen) => {
         if (!isOpen) {
-          setOpen(null)
+          setOpen(null);
         } else {
-          setOpen('bulkArchive')
+          setOpen('bulkArchive');
         }
       }}
       handleConfirm={handleConfirm}
@@ -64,5 +64,5 @@ export function ChannelsBulkArchiveDialog() {
         </div>
       </div>
     </ConfirmDialog>
-  )
+  );
 }

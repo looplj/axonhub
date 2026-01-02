@@ -1,24 +1,24 @@
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { useApiKeysContext } from '../context/apikeys-context'
-import { useCreateApiKey } from '../data/apikeys'
-import { CreateApiKeyInput, createApiKeyInputSchema } from '../data/schema'
-import { ScopesSelect } from './scopes-select'
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { useApiKeysContext } from '../context/apikeys-context';
+import { useCreateApiKey } from '../data/apikeys';
+import { CreateApiKeyInput, createApiKeyInputSchema } from '../data/schema';
+import { ScopesSelect } from './scopes-select';
 
 export function ApiKeysCreateDialog() {
-  const { t } = useTranslation()
-  const { isDialogOpen, closeDialog } = useApiKeysContext()
-  const createApiKey = useCreateApiKey()
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { t } = useTranslation();
+  const { isDialogOpen, closeDialog } = useApiKeysContext();
+  const createApiKey = useCreateApiKey();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null)
+  const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null);
 
   const form = useForm<CreateApiKeyInput>({
     resolver: zodResolver(createApiKeyInputSchema),
@@ -27,29 +27,29 @@ export function ApiKeysCreateDialog() {
       type: 'user',
       scopes: undefined, // Don't set scopes for user type
     },
-  })
+  });
 
-  const apiKeyType = form.watch('type')
+  const apiKeyType = form.watch('type');
 
   const onSubmit = async (data: CreateApiKeyInput) => {
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
       // Remove scopes if type is user (use backend default)
-      const submitData = data.type === 'user' ? { ...data, scopes: undefined } : data
-      await createApiKey.mutateAsync(submitData)
-      form.reset()
-      closeDialog('create')
+      const submitData = data.type === 'user' ? { ...data, scopes: undefined } : data;
+      await createApiKey.mutateAsync(submitData);
+      form.reset();
+      closeDialog('create');
     } catch (error) {
       // Error is handled by the mutation
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const handleClose = () => {
-    form.reset()
-    closeDialog('create')
-  }
+    form.reset();
+    closeDialog('create');
+  };
 
   return (
     <Dialog open={isDialogOpen.create} onOpenChange={handleClose}>
@@ -137,5 +137,5 @@ export function ApiKeysCreateDialog() {
         </Form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

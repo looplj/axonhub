@@ -1,2 +1,2 @@
-export * from './schema'
-export * from './usage-logs'
+export * from './schema';
+export * from './usage-logs';

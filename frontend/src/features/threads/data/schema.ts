@@ -1,6 +1,6 @@
-import { z } from 'zod'
-import { pageInfoSchema } from '@/gql/pagination'
-import { traceConnectionSchema } from '@/features/traces/data/schema'
+import { z } from 'zod';
+import { pageInfoSchema } from '@/gql/pagination';
+import { traceConnectionSchema } from '@/features/traces/data/schema';
 
 const projectSchema = z
   .object({
@@ -8,14 +8,14 @@ const projectSchema = z
     name: z.string().nullable().optional(),
   })
   .nullable()
-  .optional()
+  .optional();
 
 const threadTracesSummarySchema = z
   .object({
     totalCount: z.number().nullable().optional(),
   })
   .nullable()
-  .optional()
+  .optional();
 
 export const threadSchema = z.object({
   id: z.string(),
@@ -25,25 +25,25 @@ export const threadSchema = z.object({
   project: projectSchema,
   tracesSummary: threadTracesSummarySchema,
   firstUserQuery: z.string().nullable().optional(),
-})
+});
 
-export type Thread = z.infer<typeof threadSchema>
+export type Thread = z.infer<typeof threadSchema>;
 
 export const threadConnectionSchema = z.object({
   edges: z.array(
     z.object({
       node: threadSchema,
       cursor: z.string(),
-    }),
+    })
   ),
   pageInfo: pageInfoSchema,
   totalCount: z.number(),
-})
+});
 
-export type ThreadConnection = z.infer<typeof threadConnectionSchema>
+export type ThreadConnection = z.infer<typeof threadConnectionSchema>;
 
 export const threadDetailSchema = threadSchema.extend({
   tracesConnection: traceConnectionSchema.optional(),
-})
+});
 
-export type ThreadDetail = z.infer<typeof threadDetailSchema>
+export type ThreadDetail = z.infer<typeof threadDetailSchema>;

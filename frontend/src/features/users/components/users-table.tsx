@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState } from 'react';
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -10,43 +10,36 @@ import {
   getFacetedRowModel,
   getFacetedUniqueValues,
   useReactTable,
-} from '@tanstack/react-table'
-import { useTranslation } from 'react-i18next'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { ServerSidePagination } from '@/components/server-side-pagination'
-import { User, UserConnection } from '../data/schema'
-import { DataTableToolbar } from './data-table-toolbar'
+} from '@tanstack/react-table';
+import { useTranslation } from 'react-i18next';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ServerSidePagination } from '@/components/server-side-pagination';
+import { User, UserConnection } from '../data/schema';
+import { DataTableToolbar } from './data-table-toolbar';
 
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData extends RowData, TValue> {
-    className: string
+    className: string;
   }
 }
 
 interface DataTableProps {
-  columns: ColumnDef<User>[]
-  data: User[]
-  loading?: boolean
-  pageInfo?: UserConnection['pageInfo']
-  pageSize: number
-  totalCount?: number
-  onNextPage: () => void
-  onPreviousPage: () => void
-  onPageSizeChange: (pageSize: number) => void
-  nameFilter: string
-  statusFilter: string[]
-  roleFilter: string[]
-  onNameFilterChange: (value: string) => void
-  onStatusFilterChange: (value: string[]) => void
-  onRoleFilterChange: (value: string[]) => void
+  columns: ColumnDef<User>[];
+  data: User[];
+  loading?: boolean;
+  pageInfo?: UserConnection['pageInfo'];
+  pageSize: number;
+  totalCount?: number;
+  onNextPage: () => void;
+  onPreviousPage: () => void;
+  onPageSizeChange: (pageSize: number) => void;
+  nameFilter: string;
+  statusFilter: string[];
+  roleFilter: string[];
+  onNameFilterChange: (value: string) => void;
+  onStatusFilterChange: (value: string[]) => void;
+  onRoleFilterChange: (value: string[]) => void;
 }
 
 export function UsersTable({
@@ -66,65 +59,52 @@ export function UsersTable({
   onStatusFilterChange,
   onRoleFilterChange,
 }: DataTableProps) {
-  const { t } = useTranslation()
-  const [rowSelection, setRowSelection] = useState({})
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-  const [sorting, setSorting] = useState<SortingState>([])
+  const { t } = useTranslation();
+  const [rowSelection, setRowSelection] = useState({});
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [sorting, setSorting] = useState<SortingState>([]);
 
   // Sync server state to local column filters (for UI display)
   React.useEffect(() => {
-    const newFilters: ColumnFiltersState = []
+    const newFilters: ColumnFiltersState = [];
     if (nameFilter) {
-      newFilters.push({ id: 'firstName', value: nameFilter })
+      newFilters.push({ id: 'firstName', value: nameFilter });
     }
     if (statusFilter.length > 0) {
-      newFilters.push({ id: 'status', value: statusFilter })
+      newFilters.push({ id: 'status', value: statusFilter });
     }
     if (roleFilter.length > 0) {
-      newFilters.push({ id: 'role', value: roleFilter })
+      newFilters.push({ id: 'role', value: roleFilter });
     }
-    setColumnFilters(newFilters)
-  }, [nameFilter, statusFilter, roleFilter])
+    setColumnFilters(newFilters);
+  }, [nameFilter, statusFilter, roleFilter]);
 
-  const handleColumnFiltersChange = (
-    updater:
-      | ColumnFiltersState
-      | ((prev: ColumnFiltersState) => ColumnFiltersState)
-  ) => {
-    const newFilters =
-      typeof updater === 'function' ? updater(columnFilters) : updater
-    setColumnFilters(newFilters)
+  const handleColumnFiltersChange = (updater: ColumnFiltersState | ((prev: ColumnFiltersState) => ColumnFiltersState)) => {
+    const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater;
+    setColumnFilters(newFilters);
 
     // Extract filter values
-    const nameFilterValue = newFilters.find((f) => f.id === 'firstName')?.value
-    const statusFilterValue = newFilters.find((f) => f.id === 'status')?.value
-    const roleFilterValue = newFilters.find((f) => f.id === 'role')?.value
+    const nameFilterValue = newFilters.find((f) => f.id === 'firstName')?.value;
+    const statusFilterValue = newFilters.find((f) => f.id === 'status')?.value;
+    const roleFilterValue = newFilters.find((f) => f.id === 'role')?.value;
 
     // Only update if values actually change to prevent reset issues
-    const newNameFilter =
-      typeof nameFilterValue === 'string' ? nameFilterValue : ''
+    const newNameFilter = typeof nameFilterValue === 'string' ? nameFilterValue : '';
     if (newNameFilter !== nameFilter) {
-      onNameFilterChange(newNameFilter)
+      onNameFilterChange(newNameFilter);
     }
 
-    const newStatusFilter = Array.isArray(statusFilterValue)
-      ? statusFilterValue
-      : []
-    if (
-      JSON.stringify(newStatusFilter.sort()) !==
-      JSON.stringify(statusFilter.sort())
-    ) {
-      onStatusFilterChange(newStatusFilter)
+    const newStatusFilter = Array.isArray(statusFilterValue) ? statusFilterValue : [];
+    if (JSON.stringify(newStatusFilter.sort()) !== JSON.stringify(statusFilter.sort())) {
+      onStatusFilterChange(newStatusFilter);
     }
 
-    const newRoleFilter = Array.isArray(roleFilterValue) ? roleFilterValue : []
-    if (
-      JSON.stringify(newRoleFilter.sort()) !== JSON.stringify(roleFilter.sort())
-    ) {
-      onRoleFilterChange(newRoleFilter)
+    const newRoleFilter = Array.isArray(roleFilterValue) ? roleFilterValue : [];
+    if (JSON.stringify(newRoleFilter.sort()) !== JSON.stringify(roleFilter.sort())) {
+      onRoleFilterChange(newRoleFilter);
     }
-  }
+  };
 
   const table = useReactTable({
     data,
@@ -145,13 +125,13 @@ export function UsersTable({
     manualPagination: true,
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
-  })
+  });
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden' data-testid='users-table'>
       <DataTableToolbar table={table} />
-      <div className='mt-4 flex-1 overflow-auto rounded-2xl shadow-soft border border-[var(--table-border)] relative'>
-        <Table data-testid='users-table' className='bg-[var(--table-background)] rounded-2xl border-separate border-spacing-0'>
+      <div className='shadow-soft relative mt-4 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
+        <Table data-testid='users-table' className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className='group/row border-0'>
@@ -160,27 +140,19 @@ export function UsersTable({
                     <TableHead
                       key={header.id}
                       colSpan={header.colSpan}
-                      className={`${header.column.columnDef.meta?.className ?? ''} text-xs font-semibold text-muted-foreground uppercase tracking-wider border-0`}
+                      className={`${header.column.columnDef.meta?.className ?? ''} text-muted-foreground border-0 text-xs font-semibold tracking-wider uppercase`}
                     >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
-                  )
+                  );
                 })}
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody className='p-2 space-y-1 !bg-[var(--table-background)]'>
+          <TableBody className='space-y-1 !bg-[var(--table-background)] p-2'>
             {loading ? (
               <TableRow className='border-0 !bg-[var(--table-background)]'>
-                <TableCell
-                  colSpan={columns.length}
-                  className='h-24 text-center border-0 !bg-[var(--table-background)]'
-                >
+                <TableCell colSpan={columns.length} className='h-24 border-0 !bg-[var(--table-background)] text-center'>
                   {t('common.loading')}
                 </TableCell>
               </TableRow>
@@ -189,27 +161,18 @@ export function UsersTable({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && 'selected'}
-                  className='group/row table-row-hover rounded-xl border-0 transition-all duration-200 ease-in-out !bg-[var(--table-background)]'
+                  className='group/row table-row-hover rounded-xl border-0 !bg-[var(--table-background)] transition-all duration-200 ease-in-out'
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
-                      className={`${cell.column.columnDef.meta?.className ?? ''} px-4 py-3 border-0 bg-inherit`}
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
+                    <TableCell key={cell.id} className={`${cell.column.columnDef.meta?.className ?? ''} border-0 bg-inherit px-4 py-3`}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow className='!bg-[var(--table-background)]'>
-                <TableCell
-                  colSpan={columns.length}
-                  className='h-24 text-center !bg-[var(--table-background)]'
-                >
+                <TableCell colSpan={columns.length} className='h-24 !bg-[var(--table-background)] text-center'>
                   {t('common.noResults')}
                 </TableCell>
               </TableRow>
@@ -231,5 +194,5 @@ export function UsersTable({
         />
       </div>
     </div>
-  )
+  );
 }

@@ -1,5 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react'
-import { IconX, IconUserOff, IconArchive, IconCheck } from '@tabler/icons-react'
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -12,39 +11,40 @@ import {
   getFacetedRowModel,
   getFacetedUniqueValues,
   useReactTable,
-} from '@tanstack/react-table'
-import { useTranslation } from 'react-i18next'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Button } from '@/components/ui/button'
-import { ServerSidePagination } from '@/components/server-side-pagination'
-import { useApiKeysContext } from '../context/apikeys-context'
-import { ApiKey, ApiKeyConnection } from '../data/schema'
-import { DataTableToolbar } from './data-table-toolbar'
+} from '@tanstack/react-table';
+import { IconX, IconUserOff, IconArchive, IconCheck } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ServerSidePagination } from '@/components/server-side-pagination';
+import { useApiKeysContext } from '../context/apikeys-context';
+import { ApiKey, ApiKeyConnection } from '../data/schema';
+import { DataTableToolbar } from './data-table-toolbar';
 
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData extends RowData, TValue> {
-    className: string
+    className: string;
   }
 }
 
 interface DataTableProps {
-  columns: ColumnDef<ApiKey>[]
-  data: ApiKey[]
-  loading: boolean
-  pageInfo?: ApiKeyConnection['pageInfo']
-  pageSize: number
-  totalCount?: number
-  nameFilter: string
-  statusFilter: string[]
-  userFilter: string[]
-  onNextPage: () => void
-  onPreviousPage: () => void
-  onPageSizeChange: (pageSize: number) => void
-  onNameFilterChange: (value: string) => void
-  onStatusFilterChange: (value: string[]) => void
-  onUserFilterChange: (value: string[]) => void
-  onResetFilters?: () => void
+  columns: ColumnDef<ApiKey>[];
+  data: ApiKey[];
+  loading: boolean;
+  pageInfo?: ApiKeyConnection['pageInfo'];
+  pageSize: number;
+  totalCount?: number;
+  nameFilter: string;
+  statusFilter: string[];
+  userFilter: string[];
+  onNextPage: () => void;
+  onPreviousPage: () => void;
+  onPageSizeChange: (pageSize: number) => void;
+  onNameFilterChange: (value: string) => void;
+  onStatusFilterChange: (value: string[]) => void;
+  onUserFilterChange: (value: string[]) => void;
+  onResetFilters?: () => void;
 }
 
 export function ApiKeysTable({
@@ -65,59 +65,57 @@ export function ApiKeysTable({
   onUserFilterChange,
   onResetFilters,
 }: DataTableProps) {
-  const { t } = useTranslation()
-  const { setResetRowSelection, setSelectedApiKeys, openDialog } = useApiKeysContext()
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-  const [sorting, setSorting] = useState<SortingState>([])
+  const { t } = useTranslation();
+  const { setResetRowSelection, setSelectedApiKeys, openDialog } = useApiKeysContext();
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [sorting, setSorting] = useState<SortingState>([]);
 
   useEffect(() => {
     const resetFn = () => {
-      setRowSelection({})
-    }
-    setResetRowSelection(resetFn)
-  }, [setResetRowSelection])
+      setRowSelection({});
+    };
+    setResetRowSelection(resetFn);
+  }, [setResetRowSelection]);
 
   React.useEffect(() => {
-    const newFilters: ColumnFiltersState = []
+    const newFilters: ColumnFiltersState = [];
     if (nameFilter) {
-      newFilters.push({ id: 'name', value: nameFilter })
+      newFilters.push({ id: 'name', value: nameFilter });
     }
     if (statusFilter.length > 0) {
-      newFilters.push({ id: 'status', value: statusFilter })
+      newFilters.push({ id: 'status', value: statusFilter });
     }
     if (userFilter.length > 0) {
-      newFilters.push({ id: 'creator', value: userFilter })
+      newFilters.push({ id: 'creator', value: userFilter });
     }
-    setColumnFilters(newFilters)
-  }, [nameFilter, statusFilter, userFilter])
+    setColumnFilters(newFilters);
+  }, [nameFilter, statusFilter, userFilter]);
 
-  const handleColumnFiltersChange = (
-    updater: ColumnFiltersState | ((prev: ColumnFiltersState) => ColumnFiltersState)
-  ) => {
-    const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater
-    setColumnFilters(newFilters)
+  const handleColumnFiltersChange = (updater: ColumnFiltersState | ((prev: ColumnFiltersState) => ColumnFiltersState)) => {
+    const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater;
+    setColumnFilters(newFilters);
 
-    const nameFilterValue = newFilters.find((f) => f.id === 'name')?.value
-    const statusFilterValue = newFilters.find((f) => f.id === 'status')?.value
-    const userFilterValue = newFilters.find((f) => f.id === 'creator')?.value
+    const nameFilterValue = newFilters.find((f) => f.id === 'name')?.value;
+    const statusFilterValue = newFilters.find((f) => f.id === 'status')?.value;
+    const userFilterValue = newFilters.find((f) => f.id === 'creator')?.value;
 
-    const newNameFilter = typeof nameFilterValue === 'string' ? nameFilterValue : ''
+    const newNameFilter = typeof nameFilterValue === 'string' ? nameFilterValue : '';
     if (newNameFilter !== nameFilter) {
-      onNameFilterChange(newNameFilter)
+      onNameFilterChange(newNameFilter);
     }
 
-    const newStatusFilter = Array.isArray(statusFilterValue) ? statusFilterValue : []
+    const newStatusFilter = Array.isArray(statusFilterValue) ? statusFilterValue : [];
     if (JSON.stringify(newStatusFilter.sort()) !== JSON.stringify(statusFilter.sort())) {
-      onStatusFilterChange(newStatusFilter)
+      onStatusFilterChange(newStatusFilter);
     }
 
-    const newUserFilter = Array.isArray(userFilterValue) ? userFilterValue : []
+    const newUserFilter = Array.isArray(userFilterValue) ? userFilterValue : [];
     if (JSON.stringify(newUserFilter.sort()) !== JSON.stringify(userFilter.sort())) {
-      onUserFilterChange(newUserFilter)
+      onUserFilterChange(newUserFilter);
     }
-  }
+  };
 
   const table = useReactTable({
     data,
@@ -139,45 +137,42 @@ export function ApiKeysTable({
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     getRowId: (row) => row.id,
-  })
+  });
 
-  const filteredSelectedRows = useMemo(
-    () => table.getFilteredSelectedRowModel().rows,
-    [table, rowSelection, data]
-  )
+  const filteredSelectedRows = useMemo(() => table.getFilteredSelectedRowModel().rows, [table, rowSelection, data]);
 
-  const selectedCount = filteredSelectedRows.length
+  const selectedCount = filteredSelectedRows.length;
 
   useEffect(() => {
-    const selected = filteredSelectedRows.map((row) => row.original as ApiKey)
-    setSelectedApiKeys(selected)
-  }, [filteredSelectedRows, setSelectedApiKeys])
+    const selected = filteredSelectedRows.map((row) => row.original as ApiKey);
+    setSelectedApiKeys(selected);
+  }, [filteredSelectedRows, setSelectedApiKeys]);
 
   useEffect(() => {
     if (selectedCount === 0) {
-      setSelectedApiKeys([])
+      setSelectedApiKeys([]);
     }
-  }, [selectedCount, setSelectedApiKeys])
+  }, [selectedCount, setSelectedApiKeys]);
 
   // Clear rowSelection when data changes and selected rows no longer exist
   useEffect(() => {
     if (Object.keys(rowSelection).length > 0 && data.length > 0) {
-      const dataIds = new Set(data.map((apiKey) => apiKey.id))
-      const selectedIds = Object.keys(rowSelection)
-      const anySelectedIdMissing = selectedIds.some((id) => !dataIds.has(id))
-      
+      const dataIds = new Set(data.map((apiKey) => apiKey.id));
+      const selectedIds = Object.keys(rowSelection);
+      const anySelectedIdMissing = selectedIds.some((id) => !dataIds.has(id));
+
       if (anySelectedIdMissing) {
         // Some selected rows no longer exist in the new data, clear selection
-        setRowSelection({})
+        setRowSelection({});
       }
     }
-  }, [data, rowSelection])
+  }, [data, rowSelection]);
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
       <DataTableToolbar table={table} onResetFilters={onResetFilters} />
-      <div className='mt-4 flex-1 overflow-auto rounded-2xl shadow-soft border border-[var(--table-border)] relative'>
-        <Table className='bg-[var(--table-background)] rounded-2xl border-separate border-spacing-0'>
+      <div className='shadow-soft relative mt-4 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
+        <Table className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className='group/row border-0'>
@@ -186,27 +181,31 @@ export function ApiKeysTable({
                     <TableHead
                       key={header.id}
                       colSpan={header.colSpan}
-                      className={`${header.column.columnDef.meta?.className ?? ''} text-xs font-semibold text-muted-foreground uppercase tracking-wider border-0`}
+                      className={`${header.column.columnDef.meta?.className ?? ''} text-muted-foreground border-0 text-xs font-semibold tracking-wider uppercase`}
                     >
                       {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
-                  )
+                  );
                 })}
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody className='p-2 space-y-1 !bg-[var(--table-background)]'>
+          <TableBody className='space-y-1 !bg-[var(--table-background)] p-2'>
             {loading ? (
               <TableRow className='border-0 !bg-[var(--table-background)]'>
-                <TableCell colSpan={columns.length} className='h-24 text-center border-0 !bg-[var(--table-background)]'>
+                <TableCell colSpan={columns.length} className='h-24 border-0 !bg-[var(--table-background)] text-center'>
                   {t('common.loading')}
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'} className='group/row table-row-hover rounded-xl border-0 transition-all duration-200 ease-in-out !bg-[var(--table-background)]'>
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && 'selected'}
+                  className='group/row table-row-hover rounded-xl border-0 !bg-[var(--table-background)] transition-all duration-200 ease-in-out'
+                >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className={`${cell.column.columnDef.meta?.className ?? ''} px-4 py-3 border-0 bg-inherit`}>
+                    <TableCell key={cell.id} className={`${cell.column.columnDef.meta?.className ?? ''} border-0 bg-inherit px-4 py-3`}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
@@ -214,7 +213,7 @@ export function ApiKeysTable({
               ))
             ) : (
               <TableRow className='!bg-[var(--table-background)]'>
-                <TableCell colSpan={columns.length} className='h-24 text-center !bg-[var(--table-background)]'>
+                <TableCell colSpan={columns.length} className='h-24 !bg-[var(--table-background)] text-center'>
                   {t('common.noData')}
                 </TableCell>
               </TableRow>
@@ -235,29 +234,22 @@ export function ApiKeysTable({
         />
       </div>
       {selectedCount > 0 && (
-        <div className='fixed bottom-6 left-1/2 -translate-x-1/2 z-50'>
-          <div className='flex items-center gap-2 rounded-lg border bg-background px-4 py-2 shadow-lg'>
-            <Button
-              variant='ghost'
-              size='icon'
-              className='h-8 w-8'
-              onClick={() => setRowSelection({})}
-            >
+        <div className='fixed bottom-6 left-1/2 z-50 -translate-x-1/2'>
+          <div className='bg-background flex items-center gap-2 rounded-lg border px-4 py-2 shadow-lg'>
+            <Button variant='ghost' size='icon' className='h-8 w-8' onClick={() => setRowSelection({})}>
               <IconX className='h-4 w-4' />
             </Button>
             <div className='flex items-center gap-1.5 px-2'>
-              <span className='flex h-6 min-w-6 items-center justify-center rounded bg-primary px-1.5 text-xs font-medium text-primary-foreground'>
+              <span className='bg-primary text-primary-foreground flex h-6 min-w-6 items-center justify-center rounded px-1.5 text-xs font-medium'>
                 {selectedCount}
               </span>
-              <span className='text-sm text-muted-foreground'>
-                {t('common.selected')}
-              </span>
+              <span className='text-muted-foreground text-sm'>{t('common.selected')}</span>
             </div>
-            <div className='mx-2 h-6 w-px bg-border' />
+            <div className='bg-border mx-2 h-6 w-px' />
             <Button
               variant='ghost'
               size='icon'
-              className='h-8 w-8 text-destructive hover:bg-red-100 hover:text-red-700'
+              className='text-destructive h-8 w-8 hover:bg-red-100 hover:text-red-700'
               onClick={() => openDialog('bulkDisable')}
               title={t('common.buttons.disable')}
             >
@@ -285,5 +277,5 @@ export function ApiKeysTable({
         </div>
       )}
     </div>
-  )
+  );
 }

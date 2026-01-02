@@ -1,34 +1,29 @@
-import React from 'react'
-import { cn } from '@/lib/utils'
+import React from 'react';
+import { cn } from '@/lib/utils';
 
 interface HeaderProps extends React.HTMLAttributes<HTMLElement> {
-  fixed?: boolean
-  ref?: React.Ref<HTMLElement>
+  fixed?: boolean;
+  ref?: React.Ref<HTMLElement>;
 }
 
-export const Header = ({
-  className,
-  fixed,
-  children,
-  ...props
-}: HeaderProps) => {
-  const [offset, setOffset] = React.useState(0)
+export const Header = ({ className, fixed, children, ...props }: HeaderProps) => {
+  const [offset, setOffset] = React.useState(0);
 
   React.useEffect(() => {
     const onScroll = () => {
-      setOffset(document.body.scrollTop || document.documentElement.scrollTop)
-    }
+      setOffset(document.body.scrollTop || document.documentElement.scrollTop);
+    };
 
     // Add scroll listener to the body
-    document.addEventListener('scroll', onScroll, { passive: true })
+    document.addEventListener('scroll', onScroll, { passive: true });
 
     // Clean up the event listener on unmount
-    return () => document.removeEventListener('scroll', onScroll)
-  }, [])
+    return () => document.removeEventListener('scroll', onScroll);
+  }, []);
 
   // Don't render if there's no children
   if (!children) {
-    return null
+    return null;
   }
 
   return (
@@ -43,7 +38,7 @@ export const Header = ({
     >
       {children}
     </header>
-  )
-}
+  );
+};
 
-Header.displayName = 'Header'
+Header.displayName = 'Header';

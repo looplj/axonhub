@@ -1,63 +1,63 @@
-import { useEffect, useState, useMemo, useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
-import { toc } from '@lobehub/icons'
-import { IconPlus, IconTrash } from '@tabler/icons-react'
-import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { AutoComplete } from '@/components/auto-complete'
-import { AutoCompleteSelect } from '@/components/auto-complete-select'
-import { toast } from 'sonner'
-import { useModels } from '../context/models-context'
-import { DEVELOPER_IDS, DEVELOPER_ICONS } from '../data/constants'
-import { useBulkCreateModels } from '../data/models'
-import providersDataRaw from '../data/providers.json'
-import { providersDataSchema, type ProvidersData } from '../data/providers.schema'
-import { CreateModelInput, ModelCard } from '../data/schema'
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import { IconPlus, IconTrash } from '@tabler/icons-react';
+import { toc } from '@lobehub/icons';
+import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { AutoComplete } from '@/components/auto-complete';
+import { AutoCompleteSelect } from '@/components/auto-complete-select';
+import { useModels } from '../context/models-context';
+import { DEVELOPER_IDS, DEVELOPER_ICONS } from '../data/constants';
+import { useBulkCreateModels } from '../data/models';
+import providersDataRaw from '../data/providers.json';
+import { providersDataSchema, type ProvidersData } from '../data/providers.schema';
+import { CreateModelInput, ModelCard } from '../data/schema';
 
 interface ModelRow {
-  id: string
-  modelId: string
-  developer: string
-  name: string
-  icon: string
-  group: string
-  modelCard: ModelCard | null
+  id: string;
+  modelId: string;
+  developer: string;
+  name: string;
+  icon: string;
+  group: string;
+  modelCard: ModelCard | null;
 }
 
 interface ValidationErrors {
   [rowId: string]: {
-    developer?: boolean
-    modelId?: boolean
-    name?: boolean
-    icon?: boolean
-  }
+    developer?: boolean;
+    modelId?: boolean;
+    name?: boolean;
+    icon?: boolean;
+  };
 }
 
-const MAX_ROWS = 10
+const MAX_ROWS = 10;
 
 function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 }
 
 function isDeveloper(provider: string) {
-  return DEVELOPER_IDS.includes(provider)
+  return DEVELOPER_IDS.includes(provider);
 }
 
 export function ModelsBatchCreateDialog() {
-  const { t } = useTranslation()
-  const { open, setOpen } = useModels()
-  const bulkCreateModels = useBulkCreateModels()
-  const [rows, setRows] = useState<ModelRow[]>([])
-  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({})
-  const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null)
+  const { t } = useTranslation();
+  const { open, setOpen } = useModels();
+  const bulkCreateModels = useBulkCreateModels();
+  const [rows, setRows] = useState<ModelRow[]>([]);
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
+  const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null);
 
-  const isOpen = open === 'batchCreate'
+  const isOpen = open === 'batchCreate';
 
   const providersData = useMemo((): ProvidersData => {
-    return providersDataSchema.parse(providersDataRaw)
-  }, [])
+    return providersDataSchema.parse(providersDataRaw);
+  }, []);
 
   const providers = useMemo(() => {
     return Object.entries(providersData.providers)
@@ -66,15 +66,15 @@ export function ModelsBatchCreateDialog() {
         id: key,
         name: provider.display_name || provider.name,
         models: provider.models || [],
-      }))
-  }, [providersData])
+      }));
+  }, [providersData]);
 
   const developerOptions = useMemo(() => {
     return DEVELOPER_IDS.map((id) => ({
       value: id,
       label: id,
-    }))
-  }, [])
+    }));
+  }, []);
 
   const iconOptions = useMemo(() => {
     return (
@@ -87,8 +87,8 @@ export function ModelsBatchCreateDialog() {
           // @ts-ignore
           label: value.id,
         }))
-    )
-  }, [])
+    );
+  }, []);
 
   useEffect(() => {
     if (isOpen && rows.length === 0) {
@@ -102,14 +102,14 @@ export function ModelsBatchCreateDialog() {
           group: '',
           modelCard: null,
         },
-      ])
+      ]);
     }
-  }, [isOpen, rows.length])
+  }, [isOpen, rows.length]);
 
   const handleAddRow = useCallback(() => {
     if (rows.length >= MAX_ROWS) {
-      toast.error(t('models.dialogs.batchCreate.maxRowsReached', { max: MAX_ROWS }))
-      return
+      toast.error(t('models.dialogs.batchCreate.maxRowsReached', { max: MAX_ROWS }));
+      return;
     }
     setRows((prev) => [
       ...prev,
@@ -122,29 +122,29 @@ export function ModelsBatchCreateDialog() {
         group: '',
         modelCard: null,
       },
-    ])
-  }, [rows.length, t])
+    ]);
+  }, [rows.length, t]);
 
   const handleRemoveRow = useCallback((id: string) => {
-    setRows((prev) => prev.filter((row) => row.id !== id))
-  }, [])
+    setRows((prev) => prev.filter((row) => row.id !== id));
+  }, []);
 
   const handleModelIdChange = useCallback(
     (id: string, modelId: string) => {
       setRows((prev) =>
         prev.map((row) => {
-          if (row.id !== id) return row
+          if (row.id !== id) return row;
 
           if (!row.developer) {
-            return { ...row, modelId, name: '', group: '', modelCard: null }
+            return { ...row, modelId, name: '', group: '', modelCard: null };
           }
 
-          const provider = providers.find((p) => p.id === row.developer)
+          const provider = providers.find((p) => p.id === row.developer);
           if (!provider) {
-            return { ...row, modelId, name: '', group: '', modelCard: null }
+            return { ...row, modelId, name: '', group: '', modelCard: null };
           }
 
-          const selectedModel = provider.models.find((m) => m.id === modelId)
+          const selectedModel = provider.models.find((m) => m.id === modelId);
           if (selectedModel) {
             const modelCard: ModelCard = {
               reasoning: {
@@ -171,28 +171,28 @@ export function ModelsBatchCreateDialog() {
               knowledge: selectedModel.knowledge,
               releaseDate: selectedModel.release_date,
               lastUpdated: selectedModel.last_updated,
-            }
+            };
             return {
               ...row,
               modelId,
               name: selectedModel.display_name || selectedModel.name || '',
               group: selectedModel.family || row.developer,
               modelCard,
-            }
+            };
           }
 
-          return { ...row, modelId, name: '', group: row.developer, modelCard: null }
+          return { ...row, modelId, name: '', group: row.developer, modelCard: null };
         })
-      )
+      );
     },
     [providers]
-  )
+  );
 
   const handleDeveloperChange = useCallback((id: string, developer: string) => {
     setRows((prev) =>
       prev.map((row) => {
-        if (row.id !== id) return row
-        const icon = DEVELOPER_ICONS[developer] || developer
+        if (row.id !== id) return row;
+        const icon = DEVELOPER_ICONS[developer] || developer;
         return {
           ...row,
           developer,
@@ -201,64 +201,64 @@ export function ModelsBatchCreateDialog() {
           name: '',
           group: '',
           modelCard: null,
-        }
+        };
       })
-    )
-  }, [])
+    );
+  }, []);
 
   const handleNameChange = useCallback((id: string, name: string) => {
-    setRows((prev) => prev.map((row) => (row.id === id ? { ...row, name } : row)))
-  }, [])
+    setRows((prev) => prev.map((row) => (row.id === id ? { ...row, name } : row)));
+  }, []);
 
   const handleIconChange = useCallback((id: string, icon: string) => {
-    setRows((prev) => prev.map((row) => (row.id === id ? { ...row, icon } : row)))
-  }, [])
+    setRows((prev) => prev.map((row) => (row.id === id ? { ...row, icon } : row)));
+  }, []);
 
   const clearValidationError = useCallback(
     (rowId: string, field: keyof ValidationErrors[string]) => {
-      if (!validationErrors[rowId]?.[field]) return
+      if (!validationErrors[rowId]?.[field]) return;
 
       setValidationErrors((prev) => {
-        const newErrors = { ...prev }
+        const newErrors = { ...prev };
         if (newErrors[rowId]) {
-          const rowErrors = { ...newErrors[rowId] }
-          delete rowErrors[field]
+          const rowErrors = { ...newErrors[rowId] };
+          delete rowErrors[field];
           if (Object.keys(rowErrors).length === 0) {
-            delete newErrors[rowId]
+            delete newErrors[rowId];
           } else {
-            newErrors[rowId] = rowErrors
+            newErrors[rowId] = rowErrors;
           }
         }
-        return newErrors
-      })
+        return newErrors;
+      });
     },
     [validationErrors]
-  )
+  );
 
   const handleSubmit = useCallback(async () => {
-    const errors: ValidationErrors = {}
+    const errors: ValidationErrors = {};
     rows.forEach((row) => {
-      const rowErrors: ValidationErrors[string] = {}
-      if (!row.developer) rowErrors.developer = true
-      if (!row.modelId) rowErrors.modelId = true
-      if (!row.name) rowErrors.name = true
-      if (!row.icon) rowErrors.icon = true
+      const rowErrors: ValidationErrors[string] = {};
+      if (!row.developer) rowErrors.developer = true;
+      if (!row.modelId) rowErrors.modelId = true;
+      if (!row.name) rowErrors.name = true;
+      if (!row.icon) rowErrors.icon = true;
       if (Object.keys(rowErrors).length > 0) {
-        errors[row.id] = rowErrors
+        errors[row.id] = rowErrors;
       }
-    })
+    });
 
     if (Object.keys(errors).length > 0) {
-      setValidationErrors(errors)
-      return
+      setValidationErrors(errors);
+      return;
     }
 
-    setValidationErrors({})
+    setValidationErrors({});
 
-    const validRows = rows.filter((row) => row.modelId && row.developer && row.name && row.icon && row.group)
+    const validRows = rows.filter((row) => row.modelId && row.developer && row.name && row.icon && row.group);
 
     if (validRows.length === 0) {
-      return
+      return;
     }
 
     const inputs: CreateModelInput[] = validRows.map((row) => ({
@@ -288,33 +288,33 @@ export function ModelsBatchCreateDialog() {
           },
         ],
       },
-    }))
+    }));
 
     try {
-      await bulkCreateModels.mutateAsync(inputs)
-      handleClose()
+      await bulkCreateModels.mutateAsync(inputs);
+      handleClose();
     } catch (_error) {
       // Error is handled by mutation
     }
-  }, [rows, bulkCreateModels, t])
+  }, [rows, bulkCreateModels, t]);
 
   const handleClose = useCallback(() => {
-    setOpen(null)
-    setRows([])
-    setValidationErrors({})
-  }, [setOpen])
+    setOpen(null);
+    setRows([]);
+    setValidationErrors({});
+  }, [setOpen]);
 
   const getModelIdOptions = useCallback(
     (developer: string) => {
-      const provider = providers.find((p) => p.id === developer)
-      if (!provider) return []
+      const provider = providers.find((p) => p.id === developer);
+      if (!provider) return [];
       return provider.models.map((m) => ({
         value: m.id,
         label: m.id,
-      }))
+      }));
     },
     [providers]
-  )
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -333,9 +333,9 @@ export function ModelsBatchCreateDialog() {
                     <AutoComplete
                       selectedValue={row.developer}
                       onSelectedValueChange={(value) => {
-                        handleDeveloperChange(row.id, value)
-                        clearValidationError(row.id, 'developer')
-                        clearValidationError(row.id, 'icon')
+                        handleDeveloperChange(row.id, value);
+                        clearValidationError(row.id, 'developer');
+                        clearValidationError(row.id, 'icon');
                       }}
                       searchValue={row.developer}
                       onSearchValueChange={(value) => handleDeveloperChange(row.id, value)}
@@ -352,10 +352,10 @@ export function ModelsBatchCreateDialog() {
                     <AutoComplete
                       selectedValue={row.modelId}
                       onSelectedValueChange={(value) => {
-                        handleModelIdChange(row.id, value)
-                        clearValidationError(row.id, 'modelId')
-                        clearValidationError(row.id, 'name')
-                        clearValidationError(row.id, 'icon')
+                        handleModelIdChange(row.id, value);
+                        clearValidationError(row.id, 'modelId');
+                        clearValidationError(row.id, 'name');
+                        clearValidationError(row.id, 'icon');
                       }}
                       searchValue={row.modelId}
                       onSearchValueChange={(value) => handleModelIdChange(row.id, value)}
@@ -372,30 +372,26 @@ export function ModelsBatchCreateDialog() {
                     <Input
                       value={row.name}
                       onChange={(e) => {
-                        handleNameChange(row.id, e.target.value)
-                        clearValidationError(row.id, 'name')
+                        handleNameChange(row.id, e.target.value);
+                        clearValidationError(row.id, 'name');
                       }}
                       placeholder={t('models.fields.name')}
                     />
-                    {validationErrors[row.id]?.name && (
-                      <p className='text-xs text-red-600'>{t('models.dialogs.batchCreate.required')}</p>
-                    )}
+                    {validationErrors[row.id]?.name && <p className='text-xs text-red-600'>{t('models.dialogs.batchCreate.required')}</p>}
                   </div>
                   <div className='flex-[3] space-y-1'>
                     <AutoCompleteSelect
                       selectedValue={row.icon}
                       onSelectedValueChange={(value) => {
-                        handleIconChange(row.id, value)
-                        clearValidationError(row.id, 'icon')
+                        handleIconChange(row.id, value);
+                        clearValidationError(row.id, 'icon');
                       }}
                       items={iconOptions}
                       placeholder={t('models.fields.icon')}
                       emptyMessage={t('models.fields.noIcons')}
                       portalContainer={dialogContent}
                     />
-                    {validationErrors[row.id]?.icon && (
-                      <p className='text-xs text-red-600'>{t('models.dialogs.batchCreate.required')}</p>
-                    )}
+                    {validationErrors[row.id]?.icon && <p className='text-xs text-red-600'>{t('models.dialogs.batchCreate.required')}</p>}
                   </div>
                   <Button
                     type='button'
@@ -429,5 +425,5 @@ export function ModelsBatchCreateDialog() {
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

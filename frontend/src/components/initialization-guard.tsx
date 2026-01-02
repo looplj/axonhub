@@ -1,32 +1,32 @@
-import { useEffect } from 'react'
-import { useRouter } from '@tanstack/react-router'
-import { useSystemStatus } from '@/features/auth/data/initialization'
-import { Skeleton } from '@/components/ui/skeleton'
-import { useState } from 'react'
+import { useEffect } from 'react';
+import { useState } from 'react';
+import { useRouter } from '@tanstack/react-router';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useSystemStatus } from '@/features/auth/data/initialization';
 
 interface InitializationGuardProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 export function InitializationGuard({ children }: InitializationGuardProps) {
-  const router = useRouter()
-  const { data: systemStatus, isLoading, error } = useSystemStatus()
-  const [isNavigating, setIsNavigating] = useState(false)
+  const router = useRouter();
+  const { data: systemStatus, isLoading, error } = useSystemStatus();
+  const [isNavigating, setIsNavigating] = useState(false);
 
   useEffect(() => {
     // Only redirect if we have data and system is not initialized
     if (systemStatus && !systemStatus.isInitialized) {
       // Check if we're not already on the initialization page
-      const currentPath = window.location.pathname
+      const currentPath = window.location.pathname;
       if (currentPath !== '/initialization') {
-        setIsNavigating(true)
+        setIsNavigating(true);
         //@ts-ignore
         router.navigate({ to: '/initialization' }).finally(() => {
-          setIsNavigating(false)
-        })
+          setIsNavigating(false);
+        });
       }
     }
-  }, [systemStatus, router])
+  }, [systemStatus, router]);
 
   // Show loading skeleton while checking system status
   if (isLoading) {
@@ -37,7 +37,7 @@ export function InitializationGuard({ children }: InitializationGuardProps) {
           <Skeleton className='h-4 w-32' />
         </div>
       </div>
-    )
+    );
   }
 
   // Show error if failed to check system status
@@ -49,7 +49,7 @@ export function InitializationGuard({ children }: InitializationGuardProps) {
           <p className='text-muted-foreground'>Failed to check system status</p>
         </div>
       </div>
-    )
+    );
   }
 
   // If system is not initialized and we're not on initialization page, don't render children
@@ -64,8 +64,8 @@ export function InitializationGuard({ children }: InitializationGuardProps) {
           <Skeleton className='h-4 w-32' />
         </div>
       </div>
-    )
+    );
   }
 
-  return <>{children}</>
+  return <>{children}</>;
 }

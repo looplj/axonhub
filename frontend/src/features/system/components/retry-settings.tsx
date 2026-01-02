@@ -1,21 +1,21 @@
-'use client'
+'use client';
 
-import React, { useState, useEffect, useCallback } from 'react'
-import { Loader2 } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Separator } from '@/components/ui/separator'
-import { Switch } from '@/components/ui/switch'
-import { useRetryPolicy, useUpdateRetryPolicy, type RetryPolicyInput } from '../data/system'
+import React, { useState, useEffect, useCallback } from 'react';
+import { Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import { useRetryPolicy, useUpdateRetryPolicy, type RetryPolicyInput } from '../data/system';
 
 export function RetrySettings() {
-  const { t } = useTranslation()
-  const { data: retryPolicy, isLoading } = useRetryPolicy()
-  const updateRetryPolicy = useUpdateRetryPolicy()
+  const { t } = useTranslation();
+  const { data: retryPolicy, isLoading } = useRetryPolicy();
+  const updateRetryPolicy = useUpdateRetryPolicy();
 
   const [formData, setFormData] = useState<RetryPolicyInput>({
     enabled: true,
@@ -23,7 +23,7 @@ export function RetrySettings() {
     maxSingleChannelRetries: 2,
     retryDelayMs: 1000,
     loadBalancerStrategy: 'adaptive',
-  })
+  });
 
   useEffect(() => {
     if (retryPolicy) {
@@ -33,31 +33,31 @@ export function RetrySettings() {
         maxSingleChannelRetries: retryPolicy.maxSingleChannelRetries,
         retryDelayMs: retryPolicy.retryDelayMs,
         loadBalancerStrategy: retryPolicy.loadBalancerStrategy,
-      })
+      });
     }
-  }, [retryPolicy])
+  }, [retryPolicy]);
 
   const handleInputChange = useCallback((field: keyof RetryPolicyInput, value: string | boolean | number) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
-    }))
-  }, [])
+    }));
+  }, []);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
-      e.preventDefault()
-      await updateRetryPolicy.mutateAsync(formData)
+      e.preventDefault();
+      await updateRetryPolicy.mutateAsync(formData);
     },
     [updateRetryPolicy, formData]
-  )
+  );
 
   if (isLoading) {
     return (
       <div className='flex items-center justify-center p-8'>
         <Loader2 className='h-8 w-8 animate-spin' />
       </div>
-    )
+    );
   }
 
   return (
@@ -99,11 +99,11 @@ export function RetrySettings() {
                     <SelectItem value='weighted'>{t('system.retry.loadBalancerStrategy.options.weighted')}</SelectItem>
                   </SelectContent>
                 </Select>
-                
+
                 {/* Strategy Documentation */}
                 {formData.loadBalancerStrategy && (
-                  <div className='mt-3 p-3 bg-muted/50 rounded-md border'>
-                    <div className='text-xs text-muted-foreground leading-relaxed'>
+                  <div className='bg-muted/50 mt-3 rounded-md border p-3'>
+                    <div className='text-muted-foreground text-xs leading-relaxed'>
                       {t('system.retry.loadBalancerStrategy.documentation.' + formData.loadBalancerStrategy)}
                     </div>
                   </div>
@@ -172,5 +172,5 @@ export function RetrySettings() {
         </form>
       </CardContent>
     </Card>
-  )
+  );
 }

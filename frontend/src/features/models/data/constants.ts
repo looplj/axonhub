@@ -10,7 +10,7 @@ export const DEVELOPER_IDS = [
   'longcat',
   'mistral',
   'xai',
-]
+];
 
 export const DEVELOPER_ICONS: Record<string, string> = {
   moonshot: 'Moonshot',
@@ -24,4 +24,4 @@ export const DEVELOPER_ICONS: Record<string, string> = {
   xiaomi: 'XiaomiMiMo',
   longcat: 'LongCat',
   mistral: 'Mistral',
-}
+};

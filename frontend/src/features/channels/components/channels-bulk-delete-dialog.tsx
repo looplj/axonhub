@@ -1,47 +1,47 @@
-'use client'
+'use client';
 
-import { IconAlertTriangle, IconTrash } from '@tabler/icons-react'
-import { useTranslation } from 'react-i18next'
-import { ConfirmDialog } from '@/components/confirm-dialog'
-import { useChannels } from '../context/channels-context'
-import { useBulkDeleteChannels } from '../data/channels'
+import { IconAlertTriangle, IconTrash } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
+import { ConfirmDialog } from '@/components/confirm-dialog';
+import { useChannels } from '../context/channels-context';
+import { useBulkDeleteChannels } from '../data/channels';
 
 export function ChannelsBulkDeleteDialog() {
-  const { t } = useTranslation()
-  const { open, setOpen, selectedChannels, resetRowSelection, setSelectedChannels } = useChannels()
-  const bulkDeleteChannels = useBulkDeleteChannels()
+  const { t } = useTranslation();
+  const { open, setOpen, selectedChannels, resetRowSelection, setSelectedChannels } = useChannels();
+  const bulkDeleteChannels = useBulkDeleteChannels();
 
-  const isDialogOpen = open === 'bulkDelete'
-  const selectedCount = selectedChannels.length
+  const isDialogOpen = open === 'bulkDelete';
+  const selectedCount = selectedChannels.length;
 
   if (selectedCount === 0 && !isDialogOpen) {
-    return null
+    return null;
   }
 
   const handleConfirm = async () => {
     try {
-      const ids = selectedChannels.map((channel) => channel.id)
+      const ids = selectedChannels.map((channel) => channel.id);
       if (ids.length === 0) {
-        return
+        return;
       }
 
-      await bulkDeleteChannels.mutateAsync(ids)
-      resetRowSelection()
-      setSelectedChannels([])
-      setOpen(null)
+      await bulkDeleteChannels.mutateAsync(ids);
+      resetRowSelection();
+      setSelectedChannels([]);
+      setOpen(null);
     } catch (error) {
-      console.error('Failed to bulk delete channels:', error)
+      console.error('Failed to bulk delete channels:', error);
     }
-  }
+  };
 
   return (
     <ConfirmDialog
       open={isDialogOpen}
       onOpenChange={(isOpen) => {
         if (!isOpen) {
-          setOpen(null)
+          setOpen(null);
         } else {
-          setOpen('bulkDelete')
+          setOpen('bulkDelete');
         }
       }}
       handleConfirm={handleConfirm}
@@ -60,14 +60,10 @@ export function ChannelsBulkDeleteDialog() {
       <div className='flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm dark:border-red-900 dark:bg-red-900/20'>
         <IconTrash className='mt-0.5 h-4 w-4 text-red-600 dark:text-red-400' />
         <div className='space-y-1 text-left'>
-          <p className='font-semibold text-red-900 dark:text-red-100'>
-            {t('channels.dialogs.bulkDelete.warning')}
-          </p>
-          <p className='text-red-800 dark:text-red-200'>
-            {t('channels.dialogs.bulkDelete.warningDetail')}
-          </p>
+          <p className='font-semibold text-red-900 dark:text-red-100'>{t('channels.dialogs.bulkDelete.warning')}</p>
+          <p className='text-red-800 dark:text-red-200'>{t('channels.dialogs.bulkDelete.warningDetail')}</p>
         </div>
       </div>
     </ConfirmDialog>
-  )
+  );
 }

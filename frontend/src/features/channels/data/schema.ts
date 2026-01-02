@@ -1,9 +1,9 @@
-import { z } from 'zod'
-import { pageInfoSchema } from '@/gql/pagination'
+import { z } from 'zod';
+import { pageInfoSchema } from '@/gql/pagination';
 
-const apiFormatSchema = z.enum(['openai/chat_completions', 'openai/responses', 'anthropic/messages', 'gemini/contents'])
+const apiFormatSchema = z.enum(['openai/chat_completions', 'openai/responses', 'anthropic/messages', 'gemini/contents']);
 
-export type ApiFormat = z.infer<typeof apiFormatSchema>
+export type ApiFormat = z.infer<typeof apiFormatSchema>;
 
 // Channel Types
 export const channelTypeSchema = z.enum([
@@ -43,30 +43,30 @@ export const channelTypeSchema = z.enum([
   'modelscope',
   'bailian',
   'jina',
-])
-export type ChannelType = z.infer<typeof channelTypeSchema>
+]);
+export type ChannelType = z.infer<typeof channelTypeSchema>;
 
 // Channel Status
-export const channelStatusSchema = z.enum(['enabled', 'disabled', 'archived'])
-export type ChannelStatus = z.infer<typeof channelStatusSchema>
+export const channelStatusSchema = z.enum(['enabled', 'disabled', 'archived']);
+export type ChannelStatus = z.infer<typeof channelStatusSchema>;
 
 // Model Mapping
 export const modelMappingSchema = z.object({
   from: z.string(),
   to: z.string(),
-})
-export type ModelMapping = z.infer<typeof modelMappingSchema>
+});
+export type ModelMapping = z.infer<typeof modelMappingSchema>;
 
 // Header Entry
 export const headerEntrySchema = z.object({
   key: z.string().min(1, 'Header key is required'),
   value: z.string(),
-})
-export type HeaderEntry = z.infer<typeof headerEntrySchema>
+});
+export type HeaderEntry = z.infer<typeof headerEntrySchema>;
 
 // Proxy Type
-export const proxyTypeSchema = z.enum(['disabled', 'environment', 'url'])
-export type ProxyType = z.infer<typeof proxyTypeSchema>
+export const proxyTypeSchema = z.enum(['disabled', 'environment', 'url']);
+export type ProxyType = z.infer<typeof proxyTypeSchema>;
 
 // Proxy Config
 export const proxyConfigSchema = z.object({
@@ -74,8 +74,8 @@ export const proxyConfigSchema = z.object({
   url: z.string().optional(),
   username: z.string().optional(),
   password: z.string().optional(),
-})
-export type ProxyConfig = z.infer<typeof proxyConfigSchema>
+});
+export type ProxyConfig = z.infer<typeof proxyConfigSchema>;
 
 // Channel Performance
 export const channelPerformanceSchema = z.object({
@@ -83,8 +83,8 @@ export const channelPerformanceSchema = z.object({
   avgTokenPerSecond: z.number(),
   avgStreamFirstTokenLatencyMs: z.number(),
   avgStreamTokenPerSecond: z.number(),
-})
-export type ChannelPerformance = z.infer<typeof channelPerformanceSchema>
+});
+export type ChannelPerformance = z.infer<typeof channelPerformanceSchema>;
 
 // Channel Settings
 export const channelSettingsSchema = z.object({
@@ -95,16 +95,16 @@ export const channelSettingsSchema = z.object({
   overrideParameters: z.string().optional(),
   overrideHeaders: z.array(headerEntrySchema).optional().nullable(),
   proxy: proxyConfigSchema.optional().nullable(),
-})
-export type ChannelSettings = z.infer<typeof channelSettingsSchema>
+});
+export type ChannelSettings = z.infer<typeof channelSettingsSchema>;
 
 // Channel Model Entry
 export const channelModelEntrySchema = z.object({
   requestModel: z.string(),
   actualModel: z.string(),
   source: z.string(),
-})
-export type ChannelModelEntry = z.infer<typeof channelModelEntrySchema>
+});
+export type ChannelModelEntry = z.infer<typeof channelModelEntrySchema>;
 
 // Channel Credentials
 export const channelCredentialsSchema = z.object({
@@ -125,8 +125,8 @@ export const channelCredentialsSchema = z.object({
     })
     .optional()
     .nullable(),
-})
-export type ChannelCredentials = z.infer<typeof channelCredentialsSchema>
+});
+export type ChannelCredentials = z.infer<typeof channelCredentialsSchema>;
 
 // Channel
 export const channelSchema = z.object({
@@ -148,8 +148,8 @@ export const channelSchema = z.object({
   remark: z.string().optional().nullable(),
   channelPerformance: channelPerformanceSchema.optional().nullable(),
   allModelEntries: z.array(channelModelEntrySchema).optional(),
-})
-export type Channel = z.infer<typeof channelSchema>
+});
+export type Channel = z.infer<typeof channelSchema>;
 
 // Create Channel Input
 export const createChannelInputSchema = z
@@ -184,31 +184,31 @@ export const createChannelInputSchema = z
   .superRefine((data, ctx) => {
     // 如果是 anthropic_gcp 类型，GCP 字段必填（精确到字段级报错）
     if (data.type === 'anthropic_gcp') {
-      const gcp = data.credentials?.gcp
+      const gcp = data.credentials?.gcp;
       if (!gcp?.region) {
         ctx.addIssue({
           code: 'custom',
           message: 'GCP Region is required',
           path: ['credentials', 'gcp', 'region'],
-        })
+        });
       }
       if (!gcp?.projectID) {
         ctx.addIssue({
           code: 'custom',
           message: 'GCP Project ID is required',
           path: ['credentials', 'gcp', 'projectID'],
-        })
+        });
       }
       if (!gcp?.jsonData) {
         ctx.addIssue({
           code: 'custom',
           message: 'GCP Service Account JSON is required',
           path: ['credentials', 'gcp', 'jsonData'],
-        })
+        });
       }
     }
-  })
-export type CreateChannelInput = z.infer<typeof createChannelInputSchema>
+  });
+export type CreateChannelInput = z.infer<typeof createChannelInputSchema>;
 
 // Update Channel Input
 export const updateChannelInputSchema = z
@@ -247,31 +247,31 @@ export const updateChannelInputSchema = z
   .superRefine((data, ctx) => {
     // 如果是 anthropic_gcp 类型且提供了 credentials，GCP 字段必填（字段级报错）
     if (data.type === 'anthropic_gcp' && data.credentials) {
-      const gcp = data.credentials.gcp
+      const gcp = data.credentials.gcp;
       if (!gcp?.region) {
         ctx.addIssue({
           code: 'custom',
           message: 'GCP Region is required',
           path: ['credentials', 'gcp', 'region'],
-        })
+        });
       }
       if (!gcp?.projectID) {
         ctx.addIssue({
           code: 'custom',
           message: 'GCP Project ID is required',
           path: ['credentials', 'gcp', 'projectID'],
-        })
+        });
       }
       if (!gcp?.jsonData) {
         ctx.addIssue({
           code: 'custom',
           message: 'GCP Service Account JSON is required',
           path: ['credentials', 'gcp', 'jsonData'],
-        })
+        });
       }
     }
-  })
-export type UpdateChannelInput = z.infer<typeof updateChannelInputSchema>
+  });
+export type UpdateChannelInput = z.infer<typeof updateChannelInputSchema>;
 
 // Channel Connection (for pagination)
 export const channelConnectionSchema = z.object({
@@ -283,8 +283,8 @@ export const channelConnectionSchema = z.object({
   ),
   pageInfo: pageInfoSchema,
   totalCount: z.number(),
-})
-export type ChannelConnection = z.infer<typeof channelConnectionSchema>
+});
+export type ChannelConnection = z.infer<typeof channelConnectionSchema>;
 
 // Bulk Import Schemas
 export const bulkImportChannelItemSchema = z.object({
@@ -294,13 +294,13 @@ export const bulkImportChannelItemSchema = z.object({
   apiKey: z.string().min(1, 'API Key is required'),
   supportedModels: z.array(z.string()).min(1, 'At least one supported model is required'),
   defaultTestModel: z.string().min(1, 'Please select a default test model'),
-})
-export type BulkImportChannelItem = z.infer<typeof bulkImportChannelItemSchema>
+});
+export type BulkImportChannelItem = z.infer<typeof bulkImportChannelItemSchema>;
 
 export const bulkImportChannelsInputSchema = z.object({
   channels: z.array(bulkImportChannelItemSchema).min(1, 'At least one channel is required'),
-})
-export type BulkImportChannelsInput = z.infer<typeof bulkImportChannelsInputSchema>
+});
+export type BulkImportChannelsInput = z.infer<typeof bulkImportChannelsInputSchema>;
 
 export const bulkImportChannelsResultSchema = z.object({
   success: z.boolean(),
@@ -308,14 +308,14 @@ export const bulkImportChannelsResultSchema = z.object({
   failed: z.number(),
   errors: z.array(z.string()).optional().nullable(),
   channels: z.array(channelSchema).nullable(),
-})
-export type BulkImportChannelsResult = z.infer<typeof bulkImportChannelsResultSchema>
+});
+export type BulkImportChannelsResult = z.infer<typeof bulkImportChannelsResultSchema>;
 
 // Raw text input for bulk import
 export const bulkImportTextSchema = z.object({
   text: z.string().min(1, 'Please enter data to import'),
-})
-export type BulkImportText = z.infer<typeof bulkImportTextSchema>
+});
+export type BulkImportText = z.infer<typeof bulkImportTextSchema>;
 
 // Bulk Ordering Schemas
 export const channelOrderingItemSchema = z.object({
@@ -328,8 +328,8 @@ export const channelOrderingItemSchema = z.object({
   tags: z.array(z.string()).optional().default([]).nullable(),
   supportedModels: z.array(z.string()).optional().default([]).nullable(),
   allModelEntries: z.array(channelModelEntrySchema).optional(),
-})
-export type ChannelOrderingItem = z.infer<typeof channelOrderingItemSchema>
+});
+export type ChannelOrderingItem = z.infer<typeof channelOrderingItemSchema>;
 
 export const channelOrderingConnectionSchema = z.object({
   edges: z.array(
@@ -338,8 +338,8 @@ export const channelOrderingConnectionSchema = z.object({
     })
   ),
   totalCount: z.number(),
-})
-export type ChannelOrderingConnection = z.infer<typeof channelOrderingConnectionSchema>
+});
+export type ChannelOrderingConnection = z.infer<typeof channelOrderingConnectionSchema>;
 
 export const bulkUpdateChannelOrderingInputSchema = z.object({
   channels: z
@@ -350,15 +350,15 @@ export const bulkUpdateChannelOrderingInputSchema = z.object({
       })
     )
     .min(1, 'At least one channel is required'),
-})
-export type BulkUpdateChannelOrderingInput = z.infer<typeof bulkUpdateChannelOrderingInputSchema>
+});
+export type BulkUpdateChannelOrderingInput = z.infer<typeof bulkUpdateChannelOrderingInputSchema>;
 
 export const bulkUpdateChannelOrderingResultSchema = z.object({
   success: z.boolean(),
   updated: z.number(),
   channels: z.array(channelSchema),
-})
-export type BulkUpdateChannelOrderingResult = z.infer<typeof bulkUpdateChannelOrderingResultSchema>
+});
+export type BulkUpdateChannelOrderingResult = z.infer<typeof bulkUpdateChannelOrderingResultSchema>;
 
 // Re-export template types from templates.ts
 export type {
@@ -368,4 +368,4 @@ export type {
   UpdateChannelOverrideTemplateInput,
   ApplyChannelOverrideTemplateInput,
   ApplyChannelOverrideTemplatePayload,
-} from './templates'
+} from './templates';

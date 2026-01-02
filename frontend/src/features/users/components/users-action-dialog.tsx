@@ -1,32 +1,25 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { z } from 'zod'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { graphqlRequest } from '@/gql/graphql'
-import { ROLES_QUERY, ALL_SCOPES_QUERY } from '@/gql/roles'
-import { X } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/authStore'
-import { filterGrantableRoles, filterGrantableScopes, canEditUserPermissions } from '@/lib/permission-utils'
-import { passwordConfirmationSchema } from '@/lib/validation'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { User, CreateUserInput, UpdateUserInput } from '../data/schema'
-import { useCreateUser, useUpdateUser } from '../data/users'
+import { useState, useEffect, useCallback } from 'react';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { graphqlRequest } from '@/gql/graphql';
+import { ROLES_QUERY, ALL_SCOPES_QUERY } from '@/gql/roles';
+import { X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+import { useAuthStore } from '@/stores/authStore';
+import { filterGrantableRoles, filterGrantableScopes, canEditUserPermissions } from '@/lib/permission-utils';
+import { passwordConfirmationSchema } from '@/lib/validation';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { User, CreateUserInput, UpdateUserInput } from '../data/schema';
+import { useCreateUser, useUpdateUser } from '../data/users';
 
 // 创建表单验证模式的工厂函数
 const createFormSchema = (t: (key: string) => string) =>
@@ -48,7 +41,7 @@ const createFormSchema = (t: (key: string) => string) =>
         const passwordValidation = passwordConfirmationSchema(t).safeParse({
           password: data.password || '',
           confirmPassword: data.confirmPassword || '',
-        })
+        });
 
         if (!passwordValidation.success) {
           passwordValidation.error.issues.forEach((issue) => {
@@ -56,46 +49,46 @@ const createFormSchema = (t: (key: string) => string) =>
               code: z.ZodIssueCode.custom,
               message: issue.message,
               path: issue.path,
-            })
-          })
+            });
+          });
         }
       }
-    })
+    });
 
 interface Role {
-  id: string
-  name: string
-  description?: string
-  scopes?: string[]
+  id: string;
+  name: string;
+  description?: string;
+  scopes?: string[];
 }
 
 interface ScopeInfo {
-  scope: string
-  description?: string
-  levels?: string[]
+  scope: string;
+  description?: string;
+  levels?: string[];
 }
 
 interface Props {
-  currentRow?: User
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  currentRow?: User;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
-  const { t } = useTranslation()
-  const currentUser = useAuthStore((state) => state.auth.user)
-  const isEdit = !!currentRow
-  const [roles, setRoles] = useState<Role[]>([])
-  const [allScopes, setAllScopes] = useState<ScopeInfo[]>([])
-  const [loading, setLoading] = useState(false)
-  const [canEdit, setCanEdit] = useState(true)
+  const { t } = useTranslation();
+  const currentUser = useAuthStore((state) => state.auth.user);
+  const isEdit = !!currentRow;
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [allScopes, setAllScopes] = useState<ScopeInfo[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [canEdit, setCanEdit] = useState(true);
 
-  const createUser = useCreateUser()
-  const updateUser = useUpdateUser()
+  const createUser = useCreateUser();
+  const updateUser = useUpdateUser();
 
   // 创建表单验证模式
-  const formSchema = createFormSchema(t)
-  type UserForm = z.infer<typeof formSchema>
+  const formSchema = createFormSchema(t);
+  type UserForm = z.infer<typeof formSchema>;
 
   // 根据是否为编辑模式使用不同的表单配置
   const form = useForm<UserForm>({
@@ -121,81 +114,81 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
           roleIDs: [],
           scopes: [],
         },
-  })
+  });
 
   const loadRolesAndScopes = useCallback(async () => {
-    setLoading(true)
+    setLoading(true);
     try {
       const [rolesData, scopesData] = await Promise.all([
         graphqlRequest(ROLES_QUERY, { first: 100, where: { level: 'system' } }),
         graphqlRequest(ALL_SCOPES_QUERY, { level: 'system' }),
-      ])
+      ]);
 
       // Type the responses properly
       const rolesResponse = rolesData as {
         roles: {
           edges: Array<{
             node: {
-              id: string
-              name: string
-              description?: string
-              scopes?: string[]
-            }
-          }>
-        }
-      }
+              id: string;
+              name: string;
+              description?: string;
+              scopes?: string[];
+            };
+          }>;
+        };
+      };
 
       const scopesResponse = scopesData as {
         allScopes: Array<{
-          scope: string
-          description?: string
-          levels?: string[]
-        }>
-      }
+          scope: string;
+          description?: string;
+          levels?: string[];
+        }>;
+      };
 
-      const allRoles = rolesResponse.roles.edges.map((edge) => edge.node)
-      const allScopesList = scopesResponse.allScopes
+      const allRoles = rolesResponse.roles.edges.map((edge) => edge.node);
+      const allScopesList = scopesResponse.allScopes;
 
       // 过滤当前用户可以授予的角色和权限
-      const grantableRoles = filterGrantableRoles(currentUser, allRoles)
+      const grantableRoles = filterGrantableRoles(currentUser, allRoles);
       const grantableScopes = filterGrantableScopes(
         currentUser,
         allScopesList.map((s) => s.scope)
-      )
+      );
 
-      setRoles(grantableRoles)
-      setAllScopes(allScopesList.filter((s) => grantableScopes.includes(s.scope)))
+      setRoles(grantableRoles);
+      setAllScopes(allScopesList.filter((s) => grantableScopes.includes(s.scope)));
 
       // 检查是否可以编辑当前用户
       if (isEdit && currentRow) {
-        const targetScopes = currentRow.scopes || []
-        const canEditTarget = canEditUserPermissions(currentUser, targetScopes, currentRow.isOwner || false)
-        setCanEdit(canEditTarget)
+        const targetScopes = currentRow.scopes || [];
+        const canEditTarget = canEditUserPermissions(currentUser, targetScopes, currentRow.isOwner || false);
+        setCanEdit(canEditTarget);
       }
     } catch (error) {
-      console.error('Failed to load roles and scopes:', error)
-      toast.error(t('common.errors.userLoadFailed'))
+      console.error('Failed to load roles and scopes:', error);
+      toast.error(t('common.errors.userLoadFailed'));
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [t, setRoles, setAllScopes])
+  }, [t, setRoles, setAllScopes]);
 
   // Load roles and scopes when dialog opens
   useEffect(() => {
     if (open) {
-      loadRolesAndScopes()
+      loadRolesAndScopes();
     }
-  }, [open, loadRolesAndScopes, currentUser, isEdit, currentRow])
+  }, [open, loadRolesAndScopes, currentUser, isEdit, currentRow]);
 
   const onSubmit = async (values: UserForm) => {
     try {
       if (isEdit && currentRow) {
         // For updates, we need to calculate role changes
-        const currentRoleIDs = currentRow.roles?.edges?.map((edge) => edge.node.id) || []
-        const newRoleIDs = values.roleIDs || []
+        const currentRoleIDs = currentRow.roles?.edges?.map((edge) => edge.node.id) || [];
+        const newRoleIDs = values.roleIDs || [];
 
-        const addRoleIDs = newRoleIDs.filter((id) => !currentRoleIDs.includes(id))
-        const removeRoleIDs = currentRoleIDs.filter((id) => !newRoleIDs.includes(id))
+        const addRoleIDs = newRoleIDs.filter((id) => !currentRoleIDs.includes(id));
+        const removeRoleIDs = currentRoleIDs.filter((id) => !newRoleIDs.includes(id));
 
         const updateInput: UpdateUserInput = {
           firstName: values.firstName,
@@ -203,20 +196,20 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
           email: values.email,
           isOwner: values.isOwner,
           scopes: values.scopes,
-        }
+        };
 
         // Only add role fields if there are changes
         if (addRoleIDs.length > 0) {
-          updateInput.addRoleIDs = addRoleIDs
+          updateInput.addRoleIDs = addRoleIDs;
         }
         if (removeRoleIDs.length > 0) {
-          updateInput.removeRoleIDs = removeRoleIDs
+          updateInput.removeRoleIDs = removeRoleIDs;
         }
 
         await updateUser.mutateAsync({
           id: currentRow.id,
           input: updateInput,
-        })
+        });
       } else {
         // 创建用户时，移除 confirmPassword 字段
         const createInput: CreateUserInput = {
@@ -228,57 +221,53 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
           isOwner: values.isOwner,
           scopes: values.scopes,
           roleIDs: values.roleIDs,
-        }
+        };
 
-        await createUser.mutateAsync(createInput)
+        await createUser.mutateAsync(createInput);
       }
 
-      form.reset()
-      onOpenChange(false)
+      form.reset();
+      onOpenChange(false);
     } catch (error) {
-      console.error('Failed to save user:', error)
-      toast.error(t('common.errors.userSaveFailed'))
+      console.error('Failed to save user:', error);
+      toast.error(t('common.errors.userSaveFailed'));
     }
-  }
+  };
 
   const handleRoleToggle = (roleId: string) => {
-    const currentRoles = form.getValues('roleIDs') || []
-    const newRoles = currentRoles.includes(roleId)
-      ? currentRoles.filter((id: string) => id !== roleId)
-      : [...currentRoles, roleId]
-    form.setValue('roleIDs', newRoles)
-  }
+    const currentRoles = form.getValues('roleIDs') || [];
+    const newRoles = currentRoles.includes(roleId) ? currentRoles.filter((id: string) => id !== roleId) : [...currentRoles, roleId];
+    form.setValue('roleIDs', newRoles);
+  };
 
   const handleScopeToggle = (scopeName: string) => {
-    const currentScopes = form.getValues('scopes') || []
+    const currentScopes = form.getValues('scopes') || [];
     const newScopes = currentScopes.includes(scopeName)
       ? currentScopes.filter((name: string) => name !== scopeName)
-      : [...currentScopes, scopeName]
-    form.setValue('scopes', newScopes)
-  }
+      : [...currentScopes, scopeName];
+    form.setValue('scopes', newScopes);
+  };
 
   const handleScopeRemove = (scopeName: string) => {
-    const currentScopes = form.getValues('scopes') || []
-    const newScopes = currentScopes.filter((name: string) => name !== scopeName)
-    form.setValue('scopes', newScopes)
-  }
+    const currentScopes = form.getValues('scopes') || [];
+    const newScopes = currentScopes.filter((name: string) => name !== scopeName);
+    form.setValue('scopes', newScopes);
+  };
 
   return (
     <Dialog
       open={open}
       onOpenChange={(state) => {
         if (!state) {
-          form.reset()
+          form.reset();
         }
-        onOpenChange(state)
+        onOpenChange(state);
       }}
     >
       <DialogContent className='sm:max-w-2xl'>
         <DialogHeader className='text-left'>
           <DialogTitle>{isEdit ? t('users.dialogs.edit.title') : t('users.dialogs.add.title')}</DialogTitle>
-          <DialogDescription>
-            {isEdit ? t('users.dialogs.edit.description') : t('users.dialogs.add.description')}
-          </DialogDescription>
+          <DialogDescription>{isEdit ? t('users.dialogs.edit.description') : t('users.dialogs.add.description')}</DialogDescription>
         </DialogHeader>
 
         <div className='max-h-[60vh] overflow-y-auto'>
@@ -343,12 +332,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                       <FormItem>
                         <FormLabel>{t('users.form.password')}</FormLabel>
                         <FormControl>
-                          <Input
-                            type='password'
-                            placeholder='Enter password'
-                            aria-invalid={!!fieldState.error}
-                            {...field}
-                          />
+                          <Input type='password' placeholder='Enter password' aria-invalid={!!fieldState.error} {...field} />
                         </FormControl>
                         <div className='min-h-[1.25rem]'>
                           <FormMessage />
@@ -363,12 +347,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                       <FormItem>
                         <FormLabel>{t('users.form.confirmPassword')}</FormLabel>
                         <FormControl>
-                          <Input
-                            type='password'
-                            placeholder='Confirm password'
-                            aria-invalid={!!fieldState.error}
-                            {...field}
-                          />
+                          <Input type='password' placeholder='Confirm password' aria-invalid={!!fieldState.error} {...field} />
                         </FormControl>
                         <div className='min-h-[1.25rem]'>
                           <FormMessage />
@@ -468,18 +447,12 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
         </div>
 
         <DialogFooter>
-          {isEdit && !canEdit && (
-            <p className='text-destructive mr-auto text-sm'>{t('users.errors.insufficientPermissions')}</p>
-          )}
-          <Button
-            type='submit'
-            form='user-form'
-            disabled={createUser.isPending || updateUser.isPending || (isEdit && !canEdit)}
-          >
+          {isEdit && !canEdit && <p className='text-destructive mr-auto text-sm'>{t('users.errors.insufficientPermissions')}</p>}
+          <Button type='submit' form='user-form' disabled={createUser.isPending || updateUser.isPending || (isEdit && !canEdit)}>
             {createUser.isPending || updateUser.isPending ? t('common.buttons.saving') : t('common.buttons.save')}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

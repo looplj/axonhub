@@ -1,48 +1,41 @@
-'use client'
+'use client';
 
-import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
-import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
-import { useDataStoragesContext } from '../context/data-storages-context'
+import { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { useDataStoragesContext } from '../context/data-storages-context';
 import {
   useCreateDataStorage,
   useUpdateDataStorage,
   useArchiveDataStorage,
   CreateDataStorageInput,
   UpdateDataStorageInput,
-} from '../data/data-storages'
+} from '../data/data-storages';
 
 interface DataStorageFormData {
-  name: string
-  description: string
-  type: 'database' | 'fs' | 's3' | 'gcs'
-  directory: string
+  name: string;
+  description: string;
+  type: 'database' | 'fs' | 's3' | 'gcs';
+  directory: string;
   // S3 fields
-  s3BucketName: string
-  s3Endpoint: string
-  s3Region: string
-  s3AccessKey: string
-  s3SecretKey: string
+  s3BucketName: string;
+  s3Endpoint: string;
+  s3Region: string;
+  s3AccessKey: string;
+  s3SecretKey: string;
   // GCS fields
-  gcsBucketName: string
-  gcsCredential: string
+  gcsBucketName: string;
+  gcsCredential: string;
 }
 
 export function DataStorageDialogs() {
-  const { t } = useTranslation()
+  const { t } = useTranslation();
   const {
     isCreateDialogOpen,
     setIsCreateDialogOpen,
@@ -54,11 +47,11 @@ export function DataStorageDialogs() {
     setEditingDataStorage,
     archiveDataStorage,
     setArchiveDataStorage,
-  } = useDataStoragesContext()
+  } = useDataStoragesContext();
 
-  const createMutation = useCreateDataStorage()
-  const updateMutation = useUpdateDataStorage()
-  const archiveMutation = useArchiveDataStorage()
+  const createMutation = useCreateDataStorage();
+  const updateMutation = useUpdateDataStorage();
+  const archiveMutation = useArchiveDataStorage();
 
   const {
     register,
@@ -82,24 +75,24 @@ export function DataStorageDialogs() {
       gcsBucketName: '',
       gcsCredential: '',
     },
-  })
+  });
 
-  const selectedType = watch('type')
+  const selectedType = watch('type');
 
   // Clear errors for fields that are not relevant to the current type
   useEffect(() => {
     // Clear errors for fields not relevant to current type
     if (selectedType === 'fs') {
-      clearErrors(['s3BucketName', 's3Endpoint', 's3AccessKey', 's3SecretKey'])
-      clearErrors(['gcsBucketName', 'gcsCredential'])
+      clearErrors(['s3BucketName', 's3Endpoint', 's3AccessKey', 's3SecretKey']);
+      clearErrors(['gcsBucketName', 'gcsCredential']);
     } else if (selectedType === 's3') {
-      clearErrors(['directory'])
-      clearErrors(['gcsBucketName', 'gcsCredential'])
+      clearErrors(['directory']);
+      clearErrors(['gcsBucketName', 'gcsCredential']);
     } else if (selectedType === 'gcs') {
-      clearErrors(['directory'])
-      clearErrors(['s3BucketName', 's3Endpoint', 's3AccessKey', 's3SecretKey'])
+      clearErrors(['directory']);
+      clearErrors(['s3BucketName', 's3Endpoint', 's3AccessKey', 's3SecretKey']);
     }
-  }, [selectedType, clearErrors])
+  }, [selectedType, clearErrors]);
 
   // Reset form when dialogs open/close
   useEffect(() => {
@@ -115,9 +108,9 @@ export function DataStorageDialogs() {
         s3SecretKey: '',
         gcsBucketName: '',
         gcsCredential: '',
-      })
+      });
     }
-  }, [isCreateDialogOpen, reset])
+  }, [isCreateDialogOpen, reset]);
 
   useEffect(() => {
     if (isEditDialogOpen && editingDataStorage) {
@@ -133,14 +126,14 @@ export function DataStorageDialogs() {
         s3SecretKey: editingDataStorage.settings.s3?.secretKey || '',
         gcsBucketName: editingDataStorage.settings.gcs?.bucketName || '',
         gcsCredential: editingDataStorage.settings.gcs?.credential || '',
-      })
+      });
     }
-  }, [isEditDialogOpen, editingDataStorage, reset])
+  }, [isEditDialogOpen, editingDataStorage, reset]);
 
   const resetArchiveContext = () => {
-    setIsArchiveDialogOpen(false)
-    setArchiveDataStorage(null)
-  }
+    setIsArchiveDialogOpen(false);
+    setArchiveDataStorage(null);
+  };
 
   const onCreateSubmit = async (data: DataStorageFormData) => {
     const input: CreateDataStorageInput = {
@@ -167,54 +160,54 @@ export function DataStorageDialogs() {
               }
             : undefined,
       },
-    }
+    };
 
     try {
-      console.log('[DataStorageDialogs] Calling createMutation...')
-      await createMutation.mutateAsync(input)
-      console.log('[DataStorageDialogs] Create successful')
-      setIsCreateDialogOpen(false)
-      reset()
+      console.log('[DataStorageDialogs] Calling createMutation...');
+      await createMutation.mutateAsync(input);
+      console.log('[DataStorageDialogs] Create successful');
+      setIsCreateDialogOpen(false);
+      reset();
     } catch (error) {
-      console.error('[DataStorageDialogs] Create failed:', error)
-      throw error
+      console.error('[DataStorageDialogs] Create failed:', error);
+      throw error;
     }
-  }
+  };
 
   const onEditSubmit = async (data: DataStorageFormData) => {
-    console.log('[DataStorageDialogs] onEditSubmit called')
+    console.log('[DataStorageDialogs] onEditSubmit called');
 
     if (!editingDataStorage) {
-      console.error('[DataStorageDialogs] No editingDataStorage found!')
-      return
+      console.error('[DataStorageDialogs] No editingDataStorage found!');
+      return;
     }
 
     // Build settings, only including non-empty values
-    const settings: any = {}
+    const settings: any = {};
     if (data.type === 'fs' && data.directory) {
-      settings.directory = data.directory
+      settings.directory = data.directory;
     } else if (data.type === 's3') {
       // Only include S3 if at least one field is provided
-      const s3Data: any = {}
-      if (data.s3BucketName) s3Data.bucketName = data.s3BucketName
-      if (data.s3Endpoint) s3Data.endpoint = data.s3Endpoint
-      if (data.s3Region) s3Data.region = data.s3Region
-      if (data.s3AccessKey) s3Data.accessKey = data.s3AccessKey
-      if (data.s3SecretKey) s3Data.secretKey = data.s3SecretKey
+      const s3Data: any = {};
+      if (data.s3BucketName) s3Data.bucketName = data.s3BucketName;
+      if (data.s3Endpoint) s3Data.endpoint = data.s3Endpoint;
+      if (data.s3Region) s3Data.region = data.s3Region;
+      if (data.s3AccessKey) s3Data.accessKey = data.s3AccessKey;
+      if (data.s3SecretKey) s3Data.secretKey = data.s3SecretKey;
 
       // Only include S3 object if it has at least one field
       if (Object.keys(s3Data).length > 0) {
-        settings.s3 = s3Data
+        settings.s3 = s3Data;
       }
     } else if (data.type === 'gcs') {
       // Only include GCS if at least one field is provided
-      const gcsData: any = {}
-      if (data.gcsBucketName) gcsData.bucketName = data.gcsBucketName
-      if (data.gcsCredential) gcsData.credential = data.gcsCredential
+      const gcsData: any = {};
+      if (data.gcsBucketName) gcsData.bucketName = data.gcsBucketName;
+      if (data.gcsCredential) gcsData.credential = data.gcsCredential;
 
       // Only include GCS object if it has at least one field
       if (Object.keys(gcsData).length > 0) {
-        settings.gcs = gcsData
+        settings.gcs = gcsData;
       }
     }
 
@@ -222,20 +215,20 @@ export function DataStorageDialogs() {
       name: data.name,
       description: data.description,
       settings,
-    }
+    };
 
     try {
       await updateMutation.mutateAsync({
         id: editingDataStorage.id,
         input,
-      })
-      setIsEditDialogOpen(false)
-      setEditingDataStorage(null)
-      reset()
+      });
+      setIsEditDialogOpen(false);
+      setEditingDataStorage(null);
+      reset();
     } catch (error) {
-      throw error
+      throw error;
     }
-  }
+  };
 
   return (
     <>
@@ -248,10 +241,10 @@ export function DataStorageDialogs() {
           </DialogHeader>
           <form
             onSubmit={handleSubmit(onCreateSubmit, (errors) => {
-              console.error('[DataStorageDialogs] ❌ Form validation FAILED!')
-              console.error('[DataStorageDialogs] Validation errors:', errors)
-              console.error('[DataStorageDialogs] Current form values:', watch())
-              console.error('[DataStorageDialogs] Selected type:', selectedType)
+              console.error('[DataStorageDialogs] ❌ Form validation FAILED!');
+              console.error('[DataStorageDialogs] Validation errors:', errors);
+              console.error('[DataStorageDialogs] Current form values:', watch());
+              console.error('[DataStorageDialogs] Selected type:', selectedType);
             })}
             noValidate
           >
@@ -274,10 +267,7 @@ export function DataStorageDialogs() {
 
               <div className='grid gap-2'>
                 <Label htmlFor='create-type'>{t('dataStorages.fields.type')}</Label>
-                <Select
-                  value={selectedType}
-                  onValueChange={(value) => setValue('type', value as DataStorageFormData['type'])}
-                >
+                <Select value={selectedType} onValueChange={(value) => setValue('type', value as DataStorageFormData['type'])}>
                   <SelectTrigger id='create-type'>
                     <SelectValue />
                   </SelectTrigger>
@@ -298,9 +288,9 @@ export function DataStorageDialogs() {
                       validate: (value) => {
                         // Only validate if the current type is 'fs'
                         if (watch('type') === 'fs' && !value) {
-                          return t('dataStorages.validation.directoryRequired')
+                          return t('dataStorages.validation.directoryRequired');
                         }
-                        return true
+                        return true;
                       },
                     })}
                     placeholder='/var/axonhub/data'
@@ -318,9 +308,9 @@ export function DataStorageDialogs() {
                       {...register('s3BucketName', {
                         validate: (value) => {
                           if (watch('type') === 's3' && !value) {
-                            return t('dataStorages.validation.s3BucketRequired')
+                            return t('dataStorages.validation.s3BucketRequired');
                           }
-                          return true
+                          return true;
                         },
                       })}
                       placeholder='my-bucket'
@@ -346,10 +336,10 @@ export function DataStorageDialogs() {
                           if (watch('type') === 's3') {
                             // Only require for create, not for edit
                             if (!isEditDialogOpen && !value) {
-                              return t('dataStorages.validation.s3AccessKeyRequired')
+                              return t('dataStorages.validation.s3AccessKeyRequired');
                             }
                           }
-                          return true
+                          return true;
                         },
                       })}
                       placeholder={isEditDialogOpen ? 'Leave empty to keep current value' : ''}
@@ -368,10 +358,10 @@ export function DataStorageDialogs() {
                           if (watch('type') === 's3') {
                             // Only require for create, not for edit
                             if (!isEditDialogOpen && !value) {
-                              return t('dataStorages.validation.s3SecretKeyRequired')
+                              return t('dataStorages.validation.s3SecretKeyRequired');
                             }
                           }
-                          return true
+                          return true;
                         },
                       })}
                       placeholder={isEditDialogOpen ? 'Leave empty to keep current value' : ''}
@@ -390,16 +380,14 @@ export function DataStorageDialogs() {
                       {...register('gcsBucketName', {
                         validate: (value) => {
                           if (watch('type') === 'gcs' && !value) {
-                            return t('dataStorages.validation.gcsBucketRequired')
+                            return t('dataStorages.validation.gcsBucketRequired');
                           }
-                          return true
+                          return true;
                         },
                       })}
                       placeholder='my-bucket'
                     />
-                    {errors.gcsBucketName && (
-                      <span className='text-sm text-red-500'>{errors.gcsBucketName.message}</span>
-                    )}
+                    {errors.gcsBucketName && <span className='text-sm text-red-500'>{errors.gcsBucketName.message}</span>}
                   </div>
                   <div className='grid gap-2'>
                     <Label htmlFor='create-gcs-credential'>
@@ -411,35 +399,31 @@ export function DataStorageDialogs() {
                         validate: (value) => {
                           if (watch('type') === 'gcs') {
                             // Only require for create, not for edit
-                            const trimmedValue = value?.trim() ?? ''
+                            const trimmedValue = value?.trim() ?? '';
 
                             if (!isEditDialogOpen && !trimmedValue) {
-                              return t('dataStorages.validation.gcsCredentialRequired')
+                              return t('dataStorages.validation.gcsCredentialRequired');
                             }
 
                             if (trimmedValue) {
                               try {
-                                const parsed = JSON.parse(trimmedValue)
+                                const parsed = JSON.parse(trimmedValue);
                                 if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-                                  return t('dataStorages.validation.gcsCredentialInvalid')
+                                  return t('dataStorages.validation.gcsCredentialInvalid');
                                 }
                               } catch (_error) {
-                                return t('dataStorages.validation.gcsCredentialInvalid')
+                                return t('dataStorages.validation.gcsCredentialInvalid');
                               }
                             }
                           }
-                          return true
+                          return true;
                         },
                       })}
                       className='max-h-48 overflow-auto'
                       rows={5}
-                      placeholder={
-                        isEditDialogOpen ? 'Leave empty to keep current value' : '{"type": "service_account", ...}'
-                      }
+                      placeholder={isEditDialogOpen ? 'Leave empty to keep current value' : '{"type": "service_account", ...}'}
                     />
-                    {errors.gcsCredential && (
-                      <span className='text-sm text-red-500'>{errors.gcsCredential.message}</span>
-                    )}
+                    {errors.gcsCredential && <span className='text-sm text-red-500'>{errors.gcsCredential.message}</span>}
                   </div>
                 </>
               )}
@@ -464,8 +448,8 @@ export function DataStorageDialogs() {
       <Dialog
         open={isEditDialogOpen}
         onOpenChange={(open) => {
-          setIsEditDialogOpen(open)
-          if (!open) setEditingDataStorage(null)
+          setIsEditDialogOpen(open);
+          if (!open) setEditingDataStorage(null);
         }}
       >
         <DialogContent className='sm:max-w-[525px]'>
@@ -475,10 +459,10 @@ export function DataStorageDialogs() {
           </DialogHeader>
           <form
             onSubmit={handleSubmit(onEditSubmit, (errors) => {
-              console.error('[DataStorageDialogs] ❌ Edit form validation FAILED!')
-              console.error('[DataStorageDialogs] Validation errors:', errors)
-              console.error('[DataStorageDialogs] Current form values:', watch())
-              console.error('[DataStorageDialogs] Selected type:', selectedType)
+              console.error('[DataStorageDialogs] ❌ Edit form validation FAILED!');
+              console.error('[DataStorageDialogs] Validation errors:', errors);
+              console.error('[DataStorageDialogs] Current form values:', watch());
+              console.error('[DataStorageDialogs] Selected type:', selectedType);
             })}
             noValidate
           >
@@ -508,9 +492,9 @@ export function DataStorageDialogs() {
                       validate: (value) => {
                         // Only validate if the current type is 'fs'
                         if (watch('type') === 'fs' && !value) {
-                          return t('dataStorages.validation.directoryRequired')
+                          return t('dataStorages.validation.directoryRequired');
                         }
-                        return true
+                        return true;
                       },
                     })}
                     placeholder='/var/axonhub/data'
@@ -528,9 +512,9 @@ export function DataStorageDialogs() {
                       {...register('s3BucketName', {
                         validate: (value) => {
                           if (watch('type') === 's3' && !value) {
-                            return t('dataStorages.validation.s3BucketRequired')
+                            return t('dataStorages.validation.s3BucketRequired');
                           }
-                          return true
+                          return true;
                         },
                       })}
                       placeholder='my-bucket'
@@ -554,9 +538,9 @@ export function DataStorageDialogs() {
                           // Only required for new data storage (no editingDataStorage)
                           // For updates, empty value means keep current value
                           if (watch('type') === 's3' && !value && !editingDataStorage) {
-                            return t('dataStorages.validation.s3AccessKeyRequired')
+                            return t('dataStorages.validation.s3AccessKeyRequired');
                           }
-                          return true
+                          return true;
                         },
                       })}
                       placeholder={t('dataStorages.dialogs.fields.s3AccessKey.editPlaceholder')}
@@ -573,9 +557,9 @@ export function DataStorageDialogs() {
                           // Only required for new data storage (no editingDataStorage)
                           // For updates, empty value means keep current value
                           if (watch('type') === 's3' && !value && !editingDataStorage) {
-                            return t('dataStorages.validation.s3SecretKeyRequired')
+                            return t('dataStorages.validation.s3SecretKeyRequired');
                           }
-                          return true
+                          return true;
                         },
                       })}
                       placeholder={t('dataStorages.dialogs.fields.s3SecretKey.editPlaceholder')}
@@ -594,16 +578,14 @@ export function DataStorageDialogs() {
                       {...register('gcsBucketName', {
                         validate: (value) => {
                           if (watch('type') === 'gcs' && !value) {
-                            return t('dataStorages.validation.gcsBucketRequired')
+                            return t('dataStorages.validation.gcsBucketRequired');
                           }
-                          return true
+                          return true;
                         },
                       })}
                       placeholder='my-bucket'
                     />
-                    {errors.gcsBucketName && (
-                      <span className='text-sm text-red-500'>{errors.gcsBucketName.message}</span>
-                    )}
+                    {errors.gcsBucketName && <span className='text-sm text-red-500'>{errors.gcsBucketName.message}</span>}
                   </div>
                   <div className='grid gap-2'>
                     <Label htmlFor='edit-gcs-credential'>{t('dataStorages.fields.gcsCredential')}</Label>
@@ -614,33 +596,31 @@ export function DataStorageDialogs() {
                           // Only required for new data storage (no editingDataStorage)
                           // For updates, empty value means keep current value
                           if (watch('type') === 'gcs') {
-                            const trimmedValue = value?.trim() ?? ''
+                            const trimmedValue = value?.trim() ?? '';
 
                             if (!editingDataStorage && !trimmedValue) {
-                              return t('dataStorages.validation.gcsCredentialRequired')
+                              return t('dataStorages.validation.gcsCredentialRequired');
                             }
 
                             if (trimmedValue) {
                               try {
-                                const parsed = JSON.parse(trimmedValue)
+                                const parsed = JSON.parse(trimmedValue);
                                 if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-                                  return t('dataStorages.validation.gcsCredentialInvalid')
+                                  return t('dataStorages.validation.gcsCredentialInvalid');
                                 }
                               } catch (_error) {
-                                return t('dataStorages.validation.gcsCredentialInvalid')
+                                return t('dataStorages.validation.gcsCredentialInvalid');
                               }
                             }
                           }
-                          return true
+                          return true;
                         },
                       })}
                       className='max-h-48 overflow-auto'
                       rows={5}
                       placeholder={t('dataStorages.dialogs.fields.gcsCredential.editPlaceholder')}
                     />
-                    {errors.gcsCredential && (
-                      <span className='text-sm text-red-500'>{errors.gcsCredential.message}</span>
-                    )}
+                    {errors.gcsCredential && <span className='text-sm text-red-500'>{errors.gcsCredential.message}</span>}
                   </div>
                 </>
               )}
@@ -650,8 +630,8 @@ export function DataStorageDialogs() {
                 type='button'
                 variant='outline'
                 onClick={() => {
-                  setIsEditDialogOpen(false)
-                  setEditingDataStorage(null)
+                  setIsEditDialogOpen(false);
+                  setEditingDataStorage(null);
                 }}
               >
                 {t('common.buttons.cancel')}
@@ -686,10 +666,10 @@ export function DataStorageDialogs() {
               variant='destructive'
               disabled={archiveMutation.isPending}
               onClick={async () => {
-                if (!archiveDataStorage) return
+                if (!archiveDataStorage) return;
                 try {
-                  await archiveMutation.mutateAsync(archiveDataStorage.id)
-                  resetArchiveContext()
+                  await archiveMutation.mutateAsync(archiveDataStorage.id);
+                  resetArchiveContext();
                 } catch (_error) {
                   // handled in mutation
                 }
@@ -701,5 +681,5 @@ export function DataStorageDialogs() {
         </DialogContent>
       </Dialog>
     </>
-  )
+  );
 }

@@ -1,6 +1,6 @@
-import { Outlet } from '@tanstack/react-router'
-import { IconBrowserCheck, IconNotification, IconPalette, IconTool, IconUser } from '@tabler/icons-react'
-import { Main } from '@/components/layout/main'
+import { Outlet } from '@tanstack/react-router';
+import { IconBrowserCheck, IconNotification, IconPalette, IconTool, IconUser } from '@tabler/icons-react';
+import { Main } from '@/components/layout/main';
 
 export default function Settings() {
   return (
@@ -25,7 +25,7 @@ export default function Settings() {
         </div>
       </Main>
     </>
-  )
+  );
 }
 
 const sidebarNavItems = [
@@ -49,4 +49,4 @@ const sidebarNavItems = [
     icon: <IconBrowserCheck size={18} />,
     href: '/settings/display',
   },
-]
+];

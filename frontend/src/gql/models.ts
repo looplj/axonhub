@@ -1,19 +1,19 @@
-import { useMutation } from '@tanstack/react-query'
-import { graphqlRequest } from './graphql'
+import { useMutation } from '@tanstack/react-query';
+import { graphqlRequest } from './graphql';
 
 export interface Model {
-  id: string
-  status: 'enabled' | 'disabled' | 'archived'
+  id: string;
+  status: 'enabled' | 'disabled' | 'archived';
 }
 
 export interface ModelsResponse {
-  queryModels: Model[]
+  queryModels: Model[];
 }
 
 export interface QueryModelsInput {
-  statusIn?: ('enabled' | 'disabled' | 'archived')[]
-  includeMapping?: boolean
-  includePrefix?: boolean
+  statusIn?: ('enabled' | 'disabled' | 'archived')[];
+  includeMapping?: boolean;
+  includePrefix?: boolean;
 }
 
 const MODELS_QUERY = `
@@ -23,15 +23,15 @@ const MODELS_QUERY = `
       status
     }
   }
-`
+`;
 
 export function useQueryModels() {
   return useMutation({
     mutationFn: async (input: QueryModelsInput = {}) => {
       const data = await graphqlRequest<{
-        queryModels: Model[]
-      }>(MODELS_QUERY, { input })
-      return data.queryModels
+        queryModels: Model[];
+      }>(MODELS_QUERY, { input });
+      return data.queryModels;
     },
-  })
+  });
 }

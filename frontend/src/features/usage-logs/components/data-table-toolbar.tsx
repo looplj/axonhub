@@ -1,35 +1,43 @@
-import { useMemo } from 'react'
-import { Cross2Icon } from '@radix-ui/react-icons'
-import { RefreshCw, X } from 'lucide-react'
-import { Table } from '@tanstack/react-table'
-import { DateRange } from 'react-day-picker'
-import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
-import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter'
-import { DateRangePicker } from '@/components/date-range-picker'
-import { useUsageLogPermissions } from '../../../gql/useUsageLogPermissions'
-import { useQueryChannels } from '../../channels/data'
-import { UsageLogSource } from '../data/schema'
-import { DataTableViewOptions } from './data-table-view-options'
+import { useMemo } from 'react';
+import { Cross2Icon } from '@radix-ui/react-icons';
+import { Table } from '@tanstack/react-table';
+import { RefreshCw, X } from 'lucide-react';
+import { DateRange } from 'react-day-picker';
+import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter';
+import { DateRangePicker } from '@/components/date-range-picker';
+import { useUsageLogPermissions } from '../../../gql/useUsageLogPermissions';
+import { useQueryChannels } from '../../channels/data';
+import { UsageLogSource } from '../data/schema';
+import { DataTableViewOptions } from './data-table-view-options';
 
 interface DataTableToolbarProps<TData> {
-  table: Table<TData>
-  dateRange?: DateRange
-  onDateRangeChange?: (range: DateRange | undefined) => void
-  onRefresh?: () => void
-  showRefresh?: boolean
-  autoRefresh?: boolean
-  onAutoRefreshChange?: (value: boolean) => void
+  table: Table<TData>;
+  dateRange?: DateRange;
+  onDateRangeChange?: (range: DateRange | undefined) => void;
+  onRefresh?: () => void;
+  showRefresh?: boolean;
+  autoRefresh?: boolean;
+  onAutoRefreshChange?: (value: boolean) => void;
 }
 
-export function DataTableToolbar<TData>({ table, dateRange, onDateRangeChange, onRefresh, showRefresh = false, autoRefresh = false, onAutoRefreshChange }: DataTableToolbarProps<TData>) {
-  const { t } = useTranslation()
-  const permissions = useUsageLogPermissions()
-  const { canViewChannels } = permissions
+export function DataTableToolbar<TData>({
+  table,
+  dateRange,
+  onDateRangeChange,
+  onRefresh,
+  showRefresh = false,
+  autoRefresh = false,
+  onAutoRefreshChange,
+}: DataTableToolbarProps<TData>) {
+  const { t } = useTranslation();
+  const permissions = useUsageLogPermissions();
+  const { canViewChannels } = permissions;
 
-  const isFiltered = table.getState().columnFilters.length > 0 || !!dateRange
+  const isFiltered = table.getState().columnFilters.length > 0 || !!dateRange;
 
   // Fetch channels data if user has permission
   const { data: channelsData } = useQueryChannels(
@@ -39,17 +47,17 @@ export function DataTableToolbar<TData>({ table, dateRange, onDateRangeChange, o
           orderBy: { field: 'CREATED_AT', direction: 'DESC' },
         }
       : undefined
-  )
+  );
 
   // Prepare channel options for filter
   const channelOptions = useMemo(() => {
-    if (!canViewChannels || !channelsData?.edges) return []
+    if (!canViewChannels || !channelsData?.edges) return [];
 
     return channelsData.edges.map((edge) => ({
       value: edge.node.id,
       label: edge.node.name || `Channel ${edge.node.id}`,
-    }))
-  }, [canViewChannels, channelsData])
+    }));
+  }, [canViewChannels, channelsData]);
 
   const usageLogSources = [
     {
@@ -64,7 +72,7 @@ export function DataTableToolbar<TData>({ table, dateRange, onDateRangeChange, o
       value: 'test' as UsageLogSource,
       label: t('usageLogs.source.test'),
     },
-  ]
+  ];
 
   return (
     <div className='flex items-center justify-between'>
@@ -83,30 +91,21 @@ export function DataTableToolbar<TData>({ table, dateRange, onDateRangeChange, o
           />
         )} */}
         {canViewChannels && table.getColumn('channel') && channelOptions.length > 0 && channelsData?.edges && (
-          <DataTableFacetedFilter
-            column={table.getColumn('channel')}
-            title={t('usageLogs.filters.channel')}
-            options={channelOptions}
-          />
+          <DataTableFacetedFilter column={table.getColumn('channel')} title={t('usageLogs.filters.channel')} options={channelOptions} />
         )}
         <DateRangePicker value={dateRange} onChange={onDateRangeChange} />
         {dateRange && (
-          <Button 
-            variant='ghost' 
-            onClick={() => onDateRangeChange?.(undefined)} 
-            className='h-8 px-2'
-            size='sm'
-          >
+          <Button variant='ghost' onClick={() => onDateRangeChange?.(undefined)} className='h-8 px-2' size='sm'>
             <X className='h-4 w-4' />
           </Button>
         )}
         {isFiltered && (
-          <Button 
-            variant='ghost' 
+          <Button
+            variant='ghost'
             onClick={() => {
-              table.resetColumnFilters()
-              onDateRangeChange?.(undefined)
-            }} 
+              table.resetColumnFilters();
+              onDateRangeChange?.(undefined);
+            }}
             className='h-8 px-2 lg:px-3'
           >
             {t('common.filters.reset')}
@@ -117,15 +116,8 @@ export function DataTableToolbar<TData>({ table, dateRange, onDateRangeChange, o
       <div className='flex items-center space-x-2'>
         {showRefresh && onAutoRefreshChange && (
           <div className='flex items-center space-x-2'>
-            <Switch 
-              checked={autoRefresh} 
-              onCheckedChange={onAutoRefreshChange}
-              id='auto-refresh-switch'
-            />
-            <label 
-              htmlFor='auto-refresh-switch' 
-              className='text-sm text-muted-foreground cursor-pointer'
-            >
+            <Switch checked={autoRefresh} onCheckedChange={onAutoRefreshChange} id='auto-refresh-switch' />
+            <label htmlFor='auto-refresh-switch' className='text-muted-foreground cursor-pointer text-sm'>
               {t('common.autoRefresh')}
             </label>
           </div>
@@ -139,5 +131,5 @@ export function DataTableToolbar<TData>({ table, dateRange, onDateRangeChange, o
         {/* <DataTableViewOptions table={table} /> */}
       </div>
     </div>
-  )
+  );
 }

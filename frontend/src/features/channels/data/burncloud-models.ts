@@ -53,4 +53,4 @@ export const BURNCLOUD_DEFAULT_MODELS = [
   'qwen3-235b-a22b-instruct-2507',
   'qwen3-coder-480b-a35b-instruct',
   'qwen3-coder-plus',
-]
+];

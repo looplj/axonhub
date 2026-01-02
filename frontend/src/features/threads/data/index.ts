@@ -1,2 +1,2 @@
-export * from './threads'
-export * from './schema'
+export * from './threads';
+export * from './schema';
