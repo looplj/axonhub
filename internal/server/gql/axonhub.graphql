@@ -180,6 +180,10 @@ input APIKeyProfileInput {
   modelIDs: [String!]
 }
 
+input UpdateAPIKeyScopesInput {
+  scopes: [String!]!
+}
+
 type APIKeyProfiles {
   activeProfile: String!
   profiles: [APIKeyProfile!]

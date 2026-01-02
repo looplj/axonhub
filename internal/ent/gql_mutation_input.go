@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/model"
@@ -17,12 +18,20 @@ import (
 // CreateAPIKeyInput represents a mutation input for creating apikeys.
 type CreateAPIKeyInput struct {
 	Name      string
+	Type      *apikey.Type
+	Scopes    []string
 	ProjectID int
 }
 
 // Mutate applies the CreateAPIKeyInput on the APIKeyMutation builder.
 func (i *CreateAPIKeyInput) Mutate(m *APIKeyMutation) {
 	m.SetName(i.Name)
+	if v := i.Type; v != nil {
+		m.SetType(*v)
+	}
+	if v := i.Scopes; v != nil {
+		m.SetScopes(v)
+	}
 	m.SetProjectID(i.ProjectID)
 }
 
@@ -34,13 +43,25 @@ func (c *APIKeyCreate) SetInput(i CreateAPIKeyInput) *APIKeyCreate {
 
 // UpdateAPIKeyInput represents a mutation input for updating apikeys.
 type UpdateAPIKeyInput struct {
-	Name *string
+	Name         *string
+	ClearScopes  bool
+	Scopes       []string
+	AppendScopes []string
 }
 
 // Mutate applies the UpdateAPIKeyInput on the APIKeyMutation builder.
 func (i *UpdateAPIKeyInput) Mutate(m *APIKeyMutation) {
 	if v := i.Name; v != nil {
 		m.SetName(*v)
+	}
+	if i.ClearScopes {
+		m.ClearScopes()
+	}
+	if v := i.Scopes; v != nil {
+		m.SetScopes(v)
+	}
+	if i.AppendScopes != nil {
+		m.AppendScopes(i.Scopes)
 	}
 }
 

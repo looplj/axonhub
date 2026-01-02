@@ -204,6 +204,11 @@ func (_q *APIKeyQuery) collectField(ctx context.Context, oneNode bool, opCtx *gr
 				selectedFields = append(selectedFields, apikey.FieldName)
 				fieldSeen[apikey.FieldName] = struct{}{}
 			}
+		case "type":
+			if _, ok := fieldSeen[apikey.FieldType]; !ok {
+				selectedFields = append(selectedFields, apikey.FieldType)
+				fieldSeen[apikey.FieldType] = struct{}{}
+			}
 		case "status":
 			if _, ok := fieldSeen[apikey.FieldStatus]; !ok {
 				selectedFields = append(selectedFields, apikey.FieldStatus)

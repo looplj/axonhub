@@ -8,6 +8,7 @@
       "id": "ID",
       "name": "名称",
       "key": "API Key",
+      "type": "类型",
       "creator": "创建者",
       "status": "状态",
       "createdAt": "创建时间",
@@ -15,6 +16,13 @@
       "actions": "操作",
       "selectAll": "全选",
       "selectRow": "选择行"
+    },
+    "type": {
+      "user": "用户",
+      "service_account": "服务账号"
+    },
+    "tabs": {
+      "all": "全部"
     },
     "status": {
       "enabled": "已启用",
@@ -58,7 +66,7 @@
       "view": {
         "title": "查看 API 密钥",
         "description": "查看完整的 API 密钥详情。",
-        "warning": "  请妥善保管您的 API 密钥，不要与未授权的人员分享。任何拥有此密钥的人都可以代表您发出请求。"
+        "warning": "⚠️ 请妥善保管您的 API 密钥，不要与未授权的人员分享。任何拥有此密钥的人都可以代表您发出请求。"
       },
       "bulkDisable": {
         "title": "批量禁用 API Keys",
@@ -73,6 +81,21 @@
           "label": "名称",
           "placeholder": "输入 API Key 名称",
           "description": "为此 API Key 设置一个易于识别的名称"
+        },
+        "type": {
+          "label": "类型",
+          "user": "用户",
+          "serviceAccount": "服务账号",
+          "userDescription": "用户 API Key 从用户的项目权限中继承 scopes。适用于个人使用。",
+          "serviceAccountDescription": "服务账号 API Key 拥有自定义的 scopes。适用于应用程序和服务。"
+        },
+        "scopes": {
+          "label": "权限范围",
+          "description": "选择此服务账号 API Key 的权限",
+          "selectPlaceholder": "选择权限范围...",
+          "searchPlaceholder": "搜索权限范围...",
+          "selectedCount": "已选择 {{count}} 个权限",
+          "noResults": "未找到权限范围"
         },
         "userID": {
           "label": "用户ID",
@@ -98,6 +121,8 @@
       "statusUpdateError": "状态更新失败",
       "profilesUpdateSuccess": "配置文件更新成功",
       "profilesUpdateError": "配置文件更新失败",
+      "scopesUpdateSuccess": "权限范围更新成功",
+      "scopesUpdateError": "权限范围更新失败",
       "bulkDisableSuccess": "成功禁用了 {{count}} 个 API Keys",
       "bulkDisableError": "禁用 API Keys 失败",
       "bulkArchiveSuccess": "成功归档了 {{count}} 个 API Keys",
@@ -123,7 +148,7 @@
       "filterId": "按 ID 筛选...",
       "filterName": "按名称筛选...",
       "status": "状态",
-      "user": "用户",
+      "creator": "创建人",
       "reset": "重置",
       "selectedCount": "已选择 {{count}} 项",
       "noResults": "没有找到结果",

@@ -74,11 +74,11 @@ func init() {
 	// apikey.DefaultProjectID holds the default value on creation for the project_id field.
 	apikey.DefaultProjectID = apikeyDescProjectID.Default.(int)
 	// apikeyDescScopes is the schema descriptor for scopes field.
-	apikeyDescScopes := apikeyFields[5].Descriptor()
+	apikeyDescScopes := apikeyFields[6].Descriptor()
 	// apikey.DefaultScopes holds the default value on creation for the scopes field.
 	apikey.DefaultScopes = apikeyDescScopes.Default.([]string)
 	// apikeyDescProfiles is the schema descriptor for profiles field.
-	apikeyDescProfiles := apikeyFields[6].Descriptor()
+	apikeyDescProfiles := apikeyFields[7].Descriptor()
 	// apikey.DefaultProfiles holds the default value on creation for the profiles field.
 	apikey.DefaultProfiles = apikeyDescProfiles.Default.(*objects.APIKeyProfiles)
 	channelMixin := schema.Channel{}.Mixin()

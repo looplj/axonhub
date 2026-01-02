@@ -639,3 +639,172 @@ func TestAPIKeyService_UpdateAPIKeyProfiles(t *testing.T) {
 		require.Len(t, updatedAPIKey.Profiles.Profiles, 3)
 	})
 }
+
+func TestAPIKeyService_CreateAPIKey_Type(t *testing.T) {
+	apiKeyService, client := setupTestAPIKeyService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	hashedPassword, err := HashPassword("test-password")
+	require.NoError(t, err)
+
+	testUser, err := client.User.Create().
+		SetEmail(fmt.Sprintf("test-%d@example.com", time.Now().UnixNano())).
+		SetPassword(hashedPassword).
+		SetFirstName("Test").
+		SetLastName("User").
+		SetStatus(user.StatusActivated).
+		Save(ctx)
+	require.NoError(t, err)
+
+	projectName := uuid.NewString()
+	testProject, err := client.Project.Create().
+		SetName(projectName).
+		SetDescription(projectName).
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	_, err = client.UserProject.Create().
+		SetUserID(testUser.ID).
+		SetProjectID(testProject.ID).
+		SetIsOwner(true).
+		Save(ctx)
+	require.NoError(t, err)
+
+	ctxWithUser := contexts.WithUser(ctx, testUser)
+
+	t.Run("Create user type API key without specifying type (default)", func(t *testing.T) {
+		apiKey, err := apiKeyService.CreateAPIKey(ctxWithUser, ent.CreateAPIKeyInput{
+			Name:      "User API Key",
+			ProjectID: testProject.ID,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, apiKey)
+		require.Equal(t, apikey.TypeUser, apiKey.Type)
+		require.NotNil(t, apiKey.Scopes)
+		require.Contains(t, apiKey.Scopes, "read_channels")
+		require.Contains(t, apiKey.Scopes, "write_requests")
+		require.Len(t, apiKey.Scopes, 2)
+	})
+
+	t.Run("Create user type API key with explicit type", func(t *testing.T) {
+		userType := apikey.TypeUser
+		apiKey, err := apiKeyService.CreateAPIKey(ctxWithUser, ent.CreateAPIKeyInput{
+			Name:      "User API Key Explicit",
+			ProjectID: testProject.ID,
+			Type:      &userType,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, apiKey)
+		require.Equal(t, apikey.TypeUser, apiKey.Type)
+		require.NotNil(t, apiKey.Scopes)
+		require.Contains(t, apiKey.Scopes, "read_channels")
+		require.Contains(t, apiKey.Scopes, "write_requests")
+		require.Len(t, apiKey.Scopes, 2)
+	})
+
+	t.Run("Create service_account type API key without scopes", func(t *testing.T) {
+		serviceAccountType := apikey.TypeServiceAccount
+		apiKey, err := apiKeyService.CreateAPIKey(ctxWithUser, ent.CreateAPIKeyInput{
+			Name:      "Service Account API Key",
+			ProjectID: testProject.ID,
+			Type:      &serviceAccountType,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, apiKey)
+		require.Equal(t, apikey.TypeServiceAccount, apiKey.Type)
+		require.NotNil(t, apiKey.Scopes)
+		require.Len(t, apiKey.Scopes, 0)
+	})
+
+	t.Run("Create service_account type API key with custom scopes", func(t *testing.T) {
+		serviceAccountType := apikey.TypeServiceAccount
+		customScopes := []string{"read_models", "write_models", "read_channels"}
+		apiKey, err := apiKeyService.CreateAPIKey(ctxWithUser, ent.CreateAPIKeyInput{
+			Name:      "Service Account with Scopes",
+			ProjectID: testProject.ID,
+			Type:      &serviceAccountType,
+			Scopes:    customScopes,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, apiKey)
+		require.Equal(t, apikey.TypeServiceAccount, apiKey.Type)
+		require.NotNil(t, apiKey.Scopes)
+		require.Len(t, apiKey.Scopes, 3)
+		require.Contains(t, apiKey.Scopes, "read_models")
+		require.Contains(t, apiKey.Scopes, "write_models")
+		require.Contains(t, apiKey.Scopes, "read_channels")
+	})
+
+	t.Run("Create user type API key ignores provided scopes", func(t *testing.T) {
+		userType := apikey.TypeUser
+		ignoredScopes := []string{"read_models", "write_models"}
+		apiKey, err := apiKeyService.CreateAPIKey(ctxWithUser, ent.CreateAPIKeyInput{
+			Name:      "User API Key with Ignored Scopes",
+			ProjectID: testProject.ID,
+			Type:      &userType,
+			Scopes:    ignoredScopes,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, apiKey)
+		require.Equal(t, apikey.TypeUser, apiKey.Type)
+		require.NotNil(t, apiKey.Scopes)
+		require.Contains(t, apiKey.Scopes, "read_channels")
+		require.Contains(t, apiKey.Scopes, "write_requests")
+		require.Len(t, apiKey.Scopes, 2)
+		require.NotContains(t, apiKey.Scopes, "read_models")
+		require.NotContains(t, apiKey.Scopes, "write_models")
+	})
+
+	t.Run("Create multiple API keys with different types", func(t *testing.T) {
+		userType := apikey.TypeUser
+		serviceAccountType := apikey.TypeServiceAccount
+
+		userAPIKey, err := apiKeyService.CreateAPIKey(ctxWithUser, ent.CreateAPIKeyInput{
+			Name:      "User Key",
+			ProjectID: testProject.ID,
+			Type:      &userType,
+		})
+		require.NoError(t, err)
+		require.Equal(t, apikey.TypeUser, userAPIKey.Type)
+
+		serviceAPIKey, err := apiKeyService.CreateAPIKey(ctxWithUser, ent.CreateAPIKeyInput{
+			Name:      "Service Key",
+			ProjectID: testProject.ID,
+			Type:      &serviceAccountType,
+			Scopes:    []string{"read_channels"},
+		})
+		require.NoError(t, err)
+		require.Equal(t, apikey.TypeServiceAccount, serviceAPIKey.Type)
+		require.Len(t, serviceAPIKey.Scopes, 1)
+		require.Contains(t, serviceAPIKey.Scopes, "read_channels")
+	})
+
+	t.Run("Verify API key key format is correct for both types", func(t *testing.T) {
+		userType := apikey.TypeUser
+		serviceAccountType := apikey.TypeServiceAccount
+
+		userAPIKey, err := apiKeyService.CreateAPIKey(ctxWithUser, ent.CreateAPIKeyInput{
+			Name:      "User Key",
+			ProjectID: testProject.ID,
+			Type:      &userType,
+		})
+		require.NoError(t, err)
+		require.True(t, len(userAPIKey.Key) > 3)
+		require.Equal(t, "ah-", userAPIKey.Key[:3])
+
+		serviceAPIKey, err := apiKeyService.CreateAPIKey(ctxWithUser, ent.CreateAPIKeyInput{
+			Name:      "Service Key",
+			ProjectID: testProject.ID,
+			Type:      &serviceAccountType,
+		})
+		require.NoError(t, err)
+		require.True(t, len(serviceAPIKey.Key) > 3)
+		require.Equal(t, "ah-", serviceAPIKey.Key[:3])
+		require.NotEqual(t, userAPIKey.Key, serviceAPIKey.Key)
+	})
+}

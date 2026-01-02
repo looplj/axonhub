@@ -63,10 +63,12 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             <IconEdit className='mr-2 h-4 w-4' />
             {t('common.actions.edit')}
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleProfiles(apiKey)}>
-            <IconSettings className='mr-2 h-4 w-4' />
-            {t('apikeys.actions.profiles')}
-          </DropdownMenuItem>
+          {apiKey.type !== 'service_account' && (
+            <DropdownMenuItem onClick={() => handleProfiles(apiKey)}>
+              <IconSettings className='mr-2 h-4 w-4' />
+              {t('apikeys.actions.profiles')}
+            </DropdownMenuItem>
+          )}
           {apiKey.status !== 'archived' && (
             <DropdownMenuItem
               onClick={() => handleStatusChange(apiKey)}

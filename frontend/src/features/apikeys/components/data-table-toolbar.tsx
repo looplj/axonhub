@@ -10,8 +10,7 @@ import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter'
 import { useMe } from '@/features/auth/data/auth'
 import { useUsers } from '@/features/users/data/users'
 import { useApiKeysContext } from '../context/apikeys-context'
-import { ApiKeyStatus } from '../data/schema'
-import { DataTableViewOptions } from './data-table-view-options'
+import { ApiKeyStatus, ApiKeyType } from '../data/schema'
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>
@@ -90,7 +89,7 @@ export function DataTableToolbar<TData>({ table, onResetFilters }: DataTableTool
         {canViewUsers && table.getColumn('creator') && userOptions.length > 0 && usersData?.edges && (
           <DataTableFacetedFilter
             column={table.getColumn('creator')}
-            title={t('apikeys.filters.user')}
+            title={t('apikeys.filters.creator')}
             options={userOptions}
           />
         )}

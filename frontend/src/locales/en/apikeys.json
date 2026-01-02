@@ -8,6 +8,7 @@
       "id": "ID",
       "name": "Name",
       "key": "API Key",
+      "type": "Type",
       "creator": "Creator",
       "status": "Status",
       "createdAt": "Created At",
@@ -15,6 +16,13 @@
       "actions": "Actions",
       "selectAll": "Select all",
       "selectRow": "Select row"
+    },
+    "type": {
+      "user": "User",
+      "service_account": "Service Account"
+    },
+    "tabs": {
+      "all": "All"
     },
     "status": {
       "enabled": "Enabled",
@@ -74,6 +82,21 @@
           "placeholder": "Enter API Key name",
           "description": "Set an easily recognizable name for this API Key"
         },
+        "type": {
+          "label": "Type",
+          "user": "User",
+          "serviceAccount": "Service Account",
+          "userDescription": "User API keys inherit project scopes from the user. Suitable for personal use.",
+          "serviceAccountDescription": "Service account API keys have custom scopes. Suitable for applications and services."
+        },
+        "scopes": {
+          "label": "Scopes",
+          "description": "Select the permissions for this service account API key",
+          "selectPlaceholder": "Select scopes...",
+          "searchPlaceholder": "Search scopes...",
+          "selectedCount": "{{count}} scopes selected",
+          "noResults": "No scopes found"
+        },
         "userID": {
           "label": "User ID",
           "placeholder": "Enter User ID",
@@ -98,6 +121,8 @@
       "statusUpdateError": "Failed to update status",
       "profilesUpdateSuccess": "Profiles updated successfully",
       "profilesUpdateError": "Failed to update profiles",
+      "scopesUpdateSuccess": "Scopes updated successfully",
+      "scopesUpdateError": "Failed to update scopes",
       "bulkDisableSuccess": "Successfully disabled {{count}} API keys",
       "bulkDisableError": "Failed to disable API keys",
       "bulkArchiveSuccess": "Successfully archived {{count}} API keys",
@@ -123,7 +148,7 @@
       "filterId": "Filter by ID...",
       "filterName": "Filter by name...",
       "status": "Status",
-      "user": "User",
+      "creator": "Creator",
       "selectedCount": "{{count}} selected",
       "clearFilter": "Clear filter"
     },

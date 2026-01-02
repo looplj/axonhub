@@ -35,9 +35,11 @@ type APIKey struct {
 	Key string `json:"key,omitempty"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name,omitempty"`
+	// API Key type: user or service_account
+	Type apikey.Type `json:"type,omitempty"`
 	// Status holds the value of the "status" field.
 	Status apikey.Status `json:"status,omitempty"`
-	// API Key specific scopes: read_channels, write_requests, etc.
+	// API Key specific scopes. For user type: default read_channels, write_requests (immutable). For service_account: custom scopes.
 	Scopes []string `json:"scopes,omitempty"`
 	// Profiles holds the value of the "profiles" field.
 	Profiles *objects.APIKeyProfiles `json:"profiles,omitempty"`
@@ -104,7 +106,7 @@ func (*APIKey) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case apikey.FieldID, apikey.FieldDeletedAt, apikey.FieldUserID, apikey.FieldProjectID:
 			values[i] = new(sql.NullInt64)
-		case apikey.FieldKey, apikey.FieldName, apikey.FieldStatus:
+		case apikey.FieldKey, apikey.FieldName, apikey.FieldType, apikey.FieldStatus:
 			values[i] = new(sql.NullString)
 		case apikey.FieldCreatedAt, apikey.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -170,6 +172,12 @@ func (_m *APIKey) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field name", values[i])
 			} else if value.Valid {
 				_m.Name = value.String
+			}
+		case apikey.FieldType:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field type", values[i])
+			} else if value.Valid {
+				_m.Type = apikey.Type(value.String)
 			}
 		case apikey.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -264,6 +272,9 @@ func (_m *APIKey) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("name=")
 	builder.WriteString(_m.Name)
+	builder.WriteString(", ")
+	builder.WriteString("type=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Type))
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Status))

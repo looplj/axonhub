@@ -72,6 +72,7 @@ type APIKeyMutation struct {
 	adddeleted_at   *int
 	key             *string
 	name            *string
+	_type           *apikey.Type
 	status          *apikey.Status
 	scopes          *[]string
 	appendscopes    []string
@@ -459,6 +460,42 @@ func (m *APIKeyMutation) ResetName() {
 	m.name = nil
 }
 
+// SetType sets the "type" field.
+func (m *APIKeyMutation) SetType(a apikey.Type) {
+	m._type = &a
+}
+
+// GetType returns the value of the "type" field in the mutation.
+func (m *APIKeyMutation) GetType() (r apikey.Type, exists bool) {
+	v := m._type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldType returns the old "type" field's value of the APIKey entity.
+// If the APIKey object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *APIKeyMutation) OldType(ctx context.Context) (v apikey.Type, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldType: %w", err)
+	}
+	return oldValue.Type, nil
+}
+
+// ResetType resets all changes to the "type" field.
+func (m *APIKeyMutation) ResetType() {
+	m._type = nil
+}
+
 // SetStatus sets the "status" field.
 func (m *APIKeyMutation) SetStatus(a apikey.Status) {
 	m.status = &a
@@ -751,7 +788,7 @@ func (m *APIKeyMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *APIKeyMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 11)
 	if m.created_at != nil {
 		fields = append(fields, apikey.FieldCreatedAt)
 	}
@@ -772,6 +809,9 @@ func (m *APIKeyMutation) Fields() []string {
 	}
 	if m.name != nil {
 		fields = append(fields, apikey.FieldName)
+	}
+	if m._type != nil {
+		fields = append(fields, apikey.FieldType)
 	}
 	if m.status != nil {
 		fields = append(fields, apikey.FieldStatus)
@@ -804,6 +844,8 @@ func (m *APIKeyMutation) Field(name string) (ent.Value, bool) {
 		return m.Key()
 	case apikey.FieldName:
 		return m.Name()
+	case apikey.FieldType:
+		return m.GetType()
 	case apikey.FieldStatus:
 		return m.Status()
 	case apikey.FieldScopes:
@@ -833,6 +875,8 @@ func (m *APIKeyMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldKey(ctx)
 	case apikey.FieldName:
 		return m.OldName(ctx)
+	case apikey.FieldType:
+		return m.OldType(ctx)
 	case apikey.FieldStatus:
 		return m.OldStatus(ctx)
 	case apikey.FieldScopes:
@@ -896,6 +940,13 @@ func (m *APIKeyMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetName(v)
+		return nil
+	case apikey.FieldType:
+		v, ok := value.(apikey.Type)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetType(v)
 		return nil
 	case apikey.FieldStatus:
 		v, ok := value.(apikey.Status)
@@ -1017,6 +1068,9 @@ func (m *APIKeyMutation) ResetField(name string) error {
 		return nil
 	case apikey.FieldName:
 		m.ResetName()
+		return nil
+	case apikey.FieldType:
+		m.ResetType()
 		return nil
 	case apikey.FieldStatus:
 		m.ResetStatus()

@@ -80,6 +80,25 @@ func (s *APIKeyService) CreateAPIKey(ctx context.Context, input ent.CreateAPIKey
 		SetUserID(user.ID).
 		SetProjectID(input.ProjectID)
 
+	apiKeyType := apikey.TypeUser // default
+
+	// Set type (default is 'user' from schema)
+	if input.Type != nil {
+		create.SetType(*input.Type)
+		apiKeyType = *input.Type
+	}
+
+	// For user type, use default scopes from schema (read_channels, write_requests)
+	// No need to set explicitly as schema default will be used
+	if apiKeyType == apikey.TypeServiceAccount {
+		// For service account, use provided scopes or empty array
+		if input.Scopes != nil {
+			create.SetScopes(input.Scopes)
+		} else {
+			create.SetScopes([]string{})
+		}
+	}
+
 	apiKey, err := create.Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create API key: %w", err)
@@ -90,17 +109,40 @@ func (s *APIKeyService) CreateAPIKey(ctx context.Context, input ent.CreateAPIKey
 
 // UpdateAPIKey updates an existing API key.
 func (s *APIKeyService) UpdateAPIKey(ctx context.Context, id int, input ent.UpdateAPIKeyInput) (*ent.APIKey, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	client := s.entFromContext(ctx)
 
-	apiKey, err := client.APIKey.UpdateOneID(id).
-		SetNillableName(input.Name).
-		Save(ctx)
+	apiKey, err := client.APIKey.Get(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get API key: %w", err)
+	}
+
+	if apiKey.Type == apikey.TypeUser {
+		if len(input.Scopes) > 0 || len(input.AppendScopes) > 0 || input.ClearScopes {
+			return nil, fmt.Errorf("user type API key cannot update scopes")
+		}
+	}
+
+	update := client.APIKey.UpdateOneID(id).SetNillableName(input.Name)
+
+	if apiKey.Type == apikey.TypeServiceAccount {
+		if len(input.Scopes) > 0 {
+			update.SetScopes(input.Scopes)
+		}
+
+		if len(input.AppendScopes) > 0 {
+			update.AppendScopes(input.AppendScopes)
+		}
+
+		if input.ClearScopes {
+			update.ClearScopes()
+		}
+	}
+
+	apiKey, err = update.Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update API key: %w", err)
 	}
 
-	// Invalidate cache
 	s.invalidateAPIKeyCache(ctx, apiKey.Key)
 
 	return apiKey, nil
@@ -108,7 +150,6 @@ func (s *APIKeyService) UpdateAPIKey(ctx context.Context, id int, input ent.Upda
 
 // UpdateAPIKeyStatus updates the status of an API key.
 func (s *APIKeyService) UpdateAPIKeyStatus(ctx context.Context, id int, status apikey.Status) (*ent.APIKey, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	client := s.entFromContext(ctx)
 
 	apiKey, err := client.APIKey.UpdateOneID(id).
@@ -126,7 +167,6 @@ func (s *APIKeyService) UpdateAPIKeyStatus(ctx context.Context, id int, status a
 
 // UpdateAPIKeyProfiles updates the profiles of an API key.
 func (s *APIKeyService) UpdateAPIKeyProfiles(ctx context.Context, id int, profiles objects.APIKeyProfiles) (*ent.APIKey, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	client := s.entFromContext(ctx)
 
 	// Validate that profile names are unique (case-insensitive)

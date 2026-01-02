@@ -195,9 +195,9 @@
 
 /* Blue Color Scheme (Default) */
 .blue {
-  --background: oklch(0.94 0.008 260);
+  --background: oklch(0.95 0.008 260);
   --foreground: oklch(0.3211 0 0);
-  --card: oklch(0.96 0.005 260);
+  --card: oklch(0.97 0.005 260);
   --card-foreground: var(--foreground);
   --popover: oklch(0.985 0.005 260);
   --popover-foreground: var(--foreground);
