@@ -669,6 +669,7 @@ type ComplexityRoot struct {
 		Project                    func(childComplexity int) int
 		ProjectID                  func(childComplexity int) int
 		RequestBody                func(childComplexity int) int
+		RequestHeaders             func(childComplexity int) int
 		ResponseBody               func(childComplexity int) int
 		ResponseChunks             func(childComplexity int) int
 		Source                     func(childComplexity int) int
@@ -707,6 +708,7 @@ type ComplexityRoot struct {
 		ProjectID                  func(childComplexity int) int
 		Request                    func(childComplexity int) int
 		RequestBody                func(childComplexity int) int
+		RequestHeaders             func(childComplexity int) int
 		RequestID                  func(childComplexity int) int
 		ResponseBody               func(childComplexity int) int
 		ResponseChunks             func(childComplexity int) int
@@ -4263,6 +4265,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Request.RequestBody(childComplexity), true
+	case "Request.requestHeaders":
+		if e.complexity.Request.RequestHeaders == nil {
+			break
+		}
+
+		return e.complexity.Request.RequestHeaders(childComplexity), true
 	case "Request.responseBody":
 		if e.complexity.Request.ResponseBody == nil {
 			break
@@ -4445,6 +4453,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RequestExecution.RequestBody(childComplexity), true
+	case "RequestExecution.requestHeaders":
+		if e.complexity.RequestExecution.RequestHeaders == nil {
+			break
+		}
+
+		return e.complexity.RequestExecution.RequestHeaders(childComplexity), true
 	case "RequestExecution.requestID":
 		if e.complexity.RequestExecution.RequestID == nil {
 			break
@@ -23224,6 +23238,35 @@ func (ec *executionContext) fieldContext_Request_format(_ context.Context, field
 	return fc, nil
 }
 
+func (ec *executionContext) _Request_requestHeaders(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Request_requestHeaders,
+		func(ctx context.Context) (any, error) {
+			return obj.RequestHeaders, nil
+		},
+		nil,
+		ec.marshalOJSONRawMessage2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Request_requestHeaders(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Request",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type JSONRawMessage does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Request_requestBody(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -24039,6 +24082,8 @@ func (ec *executionContext) fieldContext_RequestEdge_node(_ context.Context, fie
 				return ec.fieldContext_Request_modelID(ctx, field)
 			case "format":
 				return ec.fieldContext_Request_format(ctx, field)
+			case "requestHeaders":
+				return ec.fieldContext_Request_requestHeaders(ctx, field)
 			case "requestBody":
 				return ec.fieldContext_Request_requestBody(ctx, field)
 			case "responseBody":
@@ -24600,6 +24645,35 @@ func (ec *executionContext) fieldContext_RequestExecution_metricsFirstTokenLaten
 	return fc, nil
 }
 
+func (ec *executionContext) _RequestExecution_requestHeaders(ctx context.Context, field graphql.CollectedField, obj *ent.RequestExecution) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RequestExecution_requestHeaders,
+		func(ctx context.Context) (any, error) {
+			return obj.RequestHeaders, nil
+		},
+		nil,
+		ec.marshalOJSONRawMessage2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RequestExecution_requestHeaders(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestExecution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type JSONRawMessage does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RequestExecution_request(ctx context.Context, field graphql.CollectedField, obj *ent.RequestExecution) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -24644,6 +24718,8 @@ func (ec *executionContext) fieldContext_RequestExecution_request(_ context.Cont
 				return ec.fieldContext_Request_modelID(ctx, field)
 			case "format":
 				return ec.fieldContext_Request_format(ctx, field)
+			case "requestHeaders":
+				return ec.fieldContext_Request_requestHeaders(ctx, field)
 			case "requestBody":
 				return ec.fieldContext_Request_requestBody(ctx, field)
 			case "responseBody":
@@ -24974,6 +25050,8 @@ func (ec *executionContext) fieldContext_RequestExecutionEdge_node(_ context.Con
 				return ec.fieldContext_RequestExecution_metricsLatencyMs(ctx, field)
 			case "metricsFirstTokenLatencyMs":
 				return ec.fieldContext_RequestExecution_metricsFirstTokenLatencyMs(ctx, field)
+			case "requestHeaders":
+				return ec.fieldContext_RequestExecution_requestHeaders(ctx, field)
 			case "request":
 				return ec.fieldContext_RequestExecution_request(ctx, field)
 			case "channel":
@@ -30676,6 +30754,8 @@ func (ec *executionContext) fieldContext_UsageLog_request(_ context.Context, fie
 				return ec.fieldContext_Request_modelID(ctx, field)
 			case "format":
 				return ec.fieldContext_Request_format(ctx, field)
+			case "requestHeaders":
+				return ec.fieldContext_Request_requestHeaders(ctx, field)
 			case "requestBody":
 				return ec.fieldContext_Request_requestBody(ctx, field)
 			case "responseBody":
@@ -39647,7 +39727,7 @@ func (ec *executionContext) unmarshalInputCreateRequestInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"source", "modelID", "format", "requestBody", "responseBody", "responseChunks", "externalID", "status", "stream", "metricsLatencyMs", "metricsFirstTokenLatencyMs", "apiKeyID", "projectID", "traceID", "dataStorageID", "channelID"}
+	fieldsInOrder := [...]string{"source", "modelID", "format", "requestHeaders", "requestBody", "responseBody", "responseChunks", "externalID", "status", "stream", "metricsLatencyMs", "metricsFirstTokenLatencyMs", "apiKeyID", "projectID", "traceID", "dataStorageID", "channelID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -39675,6 +39755,13 @@ func (ec *executionContext) unmarshalInputCreateRequestInput(ctx context.Context
 				return it, err
 			}
 			it.Format = data
+		case "requestHeaders":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestHeaders"))
+			data, err := ec.unmarshalOJSONRawMessageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RequestHeaders = data
 		case "requestBody":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBody"))
 			data, err := ec.unmarshalNJSONRawMessageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx, v)
@@ -48573,13 +48660,34 @@ func (ec *executionContext) unmarshalInputUpdateRequestInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"responseBody", "appendResponseBody", "clearResponseBody", "responseChunks", "appendResponseChunks", "clearResponseChunks", "externalID", "clearExternalID", "status", "metricsLatencyMs", "clearMetricsLatencyMs", "metricsFirstTokenLatencyMs", "clearMetricsFirstTokenLatencyMs", "channelID", "clearChannel"}
+	fieldsInOrder := [...]string{"requestHeaders", "appendRequestHeaders", "clearRequestHeaders", "responseBody", "appendResponseBody", "clearResponseBody", "responseChunks", "appendResponseChunks", "clearResponseChunks", "externalID", "clearExternalID", "status", "metricsLatencyMs", "clearMetricsLatencyMs", "metricsFirstTokenLatencyMs", "clearMetricsFirstTokenLatencyMs", "channelID", "clearChannel"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "requestHeaders":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestHeaders"))
+			data, err := ec.unmarshalOJSONRawMessageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RequestHeaders = data
+		case "appendRequestHeaders":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("appendRequestHeaders"))
+			data, err := ec.unmarshalOJSONRawMessageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AppendRequestHeaders = data
+		case "clearRequestHeaders":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearRequestHeaders"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClearRequestHeaders = data
 		case "responseBody":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBody"))
 			data, err := ec.unmarshalOJSONRawMessageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx, v)
@@ -58348,6 +58456,8 @@ func (ec *executionContext) _Request(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "requestHeaders":
+			out.Values[i] = ec._Request_requestHeaders(ctx, field, obj)
 		case "requestBody":
 			field := field
 
@@ -59138,6 +59248,8 @@ func (ec *executionContext) _RequestExecution(ctx context.Context, sel ast.Selec
 			out.Values[i] = ec._RequestExecution_metricsLatencyMs(ctx, field, obj)
 		case "metricsFirstTokenLatencyMs":
 			out.Values[i] = ec._RequestExecution_metricsFirstTokenLatencyMs(ctx, field, obj)
+		case "requestHeaders":
+			out.Values[i] = ec._RequestExecution_requestHeaders(ctx, field, obj)
 		case "request":
 			field := field
 

@@ -97,6 +97,7 @@ function buildRequestDetailQuery(permissions: { canViewApiKeys: boolean; canView
           dataStorage {
             id
           }
+          requestHeaders
           requestBody
           responseBody
           responseChunks
@@ -138,6 +139,7 @@ function buildRequestExecutionsQuery(permissions: { canViewChannels: boolean }) 
                 dataStorage {
                   id
                 }
+                requestHeaders
                 requestBody
                 responseBody
                 responseChunks

@@ -735,6 +735,16 @@ func MetricsFirstTokenLatencyMsNotNil() predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldNotNull(FieldMetricsFirstTokenLatencyMs))
 }
 
+// RequestHeadersIsNil applies the IsNil predicate on the "request_headers" field.
+func RequestHeadersIsNil() predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldIsNull(FieldRequestHeaders))
+}
+
+// RequestHeadersNotNil applies the NotNil predicate on the "request_headers" field.
+func RequestHeadersNotNil() predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNotNull(FieldRequestHeaders))
+}
+
 // HasRequest applies the HasEdge predicate on the "request" edge.
 func HasRequest() predicate.RequestExecution {
 	return predicate.RequestExecution(func(s *sql.Selector) {

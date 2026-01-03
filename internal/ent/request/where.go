@@ -460,6 +460,16 @@ func FormatContainsFold(v string) predicate.Request {
 	return predicate.Request(sql.FieldContainsFold(FieldFormat, v))
 }
 
+// RequestHeadersIsNil applies the IsNil predicate on the "request_headers" field.
+func RequestHeadersIsNil() predicate.Request {
+	return predicate.Request(sql.FieldIsNull(FieldRequestHeaders))
+}
+
+// RequestHeadersNotNil applies the NotNil predicate on the "request_headers" field.
+func RequestHeadersNotNil() predicate.Request {
+	return predicate.Request(sql.FieldNotNull(FieldRequestHeaders))
+}
+
 // ResponseBodyIsNil applies the IsNil predicate on the "response_body" field.
 func ResponseBodyIsNil() predicate.Request {
 	return predicate.Request(sql.FieldIsNull(FieldResponseBody))
