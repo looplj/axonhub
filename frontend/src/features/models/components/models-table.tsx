@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { PermissionGuard } from '@/components/permission-guard';
 import { ServerSidePagination } from '@/components/server-side-pagination';
 import { useModels } from '../context/models-context';
@@ -30,6 +31,7 @@ import { Model, ModelConnection } from '../data/schema';
 interface ModelsTableProps {
   columns: ColumnDef<Model>[];
   data: Model[];
+  loading?: boolean;
   pageInfo?: ModelConnection['pageInfo'];
   pageSize: number;
   totalCount?: number;
@@ -45,6 +47,7 @@ interface ModelsTableProps {
 export function ModelsTable({
   columns,
   data,
+  loading,
   pageInfo,
   pageSize,
   totalCount,
@@ -177,7 +180,9 @@ export function ModelsTable({
             ))}
           </TableHeader>
           <TableBody className='space-y-1 !bg-[var(--table-background)] p-2'>
-            {table.getRowModel().rows?.length ? (
+            {loading ? (
+              <TableSkeleton rows={pageSize} columns={columns.length} />
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => {
                 const model = row.original;
                 const modelCard = model.modelCard;

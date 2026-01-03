@@ -30,7 +30,6 @@ export function ChannelsBulkDisableDialog() {
       setSelectedChannels([]);
       setOpen(null);
     } catch (error) {
-      console.error('Failed to bulk disable channels:', error);
     }
   };
 

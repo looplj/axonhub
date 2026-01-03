@@ -24,7 +24,6 @@ export function ApiKeysStatusDialog() {
       closeDialog('status');
       resetRowSelection(); // 清空选中的行
     } catch (error) {
-      console.error('Failed to update API key status:', error);
     }
   };
 

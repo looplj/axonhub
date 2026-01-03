@@ -112,7 +112,6 @@ export function UsersAddToProjectDialog({ open, onOpenChange }: Props) {
       setRoles(rolesResponse.roles.edges.map((edge) => edge.node));
       setAllScopes(scopesResponse.allScopes);
     } catch (error) {
-      console.error('Failed to load roles and scopes:', error);
       toast.error(t('common.errors.loadFailed'));
     } finally {
       setLoading(false);
@@ -137,7 +136,6 @@ export function UsersAddToProjectDialog({ open, onOpenChange }: Props) {
       form.reset();
       onOpenChange(false);
     } catch (error) {
-      console.error('Failed to add user to project:', error);
       toast.error(t('users.messages.addToProjectError'));
     }
   };

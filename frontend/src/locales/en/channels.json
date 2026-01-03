@@ -19,7 +19,7 @@
       "baseURL": "Base URL",
       "supportedModels": "Models",
       "channelPerformance": "Performance",
-      "firstTokenLatency": "FTL",
+      "firstTokenLatency": "TTFT",
       "tokensPerSecond": "TPS",
       "firstTokenLatencyFull": "First Token Latency",
       "tokensPerSecondFull": "Tokens/Second",

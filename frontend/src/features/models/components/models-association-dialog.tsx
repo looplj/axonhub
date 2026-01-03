@@ -21,6 +21,7 @@ import { useModels } from '../context/models-context';
 import { useQueryModelChannelConnections, ModelAssociationInput, ModelChannelConnection } from '../data/models';
 import { useUpdateModel } from '../data/models';
 import { ModelAssociation } from '../data/schema';
+import { toast } from 'sonner';
 
 const associationFormSchema = z.object({
   associations: z
@@ -266,7 +267,7 @@ export function ModelsAssociationDialog() {
           setConnections([]);
         }
       } catch (error) {
-        console.error('Failed to query connections:', error);
+        toast.error(t('common.errors.loadFailed'));
         setConnections([]);
       }
     };

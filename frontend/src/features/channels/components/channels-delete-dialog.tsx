@@ -27,7 +27,6 @@ export function ChannelsDeleteDialog({ open, onOpenChange, currentRow }: Props) 
       onOpenChange(false);
       setValue('');
     } catch (error) {
-      console.error('Failed to delete channel:', error);
     }
   };
 

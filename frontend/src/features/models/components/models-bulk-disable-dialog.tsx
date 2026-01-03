@@ -26,11 +26,10 @@ export function ModelsBulkDisableDialog() {
       }
 
       await bulkDisableModels.mutateAsync(ids);
-      resetRowSelection();
+      resetRowSelection?.();
       setSelectedModels([]);
       setOpen(null);
     } catch (error) {
-      console.error('Failed to bulk disable models:', error);
     }
   };
 

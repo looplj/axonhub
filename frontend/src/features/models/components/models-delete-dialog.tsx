@@ -28,7 +28,6 @@ export function ModelsDeleteDialog() {
       }
       setOpen(null);
     } catch (error) {
-      console.error('Failed to delete model:', error);
     }
   };
 
