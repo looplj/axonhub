@@ -319,6 +319,28 @@ export default function RequestDetailPage() {
                 </div>
 
                 <TabsContent value='request' className='space-y-6 p-6'>
+                  {request.requestHeaders && (
+                    <div className='space-y-4'>
+                      <div className='flex items-center justify-between'>
+                        <h4 className='flex items-center gap-2 text-base font-semibold'>
+                          <FileText className='text-primary h-4 w-4' />
+                          {t('requests.columns.requestHeaders')}
+                        </h4>
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          onClick={() => copyToClipboard(formatJson(request.requestHeaders))}
+                          className='hover:bg-primary hover:text-primary-foreground'
+                        >
+                          <Copy className='mr-2 h-4 w-4' />
+                          {t('requests.dialogs.jsonViewer.copy')}
+                        </Button>
+                      </div>
+                      <div className='bg-muted/20 h-[300px] w-full overflow-auto rounded-lg border p-4'>
+                        <JsonViewer data={request.requestHeaders} rootName='' defaultExpanded={true} className='text-sm' />
+                      </div>
+                    </div>
+                  )}
                   <div className='space-y-4'>
                     <div className='flex items-center justify-between'>
                       <h4 className='flex items-center gap-2 text-base font-semibold'>
@@ -472,6 +494,31 @@ export default function RequestDetailPage() {
                                     {t('common.messages.errorMessage')}
                                   </span>
                                   <p className='text-destructive bg-destructive/10 rounded border p-3 text-sm'>{execution.errorMessage}</p>
+                                </div>
+                              )}
+
+                              {execution.requestHeaders && (
+                                <div className='space-y-3'>
+                                  <div className='flex items-center justify-between'>
+                                    <span className='flex items-center gap-2 text-sm font-semibold'>
+                                      <FileText className='text-primary h-4 w-4' />
+                                      {t('requests.columns.requestHeaders')}
+                                    </span>
+                                    <div className='flex gap-2'>
+                                      <Button
+                                        variant='outline'
+                                        size='sm'
+                                        onClick={() => copyToClipboard(formatJson(execution.requestHeaders))}
+                                        className='hover:bg-primary hover:text-primary-foreground'
+                                      >
+                                        <Copy className='mr-2 h-4 w-4' />
+                                        {t('requests.dialogs.jsonViewer.copy')}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                  <div className='bg-background h-64 w-full overflow-auto rounded-lg border p-3'>
+                                    <JsonViewer data={execution.requestHeaders} rootName='' defaultExpanded={false} className='text-xs' />
+                                  </div>
                                 </div>
                               )}
 

@@ -62,6 +62,10 @@ func (Request) Fields() []ent.Field {
 		field.String("model_id").Immutable(),
 		// The format of the request, e.g: openai/chat_completions, claude/messages, openai/response.
 		field.String("format").Immutable().Default("openai/chat_completions"),
+		// Request headers
+		field.JSON("request_headers", objects.JSONRawMessage{}).
+			Optional().
+			Comment("Request headers"),
 		// The original request from the user.
 		// e.g: the user request via OpenAI request format, but the actual request to the provider with Claude format, the request_body is the OpenAI request format.
 		field.JSON("request_body", objects.JSONRawMessage{}).

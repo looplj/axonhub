@@ -202,6 +202,12 @@ func (_c *RequestExecutionCreate) SetNillableMetricsFirstTokenLatencyMs(v *int64
 	return _c
 }
 
+// SetRequestHeaders sets the "request_headers" field.
+func (_c *RequestExecutionCreate) SetRequestHeaders(v objects.JSONRawMessage) *RequestExecutionCreate {
+	_c.mutation.SetRequestHeaders(v)
+	return _c
+}
+
 // SetRequest sets the "request" edge to the Request entity.
 func (_c *RequestExecutionCreate) SetRequest(v *Request) *RequestExecutionCreate {
 	return _c.SetRequestID(v.ID)
@@ -382,6 +388,10 @@ func (_c *RequestExecutionCreate) createSpec() (*RequestExecution, *sqlgraph.Cre
 	if value, ok := _c.mutation.MetricsFirstTokenLatencyMs(); ok {
 		_spec.SetField(requestexecution.FieldMetricsFirstTokenLatencyMs, field.TypeInt64, value)
 		_node.MetricsFirstTokenLatencyMs = &value
+	}
+	if value, ok := _c.mutation.RequestHeaders(); ok {
+		_spec.SetField(requestexecution.FieldRequestHeaders, field.TypeJSON, value)
+		_node.RequestHeaders = value
 	}
 	if nodes := _c.mutation.RequestIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -630,6 +640,24 @@ func (u *RequestExecutionUpsert) ClearMetricsFirstTokenLatencyMs() *RequestExecu
 	return u
 }
 
+// SetRequestHeaders sets the "request_headers" field.
+func (u *RequestExecutionUpsert) SetRequestHeaders(v objects.JSONRawMessage) *RequestExecutionUpsert {
+	u.Set(requestexecution.FieldRequestHeaders, v)
+	return u
+}
+
+// UpdateRequestHeaders sets the "request_headers" field to the value that was provided on create.
+func (u *RequestExecutionUpsert) UpdateRequestHeaders() *RequestExecutionUpsert {
+	u.SetExcluded(requestexecution.FieldRequestHeaders)
+	return u
+}
+
+// ClearRequestHeaders clears the value of the "request_headers" field.
+func (u *RequestExecutionUpsert) ClearRequestHeaders() *RequestExecutionUpsert {
+	u.SetNull(requestexecution.FieldRequestHeaders)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -861,6 +889,27 @@ func (u *RequestExecutionUpsertOne) UpdateMetricsFirstTokenLatencyMs() *RequestE
 func (u *RequestExecutionUpsertOne) ClearMetricsFirstTokenLatencyMs() *RequestExecutionUpsertOne {
 	return u.Update(func(s *RequestExecutionUpsert) {
 		s.ClearMetricsFirstTokenLatencyMs()
+	})
+}
+
+// SetRequestHeaders sets the "request_headers" field.
+func (u *RequestExecutionUpsertOne) SetRequestHeaders(v objects.JSONRawMessage) *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetRequestHeaders(v)
+	})
+}
+
+// UpdateRequestHeaders sets the "request_headers" field to the value that was provided on create.
+func (u *RequestExecutionUpsertOne) UpdateRequestHeaders() *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateRequestHeaders()
+	})
+}
+
+// ClearRequestHeaders clears the value of the "request_headers" field.
+func (u *RequestExecutionUpsertOne) ClearRequestHeaders() *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.ClearRequestHeaders()
 	})
 }
 
@@ -1261,6 +1310,27 @@ func (u *RequestExecutionUpsertBulk) UpdateMetricsFirstTokenLatencyMs() *Request
 func (u *RequestExecutionUpsertBulk) ClearMetricsFirstTokenLatencyMs() *RequestExecutionUpsertBulk {
 	return u.Update(func(s *RequestExecutionUpsert) {
 		s.ClearMetricsFirstTokenLatencyMs()
+	})
+}
+
+// SetRequestHeaders sets the "request_headers" field.
+func (u *RequestExecutionUpsertBulk) SetRequestHeaders(v objects.JSONRawMessage) *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetRequestHeaders(v)
+	})
+}
+
+// UpdateRequestHeaders sets the "request_headers" field to the value that was provided on create.
+func (u *RequestExecutionUpsertBulk) UpdateRequestHeaders() *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateRequestHeaders()
+	})
+}
+
+// ClearRequestHeaders clears the value of the "request_headers" field.
+func (u *RequestExecutionUpsertBulk) ClearRequestHeaders() *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.ClearRequestHeaders()
 	})
 }
 
