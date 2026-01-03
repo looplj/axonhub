@@ -1,11 +1,10 @@
 'use client';
 
-import { IconAlertTriangle, IconArchive } from '@tabler/icons-react';
+import { IconAlertTriangle } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useApiKeysContext } from '../context/apikeys-context';
 import { useBulkArchiveApiKeys } from '../data/apikeys';
-import { ApiKey } from '../data/schema';
 
 export function ApiKeysBulkArchiveDialog() {
   const { t } = useTranslation();
@@ -22,7 +21,6 @@ export function ApiKeysBulkArchiveDialog() {
       setSelectedApiKeys([]);
       closeDialog();
     } catch (error) {
-      console.error('Failed to bulk archive API keys:', error);
     }
   };
 

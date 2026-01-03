@@ -33,13 +33,9 @@ export const useSearch = () => {
   const searchContext = React.useContext(SearchContext);
 
   if (!searchContext) {
-    // Provide a fallback to prevent crashes during HMR or component re-renders
-    console.warn('useSearch called outside of SearchContext.Provider, using fallback');
     return {
       open: false,
-      setOpen: () => {
-        console.warn('Search functionality not available outside of SearchContext.Provider');
-      },
+      setOpen: () => {},
     };
   }
 

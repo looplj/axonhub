@@ -167,7 +167,6 @@ export function useArchiveDataStorage() {
     },
     onError: (error: any) => {
       toast.error(t('dataStorages.messages.archiveError'));
-      console.error('Archive data storage error:', error);
     },
   });
 }
@@ -192,7 +191,6 @@ export function useCreateDataStorage() {
     },
     onError: (error: any) => {
       toast.error(t('dataStorages.errors.createError'));
-      console.error('Create data storage error:', error);
     },
   });
 }
@@ -218,7 +216,6 @@ export function useUpdateDataStorage() {
     },
     onError: (error: any) => {
       toast.error(t('dataStorages.errors.updateError'));
-      console.error('Update data storage error:', error);
     },
   });
 }

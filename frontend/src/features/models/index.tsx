@@ -66,7 +66,7 @@ function ModelsContent() {
     }
   })();
 
-  const { data } = useQueryModels({
+  const { data, isLoading } = useQueryModels({
     ...paginationArgs,
     where: whereClause,
     orderBy: currentOrderBy,
@@ -106,6 +106,7 @@ function ModelsContent() {
       <ModelsTable
         data={data?.edges?.map((edge) => edge.node) || []}
         columns={columns}
+        loading={isLoading}
         pageInfo={data?.pageInfo}
         pageSize={pageSize}
         totalCount={data?.totalCount}

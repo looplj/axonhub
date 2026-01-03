@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import type { ChannelTypeCount } from '../data/channels';
@@ -45,7 +45,7 @@ function groupTypesByPrefix(typeCounts: ChannelTypeCount[]): GroupedTypeCount[] 
     .sort((a, b) => b.totalCount - a.totalCount || a.prefix.localeCompare(b.prefix));
 }
 
-export function ChannelsTypeTabs({ typeCounts, selectedTab, onTabChange }: ChannelsTypeTabsProps) {
+export const ChannelsTypeTabs = memo(function ChannelsTypeTabs({ typeCounts, selectedTab, onTabChange }: ChannelsTypeTabsProps) {
   const { t } = useTranslation();
 
   // Group types by prefix and get top 8
@@ -123,4 +123,4 @@ export function ChannelsTypeTabs({ typeCounts, selectedTab, onTabChange }: Chann
       </div>
     </div>
   );
-}
+});

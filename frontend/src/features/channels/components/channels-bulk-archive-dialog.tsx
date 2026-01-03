@@ -30,7 +30,6 @@ export function ChannelsBulkArchiveDialog() {
       setSelectedChannels([]);
       setOpen(null);
     } catch (error) {
-      console.error('Failed to bulk archive channels:', error);
     }
   };
 

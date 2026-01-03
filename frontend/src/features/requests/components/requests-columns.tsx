@@ -4,17 +4,17 @@ import { useCallback } from 'react';
 import { format } from 'date-fns';
 import { ColumnDef } from '@tanstack/react-table';
 import { zhCN, enUS } from 'date-fns/locale';
+import { FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { extractNumberID } from '@/lib/utils';
 import { formatDuration } from '@/utils/format-duration';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { DataTableColumnHeader } from '@/components/data-table-column-header';
 import { useRequestPermissions } from '../../../hooks/useRequestPermissions';
 import { Request } from '../data/schema';
 import { getStatusColor } from './help';
-
-// Removed unused statusColors - using getStatusColor helper instead
 
 export function useRequestsColumns(): ColumnDef<Request>[] {
   const { t, i18n } = useTranslation();
@@ -162,26 +162,43 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.latency')} />,
       cell: ({ row }) => {
         const request = row.original;
-        if (request.status !== 'completed' || request.metricsLatencyMs == null) {
+        const latencyParts = [];
+
+        if (request.status === 'completed') {
+          if (request.metricsLatencyMs != null) {
+            latencyParts.push(formatDuration(request.metricsLatencyMs));
+          }
+          if (request.stream && request.metricsFirstTokenLatencyMs != null) {
+            latencyParts.push(`TTFT: ${formatDuration(request.metricsFirstTokenLatencyMs)}`);
+          }
+        }
+
+        if (latencyParts.length === 0) {
           return <div className='text-muted-foreground text-xs'>-</div>;
         }
 
-        return <div className='font-mono text-xs'>{formatDuration(request.metricsLatencyMs)}</div>;
+        return <div className='font-mono text-xs'>{latencyParts.join(' | ')}</div>;
       },
       enableSorting: false,
     },
     {
-      id: 'firstTokenLatency',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.firstTokenLatency')} />,
+      id: 'details',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.details')} />,
       cell: ({ row }) => {
-        const request = row.original;
-        if (!request.stream || request.status !== 'completed' || request.metricsFirstTokenLatencyMs == null) {
-          return <div className='text-muted-foreground text-xs'>-</div>;
-        }
+        const handleViewDetails = () => {
+          navigateWithSearch({
+            to: '/project/requests/$requestId',
+            params: { requestId: row.original.id },
+          });
+        };
 
-        return <div className='font-mono text-xs'>{formatDuration(request.metricsFirstTokenLatencyMs)}</div>;
+        return (
+          <Button variant='outline' size='sm' onClick={handleViewDetails}>
+            <FileText className='mr-2 h-4 w-4' />
+            {t('requests.actions.viewDetails')}
+          </Button>
+        );
       },
-      enableSorting: false,
     },
     {
       accessorKey: 'createdAt',

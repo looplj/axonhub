@@ -53,7 +53,6 @@ export default function PermissionDemo() {
         setIsDemoMode(true);
         setUser(demoUser);
       } catch (error) {
-        console.warn('Failed to restore demo state:', error);
         localStorage.removeItem(DEMO_USER_KEY);
         localStorage.removeItem(DEMO_ORIGINAL_USER_KEY);
       }

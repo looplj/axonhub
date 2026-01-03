@@ -17,6 +17,7 @@ import { DateRange } from 'react-day-picker';
 import { useTranslation } from 'react-i18next';
 import { useAnimatedList } from '@/hooks/useAnimatedList';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { ServerSidePagination } from '@/components/server-side-pagination';
 import { Thread, ThreadConnection } from '../data/schema';
 import { ThreadsTableToolbar } from './data-table-toolbar';
@@ -133,11 +134,7 @@ export function ThreadsTable({
           </TableHeader>
           <TableBody className='space-y-1 !bg-[var(--table-background)] p-2'>
             {loading ? (
-              <TableRow className='border-0 !bg-[var(--table-background)]'>
-                <TableCell colSpan={threadsColumns.length} className='h-24 border-0 !bg-[var(--table-background)] text-center'>
-                  {t('common.loading')}
-                </TableCell>
-              </TableRow>
+              <TableSkeleton rows={pageSize} columns={threadsColumns.length} />
             ) : table.getRowModel().rows?.length ? (
               <AnimatePresence initial={false} mode='popLayout'>
                 {table.getRowModel().rows.map((row) => (

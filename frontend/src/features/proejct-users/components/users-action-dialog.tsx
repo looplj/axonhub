@@ -172,9 +172,8 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
         setCanEdit(canEditTarget);
       }
     } catch (error) {
-      console.error('Failed to load roles and scopes:', error);
-      toast.error(t('common.errors.userLoadFailed'));
-    } finally {
+          toast.error(t('common.errors.userLoadFailed'));
+        } finally {
       setLoading(false);
     }
   }, [t, setRoles, setAllScopes]);
@@ -223,7 +222,6 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
       form.reset();
       onOpenChange(false);
     } catch (error) {
-      console.error('Failed to save user:', error);
       toast.error(t('common.errors.userSaveFailed'));
     }
   };

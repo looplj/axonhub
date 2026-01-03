@@ -117,7 +117,6 @@ export function UsersAddToProjectDialog({ currentRow, open, onOpenChange }: Prop
           const projectIds = response.node.projectUsers?.map((pu) => pu.projectID) || [];
           setUserProjectIds(projectIds);
         } catch (error) {
-          console.error('Failed to load user projects:', error);
           setUserProjectIds([]);
         }
       };
@@ -167,7 +166,6 @@ export function UsersAddToProjectDialog({ currentRow, open, onOpenChange }: Prop
         setRoles(rolesResponse.roles.edges.map((edge) => edge.node));
         setAllScopes(scopesResponse.allScopes);
       } catch (error) {
-        console.error('Failed to load roles and scopes:', error);
         toast.error(t('common.errors.userLoadFailed'));
       } finally {
         setLoading(false);
@@ -205,9 +203,8 @@ export function UsersAddToProjectDialog({ currentRow, open, onOpenChange }: Prop
       toast.success(t('users.messages.addToProjectSuccess'));
       form.reset();
       onOpenChange(false);
-    } catch (error: any) {
-      console.error('Failed to add user to project:', error);
-      toast.error(t('users.messages.addToProjectError') + `: ${error.message}`);
+    } catch (error) {
+      toast.error(t('common.errors.somethingWentWrong'));
     } finally {
       setSubmitting(false);
     }

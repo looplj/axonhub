@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react';
 import { SortingState } from '@tanstack/react-table';
 import { useTranslation } from 'react-i18next';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -6,13 +6,14 @@ import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
 import { createColumns } from './components/channels-columns';
-import { ChannelsDialogs } from './components/channels-dialogs';
 import { ChannelsErrorBanner } from './components/channels-error-banner';
 import { ChannelsPrimaryButtons } from './components/channels-primary-buttons';
 import { ChannelsTable } from './components/channels-table';
 import { ChannelsTypeTabs } from './components/channels-type-tabs';
 import ChannelsProvider from './context/channels-context';
 import { useQueryChannels, useChannelTypes, useErrorChannelsCount } from './data/channels';
+
+const ChannelsDialogs = lazy(() => import('./components/channels-dialogs').then((m) => ({ default: m.ChannelsDialogs })));
 
 function ChannelsContent() {
   const { t } = useTranslation();
@@ -61,8 +62,8 @@ function ChannelsContent() {
     return channelTypeCounts.filter(({ type }) => type.startsWith(selectedTypeTab)).map(({ type }) => type);
   }, [selectedTypeTab, channelTypeCounts]);
 
-  // Build where clause with filters
-  const whereClause = (() => {
+  // Build where clause with filters using useMemo
+  const whereClause = useMemo(() => {
     const where: Record<string, string | string[] | boolean> = {};
     if (debouncedNameFilter) {
       where.nameContainsFold = debouncedNameFilter;
@@ -86,9 +87,9 @@ function ChannelsContent() {
       where.errorMessageNotNil = true;
     }
     return Object.keys(where).length > 0 ? where : undefined;
-  })();
+  }, [debouncedNameFilter, tabFilteredTypes, statusFilter, showErrorOnly]);
 
-  const currentOrderBy = (() => {
+  const currentOrderBy = useMemo(() => {
     if (sorting.length === 0) {
       return { field: 'CREATED_AT', direction: 'DESC' } as const;
     }
@@ -107,11 +108,11 @@ function ChannelsContent() {
       default:
         return { field: 'CREATED_AT', direction: 'DESC' } as const;
     }
-  })();
+  }, [sorting]);
 
   const {
     data,
-    isLoading: _isLoading,
+    isLoading,
     error: _error,
   } = useQueryChannels({
     ...paginationArgs,
@@ -145,7 +146,7 @@ function ChannelsContent() {
       setNameFilter(filter);
       resetCursor();
     },
-    [resetCursor, setNameFilter]
+    [resetCursor]
   );
 
   const handleTypeFilterChange = useCallback(
@@ -153,17 +154,16 @@ function ChannelsContent() {
       setTypeFilter(filters);
       resetCursor();
     },
-    [resetCursor, setTypeFilter]
+    [resetCursor]
   );
 
   const handleTabChange = useCallback(
     (tab: string) => {
       setSelectedTypeTab(tab);
-      // Clear manual type filter when switching tabs
       setTypeFilter([]);
       resetCursor();
     },
-    [resetCursor, setSelectedTypeTab]
+    [setSelectedTypeTab, setTypeFilter, resetCursor]
   );
 
   const handleStatusFilterChange = useCallback(
@@ -171,7 +171,7 @@ function ChannelsContent() {
       setStatusFilter(filters);
       resetCursor();
     },
-    [resetCursor, setStatusFilter]
+    [resetCursor]
   );
 
   const handleTagFilterChange = useCallback(
@@ -179,7 +179,7 @@ function ChannelsContent() {
       setTagFilter(filter);
       resetCursor();
     },
-    [resetCursor, setTagFilter]
+    [resetCursor]
   );
 
   const handleModelFilterChange = useCallback(
@@ -187,7 +187,7 @@ function ChannelsContent() {
       setModelFilter(filter);
       resetCursor();
     },
-    [resetCursor, setModelFilter]
+    [resetCursor]
   );
 
   const handleFilterErrorChannels = useCallback(() => {
@@ -200,6 +200,7 @@ function ChannelsContent() {
     resetCursor();
   }, [resetCursor]);
 
+  // Memoize columns with stable reference
   const columns = useMemo(() => createColumns(t), [t]);
 
   return (
@@ -212,7 +213,7 @@ function ChannelsContent() {
       />
       <ChannelsTypeTabs typeCounts={channelTypeCounts} selectedTab={selectedTypeTab} onTabChange={handleTabChange} />
       <ChannelsTable
-        // loading={isLoading}
+        loading={isLoading}
         data={data?.edges?.map((edge) => edge.node) || []}
         columns={columns}
         pageInfo={data?.pageInfo}
@@ -259,7 +260,9 @@ export default function ChannelsManagement() {
         </div>
         <ChannelsContent />
       </Main>
-      <ChannelsDialogs />
+      <Suspense fallback={null}>
+        <ChannelsDialogs />
+      </Suspense>
     </ChannelsProvider>
   );
 }

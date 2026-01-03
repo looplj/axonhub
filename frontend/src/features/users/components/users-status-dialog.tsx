@@ -29,8 +29,8 @@ export function UsersStatusDialog({ open, onOpenChange, currentRow }: Props) {
       });
       onOpenChange(false);
     } catch (error) {
-      console.error('Failed to update user status:', error);
-    }
+          toast.error(t('common.errors.somethingWentWrong'));
+        }
   };
 
   return (

@@ -273,7 +273,6 @@ export function useCreateApiKey() {
     },
     onError: (error) => {
       toast.error(t('apikeys.messages.createError'));
-      console.error('Create API Key error:', error);
     },
   });
 }
@@ -297,7 +296,6 @@ export function useUpdateApiKey() {
     },
     onError: (error) => {
       toast.error(t('apikeys.messages.updateError'));
-      console.error('Update API Key error:', error);
     },
   });
 }
@@ -325,7 +323,6 @@ export function useUpdateApiKeyStatus() {
     },
     onError: (error) => {
       toast.error(t('apikeys.messages.statusUpdateError'));
-      console.error('Update API Key status error:', error);
     },
   });
 }
@@ -347,7 +344,6 @@ export function useUpdateApiKeyProfiles() {
     },
     onError: (error) => {
       toast.error(t('apikeys.messages.profilesUpdateError'));
-      console.error('Update API Key profiles error:', error);
     },
   });
 }
@@ -369,7 +365,6 @@ export function useBulkDisableApiKeys() {
     },
     onError: (error) => {
       toast.error(t('apikeys.messages.bulkDisableError'));
-      console.error('Bulk disable API keys error:', error);
     },
   });
 }
@@ -391,7 +386,6 @@ export function useBulkEnableApiKeys() {
     },
     onError: (error) => {
       toast.error(t('apikeys.messages.bulkEnableError'));
-      console.error('Bulk enable API keys error:', error);
     },
   });
 }
@@ -413,7 +407,6 @@ export function useBulkArchiveApiKeys() {
     },
     onError: (error) => {
       toast.error(t('apikeys.messages.bulkArchiveError'));
-      console.error('Bulk archive API keys error:', error);
     },
   });
 }
