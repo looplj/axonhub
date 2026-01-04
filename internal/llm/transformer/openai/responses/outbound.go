@@ -130,9 +130,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		ToolChoice:           convertToolChoice(llmReq.ToolChoice),
 		StreamOptions:        convertStreamOptions(llmReq.StreamOptions, llmReq.TransformerMetadata),
 		Reasoning:            convertReasoning(llmReq),
+		PromptCacheKey:       llmReq.PromptCacheKey,
 		Include:              xmap.GetStringSlice(llmReq.TransformerMetadata, "include"),
 		MaxToolCalls:         xmap.GetInt64Ptr(llmReq.TransformerMetadata, "max_tool_calls"),
-		PromptCacheKey:       xmap.GetStringPtr(llmReq.TransformerMetadata, "prompt_cache_key"),
 		PromptCacheRetention: xmap.GetStringPtr(llmReq.TransformerMetadata, "prompt_cache_retention"),
 		Truncation:           xmap.GetStringPtr(llmReq.TransformerMetadata, "truncation"),
 	}

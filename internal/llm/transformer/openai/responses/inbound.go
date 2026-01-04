@@ -181,6 +181,7 @@ func convertToLLMRequest(req *Request) (*llm.Request, error) {
 		SafetyIdentifier:    req.SafetyIdentifier,
 		ServiceTier:         req.ServiceTier,
 		ParallelToolCalls:   req.ParallelToolCalls,
+		PromptCacheKey:      req.PromptCacheKey,
 		TransformerMetadata: map[string]any{},
 		TransformOptions:    llm.TransformOptions{},
 	}
@@ -192,10 +193,6 @@ func convertToLLMRequest(req *Request) (*llm.Request, error) {
 
 	if req.MaxToolCalls != nil {
 		chatReq.TransformerMetadata["max_tool_calls"] = req.MaxToolCalls
-	}
-
-	if req.PromptCacheKey != nil {
-		chatReq.TransformerMetadata["prompt_cache_key"] = req.PromptCacheKey
 	}
 
 	if req.PromptCacheRetention != nil {
