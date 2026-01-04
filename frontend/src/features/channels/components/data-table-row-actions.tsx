@@ -12,6 +12,7 @@ import {
   IconNetwork,
   IconCheck,
   IconWeight,
+  IconTransform,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -112,6 +113,19 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           >
             <IconNetwork size={16} className='mr-2' />
             {t('channels.dialogs.proxy.action')}
+          </DropdownMenuItem>
+        )}
+
+        {/* Transform Options - requires write permission */}
+        {channelPermissions.canWrite && (
+          <DropdownMenuItem
+            onClick={() => {
+              setCurrentRow(row.original);
+              setOpen('transformOptions');
+            }}
+          >
+            <IconTransform size={16} className='mr-2' />
+            {t('channels.dialogs.transformOptions.action')}
           </DropdownMenuItem>
         )}
 

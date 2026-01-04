@@ -318,6 +318,17 @@
           "placeholder": "为此渠道输入备注或说明...",
           "description": "添加关于此渠道的备注或说明以供参考"
         },
+        "transformOptions": {
+          "label": "转换选项",
+          "forceArrayInstructions": {
+            "label": "强制数组指令",
+            "description": "强制渠道接受数组格式的指令"
+          },
+          "forceArrayInputs": {
+            "label": "强制数组输入",
+            "description": "强制渠道接受数组格式的输入"
+          }
+        },
         "modelName": {
           "label": "模型名称",
           "placeholder": "输入模型名称"
@@ -494,6 +505,15 @@
         "testSuccess": "✅ 连接成功",
         "testFailed": "❌ 连接失败",
         "latency": "耗时"
+      },
+      "transformOptions": {
+        "action": "转换选项",
+        "title": "转换选项",
+        "description": "配置 {{name}} 的转换选项。",
+        "options": {
+          "title": "转换设置",
+          "description": "配置渠道如何转换请求数据"
+        }
       },
       "bulkOrdering": {
         "title": "批量渠道排序",

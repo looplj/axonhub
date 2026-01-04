@@ -347,6 +347,9 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	// Use the pre-resolved ActualModel from the candidate
 	llmRequest.Model = candidate.ActualModel
 
+	// Apply channel transform options to create a new request
+	llmRequest = applyTransformOptions(llmRequest, p.state.CurrentChannel.Settings)
+
 	channelRequest, err := p.wrapped.TransformRequest(ctx, llmRequest)
 	if err != nil {
 		return nil, err

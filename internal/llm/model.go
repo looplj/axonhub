@@ -222,6 +222,9 @@ type Request struct {
 	// e.g. the request from the chat/completions endpoint is in the openai/chat_completion format.
 	APIFormat APIFormat `json:"api_format,omitempty"`
 
+	// TransformOptions specifies the common transform options for the request.
+	TransformOptions TransformOptions `json:"transform_options,omitzero"`
+
 	// TransformerMetadata stores transformer-specific metadata for preserving format during transformations.
 	// This is a help field and will not be sent to the llm service.
 	// Keys used:

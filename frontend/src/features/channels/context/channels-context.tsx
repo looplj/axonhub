@@ -23,7 +23,8 @@ type ChannelsDialogType =
   | 'bulkApplyTemplate'
   | 'errorResolved'
   | 'weight'
-  | 'viewModels';
+  | 'viewModels'
+  | 'transformOptions';
 
 interface ChannelsContextType {
   open: ChannelsDialogType | null;
