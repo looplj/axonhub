@@ -60,9 +60,9 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 
 	if input.APIKey != nil && *input.APIKey != "" {
 		apiKey = *input.APIKey
-	} else if input.ChannelID != nil {
-		// Get API key from channel if not provided
-		// Query channel to get API key
+	}
+
+	if input.ChannelID != nil {
 		ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 		ch, err := f.channelService.entFromContext(ctx).Channel.Get(ctx, *input.ChannelID)
@@ -73,7 +73,10 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 			}, nil
 		}
 
-		apiKey = ch.Credentials.APIKey
+		if apiKey == "" {
+			apiKey = ch.Credentials.APIKey
+		}
+
 		if ch.Settings != nil {
 			proxyConfig = ch.Settings.Proxy
 		}
