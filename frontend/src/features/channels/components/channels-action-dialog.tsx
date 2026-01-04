@@ -604,14 +604,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           .map((key) => key.trim())
           .filter((key) => key.length > 0)[0] || '';
 
-      // If in edit mode and user has provided a new API key, use it instead of channelID
-      const hasEditedApiKey = isEdit && firstApiKey && firstApiKey.length > 0;
-
       const result = await fetchModels.mutateAsync({
         channelType,
         baseURL,
-        apiKey: hasEditedApiKey || !isEdit ? firstApiKey : undefined,
-        channelID: hasEditedApiKey || !isEdit ? undefined : currentRow?.id,
+        apiKey: !isEdit ? firstApiKey : firstApiKey || undefined,
+        channelID: isEdit ? currentRow?.id : undefined,
       });
 
       if (result.error) {
@@ -626,7 +623,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         setShowFetchedModelsPanel(true);
         setSelectedFetchedModels([]);
         setFetchedModelsSearch('');
-        setShowAddedModelsOnly(false);
+        setShowNotAddedModelsOnly(false);
       }
     } catch (_error) {
       // Error is already handled by the mutation
@@ -705,7 +702,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     setShowFetchedModelsPanel(false);
     setSelectedFetchedModels([]);
     setFetchedModelsSearch('');
-    setShowAddedModelsOnly(false);
+    setShowNotAddedModelsOnly(false);
   }, []);
 
   // Close supported models panel handler
@@ -759,7 +756,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             setFetchedModelsSearch('');
             setSupportedModelsSearch('');
             setSelectedFetchedModels([]);
-            setShowAddedModelsOnly(false);
+            setShowNotAddedModelsOnly(false);
             setSupportedModelsExpanded(false);
             // Reset provider and API format state
             if (initialRow) {
