@@ -1,0 +1,94 @@
+name: Optimization / 优化建议
+description: Suggest an optimization or performance improvement / 提出优化或性能改进建议
+title: "[Optimize/优化]: "
+labels: ["optimization"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an optimization!
+        感谢你提出优化建议！
+
+        Please search existing issues before submitting to avoid duplicates.
+        提交前请先搜索现有 issues，避免重复。
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist / 提交前检查
+      description: Please confirm the following before submitting / 提交前请确认以下内容
+      options:
+        - label: I have searched the [existing issues](https://github.com/looplj/axonhub/issues) and this optimization has not been suggested / 我已搜索现有 issues，此优化建议尚未被提出
+          required: true
+        - label: I have read the [documentation](https://github.com/looplj/axonhub#readme) / 我已阅读文档
+          required: true
+
+  - type: textarea
+    id: current-state
+    attributes:
+      label: Current State / 当前状态
+      description: Describe the current implementation or behavior / 描述当前的实现或行为
+      placeholder: Describe the current situation... / 描述当前情况...
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Bottleneck / 问题或瓶颈
+      description: What is the specific problem, bottleneck, or inefficiency? / 具体的问题、瓶颈或低效之处是什么？
+      placeholder: Describe the performance issue... / 描述性能问题...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Optimization / 优化方案
+      description: Describe the optimization you're proposing / 描述你提出的优化方案
+      placeholder: Describe the optimization approach... / 描述优化方法...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-benefit
+    attributes:
+      label: Expected Benefit / 期望收益
+      description: What improvements do you expect? (e.g., faster response time, reduced memory usage, better scalability) / 你期望获得哪些改进？（例如：更快的响应时间、更低的内存使用、更好的可扩展性）
+      placeholder: Describe the expected improvements... / 描述期望的改进...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: optimization-type
+    attributes:
+      label: Optimization Type / 优化类型
+      description: What type of optimization is this? / 这是哪种类型的优化？
+      options:
+        - UI / UI
+        - 性能 / Performance
+        - 兼容性 / Compatibility
+        - 其他 / Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: affected-area
+    attributes:
+      label: Affected Area / 影响区域
+      description: Which part of the system does this optimization affect? / 此优化影响系统的哪个部分？
+      options:
+        - Channel Management / 渠道管理
+        - Logging / Monitoring / 日志/监控
+        - Transformer / 转换器
+        - Frontend / 前端
+        - Configuration / 配置
+        - Other / 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context / 其他补充信息
+      description: Add any other context, screenshots, or information about the optimization here / 在此补充其他上下文、截图或更多信息
