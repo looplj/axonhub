@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from 'zod';
 
 /**
  * Shared password validation rules
@@ -12,7 +12,7 @@ export const passwordValidation = {
     minLength: 'auth.signIn.validation.passwordMinLength',
     pattern: 'auth.signIn.validation.passwordPattern',
   },
-}
+};
 
 /**
  * Enhanced password validation with stronger security requirements
@@ -23,19 +23,19 @@ export const passwordValidation = {
  */
 export const validatePassword = (password: string, t: (key: string) => string) => {
   if (!password) {
-    return t(passwordValidation.messages.required)
+    return t(passwordValidation.messages.required);
   }
 
   if (password.length < passwordValidation.minLength) {
-    return t(passwordValidation.messages.minLength)
+    return t(passwordValidation.messages.minLength);
   }
 
   if (!passwordValidation.pattern.test(password)) {
-    return t(passwordValidation.messages.pattern)
+    return t(passwordValidation.messages.pattern);
   }
 
-  return null
-}
+  return null;
+};
 
 /**
  * Zod schema for password validation
@@ -46,7 +46,7 @@ export const passwordSchema = (t: (key: string) => string) =>
     .min(1, { message: t(passwordValidation.messages.required) })
     .min(passwordValidation.minLength, {
       message: t(passwordValidation.messages.minLength),
-    })
+    });
 // For the campatibility with the old version, we don't use the pattern.
 // .regex(passwordValidation.pattern, {
 //   message: t(passwordValidation.messages.pattern)
@@ -64,4 +64,4 @@ export const passwordConfirmationSchema = (t: (key: string) => string) =>
     .refine((data) => data.password === data.confirmPassword, {
       message: t('users.validation.passwordsNotMatch'),
       path: ['confirmPassword'],
-    })
+    });

@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { DateRange } from 'react-day-picker'
+import { useState } from 'react';
 import {
   ColumnFiltersState,
   RowData,
@@ -12,43 +11,44 @@ import {
   getFilteredRowModel,
   getSortedRowModel,
   useReactTable,
-} from '@tanstack/react-table'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Trace, TraceConnection } from '../data/schema'
-import { DataTableToolbar } from './data-table-toolbar'
-import { ServerSidePagination } from '@/components/server-side-pagination'
-import { useTracesColumns } from './traces-columns'
-import { useTranslation } from 'react-i18next'
+} from '@tanstack/react-table';
+import { motion, AnimatePresence } from 'framer-motion';
+import { DateRange } from 'react-day-picker';
+import { useTranslation } from 'react-i18next';
+import { useAnimatedList } from '@/hooks/useAnimatedList';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
+import { ServerSidePagination } from '@/components/server-side-pagination';
+import { Trace, TraceConnection } from '../data/schema';
+import { DataTableToolbar } from './data-table-toolbar';
+import { useTracesColumns } from './traces-columns';
+
+const MotionTableRow = motion(TableRow);
 
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData extends RowData, TValue> {
-    className: string
+    className: string;
   }
 }
 
 interface TracesTableProps {
-  data: Trace[]
-  loading?: boolean
-  pageInfo?: TraceConnection['pageInfo']
-  pageSize: number
-  totalCount?: number
-  dateRange?: DateRange
-  traceIdFilter: string
-  onNextPage: () => void
-  onPreviousPage: () => void
-  onPageSizeChange: (pageSize: number) => void
-  onDateRangeChange: (range: DateRange | undefined) => void
-  onTraceIdFilterChange: (traceId: string) => void
-  onRefresh: () => void
-  showRefresh: boolean
+  data: Trace[];
+  loading?: boolean;
+  pageInfo?: TraceConnection['pageInfo'];
+  pageSize: number;
+  totalCount?: number;
+  dateRange?: DateRange;
+  traceIdFilter: string;
+  onNextPage: () => void;
+  onPreviousPage: () => void;
+  onPageSizeChange: (pageSize: number) => void;
+  onDateRangeChange: (range: DateRange | undefined) => void;
+  onTraceIdFilterChange: (traceId: string) => void;
+  onRefresh: () => void;
+  showRefresh: boolean;
+  autoRefresh?: boolean;
+  onAutoRefreshChange?: (enabled: boolean) => void;
 }
 
 export function TracesTable({
@@ -66,16 +66,21 @@ export function TracesTable({
   onTraceIdFilterChange,
   onRefresh,
   showRefresh,
+  autoRefresh = false,
+  onAutoRefreshChange,
 }: TracesTableProps) {
-  const { t } = useTranslation()
-  const tracesColumns = useTracesColumns()
-  const [sorting, setSorting] = useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
-  const [rowSelection, setRowSelection] = useState({})
+  const { t } = useTranslation();
+  const tracesColumns = useTracesColumns();
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [rowSelection, setRowSelection] = useState({});
+
+  const displayedData = useAnimatedList(data, autoRefresh);
 
   const table = useReactTable({
-    data: data,
+    data: displayedData,
+    getRowId: (row) => row.id,
     columns: tracesColumns,
     state: {
       sorting,
@@ -94,21 +99,24 @@ export function TracesTable({
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     manualPagination: true,
-  })
+    manualFiltering: true,
+  });
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
-      <DataTableToolbar 
-        table={table} 
+      <DataTableToolbar
+        table={table}
         dateRange={dateRange}
         onDateRangeChange={onDateRangeChange}
         traceIdFilter={traceIdFilter}
         onTraceIdFilterChange={onTraceIdFilterChange}
-        onRefresh={onRefresh} 
-        showRefresh={showRefresh} 
+        onRefresh={onRefresh}
+        showRefresh={showRefresh}
+        autoRefresh={autoRefresh}
+        onAutoRefreshChange={onAutoRefreshChange}
       />
-      <div className='mt-4 flex-1 overflow-auto rounded-2xl shadow-soft border border-[var(--table-border)] relative'>
-        <Table data-testid='traces-table' className='bg-background rounded-2xl border-separate border-spacing-0'>
+      <div className='shadow-soft relative mt-4 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
+        <Table data-testid='traces-table' className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className='group/row border-0'>
@@ -117,56 +125,51 @@ export function TracesTable({
                     <TableHead
                       key={header.id}
                       colSpan={header.colSpan}
-                      className={`${header.column.columnDef.meta?.className ?? ''} text-xs font-semibold text-muted-foreground uppercase tracking-wider border-0`}
+                      className={`${header.column.columnDef.meta?.className ?? ''} text-muted-foreground border-0 text-xs font-semibold tracking-wider uppercase`}
                     >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
-                  )
+                  );
                 })}
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody className='p-2 space-y-1 !bg-background'>
+          <TableBody className='space-y-1 !bg-[var(--table-background)] p-2'>
             {loading ? (
-              <TableRow className='border-0 !bg-background'>
-                <TableCell
-                  colSpan={tracesColumns.length}
-                  className='h-24 text-center border-0 !bg-background'
-                >
-                  {t('common.loading')}
-                </TableCell>
-              </TableRow>
+              <TableSkeleton rows={pageSize} columns={tracesColumns.length} />
             ) : table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && 'selected'}
-                  className='group/row table-row-hover rounded-xl !bg-background border-0 transition-all duration-200 ease-in-out'
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
-                      className={`${cell.column.columnDef.meta?.className ?? ''} px-4 py-3 border-0 !bg-background`}
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              <AnimatePresence initial={false} mode='popLayout'>
+                {table.getRowModel().rows.map((row) => (
+                  <MotionTableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && 'selected'}
+                    initial={{ opacity: 0, y: -20, height: 0 }}
+                    animate={{ opacity: 1, y: 0, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{
+                      type: 'spring',
+                      stiffness: 500,
+                      damping: 30,
+                      mass: 1,
+                      opacity: { duration: 0.2 },
+                    }}
+                    layout
+                    className='group/row hover:bg-muted/50 data-[state=selected]:bg-muted'
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell
+                        key={cell.id}
+                        className={`${cell.column.columnDef.meta?.className ?? ''} border-b border-[var(--table-border)] py-3 group-last/row:border-0`}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+                  </MotionTableRow>
+                ))}
+              </AnimatePresence>
             ) : (
-              <TableRow className='!bg-background'>
-                <TableCell
-                  colSpan={tracesColumns.length}
-                  className='h-24 text-center !bg-background'
-                >
+              <TableRow className='!bg-[var(--table-background)]'>
+                <TableCell colSpan={tracesColumns.length} className='h-24 !bg-[var(--table-background)] text-center'>
                   {t('common.noData')}
                 </TableCell>
               </TableRow>
@@ -187,5 +190,5 @@ export function TracesTable({
         />
       </div>
     </div>
-  )
+  );
 }

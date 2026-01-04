@@ -33,7 +33,7 @@ AxonHub 是一个 All-in-one AI 开发平台，提供统一的 API 网关、项�
 1. [**统一 API** Unified API](docs/zh/api-reference/unified-api.md)：兼容 OpenAI 与 Anthropic 的接口，配合转换管线实现模型互换与映射，无需改动现有代码。
 2. [**追踪 / 线程** Tracing / Threads](docs/zh/guides/tracing.md)：线程级追踪实时记录完整调用链路，提升可观测性与问题定位效率。
 3. [**细粒度权限** Fine-grained Permission](docs/zh/guides/permissions.md)：基于 RBAC 的权限策略，帮助团队精细管理访问控制、配额与数据隔离。
-4. [**自适应负载均衡** Adaptive Load Balancing](docs/zh/guides/load-balance.md): 智能多策略负载均衡，自动选择最优 AI 通道，确保高可用性和最佳性能。
+4. [**自适应负载均衡** Adaptive Load Balancing](docs/zh/guides/load-balance.md): 智能多策略负载均衡，自动选择最优 AI 渠道，确保高可用性和最佳性能。
 
 ---
 
@@ -82,14 +82,21 @@ AxonHub 是一个 All-in-one AI 开发平台，提供统一的 API 网关、项�
       渠道管理
     </td>
     <td align="center">
+      <a href="docs/screenshots/axonhub-models.png">
+        <img src="docs/screenshots/axonhub-models.png" alt="模型" width="250"/>
+      </a>
+      <br/>
+      模型
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
       <a href="docs/screenshots/axonhub-trace.png">
         <img src="docs/screenshots/axonhub-trace.png" alt="追踪查看" width="250"/>
       </a>
       <br/>
       追踪查看
     </td>
-  </tr>
-  <tr>
     <td align="center">
       <a href="docs/screenshots/axonhub-requests.png">
         <img src="docs/screenshots/axonhub-requests.png" alt="请求监控" width="250"/>
@@ -103,13 +110,6 @@ AxonHub 是一个 All-in-one AI 开发平台，提供统一的 API 网关、项�
       </a>
       <br/>
       用量日志
-    </td>
-    <td align="center">
-      <a href="docs/screenshots/axonhub-system.png">
-        <img src="docs/screenshots/axonhub-system.png" alt="系统设置" width="250"/>
-      </a>
-      <br/>
-      系统设置
     </td>
   </tr>
 </table>
@@ -324,72 +324,31 @@ axonhub config check
 
 ### 2. Channel 配置 | Channel Configuration
 
-在管理界面中配置 AI 提供商渠道：
+在管理界面中配置 AI 提供商渠道。关于渠道配置的详细信息，包括模型映射、参数覆盖和故障排除，请参阅 [渠道配置指南](docs/zh/guides/channel-management.md)。
 
-```yaml
-# OpenAI 渠道示例
-name: "openai"
-type: "openai"
-base_url: "https://api.openai.com/v1"
-credentials:
-  api_key: "your-openai-key"
-supported_models: ["gpt-5", "gpt-4o"]
-```
+### 3. 模型管理 | Model Management
 
-#### 2.1 测试连接
+AxonHub 提供灵活的模型管理系统，支持通过模型关联将抽象模型映射到特定渠道和模型实现。这使您能够：
 
-点击测试按钮，如果测试成功，说明配置正确。
+- **统一模型接口** - 使用抽象模型 ID（如 `gpt-4`、`claude-3-opus`）替代渠道特定的名称
+- **智能渠道选择** - 基于关联规则和负载均衡自动将请求路由到最优渠道
+- **灵活的映射策略** - 支持精确的渠道-模型匹配、正则表达式模式和基于标签的选择
+- **基于优先级的回退** - 配置多个具有优先级的关联以实现自动故障转移
 
-#### 2.2 启用渠道
+关于模型管理的全面信息，包括关联类型、配置示例和最佳实践，请参阅 [模型管理指南](docs/zh/guides/model-management.md)。
 
-测试成功后，点击启用按钮，启用该渠道。
+### 4. 创建 API Key | Create API Keys
 
-#### 2.3 模型映射 | Model Mappings
+创建 API 密钥以验证您的应用程序与 AxonHub 的连接。每个 API 密钥可以配置多个配置文件（Profile），用于定义：
 
-当请求中的模型名称与上游提供商支持的名称不一致时，可以通过模型映射在网关侧自动重写模型。
+- **模型映射** - 使用精确匹配或正则表达式模式将用户请求的模型转换为实际可用的模型
+- **渠道限制** - 通过渠道 ID 或标签限制 API 密钥可以使用的渠道
+- **模型访问控制** - 控制特定配置文件可以访问的模型
+- **配置文件切换** - 通过激活不同的配置文件即时更改行为
 
-- 将不支持或旧版本的模型 ID 映射到可用的替代模型
-- 为多渠道场景设置回退逻辑（不同渠道对应不同提供商）
+关于 API 密钥配置文件的详细信息，包括配置示例、验证规则和最佳实践，请参阅 [API 密钥配置文件指南](docs/zh/guides/api-key-profiles.md)。
 
-```yaml
-# 示例：将产品自定义别名映射到上游模型
-settings:
-  modelMappings:
-    - from: "gpt-4o-mini"
-      to: "gpt-4o"
-    - from: "claude-3-sonnet"
-      to: "claude-3.5-sonnet"
-```
-
-> 注意：AxonHub 仅接受映射到 `supported_models` 中已声明的模型。
-
-#### 2.4 请求参数覆盖 | Override Parameters
-
-请求参数覆盖允许为渠道强制设置默认参数，无论上游请求携带了什么内容。配置时提供一个 JSON 对象，系统会在转发请求前自动合并。
-
-- 支持顶层字段（如 `temperature`、`max_tokens`、`top_p`）
-- 支持使用点分写法的嵌套字段（如 `response_format.type`）
-- 若 JSON 无法解析，系统会记录告警日志并保持原始请求不变
-
-```yaml
-# 示例：强制输出确定性的 JSON 结构
-settings:
-  overrideParameters: |
-    {
-      "temperature": 0.3,
-      "max_tokens": 1024,
-      "response_format.type": "json_object"
-    }
-```
-
-
-### 3. 添加用户 | Add Users
-
-1. 创建用户账户
-2. 分配角色和权限
-3. 生成 API 密钥
-
-### 4. Claude Code/Codex 使用 | Claude Code Integration
+### 5. Claude Code/Codex 使用 | Claude Code Integration
 
 关于如何在 Claude Code 与 Claude Codex 中配置与 AxonHub 的集成、排查常见问题以及结合模型配置文件工作流的最佳实践，请参阅专门的 [Claude Code & Codex 集成指南](docs/zh/guides/claude-code-integration.md)。
 
@@ -397,38 +356,9 @@ settings:
 
 ---
 
-### 5. 使用 SDK | SDK Usage
+### 6. 使用 SDK | SDK Usage
 
-#### Python SDK
-```python
-from openai import OpenAI
-
-client = OpenAI(
-    api_key="your-axonhub-api-key",
-    base_url="http://localhost:8090/v1"
-)
-
-response = client.chat.completions.create(
-    model="gpt-4o",
-    messages=[{"role": "user", "content": "Hello!"}]
-)
-print(response.choices[0].message.content)
-```
-
-#### Node.js SDK
-```javascript
-import OpenAI from 'openai';
-
-const openai = new OpenAI({
-  apiKey: 'your-axonhub-api-key',
-  baseURL: 'http://localhost:8090/v1',
-});
-
-const completion = await openai.chat.completions.create({
-  messages: [{ role: 'user', content: 'Hello!' }],
-  model: 'gpt-4o',
-});
-```
+详细的 SDK 使用示例和代码示例，请参阅 [Unified API 文档](docs/zh/api-reference/unified-api.md)。
 
 
 ## 🛠️ 开发指南

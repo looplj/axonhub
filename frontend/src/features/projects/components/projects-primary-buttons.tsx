@@ -1,12 +1,12 @@
-import { IconPlus } from '@tabler/icons-react'
-import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
-import { PermissionGuard } from '@/components/permission-guard'
-import { useProjectsContext } from '../context/projects-context'
+import { IconPlus } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
+import { PermissionGuard } from '@/components/permission-guard';
+import { useProjectsContext } from '../context/projects-context';
 
 export function ProjectsPrimaryButtons() {
-  const { t } = useTranslation()
-  const { setIsCreateDialogOpen } = useProjectsContext()
+  const { t } = useTranslation();
+  const { setIsCreateDialogOpen } = useProjectsContext();
 
   return (
     <div className='flex items-center space-x-2'>
@@ -18,5 +18,5 @@ export function ProjectsPrimaryButtons() {
         </Button>
       </PermissionGuard>
     </div>
-  )
+  );
 }

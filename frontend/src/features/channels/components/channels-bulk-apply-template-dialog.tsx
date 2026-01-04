@@ -1,42 +1,42 @@
-import { useState, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import { Loader2, AlertCircle } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Channel, ChannelType } from '../data/schema'
-import { useChannelOverrideTemplates, useApplyChannelOverrideTemplate } from '../data/templates'
+import { useState, useMemo } from 'react';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Channel, ChannelType } from '../data/schema';
+import { useChannelOverrideTemplates, useApplyChannelOverrideTemplate } from '../data/templates';
 
 interface Props {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  selectedChannels: Channel[]
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  selectedChannels: Channel[];
 }
 
 export function ChannelsBulkApplyTemplateDialog({ open, onOpenChange, selectedChannels }: Props) {
-  const { t } = useTranslation()
-  const applyTemplate = useApplyChannelOverrideTemplate()
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
-  const [templateSearchOpen, setTemplateSearchOpen] = useState(false)
-  const [templateSearchValue, setTemplateSearchValue] = useState('')
+  const { t } = useTranslation();
+  const applyTemplate = useApplyChannelOverrideTemplate();
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [templateSearchOpen, setTemplateSearchOpen] = useState(false);
+  const [templateSearchValue, setTemplateSearchValue] = useState('');
 
   // Validate all selected channels have the same type
   const channelTypeValidation = useMemo(() => {
     if (selectedChannels.length === 0) {
-      return { valid: false, channelType: null, error: t('channels.templates.bulk.noChannelsSelected') }
+      return { valid: false, channelType: null, error: t('channels.templates.bulk.noChannelsSelected') };
     }
 
-    const types = new Set(selectedChannels.map((ch) => ch.type))
+    const types = new Set(selectedChannels.map((ch) => ch.type));
     if (types.size > 1) {
-      return { valid: false, channelType: null, error: t('channels.templates.bulk.multipleTypesError') }
+      return { valid: false, channelType: null, error: t('channels.templates.bulk.multipleTypesError') };
     }
 
-    const channelType = Array.from(types)[0]
-    return { valid: true, channelType, error: null }
-  }, [selectedChannels, t])
+    const channelType = Array.from(types)[0];
+    return { valid: true, channelType, error: null };
+  }, [selectedChannels, t]);
 
   // Fetch templates for the channel type
   const { data: templatesData, isLoading } = useChannelOverrideTemplates(
@@ -48,40 +48,38 @@ export function ChannelsBulkApplyTemplateDialog({ open, onOpenChange, selectedCh
     {
       enabled: open && channelTypeValidation.valid,
     }
-  )
+  );
 
-  const templates = templatesData?.edges?.map((edge) => edge.node) || []
+  const templates = templatesData?.edges?.map((edge) => edge.node) || [];
 
   const handleApply = async () => {
-    if (!selectedTemplateId || !channelTypeValidation.valid) return
+    if (!selectedTemplateId || !channelTypeValidation.valid) return;
 
     try {
       await applyTemplate.mutateAsync({
         templateID: selectedTemplateId,
         channelIDs: selectedChannels.map((ch) => ch.id),
         mode: 'MERGE',
-      })
-      onOpenChange(false)
-      setSelectedTemplateId(null)
+      });
+      onOpenChange(false);
+      setSelectedTemplateId(null);
     } catch (error) {
       // Error already handled by mutation
     }
-  }
+  };
 
   const handleClose = () => {
-    onOpenChange(false)
-    setSelectedTemplateId(null)
-    setTemplateSearchValue('')
-  }
+    onOpenChange(false);
+    setSelectedTemplateId(null);
+    setTemplateSearchValue('');
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className='sm:max-w-[600px]'>
         <DialogHeader>
           <DialogTitle>{t('channels.templates.bulk.title')}</DialogTitle>
-          <DialogDescription>
-            {t('channels.templates.bulk.description', { count: selectedChannels.length })}
-          </DialogDescription>
+          <DialogDescription>{t('channels.templates.bulk.description', { count: selectedChannels.length })}</DialogDescription>
         </DialogHeader>
 
         <div className='space-y-4 py-4'>
@@ -96,7 +94,7 @@ export function ChannelsBulkApplyTemplateDialog({ open, onOpenChange, selectedCh
 
           {/* Channel Type Info */}
           {channelTypeValidation.valid && (
-            <div className='rounded-md border bg-muted/50 p-3'>
+            <div className='bg-muted/50 rounded-md border p-3'>
               <p className='text-muted-foreground text-sm'>
                 {t('channels.templates.bulk.channelTypeInfo', {
                   type: channelTypeValidation.channelType,
@@ -146,15 +144,13 @@ export function ChannelsBulkApplyTemplateDialog({ open, onOpenChange, selectedCh
                             key={template.id}
                             value={template.id}
                             onSelect={() => {
-                              setSelectedTemplateId(template.id)
-                              setTemplateSearchOpen(false)
+                              setSelectedTemplateId(template.id);
+                              setTemplateSearchOpen(false);
                             }}
                           >
                             <div className='flex flex-col'>
                               <span className='font-medium'>{template.name}</span>
-                              {template.description && (
-                                <span className='text-muted-foreground text-xs'>{template.description}</span>
-                              )}
+                              {template.description && <span className='text-muted-foreground text-xs'>{template.description}</span>}
                             </div>
                           </CommandItem>
                         ))}
@@ -178,10 +174,7 @@ export function ChannelsBulkApplyTemplateDialog({ open, onOpenChange, selectedCh
           <Button variant='outline' onClick={handleClose} disabled={applyTemplate.isPending}>
             {t('common.buttons.cancel')}
           </Button>
-          <Button
-            onClick={handleApply}
-            disabled={!selectedTemplateId || !channelTypeValidation.valid || applyTemplate.isPending}
-          >
+          <Button onClick={handleApply} disabled={!selectedTemplateId || !channelTypeValidation.valid || applyTemplate.isPending}>
             {applyTemplate.isPending ? (
               <>
                 <Loader2 className='mr-2 h-4 w-4 animate-spin' />
@@ -194,5 +187,5 @@ export function ChannelsBulkApplyTemplateDialog({ open, onOpenChange, selectedCh
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

@@ -1,34 +1,34 @@
-'use client'
+'use client';
 
-import { useEffect, useRef } from 'react'
-import { driver } from 'driver.js'
-import 'driver.js/dist/driver.css'
-import { useTranslation } from 'react-i18next'
-import { useCompleteSystemModelSettingOnboarding } from '@/features/system/data/system'
+import { useEffect, useRef } from 'react';
+import { driver } from 'driver.js';
+import 'driver.js/dist/driver.css';
+import { useTranslation } from 'react-i18next';
+import { useCompleteSystemModelSettingOnboarding } from '@/features/system/data/system';
 
 interface ModelsOnboardingFlowProps {
-  onComplete?: () => void
+  onComplete?: () => void;
 }
 
 export function ModelsOnboardingFlow({ onComplete }: ModelsOnboardingFlowProps) {
-  const { t } = useTranslation()
-  const completeOnboarding = useCompleteSystemModelSettingOnboarding()
-  const hasStartedRef = useRef(false)
+  const { t } = useTranslation();
+  const completeOnboarding = useCompleteSystemModelSettingOnboarding();
+  const hasStartedRef = useRef(false);
 
   useEffect(() => {
     if (hasStartedRef.current) {
-      return
+      return;
     }
 
-    const settingsButton = document.querySelector('[data-settings-button]') as HTMLButtonElement
+    const settingsButton = document.querySelector('[data-settings-button]') as HTMLButtonElement;
     if (!settingsButton) {
-      return
+      return;
     }
 
-    hasStartedRef.current = true
+    hasStartedRef.current = true;
 
-    let driverObj: ReturnType<typeof driver> | null = null
-    let clickHandlerAdded = false
+    let driverObj: ReturnType<typeof driver> | null = null;
+    let clickHandlerAdded = false;
 
     setTimeout(() => {
       driverObj = driver({
@@ -46,38 +46,38 @@ export function ModelsOnboardingFlow({ onComplete }: ModelsOnboardingFlowProps) 
               showButtons: [],
             },
             onHighlighted: () => {
-              if (clickHandlerAdded) return
-              clickHandlerAdded = true
+              if (clickHandlerAdded) return;
+              clickHandlerAdded = true;
 
-              const highlightedElement = document.querySelector('[data-settings-button]') as HTMLButtonElement
-              if (!highlightedElement) return
+              const highlightedElement = document.querySelector('[data-settings-button]') as HTMLButtonElement;
+              if (!highlightedElement) return;
 
               const handleClick = () => {
                 if (driverObj) {
-                  driverObj.destroy()
-                  driverObj = null
+                  driverObj.destroy();
+                  driverObj = null;
                 }
                 completeOnboarding.mutate(undefined, {
                   onSuccess: () => {
-                    onComplete?.()
+                    onComplete?.();
                   },
-                })
-              }
+                });
+              };
 
-              highlightedElement.addEventListener('click', handleClick, { once: true })
+              highlightedElement.addEventListener('click', handleClick, { once: true });
             },
           },
         ],
-      })
-      driverObj.drive()
-    }, 500)
+      });
+      driverObj.drive();
+    }, 500);
 
     return () => {
       if (driverObj) {
-        driverObj.destroy()
+        driverObj.destroy();
       }
-    }
-  }, [completeOnboarding, onComplete, t])
+    };
+  }, [completeOnboarding, onComplete, t]);
 
-  return null
+  return null;
 }

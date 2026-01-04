@@ -1,9 +1,9 @@
-import { useNavigate, useRouter } from '@tanstack/react-router'
-import { Button } from '@/components/ui/button'
+import { useNavigate, useRouter } from '@tanstack/react-router';
+import { Button } from '@/components/ui/button';
 
 export default function ForbiddenError() {
-  const navigate = useNavigate()
-  const { history } = useRouter()
+  const navigate = useNavigate();
+  const { history } = useRouter();
   return (
     <div className='h-svh'>
       <div className='m-auto flex h-full w-full flex-col items-center justify-center gap-2'>
@@ -21,5 +21,5 @@ export default function ForbiddenError() {
         </div>
       </div>
     </div>
-  )
+  );
 }

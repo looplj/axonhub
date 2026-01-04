@@ -1,14 +1,8 @@
-import { useQuery } from '@tanstack/react-query'
-import { graphqlRequest } from '@/gql/graphql'
-import { useErrorHandler } from '@/hooks/use-error-handler'
-import { useSelectedProjectId } from '@/stores/projectStore'
-import {
-  Trace,
-  TraceConnection,
-  TraceDetail,
-  traceConnectionSchema,
-  traceDetailSchema,
-} from './schema'
+import { useQuery } from '@tanstack/react-query';
+import { graphqlRequest } from '@/gql/graphql';
+import { useSelectedProjectId } from '@/stores/projectStore';
+import { useErrorHandler } from '@/hooks/use-error-handler';
+import { Trace, TraceConnection, TraceDetail, traceConnectionSchema, traceDetailSchema } from './schema';
 
 // GraphQL query for traces
 function buildTracesQuery() {
@@ -46,7 +40,7 @@ function buildTracesQuery() {
         totalCount
       }
     }
-  `
+  `;
 }
 
 // GraphQL query for trace detail
@@ -73,7 +67,7 @@ function buildTraceDetailQuery() {
         }
       }
     }
-  `
+  `;
 }
 
 // GraphQL query for trace with request traces
@@ -100,31 +94,31 @@ function buildTraceWithRequestTracesQuery() {
         }
       }
     }
-  `
+  `;
 }
 
 // Query hooks
 export function useTraces(variables?: {
-  first?: number
-  after?: string
-  orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' }
+  first?: number;
+  after?: string;
+  orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' };
   where?: {
-    projectID?: string
-    threadID?: string
-    traceID?: string
-    [key: string]: any
-  }
+    projectID?: string;
+    threadID?: string;
+    traceID?: string;
+    [key: string]: any;
+  };
 }) {
-  const { handleError } = useErrorHandler()
-  const selectedProjectId = useSelectedProjectId()
-  
+  const { handleError } = useErrorHandler();
+  const selectedProjectId = useSelectedProjectId();
+
   return useQuery({
     queryKey: ['traces', variables, selectedProjectId],
     queryFn: async () => {
       try {
-        const query = buildTracesQuery()
-        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined
-        
+        const query = buildTracesQuery();
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+
         // Add project filter if project is selected
         const finalVariables = {
           ...variables,
@@ -132,78 +126,66 @@ export function useTraces(variables?: {
             ...variables?.where,
             ...(selectedProjectId && { projectID: selectedProjectId }),
           },
-        }
-        
-        const data = await graphqlRequest<{ traces: TraceConnection }>(
-          query,
-          finalVariables,
-          headers
-        )
-        return traceConnectionSchema.parse(data?.traces)
+        };
+
+        const data = await graphqlRequest<{ traces: TraceConnection }>(query, finalVariables, headers);
+        return traceConnectionSchema.parse(data?.traces);
       } catch (error) {
-        handleError(error, '获取追踪数据')
-        throw error
+        handleError(error, '获取追踪数据');
+        throw error;
       }
     },
     enabled: true, // Traces can be queried without project selection for admin users
-  })
+  });
 }
 
 export function useTrace(id: string) {
-  const { handleError } = useErrorHandler()
-  const selectedProjectId = useSelectedProjectId()
-  
+  const { handleError } = useErrorHandler();
+  const selectedProjectId = useSelectedProjectId();
+
   return useQuery({
     queryKey: ['trace', id, selectedProjectId],
     queryFn: async () => {
       try {
-        const query = buildTraceDetailQuery()
-        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined
-        const data = await graphqlRequest<{ node: Trace }>(
-          query,
-          { id },
-          headers
-        )
+        const query = buildTraceDetailQuery();
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+        const data = await graphqlRequest<{ node: Trace }>(query, { id }, headers);
         if (!data.node) {
-          throw new Error('Trace not found')
+          throw new Error('Trace not found');
         }
-        return traceDetailSchema.parse(data.node)
+        return traceDetailSchema.parse(data.node);
       } catch (error) {
-        handleError(error, '获取追踪详情')
-        throw error
+        handleError(error, '获取追踪详情');
+        throw error;
       }
     },
     enabled: !!id,
-  })
+  });
 }
 
 export function useTraceWithSegments(id: string) {
-  const { handleError } = useErrorHandler()
-  const selectedProjectId = useSelectedProjectId()
-  
+  const { handleError } = useErrorHandler();
+  const selectedProjectId = useSelectedProjectId();
+
   return useQuery({
     queryKey: ['trace-with-segments', id, selectedProjectId],
     queryFn: async () => {
       try {
-        const query = buildTraceWithRequestTracesQuery()
-        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined
-        const data = await graphqlRequest<{ node: TraceDetail }>(
-          query,
-          { id },
-          headers
-        )
+        const query = buildTraceWithRequestTracesQuery();
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+        const data = await graphqlRequest<{ node: TraceDetail }>(query, { id }, headers);
         if (!data.node) {
-          throw new Error('Trace not found')
+          throw new Error('Trace not found');
         }
-        return traceDetailSchema.parse(data.node)
+        return traceDetailSchema.parse(data.node);
       } catch (error) {
-        handleError(error, '获取追踪详情')
-        throw error
+        handleError(error, '获取追踪详情');
+        throw error;
       }
     },
     enabled: !!id,
-  })
+  });
 }
 
 // Backward compatibility alias
-export const useTraceWithRequestTraces = useTraceWithSegments
+export const useTraceWithRequestTraces = useTraceWithSegments;

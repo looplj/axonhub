@@ -1,11 +1,11 @@
-import { Sidebar, SidebarContent, SidebarFooter, SidebarRail } from '@/components/ui/sidebar'
-import { NavGroup } from '@/components/layout/nav-group'
-import { NavUser } from '@/components/layout/nav-user'
-import { SidebarData } from './types'
+import { Sidebar, SidebarContent, SidebarFooter, SidebarRail } from '@/components/ui/sidebar';
+import { NavGroup } from '@/components/layout/nav-group';
+import { NavUser } from '@/components/layout/nav-user';
+import { SidebarData } from './types';
 
 type IProps = React.ComponentProps<typeof Sidebar> & {
-  sidebarData: SidebarData
-}
+  sidebarData: SidebarData;
+};
 
 export function AppSidebar({ sidebarData, ...props }: IProps) {
   return (
@@ -20,5 +20,5 @@ export function AppSidebar({ sidebarData, ...props }: IProps) {
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
-  )
+  );
 }

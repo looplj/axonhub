@@ -1,8 +1,9 @@
-import { z } from 'zod'
-import { passwordSchema } from '@/lib/validation'
+import { z } from 'zod';
+import { pageInfoSchema } from '@/gql/pagination';
+import { passwordSchema } from '@/lib/validation';
 
-export const userStatusSchema = z.enum(['activated', 'deactivated'])
-export type UserStatus = z.infer<typeof userStatusSchema>
+export const userStatusSchema = z.enum(['activated', 'deactivated']);
+export type UserStatus = z.infer<typeof userStatusSchema>;
 
 export const userSchema = z.object({
   id: z.string(),
@@ -27,7 +28,7 @@ export const userSchema = z.object({
       ),
     })
     .optional(),
-})
+});
 
 export const userConnectionSchema = z.object({
   edges: z.array(
@@ -35,13 +36,8 @@ export const userConnectionSchema = z.object({
       node: userSchema,
     })
   ),
-  pageInfo: z.object({
-    hasNextPage: z.boolean(),
-    hasPreviousPage: z.boolean(),
-    startCursor: z.string().nullable(),
-    endCursor: z.string().nullable(),
-  }),
-})
+  pageInfo: pageInfoSchema,
+});
 
 // 前端表单验证模式（包含 confirmPassword）
 export const createUserFormSchema = z
@@ -60,7 +56,7 @@ export const createUserFormSchema = z
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ['confirmPassword'],
-  })
+  });
 
 // API 输入模式（不包含 confirmPassword）
 export const createUserInputSchema = z.object({
@@ -73,7 +69,7 @@ export const createUserInputSchema = z.object({
   isOwner: z.boolean().optional(),
   scopes: z.array(z.string()).optional(),
   roleIDs: z.array(z.string()).optional(),
-})
+});
 
 // 修改密码的前端表单模式
 export const changePasswordFormSchema = (t: (key: string) => string) =>
@@ -85,12 +81,12 @@ export const changePasswordFormSchema = (t: (key: string) => string) =>
     .refine((data) => data.newPassword === data.confirmPassword, {
       message: t('users.validation.passwordsNotMatch'),
       path: ['confirmPassword'],
-    })
+    });
 
 // 修改密码的 API 输入模式
 export const changePasswordInputSchema = z.object({
   newPassword: z.string().min(6, 'Password must be at least 6 characters'),
-})
+});
 
 export const updateUserInputSchema = z.object({
   updatedAt: z.string().optional(),
@@ -104,16 +100,16 @@ export const updateUserInputSchema = z.object({
   addRoleIDs: z.array(z.string()).optional(),
   removeRoleIDs: z.array(z.string()).optional(),
   clearRoles: z.boolean().optional(),
-})
+});
 
-export type User = z.infer<typeof userSchema>
-export type UserConnection = z.infer<typeof userConnectionSchema>
-export type CreateUserForm = z.infer<typeof createUserFormSchema>
-export type CreateUserInput = z.infer<typeof createUserInputSchema>
-export type UpdateUserInput = z.infer<typeof updateUserInputSchema>
-export type ChangePasswordForm = z.infer<ReturnType<typeof changePasswordFormSchema>>
-export type ChangePasswordInput = z.infer<typeof changePasswordInputSchema>
+export type User = z.infer<typeof userSchema>;
+export type UserConnection = z.infer<typeof userConnectionSchema>;
+export type CreateUserForm = z.infer<typeof createUserFormSchema>;
+export type CreateUserInput = z.infer<typeof createUserInputSchema>;
+export type UpdateUserInput = z.infer<typeof updateUserInputSchema>;
+export type ChangePasswordForm = z.infer<ReturnType<typeof changePasswordFormSchema>>;
+export type ChangePasswordInput = z.infer<typeof changePasswordInputSchema>;
 
 // User List schema for table display
-export const userListSchema = z.array(userSchema)
-export type UserList = z.infer<typeof userListSchema>
+export const userListSchema = z.array(userSchema);
+export type UserList = z.infer<typeof userListSchema>;

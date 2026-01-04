@@ -23,7 +23,8 @@
       "unknown": "Unknown",
       "requestBody": "Request Body",
       "responseBody": "Response Body",
-      "responseChunks": "Response Chunks"
+      "responseChunks": "Response Chunks",
+      "requestHeaders": "Request Headers"
     },
     "status": {
       "pending": "Pending",

@@ -1,10 +1,10 @@
-import { createFileRoute } from '@tanstack/react-router'
-import ApiKeysManagement from '@/features/apikeys'
+import { createFileRoute } from '@tanstack/react-router';
+import ApiKeysManagement from '@/features/apikeys';
 
 function ProtectedApiKeys() {
-  return <ApiKeysManagement />
+  return <ApiKeysManagement />;
 }
 
 export const Route = createFileRoute('/_authenticated/api-keys/')({
   component: ProtectedApiKeys,
-})
+});

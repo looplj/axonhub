@@ -1,28 +1,23 @@
-'use client'
+'use client';
 
-import { ChevronLeftIcon, ChevronRightIcon, DoubleArrowLeftIcon } from '@radix-ui/react-icons'
-import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { usePaginationSearch } from '@/hooks/use-pagination-search'
-
-interface PageInfo {
-  hasNextPage: boolean
-  hasPreviousPage: boolean
-  startCursor?: string | null
-  endCursor?: string | null
-}
+import { ChevronLeftIcon, ChevronRightIcon, DoubleArrowLeftIcon } from '@radix-ui/react-icons';
+import type { PageInfo } from '@/gql/pagination';
+import { useTranslation } from 'react-i18next';
+import { usePaginationSearch } from '@/hooks/use-pagination-search';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface ServerSidePaginationProps {
-  pageInfo?: PageInfo
-  pageSize: number
-  dataLength: number
-  totalCount?: number
-  selectedRows: number
-  onNextPage: () => void
-  onPreviousPage: () => void
-  onFirstPage?: () => void
-  onPageSizeChange: (pageSize: number) => void
+  pageInfo?: PageInfo;
+  pageSize: number;
+  dataLength: number;
+  totalCount?: number;
+  selectedRows: number;
+  onNextPage: () => void;
+  onPreviousPage: () => void;
+  onFirstPage?: () => void;
+  onPageSizeChange: (pageSize: number) => void;
+  onResetCursor?: () => void;
 }
 
 export function ServerSidePagination({
@@ -35,11 +30,12 @@ export function ServerSidePagination({
   onPreviousPage,
   onFirstPage,
   onPageSizeChange,
+  onResetCursor,
 }: ServerSidePaginationProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation();
   const { resetCursor } = usePaginationSearch({
     defaultPageSize: 20,
-  })
+  });
 
   return (
     <div className='flex items-center justify-between overflow-clip px-2' style={{ overflowClipMargin: 1 }}>
@@ -54,7 +50,7 @@ export function ServerSidePagination({
           <Select
             value={`${pageSize}`}
             onValueChange={(value) => {
-              onPageSizeChange(Number(value))
+              onPageSizeChange(Number(value));
             }}
           >
             <SelectTrigger className='h-8 w-[70px]'>
@@ -75,27 +71,20 @@ export function ServerSidePagination({
               {pageInfo?.hasPreviousPage ? t('pagination.hasPrevious') : t('pagination.firstPage')}
             </span>
             <span className='text-muted-foreground'>|</span>
-            <span className='text-muted-foreground'>
-              {pageInfo?.hasNextPage ? t('pagination.hasNext') : t('pagination.lastPage')}
-            </span>
+            <span className='text-muted-foreground'>{pageInfo?.hasNextPage ? t('pagination.hasNext') : t('pagination.lastPage')}</span>
           </div>
         </div>
         <div className='flex items-center space-x-2'>
           <Button
             variant='outline'
             className='hidden h-8 w-8 p-0 lg:flex'
-            onClick={onFirstPage || resetCursor}
+            onClick={onFirstPage || onResetCursor || resetCursor}
             disabled={!pageInfo?.hasPreviousPage}
           >
             <span className='sr-only'>{t('pagination.firstPage')}</span>
             <DoubleArrowLeftIcon className='h-4 w-4' />
           </Button>
-          <Button
-            variant='outline'
-            className='h-8 w-8 p-0'
-            onClick={onPreviousPage}
-            disabled={!pageInfo?.hasPreviousPage}
-          >
+          <Button variant='outline' className='h-8 w-8 p-0' onClick={onPreviousPage} disabled={!pageInfo?.hasPreviousPage}>
             <span className='sr-only'>{t('pagination.previousPage')}</span>
             <ChevronLeftIcon className='h-4 w-4' />
           </Button>
@@ -116,5 +105,5 @@ export function ServerSidePagination({
         </div>
       </div>
     </div>
-  )
+  );
 }

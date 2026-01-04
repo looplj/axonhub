@@ -204,6 +204,11 @@ func (_q *APIKeyQuery) collectField(ctx context.Context, oneNode bool, opCtx *gr
 				selectedFields = append(selectedFields, apikey.FieldName)
 				fieldSeen[apikey.FieldName] = struct{}{}
 			}
+		case "type":
+			if _, ok := fieldSeen[apikey.FieldType]; !ok {
+				selectedFields = append(selectedFields, apikey.FieldType)
+				fieldSeen[apikey.FieldType] = struct{}{}
+			}
 		case "status":
 			if _, ok := fieldSeen[apikey.FieldStatus]; !ok {
 				selectedFields = append(selectedFields, apikey.FieldStatus)
@@ -2677,6 +2682,11 @@ func (_q *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, request.FieldFormat)
 				fieldSeen[request.FieldFormat] = struct{}{}
 			}
+		case "requestHeaders":
+			if _, ok := fieldSeen[request.FieldRequestHeaders]; !ok {
+				selectedFields = append(selectedFields, request.FieldRequestHeaders)
+				fieldSeen[request.FieldRequestHeaders] = struct{}{}
+			}
 		case "requestBody":
 			if _, ok := fieldSeen[request.FieldRequestBody]; !ok {
 				selectedFields = append(selectedFields, request.FieldRequestBody)
@@ -2930,6 +2940,11 @@ func (_q *RequestExecutionQuery) collectField(ctx context.Context, oneNode bool,
 			if _, ok := fieldSeen[requestexecution.FieldMetricsFirstTokenLatencyMs]; !ok {
 				selectedFields = append(selectedFields, requestexecution.FieldMetricsFirstTokenLatencyMs)
 				fieldSeen[requestexecution.FieldMetricsFirstTokenLatencyMs] = struct{}{}
+			}
+		case "requestHeaders":
+			if _, ok := fieldSeen[requestexecution.FieldRequestHeaders]; !ok {
+				selectedFields = append(selectedFields, requestexecution.FieldRequestHeaders)
+				fieldSeen[requestexecution.FieldRequestHeaders] = struct{}{}
 			}
 		case "id":
 		case "__typename":

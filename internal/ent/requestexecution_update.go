@@ -181,6 +181,24 @@ func (_u *RequestExecutionUpdate) ClearMetricsFirstTokenLatencyMs() *RequestExec
 	return _u
 }
 
+// SetRequestHeaders sets the "request_headers" field.
+func (_u *RequestExecutionUpdate) SetRequestHeaders(v objects.JSONRawMessage) *RequestExecutionUpdate {
+	_u.mutation.SetRequestHeaders(v)
+	return _u
+}
+
+// AppendRequestHeaders appends value to the "request_headers" field.
+func (_u *RequestExecutionUpdate) AppendRequestHeaders(v objects.JSONRawMessage) *RequestExecutionUpdate {
+	_u.mutation.AppendRequestHeaders(v)
+	return _u
+}
+
+// ClearRequestHeaders clears the value of the "request_headers" field.
+func (_u *RequestExecutionUpdate) ClearRequestHeaders() *RequestExecutionUpdate {
+	_u.mutation.ClearRequestHeaders()
+	return _u
+}
+
 // Mutation returns the RequestExecutionMutation object of the builder.
 func (_u *RequestExecutionUpdate) Mutation() *RequestExecutionMutation {
 	return _u.mutation
@@ -310,6 +328,17 @@ func (_u *RequestExecutionUpdate) sqlSave(ctx context.Context) (_node int, err e
 	}
 	if _u.mutation.MetricsFirstTokenLatencyMsCleared() {
 		_spec.ClearField(requestexecution.FieldMetricsFirstTokenLatencyMs, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.RequestHeaders(); ok {
+		_spec.SetField(requestexecution.FieldRequestHeaders, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedRequestHeaders(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, requestexecution.FieldRequestHeaders, value)
+		})
+	}
+	if _u.mutation.RequestHeadersCleared() {
+		_spec.ClearField(requestexecution.FieldRequestHeaders, field.TypeJSON)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
@@ -483,6 +512,24 @@ func (_u *RequestExecutionUpdateOne) ClearMetricsFirstTokenLatencyMs() *RequestE
 	return _u
 }
 
+// SetRequestHeaders sets the "request_headers" field.
+func (_u *RequestExecutionUpdateOne) SetRequestHeaders(v objects.JSONRawMessage) *RequestExecutionUpdateOne {
+	_u.mutation.SetRequestHeaders(v)
+	return _u
+}
+
+// AppendRequestHeaders appends value to the "request_headers" field.
+func (_u *RequestExecutionUpdateOne) AppendRequestHeaders(v objects.JSONRawMessage) *RequestExecutionUpdateOne {
+	_u.mutation.AppendRequestHeaders(v)
+	return _u
+}
+
+// ClearRequestHeaders clears the value of the "request_headers" field.
+func (_u *RequestExecutionUpdateOne) ClearRequestHeaders() *RequestExecutionUpdateOne {
+	_u.mutation.ClearRequestHeaders()
+	return _u
+}
+
 // Mutation returns the RequestExecutionMutation object of the builder.
 func (_u *RequestExecutionUpdateOne) Mutation() *RequestExecutionMutation {
 	return _u.mutation
@@ -642,6 +689,17 @@ func (_u *RequestExecutionUpdateOne) sqlSave(ctx context.Context) (_node *Reques
 	}
 	if _u.mutation.MetricsFirstTokenLatencyMsCleared() {
 		_spec.ClearField(requestexecution.FieldMetricsFirstTokenLatencyMs, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.RequestHeaders(); ok {
+		_spec.SetField(requestexecution.FieldRequestHeaders, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedRequestHeaders(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, requestexecution.FieldRequestHeaders, value)
+		})
+	}
+	if _u.mutation.RequestHeadersCleared() {
+		_spec.ClearField(requestexecution.FieldRequestHeaders, field.TypeJSON)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &RequestExecution{config: _u.config}

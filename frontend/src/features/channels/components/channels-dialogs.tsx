@@ -1,31 +1,27 @@
-import { useChannels } from '../context/channels-context'
-import { ChannelsActionDialog } from './channels-action-dialog'
-import { ChannelsArchiveDialog } from './channels-archive-dialog'
-import { ChannelsBulkArchiveDialog } from './channels-bulk-archive-dialog'
-import { ChannelsBulkDeleteDialog } from './channels-bulk-delete-dialog'
-import { ChannelsBulkDisableDialog } from './channels-bulk-disable-dialog'
-import { ChannelsBulkEnableDialog } from './channels-bulk-enable-dialog'
-import { ChannelsBulkImportDialog } from './channels-bulk-import-dialog'
-import { ChannelsBulkOrderingDialog } from './channels-bulk-ordering-dialog'
-import { ChannelsBulkApplyTemplateDialog } from './channels-bulk-apply-template-dialog'
-import { ChannelsDeleteDialog } from './channels-delete-dialog'
-import { ChannelsErrorResolvedDialog } from './channels-error-resolved-dialog'
-import { ChannelsModelMappingDialog } from './channels-model-mapping-dialog'
-import { ChannelsOverrideDialog } from './channels-override-dialog'
-import { ChannelsProxyDialog } from './channels-proxy-dialog'
-import { ChannelsStatusDialog } from './channels-status-dialog'
-import { ChannelsTestDialog } from './channels-test-dialog'
-import { ChannelsWeightDialog } from './channels-weight-dialog'
+import { useChannels } from '../context/channels-context';
+import { ChannelsActionDialog } from './channels-action-dialog';
+import { ChannelsArchiveDialog } from './channels-archive-dialog';
+import { ChannelsBulkApplyTemplateDialog } from './channels-bulk-apply-template-dialog';
+import { ChannelsBulkArchiveDialog } from './channels-bulk-archive-dialog';
+import { ChannelsBulkDeleteDialog } from './channels-bulk-delete-dialog';
+import { ChannelsBulkDisableDialog } from './channels-bulk-disable-dialog';
+import { ChannelsBulkEnableDialog } from './channels-bulk-enable-dialog';
+import { ChannelsBulkImportDialog } from './channels-bulk-import-dialog';
+import { ChannelsBulkOrderingDialog } from './channels-bulk-ordering-dialog';
+import { ChannelsDeleteDialog } from './channels-delete-dialog';
+import { ChannelsErrorResolvedDialog } from './channels-error-resolved-dialog';
+import { ChannelsModelMappingDialog } from './channels-model-mapping-dialog';
+import { ChannelsOverrideDialog } from './channels-override-dialog';
+import { ChannelsProxyDialog } from './channels-proxy-dialog';
+import { ChannelsStatusDialog } from './channels-status-dialog';
+import { ChannelsTestDialog } from './channels-test-dialog';
+import { ChannelsWeightDialog } from './channels-weight-dialog';
 
 export function ChannelsDialogs() {
-  const { open, setOpen, currentRow, setCurrentRow, selectedChannels } = useChannels()
+  const { open, setOpen, currentRow, setCurrentRow, selectedChannels } = useChannels();
   return (
     <>
-      <ChannelsActionDialog
-        key='channel-add'
-        open={open === 'add'}
-        onOpenChange={(isOpen) => setOpen(isOpen ? 'add' : null)}
-      />
+      <ChannelsActionDialog key='channel-add' open={open === 'add'} onOpenChange={(isOpen) => setOpen(isOpen ? 'add' : null)} />
 
       <ChannelsBulkArchiveDialog />
 
@@ -43,10 +39,7 @@ export function ChannelsDialogs() {
 
       <ChannelsBulkImportDialog isOpen={open === 'bulkImport'} onClose={() => setOpen(null)} />
 
-      <ChannelsBulkOrderingDialog
-        open={open === 'bulkOrdering'}
-        onOpenChange={(isOpen) => setOpen(isOpen ? 'bulkOrdering' : null)}
-      />
+      <ChannelsBulkOrderingDialog open={open === 'bulkOrdering'} onOpenChange={(isOpen) => setOpen(isOpen ? 'bulkOrdering' : null)} />
 
       {currentRow && (
         <>
@@ -55,12 +48,12 @@ export function ChannelsDialogs() {
             open={open === 'edit'}
             onOpenChange={(isOpen) => {
               if (isOpen) {
-                setOpen('edit')
+                setOpen('edit');
               } else {
-                setOpen(null)
+                setOpen(null);
                 setTimeout(() => {
-                  setCurrentRow(null)
-                }, 500)
+                  setCurrentRow(null);
+                }, 500);
               }
             }}
             currentRow={currentRow}
@@ -71,12 +64,12 @@ export function ChannelsDialogs() {
             open={open === 'duplicate'}
             onOpenChange={(isOpen) => {
               if (isOpen) {
-                setOpen('duplicate')
+                setOpen('duplicate');
               } else {
-                setOpen(null)
+                setOpen(null);
                 setTimeout(() => {
-                  setCurrentRow(null)
-                }, 500)
+                  setCurrentRow(null);
+                }, 500);
               }
             }}
             duplicateFromRow={currentRow}
@@ -87,12 +80,12 @@ export function ChannelsDialogs() {
             open={open === 'viewModels'}
             onOpenChange={(isOpen) => {
               if (isOpen) {
-                setOpen('viewModels')
+                setOpen('viewModels');
               } else {
-                setOpen(null)
+                setOpen(null);
                 setTimeout(() => {
-                  setCurrentRow(null)
-                }, 500)
+                  setCurrentRow(null);
+                }, 500);
               }
             }}
             currentRow={currentRow}
@@ -104,10 +97,10 @@ export function ChannelsDialogs() {
             open={open === 'delete'}
             onOpenChange={(isOpen) => {
               if (!isOpen) {
-                setOpen(null)
+                setOpen(null);
                 setTimeout(() => {
-                  setCurrentRow(null)
-                }, 500)
+                  setCurrentRow(null);
+                }, 500);
               }
             }}
             currentRow={currentRow}
@@ -130,12 +123,12 @@ export function ChannelsDialogs() {
             open={open === 'modelMapping'}
             onOpenChange={(isOpen) => {
               if (isOpen) {
-                setOpen('modelMapping')
+                setOpen('modelMapping');
               } else {
-                setOpen(null)
+                setOpen(null);
                 setTimeout(() => {
-                  setCurrentRow(null)
-                }, 500)
+                  setCurrentRow(null);
+                }, 500);
               }
             }}
             currentRow={currentRow}
@@ -146,10 +139,10 @@ export function ChannelsDialogs() {
             open={open === 'overrides'}
             onOpenChange={(isOpen) => {
               if (!isOpen) {
-                setOpen(null)
+                setOpen(null);
                 setTimeout(() => {
-                  setCurrentRow(null)
-                }, 500)
+                  setCurrentRow(null);
+                }, 500);
               }
             }}
             currentRow={currentRow}
@@ -160,10 +153,10 @@ export function ChannelsDialogs() {
             open={open === 'proxy'}
             onOpenChange={(isOpen) => {
               if (!isOpen) {
-                setOpen(null)
+                setOpen(null);
                 setTimeout(() => {
-                  setCurrentRow(null)
-                }, 500)
+                  setCurrentRow(null);
+                }, 500);
               }
             }}
             currentRow={currentRow}
@@ -174,12 +167,12 @@ export function ChannelsDialogs() {
             open={open === 'status'}
             onOpenChange={(isOpen) => {
               if (isOpen) {
-                setOpen('status')
+                setOpen('status');
               } else {
-                setOpen(null)
+                setOpen(null);
                 setTimeout(() => {
-                  setCurrentRow(null)
-                }, 500)
+                  setCurrentRow(null);
+                }, 500);
               }
             }}
             currentRow={currentRow}
@@ -190,12 +183,12 @@ export function ChannelsDialogs() {
             open={open === 'archive'}
             onOpenChange={(isOpen) => {
               if (isOpen) {
-                setOpen('archive')
+                setOpen('archive');
               } else {
-                setOpen(null)
+                setOpen(null);
                 setTimeout(() => {
-                  setCurrentRow(null)
-                }, 500)
+                  setCurrentRow(null);
+                }, 500);
               }
             }}
             currentRow={currentRow}
@@ -206,12 +199,12 @@ export function ChannelsDialogs() {
             open={open === 'test'}
             onOpenChange={(isOpen: boolean) => {
               if (isOpen) {
-                setOpen('test')
+                setOpen('test');
               } else {
-                setOpen(null)
+                setOpen(null);
                 setTimeout(() => {
-                  setCurrentRow(null)
-                }, 500)
+                  setCurrentRow(null);
+                }, 500);
               }
             }}
             channel={currentRow}
@@ -222,10 +215,10 @@ export function ChannelsDialogs() {
             open={open === 'errorResolved'}
             onOpenChange={(isOpen) => {
               if (!isOpen) {
-                setOpen(null)
+                setOpen(null);
                 setTimeout(() => {
-                  setCurrentRow(null)
-                }, 500)
+                  setCurrentRow(null);
+                }, 500);
               }
             }}
           />
@@ -235,17 +228,17 @@ export function ChannelsDialogs() {
             open={open === 'weight'}
             onOpenChange={(isOpen) => {
               if (isOpen) {
-                setOpen('weight')
+                setOpen('weight');
               } else {
-                setOpen(null)
+                setOpen(null);
                 setTimeout(() => {
-                  setCurrentRow(null)
-                }, 500)
+                  setCurrentRow(null);
+                }, 500);
               }
             }}
           />
         </>
       )}
     </>
-  )
+  );
 }

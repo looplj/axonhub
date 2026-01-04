@@ -1,51 +1,39 @@
-import { useEffect, useState } from 'react'
-import { IconCheck, IconX } from '@tabler/icons-react'
-import { showSubmittedData } from '@/utils/show-submitted-data'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { ChatUser } from '../data/chat-types'
+import { useEffect, useState } from 'react';
+import { IconCheck, IconX } from '@tabler/icons-react';
+import { showSubmittedData } from '@/utils/show-submitted-data';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ChatUser } from '../data/chat-types';
 
-type User = Omit<ChatUser, 'messages'>
+type User = Omit<ChatUser, 'messages'>;
 
 type Props = {
-  users: User[]
-  open: boolean
-  onOpenChange: (open: boolean) => void
-}
+  users: User[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+};
 export function NewChat({ users, onOpenChange, open }: Props) {
-  const [selectedUsers, setSelectedUsers] = useState<User[]>([])
+  const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
 
   const handleSelectUser = (user: User) => {
     if (!selectedUsers.find((u) => u.id === user.id)) {
-      setSelectedUsers([...selectedUsers, user])
+      setSelectedUsers([...selectedUsers, user]);
     } else {
-      handleRemoveUser(user.id)
+      handleRemoveUser(user.id);
     }
-  }
+  };
 
   const handleRemoveUser = (userId: string) => {
-    setSelectedUsers(selectedUsers.filter((user) => user.id !== userId))
-  }
+    setSelectedUsers(selectedUsers.filter((user) => user.id !== userId));
+  };
 
   useEffect(() => {
     if (!open) {
-      setSelectedUsers([])
+      setSelectedUsers([]);
     }
-  }, [open])
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -63,7 +51,7 @@ export function NewChat({ users, onOpenChange, open }: Props) {
                   className='ring-offset-background focus:ring-ring ml-1 rounded-full outline-hidden focus:ring-2 focus:ring-offset-2'
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
-                      handleRemoveUser(user.id)
+                      handleRemoveUser(user.id);
                     }
                   }}
                   onClick={() => handleRemoveUser(user.id)}
@@ -74,52 +62,31 @@ export function NewChat({ users, onOpenChange, open }: Props) {
             ))}
           </div>
           <Command className='rounded-lg border'>
-            <CommandInput
-              placeholder='Search people...'
-              className='text-foreground'
-            />
+            <CommandInput placeholder='Search people...' className='text-foreground' />
             <CommandList>
               <CommandEmpty>No people found.</CommandEmpty>
               <CommandGroup>
                 {users.map((user) => (
-                  <CommandItem
-                    key={user.id}
-                    onSelect={() => handleSelectUser(user)}
-                    className='flex items-center justify-between gap-2'
-                  >
+                  <CommandItem key={user.id} onSelect={() => handleSelectUser(user)} className='flex items-center justify-between gap-2'>
                     <div className='flex items-center gap-2'>
-                      <img
-                        src={user.profile || '/placeholder.svg'}
-                        alt={user.fullName}
-                        className='h-8 w-8 rounded-full'
-                      />
+                      <img src={user.profile || '/placeholder.svg'} alt={user.fullName} className='h-8 w-8 rounded-full' />
                       <div className='flex flex-col'>
-                        <span className='text-sm font-medium'>
-                          {user.fullName}
-                        </span>
-                        <span className='text-muted-foreground text-xs'>
-                          {user.username} aa
-                        </span>
+                        <span className='text-sm font-medium'>{user.fullName}</span>
+                        <span className='text-muted-foreground text-xs'>{user.username} aa</span>
                       </div>
                     </div>
 
-                    {selectedUsers.find((u) => u.id === user.id) && (
-                      <IconCheck className='h-4 w-4' />
-                    )}
+                    {selectedUsers.find((u) => u.id === user.id) && <IconCheck className='h-4 w-4' />}
                   </CommandItem>
                 ))}
               </CommandGroup>
             </CommandList>
           </Command>
-          <Button
-            variant={'default'}
-            onClick={() => showSubmittedData(selectedUsers)}
-            disabled={selectedUsers.length === 0}
-          >
+          <Button variant={'default'} onClick={() => showSubmittedData(selectedUsers)} disabled={selectedUsers.length === 0}>
             Chat
           </Button>
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

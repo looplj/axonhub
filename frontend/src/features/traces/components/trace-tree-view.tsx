@@ -1,19 +1,19 @@
-import { useState } from 'react'
-import { ChevronRight, ChevronDown, Clock, Zap } from 'lucide-react'
-import { format } from 'date-fns'
-import { useTranslation } from 'react-i18next'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Segment, Span } from '../data/schema'
-import { cn } from '@/lib/utils'
-import { getSpanIcon } from './constant'
-import { normalizeSpanType } from '../utils/span-display'
+import { useState } from 'react';
+import { format } from 'date-fns';
+import { ChevronRight, ChevronDown, Clock, Zap } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Segment, Span } from '../data/schema';
+import { normalizeSpanType } from '../utils/span-display';
+import { getSpanIcon } from './constant';
 
 interface TraceTreeViewProps {
-  trace: Segment
-  level?: number
-  onSpanSelect?: (trace: Segment, span: Span, type: 'request' | 'response') => void
-  selectedSpanId?: string
+  trace: Segment;
+  level?: number;
+  onSpanSelect?: (trace: Segment, span: Span, type: 'request' | 'response') => void;
+  selectedSpanId?: string;
 }
 
 function SpanItem({
@@ -22,25 +22,26 @@ function SpanItem({
   onSelect,
   isActive,
 }: {
-  span: Span
-  type: 'request' | 'response'
-  onSelect?: () => void
-  isActive?: boolean
+  span: Span;
+  type: 'request' | 'response';
+  onSelect?: () => void;
+  isActive?: boolean;
 }) {
-  const { t } = useTranslation()
-  const normalizedSpanType = normalizeSpanType(span.type)
-  const SpanIcon = getSpanIcon(normalizedSpanType)
+  const { t } = useTranslation();
+  const normalizedSpanType = normalizeSpanType(span.type);
+  const SpanIcon = getSpanIcon(normalizedSpanType);
 
-  const duration = span.startTime && span.endTime
-    ? `${((new Date(span.endTime).getTime() - new Date(span.startTime).getTime()) / 1000).toFixed(3)}s`
-    : null
+  const duration =
+    span.startTime && span.endTime
+      ? `${((new Date(span.endTime).getTime() - new Date(span.startTime).getTime()) / 1000).toFixed(3)}s`
+      : null;
 
   return (
     <button
       type='button'
       onClick={(event) => {
-        event.stopPropagation()
-        onSelect?.()
+        event.stopPropagation();
+        onSelect?.();
       }}
       className={cn(
         'w-full rounded-lg border px-4 py-3 text-left transition-colors',
@@ -49,28 +50,27 @@ function SpanItem({
       )}
     >
       <div className='flex items-center justify-between gap-4'>
-        <div className='flex items-center gap-2 min-w-0'>
-          <SpanIcon className='h-4 w-4 text-muted-foreground' />
+        <div className='flex min-w-0 items-center gap-2'>
+          <SpanIcon className='text-muted-foreground h-4 w-4' />
           <span className='truncate text-sm font-medium'>{span.type}</span>
           <Badge variant='secondary' className='text-xs capitalize'>
             {t(`traces.common.badges.${type}`)}
           </Badge>
         </div>
-        <ChevronRight className='h-4 w-4 flex-shrink-0 text-muted-foreground' />
+        <ChevronRight className='text-muted-foreground h-4 w-4 flex-shrink-0' />
       </div>
-      {duration && <span className='text-xs text-muted-foreground'>{duration}</span>}
+      {duration && <span className='text-muted-foreground text-xs'>{duration}</span>}
     </button>
-  )
+  );
 }
 
 export function TraceTreeView({ trace, level = 0, onSpanSelect, selectedSpanId }: TraceTreeViewProps) {
-  const { t } = useTranslation()
-  const [expanded, setExpanded] = useState(level === 0)
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(level === 0);
 
-  const duration = trace.duration ? `${(trace.duration / 1000).toFixed(3)}s` : '0s'
-  const hasChildren = trace.children && trace.children.length > 0
-  const hasSpans = (trace.requestSpans && trace.requestSpans.length > 0) || 
-                   (trace.responseSpans && trace.responseSpans.length > 0)
+  const duration = trace.duration ? `${(trace.duration / 1000).toFixed(3)}s` : '0s';
+  const hasChildren = trace.children && trace.children.length > 0;
+  const hasSpans = (trace.requestSpans && trace.requestSpans.length > 0) || (trace.responseSpans && trace.responseSpans.length > 0);
 
   const tokenRows = [
     trace.metadata?.inputTokens != null && {
@@ -89,34 +89,37 @@ export function TraceTreeView({ trace, level = 0, onSpanSelect, selectedSpanId }
       label: t('traces.detail.cachedTokensLabel'),
       value: trace.metadata.cachedTokens.toLocaleString(),
     },
-  ].filter(Boolean) as { label: string; value: string }[]
+  ].filter(Boolean) as { label: string; value: string }[];
 
   return (
     <div className={cn('space-y-2', level > 0 && 'ml-6')}>
-      <Card className='border-l-4 border-l-primary/70 hover:shadow-md transition-shadow'>
+      <Card className='border-l-primary/70 border-l-4 transition-shadow hover:shadow-md'>
         <CardContent className='p-4'>
-          <div 
+          <div
             className='flex items-start gap-3'
             onClick={(e) => {
-              e.stopPropagation()
-              setExpanded(!expanded)
+              e.stopPropagation();
+              setExpanded(!expanded);
             }}
           >
-            {(hasChildren || hasSpans) && (
-              expanded ? <ChevronDown className='h-5 w-5 mt-0.5 flex-shrink-0' /> : <ChevronRight className='h-5 w-5 mt-0.5 flex-shrink-0' />
-            )}
-            <div className='flex-1 min-w-0'>
-              <div className='flex items-center gap-2 flex-wrap mb-2'>
-                <Zap className='h-4 w-4 text-primary' />
+            {(hasChildren || hasSpans) &&
+              (expanded ? (
+                <ChevronDown className='mt-0.5 h-5 w-5 flex-shrink-0' />
+              ) : (
+                <ChevronRight className='mt-0.5 h-5 w-5 flex-shrink-0' />
+              ))}
+            <div className='min-w-0 flex-1'>
+              <div className='mb-2 flex flex-wrap items-center gap-2'>
+                <Zap className='text-primary h-4 w-4' />
                 <span className='font-semibold'>{trace.model}</span>
                 <Badge variant='secondary' className='text-xs'>
                   {t('traces.detail.levelBadge', { level })}
                 </Badge>
               </div>
-              
-              <div className='grid grid-cols-2 md:grid-cols-4 gap-3 text-sm'>
+
+              <div className='grid grid-cols-2 gap-3 text-sm md:grid-cols-4'>
                 <div className='flex items-center gap-2'>
-                  <Clock className='h-3 w-3 text-muted-foreground' />
+                  <Clock className='text-muted-foreground h-3 w-3' />
                   <span className='text-muted-foreground'>{t('traces.detail.durationLabel')}</span>
                   <span className='font-medium'>{duration}</span>
                 </div>
@@ -137,9 +140,7 @@ export function TraceTreeView({ trace, level = 0, onSpanSelect, selectedSpanId }
               </div>
 
               {trace.startTime && (
-                <div className='text-xs text-muted-foreground mt-2'>
-                  {format(new Date(trace.startTime), 'yyyy-MM-dd HH:mm:ss.SSS')}
-                </div>
+                <div className='text-muted-foreground mt-2 text-xs'>{format(new Date(trace.startTime), 'yyyy-MM-dd HH:mm:ss.SSS')}</div>
               )}
             </div>
           </div>
@@ -149,7 +150,7 @@ export function TraceTreeView({ trace, level = 0, onSpanSelect, selectedSpanId }
               {/* Request Spans */}
               {trace.requestSpans && trace.requestSpans.length > 0 && (
                 <div className='space-y-2'>
-                  <h4 className='text-sm font-semibold text-primary flex items-center gap-2'>
+                  <h4 className='text-primary flex items-center gap-2 text-sm font-semibold'>
                     <span>📤</span> {t('traces.detail.requestSpansHeader', { count: trace.requestSpans.length })}
                   </h4>
                   <div className='space-y-1'>
@@ -169,7 +170,7 @@ export function TraceTreeView({ trace, level = 0, onSpanSelect, selectedSpanId }
               {/* Response Spans */}
               {trace.responseSpans && trace.responseSpans.length > 0 && (
                 <div className='space-y-2'>
-                  <h4 className='text-sm font-semibold text-primary flex items-center gap-2'>
+                  <h4 className='text-primary flex items-center gap-2 text-sm font-semibold'>
                     <span>📥</span> {t('traces.detail.responseSpansHeader', { count: trace.responseSpans.length })}
                   </h4>
                   <div className='space-y-1'>
@@ -192,18 +193,12 @@ export function TraceTreeView({ trace, level = 0, onSpanSelect, selectedSpanId }
           {expanded && hasChildren && (
             <div className='space-y-2'>
               {trace.children!.map((child: Segment) => (
-                <TraceTreeView
-                  key={child.id}
-                  trace={child}
-                  level={level + 1}
-                  onSpanSelect={onSpanSelect}
-                  selectedSpanId={selectedSpanId}
-                />
+                <TraceTreeView key={child.id} trace={child} level={level + 1} onSpanSelect={onSpanSelect} selectedSpanId={selectedSpanId} />
               ))}
             </div>
           )}
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

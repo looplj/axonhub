@@ -1,29 +1,28 @@
-'use client'
+'use client';
 
-import { IconAlertTriangle, IconArchive } from '@tabler/icons-react'
-import { useTranslation } from 'react-i18next'
-import { ConfirmDialog } from '@/components/confirm-dialog'
-import { useApiKeysContext } from '../context/apikeys-context'
-import { useBulkArchiveApiKeys } from '../data/apikeys'
-import { ApiKey } from '../data/schema'
+import { IconAlertTriangle } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
+import { ConfirmDialog } from '@/components/confirm-dialog';
+import { useApiKeysContext } from '../context/apikeys-context';
+import { useBulkArchiveApiKeys } from '../data/apikeys';
 
 export function ApiKeysBulkArchiveDialog() {
-  const { t } = useTranslation()
-  const { isDialogOpen, closeDialog, selectedApiKeys, resetRowSelection } = useApiKeysContext()
-  const bulkArchiveApiKeys = useBulkArchiveApiKeys()
+  const { t } = useTranslation();
+  const { isDialogOpen, closeDialog, selectedApiKeys, resetRowSelection, setSelectedApiKeys } = useApiKeysContext();
+  const bulkArchiveApiKeys = useBulkArchiveApiKeys();
 
-  if (!selectedApiKeys || selectedApiKeys.length === 0) return null
+  if (!selectedApiKeys || selectedApiKeys.length === 0) return null;
 
   const handleBulkArchive = async () => {
     try {
-      const ids = selectedApiKeys.map(apiKey => apiKey.id)
-      await bulkArchiveApiKeys.mutateAsync(ids)
-      closeDialog('bulkArchive')
-      resetRowSelection() // 清空选中的行
+      const ids = selectedApiKeys.map((apiKey) => apiKey.id);
+      await bulkArchiveApiKeys.mutateAsync(ids);
+      resetRowSelection();
+      setSelectedApiKeys([]);
+      closeDialog();
     } catch (error) {
-      console.error('Failed to bulk archive API keys:', error)
     }
-  }
+  };
 
   return (
     <ConfirmDialog
@@ -32,8 +31,8 @@ export function ApiKeysBulkArchiveDialog() {
       handleConfirm={handleBulkArchive}
       disabled={bulkArchiveApiKeys.isPending}
       title={
-        <span className="text-destructive">
-          <IconAlertTriangle className="stroke-destructive mr-1 inline-block" size={18} />
+        <span className='text-destructive'>
+          <IconAlertTriangle className='stroke-destructive mr-1 inline-block' size={18} />
           {t('apikeys.dialogs.bulkArchive.title')}
         </span>
       }
@@ -41,5 +40,5 @@ export function ApiKeysBulkArchiveDialog() {
       confirmText={t('common.buttons.archive')}
       cancelBtnText={t('common.buttons.cancel')}
     />
-  )
+  );
 }

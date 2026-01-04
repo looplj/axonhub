@@ -1,44 +1,34 @@
-'use client'
+'use client';
 
-import { Archive, MoreHorizontal, Pencil } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { DataStorage } from '../data/data-storages'
-import { useDataStoragesContext } from '../context/data-storages-context'
+import { Archive, MoreHorizontal, Pencil } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useDataStoragesContext } from '../context/data-storages-context';
+import { DataStorage } from '../data/data-storages';
 
 interface DataStorageActionsProps {
-  dataStorage: DataStorage
-  defaultDataStorageID?: string | null
+  dataStorage: DataStorage;
+  defaultDataStorageID?: string | null;
 }
 
 export function DataStorageActions({ dataStorage, defaultDataStorageID }: DataStorageActionsProps) {
-  const { t } = useTranslation()
-  const {
-    setEditingDataStorage,
-    setIsEditDialogOpen,
-    setArchiveDataStorage,
-    setIsArchiveDialogOpen,
-  } = useDataStoragesContext()
+  const { t } = useTranslation();
+  const { setEditingDataStorage, setIsEditDialogOpen, setArchiveDataStorage, setIsArchiveDialogOpen } = useDataStoragesContext();
 
   const handleEdit = () => {
-    setEditingDataStorage(dataStorage)
-    setIsEditDialogOpen(true)
-  }
+    setEditingDataStorage(dataStorage);
+    setIsEditDialogOpen(true);
+  };
 
   const handleArchive = () => {
-    setArchiveDataStorage(dataStorage)
-    setIsArchiveDialogOpen(true)
-  }
+    setArchiveDataStorage(dataStorage);
+    setIsArchiveDialogOpen(true);
+  };
 
   // Primary data storage cannot be edited
   if (dataStorage.primary) {
-    return null
+    return null;
   }
 
   return (
@@ -62,5 +52,5 @@ export function DataStorageActions({ dataStorage, defaultDataStorageID }: DataSt
         )}
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }

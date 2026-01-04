@@ -1,14 +1,13 @@
-import { useTranslation } from 'react-i18next'
-import { Users } from 'lucide-react'
-
-import { formatNumber } from '@/utils/format-number'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
-import { useDashboardStats } from '../data/dashboard'
+import { Users } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { formatNumber } from '@/utils/format-number';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useDashboardStats } from '../data/dashboard';
 
 export function OverviewCard() {
-  const { t } = useTranslation()
-  const { data: stats, isLoading, error } = useDashboardStats()
+  const { t } = useTranslation();
+  const { data: stats, isLoading, error } = useDashboardStats();
 
   if (isLoading) {
     return (
@@ -22,29 +21,29 @@ export function OverviewCard() {
             <div className='flex gap-4'>
               <div className='flex-1'>
                 <Skeleton className='h-8 w-[80px]' />
-                <Skeleton className='h-4 w-[140px] mt-1' />
+                <Skeleton className='mt-1 h-4 w-[140px]' />
               </div>
               <div className='border-border border-l' />
               <div className='flex-1'>
                 <Skeleton className='h-8 w-[80px]' />
-                <Skeleton className='h-4 w-[140px] mt-1' />
+                <Skeleton className='mt-1 h-4 w-[140px]' />
               </div>
             </div>
             <div className='flex gap-4'>
               <div className='flex-1'>
                 <Skeleton className='h-8 w-[80px]' />
-                <Skeleton className='h-4 w-[140px] mt-1' />
+                <Skeleton className='mt-1 h-4 w-[140px]' />
               </div>
               <div className='border-border border-l' />
               <div className='flex-1'>
                 <Skeleton className='h-8 w-[80px]' />
-                <Skeleton className='h-4 w-[140px] mt-1' />
+                <Skeleton className='mt-1 h-4 w-[140px]' />
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   if (error) {
@@ -57,14 +56,14 @@ export function OverviewCard() {
           <div className='text-sm text-red-500'>{t('common.loadError')}</div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
     <Card className='hover-card'>
       <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
         <CardTitle className='text-sm font-medium'>{t('dashboard.cards.overview')}</CardTitle>
-        <div className='bg-primary/10 text-primary flex h-9 w-9 items-center justify-center rounded-full dark:bg-primary/20'>
+        <div className='bg-primary/10 text-primary dark:bg-primary/20 flex h-9 w-9 items-center justify-center rounded-full'>
           <Users className='h-4 w-4' />
         </div>
       </CardHeader>
@@ -107,5 +106,5 @@ export function OverviewCard() {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

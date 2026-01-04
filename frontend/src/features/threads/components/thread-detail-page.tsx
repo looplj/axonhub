@@ -1,20 +1,20 @@
-import { useMemo, useState } from 'react'
-import { format } from 'date-fns'
-import { useParams, useNavigate } from '@tanstack/react-router'
-import { zhCN, enUS } from 'date-fns/locale'
-import { ArrowLeft, Activity } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-import { extractNumberID } from '@/lib/utils'
-import { usePaginationSearch } from '@/hooks/use-pagination-search'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
-import { Header } from '@/components/layout/header'
-import { Main } from '@/components/layout/main'
-import type { Trace } from '@/features/traces/data/schema'
-import { useThreadDetail } from '../data/threads'
-import { TraceCard } from './trace-card'
-import { TraceDrawer } from './trace-drawer'
+import { useMemo, useState } from 'react';
+import { format } from 'date-fns';
+import { useParams, useNavigate } from '@tanstack/react-router';
+import { zhCN, enUS } from 'date-fns/locale';
+import { ArrowLeft, Activity } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { extractNumberID } from '@/lib/utils';
+import { usePaginationSearch } from '@/hooks/use-pagination-search';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { Header } from '@/components/layout/header';
+import { Main } from '@/components/layout/main';
+import type { Trace } from '@/features/traces/data/schema';
+import { useThreadDetail } from '../data/threads';
+import { TraceCard } from './trace-card';
+import { TraceDrawer } from './trace-drawer';
 
 const THREAD_CURSOR_OPTIONS = {
   startCursorKey: 'threadTracesStart',
@@ -22,25 +22,25 @@ const THREAD_CURSOR_OPTIONS = {
   pageSizeKey: 'threadTracesPageSize',
   directionKey: 'threadTracesDirection',
   cursorHistoryKey: 'threadTracesHistory',
-} as const
+} as const;
 
 export default function ThreadDetailPage() {
   const { threadId } = useParams({ from: '/_authenticated/project/threads/$threadId' as any }) as {
-    threadId: string
-  }
-  const navigate = useNavigate()
-  const { t, i18n } = useTranslation()
-  const locale = i18n.language === 'zh' ? zhCN : enUS
-  const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null)
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+    threadId: string;
+  };
+  const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language === 'zh' ? zhCN : enUS;
+  const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const { pageSize, setCursors, paginationArgs, getSearchParams } = usePaginationSearch({
     defaultPageSize: 20,
     ...THREAD_CURSOR_OPTIONS,
-  })
+  });
 
-  const tracesFirst = paginationArgs.first ?? pageSize
-  const tracesAfter = paginationArgs.after
+  const tracesFirst = paginationArgs.first ?? pageSize;
+  const tracesAfter = paginationArgs.after;
 
   const {
     data: thread,
@@ -51,36 +51,36 @@ export default function ThreadDetailPage() {
     tracesFirst,
     tracesAfter,
     traceOrderBy: { field: 'CREATED_AT', direction: 'DESC' },
-  })
+  });
 
   const traces: Trace[] = useMemo(() => {
-    if (!thread?.tracesConnection) return []
-    return thread.tracesConnection.edges.map(({ node }) => node)
-  }, [thread?.tracesConnection])
+    if (!thread?.tracesConnection) return [];
+    return thread.tracesConnection.edges.map(({ node }) => node);
+  }, [thread?.tracesConnection]);
 
-  const pageInfo = thread?.tracesConnection?.pageInfo
-  const totalCount = thread?.tracesConnection?.totalCount
+  const pageInfo = thread?.tracesConnection?.pageInfo;
+  const totalCount = thread?.tracesConnection?.totalCount;
 
   const handleNextPage = () => {
     if (pageInfo?.hasNextPage && pageInfo.endCursor) {
-      setCursors(pageInfo.startCursor ?? undefined, pageInfo.endCursor ?? undefined, 'after')
+      setCursors(pageInfo.startCursor ?? undefined, pageInfo.endCursor ?? undefined, 'after');
     }
-  }
+  };
 
   const handlePreviousPage = () => {
     if (pageInfo?.hasPreviousPage) {
-      setCursors(pageInfo.startCursor ?? undefined, pageInfo.endCursor ?? undefined, 'before')
+      setCursors(pageInfo.startCursor ?? undefined, pageInfo.endCursor ?? undefined, 'before');
     }
-  }
+  };
 
   const handleBack = () => {
-    navigate({ to: '/project/threads' as any, search: getSearchParams() as any })
-  }
+    navigate({ to: '/project/threads' as any, search: getSearchParams() as any });
+  };
 
   const handleViewTrace = (traceId: string) => {
-    setSelectedTraceId(traceId)
-    setIsDrawerOpen(true)
-  }
+    setSelectedTraceId(traceId);
+    setIsDrawerOpen(true);
+  };
 
   if (isLoading) {
     return (
@@ -95,7 +95,7 @@ export default function ThreadDetailPage() {
           </div>
         </Main>
       </div>
-    )
+    );
   }
 
   if (!thread) {
@@ -117,11 +117,11 @@ export default function ThreadDetailPage() {
           </div>
         </Main>
       </div>
-    )
+    );
   }
 
-  const createdAtLabel = format(thread.createdAt, 'yyyy-MM-dd HH:mm:ss', { locale })
-  const updatedAtLabel = format(thread.updatedAt, 'yyyy-MM-dd HH:mm:ss', { locale })
+  const createdAtLabel = format(thread.createdAt, 'yyyy-MM-dd HH:mm:ss', { locale });
+  const updatedAtLabel = format(thread.updatedAt, 'yyyy-MM-dd HH:mm:ss', { locale });
 
   return (
     <div className='flex h-screen flex-col'>
@@ -151,7 +151,7 @@ export default function ThreadDetailPage() {
       </Header>
 
       <Main className='flex-1 overflow-hidden'>
-        <div className='flex flex-col gap-4 h-full overflow-y-auto p-6'>
+        <div className='flex h-full flex-col gap-4 overflow-y-auto p-6'>
           {/* <Card className='border-0 shadow-sm'>
             <CardContent className='grid gap-4 p-6 md:grid-cols-3'>
               <div>
@@ -216,12 +216,7 @@ export default function ThreadDetailPage() {
                   {t('common.showing')} {traces.length} {t('common.of')} {totalCount} {t('threads.detail.traces')}
                 </div>
                 <div className='flex items-center gap-2'>
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    onClick={handlePreviousPage}
-                    disabled={!pageInfo?.hasPreviousPage}
-                  >
+                  <Button variant='outline' size='sm' onClick={handlePreviousPage} disabled={!pageInfo?.hasPreviousPage}>
                     {t('common.previous')}
                   </Button>
                   <Button variant='outline' size='sm' onClick={handleNextPage} disabled={!pageInfo?.hasNextPage}>
@@ -237,5 +232,5 @@ export default function ThreadDetailPage() {
       {/* Trace Detail Drawer */}
       <TraceDrawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen} traceId={selectedTraceId} />
     </div>
-  )
+  );
 }

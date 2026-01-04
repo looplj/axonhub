@@ -1,34 +1,34 @@
-import { useRef } from 'react'
-import { z } from 'zod'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { graphqlRequest } from '@/gql/graphql'
-import { UPDATE_ME_MUTATION } from '@/gql/users'
-import { User, Upload } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/authStore'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Button } from '@/components/ui/button'
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useMe } from '@/features/auth/data/auth'
+import { useRef } from 'react';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { graphqlRequest } from '@/gql/graphql';
+import { UPDATE_ME_MUTATION } from '@/gql/users';
+import { User, Upload } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+import { useAuthStore } from '@/stores/authStore';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useMe } from '@/features/auth/data/auth';
 
 type ProfileFormValues = {
-  firstName: string
-  lastName: string
-  email: string
-  preferLanguage: string
-  avatar?: string
-}
+  firstName: string;
+  lastName: string;
+  email: string;
+  preferLanguage: string;
+  avatar?: string;
+};
 
 export default function ProfileForm() {
-  const { t } = useTranslation()
-  const auth = useAuthStore((state) => state.auth)
-  const queryClient = useQueryClient()
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const { t } = useTranslation();
+  const auth = useAuthStore((state) => state.auth);
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const profileFormSchema = z.object({
     firstName: z
@@ -52,10 +52,10 @@ export default function ProfileForm() {
       message: t('profile.form.validation.languageRequired'),
     }),
     avatar: z.string().optional(),
-  })
+  });
 
   // Get current user data
-  const { data: currentUser, isLoading } = useMe()
+  const { data: currentUser, isLoading } = useMe();
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -67,7 +67,7 @@ export default function ProfileForm() {
       avatar: currentUser?.avatar || '',
     },
     mode: 'onChange',
-  })
+  });
 
   // Mutation for updating user profile
   const updateProfileMutation = useMutation({
@@ -80,8 +80,8 @@ export default function ProfileForm() {
           preferLanguage: data.preferLanguage,
           avatar: data.avatar,
         },
-      })) as { updateMe: any }
-      return response.updateMe
+      })) as { updateMe: any };
+      return response.updateMe;
     },
     onSuccess: (updatedUser) => {
       // Update the auth store with new user data
@@ -92,38 +92,38 @@ export default function ProfileForm() {
         email: updatedUser.email,
         preferLanguage: updatedUser.preferLanguage,
         avatar: updatedUser.avatar,
-      })
+      });
 
       // Invalidate and refetch user data
-      queryClient.invalidateQueries({ queryKey: ['me'] })
+      queryClient.invalidateQueries({ queryKey: ['me'] });
 
-      toast.success(t('profile.form.messages.updateSuccess'))
+      toast.success(t('profile.form.messages.updateSuccess'));
     },
     onError: (error: any) => {
-      toast.error(t('profile.form.messages.updateError', { error: error.message }))
+      toast.error(t('profile.form.messages.updateError', { error: error.message }));
     },
-  })
+  });
 
   const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
+    const file = event.target.files?.[0];
     if (file) {
       // For now, we'll use a simple file reader to convert to base64
       // In a real app, you'd upload to a file storage service
-      const reader = new FileReader()
+      const reader = new FileReader();
       reader.onload = (e) => {
-        const result = e.target?.result as string
-        form.setValue('avatar', result)
-      }
-      reader.readAsDataURL(file)
+        const result = e.target?.result as string;
+        form.setValue('avatar', result);
+      };
+      reader.readAsDataURL(file);
     }
-  }
+  };
 
   const onSubmit = (data: ProfileFormValues) => {
-    updateProfileMutation.mutate(data)
-  }
+    updateProfileMutation.mutate(data);
+  };
 
   if (isLoading) {
-    return <div>{t('loading')}</div>
+    return <div>{t('loading')}</div>;
   }
 
   return (
@@ -149,13 +149,7 @@ export default function ProfileForm() {
                       <Upload className='mr-2 h-4 w-4' />
                       {t('profile.form.fields.avatar.upload')}
                     </Button>
-                    <input
-                      ref={fileInputRef}
-                      type='file'
-                      accept='image/*'
-                      onChange={handleAvatarUpload}
-                      className='hidden'
-                    />
+                    <input ref={fileInputRef} type='file' accept='image/*' onChange={handleAvatarUpload} className='hidden' />
                   </div>
                 </div>
               </FormControl>
@@ -244,5 +238,5 @@ export default function ProfileForm() {
         </div>
       </form>
     </Form>
-  )
+  );
 }

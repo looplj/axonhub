@@ -1,5 +1,5 @@
-import { DotsHorizontalIcon } from '@radix-ui/react-icons'
-import { Row } from '@tanstack/react-table'
+import { DotsHorizontalIcon } from '@radix-ui/react-icons';
+import { Row } from '@tanstack/react-table';
 import {
   IconEdit,
   IconCopy,
@@ -12,34 +12,34 @@ import {
   IconNetwork,
   IconCheck,
   IconWeight,
-} from '@tabler/icons-react'
-import { useTranslation } from 'react-i18next'
-import { usePermissions } from '@/hooks/usePermissions'
-import { Button } from '@/components/ui/button'
+} from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
+import { usePermissions } from '@/hooks/usePermissions';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { useChannels } from '../context/channels-context'
-import { Channel } from '../data/schema'
+} from '@/components/ui/dropdown-menu';
+import { useChannels } from '../context/channels-context';
+import { Channel } from '../data/schema';
 
 interface DataTableRowActionsProps {
-  row: Row<Channel>
+  row: Row<Channel>;
 }
 
 export function DataTableRowActions({ row }: DataTableRowActionsProps) {
-  const { t } = useTranslation()
-  const { setOpen, setCurrentRow } = useChannels()
-  const { channelPermissions } = usePermissions()
-  const channel = row.original
-  const hasError = !!channel.errorMessage
+  const { t } = useTranslation();
+  const { setOpen, setCurrentRow } = useChannels();
+  const { channelPermissions } = usePermissions();
+  const channel = row.original;
+  const hasError = !!channel.errorMessage;
 
   // Don't show menu if user has no permissions
   if (!channelPermissions.canWrite) {
-    return null
+    return null;
   }
 
   return (
@@ -55,8 +55,8 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         {channelPermissions.canEdit && (
           <DropdownMenuItem
             onClick={() => {
-              setCurrentRow(row.original)
-              setOpen('edit')
+              setCurrentRow(row.original);
+              setOpen('edit');
             }}
           >
             <IconEdit size={16} className='mr-2' />
@@ -67,8 +67,8 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         {channelPermissions.canEdit && (
           <DropdownMenuItem
             onClick={() => {
-              setCurrentRow(row.original)
-              setOpen('duplicate')
+              setCurrentRow(row.original);
+              setOpen('duplicate');
             }}
           >
             <IconCopy size={16} className='mr-2' />
@@ -80,8 +80,8 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         {channelPermissions.canWrite && (
           <DropdownMenuItem
             onClick={() => {
-              setCurrentRow(row.original)
-              setOpen('modelMapping')
+              setCurrentRow(row.original);
+              setOpen('modelMapping');
             }}
           >
             <IconRoute size={16} className='mr-2' />
@@ -93,8 +93,8 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         {channelPermissions.canWrite && (
           <DropdownMenuItem
             onClick={() => {
-              setCurrentRow(row.original)
-              setOpen('overrides')
+              setCurrentRow(row.original);
+              setOpen('overrides');
             }}
           >
             <IconAdjustments size={16} className='mr-2' />
@@ -106,8 +106,8 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         {channelPermissions.canWrite && (
           <DropdownMenuItem
             onClick={() => {
-              setCurrentRow(row.original)
-              setOpen('proxy')
+              setCurrentRow(row.original);
+              setOpen('proxy');
             }}
           >
             <IconNetwork size={16} className='mr-2' />
@@ -119,8 +119,8 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         {channelPermissions.canWrite && (
           <DropdownMenuItem
             onClick={() => {
-              setCurrentRow(row.original)
-              setOpen('weight')
+              setCurrentRow(row.original);
+              setOpen('weight');
             }}
           >
             <IconWeight size={16} className='mr-2' />
@@ -132,8 +132,8 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         {channelPermissions.canWrite && hasError && (
           <DropdownMenuItem
             onClick={() => {
-              setCurrentRow(channel)
-              setOpen('errorResolved')
+              setCurrentRow(channel);
+              setOpen('errorResolved');
             }}
             className='text-green-500!'
           >
@@ -149,8 +149,8 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         {channelPermissions.canWrite && (
           <DropdownMenuItem
             onClick={() => {
-              setCurrentRow(row.original)
-              setOpen('status')
+              setCurrentRow(row.original);
+              setOpen('status');
             }}
             className={row.original.status === 'enabled' ? 'text-red-500!' : 'text-green-500!'}
           >
@@ -167,8 +167,8 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         {channelPermissions.canWrite && row.original.status !== 'archived' && (
           <DropdownMenuItem
             onClick={() => {
-              setCurrentRow(row.original)
-              setOpen('archive')
+              setCurrentRow(row.original);
+              setOpen('archive');
             }}
             className='text-orange-500!'
           >
@@ -181,8 +181,8 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         {channelPermissions.canWrite && (
           <DropdownMenuItem
             onClick={() => {
-              setCurrentRow(row.original)
-              setOpen('delete')
+              setCurrentRow(row.original);
+              setOpen('delete');
             }}
             className='text-red-500!'
           >
@@ -192,5 +192,5 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         )}
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }

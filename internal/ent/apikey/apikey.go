@@ -33,6 +33,8 @@ const (
 	FieldKey = "key"
 	// FieldName holds the string denoting the name field in the database.
 	FieldName = "name"
+	// FieldType holds the string denoting the type field in the database.
+	FieldType = "type"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
 	// FieldScopes holds the string denoting the scopes field in the database.
@@ -80,6 +82,7 @@ var Columns = []string{
 	FieldProjectID,
 	FieldKey,
 	FieldName,
+	FieldType,
 	FieldStatus,
 	FieldScopes,
 	FieldProfiles,
@@ -119,6 +122,32 @@ var (
 	// DefaultProfiles holds the default value on creation for the "profiles" field.
 	DefaultProfiles *objects.APIKeyProfiles
 )
+
+// Type defines the type for the "type" enum field.
+type Type string
+
+// TypeUser is the default value of the Type enum.
+const DefaultType = TypeUser
+
+// Type values.
+const (
+	TypeUser           Type = "user"
+	TypeServiceAccount Type = "service_account"
+)
+
+func (_type Type) String() string {
+	return string(_type)
+}
+
+// TypeValidator is a validator for the "type" field enum values. It is called by the builders before save.
+func TypeValidator(_type Type) error {
+	switch _type {
+	case TypeUser, TypeServiceAccount:
+		return nil
+	default:
+		return fmt.Errorf("apikey: invalid enum value for type field: %q", _type)
+	}
+}
 
 // Status defines the type for the "status" enum field.
 type Status string
@@ -190,6 +219,11 @@ func ByName(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldName, opts...).ToFunc()
 }
 
+// ByType orders the results by the type field.
+func ByType(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldType, opts...).ToFunc()
+}
+
 // ByStatus orders the results by the status field.
 func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStatus, opts...).ToFunc()
@@ -242,6 +276,24 @@ func newRequestsStep() *sqlgraph.Step {
 		sqlgraph.To(RequestsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, RequestsTable, RequestsColumn),
 	)
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (e Type) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(e.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (e *Type) UnmarshalGQL(val interface{}) error {
+	str, ok := val.(string)
+	if !ok {
+		return fmt.Errorf("enum %T must be a string", val)
+	}
+	*e = Type(str)
+	if err := TypeValidator(*e); err != nil {
+		return fmt.Errorf("%s is not a valid Type", str)
+	}
+	return nil
 }
 
 // MarshalGQL implements graphql.Marshaler interface.

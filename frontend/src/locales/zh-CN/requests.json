@@ -23,7 +23,8 @@
       "unknown": "未知",
       "requestBody": "请求体",
       "responseBody": "响应体",
-      "responseChunks": "响应块"
+      "responseChunks": "响应块",
+      "requestHeaders": "请求头"
     },
     "status": {
       "pending": "等待中",

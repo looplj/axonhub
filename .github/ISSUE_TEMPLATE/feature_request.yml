@@ -55,7 +55,7 @@ body:
       description: What area does this feature relate to? / 该功能属于哪个方向？
       options:
         - API Compatibility / API 兼容性
-        - Channel Management / 通道管理
+        - Channel Management / 渠道管理
         - Load Balancing / Failover / 负载均衡 / 故障切换
         - Authentication / Security / 认证 / 安全
         - Monitoring / Logging / 监控 / 日志

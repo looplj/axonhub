@@ -1,52 +1,45 @@
-'use client'
+'use client';
 
-import React, { useCallback } from 'react'
-import { Loader2, Settings2, RefreshCcw, Layers } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Switch } from '@/components/ui/switch'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { useModels } from '../context/models-context'
-import { useModelSettings, useUpdateModelSettings, type UpdateModelSettingsInput } from '@/features/system/data/system'
+import React, { useCallback } from 'react';
+import { Loader2, Settings2, RefreshCcw, Layers } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
+import { useModelSettings, useUpdateModelSettings, type UpdateModelSettingsInput } from '@/features/system/data/system';
+import { useModels } from '../context/models-context';
 
 export function ModelSettingsDialog() {
-  const { t } = useTranslation()
-  const { open, setOpen } = useModels()
-  const { data: settings, isLoading } = useModelSettings()
-  const updateModelSettings = useUpdateModelSettings()
+  const { t } = useTranslation();
+  const { open, setOpen } = useModels();
+  const { data: settings, isLoading } = useModelSettings();
+  const updateModelSettings = useUpdateModelSettings();
 
-  const isOpen = open === 'settings'
+  const isOpen = open === 'settings';
 
-  const [fallbackEnabled, setFallbackEnabled] = React.useState(false)
-  const [queryAllChannelModels, setQueryAllChannelModels] = React.useState(false)
+  const [fallbackEnabled, setFallbackEnabled] = React.useState(false);
+  const [queryAllChannelModels, setQueryAllChannelModels] = React.useState(false);
 
   React.useEffect(() => {
     if (settings) {
-      setFallbackEnabled(settings.fallbackToChannelsOnModelNotFound)
-      setQueryAllChannelModels(settings.queryAllChannelModels)
+      setFallbackEnabled(settings.fallbackToChannelsOnModelNotFound);
+      setQueryAllChannelModels(settings.queryAllChannelModels);
     }
-  }, [settings])
+  }, [settings]);
 
   const handleSave = useCallback(async () => {
     const input: UpdateModelSettingsInput = {
       fallbackToChannelsOnModelNotFound: fallbackEnabled,
       queryAllChannelModels: queryAllChannelModels,
-    }
-    await updateModelSettings.mutateAsync(input)
-    setOpen(null)
-  }, [updateModelSettings, fallbackEnabled, queryAllChannelModels, setOpen])
+    };
+    await updateModelSettings.mutateAsync(input);
+    setOpen(null);
+  }, [updateModelSettings, fallbackEnabled, queryAllChannelModels, setOpen]);
 
   const handleClose = useCallback(() => {
-    setOpen(null)
-  }, [setOpen])
+    setOpen(null);
+  }, [setOpen]);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -67,16 +60,14 @@ export function ModelSettingsDialog() {
           <div className='space-y-4'>
             <Card>
               <CardHeader className='pb-0'>
-                <CardTitle className='text-sm flex items-center gap-2'>
-                  <RefreshCcw className='h-4 w-4 text-muted-foreground' />
+                <CardTitle className='flex items-center gap-2 text-sm'>
+                  <RefreshCcw className='text-muted-foreground h-4 w-4' />
                   {t('models.dialogs.settings.fallbackToChannels.label')}
                 </CardTitle>
               </CardHeader>
               <CardContent className='pt-1'>
                 <div className='flex items-center justify-between'>
-                  <p className='text-sm text-muted-foreground pr-4'>
-                    {t('models.dialogs.settings.fallbackToChannels.description')}
-                  </p>
+                  <p className='text-muted-foreground pr-4 text-sm'>{t('models.dialogs.settings.fallbackToChannels.description')}</p>
                   <Switch
                     id='fallback-enabled'
                     checked={fallbackEnabled}
@@ -89,16 +80,14 @@ export function ModelSettingsDialog() {
 
             <Card>
               <CardHeader className='pb-0'>
-                <CardTitle className='text-sm flex items-center gap-2'>
-                  <Layers className='h-4 w-4 text-muted-foreground' />
+                <CardTitle className='flex items-center gap-2 text-sm'>
+                  <Layers className='text-muted-foreground h-4 w-4' />
                   {t('models.dialogs.settings.queryAllChannelModels.label')}
                 </CardTitle>
               </CardHeader>
               <CardContent className='pt-1'>
                 <div className='flex items-center justify-between'>
-                  <p className='text-sm text-muted-foreground pr-4'>
-                    {t('models.dialogs.settings.queryAllChannelModels.description')}
-                  </p>
+                  <p className='text-muted-foreground pr-4 text-sm'>{t('models.dialogs.settings.queryAllChannelModels.description')}</p>
                   <Switch
                     id='query-all-channel-models'
                     checked={queryAllChannelModels}
@@ -128,5 +117,5 @@ export function ModelSettingsDialog() {
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

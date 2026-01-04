@@ -1,4 +1,4 @@
-import type { ComponentType } from 'react'
+import type { ComponentType } from 'react';
 import {
   OpenAI,
   Anthropic,
@@ -21,35 +21,35 @@ import {
   Bailian,
   Jina,
   DeepInfra,
-} from '@lobehub/icons'
-import { BURNCLOUD_DEFAULT_MODELS } from './burncloud-models'
-import { ApiFormat, ChannelType } from './schema'
+} from '@lobehub/icons';
+import { BURNCLOUD_DEFAULT_MODELS } from './burncloud-models';
+import { ApiFormat, ChannelType } from './schema';
 
-export const OPENAI_CHAT_COMPLETIONS: ApiFormat = 'openai/chat_completions'
-export const OPENAI_RESPONSES: ApiFormat = 'openai/responses'
-export const ANTHROPIC_MESSAGES: ApiFormat = 'anthropic/messages'
-export const GEMINI_CONTENTS: ApiFormat = 'gemini/contents'
+export const OPENAI_CHAT_COMPLETIONS: ApiFormat = 'openai/chat_completions';
+export const OPENAI_RESPONSES: ApiFormat = 'openai/responses';
+export const ANTHROPIC_MESSAGES: ApiFormat = 'anthropic/messages';
+export const GEMINI_CONTENTS: ApiFormat = 'gemini/contents';
 
 /**
  * Channel configuration interface
  */
 export interface ChannelConfig {
-  channelType: ChannelType
+  channelType: ChannelType;
 
   /** Default base URL for the channel type */
-  baseURL: string
+  baseURL: string;
 
   /** Default models available for quick selection */
-  defaultModels: string[]
+  defaultModels: string[];
 
   /** API protocol format used when calling this channel */
-  apiFormat: ApiFormat
+  apiFormat: ApiFormat;
 
   /** Badge color classes for the channel type */
-  color: string
+  color: string;
 
   /** Icon component for the channel type */
-  icon: ComponentType<{ size?: number; className?: string }>
+  icon: ComponentType<{ size?: number; className?: string }>;
 }
 
 /**
@@ -442,11 +442,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
   bailian: {
     channelType: 'bailian',
     baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-    defaultModels: [
-      'qwen-max-plus',
-      'qwen-turbo',
-      'qwen-max',
-    ],
+    defaultModels: ['qwen-max-plus', 'qwen-turbo', 'qwen-max'],
     apiFormat: OPENAI_CHAT_COMPLETIONS,
     color: 'bg-blue-100 text-blue-800 border-blue-200',
     icon: Bailian,
@@ -487,21 +483,21 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-purple-100 text-purple-800 border-purple-200',
     icon: Jina,
   },
-}
+};
 
 /**
  * Get default base URL for a channel type
  */
 export const getDefaultBaseURL = (channelType: ChannelType): string => {
-  return CHANNEL_CONFIGS[channelType]?.baseURL || ''
-}
+  return CHANNEL_CONFIGS[channelType]?.baseURL || '';
+};
 
 /**
  * Get default models for a channel type
  */
 export const getDefaultModels = (channelType: ChannelType): string[] => {
-  return CHANNEL_CONFIGS[channelType]?.defaultModels || []
-}
+  return CHANNEL_CONFIGS[channelType]?.defaultModels || [];
+};
 
 /**
  * Provider type for grouping channel types
@@ -528,7 +524,7 @@ export type Provider =
   | 'burncloud'
   | 'modelscope'
   | 'bailian'
-  | 'jina'
+  | 'jina';
 
 /**
  * Map channel type to provider
@@ -570,11 +566,11 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   modelscope: 'modelscope',
   bailian: 'bailian',
   jina: 'jina',
-}
+};
 
 /**
  * Get provider for a channel type
  */
 export const getProvider = (channelType: ChannelType): Provider => {
-  return CHANNEL_TYPE_TO_PROVIDER[channelType]
-}
+  return CHANNEL_TYPE_TO_PROVIDER[channelType];
+};

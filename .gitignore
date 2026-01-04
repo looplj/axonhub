@@ -118,6 +118,7 @@ test-results
 .trae
 .claude
 .qoder
+.codebuddy
 dumps
 .builds
 .pnpm-store

@@ -1,6 +1,6 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { AuthenticatedLayout } from '@/authenticated-layout'
-import { AuthGuard } from '@/components/auth-guard'
+import { createFileRoute } from '@tanstack/react-router';
+import { AuthenticatedLayout } from '@/authenticated-layout';
+import { AuthGuard } from '@/components/auth-guard';
 
 export const Route = createFileRoute('/_authenticated')({
   component: () => (
@@ -8,4 +8,4 @@ export const Route = createFileRoute('/_authenticated')({
       <AuthenticatedLayout />
     </AuthGuard>
   ),
-})
+});

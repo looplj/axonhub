@@ -86,7 +86,37 @@ AxonHub adopts a multi-level permission management architecture, supporting both
 
 ---
 
-### 3. Channel
+### 3. Model
+
+**Description**: AI model definition, representing available AI models from various providers.
+
+**Level**: Global (shared by all Projects)
+
+**Fields**:
+- `id`: Model unique identifier
+- `developer`: Developer of the model (e.g., deepseek, openai) - immutable
+- `model_id`: Model identifier (e.g., deepseek-chat) - immutable
+- `type`: Model type (chat/embedding/rerank) - immutable
+- `name`: Model name (e.g., DeepSeek Chat)
+- `icon`: Model icon from lobe-icons (e.g., DeepSeek)
+- `group`: Model group (e.g., deepseek)
+- `model_card`: Model card information (JSON)
+- `settings`: Model settings (JSON)
+- `status`: Model status (enabled/disabled/archived)
+- `remark`: User-defined remark or note
+- `created_at`: Creation time
+- `updated_at`: Update time
+- `deleted_at`: Soft deletion time
+
+**Permissions**:
+- Requires `read_channels` permission to read
+- Requires `write_channels` permission to modify
+
+**Relationships**: No direct associations
+
+---
+
+### 4. Channel
 
 **Description**: AI service provider access channel configuration, such as OpenAI, Anthropic, Gemini, etc.
 
@@ -94,15 +124,19 @@ AxonHub adopts a multi-level permission management architecture, supporting both
 
 **Fields**:
 - `id`: Channel unique identifier
-- `type`: Channel type (openai, anthropic, gemini_openai, deepseek, etc.)
+- `type`: Channel type (openai, anthropic, gemini_openai, deepseek, etc.) - immutable
 - `base_url`: API base URL
 - `name`: Channel name (unique)
 - `status`: Channel status (enabled/disabled/archived)
 - `credentials`: Channel credentials (sensitive field)
 - `supported_models`: List of supported models
+- `auto_sync_supported_models`: Auto sync supported models flag
 - `default_test_model`: Default test model
 - `settings`: Channel settings (includes model mappings, etc.)
+- `tags`: Channel tags
 - `ordering_weight`: Display ordering weight
+- `error_message`: Error message (optional)
+- `remark`: User-defined remark or note
 - `created_at`: Creation time
 - `updated_at`: Update time
 - `deleted_at`: Soft deletion time
@@ -118,7 +152,62 @@ AxonHub adopts a multi-level permission management architecture, supporting both
 
 ---
 
-### 4. System
+### 5. Channel Override Template
+
+**Description**: User-defined templates for overriding channel request parameters and headers.
+
+**Level**: User (private to each user)
+
+**Fields**:
+- `id`: Template unique identifier
+- `user_id`: Owner user ID (immutable)
+- `name`: Template name (unique per user and channel type)
+- `description`: Template description
+- `channel_type`: Channel type this template applies to
+- `override_parameters`: Override request body parameters as JSON string
+- `override_headers`: Override request headers (JSON array)
+- `created_at`: Creation time
+- `updated_at`: Update time
+- `deleted_at`: Soft deletion time
+
+**Permissions**:
+- Users can only access their own templates
+- Owner can access all templates
+
+**Relationships**:
+- Belongs to one User
+
+---
+
+### 6. Data Storage
+
+**Description**: Data storage configuration for storing request/response data (database, filesystem, S3, GCS).
+
+**Level**: Global (shared by all Projects)
+
+**Fields**:
+- `id`: Data storage unique identifier
+- `name`: Data storage name
+- `description`: Data storage description
+- `primary`: Whether this is the primary data storage (immutable)
+- `type`: Data storage type (database/fs/s3/gcs) - immutable
+- `settings`: Data storage settings (JSON)
+- `status`: Data storage status (active/archived)
+- `created_at`: Creation time
+- `updated_at`: Update time
+- `deleted_at`: Soft deletion time
+
+**Permissions**:
+- Requires `read_data_storages` permission to read
+- Requires `write_data_storages` permission to modify
+
+**Relationships**:
+- Can store multiple Requests
+- Can store multiple Request Executions
+
+---
+
+### 7. System
 
 **Description**: System-level configuration items, such as Logo, system name, and other global settings.
 
@@ -140,7 +229,7 @@ AxonHub adopts a multi-level permission management architecture, supporting both
 
 ---
 
-### 5. Role
+### 9. Role
 
 **Description**: User role definition containing a set of permission scopes (Scopes).
 
@@ -148,11 +237,10 @@ AxonHub adopts a multi-level permission management architecture, supporting both
 
 **Fields**:
 - `id`: Role unique identifier
-- `code`: Role code (unique, immutable)
 - `name`: Role name
+- `level`: Role level (global/project) - immutable
+- `project_id`: Project ID (optional, required for Project-level roles)
 - `scopes`: Permission scopes included in the role (e.g., write_channels, read_channels, add_users, read_users, etc.)
-- `level`: Role level (global/project)
-- `project_id`: Project ID (required for Project-level roles)
 - `created_at`: Creation time
 - `updated_at`: Update time
 - `deleted_at`: Soft deletion time
@@ -163,10 +251,11 @@ AxonHub adopts a multi-level permission management architecture, supporting both
 
 **Relationships**:
 - Can be assigned to multiple Users
+- Belongs to one Project (for Project-level roles)
 
 ---
 
-### 6. Scope
+### 10. Scope
 
 **Description**: Fine-grained permission definition, such as `read_channels`, `write_requests`, etc.
 
@@ -185,10 +274,12 @@ AxonHub adopts a multi-level permission management architecture, supporting both
 - `write_settings`: Write system settings
 - `read_roles`: Read roles
 - `write_roles`: Write roles
+- `read_data_storages`: Read data storages
+- `write_data_storages`: Write data storages
 
 ---
 
-### 7. API Key
+### 11. API Key
 
 **Description**: API authentication key, each API Key belongs to a specific user and project.
 
@@ -196,13 +287,13 @@ AxonHub adopts a multi-level permission management architecture, supporting both
 
 **Fields**:
 - `id`: API Key unique identifier
-- `user_id`: Owning user ID
-- `project_id`: Owning project ID
+- `user_id`: Owning user ID (immutable)
+- `project_id`: Owning project ID (immutable)
 - `key`: API key (unique, immutable)
 - `name`: API Key name
 - `status`: Status (enabled/disabled/archived)
 - `scopes`: API Key-specific permission scopes (default: read_channels, write_requests)
-- `profiles`: API Key profiles
+- `profiles`: API Key profiles (JSON)
 - `created_at`: Creation time
 - `updated_at`: Update time
 - `deleted_at`: Soft deletion time
@@ -218,7 +309,7 @@ AxonHub adopts a multi-level permission management architecture, supporting both
 
 ---
 
-### 8. Thread
+### 12. Thread
 
 **Description**: Thread entity for organizing and tracking collections of related Traces, enabling request chain observability.
 
@@ -227,13 +318,9 @@ AxonHub adopts a multi-level permission management architecture, supporting both
 **Fields**:
 - `id`: Thread unique identifier
 - `project_id`: Owning project ID
-- `name`: Thread name
-- `description`: Thread description
-- `status`: Thread status (active/archived)
-- `trace_id`: Thread trace ID (unique)
+- `thread_id`: Thread trace ID (unique)
 - `created_at`: Creation time
 - `updated_at`: Update time
-- `deleted_at`: Soft deletion time
 
 **Permissions**:
 - Users can only view and manage Threads within their projects
@@ -242,11 +329,10 @@ AxonHub adopts a multi-level permission management architecture, supporting both
 **Relationships**:
 - Belongs to one Project
 - Contains multiple Traces
-- Contains one Trace ID for tracking
 
 ---
 
-### 9. Trace
+### 13. Trace
 
 **Description**: Trace entity for recording and tracking a set of related Requests, enabling distributed link tracing.
 
@@ -256,13 +342,9 @@ AxonHub adopts a multi-level permission management architecture, supporting both
 - `id`: Trace unique identifier
 - `project_id`: Owning project ID
 - `trace_id`: Trace ID (unique)
-- `name`: Trace name
-- `description`: Trace description
-- `status`: Trace status (active/completed/failed)
 - `thread_id`: Owning thread ID (optional)
 - `created_at`: Creation time
 - `updated_at`: Update time
-- `deleted_at`: Soft deletion time
 
 **Permissions**:
 - Users can only view and manage Traces within their projects
@@ -275,7 +357,7 @@ AxonHub adopts a multi-level permission management architecture, supporting both
 
 ---
 
-### 10. Request
+### 14. Request
 
 **Description**: AI model requests initiated by users via API or Playground.
 
@@ -286,7 +368,8 @@ AxonHub adopts a multi-level permission management architecture, supporting both
 - `api_key_id`: API Key ID (optional, empty for requests from Admin)
 - `project_id`: Owning project ID
 - `trace_id`: Owning trace ID (optional)
-- `source`: Request source (api/playground/test)
+- `data_storage_id`: Data Storage ID (optional)
+- `source`: Request source (api/playground/test) - immutable
 - `model_id`: Model identifier
 - `format`: Request format (e.g., openai/chat_completions, claude/messages)
 - `request_body`: Raw request body (user format)
@@ -296,26 +379,27 @@ AxonHub adopts a multi-level permission management architecture, supporting both
 - `external_id`: External system tracking ID
 - `status`: Request status (pending/processing/completed/failed/canceled)
 - `stream`: Whether it's a streaming request
+- `metrics_latency_ms`: Total latency in milliseconds
+- `metrics_first_token_latency_ms`: First token latency in milliseconds
 - `created_at`: Creation time
 - `updated_at`: Update time
-- `deleted_at`: Soft deletion time
 
 **Permissions**:
 - Users can only view and manage their own Requests
 - Owner can view and manage all Requests
 
 **Relationships**:
-- Belongs to one User
 - Belongs to one Project
 - Optionally associated with one API Key
 - Optionally associated with one Trace
+- Optionally associated with one Data Storage
 - Optionally associated with one Channel
 - Contains multiple Request Executions
-- Associated with one Usage Log
+- Associated with multiple Usage Logs
 
 ---
 
-### 11. Request Execution
+### 15. Request Execution
 
 **Description**: Actual execution record of a Request on a specific Channel. A Request may have multiple executions (e.g., retries, fallback).
 
@@ -323,8 +407,10 @@ AxonHub adopts a multi-level permission management architecture, supporting both
 
 **Fields**:
 - `id`: Execution unique identifier
+- `project_id`: Project ID
 - `request_id`: Associated request ID
 - `channel_id`: Execution channel ID
+- `data_storage_id`: Data Storage ID (optional)
 - `external_id`: External system tracking ID
 - `model_id`: Model identifier
 - `format`: Request format
@@ -333,16 +419,19 @@ AxonHub adopts a multi-level permission management architecture, supporting both
 - `response_chunks`: Streaming response chunks (provider format)
 - `error_message`: Error message
 - `status`: Execution status (pending/processing/completed/failed/canceled)
+- `metrics_latency_ms`: Total latency in milliseconds
+- `metrics_first_token_latency_ms`: First token latency in milliseconds
 - `created_at`: Creation time
 - `updated_at`: Update time
 
 **Relationships**:
 - Belongs to one Request
 - Uses one Channel
+- Optionally uses one Data Storage
 
 ---
 
-### 12. Usage Log
+### 16. Usage Log
 
 **Description**: Records token usage and cost information for each Request for statistics and billing.
 
@@ -389,9 +478,11 @@ AxonHub adopts a multi-level permission management architecture, supporting both
 erDiagram
     AxonHub ||--o{ User : "manages"
     AxonHub ||--o{ Project : "manages"
+    AxonHub ||--o{ Model : "defines"
     AxonHub ||--o{ Channel : "manages"
     AxonHub ||--o{ System : "configures"
     AxonHub ||--o{ Role : "defines"
+    AxonHub ||--o{ DataStorage : "configures"
 
     User ||--o{ ProjectUser : "belongs to"
     Project ||--o{ ProjectUser : "has"
@@ -412,19 +503,24 @@ erDiagram
     Request }o--o| APIKey : "uses"
     Request }o--o| Trace : "belongs to"
     Request }o--o| Channel : "routes to"
+    Request }o--o| DataStorage : "stored in"
     Request ||--o{ RequestExecution : "has"
-    Request ||--|| UsageLog : "generates"
+    Request ||--o{ UsageLog : "generates"
 
     RequestExecution }o--|| Request : "executes"
     RequestExecution }o--|| Channel : "uses"
+    RequestExecution }o--o| DataStorage : "stored in"
 
     Channel ||--o{ Request : "processes"
     Channel ||--o{ RequestExecution : "executes"
     Channel ||--o{ UsageLog : "tracks"
+    Channel ||--|| ChannelPerformance : "has"
 
     UsageLog }o--|| Project : "belongs to"
     UsageLog }o--|| Request : "records"
     UsageLog }o--o| Channel : "uses"
+
+    User ||--o{ ChannelOverrideTemplate : "creates"
 
     Role ||--o{ RoleScope : "contains"
 
@@ -439,6 +535,15 @@ erDiagram
 
     Project {
         uuid id PK
+        string name UK
+        string status
+    }
+
+    Model {
+        uuid id PK
+        string developer
+        string model_id
+        string type
         string name
         string status
     }
@@ -450,6 +555,28 @@ erDiagram
         string status
     }
 
+    ChannelPerformance {
+        uuid id PK
+        uuid channel_id FK
+        int success_rate
+        int avg_latency_ms
+    }
+
+    ChannelOverrideTemplate {
+        uuid id PK
+        uuid user_id FK
+        string name
+        string channel_type
+    }
+
+    DataStorage {
+        uuid id PK
+        string name UK
+        string type
+        boolean primary
+        string status
+    }
+
     System {
         uuid id PK
         string key UK
@@ -458,7 +585,7 @@ erDiagram
 
     Role {
         uuid id PK
-        string code UK
+        string name
         string level
         uuid project_id FK
         jsonb scopes
@@ -467,17 +594,13 @@ erDiagram
     Thread {
         uuid id PK
         uuid project_id FK
-        string name
-        string status
-        string trace_id UK
+        string thread_id UK
     }
 
     Trace {
         uuid id PK
         uuid project_id FK
         string trace_id UK
-        string name
-        string status
         uuid thread_id FK
     }
 
@@ -495,6 +618,7 @@ erDiagram
         uuid trace_id FK
         uuid api_key_id FK
         uuid channel_id FK
+        uuid data_storage_id FK
         string model_id
         string status
     }
@@ -503,6 +627,7 @@ erDiagram
         uuid id PK
         uuid request_id FK
         uuid channel_id FK
+        uuid data_storage_id FK
         string status
     }
 
@@ -538,7 +663,10 @@ Global
 ├── Users (Multiple)
 │   ├── is_owner: true (Owner users)
 │   └── scopes + roles (Custom permissions)
+├── Models (Multiple, shared by all Projects)
 ├── Channels (Multiple, shared by all Projects)
+│   └── Channel Performance (One per Channel)
+├── Data Storages (Multiple, shared by all Projects)
 ├── System Configs (Multiple, shared by all Projects)
 └── Global Roles (Multiple)
 ```
@@ -556,7 +684,7 @@ Project
 ├── Traces (Multiple)
 ├── Requests (Multiple)
 │   ├── Request Executions (Multiple)
-│   └── Usage Log (One)
+│   └── Usage Logs (Multiple)
 └── Usage Logs (Multiple)
 ```
 
@@ -566,34 +694,39 @@ Project
 - **User** → **Projects** (Many-to-Many): Users can join multiple projects
 - **User** → **Roles** (Many-to-Many): Users can have multiple roles (Global and Project)
 - **User** → **API Keys** (One-to-Many): Users can create multiple API Keys
-- **User** → **Requests** (One-to-Many): Users can initiate multiple requests
-- **User** → **Usage Logs** (One-to-Many): Users generate multiple usage logs
+- **User** → **Channel Override Templates** (One-to-Many): Users can create multiple templates
 
 #### Project Relationships
 - **Project** → **Users** (Many-to-Many): Projects contain multiple users
 - **Project** → **Roles** (One-to-Many): Projects contain multiple project-level roles
 - **Project** → **API Keys** (One-to-Many): Projects contain multiple API Keys
-- **Project** → **Requests** (One-to-Many): Projects contain multiple requests
-- **Project** → **Usage Logs** (One-to-Many): Projects contain multiple usage logs
 - **Project** → **Threads** (One-to-Many): Projects contain multiple threads
 - **Project** → **Traces** (One-to-Many): Projects contain multiple traces
+- **Project** → **Requests** (One-to-Many): Projects contain multiple requests
+- **Project** → **Usage Logs** (One-to-Many): Projects contain multiple usage logs
 
 #### Channel Relationships
 - **Channel** → **Requests** (One-to-Many): Channels can process multiple requests
 - **Channel** → **Request Executions** (One-to-Many): Channels can execute multiple requests
 - **Channel** → **Usage Logs** (One-to-Many): Channels associated with multiple usage logs
+- **Channel** → **Channel Performance** (One-to-One): Each channel has one performance record
+
+#### Data Storage Relationships
+- **Data Storage** → **Requests** (One-to-Many): Can store multiple requests
+- **Data Storage** → **Request Executions** (One-to-Many): Can store multiple request executions
 
 #### Request Relationships
-- **Request** → **User** (Many-to-One): Request belongs to one user
 - **Request** → **Project** (Many-to-One): Request belongs to one project
 - **Request** → **API Key** (Many-to-One, Optional): Request may use one API Key
 - **Request** → **Trace** (Many-to-One, Optional): Request may belong to one Trace
 - **Request** → **Channel** (Many-to-One, Optional): Request may use one Channel
+- **Request** → **Data Storage** (Many-to-One, Optional): Request may be stored in one Data Storage
 - **Request** → **Request Executions** (One-to-Many): Request contains multiple execution records
-- **Request** → **Usage Log** (One-to-One): Request associated with one usage log
+- **Request** → **Usage Logs** (One-to-Many): Request generates multiple usage logs
 
 #### Role Relationships
 - **Role** → **Users** (Many-to-Many): Roles can be assigned to multiple users
+- **Role** → **Project** (Many-to-One, Optional): Project-level roles belong to one project
 - **Role** → **Scopes** (One-to-Many): Roles contain multiple permission scopes
 
 #### Thread Relationships
@@ -706,43 +839,65 @@ Project
 1. **User**:
    - `email` (unique index)
 
-2. **Channel**:
+2. **Model**:
+   - `name` + `deleted_at` (unique composite index)
+
+3. **Channel**:
+   - `name` + `deleted_at` (unique composite index)
+
+4. **Channel Performance**:
+   - `channel_id` + `deleted_at` (unique composite index)
+
+5. **Channel Override Template**:
+   - `user_id` + `channel_type` + `name` + `deleted_at` (unique composite index)
+
+6. **Data Storage**:
    - `name` (unique index)
 
-3. **Role**:
-   - `code` (unique index)
+7. **Role**:
+   - `project_id` + `name` (unique composite index)
+   - `level` (regular index)
 
-4. **API Key**:
+8. **API Key**:
    - `key` (unique index)
    - `user_id` (regular index)
+   - `project_id` (regular index)
 
-5. **Request**:
+9. **Request**:
    - `api_key_id` (regular index)
    - `channel_id` (regular index)
    - `trace_id` (regular index)
    - `created_at` (regular index, for time range queries)
    - `status` (regular index, for status filtering)
 
-6. **Thread**:
-   - `project_id` (regular index)
-   - `trace_id` (unique index)
+10. **Thread**:
+    - `project_id` (regular index)
+    - `thread_id` (unique index)
 
-7. **Trace**:
-   - `project_id` (regular index)
-   - `trace_id` (unique index)
-   - `thread_id` (regular index)
+11. **Trace**:
+    - `project_id` (regular index)
+    - `trace_id` (unique index)
+    - `thread_id` (regular index)
 
-8. **Request Execution**:
-   - `request_id` (regular index)
-   - `channel_id` (regular index)
+12. **Request Execution**:
+    - `request_id` (regular index)
+    - `channel_id` (regular index)
 
-9. **Usage Log**:
-   - `request_id` (regular index)
-   - `channel_id` (regular index)
-   - `created_at` (regular index)
-   - `model_id` (regular index)
-   - `(user_id, created_at)` (composite index, for user cost analysis)
-   - `(channel_id, created_at)` (composite index, for channel usage analysis)
+13. **Usage Log**:
+    - `request_id` (regular index)
+    - `channel_id` (regular index)
+    - `created_at` (regular index)
+    - `model_id` (regular index)
+    - `project_id` + `created_at` (composite index, for project usage analysis)
+    - `channel_id` + `created_at` (composite index, for channel usage analysis)
+
+14. **User Project**:
+    - `user_id` + `project_id` + `deleted_at` (unique composite index)
+    - `project_id` (regular index)
+
+15. **User Role**:
+    - `user_id` + `role_id` + `deleted_at` (unique composite index)
+    - `role_id` (regular index)
 
 ---
 

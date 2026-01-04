@@ -7,9 +7,11 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "preview": "vite preview",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
+    "prepare": "husky",
     "knip": "knip",
     "test:e2e": "../scripts/e2e-test.sh",
     "test:e2e:headed": "../scripts/e2e-test.sh --headed",
@@ -110,11 +112,22 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.2.0",
+    "husky": "^9.1.7",
     "knip": "^5.61.2",
+    "lint-staged": "^15.4.3",
     "prettier": "^3.6.0",
     "prettier-plugin-tailwindcss": "^0.6.13",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.35.0",
     "vite": "^7.0.8"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix --quiet",
+      "prettier --write"
+    ],
+    "*.{json,md,css}": [
+      "prettier --write"
+    ]
   }
 }

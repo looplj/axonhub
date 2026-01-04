@@ -213,6 +213,10 @@ type TopRequestsProjects struct {
 	RequestCount       int          `json:"requestCount"`
 }
 
+type UpdateAPIKeyScopesInput struct {
+	Scopes []string `json:"scopes"`
+}
+
 type UpdateBrandSettingsInput struct {
 	BrandName *string `json:"brandName,omitempty"`
 	BrandLogo *string `json:"brandLogo,omitempty"`

@@ -123,8 +123,8 @@ body:
   - type: dropdown
     id: channel-type
     attributes:
-      label: Channel Type / 通道类型
-      description: Which channel type is affected? (if applicable) / 受影响的通道类型是？（如适用）
+      label: Channel Type / 渠道类型
+      description: Which channel type is affected? (if applicable) / 受影响的渠道类型是？（如适用）
       options:
         - N/A / 不适用
         - OpenAI / OpenAI

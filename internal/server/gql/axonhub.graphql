@@ -180,6 +180,10 @@ input APIKeyProfileInput {
   modelIDs: [String!]
 }
 
+input UpdateAPIKeyScopesInput {
+  scopes: [String!]!
+}
+
 type APIKeyProfiles {
   activeProfile: String!
   profiles: [APIKeyProfile!]
@@ -453,6 +457,7 @@ type Mutation {
   updateAPIKeyStatus(id: ID!, status: APIKeyStatus!): APIKey!
   updateAPIKeyProfiles(id: ID!, input: UpdateAPIKeyProfilesInput!): APIKey!
   bulkDisableAPIKeys(ids: [ID!]!): Boolean!
+  bulkEnableAPIKeys(ids: [ID!]!): Boolean!
   bulkArchiveAPIKeys(ids: [ID!]!): Boolean!
 
   createUser(input: CreateUserInput!): User!
@@ -539,8 +544,6 @@ input CountChannelsByTypeInput {
 }
 
 extend type Query {
-  fetchModels(input: FetchModelsInput!): FetchModelsPayload!
-  queryModels(input: QueryModelsInput!): [ModelIdentityWithStatus!]!
   allChannelTags: [String!]!
   countChannelsByType(input: CountChannelsByTypeInput!): [ChannelTypeCount!]!
   """

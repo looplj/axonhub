@@ -1,9 +1,9 @@
-'use client'
+'use client';
 
-import * as React from 'react'
-import { ChevronRight, ChevronDown, Copy, Check, MoreHorizontal, ChevronUp } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import * as React from 'react';
+import { ChevronRight, ChevronDown, Copy, Check, MoreHorizontal, ChevronUp } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 /*
 MIT License
@@ -30,11 +30,11 @@ SOFTWARE.
 */
 
 type JsonViewerProps = {
-  data: any
-  rootName?: string
-  defaultExpanded?: boolean
-  className?: string
-}
+  data: any;
+  rootName?: string;
+  defaultExpanded?: boolean;
+  className?: string;
+};
 
 export function JsonViewer({ data, rootName = 'root', defaultExpanded = true, className }: JsonViewerProps) {
   return (
@@ -43,36 +43,35 @@ export function JsonViewer({ data, rootName = 'root', defaultExpanded = true, cl
         <JsonNode name={rootName} data={data} isRoot={true} defaultExpanded={defaultExpanded} />
       </div>
     </TooltipProvider>
-  )
+  );
 }
 
 type JsonNodeProps = {
-  name: string
-  data: any
-  isRoot?: boolean
-  defaultExpanded?: boolean
-  level?: number
-}
+  name: string;
+  data: any;
+  isRoot?: boolean;
+  defaultExpanded?: boolean;
+  level?: number;
+};
 
 function JsonNode({ name, data, isRoot = false, defaultExpanded = true, level = 0 }: JsonNodeProps) {
-  const [isExpanded, setIsExpanded] = React.useState(defaultExpanded)
-  const [isCopied, setIsCopied] = React.useState(false)
+  const [isExpanded, setIsExpanded] = React.useState(defaultExpanded);
+  const [isCopied, setIsCopied] = React.useState(false);
 
   const handleToggle = () => {
-    setIsExpanded(!isExpanded)
-  }
+    setIsExpanded(!isExpanded);
+  };
 
   const copyToClipboard = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2))
-    setIsCopied(true)
-    setTimeout(() => setIsCopied(false), 2000)
-  }
+    e.stopPropagation();
+    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
 
-  const dataType = data === null ? 'null' : Array.isArray(data) ? 'array' : typeof data
-  const isExpandable =
-    data !== null && data !== undefined && !(data instanceof Date) && (dataType === 'object' || dataType === 'array')
-  const itemCount = isExpandable && data !== null && data !== undefined ? Object.keys(data).length : 0
+  const dataType = data === null ? 'null' : Array.isArray(data) ? 'array' : typeof data;
+  const isExpandable = data !== null && data !== undefined && !(data instanceof Date) && (dataType === 'object' || dataType === 'array');
+  const itemCount = isExpandable && data !== null && data !== undefined ? Object.keys(data).length : 0;
 
   return (
     <div className={cn('group/object pl-4', level > 0 && 'border-border border-l')}>
@@ -122,11 +121,7 @@ function JsonNode({ name, data, isRoot = false, defaultExpanded = true, level = 
           className='hover:bg-muted ml-auto rounded p-1 opacity-0 group-hover/property:opacity-100'
           title='Copy to clipboard'
         >
-          {isCopied ? (
-            <Check className='h-3.5 w-3.5 text-green-500' />
-          ) : (
-            <Copy className='text-muted-foreground h-3.5 w-3.5' />
-          )}
+          {isCopied ? <Check className='h-3.5 w-3.5 text-green-500' /> : <Copy className='text-muted-foreground h-3.5 w-3.5' />}
         </button>
       </div>
 
@@ -145,25 +140,25 @@ function JsonNode({ name, data, isRoot = false, defaultExpanded = true, level = 
         </div>
       )}
     </div>
-  )
+  );
 }
 
 // Update the JsonValue function to make the entire row clickable with an expand icon
 function JsonValue({ data }: { data: any }) {
-  const [isExpanded, setIsExpanded] = React.useState(false)
-  const dataType = typeof data
-  const TEXT_LIMIT = 80 // Character limit before truncation
+  const [isExpanded, setIsExpanded] = React.useState(false);
+  const dataType = typeof data;
+  const TEXT_LIMIT = 80; // Character limit before truncation
 
   if (data === null) {
-    return <span className='text-rose-500'>null</span>
+    return <span className='text-rose-500'>null</span>;
   }
 
   if (data === undefined) {
-    return <span className='text-muted-foreground'>undefined</span>
+    return <span className='text-muted-foreground'>undefined</span>;
   }
 
   if (data instanceof Date) {
-    return <span className='text-purple-500'>{data.toISOString()}</span>
+    return <span className='text-purple-500'>{data.toISOString()}</span>;
   }
 
   switch (dataType) {
@@ -173,8 +168,8 @@ function JsonValue({ data }: { data: any }) {
           <div
             className='group relative flex flex-1 cursor-pointer items-center text-emerald-500'
             onClick={(e) => {
-              e.stopPropagation()
-              setIsExpanded(!isExpanded)
+              e.stopPropagation();
+              setIsExpanded(!isExpanded);
             }}
           >
             {`"`}
@@ -199,14 +194,14 @@ function JsonValue({ data }: { data: any }) {
               )}
             </div>
           </div>
-        )
+        );
       }
-      return <span className='text-emerald-500'>{`"${data}"`}</span>
+      return <span className='text-emerald-500'>{`"${data}"`}</span>;
     case 'number':
-      return <span className='text-amber-500'>{data}</span>
+      return <span className='text-amber-500'>{data}</span>;
     case 'boolean':
-      return <span className='text-blue-500'>{data.toString()}</span>
+      return <span className='text-blue-500'>{data.toString()}</span>;
     default:
-      return <span>{String(data)}</span>
+      return <span>{String(data)}</span>;
   }
 }
