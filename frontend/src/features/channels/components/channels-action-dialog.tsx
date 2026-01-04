@@ -95,6 +95,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [supportedModelsSearch, setSupportedModelsSearch] = useState('');
   const [selectedFetchedModels, setSelectedFetchedModels] = useState<string[]>([]);
   const [showAddedModelsOnly, setShowAddedModelsOnly] = useState(false);
+  const [showUnaddedModelsOnly, setShowUnaddedModelsOnly] = useState(true);
   const [supportedModelsExpanded, setSupportedModelsExpanded] = useState(false);
   const [showClearAllPopover, setShowClearAllPopover] = useState(false);
   const hasAutoSetDuplicateNameRef = useRef(false);
@@ -627,6 +628,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         setSelectedFetchedModels([]);
         setFetchedModelsSearch('');
         setShowAddedModelsOnly(false);
+        setShowUnaddedModelsOnly(true);
       }
     } catch (_error) {
       // Error is already handled by the mutation
@@ -656,13 +658,15 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     let models = fetchedModels;
     if (showAddedModelsOnly) {
       models = models.filter((model) => supportedModels.includes(model));
+    } else if (showUnaddedModelsOnly) {
+      models = models.filter((model) => !supportedModels.includes(model));
     }
     if (fetchedModelsSearch.trim()) {
       const search = fetchedModelsSearch.toLowerCase();
       models = models.filter((model) => model.toLowerCase().includes(search));
     }
     return models;
-  }, [fetchedModels, fetchedModelsSearch, showAddedModelsOnly, supportedModels]);
+  }, [fetchedModels, fetchedModelsSearch, showAddedModelsOnly, showUnaddedModelsOnly, supportedModels]);
 
   // Toggle selection for fetched model
   const toggleFetchedModelSelection = useCallback((model: string) => {
@@ -706,6 +710,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     setSelectedFetchedModels([]);
     setFetchedModelsSearch('');
     setShowAddedModelsOnly(false);
+    setShowUnaddedModelsOnly(true);
   }, []);
 
   // Close supported models panel handler
@@ -760,6 +765,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             setSupportedModelsSearch('');
             setSelectedFetchedModels([]);
             setShowAddedModelsOnly(false);
+            setShowUnaddedModelsOnly(true);
             setSupportedModelsExpanded(false);
             // Reset provider and API format state
             if (initialRow) {
@@ -1334,7 +1340,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             <div
               className='border-border flex min-h-0 flex-col overflow-hidden border-l pl-4 transition-all duration-300 ease-out'
               style={{
-                width: showFetchedModelsPanel || showSupportedModelsPanel ? '320px' : '0px',
+                width: showFetchedModelsPanel || showSupportedModelsPanel ? '360px' : '0px',
                 opacity: showFetchedModelsPanel || showSupportedModelsPanel ? 1 : 0,
                 paddingLeft: showFetchedModelsPanel || showSupportedModelsPanel ? '16px' : '0px',
               }}
@@ -1363,10 +1369,28 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
                 {/* Filter and Actions */}
                 <div className='mb-3 flex items-center justify-between gap-2'>
-                  <label className='flex cursor-pointer items-center gap-2 text-xs'>
-                    <Checkbox checked={showAddedModelsOnly} onCheckedChange={(checked) => setShowAddedModelsOnly(checked === true)} />
-                    {t('channels.dialogs.fields.supportedModels.showAddedOnly')}
-                  </label>
+                  <div className='flex items-center gap-3'>
+                    <label className='flex cursor-pointer items-center gap-2 text-xs'>
+                      <Checkbox
+                        checked={showAddedModelsOnly}
+                        onCheckedChange={(checked) => {
+                          setShowAddedModelsOnly(checked === true);
+                          if (checked) setShowUnaddedModelsOnly(false);
+                        }}
+                      />
+                      {t('channels.dialogs.fields.supportedModels.showAddedOnly')}
+                    </label>
+                    <label className='flex cursor-pointer items-center gap-2 text-xs'>
+                      <Checkbox
+                        checked={showUnaddedModelsOnly}
+                        onCheckedChange={(checked) => {
+                          setShowUnaddedModelsOnly(checked === true);
+                          if (checked) setShowAddedModelsOnly(false);
+                        }}
+                      />
+                      {t('channels.dialogs.fields.supportedModels.showUnaddedOnly')}
+                    </label>
+                  </div>
                   <div className='flex gap-1'>
                     <Button type='button' variant='outline' size='sm' className='h-6 px-2 text-xs' onClick={selectAllFilteredModels}>
                       {t('channels.dialogs.buttons.selectAll')}
