@@ -84,6 +84,10 @@ func RequestFromLLM(r *llm.Request) *Request {
 		}
 	}
 
+	if len(req.Tools) == 0 {
+		req.ParallelToolCalls = nil
+	}
+
 	return req
 }
 
