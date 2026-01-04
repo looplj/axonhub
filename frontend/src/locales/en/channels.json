@@ -292,6 +292,7 @@
           "showMore": "+{{count}} more",
           "searchPlaceholder": "Search models...",
           "showAddedOnly": "Show added only",
+          "showNotAddedOnly": "Show not added only",
           "added": "Added",
           "allModels": "All Models ({{count}})",
           "clearAllTitle": "Clear all supported models?",

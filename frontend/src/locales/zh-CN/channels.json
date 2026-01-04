@@ -294,6 +294,7 @@
           "showMore": "+{{count}} 个更多",
           "searchPlaceholder": "搜索模型...",
           "showAddedOnly": "仅显示已添加",
+          "showNotAddedOnly": "仅显示未添加",
           "added": "已添加",
           "clearAllTitle": "清空所有支持的模型？",
           "clearAllDescription": "确定要清空所有 {{count}} 个模型吗？",
