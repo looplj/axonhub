@@ -1,18 +1,19 @@
-import { z } from 'zod'
-import { apiKeySchema } from '@/features/apikeys/data/schema'
-import { channelSchema } from '@/features/channels/data'
+import { z } from 'zod';
+import { pageInfoSchema } from '@/gql/pagination';
+import { apiKeySchema } from '@/features/apikeys/data/schema';
+import { channelSchema } from '@/features/channels/data';
 
 // Request Status
-export const requestStatusSchema = z.enum(['pending', 'processing', 'completed', 'failed', 'canceled'])
-export type RequestStatus = z.infer<typeof requestStatusSchema>
+export const requestStatusSchema = z.enum(['pending', 'processing', 'completed', 'failed', 'canceled']);
+export type RequestStatus = z.infer<typeof requestStatusSchema>;
 
 // Request Source
-export const requestSourceSchema = z.enum(['api', 'playground', 'test'])
-export type RequestSource = z.infer<typeof requestSourceSchema>
+export const requestSourceSchema = z.enum(['api', 'playground', 'test']);
+export type RequestSource = z.infer<typeof requestSourceSchema>;
 
 // Request Execution Status
-export const requestExecutionStatusSchema = z.enum(['pending', 'processing', 'completed', 'failed', 'canceled'])
-export type RequestExecutionStatus = z.infer<typeof requestExecutionStatusSchema>
+export const requestExecutionStatusSchema = z.enum(['pending', 'processing', 'completed', 'failed', 'canceled']);
+export type RequestExecutionStatus = z.infer<typeof requestExecutionStatusSchema>;
 
 // Request Execution
 export const requestExecutionSchema = z.object({
@@ -24,6 +25,7 @@ export const requestExecutionSchema = z.object({
   // channelID: z.number(),
   channel: channelSchema.partial().nullable().optional(),
   modelID: z.string(),
+  requestHeaders: z.any().nullable().optional(),
   requestBody: z.any(), // JSONRawMessage
   responseBody: z.any().nullable(), // JSONRawMessage
   responseChunks: z.array(z.any()).nullable(), // [JSONRawMessage!]
@@ -31,8 +33,8 @@ export const requestExecutionSchema = z.object({
   status: requestExecutionStatusSchema,
   metricsLatencyMs: z.number().nullable().optional(),
   metricsFirstTokenLatencyMs: z.number().nullable().optional(),
-})
-export type RequestExecution = z.infer<typeof requestExecutionSchema>
+});
+export type RequestExecution = z.infer<typeof requestExecutionSchema>;
 
 // Request
 export const requestSchema = z.object({
@@ -45,6 +47,7 @@ export const requestSchema = z.object({
   channel: channelSchema.partial().nullable().optional(),
   source: requestSourceSchema,
   modelID: z.string(),
+  requestHeaders: z.any().nullable().optional(),
   requestBody: z.any().nullable().optional(), // JSONRawMessage
   responseBody: z.any().nullable().optional(), // JSONRawMessage
   responseChunks: z.array(z.any()).nullable().optional(), // [JSONRawMessage!]
@@ -60,18 +63,13 @@ export const requestSchema = z.object({
           cursor: z.string(),
         })
       ),
-      pageInfo: z.object({
-        hasNextPage: z.boolean(),
-        hasPreviousPage: z.boolean(),
-        startCursor: z.string().nullable(),
-        endCursor: z.string().nullable(),
-      }),
+      pageInfo: pageInfoSchema,
       totalCount: z.number(),
     })
     .optional(),
-})
+});
 
-export type Request = z.infer<typeof requestSchema>
+export type Request = z.infer<typeof requestSchema>;
 
 // Request Connection (for pagination)
 export const requestConnectionSchema = z.object({
@@ -81,15 +79,10 @@ export const requestConnectionSchema = z.object({
       cursor: z.string(),
     })
   ),
-  pageInfo: z.object({
-    hasNextPage: z.boolean(),
-    hasPreviousPage: z.boolean(),
-    startCursor: z.string().nullable(),
-    endCursor: z.string().nullable(),
-  }),
+  pageInfo: pageInfoSchema,
   totalCount: z.number(),
-})
-export type RequestConnection = z.infer<typeof requestConnectionSchema>
+});
+export type RequestConnection = z.infer<typeof requestConnectionSchema>;
 
 // Request Execution Connection (for pagination)
 export const requestExecutionConnectionSchema = z.object({
@@ -99,12 +92,7 @@ export const requestExecutionConnectionSchema = z.object({
       cursor: z.string(),
     })
   ),
-  pageInfo: z.object({
-    hasNextPage: z.boolean(),
-    hasPreviousPage: z.boolean(),
-    startCursor: z.string().nullable(),
-    endCursor: z.string().nullable(),
-  }),
+  pageInfo: pageInfoSchema,
   totalCount: z.number(),
-})
-export type RequestExecutionConnection = z.infer<typeof requestExecutionConnectionSchema>
+});
+export type RequestExecutionConnection = z.infer<typeof requestExecutionConnectionSchema>;

@@ -54,15 +54,18 @@ func (APIKey) Fields() []ent.Field {
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 			),
 		field.String("name"),
+		field.Enum("type").
+			Values("user", "service_account").
+			Default("user").
+			Comment("API Key type: user or service_account").Annotations(
+			entgql.Skip(entgql.SkipMutationUpdateInput),
+		),
 		field.Enum("status").Values("enabled", "disabled", "archived").Default("enabled").Annotations(
 			entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 		),
 		field.Strings("scopes").
-			Comment("API Key specific scopes: read_channels, write_requests, etc.").
+			Comment("API Key specific scopes. For user type: default read_channels, write_requests (immutable). For service_account: custom scopes.").
 			Default([]string{"read_channels", "write_requests"}).
-			Annotations(
-				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
-			).
 			Optional(),
 		field.JSON("profiles", &objects.APIKeyProfiles{}).
 			Default(&objects.APIKeyProfiles{}).

@@ -72,12 +72,17 @@ var blockedHeaders = map[string]bool{
 }
 
 var sensitiveHeaders = map[string]bool{
-	"Authorization": true,
-	"Api-Key":       true,
-	"X-Api-Key":     true,
-	"X-Api-Secret":  true,
-	"X-Api-Token":   true,
-	"Cookie":        true,
+	"Authorization":       true,
+	"Api-Key":             true,
+	"X-Api-Key":           true,
+	"X-Api-Secret":        true,
+	"X-Api-Token":         true,
+	"X-Goog-Api-Key":      true,
+	"X-Google-Api-Key":    true,
+	"Cookie":              true,
+	"Set-Cookie":          true,
+	"Proxy-Authorization": true,
+	"WWW-Authenticate":    true,
 }
 
 func MergeInboundRequest(dest, src *Request) *Request {
@@ -101,6 +106,22 @@ func MergeInboundRequest(dest, src *Request) *Request {
 	}
 
 	return dest
+}
+
+func MaskSensitiveHeaders(headers http.Header) http.Header {
+	result := make(http.Header, len(headers))
+	for key, values := range headers {
+		var newValues []string
+		if _, ok := sensitiveHeaders[key]; !ok {
+			newValues = values
+		} else {
+			newValues = append(newValues, "******")
+		}
+
+		result[key] = newValues
+	}
+
+	return result
 }
 
 // FinalizeAuthHeaders writes the auth config into headers and clears the in-memory auth field.

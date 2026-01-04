@@ -100,6 +100,8 @@
   "common": {
     "close": "Close",
     "refresh": "Refresh",
+    "autoRefresh": "Auto Refresh",
+    "autoRefreshEvery": "Auto refresh every {{seconds}} seconds",
     "selected": "selected",
     "selectedItems": "{{count}} selected",
     "noResultsFound": "No results found",

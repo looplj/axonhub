@@ -1,41 +1,41 @@
-'use client'
+'use client';
 
-import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
-import { driver } from 'driver.js'
-import 'driver.js/dist/driver.css'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { useCompleteOnboarding } from '@/features/system/data/system'
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from '@tanstack/react-router';
+import { driver } from 'driver.js';
+import 'driver.js/dist/driver.css';
+import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useCompleteOnboarding } from '@/features/system/data/system';
 
 interface OnboardingFlowProps {
-  onComplete?: () => void
+  onComplete?: () => void;
 }
 
 export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
-  const { t } = useTranslation()
-  const navigate = useNavigate()
-  const completeOnboarding = useCompleteOnboarding()
-  const [showPrompt, setShowPrompt] = useState(true)
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const completeOnboarding = useCompleteOnboarding();
+  const [showPrompt, setShowPrompt] = useState(true);
 
   useEffect(() => {
     // Prevent body scroll when modal is open
     if (showPrompt) {
-      document.body.style.overflow = 'hidden'
+      document.body.style.overflow = 'hidden';
     } else {
-      document.body.style.overflow = ''
+      document.body.style.overflow = '';
     }
 
     // Cleanup on unmount
     return () => {
-      document.body.style.overflow = ''
-    }
-  }, [showPrompt])
+      document.body.style.overflow = '';
+    };
+  }, [showPrompt]);
 
   const startOnboarding = useCallback(() => {
-    setShowPrompt(false)
+    setShowPrompt(false);
 
     // Navigate to system page first
     navigate({ to: '/system' }).then(() => {
@@ -82,8 +82,8 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               onHighlighted: () => {
                 // Switch to retry tab using URL navigation for more reliable tab switching
                 setTimeout(() => {
-                  navigate({ to: '/system', search: { tab: 'retry' } })
-                }, 300)
+                  navigate({ to: '/system', search: { tab: 'retry' } });
+                }, 300);
               },
             },
             {
@@ -133,8 +133,8 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               onHighlighted: () => {
                 // Switch to storage tab using URL navigation for more reliable tab switching
                 setTimeout(() => {
-                  navigate({ to: '/system', search: { tab: 'storage' } })
-                }, 300)
+                  navigate({ to: '/system', search: { tab: 'storage' } });
+                }, 300);
               },
             },
             {
@@ -212,12 +212,12 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 // Mark onboarding as completed
                 completeOnboarding.mutate(undefined, {
                   onSuccess: () => {
-                    toast.success(t('system.onboarding.completeTour'))
-                    onComplete?.()
+                    toast.success(t('system.onboarding.completeTour'));
+                    onComplete?.();
                     // Navigate to data storages page
-                    navigate({ to: '/data-storages' })
+                    navigate({ to: '/data-storages' });
                   },
-                })
+                });
               },
             },
           ],
@@ -225,30 +225,30 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             // Complete onboarding when user closes the tour
             completeOnboarding.mutate(undefined, {
               onSuccess: () => {
-                toast.success(t('system.onboarding.completeTour'))
-                onComplete?.()
+                toast.success(t('system.onboarding.completeTour'));
+                onComplete?.();
               },
-            })
-            driverObj.destroy()
+            });
+            driverObj.destroy();
           },
-        })
+        });
 
-        driverObj.drive()
-      }, 500) // Wait a bit for the page to render
-    })
-  }, [completeOnboarding, navigate, t])
+        driverObj.drive();
+      }, 500); // Wait a bit for the page to render
+    });
+  }, [completeOnboarding, navigate, t]);
 
   const skipOnboarding = useCallback(() => {
-    setShowPrompt(false)
+    setShowPrompt(false);
     completeOnboarding.mutate(undefined, {
       onSuccess: () => {
-        onComplete?.()
+        onComplete?.();
       },
-    })
-  }, [completeOnboarding, onComplete])
+    });
+  }, [completeOnboarding, onComplete]);
 
   if (showPrompt === false) {
-    return null
+    return null;
   }
 
   return (
@@ -271,5 +271,5 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

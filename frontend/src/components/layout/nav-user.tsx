@@ -1,14 +1,7 @@
-import { Link } from '@tanstack/react-router'
-import {
-  BadgeCheck,
-  Bell,
-  ChevronsUpDown,
-  CreditCard,
-  LogOut,
-  Sparkles,
-  User,
-} from 'lucide-react'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Link } from '@tanstack/react-router';
+import { BadgeCheck, Bell, ChevronsUpDown, CreditCard, LogOut, Sparkles, User } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,42 +10,33 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from '@/components/ui/sidebar'
-import { useSignOut } from '@/features/auth/data/auth'
-import { useTranslation } from 'react-i18next'
+} from '@/components/ui/dropdown-menu';
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
+import { useSignOut } from '@/features/auth/data/auth';
 
 export function NavUser({
   user,
 }: {
   user: {
-    name: string
-    email: string
-    avatar: string
-  }
+    name: string;
+    email: string;
+    avatar: string;
+  };
 }) {
-  const { isMobile } = useSidebar()
-  const signOut = useSignOut()
-  const { t } = useTranslation()
+  const { isMobile } = useSidebar();
+  const signOut = useSignOut();
+  const { t } = useTranslation();
 
   // Check if avatar is a URL or initials
-  const isAvatarUrl = user.avatar.startsWith('http') || user.avatar.startsWith('/') || user.avatar.startsWith('data:')
-  const avatarFallback = isAvatarUrl ? user.name.charAt(0).toUpperCase() : user.avatar
+  const isAvatarUrl = user.avatar.startsWith('http') || user.avatar.startsWith('/') || user.avatar.startsWith('data:');
+  const avatarFallback = isAvatarUrl ? user.name.charAt(0).toUpperCase() : user.avatar;
 
   return (
     <SidebarMenu>
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size='lg'
-              className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground'
-            >
+            <SidebarMenuButton size='lg' className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground'>
               <Avatar className='h-8 w-8 rounded-lg'>
                 {isAvatarUrl && <AvatarImage src={user.avatar} alt={user.name} />}
                 <AvatarFallback className='rounded-lg'>{avatarFallback}</AvatarFallback>
@@ -119,5 +103,5 @@ export function NavUser({
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
-  )
+  );
 }

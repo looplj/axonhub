@@ -177,6 +177,11 @@ input APIKeyProfileInput {
   modelMappings: [ModelMappingInput!]
   channelIDs: [Int!]
   channelTags: [String!]
+  modelIDs: [String!]
+}
+
+input UpdateAPIKeyScopesInput {
+  scopes: [String!]!
 }
 
 type APIKeyProfiles {
@@ -189,6 +194,7 @@ type APIKeyProfile {
   modelMappings: [ModelMapping!]
   channelIDs: [Int!]
   channelTags: [String!]
+  modelIDs: [String!]
 }
 
 input FetchModelsInput {
@@ -298,7 +304,7 @@ extend type Channel {
   All model entries this channel can handle, including direct models, prefixed models, auto-trimmed models, and mapped models
   """
   allModelEntries: [ChannelModelEntry!]! @goField(forceResolver: true)
-  
+
   """
   Channel credentials, will be null if user can not access the the credentials
   """
@@ -451,6 +457,7 @@ type Mutation {
   updateAPIKeyStatus(id: ID!, status: APIKeyStatus!): APIKey!
   updateAPIKeyProfiles(id: ID!, input: UpdateAPIKeyProfilesInput!): APIKey!
   bulkDisableAPIKeys(ids: [ID!]!): Boolean!
+  bulkEnableAPIKeys(ids: [ID!]!): Boolean!
   bulkArchiveAPIKeys(ids: [ID!]!): Boolean!
 
   createUser(input: CreateUserInput!): User!
@@ -537,8 +544,6 @@ input CountChannelsByTypeInput {
 }
 
 extend type Query {
-  fetchModels(input: FetchModelsInput!): FetchModelsPayload!
-  queryModels(input: QueryModelsInput!): [ModelIdentityWithStatus!]!
   allChannelTags: [String!]!
   countChannelsByType(input: CountChannelsByTypeInput!): [ChannelTypeCount!]!
   """

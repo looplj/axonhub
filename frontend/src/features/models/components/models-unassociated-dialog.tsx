@@ -1,52 +1,46 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { IconAlertCircle, IconSearch } from '@tabler/icons-react'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { useDebounce } from '@/hooks/use-debounce'
-import { useModels } from '../context/models-context'
-import { useQueryUnassociatedChannels } from '../data/models'
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { IconAlertCircle, IconSearch } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
+import { useDebounce } from '@/hooks/use-debounce';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { useModels } from '../context/models-context';
+import { useQueryUnassociatedChannels } from '../data/models';
 
 export function ModelsUnassociatedDialog() {
-  const { t } = useTranslation()
-  const { open, setOpen } = useModels()
-  const { data, refetch, isLoading, isFetching } = useQueryUnassociatedChannels()
-  const [searchQuery, setSearchQuery] = useState('')
-  const debouncedSearchQuery = useDebounce(searchQuery, 300)
+  const { t } = useTranslation();
+  const { open, setOpen } = useModels();
+  const { data, refetch, isLoading, isFetching } = useQueryUnassociatedChannels();
+  const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-  const isOpen = open === 'unassociated'
+  const isOpen = open === 'unassociated';
 
   useEffect(() => {
     if (isOpen) {
-      refetch()
-      setSearchQuery('')
+      refetch();
+      setSearchQuery('');
     }
-  }, [isOpen, refetch])
+  }, [isOpen, refetch]);
 
   const handleClose = useCallback(() => {
-    setOpen(null)
-  }, [setOpen])
+    setOpen(null);
+  }, [setOpen]);
 
   const filteredData = useMemo(() => {
-    if (!data || !debouncedSearchQuery.trim()) return data
+    if (!data || !debouncedSearchQuery.trim()) return data;
 
-    const query = debouncedSearchQuery.toLowerCase()
+    const query = debouncedSearchQuery.toLowerCase();
     return data
       .map((info) => ({
         ...info,
         models: info.models.filter((model) => model.toLowerCase().includes(query)),
       }))
-      .filter((info) => info.models.length > 0)
-  }, [data, debouncedSearchQuery])
+      .filter((info) => info.models.length > 0);
+  }, [data, debouncedSearchQuery]);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -59,7 +53,7 @@ export function ModelsUnassociatedDialog() {
         <div className='flex-1 space-y-4 overflow-y-auto'>
           {isLoading || isFetching ? (
             <div className='flex items-center justify-center py-8'>
-              <div className='text-sm text-muted-foreground'>{t('common.loading')}</div>
+              <div className='text-muted-foreground text-sm'>{t('common.loading')}</div>
             </div>
           ) : data && data.length > 0 ? (
             <>
@@ -74,7 +68,7 @@ export function ModelsUnassociatedDialog() {
               </div>
 
               <div className='relative'>
-                <IconSearch className='absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
+                <IconSearch className='text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2' />
                 <Input
                   placeholder={t('models.unassociated.searchPlaceholder')}
                   value={searchQuery}
@@ -94,10 +88,7 @@ export function ModelsUnassociatedDialog() {
                             <Badge variant='outline' className='text-xs'>
                               {info.channel.type}
                             </Badge>
-                            <Badge
-                              variant={info.channel.status === 'enabled' ? 'default' : 'secondary'}
-                              className='text-xs'
-                            >
+                            <Badge variant={info.channel.status === 'enabled' ? 'default' : 'secondary'} className='text-xs'>
                               {info.channel.status}
                             </Badge>
                           </div>
@@ -116,17 +107,13 @@ export function ModelsUnassociatedDialog() {
                 </ScrollArea>
               ) : (
                 <div className='flex flex-col items-center justify-center rounded-md border py-8 text-center'>
-                  <div className='text-sm text-muted-foreground'>
-                    {t('models.unassociated.noSearchResults')}
-                  </div>
+                  <div className='text-muted-foreground text-sm'>{t('models.unassociated.noSearchResults')}</div>
                 </div>
               )}
             </>
           ) : (
             <div className='flex flex-col items-center justify-center py-8 text-center'>
-              <div className='text-sm text-muted-foreground'>
-                {t('models.unassociated.noUnassociated')}
-              </div>
+              <div className='text-muted-foreground text-sm'>{t('models.unassociated.noUnassociated')}</div>
             </div>
           )}
         </div>
@@ -136,5 +123,5 @@ export function ModelsUnassociatedDialog() {
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

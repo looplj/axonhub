@@ -1,58 +1,43 @@
-import { HTMLAttributes } from 'react'
-import { z } from 'zod'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useTranslation } from 'react-i18next'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { PasswordInput } from '@/components/password-input'
-import { useInitializeSystem } from '@/features/auth/data/initialization'
+import { HTMLAttributes } from 'react';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useTranslation } from 'react-i18next';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/password-input';
+import { useInitializeSystem } from '@/features/auth/data/initialization';
 
-type InitializationFormProps = HTMLAttributes<HTMLFormElement>
+type InitializationFormProps = HTMLAttributes<HTMLFormElement>;
 
 // Create form schema factory to support i18n
-const createFormSchema = (t: (key: string) => string) => z.object({
-  ownerEmail: z
-    .string()
-    .min(1, { message: t('initialization.form.validation.ownerEmailRequired') })
-    .email({ message: t('initialization.form.validation.ownerEmailInvalid') }),
-  ownerPassword: z
-    .string()
-    .min(1, {
-      message: t('initialization.form.validation.ownerPasswordRequired'),
-    })
-    .min(8, {
-      message: t('initialization.form.validation.ownerPasswordMinLength'),
-    }),
-  ownerFirstName: z
-    .string()
-    .min(1, { message: t('initialization.form.validation.ownerFirstNameRequired') }),
-  ownerLastName: z
-    .string()
-    .min(1, { message: t('initialization.form.validation.ownerLastNameRequired') }),
-  brandName: z
-    .string()
-    .min(1, { message: t('initialization.form.validation.brandNameRequired') }),
-})
+const createFormSchema = (t: (key: string) => string) =>
+  z.object({
+    ownerEmail: z
+      .string()
+      .min(1, { message: t('initialization.form.validation.ownerEmailRequired') })
+      .email({ message: t('initialization.form.validation.ownerEmailInvalid') }),
+    ownerPassword: z
+      .string()
+      .min(1, {
+        message: t('initialization.form.validation.ownerPasswordRequired'),
+      })
+      .min(8, {
+        message: t('initialization.form.validation.ownerPasswordMinLength'),
+      }),
+    ownerFirstName: z.string().min(1, { message: t('initialization.form.validation.ownerFirstNameRequired') }),
+    ownerLastName: z.string().min(1, { message: t('initialization.form.validation.ownerLastNameRequired') }),
+    brandName: z.string().min(1, { message: t('initialization.form.validation.brandNameRequired') }),
+  });
 
-export function InitializationForm({
-  className,
-  ...props
-}: InitializationFormProps) {
-  const { t } = useTranslation()
-  const initializeSystemMutation = useInitializeSystem()
-  
-  const formSchema = createFormSchema(t)
-  type FormData = z.infer<typeof formSchema>
+export function InitializationForm({ className, ...props }: InitializationFormProps) {
+  const { t } = useTranslation();
+  const initializeSystemMutation = useInitializeSystem();
+
+  const formSchema = createFormSchema(t);
+  type FormData = z.infer<typeof formSchema>;
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -63,7 +48,7 @@ export function InitializationForm({
       ownerLastName: '',
       brandName: '',
     },
-  })
+  });
 
   function onSubmit(data: FormData) {
     const input = {
@@ -72,17 +57,13 @@ export function InitializationForm({
       ownerFirstName: data.ownerFirstName,
       ownerLastName: data.ownerLastName,
       brandName: data.brandName,
-    }
-    initializeSystemMutation.mutate(input)
+    };
+    initializeSystemMutation.mutate(input);
   }
 
   return (
     <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(onSubmit)}
-        className={cn('grid gap-4', className)}
-        {...props}
-      >
+      <form onSubmit={form.handleSubmit(onSubmit)} className={cn('grid gap-4', className)} {...props}>
         <FormField
           control={form.control}
           name='ownerFirstName'
@@ -90,7 +71,7 @@ export function InitializationForm({
             <FormItem>
               <FormLabel>{t('initialization.form.ownerFirstName')}</FormLabel>
               <FormControl>
-                <Input placeholder={t('initialization.form.placeholders.ownerFirstName')} {...field} />
+                <Input placeholder={t('initialization.form.placeholders.ownerFirstName')} className='border-slate-300 !bg-white text-slate-800 transition-all duration-300 placeholder:text-slate-400 focus:border-slate-500 focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -103,7 +84,7 @@ export function InitializationForm({
             <FormItem>
               <FormLabel>{t('initialization.form.ownerLastName')}</FormLabel>
               <FormControl>
-                <Input placeholder={t('initialization.form.placeholders.ownerLastName')} {...field} />
+                <Input placeholder={t('initialization.form.placeholders.ownerLastName')} className='border-slate-300 !bg-white text-slate-800 transition-all duration-300 placeholder:text-slate-400 focus:border-slate-500 focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -116,7 +97,7 @@ export function InitializationForm({
             <FormItem>
               <FormLabel>{t('initialization.form.ownerEmail')}</FormLabel>
               <FormControl>
-                <Input placeholder={t('initialization.form.placeholders.ownerEmail')} {...field} />
+                <Input placeholder={t('initialization.form.placeholders.ownerEmail')} className='border-slate-300 !bg-white text-slate-800 transition-all duration-300 placeholder:text-slate-400 focus:border-slate-500 focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -129,7 +110,7 @@ export function InitializationForm({
             <FormItem>
               <FormLabel>{t('initialization.form.ownerPassword')}</FormLabel>
               <FormControl>
-                <PasswordInput placeholder={t('initialization.form.placeholders.ownerPassword')} {...field} />
+                <PasswordInput placeholder={t('initialization.form.placeholders.ownerPassword')} className='border-slate-300 bg-white text-slate-800 backdrop-blur-sm transition-all duration-300 placeholder:text-slate-400 focus:border-slate-500 focus:bg-white focus:ring-2 focus:ring-slate-200' {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -142,7 +123,7 @@ export function InitializationForm({
             <FormItem>
               <FormLabel>{t('initialization.form.brandName')}</FormLabel>
               <FormControl>
-                <Input placeholder={t('initialization.form.placeholders.brandName')} {...field} />
+                <Input placeholder={t('initialization.form.placeholders.brandName')} className='border-slate-300 !bg-white text-slate-800 transition-all duration-300 placeholder:text-slate-400 focus:border-slate-500 focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -153,11 +134,9 @@ export function InitializationForm({
           className='mt-6 w-full rounded-lg bg-slate-800 px-6 py-3 font-medium text-white shadow-lg transition-all duration-300 hover:bg-slate-700 hover:shadow-xl focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 disabled:opacity-50'
           disabled={initializeSystemMutation.isPending}
         >
-          {initializeSystemMutation.isPending
-            ? t('initialization.form.submitting')
-            : t('initialization.form.submit')}
+          {initializeSystemMutation.isPending ? t('initialization.form.submitting') : t('initialization.form.submit')}
         </Button>
       </form>
     </Form>
-  )
+  );
 }

@@ -1,40 +1,40 @@
-import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { useChannels } from '../context/channels-context'
-import { useClearChannelErrorMessage } from '../data/channels'
+import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useChannels } from '../context/channels-context';
+import { useClearChannelErrorMessage } from '../data/channels';
 
 interface ChannelsErrorResolvedDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 export function ChannelsErrorResolvedDialog({ open, onOpenChange }: ChannelsErrorResolvedDialogProps) {
-  const { t } = useTranslation()
-  const { currentRow, setOpen } = useChannels()
-  const updateChannelErrorMessage = useClearChannelErrorMessage()
+  const { t } = useTranslation();
+  const { currentRow, setOpen } = useChannels();
+  const updateChannelErrorMessage = useClearChannelErrorMessage();
 
   const handleConfirm = async () => {
-    if (!currentRow) return
+    if (!currentRow) return;
 
     try {
       await updateChannelErrorMessage.mutateAsync({
         id: currentRow.id,
-      })
-      setOpen(null)
-      onOpenChange(false)
+      });
+      setOpen(null);
+      onOpenChange(false);
     } catch (error) {
       // Error is handled by the mutation hook
     }
-  }
+  };
 
   const handleCancel = () => {
-    setOpen(null)
-    onOpenChange(false)
-  }
+    setOpen(null);
+    onOpenChange(false);
+  };
 
   if (!currentRow || !currentRow.errorMessage) {
-    return null
+    return null;
   }
 
   return (
@@ -67,5 +67,5 @@ export function ChannelsErrorResolvedDialog({ open, onOpenChange }: ChannelsErro
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

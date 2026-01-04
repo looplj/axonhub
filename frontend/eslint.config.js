@@ -1,18 +1,14 @@
-import globals from 'globals'
-import js from '@eslint/js'
-import pluginQuery from '@tanstack/eslint-plugin-query'
-import reactHooks from 'eslint-plugin-react-hooks'
-import reactRefresh from 'eslint-plugin-react-refresh'
-import tseslint from 'typescript-eslint'
+import globals from 'globals';
+import js from '@eslint/js';
+import pluginQuery from '@tanstack/eslint-plugin-query';
+import reactHooks from 'eslint-plugin-react-hooks';
+import reactRefresh from 'eslint-plugin-react-refresh';
+import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', 'src/components/ui'] },
+  { ignores: ['dist', 'src/components/ui', 'tests'] },
   {
-    extends: [
-      js.configs.recommended,
-      ...tseslint.configs.recommended,
-      ...pluginQuery.configs['flat/recommended'],
-    ],
+    extends: [js.configs.recommended, ...tseslint.configs.recommended, ...pluginQuery.configs['flat/recommended']],
     files: ['**/*.{ts,tsx}'],
     languageOptions: {
       ecmaVersion: 2020,
@@ -24,10 +20,7 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      'react-refresh/only-export-components': [
-        'warn',
-        { allowConstantExport: true },
-      ],
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       'no-console': 'error',
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': [
@@ -44,4 +37,4 @@ export default tseslint.config(
       ],
     },
   }
-)
+);

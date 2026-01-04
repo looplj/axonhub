@@ -1,21 +1,21 @@
-import { useTranslation } from 'react-i18next'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
-import { Tabs, TabsContent } from '@/components/ui/tabs'
-import { Header } from '@/components/layout/header'
-import { DailyRequestStats } from './components/daily-requests-stats'
-import { RequestsByChannelChart } from './components/requests-by-channel-chart'
-import { RequestsByModelChart } from './components/requests-by-model-chart'
-import { TokenStatsCard } from './components/token-stats-card'
-import { ChannelSuccessRate } from './components/channel-success-rate'
-import { TotalRequestsCard } from './components/total-requests-card'
-import { SuccessRateCard } from './components/success-rate-card'
-import { TodayRequestsCard } from './components/today-requests-card'
-import { useDashboardStats } from './data/dashboard'
+import { useTranslation } from 'react-i18next';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { Header } from '@/components/layout/header';
+import { ChannelSuccessRate } from './components/channel-success-rate';
+import { DailyRequestStats } from './components/daily-requests-stats';
+import { RequestsByChannelChart } from './components/requests-by-channel-chart';
+import { RequestsByModelChart } from './components/requests-by-model-chart';
+import { SuccessRateCard } from './components/success-rate-card';
+import { TodayRequestsCard } from './components/today-requests-card';
+import { TokenStatsCard } from './components/token-stats-card';
+import { TotalRequestsCard } from './components/total-requests-card';
+import { useDashboardStats } from './data/dashboard';
 
 export default function DashboardPage() {
-  const { t } = useTranslation()
-  const { isLoading, error } = useDashboardStats()
+  const { t } = useTranslation();
+  const { isLoading, error } = useDashboardStats();
 
   if (isLoading) {
     return (
@@ -43,7 +43,7 @@ export default function DashboardPage() {
           </div>
         </Tabs>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -53,7 +53,7 @@ export default function DashboardPage() {
           {t('common.loadError')} {error.message}
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -62,13 +62,13 @@ export default function DashboardPage() {
       <Tabs defaultValue='overview' className='space-y-4'>
         <TabsContent value='overview' className='space-y-4'>
           <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-4'>
-          <TotalRequestsCard />
-          <SuccessRateCard />
-          <TokenStatsCard />
-          <TodayRequestsCard />
-        </div>
+            <TotalRequestsCard />
+            <SuccessRateCard />
+            <TokenStatsCard />
+            <TodayRequestsCard />
+          </div>
           <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-7'>
-            <Card className='col-span-4 hover-card'>
+            <Card className='hover-card col-span-4'>
               <CardHeader>
                 <CardTitle>{t('dashboard.charts.dailyRequestOverview')}</CardTitle>
               </CardHeader>
@@ -76,7 +76,7 @@ export default function DashboardPage() {
                 <DailyRequestStats />
               </CardContent>
             </Card>
-            <Card className='col-span-3 hover-card'>
+            <Card className='hover-card col-span-3'>
               <CardHeader>
                 <CardTitle>{t('dashboard.charts.channelSuccessRate')}</CardTitle>
                 <CardDescription>{t('dashboard.charts.channelSuccessRateDescription')}</CardDescription>
@@ -109,5 +109,5 @@ export default function DashboardPage() {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }

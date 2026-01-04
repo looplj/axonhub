@@ -128,7 +128,10 @@ func (s *RequestService) CreateRequest(
 		log.Warn(ctx, "Failed to get storage policy, defaulting to store request body", log.Cause(err))
 	}
 
-	var requestBodyBytes objects.JSONRawMessage = []byte("{}")
+	var (
+		requestBodyBytes    objects.JSONRawMessage = []byte("{}")
+		requestHeadersBytes objects.JSONRawMessage = []byte("{}")
+	)
 
 	if storeRequestBody {
 		b, err := xjson.Marshal(httpRequest.Body)
@@ -138,6 +141,10 @@ func (s *RequestService) CreateRequest(
 		}
 
 		requestBodyBytes = b
+
+		if httpRequest != nil && len(httpRequest.Headers) > 0 {
+			requestHeadersBytes, _ = xjson.Marshal(httpclient.MaskSensitiveHeaders(httpRequest.Headers))
+		}
 	} // else keep nil -> stored as JSON null
 
 	isStream := false
@@ -158,7 +165,8 @@ func (s *RequestService) CreateRequest(
 		SetFormat(string(format)).
 		SetSource(contexts.GetSourceOrDefault(ctx, request.SourceAPI)).
 		SetStatus(request.StatusProcessing).
-		SetStream(isStream)
+		SetStream(isStream).
+		SetRequestHeaders(requestHeadersBytes)
 
 	// Determine if we should store in database or external storage
 	useExternalStorage := storeRequestBody && s.shouldUseExternalStorage(ctx, dataStorage)
@@ -220,7 +228,10 @@ func (s *RequestService) CreateRequestExecution(
 		log.Warn(ctx, "Failed to get storage policy, defaulting to store request body", log.Cause(err))
 	}
 
-	var requestBodyBytes objects.JSONRawMessage = []byte("{}")
+	var (
+		requestBodyBytes    objects.JSONRawMessage = []byte("{}")
+		requestHeadersBytes objects.JSONRawMessage = []byte("{}")
+	)
 
 	if storeRequestBody {
 		if len(channelRequest.JSONBody) > 0 {
@@ -233,6 +244,10 @@ func (s *RequestService) CreateRequestExecution(
 			}
 
 			requestBodyBytes = b
+		}
+
+		if len(channelRequest.Headers) > 0 {
+			requestHeadersBytes, _ = xjson.Marshal(httpclient.MaskSensitiveHeaders(channelRequest.Headers))
 		}
 	}
 
@@ -269,7 +284,8 @@ func (s *RequestService) CreateRequestExecution(
 		SetChannelID(channel.ID).
 		SetModelID(modelID).
 		SetRequestBody(requestBodyForDB).
-		SetStatus(requestexecution.StatusProcessing)
+		SetStatus(requestexecution.StatusProcessing).
+		SetRequestHeaders(requestHeadersBytes)
 
 	// Use the same data storage as the request
 	if request.DataStorageID != 0 {

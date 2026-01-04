@@ -21,27 +21,27 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
  */
-import { useMemo, useState } from 'react'
-import { Command as CommandPrimitive } from 'cmdk'
-import { Check } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from './ui/command'
-import { Input } from './ui/input'
-import { Popover, PopoverAnchor, PopoverContent } from './ui/popover'
-import { Skeleton } from './ui/skeleton'
+import { useMemo, useState } from 'react';
+import { Command as CommandPrimitive } from 'cmdk';
+import { Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from './ui/command';
+import { Input } from './ui/input';
+import { Popover, PopoverAnchor, PopoverContent } from './ui/popover';
+import { Skeleton } from './ui/skeleton';
 
 type Props<T extends string> = {
-  selectedValue: T
-  onSelectedValueChange: (value: T) => void
-  searchValue: string
-  onSearchValueChange: (value: string) => void
-  items: { value: T; label: string }[]
-  isLoading?: boolean
-  emptyMessage?: string
-  placeholder?: string
+  selectedValue: T;
+  onSelectedValueChange: (value: T) => void;
+  searchValue: string;
+  onSearchValueChange: (value: string) => void;
+  items: { value: T; label: string }[];
+  isLoading?: boolean;
+  emptyMessage?: string;
+  placeholder?: string;
   /** 指定 Popover Portal 的容器元素，用于解决在 Dialog 内无法滚动的问题 */
-  portalContainer?: HTMLElement | null
-}
+  portalContainer?: HTMLElement | null;
+};
 
 export function AutoComplete<T extends string>({
   selectedValue,
@@ -54,50 +54,50 @@ export function AutoComplete<T extends string>({
   placeholder = 'Search...',
   portalContainer,
 }: Props<T>) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(false);
 
   const labels = useMemo(
     () =>
       items.reduce(
         (acc, item) => {
-          acc[item.value] = item.label
-          return acc
+          acc[item.value] = item.label;
+          return acc;
         },
         {} as Record<string, string>
       ),
     [items]
-  )
+  );
 
   const reset = () => {
-    onSelectedValueChange('' as T)
-    onSearchValueChange('')
-  }
+    onSelectedValueChange('' as T);
+    onSearchValueChange('');
+  };
 
   const onInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     // Don't reset if clicking on the command list
     if (e.relatedTarget?.hasAttribute('cmdk-list')) {
-      return
+      return;
     }
     // If searchValue is empty, clear the selected value
     if (searchValue === '') {
-      onSelectedValueChange('' as T)
-      return
+      onSelectedValueChange('' as T);
+      return;
     }
     // Keep the current search value as the selected value for custom inputs
     if (searchValue && labels[selectedValue] !== searchValue) {
-      onSelectedValueChange(searchValue as T)
+      onSelectedValueChange(searchValue as T);
     }
-  }
+  };
 
   const onSelectItem = (inputValue: string) => {
     if (inputValue === selectedValue) {
-      reset()
+      reset();
     } else {
-      onSelectedValueChange(inputValue as T)
-      onSearchValueChange(labels[inputValue] ?? '')
+      onSelectedValueChange(inputValue as T);
+      onSearchValueChange(labels[inputValue] ?? '');
     }
-    setOpen(false)
-  }
+    setOpen(false);
+  };
 
   return (
     <div className='flex w-full items-center'>
@@ -121,7 +121,7 @@ export function AutoComplete<T extends string>({
             onOpenAutoFocus={(e) => e.preventDefault()}
             onInteractOutside={(e) => {
               if (e.target instanceof Element && e.target.hasAttribute('cmdk-input')) {
-                e.preventDefault()
+                e.preventDefault();
               }
             }}
             className='w-[var(--radix-popover-trigger-width)] max-w-[var(--radix-popover-trigger-width)] p-0'
@@ -143,12 +143,10 @@ export function AutoComplete<T extends string>({
                       value={option.value}
                       onMouseDown={(e) => e.preventDefault()}
                       onSelect={onSelectItem}
-                      className='max-w-full w-full min-w-0'
+                      className='w-full max-w-full min-w-0'
                     >
-                      <Check
-                        className={cn('mr-2 h-4 w-4', selectedValue === option.value ? 'opacity-100' : 'opacity-0')}
-                      />
-                      <span className='truncate flex-1 min-w-0'>{option.label}</span>
+                      <Check className={cn('mr-2 h-4 w-4', selectedValue === option.value ? 'opacity-100' : 'opacity-0')} />
+                      <span className='min-w-0 flex-1 truncate'>{option.label}</span>
                     </CommandItem>
                   ))}
                 </CommandGroup>
@@ -159,5 +157,5 @@ export function AutoComplete<T extends string>({
         </Command>
       </Popover>
     </div>
-  )
+  );
 }

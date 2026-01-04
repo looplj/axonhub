@@ -1,2 +1,2 @@
-export { TraceIcon } from './trace'
-export { ThreadIcon } from './thread'
+export { TraceIcon } from './trace';
+export { ThreadIcon } from './thread';

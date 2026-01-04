@@ -1,5 +1,6 @@
-import * as React from 'react'
-import { ChevronsUpDown } from 'lucide-react'
+import * as React from 'react';
+import { ChevronsUpDown } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,35 +9,29 @@ import {
   DropdownMenuSeparator,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from '@/components/ui/sidebar'
-import { useBrandSettings } from '@/features/system/data/system'
-import { useTranslation } from 'react-i18next'
+} from '@/components/ui/dropdown-menu';
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
+import { useBrandSettings } from '@/features/system/data/system';
 
 export function TeamSwitcher({
   teams,
 }: {
   teams: {
-    name: string
-    logo: React.ElementType
-    description: string
-  }[]
+    name: string;
+    logo: React.ElementType;
+    description: string;
+  }[];
 }) {
-  const { isMobile } = useSidebar()
-  const [activeTeam, setActiveTeam] = React.useState(teams[0])
-  const { data: brandSettings } = useBrandSettings()
-  const { t } = useTranslation()
+  const { isMobile } = useSidebar();
+  const [activeTeam, setActiveTeam] = React.useState(teams[0]);
+  const { data: brandSettings } = useBrandSettings();
+  const { t } = useTranslation();
 
   // Use brand name if available, otherwise fall back to team name
-  const displayName = brandSettings?.brandName || activeTeam?.name || 'AxonHub'
+  const displayName = brandSettings?.brandName || activeTeam?.name || 'AxonHub';
 
   // Only show dropdown if there are multiple teams
-  const showDropdown = teams.length > 1
+  const showDropdown = teams.length > 1;
 
   return (
     <SidebarMenu>
@@ -44,11 +39,8 @@ export function TeamSwitcher({
         {showDropdown ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <SidebarMenuButton
-                size='lg'
-                className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground'
-              >
-                <div className='bg-sidebar-primary flex aspect-square size-8 items-center justify-center rounded-lg overflow-hidden'>
+              <SidebarMenuButton size='lg' className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground'>
+                <div className='bg-sidebar-primary flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg'>
                   {brandSettings?.brandLogo ? (
                     <img
                       src={brandSettings.brandLogo}
@@ -56,12 +48,12 @@ export function TeamSwitcher({
                       className='size-8 object-cover'
                       onError={(e) => {
                         // Fallback to default logo on error
-                        e.currentTarget.src = "/logo.jpg"
+                        e.currentTarget.src = '/logo.jpg';
                       }}
                     />
                   ) : (
                     <img
-                      src="/logo.jpg"
+                      src='/logo.jpg'
                       alt='Default Logo'
                       className='size-8 object-cover'
                       onError={() => {
@@ -71,9 +63,7 @@ export function TeamSwitcher({
                   )}
                 </div>
                 <div className='grid flex-1 text-left text-sm leading-tight'>
-                  <span className='truncate font-semibold'>
-                    {displayName}
-                  </span>
+                  <span className='truncate font-semibold'>{displayName}</span>
                   <span className='truncate text-xs'>{activeTeam.description}</span>
                 </div>
                 <ChevronsUpDown className='ml-auto' />
@@ -85,15 +75,9 @@ export function TeamSwitcher({
               side={isMobile ? 'bottom' : 'right'}
               sideOffset={4}
             >
-              <DropdownMenuLabel className='text-muted-foreground text-xs'>
-                {t('sidebar.teamSwitcher.teams')}
-              </DropdownMenuLabel>
+              <DropdownMenuLabel className='text-muted-foreground text-xs'>{t('sidebar.teamSwitcher.teams')}</DropdownMenuLabel>
               {teams.map((team, index) => (
-                <DropdownMenuItem
-                  key={team.name}
-                  onClick={() => setActiveTeam(team)}
-                  className='gap-2 p-2'
-                >
+                <DropdownMenuItem key={team.name} onClick={() => setActiveTeam(team)} className='gap-2 p-2'>
                   <div className='flex size-6 items-center justify-center rounded-sm border'>
                     <team.logo className='size-4 shrink-0' />
                   </div>
@@ -105,11 +89,8 @@ export function TeamSwitcher({
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          <SidebarMenuButton
-            size='lg'
-            className='cursor-default'
-          >
-            <div className='bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg overflow-hidden'>
+          <SidebarMenuButton size='lg' className='cursor-default'>
+            <div className='bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg'>
               {brandSettings?.brandLogo ? (
                 <img
                   src={brandSettings.brandLogo}
@@ -117,12 +98,12 @@ export function TeamSwitcher({
                   className='size-8 object-cover'
                   onError={(e) => {
                     // Fallback to default logo on error
-                    e.currentTarget.src = "/logo.jpg"
+                    e.currentTarget.src = '/logo.jpg';
                   }}
                 />
               ) : (
                 <img
-                  src="/logo.jpg"
+                  src='/logo.jpg'
                   alt='Default Logo'
                   className='size-8 object-cover'
                   onError={() => {
@@ -132,14 +113,12 @@ export function TeamSwitcher({
               )}
             </div>
             <div className='grid flex-1 text-left text-sm leading-tight'>
-              <span className='truncate font-semibold'>
-                {displayName}
-              </span>
+              <span className='truncate font-semibold'>{displayName}</span>
               <span className='truncate text-xs'>{activeTeam.description}</span>
             </div>
           </SidebarMenuButton>
         )}
       </SidebarMenuItem>
     </SidebarMenu>
-  )
+  );
 }

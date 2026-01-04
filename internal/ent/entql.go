@@ -49,6 +49,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			apikey.FieldProjectID: {Type: field.TypeInt, Column: apikey.FieldProjectID},
 			apikey.FieldKey:       {Type: field.TypeString, Column: apikey.FieldKey},
 			apikey.FieldName:      {Type: field.TypeString, Column: apikey.FieldName},
+			apikey.FieldType:      {Type: field.TypeEnum, Column: apikey.FieldType},
 			apikey.FieldStatus:    {Type: field.TypeEnum, Column: apikey.FieldStatus},
 			apikey.FieldScopes:    {Type: field.TypeJSON, Column: apikey.FieldScopes},
 			apikey.FieldProfiles:  {Type: field.TypeJSON, Column: apikey.FieldProfiles},
@@ -227,6 +228,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			request.FieldSource:                     {Type: field.TypeEnum, Column: request.FieldSource},
 			request.FieldModelID:                    {Type: field.TypeString, Column: request.FieldModelID},
 			request.FieldFormat:                     {Type: field.TypeString, Column: request.FieldFormat},
+			request.FieldRequestHeaders:             {Type: field.TypeJSON, Column: request.FieldRequestHeaders},
 			request.FieldRequestBody:                {Type: field.TypeJSON, Column: request.FieldRequestBody},
 			request.FieldResponseBody:               {Type: field.TypeJSON, Column: request.FieldResponseBody},
 			request.FieldResponseChunks:             {Type: field.TypeJSON, Column: request.FieldResponseChunks},
@@ -265,6 +267,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			requestexecution.FieldStatus:                     {Type: field.TypeEnum, Column: requestexecution.FieldStatus},
 			requestexecution.FieldMetricsLatencyMs:           {Type: field.TypeInt64, Column: requestexecution.FieldMetricsLatencyMs},
 			requestexecution.FieldMetricsFirstTokenLatencyMs: {Type: field.TypeInt64, Column: requestexecution.FieldMetricsFirstTokenLatencyMs},
+			requestexecution.FieldRequestHeaders:             {Type: field.TypeJSON, Column: requestexecution.FieldRequestHeaders},
 		},
 	}
 	graph.Nodes[9] = &sqlgraph.Node{
@@ -1116,6 +1119,11 @@ func (f *APIKeyFilter) WhereKey(p entql.StringP) {
 // WhereName applies the entql string predicate on the name field.
 func (f *APIKeyFilter) WhereName(p entql.StringP) {
 	f.Where(p.Field(apikey.FieldName))
+}
+
+// WhereType applies the entql string predicate on the type field.
+func (f *APIKeyFilter) WhereType(p entql.StringP) {
+	f.Where(p.Field(apikey.FieldType))
 }
 
 // WhereStatus applies the entql string predicate on the status field.
@@ -2099,6 +2107,11 @@ func (f *RequestFilter) WhereFormat(p entql.StringP) {
 	f.Where(p.Field(request.FieldFormat))
 }
 
+// WhereRequestHeaders applies the entql json.RawMessage predicate on the request_headers field.
+func (f *RequestFilter) WhereRequestHeaders(p entql.BytesP) {
+	f.Where(p.Field(request.FieldRequestHeaders))
+}
+
 // WhereRequestBody applies the entql json.RawMessage predicate on the request_body field.
 func (f *RequestFilter) WhereRequestBody(p entql.BytesP) {
 	f.Where(p.Field(request.FieldRequestBody))
@@ -2360,6 +2373,11 @@ func (f *RequestExecutionFilter) WhereMetricsLatencyMs(p entql.Int64P) {
 // WhereMetricsFirstTokenLatencyMs applies the entql int64 predicate on the metrics_first_token_latency_ms field.
 func (f *RequestExecutionFilter) WhereMetricsFirstTokenLatencyMs(p entql.Int64P) {
 	f.Where(p.Field(requestexecution.FieldMetricsFirstTokenLatencyMs))
+}
+
+// WhereRequestHeaders applies the entql json.RawMessage predicate on the request_headers field.
+func (f *RequestExecutionFilter) WhereRequestHeaders(p entql.BytesP) {
+	f.Where(p.Field(requestexecution.FieldRequestHeaders))
 }
 
 // WhereHasRequest applies a predicate to check if query has an edge request.

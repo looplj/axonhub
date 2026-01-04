@@ -1,43 +1,40 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
-import { useForm, useFieldArray } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { IconPlus, IconTrash, IconSettings, IconChevronDown, IconChevronUp } from '@tabler/icons-react'
-import { useQueryModels } from '@/gql/models'
-import { useTranslation } from 'react-i18next'
-import { useDebounce } from '@/hooks/use-debounce'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { AutoComplete } from '@/components/auto-complete'
-import { useApiKeysContext } from '../context/apikeys-context'
-import { updateApiKeyProfilesInputSchemaFactory, type UpdateApiKeyProfilesInput, type ApiKeyProfile } from '../data/schema'
-import { useAllChannelsForOrdering } from '@/features/channels/data/channels'
-import { extractNumberID } from '@/lib/utils'
-
-type DialogContentRef = HTMLDivElement | null
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { useForm, useFieldArray } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { IconPlus, IconTrash, IconSettings, IconChevronDown, IconChevronUp } from '@tabler/icons-react';
+import { useQueryModels } from '@/gql/models';
+import { useTranslation } from 'react-i18next';
+import { extractNumberID } from '@/lib/utils';
+import { useDebounce } from '@/hooks/use-debounce';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
+import { AutoComplete } from '@/components/auto-complete';
+import { useAllChannelsForOrdering } from '@/features/channels/data/channels';
+import { useApiKeysContext } from '../context/apikeys-context';
+import { updateApiKeyProfilesInputSchemaFactory, type UpdateApiKeyProfilesInput, type ApiKeyProfile } from '../data/schema';
 
 interface ApiKeyProfilesDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onSubmit: (data: UpdateApiKeyProfilesInput) => void
-  loading?: boolean
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (data: UpdateApiKeyProfilesInput) => void;
+  loading?: boolean;
   initialData?: {
-    activeProfile: string
-    profiles: ApiKeyProfile[]
-  }
+    activeProfile: string;
+    profiles: ApiKeyProfile[];
+  };
 }
 
 export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = false, initialData }: ApiKeyProfilesDialogProps) {
-  const { t } = useTranslation()
-  const { selectedApiKey } = useApiKeysContext()
-  const { data: availableModels, mutateAsync: fetchModels } = useQueryModels()
+  const { t } = useTranslation();
+  const { selectedApiKey } = useApiKeysContext();
+  const { data: availableModels, mutateAsync: fetchModels } = useQueryModels();
   // 用于解决 Dialog 内 Popover 无法滚动的问题
-  const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null)
+  const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -45,9 +42,9 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
         statusIn: ['enabled'],
         includeMapping: true,
         includePrefix: true,
-      })
+      });
     }
-  }, [open, fetchModels])
+  }, [open, fetchModels]);
 
   const defaultValues = useMemo(
     () => ({
@@ -55,29 +52,30 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
       profiles: [] as ApiKeyProfile[],
     }),
     []
-  )
+  );
 
   const form = useForm<UpdateApiKeyProfilesInput>({
     resolver: zodResolver(updateApiKeyProfilesInputSchemaFactory(t)),
     defaultValues,
-  })
+  });
 
-  const lastInitialDataRef = useRef<string | null>(null)
+  const lastInitialDataRef = useRef<string | null>(null);
+  const profileRefs = useRef<(HTMLDivElement | null)[]>([]);
   const normalizedInitialData = useMemo(() => {
     if (initialData?.profiles?.length) {
       const fallbackActiveProfile = initialData.activeProfile?.trim()
         ? initialData.activeProfile
-        : initialData.profiles[0]?.name || defaultValues.activeProfile
+        : initialData.profiles[0]?.name || defaultValues.activeProfile;
 
       return {
         activeProfile: fallbackActiveProfile,
         profiles: initialData.profiles,
-      }
+      };
     }
 
-    return defaultValues
-  }, [initialData, defaultValues])
-  const normalizedSerialized = useMemo(() => JSON.stringify(normalizedInitialData), [normalizedInitialData])
+    return defaultValues;
+  }, [initialData, defaultValues]);
+  const normalizedSerialized = useMemo(() => JSON.stringify(normalizedInitialData), [normalizedInitialData]);
 
   const {
     fields: profileFields,
@@ -86,56 +84,94 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
   } = useFieldArray({
     control: form.control,
     name: 'profiles',
-  })
+  });
 
   // Watch profile names to update activeProfile dropdown options
-  const watchedProfiles = form.watch('profiles') || []
-  const profileNames = watchedProfiles.map((profile) => profile.name || '')
+  const watchedProfiles = form.watch('profiles') || [];
+  const profileNames = watchedProfiles.map((profile) => profile.name || '');
 
   useEffect(() => {
-    const nonEmptyProfiles = watchedProfiles.filter((profile) => profile?.name?.trim())
-    const currentActiveProfile = form.getValues('activeProfile') || ''
+    const nonEmptyProfiles = watchedProfiles.filter((profile) => profile?.name?.trim());
+    const currentActiveProfile = form.getValues('activeProfile') || '';
 
     if (nonEmptyProfiles.length === 0) {
       if (currentActiveProfile !== '') {
-        form.setValue('activeProfile', '')
+        form.setValue('activeProfile', '');
       }
-      return
+      return;
     }
 
-    const activeMatchesExisting = nonEmptyProfiles.some((profile) => profile.name === currentActiveProfile)
+    const activeMatchesExisting = nonEmptyProfiles.some((profile) => profile.name === currentActiveProfile);
     if (!activeMatchesExisting) {
-      form.setValue('activeProfile', nonEmptyProfiles[0].name)
+      form.setValue('activeProfile', nonEmptyProfiles[0].name);
     }
-  }, [watchedProfiles, form])
+  }, [watchedProfiles, form]);
 
   // Reset form when dialog opens or when incoming data actually changes
   useEffect(() => {
     if (!open) {
-      lastInitialDataRef.current = null
-      return
+      lastInitialDataRef.current = null;
+      return;
     }
 
     if (loading) {
-      return
+      return;
     }
 
     if (lastInitialDataRef.current === normalizedSerialized) {
-      return
+      return;
     }
 
-    form.reset(normalizedInitialData)
-    lastInitialDataRef.current = normalizedSerialized
-  }, [open, loading, form, normalizedInitialData, normalizedSerialized])
+    form.reset(normalizedInitialData);
+    lastInitialDataRef.current = normalizedSerialized;
+  }, [open, loading, form, normalizedInitialData, normalizedSerialized]);
+
+  // Scroll to active profile after profiles rendered
+  useEffect(() => {
+    if (!open || loading || profileFields.length === 0) {
+      return;
+    }
+
+    const scrollToActiveProfile = (retryCount = 0) => {
+      const maxRetries = 10;
+      const activeProfileName = form.getValues('activeProfile');
+
+      if (!activeProfileName) {
+        return;
+      }
+
+      const activeIndex = profileFields.findIndex((field) => field.name === activeProfileName);
+
+      if (activeIndex < 0) {
+        return;
+      }
+
+      const targetRef = profileRefs.current[activeIndex];
+
+      if (targetRef) {
+        targetRef.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else if (retryCount < maxRetries) {
+        // Retry after a short delay if ref not yet available
+        requestAnimationFrame(() => {
+          setTimeout(() => scrollToActiveProfile(retryCount + 1), 50);
+        });
+      }
+    };
+
+    // Wait for next frame to ensure rendering
+    requestAnimationFrame(() => {
+      setTimeout(scrollToActiveProfile, 100);
+    });
+  }, [open, loading, profileFields, form]);
 
   const handleSubmit = useCallback(
     (data: UpdateApiKeyProfilesInput) => {
       // Clear any previous form-level errors
-      form.clearErrors('profiles')
-      onSubmit(data)
+      form.clearErrors('profiles');
+      onSubmit(data);
     },
     [form, onSubmit]
-  )
+  );
 
   const addProfile = useCallback(() => {
     appendProfile({
@@ -143,26 +179,27 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
       modelMappings: [],
       channelIDs: [],
       channelTags: [],
-    })
-  }, [appendProfile, profileFields])
+      modelIDs: [],
+    });
+  }, [appendProfile, profileFields]);
 
   const removeProfileHandler = useCallback(
     (index: number) => {
       if (profileFields.length > 1) {
-        removeProfile(index)
+        removeProfile(index);
         // If we're removing the active profile, set active to the first remaining profile
-        const currentActiveProfile = form.getValues('activeProfile')
-        const removedProfile = profileFields[index]
+        const currentActiveProfile = form.getValues('activeProfile');
+        const removedProfile = profileFields[index];
         if (currentActiveProfile === removedProfile.name) {
-          const remainingProfiles = profileFields.filter((_, i) => i !== index)
+          const remainingProfiles = profileFields.filter((_, i) => i !== index);
           if (remainingProfiles.length > 0) {
-            form.setValue('activeProfile', remainingProfiles[0].name)
+            form.setValue('activeProfile', remainingProfiles[0].name);
           }
         }
       }
     },
     [form, profileFields, removeProfile]
-  )
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -202,20 +239,31 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
                 <form onSubmit={form.handleSubmit(handleSubmit)} className='space-y-6 px-4'>
                   <div className='space-y-4'>
                     <div className='space-y-4'>
-                      {profileFields.map((profile, profileIndex) => (
-                        <div key={profile.id} className={profileIndex === 0 ? 'mt-4' : ''}>
-                          <ProfileCard
-                            profileIndex={profileIndex}
-                            form={form}
-                            onRemove={() => removeProfileHandler(profileIndex)}
-                            canRemove={profileFields.length > 1}
-                            availableModels={availableModels?.map((model) => model.id) || []}
-                            t={t}
-                            defaultExpanded={profileIndex === 0}
-                            portalContainer={dialogContent}
-                          />
-                        </div>
-                      ))}
+                      {profileFields.map((profile, profileIndex) => {
+                        const activeProfileName = form.getValues('activeProfile');
+                        const isActive = profile.name === activeProfileName;
+
+                        return (
+                          <div
+                            key={profile.id}
+                            className={profileIndex === 0 ? 'mt-4' : ''}
+                            ref={(el) => {
+                              profileRefs.current[profileIndex] = el;
+                            }}
+                          >
+                            <ProfileCard
+                              profileIndex={profileIndex}
+                              form={form}
+                              onRemove={() => removeProfileHandler(profileIndex)}
+                              canRemove={profileFields.length > 1}
+                              availableModels={availableModels?.map((model) => model.id) || []}
+                              t={t}
+                              defaultExpanded={isActive}
+                              portalContainer={dialogContent}
+                            />
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </form>
@@ -224,7 +272,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
           )}
 
           {/* Fixed Active Profile Section at Bottom */}
-          <div className='bg-background shrink-0 border-t mt-4 px-4 py-2'>
+          <div className='bg-background mt-4 shrink-0 border-t px-4 py-2'>
             <Form {...form}>
               <FormField
                 control={form.control}
@@ -279,38 +327,47 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
 interface ProfileCardProps {
-  profileIndex: number
-  form: ReturnType<typeof useForm<UpdateApiKeyProfilesInput>>
-  onRemove: () => void
-  canRemove: boolean
-  availableModels: string[]
-  t: (key: string) => string
-  defaultExpanded?: boolean
+  profileIndex: number;
+  form: ReturnType<typeof useForm<UpdateApiKeyProfilesInput>>;
+  onRemove: () => void;
+  canRemove: boolean;
+  availableModels: string[];
+  t: (key: string) => string;
+  defaultExpanded?: boolean;
   /** Popover Portal 容器元素，解决 Dialog 内无法滚动的问题 */
-  portalContainer?: HTMLElement | null
+  portalContainer?: HTMLElement | null;
 }
 
-function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels, t, defaultExpanded = false, portalContainer }: ProfileCardProps) {
-  const [localProfileName, setLocalProfileName] = useState('')
-  const [isCollapsed, setIsCollapsed] = useState(!defaultExpanded)
-  const { data: channelsData } = useAllChannelsForOrdering({ enabled: true })
+function ProfileCard({
+  profileIndex,
+  form,
+  onRemove,
+  canRemove,
+  availableModels,
+  t,
+  defaultExpanded = false,
+  portalContainer,
+}: ProfileCardProps) {
+  const [localProfileName, setLocalProfileName] = useState('');
+  const [isCollapsed, setIsCollapsed] = useState(!defaultExpanded);
+  const { data: channelsData } = useAllChannelsForOrdering({ enabled: true });
 
-  const debouncedProfileName = useDebounce(localProfileName, 500)
+  const debouncedProfileName = useDebounce(localProfileName, 500);
 
   // 从所有渠道中提取唯一标签
   const allTags = useMemo(() => {
-    const tagsSet = new Set<string>()
+    const tagsSet = new Set<string>();
     channelsData?.edges?.forEach((edge) => {
       edge.node.tags?.forEach((tag) => {
-        if (tag) tagsSet.add(tag)
-      })
-    })
-    return Array.from(tagsSet).sort()
-  }, [channelsData])
+        if (tag) tagsSet.add(tag);
+      });
+    });
+    return Array.from(tagsSet).sort();
+  }, [channelsData]);
 
   const {
     fields: mappingFields,
@@ -319,54 +376,54 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels,
   } = useFieldArray({
     control: form.control,
     name: `profiles.${profileIndex}.modelMappings`,
-  })
+  });
 
   // Watch all profiles to check for duplicates
-  const allProfiles = form.watch('profiles') || []
+  const allProfiles = form.watch('profiles') || [];
 
   // Initialize local state from form value
   useEffect(() => {
-    const currentName = form.getValues(`profiles.${profileIndex}.name`)
-    setLocalProfileName(currentName || '')
-  }, [form, profileIndex])
+    const currentName = form.getValues(`profiles.${profileIndex}.name`);
+    setLocalProfileName(currentName || '');
+  }, [form, profileIndex]);
 
   // Immediate duplicate check (no debounce for error display)
   const checkDuplicate = useCallback(
     (value: string) => {
-      const trimmedValue = value.trim().toLowerCase()
+      const trimmedValue = value.trim().toLowerCase();
       if (trimmedValue === '') {
-        form.clearErrors(`profiles.${profileIndex}.name`)
-        return
+        form.clearErrors(`profiles.${profileIndex}.name`);
+        return;
       }
 
-      const otherProfiles = allProfiles.filter((_profile: ApiKeyProfile, idx: number) => idx !== profileIndex)
-      const isDuplicate = otherProfiles.some((p: ApiKeyProfile) => p.name && p.name.trim().toLowerCase() === trimmedValue)
+      const otherProfiles = allProfiles.filter((_profile: ApiKeyProfile, idx: number) => idx !== profileIndex);
+      const isDuplicate = otherProfiles.some((p: ApiKeyProfile) => p.name && p.name.trim().toLowerCase() === trimmedValue);
 
       if (isDuplicate) {
         form.setError(`profiles.${profileIndex}.name`, {
           type: 'manual',
           message: t('apikeys.validation.duplicateProfileName'),
-        })
+        });
       } else {
-        form.clearErrors(`profiles.${profileIndex}.name`)
+        form.clearErrors(`profiles.${profileIndex}.name`);
       }
     },
     [form, profileIndex, allProfiles, t]
-  )
+  );
   // Debounced form value update for performance
   useEffect(() => {
-    checkDuplicate(debouncedProfileName)
-  }, [debouncedProfileName, checkDuplicate])
+    checkDuplicate(debouncedProfileName);
+  }, [debouncedProfileName, checkDuplicate]);
 
   const addMapping = useCallback(() => {
-    appendMapping({ from: '', to: '' })
-  }, [appendMapping])
+    appendMapping({ from: '', to: '' });
+  }, [appendMapping]);
 
   return (
     <Card>
       <CardHeader className='pb-3'>
         <div className='flex items-center justify-between gap-2'>
-          <CardTitle className='text-base flex-1 min-w-0'>
+          <CardTitle className='min-w-0 flex-1 text-base'>
             <FormField
               control={form.control}
               name={`profiles.${profileIndex}.name`}
@@ -376,13 +433,13 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels,
                     <Input
                       value={field.value}
                       onChange={(e) => {
-                        const newValue = e.target.value
-                        setLocalProfileName(newValue)
-                        field.onChange(newValue)
+                        const newValue = e.target.value;
+                        setLocalProfileName(newValue);
+                        field.onChange(newValue);
                       }}
                       onBlur={field.onBlur}
                       placeholder={t('apikeys.profiles.profileName')}
-                      className='font-medium w-full md:w-[12em]'
+                      className='w-full font-medium md:w-[12em]'
                     />
                   </FormControl>
                   <FormMessage />
@@ -390,7 +447,7 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels,
               )}
             />
           </CardTitle>
-          <div className='flex items-center gap-1 shrink-0'>
+          <div className='flex shrink-0 items-center gap-1'>
             <Button
               type='button'
               variant='ghost'
@@ -420,7 +477,9 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels,
             </Button>
           </div>
 
-          {mappingFields.length === 0 && <p className='text-muted-foreground py-4 text-center text-sm'>{t('apikeys.profiles.noMappings')}</p>}
+          {mappingFields.length === 0 && (
+            <p className='text-muted-foreground py-4 text-center text-sm'>{t('apikeys.profiles.noMappings')}</p>
+          )}
 
           <div className='space-y-3'>
             {mappingFields.map((mapping, mappingIndex) => (
@@ -437,51 +496,58 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels,
             ))}
           </div>
 
+          {/* Model IDs Restrictions Section */}
+          <div className='mt-4 border-t pt-4'>
+            <h4 className='mb-3 text-sm font-medium'>{t('apikeys.profiles.allowedModels')}</h4>
+            <p className='text-muted-foreground mb-3 text-xs'>{t('apikeys.profiles.allowedModelsDescription')}</p>
+            <FormField
+              control={form.control}
+              name={`profiles.${profileIndex}.modelIDs`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <TagsAutocompleteInput
+                      value={field.value || []}
+                      onChange={field.onChange}
+                      placeholder={t('apikeys.profiles.allowedModels')}
+                      suggestions={availableModels}
+                      className='h-auto min-h-9 py-1'
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
           {/* Channel Restrictions Section */}
           <div className='border-t pt-4'>
-            <h4 className='text-sm font-medium mb-3'>{t('apikeys.profiles.allowedChannels')}</h4>
-            <p className='text-muted-foreground text-xs mb-3'>{t('apikeys.profiles.allowedChannelsDescription')}</p>
+            <h4 className='mb-3 text-sm font-medium'>{t('apikeys.profiles.allowedChannels')}</h4>
+            <p className='text-muted-foreground mb-3 text-xs'>{t('apikeys.profiles.allowedChannelsDescription')}</p>
             <FormField
               control={form.control}
               name={`profiles.${profileIndex}.channelIDs`}
               render={({ field }) => (
                 <FormItem>
                   <FormControl>
-                    <div className='grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border rounded-md p-2'>
-                      {channelsData?.edges?.map((edge) => {
-                        const channel = edge.node
-                        const channelId = parseInt(extractNumberID(channel.id), 10)
-                        const isChecked = (field.value || []).includes(channelId)
-                        return (
-                          <div key={channel.id} className='flex items-center space-x-2'>
-                            <Checkbox
-                              id={`channel-${profileIndex}-${channel.id}`}
-                              checked={isChecked}
-                              onCheckedChange={(checked) => {
-                                const currentValue: number[] = field.value || []
-                                if (checked) {
-                                  field.onChange([...currentValue, channelId])
-                                } else {
-                                  field.onChange(currentValue.filter((id) => id !== channelId))
-                                }
-                              }}
-                            />
-                            <Label
-                              htmlFor={`channel-${profileIndex}-${channel.id}`}
-                              className='text-sm font-normal cursor-pointer truncate'
-                              title={channel.name}
-                            >
-                              {channel.name}
-                            </Label>
-                          </div>
-                        )
+                    <TagsAutocompleteInput
+                      value={(field.value || []).map((id) => {
+                        const channel = channelsData?.edges?.find((edge) => parseInt(extractNumberID(edge.node.id), 10) === id);
+                        return channel?.node.name || id.toString();
                       })}
-                      {(!channelsData?.edges || channelsData.edges.length === 0) && (
-                        <p className='text-muted-foreground text-sm col-span-2 text-center py-2'>
-                          {t('apikeys.profiles.noChannelsAvailable')}
-                        </p>
-                      )}
-                    </div>
+                      onChange={(tags) => {
+                        const ids = tags
+                          .map((tag) => {
+                            const channel = channelsData?.edges?.find((edge) => edge.node.name === tag);
+                            return channel ? parseInt(extractNumberID(channel.node.id), 10) : parseInt(tag);
+                          })
+                          .filter((id) => !isNaN(id));
+                        field.onChange(ids);
+                      }}
+                      placeholder={t('apikeys.profiles.allowedChannels')}
+                      suggestions={channelsData?.edges?.map((edge) => edge.node.name) || []}
+                      className='h-auto min-h-9 py-1'
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -490,48 +556,22 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels,
           </div>
 
           {/* Channel Tags Restrictions Section */}
-          <div className='border-t pt-4 mt-4'>
-            <h4 className='text-sm font-medium mb-3'>{t('apikeys.profiles.allowedChannelTags')}</h4>
-            <p className='text-muted-foreground text-xs mb-3'>{t('apikeys.profiles.allowedChannelTagsDescription')}</p>
+          <div className='mt-4 border-t pt-4'>
+            <h4 className='mb-3 text-sm font-medium'>{t('apikeys.profiles.allowedChannelTags')}</h4>
+            <p className='text-muted-foreground mb-3 text-xs'>{t('apikeys.profiles.allowedChannelTagsDescription')}</p>
             <FormField
               control={form.control}
               name={`profiles.${profileIndex}.channelTags`}
               render={({ field }) => (
                 <FormItem>
                   <FormControl>
-                    <div className='grid grid-cols-3 gap-2 max-h-40 overflow-y-auto border rounded-md p-2'>
-                      {allTags.map((tag) => {
-                        const isChecked = (field.value || []).includes(tag)
-                        return (
-                          <div key={tag} className='flex items-center space-x-2'>
-                            <Checkbox
-                              id={`tag-${profileIndex}-${tag}`}
-                              checked={isChecked}
-                              onCheckedChange={(checked) => {
-                                const currentValue: string[] = field.value || []
-                                if (checked) {
-                                  field.onChange([...currentValue, tag])
-                                } else {
-                                  field.onChange(currentValue.filter((t) => t !== tag))
-                                }
-                              }}
-                            />
-                            <Label
-                              htmlFor={`tag-${profileIndex}-${tag}`}
-                              className='text-sm font-normal cursor-pointer truncate'
-                              title={tag}
-                            >
-                              {tag}
-                            </Label>
-                          </div>
-                        )
-                      })}
-                      {allTags.length === 0 && (
-                        <p className='text-muted-foreground text-sm col-span-3 text-center py-2'>
-                          {t('apikeys.profiles.noTagsAvailable')}
-                        </p>
-                      )}
-                    </div>
+                    <TagsAutocompleteInput
+                      value={field.value || []}
+                      onChange={field.onChange}
+                      placeholder={t('apikeys.profiles.allowedChannelTags')}
+                      suggestions={allTags}
+                      className='h-auto min-h-9 py-1'
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -541,54 +581,54 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, availableModels,
         </CardContent>
       )}
     </Card>
-  )
+  );
 }
 
 interface MappingRowProps {
-  profileIndex: number
-  mappingIndex: number
-  form: ReturnType<typeof useForm<UpdateApiKeyProfilesInput>>
-  onRemove: () => void
-  availableModels: string[]
-  t: (key: string) => string
+  profileIndex: number;
+  mappingIndex: number;
+  form: ReturnType<typeof useForm<UpdateApiKeyProfilesInput>>;
+  onRemove: () => void;
+  availableModels: string[];
+  t: (key: string) => string;
   /** Popover Portal 容器元素，解决 Dialog 内无法滚动的问题 */
-  portalContainer?: HTMLElement | null
+  portalContainer?: HTMLElement | null;
 }
 
 function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModels, t, portalContainer }: MappingRowProps) {
-  const fromFieldName = `profiles.${profileIndex}.modelMappings.${mappingIndex}.from` as const
-  const toFieldName = `profiles.${profileIndex}.modelMappings.${mappingIndex}.to` as const
+  const fromFieldName = `profiles.${profileIndex}.modelMappings.${mappingIndex}.from` as const;
+  const toFieldName = `profiles.${profileIndex}.modelMappings.${mappingIndex}.to` as const;
 
-  const fromValue = form.watch(fromFieldName)
-  const toValue = form.watch(toFieldName)
+  const fromValue = form.watch(fromFieldName);
+  const toValue = form.watch(toFieldName);
 
-  const [fromSearch, setFromSearch] = useState(fromValue || '')
-  const [toSearch, setToSearch] = useState(toValue || '')
-
-  useEffect(() => {
-    setFromSearch(fromValue || '')
-  }, [fromValue])
+  const [fromSearch, setFromSearch] = useState(fromValue || '');
+  const [toSearch, setToSearch] = useState(toValue || '');
 
   useEffect(() => {
-    setToSearch(toValue || '')
-  }, [toValue])
+    setFromSearch(fromValue || '');
+  }, [fromValue]);
 
   useEffect(() => {
-    form.trigger(fromFieldName)
-  }, [form, fromFieldName, fromValue])
+    setToSearch(toValue || '');
+  }, [toValue]);
 
   useEffect(() => {
-    form.trigger(toFieldName)
-  }, [form, toFieldName, toValue])
+    form.trigger(fromFieldName);
+  }, [form, fromFieldName, fromValue]);
+
+  useEffect(() => {
+    form.trigger(toFieldName);
+  }, [form, toFieldName, toValue]);
 
   // Filter models based on search
   const filteredFromModels = availableModels
     .filter((model) => model.toLowerCase().includes(fromSearch.toLowerCase()))
-    .map((model) => ({ value: model, label: model }))
+    .map((model) => ({ value: model, label: model }));
 
   const filteredToModels = availableModels
     .filter((model) => model.toLowerCase().includes(toSearch.toLowerCase()))
-    .map((model) => ({ value: model, label: model }))
+    .map((model) => ({ value: model, label: model }));
 
   return (
     <div className='flex items-start gap-3'>
@@ -601,7 +641,7 @@ function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModel
               <AutoComplete
                 selectedValue={field.value || ''}
                 onSelectedValueChange={(value) => {
-                  field.onChange(value)
+                  field.onChange(value);
                 }}
                 searchValue={fromSearch}
                 onSearchValueChange={setFromSearch}
@@ -616,7 +656,7 @@ function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModel
           </FormItem>
         )}
       />
-      <span className='text-muted-foreground flex items-center h-10'>→</span>
+      <span className='text-muted-foreground flex h-10 items-center'>→</span>
       <FormField
         control={form.control}
         name={toFieldName}
@@ -626,7 +666,7 @@ function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModel
               <AutoComplete
                 selectedValue={field.value || ''}
                 onSelectedValueChange={(value) => {
-                  field.onChange(value)
+                  field.onChange(value);
                 }}
                 searchValue={toSearch}
                 onSearchValueChange={setToSearch}
@@ -644,5 +684,5 @@ function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModel
         <IconTrash className='h-4 w-4' />
       </Button>
     </div>
-  )
+  );
 }

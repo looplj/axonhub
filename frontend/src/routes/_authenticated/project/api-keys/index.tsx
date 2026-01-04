@@ -1,7 +1,7 @@
-import { createFileRoute } from '@tanstack/react-router'
-import ApiKeys from '@/features/apikeys'
-import { RouteGuard } from '@/components/route-guard'
-import { ProjectGuard } from '@/components/project-guard'
+import { createFileRoute } from '@tanstack/react-router';
+import { ProjectGuard } from '@/components/project-guard';
+import { RouteGuard } from '@/components/route-guard';
+import ApiKeys from '@/features/apikeys';
 
 function ProtectedProjectApiKeys() {
   return (
@@ -10,9 +10,9 @@ function ProtectedProjectApiKeys() {
         <ApiKeys />
       </RouteGuard>
     </ProjectGuard>
-  )
+  );
 }
 
 export const Route = createFileRoute('/_authenticated/project/api-keys/')({
   component: ProtectedProjectApiKeys,
-})
+});

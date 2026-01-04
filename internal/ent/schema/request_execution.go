@@ -66,6 +66,10 @@ func (RequestExecution) Fields() []ent.Field {
 		field.Int64("metrics_latency_ms").Optional().Nillable(),
 		// First token latency in milliseconds (only for streaming requests)
 		field.Int64("metrics_first_token_latency_ms").Optional().Nillable(),
+		// Request headers
+		field.JSON("request_headers", objects.JSONRawMessage{}).
+			Optional().
+			Comment("Request headers"),
 	}
 }
 

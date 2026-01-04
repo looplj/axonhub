@@ -1,99 +1,92 @@
-import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2, Upload, XCircle } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { Textarea } from '@/components/ui/textarea'
-import { useAllChannelNames, useBulkImportChannels } from '../data/channels'
+import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Loader2, Upload, XCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Textarea } from '@/components/ui/textarea';
+import { useAllChannelNames, useBulkImportChannels } from '../data/channels';
 import {
   type BulkImportChannelItem,
   bulkImportChannelItemSchema,
   type BulkImportText,
   bulkImportTextSchema,
   channelTypeSchema,
-} from '../data/schema'
+} from '../data/schema';
 
 interface ChannelsBulkImportDialogProps {
-  isOpen: boolean
-  onClose: () => void
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 export function ChannelsBulkImportDialog({ isOpen, onClose }: ChannelsBulkImportDialogProps) {
-  const { t } = useTranslation()
-  const [parsedChannels, setParsedChannels] = useState<BulkImportChannelItem[]>([])
-  const [parseErrors, setParseErrors] = useState<string[]>([])
-  const [showPreview, setShowPreview] = useState(false)
-  const [hasPreviewedCurrent, setHasPreviewedCurrent] = useState(false)
+  const { t } = useTranslation();
+  const [parsedChannels, setParsedChannels] = useState<BulkImportChannelItem[]>([]);
+  const [parseErrors, setParseErrors] = useState<string[]>([]);
+  const [showPreview, setShowPreview] = useState(false);
+  const [hasPreviewedCurrent, setHasPreviewedCurrent] = useState(false);
 
-  const bulkImportMutation = useBulkImportChannels()
-  const { data: existingChannelNames = [], isLoading: isLoadingChannelNames } = useAllChannelNames()
+  const bulkImportMutation = useBulkImportChannels();
+  const { data: existingChannelNames = [], isLoading: isLoadingChannelNames } = useAllChannelNames();
 
   const form = useForm<BulkImportText>({
     resolver: zodResolver(bulkImportTextSchema),
     defaultValues: {
       text: '',
     },
-  })
+  });
 
-  const textValue = form.watch('text')
+  const textValue = form.watch('text');
 
   // Reset preview state when text content changes
   useEffect(() => {
-    setHasPreviewedCurrent(false)
-    setShowPreview(false)
-  }, [textValue])
+    setHasPreviewedCurrent(false);
+    setShowPreview(false);
+  }, [textValue]);
 
   const parseChannelData = (text: string) => {
     const lines = text
       .trim()
       .split('\n')
-      .filter((line) => line.trim())
-    const channels: BulkImportChannelItem[] = []
-    const errors: string[] = []
-    const nameSet = new Set<string>()
+      .filter((line) => line.trim());
+    const channels: BulkImportChannelItem[] = [];
+    const errors: string[] = [];
+    const nameSet = new Set<string>();
 
     // Add existing channel names to the set for duplicate detection
-    existingChannelNames.forEach((name) => nameSet.add(name.toLowerCase()))
+    existingChannelNames.forEach((name) => nameSet.add(name.toLowerCase()));
 
     lines.forEach((line, index) => {
-      const parts = line.split(',').map((part) => part.trim())
+      const parts = line.split(',').map((part) => part.trim());
 
       if (parts.length < 5) {
-        errors.push(t('channels.dialogs.bulkImport.invalidFormat', { line: index + 1 }))
-        return
+        errors.push(t('channels.dialogs.bulkImport.invalidFormat', { line: index + 1 }));
+        return;
       }
 
-      const [type, name, baseURL, apiKey, supportedModelsStr, defaultTestModel] = parts
+      const [type, name, baseURL, apiKey, supportedModelsStr, defaultTestModel] = parts;
 
       // Validate channel type
-      const typeResult = channelTypeSchema.safeParse(type)
+      const typeResult = channelTypeSchema.safeParse(type);
       if (!typeResult.success) {
-        errors.push(t('channels.dialogs.bulkImport.unsupportedType', { line: index + 1, type }))
-        return
+        errors.push(t('channels.dialogs.bulkImport.unsupportedType', { line: index + 1, type }));
+        return;
       }
 
       // Validate required fields
       if (!baseURL || baseURL.trim() === '') {
-        errors.push(t('channels.dialogs.bulkImport.baseUrlRequired', { line: index + 1 }))
-        return
+        errors.push(t('channels.dialogs.bulkImport.baseUrlRequired', { line: index + 1 }));
+        return;
       }
 
       if (!apiKey || apiKey.trim() === '') {
-        errors.push(t('channels.dialogs.bulkImport.apiKeyRequired', { line: index + 1 }))
-        return
+        errors.push(t('channels.dialogs.bulkImport.apiKeyRequired', { line: index + 1 }));
+        return;
       }
 
       // Parse supported models
@@ -102,10 +95,10 @@ export function ChannelsBulkImportDialog({ isOpen, onClose }: ChannelsBulkImport
             .split('|')
             .map((m) => m.trim())
             .filter((m) => m)
-        : []
+        : [];
 
       // Create channel item
-      const channelName = name || `Channel ${index + 1}`
+      const channelName = name || `Channel ${index + 1}`;
       const channelItem: BulkImportChannelItem = {
         type: typeResult.data,
         name: channelName,
@@ -113,85 +106,81 @@ export function ChannelsBulkImportDialog({ isOpen, onClose }: ChannelsBulkImport
         apiKey: apiKey.trim(),
         supportedModels,
         defaultTestModel: defaultTestModel || supportedModels[0] || '',
-      }
+      };
 
       // Check for duplicate names (both in current batch and with existing channels)
-      const lowerCaseName = channelName.toLowerCase()
+      const lowerCaseName = channelName.toLowerCase();
       if (nameSet.has(lowerCaseName)) {
         // Check if it's a duplicate with existing server data
-        const isDuplicateWithExisting = existingChannelNames.some(
-          (existingName) => existingName.toLowerCase() === lowerCaseName
-        )
+        const isDuplicateWithExisting = existingChannelNames.some((existingName) => existingName.toLowerCase() === lowerCaseName);
 
         if (isDuplicateWithExisting) {
-          errors.push(
-            t('channels.dialogs.bulkImport.duplicateNameWithExisting', { line: index + 1, name: channelName })
-          )
+          errors.push(t('channels.dialogs.bulkImport.duplicateNameWithExisting', { line: index + 1, name: channelName }));
         } else {
-          errors.push(t('channels.dialogs.bulkImport.duplicateName', { line: index + 1, name: channelName }))
+          errors.push(t('channels.dialogs.bulkImport.duplicateName', { line: index + 1, name: channelName }));
         }
-        return
+        return;
       }
-      nameSet.add(lowerCaseName)
+      nameSet.add(lowerCaseName);
 
       // Validate the channel item
-      const result = bulkImportChannelItemSchema.safeParse(channelItem)
+      const result = bulkImportChannelItemSchema.safeParse(channelItem);
       if (!result.success) {
-        const fieldErrors = result.error.issues.map((err) => `${err.path.join('.')}: ${err.message}`).join(', ')
+        const fieldErrors = result.error.issues.map((err) => `${err.path.join('.')}: ${err.message}`).join(', ');
         errors.push(
           t('channels.dialogs.bulkImport.validationError', {
             line: index + 1,
             name: channelName,
             error: fieldErrors,
           })
-        )
-        return
+        );
+        return;
       }
 
-      channels.push(channelItem)
-    })
+      channels.push(channelItem);
+    });
 
-    setParsedChannels(channels)
-    setParseErrors(errors)
-    setShowPreview(true)
-    setHasPreviewedCurrent(true)
-  }
+    setParsedChannels(channels);
+    setParseErrors(errors);
+    setShowPreview(true);
+    setHasPreviewedCurrent(true);
+  };
 
   const handlePreview = () => {
-    const text = textValue
-    parseChannelData(text)
-  }
+    const text = textValue;
+    parseChannelData(text);
+  };
 
   const handleImport = async () => {
-    if (parsedChannels.length === 0) return
+    if (parsedChannels.length === 0) return;
 
     try {
       await bulkImportMutation.mutateAsync({
         channels: parsedChannels,
-      })
-      onClose()
-      form.reset()
-      setParsedChannels([])
-      setParseErrors([])
-      setShowPreview(false)
+      });
+      onClose();
+      form.reset();
+      setParsedChannels([]);
+      setParseErrors([]);
+      setShowPreview(false);
     } catch (_error) {
       // Bulk import failed - error is already handled by mutation hook
     }
-  }
+  };
 
   const handleClose = () => {
-    onClose()
-    form.reset()
-    setParsedChannels([])
-    setParseErrors([])
-    setShowPreview(false)
-    setHasPreviewedCurrent(false)
-  }
+    onClose();
+    form.reset();
+    setParsedChannels([]);
+    setParseErrors([]);
+    setShowPreview(false);
+    setHasPreviewedCurrent(false);
+  };
 
   const exampleText = `openai,OpenAI GPT,https://api.openai.com/v1,sk-xxx,gpt-4|gpt-3.5-turbo,gpt-4
 anthropic,Anthropic Claude,https://api.anthropic.com,claude-xxx,claude-3-opus|claude-3-sonnet,claude-3-opus
 deepseek,DeepSeek AI,https://api.deepseek.com,sk-xxx,deepseek-chat|deepseek-coder,deepseek-chat
-deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,deepseek-chat|deepseek-coder,deepseek-chat`
+deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,deepseek-chat|deepseek-coder,deepseek-chat`;
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -215,9 +204,7 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
               </CardDescription>
             </CardHeader>
             <CardContent className='pt-0'>
-              <div className='bg-muted rounded-md border p-4 font-mono text-xs whitespace-pre-line'>
-                {exampleText}
-              </div>
+              <div className='bg-muted rounded-md border p-4 font-mono text-xs whitespace-pre-line'>{exampleText}</div>
             </CardContent>
           </Card>
 
@@ -229,9 +216,7 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
                 name='text'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className='text-base font-semibold'>
-                      {t('channels.dialogs.bulkImport.inputLabel')}
-                    </FormLabel>
+                    <FormLabel className='text-base font-semibold'>{t('channels.dialogs.bulkImport.inputLabel')}</FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder={t('channels.dialogs.bulkImport.inputPlaceholder')}
@@ -239,10 +224,7 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
                         {...field}
                       />
                     </FormControl>
-                    <FormDescription
-                      asChild
-                      className='rounded-md border bg-blue-50/50 p-3 text-sm dark:bg-blue-950/20'
-                    >
+                    <FormDescription asChild className='rounded-md border bg-blue-50/50 p-3 text-sm dark:bg-blue-950/20'>
                       <div className='space-y-2'>
                         {isLoadingChannelNames && (
                           <div className='flex items-center gap-2'>
@@ -264,25 +246,17 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
           {showPreview && (
             <Card className='flex min-h-0 flex-1 flex-col'>
               <CardHeader
-                className={`flex-shrink-0 border-b pb-4 ${
-                  parseErrors.length > 0 ? 'bg-red-50/30 dark:bg-red-950/10' : 'bg-muted/20'
-                }`}
+                className={`flex-shrink-0 border-b pb-4 ${parseErrors.length > 0 ? 'bg-red-50/30 dark:bg-red-950/10' : 'bg-muted/20'}`}
               >
                 <CardTitle className='flex items-center gap-3 text-base font-semibold'>
                   {t('channels.dialogs.bulkImport.previewTitle')}
                   {parsedChannels.length > 0 && (
-                    <Badge
-                      variant='secondary'
-                      className='bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                    >
+                    <Badge variant='secondary' className='bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'>
                       {t('channels.dialogs.bulkImport.validRecords', { count: parsedChannels.length })}
                     </Badge>
                   )}
                   {parseErrors.length > 0 && (
-                    <Badge
-                      variant='destructive'
-                      className='bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                    >
+                    <Badge variant='destructive' className='bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'>
                       {t('channels.dialogs.bulkImport.errors', { count: parseErrors.length })}
                     </Badge>
                   )}
@@ -317,15 +291,9 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
                         </div>
                       </div>
                       {parseErrors.map((error, index) => (
-                        <Alert
-                          key={index}
-                          variant='destructive'
-                          className='bg-red-50/70 dark:bg-red-950/30'
-                        >
+                        <Alert key={index} variant='destructive' className='bg-red-50/70 dark:bg-red-950/30'>
                           <XCircle className='h-4 w-4' />
-                          <AlertDescription className='text-sm'>
-                            {error}
-                          </AlertDescription>
+                          <AlertDescription className='text-sm'>{error}</AlertDescription>
                         </Alert>
                       ))}
                     </div>
@@ -333,16 +301,13 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
 
                   {/* Valid Channels */}
                   {parsedChannels.length > 0 && (
-                    <div className='space-y-4 rounded-lg border p-4 bg-muted/30'>
+                    <div className='bg-muted/30 space-y-4 rounded-lg border p-4'>
                       <div className='mb-4 text-sm font-semibold text-green-600 dark:text-green-400'>
                         {t('channels.dialogs.bulkImport.validChannels')}
                       </div>
                       <div className='grid gap-4'>
                         {parsedChannels.map((channel, index) => (
-                          <div
-                            key={index}
-                            className='space-y-3 rounded-lg border bg-background p-4 hover:bg-muted/50 transition-colors'
-                          >
+                          <div key={index} className='bg-background hover:bg-muted/50 space-y-3 rounded-lg border p-4 transition-colors'>
                             <div className='flex items-center gap-3'>
                               <Badge variant='outline' className='px-3 py-1 text-sm font-medium'>
                                 {channel.type}
@@ -355,9 +320,7 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
                                   <span className='text-muted-foreground font-semibold'>
                                     {t('channels.dialogs.bulkImport.fieldLabels.baseUrl')}:
                                   </span>
-                                  <div className='mt-1 font-mono text-xs break-all text-blue-600 dark:text-blue-400'>
-                                    {channel.baseURL}
-                                  </div>
+                                  <div className='mt-1 font-mono text-xs break-all text-blue-600 dark:text-blue-400'>{channel.baseURL}</div>
                                 </div>
                               )}
                               {channel.apiKey && (
@@ -427,9 +390,7 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
           ) : (
             <Button
               onClick={handleImport}
-              disabled={
-                !showPreview || parsedChannels.length === 0 || parseErrors.length > 0 || bulkImportMutation.isPending
-              }
+              disabled={!showPreview || parsedChannels.length === 0 || parseErrors.length > 0 || bulkImportMutation.isPending}
               size='lg'
               className='bg-primary hover:bg-primary/90 w-full px-8 py-2 text-sm font-medium sm:w-auto'
             >
@@ -440,5 +401,5 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

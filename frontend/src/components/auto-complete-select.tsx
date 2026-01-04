@@ -1,25 +1,25 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Command as CommandPrimitive } from 'cmdk'
-import { Check } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from './ui/command'
-import { Input } from './ui/input'
-import { Popover, PopoverAnchor, PopoverContent } from './ui/popover'
-import { Skeleton } from './ui/skeleton'
-import { TruncatedText } from './truncated-text'
+import { useEffect, useMemo, useState } from 'react';
+import { Command as CommandPrimitive } from 'cmdk';
+import { Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { TruncatedText } from './truncated-text';
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from './ui/command';
+import { Input } from './ui/input';
+import { Popover, PopoverAnchor, PopoverContent } from './ui/popover';
+import { Skeleton } from './ui/skeleton';
 
 type Props<T extends string> = {
-  selectedValue: T
-  onSelectedValueChange: (value: T) => void
-  items: { value: T; label: string }[]
-  isLoading?: boolean
-  emptyMessage?: string
-  placeholder?: string
+  selectedValue: T;
+  onSelectedValueChange: (value: T) => void;
+  items: { value: T; label: string }[];
+  isLoading?: boolean;
+  emptyMessage?: string;
+  placeholder?: string;
   /** 指定 Popover Portal 的容器元素，用于解决在 Dialog 内无法滚动的问题 */
-  portalContainer?: HTMLElement | null
+  portalContainer?: HTMLElement | null;
   /** 自定义输入框的 className */
-  inputClassName?: string
-}
+  inputClassName?: string;
+};
 
 // AutoCompleteSelect: strictly selects from provided items. No free-form values are allowed.
 export function AutoCompleteSelect<T extends string>({
@@ -32,54 +32,54 @@ export function AutoCompleteSelect<T extends string>({
   portalContainer,
   inputClassName,
 }: Props<T>) {
-  const [open, setOpen] = useState(false)
-  const [searchValue, setSearchValue] = useState('')
+  const [open, setOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
 
   // map value -> label for quick lookup
   const labels = useMemo(
     () =>
       items.reduce(
         (acc, item) => {
-          acc[item.value] = item.label
-          return acc
+          acc[item.value] = item.label;
+          return acc;
         },
         {} as Record<string, string>
       ),
     [items]
-  )
+  );
 
   // Filter items locally based on search string
   const filtered = useMemo(() => {
-    if (!searchValue) return items
-    const q = searchValue.toLowerCase()
-    return items.filter((it) => it.label.toLowerCase().includes(q))
-  }, [items, searchValue])
+    if (!searchValue) return items;
+    const q = searchValue.toLowerCase();
+    return items.filter((it) => it.label.toLowerCase().includes(q));
+  }, [items, searchValue]);
 
   const onInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     // Strict mode: on blur, revert input text to the selected label
     // unless focus moves within the list
     if (!e.relatedTarget?.hasAttribute('cmdk-list')) {
-      setSearchValue(labels[selectedValue] ?? '')
+      setSearchValue(labels[selectedValue] ?? '');
     }
-  }
+  };
 
   const onSelectItem = (inputValue: string) => {
     // Only accept values from list
-    const exists = items.some((it) => it.value === inputValue)
-    if (!exists) return
-    onSelectedValueChange(inputValue as T)
-    setSearchValue(labels[inputValue] ?? '')
-    setOpen(false)
-  }
+    const exists = items.some((it) => it.value === inputValue);
+    if (!exists) return;
+    onSelectedValueChange(inputValue as T);
+    setSearchValue(labels[inputValue] ?? '');
+    setOpen(false);
+  };
 
   // Keep the search field in sync with the selected item when selection changes externally
   // This also initializes the field with the current label.
   useEffect(() => {
-    setSearchValue(labels[selectedValue] ?? '')
-  }, [labels, selectedValue])
+    setSearchValue(labels[selectedValue] ?? '');
+  }, [labels, selectedValue]);
 
   return (
-    <div className='flex w-full items-center min-w-0'>
+    <div className='flex w-full min-w-0 items-center'>
       <Popover open={open} onOpenChange={setOpen}>
         <Command shouldFilter={false} className='w-full bg-transparent'>
           <PopoverAnchor asChild>
@@ -91,10 +91,10 @@ export function AutoCompleteSelect<T extends string>({
               onMouseDown={() => {
                 setOpen((prev) => {
                   if (!prev) {
-                    setSearchValue('') // 打开时清空搜索，显示所有选项
+                    setSearchValue(''); // 打开时清空搜索，显示所有选项
                   }
-                  return !prev
-                })
+                  return !prev;
+                });
               }}
               onFocus={() => setOpen(true)}
               onBlur={onInputBlur}
@@ -107,7 +107,7 @@ export function AutoCompleteSelect<T extends string>({
             onOpenAutoFocus={(e) => e.preventDefault()}
             onInteractOutside={(e) => {
               if (e.target instanceof Element && e.target.hasAttribute('cmdk-input')) {
-                e.preventDefault()
+                e.preventDefault();
               }
             }}
             className='w-[var(--radix-popover-trigger-width)] max-w-[var(--radix-popover-trigger-width)] p-0'
@@ -129,10 +129,10 @@ export function AutoCompleteSelect<T extends string>({
                       value={option.value}
                       onMouseDown={(e) => e.preventDefault()}
                       onSelect={onSelectItem}
-                      className='max-w-full w-full min-w-0'
+                      className='w-full max-w-full min-w-0'
                     >
                       <Check className={cn('mr-2 h-4 w-4', selectedValue === option.value ? 'opacity-100' : 'opacity-0')} />
-                      <TruncatedText className='flex-1 min-w-0'>{option.label}</TruncatedText>
+                      <TruncatedText className='min-w-0 flex-1'>{option.label}</TruncatedText>
                     </CommandItem>
                   ))}
                 </CommandGroup>
@@ -143,6 +143,5 @@ export function AutoCompleteSelect<T extends string>({
         </Command>
       </Popover>
     </div>
-  )
+  );
 }
-

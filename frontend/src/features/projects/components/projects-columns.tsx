@@ -1,17 +1,14 @@
-'use client'
+'use client';
 
-import { ColumnDef } from '@tanstack/react-table'
-import { useTranslation } from 'react-i18next'
-import { format } from 'date-fns'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Badge } from '@/components/ui/badge'
-import { Project } from '../data/schema'
-import { DataTableRowActions } from './data-table-row-actions'
+import { format } from 'date-fns';
+import { ColumnDef } from '@tanstack/react-table';
+import { useTranslation } from 'react-i18next';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Project } from '../data/schema';
+import { DataTableRowActions } from './data-table-row-actions';
 
-export const createColumns = (
-  t: ReturnType<typeof useTranslation>['t'],
-  canWrite: boolean = false
-): ColumnDef<Project>[] => {
+export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrite: boolean = false): ColumnDef<Project>[] => {
   const columns: ColumnDef<Project>[] = [
     {
       id: 'search',
@@ -23,7 +20,7 @@ export const createColumns = (
       enableGlobalFilter: false,
       getUniqueValues: () => [],
     },
-  ]
+  ];
 
   // Only show select column if user has write permissions
   if (canWrite) {
@@ -31,10 +28,7 @@ export const createColumns = (
       id: 'select',
       header: ({ table }) => (
         <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && 'indeterminate')
-          }
+          checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
           aria-label={t('projects.columns.selectAll')}
           className='translate-y-[2px]'
@@ -50,7 +44,7 @@ export const createColumns = (
       ),
       enableSorting: false,
       enableHiding: false,
-    })
+    });
   }
 
   // Add other columns
@@ -59,67 +53,47 @@ export const createColumns = (
       accessorKey: 'name',
       header: t('projects.columns.name'),
       cell: ({ row }) => {
-        const name = row.getValue('name') as string
-        return (
-          <div className='font-medium'>
-            {name}
-          </div>
-        )
+        const name = row.getValue('name') as string;
+        return <div className='font-medium'>{name}</div>;
       },
     },
     {
       accessorKey: 'description',
       header: t('projects.columns.description'),
       cell: ({ row }) => {
-        const description = row.getValue('description') as string
-        return (
-          <div className='text-muted-foreground max-w-[300px] truncate'>
-            {description || '-'}
-          </div>
-        )
+        const description = row.getValue('description') as string;
+        return <div className='text-muted-foreground max-w-[300px] truncate'>{description || '-'}</div>;
       },
     },
     {
       accessorKey: 'status',
       header: t('projects.columns.status'),
       cell: ({ row }) => {
-        const status = row.getValue('status') as string
-        return (
-          <Badge variant={status === 'active' ? 'default' : 'secondary'}>
-            {t(`projects.status.${status}`)}
-          </Badge>
-        )
+        const status = row.getValue('status') as string;
+        return <Badge variant={status === 'active' ? 'default' : 'secondary'}>{t(`projects.status.${status}`)}</Badge>;
       },
     },
     {
       accessorKey: 'createdAt',
       header: t('projects.columns.createdAt'),
       cell: ({ row }) => {
-        const date = row.getValue('createdAt') as Date
-        return (
-          <div className='text-muted-foreground'>
-            {format(date, 'yyyy-MM-dd HH:mm')}
-          </div>
-        )
+        const date = row.getValue('createdAt') as Date;
+        return <div className='text-muted-foreground'>{format(date, 'yyyy-MM-dd HH:mm')}</div>;
       },
     },
     {
       accessorKey: 'updatedAt',
       header: t('projects.columns.updatedAt'),
       cell: ({ row }) => {
-        const date = row.getValue('updatedAt') as Date
-        return (
-          <div className='text-muted-foreground'>
-            {format(date, 'yyyy-MM-dd HH:mm')}
-          </div>
-        )
+        const date = row.getValue('updatedAt') as Date;
+        return <div className='text-muted-foreground'>{format(date, 'yyyy-MM-dd HH:mm')}</div>;
       },
     },
     {
       id: 'actions',
       cell: ({ row }) => <DataTableRowActions row={row} />,
-    },
-  )
+    }
+  );
 
-  return columns
-}
+  return columns;
+};

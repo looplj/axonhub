@@ -49,6 +49,8 @@ const (
 	FieldMetricsLatencyMs = "metrics_latency_ms"
 	// FieldMetricsFirstTokenLatencyMs holds the string denoting the metrics_first_token_latency_ms field in the database.
 	FieldMetricsFirstTokenLatencyMs = "metrics_first_token_latency_ms"
+	// FieldRequestHeaders holds the string denoting the request_headers field in the database.
+	FieldRequestHeaders = "request_headers"
 	// EdgeRequest holds the string denoting the request edge name in mutations.
 	EdgeRequest = "request"
 	// EdgeChannel holds the string denoting the channel edge name in mutations.
@@ -99,6 +101,7 @@ var Columns = []string{
 	FieldStatus,
 	FieldMetricsLatencyMs,
 	FieldMetricsFirstTokenLatencyMs,
+	FieldRequestHeaders,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).

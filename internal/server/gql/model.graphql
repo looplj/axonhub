@@ -195,7 +195,11 @@ extend type Model {
 }
 
 extend type Query {
-  queryModelChannelConnections(associations: [ModelAssociationInput!]!): [ModelChannelConnection!]!
+  fetchModels(input: FetchModelsInput!): FetchModelsPayload!
+  queryModels(input: QueryModelsInput!): [ModelIdentityWithStatus!]!
+  queryModelChannelConnections(
+    associations: [ModelAssociationInput!]!
+  ): [ModelChannelConnection!]!
   queryUnassociatedChannels: [UnassociatedChannel!]!
 }
 

@@ -1,63 +1,63 @@
-import { useMemo, useState, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { useTraceWithSegments } from '@/features/traces/data'
-import { Segment, Span, parseRawRootSegment } from '@/features/traces/data/schema'
-import { SpanSection } from '@/features/traces/components/span-section'
-import { TraceFlatTimeline } from '@/features/traces/components/trace-flat-timeline'
+import { useMemo, useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { SpanSection } from '@/features/traces/components/span-section';
+import { TraceFlatTimeline } from '@/features/traces/components/trace-flat-timeline';
+import { useTraceWithSegments } from '@/features/traces/data';
+import { Segment, Span, parseRawRootSegment } from '@/features/traces/data/schema';
 
 interface TraceDrawerProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  traceId: string | null
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  traceId: string | null;
 }
 
 export function TraceDrawer({ open, onOpenChange, traceId }: TraceDrawerProps) {
-  const { t } = useTranslation()
-  const [selectedTrace, setSelectedTrace] = useState<Segment | null>(null)
-  const [selectedSpan, setSelectedSpan] = useState<Span | null>(null)
-  const [selectedSpanType, setSelectedSpanType] = useState<'request' | 'response' | null>(null)
+  const { t } = useTranslation();
+  const [selectedTrace, setSelectedTrace] = useState<Segment | null>(null);
+  const [selectedSpan, setSelectedSpan] = useState<Span | null>(null);
+  const [selectedSpanType, setSelectedSpanType] = useState<'request' | 'response' | null>(null);
 
-  const { data: trace, isLoading } = useTraceWithSegments(traceId || '')
+  const { data: trace, isLoading } = useTraceWithSegments(traceId || '');
 
   // Parse rawRootSegment JSON once per trace
   const effectiveRootSegment = useMemo(() => {
-    if (!trace?.rawRootSegment) return null
-    return parseRawRootSegment(trace.rawRootSegment)
-  }, [trace])
+    if (!trace?.rawRootSegment) return null;
+    return parseRawRootSegment(trace.rawRootSegment);
+  }, [trace]);
 
   // Auto-select first span when trace loads
   useEffect(() => {
     if (effectiveRootSegment && !selectedSpan) {
-      const firstSpan = effectiveRootSegment.requestSpans?.[0] || effectiveRootSegment.responseSpans?.[0]
+      const firstSpan = effectiveRootSegment.requestSpans?.[0] || effectiveRootSegment.responseSpans?.[0];
       if (firstSpan) {
-        const spanType = effectiveRootSegment.requestSpans?.[0] ? 'request' : 'response'
-        setSelectedTrace(effectiveRootSegment)
-        setSelectedSpan(firstSpan)
-        setSelectedSpanType(spanType)
+        const spanType = effectiveRootSegment.requestSpans?.[0] ? 'request' : 'response';
+        setSelectedTrace(effectiveRootSegment);
+        setSelectedSpan(firstSpan);
+        setSelectedSpanType(spanType);
       }
     }
-  }, [effectiveRootSegment, selectedSpan])
+  }, [effectiveRootSegment, selectedSpan]);
 
   const handleSpanSelect = (parentTrace: Segment, span: Span, type: 'request' | 'response') => {
-    setSelectedTrace(parentTrace)
-    setSelectedSpan(span)
-    setSelectedSpanType(type)
-  }
+    setSelectedTrace(parentTrace);
+    setSelectedSpan(span);
+    setSelectedSpanType(type);
+  };
 
   // Reset state when drawer closes
   useEffect(() => {
     if (!open) {
-      setSelectedTrace(null)
-      setSelectedSpan(null)
-      setSelectedSpanType(null)
+      setSelectedTrace(null);
+      setSelectedSpan(null);
+      setSelectedSpanType(null);
     }
-  }, [open])
+  }, [open]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side='right' className='w-full sm:max-w-[min(90vw,calc(100vw-400px))] p-0'>
+      <SheetContent side='right' className='w-full p-0 sm:max-w-[min(90vw,calc(100vw-400px))]'>
         <SheetHeader className='border-b px-6 py-4'>
           <SheetTitle>{t('traces.detail.title')}</SheetTitle>
         </SheetHeader>
@@ -82,11 +82,7 @@ export function TraceDrawer({ open, onOpenChange, traceId }: TraceDrawerProps) {
 
             {/* Right: Span Detail */}
             <div className='border-border bg-background w-[500px] overflow-y-auto border-l'>
-              <SpanSection
-                selectedTrace={selectedTrace}
-                selectedSpan={selectedSpan}
-                selectedSpanType={selectedSpanType}
-              />
+              <SpanSection selectedTrace={selectedTrace} selectedSpan={selectedSpan} selectedSpanType={selectedSpanType} />
             </div>
           </div>
         ) : (
@@ -96,5 +92,5 @@ export function TraceDrawer({ open, onOpenChange, traceId }: TraceDrawerProps) {
         )}
       </SheetContent>
     </Sheet>
-  )
+  );
 }

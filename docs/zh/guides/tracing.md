@@ -123,7 +123,7 @@ func sendTracedMessage(ctx context.Context, apiKey string) (*anthropic.Message, 
 ### 在控制台中探索追踪
 1. 在 AxonHub 管理后台进入 **Traces** 页面。
 2. 按项目、模型或时间范围筛选目标追踪。
-3. 展开追踪查看 span、提示/回复内容、耗时及通道元数据。
+3. 展开追踪查看 span、提示/回复内容、耗时及渠道元数据。
 4. 跳转关联的线程，结合追踪细节还原完整会话。
 
 ### 故障排查

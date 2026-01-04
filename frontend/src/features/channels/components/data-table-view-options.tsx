@@ -1,22 +1,22 @@
-import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu'
-import { MixerHorizontalIcon } from '@radix-ui/react-icons'
-import { Table } from '@tanstack/react-table'
-import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
+import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
+import { MixerHorizontalIcon } from '@radix-ui/react-icons';
+import { Table } from '@tanstack/react-table';
+import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu'
+} from '@/components/ui/dropdown-menu';
 
 interface DataTableViewOptionsProps<TData> {
-  table: Table<TData>
+  table: Table<TData>;
 }
 
 export function DataTableViewOptions<TData>({ table }: DataTableViewOptionsProps<TData>) {
-  const { t } = useTranslation()
+  const { t } = useTranslation();
 
   return (
     <DropdownMenu modal={false}>
@@ -43,9 +43,9 @@ export function DataTableViewOptions<TData>({ table }: DataTableViewOptionsProps
               >
                 {t(`channels.columns.${column.id}`)}
               </DropdownMenuCheckboxItem>
-            )
+            );
           })}
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }

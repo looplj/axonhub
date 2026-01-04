@@ -1,5 +1,6 @@
 export const DEVELOPER_IDS = [
   'deepseek',
+  'alibaba',
   'zai',
   'openai',
   'moonshot',
@@ -10,7 +11,7 @@ export const DEVELOPER_IDS = [
   'longcat',
   'mistral',
   'xai',
-]
+];
 
 export const DEVELOPER_ICONS: Record<string, string> = {
   moonshot: 'Moonshot',
@@ -18,10 +19,11 @@ export const DEVELOPER_ICONS: Record<string, string> = {
   zai: 'ZAI',
   deepseek: 'DeepSeek',
   google: 'Gemini',
-  anthropic: 'Anthropic',
+  anthropic: 'Claude',
   openai: 'OpenAI',
   minimax: 'Minimax',
+  alibaba: 'Qwen',
   xiaomi: 'XiaomiMiMo',
   longcat: 'LongCat',
   mistral: 'Mistral',
-}
+};

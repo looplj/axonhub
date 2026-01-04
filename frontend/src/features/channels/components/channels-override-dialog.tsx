@@ -1,75 +1,65 @@
-import { useEffect, useState, useCallback } from 'react'
-import { z } from 'zod'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-import { Loader2, Save, Download } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { useUpdateChannel } from '../data/channels'
-import { Channel, HeaderEntry } from '../data/schema'
-import {
-  useChannelOverrideTemplates,
-  useCreateChannelOverrideTemplate,
-} from '../data/templates'
-import {
-  mergeChannelSettingsForUpdate,
-  mergeOverrideHeaders,
-  mergeOverrideParameters,
-  normalizeOverrideParameters,
-} from '../utils/merge'
+import { useEffect, useState, useCallback } from 'react';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Loader2, Save, Download } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Textarea } from '@/components/ui/textarea';
+import { useUpdateChannel } from '../data/channels';
+import { Channel, HeaderEntry } from '../data/schema';
+import { useChannelOverrideTemplates, useCreateChannelOverrideTemplate } from '../data/templates';
+import { mergeChannelSettingsForUpdate, mergeOverrideHeaders, mergeOverrideParameters, normalizeOverrideParameters } from '../utils/merge';
 
 interface Props {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  currentRow: Channel
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  currentRow: Channel;
 }
 
-const AUTH_HEADER_KEYS = ['authorization', 'proxy-authorization', 'x-api-key', 'x-api-secret', 'x-api-token']
+const AUTH_HEADER_KEYS = ['authorization', 'proxy-authorization', 'x-api-key', 'x-api-secret', 'x-api-token'];
 
 interface SaveTemplateDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onSave: (name: string, description?: string) => void
-  isSaving: boolean
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSave: (name: string, description?: string) => void;
+  isSaving: boolean;
 }
 
 function SaveTemplateDialog({ open, onOpenChange, onSave, isSaving }: SaveTemplateDialogProps) {
-  const { t } = useTranslation()
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
+  const { t } = useTranslation();
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
 
   const handleSave = () => {
     if (!name.trim()) {
-      toast.error(t('channels.templates.validation.nameRequired'))
-      return
+      toast.error(t('channels.templates.validation.nameRequired'));
+      return;
     }
-    onSave(name.trim(), description.trim() || undefined)
-  }
+    onSave(name.trim(), description.trim() || undefined);
+  };
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
-      setName('')
-      setDescription('')
+      setName('');
+      setDescription('');
     }
-    onOpenChange(newOpen)
-  }
+    onOpenChange(newOpen);
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className='sm:max-w-[500px]'>
         <DialogHeader>
           <DialogTitle>{t('channels.templates.dialogs.save.title')}</DialogTitle>
-          <DialogDescription>
-            {t('channels.templates.dialogs.save.description')}
-          </DialogDescription>
+          <DialogDescription>{t('channels.templates.dialogs.save.description')}</DialogDescription>
         </DialogHeader>
         <div className='space-y-4 py-4'>
           <div className='space-y-2'>
@@ -114,59 +104,63 @@ function SaveTemplateDialog({ open, onOpenChange, onSave, isSaving }: SaveTempla
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
 const overrideFormSchema = z.object({
-  overrideHeaders: z.array(z.object({
-    key: z.string().min(1, 'Header key is required'),
-    value: z.string(),
-  })).optional(),
+  overrideHeaders: z
+    .array(
+      z.object({
+        key: z.string().min(1, 'Header key is required'),
+        value: z.string(),
+      })
+    )
+    .optional(),
   overrideParameters: z
     .string()
     .optional()
     .superRefine((val, ctx) => {
-      if (!val || val.trim() === '') return
+      if (!val || val.trim() === '') return;
 
-      let parsed: unknown
+      let parsed: unknown;
       try {
-        parsed = JSON.parse(val)
+        parsed = JSON.parse(val);
       } catch {
         ctx.addIssue({
           code: 'custom',
           message: 'channels.validation.overrideParametersInvalidJson',
-        })
-        return
+        });
+        return;
       }
 
       if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
         ctx.addIssue({
           code: 'custom',
           message: 'channels.validation.overrideParametersInvalidJson',
-        })
-        return
+        });
+        return;
       }
 
       if (Object.prototype.hasOwnProperty.call(parsed, 'stream')) {
         ctx.addIssue({
           code: 'custom',
           message: 'channels.validation.overrideParametersStreamNotAllowed',
-        })
+        });
       }
     }),
-})
+});
 
 export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props) {
-  const { t } = useTranslation()
-  const updateChannel = useUpdateChannel()
-  const createTemplate = useCreateChannelOverrideTemplate()
+  const { t } = useTranslation();
+  const updateChannel = useUpdateChannel();
+  const createTemplate = useCreateChannelOverrideTemplate();
 
   // Template states
-  const [showSaveTemplateDialog, setShowSaveTemplateDialog] = useState(false)
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
-  const [templateSearchOpen, setTemplateSearchOpen] = useState(false)
-  const [templateSearchValue, setTemplateSearchValue] = useState('')
-  const [isApplyingTemplate, setIsApplyingTemplate] = useState(false)
+  const [showSaveTemplateDialog, setShowSaveTemplateDialog] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [templateSearchOpen, setTemplateSearchOpen] = useState(false);
+  const [templateSearchValue, setTemplateSearchValue] = useState('');
+  const [isApplyingTemplate, setIsApplyingTemplate] = useState(false);
 
   // Fetch templates for this channel type
   const { data: templatesData } = useChannelOverrideTemplates(
@@ -178,16 +172,12 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
     {
       enabled: open,
     }
-  )
+  );
 
-  const templates = templatesData?.edges?.map((edge) => edge.node) || []
+  const templates = templatesData?.edges?.map((edge) => edge.node) || [];
 
-  const [headers, setHeaders] = useState<HeaderEntry[]>(
-    currentRow.settings?.overrideHeaders || []
-  )
-  const [overrideParametersText, setOverrideParametersText] = useState<string>(
-    currentRow.settings?.overrideParameters || ''
-  )
+  const [headers, setHeaders] = useState<HeaderEntry[]>(currentRow.settings?.overrideHeaders || []);
+  const [overrideParametersText, setOverrideParametersText] = useState<string>(currentRow.settings?.overrideParameters || '');
 
   const form = useForm<z.infer<typeof overrideFormSchema>>({
     resolver: zodResolver(overrideFormSchema),
@@ -195,108 +185,112 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
       overrideHeaders: currentRow.settings?.overrideHeaders || [],
       overrideParameters: currentRow.settings?.overrideParameters || '',
     },
-  })
+  });
 
   useEffect(() => {
-    const nextHeaders = currentRow.settings?.overrideHeaders || []
-    const nextParameters = currentRow.settings?.overrideParameters || ''
-    setHeaders(nextHeaders)
-    setOverrideParametersText(nextParameters)
-    form.reset({ 
+    const nextHeaders = currentRow.settings?.overrideHeaders || [];
+    const nextParameters = currentRow.settings?.overrideParameters || '';
+    setHeaders(nextHeaders);
+    setOverrideParametersText(nextParameters);
+    form.reset({
       overrideHeaders: nextHeaders,
-      overrideParameters: nextParameters 
-    })
-  }, [currentRow, open, form])
+      overrideParameters: nextParameters,
+    });
+  }, [currentRow, open, form]);
 
   const addHeader = useCallback(() => {
-    const newHeaders = [...headers, { key: '', value: '' }]
-    setHeaders(newHeaders)
-    form.setValue('overrideHeaders', newHeaders)
-  }, [headers, form])
+    const newHeaders = [...headers, { key: '', value: '' }];
+    setHeaders(newHeaders);
+    form.setValue('overrideHeaders', newHeaders);
+  }, [headers, form]);
 
-  const removeHeader = useCallback((index: number) => {
-    const newHeaders = headers.filter((_, i) => i !== index)
-    setHeaders(newHeaders)
-    form.setValue('overrideHeaders', newHeaders)
-  }, [headers, form])
+  const removeHeader = useCallback(
+    (index: number) => {
+      const newHeaders = headers.filter((_, i) => i !== index);
+      setHeaders(newHeaders);
+      form.setValue('overrideHeaders', newHeaders);
+    },
+    [headers, form]
+  );
 
-  const updateHeader = useCallback((index: number, field: keyof HeaderEntry, value: string) => {
-    const newHeaders = headers.map((header, i) => 
-      i === index ? { ...header, [field]: value } : header
-    )
-    setHeaders(newHeaders)
-    form.setValue('overrideHeaders', newHeaders)
-    
-    // Trigger validation for the specific field if it's the key field
-    if (field === 'key') {
-      form.trigger(`overrideHeaders.${index}.key`)
-    }
-  }, [headers, form])
+  const updateHeader = useCallback(
+    (index: number, field: keyof HeaderEntry, value: string) => {
+      const newHeaders = headers.map((header, i) => (i === index ? { ...header, [field]: value } : header));
+      setHeaders(newHeaders);
+      form.setValue('overrideHeaders', newHeaders);
+
+      // Trigger validation for the specific field if it's the key field
+      if (field === 'key') {
+        form.trigger(`overrideHeaders.${index}.key`);
+      }
+    },
+    [headers, form]
+  );
 
   const onSubmit = async (values: z.infer<typeof overrideFormSchema>) => {
     try {
       // Filter out headers with empty keys
-      const validHeaders = values.overrideHeaders?.filter(header => header.key.trim() !== '') || []
+      const validHeaders = values.overrideHeaders?.filter((header) => header.key.trim() !== '') || [];
 
       // Normalize and parse overrideParameters if provided
-      const normalizedParams = normalizeOverrideParameters(values.overrideParameters || '')
+      const normalizedParams = normalizeOverrideParameters(values.overrideParameters || '');
 
       const nextSettings = mergeChannelSettingsForUpdate(currentRow.settings, {
         overrideParameters: normalizedParams,
         overrideHeaders: validHeaders,
-      })
+      });
 
       await updateChannel.mutateAsync({
         id: currentRow.id,
         input: {
           settings: nextSettings,
         },
-      })
-      toast.success(t('channels.messages.updateSuccess'))
-      onOpenChange(false)
+      });
+      toast.success(t('channels.messages.updateSuccess'));
+      onOpenChange(false);
     } catch (_error) {
-      toast.error(t('channels.messages.updateError'))
+      toast.error(t('channels.messages.updateError'));
     }
-  }
+  };
 
   // Handle apply template
   const handleApplyTemplate = useCallback(async () => {
-    if (!selectedTemplateId) return
+    if (!selectedTemplateId) return;
 
-    const template = templates.find((t) => t.id === selectedTemplateId)
-    if (!template) return
+    const template = templates.find((t) => t.id === selectedTemplateId);
+    if (!template) return;
 
-    setIsApplyingTemplate(true)
+    setIsApplyingTemplate(true);
     try {
       // Parse template data
-      const templateHeaders = template.overrideHeaders || []
-      const templateParams = template.overrideParameters || ''
+      const templateHeaders = template.overrideHeaders || [];
+      const templateParams = template.overrideParameters || '';
 
       // Use merge utilities to match backend behavior
-      const mergedHeaders = mergeOverrideHeaders(headers, templateHeaders)
-      const mergedParams = mergeOverrideParameters(overrideParametersText, templateParams)
+      const mergedHeaders = mergeOverrideHeaders(headers, templateHeaders);
+      const mergedParams = mergeOverrideParameters(overrideParametersText, templateParams);
 
-      setHeaders(mergedHeaders)
-      setOverrideParametersText(mergedParams)
-      form.setValue('overrideHeaders', mergedHeaders)
-      form.setValue('overrideParameters', mergedParams)
+      setHeaders(mergedHeaders);
+      setOverrideParametersText(mergedParams);
+      form.setValue('overrideHeaders', mergedHeaders);
+      form.setValue('overrideParameters', mergedParams);
 
-      toast.success(t('channels.templates.messages.applied'))
+      toast.success(t('channels.templates.messages.applied'));
     } catch (error) {
-      toast.error(t('channels.templates.messages.applyError'))
+      toast.error(t('channels.templates.messages.applyError'));
     } finally {
-      setIsApplyingTemplate(false)
+      setIsApplyingTemplate(false);
     }
-  }, [selectedTemplateId, templates, headers, overrideParametersText, form, t])
+  }, [selectedTemplateId, templates, headers, overrideParametersText, form, t]);
 
   // Handle save as template
   const handleSaveAsTemplate = useCallback(
     async (name: string, description?: string) => {
       // Filter out headers with empty keys
-      const validHeaders = headers.filter((h) => h.key.trim() !== '')
+      const validHeaders = headers.filter((h) => h.key.trim() !== '');
 
       // Normalize empty parameters to "{}"
-      const normalizedParams = normalizeOverrideParameters(overrideParametersText)
+      const normalizedParams = normalizeOverrideParameters(overrideParametersText);
 
       try {
         await createTemplate.mutateAsync({
@@ -305,20 +299,20 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
           channelType: currentRow.type,
           overrideParameters: normalizedParams,
           overrideHeaders: validHeaders,
-        })
-        setShowSaveTemplateDialog(false)
+        });
+        setShowSaveTemplateDialog(false);
       } catch (error) {
         // Error already handled by mutation
       }
     },
     [headers, overrideParametersText, currentRow.type, createTemplate]
-  )
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className='max-h-[90vh] overflow-y-auto sm:max-w-[800px]'>
         <DialogHeader>
-          <DialogTitle data-testid="override-dialog-title">{t('channels.dialogs.settings.overrides.title')}</DialogTitle>
+          <DialogTitle data-testid='override-dialog-title'>{t('channels.dialogs.settings.overrides.title')}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -361,15 +355,13 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
                                   key={template.id}
                                   value={template.id}
                                   onSelect={() => {
-                                    setSelectedTemplateId(template.id)
-                                    setTemplateSearchOpen(false)
+                                    setSelectedTemplateId(template.id);
+                                    setTemplateSearchOpen(false);
                                   }}
                                 >
                                   <div className='flex flex-col'>
                                     <span className='font-medium'>{template.name}</span>
-                                    {template.description && (
-                                      <span className='text-muted-foreground text-xs'>{template.description}</span>
-                                    )}
+                                    {template.description && <span className='text-muted-foreground text-xs'>{template.description}</span>}
                                   </div>
                                 </CommandItem>
                               ))}
@@ -411,18 +403,18 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
             </Card>
 
             {/* Headers Section */}
-            <Card data-testid="override-headers-section">
+            <Card data-testid='override-headers-section'>
               <CardHeader>
                 <CardTitle className='text-lg'>{t('channels.dialogs.settings.overrides.headers.title')}</CardTitle>
                 <CardDescription>{t('channels.dialogs.settings.overrides.headers.description')}</CardDescription>
               </CardHeader>
               <CardContent className='space-y-3'>
                 {headers.map((header, index) => {
-                  const fieldError = form.formState.errors.overrideHeaders?.[index]?.key
-                  const normalizedKey = header.key.trim().toLowerCase()
-                  const isAuthHeader = normalizedKey !== '' && AUTH_HEADER_KEYS.includes(normalizedKey)
+                  const fieldError = form.formState.errors.overrideHeaders?.[index]?.key;
+                  const normalizedKey = header.key.trim().toLowerCase();
+                  const isAuthHeader = normalizedKey !== '' && AUTH_HEADER_KEYS.includes(normalizedKey);
                   return (
-                    <div key={index} className='flex gap-3 items-start'>
+                    <div key={index} className='flex items-start gap-3'>
                       <div className='flex-1 space-y-2'>
                         <Label htmlFor={`header-key-${index}`} className='text-sm font-medium'>
                           {t('channels.dialogs.settings.overrides.headers.key')}
@@ -467,29 +459,21 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
                         </Button>
                       </div>
                     </div>
-                  )
+                  );
                 })}
-                
-                <Button
-                  type='button'
-                  variant='outline'
-                  onClick={addHeader}
-                  className='w-full'
-                  data-testid='add-header-button'
-                >
+
+                <Button type='button' variant='outline' onClick={addHeader} className='w-full' data-testid='add-header-button'>
                   {t('channels.dialogs.settings.overrides.headers.addButton')}
                 </Button>
 
                 {form.formState.errors.overrideHeaders?.message && (
-                  <p className='text-destructive text-sm'>
-                    {t(form.formState.errors.overrideHeaders.message.toString())}
-                  </p>
+                  <p className='text-destructive text-sm'>{t(form.formState.errors.overrideHeaders.message.toString())}</p>
                 )}
               </CardContent>
             </Card>
 
             {/* Parameters Section */}
-            <Card data-testid="override-parameters-section">
+            <Card data-testid='override-parameters-section'>
               <CardHeader>
                 <CardTitle className='text-lg'>{t('channels.dialogs.settings.overrides.parameters.title')}</CardTitle>
                 <CardDescription>{t('channels.dialogs.settings.overrides.parameters.description')}</CardDescription>
@@ -500,19 +484,17 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
                   placeholder='{"temperature": 0.7, "max_tokens": 1000}'
                   value={overrideParametersText}
                   onChange={(e) => {
-                    const value = e.target.value
-                    setOverrideParametersText(value)
+                    const value = e.target.value;
+                    setOverrideParametersText(value);
                     form.setValue('overrideParameters', value, {
                       shouldValidate: true,
                       shouldDirty: true,
-                    })
+                    });
                   }}
                   className='min-h-[200px] font-mono'
                 />
                 {form.formState.errors.overrideParameters?.message && (
-                  <p className='text-destructive text-sm'>
-                    {t(form.formState.errors.overrideParameters.message.toString())}
-                  </p>
+                  <p className='text-destructive text-sm'>{t(form.formState.errors.overrideParameters.message.toString())}</p>
                 )}
               </CardContent>
             </Card>
@@ -536,5 +518,5 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
         isSaving={createTemplate.isPending}
       />
     </Dialog>
-  )
+  );
 }

@@ -665,6 +665,20 @@ var (
 			}
 		},
 	}
+	// ChannelOrderFieldName orders Channel by name.
+	ChannelOrderFieldName = &ChannelOrderField{
+		Value: func(_m *Channel) (ent.Value, error) {
+			return _m.Name, nil
+		},
+		column: channel.FieldName,
+		toTerm: channel.ByName,
+		toCursor: func(_m *Channel) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.Name,
+			}
+		},
+	}
 	// ChannelOrderFieldOrderingWeight orders Channel by ordering_weight.
 	ChannelOrderFieldOrderingWeight = &ChannelOrderField{
 		Value: func(_m *Channel) (ent.Value, error) {
@@ -689,6 +703,8 @@ func (f ChannelOrderField) String() string {
 		str = "CREATED_AT"
 	case ChannelOrderFieldUpdatedAt.column:
 		str = "UPDATED_AT"
+	case ChannelOrderFieldName.column:
+		str = "NAME"
 	case ChannelOrderFieldOrderingWeight.column:
 		str = "ORDERING_WEIGHT"
 	}
@@ -711,6 +727,8 @@ func (f *ChannelOrderField) UnmarshalGQL(v interface{}) error {
 		*f = *ChannelOrderFieldCreatedAt
 	case "UPDATED_AT":
 		*f = *ChannelOrderFieldUpdatedAt
+	case "NAME":
+		*f = *ChannelOrderFieldName
 	case "ORDERING_WEIGHT":
 		*f = *ChannelOrderFieldOrderingWeight
 	default:
@@ -1939,6 +1957,20 @@ var (
 			}
 		},
 	}
+	// ModelOrderFieldName orders Model by name.
+	ModelOrderFieldName = &ModelOrderField{
+		Value: func(_m *Model) (ent.Value, error) {
+			return _m.Name, nil
+		},
+		column: model.FieldName,
+		toTerm: model.ByName,
+		toCursor: func(_m *Model) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.Name,
+			}
+		},
+	}
 )
 
 // String implement fmt.Stringer interface.
@@ -1949,6 +1981,8 @@ func (f ModelOrderField) String() string {
 		str = "CREATED_AT"
 	case ModelOrderFieldUpdatedAt.column:
 		str = "UPDATED_AT"
+	case ModelOrderFieldName.column:
+		str = "NAME"
 	}
 	return str
 }
@@ -1969,6 +2003,8 @@ func (f *ModelOrderField) UnmarshalGQL(v interface{}) error {
 		*f = *ModelOrderFieldCreatedAt
 	case "UPDATED_AT":
 		*f = *ModelOrderFieldUpdatedAt
+	case "NAME":
+		*f = *ModelOrderFieldName
 	default:
 		return fmt.Errorf("%s is not a valid ModelOrderField", str)
 	}

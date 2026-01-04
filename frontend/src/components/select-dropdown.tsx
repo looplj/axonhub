@@ -1,24 +1,18 @@
-import { IconLoader } from '@tabler/icons-react'
-import { cn } from '@/lib/utils'
-import { FormControl } from '@/components/ui/form'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { IconLoader } from '@tabler/icons-react';
+import { cn } from '@/lib/utils';
+import { FormControl } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface SelectDropdownProps {
-  onValueChange?: (value: string) => void
-  defaultValue: string | undefined
-  placeholder?: string
-  isPending?: boolean
-  items: { label: string; value: string; disabled?: boolean }[] | undefined
-  disabled?: boolean
-  className?: string
-  isControlled?: boolean
-  'data-testid'?: string
+  onValueChange?: (value: string) => void;
+  defaultValue: string | undefined;
+  placeholder?: string;
+  isPending?: boolean;
+  items: { label: string; value: string; disabled?: boolean }[] | undefined;
+  disabled?: boolean;
+  className?: string;
+  isControlled?: boolean;
+  'data-testid'?: string;
 }
 
 export function SelectDropdown({
@@ -32,9 +26,7 @@ export function SelectDropdown({
   isControlled = false,
   'data-testid': dataTestId,
 }: SelectDropdownProps) {
-  const defaultState = isControlled
-    ? { value: defaultValue, onValueChange }
-    : { defaultValue, onValueChange }
+  const defaultState = isControlled ? { value: defaultValue, onValueChange } : { defaultValue, onValueChange };
   return (
     <Select {...defaultState}>
       <FormControl>
@@ -60,5 +52,5 @@ export function SelectDropdown({
         )}
       </SelectContent>
     </Select>
-  )
+  );
 }

@@ -1,12 +1,12 @@
-import { IconUserPlus } from '@tabler/icons-react'
-import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
-import { PermissionGuard } from '@/components/permission-guard'
-import { useUsers } from '../context/users-context'
+import { IconUserPlus } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
+import { PermissionGuard } from '@/components/permission-guard';
+import { useUsers } from '../context/users-context';
 
 export function UsersPrimaryButtons() {
-  const { t } = useTranslation()
-  const { setOpen } = useUsers()
+  const { t } = useTranslation();
+  const { setOpen } = useUsers();
   return (
     <div className='flex gap-2'>
       {/* Invite User - commented out for now
@@ -21,7 +21,7 @@ export function UsersPrimaryButtons() {
         </Button>
       </PermissionGuard>
       */}
-      
+
       {/* Add User - requires write_users permission */}
       <PermissionGuard requiredScope='write_users'>
         <Button className='space-x-1' onClick={() => setOpen('add')}>
@@ -29,5 +29,5 @@ export function UsersPrimaryButtons() {
         </Button>
       </PermissionGuard>
     </div>
-  )
+  );
 }

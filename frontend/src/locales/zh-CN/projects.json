@@ -5,8 +5,7 @@
     "createProject": "新建项目",
     "searchProjects": "按名称搜索项目...",
     "columns": {
-      "slug": "项目标识",
-      "name": "项目名称",
+      "name": "名称",
       "description": "描述",
       "status": "状态",
       "createdAt": "创建时间",

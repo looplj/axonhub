@@ -1,16 +1,12 @@
-import { Separator } from '@/components/ui/separator'
+import { Separator } from '@/components/ui/separator';
 
 interface ContentSectionProps {
-  title: string
-  desc: string
-  children: React.JSX.Element
+  title: string;
+  desc: string;
+  children: React.JSX.Element;
 }
 
-export default function ContentSection({
-  title,
-  desc,
-  children,
-}: ContentSectionProps) {
+export default function ContentSection({ title, desc, children }: ContentSectionProps) {
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
       <div className='flex-none'>
@@ -22,5 +18,5 @@ export default function ContentSection({
         <div className='-mx-1 px-1.5 lg:max-w-xl'>{children}</div>
       </div>
     </div>
-  )
+  );
 }

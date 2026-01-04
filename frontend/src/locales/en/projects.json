@@ -5,8 +5,7 @@
     "createProject": "Create Project",
     "searchProjects": "Search projects by name",
     "columns": {
-      "slug": "Project Slug",
-      "name": "Project Name",
+      "name": "Name",
       "description": "Description",
       "status": "Status",
       "createdAt": "Created At",

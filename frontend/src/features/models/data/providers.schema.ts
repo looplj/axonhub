@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from 'zod';
 
 // Model cost schema
 export const modelCostSchema = z.object({
@@ -6,25 +6,25 @@ export const modelCostSchema = z.object({
   output: z.number().optional(),
   cache_read: z.number().optional(),
   cache_write: z.number().optional(),
-})
+});
 
 // Model limit schema
 export const modelLimitSchema = z.object({
   context: z.number().optional().nullable(),
   output: z.number().optional().nullable(),
-})
+});
 
 // Model reasoning schema
 export const modelReasoningSchema = z.object({
   supported: z.boolean().optional(),
   default: z.boolean().optional(),
-})
+});
 
 // Model modalities schema
 export const modelModalitiesSchema = z.object({
   input: z.array(z.string()).optional().nullable(),
   output: z.array(z.string()).optional().nullable(),
-})
+});
 
 // Single model schema
 export const providerModelSchema = z.object({
@@ -46,7 +46,7 @@ export const providerModelSchema = z.object({
   vision: z.boolean().optional(),
   type: z.string().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
-})
+});
 
 // Provider schema
 export const providerSchema = z.object({
@@ -58,15 +58,15 @@ export const providerSchema = z.object({
   vision: z.boolean().optional(),
   models: z.array(providerModelSchema).optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
-})
+});
 
 // Providers data schema
 export const providersDataSchema = z.object({
   providers: z.record(z.string(), providerSchema),
   updated_at: z.string().optional(),
-})
+});
 
 // Type exports
-export type ProviderModel = z.infer<typeof providerModelSchema>
-export type Provider = z.infer<typeof providerSchema>
-export type ProvidersData = z.infer<typeof providersDataSchema>
+export type ProviderModel = z.infer<typeof providerModelSchema>;
+export type Provider = z.infer<typeof providerSchema>;
+export type ProvidersData = z.infer<typeof providersDataSchema>;
