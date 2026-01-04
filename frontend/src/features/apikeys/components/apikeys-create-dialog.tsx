@@ -10,7 +10,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useApiKeysContext } from '../context/apikeys-context';
 import { useCreateApiKey } from '../data/apikeys';
 import { CreateApiKeyInput, createApiKeyInputSchema } from '../data/schema';
-import { ScopesSelect } from './scopes-select';
+import { ScopesSelect } from '@/components/ui/scopes-select';
 
 export function ApiKeysCreateDialog() {
   const { t } = useTranslation();

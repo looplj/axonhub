@@ -265,7 +265,15 @@
     "read_settings": "View system settings",
     "write_settings": "Manage system settings",
     "read_projects": "View project information",
-    "write_projects": "Manage projects"
+    "write_projects": "Manage projects",
+    "select": {
+      "label": "Scopes",
+      "description": "Select the permissions",
+      "selectPlaceholder": "Select scopes...",
+      "searchPlaceholder": "Search scopes...",
+      "selectedCount": "{{count}} scopes selected",
+      "noResults": "No scopes found"
+    }
   },
   "auth": {
     "brand": {

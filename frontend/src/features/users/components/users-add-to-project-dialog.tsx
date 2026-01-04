@@ -5,16 +5,15 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { graphqlRequest } from '@/gql/graphql';
-import { ROLES_QUERY, ALL_SCOPES_QUERY } from '@/gql/roles';
-import { X } from 'lucide-react';
+import { ROLES_QUERY } from '@/gql/roles';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { SelectDropdown } from '@/components/select-dropdown';
+import { ScopesSelect } from '@/components/ui/scopes-select';
 import { useProjects } from '@/features/projects/data/projects';
 import { User } from '../data/schema';
 
@@ -60,12 +59,6 @@ interface Role {
   scopes?: string[];
 }
 
-interface ScopeInfo {
-  scope: string;
-  description?: string;
-  levels?: string[];
-}
-
 interface Props {
   currentRow?: User;
   open: boolean;
@@ -75,10 +68,10 @@ interface Props {
 export function UsersAddToProjectDialog({ currentRow, open, onOpenChange }: Props) {
   const { t } = useTranslation();
   const [roles, setRoles] = useState<Role[]>([]);
-  const [allScopes, setAllScopes] = useState<ScopeInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [userProjectIds, setUserProjectIds] = useState<string[]>([]);
+  const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null);
 
   // Fetch all projects
   const { data: projectsData } = useProjects({ first: 100 });
@@ -128,19 +121,16 @@ export function UsersAddToProjectDialog({ currentRow, open, onOpenChange }: Prop
     }
   }, [open, currentRow?.id]);
 
-  const loadRolesAndScopes = useCallback(
+  const loadRoles = useCallback(
     async (projectId: string) => {
       if (!projectId) return;
 
       setLoading(true);
       try {
-        const [rolesData, scopesData] = await Promise.all([
-          graphqlRequest(ROLES_QUERY, {
-            first: 100,
-            where: { projectID: projectId },
-          }),
-          graphqlRequest(ALL_SCOPES_QUERY, { level: 'project' }),
-        ]);
+        const rolesData = await graphqlRequest(ROLES_QUERY, {
+          first: 100,
+          where: { projectID: projectId },
+        });
 
         const rolesResponse = rolesData as {
           roles: {
@@ -155,16 +145,7 @@ export function UsersAddToProjectDialog({ currentRow, open, onOpenChange }: Prop
           };
         };
 
-        const scopesResponse = scopesData as {
-          allScopes: Array<{
-            scope: string;
-            description?: string;
-            levels?: string[];
-          }>;
-        };
-
         setRoles(rolesResponse.roles.edges.map((edge) => edge.node));
-        setAllScopes(scopesResponse.allScopes);
       } catch (error) {
         toast.error(t('common.errors.userLoadFailed'));
       } finally {
@@ -176,9 +157,9 @@ export function UsersAddToProjectDialog({ currentRow, open, onOpenChange }: Prop
 
   useEffect(() => {
     if (selectedProjectId) {
-      loadRolesAndScopes(selectedProjectId);
+      loadRoles(selectedProjectId);
     }
-  }, [selectedProjectId, loadRolesAndScopes]);
+  }, [selectedProjectId, loadRoles]);
 
   const onSubmit = async (values: AddToProjectForm) => {
     if (!currentRow) return;
@@ -216,20 +197,6 @@ export function UsersAddToProjectDialog({ currentRow, open, onOpenChange }: Prop
     form.setValue('roleIDs', newRoles);
   };
 
-  const handleScopeToggle = (scopeName: string) => {
-    const currentScopes = form.getValues('scopes') || [];
-    const newScopes = currentScopes.includes(scopeName)
-      ? currentScopes.filter((name: string) => name !== scopeName)
-      : [...currentScopes, scopeName];
-    form.setValue('scopes', newScopes);
-  };
-
-  const handleScopeRemove = (scopeName: string) => {
-    const currentScopes = form.getValues('scopes') || [];
-    const newScopes = currentScopes.filter((name: string) => name !== scopeName);
-    form.setValue('scopes', newScopes);
-  };
-
   // Mark projects that the user is already a member of as disabled
   const projects =
     projectsData?.edges?.map((edge) => ({
@@ -248,7 +215,7 @@ export function UsersAddToProjectDialog({ currentRow, open, onOpenChange }: Prop
         onOpenChange(state);
       }}
     >
-      <DialogContent className='sm:max-w-2xl'>
+      <DialogContent className='sm:max-w-2xl' ref={setDialogContent}>
         <DialogHeader className='text-left'>
           <DialogTitle>{t('users.dialogs.addToProject.title')}</DialogTitle>
           <DialogDescription>
@@ -327,47 +294,19 @@ export function UsersAddToProjectDialog({ currentRow, open, onOpenChange }: Prop
                   </div>
 
                   {/* Scopes Section */}
-                  <div className='space-y-3'>
-                    <FormLabel>{t('users.form.projectScopes')}</FormLabel>
-
-                    {/* Selected Scopes */}
-                    <div className='flex flex-wrap gap-2'>
-                      {(form.watch('scopes') || []).map((scope) => (
-                        <Badge key={scope} variant='secondary' className='flex items-center gap-1'>
-                          {scope}
-                          <X className='h-3 w-3 cursor-pointer' onClick={() => handleScopeRemove(scope as string)} />
-                        </Badge>
-                      ))}
-                    </div>
-
-                    {/* Available Scopes */}
-                    {loading ? (
-                      <div>{t('users.form.loadingScopes')}</div>
-                    ) : (
-                      <div className='grid max-h-32 grid-cols-2 gap-2 overflow-y-auto rounded border p-2'>
-                        {allScopes.map((scope) => (
-                          <div key={scope.scope} className='flex items-start space-x-2'>
-                            <Checkbox
-                              id={`scope-${scope.scope}`}
-                              checked={(form.watch('scopes') || []).includes(scope.scope)}
-                              onCheckedChange={() => handleScopeToggle(scope.scope)}
-                            />
-                            <div className='space-y-1 leading-none'>
-                              <label
-                                htmlFor={`scope-${scope.scope}`}
-                                className='text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70'
-                              >
-                                <Badge variant='outline' className='mr-2'>
-                                  {scope.scope}
-                                </Badge>
-                                {t(`scopes.${scope.scope}`)}
-                              </label>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                  <FormField
+                    control={form.control}
+                    name='scopes'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('users.form.projectScopes')}</FormLabel>
+                        <FormControl>
+                          <ScopesSelect value={field.value || []} onChange={field.onChange} portalContainer={dialogContent} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                  </div>
+                  />
                 </>
               )}
             </form>

@@ -696,7 +696,7 @@ func TestUpdateProjectUser_UpdateScopes(t *testing.T) {
 
 	// Update scopes
 	newScopes := []string{"read_project", "write_project", "delete_project"}
-	userProject, err := userService.UpdateProjectUser(ctx, testUser.ID, testProject.ID, newScopes, nil, nil)
+	userProject, err := userService.UpdateProjectUser(ctx, testUser.ID, testProject.ID, nil, newScopes, nil, nil)
 
 	require.NoError(t, err)
 	require.NotNil(t, userProject)
@@ -752,11 +752,9 @@ func TestUpdateProjectUser_AddRoles(t *testing.T) {
 	// Add user to project without roles
 	isOwner := false
 	_, err = userService.AddUserToProject(ctx, testUser.ID, testProject.ID, &isOwner, nil, nil)
-	require.NoError(t, err)
-
-	// Add roles to the project user
+	// Add roles to project user
 	addRoleIDs := []int{projectRole1.ID, projectRole2.ID}
-	_, err = userService.UpdateProjectUser(ctx, testUser.ID, testProject.ID, nil, addRoleIDs, nil)
+	_, err = userService.UpdateProjectUser(ctx, testUser.ID, testProject.ID, nil, nil, addRoleIDs, nil)
 	require.NoError(t, err)
 
 	// Verify roles were added
@@ -825,7 +823,7 @@ func TestUpdateProjectUser_RemoveRoles(t *testing.T) {
 
 	// Remove one role
 	removeRoleIDs := []int{projectRole1.ID}
-	_, err = userService.UpdateProjectUser(ctx, testUser.ID, testProject.ID, nil, nil, removeRoleIDs)
+	_, err = userService.UpdateProjectUser(ctx, testUser.ID, testProject.ID, nil, nil, nil, removeRoleIDs)
 	require.NoError(t, err)
 
 	// Verify only one role remains
@@ -901,7 +899,7 @@ func TestUpdateProjectUser_AddAndRemoveRoles(t *testing.T) {
 	// Add new roles and remove the old one
 	addRoleIDs := []int{projectRole2.ID, projectRole3.ID}
 	removeRoleIDs := []int{projectRole1.ID}
-	_, err = userService.UpdateProjectUser(ctx, testUser.ID, testProject.ID, nil, addRoleIDs, removeRoleIDs)
+	_, err = userService.UpdateProjectUser(ctx, testUser.ID, testProject.ID, nil, nil, addRoleIDs, removeRoleIDs)
 	require.NoError(t, err)
 
 	// Verify roles were updated correctly
@@ -947,7 +945,7 @@ func TestUpdateProjectUser_NotFound(t *testing.T) {
 
 	// Try to update a relationship that doesn't exist
 	newScopes := []string{"read_project"}
-	_, err = userService.UpdateProjectUser(ctx, testUser.ID, testProject.ID, newScopes, nil, nil)
+	_, err = userService.UpdateProjectUser(ctx, testUser.ID, testProject.ID, nil, newScopes, nil, nil)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to find user project relationship")
 }
@@ -999,7 +997,7 @@ func TestUpdateProjectUser_UpdateScopesAndRoles(t *testing.T) {
 	// Update both scopes and roles
 	newScopes := []string{"read_project", "write_project"}
 	addRoleIDs := []int{projectRole.ID}
-	userProject, err := userService.UpdateProjectUser(ctx, testUser.ID, testProject.ID, newScopes, addRoleIDs, nil)
+	userProject, err := userService.UpdateProjectUser(ctx, testUser.ID, testProject.ID, nil, newScopes, addRoleIDs, nil)
 
 	require.NoError(t, err)
 	require.NotNil(t, userProject)
@@ -1223,10 +1221,134 @@ func TestUpdateProjectUser_CacheInvalidation(t *testing.T) {
 
 	// Update project user scopes
 	newScopes := []string{"read", "write"}
-	_, err = userService.UpdateProjectUser(ctx, testUser.ID, testProject.ID, newScopes, nil, nil)
+	_, err = userService.UpdateProjectUser(ctx, testUser.ID, testProject.ID, nil, newScopes, nil, nil)
 	require.NoError(t, err)
 
 	// Verify cache was invalidated
 	_, err = userService.UserCache.Get(ctx, cacheKey)
 	require.Error(t, err, "User cache should be invalidated after updating project user")
+}
+
+func TestUpdateProjectUser_UpdateIsOwner_Success(t *testing.T) {
+	userService, client := setupTestUserService(t)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Create owner user for permission checks
+	owner := createOwnerUser(t, ctx, client)
+	ctx = contexts.WithUser(ctx, owner)
+
+	// Create a regular user
+	testUser, err := client.User.Create().
+		SetEmail("user@example.com").
+		SetPassword("password").
+		SetFirstName("Test").
+		SetLastName("User").
+		SetStatus(user.StatusActivated).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create a project
+	testProject, err := client.Project.Create().
+		SetName("Test Project").
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Add user to project as non-owner
+	isOwner := false
+	initialScopes := []string{"read_project"}
+	_, err = userService.AddUserToProject(ctx, testUser.ID, testProject.ID, &isOwner, initialScopes, nil)
+	require.NoError(t, err)
+
+	// Verify initial state
+	userProject, err := client.UserProject.Query().
+		Where(
+			userproject.UserID(testUser.ID),
+			userproject.ProjectID(testProject.ID),
+		).
+		Only(ctx)
+	require.NoError(t, err)
+	require.False(t, userProject.IsOwner)
+
+	// Update isOwner to true
+	newIsOwner := true
+	updatedUserProject, err := userService.UpdateProjectUser(ctx, testUser.ID, testProject.ID, &newIsOwner, nil, nil, nil)
+	require.NoError(t, err)
+	require.NotNil(t, updatedUserProject)
+	require.True(t, updatedUserProject.IsOwner)
+
+	// Verify the update persisted
+	userProject, err = client.UserProject.Query().
+		Where(
+			userproject.UserID(testUser.ID),
+			userproject.ProjectID(testProject.ID),
+		).
+		Only(ctx)
+	require.NoError(t, err)
+	require.True(t, userProject.IsOwner)
+}
+
+func TestUpdateProjectUser_UpdateIsOwner_PermissionDenied(t *testing.T) {
+	userService, client := setupTestUserService(t)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Create a regular user who will try to update isOwner
+	regularUser, err := client.User.Create().
+		SetEmail("regular@example.com").
+		SetPassword("password").
+		SetFirstName("Regular").
+		SetLastName("User").
+		SetStatus(user.StatusActivated).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create another user to be updated
+	targetUser, err := client.User.Create().
+		SetEmail("target@example.com").
+		SetPassword("password").
+		SetFirstName("Target").
+		SetLastName("User").
+		SetStatus(user.StatusActivated).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create a project
+	testProject, err := client.Project.Create().
+		SetName("Test Project").
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Add both users to the project
+	isOwner := false
+	initialScopes := []string{"read_project"}
+	_, err = userService.AddUserToProject(ctx, regularUser.ID, testProject.ID, &isOwner, initialScopes, nil)
+	require.NoError(t, err)
+	_, err = userService.AddUserToProject(ctx, targetUser.ID, testProject.ID, &isOwner, initialScopes, nil)
+	require.NoError(t, err)
+
+	// Set the context to the regular user (not an owner)
+	ctx = contexts.WithUser(ctx, regularUser)
+
+	// Try to update target user's isOwner to true (should fail)
+	newIsOwner := true
+	_, err = userService.UpdateProjectUser(ctx, targetUser.ID, testProject.ID, &newIsOwner, nil, nil, nil)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "permission denied")
+
+	// Verify the isOwner was not updated
+	userProject, err := client.UserProject.Query().
+		Where(
+			userproject.UserID(targetUser.ID),
+			userproject.ProjectID(testProject.ID),
+		).
+		Only(ctx)
+	require.NoError(t, err)
+	require.False(t, userProject.IsOwner)
 }
