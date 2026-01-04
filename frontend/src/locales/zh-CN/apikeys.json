@@ -96,11 +96,7 @@
         },
         "scopes": {
           "label": "权限范围",
-          "description": "选择此服务账号 API Key 的权限",
-          "selectPlaceholder": "选择权限范围...",
-          "searchPlaceholder": "搜索权限范围...",
-          "selectedCount": "已选择 {{count}} 个权限",
-          "noResults": "未找到权限范围"
+          "description": "选择此服务账号 API Key 的权限"
         },
         "userID": {
           "label": "用户ID",

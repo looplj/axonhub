@@ -280,7 +280,15 @@
     "read_settings": "查看系统设置",
     "write_settings": "管理系统设置",
     "read_projects": "查看项目信息",
-    "write_projects": "管理项目"
+    "write_projects": "管理项目",
+    "select": {
+      "label": "权限范围",
+      "description": "选择权限",
+      "selectPlaceholder": "选择权限范围...",
+      "searchPlaceholder": "搜索权限范围...",
+      "selectedCount": "已选择 {{count}} 个权限",
+      "noResults": "未找到权限范围"
+    }
   },
   "auth": {
     "brand": {
