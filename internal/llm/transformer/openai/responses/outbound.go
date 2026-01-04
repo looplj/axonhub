@@ -68,7 +68,7 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 	return &llm.ResponseError{
 		StatusCode: rawErr.StatusCode,
 		Detail: llm.ErrorDetail{
-			Message: http.StatusText(rawErr.StatusCode),
+			Message: strings.TrimSpace(string(rawErr.Body)),
 			Type:    "api_error",
 		},
 	}
@@ -135,6 +135,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		MaxToolCalls:         xmap.GetInt64Ptr(llmReq.TransformerMetadata, "max_tool_calls"),
 		PromptCacheRetention: xmap.GetStringPtr(llmReq.TransformerMetadata, "prompt_cache_retention"),
 		Truncation:           xmap.GetStringPtr(llmReq.TransformerMetadata, "truncation"),
+	}
+
+	// Set ParallelToolCalls to nil if no tools are specified
+	if len(payload.Tools) == 0 {
+		payload.ParallelToolCalls = nil
 	}
 
 	// Set MaxOutputTokens to MaxTokens if not set
