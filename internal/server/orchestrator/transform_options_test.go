@@ -359,7 +359,7 @@ func TestApplyTransformOptions_PreservesAllFields(t *testing.T) {
 		Store:               boolPtr(false),
 		SafetyIdentifier:    strPtr("user-123"),
 		User:                strPtr("user-456"),
-		PromptCacheKey:      boolPtr(true),
+		PromptCacheKey:      strPtr("cache-key-123"),
 		Metadata:            map[string]string{"key": "value"},
 		LogitBias:           map[string]int64{"123": -10},
 		Modalities:          []string{"text", "audio"},

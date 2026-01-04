@@ -105,7 +105,7 @@ type Request struct {
 	// Used by OpenAI to cache responses for similar requests to optimize your cache
 	// hit rates. Replaces the `user` field.
 	// [Learn more](https://platform.openai.com/docs/guides/prompt-caching).
-	PromptCacheKey *bool `json:"prompt_cache_key,omitzero"`
+	PromptCacheKey *string `json:"prompt_cache_key,omitzero"`
 
 	// A stable identifier used to help detect users of your application that may be
 	// violating OpenAI's usage policies. The IDs should be a string that uniquely
