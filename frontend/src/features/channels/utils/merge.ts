@@ -60,6 +60,7 @@ export function mergeChannelSettingsForUpdate(
     overrideParameters: pick('overrideParameters', existing?.overrideParameters ?? ''),
     overrideHeaders: pick('overrideHeaders', existing?.overrideHeaders ?? []),
     proxy: pick('proxy', existing?.proxy ?? null),
+    transformOptions: pick('transformOptions', existing?.transformOptions ?? undefined),
   };
 }
 

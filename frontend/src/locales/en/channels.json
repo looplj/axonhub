@@ -316,6 +316,17 @@
           "placeholder": "Enter a note or remark for this channel...",
           "description": "Add notes or remarks about this channel for reference"
         },
+        "transformOptions": {
+          "label": "Transform Options",
+          "forceArrayInstructions": {
+            "label": "Force Array Instructions",
+            "description": "Force the channel to accept array format for instructions"
+          },
+          "forceArrayInputs": {
+            "label": "Force Array Inputs",
+            "description": "Force the channel to accept array format for inputs"
+          }
+        },
         "modelName": {
           "label": "Model Name",
           "placeholder": "Enter model name"
@@ -492,6 +503,15 @@
         "testSuccess": "✅ Connection successful",
         "testFailed": "❌ Connection failed",
         "latency": "Latency"
+      },
+      "transformOptions": {
+        "action": "Transform Options",
+        "title": "Transform Options",
+        "description": "Configure transform options for {{name}}.",
+        "options": {
+          "title": "Transform Settings",
+          "description": "Configure how the channel transforms request data"
+        }
       },
       "bulkOrdering": {
         "title": "Bulk Channel Ordering",

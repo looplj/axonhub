@@ -182,6 +182,7 @@ func convertToLLMRequest(req *Request) (*llm.Request, error) {
 		ServiceTier:         req.ServiceTier,
 		ParallelToolCalls:   req.ParallelToolCalls,
 		TransformerMetadata: map[string]any{},
+		TransformOptions:    llm.TransformOptions{},
 	}
 
 	// Store help fields in TransformerMetadata
@@ -242,7 +243,7 @@ func convertToLLMRequest(req *Request) (*llm.Request, error) {
 
 	// Convert input to messages
 	if req.Input.Items != nil {
-		chatReq.TransformerMetadata["openai_responses_input_array_format"] = "true"
+		chatReq.TransformOptions.ArrayInputs = lo.ToPtr(true)
 	}
 
 	inputMessages, err := convertInputToMessages(&req.Input)
