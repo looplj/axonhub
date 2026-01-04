@@ -275,7 +275,7 @@ export function ChannelsTable({
         showErrorOnly={showErrorOnly}
         onExitErrorOnlyMode={onExitErrorOnlyMode}
       />
-      <div className='shadow-soft relative mt-4 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
+      <div className='shadow-soft relative mt-4 flex-1 overflow-auto overflow-x-hidden rounded-2xl border border-[var(--table-border)]'>
         <Table data-testid='channels-table' className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (
