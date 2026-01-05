@@ -6,9 +6,38 @@
 AxonHub captures every inbound request in a thread-aware trace without forcing you to adopt a new SDK. If your client already speaks the OpenAI-compatible protocol, you can opt into observability simply by forwarding trace and thread headers—or rely on AxonHub to create them for you automatically.
 
 ### Key Concepts
-- **Trace ID (`AH-Trace-Id`)** – Unique identifier that stitches multiple requests together. You must provide this header when you need multiple requests to be linked; omitting it causes AxonHub to record requests separately even though it can auto-generate IDs.
-- **Thread ID (`AH-Thread-Id`)** – Links a series of traces to the same conversation thread so you can follow user journeys end to end.
+- **Thread ID (`AH-Thread-Id`)** – Represents a complete user conversation session. Links multiple traces together so you can follow the entire user journey across multiple messages.
+- **Trace ID (`AH-Trace-Id`)** – Represents a single user message and all the agent requests it triggers. You must provide this header when you need multiple requests to be linked; omitting it causes AxonHub to record requests separately even though it can auto-generate IDs.
+- **Request** – The smallest unit of a single API call, containing complete request/response data, latency, token usage, and other details.
 - **Extra Trace Headers** – Configure fallbacks (e.g. `Sentry-Trace`) to reuse existing observability tooling.
+
+### Thread, Trace, and Request Relationship
+
+```
+Thread (complete user conversation session)
+  └── Trace 1 (user message 1 + all agent requests)
+        ├── Request 1 (agent call 1)
+        ├── Request 2 (agent call 2)
+        └── Request 3 (agent call 3)
+  └── Trace 2 (user message 2 + all agent requests)
+        ├── Request 4 (agent call 4)
+        └── Request 5 (agent call 5)
+```
+
+- **Thread**: Represents a complete user conversation session, containing multiple user messages (each message corresponds to a trace)
+- **Trace**: Represents a single user message and all the agent requests it triggers during processing
+- **Request**: Represents a single API call to an LLM or other service, containing detailed information such as request body, response body, and token usage
+
+**Hierarchy**:
+- 1 Thread can contain multiple Traces (one trace per user message)
+- 1 Trace can contain multiple Requests (all agent calls triggered by that message)
+- 1 Request can only belong to 1 Trace
+- 1 Trace can only belong to 1 Thread (optional association)
+
+**Practical Use Cases**:
+- **Single message with agent**: 1 Thread → 1 Trace → N Requests (user sends one message, agent makes multiple API calls)
+- **Multi-turn conversation**: 1 Thread → Multiple Traces (one trace per user message) → N Requests per trace
+- **Independent request**: No Thread → 1 Trace → 1 Request (single API call without conversation context)
 
 ### Configuration
 ```yaml
