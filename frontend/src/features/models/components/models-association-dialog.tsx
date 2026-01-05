@@ -673,6 +673,11 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
     }));
   }, [channelId, channelOptions, allModelOptions, showModel, type]);
 
+  // Filter models based on search
+  const filteredModelOptions = useMemo(() => {
+    return modelOptions.filter((option) => option.label.toLowerCase().includes(modelSearch.toLowerCase()));
+  }, [modelOptions, modelSearch]);
+
   return (
     <div className='flex flex-col gap-2 rounded-lg border p-3'>
       <div
@@ -771,10 +776,10 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
                     }}
                     searchValue={modelSearch}
                     onSearchValueChange={setModelSearch}
-                    items={modelOptions}
+                    items={filteredModelOptions}
                     placeholder={t('models.dialogs.association.selectModel')}
                     emptyMessage={
-                      modelOptions.length === 0 && channelId
+                      filteredModelOptions.length === 0 && channelId
                         ? t('models.dialogs.association.noChannelModelsAvailable')
                         : t('models.dialogs.association.selectChannelFirst')
                     }
@@ -832,10 +837,10 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
                       }}
                       searchValue={modelSearch}
                       onSearchValueChange={setModelSearch}
-                      items={modelOptions}
+                      items={filteredModelOptions}
                       placeholder={t('models.dialogs.association.selectModel')}
                       emptyMessage={
-                        modelOptions.length === 0 && channelId
+                        filteredModelOptions.length === 0 && channelId
                           ? t('models.dialogs.association.noChannelModelsAvailable')
                           : t('models.dialogs.association.selectChannelFirst')
                       }
