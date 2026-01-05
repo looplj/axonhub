@@ -251,8 +251,8 @@
     }
   },
   "scopes": {
-    "read_channels": "View channel information",
-    "write_channels": "Manage channels",
+    "read_channels": "View channels/models",
+    "write_channels": "Manage channels/models",
     "read_users": "View user information",
     "write_users": "Manage users",
     "read_roles": "View role information",

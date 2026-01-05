@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { useApiKeysContext } from '../context/apikeys-context';
 import { useUpdateApiKey } from '../data/apikeys';
 import { UpdateApiKeyInput, updateApiKeyInputSchemaFactory } from '../data/schema';
-import { ScopesSelect } from '@/components/ui/scopes-select';
+import { ScopesSelect } from '@/components/scopes-select';
 
 export function ApiKeysEditDialog() {
   const { t } = useTranslation();

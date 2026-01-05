@@ -58,6 +58,7 @@ interface DataTableProps {
   onStatusFilterChange: (filters: string[]) => void;
   onTagFilterChange: (filter: string) => void;
   onModelFilterChange: (filter: string) => void;
+  canWrite?: boolean;
 }
 
 export function ChannelsTable({
@@ -86,6 +87,7 @@ export function ChannelsTable({
   onStatusFilterChange,
   onTagFilterChange,
   onModelFilterChange,
+  canWrite = true,
 }: DataTableProps) {
   const { t } = useTranslation();
   const { setSelectedChannels, setResetRowSelection, setOpen } = useChannels();
@@ -343,7 +345,7 @@ export function ChannelsTable({
         />
       </div>
       {/* Floating Bulk Actions Bar */}
-      {selectedCount > 0 && (
+      {selectedCount > 0 && canWrite && (
         <div className='fixed bottom-6 left-1/2 z-50 -translate-x-1/2'>
           <div className='bg-background flex items-center gap-2 rounded-lg border px-4 py-2 shadow-lg'>
             <Button variant='ghost' size='icon' className='h-8 w-8' onClick={() => setRowSelection({})}>

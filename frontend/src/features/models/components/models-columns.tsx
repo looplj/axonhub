@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { format } from 'date-fns';
-import { ColumnDef, Row } from '@tanstack/react-table';
+import { ColumnDef, Row, Table } from '@tanstack/react-table';
 import { IconCheck, IconX, IconLink, IconChevronDown, IconChevronRight } from '@tabler/icons-react';
 import * as Icons from '@lobehub/icons';
 import { useTranslation } from 'react-i18next';
@@ -37,7 +37,7 @@ function StatusSwitchCell({ row }: { row: Row<Model> }) {
   );
 }
 
-export const createColumns = (t: ReturnType<typeof useTranslation>['t']): ColumnDef<Model>[] => {
+export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrite: boolean = true): ColumnDef<Model>[] => {
   return [
     {
       id: 'expand',
@@ -45,7 +45,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       meta: {
         className: 'w-8 min-w-8',
       },
-      cell: ({ row }) => (
+      cell: ({ row }: { row: Row<Model> }) => (
         <Button variant='ghost' size='sm' className='h-6 w-6 p-0' onClick={() => row.toggleExpanded()}>
           {row.getIsExpanded() ? <IconChevronDown className='h-4 w-4' /> : <IconChevronRight className='h-4 w-4' />}
         </Button>
@@ -53,27 +53,31 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       enableSorting: false,
       enableHiding: false,
     },
-    {
-      id: 'select',
-      header: ({ table }) => (
-        <Checkbox
-          checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label={t('models.columns.selectAll')}
-          className='translate-y-[2px]'
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label={t('models.columns.selectRow')}
-          className='translate-y-[2px]'
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    },
+    ...(canWrite
+      ? [
+          {
+            id: 'select',
+            header: ({ table }: { table: Table<Model> }) => (
+              <Checkbox
+                checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
+                onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+                aria-label={t('models.columns.selectAll')}
+                className='translate-y-[2px]'
+              />
+            ),
+            cell: ({ row }: { row: Row<Model> }) => (
+              <Checkbox
+                checked={row.getIsSelected()}
+                onCheckedChange={(value) => row.toggleSelected(!!value)}
+                aria-label={t('models.columns.selectRow')}
+                className='translate-y-[2px]'
+              />
+            ),
+            enableSorting: false,
+            enableHiding: false,
+          },
+        ]
+      : []),
     {
       accessorKey: 'icon',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('models.columns.icon')} />,

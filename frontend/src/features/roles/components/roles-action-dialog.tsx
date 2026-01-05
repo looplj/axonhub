@@ -4,16 +4,13 @@ import React from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useAllScopes } from '@/gql/scopes';
 import { useTranslation } from 'react-i18next';
-import { useAuthStore } from '@/stores/authStore';
-import { filterGrantableScopes } from '@/lib/permission-utils';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { ScopesSelect } from '@/components/ui/scopes-select';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { ScopesSelect } from '@/components/scopes-select';
 import { useRolesContext } from '../context/roles-context';
 import { useCreateRole, useUpdateRole, useDeleteRole, useBulkDeleteRoles } from '../data/roles';
 import { createRoleInputSchema, updateRoleInputSchema } from '../data/schema';
@@ -84,7 +81,13 @@ export function CreateRoleDialog() {
                     <FormDescription>{t('roles.dialogs.fields.scopes.description')}</FormDescription>
                   </div>
                   <FormControl>
-                    <ScopesSelect value={field.value || []} onChange={field.onChange} portalContainer={dialogContent} level='system' enablePermissionFilter={true} />
+                    <ScopesSelect
+                      level='system'
+                      value={field.value || []}
+                      onChange={field.onChange}
+                      portalContainer={dialogContent}
+                      enablePermissionFilter={true}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -184,7 +187,13 @@ export function EditRoleDialog() {
                     <FormDescription>{t('roles.dialogs.fields.scopes.description')}</FormDescription>
                   </div>
                   <FormControl>
-                    <ScopesSelect value={field.value || []} onChange={field.onChange} portalContainer={dialogContent} level='system' enablePermissionFilter={true} />
+                    <ScopesSelect
+                      value={field.value || []}
+                      onChange={field.onChange}
+                      portalContainer={dialogContent}
+                      level='system'
+                      enablePermissionFilter={true}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

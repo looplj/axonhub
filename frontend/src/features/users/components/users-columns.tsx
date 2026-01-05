@@ -1,6 +1,6 @@
 'use client';
 
-import { ColumnDef } from '@tanstack/react-table';
+import { ColumnDef, Row, Table } from '@tanstack/react-table';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -15,14 +15,14 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
   if (canWrite) {
     columns.push({
       id: 'select',
-      header: ({ table }) => (
+      header: ({ table }: { table: Table<User> }) => (
         <Checkbox
           checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
           aria-label='Select all'
         />
       ),
-      cell: ({ row }) => (
+      cell: ({ row }: { row: Row<User> }) => (
         <Checkbox checked={row.getIsSelected()} onCheckedChange={(value) => row.toggleSelected(!!value)} aria-label='Select row' />
       ),
       enableSorting: false,

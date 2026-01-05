@@ -882,7 +882,7 @@ func TestAPIKeyService_CreateAPIKey_Type(t *testing.T) {
 
 	t.Run("Create service_account type API key with custom scopes", func(t *testing.T) {
 		serviceAccountType := apikey.TypeServiceAccount
-		customScopes := []string{"read_models", "write_models", "read_channels"}
+		customScopes := []string{"read_channels", "write_channels", "read_channels"}
 		apiKey, err := apiKeyService.CreateAPIKey(ctxWithUser, ent.CreateAPIKeyInput{
 			Name:      "Service Account with Scopes",
 			ProjectID: testProject.ID,
@@ -894,14 +894,14 @@ func TestAPIKeyService_CreateAPIKey_Type(t *testing.T) {
 		require.Equal(t, apikey.TypeServiceAccount, apiKey.Type)
 		require.NotNil(t, apiKey.Scopes)
 		require.Len(t, apiKey.Scopes, 3)
-		require.Contains(t, apiKey.Scopes, "read_models")
-		require.Contains(t, apiKey.Scopes, "write_models")
+		require.Contains(t, apiKey.Scopes, "read_channels")
+		require.Contains(t, apiKey.Scopes, "write_channels")
 		require.Contains(t, apiKey.Scopes, "read_channels")
 	})
 
 	t.Run("Create user type API key ignores provided scopes", func(t *testing.T) {
 		userType := apikey.TypeUser
-		ignoredScopes := []string{"read_models", "write_models"}
+		ignoredScopes := []string{"read_users", "write_channels"}
 		apiKey, err := apiKeyService.CreateAPIKey(ctxWithUser, ent.CreateAPIKeyInput{
 			Name:      "User API Key with Ignored Scopes",
 			ProjectID: testProject.ID,
@@ -915,8 +915,8 @@ func TestAPIKeyService_CreateAPIKey_Type(t *testing.T) {
 		require.Contains(t, apiKey.Scopes, "read_channels")
 		require.Contains(t, apiKey.Scopes, "write_requests")
 		require.Len(t, apiKey.Scopes, 2)
-		require.NotContains(t, apiKey.Scopes, "read_models")
-		require.NotContains(t, apiKey.Scopes, "write_models")
+		require.NotContains(t, apiKey.Scopes, "read_users")
+		require.NotContains(t, apiKey.Scopes, "write_channels")
 	})
 
 	t.Run("Create multiple API keys with different types", func(t *testing.T) {
