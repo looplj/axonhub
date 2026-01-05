@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ColumnFiltersState,
   RowData,
@@ -85,8 +85,24 @@ export function RequestsTable({
   const requestsColumns = useRequestsColumns();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
+    const stored = localStorage.getItem('requests-table-column-visibility');
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch {
+        return {};
+      }
+    }
+    return {};
+  });
+
   const [rowSelection, setRowSelection] = useState({});
+
+  useEffect(() => {
+    localStorage.setItem('requests-table-column-visibility', JSON.stringify(columnVisibility));
+  }, [columnVisibility]);
 
   const displayedData = useAnimatedList(data, autoRefresh);
 

@@ -56,6 +56,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
 
     {
       id: 'stream',
+      accessorKey: 'stream',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.stream')} />,
       enableSorting: false,
       cell: ({ row }) => {
@@ -75,8 +76,10 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
       filterFn: (row, _id, value) => {
         return value.includes(row.original.stream?.toString() || '-');
       },
+      enableHiding: true,
     },
     {
+      id: 'source',
       accessorKey: 'source',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.source')} />,
       enableSorting: false,
@@ -148,13 +151,122 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
     {
       accessorKey: 'status',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.status')} />,
-      enableSorting: false,
       cell: ({ row }) => {
         const status = row.getValue('status') as string;
         return <Badge className={getStatusColor(status)}>{t(`requests.status.${status}`)}</Badge>;
       },
       filterFn: (row, id, value) => {
         return value.includes(row.getValue(id));
+      },
+      enableSorting: false,
+      enableHiding: true,
+    },
+    {
+      id: 'tokens',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.tokens')} />,
+      cell: ({ row }) => {
+        const request = row.original;
+        const usageLog = request.usageLogs?.edges?.[0]?.node;
+
+        if (!usageLog) {
+          return <div className='text-muted-foreground text-xs'>-</div>;
+        }
+
+        const promptTokens = usageLog.promptTokens || 0;
+        const completionTokens = usageLog.completionTokens || 0;
+        const totalTokens = promptTokens + completionTokens;
+
+        return (
+          <div className='space-y-0.5 text-xs'>
+            <div className='text-sm font-medium'>{totalTokens.toLocaleString()}</div>
+            <div className='text-muted-foreground'>
+              {t('requests.columns.input')}: {promptTokens.toLocaleString()} | {t('requests.columns.output')}:{' '}
+              {completionTokens.toLocaleString()}
+            </div>
+          </div>
+        );
+      },
+      enableSorting: true,
+      sortingFn: (rowA, rowB) => {
+        const a =
+          (rowA.original.usageLogs?.edges?.[0]?.node?.promptTokens || 0) +
+          (rowA.original.usageLogs?.edges?.[0]?.node?.completionTokens || 0);
+        const b =
+          (rowB.original.usageLogs?.edges?.[0]?.node?.promptTokens || 0) +
+          (rowB.original.usageLogs?.edges?.[0]?.node?.completionTokens || 0);
+        return a - b;
+      },
+    },
+    {
+      id: 'readCache',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.readCache')} />,
+      cell: ({ row }) => {
+        const request = row.original;
+        const usageLog = request.usageLogs?.edges?.[0]?.node;
+
+        if (!usageLog) {
+          return <div className='text-muted-foreground text-xs'>-</div>;
+        }
+
+        const cachedTokens = usageLog.promptCachedTokens || 0;
+        const promptTokens = usageLog.promptTokens || 0;
+
+        if (cachedTokens === 0) {
+          return <div className='text-muted-foreground text-xs'>-</div>;
+        }
+
+        return (
+          <div className='text-xs'>
+            <div className='text-sm font-medium'>{cachedTokens.toLocaleString()}</div>
+            <div className='text-muted-foreground'>
+              {t('requests.columns.cacheHitRate', {
+                rate: promptTokens > 0 ? ((cachedTokens / promptTokens) * 100).toFixed(1) : '0.0',
+              })}
+            </div>
+          </div>
+        );
+      },
+      enableSorting: true,
+      sortingFn: (rowA, rowB) => {
+        const a = rowA.original.usageLogs?.edges?.[0]?.node?.promptCachedTokens || 0;
+        const b = rowB.original.usageLogs?.edges?.[0]?.node?.promptCachedTokens || 0;
+        return a - b;
+      },
+    },
+    {
+      id: 'writeCache',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.writeCache')} />,
+      cell: ({ row }) => {
+        const request = row.original;
+        const usageLog = request.usageLogs?.edges?.[0]?.node;
+
+        if (!usageLog) {
+          return <div className='text-muted-foreground text-xs'>-</div>;
+        }
+
+        const writeCachedTokens = usageLog.promptWriteCachedTokens || 0;
+        const promptTokens = usageLog.promptTokens || 0;
+
+        if (writeCachedTokens === 0) {
+          return <div className='text-muted-foreground text-xs'>-</div>;
+        }
+
+        return (
+          <div className='text-xs'>
+            <div className='text-sm font-medium'>{writeCachedTokens.toLocaleString()}</div>
+            <div className='text-muted-foreground'>
+              {t('requests.columns.writeCacheRate', {
+                rate: promptTokens > 0 ? ((writeCachedTokens / promptTokens) * 100).toFixed(1) : '0.0',
+              })}
+            </div>
+          </div>
+        );
+      },
+      enableSorting: true,
+      sortingFn: (rowA, rowB) => {
+        const a = rowA.original.usageLogs?.edges?.[0]?.node?.promptWriteCachedTokens || 0;
+        const b = rowB.original.usageLogs?.edges?.[0]?.node?.promptWriteCachedTokens || 0;
+        return a - b;
       },
     },
     {
@@ -180,6 +292,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
         return <div className='font-mono text-xs'>{latencyParts.join(' | ')}</div>;
       },
       enableSorting: false,
+      enableHiding: true,
     },
     {
       id: 'details',
@@ -199,6 +312,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
           </Button>
         );
       },
+      enableHiding: true,
     },
     {
       accessorKey: 'createdAt',

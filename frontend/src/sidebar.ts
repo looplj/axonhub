@@ -114,11 +114,11 @@ export function useSidebarData(): SidebarData {
           url: '/project/requests',
           icon: IconActivity,
         } as NavLink,
-        {
-          title: t('sidebar.items.usageLogs'),
-          url: '/project/usage-logs',
-          icon: IconActivityHeartbeat,
-        } as NavLink,
+        // {
+        //   title: t('sidebar.items.usageLogs'),
+        //   url: '/project/usage-logs',
+        //   icon: IconActivityHeartbeat,
+        // } as NavLink,
         {
           title: t('sidebar.items.traces'),
           url: '/project/traces',
