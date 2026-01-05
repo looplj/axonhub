@@ -70,11 +70,15 @@ func (Model) Policy() ent.Policy {
 	return scopes.Policy{
 		Query: scopes.QueryPolicy{
 			scopes.APIKeyScopeQueryRule(scopes.ScopeReadChannels),
-			scopes.OwnerRule(), // owner 用户可以访问所有渠道
+			// owner can read all models
+			scopes.OwnerRule(),
+			// shared the read channel scope can read models
 			scopes.UserReadScopeRule(scopes.ScopeReadChannels), // 需要 Models 读取权限
 		},
 		Mutation: scopes.MutationPolicy{
-			scopes.OwnerRule(), // owner 用户可以修改所有渠道
+			// owner can write all models
+			scopes.OwnerRule(),
+			// shared the write channel scope can write models
 			scopes.UserWriteScopeRule(scopes.ScopeWriteChannels), // 需要 Models 写入权限
 		},
 	}

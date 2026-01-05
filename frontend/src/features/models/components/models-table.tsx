@@ -42,6 +42,7 @@ interface ModelsTableProps {
   onPreviousPage: () => void;
   onPageSizeChange: (pageSize: number) => void;
   onNameFilterChange: (filter: string) => void;
+  canWrite?: boolean;
 }
 
 export function ModelsTable({
@@ -58,6 +59,7 @@ export function ModelsTable({
   onPreviousPage,
   onPageSizeChange,
   onNameFilterChange,
+  canWrite = true,
 }: ModelsTableProps) {
   const { t } = useTranslation();
   const { setSelectedModels, setResetRowSelection, setOpen } = useModels();
@@ -406,7 +408,7 @@ export function ModelsTable({
         />
       </div>
 
-      {selectedCount > 0 && (
+      {selectedCount > 0 && canWrite && (
         <div className='fixed bottom-6 left-1/2 z-50 -translate-x-1/2'>
           <div className='flex items-center gap-2 rounded-lg border bg-[var(--table-background)] px-4 py-2 shadow-lg'>
             <div className='bg-border mx-2 h-6 w-px' />

@@ -3,6 +3,7 @@ import { SortingState } from '@tanstack/react-table';
 import { useTranslation } from 'react-i18next';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
 import { createColumns } from './components/channels-columns';
@@ -17,6 +18,7 @@ const ChannelsDialogs = lazy(() => import('./components/channels-dialogs').then(
 
 function ChannelsContent() {
   const { t } = useTranslation();
+  const { channelPermissions } = usePermissions();
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
     defaultPageSize: 20,
     pageSizeStorageKey: 'channels-table-page-size',
@@ -200,8 +202,7 @@ function ChannelsContent() {
     resetCursor();
   }, [resetCursor]);
 
-  // Memoize columns with stable reference
-  const columns = useMemo(() => createColumns(t), [t]);
+  const columns = useMemo(() => createColumns(t, channelPermissions.canWrite), [t, channelPermissions.canWrite]);
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
@@ -238,6 +239,7 @@ function ChannelsContent() {
         onStatusFilterChange={handleStatusFilterChange}
         onTagFilterChange={handleTagFilterChange}
         onModelFilterChange={handleModelFilterChange}
+        canWrite={channelPermissions.canWrite}
       />
     </div>
   );

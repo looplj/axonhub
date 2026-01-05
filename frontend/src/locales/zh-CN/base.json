@@ -266,8 +266,8 @@
     }
   },
   "scopes": {
-    "read_channels": "查看渠道信息",
-    "write_channels": "管理渠道",
+    "read_channels": "查看渠道/模型",
+    "write_channels": "管理渠道/模型",
     "read_users": "查看用户信息",
     "write_users": "管理用户",
     "read_roles": "查看角色信息",

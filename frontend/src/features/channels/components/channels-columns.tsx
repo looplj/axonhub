@@ -1,6 +1,6 @@
 import { useCallback, useState, memo } from 'react';
 import { format } from 'date-fns';
-import { ColumnDef, Row } from '@tanstack/react-table';
+import { ColumnDef, Row, Table } from '@tanstack/react-table';
 import { DotsHorizontalIcon } from '@radix-ui/react-icons';
 import { IconPlayerPlay, IconChevronDown, IconChevronRight, IconAlertTriangle, IconEdit, IconArchive, IconTrash, IconToggleLeft, IconToggleRight, IconCheck, IconWeight, IconTransform, IconNetwork, IconAdjustments, IconRoute, IconCopy } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
@@ -419,7 +419,7 @@ const CreatedAtCell = memo(({ row }: { row: Row<Channel> }) => {
 
 CreatedAtCell.displayName = 'CreatedAtCell';
 
-export const createColumns = (t: ReturnType<typeof useTranslation>['t']): ColumnDef<Channel>[] => {
+export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrite: boolean = true): ColumnDef<Channel>[] => {
   return [
     {
       id: 'expand',
@@ -431,27 +431,31 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       enableSorting: false,
       enableHiding: false,
     },
-    {
-      id: 'select',
-      header: ({ table }) => (
-        <Checkbox
-          checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label={t('channels.columns.selectAll')}
-          className='translate-y-[2px]'
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label={t('channels.columns.selectRow')}
-          className='translate-y-[2px]'
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    },
+    ...(canWrite
+      ? [
+          {
+            id: 'select',
+            header: ({ table }: { table: Table<Channel> }) => (
+              <Checkbox
+                checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
+                onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+                aria-label={t('channels.columns.selectAll')}
+                className='translate-y-[2px]'
+              />
+            ),
+            cell: ({ row }: { row: Row<Channel> }) => (
+              <Checkbox
+                checked={row.getIsSelected()}
+                onCheckedChange={(value) => row.toggleSelected(!!value)}
+                aria-label={t('channels.columns.selectRow')}
+                className='translate-y-[2px]'
+              />
+            ),
+            enableSorting: false,
+            enableHiding: false,
+          },
+        ]
+      : []),
     {
       accessorKey: 'name',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.name')} />,

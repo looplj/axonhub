@@ -1,7 +1,7 @@
 'use client';
 
 import { format } from 'date-fns';
-import { ColumnDef } from '@tanstack/react-table';
+import { ColumnDef, Row, Table } from '@tanstack/react-table';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -26,7 +26,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
   if (canWrite) {
     columns.push({
       id: 'select',
-      header: ({ table }) => (
+      header: ({ table }: { table: Table<Role> }) => (
         <Checkbox
           checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
@@ -34,7 +34,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
           className='translate-y-[2px]'
         />
       ),
-      cell: ({ row }) => (
+      cell: ({ row }: { row: Row<Role> }) => (
         <Checkbox
           checked={row.getIsSelected()}
           onCheckedChange={(value) => row.toggleSelected(!!value)}

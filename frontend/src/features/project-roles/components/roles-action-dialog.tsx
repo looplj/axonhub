@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { ScopesSelect } from '@/components/ui/scopes-select';
+import { ScopesSelect } from '@/components/scopes-select';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useRolesContext } from '../context/roles-context';
 import { useCreateRole, useUpdateRole, useDeleteRole } from '../data/roles';
