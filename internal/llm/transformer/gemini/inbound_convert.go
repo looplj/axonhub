@@ -2,7 +2,6 @@ package gemini
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/google/jsonschema-go/jsonschema"
@@ -13,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/llm/transformer/shared"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
 	"github.com/looplj/axonhub/internal/pkg/xmap"
+	"github.com/looplj/axonhub/internal/pkg/xurl"
 )
 
 // convertGeminiToLLMRequest converts Gemini GenerateContentRequest to unified Request.
@@ -264,23 +264,49 @@ func convertGeminiContentToLLMMessage(content *Content, previousContents []*Cont
 			}
 
 		case part.InlineData != nil:
-			// Convert inline data to image_url format
-			imageURL := fmt.Sprintf("data:%s;base64,%s", part.InlineData.MIMEType, part.InlineData.Data)
-			textParts = append(textParts, llm.MessageContentPart{
-				Type: "image_url",
-				ImageURL: &llm.ImageURL{
-					URL: imageURL,
-				},
-			})
+			// Convert inline data based on MIME type
+			dataURL := xurl.BuildDataURL(part.InlineData.MIMEType, part.InlineData.Data, true)
+
+			if isDocumentMIMEType(part.InlineData.MIMEType) {
+				// Document type (PDF, Word, etc.)
+				textParts = append(textParts, llm.MessageContentPart{
+					Type: "document",
+					Document: &llm.DocumentURL{
+						URL:      dataURL,
+						MIMEType: part.InlineData.MIMEType,
+					},
+				})
+			} else {
+				// Image type
+				textParts = append(textParts, llm.MessageContentPart{
+					Type: "image_url",
+					ImageURL: &llm.ImageURL{
+						URL: dataURL,
+					},
+				})
+			}
 
 		case part.FileData != nil:
-			// Convert file data to image_url format
-			textParts = append(textParts, llm.MessageContentPart{
-				Type: "image_url",
-				ImageURL: &llm.ImageURL{
-					URL: part.FileData.FileURI,
-				},
-			})
+			// Convert file data based on MIME type or URL extension
+			mimeType := part.FileData.MIMEType
+			if isDocumentMIMEType(mimeType) {
+				// Document type (PDF, Word, etc.)
+				textParts = append(textParts, llm.MessageContentPart{
+					Type: "document",
+					Document: &llm.DocumentURL{
+						URL:      part.FileData.FileURI,
+						MIMEType: mimeType,
+					},
+				})
+			} else {
+				// Image type
+				textParts = append(textParts, llm.MessageContentPart{
+					Type: "image_url",
+					ImageURL: &llm.ImageURL{
+						URL: part.FileData.FileURI,
+					},
+				})
+			}
 
 		case part.FunctionCall != nil:
 			argsJSON, _ := json.Marshal(part.FunctionCall.Args)
@@ -429,8 +455,18 @@ func convertLLMChoiceToGeminiCandidate(choice *llm.Choice, isStream bool) *Candi
 						lastPart = p
 					}
 				case "image_url":
+					// Handle image_url type
 					if part.ImageURL != nil && part.ImageURL.URL != "" {
 						geminiPart := convertImageURLToGeminiPart(part.ImageURL.URL)
+						if geminiPart != nil {
+							parts = append(parts, geminiPart)
+							lastPart = geminiPart
+						}
+					}
+				case "document":
+					// Handle document type (PDF, Word, etc.)
+					if part.Document != nil && part.Document.URL != "" {
+						geminiPart := convertDocumentURLToGeminiPart(part.Document)
 						if geminiPart != nil {
 							parts = append(parts, geminiPart)
 							lastPart = geminiPart

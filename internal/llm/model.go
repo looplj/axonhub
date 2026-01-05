@@ -370,13 +370,17 @@ func (c *MessageContent) UnmarshalJSON(data []byte) error {
 // MessageContentPart represents different types of content (text, image, etc.)
 type MessageContentPart struct {
 	// Type is the type of the content part.
-	// e.g. "text", "image_url"
+	// e.g. "text", "image_url", "document", "input_audio"
 	Type string `json:"type"`
 	// Text is the text content, required when type is "text"
 	Text *string `json:"text,omitempty"`
 
 	// ImageURL is the image URL content, required when type is "image_url"
 	ImageURL *ImageURL `json:"image_url,omitempty"`
+
+	// Document is the document content, required when type is "document"
+	// Supports PDF and other document formats
+	Document *DocumentURL `json:"document,omitempty"`
 
 	// Audio is the audio content, required when type is "input_audio"
 	Audio *Audio `json:"audio,omitempty"`
@@ -400,6 +404,16 @@ type ImageURL struct {
 	//
 	// Any of "auto", "low", "high".
 	Detail *string `json:"detail,omitempty"`
+}
+
+// DocumentURL represents a document URL (PDF, Word, etc.)
+type DocumentURL struct {
+	// URL is the URL of the document (data URL or regular URL).
+	URL string `json:"url"`
+
+	// MIMEType is the MIME type of the document.
+	// e.g. "application/pdf", "application/msword"
+	MIMEType string `json:"mime_type,omitempty"`
 }
 
 type Audio struct {
