@@ -14,7 +14,7 @@ import { ScopesSelect } from '@/components/scopes-select';
 
 export function ApiKeysCreateDialog() {
   const { t } = useTranslation();
-  const { isDialogOpen, closeDialog } = useApiKeysContext();
+  const { isDialogOpen, closeDialog, openDialog, setSelectedApiKey } = useApiKeysContext();
   const createApiKey = useCreateApiKey();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -36,9 +36,12 @@ export function ApiKeysCreateDialog() {
     try {
       // Remove scopes if type is user (use backend default)
       const submitData = data.type === 'user' ? { ...data, scopes: undefined } : data;
-      await createApiKey.mutateAsync(submitData);
+      const result = await createApiKey.mutateAsync(submitData);
       form.reset();
       closeDialog('create');
+      // Open view dialog with the created API key
+      setSelectedApiKey(result.createAPIKey);
+      openDialog('view', result.createAPIKey);
     } catch (error) {
       // Error is handled by the mutation
     } finally {

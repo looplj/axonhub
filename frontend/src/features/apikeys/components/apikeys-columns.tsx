@@ -11,7 +11,6 @@ import LongText from '@/components/long-text';
 import { useApiKeysContext } from '../context/apikeys-context';
 import { ApiKey } from '../data/schema';
 import { DataTableRowActions } from './data-table-row-actions';
-import { usePermissions } from '@/hooks/usePermissions';
 
 function ApiKeyCell({ apiKey, fullApiKey }: { apiKey: string; fullApiKey: ApiKey }) {
   const { t } = useTranslation();

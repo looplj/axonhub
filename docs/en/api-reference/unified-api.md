@@ -217,6 +217,9 @@ ctx := context.Background()
 client, err := genai.NewClient(ctx, &genai.ClientConfig{
     APIKey:  "your-axonhub-api-key",
     Backend: genai.Backend(genai.APIBackendUnspecified), // Use default backend
+    HTTPOptions: genai.HTTPOptions{
+			BaseURL: "http://localhost:8090/gemini",
+	},
 })
 if err != nil {
     // Handle error appropriately
