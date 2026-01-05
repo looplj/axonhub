@@ -146,12 +146,63 @@ func convertImageURLToGeminiPart(url string) *Part {
 		}
 	}
 
-	// Regular URL - use FileData
-	return &Part{
+	// Regular URL - use FileData with MIME type detection
+	part := &Part{
 		FileData: &FileData{
 			FileURI: url,
 		},
 	}
+
+	return part
+}
+
+// convertDocumentURLToGeminiPart converts a DocumentURL to a Gemini Part.
+// Handles both data URLs and regular URLs for documents (PDF, Word, etc.)
+func convertDocumentURLToGeminiPart(doc *llm.DocumentURL) *Part {
+	if doc == nil || doc.URL == "" {
+		return nil
+	}
+
+	if parsed := xurl.ParseDataURL(doc.URL); parsed != nil {
+		// Data URL - use InlineData
+		mimeType := parsed.MediaType
+		if mimeType == "" && doc.MIMEType != "" {
+			mimeType = doc.MIMEType
+		}
+
+		return &Part{
+			InlineData: &Blob{
+				MIMEType: mimeType,
+				Data:     parsed.Data,
+			},
+		}
+	}
+
+	// Regular URL - use FileData
+	mimeType := doc.MIMEType
+
+	return &Part{
+		FileData: &FileData{
+			FileURI:  doc.URL,
+			MIMEType: mimeType,
+		},
+	}
+}
+
+// isDocumentMIMEType checks if the MIME type represents a document (not an image).
+func isDocumentMIMEType(mimeType string) bool {
+	if mimeType == "" {
+		return false
+	}
+
+	mimeType = strings.ToLower(mimeType)
+
+	// Document MIME types
+	return strings.HasPrefix(mimeType, "application/pdf") ||
+		strings.HasPrefix(mimeType, "application/msword") ||
+		strings.HasPrefix(mimeType, "application/vnd.openxmlformats-officedocument") ||
+		strings.HasPrefix(mimeType, "application/vnd.ms-") ||
+		strings.HasPrefix(mimeType, "text/")
 }
 
 func convertGeminiFunctionCallingConfigToToolChoice(fcc *FunctionCallingConfig) *llm.ToolChoice {
