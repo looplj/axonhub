@@ -66,7 +66,16 @@
       "view": {
         "title": "View API Key",
         "description": "View the complete API key details.",
-        "warning": "⚠️ Keep your API key secure and do not share it with unauthorized parties. Anyone with access to this key can make requests on your behalf."
+        "warning": "⚠️ Keep your API key secure and do not share it with unauthorized parties. Anyone with access to this key can make requests on your behalf.",
+        "usageExamples": "Usage Examples",
+        "noExamples": "Usage examples are only available for user API keys",
+        "tabs": {
+          "anthropicSDK": "Anthropic SDK",
+          "openAISDK": "OpenAI SDK",
+          "codex": "Codex",
+          "claudeCode": "Claude Code",
+          "geminiSDK": "Gemini SDK"
+        }
       },
       "bulkDisable": {
         "title": "Bulk Disable API Keys",
