@@ -30,7 +30,7 @@ type UserProject struct {
 	UserID int `json:"user_id,omitempty"`
 	// ProjectID holds the value of the "project_id" field.
 	ProjectID int `json:"project_id,omitempty"`
-	// IsOwner holds the value of the "is_owner" field.
+	// Indicates whether the user is the owner of the project. This field is mutable to allow transferring ownership between users. Only users with sufficient permissions (e.g., current owner) can modify this field.
 	IsOwner bool `json:"is_owner,omitempty"`
 	// User-specific scopes: write_channels, read_channels, add_users, read_users, etc.
 	Scopes []string `json:"scopes,omitempty"`

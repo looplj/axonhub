@@ -105,7 +105,7 @@ type Request struct {
 	// Used by OpenAI to cache responses for similar requests to optimize your cache
 	// hit rates. Replaces the `user` field.
 	// [Learn more](https://platform.openai.com/docs/guides/prompt-caching).
-	PromptCacheKey *bool `json:"prompt_cache_key,omitzero"`
+	PromptCacheKey *string `json:"prompt_cache_key,omitzero"`
 
 	// A stable identifier used to help detect users of your application that may be
 	// violating OpenAI's usage policies. The IDs should be a string that uniquely
@@ -221,6 +221,9 @@ type Request struct {
 	// APIFormat is the original inbound API format of the request.
 	// e.g. the request from the chat/completions endpoint is in the openai/chat_completion format.
 	APIFormat APIFormat `json:"api_format,omitempty"`
+
+	// TransformOptions specifies the common transform options for the request.
+	TransformOptions TransformOptions `json:"transform_options,omitzero"`
 
 	// TransformerMetadata stores transformer-specific metadata for preserving format during transformations.
 	// This is a help field and will not be sent to the llm service.

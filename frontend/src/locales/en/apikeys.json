@@ -96,11 +96,7 @@
         },
         "scopes": {
           "label": "Scopes",
-          "description": "Select the permissions for this service account API key",
-          "selectPlaceholder": "Select scopes...",
-          "searchPlaceholder": "Search scopes...",
-          "selectedCount": "{{count}} scopes selected",
-          "noResults": "No scopes found"
+          "description": "Select the permissions for this service account API key"
         },
         "userID": {
           "label": "User ID",

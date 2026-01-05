@@ -68,7 +68,7 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 	return &llm.ResponseError{
 		StatusCode: rawErr.StatusCode,
 		Detail: llm.ErrorDetail{
-			Message: http.StatusText(rawErr.StatusCode),
+			Message: strings.TrimSpace(string(rawErr.Body)),
 			Type:    "api_error",
 		},
 	}
@@ -113,7 +113,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	payload := Request{
 		Model:                llmReq.Model,
-		Input:                convertInputFromMessages(llmReq.Messages, llmReq.TransformerMetadata),
+		Input:                convertInputFromMessages(llmReq.Messages, llmReq.TransformOptions),
 		Instructions:         convertInstructionsFromMessages(llmReq.Messages),
 		Tools:                tools,
 		ParallelToolCalls:    llmReq.ParallelToolCalls,
@@ -130,11 +130,21 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		ToolChoice:           convertToolChoice(llmReq.ToolChoice),
 		StreamOptions:        convertStreamOptions(llmReq.StreamOptions, llmReq.TransformerMetadata),
 		Reasoning:            convertReasoning(llmReq),
+		PromptCacheKey:       llmReq.PromptCacheKey,
 		Include:              xmap.GetStringSlice(llmReq.TransformerMetadata, "include"),
 		MaxToolCalls:         xmap.GetInt64Ptr(llmReq.TransformerMetadata, "max_tool_calls"),
-		PromptCacheKey:       xmap.GetStringPtr(llmReq.TransformerMetadata, "prompt_cache_key"),
 		PromptCacheRetention: xmap.GetStringPtr(llmReq.TransformerMetadata, "prompt_cache_retention"),
 		Truncation:           xmap.GetStringPtr(llmReq.TransformerMetadata, "truncation"),
+	}
+
+	// Set ParallelToolCalls to nil if no tools are specified
+	if len(payload.Tools) == 0 {
+		payload.ParallelToolCalls = nil
+	}
+
+	// Set MaxOutputTokens to MaxTokens if not set
+	if payload.MaxOutputTokens == nil {
+		payload.MaxOutputTokens = llmReq.MaxTokens
 	}
 
 	body, err := json.Marshal(payload)

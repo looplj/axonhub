@@ -8,6 +8,8 @@ const (
 	ProxyTypeURL         ProxyType = "url"         // Use configured URL
 )
 
+// ProxyConfig configures the proxy settings for the channel.
+// TODO: move to httpclient package.
 type ProxyConfig struct {
 	Type     ProxyType `json:"type"`          // disabled, environment, or url
 	URL      string    `json:"url,omitempty"` // e.g., "http://proxy.example.com:8080"
@@ -26,6 +28,14 @@ type ModelMapping struct {
 type HeaderEntry struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
+}
+
+type TransformOptions struct {
+	// ForceArrayInstructions forces the channel to accept array format for instructions.
+	ForceArrayInstructions bool `json:"forceArrayInstructions"`
+
+	// ForceArrayInputs forces the channel to accept array format for inputs.
+	ForceArrayInputs bool `json:"forceArrayInputs"`
 }
 
 type ChannelSettings struct {
@@ -63,6 +73,9 @@ type ChannelSettings struct {
 
 	// Proxy configuration for the channel. If not set, defaults to environment proxy type.
 	Proxy *ProxyConfig `json:"proxy,omitempty"`
+
+	// TransformOptions configures the transform options for the channel.
+	TransformOptions TransformOptions `json:"transformOptions"`
 }
 
 type ChannelCredentials struct {
@@ -102,14 +115,14 @@ type GCPCredential struct {
 
 type GCPCredentialsJSON struct {
 	Type                    string `json:"type" validate:"required"`
-	ProjectID               string `json:"project_id" validate:"required"`
-	PrivateKeyID            string `json:"private_key_id" validate:"required"`
-	PrivateKey              string `json:"private_key" validate:"required"`
-	ClientEmail             string `json:"client_email" validate:"required"`
-	ClientID                string `json:"client_id" validate:"required"`
-	AuthURI                 string `json:"auth_uri" validate:"required"`
-	TokenURI                string `json:"token_uri" validate:"required"`
-	AuthProviderX509CertURL string `json:"auth_provider_x509_cert_url" validate:"required"`
-	ClientX509CertURL       string `json:"client_x509_cert_url" validate:"required"`
-	UniverseDomain          string `json:"universe_domain" validate:"required"`
+	ProjectID               string `json:"projectID" validate:"required"`
+	PrivateKeyID            string `json:"privateKeyID" validate:"required"`
+	PrivateKey              string `json:"privateKey" validate:"required"`
+	ClientEmail             string `json:"clientEmail" validate:"required"`
+	ClientID                string `json:"clientID" validate:"required"`
+	AuthURI                 string `json:"authURI" validate:"required"`
+	TokenURI                string `json:"tokenURI" validate:"required"`
+	AuthProviderX509CertURL string `json:"authProviderX509CertURL" validate:"required"`
+	ClientX509CertURL       string `json:"clientX509CertURL" validate:"required"`
+	UniverseDomain          string `json:"universeDomain" validate:"required"`
 }

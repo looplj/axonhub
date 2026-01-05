@@ -6,9 +6,38 @@
 AxonHub 可以在不引入额外 SDK 的情况下，为每一次请求构建线程感知的追踪。只要客户端已经兼容 OpenAI 协议，您就可以通过传递追踪与线程请求头，或直接让 AxonHub 自动生成，实现低侵入的可观测能力。
 
 ### 关键概念
-- **Trace ID（`AH-Trace-Id`）** – 用于关联多次请求的唯一标识，需要在需要串联多次调用时显式提供；未携带该请求头时，AxonHub 会为单次调用生成 ID 但无法自动关联其他请求。
-- **Thread ID（`AH-Thread-Id`）** – 将同一会话线程中的多条追踪关联起来，帮助重现完整的用户旅程。
+- **Thread ID（`AH-Thread-Id`）** – 代表用户的一个完整对话会话，将多条追踪关联起来，帮助重现完整的用户旅程。
+- **Trace ID（`AH-Trace-Id`）** – 代表用户发出的一条消息以及该消息触发的所有 agent 请求。需要在需要串联多次调用时显式提供；未携带该请求头时，AxonHub 会为单次调用生成 ID 但无法自动关联其他请求。
+- **Request（请求）** – 单次 API 调用的最小单元，包含完整的请求/响应数据、耗时、Token 使用量等信息。
 - **额外追踪请求头** – 可配置备用请求头（如 `Sentry-Trace`），以复用已有的可观测工具链。
+
+### Thread、Trace 与 Request 的关系
+
+```
+Thread (完整用户对话会话)
+  └── Trace 1 (用户消息 1 + 所有 agent 请求)
+        ├── Request 1 (agent 调用 1)
+        ├── Request 2 (agent 调用 2)
+        └── Request 3 (agent 调用 3)
+  └── Trace 2 (用户消息 2 + 所有 agent 请求)
+        ├── Request 4 (agent 调用 4)
+        └── Request 5 (agent 调用 5)
+```
+
+- **Thread**：代表用户的一个完整对话会话，包含多条用户消息（每条消息对应一个 Trace）
+- **Trace**：代表用户发出的一条消息以及该消息在处理过程中触发的所有 agent 请求
+- **Request**：代表对 LLM 或其他服务的单次 API 调用，包含请求体、响应体、Token 使用量等详细信息
+
+**层级关系**：
+- 1 个 Thread 可以包含多个 Trace（每条用户消息一个 Trace）
+- 1 个 Trace 可以包含多个 Request（该消息触发的所有 agent 调用）
+- 1 个 Request 只能属于 1 个 Trace
+- 1 个 Trace 只能属于 1 个 Thread（可选关联）
+
+**实际应用场景**：
+- **单条消息带 agent**：1 Thread → 1 Trace → N Request（用户发送一条消息，agent 发起多次 API 调用）
+- **多轮对话**：1 Thread → 多 Trace（每条用户消息一个 Trace）→ 每个 Trace 包含 N Request
+- **独立请求**：无 Thread → 1 Trace → 1 Request（无对话上下文的单次 API 调用）
 
 ### 配置
 ```yaml

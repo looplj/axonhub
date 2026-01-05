@@ -1,17 +1,16 @@
 import { useUsers } from '../context/users-context';
-import { UsersActionDialog } from './users-action-dialog';
-import { UsersAddToProjectDialog } from './users-add-to-project-dialog';
+import { ProjectUserActionDialog } from './project-user-action-dialog';
 import { UsersDeleteDialog } from './users-delete-dialog';
 
 export function UsersDialogs() {
   const { open, setOpen, currentRow, setCurrentRow } = useUsers();
   return (
     <>
-      <UsersAddToProjectDialog key='user-add-to-project' open={open === 'add'} onOpenChange={() => setOpen('add')} />
+      <ProjectUserActionDialog key='user-add' open={open === 'add'} onOpenChange={() => setOpen('add')} />
 
       {currentRow && (
         <>
-          <UsersActionDialog
+          <ProjectUserActionDialog
             key={`user-edit-${currentRow.id}`}
             open={open === 'edit'}
             onOpenChange={() => {

@@ -363,6 +363,18 @@ func (u *UserProjectUpsert) AddDeletedAt(v int) *UserProjectUpsert {
 	return u
 }
 
+// SetIsOwner sets the "is_owner" field.
+func (u *UserProjectUpsert) SetIsOwner(v bool) *UserProjectUpsert {
+	u.Set(userproject.FieldIsOwner, v)
+	return u
+}
+
+// UpdateIsOwner sets the "is_owner" field to the value that was provided on create.
+func (u *UserProjectUpsert) UpdateIsOwner() *UserProjectUpsert {
+	u.SetExcluded(userproject.FieldIsOwner)
+	return u
+}
+
 // SetScopes sets the "scopes" field.
 func (u *UserProjectUpsert) SetScopes(v []string) *UserProjectUpsert {
 	u.Set(userproject.FieldScopes, v)
@@ -400,9 +412,6 @@ func (u *UserProjectUpsertOne) UpdateNewValues() *UserProjectUpsertOne {
 		}
 		if _, exists := u.create.mutation.ProjectID(); exists {
 			s.SetIgnore(userproject.FieldProjectID)
-		}
-		if _, exists := u.create.mutation.IsOwner(); exists {
-			s.SetIgnore(userproject.FieldIsOwner)
 		}
 	}))
 	return u
@@ -467,6 +476,20 @@ func (u *UserProjectUpsertOne) AddDeletedAt(v int) *UserProjectUpsertOne {
 func (u *UserProjectUpsertOne) UpdateDeletedAt() *UserProjectUpsertOne {
 	return u.Update(func(s *UserProjectUpsert) {
 		s.UpdateDeletedAt()
+	})
+}
+
+// SetIsOwner sets the "is_owner" field.
+func (u *UserProjectUpsertOne) SetIsOwner(v bool) *UserProjectUpsertOne {
+	return u.Update(func(s *UserProjectUpsert) {
+		s.SetIsOwner(v)
+	})
+}
+
+// UpdateIsOwner sets the "is_owner" field to the value that was provided on create.
+func (u *UserProjectUpsertOne) UpdateIsOwner() *UserProjectUpsertOne {
+	return u.Update(func(s *UserProjectUpsert) {
+		s.UpdateIsOwner()
 	})
 }
 
@@ -676,9 +699,6 @@ func (u *UserProjectUpsertBulk) UpdateNewValues() *UserProjectUpsertBulk {
 			if _, exists := b.mutation.ProjectID(); exists {
 				s.SetIgnore(userproject.FieldProjectID)
 			}
-			if _, exists := b.mutation.IsOwner(); exists {
-				s.SetIgnore(userproject.FieldIsOwner)
-			}
 		}
 	}))
 	return u
@@ -743,6 +763,20 @@ func (u *UserProjectUpsertBulk) AddDeletedAt(v int) *UserProjectUpsertBulk {
 func (u *UserProjectUpsertBulk) UpdateDeletedAt() *UserProjectUpsertBulk {
 	return u.Update(func(s *UserProjectUpsert) {
 		s.UpdateDeletedAt()
+	})
+}
+
+// SetIsOwner sets the "is_owner" field.
+func (u *UserProjectUpsertBulk) SetIsOwner(v bool) *UserProjectUpsertBulk {
+	return u.Update(func(s *UserProjectUpsert) {
+		s.SetIsOwner(v)
+	})
+}
+
+// UpdateIsOwner sets the "is_owner" field to the value that was provided on create.
+func (u *UserProjectUpsertBulk) UpdateIsOwner() *UserProjectUpsertBulk {
+	return u.Update(func(s *UserProjectUpsert) {
+		s.UpdateIsOwner()
 	})
 }
 

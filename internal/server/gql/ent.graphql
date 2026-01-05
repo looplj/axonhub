@@ -5221,6 +5221,9 @@ type UserProject implements Node {
   deletedAt: Int!
   userID: ID!
   projectID: ID!
+  """
+  Indicates whether the user is the owner of the project. This field is mutable to allow transferring ownership between users. Only users with sufficient permissions (e.g., current owner) can modify this field.
+  """
   isOwner: Boolean!
   """
   User-specific scopes: write_channels, read_channels, add_users, read_users, etc.

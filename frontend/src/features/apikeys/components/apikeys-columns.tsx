@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { ColumnDef } from '@tanstack/react-table';
+import { ColumnDef, Table, Row } from '@tanstack/react-table';
 import { Copy, Eye } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -11,6 +11,7 @@ import LongText from '@/components/long-text';
 import { useApiKeysContext } from '../context/apikeys-context';
 import { ApiKey } from '../data/schema';
 import { DataTableRowActions } from './data-table-row-actions';
+import { usePermissions } from '@/hooks/usePermissions';
 
 function ApiKeyCell({ apiKey, fullApiKey }: { apiKey: string; fullApiKey: ApiKey }) {
   const { t } = useTranslation();
@@ -41,28 +42,32 @@ function ApiKeyCell({ apiKey, fullApiKey }: { apiKey: string; fullApiKey: ApiKey
   );
 }
 
-export const createColumns = (t: ReturnType<typeof useTranslation>['t']): ColumnDef<ApiKey>[] => [
-  {
-    id: 'select',
-    header: ({ table }) => (
-      <Checkbox
-        checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label={t('apikeys.columns.selectAll')}
-        className='translate-y-[2px]'
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label={t('apikeys.columns.selectRow')}
-        className='translate-y-[2px]'
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
+export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrite: boolean = true): ColumnDef<ApiKey>[] => [
+  ...(canWrite
+    ? [
+        {
+          id: 'select',
+          header: ({ table }: { table: Table<ApiKey> }) => (
+            <Checkbox
+              checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
+              onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+              aria-label={t('apikeys.columns.selectAll')}
+              className='translate-y-[2px]'
+            />
+          ),
+          cell: ({ row }: { row: Row<ApiKey> }) => (
+            <Checkbox
+              checked={row.getIsSelected()}
+              onCheckedChange={(value) => row.toggleSelected(!!value)}
+              aria-label={t('apikeys.columns.selectRow')}
+              className='translate-y-[2px]'
+            />
+          ),
+          enableSorting: false,
+          enableHiding: false,
+        },
+      ]
+    : []),
   {
     accessorKey: 'id',
     header: ({ column }) => <DataTableColumnHeader column={column} title={t('apikeys.columns.id')} />,

@@ -370,7 +370,7 @@ func (s *UserService) RemoveUserFromProject(ctx context.Context, userID, project
 }
 
 // UpdateProjectUser updates a user's project relationship including scopes and roles.
-func (s *UserService) UpdateProjectUser(ctx context.Context, userID, projectID int, scopes []string, addRoleIDs, removeRoleIDs []int) (*ent.UserProject, error) {
+func (s *UserService) UpdateProjectUser(ctx context.Context, userID, projectID int, isOwner *bool, scopes []string, addRoleIDs, removeRoleIDs []int) (*ent.UserProject, error) {
 	// Validate permissions before updating
 	if err := s.permissionValidator.CanEditUserPermissions(ctx, userID, &projectID); err != nil {
 		return nil, fmt.Errorf("permission denied: %w", err)
@@ -406,8 +406,12 @@ func (s *UserService) UpdateProjectUser(ctx context.Context, userID, projectID i
 		return nil, fmt.Errorf("failed to find user project relationship: %w", err)
 	}
 
-	// Update the UserProject (note: isOwner is immutable, so we can only update scopes)
+	// Update the UserProject (including isOwner, scopes, and roles)
 	mut := userProject.Update()
+
+	if isOwner != nil {
+		mut.SetIsOwner(*isOwner)
+	}
 
 	if scopes != nil {
 		mut.SetScopes(scopes)

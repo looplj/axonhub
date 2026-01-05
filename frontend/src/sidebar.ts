@@ -115,6 +115,11 @@ export function useSidebarData(): SidebarData {
           icon: IconActivity,
         } as NavLink,
         {
+          title: t('sidebar.items.usageLogs'),
+          url: '/project/usage-logs',
+          icon: IconActivityHeartbeat,
+        } as NavLink,
+        {
           title: t('sidebar.items.traces'),
           url: '/project/traces',
           icon: IconAB2,
@@ -123,11 +128,6 @@ export function useSidebarData(): SidebarData {
           title: t('sidebar.items.threads'),
           url: '/project/threads',
           icon: IconBaselineDensityMedium,
-        } as NavLink,
-        {
-          title: t('sidebar.items.usageLogs'),
-          url: '/project/usage-logs',
-          icon: IconActivityHeartbeat,
         } as NavLink,
         {
           title: t('sidebar.items.apiKeys'),

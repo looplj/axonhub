@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
@@ -53,6 +54,7 @@ func Equal(a, b any, opts ...cmp.Option) bool {
 		NilCompletionTokensDetails,
 		NilPromptTokensDetails,
 		ToolCallsTransformer,
+		cmpopts.IgnoreFields(llm.Request{}, "TransformOptions"),
 		cmp.Transformer("", nilString),
 		cmp.Transformer("", nilInt),
 		cmp.Comparer(jsonRawMessageComparer))

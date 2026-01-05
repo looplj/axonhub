@@ -94,7 +94,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [fetchedModelsSearch, setFetchedModelsSearch] = useState('');
   const [supportedModelsSearch, setSupportedModelsSearch] = useState('');
   const [selectedFetchedModels, setSelectedFetchedModels] = useState<string[]>([]);
-  const [showAddedModelsOnly, setShowAddedModelsOnly] = useState(false);
+  const [showNotAddedModelsOnly, setShowNotAddedModelsOnly] = useState(false);
   const [supportedModelsExpanded, setSupportedModelsExpanded] = useState(false);
   const [showClearAllPopover, setShowClearAllPopover] = useState(false);
   const hasAutoSetDuplicateNameRef = useRef(false);
@@ -604,14 +604,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           .map((key) => key.trim())
           .filter((key) => key.length > 0)[0] || '';
 
-      // If in edit mode and user has provided a new API key, use it instead of channelID
-      const hasEditedApiKey = isEdit && firstApiKey && firstApiKey.length > 0;
-
       const result = await fetchModels.mutateAsync({
         channelType,
         baseURL,
-        apiKey: hasEditedApiKey || !isEdit ? firstApiKey : undefined,
-        channelID: hasEditedApiKey || !isEdit ? undefined : currentRow?.id,
+        apiKey: !isEdit ? firstApiKey : firstApiKey || undefined,
+        channelID: isEdit ? currentRow?.id : undefined,
       });
 
       if (result.error) {
@@ -626,7 +623,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         setShowFetchedModelsPanel(true);
         setSelectedFetchedModels([]);
         setFetchedModelsSearch('');
-        setShowAddedModelsOnly(false);
+        setShowNotAddedModelsOnly(false);
       }
     } catch (_error) {
       // Error is already handled by the mutation
@@ -654,15 +651,15 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   // Filtered fetched models based on search and filter
   const filteredFetchedModels = useMemo(() => {
     let models = fetchedModels;
-    if (showAddedModelsOnly) {
-      models = models.filter((model) => supportedModels.includes(model));
+    if (showNotAddedModelsOnly) {
+      models = models.filter((model) => !supportedModels.includes(model));
     }
     if (fetchedModelsSearch.trim()) {
       const search = fetchedModelsSearch.toLowerCase();
       models = models.filter((model) => model.toLowerCase().includes(search));
     }
     return models;
-  }, [fetchedModels, fetchedModelsSearch, showAddedModelsOnly, supportedModels]);
+  }, [fetchedModels, fetchedModelsSearch, showNotAddedModelsOnly, supportedModels]);
 
   // Toggle selection for fetched model
   const toggleFetchedModelSelection = useCallback((model: string) => {
@@ -705,7 +702,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     setShowFetchedModelsPanel(false);
     setSelectedFetchedModels([]);
     setFetchedModelsSearch('');
-    setShowAddedModelsOnly(false);
+    setShowNotAddedModelsOnly(false);
   }, []);
 
   // Close supported models panel handler
@@ -759,7 +756,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             setFetchedModelsSearch('');
             setSupportedModelsSearch('');
             setSelectedFetchedModels([]);
-            setShowAddedModelsOnly(false);
+            setShowNotAddedModelsOnly(false);
             setSupportedModelsExpanded(false);
             // Reset provider and API format state
             if (initialRow) {
@@ -1364,8 +1361,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 {/* Filter and Actions */}
                 <div className='mb-3 flex items-center justify-between gap-2'>
                   <label className='flex cursor-pointer items-center gap-2 text-xs'>
-                    <Checkbox checked={showAddedModelsOnly} onCheckedChange={(checked) => setShowAddedModelsOnly(checked === true)} />
-                    {t('channels.dialogs.fields.supportedModels.showAddedOnly')}
+                    <Checkbox checked={showNotAddedModelsOnly} onCheckedChange={(checked) => setShowNotAddedModelsOnly(checked === true)} />
+                    {t('channels.dialogs.fields.supportedModels.showNotAddedOnly')}
                   </label>
                   <div className='flex gap-1'>
                     <Button type='button' variant='outline' size='sm' className='h-6 px-2 text-xs' onClick={selectAllFilteredModels}>
@@ -1397,7 +1394,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           <Checkbox checked={isSelected} onCheckedChange={() => toggleFetchedModelSelection(model)} />
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <span className='flex-1 cursor-pointer truncate' onClick={() => toggleFetchedModelSelection(model)}>
+                              <span className='max-w-[200px] flex-1 cursor-pointer truncate' onClick={() => toggleFetchedModelSelection(model)}>
                                 {model}
                               </span>
                             </TooltipTrigger>
@@ -1406,12 +1403,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             </TooltipContent>
                           </Tooltip>
                           {isAdded && !isSelected && (
-                            <Badge variant='secondary' className='text-xs'>
+                            <Badge variant='secondary' className='shrink-0 text-xs'>
                               {t('channels.dialogs.fields.supportedModels.added')}
                             </Badge>
                           )}
                           {isAdded && isSelected && (
-                            <Badge variant='destructive' className='text-xs'>
+                            <Badge variant='destructive' className='shrink-0 text-xs'>
                               {t('channels.dialogs.fields.supportedModels.willRemove')}
                             </Badge>
                           )}

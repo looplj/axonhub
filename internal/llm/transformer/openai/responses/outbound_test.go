@@ -443,6 +443,16 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 						},
 					},
 				},
+				Tools: []llm.Tool{
+					{
+						Type: "function",
+						Function: llm.Function{
+							Name:        "test_function",
+							Description: "Test function",
+							Parameters:  []byte(`{"type":"object","properties":{}}`),
+						},
+					},
+				},
 			},
 			expectError: false,
 			validate: func(t *testing.T, result *httpclient.Request, chatReq *llm.Request) {
@@ -452,6 +462,30 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, req.ParallelToolCalls)
 				require.False(t, *req.ParallelToolCalls)
+			},
+		},
+		{
+			name: "request with parallel tool calls but no tools",
+			chatReq: &llm.Request{
+				Model:             "gpt-4o",
+				ParallelToolCalls: lo.ToPtr(true),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello"),
+						},
+					},
+				},
+				// No tools provided
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *httpclient.Request, chatReq *llm.Request) {
+				var req Request
+
+				err := json.Unmarshal(result.Body, &req)
+				require.NoError(t, err)
+				require.Nil(t, req.ParallelToolCalls, "ParallelToolCalls should be nil when no tools are provided")
 			},
 		},
 		{

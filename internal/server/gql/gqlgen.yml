@@ -328,6 +328,12 @@ models:
   HeaderEntryInput:
     model:
       - github.com/looplj/axonhub/internal/objects.HeaderEntry
+  TransformOptions:
+    model:
+      - github.com/looplj/axonhub/internal/objects.TransformOptions
+  TransformOptionsInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.TransformOptions
   SystemVersion:
     model:
       - github.com/looplj/axonhub/internal/build.Info

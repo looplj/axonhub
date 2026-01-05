@@ -77,6 +77,13 @@ export const proxyConfigSchema = z.object({
 });
 export type ProxyConfig = z.infer<typeof proxyConfigSchema>;
 
+// Transform Options
+export const transformOptionsSchema = z.object({
+  forceArrayInstructions: z.boolean().optional(),
+  forceArrayInputs: z.boolean().optional(),
+});
+export type TransformOptions = z.infer<typeof transformOptionsSchema>;
+
 // Channel Performance
 export const channelPerformanceSchema = z.object({
   avgLatencyMs: z.number(),
@@ -95,6 +102,7 @@ export const channelSettingsSchema = z.object({
   overrideParameters: z.string().optional(),
   overrideHeaders: z.array(headerEntrySchema).optional().nullable(),
   proxy: proxyConfigSchema.optional().nullable(),
+  transformOptions: transformOptionsSchema.optional(),
 });
 export type ChannelSettings = z.infer<typeof channelSettingsSchema>;
 

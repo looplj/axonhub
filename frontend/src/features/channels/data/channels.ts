@@ -59,6 +59,10 @@ const CHANNELS_QUERY = `
               username
               password
             }
+            transformOptions {
+              forceArrayInstructions
+              forceArrayInputs
+            }
           }
           orderingWeight
           errorMessage
@@ -145,6 +149,10 @@ const CREATE_CHANNEL_MUTATION = `
           username
           password
         }
+        transformOptions {
+          forceArrayInstructions
+          forceArrayInputs
+        }
       }
       orderingWeight
       remark
@@ -181,6 +189,10 @@ const BULK_CREATE_CHANNELS_MUTATION = `
           username
           password
         }
+        transformOptions {
+          forceArrayInstructions
+          forceArrayInputs
+        }
       }
       orderingWeight
       remark
@@ -216,6 +228,10 @@ const UPDATE_CHANNEL_MUTATION = `
           url
           username
           password
+        }
+        transformOptions {
+          forceArrayInstructions
+          forceArrayInputs
         }
       }
       orderingWeight
@@ -303,6 +319,10 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           autoTrimedModelPrefixes
           hideOriginalModels
           overrideParameters
+          transformOptions {
+            forceArrayInstructions
+            forceArrayInputs
+          }
         }
       }
     }
@@ -334,6 +354,10 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
           }
           autoTrimedModelPrefixes
           hideOriginalModels
+          transformOptions {
+            forceArrayInstructions
+            forceArrayInputs
+          }
         }
       }
     }
@@ -443,6 +467,10 @@ const QUERY_CHANNELS_QUERY = `
               url
               username
               password
+            }
+            transformOptions {
+              forceArrayInstructions
+              forceArrayInputs
             }
           }
           orderingWeight

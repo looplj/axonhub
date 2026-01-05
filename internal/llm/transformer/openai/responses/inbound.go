@@ -181,7 +181,9 @@ func convertToLLMRequest(req *Request) (*llm.Request, error) {
 		SafetyIdentifier:    req.SafetyIdentifier,
 		ServiceTier:         req.ServiceTier,
 		ParallelToolCalls:   req.ParallelToolCalls,
+		PromptCacheKey:      req.PromptCacheKey,
 		TransformerMetadata: map[string]any{},
+		TransformOptions:    llm.TransformOptions{},
 	}
 
 	// Store help fields in TransformerMetadata
@@ -191,10 +193,6 @@ func convertToLLMRequest(req *Request) (*llm.Request, error) {
 
 	if req.MaxToolCalls != nil {
 		chatReq.TransformerMetadata["max_tool_calls"] = req.MaxToolCalls
-	}
-
-	if req.PromptCacheKey != nil {
-		chatReq.TransformerMetadata["prompt_cache_key"] = req.PromptCacheKey
 	}
 
 	if req.PromptCacheRetention != nil {
@@ -242,7 +240,7 @@ func convertToLLMRequest(req *Request) (*llm.Request, error) {
 
 	// Convert input to messages
 	if req.Input.Items != nil {
-		chatReq.TransformerMetadata["openai_responses_input_array_format"] = "true"
+		chatReq.TransformOptions.ArrayInputs = lo.ToPtr(true)
 	}
 
 	inputMessages, err := convertInputToMessages(&req.Input)
