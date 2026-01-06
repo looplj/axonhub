@@ -346,6 +346,9 @@ func (s *responsesInboundStream) handleTextContent(content *string) error {
 	delta := *content
 	switch s.streamTextMode {
 	case "always":
+		if s.sawToolCalls {
+			return nil
+		}
 		return s.emitTextDelta(delta)
 	case "prefix":
 		if s.streamTextPrefixChars <= 0 || s.sawToolCalls {
