@@ -133,6 +133,10 @@ func convertGeminiToLLMRequest(geminiReq *GenerateContentRequest) (*llm.Request,
 			if tool.FunctionDeclarations != nil {
 				for _, fd := range tool.FunctionDeclarations {
 					parameters := fd.Parameters
+					if parameters == nil {
+						// If Parameters is not provided, use ParametersJsonSchema.
+						parameters = fd.ParametersJsonSchema
+					}
 					// The gemini sdk use UPPER case for type, but the unified format use lower case.
 					parameters, err := xjson.Transform(parameters, func(s *jsonschema.Schema) {
 						s.Type = strings.ToLower(s.Type)
