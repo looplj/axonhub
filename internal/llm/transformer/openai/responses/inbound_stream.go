@@ -19,13 +19,10 @@ func (t *InboundTransformer) TransformStream(
 	ctx context.Context,
 	stream streams.Stream[*llm.Response],
 ) (streams.Stream[*httpclient.StreamEvent], error) {
-	streamTextMode, streamTextPrefixChars := responsesStreamTextConfig()
 	return &responsesInboundStream{
-		source:                stream,
-		ctx:                   ctx,
-		toolCalls:             make(map[int]*llm.ToolCall),
-		streamTextMode:        streamTextMode,
-		streamTextPrefixChars: streamTextPrefixChars,
+		source:    stream,
+		ctx:       ctx,
+		toolCalls: make(map[int]*llm.ToolCall),
 	}, nil
 }
 
@@ -70,13 +67,6 @@ type responsesInboundStream struct {
 	// Response accumulation using streamAggregator
 	usage      *llm.Usage
 	aggregator *streamAggregator
-
-	// Streaming text control (responses mode)
-	streamTextMode        string
-	streamTextPrefixChars int
-	streamedTextRunes     int
-	sawToolCalls          bool
-	bufferedText          strings.Builder
 
 	// Event queue
 	eventQueue []*httpclient.StreamEvent
@@ -236,13 +226,6 @@ func (s *responsesInboundStream) Next() bool {
 		if choice.FinishReason != nil && !s.hasFinished {
 			s.hasFinished = true
 
-			if !s.sawToolCalls {
-				if err := s.flushBufferedText(); err != nil {
-					s.err = err
-					return false
-				}
-			}
-
 			// Close any open content parts
 			if err := s.closeCurrentContentPart(); err != nil {
 				s.err = err
@@ -339,45 +322,6 @@ func (s *responsesInboundStream) handleReasoningContent(content *string) error {
 }
 
 func (s *responsesInboundStream) handleTextContent(content *string) error {
-	if content == nil || *content == "" {
-		return nil
-	}
-
-	delta := *content
-	switch s.streamTextMode {
-	case "always":
-		if s.sawToolCalls {
-			return nil
-		}
-		return s.emitTextDelta(delta)
-	case "prefix":
-		if s.streamTextPrefixChars <= 0 || s.sawToolCalls {
-			s.bufferedText.WriteString(delta)
-			return nil
-		}
-		prefix, rest, taken := splitPrefixRunes(delta, s.streamTextPrefixChars-s.streamedTextRunes)
-		if taken > 0 {
-			s.streamedTextRunes += taken
-		}
-		if prefix != "" {
-			if err := s.emitTextDelta(prefix); err != nil {
-				return err
-			}
-		}
-		if rest != "" {
-			s.bufferedText.WriteString(rest)
-		}
-		return nil
-	default: // strict
-		if s.sawToolCalls {
-			return nil
-		}
-		s.bufferedText.WriteString(delta)
-		return nil
-	}
-}
-
-func (s *responsesInboundStream) emitTextDelta(delta string) error {
 	// Close reasoning item if it was started
 	if s.hasReasoningItemStarted {
 		if err := s.closeReasoningItem(); err != nil {
@@ -427,7 +371,7 @@ func (s *responsesInboundStream) emitTextDelta(delta string) error {
 	}
 
 	// Accumulate text content
-	s.accumulatedText.WriteString(delta)
+	s.accumulatedText.WriteString(*content)
 
 	// Emit output_text.delta
 	err := s.enqueueEvent(&StreamEvent{
@@ -435,7 +379,7 @@ func (s *responsesInboundStream) emitTextDelta(delta string) error {
 		ItemID:       &s.currentItemID,
 		OutputIndex:  s.outputIndex,
 		ContentIndex: &s.contentIndex,
-		Delta:        delta,
+		Delta:        *content,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to enqueue output_text.delta event: %w", err)
@@ -445,9 +389,6 @@ func (s *responsesInboundStream) emitTextDelta(delta string) error {
 }
 
 func (s *responsesInboundStream) handleToolCalls(toolCalls []llm.ToolCall) error {
-	s.sawToolCalls = true
-	s.bufferedText.Reset()
-
 	// Close message item if it was started
 	if s.hasMessageItemStarted {
 		if err := s.closeMessageItem(); err != nil {
@@ -469,6 +410,7 @@ func (s *responsesInboundStream) handleToolCalls(toolCalls []llm.ToolCall) error
 	if s.toolCallOutputIndex == nil {
 		s.toolCallOutputIndex = make(map[int]int)
 	}
+
 	for _, tc := range toolCalls {
 		toolCallIndex := tc.Index
 
@@ -521,15 +463,11 @@ func (s *responsesInboundStream) handleToolCalls(toolCalls []llm.ToolCall) error
 			s.outputIndex++
 		}
 
-		// Accumulate arguments; ignore trailing "{}" if we already have args.
-		arg := tc.Function.Arguments
-		if strings.TrimSpace(arg) == "{}" && s.toolCalls[toolCallIndex].Function.Arguments != "" {
-			continue
-		}
-		s.toolCalls[toolCallIndex].Function.Arguments += arg
+		// Accumulate arguments
+		s.toolCalls[toolCallIndex].Function.Arguments += tc.Function.Arguments
 
 		// Emit function_call_arguments.delta
-		if arg != "" {
+		if tc.Function.Arguments != "" {
 			itemID := s.toolCalls[toolCallIndex].ID
 			if itemID == "" {
 				itemID = s.currentItemID
@@ -540,7 +478,7 @@ func (s *responsesInboundStream) handleToolCalls(toolCalls []llm.ToolCall) error
 				ItemID:       &itemID,
 				OutputIndex:  s.outputIndex - 1,
 				ContentIndex: lo.ToPtr(0),
-				Delta:        arg,
+				Delta:        tc.Function.Arguments,
 			})
 			if err != nil {
 				return fmt.Errorf("failed to enqueue function_call_arguments.delta event: %w", err)
@@ -758,27 +696,6 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 	}
 
 	return nil
-}
-
-func (s *responsesInboundStream) flushBufferedText() error {
-	if s.bufferedText.Len() == 0 {
-		return nil
-	}
-
-	delta := s.bufferedText.String()
-	s.bufferedText.Reset()
-	return s.emitTextDelta(delta)
-}
-
-func splitPrefixRunes(input string, max int) (string, string, int) {
-	if max <= 0 || input == "" {
-		return "", input, 0
-	}
-	runes := []rune(input)
-	if len(runes) <= max {
-		return input, "", len(runes)
-	}
-	return string(runes[:max]), string(runes[max:]), max
 }
 
 func (s *responsesInboundStream) Current() *httpclient.StreamEvent {
