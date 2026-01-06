@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useModels } from '../context/models-context';
 import { useQueryUnassociatedChannels } from '../data/models';
+import { ChannelModelsList } from './channel-models-list';
 
 export function ModelsUnassociatedDialog() {
   const { t } = useTranslation();
@@ -41,6 +42,14 @@ export function ModelsUnassociatedDialog() {
       }))
       .filter((info) => info.models.length > 0);
   }, [data, debouncedSearchQuery]);
+
+  const channelsForList = useMemo(() => {
+    if (!filteredData) return [];
+    return filteredData.map((info) => ({
+      channel: info.channel,
+      models: info.models.map((model) => ({ requestModel: model })),
+    }));
+  }, [filteredData]);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -77,39 +86,16 @@ export function ModelsUnassociatedDialog() {
                 />
               </div>
 
-              {filteredData && filteredData.length > 0 ? (
-                <ScrollArea className='h-[400px] rounded-md border'>
-                  <div className='space-y-4 p-4'>
-                    {filteredData.map((info) => (
-                      <div key={info.channel.id} className='space-y-2 rounded-lg border p-4'>
-                        <div className='flex items-center justify-between'>
-                          <div className='flex items-center gap-2'>
-                            <h4 className='font-semibold'>{info.channel.name}</h4>
-                            <Badge variant='outline' className='text-xs'>
-                              {info.channel.type}
-                            </Badge>
-                            <Badge variant={info.channel.status === 'enabled' ? 'default' : 'secondary'} className='text-xs'>
-                              {info.channel.status}
-                            </Badge>
-                          </div>
-                          <Badge variant='secondary'>{info.models.length} models</Badge>
-                        </div>
-                        <div className='flex flex-wrap gap-2'>
-                          {info.models.map((model) => (
-                            <Badge key={model} variant='outline' className='font-mono text-xs'>
-                              {model}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              ) : (
-                <div className='flex flex-col items-center justify-center rounded-md border py-8 text-center'>
-                  <div className='text-muted-foreground text-sm'>{t('models.unassociated.noSearchResults')}</div>
-                </div>
-              )}
+              <ScrollArea className='h-[400px] rounded-md border p-4'>
+                <ChannelModelsList
+                  channels={channelsForList}
+                  emptyMessage={
+                    debouncedSearchQuery.trim()
+                      ? t('models.unassociated.noSearchResults')
+                      : t('models.unassociated.noUnassociated')
+                  }
+                />
+              </ScrollArea>
             </>
           ) : (
             <div className='flex flex-col items-center justify-center py-8 text-center'>
