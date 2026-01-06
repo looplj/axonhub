@@ -9,9 +9,9 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/model"
-	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm"
 )
 
 func TestDefaultSelector_SelectModelCandidates_Cache(t *testing.T) {

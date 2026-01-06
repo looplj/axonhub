@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 type AddUserToProjectInput struct {
@@ -182,9 +183,9 @@ type SystemStatus struct {
 }
 
 type TestChannelInput struct {
-	ChannelID objects.GUID         `json:"channelID"`
-	ModelID   *string              `json:"modelID,omitempty"`
-	Proxy     *objects.ProxyConfig `json:"proxy,omitempty"`
+	ChannelID objects.GUID            `json:"channelID"`
+	ModelID   *string                 `json:"modelID,omitempty"`
+	Proxy     *httpclient.ProxyConfig `json:"proxy,omitempty"`
 }
 
 type TestChannelPayload struct {

@@ -16,10 +16,10 @@ import (
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/tracing"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 func setupTestTraceMiddleware(t *testing.T) (*gin.Engine, *ent.Client, *biz.TraceService) {

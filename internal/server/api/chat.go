@@ -9,9 +9,9 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/looplj/axonhub/internal/log"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
-	"github.com/looplj/axonhub/internal/pkg/streams"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/streams"
 )
 
 // StreamWriter is a function type for writing stream events to the response.

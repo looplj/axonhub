@@ -4,12 +4,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 
-	"github.com/looplj/axonhub/internal/llm/transformer/aisdk"
 	"github.com/looplj/axonhub/internal/log"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
-	"github.com/looplj/axonhub/internal/pkg/streams"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/aisdk"
 )
 
 type AiSdkHandlersParams struct {

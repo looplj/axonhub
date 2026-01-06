@@ -13,13 +13,13 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/trace"
-	"github.com/looplj/axonhub/internal/llm"
-	"github.com/looplj/axonhub/internal/llm/transformer"
-	"github.com/looplj/axonhub/internal/llm/transformer/anthropic"
-	"github.com/looplj/axonhub/internal/llm/transformer/gemini"
-	"github.com/looplj/axonhub/internal/llm/transformer/openai"
-	"github.com/looplj/axonhub/internal/llm/transformer/openai/responses"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/anthropic"
+	"github.com/looplj/axonhub/llm/transformer/gemini"
+	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
 type TraceServiceParams struct {

@@ -11,7 +11,7 @@ require-template-schema-exists: true
 template: testify
 template-schema: '{{.Template}}.schema.json'
 packages:
-  github.com/looplj/axonhub/internal/llm/pipeline:
+  github.com/looplj/axonhub/llm/pipeline:
     config:
     interfaces:
       Executor:
