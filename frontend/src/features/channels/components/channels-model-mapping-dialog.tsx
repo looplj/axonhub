@@ -11,8 +11,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useUpdateChannel } from '../data/channels';
 import { Channel, ModelMapping } from '../data/schema';
@@ -66,16 +68,36 @@ const extractAliasFromModelPath = (modelPath: string): string => {
   return segments[segments.length - 1]?.trim() ?? '';
 };
 
+const extractAllPrefixes = (models: string[]): string[] => {
+  if (!models || models.length === 0) {
+    return [];
+  }
+
+  const prefixes = new Set<string>();
+  models.forEach((model) => {
+    const segments = model.split('/');
+    for (let i = 1; i < segments.length; i++) {
+      const prefix = segments.slice(0, i).join('/');
+      if (prefix) {
+        prefixes.add(prefix);
+      }
+    }
+  });
+
+  return Array.from(prefixes).sort();
+};
+
 export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: Props) {
   const { t } = useTranslation();
   const updateChannel = useUpdateChannel();
 
   const [modelMappings, setModelMappings] = useState<ModelMapping[]>(currentRow.settings?.modelMappings || []);
   const [newMapping, setNewMapping] = useState({ from: '', to: '' });
-  const [newPrefix, setNewPrefix] = useState('');
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingDraft, setEditingDraft] = useState<ModelMapping | null>(null);
   const [editingError, setEditingError] = useState<string | null>(null);
+
+  const prefixSuggestions = useMemo(() => extractAllPrefixes(currentRow.supportedModels), [currentRow.supportedModels]);
 
   const modelMappingFormSchema = createModelMappingFormSchema(currentRow.supportedModels);
 
@@ -89,18 +111,57 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
     },
   });
 
-  const handleAddPrefix = useCallback(() => {
-    const trimmed = newPrefix.trim();
-    if (!trimmed) return;
+  const handleAutoExtractAllPrefixes = useCallback(() => {
+    if (prefixSuggestions.length === 0) {
+      toast.warning(
+        t('channels.dialogs.settings.autoTrimedModelPrefixes.noPrefixesFound', {
+          defaultValue: 'No prefixes found in supported models',
+        })
+      );
+      return;
+    }
 
     const currentPrefixes = form.getValues('autoTrimedModelPrefixes') || [];
-    if (!currentPrefixes.includes(trimmed)) {
-      form.setValue('autoTrimedModelPrefixes', [...currentPrefixes, trimmed]);
-      setNewPrefix('');
-    } else {
-      toast.warning(t('channels.dialogs.settings.autoTrimedModelPrefixes.duplicateWarning'));
+    const currentPrefixesSet = new Set(currentPrefixes);
+    const newPrefixes = prefixSuggestions.filter((prefix) => !currentPrefixesSet.has(prefix));
+
+    if (newPrefixes.length === 0) {
+      toast.warning(
+        t('channels.dialogs.settings.autoTrimedModelPrefixes.allPrefixesAlreadyAdded', {
+          defaultValue: 'All prefixes have already been added',
+        })
+      );
+      return;
     }
-  }, [form, newPrefix, t]);
+
+    form.setValue('autoTrimedModelPrefixes', [...currentPrefixes, ...newPrefixes]);
+    toast.success(
+      t('channels.dialogs.settings.autoTrimedModelPrefixes.prefixesAdded', {
+        count: newPrefixes.length,
+        defaultValue: `${newPrefixes.length} prefix(es) added successfully`,
+      })
+    );
+  }, [form, prefixSuggestions, t]);
+
+  const handleClearAllPrefixes = useCallback(() => {
+    const currentPrefixes = form.getValues('autoTrimedModelPrefixes') || [];
+    if (currentPrefixes.length === 0) {
+      toast.warning(
+        t('channels.dialogs.settings.autoTrimedModelPrefixes.noPrefixesToClear', {
+          defaultValue: 'No prefixes to clear',
+        })
+      );
+      return;
+    }
+
+    form.setValue('autoTrimedModelPrefixes', []);
+    toast.success(
+      t('channels.dialogs.settings.autoTrimedModelPrefixes.prefixesCleared', {
+        count: currentPrefixes.length,
+        defaultValue: `${currentPrefixes.length} prefix(es) cleared successfully`,
+      })
+    );
+  }, [form, t]);
 
   const exitInlineEditing = () => {
     setEditingIndex(null);
@@ -139,7 +200,6 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
     const nextMappings = currentRow.settings?.modelMappings || [];
     setModelMappings(nextMappings);
     setNewMapping({ from: '', to: '' });
-    setNewPrefix('');
     form.reset({
       extraModelPrefix: nextExtraModelPrefix,
       modelMappings: nextMappings,
@@ -151,10 +211,10 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
 
   const aliasSuggestion = useMemo(() => {
     const modelPath = newMapping.to;
-    // Only show suggestion if the model path contains a slash
-    if (!modelPath || !modelPath.includes('/')) {
+    if (!modelPath) {
       return '';
     }
+
     return extractAliasFromModelPath(modelPath);
   }, [newMapping.to]);
 
@@ -278,8 +338,9 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
             <DialogDescription>{t('channels.dialogs.settings.modelMapping.description', { name: currentRow.name })}</DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <div className='space-y-6'>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+              <div className='space-y-6'>
               <Card>
                 <CardHeader>
                   <CardTitle className='text-lg'>{t('channels.dialogs.settings.modelMapping.hideOriginalModels.label')}</CardTitle>
@@ -326,47 +387,46 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
                 </CardHeader>
                 <CardContent>
                   <div className='space-y-2'>
-                    {/* 前缀列表显示 */}
-                    <div className='flex flex-wrap gap-2'>
-                      {(form.watch('autoTrimedModelPrefixes') || []).map((prefix, index) => (
-                        <Badge key={`${prefix}-${index}`} variant='secondary' className='gap-1'>
-                          {prefix}
-                          <button
-                            type='button'
-                            className='hover:bg-destructive/20 ml-1 rounded p-0.5 transition-colors'
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const currentPrefixes = form.getValues('autoTrimedModelPrefixes') || [];
-                              const newPrefixes = currentPrefixes.filter((_, i) => i !== index);
-                              form.setValue('autoTrimedModelPrefixes', newPrefixes, {
-                                shouldValidate: true,
-                                shouldDirty: true,
-                              });
-                            }}
-                          >
-                            <X className='h-3 w-3' />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-
                     {/* 添加新前缀 */}
-                    <div className='flex gap-2'>
-                      <Input
-                        placeholder={t('channels.dialogs.settings.autoTrimedModelPrefixes.placeholder')}
-                        value={newPrefix}
-                        onChange={(e) => setNewPrefix(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleAddPrefix();
-                          }
-                        }}
-                      />
-                      <Button type='button' variant='outline' size='icon' onClick={handleAddPrefix}>
-                        <Plus className='h-4 w-4' />
-                      </Button>
-                    </div>
+                    <FormField
+                      control={form.control}
+                      name='autoTrimedModelPrefixes'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <TagsAutocompleteInput
+                              value={field.value || []}
+                              onChange={field.onChange}
+                              placeholder={t('channels.dialogs.settings.autoTrimedModelPrefixes.placeholder')}
+                              suggestions={prefixSuggestions}
+                              className='h-auto min-h-9 py-1'
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* 自动提取所有前缀 */}
+                    {prefixSuggestions.length > 0 && (
+                      <div className='flex items-center gap-2 pt-2'>
+                        <Button type='button' variant='outline' size='sm' onClick={handleAutoExtractAllPrefixes} className='text-xs'>
+                          {t('channels.dialogs.settings.autoTrimedModelPrefixes.autoExtractAll', {
+                            defaultValue: 'Auto-extract all prefixes',
+                          })}
+                        </Button>
+                        <Button type='button' variant='outline' size='sm' onClick={handleClearAllPrefixes} className='text-xs'>
+                          {t('channels.dialogs.settings.autoTrimedModelPrefixes.clearAll', {
+                            defaultValue: 'Clear all',
+                          })}
+                        </Button>
+                        <span className='text-muted-foreground text-xs'>
+                          {t('channels.dialogs.settings.autoTrimedModelPrefixes.prefixesDetected', {
+                            count: prefixSuggestions.length,
+                            defaultValue: `Detected ${prefixSuggestions.length} prefix(es)`,
+                          })}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -547,15 +607,16 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
               </Card>
             </div>
 
-            <DialogFooter className='mt-6'>
-              <Button type='button' variant='outline' onClick={() => onOpenChange(false)}>
-                {t('common.buttons.cancel')}
-              </Button>
-              <Button type='submit' disabled={updateChannel.isPending}>
-                {updateChannel.isPending ? t('common.buttons.saving') : t('common.buttons.save')}
-              </Button>
-            </DialogFooter>
-          </form>
+              <DialogFooter className='mt-6'>
+                <Button type='button' variant='outline' onClick={() => onOpenChange(false)}>
+                  {t('common.buttons.cancel')}
+                </Button>
+                <Button type='submit' disabled={updateChannel.isPending}>
+                  {updateChannel.isPending ? t('common.buttons.saving') : t('common.buttons.save')}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
     </TooltipProvider>
