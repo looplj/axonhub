@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/llm/pipeline"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/llm/transformer/anthropic"
+	"github.com/looplj/axonhub/internal/llm/transformer/bailian"
 	"github.com/looplj/axonhub/internal/llm/transformer/doubao"
 	"github.com/looplj/axonhub/internal/llm/transformer/gemini"
 	geminioai "github.com/looplj/axonhub/internal/llm/transformer/gemini/openai"
@@ -338,10 +339,20 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		}
 
 		return buildChannelWithTransformer(c, transformer, httpClient), nil
+	case channel.TypeBailian:
+		transformer, err := bailian.NewOutboundTransformerWithConfig(&bailian.Config{
+			BaseURL: c.BaseURL,
+			APIKey:  c.Credentials.APIKey,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		return buildChannelWithTransformer(c, transformer, httpClient), nil
 	case channel.TypeOpenai,
 		channel.TypeDeepseek, channel.TypeDeepinfra, channel.TypeMoonshot, channel.TypeMinimax,
 		channel.TypePpio, channel.TypeSiliconflow,
-		channel.TypeVercel, channel.TypeAihubmix, channel.TypeBurncloud, channel.TypeBailian:
+		channel.TypeVercel, channel.TypeAihubmix, channel.TypeBurncloud:
 		transformer, err := openai.NewOutboundTransformerWithConfig(&openai.Config{
 			Type:    openai.PlatformOpenAI,
 			BaseURL: c.BaseURL,
