@@ -2,10 +2,9 @@ package orchestrator
 
 import (
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/llm"
-	"github.com/looplj/axonhub/internal/objects"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 // PersistenceState holds shared state with channel management and retry capabilities.
@@ -23,7 +22,7 @@ type PersistenceState struct {
 	// Request state
 	ModelMapper *ModelMapper
 	// Proxy config, will be used to override channel's default proxy config.
-	Proxy         *objects.ProxyConfig
+	Proxy         *httpclient.ProxyConfig
 	OriginalModel string
 	RawRequest    *httpclient.Request
 	LlmRequest    *llm.Request

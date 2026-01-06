@@ -12,8 +12,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/privacy"
-	"github.com/looplj/axonhub/internal/objects"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 // ModelFetcher handles fetching models from provider APIs.
@@ -55,7 +54,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 
 	var (
 		apiKey      string
-		proxyConfig *objects.ProxyConfig
+		proxyConfig *httpclient.ProxyConfig
 	)
 
 	if input.APIKey != nil && *input.APIKey != "" {

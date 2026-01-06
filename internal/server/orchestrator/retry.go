@@ -3,7 +3,7 @@ package orchestrator
 import (
 	"errors"
 
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 func isRetryableError(err error) bool {

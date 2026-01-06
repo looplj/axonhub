@@ -3,8 +3,8 @@ package orchestrator
 import (
 	"github.com/samber/lo"
 
-	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/llm"
 )
 
 // applyTransformOptions applies channel transform options to create a new llm.Request.

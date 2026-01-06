@@ -1,21 +1,11 @@
 package objects
 
-type ProxyType string
+import "github.com/looplj/axonhub/llm/httpclient"
 
-const (
-	ProxyTypeDisabled    ProxyType = "disabled"    // Do not use proxy
-	ProxyTypeEnvironment ProxyType = "environment" // Use environment variables (HTTP_PROXY, etc.)
-	ProxyTypeURL         ProxyType = "url"         // Use configured URL
+type (
+	ProxyType   = httpclient.ProxyType
+	ProxyConfig = httpclient.ProxyConfig
 )
-
-// ProxyConfig configures the proxy settings for the channel.
-// TODO: move to httpclient package.
-type ProxyConfig struct {
-	Type     ProxyType `json:"type"`          // disabled, environment, or url
-	URL      string    `json:"url,omitempty"` // e.g., "http://proxy.example.com:8080"
-	Username string    `json:"username,omitempty"`
-	Password string    `json:"password,omitempty"`
-}
 
 type ModelMapping struct {
 	// From is the model name in the request.
@@ -72,7 +62,7 @@ type ChannelSettings struct {
 	OverrideHeaders []HeaderEntry `json:"overrideHeaders"`
 
 	// Proxy configuration for the channel. If not set, defaults to environment proxy type.
-	Proxy *ProxyConfig `json:"proxy,omitempty"`
+	Proxy *httpclient.ProxyConfig `json:"proxy,omitempty"`
 
 	// TransformOptions configures the transform options for the channel.
 	TransformOptions TransformOptions `json:"transformOptions"`

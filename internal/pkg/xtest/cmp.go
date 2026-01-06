@@ -6,8 +6,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 
-	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
+	"github.com/looplj/axonhub/llm"
 )
 
 // Custom comparator for json.RawMessage that compares semantic equality.

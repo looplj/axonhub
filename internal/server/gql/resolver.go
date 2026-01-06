@@ -4,9 +4,9 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 // This file will not be regenerated automatically.

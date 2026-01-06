@@ -5,15 +5,14 @@ import (
 	"time"
 
 	"github.com/looplj/axonhub/internal/contexts"
-	"github.com/looplj/axonhub/internal/llm/pipeline"
-	"github.com/looplj/axonhub/internal/llm/pipeline/stream"
-	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/log"
-	"github.com/looplj/axonhub/internal/objects"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
-	"github.com/looplj/axonhub/internal/pkg/streams"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/pipeline/stream"
+	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer"
 )
 
 func NewChatCompletionOrchestrator(
@@ -82,7 +81,7 @@ type ChatCompletionOrchestrator struct {
 
 	// proxy is the proxy configuration for testing
 	// If set, it will override the channel's default proxy configuration
-	proxy *objects.ProxyConfig
+	proxy *httpclient.ProxyConfig
 }
 
 func (processor *ChatCompletionOrchestrator) WithChannelSelector(selector CandidateSelector) *ChatCompletionOrchestrator {
@@ -99,7 +98,7 @@ func (processor *ChatCompletionOrchestrator) WithAllowedChannels(allowedChannelI
 	return &c
 }
 
-func (processor *ChatCompletionOrchestrator) WithProxy(proxy *objects.ProxyConfig) *ChatCompletionOrchestrator {
+func (processor *ChatCompletionOrchestrator) WithProxy(proxy *httpclient.ProxyConfig) *ChatCompletionOrchestrator {
 	c := *processor
 	c.proxy = proxy
 

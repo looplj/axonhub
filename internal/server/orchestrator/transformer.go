@@ -1,7 +1,7 @@
 package orchestrator
 
 import (
-	"github.com/looplj/axonhub/internal/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer"
 )
 
 var (

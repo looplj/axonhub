@@ -30,6 +30,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm/httpclient"
 	gqlparser "github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 )
@@ -12749,7 +12750,7 @@ func (ec *executionContext) _ChannelSettings_proxy(ctx context.Context, field gr
 			return obj.Proxy, nil
 		},
 		nil,
-		ec.marshalOProxyConfig2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐProxyConfig,
+		ec.marshalOProxyConfig2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋllmᚋhttpclientᚐProxyConfig,
 		true,
 		false,
 	)
@@ -20836,7 +20837,7 @@ func (ec *executionContext) fieldContext_ProjectEdge_cursor(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _ProxyConfig_type(ctx context.Context, field graphql.CollectedField, obj *objects.ProxyConfig) (ret graphql.Marshaler) {
+func (ec *executionContext) _ProxyConfig_type(ctx context.Context, field graphql.CollectedField, obj *httpclient.ProxyConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -20846,7 +20847,7 @@ func (ec *executionContext) _ProxyConfig_type(ctx context.Context, field graphql
 			return obj.Type, nil
 		},
 		nil,
-		ec.marshalNProxyType2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐProxyType,
+		ec.marshalNProxyType2githubᚗcomᚋloopljᚋaxonhubᚋllmᚋhttpclientᚐProxyType,
 		true,
 		true,
 	)
@@ -20865,7 +20866,7 @@ func (ec *executionContext) fieldContext_ProxyConfig_type(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _ProxyConfig_url(ctx context.Context, field graphql.CollectedField, obj *objects.ProxyConfig) (ret graphql.Marshaler) {
+func (ec *executionContext) _ProxyConfig_url(ctx context.Context, field graphql.CollectedField, obj *httpclient.ProxyConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -20894,7 +20895,7 @@ func (ec *executionContext) fieldContext_ProxyConfig_url(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _ProxyConfig_username(ctx context.Context, field graphql.CollectedField, obj *objects.ProxyConfig) (ret graphql.Marshaler) {
+func (ec *executionContext) _ProxyConfig_username(ctx context.Context, field graphql.CollectedField, obj *httpclient.ProxyConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -20923,7 +20924,7 @@ func (ec *executionContext) fieldContext_ProxyConfig_username(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _ProxyConfig_password(ctx context.Context, field graphql.CollectedField, obj *objects.ProxyConfig) (ret graphql.Marshaler) {
+func (ec *executionContext) _ProxyConfig_password(ctx context.Context, field graphql.CollectedField, obj *httpclient.ProxyConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -38270,7 +38271,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 			it.OverrideHeaders = data
 		case "proxy":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("proxy"))
-			data, err := ec.unmarshalOProxyConfigInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐProxyConfig(ctx, v)
+			data, err := ec.unmarshalOProxyConfigInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋllmᚋhttpclientᚐProxyConfig(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -43379,8 +43380,8 @@ func (ec *executionContext) unmarshalInputProjectWhereInput(ctx context.Context,
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputProxyConfigInput(ctx context.Context, obj any) (objects.ProxyConfig, error) {
-	var it objects.ProxyConfig
+func (ec *executionContext) unmarshalInputProxyConfigInput(ctx context.Context, obj any) (httpclient.ProxyConfig, error) {
+	var it httpclient.ProxyConfig
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -43395,7 +43396,7 @@ func (ec *executionContext) unmarshalInputProxyConfigInput(ctx context.Context, 
 		switch k {
 		case "type":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
-			data, err := ec.unmarshalNProxyType2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐProxyType(ctx, v)
+			data, err := ec.unmarshalNProxyType2githubᚗcomᚋloopljᚋaxonhubᚋllmᚋhttpclientᚐProxyType(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -47111,7 +47112,7 @@ func (ec *executionContext) unmarshalInputTestChannelInput(ctx context.Context, 
 			it.ModelID = data
 		case "proxy":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("proxy"))
-			data, err := ec.unmarshalOProxyConfigInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐProxyConfig(ctx, v)
+			data, err := ec.unmarshalOProxyConfigInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋllmᚋhttpclientᚐProxyConfig(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -57342,7 +57343,7 @@ func (ec *executionContext) _ProjectEdge(ctx context.Context, sel ast.SelectionS
 
 var proxyConfigImplementors = []string{"ProxyConfig"}
 
-func (ec *executionContext) _ProxyConfig(ctx context.Context, sel ast.SelectionSet, obj *objects.ProxyConfig) graphql.Marshaler {
+func (ec *executionContext) _ProxyConfig(ctx context.Context, sel ast.SelectionSet, obj *httpclient.ProxyConfig) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, proxyConfigImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -65896,13 +65897,13 @@ func (ec *executionContext) unmarshalNProjectWhereInput2ᚖgithubᚗcomᚋlooplj
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNProxyType2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐProxyType(ctx context.Context, v any) (objects.ProxyType, error) {
+func (ec *executionContext) unmarshalNProxyType2githubᚗcomᚋloopljᚋaxonhubᚋllmᚋhttpclientᚐProxyType(ctx context.Context, v any) (httpclient.ProxyType, error) {
 	tmp, err := graphql.UnmarshalString(v)
-	res := objects.ProxyType(tmp)
+	res := httpclient.ProxyType(tmp)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNProxyType2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐProxyType(ctx context.Context, sel ast.SelectionSet, v objects.ProxyType) graphql.Marshaler {
+func (ec *executionContext) marshalNProxyType2githubᚗcomᚋloopljᚋaxonhubᚋllmᚋhttpclientᚐProxyType(ctx context.Context, sel ast.SelectionSet, v httpclient.ProxyType) graphql.Marshaler {
 	_ = sel
 	res := graphql.MarshalString(string(v))
 	if res == graphql.Null {
@@ -69506,14 +69507,14 @@ func (ec *executionContext) unmarshalOProjectWhereInput2ᚖgithubᚗcomᚋlooplj
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOProxyConfig2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐProxyConfig(ctx context.Context, sel ast.SelectionSet, v *objects.ProxyConfig) graphql.Marshaler {
+func (ec *executionContext) marshalOProxyConfig2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋllmᚋhttpclientᚐProxyConfig(ctx context.Context, sel ast.SelectionSet, v *httpclient.ProxyConfig) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._ProxyConfig(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOProxyConfigInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐProxyConfig(ctx context.Context, v any) (*objects.ProxyConfig, error) {
+func (ec *executionContext) unmarshalOProxyConfigInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋllmᚋhttpclientᚐProxyConfig(ctx context.Context, v any) (*httpclient.ProxyConfig, error) {
 	if v == nil {
 		return nil, nil
 	}

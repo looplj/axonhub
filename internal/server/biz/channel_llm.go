@@ -10,24 +10,24 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
-	"github.com/looplj/axonhub/internal/llm/pipeline"
-	"github.com/looplj/axonhub/internal/llm/transformer"
-	"github.com/looplj/axonhub/internal/llm/transformer/anthropic"
-	"github.com/looplj/axonhub/internal/llm/transformer/bailian"
-	"github.com/looplj/axonhub/internal/llm/transformer/doubao"
-	"github.com/looplj/axonhub/internal/llm/transformer/gemini"
-	geminioai "github.com/looplj/axonhub/internal/llm/transformer/gemini/openai"
-	"github.com/looplj/axonhub/internal/llm/transformer/jina"
-	"github.com/looplj/axonhub/internal/llm/transformer/longcat"
-	"github.com/looplj/axonhub/internal/llm/transformer/modelscope"
-	"github.com/looplj/axonhub/internal/llm/transformer/openai"
-	"github.com/looplj/axonhub/internal/llm/transformer/openai/responses"
-	"github.com/looplj/axonhub/internal/llm/transformer/openrouter"
-	"github.com/looplj/axonhub/internal/llm/transformer/xai"
-	"github.com/looplj/axonhub/internal/llm/transformer/zai"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/anthropic"
+	"github.com/looplj/axonhub/llm/transformer/bailian"
+	"github.com/looplj/axonhub/llm/transformer/doubao"
+	"github.com/looplj/axonhub/llm/transformer/gemini"
+	geminioai "github.com/looplj/axonhub/llm/transformer/gemini/openai"
+	"github.com/looplj/axonhub/llm/transformer/jina"
+	"github.com/looplj/axonhub/llm/transformer/longcat"
+	"github.com/looplj/axonhub/llm/transformer/modelscope"
+	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
+	"github.com/looplj/axonhub/llm/transformer/openrouter"
+	"github.com/looplj/axonhub/llm/transformer/xai"
+	"github.com/looplj/axonhub/llm/transformer/zai"
 )
 
 func (c *Channel) IsModelSupported(model string) bool {
@@ -115,11 +115,11 @@ func (c *Channel) GetOverrideHeaders() []objects.HeaderEntry {
 
 // getProxyConfig extracts proxy configuration from channel settings
 // Returns nil if no proxy configuration is set (backward compatibility).
-func getProxyConfig(channelSettings *objects.ChannelSettings) *objects.ProxyConfig {
+func getProxyConfig(channelSettings *objects.ChannelSettings) *httpclient.ProxyConfig {
 	if channelSettings == nil || channelSettings.Proxy == nil {
 		// Backward compatibility: default to environment proxy type
-		return &objects.ProxyConfig{
-			Type: objects.ProxyTypeEnvironment,
+		return &httpclient.ProxyConfig{
+			Type: httpclient.ProxyTypeEnvironment,
 		}
 	}
 
