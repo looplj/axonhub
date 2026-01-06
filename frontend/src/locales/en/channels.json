@@ -429,7 +429,15 @@
           "title": "Auto-Trimmed Model Prefixes",
           "description": "Configure prefixes to automatically trim from model names. For example: with prefix 'deepseek-ai', model 'deepseek-ai/deepseek-chat' becomes 'deepseek-chat'; both 'deepseek-ai/deepseek-chat' and 'deepseek-chat' can access this channel",
           "placeholder": "e.g., openai, deepseek",
-          "duplicateWarning": "This prefix already exists"
+          "duplicateWarning": "This prefix already exists",
+          "noPrefixesFound": "No prefixes found in supported models",
+          "allPrefixesAlreadyAdded": "All prefixes have already been added",
+          "prefixesAdded": "{{count}} prefix(es) added successfully",
+          "noPrefixesToClear": "No prefixes to clear",
+          "prefixesCleared": "{{count}} prefix(es) cleared successfully",
+          "autoExtractAll": "Auto-extract all prefixes",
+          "clearAll": "Clear all",
+          "prefixesDetected": "Detected {{count}} prefix(es)"
         },
         "modelMapping": {
           "action": "Model Alias",

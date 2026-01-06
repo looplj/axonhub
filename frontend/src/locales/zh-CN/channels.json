@@ -431,7 +431,15 @@
           "title": "自动裁剪模型前缀",
           "description": "配置需要自动裁剪的模型前缀。例如：配置前缀为 'deepseek-ai'，则模型 'deepseek-ai/deepseek-chat' 将变为 'deepseek-chat'，则 'deepseek-ai/deepseek-chat' 和 'deepseek-chat' 都可以访问该渠道",
           "placeholder": "例如: openai, deepseek",
-          "duplicateWarning": "该前缀已存在"
+          "duplicateWarning": "该前缀已存在",
+          "noPrefixesFound": "在支持的模型中未找到前缀",
+          "allPrefixesAlreadyAdded": "所有前缀都已添加",
+          "prefixesAdded": "成功添加 {{count}} 个前缀",
+          "noPrefixesToClear": "没有需要清除的前缀",
+          "prefixesCleared": "成功清除 {{count}} 个前缀",
+          "autoExtractAll": "自动提取所有前缀",
+          "clearAll": "清空全部",
+          "prefixesDetected": "检测到 {{count}} 个前缀"
         },
         "modelMapping": {
           "action": "模型别名",
