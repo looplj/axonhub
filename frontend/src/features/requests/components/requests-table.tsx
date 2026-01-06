@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ColumnFiltersState,
   RowData,
@@ -17,6 +17,7 @@ import { DateRange } from 'react-day-picker';
 import { useTranslation } from 'react-i18next';
 import { useAnimatedList } from '@/hooks/useAnimatedList';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { ServerSidePagination } from '@/components/server-side-pagination';
 import { Request, RequestConnection } from '../data/schema';
 import { DataTableToolbar } from './data-table-toolbar';
@@ -84,8 +85,24 @@ export function RequestsTable({
   const requestsColumns = useRequestsColumns();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
+    const stored = localStorage.getItem('requests-table-column-visibility');
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch {
+        return {};
+      }
+    }
+    return {};
+  });
+
   const [rowSelection, setRowSelection] = useState({});
+
+  useEffect(() => {
+    localStorage.setItem('requests-table-column-visibility', JSON.stringify(columnVisibility));
+  }, [columnVisibility]);
 
   const displayedData = useAnimatedList(data, autoRefresh);
 
@@ -177,7 +194,7 @@ export function RequestsTable({
         autoRefresh={autoRefresh}
         onAutoRefreshChange={onAutoRefreshChange}
       />
-      <div className='shadow-soft relative mt-4 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
+      <div className='shadow-soft relative mt-4 flex-1 overflow-auto overflow-x-hidden rounded-2xl border border-[var(--table-border)]'>
         <Table data-testid='requests-table' className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -198,11 +215,7 @@ export function RequestsTable({
           </TableHeader>
           <TableBody className='space-y-1 !bg-[var(--table-background)] p-2'>
             {loading ? (
-              <TableRow className='border-0 !bg-[var(--table-background)]'>
-                <TableCell colSpan={requestsColumns.length} className='h-24 border-0 !bg-[var(--table-background)] text-center'>
-                  {t('common.loading')}
-                </TableCell>
-              </TableRow>
+              <TableSkeleton rows={pageSize} columns={requestsColumns.length} />
             ) : table.getRowModel().rows?.length ? (
               <AnimatePresence initial={false} mode='popLayout'>
                 {table.getRowModel().rows.map((row) => (

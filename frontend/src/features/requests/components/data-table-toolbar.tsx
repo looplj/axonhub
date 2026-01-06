@@ -10,18 +10,12 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter';
 import { DateRangePicker } from '@/components/date-range-picker';
+import { DataTableViewOptions } from './data-table-view-options';
 import { useApiKeys } from '@/features/apikeys/data';
 import { useMe } from '@/features/auth/data/auth';
 import { useQueryChannels } from '@/features/channels/data/channels';
 import { RequestStatus } from '../data/schema';
 
-interface ApiKeyEdge {
-  node: {
-    id: string;
-    name: string;
-  };
-  cursor: string;
-}
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>;
@@ -190,7 +184,7 @@ export function DataTableToolbar<TData>({
             {t('common.refresh')}
           </Button>
         )}
-        {/* <DataTableViewOptions table={table} /> */}
+        <DataTableViewOptions table={table} />
       </div>
     </div>
   );

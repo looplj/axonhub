@@ -155,6 +155,18 @@ export function usePermissions() {
     [hasScope]
   );
 
+  // Common permission checks for model operations
+  const modelPermissions = useMemo(
+    () => ({
+      canRead: hasScope('read_channels'),
+      canWrite: hasScope('write_channels'),
+      canCreate: hasScope('write_channels'),
+      canEdit: hasScope('write_channels'),
+      canDelete: hasScope('write_channels'),
+    }),
+    [hasScope]
+  );
+
   // Common permission checks for project operations
   const projectPermissions = useMemo(
     () => ({
@@ -179,6 +191,7 @@ export function usePermissions() {
     userPermissions,
     rolePermissions,
     apiKeyPermissions,
+    modelPermissions,
     projectPermissions,
   };
 }

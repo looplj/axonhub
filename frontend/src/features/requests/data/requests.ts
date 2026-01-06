@@ -51,6 +51,18 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
             status
             metricsLatencyMs
             metricsFirstTokenLatencyMs
+            usageLogs(first: 1) {
+              edges {
+                node {
+                  id
+                  promptTokens
+                  completionTokens
+                  totalTokens
+                  promptCachedTokens
+                  promptWriteCachedTokens
+                }
+              }
+            }
           }
           cursor
         }
@@ -97,10 +109,23 @@ function buildRequestDetailQuery(permissions: { canViewApiKeys: boolean; canView
           dataStorage {
             id
           }
+          requestHeaders
           requestBody
           responseBody
           responseChunks
           status
+          usageLogs(first: 1) {
+            edges {
+              node {
+                id
+                promptTokens
+                completionTokens
+                totalTokens
+                promptCachedTokens
+                promptWriteCachedTokens
+              }
+            }
+          }
         }
       }
     }
@@ -138,6 +163,7 @@ function buildRequestExecutionsQuery(permissions: { canViewChannels: boolean }) 
                 dataStorage {
                   id
                 }
+                requestHeaders
                 requestBody
                 responseBody
                 responseChunks

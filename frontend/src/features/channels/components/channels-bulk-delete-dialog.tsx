@@ -30,7 +30,6 @@ export function ChannelsBulkDeleteDialog() {
       setSelectedChannels([]);
       setOpen(null);
     } catch (error) {
-      console.error('Failed to bulk delete channels:', error);
     }
   };
 

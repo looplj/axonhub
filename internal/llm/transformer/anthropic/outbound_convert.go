@@ -496,7 +496,7 @@ func convertToAnthropicSystemPrompt(chatReq *llm.Request) *SystemPrompt {
 	systemMessages := append(systemOnlyMessages, developerMessages...)
 
 	// Check if system was originally in array format
-	wasArrayFormat := chatReq.TransformerMetadata != nil && chatReq.TransformerMetadata["anthropic_system_array_format"] == "true"
+	wasArrayFormat := chatReq.TransformOptions.ArrayInstructions != nil && *chatReq.TransformOptions.ArrayInstructions
 
 	switch len(systemMessages) {
 	case 0:

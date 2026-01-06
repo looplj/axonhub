@@ -66,7 +66,16 @@
       "view": {
         "title": "查看 API 密钥",
         "description": "查看完整的 API 密钥详情。",
-        "warning": "⚠️ 请妥善保管您的 API 密钥，不要与未授权的人员分享。任何拥有此密钥的人都可以代表您发出请求。"
+        "warning": "⚠️ 请妥善保管您的 API 密钥，不要与未授权的人员分享。任何拥有此密钥的人都可以代表您发出请求。",
+        "usageExamples": "使用示例",
+        "noExamples": "使用示例仅适用于用户 API 密钥",
+        "tabs": {
+          "anthropicSDK": "Anthropic SDK",
+          "openAISDK": "OpenAI SDK",
+          "codex": "Codex",
+          "claudeCode": "Claude Code",
+          "geminiSDK": "Gemini SDK"
+        }
       },
       "bulkDisable": {
         "title": "批量禁用 API Keys",
@@ -96,11 +105,7 @@
         },
         "scopes": {
           "label": "权限范围",
-          "description": "选择此服务账号 API Key 的权限",
-          "selectPlaceholder": "选择权限范围...",
-          "searchPlaceholder": "搜索权限范围...",
-          "selectedCount": "已选择 {{count}} 个权限",
-          "noResults": "未找到权限范围"
+          "description": "选择此服务账号 API Key 的权限"
         },
         "userID": {
           "label": "用户ID",

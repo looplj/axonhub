@@ -43,7 +43,7 @@ jobs:
             Thank you for your understanding! 🙏
 
           # Exempt labels - exclude enhancement issues
-          exempt-issue-labels: 'enhancement,pinned,security,help wanted'
+          exempt-issue-labels: 'enhancement,bug,pinned,security,help wanted'
 
           # Only process issues, not PRs
           days-before-pr-stale: -1

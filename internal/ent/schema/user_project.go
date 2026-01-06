@@ -41,7 +41,9 @@ func (UserProject) Fields() []ent.Field {
 			Immutable(),
 		field.Bool("is_owner").
 			Default(false).
-			Immutable(),
+			Comment(
+				"Indicates whether the user is the owner of the project. This field is mutable to allow transferring ownership between users. Only users with sufficient permissions (e.g., current owner) can modify this field.",
+			),
 		field.Strings("scopes").
 			Comment("User-specific scopes: write_channels, read_channels, add_users, read_users, etc.").
 			Default([]string{}).

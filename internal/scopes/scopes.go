@@ -93,7 +93,7 @@ var scopeConfigs = []Scope{
 	},
 	{
 		Slug:        ScopeWriteChannels,
-		Description: "Manage channels (create, edit, delete)",
+		Description: "Manage channels/models (create, edit, delete)",
 		Levels:      []ScopeLevel{ScopeLevelSystem},
 	},
 	{

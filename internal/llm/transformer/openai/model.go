@@ -47,7 +47,7 @@ type Request struct {
 	TopP *float64 `json:"top_p,omitempty"`
 
 	// PromptCacheKey is used by OpenAI to cache responses.
-	PromptCacheKey *bool `json:"prompt_cache_key,omitzero"`
+	PromptCacheKey *string `json:"prompt_cache_key,omitzero"`
 
 	// SafetyIdentifier identifies users for abuse detection.
 	SafetyIdentifier *string `json:"safety_identifier,omitzero"`

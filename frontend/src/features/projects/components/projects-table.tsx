@@ -13,6 +13,7 @@ import {
 } from '@tanstack/react-table';
 import { useTranslation } from 'react-i18next';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { ServerSidePagination } from '@/components/server-side-pagination';
 import { Project, ProjectConnection } from '../data/schema';
 import { DataTableToolbar } from './data-table-toolbar';
@@ -105,7 +106,7 @@ export function ProjectsTable({
   return (
     <div className='flex flex-1 flex-col overflow-hidden' data-testid='projects-table'>
       <DataTableToolbar table={table} />
-      <div className='shadow-soft relative mt-4 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
+      <div className='shadow-soft relative mt-4 flex-1 overflow-auto overflow-x-hidden rounded-2xl border border-[var(--table-border)]'>
         <Table data-testid='projects-table' className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -126,11 +127,7 @@ export function ProjectsTable({
           </TableHeader>
           <TableBody className='space-y-1 !bg-[var(--table-background)] p-2'>
             {loading ? (
-              <TableRow className='border-0 !bg-[var(--table-background)]'>
-                <TableCell colSpan={columns.length} className='h-24 border-0 !bg-[var(--table-background)] text-center'>
-                  {t('common.loading')}
-                </TableCell>
-              </TableRow>
+              <TableSkeleton rows={pageSize} columns={columns.length} />
             ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow

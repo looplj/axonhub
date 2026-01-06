@@ -46,9 +46,8 @@ export function UsersChangePasswordDialog({ currentRow, open, onOpenChange }: Pr
       form.reset();
       onOpenChange(false);
     } catch (error) {
-      console.error('Failed to change password:', error);
-      toast.error(t('users.messages.passwordChangeError'));
-    }
+          toast.error(t('users.messages.passwordChangeError'));
+        }
   };
 
   return (

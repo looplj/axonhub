@@ -91,3 +91,18 @@ func ExtractMediaTypeFromDataURL(url string) string {
 
 	return parsed.MediaType
 }
+
+// BuildDataURL constructs a data URL from media type and data.
+// If isBase64 is true, adds ";base64" to the URL.
+// If mediaType is empty, uses "text/plain" as default per RFC 2397.
+func BuildDataURL(mediaType string, data string, isBase64 bool) string {
+	if mediaType == "" {
+		mediaType = "text/plain"
+	}
+
+	if isBase64 {
+		return "data:" + mediaType + ";base64," + data
+	}
+
+	return "data:" + mediaType + "," + data
+}

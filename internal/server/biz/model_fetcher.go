@@ -60,9 +60,9 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 
 	if input.APIKey != nil && *input.APIKey != "" {
 		apiKey = *input.APIKey
-	} else if input.ChannelID != nil {
-		// Get API key from channel if not provided
-		// Query channel to get API key
+	}
+
+	if input.ChannelID != nil {
 		ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 		ch, err := f.channelService.entFromContext(ctx).Channel.Get(ctx, *input.ChannelID)
@@ -73,7 +73,10 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 			}, nil
 		}
 
-		apiKey = ch.Credentials.APIKey
+		if apiKey == "" {
+			apiKey = ch.Credentials.APIKey
+		}
+
 		if ch.Settings != nil {
 			proxyConfig = ch.Settings.Proxy
 		}
@@ -103,7 +106,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		Headers: authHeaders,
 	}
 
-	if channelType.IsAnthropic() {
+	if channelType.IsAnthropic() || channelType.IsAnthropicLike() {
 		req.Headers.Set("X-Api-Key", apiKey)
 	} else if channelType.IsGemini() {
 		req.Headers.Set("X-Goog-Api-Key", apiKey)
@@ -118,7 +121,22 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		httpClient = f.httpClient
 	}
 
-	resp, err := httpClient.Do(ctx, req)
+	var (
+		resp *httpclient.Response
+		err  error
+	)
+
+	if channelType.IsAnthropic() || channelType.IsAnthropicLike() {
+		resp, err = httpClient.Do(ctx, req)
+		if err != nil || resp.StatusCode != http.StatusOK {
+			req.Headers.Del("X-Api-Key")
+			req.Headers.Set("Authorization", "Bearer "+apiKey)
+			resp, err = httpClient.Do(ctx, req)
+		}
+	} else {
+		resp, err = httpClient.Do(ctx, req)
+	}
+
 	if err != nil {
 		return &FetchModelsResult{
 			Models: []ModelIdentify{},

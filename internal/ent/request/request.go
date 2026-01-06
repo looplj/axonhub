@@ -36,6 +36,8 @@ const (
 	FieldModelID = "model_id"
 	// FieldFormat holds the string denoting the format field in the database.
 	FieldFormat = "format"
+	// FieldRequestHeaders holds the string denoting the request_headers field in the database.
+	FieldRequestHeaders = "request_headers"
 	// FieldRequestBody holds the string denoting the request_body field in the database.
 	FieldRequestBody = "request_body"
 	// FieldResponseBody holds the string denoting the response_body field in the database.
@@ -133,6 +135,7 @@ var Columns = []string{
 	FieldSource,
 	FieldModelID,
 	FieldFormat,
+	FieldRequestHeaders,
 	FieldRequestBody,
 	FieldResponseBody,
 	FieldResponseChunks,

@@ -26,11 +26,10 @@ export function ModelsBulkEnableDialog() {
       }
 
       await bulkEnableModels.mutateAsync(ids);
-      resetRowSelection();
+      resetRowSelection?.();
       setSelectedModels([]);
       setOpen(null);
     } catch (error) {
-      console.error('Failed to bulk enable models:', error);
     }
   };
 

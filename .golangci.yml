@@ -355,6 +355,7 @@ formatters:
     # Default: []
     paths:
       - ".resolvers.go"
+      - "axonhub.resolvers.go"
   
 
 issues:

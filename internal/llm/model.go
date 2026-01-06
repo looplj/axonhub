@@ -105,7 +105,7 @@ type Request struct {
 	// Used by OpenAI to cache responses for similar requests to optimize your cache
 	// hit rates. Replaces the `user` field.
 	// [Learn more](https://platform.openai.com/docs/guides/prompt-caching).
-	PromptCacheKey *bool `json:"prompt_cache_key,omitzero"`
+	PromptCacheKey *string `json:"prompt_cache_key,omitzero"`
 
 	// A stable identifier used to help detect users of your application that may be
 	// violating OpenAI's usage policies. The IDs should be a string that uniquely
@@ -221,6 +221,9 @@ type Request struct {
 	// APIFormat is the original inbound API format of the request.
 	// e.g. the request from the chat/completions endpoint is in the openai/chat_completion format.
 	APIFormat APIFormat `json:"api_format,omitempty"`
+
+	// TransformOptions specifies the common transform options for the request.
+	TransformOptions TransformOptions `json:"transform_options,omitzero"`
 
 	// TransformerMetadata stores transformer-specific metadata for preserving format during transformations.
 	// This is a help field and will not be sent to the llm service.
@@ -367,13 +370,17 @@ func (c *MessageContent) UnmarshalJSON(data []byte) error {
 // MessageContentPart represents different types of content (text, image, etc.)
 type MessageContentPart struct {
 	// Type is the type of the content part.
-	// e.g. "text", "image_url"
+	// e.g. "text", "image_url", "document", "input_audio"
 	Type string `json:"type"`
 	// Text is the text content, required when type is "text"
 	Text *string `json:"text,omitempty"`
 
 	// ImageURL is the image URL content, required when type is "image_url"
 	ImageURL *ImageURL `json:"image_url,omitempty"`
+
+	// Document is the document content, required when type is "document"
+	// Supports PDF and other document formats
+	Document *DocumentURL `json:"document,omitempty"`
 
 	// Audio is the audio content, required when type is "input_audio"
 	Audio *Audio `json:"audio,omitempty"`
@@ -397,6 +404,16 @@ type ImageURL struct {
 	//
 	// Any of "auto", "low", "high".
 	Detail *string `json:"detail,omitempty"`
+}
+
+// DocumentURL represents a document URL (PDF, Word, etc.)
+type DocumentURL struct {
+	// URL is the URL of the document (data URL or regular URL).
+	URL string `json:"url"`
+
+	// MIMEType is the MIME type of the document.
+	// e.g. "application/pdf", "application/msword"
+	MIMEType string `json:"mime_type,omitempty"`
 }
 
 type Audio struct {

@@ -923,7 +923,6 @@ export const PromptInputSpeechButton = ({ className, textareaRef, onTranscriptio
       };
 
       speechRecognition.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
         setIsListening(false);
       };
 

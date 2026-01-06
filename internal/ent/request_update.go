@@ -40,6 +40,24 @@ func (_u *RequestUpdate) SetUpdatedAt(v time.Time) *RequestUpdate {
 	return _u
 }
 
+// SetRequestHeaders sets the "request_headers" field.
+func (_u *RequestUpdate) SetRequestHeaders(v objects.JSONRawMessage) *RequestUpdate {
+	_u.mutation.SetRequestHeaders(v)
+	return _u
+}
+
+// AppendRequestHeaders appends value to the "request_headers" field.
+func (_u *RequestUpdate) AppendRequestHeaders(v objects.JSONRawMessage) *RequestUpdate {
+	_u.mutation.AppendRequestHeaders(v)
+	return _u
+}
+
+// ClearRequestHeaders clears the value of the "request_headers" field.
+func (_u *RequestUpdate) ClearRequestHeaders() *RequestUpdate {
+	_u.mutation.ClearRequestHeaders()
+	return _u
+}
+
 // SetResponseBody sets the "response_body" field.
 func (_u *RequestUpdate) SetResponseBody(v objects.JSONRawMessage) *RequestUpdate {
 	_u.mutation.SetResponseBody(v)
@@ -348,6 +366,17 @@ func (_u *RequestUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(request.FieldUpdatedAt, field.TypeTime, value)
 	}
+	if value, ok := _u.mutation.RequestHeaders(); ok {
+		_spec.SetField(request.FieldRequestHeaders, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedRequestHeaders(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, request.FieldRequestHeaders, value)
+		})
+	}
+	if _u.mutation.RequestHeadersCleared() {
+		_spec.ClearField(request.FieldRequestHeaders, field.TypeJSON)
+	}
 	if value, ok := _u.mutation.ResponseBody(); ok {
 		_spec.SetField(request.FieldResponseBody, field.TypeJSON, value)
 	}
@@ -541,6 +570,24 @@ type RequestUpdateOne struct {
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *RequestUpdateOne) SetUpdatedAt(v time.Time) *RequestUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
+	return _u
+}
+
+// SetRequestHeaders sets the "request_headers" field.
+func (_u *RequestUpdateOne) SetRequestHeaders(v objects.JSONRawMessage) *RequestUpdateOne {
+	_u.mutation.SetRequestHeaders(v)
+	return _u
+}
+
+// AppendRequestHeaders appends value to the "request_headers" field.
+func (_u *RequestUpdateOne) AppendRequestHeaders(v objects.JSONRawMessage) *RequestUpdateOne {
+	_u.mutation.AppendRequestHeaders(v)
+	return _u
+}
+
+// ClearRequestHeaders clears the value of the "request_headers" field.
+func (_u *RequestUpdateOne) ClearRequestHeaders() *RequestUpdateOne {
+	_u.mutation.ClearRequestHeaders()
 	return _u
 }
 
@@ -881,6 +928,17 @@ func (_u *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err er
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(request.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.RequestHeaders(); ok {
+		_spec.SetField(request.FieldRequestHeaders, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedRequestHeaders(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, request.FieldRequestHeaders, value)
+		})
+	}
+	if _u.mutation.RequestHeadersCleared() {
+		_spec.ClearField(request.FieldRequestHeaders, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.ResponseBody(); ok {
 		_spec.SetField(request.FieldResponseBody, field.TypeJSON, value)

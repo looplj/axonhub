@@ -13,16 +13,14 @@ const getProjectIdFromStorage = (): string | null => {
   try {
     return localStorage.getItem(PROJECT_STORAGE_KEY);
   } catch (error) {
-    console.warn('Failed to read project ID from localStorage:', error);
-    return null;
-  }
+        return null;
+      }
 };
 
 const setProjectIdToStorage = (projectId: string): void => {
   try {
     localStorage.setItem(PROJECT_STORAGE_KEY, projectId);
   } catch (error) {
-    console.warn('Failed to save project ID to localStorage:', error);
   }
 };
 
@@ -30,7 +28,6 @@ const removeProjectIdFromStorage = (): void => {
   try {
     localStorage.removeItem(PROJECT_STORAGE_KEY);
   } catch (error) {
-    console.warn('Failed to remove project ID from localStorage:', error);
   }
 };
 

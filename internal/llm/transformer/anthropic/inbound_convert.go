@@ -25,6 +25,7 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 		RequestType:         llm.RequestTypeChat,
 		APIFormat:           llm.APIFormatAnthropicMessage,
 		TransformerMetadata: map[string]any{},
+		TransformOptions:    llm.TransformOptions{},
 	}
 	if anthropicReq.Metadata != nil {
 		chatReq.Metadata["user_id"] = anthropicReq.Metadata.UserID
@@ -45,7 +46,7 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 			})
 		} else if len(anthropicReq.System.MultiplePrompts) > 0 {
 			// Mark that system was originally in array format
-			chatReq.TransformerMetadata["anthropic_system_array_format"] = "true"
+			chatReq.TransformOptions.ArrayInstructions = lo.ToPtr(true)
 
 			for _, prompt := range anthropicReq.System.MultiplePrompts {
 				msg := llm.Message{

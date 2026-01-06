@@ -271,6 +271,7 @@ type ComplexityRoot struct {
 		OverrideHeaders         func(childComplexity int) int
 		OverrideParameters      func(childComplexity int) int
 		Proxy                   func(childComplexity int) int
+		TransformOptions        func(childComplexity int) int
 	}
 
 	ChannelSuccessRate struct {
@@ -669,6 +670,7 @@ type ComplexityRoot struct {
 		Project                    func(childComplexity int) int
 		ProjectID                  func(childComplexity int) int
 		RequestBody                func(childComplexity int) int
+		RequestHeaders             func(childComplexity int) int
 		ResponseBody               func(childComplexity int) int
 		ResponseChunks             func(childComplexity int) int
 		Source                     func(childComplexity int) int
@@ -707,6 +709,7 @@ type ComplexityRoot struct {
 		ProjectID                  func(childComplexity int) int
 		Request                    func(childComplexity int) int
 		RequestBody                func(childComplexity int) int
+		RequestHeaders             func(childComplexity int) int
 		RequestID                  func(childComplexity int) int
 		ResponseBody               func(childComplexity int) int
 		ResponseChunks             func(childComplexity int) int
@@ -996,6 +999,11 @@ type ComplexityRoot struct {
 	TraceEdge struct {
 		Cursor func(childComplexity int) int
 		Node   func(childComplexity int) int
+	}
+
+	TransformOptions struct {
+		ForceArrayInputs       func(childComplexity int) int
+		ForceArrayInstructions func(childComplexity int) int
 	}
 
 	UnassociatedChannel struct {
@@ -2171,6 +2179,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSettings.Proxy(childComplexity), true
+	case "ChannelSettings.transformOptions":
+		if e.complexity.ChannelSettings.TransformOptions == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.TransformOptions(childComplexity), true
 
 	case "ChannelSuccessRate.channelId":
 		if e.complexity.ChannelSuccessRate.ChannelID == nil {
@@ -4263,6 +4277,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Request.RequestBody(childComplexity), true
+	case "Request.requestHeaders":
+		if e.complexity.Request.RequestHeaders == nil {
+			break
+		}
+
+		return e.complexity.Request.RequestHeaders(childComplexity), true
 	case "Request.responseBody":
 		if e.complexity.Request.ResponseBody == nil {
 			break
@@ -4445,6 +4465,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RequestExecution.RequestBody(childComplexity), true
+	case "RequestExecution.requestHeaders":
+		if e.complexity.RequestExecution.RequestHeaders == nil {
+			break
+		}
+
+		return e.complexity.RequestExecution.RequestHeaders(childComplexity), true
 	case "RequestExecution.requestID":
 		if e.complexity.RequestExecution.RequestID == nil {
 			break
@@ -5481,6 +5507,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.TraceEdge.Node(childComplexity), true
 
+	case "TransformOptions.forceArrayInputs":
+		if e.complexity.TransformOptions.ForceArrayInputs == nil {
+			break
+		}
+
+		return e.complexity.TransformOptions.ForceArrayInputs(childComplexity), true
+	case "TransformOptions.forceArrayInstructions":
+		if e.complexity.TransformOptions.ForceArrayInstructions == nil {
+			break
+		}
+
+		return e.complexity.TransformOptions.ForceArrayInstructions(childComplexity), true
+
 	case "UnassociatedChannel.channel":
 		if e.complexity.UnassociatedChannel.Channel == nil {
 			break
@@ -6132,6 +6171,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputThreadWhereInput,
 		ec.unmarshalInputTraceOrder,
 		ec.unmarshalInputTraceWhereInput,
+		ec.unmarshalInputTransformOptionsInput,
 		ec.unmarshalInputUpdateAPIKeyInput,
 		ec.unmarshalInputUpdateAPIKeyProfilesInput,
 		ec.unmarshalInputUpdateAPIKeyScopesInput,
@@ -10314,6 +10354,8 @@ func (ec *executionContext) fieldContext_Channel_settings(_ context.Context, fie
 				return ec.fieldContext_ChannelSettings_overrideHeaders(ctx, field)
 			case "proxy":
 				return ec.fieldContext_ChannelSettings_proxy(ctx, field)
+			case "transformOptions":
+				return ec.fieldContext_ChannelSettings_transformOptions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelSettings", field.Name)
 		},
@@ -12731,6 +12773,41 @@ func (ec *executionContext) fieldContext_ChannelSettings_proxy(_ context.Context
 				return ec.fieldContext_ProxyConfig_password(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProxyConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSettings_transformOptions(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelSettings_transformOptions,
+		func(ctx context.Context) (any, error) {
+			return obj.TransformOptions, nil
+		},
+		nil,
+		ec.marshalOTransformOptions2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐTransformOptions,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_transformOptions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "forceArrayInstructions":
+				return ec.fieldContext_TransformOptions_forceArrayInstructions(ctx, field)
+			case "forceArrayInputs":
+				return ec.fieldContext_TransformOptions_forceArrayInputs(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TransformOptions", field.Name)
 		},
 	}
 	return fc, nil
@@ -23224,6 +23301,35 @@ func (ec *executionContext) fieldContext_Request_format(_ context.Context, field
 	return fc, nil
 }
 
+func (ec *executionContext) _Request_requestHeaders(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Request_requestHeaders,
+		func(ctx context.Context) (any, error) {
+			return obj.RequestHeaders, nil
+		},
+		nil,
+		ec.marshalOJSONRawMessage2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Request_requestHeaders(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Request",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type JSONRawMessage does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Request_requestBody(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -24039,6 +24145,8 @@ func (ec *executionContext) fieldContext_RequestEdge_node(_ context.Context, fie
 				return ec.fieldContext_Request_modelID(ctx, field)
 			case "format":
 				return ec.fieldContext_Request_format(ctx, field)
+			case "requestHeaders":
+				return ec.fieldContext_Request_requestHeaders(ctx, field)
 			case "requestBody":
 				return ec.fieldContext_Request_requestBody(ctx, field)
 			case "responseBody":
@@ -24600,6 +24708,35 @@ func (ec *executionContext) fieldContext_RequestExecution_metricsFirstTokenLaten
 	return fc, nil
 }
 
+func (ec *executionContext) _RequestExecution_requestHeaders(ctx context.Context, field graphql.CollectedField, obj *ent.RequestExecution) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RequestExecution_requestHeaders,
+		func(ctx context.Context) (any, error) {
+			return obj.RequestHeaders, nil
+		},
+		nil,
+		ec.marshalOJSONRawMessage2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RequestExecution_requestHeaders(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestExecution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type JSONRawMessage does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RequestExecution_request(ctx context.Context, field graphql.CollectedField, obj *ent.RequestExecution) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -24644,6 +24781,8 @@ func (ec *executionContext) fieldContext_RequestExecution_request(_ context.Cont
 				return ec.fieldContext_Request_modelID(ctx, field)
 			case "format":
 				return ec.fieldContext_Request_format(ctx, field)
+			case "requestHeaders":
+				return ec.fieldContext_Request_requestHeaders(ctx, field)
 			case "requestBody":
 				return ec.fieldContext_Request_requestBody(ctx, field)
 			case "responseBody":
@@ -24974,6 +25113,8 @@ func (ec *executionContext) fieldContext_RequestExecutionEdge_node(_ context.Con
 				return ec.fieldContext_RequestExecution_metricsLatencyMs(ctx, field)
 			case "metricsFirstTokenLatencyMs":
 				return ec.fieldContext_RequestExecution_metricsFirstTokenLatencyMs(ctx, field)
+			case "requestHeaders":
+				return ec.fieldContext_RequestExecution_requestHeaders(ctx, field)
 			case "request":
 				return ec.fieldContext_RequestExecution_request(ctx, field)
 			case "channel":
@@ -29977,6 +30118,64 @@ func (ec *executionContext) fieldContext_TraceEdge_cursor(_ context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _TransformOptions_forceArrayInstructions(ctx context.Context, field graphql.CollectedField, obj *objects.TransformOptions) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TransformOptions_forceArrayInstructions,
+		func(ctx context.Context) (any, error) {
+			return obj.ForceArrayInstructions, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TransformOptions_forceArrayInstructions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TransformOptions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TransformOptions_forceArrayInputs(ctx context.Context, field graphql.CollectedField, obj *objects.TransformOptions) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TransformOptions_forceArrayInputs,
+		func(ctx context.Context) (any, error) {
+			return obj.ForceArrayInputs, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TransformOptions_forceArrayInputs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TransformOptions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _UnassociatedChannel_channel(ctx context.Context, field graphql.CollectedField, obj *biz.UnassociatedChannel) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -30676,6 +30875,8 @@ func (ec *executionContext) fieldContext_UsageLog_request(_ context.Context, fie
 				return ec.fieldContext_Request_modelID(ctx, field)
 			case "format":
 				return ec.fieldContext_Request_format(ctx, field)
+			case "requestHeaders":
+				return ec.fieldContext_Request_requestHeaders(ctx, field)
 			case "requestBody":
 				return ec.fieldContext_Request_requestBody(ctx, field)
 			case "responseBody":
@@ -38018,7 +38219,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "overrideParameters", "overrideHeaders", "proxy"}
+	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "overrideParameters", "overrideHeaders", "proxy", "transformOptions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -38074,6 +38275,13 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.Proxy = data
+		case "transformOptions":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("transformOptions"))
+			data, err := ec.unmarshalOTransformOptionsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐTransformOptions(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TransformOptions = data
 		}
 	}
 
@@ -39647,7 +39855,7 @@ func (ec *executionContext) unmarshalInputCreateRequestInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"source", "modelID", "format", "requestBody", "responseBody", "responseChunks", "externalID", "status", "stream", "metricsLatencyMs", "metricsFirstTokenLatencyMs", "apiKeyID", "projectID", "traceID", "dataStorageID", "channelID"}
+	fieldsInOrder := [...]string{"source", "modelID", "format", "requestHeaders", "requestBody", "responseBody", "responseChunks", "externalID", "status", "stream", "metricsLatencyMs", "metricsFirstTokenLatencyMs", "apiKeyID", "projectID", "traceID", "dataStorageID", "channelID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -39675,6 +39883,13 @@ func (ec *executionContext) unmarshalInputCreateRequestInput(ctx context.Context
 				return it, err
 			}
 			it.Format = data
+		case "requestHeaders":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestHeaders"))
+			data, err := ec.unmarshalOJSONRawMessageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RequestHeaders = data
 		case "requestBody":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBody"))
 			data, err := ec.unmarshalNJSONRawMessageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx, v)
@@ -47863,6 +48078,40 @@ func (ec *executionContext) unmarshalInputTraceWhereInput(ctx context.Context, o
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputTransformOptionsInput(ctx context.Context, obj any) (objects.TransformOptions, error) {
+	var it objects.TransformOptions
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"forceArrayInstructions", "forceArrayInputs"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "forceArrayInstructions":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("forceArrayInstructions"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ForceArrayInstructions = data
+		case "forceArrayInputs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("forceArrayInputs"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ForceArrayInputs = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateAPIKeyInput(ctx context.Context, obj any) (ent.UpdateAPIKeyInput, error) {
 	var it ent.UpdateAPIKeyInput
 	asMap := map[string]any{}
@@ -48573,13 +48822,34 @@ func (ec *executionContext) unmarshalInputUpdateRequestInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"responseBody", "appendResponseBody", "clearResponseBody", "responseChunks", "appendResponseChunks", "clearResponseChunks", "externalID", "clearExternalID", "status", "metricsLatencyMs", "clearMetricsLatencyMs", "metricsFirstTokenLatencyMs", "clearMetricsFirstTokenLatencyMs", "channelID", "clearChannel"}
+	fieldsInOrder := [...]string{"requestHeaders", "appendRequestHeaders", "clearRequestHeaders", "responseBody", "appendResponseBody", "clearResponseBody", "responseChunks", "appendResponseChunks", "clearResponseChunks", "externalID", "clearExternalID", "status", "metricsLatencyMs", "clearMetricsLatencyMs", "metricsFirstTokenLatencyMs", "clearMetricsFirstTokenLatencyMs", "channelID", "clearChannel"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "requestHeaders":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestHeaders"))
+			data, err := ec.unmarshalOJSONRawMessageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RequestHeaders = data
+		case "appendRequestHeaders":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("appendRequestHeaders"))
+			data, err := ec.unmarshalOJSONRawMessageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AppendRequestHeaders = data
+		case "clearRequestHeaders":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearRequestHeaders"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClearRequestHeaders = data
 		case "responseBody":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBody"))
 			data, err := ec.unmarshalOJSONRawMessageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx, v)
@@ -54254,6 +54524,8 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelSettings_overrideHeaders(ctx, field, obj)
 		case "proxy":
 			out.Values[i] = ec._ChannelSettings_proxy(ctx, field, obj)
+		case "transformOptions":
+			out.Values[i] = ec._ChannelSettings_transformOptions(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -58348,6 +58620,8 @@ func (ec *executionContext) _Request(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "requestHeaders":
+			out.Values[i] = ec._Request_requestHeaders(ctx, field, obj)
 		case "requestBody":
 			field := field
 
@@ -59138,6 +59412,8 @@ func (ec *executionContext) _RequestExecution(ctx context.Context, sel ast.Selec
 			out.Values[i] = ec._RequestExecution_metricsLatencyMs(ctx, field, obj)
 		case "metricsFirstTokenLatencyMs":
 			out.Values[i] = ec._RequestExecution_metricsFirstTokenLatencyMs(ctx, field, obj)
+		case "requestHeaders":
+			out.Values[i] = ec._RequestExecution_requestHeaders(ctx, field, obj)
 		case "request":
 			field := field
 
@@ -62006,6 +62282,50 @@ func (ec *executionContext) _TraceEdge(ctx context.Context, sel ast.SelectionSet
 			out.Values[i] = ec._TraceEdge_node(ctx, field, obj)
 		case "cursor":
 			out.Values[i] = ec._TraceEdge_cursor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var transformOptionsImplementors = []string{"TransformOptions"}
+
+func (ec *executionContext) _TransformOptions(ctx context.Context, sel ast.SelectionSet, obj *objects.TransformOptions) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, transformOptionsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TransformOptions")
+		case "forceArrayInstructions":
+			out.Values[i] = ec._TransformOptions_forceArrayInstructions(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "forceArrayInputs":
+			out.Values[i] = ec._TransformOptions_forceArrayInputs(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -70385,6 +70705,15 @@ func (ec *executionContext) unmarshalOTraceWhereInput2ᚖgithubᚗcomᚋlooplj�
 	}
 	res, err := ec.unmarshalInputTraceWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOTransformOptions2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐTransformOptions(ctx context.Context, sel ast.SelectionSet, v objects.TransformOptions) graphql.Marshaler {
+	return ec._TransformOptions(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalOTransformOptionsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐTransformOptions(ctx context.Context, v any) (objects.TransformOptions, error) {
+	res, err := ec.unmarshalInputTransformOptionsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOUsageLog2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐUsageLog(ctx context.Context, sel ast.SelectionSet, v *ent.UsageLog) graphql.Marshaler {

@@ -21,6 +21,7 @@ import { useModels } from '../context/models-context';
 import { useQueryModelChannelConnections, ModelAssociationInput, ModelChannelConnection } from '../data/models';
 import { useUpdateModel } from '../data/models';
 import { ModelAssociation } from '../data/schema';
+import { toast } from 'sonner';
 
 const associationFormSchema = z.object({
   associations: z
@@ -266,7 +267,7 @@ export function ModelsAssociationDialog() {
           setConnections([]);
         }
       } catch (error) {
-        console.error('Failed to query connections:', error);
+        toast.error(t('common.errors.loadFailed'));
         setConnections([]);
       }
     };
@@ -557,19 +558,17 @@ export function ModelsAssociationDialog() {
                   {filteredConnections.map((conn) => (
                     <div key={conn.channel.id} className='rounded-lg border p-3'>
                       <div className='mb-2 flex items-start justify-between gap-2'>
-                        <div className='flex flex-col gap-1.5'>
+                        <div className='flex items-center gap-1.5 flex-wrap'>
                           <span className='text-sm font-medium'>{conn.channel.name}</span>
-                          <div className='flex items-center gap-1.5'>
-                            <Badge variant='outline' className={`h-5 px-1.5 text-[10px] font-normal ${getTypeColor(conn.channel.type)}`}>
-                              {t(`channels.types.${conn.channel.type}`, conn.channel.type)}
-                            </Badge>
-                            <Badge
-                              variant='outline'
-                              className={`h-5 px-1.5 text-[10px] font-normal ${getStatusColor(conn.channel.status)}`}
-                            >
-                              {t(`channels.status.${conn.channel.status}`)}
-                            </Badge>
-                          </div>
+                          <Badge variant='outline' className={`h-5 px-1.5 text-[10px] font-normal ${getTypeColor(conn.channel.type)}`}>
+                            {t(`channels.types.${conn.channel.type}`, conn.channel.type)}
+                          </Badge>
+                          <Badge
+                            variant='outline'
+                            className={`h-5 px-1.5 text-[10px] font-normal ${getStatusColor(conn.channel.status)}`}
+                          >
+                            {t(`channels.status.${conn.channel.status}`)}
+                          </Badge>
                         </div>
                       </div>
                       <div className='space-y-1'>
@@ -674,6 +673,11 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
     }));
   }, [channelId, channelOptions, allModelOptions, showModel, type]);
 
+  // Filter models based on search
+  const filteredModelOptions = useMemo(() => {
+    return modelOptions.filter((option) => option.label.toLowerCase().includes(modelSearch.toLowerCase()));
+  }, [modelOptions, modelSearch]);
+
   return (
     <div className='flex flex-col gap-2 rounded-lg border p-3'>
       <div
@@ -772,10 +776,10 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
                     }}
                     searchValue={modelSearch}
                     onSearchValueChange={setModelSearch}
-                    items={modelOptions}
+                    items={filteredModelOptions}
                     placeholder={t('models.dialogs.association.selectModel')}
                     emptyMessage={
-                      modelOptions.length === 0 && channelId
+                      filteredModelOptions.length === 0 && channelId
                         ? t('models.dialogs.association.noChannelModelsAvailable')
                         : t('models.dialogs.association.selectChannelFirst')
                     }
@@ -833,10 +837,10 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
                       }}
                       searchValue={modelSearch}
                       onSearchValueChange={setModelSearch}
-                      items={modelOptions}
+                      items={filteredModelOptions}
                       placeholder={t('models.dialogs.association.selectModel')}
                       emptyMessage={
-                        modelOptions.length === 0 && channelId
+                        filteredModelOptions.length === 0 && channelId
                           ? t('models.dialogs.association.noChannelModelsAvailable')
                           : t('models.dialogs.association.selectChannelFirst')
                       }

@@ -152,7 +152,7 @@ Learn more about how tracing works and how to integrate it in the [Tracing Guide
 | Format                      | Status     | Compatibility       | Modalities      |
 | --------------------------- | ---------- | ------------------- | --------------- |
 | **OpenAI Chat Completions** | ✅ Done    | Fully compatible    | Text, Image     |
-| **OpenAI Responses**        | ⚠️ Partial | No `previous_response_id` | Text        |
+| **OpenAI Responses**        | ⚠️ Partial | No `previous_response_id` | Text, Image     |
 | **Anthropic Messages**      | ✅ Done    | Fully supported     | Text            |
 | **Gemini**                  | ✅ Done    | Fully supported     | Text, Image     |
 | **AI SDK**                  | ⚠️ Partial | Partially supported | Text            |
@@ -382,7 +382,9 @@ For detailed information on API key profiles, including configuration examples, 
 
 ### 5. Claude Code/Codex Integration
 
-See the dedicated [Claude Code & Codex Integration Guide](docs/en/guides/claude-code-integration.md) for detailed setup steps, troubleshooting, and tips on combining these tools with AxonHub model profiles.
+See the dedicated guides for detailed setup steps, troubleshooting, and tips on combining these tools with AxonHub model profiles:
+- [Claude Code Integration Guide](docs/en/guides/claude-code-integration.md)
+- [Codex Integration Guide](docs/en/guides/codex-integration.md)
 
 ---
 

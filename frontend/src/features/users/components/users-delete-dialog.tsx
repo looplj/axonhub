@@ -32,8 +32,7 @@ export function UsersDeleteDialog({ open, onOpenChange, currentRow }: Props) {
       toast.success(t('common.success.userDeleted'));
       onOpenChange(false);
     } catch (error) {
-      console.error('Failed to delete user:', error);
-      toast.error(t('common.errors.userDeleteFailed'));
+      toast.error(t('common.errors.somethingWentWrong'));
     }
   };
 

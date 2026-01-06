@@ -4,6 +4,7 @@ import { IconPlus, IconSettings, IconAlertCircle } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
@@ -18,6 +19,7 @@ import { useQueryModels } from './data/models';
 
 function ModelsContent() {
   const { t } = useTranslation();
+  const { modelPermissions } = usePermissions();
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
     defaultPageSize: 20,
     pageSizeStorageKey: 'models-table-page-size',
@@ -66,7 +68,7 @@ function ModelsContent() {
     }
   })();
 
-  const { data } = useQueryModels({
+  const { data, isLoading } = useQueryModels({
     ...paginationArgs,
     where: whereClause,
     orderBy: currentOrderBy,
@@ -99,13 +101,14 @@ function ModelsContent() {
     [resetCursor, setNameFilter]
   );
 
-  const columns = useMemo(() => createColumns(t), [t]);
+  const columns = useMemo(() => createColumns(t, modelPermissions.canWrite), [t, modelPermissions.canWrite]);
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
       <ModelsTable
         data={data?.edges?.map((edge) => edge.node) || []}
         columns={columns}
+        loading={isLoading}
         pageInfo={data?.pageInfo}
         pageSize={pageSize}
         totalCount={data?.totalCount}
@@ -116,6 +119,7 @@ function ModelsContent() {
         onPreviousPage={handlePreviousPage}
         onPageSizeChange={handlePageSizeChange}
         onNameFilterChange={handleNameFilterChange}
+        canWrite={modelPermissions.canWrite}
       />
     </div>
   );

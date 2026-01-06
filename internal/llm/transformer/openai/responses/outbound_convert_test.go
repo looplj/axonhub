@@ -314,16 +314,14 @@ func TestConvertToLLMRequest_TransformerMetadata(t *testing.T) {
 			},
 		},
 		{
-			name: "converts PromptCacheKey to TransformerMetadata",
+			name: "converts PromptCacheKey to PromptCacheKey field",
 			req: &Request{
 				Model:          "gpt-4o",
 				PromptCacheKey: lo.ToPtr("cache-key-123"),
 			},
 			validate: func(t *testing.T, chatReq *llm.Request) {
-				require.NotNil(t, chatReq.TransformerMetadata)
-				v, ok := chatReq.TransformerMetadata["prompt_cache_key"]
-				require.True(t, ok)
-				require.Equal(t, "cache-key-123", *v.(*string))
+				require.NotNil(t, chatReq.PromptCacheKey)
+				require.Equal(t, "cache-key-123", *chatReq.PromptCacheKey)
 			},
 		},
 		{

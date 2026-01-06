@@ -14,51 +14,52 @@ This architecture provides:
 - Auto failover and load balancing across channels
 - Real-time tracing and per-project usage logs
 - Support for multiple API formats (OpenAI, Anthropic, Gemini, and custom variants)
+- Model access control via API key profiles
+- Channel selection with tag-based filtering
+- Native tool support for Anthropic and Google APIs
 
 ## File Structure
 
 ### Core Components
 
 - **`orchestrator.go`** - Main orchestrator implementation that coordinates the entire request pipeline
-- **`inbound.go`** - Handles inbound request processing and transformation
-- **`outbound.go`** - Manages outbound request processing and provider communication
-- **`transformer.go`** - Request/response transformation utilities
+- **`inbound.go`** - Handles inbound request processing and persistent stream wrapping
+- **`outbound.go`** - Manages outbound request processing and persistent stream wrapping
+- **`transformer.go`** - Persistent transformer factory with state management
+- **`request.go`** - Request persistence middleware
+- **`request_execution.go`** - Request execution coordination
+- **`retry.go`** - Retry logic and error handling utilities
+- **`state.go`** - Orchestrator state management (PersistenceState)
+- **`performance.go`** - Performance monitoring and metrics
+- **`tester.go`** - Testing utilities
 
 ### Load Balancing
 
-- **`load_balancer.go`** - Core load balancing logic and `LoadBalancer` struct
+- **`load_balancer.go`** - Core load balancing logic and `LoadBalancer` struct with partial sorting
 - **`load_balancer_debug.go`** - Debug utilities for load balancing decisions
-- **`lb_strategy_*.go`** - Load balancing strategy implementations:
-  - `lb_strategy_rr.go` - Round-robin and weighted round-robin strategies
-  - `lb_strategy_bp.go` - Error-aware/best practices strategy
-  - `lb_strategy_composite.go` - Composite strategy combining multiple approaches
-  - `lb_strategy_trace.go` - Tracing strategy for debugging
-  - `lb_strategy_weight.go` - Weight-based strategy
+- **`lb_strategy_rr.go`** - Round-robin strategy with inactivity decay and request count capping
+- **`lb_strategy_bp.go`** - Error-aware strategy that penalizes channels with recent failures
+- **`lb_strategy_composite.go`** - Composite strategy combining multiple approaches with weights
+- **`lb_strategy_trace.go`** - Trace-aware strategy for prioritizing last successful channel
+- **`lb_strategy_weight.go`** - Weight-based strategy using channel ordering weight
 
 ### Candidate Selection
 
-- **`candidates.go`** - Main candidate selection logic for channels/models
-- **`candidates_anthropic.go`** - Anthropic-specific candidate logic
-- **`candidates_google.go`** - Google/Gemini-specific candidate logic
-- **`select_candidates.go`** - Candidate selection algorithms
+- **`candidates.go`** - Main candidate selection logic for channels/models with association cache
+- **`candidates_anthropic.go`** - Anthropic-specific candidate logic (native tools support)
+- **`candidates_google.go`** - Google/Gemini-specific candidate logic (native tools support)
+- **`select_candidates.go`** - Candidate selection middleware with API key profile filtering
 
-### State Management
+### Connection Tracking
 
-- **`state.go`** - Orchestrator state management
-- **`connection_tracker.go`** - Connection tracking utilities
+- **`connection_tracker.go`** - Connection tracking utilities (DefaultConnectionTracker)
 - **`connection_tracking.go`** - Connection state management
 
-### Request Processing
-
-- **`request.go`** - Request handling and validation
-- **`request_execution.go`** - Request execution coordination
-- **`retry.go`** - Retry logic and policies
-
-### Utilities
+### Model Management
 
 - **`model_mapper.go`** - Model mapping and compatibility
-- **`performance.go`** - Performance monitoring and metrics
-- **`tester.go`** - Testing utilities
+- **`model_access.go`** - Model access control middleware for API key profiles
+- **`transform_options.go`** - Transform options application (ForceArrayInstructions, ForceArrayInputs)
 
 ### Documentation
 
@@ -69,17 +70,48 @@ This architecture provides:
 
 The orchestrator supports multiple load balancing strategies that can be combined:
 
-1. **Round Robin** - Distributes requests evenly across channels
-2. **Weighted Round Robin** - Proportional distribution based on channel weights
-3. **Error Aware** - Penalizes channels with recent failures
-4. **Composite** - Combines multiple strategies with configurable weights
-5. **Trace** - Debug strategy for logging detailed decisions
+1. **Trace Aware** - Prioritizes the last successful channel from trace context (highest priority)
+2. **Error Aware** - Penalizes channels with recent failures, consecutive errors, and low success rates
+3. **Round Robin** - Distributes requests evenly across channels using historical request count with inactivity decay
+4. **Connection Aware** - Considers active connection count per channel
+5. **Weight** - Uses channel ordering weight for prioritization
+
+The load balancer uses partial sorting for efficient top-k candidate selection based on retry policy configuration.
 
 ## Key Interfaces
 
-- **`LoadBalanceStrategy`** - Interface for load balancing strategies
-- **`ChannelMetricsProvider`** - Provides channel performance metrics
+- **`LoadBalanceStrategy`** - Interface for load balancing strategies with `Score()` and `ScoreWithDebug()` methods
+- **`ChannelMetricsProvider`** - Provides channel performance metrics (AggregatedMetrics)
 - **`RetryPolicyProvider`** - Supplies retry policy configuration
+- **`ChannelTraceProvider`** - Provides trace-related channel information
+- **`CandidateSelector`** - Interface for selecting channel model candidates
+- **`ConnectionTracker`** - Interface for tracking active connections per channel
+
+## Pipeline Architecture
+
+The orchestrator uses a pipeline-based architecture with middleware support:
+
+1. **Inbound Pipeline**:
+   - API key authentication
+   - Model access control
+   - Candidate selection (with API key profile filtering)
+   - Request persistence
+
+2. **Outbound Pipeline**:
+   - Channel selection
+   - Transform options application
+   - Provider communication
+   - Response transformation
+   - Usage logging
+
+## State Management
+
+The `PersistenceState` struct maintains shared state across the request pipeline:
+- API key and user information
+- Request and execution tracking
+- Channel model candidates
+- Performance metrics
+- Load balancer and retry policy references
 
 ## Testing
 
@@ -87,7 +119,8 @@ Comprehensive test coverage includes:
 - Unit tests for individual components
 - Integration tests for end-to-end flows
 - Load balancing strategy tests
-- Candidate selection tests
+- Candidate selection tests (including cache, tags, decorator tests)
 - Performance and stress tests
+- Connection tracking tests
 
 Run tests with: `go test ./internal/server/orchestrator/...`

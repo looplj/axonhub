@@ -148,6 +148,12 @@ func (_c *RequestCreate) SetNillableFormat(v *string) *RequestCreate {
 	return _c
 }
 
+// SetRequestHeaders sets the "request_headers" field.
+func (_c *RequestCreate) SetRequestHeaders(v objects.JSONRawMessage) *RequestCreate {
+	_c.mutation.SetRequestHeaders(v)
+	return _c
+}
+
 // SetRequestBody sets the "request_body" field.
 func (_c *RequestCreate) SetRequestBody(v objects.JSONRawMessage) *RequestCreate {
 	_c.mutation.SetRequestBody(v)
@@ -456,6 +462,10 @@ func (_c *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 		_spec.SetField(request.FieldFormat, field.TypeString, value)
 		_node.Format = value
 	}
+	if value, ok := _c.mutation.RequestHeaders(); ok {
+		_spec.SetField(request.FieldRequestHeaders, field.TypeJSON, value)
+		_node.RequestHeaders = value
+	}
 	if value, ok := _c.mutation.RequestBody(); ok {
 		_spec.SetField(request.FieldRequestBody, field.TypeJSON, value)
 		_node.RequestBody = value
@@ -666,6 +676,24 @@ func (u *RequestUpsert) SetUpdatedAt(v time.Time) *RequestUpsert {
 // UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
 func (u *RequestUpsert) UpdateUpdatedAt() *RequestUpsert {
 	u.SetExcluded(request.FieldUpdatedAt)
+	return u
+}
+
+// SetRequestHeaders sets the "request_headers" field.
+func (u *RequestUpsert) SetRequestHeaders(v objects.JSONRawMessage) *RequestUpsert {
+	u.Set(request.FieldRequestHeaders, v)
+	return u
+}
+
+// UpdateRequestHeaders sets the "request_headers" field to the value that was provided on create.
+func (u *RequestUpsert) UpdateRequestHeaders() *RequestUpsert {
+	u.SetExcluded(request.FieldRequestHeaders)
+	return u
+}
+
+// ClearRequestHeaders clears the value of the "request_headers" field.
+func (u *RequestUpsert) ClearRequestHeaders() *RequestUpsert {
+	u.SetNull(request.FieldRequestHeaders)
 	return u
 }
 
@@ -884,6 +912,27 @@ func (u *RequestUpsertOne) SetUpdatedAt(v time.Time) *RequestUpsertOne {
 func (u *RequestUpsertOne) UpdateUpdatedAt() *RequestUpsertOne {
 	return u.Update(func(s *RequestUpsert) {
 		s.UpdateUpdatedAt()
+	})
+}
+
+// SetRequestHeaders sets the "request_headers" field.
+func (u *RequestUpsertOne) SetRequestHeaders(v objects.JSONRawMessage) *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetRequestHeaders(v)
+	})
+}
+
+// UpdateRequestHeaders sets the "request_headers" field to the value that was provided on create.
+func (u *RequestUpsertOne) UpdateRequestHeaders() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateRequestHeaders()
+	})
+}
+
+// ClearRequestHeaders clears the value of the "request_headers" field.
+func (u *RequestUpsertOne) ClearRequestHeaders() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.ClearRequestHeaders()
 	})
 }
 
@@ -1290,6 +1339,27 @@ func (u *RequestUpsertBulk) SetUpdatedAt(v time.Time) *RequestUpsertBulk {
 func (u *RequestUpsertBulk) UpdateUpdatedAt() *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
 		s.UpdateUpdatedAt()
+	})
+}
+
+// SetRequestHeaders sets the "request_headers" field.
+func (u *RequestUpsertBulk) SetRequestHeaders(v objects.JSONRawMessage) *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetRequestHeaders(v)
+	})
+}
+
+// UpdateRequestHeaders sets the "request_headers" field to the value that was provided on create.
+func (u *RequestUpsertBulk) UpdateRequestHeaders() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateRequestHeaders()
+	})
+}
+
+// ClearRequestHeaders clears the value of the "request_headers" field.
+func (u *RequestUpsertBulk) ClearRequestHeaders() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.ClearRequestHeaders()
 	})
 }
 

@@ -33,7 +33,6 @@ export function ModelsStatusDialog({ open, onOpenChange, currentRow }: ModelsSta
       });
       onOpenChange(false);
     } catch (error) {
-      console.error('Failed to update model status:', error);
     }
   };
 

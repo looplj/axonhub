@@ -11,20 +11,11 @@ export function getUserScopes(user: AuthUser | null, projectId?: string | null):
   // 添加用户直接拥有的全局权限
   user.scopes.forEach((scope) => scopes.add(scope));
 
-  // 添加全局角色的权限
-  user.roles.forEach((role) => {
-    // 注意：这里假设角色对象可能包含 scopes 字段
-    // 如果角色对象结构不同，需要调整
-  });
-
   // 如果指定了项目ID，添加项目级别的权限
   if (projectId) {
     const project = user.projects.find((p) => p.projectID === projectId);
     if (project) {
       project.scopes.forEach((scope) => scopes.add(scope));
-      project.roles.forEach((role) => {
-        // 项目角色的权限需要从角色定义中获取
-      });
     }
   }
 

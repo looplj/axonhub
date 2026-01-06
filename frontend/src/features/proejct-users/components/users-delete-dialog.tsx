@@ -33,8 +33,7 @@ export function UsersDeleteDialog({ open, onOpenChange, currentRow }: Props) {
       onOpenChange(false);
       setConfirmText('');
     } catch (error) {
-      console.error('Failed to remove user from project:', error);
-      toast.error(t('users.messages.removeFromProjectError'));
+      toast.error(t('common.errors.somethingWentWrong'));
     }
   };
 

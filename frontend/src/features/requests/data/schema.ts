@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { pageInfoSchema } from '@/gql/pagination';
 import { apiKeySchema } from '@/features/apikeys/data/schema';
 import { channelSchema } from '@/features/channels/data';
+import { usageLogSchema } from '@/features/usage-logs/data/schema';
 
 // Request Status
 export const requestStatusSchema = z.enum(['pending', 'processing', 'completed', 'failed', 'canceled']);
@@ -25,6 +26,7 @@ export const requestExecutionSchema = z.object({
   // channelID: z.number(),
   channel: channelSchema.partial().nullable().optional(),
   modelID: z.string(),
+  requestHeaders: z.any().nullable().optional(),
   requestBody: z.any(), // JSONRawMessage
   responseBody: z.any().nullable(), // JSONRawMessage
   responseChunks: z.array(z.any()).nullable(), // [JSONRawMessage!]
@@ -46,6 +48,7 @@ export const requestSchema = z.object({
   channel: channelSchema.partial().nullable().optional(),
   source: requestSourceSchema,
   modelID: z.string(),
+  requestHeaders: z.any().nullable().optional(),
   requestBody: z.any().nullable().optional(), // JSONRawMessage
   responseBody: z.any().nullable().optional(), // JSONRawMessage
   responseChunks: z.array(z.any()).nullable().optional(), // [JSONRawMessage!]
@@ -65,6 +68,17 @@ export const requestSchema = z.object({
       totalCount: z.number(),
     })
     .optional(),
+  usageLogs: z
+    .object({
+      edges: z.array(
+        z.object({
+          node: usageLogSchema.partial().nullable().optional(),
+          cursor: z.string().optional(),
+        })
+      ).optional(),
+      pageInfo: pageInfoSchema.optional(),
+    })
+    .optional().nullable(),
 });
 
 export type Request = z.infer<typeof requestSchema>;

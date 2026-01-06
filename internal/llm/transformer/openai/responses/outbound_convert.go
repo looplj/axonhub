@@ -79,12 +79,12 @@ func convertInstructionsFromMessages(msgs []llm.Message) string {
 // User messages become items with content array containing input_text items.
 // Assistant messages become items with type "message" and content array containing output_text items.
 // Tool calls become function_call items, tool results become function_call_output items.
-func convertInputFromMessages(msgs []llm.Message, metadata map[string]any) Input {
+func convertInputFromMessages(msgs []llm.Message, transformOptions llm.TransformOptions) Input {
 	if len(msgs) == 0 {
 		return Input{}
 	}
 
-	wasArrayFormat := lo.FromPtr(xmap.GetStringPtr(metadata, "openai_responses_input_array_format")) == "true"
+	wasArrayFormat := transformOptions.ArrayInputs != nil && *transformOptions.ArrayInputs
 
 	if len(msgs) == 1 && msgs[0].Content.Content != nil && !wasArrayFormat {
 		return Input{Text: msgs[0].Content.Content}

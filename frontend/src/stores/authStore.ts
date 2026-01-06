@@ -43,17 +43,15 @@ interface AuthState {
 export const getTokenFromStorage = (): string => {
   try {
     return localStorage.getItem(ACCESS_TOKEN) || '';
-  } catch (error) {
-    console.warn('Failed to read token from localStorage:', error);
-    return '';
-  }
-};
+    } catch (error) {
+      return '';
+    }
+  };
 
 export const setTokenToStorage = (token: string): void => {
   try {
     localStorage.setItem(ACCESS_TOKEN, token);
   } catch (error) {
-    console.warn('Failed to save token to localStorage:', error);
   }
 };
 
@@ -61,7 +59,6 @@ export const removeTokenFromStorage = (): void => {
   try {
     localStorage.removeItem(ACCESS_TOKEN);
   } catch (error) {
-    console.warn('Failed to remove token from localStorage:', error);
   }
 };
 
@@ -70,7 +67,6 @@ const getUserFromStorage = (): AuthUser | null => {
     const userStr = localStorage.getItem(USER_INFO);
     return userStr ? JSON.parse(userStr) : null;
   } catch (error) {
-    console.warn('Failed to read user info from localStorage:', error);
     return null;
   }
 };
@@ -83,7 +79,6 @@ const setUserToStorage = (user: AuthUser | null): void => {
       localStorage.removeItem(USER_INFO);
     }
   } catch (error) {
-    console.warn('Failed to save user info to localStorage:', error);
   }
 };
 
@@ -91,7 +86,6 @@ const removeUserFromStorage = (): void => {
   try {
     localStorage.removeItem(USER_INFO);
   } catch (error) {
-    console.warn('Failed to remove user info from localStorage:', error);
   }
 };
 

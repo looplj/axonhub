@@ -6,6 +6,59 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestBuildDataURL(t *testing.T) {
+	tests := []struct {
+		name      string
+		mediaType string
+		data      string
+		isBase64  bool
+		expected  string
+	}{
+		{
+			name:      "PDF with base64",
+			mediaType: "application/pdf",
+			data:      "JVBERi0xLjQK",
+			isBase64:  true,
+			expected:  "data:application/pdf;base64,JVBERi0xLjQK",
+		},
+		{
+			name:      "PNG image with base64",
+			mediaType: "image/png",
+			data:      "iVBORw0KGgo",
+			isBase64:  true,
+			expected:  "data:image/png;base64,iVBORw0KGgo",
+		},
+		{
+			name:      "Plain text without base64",
+			mediaType: "text/plain",
+			data:      "Hello%20World",
+			isBase64:  false,
+			expected:  "data:text/plain,Hello%20World",
+		},
+		{
+			name:      "Empty media type defaults to text/plain",
+			mediaType: "",
+			data:      "test",
+			isBase64:  false,
+			expected:  "data:text/plain,test",
+		},
+		{
+			name:      "Word document with base64",
+			mediaType: "application/msword",
+			data:      "0M8R4KGx",
+			isBase64:  true,
+			expected:  "data:application/msword;base64,0M8R4KGx",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := BuildDataURL(tt.mediaType, tt.data, tt.isBase64)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
 func TestParseDataURL(t *testing.T) {
 	tests := []struct {
 		name     string

@@ -163,22 +163,16 @@ export function DataStorageDialogs() {
     };
 
     try {
-      console.log('[DataStorageDialogs] Calling createMutation...');
       await createMutation.mutateAsync(input);
-      console.log('[DataStorageDialogs] Create successful');
       setIsCreateDialogOpen(false);
       reset();
     } catch (error) {
-      console.error('[DataStorageDialogs] Create failed:', error);
       throw error;
     }
   };
 
   const onEditSubmit = async (data: DataStorageFormData) => {
-    console.log('[DataStorageDialogs] onEditSubmit called');
-
     if (!editingDataStorage) {
-      console.error('[DataStorageDialogs] No editingDataStorage found!');
       return;
     }
 
@@ -240,12 +234,7 @@ export function DataStorageDialogs() {
             <DialogDescription>{t('dataStorages.dialogs.create.description')}</DialogDescription>
           </DialogHeader>
           <form
-            onSubmit={handleSubmit(onCreateSubmit, (errors) => {
-              console.error('[DataStorageDialogs] ❌ Form validation FAILED!');
-              console.error('[DataStorageDialogs] Validation errors:', errors);
-              console.error('[DataStorageDialogs] Current form values:', watch());
-              console.error('[DataStorageDialogs] Selected type:', selectedType);
-            })}
+            onSubmit={handleSubmit(onCreateSubmit, (errors) => {})}
             noValidate
           >
             <div className='grid max-h-[60vh] gap-4 overflow-y-auto py-4'>
@@ -435,7 +424,6 @@ export function DataStorageDialogs() {
               <Button
                 type='submit'
                 disabled={createMutation.isPending}
-                onClick={() => console.log('[DataStorageDialogs] Create button clicked')}
               >
                 {createMutation.isPending ? t('common.buttons.creating') : t('common.buttons.create')}
               </Button>
@@ -458,12 +446,7 @@ export function DataStorageDialogs() {
             <DialogDescription>{t('dataStorages.dialogs.edit.description')}</DialogDescription>
           </DialogHeader>
           <form
-            onSubmit={handleSubmit(onEditSubmit, (errors) => {
-              console.error('[DataStorageDialogs] ❌ Edit form validation FAILED!');
-              console.error('[DataStorageDialogs] Validation errors:', errors);
-              console.error('[DataStorageDialogs] Current form values:', watch());
-              console.error('[DataStorageDialogs] Selected type:', selectedType);
-            })}
+            onSubmit={handleSubmit(onEditSubmit, (errors) => {})}
             noValidate
           >
             <div className='grid max-h-[60vh] gap-4 overflow-y-auto py-4'>
@@ -639,7 +622,6 @@ export function DataStorageDialogs() {
               <Button
                 type='submit'
                 disabled={updateMutation.isPending}
-                onClick={() => console.log('[DataStorageDialogs] Save button clicked')}
               >
                 {updateMutation.isPending ? t('common.buttons.saving') : t('common.buttons.save')}
               </Button>

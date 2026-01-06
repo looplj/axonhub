@@ -418,7 +418,7 @@ func init() {
 	// request.DefaultFormat holds the default value on creation for the format field.
 	request.DefaultFormat = requestDescFormat.Default.(string)
 	// requestDescStream is the schema descriptor for stream field.
-	requestDescStream := requestFields[13].Descriptor()
+	requestDescStream := requestFields[14].Descriptor()
 	// request.DefaultStream holds the default value on creation for the stream field.
 	request.DefaultStream = requestDescStream.Default.(bool)
 	requestexecutionMixin := schema.RequestExecution{}.Mixin()

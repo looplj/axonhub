@@ -5,12 +5,14 @@ import type { PageInfo } from '@/gql/pagination';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { ServerSidePagination } from '@/components/server-side-pagination';
 import { DataStorage } from '../data/data-storages';
 
 interface DataStoragesTableProps {
   data: DataStorage[];
   columns: ColumnDef<DataStorage>[];
+  loading?: boolean;
   pageInfo?: PageInfo;
   pageSize: number;
   totalCount?: number;
@@ -28,6 +30,7 @@ interface DataStoragesTableProps {
 export function DataStoragesTable({
   data,
   columns,
+  loading,
   pageInfo,
   pageSize,
   totalCount,
@@ -56,7 +59,7 @@ export function DataStoragesTable({
         />
       </div>
 
-      <div className='shadow-soft relative mt-4 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
+      <div className='shadow-soft relative mt-4 flex-1 overflow-auto overflow-x-hidden rounded-2xl border border-[var(--table-border)]'>
         <Table className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -70,7 +73,9 @@ export function DataStoragesTable({
             ))}
           </TableHeader>
           <TableBody className='space-y-1 !bg-[var(--table-background)] p-2'>
-            {table.getRowModel().rows?.length ? (
+            {loading ? (
+              <TableSkeleton rows={pageSize} columns={columns.length} />
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}

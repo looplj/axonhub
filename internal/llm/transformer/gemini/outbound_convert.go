@@ -12,6 +12,7 @@ import (
 	geminioai "github.com/looplj/axonhub/internal/llm/transformer/gemini/openai"
 	"github.com/looplj/axonhub/internal/llm/transformer/shared"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
+	"github.com/looplj/axonhub/internal/pkg/xurl"
 )
 
 // convertLLMToGeminiRequest converts unified Request to Gemini GenerateContentRequest.
@@ -311,8 +312,18 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 					lastPart = p
 				}
 			case "image_url":
+				// Handle image_url type
 				if part.ImageURL != nil && part.ImageURL.URL != "" {
 					geminiPart := convertImageURLToGeminiPart(part.ImageURL.URL)
+					if geminiPart != nil {
+						parts = append(parts, geminiPart)
+						lastPart = geminiPart
+					}
+				}
+			case "document":
+				// Handle document type (PDF, Word, etc.)
+				if part.Document != nil && part.Document.URL != "" {
+					geminiPart := convertDocumentURLToGeminiPart(part.Document)
 					if geminiPart != nil {
 						parts = append(parts, geminiPart)
 						lastPart = geminiPart
@@ -525,14 +536,27 @@ func convertGeminiCandidateToLLMChoiceWithState(candidate *Candidate, isStream b
 				}
 
 			case part.InlineData != nil:
-				// Convert inline data (image) to image_url format
-				imageURL := "data:" + part.InlineData.MIMEType + ";base64," + part.InlineData.Data
-				contentParts = append(contentParts, llm.MessageContentPart{
-					Type: "image_url",
-					ImageURL: &llm.ImageURL{
-						URL: imageURL,
-					},
-				})
+				// Convert inline data based on MIME type
+				dataURL := xurl.BuildDataURL(part.InlineData.MIMEType, part.InlineData.Data, true)
+
+				if isDocumentMIMEType(part.InlineData.MIMEType) {
+					// Document type (PDF, Word, etc.)
+					contentParts = append(contentParts, llm.MessageContentPart{
+						Type: "document",
+						Document: &llm.DocumentURL{
+							URL:      dataURL,
+							MIMEType: part.InlineData.MIMEType,
+						},
+					})
+				} else {
+					// Image type
+					contentParts = append(contentParts, llm.MessageContentPart{
+						Type: "image_url",
+						ImageURL: &llm.ImageURL{
+							URL: dataURL,
+						},
+					})
+				}
 
 			case part.FunctionCall != nil:
 				argsJSON, _ := json.Marshal(part.FunctionCall.Args)

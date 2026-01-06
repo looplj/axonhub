@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { PermissionGuard } from '@/components/permission-guard';
 import { ServerSidePagination } from '@/components/server-side-pagination';
 import { useModels } from '../context/models-context';
@@ -30,6 +31,7 @@ import { Model, ModelConnection } from '../data/schema';
 interface ModelsTableProps {
   columns: ColumnDef<Model>[];
   data: Model[];
+  loading?: boolean;
   pageInfo?: ModelConnection['pageInfo'];
   pageSize: number;
   totalCount?: number;
@@ -40,11 +42,13 @@ interface ModelsTableProps {
   onPreviousPage: () => void;
   onPageSizeChange: (pageSize: number) => void;
   onNameFilterChange: (filter: string) => void;
+  canWrite?: boolean;
 }
 
 export function ModelsTable({
   columns,
   data,
+  loading,
   pageInfo,
   pageSize,
   totalCount,
@@ -55,6 +59,7 @@ export function ModelsTable({
   onPreviousPage,
   onPageSizeChange,
   onNameFilterChange,
+  canWrite = true,
 }: ModelsTableProps) {
   const { t } = useTranslation();
   const { setSelectedModels, setResetRowSelection, setOpen } = useModels();
@@ -157,7 +162,7 @@ export function ModelsTable({
         </div>
       </div>
 
-      <div className='shadow-soft relative mt-4 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
+      <div className='shadow-soft relative mt-4 flex-1 overflow-auto overflow-x-hidden rounded-2xl border border-[var(--table-border)]'>
         <Table data-testid='models-table' className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -177,7 +182,9 @@ export function ModelsTable({
             ))}
           </TableHeader>
           <TableBody className='space-y-1 !bg-[var(--table-background)] p-2'>
-            {table.getRowModel().rows?.length ? (
+            {loading ? (
+              <TableSkeleton rows={pageSize} columns={columns.length} />
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => {
                 const model = row.original;
                 const modelCard = model.modelCard;
@@ -401,7 +408,7 @@ export function ModelsTable({
         />
       </div>
 
-      {selectedCount > 0 && (
+      {selectedCount > 0 && canWrite && (
         <div className='fixed bottom-6 left-1/2 z-50 -translate-x-1/2'>
           <div className='flex items-center gap-2 rounded-lg border bg-[var(--table-background)] px-4 py-2 shadow-lg'>
             <div className='bg-border mx-2 h-6 w-px' />

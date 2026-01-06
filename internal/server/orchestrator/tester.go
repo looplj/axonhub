@@ -129,8 +129,8 @@ func (processor *TestChannelOrchestrator) TestChannel(
 				},
 			},
 		},
-		MaxTokens: lo.ToPtr(int64(256)),
-		Stream:    lo.ToPtr(false),
+		MaxCompletionTokens: lo.ToPtr(int64(256)),
+		Stream:              lo.ToPtr(false),
 	}
 
 	body, err := json.Marshal(llmRequest)

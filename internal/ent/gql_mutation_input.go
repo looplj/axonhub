@@ -536,6 +536,7 @@ type CreateRequestInput struct {
 	Source                     *request.Source
 	ModelID                    string
 	Format                     *string
+	RequestHeaders             objects.JSONRawMessage
 	RequestBody                objects.JSONRawMessage
 	ResponseBody               objects.JSONRawMessage
 	ResponseChunks             []objects.JSONRawMessage
@@ -559,6 +560,9 @@ func (i *CreateRequestInput) Mutate(m *RequestMutation) {
 	m.SetModelID(i.ModelID)
 	if v := i.Format; v != nil {
 		m.SetFormat(*v)
+	}
+	if v := i.RequestHeaders; v != nil {
+		m.SetRequestHeaders(v)
 	}
 	if v := i.RequestBody; v != nil {
 		m.SetRequestBody(v)
@@ -605,6 +609,9 @@ func (c *RequestCreate) SetInput(i CreateRequestInput) *RequestCreate {
 
 // UpdateRequestInput represents a mutation input for updating requests.
 type UpdateRequestInput struct {
+	ClearRequestHeaders             bool
+	RequestHeaders                  objects.JSONRawMessage
+	AppendRequestHeaders            objects.JSONRawMessage
 	ClearResponseBody               bool
 	ResponseBody                    objects.JSONRawMessage
 	AppendResponseBody              objects.JSONRawMessage
@@ -624,6 +631,15 @@ type UpdateRequestInput struct {
 
 // Mutate applies the UpdateRequestInput on the RequestMutation builder.
 func (i *UpdateRequestInput) Mutate(m *RequestMutation) {
+	if i.ClearRequestHeaders {
+		m.ClearRequestHeaders()
+	}
+	if v := i.RequestHeaders; v != nil {
+		m.SetRequestHeaders(v)
+	}
+	if i.AppendRequestHeaders != nil {
+		m.AppendRequestHeaders(i.RequestHeaders)
+	}
 	if i.ClearResponseBody {
 		m.ClearResponseBody()
 	}

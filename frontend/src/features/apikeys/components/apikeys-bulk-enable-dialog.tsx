@@ -21,7 +21,6 @@ export function ApiKeysBulkEnableDialog() {
       setSelectedApiKeys([]);
       closeDialog();
     } catch (error) {
-      console.error('Failed to bulk enable API keys:', error);
     }
   };
 
