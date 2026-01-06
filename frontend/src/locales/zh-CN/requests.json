@@ -17,7 +17,7 @@
       "createdAt": "创建时间",
       "latency": "耗时",
       "firstTokenLatency": "首字耗时",
-      "tokens": "Token",
+      "tokens": "令牌",
       "input": "输入",
       "output": "输出",
       "readCache": "读缓存",

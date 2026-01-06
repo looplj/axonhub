@@ -125,14 +125,40 @@ type Tool struct {
 
 // FunctionDeclaration represents a function declaration.
 type FunctionDeclaration struct {
-	// Name is the name of the function.
-	Name string `json:"name,omitempty"`
+	// Optional. Defines the function behavior.
+	// Behavior `json:"behavior,omitempty"`
 
-	// Description is the description of the function.
+	// Optional. Description and purpose of the function. Model uses it to decide how and
+	// whether to call the function.
 	Description string `json:"description,omitempty"`
-
-	// Parameters describes the parameters to this function.
+	// Required. The name of the function to call. Must start with a letter or an underscore.
+	// Must be a-z, A-Z, 0-9, or contain underscores, dots and dashes, with a maximum length
+	// of 64.
+	Name string `json:"name,omitempty"`
+	// Optional. Describes the parameters to this function in JSON Schema Object format.
+	// Reflects the Open API 3.03 Parameter Object. string Key: the name of the parameter.
+	// Parameter names are case sensitive. Schema Value: the Schema defining the type used
+	// for the parameter. For function with no parameters, this can be left unset. Parameter
+	// names must start with a letter or an underscore and must only contain chars a-z,
+	// A-Z, 0-9, or underscores with a maximum length of 64. Example with 1 required and
+	// 1 optional parameter: type: OBJECT properties: param1: type: STRING param2: type:
+	// INTEGER required: - param1
 	Parameters json.RawMessage `json:"parameters,omitempty"`
+	// Optional. Describes the parameters to the function in JSON Schema format. The schema
+	// must describe an object where the properties are the parameters to the function.
+	// For example: ``` { "type": "object", "properties": { "name": { "type": "string" },
+	// "age": { "type": "integer" } }, "additionalProperties": false, "required": ["name",
+	// "age"], "propertyOrdering": ["name", "age"] } ``` This field is mutually exclusive
+	// with `parameters`.
+	ParametersJsonSchema json.RawMessage `json:"parametersJsonSchema,omitempty"`
+	// Optional. Describes the output from this function in JSON Schema format. Reflects
+	// the Open API 3.03 Response Object. The Schema defines the type used for the response
+	// value of the function.
+	Response json.RawMessage `json:"response,omitempty"`
+	// Optional. Describes the output from this function in JSON Schema format. The value
+	// specified by the schema is the response value of the function. This field is mutually
+	// exclusive with `response`.
+	ResponseJsonSchema json.RawMessage `json:"responseJsonSchema,omitempty"`
 }
 
 // CodeExecution enables code execution.
