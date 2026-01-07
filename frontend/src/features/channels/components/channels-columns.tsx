@@ -366,20 +366,20 @@ const SupportedModelsCell = memo(({ row }: { row: Row<Channel> }) => {
 
   return (
     <div className='flex items-center gap-2'>
-      <div className='flex max-w-48 flex-wrap gap-1 overflow-hidden'>
-        {models.slice(0, 2).map((model) => (
-          <Badge key={model} variant='secondary' className='block max-w-32 truncate text-left text-xs'>
+      <div className='flex flex-wrap gap-1 overflow-hidden'>
+        {models.slice(0, 5).map((model) => (
+          <Badge key={model} variant='secondary' className='block max-w-48 truncate text-left text-xs'>
             {model}
           </Badge>
         ))}
-        {models.length > 2 && (
+        {models.length > 5 && (
           <Badge
             variant='secondary'
             className='hover:bg-primary hover:text-primary-foreground cursor-pointer text-xs transition-colors'
             onClick={handleOpenModelsDialog}
             title={t('channels.actions.viewModels')}
           >
-            +{models.length - 2}
+            +{models.length - 5}
           </Badge>
         )}
       </div>
@@ -521,10 +521,10 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
     },
     {
       accessorKey: 'orderingWeight',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.orderingWeight')} />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.orderingWeight')} className='justify-center' />,
       cell: OrderingWeightCell,
       meta: {
-        className: 'w-20 min-w-20 text-right',
+        className: 'w-20 min-w-20 text-center',
       },
       sortingFn: 'alphanumeric',
       enableSorting: true,

@@ -163,6 +163,10 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
     },
     {
       id: 'tokens',
+      accessorFn: (row) => {
+        const usageLog = row.usageLogs?.edges?.[0]?.node
+        return (usageLog?.promptTokens || 0) + (usageLog?.completionTokens || 0)
+      },
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.tokens')} />,
       cell: ({ row }) => {
         const request = row.original;
@@ -187,6 +191,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
         );
       },
       enableSorting: true,
+      enableHiding: true,
       sortingFn: (rowA, rowB) => {
         const a =
           (rowA.original.usageLogs?.edges?.[0]?.node?.promptTokens || 0) +
@@ -199,6 +204,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
     },
     {
       id: 'readCache',
+      accessorFn: (row) => row.usageLogs?.edges?.[0]?.node?.promptCachedTokens || 0,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.readCache')} />,
       cell: ({ row }) => {
         const request = row.original;
@@ -227,6 +233,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
         );
       },
       enableSorting: true,
+      enableHiding: true,
       sortingFn: (rowA, rowB) => {
         const a = rowA.original.usageLogs?.edges?.[0]?.node?.promptCachedTokens || 0;
         const b = rowB.original.usageLogs?.edges?.[0]?.node?.promptCachedTokens || 0;
@@ -235,6 +242,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
     },
     {
       id: 'writeCache',
+      accessorFn: (row) => row.usageLogs?.edges?.[0]?.node?.promptWriteCachedTokens || 0,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.writeCache')} />,
       cell: ({ row }) => {
         const request = row.original;
@@ -263,6 +271,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
         );
       },
       enableSorting: true,
+      enableHiding: true,
       sortingFn: (rowA, rowB) => {
         const a = rowA.original.usageLogs?.edges?.[0]?.node?.promptWriteCachedTokens || 0;
         const b = rowB.original.usageLogs?.edges?.[0]?.node?.promptWriteCachedTokens || 0;
