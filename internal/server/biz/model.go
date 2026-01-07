@@ -107,17 +107,14 @@ func (svc *ModelService) CreateModel(ctx context.Context, input ent.CreateModelI
 
 	// Check if a model with the same developer and modelId already exists
 	existing, err := svc.entFromContext(ctx).Model.Query().
-		Where(
-			model.Developer(input.Developer),
-			model.ModelID(input.ModelID),
-		).
+		Where(model.ModelID(input.ModelID)).
 		First(ctx)
 	if err != nil && !ent.IsNotFound(err) {
 		return nil, fmt.Errorf("failed to check model existence: %w", err)
 	}
 
 	if existing != nil {
-		return nil, fmt.Errorf("model with developer '%s' and modelId '%s' already exists", input.Developer, input.ModelID)
+		return nil, fmt.Errorf("model '%s' already exists", input.ModelID)
 	}
 
 	createBuilder := svc.entFromContext(ctx).Model.Create().
