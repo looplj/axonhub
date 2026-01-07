@@ -273,7 +273,7 @@ func (s *RequestService) CreateRequestExecution(
 	if request.DataStorageID != 0 {
 		var err error
 
-		dataStorage, err = client.DataStorage.Get(ctx, request.DataStorageID)
+		dataStorage, err = s.DataStorageService.GetDataStorageByID(ctx, request.DataStorageID)
 		if err != nil {
 			log.Warn(ctx, "Failed to get data storage for request execution", log.Cause(err))
 		}
@@ -371,7 +371,7 @@ func (s *RequestService) UpdateRequestCompleted(
 	// Get data storage if set
 	var dataStorage *ent.DataStorage
 	if req.DataStorageID != 0 {
-		dataStorage, err = client.DataStorage.Get(ctx, req.DataStorageID)
+		dataStorage, err = s.DataStorageService.GetDataStorageByID(ctx, req.DataStorageID)
 		if err != nil {
 			log.Warn(ctx, "Failed to get data storage", log.Cause(err))
 		}
