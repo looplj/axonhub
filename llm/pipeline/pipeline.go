@@ -298,6 +298,11 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 
 		lastErr = err
 
+		// Stop retrying if the context is canceled or the deadline is exceeded.
+		if ctx.Err() != nil {
+			break
+		}
+
 		log.Warn(ctx, "request process failed, will retry",
 			log.Cause(err),
 			log.Any("attempt", attempt),

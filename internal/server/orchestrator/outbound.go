@@ -356,10 +356,9 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	}
 
 	// Update request with channel ID after channel selection
-	if p.state.Request != nil && p.state.Request.ChannelID == 0 {
-		ctx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
-		defer cancel()
-
+	// TODO: find a better way to handle this.
+	// TODO: figure out which one is better: update channel ID before or after outbound request.
+	if p.state.Request != nil && p.state.Request.ChannelID != p.state.CurrentChannel.ID {
 		err := p.state.RequestService.UpdateRequestChannelID(
 			ctx,
 			p.state.Request.ID,
@@ -368,6 +367,9 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		if err != nil {
 			log.Warn(ctx, "Failed to update request channel ID", log.Cause(err))
 			// Continue processing even if channel ID update fails
+		} else {
+			// Update the in-memory state to prevent duplicate updates and ensure consistency
+			p.state.Request.ChannelID = p.state.CurrentChannel.ID
 		}
 	}
 
