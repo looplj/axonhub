@@ -845,6 +845,242 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 		require.True(t, resultMap["gpt-3.5-turbo"], "gpt-3.5-turbo should be in result")
 		require.True(t, resultMap["claude-3-opus-20240229"], "claude-3-opus-20240229 should be in result")
 	})
+
+	t.Run("API key with ChannelIDs filters models by channels", func(t *testing.T) {
+		// Create API key with channelIDs restriction (only channel 1 - OpenAI)
+		apiKey := &ent.APIKey{
+			ID:   7,
+			Name: "test-api-key-7",
+			Profiles: &objects.APIKeyProfiles{
+				ActiveProfile: "channel-restricted",
+				Profiles: []objects.APIKeyProfile{
+					{
+						Name:       "channel-restricted",
+						ChannelIDs: []int{1}, // Only OpenAI channel
+					},
+				},
+			},
+		}
+
+		ctx := contexts.WithAPIKey(ctx, apiKey)
+
+		result := modelSvc.ListEnabledModels(ctx)
+
+		resultMap := make(map[string]bool)
+		for _, model := range result {
+			resultMap[model.ID] = true
+		}
+
+		// Should only include models from channel 1 (OpenAI)
+		require.True(t, resultMap["gpt-4"], "gpt-4 should be in result")
+		require.True(t, resultMap["gpt-3.5-turbo"], "gpt-3.5-turbo should be in result")
+		// Should not include models from other channels
+		require.False(t, resultMap["claude-3-opus-20240229"], "claude-3-opus-20240229 should not be in result")
+		require.False(t, resultMap["deepseek-chat"], "deepseek-chat should not be in result")
+	})
+
+	t.Run("API key with ChannelTags filters models by channel tags", func(t *testing.T) {
+		// Create channels with tags
+		ch1, err := client.Channel.UpdateOneID(1).SetTags([]string{"premium", "openai"}).Save(ctx)
+		require.NoError(t, err)
+		ch2, err := client.Channel.UpdateOneID(2).SetTags([]string{"premium", "anthropic"}).Save(ctx)
+		require.NoError(t, err)
+		_, err = client.Channel.UpdateOneID(3).SetTags([]string{"standard", "other"}).Save(ctx)
+		require.NoError(t, err)
+
+		// Reload channels after updating tags
+		err = channelSvc.loadChannels(ctx)
+		require.NoError(t, err)
+
+		// Create API key with channelTags restriction
+		apiKey := &ent.APIKey{
+			ID:   8,
+			Name: "test-api-key-8",
+			Profiles: &objects.APIKeyProfiles{
+				ActiveProfile: "tag-restricted",
+				Profiles: []objects.APIKeyProfile{
+					{
+						Name:        "tag-restricted",
+						ChannelTags: []string{"premium"}, // Only premium channels
+					},
+				},
+			},
+		}
+
+		ctx := contexts.WithAPIKey(ctx, apiKey)
+
+		result := modelSvc.ListEnabledModels(ctx)
+
+		resultMap := make(map[string]bool)
+		for _, model := range result {
+			resultMap[model.ID] = true
+		}
+
+		// Should include models from premium channels (ch1 and ch2)
+		require.True(t, resultMap["gpt-4"], "gpt-4 should be in result (from premium channel)")
+		require.True(t, resultMap["claude-3-opus-20240229"], "claude-3-opus-20240229 should be in result (from premium channel)")
+		// Should not include models from non-premium channels
+		require.False(t, resultMap["deepseek-chat"], "deepseek-chat should not be in result (not premium)")
+
+		// Verify channels still have tags for next test
+		require.ElementsMatch(t, []string{"premium", "openai"}, ch1.Tags)
+		require.ElementsMatch(t, []string{"premium", "anthropic"}, ch2.Tags)
+	})
+
+	t.Run("API key with both ChannelIDs and ChannelTags applies intersection", func(t *testing.T) {
+		// Ensure tags are still set from previous test
+		err := channelSvc.loadChannels(ctx)
+		require.NoError(t, err)
+
+		// Create API key with both restrictions (intersection)
+		apiKey := &ent.APIKey{
+			ID:   9,
+			Name: "test-api-key-9",
+			Profiles: &objects.APIKeyProfiles{
+				ActiveProfile: "combined-restricted",
+				Profiles: []objects.APIKeyProfile{
+					{
+						Name:        "combined-restricted",
+						ChannelIDs:  []int{1, 2, 3},      // All three channels
+						ChannelTags: []string{"premium"}, // But only premium tag
+					},
+				},
+			},
+		}
+
+		ctx := contexts.WithAPIKey(ctx, apiKey)
+
+		result := modelSvc.ListEnabledModels(ctx)
+
+		resultMap := make(map[string]bool)
+		for _, model := range result {
+			resultMap[model.ID] = true
+		}
+
+		// Should only include models from channels that are in ChannelIDs AND have premium tag
+		// That's channel 1 and 2 (both have premium tag and are in ChannelIDs)
+		require.True(t, resultMap["gpt-4"], "gpt-4 should be in result")
+		require.True(t, resultMap["claude-3-opus-20240229"], "claude-3-opus-20240229 should be in result")
+		// Channel 3 has "standard" tag, not "premium", so excluded
+		require.False(t, resultMap["deepseek-chat"], "deepseek-chat should not be in result (no premium tag)")
+	})
+
+	t.Run("API key with ModelIDs takes precedence over ChannelIDs/Tags", func(t *testing.T) {
+		// Create API key with both ModelIDs and ChannelIDs
+		// ModelIDs should take precedence
+		apiKey := &ent.APIKey{
+			ID:   10,
+			Name: "test-api-key-10",
+			Profiles: &objects.APIKeyProfiles{
+				ActiveProfile: "model-precedence",
+				Profiles: []objects.APIKeyProfile{
+					{
+						Name:       "model-precedence",
+						ModelIDs:   []string{"gpt-4", "specific-model"},
+						ChannelIDs: []int{1, 2, 3}, // This should be ignored
+					},
+				},
+			},
+		}
+
+		ctx := contexts.WithAPIKey(ctx, apiKey)
+
+		result := modelSvc.ListEnabledModels(ctx)
+
+		// Should only return the specific models from ModelIDs
+		require.Len(t, result, 2, "Should only return 2 models from ModelIDs")
+
+		resultMap := make(map[string]bool)
+		for _, model := range result {
+			resultMap[model.ID] = true
+		}
+
+		require.True(t, resultMap["gpt-4"], "gpt-4 should be in result")
+		require.True(t, resultMap["specific-model"], "specific-model should be in result")
+		require.False(t, resultMap["gpt-3.5-turbo"], "gpt-3.5-turbo should not be in result")
+	})
+
+	t.Run("QueryAllChannelModels=false with ChannelIDs filters configured models", func(t *testing.T) {
+		// Create a system config with QueryAllChannelModels=false
+		systemSvcNoQuery := &SystemService{
+			AbstractService: &AbstractService{
+				db: client,
+			},
+			Cache: xcache.NewFromConfig[ent.System](xcache.Config{Mode: xcache.ModeMemory}),
+		}
+
+		// Set QueryAllChannelModels to false
+		err := systemSvcNoQuery.SetModelSettings(ctx, ModelSettings{
+			QueryAllChannelModels:             false,
+			FallbackToChannelsOnModelNotFound: true,
+		})
+		require.NoError(t, err)
+
+		modelSvcNoQuery := &ModelService{
+			AbstractService: &AbstractService{
+				db: client,
+			},
+			channelService: channelSvc,
+			systemService:  systemSvcNoQuery,
+		}
+
+		// Create configured models
+		_, err = client.Model.Create().
+			SetDeveloper("openai").
+			SetModelID("gpt-4").
+			SetName("GPT-4").
+			SetIcon("").
+			SetGroup("").
+			SetModelCard(&objects.ModelCard{}).
+			SetSettings(&objects.ModelSettings{}).
+			SetType("chat").
+			SetStatus("enabled").
+			Save(ctx)
+		require.NoError(t, err)
+
+		_, err = client.Model.Create().
+			SetDeveloper("anthropic").
+			SetModelID("claude-3-opus").
+			SetName("Claude 3 Opus").
+			SetIcon("").
+			SetGroup("").
+			SetModelCard(&objects.ModelCard{}).
+			SetSettings(&objects.ModelSettings{}).
+			SetType("chat").
+			SetStatus("enabled").
+			Save(ctx)
+		require.NoError(t, err)
+
+		// API key with channelIDs restriction
+		apiKey := &ent.APIKey{
+			ID:   11,
+			Name: "test-api-key-11",
+			Profiles: &objects.APIKeyProfiles{
+				ActiveProfile: "channel-restricted",
+				Profiles: []objects.APIKeyProfile{
+					{
+						Name:       "channel-restricted",
+						ChannelIDs: []int{1}, // Only channel 1 (OpenAI)
+					},
+				},
+			},
+		}
+
+		ctxWithKey := contexts.WithAPIKey(ctx, apiKey)
+
+		result := modelSvcNoQuery.ListEnabledModels(ctxWithKey)
+
+		resultMap := make(map[string]bool)
+		for _, model := range result {
+			resultMap[model.ID] = true
+		}
+
+		// Should only include gpt-4 from channel 1
+		require.True(t, resultMap["gpt-4"], "gpt-4 should be in result (from allowed channel)")
+		// Should not include claude-3-opus from channel 2
+		require.False(t, resultMap["claude-3-opus"], "claude-3-opus should not be in result (from disallowed channel)")
+	})
+
 }
 
 func TestFindUnassociatedChannels(t *testing.T) {

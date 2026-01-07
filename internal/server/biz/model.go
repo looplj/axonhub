@@ -393,11 +393,15 @@ func (svc *ModelService) ListConfiguredModels(ctx context.Context, statusIn []mo
 // When QueryAllChannelModels in system settings is false, it returns configured models instead.
 // If an API key is present in context and has an active profile with modelIDs configured,
 // only those models will be returned.
+// If an API key has channelIDs or channelTags configured, only models from those channels will be returned.
 func (svc *ModelService) ListEnabledModels(ctx context.Context) []ModelFacade {
-	// Check if API key has restricted model IDs
+	// Check if API key has restrictions
+	var profile *objects.APIKeyProfile
 	if apiKey, ok := contexts.GetAPIKey(ctx); ok && apiKey != nil {
-		if profile := apiKey.GetActiveProfile(); profile != nil && len(profile.ModelIDs) > 0 {
-			// Return only the models specified in the profile
+		profile = apiKey.GetActiveProfile()
+
+		// If modelIDs are explicitly configured, return only those models
+		if profile != nil && len(profile.ModelIDs) > 0 {
 			result := make([]ModelFacade, 0, len(profile.ModelIDs))
 			for _, modelID := range profile.ModelIDs {
 				result = append(result, ModelFacade{
@@ -418,13 +422,67 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) []ModelFacade {
 	queryAllChannels := settings.QueryAllChannelModels
 
 	if !queryAllChannels {
-		// Return configured models when queryAllChannels is false
+		// When queryAllChannels is false, return configured models
+		// But still need to filter by channelIDs/channelTags if specified in profile
 		configuredModels, err := svc.ListConfiguredModels(ctx, nil)
 		if err != nil {
 			log.Warn(ctx, "failed to list configured models", log.Cause(err))
 			return nil
 		}
 
+		// If profile has channelIDs or channelTags restrictions, we need to filter
+		// the configured models to only include those from allowed channels
+		if profile != nil && (len(profile.ChannelIDs) > 0 || len(profile.ChannelTags) > 0) {
+			// Get all enabled channels and apply filtering
+			channels := svc.channelService.GetEnabledChannels()
+
+			// Filter by channelIDs
+			if len(profile.ChannelIDs) > 0 {
+				channels = lo.Filter(channels, func(ch *Channel, _ int) bool {
+					return lo.Contains(profile.ChannelIDs, ch.ID)
+				})
+			}
+
+			// Filter by channelTags (intersect with existing filtered channels)
+			if len(profile.ChannelTags) > 0 {
+				channels = lo.Filter(channels, func(ch *Channel, _ int) bool {
+					// Channel must have at least one tag that matches the profile's allowed tags
+					for _, tag := range ch.Tags {
+						if lo.Contains(profile.ChannelTags, tag) {
+							return true
+						}
+					}
+					return false
+				})
+			}
+
+			// Build a set of models from allowed channels
+			allowedModels := make(map[string]bool)
+			for _, ch := range channels {
+				entries := ch.GetModelEntries()
+				for requestModel := range entries {
+					allowedModels[requestModel] = true
+				}
+			}
+
+			// Filter configured models to only include those in allowed channels
+			result := make([]ModelFacade, 0)
+			for _, m := range configuredModels {
+				if allowedModels[m.ID] {
+					result = append(result, ModelFacade{
+						ID:          m.ID,
+						DisplayName: m.ID,
+						CreatedAt:   time.Time{},
+						Created:     0,
+						OwnedBy:     "configured",
+					})
+				}
+			}
+
+			return result
+		}
+
+		// No channel restrictions, return all configured models
 		result := make([]ModelFacade, 0, len(configuredModels))
 		for _, m := range configuredModels {
 			result = append(result, ModelFacade{
@@ -439,9 +497,35 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) []ModelFacade {
 		return result
 	}
 
+	// Get all enabled channels
+	channels := svc.channelService.GetEnabledChannels()
+
+	// Apply channel filtering if profile has channelIDs or channelTags
+	if profile != nil {
+		// Filter by channelIDs
+		if len(profile.ChannelIDs) > 0 {
+			channels = lo.Filter(channels, func(ch *Channel, _ int) bool {
+				return lo.Contains(profile.ChannelIDs, ch.ID)
+			})
+		}
+
+		// Filter by channelTags (intersect with existing filtered channels)
+		if len(profile.ChannelTags) > 0 {
+			channels = lo.Filter(channels, func(ch *Channel, _ int) bool {
+				// Channel must have at least one tag that matches the profile's allowed tags
+				for _, tag := range ch.Tags {
+					if lo.Contains(profile.ChannelTags, tag) {
+						return true
+					}
+				}
+				return false
+			})
+		}
+	}
+
 	modelSet := make(map[string]ModelFacade)
 
-	for _, ch := range svc.channelService.GetEnabledChannels() {
+	for _, ch := range channels {
 		entries := ch.GetModelEntries()
 
 		for requestModel := range entries {
