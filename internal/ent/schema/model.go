@@ -26,7 +26,10 @@ func (Model) Mixin() []ent.Mixin {
 func (Model) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("name", "deleted_at").
-			StorageKey("Models_by_name").
+			StorageKey("models_by_name").
+			Unique(),
+		index.Fields("model_id", "deleted_at").
+			StorageKey("models_by_model_id").
 			Unique(),
 	}
 }

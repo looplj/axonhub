@@ -224,9 +224,14 @@ var (
 		PrimaryKey: []*schema.Column{ModelsColumns[0]},
 		Indexes: []*schema.Index{
 			{
-				Name:    "Models_by_name",
+				Name:    "models_by_name",
 				Unique:  true,
 				Columns: []*schema.Column{ModelsColumns[7], ModelsColumns[3]},
+			},
+			{
+				Name:    "models_by_model_id",
+				Unique:  true,
+				Columns: []*schema.Column{ModelsColumns[5], ModelsColumns[3]},
 			},
 		},
 	}
