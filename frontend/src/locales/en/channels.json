@@ -553,6 +553,15 @@
         "warning": "Warning: This action cannot be undone",
         "warningDetail": "This will permanently delete all selected channels and their related data. This cannot be recovered."
       },
+      "delete": {
+        "title": "Delete Channel",
+        "warning": "Warning",
+        "warningTitle": "This action cannot be undone. This will permanently delete the Channel and all its related data.",
+        "confirmLabel": "Please enter Channel name",
+        "confirmLabelStrong": "to confirm deletion:",
+        "confirmButton": "Delete Channel",
+        "deletingButton": "Deleting..."
+      },
       "errorResolved": {
         "title": "Resolve Channel Error",
         "description": "Are you sure you want to resolve the error for channel \"{{channelName}}\"? This will clear the error message: \"{{errorMessage}}\"",
