@@ -555,6 +555,15 @@
         "warning": "警告：此操作无法撤销",
         "warningDetail": "这将永久删除所有选中的渠道及其相关数据。删除后无法恢复。"
       },
+      "delete": {
+        "title": "删除渠道",
+        "warning": "警告",
+        "warningTitle": "此操作无法撤销。这将永久删除渠道及其所有相关数据。",
+        "confirmLabel": "请输入渠道名称",
+        "confirmLabelStrong": "以确认删除：",
+        "confirmButton": "删除渠道",
+        "deletingButton": "删除中..."
+      },
       "errorResolved": {
         "title": "解决渠道错误",
         "description": "确定要解决渠道 \"{{channelName}}\" 的错误吗？这将清除错误消息：\"{{errorMessage}}\"",
