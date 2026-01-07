@@ -350,30 +350,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	// Apply channel transform options to create a new request
 	llmRequest = applyTransformOptions(llmRequest, p.state.CurrentChannel.Settings)
 
-	channelRequest, err := p.wrapped.TransformRequest(ctx, llmRequest)
-	if err != nil {
-		return nil, err
-	}
-
-	// Update request with channel ID after channel selection
-	// TODO: find a better way to handle this.
-	// TODO: figure out which one is better: update channel ID before or after outbound request.
-	if p.state.Request != nil && p.state.Request.ChannelID != p.state.CurrentChannel.ID {
-		err := p.state.RequestService.UpdateRequestChannelID(
-			ctx,
-			p.state.Request.ID,
-			p.state.CurrentChannel.ID,
-		)
-		if err != nil {
-			log.Warn(ctx, "Failed to update request channel ID", log.Cause(err))
-			// Continue processing even if channel ID update fails
-		} else {
-			// Update the in-memory state to prevent duplicate updates and ensure consistency
-			p.state.Request.ChannelID = p.state.CurrentChannel.ID
-		}
-	}
-
-	return channelRequest, nil
+	return p.wrapped.TransformRequest(ctx, llmRequest)
 }
 
 func (p *PersistentOutboundTransformer) TransformResponse(ctx context.Context, response *httpclient.Response) (*llm.Response, error) {

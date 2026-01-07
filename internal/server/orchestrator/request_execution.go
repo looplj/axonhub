@@ -6,6 +6,7 @@ import (
 
 	"github.com/tidwall/gjson"
 
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
@@ -50,14 +51,39 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawRequest(ctx context.Con
 		return request, nil
 	}
 
-	requestExec, err := state.RequestService.CreateRequestExecution(
-		ctx,
-		channel,
-		llmRequest.Model,
-		state.Request,
-		*request,
-		m.outbound.APIFormat(),
-	)
+	var requestExec *ent.RequestExecution
+
+	err := state.RequestService.RunInTransaction(ctx, func(ctx context.Context) error {
+		var err error
+
+		requestExec, err = state.RequestService.CreateRequestExecution(
+			ctx,
+			channel,
+			llmRequest.Model,
+			state.Request,
+			*request,
+			m.outbound.APIFormat(),
+		)
+		if err != nil {
+			return err
+		}
+
+		// Update request with channel ID after channel selection
+		if state.Request != nil && state.Request.ChannelID != channel.ID {
+			err := state.RequestService.UpdateRequestChannelID(
+				ctx,
+				state.Request.ID,
+				channel.ID,
+			)
+			if err != nil {
+				return err
+			}
+			// Update the in-memory state to prevent duplicate updates and ensure consistency
+			state.Request.ChannelID = channel.ID
+		}
+
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
