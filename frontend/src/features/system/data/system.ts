@@ -3,6 +3,7 @@ import { graphqlRequest } from '@/gql/graphql';
 import { toast } from 'sonner';
 import i18n from '@/lib/i18n';
 import { useErrorHandler } from '@/hooks/use-error-handler';
+import { getTokenFromStorage } from '@/stores/authStore';
 
 // GraphQL queries and mutations
 const SYSTEM_VERSION_QUERY = `
@@ -489,6 +490,120 @@ export function useUpdateModelSettings() {
     },
     onError: () => {
       toast.error(i18n.t('common.errors.systemUpdateFailed'));
+    },
+  });
+}
+
+// Backup and Restore
+const BACKUP_MUTATION = `
+  mutation Backup($input: BackupOptionsInput!) {
+    backup(input: $input) {
+      success
+      data
+      message
+    }
+  }
+`;
+
+const RESTORE_MUTATION = `
+  mutation Restore($file: Upload!, $input: RestoreOptionsInput!) {
+    restore(file: $file, input: $input) {
+      success
+      message
+    }
+  }
+`;
+
+export interface BackupOptionsInput {
+  includeChannels: boolean;
+  includeModels: boolean;
+}
+
+export interface BackupPayload {
+  success: boolean;
+  data?: string;
+  message?: string;
+}
+
+export interface RestoreOptionsInput {
+  includeChannels: boolean;
+  includeModels: boolean;
+  channelConflictStrategy: 'SKIP' | 'OVERWRITE' | 'ERROR';
+  modelConflictStrategy: 'SKIP' | 'OVERWRITE' | 'ERROR';
+}
+
+export interface RestorePayload {
+  success: boolean;
+  message?: string;
+}
+
+export function useBackup() {
+  return useMutation({
+    mutationFn: async (input: BackupOptionsInput) => {
+      const data = await graphqlRequest<{ backup: BackupPayload }>(BACKUP_MUTATION, { input });
+      return data.backup;
+    },
+    onSuccess: (data) => {
+      if (data.success && data.data) {
+        const blob = new Blob([data.data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        a.download = `axonhub-backup-${timestamp}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success(data.message || i18n.t('system.backup.success'));
+      } else {
+        toast.error(data.message || i18n.t('system.backup.failed'));
+      }
+    },
+    onError: () => {
+      toast.error(i18n.t('system.backup.failed'));
+    },
+  });
+}
+
+export function useRestore() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ file, input }: { file: File; input: RestoreOptionsInput }) => {
+      const formData = new FormData();
+      formData.append('operations', JSON.stringify({
+        query: RESTORE_MUTATION,
+        variables: { file: null, input }
+      }));
+      formData.append('map', JSON.stringify({ '0': ['variables.file'] }));
+      formData.append('0', file);
+
+      const token = getTokenFromStorage();
+      const response = await fetch('/admin/graphql', {
+        method: 'POST',
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+        body: formData,
+      });
+
+      const result = await response.json();
+      if (result.errors) {
+        throw new Error(result.errors[0].message);
+      }
+      return result.data.restore as RestorePayload;
+    },
+    onSuccess: (data) => {
+      if (data.success) {
+        queryClient.invalidateQueries();
+        toast.success(data.message || i18n.t('system.restore.success'));
+      } else {
+        toast.error(data.message || i18n.t('system.restore.failed'));
+      }
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || i18n.t('system.restore.failed'));
     },
   });
 }

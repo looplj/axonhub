@@ -53,6 +53,7 @@ type Dependencies struct {
 	UsageLogService                *biz.UsageLogService
 	ChannelOverrideTemplateService *biz.ChannelOverrideTemplateService
 	ModelService                   *biz.ModelService
+	BackupService                  *biz.BackupService
 }
 
 type GraphqlHandler struct {
@@ -78,6 +79,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 			deps.UsageLogService,
 			deps.ChannelOverrideTemplateService,
 			deps.ModelService,
+			deps.BackupService,
 		),
 	)
 

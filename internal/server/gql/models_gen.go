@@ -36,6 +36,17 @@ type ApplyChannelOverrideTemplatePayload struct {
 	Channels []*ent.Channel `json:"channels"`
 }
 
+type BackupOptionsInput struct {
+	IncludeChannels bool `json:"includeChannels"`
+	IncludeModels   bool `json:"includeModels"`
+}
+
+type BackupPayload struct {
+	Success bool    `json:"success"`
+	Data    *string `json:"data,omitempty"`
+	Message *string `json:"message,omitempty"`
+}
+
 type BrandSettings struct {
 	BrandName *string `json:"brandName,omitempty"`
 	BrandLogo *string `json:"brandLogo,omitempty"`
@@ -157,6 +168,18 @@ type RequestStatsByModel struct {
 	Count   int    `json:"count"`
 }
 
+type RestoreOptionsInput struct {
+	IncludeChannels         bool                   `json:"includeChannels"`
+	IncludeModels           bool                   `json:"includeModels"`
+	ChannelConflictStrategy BackupConflictStrategy `json:"channelConflictStrategy"`
+	ModelConflictStrategy   BackupConflictStrategy `json:"modelConflictStrategy"`
+}
+
+type RestorePayload struct {
+	Success bool    `json:"success"`
+	Message *string `json:"message,omitempty"`
+}
+
 type ScopeInfo struct {
 	Scope       string   `json:"scope"`
 	Description string   `json:"description"`
@@ -249,6 +272,63 @@ type VersionCheck struct {
 	LatestVersion  string `json:"latestVersion"`
 	HasUpdate      bool   `json:"hasUpdate"`
 	ReleaseURL     string `json:"releaseUrl"`
+}
+
+type BackupConflictStrategy string
+
+const (
+	BackupConflictStrategySkip      BackupConflictStrategy = "SKIP"
+	BackupConflictStrategyOverwrite BackupConflictStrategy = "OVERWRITE"
+	BackupConflictStrategyError     BackupConflictStrategy = "ERROR"
+)
+
+var AllBackupConflictStrategy = []BackupConflictStrategy{
+	BackupConflictStrategySkip,
+	BackupConflictStrategyOverwrite,
+	BackupConflictStrategyError,
+}
+
+func (e BackupConflictStrategy) IsValid() bool {
+	switch e {
+	case BackupConflictStrategySkip, BackupConflictStrategyOverwrite, BackupConflictStrategyError:
+		return true
+	}
+	return false
+}
+
+func (e BackupConflictStrategy) String() string {
+	return string(e)
+}
+
+func (e *BackupConflictStrategy) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = BackupConflictStrategy(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid BackupConflictStrategy", str)
+	}
+	return nil
+}
+
+func (e BackupConflictStrategy) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *BackupConflictStrategy) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e BackupConflictStrategy) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type OverrideApplyMode string
