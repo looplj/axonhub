@@ -24,7 +24,7 @@ func (s sErr) Error() string {
 	return fmt.Sprintf("age %d, name %s", s.age, s.name)
 }
 
-func (s *sErr) As(err interface{}) bool {
+func (s *sErr) As(err any) bool {
 	switch e := err.(type) {
 	case *tErr:
 		e.msg = s.Error()

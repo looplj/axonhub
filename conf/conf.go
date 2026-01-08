@@ -87,11 +87,11 @@ func Load() (Config, error) {
 }
 
 var (
-	_TypeTextUnmarshaler = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
-	_TypeDuration        = reflect.TypeOf(time.Duration(1))
+	_TypeTextUnmarshaler = reflect.TypeFor[encoding.TextUnmarshaler]()
+	_TypeDuration        = reflect.TypeFor[time.Duration]()
 )
 
-func customizedDecodeHook(srcType reflect.Type, dstType reflect.Type, data interface{}) (interface{}, error) {
+func customizedDecodeHook(srcType reflect.Type, dstType reflect.Type, data any) (any, error) {
 	str, ok := data.(string)
 	if !ok {
 		return data, nil

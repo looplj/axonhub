@@ -445,7 +445,7 @@ func TestOutboundTransformer_buildImageGenerationAPIRequest(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(req *httpclient.Request) bool {
-				var body map[string]interface{}
+				var body map[string]any
 
 				err := json.Unmarshal(req.Body, &body)
 				if err != nil {
@@ -485,7 +485,7 @@ func TestOutboundTransformer_buildImageGenerationAPIRequest(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(req *httpclient.Request) bool {
-				var body map[string]interface{}
+				var body map[string]any
 
 				err := json.Unmarshal(req.Body, &body)
 				if err != nil {
@@ -519,7 +519,7 @@ func TestOutboundTransformer_buildImageGenerationAPIRequest(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(req *httpclient.Request) bool {
-				var body map[string]interface{}
+				var body map[string]any
 
 				err := json.Unmarshal(req.Body, &body)
 				if err != nil {
@@ -552,7 +552,7 @@ func TestOutboundTransformer_buildImageGenerationAPIRequest(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(req *httpclient.Request) bool {
-				var body map[string]interface{}
+				var body map[string]any
 
 				err := json.Unmarshal(req.Body, &body)
 				if err != nil {
@@ -578,7 +578,7 @@ func TestOutboundTransformer_buildImageGenerationAPIRequest(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(req *httpclient.Request) bool {
-				var body map[string]interface{}
+				var body map[string]any
 
 				err := json.Unmarshal(req.Body, &body)
 				if err != nil {
@@ -905,7 +905,7 @@ func TestExtractImages(t *testing.T) {
 }
 
 // Helper function to marshal data for tests.
-func mustMarshal(v interface{}) []byte {
+func mustMarshal(v any) []byte {
 	data, err := json.Marshal(v)
 	if err != nil {
 		panic(err)

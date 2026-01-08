@@ -103,15 +103,15 @@ func TestInboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 				require.Equal(t, "Accepts a place as an address, then returns the latitude and longitude coordinates.", result.Tools[0].Function.Description)
 
 				// Verify tool parameters schema
-				var schema map[string]interface{}
+				var schema map[string]any
 
 				err := json.Unmarshal(result.Tools[0].Function.Parameters, &schema)
 				require.NoError(t, err)
 				require.Equal(t, "object", schema["type"])
 
-				properties, ok := schema["properties"].(map[string]interface{})
+				properties, ok := schema["properties"].(map[string]any)
 				require.True(t, ok)
-				location, ok := properties["location"].(map[string]interface{})
+				location, ok := properties["location"].(map[string]any)
 				require.True(t, ok)
 				require.Equal(t, "string", location["type"])
 				require.Equal(t, "The location to look up.", location["description"])
@@ -126,24 +126,24 @@ func TestInboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 				require.Equal(t, "Get the weather at a specific location", result.Tools[2].Function.Description)
 
 				// Verify third tool parameters
-				var weatherSchema map[string]interface{}
+				var weatherSchema map[string]any
 
 				err = json.Unmarshal(result.Tools[2].Function.Parameters, &weatherSchema)
 				require.NoError(t, err)
 
-				weatherProps, ok := weatherSchema["properties"].(map[string]interface{})
+				weatherProps, ok := weatherSchema["properties"].(map[string]any)
 				require.True(t, ok)
 
 				// Check lat parameter
-				lat, ok := weatherProps["lat"].(map[string]interface{})
+				lat, ok := weatherProps["lat"].(map[string]any)
 				require.True(t, ok)
 				require.Equal(t, "number", lat["type"])
 
 				// Check unit parameter with enum
-				unit, ok := weatherProps["unit"].(map[string]interface{})
+				unit, ok := weatherProps["unit"].(map[string]any)
 				require.True(t, ok)
 				require.Equal(t, "string", unit["type"])
-				enumValues, ok := unit["enum"].([]interface{})
+				enumValues, ok := unit["enum"].([]any)
 				require.True(t, ok)
 				require.Contains(t, enumValues, "celsius")
 				require.Contains(t, enumValues, "fahrenheit")

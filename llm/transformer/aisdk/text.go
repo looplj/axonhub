@@ -49,7 +49,7 @@ func (t *TextTransformer) TransformResponse(
 	resp *llm.Response,
 ) (*httpclient.Response, error) {
 	// Convert to AI SDK response format
-	aiSDKResp := map[string]interface{}{
+	aiSDKResp := map[string]any{
 		"id":      resp.ID,
 		"object":  resp.Object,
 		"created": resp.Created,
@@ -109,7 +109,7 @@ func (t *TextTransformer) TransformStreamChunk(
 			for _, toolCall := range choice.Delta.ToolCalls {
 				if toolCall.Function.Name != "" {
 					// Tool call streaming start
-					toolCallStart := map[string]interface{}{
+					toolCallStart := map[string]any{
 						"toolCallId": toolCall.ID,
 						"toolName":   toolCall.Function.Name,
 					}
@@ -119,7 +119,7 @@ func (t *TextTransformer) TransformStreamChunk(
 
 				if toolCall.Function.Arguments != "" {
 					// Tool call delta - Format: c:{"toolCallId":"id","argsTextDelta":"delta"}\n
-					toolCallDelta := map[string]interface{}{
+					toolCallDelta := map[string]any{
 						"toolCallId":    toolCall.ID,
 						"argsTextDelta": toolCall.Function.Arguments,
 					}
@@ -140,7 +140,7 @@ func (t *TextTransformer) TransformStreamChunk(
 					}
 				}
 
-				toolCallComplete := map[string]interface{}{
+				toolCallComplete := map[string]any{
 					"toolCallId": toolCall.ID,
 					"toolName":   toolCall.Function.Name,
 					"args":       args,
@@ -157,7 +157,7 @@ func (t *TextTransformer) TransformStreamChunk(
 
 		// Handle finish reason and usage - Format: e:{"finishReason":"stop","usage":{}}\n
 		if choice.FinishReason != nil {
-			finishData := map[string]interface{}{
+			finishData := map[string]any{
 				"finishReason": *choice.FinishReason,
 			}
 			if chunk.Usage != nil {
@@ -204,9 +204,7 @@ func (t *TextTransformer) TransformError(ctx context.Context, rawErr error) *htt
 		return &httpclient.Error{
 			StatusCode: http.StatusBadRequest,
 			Status:     http.StatusText(http.StatusBadRequest),
-			Body: []byte(
-				fmt.Sprintf(`{"message":"%s","type":"invalid_request"}`, strings.TrimPrefix(rawErr.Error(), transformer.ErrInvalidRequest.Error()+": ")),
-			),
+			Body:       fmt.Appendf(nil, `{"message":"%s","type":"invalid_request"}`, strings.TrimPrefix(rawErr.Error(), transformer.ErrInvalidRequest.Error()+": ")),
 		}
 	}
 
@@ -214,13 +212,13 @@ func (t *TextTransformer) TransformError(ctx context.Context, rawErr error) *htt
 		return &httpclient.Error{
 			StatusCode: llmErr.StatusCode,
 			Status:     http.StatusText(llmErr.StatusCode),
-			Body:       []byte(fmt.Sprintf(`{"message":"%s","type":"%s"}`, llmErr.Detail.Message, llmErr.Detail.Type)),
+			Body:       fmt.Appendf(nil, `{"message":"%s","type":"%s"}`, llmErr.Detail.Message, llmErr.Detail.Type),
 		}
 	}
 
 	return &httpclient.Error{
 		StatusCode: http.StatusInternalServerError,
 		Status:     http.StatusText(http.StatusInternalServerError),
-		Body:       []byte(fmt.Sprintf(`{"message":"%s","type":"internal_server_error"}`, rawErr.Error())),
+		Body:       fmt.Appendf(nil, `{"message":"%s","type":"internal_server_error"}`, rawErr.Error()),
 	}
 }

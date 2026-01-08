@@ -14,11 +14,11 @@ import (
 )
 
 type testLogOutput struct {
-	output []map[string]interface{}
+	output []map[string]any
 }
 
 func (t *testLogOutput) Write(p []byte) (n int, err error) {
-	var entry map[string]interface{}
+	var entry map[string]any
 	if err := json.Unmarshal(p, &entry); err != nil {
 		return 0, err
 	}
@@ -44,7 +44,7 @@ func (t *testLogOutput) Clear() {
 	t.output = nil
 }
 
-func (t *testLogOutput) GetOutput() []map[string]interface{} {
+func (t *testLogOutput) GetOutput() []map[string]any {
 	return t.output
 }
 
@@ -191,14 +191,14 @@ func TestSlogAdapter_WithGroups(t *testing.T) {
 	assert.Equal(t, "message with groups", log["message"])
 
 	// Verify group attributes - they should be nested under the group keys
-	if requestGroup, ok := log["request"].(map[string]interface{}); ok {
+	if requestGroup, ok := log["request"].(map[string]any); ok {
 		assert.Equal(t, "GET", requestGroup["method"])
 		assert.Equal(t, "/api/test", requestGroup["path"])
 	} else {
 		t.Errorf("Expected 'request' to be a map, got: %T", log["request"])
 	}
 
-	if responseGroup, ok := log["response"].(map[string]interface{}); ok {
+	if responseGroup, ok := log["response"].(map[string]any); ok {
 		assert.Equal(t, float64(200), responseGroup["status"])
 		assert.Equal(t, float64(1024), responseGroup["size"])
 	} else {
@@ -331,7 +331,7 @@ func TestSlogAdapter_AllAttributeTypes(t *testing.T) {
 		slog.Bool("bool", true),
 		slog.Duration("duration", 5*time.Second),
 		slog.Time("time", time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)),
-		slog.Any("any", map[string]interface{}{"nested": "value"}),
+		slog.Any("any", map[string]any{"nested": "value"}),
 	)
 
 	logs := output.GetOutput()
@@ -345,7 +345,7 @@ func TestSlogAdapter_AllAttributeTypes(t *testing.T) {
 	assert.Equal(t, true, log["bool"])
 	assert.Equal(t, float64(5), log["duration"]) // Duration in seconds
 	assert.Equal(t, "2023-01-01T00:00:00Z", log["time"])
-	assert.Equal(t, map[string]interface{}{"nested": "value"}, log["any"])
+	assert.Equal(t, map[string]any{"nested": "value"}, log["any"])
 }
 
 func TestSlogAdapter_EmptyAttributes(t *testing.T) {

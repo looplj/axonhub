@@ -322,7 +322,8 @@ func TestRoundRobinStrategy_WithRealDatabase(t *testing.T) {
 
 	// Create multiple channels
 	channels := make([]*ent.Channel, 4)
-	for i := 0; i < 4; i++ {
+
+	for i := range 4 {
 		ch, err := client.Channel.Create().
 			SetName(fmt.Sprintf("channel-%d", i)).
 			SetType("openai").

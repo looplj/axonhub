@@ -109,7 +109,7 @@ func TestErrorAwareStrategy_Score_ConsecutiveFailures(t *testing.T) {
 	channelService := newTestChannelService(client)
 
 	// Record consecutive failures
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		perf := &biz.PerformanceRecord{
 			ChannelID:        ch.ID,
 			StartTime:        time.Now().Add(-time.Minute),
@@ -333,7 +333,7 @@ func TestConnectionAwareStrategy_Score_PartialUtilization(t *testing.T) {
 	}
 
 	// Simulate 5 active connections out of 10 max (50% utilization)
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		tracker.IncrementConnection(channel.ID)
 	}
 
@@ -356,7 +356,7 @@ func TestConnectionAwareStrategy_Score_FullUtilization(t *testing.T) {
 	}
 
 	// Simulate full utilization
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		tracker.IncrementConnection(channel.ID)
 	}
 

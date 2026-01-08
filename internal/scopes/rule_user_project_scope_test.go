@@ -31,7 +31,7 @@ type mockProjectOwnedQuery struct {
 	filter *mockProjectOwnedFilter
 }
 
-func (m *mockProjectOwnedQuery) Filter() interface{} {
+func (m *mockProjectOwnedQuery) Filter() any {
 	if m.filter == nil {
 		m.filter = &mockProjectOwnedFilter{}
 	}

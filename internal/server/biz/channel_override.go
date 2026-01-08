@@ -3,6 +3,7 @@ package biz
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/samber/lo"
@@ -127,9 +128,7 @@ func parseJSONObject(input string) (map[string]any, error) {
 func deepMergeMap(base, override map[string]any) map[string]any {
 	result := make(map[string]any, len(base)+len(override))
 
-	for k, v := range base {
-		result[k] = v
-	}
+	maps.Copy(result, base)
 
 	for k, overrideVal := range override {
 		if baseVal, exists := result[k]; exists {

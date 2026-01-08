@@ -39,8 +39,8 @@ func TestConvertToLLMRequestComprehensive_SystemMessage(t *testing.T) {
 	})
 
 	t.Run("system message with provider metadata", func(t *testing.T) {
-		metadata := map[string]interface{}{
-			"testProvider": map[string]interface{}{
+		metadata := map[string]any{
+			"testProvider": map[string]any{
 				"systemSignature": "abc123",
 			},
 		}
@@ -345,7 +345,7 @@ func TestConvertToLLMRequestComprehensive_ToolCalls(t *testing.T) {
 							Type:       "tool-calculator",
 							State:      "output-available",
 							ToolCallID: "call1",
-							Input:      map[string]interface{}{"operation": "add", "numbers": []int{1, 2}},
+							Input:      map[string]any{"operation": "add", "numbers": []int{1, 2}},
 							Output:     "3",
 						},
 					},
@@ -390,7 +390,7 @@ func TestConvertToLLMRequestComprehensive_ToolCalls(t *testing.T) {
 							Type:       "tool-calculator",
 							State:      "output-error",
 							ToolCallID: "call1",
-							Input:      map[string]interface{}{"operation": "add", "numbers": []int{1, 2}},
+							Input:      map[string]any{"operation": "add", "numbers": []int{1, 2}},
 							ErrorText:  "Error: Invalid input",
 						},
 					},
@@ -445,12 +445,12 @@ func TestConvertToLLMRequestComprehensive_ToolCalls(t *testing.T) {
 		require.Len(t, assistantMsg.ToolCalls, 1)
 		toolCall := assistantMsg.ToolCalls[0]
 		// JSON order may vary, so check the content rather than exact string
-		var args map[string]interface{}
+		var args map[string]any
 
 		err = json.Unmarshal([]byte(toolCall.Function.Arguments), &args)
 		require.NoError(t, err)
 		assert.Equal(t, "add", args["operation"])
-		assert.Equal(t, []interface{}{float64(1), float64(2)}, args["numbers"])
+		assert.Equal(t, []any{float64(1), float64(2)}, args["numbers"])
 	})
 
 	t.Run("dynamic tool", func(t *testing.T) {
@@ -466,7 +466,7 @@ func TestConvertToLLMRequestComprehensive_ToolCalls(t *testing.T) {
 							ToolName:   "custom-calculator",
 							State:      "output-available",
 							ToolCallID: "call1",
-							Input:      map[string]interface{}{"value": 42},
+							Input:      map[string]any{"value": 42},
 							Output:     "result",
 						},
 					},
@@ -499,7 +499,7 @@ func TestConvertToLLMRequestComprehensive_ToolCalls(t *testing.T) {
 							Type:       "tool-screenshot",
 							State:      "output-available",
 							ToolCallID: "call-1",
-							Input:      map[string]interface{}{"value": "value-1"},
+							Input:      map[string]any{"value": "value-1"},
 							Output:     "result-1",
 						},
 						{Type: "step-start"},
@@ -507,14 +507,14 @@ func TestConvertToLLMRequestComprehensive_ToolCalls(t *testing.T) {
 							Type:       "tool-screenshot",
 							State:      "output-available",
 							ToolCallID: "call-2",
-							Input:      map[string]interface{}{"value": "value-2"},
+							Input:      map[string]any{"value": "value-2"},
 							Output:     "result-2",
 						},
 						{
 							Type:       "tool-screenshot",
 							State:      "output-available",
 							ToolCallID: "call-3",
-							Input:      map[string]interface{}{"value": "value-3"},
+							Input:      map[string]any{"value": "value-3"},
 							Output:     "result-3",
 						},
 					},
@@ -567,7 +567,7 @@ func TestConvertToLLMRequestComprehensive_IgnoreIncompleteToolCalls(t *testing.T
 							Type:       "tool-screenshot",
 							State:      "output-available",
 							ToolCallID: "call-1",
-							Input:      map[string]interface{}{"value": "value-1"},
+							Input:      map[string]any{"value": "value-1"},
 							Output:     "result-1",
 						},
 						{Type: "step-start"},
@@ -575,20 +575,20 @@ func TestConvertToLLMRequestComprehensive_IgnoreIncompleteToolCalls(t *testing.T
 							Type:       "tool-screenshot",
 							State:      "input-streaming",
 							ToolCallID: "call-2",
-							Input:      map[string]interface{}{"value": "value-2"},
+							Input:      map[string]any{"value": "value-2"},
 						},
 						{
 							Type:       "tool-screenshot",
 							State:      "input-available",
 							ToolCallID: "call-3",
-							Input:      map[string]interface{}{"value": "value-3"},
+							Input:      map[string]any{"value": "value-3"},
 						},
 						{
 							Type:       "dynamic-tool",
 							ToolName:   "tool-screenshot2",
 							State:      "input-available",
 							ToolCallID: "call-4",
-							Input:      map[string]interface{}{"value": "value-4"},
+							Input:      map[string]any{"value": "value-4"},
 						},
 						{Type: "text", Text: "response", State: "done"},
 					},
@@ -656,10 +656,10 @@ func TestConvertToLLMRequestComprehensive_Tools(t *testing.T) {
 					Function: Function{
 						Name:        "calculator",
 						Description: "Perform calculations",
-						Parameters: map[string]interface{}{
+						Parameters: map[string]any{
 							"type": "object",
-							"properties": map[string]interface{}{
-								"operation": map[string]interface{}{
+							"properties": map[string]any{
+								"operation": map[string]any{
 									"type": "string",
 								},
 							},

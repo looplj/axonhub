@@ -3,6 +3,7 @@ package gemini
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -72,15 +73,15 @@ func TestAggregateStreamChunks_SimpleText(t *testing.T) {
 		require.NotNil(t, resp.Candidates[0].Content)
 
 		// Find text content
-		var fullText string
+		var fullText strings.Builder
 
 		for _, part := range resp.Candidates[0].Content.Parts {
 			if !part.Thought {
-				fullText += part.Text
+				fullText.WriteString(part.Text)
 			}
 		}
 
-		require.Equal(t, "Hello, world!", fullText)
+		require.Equal(t, "Hello, world!", fullText.String())
 		require.Equal(t, "STOP", resp.Candidates[0].FinishReason)
 
 		require.NotNil(t, resp.UsageMetadata)

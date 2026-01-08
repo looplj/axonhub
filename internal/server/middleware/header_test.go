@@ -328,9 +328,7 @@ func TestDefaultAPIKeyConfig(t *testing.T) {
 func BenchmarkExtractAPIKeyFromHeader(b *testing.B) {
 	authHeader := "Bearer sk-1234567890abcdef"
 
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = ExtractAPIKeyFromHeader(authHeader)
 	}
 }
@@ -342,9 +340,7 @@ func BenchmarkExtractAPIKeyFromRequest(b *testing.B) {
 
 	config := defaultAPIKeyConfig()
 
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = ExtractAPIKeyFromRequest(req, config)
 	}
 }

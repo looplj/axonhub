@@ -10,7 +10,7 @@ func TestExtractJSONArray(t *testing.T) {
 	tests := []struct {
 		name        string
 		body        []byte
-		target      interface{}
+		target      any
 		expectError bool
 	}{
 		{

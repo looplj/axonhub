@@ -24,7 +24,7 @@ func (m *mockStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel)
 	return m.score, StrategyScore{
 		StrategyName: m.name,
 		Score:        m.score,
-		Details:      map[string]interface{}{"fixed_score": m.score},
+		Details:      map[string]any{"fixed_score": m.score},
 	}
 }
 

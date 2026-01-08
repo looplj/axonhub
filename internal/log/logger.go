@@ -86,7 +86,7 @@ var (
 		}
 	}
 
-	Any = func(key string, value interface{}) Field {
+	Any = func(key string, value any) Field {
 		if value == nil {
 			return Skip
 		}

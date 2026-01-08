@@ -166,7 +166,7 @@ func TestHttpClientImpl_DoStream(t *testing.T) {
 		serverResponse  func(w http.ResponseWriter, r *http.Request)
 		wantErr         bool
 		wantErrContains string
-		validate        func(stream interface{}) bool
+		validate        func(stream any) bool
 	}{
 		{
 			name: "successful streaming request",
@@ -211,7 +211,7 @@ func TestHttpClientImpl_DoStream(t *testing.T) {
 				}
 			},
 			wantErr: false,
-			validate: func(stream interface{}) bool {
+			validate: func(stream any) bool {
 				// This is a basic validation - in a real test we'd iterate through the stream
 				return stream != nil
 			},
@@ -230,7 +230,7 @@ func TestHttpClientImpl_DoStream(t *testing.T) {
 				w.Write([]byte(`{"error": "unauthorized"}`))
 			},
 			wantErr: true,
-			validate: func(stream interface{}) bool {
+			validate: func(stream any) bool {
 				return stream == nil
 			},
 		},

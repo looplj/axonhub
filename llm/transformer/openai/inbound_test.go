@@ -486,7 +486,7 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 	}
 }
 
-func mustMarshal(v interface{}) []byte {
+func mustMarshal(v any) []byte {
 	data, err := json.Marshal(v)
 	if err != nil {
 		panic(err)

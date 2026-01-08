@@ -20,7 +20,7 @@ func jsonRawMessageComparer(x, y json.RawMessage) bool {
 		return false
 	}
 
-	var xVal, yVal interface{}
+	var xVal, yVal any
 	if err := json.Unmarshal(x, &xVal); err != nil {
 		return false
 	}

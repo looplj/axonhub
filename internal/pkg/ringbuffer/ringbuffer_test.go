@@ -152,7 +152,7 @@ func TestRingBuffer_Get(t *testing.T) {
 func TestRingBuffer_CleanupBefore(t *testing.T) {
 	t.Run("cleanup oldest items", func(t *testing.T) {
 		rb := New[string](10)
-		for i := int64(0); i < 10; i++ {
+		for i := range int64(10) {
 			rb.Push(i*100, "value")
 		}
 
@@ -230,6 +230,7 @@ func TestRingBuffer_Range(t *testing.T) {
 		rb.Push(300, 30)
 
 		var count int
+
 		rb.Range(func(timestamp int64, value int) bool {
 			count++
 			return count < 2 // Stop after 2 items
@@ -257,6 +258,7 @@ func TestRingBuffer_Range(t *testing.T) {
 		rb.Push(400, 40) // This causes wraparound
 
 		var timestamps []int64
+
 		rb.Range(func(timestamp int64, value int) bool {
 			timestamps = append(timestamps, timestamp)
 			return true
@@ -342,13 +344,13 @@ func TestRingBuffer_Concurrent(t *testing.T) {
 		var wg sync.WaitGroup
 
 		// Spawn 10 goroutines, each pushing 10 items
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			wg.Add(1)
 
 			go func(base int) {
 				defer wg.Done()
 
-				for j := 0; j < 10; j++ {
+				for j := range 10 {
 					timestamp := int64(base*10 + j)
 					rb.Push(timestamp, base*10+j)
 				}
@@ -366,26 +368,20 @@ func TestRingBuffer_Concurrent(t *testing.T) {
 		var wg sync.WaitGroup
 
 		// Push items
-		wg.Add(1)
 
-		go func() {
-			defer wg.Done()
-
-			for i := 0; i < 50; i++ {
+		wg.Go(func() {
+			for i := range 50 {
 				rb.Push(int64(i), i*10)
 			}
-		}()
+		})
 
 		// Read items
-		wg.Add(1)
 
-		go func() {
-			defer wg.Done()
-
-			for i := 0; i < 50; i++ {
+		wg.Go(func() {
+			for i := range 50 {
 				rb.Get(int64(i))
 			}
-		}()
+		})
 
 		wg.Wait()
 	})
@@ -394,35 +390,29 @@ func TestRingBuffer_Concurrent(t *testing.T) {
 		rb := New[int](100)
 
 		// Populate buffer
-		for i := 0; i < 100; i++ {
+		for i := range 100 {
 			rb.Push(int64(i), i)
 		}
 
 		var wg sync.WaitGroup
 
 		// Cleanup old items
-		wg.Add(1)
 
-		go func() {
-			defer wg.Done()
-
-			for i := 0; i < 10; i++ {
+		wg.Go(func() {
+			for i := range 10 {
 				rb.CleanupBefore(int64(i * 10))
 			}
-		}()
+		})
 
 		// Range over items
-		wg.Add(1)
 
-		go func() {
-			defer wg.Done()
-
-			for i := 0; i < 10; i++ {
+		wg.Go(func() {
+			for range 10 {
 				rb.Range(func(timestamp int64, value int) bool {
 					return true
 				})
 			}
-		}()
+		})
 
 		wg.Wait()
 	})
@@ -434,7 +424,7 @@ func TestRingBuffer_ComplexScenario(t *testing.T) {
 		rb := New[int](10)
 
 		// Add data for timestamps 0-9
-		for i := int64(0); i < 10; i++ {
+		for i := range int64(10) {
 			rb.Push(i, int(i*100))
 		}
 
@@ -473,12 +463,13 @@ func TestRingBuffer_ComplexScenario(t *testing.T) {
 		rb := New[*Metric](60) // 60-second window
 
 		// Simulate recording metrics
-		for i := int64(0); i < 60; i++ {
+		for i := range int64(60) {
 			rb.Push(i, &Metric{Count: 1, Sum: i})
 		}
 
 		// Calculate aggregated metrics
 		var totalCount, totalSum int64
+
 		rb.Range(func(timestamp int64, value *Metric) bool {
 			totalCount += value.Count
 			totalSum += value.Sum
@@ -494,32 +485,28 @@ func TestRingBuffer_ComplexScenario(t *testing.T) {
 func BenchmarkRingBuffer_Push(b *testing.B) {
 	rb := New[int](1000)
 
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
+	for i := 0; b.Loop(); i++ {
 		rb.Push(int64(i), i)
 	}
 }
 
 func BenchmarkRingBuffer_Get(b *testing.B) {
 	rb := New[int](1000)
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		rb.Push(int64(i), i)
 	}
 
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
+	for i := 0; b.Loop(); i++ {
 		rb.Get(int64(i % 1000))
 	}
 }
 
 func BenchmarkRingBuffer_CleanupBefore(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		b.StopTimer()
 
 		rb := New[int](1000)
-		for j := 0; j < 1000; j++ {
+		for j := range 1000 {
 			rb.Push(int64(j), j)
 		}
 
@@ -531,13 +518,11 @@ func BenchmarkRingBuffer_CleanupBefore(b *testing.B) {
 
 func BenchmarkRingBuffer_Range(b *testing.B) {
 	rb := New[int](1000)
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		rb.Push(int64(i), i)
 	}
 
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		rb.Range(func(timestamp int64, value int) bool {
 			return true
 		})

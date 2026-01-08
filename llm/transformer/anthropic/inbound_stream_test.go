@@ -65,7 +65,7 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 				require.Equal(t, "call_tooG2dAMZaICWBfsYU5LYyvs", result.Content[0].ID)
 				require.Equal(t, "get_user_city", *result.Content[0].Name)
 
-				var cityInput map[string]interface{}
+				var cityInput map[string]any
 
 				err := json.Unmarshal(result.Content[0].Input, &cityInput)
 				require.NoError(t, err)
@@ -76,7 +76,7 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 				require.Equal(t, "call_Ul0yUvKCpLfl5c32FHPcASEB", result.Content[1].ID)
 				require.Equal(t, "get_user_language", *result.Content[1].Name)
 
-				var langInput map[string]interface{}
+				var langInput map[string]any
 
 				err = json.Unmarshal(result.Content[1].Input, &langInput)
 				require.NoError(t, err)
@@ -118,7 +118,7 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 				require.Equal(t, "toolu_bdrk_01RjxXDSvxn69XRfWLjn6Sur", result.Content[2].ID)
 				require.Equal(t, "get_coordinates", *result.Content[2].Name)
 
-				var coordInput map[string]interface{}
+				var coordInput map[string]any
 
 				err := json.Unmarshal(result.Content[2].Input, &coordInput)
 				require.NoError(t, err)
@@ -129,7 +129,7 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 				require.Equal(t, "toolu_bdrk_01E6Gr52e4i9TLwsDn8Sgimg", result.Content[3].ID)
 				require.Equal(t, "get_temperature_unit", *result.Content[3].Name)
 
-				var unitInput map[string]interface{}
+				var unitInput map[string]any
 
 				err = json.Unmarshal(result.Content[3].Input, &unitInput)
 				require.NoError(t, err)
@@ -163,7 +163,7 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 				require.Equal(t, "call_function_6091710012_1", result.Content[1].ID)
 				require.Equal(t, "TodoWrite", *result.Content[1].Name)
 
-				var toolInput map[string]interface{}
+				var toolInput map[string]any
 
 				err := json.Unmarshal(result.Content[1].Input, &toolInput)
 				require.NoError(t, err)

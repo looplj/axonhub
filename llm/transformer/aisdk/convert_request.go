@@ -3,6 +3,7 @@ package aisdk
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/samber/lo"
@@ -35,7 +36,7 @@ func convertToLLMRequestWithOptions(req *Request, options *ConvertToLLMRequestOp
 	}
 
 	// Helper: convert interface{} to json.RawMessage if possible
-	anyToRaw := func(v interface{}) json.RawMessage {
+	anyToRaw := func(v any) json.RawMessage {
 		switch t := v.(type) {
 		case nil:
 			return nil
@@ -77,7 +78,7 @@ func convertToLLMRequestWithOptions(req *Request, options *ConvertToLLMRequestOp
 			return ""
 		}
 
-		var v interface{}
+		var v any
 		if err := json.Unmarshal(r, &v); err != nil {
 			return string(r)
 		}
@@ -101,8 +102,8 @@ func convertToLLMRequestWithOptions(req *Request, options *ConvertToLLMRequestOp
 			return p.ToolName
 		}
 
-		if strings.HasPrefix(p.Type, "tool-") {
-			return strings.TrimPrefix(p.Type, "tool-")
+		if after, ok := strings.CutPrefix(p.Type, "tool-"); ok {
+			return after
 		}
 
 		return ""
@@ -140,7 +141,7 @@ func convertToLLMRequestWithOptions(req *Request, options *ConvertToLLMRequestOp
 			// Aggregate text parts and collect provider metadata
 			var contentText string
 
-			providerMetadata := make(map[string]interface{})
+			providerMetadata := make(map[string]any)
 
 			if len(msg.Parts) > 0 {
 				var sb strings.Builder
@@ -150,11 +151,9 @@ func convertToLLMRequestWithOptions(req *Request, options *ConvertToLLMRequestOp
 						sb.WriteString(p.Text)
 						// Merge provider metadata
 						if len(p.ProviderMetadata) > 0 {
-							var metadata map[string]interface{}
+							var metadata map[string]any
 							if err := json.Unmarshal(p.ProviderMetadata, &metadata); err == nil {
-								for k, v := range metadata {
-									providerMetadata[k] = v
-								}
+								maps.Copy(providerMetadata, metadata)
 							}
 						}
 					}

@@ -17,7 +17,7 @@ type UIMessage struct {
 	ID string `json:"id,omitempty"`
 	// Role of the message, e.g. "user", "assistant", "system".
 	Role    string          `json:"role"`
-	Content interface{}     `json:"content"` // can be string or array of content parts
+	Content any             `json:"content"` // can be string or array of content parts
 	Parts   []UIMessagePart `json:"parts"`
 }
 
@@ -29,9 +29,9 @@ type Tool struct {
 
 // Function represents a tool function in AI SDK format.
 type Function struct {
-	Name        string      `json:"name"`
-	Description string      `json:"description,omitempty"`
-	Parameters  interface{} `json:"parameters,omitempty"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	Parameters  any    `json:"parameters,omitempty"`
 }
 
 // Usage represents token usage information for AI model requests and responses.
@@ -108,8 +108,8 @@ type UIMessagePart struct {
 	ToolCallID     string          `json:"toolCallId,omitempty"`     // All tool invocations
 	ToolName       string          `json:"toolName,omitempty"`       // Dynamic tool or derived name from type
 	InputTextDelta string          `json:"inputTextDelta,omitempty"` // For streaming tool arguments (tool-input-delta)
-	Input          interface{}     `json:"input,omitempty"`          // tool input (tool-input-available)
-	Output         interface{}     `json:"output,omitempty"`         // tool output (tool-output-available)
+	Input          any             `json:"input,omitempty"`          // tool input (tool-input-available)
+	Output         any             `json:"output,omitempty"`         // tool output (tool-output-available)
 	ErrorText      string          `json:"errorText,omitempty"`      // error text (output-error)
 	RawInput       json.RawMessage `json:"rawInput,omitempty"`       // transitional raw input (output-error)
 	// Whether the provider executed the tool. Only for named tools (UIToolInvocation), optional.
