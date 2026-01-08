@@ -210,6 +210,9 @@ func (f *ModelFetcher) prepareModelsEndpoint(channelType channel.Type, baseURL s
 		}
 
 		return baseURL + "/v1beta/models", headers
+	case channelType == channel.TypeGithub:
+		// GitHub Models uses a separate catalog endpoint
+		return "https://models.github.ai/catalog/models", headers
 	default:
 		if useRawURL {
 			return baseURL + "/models", headers
@@ -256,6 +259,12 @@ func ExtractJSONArray(body []byte, target interface{}) error {
 
 // parseModelsResponse parses the models response from the provider API.
 func (f *ModelFetcher) parseModelsResponse(body []byte) ([]ModelIdentify, error) {
+	// First, try to parse as direct array (e.g., GitHub Models response)
+	var directArray []ModelIdentify
+	if err := json.Unmarshal(body, &directArray); err == nil && len(directArray) > 0 {
+		return directArray, nil
+	}
+
 	var response commonModelsResponse
 	if err := json.Unmarshal(body, &response); err != nil {
 		if err := ExtractJSONArray(body, &response.Data); err != nil {

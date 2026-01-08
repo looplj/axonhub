@@ -72,6 +72,7 @@ func (Channel) Fields() []ent.Field {
 				"modelscope",
 				"bailian",
 				"jina",
+				"github",
 			).
 			Immutable(),
 		field.String("base_url").Optional(),

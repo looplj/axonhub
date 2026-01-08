@@ -21,6 +21,7 @@ import {
   Bailian,
   Jina,
   DeepInfra,
+  Github,
 } from '@lobehub/icons';
 import { BURNCLOUD_DEFAULT_MODELS } from './burncloud-models';
 import { ApiFormat, ChannelType } from './schema';
@@ -443,6 +444,26 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-purple-100 text-purple-800 border-purple-200',
     icon: Jina,
   },
+  github: {
+    channelType: 'github',
+    baseURL: 'https://models.github.ai/inference',
+    defaultModels: [
+      'openai/gpt-4.1',
+      'openai/gpt-4o',
+      'openai/gpt-4o-mini',
+      'openai/o3',
+      'openai/o4-mini',
+      'anthropic/claude-sonnet-4',
+      'anthropic/claude-3.5-sonnet',
+      'meta/llama-4-scout-17b-16e-instruct',
+      'meta/llama-4-maverick-17b-128e-instruct',
+      'deepseek/DeepSeek-V3-0324',
+      'mistral-ai/mistral-large-2411',
+    ],
+    apiFormat: OPENAI_CHAT_COMPLETIONS,
+    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    icon: Github,
+  },
 };
 
 /**
@@ -484,7 +505,8 @@ export type Provider =
   | 'burncloud'
   | 'modelscope'
   | 'bailian'
-  | 'jina';
+  | 'jina'
+  | 'github';
 
 /**
  * Map channel type to provider
@@ -526,6 +548,7 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   modelscope: 'modelscope',
   bailian: 'bailian',
   jina: 'jina',
+  github: 'github',
 };
 
 /**

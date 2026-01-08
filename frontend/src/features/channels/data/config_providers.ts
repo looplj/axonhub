@@ -21,6 +21,7 @@ import {
   Bailian,
   Jina,
   DeepInfra,
+  Github,
 } from '@lobehub/icons';
 import { CHANNEL_CONFIGS } from './config_channels';
 import { ApiFormat, ChannelType } from './schema';
@@ -170,6 +171,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     icon: Jina,
     color: 'bg-purple-100 text-purple-800 border-purple-200',
     channelTypes: ['jina'],
+  },
+  github: {
+    provider: 'github',
+    icon: Github,
+    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    channelTypes: ['github'],
   },
 };
 
