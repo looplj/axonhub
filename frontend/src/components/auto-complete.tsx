@@ -89,12 +89,19 @@ export function AutoComplete<T extends string>({
     }
   };
 
+  const filtered = useMemo(() => {
+    if (!searchValue) return items;
+    const q = searchValue.toLowerCase();
+    return items.filter((it) => it.label.toLowerCase().includes(q) || it.value.toLowerCase().includes(q));
+  }, [items, searchValue]);
+
   const onSelectItem = (inputValue: string) => {
     if (inputValue === selectedValue) {
       reset();
     } else {
       onSelectedValueChange(inputValue as T);
-      onSearchValueChange(labels[inputValue] ?? '');
+      const item = items.find((it) => it.value === inputValue);
+      onSearchValueChange(item?.label ?? '');
     }
     setOpen(false);
   };
@@ -135,9 +142,9 @@ export function AutoComplete<T extends string>({
                   </div>
                 </CommandPrimitive.Loading>
               )}
-              {items.length > 0 && !isLoading ? (
+              {filtered.length > 0 && !isLoading ? (
                 <CommandGroup>
-                  {items.map((option) => (
+                  {filtered.map((option) => (
                     <CommandItem
                       key={option.value}
                       value={option.value}

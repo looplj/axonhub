@@ -18,6 +18,7 @@
       "latency": "耗时",
       "firstTokenLatency": "首字耗时",
       "tokens": "令牌",
+      "totalTokens": "总计：",
       "input": "输入",
       "output": "输出",
       "readCache": "读缓存",

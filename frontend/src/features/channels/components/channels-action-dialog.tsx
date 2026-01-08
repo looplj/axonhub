@@ -340,12 +340,14 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             : getChannelTypeForApiFormat(provider, newFormat);
       if (newChannelType) {
         form.setValue('type', newChannelType);
-        const baseURL = getDefaultBaseURL(newChannelType);
-        if (baseURL) {
-          form.resetField('baseURL', { defaultValue: baseURL });
+        if (!isDuplicate) {
+          const baseURL = getDefaultBaseURL(newChannelType);
+          if (baseURL) {
+            form.resetField('baseURL', { defaultValue: baseURL });
+          }
         }
         // Reset models when provider changes
-        setSupportedModels([]);
+        // setSupportedModels([]);
         setFetchedModels([]);
         setUseFetchedModels(false);
       }
@@ -378,7 +380,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         form.setValue('type', newChannelType);
 
         const baseURLFieldState = form.getFieldState('baseURL', form.formState);
-        if (!baseURLFieldState.isDirty) {
+        if (!baseURLFieldState.isDirty && !isDuplicate) {
           const baseURL = getDefaultBaseURL(newChannelType);
           if (baseURL) {
             form.resetField('baseURL', { defaultValue: baseURL });
@@ -399,7 +401,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         form.setValue('type', newChannelType);
 
         const baseURLFieldState = form.getFieldState('baseURL', form.formState);
-        if (!baseURLFieldState.isDirty) {
+        if (!baseURLFieldState.isDirty && !isDuplicate) {
           const baseURL = getDefaultBaseURL(newChannelType);
           if (baseURL) {
             form.resetField('baseURL', { defaultValue: baseURL });
@@ -420,7 +422,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         form.setValue('type', newChannelType);
 
         const baseURLFieldState = form.getFieldState('baseURL', form.formState);
-        if (!baseURLFieldState.isDirty) {
+        if (!baseURLFieldState.isDirty && !isDuplicate) {
           const baseURL = getDefaultBaseURL(newChannelType);
           if (baseURL) {
             form.resetField('baseURL', { defaultValue: baseURL });

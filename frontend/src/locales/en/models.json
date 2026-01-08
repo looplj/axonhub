@@ -46,7 +46,7 @@
       "detectUnassociated": "Detect Unassociated"
     },
     "filters": {
-      "filterByName": "Filter by name..."
+      "filterByName": "Filter by name or model ID..."
     },
     "fields": {
       "developer": "Developer",

@@ -18,6 +18,8 @@ export function ApiKeysViewDialog() {
   const apiKey = selectedApiKey?.key || '';
   const maskedApiKey = selectedApiKey?.key ? 'sk-...' + selectedApiKey.key.slice(-4) : '';
 
+  const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8090';
+
   const codeExamples = useMemo(() => {
     if (!selectedApiKey?.key) return {};
 
@@ -32,7 +34,7 @@ model_provider = "axonhub-responses"
 
 [model_providers.axonhub-responses]
 name = "AxonHub using Chat Completions"
-base_url = "http://127.0.0.1:8090/v1"
+base_url = "${currentOrigin}/v1"
 env_key = "AXONHUB_API_KEY"
 wire_api = "responses"
 query_params = {}
@@ -47,7 +49,7 @@ model_provider = "axonhub-responses"
 
 [model_providers.axonhub-responses]
 name = "AxonHub using Chat Completions"
-base_url = "http://127.0.0.1:8090/v1"
+base_url = "${currentOrigin}/v1"
 env_key = "AXONHUB_API_KEY"
 wire_api = "responses"
 query_params = {}
@@ -57,24 +59,24 @@ query_params = {}
       claudeCode: {
         display: `# In your terminal, set the API key
 export ANTHROPIC_AUTH_TOKEN="${maskedApiKey}"
-export ANTHROPIC_BASE_URL="http://localhost:8090/anthropic"
+export ANTHROPIC_BASE_URL="${currentOrigin}/anthropic"
 
 # Then launch Claude Code
 claude
 
 # Or use the --api-key flag with the base URL
-claude --api-key "${maskedApiKey}" --base-url "http://localhost:8090/anthropic" "Hello, Claude!"
+claude --api-key "${maskedApiKey}" --base-url "${currentOrigin}/anthropic" "Hello, Claude!"
 
 # The configuration will be stored in ~/.config/claude/config.json`,
         real: `# In your terminal, set the API key
 export ANTHROPIC_AUTH_TOKEN="${apiKey}"
-export ANTHROPIC_BASE_URL="http://localhost:8090/anthropic"
+export ANTHROPIC_BASE_URL="${currentOrigin}/anthropic"
 
 # Then launch Claude Code
 claude
 
 # Or use the --api-key flag with the base URL
-claude --api-key "${apiKey}" --base-url "http://localhost:8090/anthropic" "Hello, Claude!"
+claude --api-key "${apiKey}" --base-url "${currentOrigin}/anthropic" "Hello, Claude!"
 
 # The configuration will be stored in ~/.config/claude/config.json`
       },
@@ -83,7 +85,7 @@ claude --api-key "${apiKey}" --base-url "http://localhost:8090/anthropic" "Hello
 
 client = anthropic.Anthropic(
     api_key="${maskedApiKey}",
-    base_url="http://localhost:8090/anthropic"
+    base_url="${currentOrigin}/anthropic"
 )
 
 message = client.messages.create(
@@ -102,7 +104,7 @@ print(message.content[0].text)`,
 
 client = anthropic.Anthropic(
     api_key="${apiKey}",
-    base_url="http://localhost:8090/anthropic"
+    base_url="${currentOrigin}/anthropic"
 )
 
 message = client.messages.create(
@@ -123,7 +125,7 @@ print(message.content[0].text)`
 
 client = OpenAI(
     api_key="${maskedApiKey}",
-    base_url="http://localhost:8090/v1"
+    base_url="${currentOrigin}/v1"
 )
 
 response = client.chat.completions.create(
@@ -138,7 +140,7 @@ print(response.choices[0].message.content)`,
 
 client = OpenAI(
     api_key="${apiKey}",
-    base_url="http://localhost:8090/v1"
+    base_url="${currentOrigin}/v1"
 )
 
 response = client.chat.completions.create(

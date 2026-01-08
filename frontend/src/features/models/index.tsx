@@ -44,11 +44,15 @@ function ModelsContent() {
   const debouncedNameFilter = useDebounce(nameFilter, 300);
 
   const whereClause = (() => {
-    const where: Record<string, string | string[]> = {};
     if (debouncedNameFilter) {
-      where.nameContainsFold = debouncedNameFilter;
+      return {
+        or: [
+          { nameContainsFold: debouncedNameFilter },
+          { modelIDContainsFold: debouncedNameFilter },
+        ],
+      };
     }
-    return Object.keys(where).length > 0 ? where : undefined;
+    return undefined;
   })();
 
   const currentOrderBy = (() => {
