@@ -14,7 +14,7 @@ setup:
 # Run all tests
 test-all: setup
 	@echo "Running all integration tests..."
-	go test -v ./...
+	go test --count=1 -v ./...
 
 # Run tests with coverage
 test-coverage: setup
@@ -31,8 +31,8 @@ test-qa: setup
 
 test-tools: setup
 	@echo "Running tool calling tests..."
-	go test -v ./tool_single
-	go test -v ./tool_multiple
+	go test --count=1 -v ./tool_single
+	go test --count=1 -v ./tool_multiple
 
 test-streaming: setup
 	@echo "Running streaming tests..."
@@ -45,7 +45,7 @@ test-conversation: setup
 # Run all tests except responses and extra_body
 test-exclude-responses-extra-body: setup
 	@echo "Running all tests except responses and extra_body..."
-	go test -parallel=1 -v ./qa_simple ./tool_single ./tool_multiple ./streaming ./conversation ./thread_multiple_traces ./trace_multiple_requests
+	go test --count=1 -parallel=1 -v ./qa_simple ./tool_single ./tool_multiple ./streaming ./conversation ./thread_multiple_traces ./trace_multiple_requests
 
 # Run specific test patterns
 test-simple: setup
@@ -62,7 +62,7 @@ test-calculator: setup
 
 test-multi: setup
 	@echo "Running multiple tool tests..."
-	go test -v ./tool_multiple
+	go test --count=1 -v ./tool_multiple
 
 test-stream: setup
 	@echo "Running streaming tests..."
@@ -80,7 +80,7 @@ test-verbose: setup
 # Run tests in parallel (be careful with API rate limits)
 test-parallel: setup
 	@echo "Running tests in parallel..."
-	go test -parallel 3 -v ./...
+	go test --count=1 -parallel 3 -v ./...
 
 # Clean test artifacts
 clean:

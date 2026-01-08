@@ -107,8 +107,12 @@ func (m *performanceRecording) OnOutboundRawError(ctx context.Context, err error
 	}
 
 	perf := m.outbound.state.Perf
-	errorCode := ExtractErrorCode(err)
-	perf.MarkFailed(errorCode)
+	if errors.Is(err, context.Canceled) {
+		perf.MarkCanceled()
+	} else {
+		errorCode := ExtractErrorCode(err)
+		perf.MarkFailed(errorCode)
+	}
 
 	m.outbound.state.ChannelService.AsyncRecordPerformance(ctx, perf)
 }

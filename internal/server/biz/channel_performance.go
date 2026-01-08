@@ -494,7 +494,7 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 		svc.channelErrorCountsLock.Lock()
 		delete(svc.channelErrorCounts, perf.ChannelID)
 		svc.channelErrorCountsLock.Unlock()
-	} else {
+	} else if !perf.Canceled {
 		policy := svc.SystemService.RetryPolicyOrDefault(ctx)
 		if policy.AutoDisableChannel.Enabled {
 			if svc.checkAndHandleChannelError(ctx, perf, policy) {
@@ -527,14 +527,26 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 
 	firstTokenLatencyMs, requestLatencyMs, tokensPerSecond := perf.Calculate()
 
-	// Update request counts.
-	slot.RequestCount++
-	cm.aggregatedMetrics.RequestCount++
+	// Update slot request count for sliding window metrics.
+	// Note: aggregatedMetrics.RequestCount is NOT incremented here because it was already
+	// incremented in IncrementChannelSelection() at selection time for immediate load balancing effect.
+	// The cleanup logic will subtract slot.RequestCount from aggregatedMetrics when the slot expires.
+	if !perf.Canceled {
+		slot.RequestCount++
+	} else {
+		// If canceled, decrement the aggregated request count that was incremented at selection time.
+		// We don't increment slot.RequestCount, so it won't be subtracted later.
+		svc.channelPerfMetricsLock.Lock()
+
+		cm.aggregatedMetrics.RequestCount--
+
+		svc.channelPerfMetricsLock.Unlock()
+	}
 
 	// Record success or failure
 	if perf.Success {
 		cm.recordSuccess(slot, perf, firstTokenLatencyMs, requestLatencyMs)
-	} else {
+	} else if !perf.Canceled {
 		cm.recordFailure(slot, perf)
 	}
 
@@ -658,6 +670,38 @@ func (svc *ChannelService) GetChannelMetrics(ctx context.Context, channelID int)
 	}, nil
 }
 
+// IncrementChannelSelection increments the request count for a channel at selection time.
+// This is called when a channel is selected by the load balancer to ensure immediate
+// impact on subsequent selections, preventing the same channel from being selected
+// repeatedly during burst/concurrent requests.
+func (svc *ChannelService) IncrementChannelSelection(channelID int) {
+	svc.channelPerfMetricsLock.Lock()
+	defer svc.channelPerfMetricsLock.Unlock()
+
+	cm, exists := svc.channelPerfMetrics[channelID]
+	if !exists {
+		cm = newChannelMetrics(channelID)
+		svc.channelPerfMetrics[channelID] = cm
+	}
+
+	oldCount := cm.aggregatedMetrics.RequestCount
+
+	// Increment request count immediately to affect subsequent load balancing decisions
+	cm.aggregatedMetrics.RequestCount++
+
+	// Update last activity time to current time
+	now := time.Now()
+	if cm.aggregatedMetrics.LastSuccessAt == nil || cm.aggregatedMetrics.LastSuccessAt.Before(now) {
+		cm.aggregatedMetrics.LastSuccessAt = &now
+	}
+
+	log.Debug(context.Background(), "IncrementChannelSelection: incremented request count",
+		log.Int("channel_id", channelID),
+		log.Int64("old_count", oldCount),
+		log.Int64("new_count", cm.aggregatedMetrics.RequestCount),
+	)
+}
+
 func deriveErrorMessage(errorCode int) string {
 	return http.StatusText(errorCode)
 }
@@ -670,6 +714,7 @@ type PerformanceRecord struct {
 	EndTime          time.Time
 	Stream           bool
 	Success          bool
+	Canceled         bool
 	RequestCompleted bool
 
 	// If token count is 0, it means the provider response without token count.
@@ -710,6 +755,14 @@ func (m *PerformanceRecord) MarkSuccess(tokenCount int64) {
 func (m *PerformanceRecord) MarkFailed(errorCode int) {
 	m.Success = false
 	m.ErrorStatusCode = errorCode
+	m.RequestCompleted = true
+	m.EndTime = time.Now()
+}
+
+// MarkCanceled marks the request as canceled by context.
+func (m *PerformanceRecord) MarkCanceled() {
+	m.Success = false
+	m.Canceled = true
 	m.RequestCompleted = true
 	m.EndTime = time.Now()
 }

@@ -43,6 +43,11 @@ func (c *channelBasedStrategy) Name() string {
 	return c.name
 }
 
+// noopSelectionTracker is a no-op implementation of ChannelSelectionTracker for tests.
+type noopSelectionTracker struct{}
+
+func (n *noopSelectionTracker) IncrementChannelSelection(channelID int) {}
+
 // newTestLoadBalancer creates a LoadBalancer with mock system service for testing.
 func newTestLoadBalancer(t *testing.T, retryPolicy *biz.RetryPolicy, strategies ...LoadBalanceStrategy) *LoadBalancer {
 	t.Helper()
@@ -50,12 +55,12 @@ func newTestLoadBalancer(t *testing.T, retryPolicy *biz.RetryPolicy, strategies 
 	if retryPolicy == nil {
 		// Pass nil to mockSystemService so it uses its own default (Enabled: false)
 		mockSvc := &mockSystemService{retryPolicy: nil}
-		return NewLoadBalancer(mockSvc, strategies...)
+		return NewLoadBalancer(mockSvc, &noopSelectionTracker{}, strategies...)
 	}
 	// Use the provided retry policy
 	mockSvc := &mockSystemService{retryPolicy: retryPolicy}
 
-	return NewLoadBalancer(mockSvc, strategies...)
+	return NewLoadBalancer(mockSvc, &noopSelectionTracker{}, strategies...)
 }
 
 func TestLoadBalancer_Sort_EmptyChannels(t *testing.T) {

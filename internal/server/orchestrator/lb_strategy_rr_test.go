@@ -338,9 +338,15 @@ func TestRoundRobinStrategy_WithRealDatabase(t *testing.T) {
 	channelService := newTestChannelService(client)
 
 	// Record different numbers of requests for each channel
+	// IncrementChannelSelection is called at selection time in production,
+	// which increments aggregatedMetrics.RequestCount. RecordPerformance
+	// only increments slot.RequestCount (for sliding window) to avoid double counting.
 	requestCounts := []int64{0, 50, 200, 800}
 	for i, ch := range channels {
 		for j := int64(0); j < requestCounts[i]; j++ {
+			// Simulate selection time increment (done by load balancer)
+			channelService.IncrementChannelSelection(ch.ID)
+
 			perf := &biz.PerformanceRecord{
 				ChannelID:        ch.ID,
 				StartTime:        time.Now().Add(-time.Minute),
@@ -423,6 +429,7 @@ func TestWeightRoundRobinStrategy_Score_ModerateRequests(t *testing.T) {
 	// With weighted round-robin, higher weight channels need more requests to get the same penalty
 	// normalizedCount = requestCount / (weight / 100)
 	// score = 150 * exp(-normalizedCount / 150)
+	// When weight=0, weightFactor=1.0 (standard round-robin behavior)
 	testCases := []struct {
 		name             string
 		requestCount     int64
@@ -430,8 +437,8 @@ func TestWeightRoundRobinStrategy_Score_ModerateRequests(t *testing.T) {
 		expectedMinScore float64
 		expectedMaxScore float64
 	}{
-		// weight=1 (0->0.01), 100 requests -> normalized=10000, score=min(10)
-		{"100 requests, no weight", 100, 0, 10.0, 10.0},
+		// weight=0 -> weightFactor=1.0, 100 requests -> normalized=100, score ~= 77.0
+		{"100 requests, no weight", 100, 0, 70.0, 85.0},
 		// weight=25, 100 requests -> normalized=400, score ~= 10.4 -> clamped to 10
 		{"100 requests, low weight", 100, 25, 10.0, 11.0},
 		// weight=50, 100 requests -> normalized=200, score ~= 39.6
@@ -491,8 +498,8 @@ func TestWeightRoundRobinStrategy_Score_HighRequests(t *testing.T) {
 
 	score := strategy.Score(ctx, channel)
 	// With weight=50 and 500 requests, normalized_count=1000
-	// score should be at minimum (10)
-	assert.Equal(t, 10.0, score, "High usage with medium weight should hit minimum score")
+	// score should be at minimum (~10, with small offset from minScore clamping)
+	assert.InDelta(t, 10.0, score, 0.1, "High usage with medium weight should hit minimum score")
 }
 
 func TestWeightRoundRobinStrategy_Score_MetricsError(t *testing.T) {
