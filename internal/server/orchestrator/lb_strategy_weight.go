@@ -42,7 +42,7 @@ func (s *WeightStrategy) Score(ctx context.Context, channel *biz.Channel) float6
 func (s *WeightStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel) (float64, StrategyScore) {
 	// Weight is typically 0-100, normalize to 0-maxScore
 	weight := float64(channel.OrderingWeight)
-	details := map[string]interface{}{
+	details := map[string]any{
 		"ordering_weight": weight,
 		"max_score":       s.maxScore,
 	}

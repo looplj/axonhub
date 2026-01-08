@@ -35,7 +35,7 @@ func (c *channelBasedStrategy) ScoreWithDebug(ctx context.Context, channel *biz.
 	return score, StrategyScore{
 		StrategyName: c.name,
 		Score:        score,
-		Details:      map[string]interface{}{"channel_id": channel.ID},
+		Details:      map[string]any{"channel_id": channel.ID},
 	}
 }
 
@@ -278,7 +278,7 @@ func TestLoadBalancer_ErrorAware_ChannelWithErrorsRankedLower(t *testing.T) {
 	channelService := newTestChannelService(client)
 
 	// Record consecutive failures for ch2
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		perf := &biz.PerformanceRecord{
 			ChannelID:        ch2.ID,
 			StartTime:        time.Now().Add(-time.Minute),
@@ -526,7 +526,7 @@ func TestLoadBalancer_Combined_ErrorAndTrace(t *testing.T) {
 	channelService := newTestChannelService(client)
 
 	// Record consecutive failures for ch2
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		perf := &biz.PerformanceRecord{
 			ChannelID:        ch2.ID,
 			StartTime:        time.Now().Add(-time.Minute),

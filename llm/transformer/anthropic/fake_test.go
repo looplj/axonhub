@@ -55,7 +55,7 @@ func TestFakeExecutor_Do(t *testing.T) {
 	require.NotEmpty(t, response.Body)
 
 	// Verify response body is valid JSON and contains expected structure
-	var responseData map[string]interface{}
+	var responseData map[string]any
 
 	err = json.Unmarshal(response.Body, &responseData)
 	require.NoError(t, err)

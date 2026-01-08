@@ -32,7 +32,7 @@ func TestFakeExecutor_Do(t *testing.T) {
 	require.Equal(t, "application/json", resp.Headers["Content-Type"][0])
 
 	// Verify response body contains expected OpenAI structure
-	var responseData map[string]interface{}
+	var responseData map[string]any
 
 	err = json.Unmarshal(resp.Body, &responseData)
 	require.NoError(t, err)
@@ -73,7 +73,7 @@ func TestFakeExecutor_DoStream(t *testing.T) {
 	require.NotNil(t, firstEvent.Data)
 
 	// Parse the first event data to verify it's valid OpenAI chunk format
-	var chunkData map[string]interface{}
+	var chunkData map[string]any
 
 	err = json.Unmarshal(firstEvent.Data, &chunkData)
 	require.NoError(t, err)

@@ -54,7 +54,7 @@ type aiSDKConvertStream struct {
 	activeToolCalls            map[string]*llm.ToolCall // Track tool calls by ID
 }
 
-func (s *aiSDKConvertStream) enqueueEvent(_ string, data interface{}) error {
+func (s *aiSDKConvertStream) enqueueEvent(_ string, data any) error {
 	eventData, err := json.Marshal(data)
 	if err != nil {
 		return fmt.Errorf("failed to marshal event data: %w", err)
@@ -268,7 +268,7 @@ func (s *aiSDKConvertStream) Next() bool {
 		// Handle complete tool calls (tool-input-available)
 		if choice.Message != nil && len(choice.Message.ToolCalls) > 0 {
 			for _, toolCall := range choice.Message.ToolCalls {
-				var input interface{}
+				var input any
 				if toolCall.Function.Arguments != "" {
 					if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &input); err != nil {
 						s.err = fmt.Errorf("failed to unmarshal tool call arguments: %w", err)

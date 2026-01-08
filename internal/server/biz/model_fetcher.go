@@ -242,7 +242,7 @@ type commonModelsResponse struct {
 var jsonArrayRegex = regexp.MustCompile(`\[[^\]]*\]`)
 
 // ExtractJSONArray uses regex to extract JSON array from body and unmarshal to target.
-func ExtractJSONArray(body []byte, target interface{}) error {
+func ExtractJSONArray(body []byte, target any) error {
 	matches := jsonArrayRegex.FindAll(body, -1)
 	if len(matches) == 0 {
 		return fmt.Errorf("no JSON array found in response")

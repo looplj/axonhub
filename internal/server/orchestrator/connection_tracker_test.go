@@ -134,7 +134,7 @@ func TestConnectionTracker_ConcurrentAccess(t *testing.T) {
 	done := make(chan bool)
 
 	// Increment 50 times concurrently
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		go func() {
 			tracker.IncrementConnection(channelID)
 
@@ -143,7 +143,7 @@ func TestConnectionTracker_ConcurrentAccess(t *testing.T) {
 	}
 
 	// Wait for all increments
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		<-done
 	}
 
@@ -151,7 +151,7 @@ func TestConnectionTracker_ConcurrentAccess(t *testing.T) {
 	assert.Equal(t, 50, tracker.GetActiveConnections(channelID))
 
 	// Decrement 25 times concurrently
-	for i := 0; i < 25; i++ {
+	for range 25 {
 		go func() {
 			tracker.DecrementConnection(channelID)
 
@@ -160,7 +160,7 @@ func TestConnectionTracker_ConcurrentAccess(t *testing.T) {
 	}
 
 	// Wait for all decrements
-	for i := 0; i < 25; i++ {
+	for range 25 {
 		<-done
 	}
 

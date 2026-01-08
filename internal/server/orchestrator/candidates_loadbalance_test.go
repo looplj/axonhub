@@ -208,7 +208,7 @@ func TestDefaultChannelSelector_Select_WithChannelFailures(t *testing.T) {
 	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService, connectionTracker)
 
 	// Record failures for the high weight channel to test error awareness
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		perf := &biz.PerformanceRecord{
 			ChannelID:        channels[0].ID,
 			StartTime:        time.Now().Add(-time.Minute),
@@ -313,7 +313,7 @@ func TestDefaultChannelSelector_Select_WeightedRoundRobin_EqualWeights(t *testin
 	// Make multiple selections to test round-robin behavior
 	selections := make([][]*ChannelModelCandidate, 9)
 
-	for i := 0; i < 9; i++ {
+	for i := range 9 {
 		result, err := selector.Select(ctx, req)
 		require.NoError(t, err)
 		require.Len(t, result, 3)
@@ -404,7 +404,7 @@ func TestDefaultChannelSelector_Select_WeightedRoundRobin(t *testing.T) {
 	// Make multiple selections to test round-robin behavior
 	selections := make([][]*ChannelModelCandidate, 6)
 
-	for i := 0; i < 6; i++ {
+	for i := range 6 {
 		result, err := selector.Select(ctx, req)
 		require.NoError(t, err)
 		require.Len(t, result, 3)

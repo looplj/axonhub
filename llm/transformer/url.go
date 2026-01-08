@@ -12,8 +12,8 @@ func NormalizeBaseURL(url, version string) string {
 		return ""
 	}
 
-	if strings.HasSuffix(url, "#") {
-		normalized := strings.TrimRight(strings.TrimSuffix(url, "#"), "/")
+	if before, ok := strings.CutSuffix(url, "#"); ok {
+		normalized := strings.TrimRight(before, "/")
 		return normalized
 	}
 

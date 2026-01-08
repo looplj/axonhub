@@ -526,6 +526,7 @@ func (cm *channelMetrics) cleanupExpiredSlots(cutoff time.Time) {
 
 	// Collect metrics to subtract before cleanup
 	var metricsToRemove []*timeSlotMetrics
+
 	cm.window.Range(func(ts int64, metrics *timeSlotMetrics) bool {
 		if ts < cutoffTs {
 			metricsToRemove = append(metricsToRemove, metrics)

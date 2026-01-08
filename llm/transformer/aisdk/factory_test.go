@@ -95,7 +95,7 @@ func TestTransformerTypeConstants(t *testing.T) {
 }
 
 // Helper function to get the type name of a transformer.
-func getTransformerType(transformer interface{}) string {
+func getTransformerType(transformer any) string {
 	switch transformer.(type) {
 	case *DataStreamTransformer:
 		return "*aisdk.DataStreamTransformer"

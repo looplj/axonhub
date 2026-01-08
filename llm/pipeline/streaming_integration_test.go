@@ -51,25 +51,25 @@ func TestPipeline_Streaming_OpenAI_to_OpenAI(t *testing.T) {
 	pipeline := factory.Pipeline(inbound, outbound)
 
 	// Create test request (OpenAI format with streaming)
-	requestBody := map[string]interface{}{
+	requestBody := map[string]any{
 		"model":  "gpt-4",
 		"stream": true,
-		"messages": []map[string]interface{}{
+		"messages": []map[string]any{
 			{
 				"role":    "user",
 				"content": "What is the weather in New York City?",
 			},
 		},
-		"tools": []map[string]interface{}{
+		"tools": []map[string]any{
 			{
 				"type": "function",
-				"function": map[string]interface{}{
+				"function": map[string]any{
 					"name":        "get_weather",
 					"description": "Get weather at the given location",
-					"parameters": map[string]interface{}{
+					"parameters": map[string]any{
 						"type": "object",
-						"properties": map[string]interface{}{
-							"location": map[string]interface{}{
+						"properties": map[string]any{
+							"location": map[string]any{
 								"type": "string",
 							},
 						},
@@ -150,26 +150,26 @@ func TestPipeline_Streaming_OpenAI_to_Anthropic(t *testing.T) {
 	pipeline := factory.Pipeline(inbound, outbound)
 
 	// Create test request (OpenAI format with streaming)
-	requestBody := map[string]interface{}{
+	requestBody := map[string]any{
 		"model":      "gpt-4",
 		"stream":     true,
 		"max_tokens": 1024,
-		"messages": []map[string]interface{}{
+		"messages": []map[string]any{
 			{
 				"role":    "user",
 				"content": "What is the weather in San Francisco, CA?",
 			},
 		},
-		"tools": []map[string]interface{}{
+		"tools": []map[string]any{
 			{
 				"type": "function",
-				"function": map[string]interface{}{
+				"function": map[string]any{
 					"name":        "get_weather",
 					"description": "Get weather at the given location",
-					"parameters": map[string]interface{}{
+					"parameters": map[string]any{
 						"type": "object",
-						"properties": map[string]interface{}{
-							"location": map[string]interface{}{
+						"properties": map[string]any{
+							"location": map[string]any{
 								"type": "string",
 							},
 						},
@@ -249,24 +249,24 @@ func TestPipeline_Streaming_Anthropic_to_OpenAI(t *testing.T) {
 	pipeline := factory.Pipeline(inbound, outbound)
 
 	// Create test request (Anthropic format with streaming)
-	requestBody := map[string]interface{}{
+	requestBody := map[string]any{
 		"model":      "claude-3-sonnet-20240229",
 		"max_tokens": 1024,
 		"stream":     true,
-		"messages": []map[string]interface{}{
+		"messages": []map[string]any{
 			{
 				"role":    "user",
 				"content": "What is the weather in New York City?",
 			},
 		},
-		"tools": []map[string]interface{}{
+		"tools": []map[string]any{
 			{
 				"name":        "get_weather",
 				"description": "Get weather at the given location",
-				"input_schema": map[string]interface{}{
+				"input_schema": map[string]any{
 					"type": "object",
-					"properties": map[string]interface{}{
-						"location": map[string]interface{}{
+					"properties": map[string]any{
+						"location": map[string]any{
 							"type": "string",
 						},
 					},
@@ -345,24 +345,24 @@ func TestPipeline_Streaming_Anthropic_to_Anthropic(t *testing.T) {
 	factory := pipeline.NewFactory(executor)
 	pipeline := factory.Pipeline(inbound, outbound)
 	// Create test request (Anthropic format with streaming)
-	requestBody := map[string]interface{}{
+	requestBody := map[string]any{
 		"model":      "claude-3-sonnet-20240229",
 		"max_tokens": 1024,
 		"stream":     true,
-		"messages": []map[string]interface{}{
+		"messages": []map[string]any{
 			{
 				"role":    "user",
 				"content": "What is the weather in San Francisco, CA?",
 			},
 		},
-		"tools": []map[string]interface{}{
+		"tools": []map[string]any{
 			{
 				"name":        "get_weather",
 				"description": "Get weather at the given location",
-				"input_schema": map[string]interface{}{
+				"input_schema": map[string]any{
 					"type": "object",
-					"properties": map[string]interface{}{
-						"location": map[string]interface{}{
+					"properties": map[string]any{
+						"location": map[string]any{
 							"type": "string",
 						},
 					},
@@ -490,15 +490,15 @@ func TestPipeline_Streaming_WithTestData(t *testing.T) {
 
 			// Create appropriate test request
 			var (
-				requestBody map[string]interface{}
+				requestBody map[string]any
 				requestURL  string
 			)
 
 			if tt.inboundType == "openai" {
-				requestBody = map[string]interface{}{
+				requestBody = map[string]any{
 					"model":  "gpt-4",
 					"stream": true,
-					"messages": []map[string]interface{}{
+					"messages": []map[string]any{
 						{
 							"role":    "user",
 							"content": "Test message",
@@ -507,11 +507,11 @@ func TestPipeline_Streaming_WithTestData(t *testing.T) {
 				}
 				requestURL = "/v1/chat/completions"
 			} else {
-				requestBody = map[string]interface{}{
+				requestBody = map[string]any{
 					"model":      "claude-3-sonnet-20240229",
 					"max_tokens": 1024,
 					"stream":     true,
-					"messages": []map[string]interface{}{
+					"messages": []map[string]any{
 						{
 							"role":    "user",
 							"content": "Test message",

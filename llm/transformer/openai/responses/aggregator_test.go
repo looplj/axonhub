@@ -21,14 +21,14 @@ func TestAggregateStreamChunks(t *testing.T) {
 		{
 			name:   "empty chunks",
 			chunks: []*httpclient.StreamEvent{},
-			assertErr: func(t assert.TestingT, err error, args ...interface{}) bool {
+			assertErr: func(t assert.TestingT, err error, args ...any) bool {
 				return assert.ErrorContains(t, err, "empty stream chunks")
 			},
 		},
 		{
 			name:   "nil chunks",
 			chunks: nil,
-			assertErr: func(t assert.TestingT, err error, args ...interface{}) bool {
+			assertErr: func(t assert.TestingT, err error, args ...any) bool {
 				return assert.ErrorContains(t, err, "empty stream chunks")
 			},
 		},

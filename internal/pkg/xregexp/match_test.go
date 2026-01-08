@@ -420,9 +420,7 @@ func BenchmarkMatchStringExact(b *testing.B) {
 	pattern := "gpt-4-turbo"
 	str := "gpt-4-turbo"
 
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		MatchString(pattern, str)
 	}
 }
@@ -431,9 +429,7 @@ func BenchmarkMatchStringRegex(b *testing.B) {
 	pattern := "gpt-[34](\\.[0-9]+)?(-turbo)?"
 	str := "gpt-4-turbo"
 
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		MatchString(pattern, str)
 	}
 }
@@ -445,9 +441,7 @@ func BenchmarkFilterByPattern(b *testing.B) {
 	}
 	pattern := "gpt-.*"
 
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		Filter(items, pattern)
 	}
 }

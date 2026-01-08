@@ -185,7 +185,7 @@ func TestSetDataStreamHeaders(t *testing.T) {
 func TestStreamPartTypes(t *testing.T) {
 	tests := []struct {
 		name     string
-		part     interface{}
+		part     any
 		expected string
 	}{
 		{

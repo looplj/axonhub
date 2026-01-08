@@ -82,7 +82,7 @@ func CleanSchema(rawSchema json.RawMessage, fields ...string) (json.RawMessage, 
 // clearFieldsFromSchema clears specified fields from a single schema.
 func clearFieldsFromSchema(schema *jsonschema.Schema, fields ...string) {
 	schemaValue := reflect.ValueOf(schema).Elem()
-	schemaType := reflect.TypeOf(schema).Elem()
+	schemaType := reflect.TypeFor[jsonschema.Schema]()
 
 	for _, fieldName := range fields {
 		// Handle special cases for JSON field names that don't match Go struct field names

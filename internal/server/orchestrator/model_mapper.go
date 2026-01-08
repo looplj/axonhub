@@ -23,6 +23,7 @@ func applyModelMapping(inbound *PersistentInboundTransformer) pipeline.Middlewar
 
 type apiKeyModelMappingMiddleware struct {
 	pipeline.DummyMiddleware
+
 	// RequestModel is the original model from client request, before any API key profile mapping
 	RequestModel string
 	inbound      *PersistentInboundTransformer

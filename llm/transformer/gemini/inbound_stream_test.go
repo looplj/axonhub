@@ -3,6 +3,7 @@ package gemini
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/samber/lo"
@@ -374,15 +375,15 @@ func TestInboundTransformer_AggregateStreamChunks(t *testing.T) {
 				require.Len(t, resp.Candidates, 1)
 
 				// Find text content
-				var fullText string
+				var fullText strings.Builder
 
 				for _, part := range resp.Candidates[0].Content.Parts {
 					if !part.Thought {
-						fullText += part.Text
+						fullText.WriteString(part.Text)
 					}
 				}
 
-				require.Equal(t, "Hello, world!", fullText)
+				require.Equal(t, "Hello, world!", fullText.String())
 
 				require.NotNil(t, resp.UsageMetadata)
 				require.Equal(t, int64(10), resp.UsageMetadata.PromptTokenCount)
@@ -532,15 +533,15 @@ func TestInboundTransformer_AggregateStreamChunks(t *testing.T) {
 				require.NoError(t, err)
 				require.Len(t, resp.Candidates, 1)
 
-				var fullText string
+				var fullText strings.Builder
 
 				for _, part := range resp.Candidates[0].Content.Parts {
 					if !part.Thought {
-						fullText += part.Text
+						fullText.WriteString(part.Text)
 					}
 				}
 
-				require.Equal(t, "Valid response", fullText)
+				require.Equal(t, "Valid response", fullText.String())
 			},
 		},
 	}
@@ -584,15 +585,15 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 				require.NotNil(t, result.Candidates[0].Content)
 
 				// Verify the complete content
-				var fullText string
+				var fullText strings.Builder
 
 				for _, part := range result.Candidates[0].Content.Parts {
 					if !part.Thought {
-						fullText += part.Text
+						fullText.WriteString(part.Text)
 					}
 				}
 
-				require.Equal(t, "Hello, world!", fullText)
+				require.Equal(t, "Hello, world!", fullText.String())
 				require.Equal(t, "STOP", result.Candidates[0].FinishReason)
 			},
 		},

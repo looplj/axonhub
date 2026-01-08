@@ -559,7 +559,7 @@ func TestNewOutboundTransformer(t *testing.T) {
 			baseURL: "",
 			apiKey:  "test-key",
 			wantURL: "https://api.openai.com/v1",
-			assertErr: func(tt assert.TestingT, err error, msg ...interface{}) bool {
+			assertErr: func(tt assert.TestingT, err error, msg ...any) bool {
 				return assert.ErrorContains(tt, err, "base URL is required")
 			},
 		},

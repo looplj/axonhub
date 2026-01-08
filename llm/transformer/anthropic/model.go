@@ -180,9 +180,9 @@ type CacheControl struct {
 
 // InputSchema represents the JSON schema for tool input.
 type InputSchema struct {
-	Type       string                 `json:"type"`
-	Properties map[string]interface{} `json:"properties,omitempty"`
-	Required   []string               `json:"required,omitempty"`
+	Type       string         `json:"type"`
+	Properties map[string]any `json:"properties,omitempty"`
+	Required   []string       `json:"required,omitempty"`
 }
 
 // MessageParam represents a message in Anthropic format.

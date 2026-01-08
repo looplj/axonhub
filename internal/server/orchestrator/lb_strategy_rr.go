@@ -125,7 +125,7 @@ func (s *RoundRobinStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Ch
 		return moderateScore, StrategyScore{
 			StrategyName: s.Name(),
 			Score:        moderateScore,
-			Details: map[string]interface{}{
+			Details: map[string]any{
 				"error": err.Error(),
 			},
 		}
@@ -134,7 +134,7 @@ func (s *RoundRobinStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Ch
 	score, cappedCount, effectiveCount, lastActivity, inactivitySeconds := s.calculateScoreComponents(metrics)
 	requestCount := metrics.RequestCount
 
-	details := map[string]interface{}{
+	details := map[string]any{
 		"request_count":                 requestCount,
 		"capped_request_count":          cappedCount,
 		"effective_request_count":       effectiveCount,
@@ -342,7 +342,7 @@ func (s *WeightRoundRobinStrategy) ScoreWithDebug(ctx context.Context, channel *
 		return moderateScore, StrategyScore{
 			StrategyName: s.Name(),
 			Score:        moderateScore,
-			Details: map[string]interface{}{
+			Details: map[string]any{
 				"error": err.Error(),
 			},
 		}
@@ -359,7 +359,7 @@ func (s *WeightRoundRobinStrategy) ScoreWithDebug(ctx context.Context, channel *
 
 	normalizedCount := effectiveCount / weightFactor
 
-	details := map[string]interface{}{
+	details := map[string]any{
 		"request_count":            requestCount,
 		"original_cap":             s.requestCountCap,
 		"capped_request_count":     cappedCount,

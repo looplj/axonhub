@@ -103,9 +103,9 @@ func TestPipeline_OpenAI_to_OpenAI(t *testing.T) {
 	pipeline := factory.Pipeline(inbound, outbound)
 
 	// Create test request (OpenAI format)
-	requestBody := map[string]interface{}{
+	requestBody := map[string]any{
 		"model": "gpt-4",
-		"messages": []map[string]interface{}{
+		"messages": []map[string]any{
 			{
 				"role":    "user",
 				"content": "Hello, how are you?",
@@ -203,9 +203,9 @@ func TestPipeline_OpenAI_to_Anthropic(t *testing.T) {
 	pipeline := factory.Pipeline(inbound, outbound)
 
 	// Create test request (OpenAI format)
-	requestBody := map[string]interface{}{
+	requestBody := map[string]any{
 		"model": "gpt-4",
-		"messages": []map[string]interface{}{
+		"messages": []map[string]any{
 			{
 				"role":    "user",
 				"content": "Hello, how are you?",
@@ -310,10 +310,10 @@ func TestPipeline_Anthropic_to_OpenAI(t *testing.T) {
 	pipeline := factory.Pipeline(inbound, outbound)
 
 	// Create test request (Anthropic format)
-	requestBody := map[string]interface{}{
+	requestBody := map[string]any{
 		"model":      "claude-3-sonnet-20240229",
 		"max_tokens": 1024,
-		"messages": []map[string]interface{}{
+		"messages": []map[string]any{
 			{
 				"role":    "user",
 				"content": "Hello, how are you?",
@@ -414,10 +414,10 @@ func TestPipeline_Anthropic_to_Anthropic(t *testing.T) {
 	pipeline := factory.Pipeline(inbound, outbound)
 
 	// Create test request (Anthropic format)
-	requestBody := map[string]interface{}{
+	requestBody := map[string]any{
 		"model":      "claude-3-sonnet-20240229",
 		"max_tokens": 1024,
-		"messages": []map[string]interface{}{
+		"messages": []map[string]any{
 			{
 				"role":    "user",
 				"content": "Hello, nice to meet you!",

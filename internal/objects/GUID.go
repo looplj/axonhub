@@ -35,14 +35,14 @@ func (guid *GUID) UnmarshalGQL(v any) error {
 
 	str = str[14:] // Remove "gid://axonhub/" prefix
 
-	idx := strings.Index(str, "/")
-	if idx == -1 {
+	before, after, ok0 := strings.Cut(str, "/")
+	if !ok0 {
 		return errors.New("guid must contain type and id")
 	}
 
-	typ := str[:idx]
+	typ := before
 
-	id, err := strconv.Atoi(str[idx+1:])
+	id, err := strconv.Atoi(after)
 	if err != nil {
 		return err
 	}

@@ -20,21 +20,21 @@ func TestAlwaysDeny(t *testing.T) {
 		{
 			name: "no user in context",
 			ctx:  context.Background(),
-			expectError: func(tt assert.TestingT, err error, i ...interface{}) bool {
+			expectError: func(tt assert.TestingT, err error, i ...any) bool {
 				return assert.ErrorIs(tt, err, privacy.Deny)
 			},
 		},
 		{
 			name: "nil user in context",
 			ctx:  contexts.WithUser(context.Background(), nil),
-			expectError: func(tt assert.TestingT, err error, i ...interface{}) bool {
+			expectError: func(tt assert.TestingT, err error, i ...any) bool {
 				return assert.ErrorIs(tt, err, privacy.Deny)
 			},
 		},
 		{
 			name: "valid user in context",
 			ctx:  contexts.WithUser(context.Background(), &ent.User{ID: 1}),
-			expectError: func(tt assert.TestingT, err error, i ...interface{}) bool {
+			expectError: func(tt assert.TestingT, err error, i ...any) bool {
 				return assert.ErrorIs(tt, err, privacy.Deny)
 			},
 		},

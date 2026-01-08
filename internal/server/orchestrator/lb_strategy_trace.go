@@ -63,7 +63,7 @@ func (s *TraceAwareStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Ch
 		return 0, StrategyScore{
 			StrategyName: s.Name(),
 			Score:        0,
-			Details: map[string]interface{}{
+			Details: map[string]any{
 				"reason": "no_trace_in_context",
 			},
 		}
@@ -79,7 +79,7 @@ func (s *TraceAwareStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Ch
 		return 0, StrategyScore{
 			StrategyName: s.Name(),
 			Score:        0,
-			Details: map[string]interface{}{
+			Details: map[string]any{
 				"reason":   "error_getting_last_channel",
 				"trace_id": trace.ID,
 				"error":    err.Error(),
@@ -95,7 +95,7 @@ func (s *TraceAwareStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Ch
 		return 0, StrategyScore{
 			StrategyName: s.Name(),
 			Score:        0,
-			Details: map[string]interface{}{
+			Details: map[string]any{
 				"reason":   "no_last_successful_channel",
 				"trace_id": trace.ID,
 			},
@@ -104,7 +104,7 @@ func (s *TraceAwareStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Ch
 
 	isLastChannel := channel.ID == lastChannelID
 	score := 0.0
-	details := map[string]interface{}{
+	details := map[string]any{
 		"trace_id":        trace.ID,
 		"last_channel_id": lastChannelID,
 		"is_last_channel": isLastChannel,

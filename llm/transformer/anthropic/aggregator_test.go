@@ -22,7 +22,7 @@ func TestAggregateStreamChunks(t *testing.T) {
 			name:     "empty chunks",
 			chunks:   []*httpclient.StreamEvent{},
 			expected: "",
-			assertErr: func(t assert.TestingT, err error, args ...interface{}) bool {
+			assertErr: func(t assert.TestingT, err error, args ...any) bool {
 				return assert.ErrorContains(t, err, "empty stream chunks")
 			},
 		},
@@ -65,7 +65,7 @@ func TestAggregateStreamChunks(t *testing.T) {
 				},
 			},
 			expected: "Hello!",
-			assertErr: func(t assert.TestingT, err error, args ...interface{}) bool {
+			assertErr: func(t assert.TestingT, err error, args ...any) bool {
 				return assert.NoError(t, err)
 			},
 		},
@@ -114,7 +114,7 @@ func TestAggregateStreamChunks(t *testing.T) {
 				},
 			},
 			expected: "Hello, world!",
-			assertErr: func(t assert.TestingT, err error, args ...interface{}) bool {
+			assertErr: func(t assert.TestingT, err error, args ...any) bool {
 				return assert.NoError(t, err)
 			},
 		},
@@ -916,7 +916,7 @@ func TestAggregateStreamChunks_WithTestData(t *testing.T) {
 
 					// Compare tool input JSON
 					if expectedContent.Input != nil && result.Content[i].Input != nil {
-						var expectedInput, resultInput map[string]interface{}
+						var expectedInput, resultInput map[string]any
 
 						err := json.Unmarshal(expectedContent.Input, &expectedInput)
 						require.NoError(t, err)
