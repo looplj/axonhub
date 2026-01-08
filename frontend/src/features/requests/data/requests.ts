@@ -51,6 +51,25 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
             status
             metricsLatencyMs
             metricsFirstTokenLatencyMs
+            executions(first: 10, orderBy: { field: CREATED_AT, direction: DESC }) {
+              edges {
+                node {
+                  modelID
+                  channel {
+                    id
+                    name
+                  }
+                }
+                cursor
+              }
+              pageInfo {
+                hasNextPage
+                hasPreviousPage
+                startCursor
+                endCursor
+              }
+              totalCount
+            }
             usageLogs(first: 1) {
               edges {
                 node {

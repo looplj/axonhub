@@ -32,7 +32,10 @@
       "requestBody": "请求体",
       "responseBody": "响应体",
       "responseChunks": "响应块",
-      "requestHeaders": "请求头"
+      "requestHeaders": "请求头",
+      "executedModelId": "执行模型ID",
+      "retryProcess": "重试过程",
+      "mappedModel": "映射模型"
     },
     "status": {
       "pending": "等待中",
