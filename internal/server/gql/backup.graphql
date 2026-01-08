@@ -1,0 +1,35 @@
+scalar Upload
+
+enum BackupConflictStrategy {
+  SKIP
+  OVERWRITE
+  ERROR
+}
+
+input BackupOptionsInput {
+  includeChannels: Boolean!
+  includeModels: Boolean!
+}
+
+input RestoreOptionsInput {
+  includeChannels: Boolean!
+  includeModels: Boolean!
+  channelConflictStrategy: BackupConflictStrategy!
+  modelConflictStrategy: BackupConflictStrategy!
+}
+
+type BackupPayload {
+  success: Boolean!
+  data: String
+  message: String
+}
+
+type RestorePayload {
+  success: Boolean!
+  message: String
+}
+
+extend type Mutation {
+  backup(input: BackupOptionsInput!): BackupPayload!
+  restore(file: Upload!, input: RestoreOptionsInput!): RestorePayload!
+}

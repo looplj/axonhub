@@ -29,6 +29,7 @@ type Resolver struct {
 	threadService                  *biz.ThreadService
 	channelOverrideTemplateService *biz.ChannelOverrideTemplateService
 	modelService                   *biz.ModelService
+	backupService                  *biz.BackupService
 	httpClient                     *httpclient.HttpClient
 	modelFetcher                   *biz.ModelFetcher
 	TestChannelOrchestrator        *orchestrator.TestChannelOrchestrator
@@ -51,6 +52,7 @@ func NewSchema(
 	usageLogService *biz.UsageLogService,
 	channelOverrideTemplateService *biz.ChannelOverrideTemplateService,
 	modelService *biz.ModelService,
+	backupService *biz.BackupService,
 ) graphql.ExecutableSchema {
 	httpClient := httpclient.NewHttpClient()
 	modelFetcher := biz.NewModelFetcher(httpClient, channelService)
@@ -71,6 +73,7 @@ func NewSchema(
 			threadService:                  threadService,
 			channelOverrideTemplateService: channelOverrideTemplateService,
 			modelService:                   modelService,
+			backupService:                  backupService,
 			httpClient:                     httpClient,
 			modelFetcher:                   modelFetcher,
 			TestChannelOrchestrator:        orchestrator.NewTestChannelOrchestrator(channelService, requestService, systemService, usageLogService, httpClient),

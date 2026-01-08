@@ -7,6 +7,7 @@
       "brand": "Brand",
       "storage": "Storage",
       "retry": "Retry",
+      "backup": "Backup",
       "about": "About"
     },
     "storage": {
@@ -213,6 +214,33 @@
         "releases": "Releases",
         "issues": "Report Issue"
       }
+    },
+    "backup": {
+      "title": "Backup",
+      "description": "Create a backup of your system data including channels and models",
+      "includeChannels": "Include Channels",
+      "includeModels": "Include Models",
+      "createBackup": "Create Backup",
+      "backingUp": "Backing up...",
+      "success": "Backup created successfully",
+      "failed": "Failed to create backup"
+    },
+    "restore": {
+      "title": "Restore",
+      "description": "Restore your system data from a backup file",
+      "channelConflictStrategy": "Channel Conflict Strategy",
+      "modelConflictStrategy": "Model Conflict Strategy",
+      "strategies": {
+        "skip": "Skip existing items",
+        "overwrite": "Overwrite existing items",
+        "error": "Error on conflict"
+      },
+      "selectFile": "Select Backup File",
+      "restoreBackup": "Restore Backup",
+      "restoring": "Restoring...",
+      "success": "Backup restored successfully",
+      "failed": "Failed to restore backup",
+      "warning": "Warning: Restoring from a backup will overwrite existing data. This action cannot be undone."
     }
   }
 }

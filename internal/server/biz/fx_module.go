@@ -19,4 +19,5 @@ var Module = fx.Module("biz",
 	fx.Provide(NewDataStorageService),
 	fx.Provide(NewChannelOverrideTemplateService),
 	fx.Provide(NewModelService),
+	fx.Provide(NewBackupService),
 )

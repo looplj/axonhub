@@ -7,6 +7,7 @@
       "brand": "品牌",
       "storage": "存储",
       "retry": "重试",
+      "backup": "备份",
       "about": "关于"
     },
     "storage": {
@@ -213,6 +214,33 @@
         "releases": "版本发布",
         "issues": "报告问题"
       }
+    },
+    "backup": {
+      "title": "备份",
+      "description": "创建系统数据备份，包括通道和模型",
+      "includeChannels": "包含通道",
+      "includeModels": "包含模型",
+      "createBackup": "创建备份",
+      "backingUp": "备份中...",
+      "success": "备份创建成功",
+      "failed": "备份创建失败"
+    },
+    "restore": {
+      "title": "恢复",
+      "description": "从备份文件恢复系统数据",
+      "channelConflictStrategy": "通道冲突策略",
+      "modelConflictStrategy": "模型冲突策略",
+      "strategies": {
+        "skip": "跳过现有项",
+        "overwrite": "覆盖现有项",
+        "error": "冲突时报错"
+      },
+      "selectFile": "选择备份文件",
+      "restoreBackup": "恢复备份",
+      "restoring": "恢复中...",
+      "success": "备份恢复成功",
+      "failed": "备份恢复失败",
+      "warning": "警告：从备份恢复将覆盖现有数据。此操作无法撤销。"
     }
   }
 }
