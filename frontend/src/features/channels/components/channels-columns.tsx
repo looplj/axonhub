@@ -517,6 +517,9 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       accessorKey: 'supportedModels',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.supportedModels')} />,
       cell: SupportedModelsCell,
+      meta: {
+        className: 'max-w-64',
+      },
       enableSorting: false,
     },
     {

@@ -22,7 +22,9 @@ type PersistenceState struct {
 	// Request state
 	ModelMapper *ModelMapper
 	// Proxy config, will be used to override channel's default proxy config.
-	Proxy         *httpclient.ProxyConfig
+	Proxy *httpclient.ProxyConfig
+
+	// OriginalModel is the model after API key profile mapping, used for channel selection
 	OriginalModel string
 	RawRequest    *httpclient.Request
 	LlmRequest    *llm.Request

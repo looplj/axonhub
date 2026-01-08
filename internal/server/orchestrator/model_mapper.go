@@ -10,46 +10,89 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xregexp"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/streams"
 )
 
-func applyApiKeyModelMapping(inbound *PersistentInboundTransformer) pipeline.Middleware {
-	return pipeline.OnLlmRequest("apply-model-mapping", func(ctx context.Context, llmRequest *llm.Request) (*llm.Request, error) {
-		if llmRequest.Model == "" {
-			return nil, fmt.Errorf("%w: request model is empty", biz.ErrInvalidModel)
-		}
+func applyModelMapping(inbound *PersistentInboundTransformer) pipeline.Middleware {
+	return &apiKeyModelMappingMiddleware{
+		inbound: inbound,
+	}
+}
 
-		// Apply model mapping from API key profiles if active profile exists
-		if inbound.state.APIKey == nil {
-			return llmRequest, nil
-		}
+type apiKeyModelMappingMiddleware struct {
+	pipeline.DummyMiddleware
+	// RequestModel is the original model from client request, before any API key profile mapping
+	RequestModel string
+	inbound      *PersistentInboundTransformer
+}
 
-		originalModel := llmRequest.Model
-		mappedModel := inbound.state.ModelMapper.MapModel(ctx, inbound.state.APIKey, originalModel)
+func (m *apiKeyModelMappingMiddleware) Name() string {
+	return "apply-model-mapping"
+}
 
-		if mappedModel != originalModel {
-			llmRequest.Model = mappedModel
-			log.Debug(ctx, "applied model mapping from API key profile",
-				log.String("api_key_name", inbound.state.APIKey.Name),
-				log.String("original_model", originalModel),
-				log.String("mapped_model", mappedModel))
-		}
+func (m *apiKeyModelMappingMiddleware) OnInboundLlmRequest(ctx context.Context, llmRequest *llm.Request) (*llm.Request, error) {
+	if llmRequest.Model == "" {
+		return nil, fmt.Errorf("%w: request model is empty", biz.ErrInvalidModel)
+	}
 
-		// Save the model for later use, e.g. retry from next channels, should use the original model to choose channel model.
-		// This should be done after the api key level model mapping.
-		// This should be done before the request is created.
-		// The outbound transformer will restore the original model if it was mapped.
-		if inbound.state.OriginalModel == "" {
-			inbound.state.OriginalModel = llmRequest.Model
-		} else {
-			// Restore original model if it was mapped
-			// This should not happen, the inbound should not be called twice.
-			// Just in case, restore the original model.
-			llmRequest.Model = inbound.state.OriginalModel
-		}
+	// Save the original client request model before any mapping
+	if m.RequestModel == "" {
+		m.RequestModel = llmRequest.Model
+	}
 
+	// Apply model mapping from API key profiles if active profile exists
+	if m.inbound.state.APIKey == nil {
 		return llmRequest, nil
-	})
+	}
+
+	originalModel := llmRequest.Model
+	mappedModel := m.inbound.state.ModelMapper.MapModel(ctx, m.inbound.state.APIKey, originalModel)
+
+	if mappedModel != originalModel {
+		llmRequest.Model = mappedModel
+		log.Debug(ctx, "applied model mapping from API key profile",
+			log.String("api_key_name", m.inbound.state.APIKey.Name),
+			log.String("original_model", originalModel),
+			log.String("mapped_model", mappedModel))
+	}
+
+	// Save the model for later use, e.g. retry from next channels, should use the original model to choose channel model.
+	// This should be done after the api key level model mapping.
+	// This should be done before the request is created.
+	// The outbound transformer will restore the original model if it was mapped.
+	if m.inbound.state.OriginalModel == "" {
+		m.inbound.state.OriginalModel = llmRequest.Model
+	} else {
+		// Restore original model if it was mapped
+		// This should not happen, the inbound should not be called twice.
+		// Just in case, restore the original model.
+		llmRequest.Model = m.inbound.state.OriginalModel
+	}
+
+	return llmRequest, nil
+}
+
+func (m *apiKeyModelMappingMiddleware) OnOutboundLlmResponse(ctx context.Context, response *llm.Response) (*llm.Response, error) {
+	m.inbound.state.ModelMapper.ReplaceResponseModel(response, m.RequestModel)
+	return response, nil
+}
+
+func (m *apiKeyModelMappingMiddleware) OnOutboundRawStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
+	return stream, nil
+}
+
+func (m *apiKeyModelMappingMiddleware) OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error) {
+	if m.RequestModel == "" {
+		return stream, nil
+	}
+
+	// Wrap the stream to replace model in each response
+	return streams.Map(stream, func(response *llm.Response) *llm.Response {
+		m.inbound.state.ModelMapper.ReplaceResponseModel(response, m.RequestModel)
+		return response
+	}), nil
 }
 
 // ModelMapper handles model mapping based on API key profiles.
@@ -117,4 +160,13 @@ func (m *ModelMapper) applyModelMapping(mappings []objects.ModelMapping, model s
 // Supports exact match and regex patterns (including wildcard conversion).
 func (m *ModelMapper) matchesMapping(pattern, model string) bool {
 	return xregexp.MatchString(pattern, model)
+}
+
+// ReplaceResponseModel replaces the model field in llm.Response with the original client request model.
+func (m *ModelMapper) ReplaceResponseModel(response *llm.Response, requestModel string) {
+	// If the response model is empty, it means the model field was not sent from the LLM service.
+	// In this case, we should not replace the model.
+	if response != nil && response.Model != "" && response.Model != requestModel {
+		response.Model = requestModel
+	}
 }

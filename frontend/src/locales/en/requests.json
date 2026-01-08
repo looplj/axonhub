@@ -32,7 +32,10 @@
       "requestBody": "Request Body",
       "responseBody": "Response Body",
       "responseChunks": "Response Chunks",
-      "requestHeaders": "Request Headers"
+      "requestHeaders": "Request Headers",
+      "executedModelId": "Executed Model ID",
+      "retryProcess": "Retry Process",
+      "mappedModel": "Mapped Model"
     },
     "status": {
       "pending": "Pending",

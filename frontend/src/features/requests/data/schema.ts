@@ -60,7 +60,7 @@ export const requestSchema = z.object({
     .object({
       edges: z.array(
         z.object({
-          node: requestExecutionSchema,
+          node: requestExecutionSchema.partial().nullable().optional(),
           cursor: z.string(),
         })
       ),
@@ -70,15 +70,18 @@ export const requestSchema = z.object({
     .optional(),
   usageLogs: z
     .object({
-      edges: z.array(
-        z.object({
-          node: usageLogSchema.partial().nullable().optional(),
-          cursor: z.string().optional(),
-        })
-      ).optional(),
+      edges: z
+        .array(
+          z.object({
+            node: usageLogSchema.partial().nullable().optional(),
+            cursor: z.string().optional(),
+          })
+        )
+        .optional(),
       pageInfo: pageInfoSchema.optional(),
     })
-    .optional().nullable(),
+    .optional()
+    .nullable(),
 });
 
 export type Request = z.infer<typeof requestSchema>;

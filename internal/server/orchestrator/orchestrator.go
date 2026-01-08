@@ -171,7 +171,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	// Add inbound middlewares (executed after inbound.TransformRequest)
 	middlewares = append(middlewares,
 		checkApiKeyModelAccess(inbound),
-		applyApiKeyModelMapping(inbound),
+		applyModelMapping(inbound),
 		selectCandidates(inbound),
 		persistRequest(inbound),
 	)
