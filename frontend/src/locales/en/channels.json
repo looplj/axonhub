@@ -107,7 +107,7 @@
       "viewModels": "View Models"
     },
     "errorBanner": {
-      "message": "{{count}} channel(s) need attention for disabled due to unrecoverable errors",
+      "message": "{{count}} channel(s) need attention for disabled due to errors",
       "filterButton": "Show Error Channels",
       "errorOnlyMode": "Showing only channels with errors",
       "exitErrorOnlyButton": "Exit Error Mode"

@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xcache"
 )
 
 func setupBackupTest(t *testing.T) (*ent.Client, *BackupService, context.Context) {
@@ -27,12 +28,16 @@ func setupBackupTest(t *testing.T) (*ent.Client, *BackupService, context.Context
 		_ = executor.Shutdown(context.Background())
 	})
 
-	channelService := NewChannelService(ChannelServiceParams{
-		Executor: executor,
-		Ent:      client,
+	systemService := NewSystemService(SystemServiceParams{
+		CacheConfig: xcache.Config{Mode: xcache.ModeMemory},
+		Ent:         client,
 	})
 
-	systemService := NewSystemService(SystemServiceParams{})
+	channelService := NewChannelService(ChannelServiceParams{
+		Executor:      executor,
+		Ent:           client,
+		SystemService: systemService,
+	})
 
 	modelService := NewModelService(ModelServiceParams{
 		ChannelService: channelService,

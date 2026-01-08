@@ -101,6 +101,18 @@
       "retryDelayMs": {
         "label": "Retry Delay (ms)",
         "description": "Delay between retry attempts in milliseconds (100-10000ms). Shorter delays provide faster recovery but may overwhelm struggling services. Longer delays give services more time to recover."
+      },
+      "autoDisableChannel": {
+        "label": "Auto Disable Channel",
+        "description": "Automatically disable a channel when it exceeds the maximum number of retries for specific HTTP status codes",
+        "statuses": {
+          "label": "Status Codes",
+          "add": "Add Status Code",
+          "empty": "No status codes configured. Add a status code to auto-disable channels.",
+          "times": "times",
+          "statusPlaceholder": "Status",
+          "timesPlaceholder": "Times"
+        }
       }
     },
     "onboarding": {

@@ -74,6 +74,13 @@ const RETRY_POLICY_QUERY = `
       retryDelayMs
       loadBalancerStrategy
       enabled
+      autoDisableChannel {
+        enabled
+        statuses {
+          status
+          times
+        }
+      }
     }
   }
 `;
@@ -159,12 +166,33 @@ export interface CleanupOptionInput {
   cleanupDays: number;
 }
 
+export interface AutoDisableChannelStatus {
+  status: number;
+  times: number;
+}
+
+export interface AutoDisableChannel {
+  enabled: boolean;
+  statuses: AutoDisableChannelStatus[];
+}
+
 export interface RetryPolicy {
   maxChannelRetries: number;
   maxSingleChannelRetries: number;
   retryDelayMs: number;
   loadBalancerStrategy: string;
   enabled: boolean;
+  autoDisableChannel: AutoDisableChannel;
+}
+
+export interface AutoDisableChannelStatusInput {
+  status: number;
+  times: number;
+}
+
+export interface AutoDisableChannelInput {
+  enabled?: boolean;
+  statuses?: AutoDisableChannelStatusInput[];
 }
 
 export interface RetryPolicyInput {
@@ -173,6 +201,7 @@ export interface RetryPolicyInput {
   retryDelayMs?: number;
   loadBalancerStrategy?: string;
   enabled?: boolean;
+  autoDisableChannel?: AutoDisableChannelInput;
 }
 
 export interface UpdateDefaultDataStorageInput {

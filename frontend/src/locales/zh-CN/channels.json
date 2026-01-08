@@ -108,7 +108,7 @@
       "viewModels": "查看模型"
     },
     "errorBanner": {
-      "message": "请注意，有 {{count}} 个渠道因为不可恢复的错误而被禁用",
+      "message": "请注意，有 {{count}} 个渠道因为错误而被禁用",
       "filterButton": "显示错误渠道",
       "errorOnlyMode": "仅显示存在错误的渠道",
       "exitErrorOnlyButton": "退出错误模式"

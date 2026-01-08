@@ -101,6 +101,18 @@
       "retryDelayMs": {
         "label": "重试延迟",
         "description": "重试间隔时间，单位毫秒 (100-10000ms)。较短的延迟提供更快的恢复速度，但可能会压倒 struggling 服务。较长的延迟给服务更多时间恢复。"
+      },
+      "autoDisableChannel": {
+        "label": "自动禁用渠道",
+        "description": "当渠道在特定 HTTP 状态码下超过最大重试次数时，自动禁用该渠道",
+        "statuses": {
+          "label": "状态码",
+          "add": "添加状态码",
+          "empty": "未配置状态码。添加状态码以自动禁用渠道。",
+          "times": "次",
+          "statusPlaceholder": "状态码",
+          "timesPlaceholder": "次数"
+        }
       }
     },
     "onboarding": {

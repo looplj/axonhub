@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	// Import bedrock package to register its decoder.
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/pkg/vertex"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm"
@@ -364,9 +366,9 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 	return &llm.ResponseError{
 		StatusCode: rawErr.StatusCode,
 		Detail: llm.ErrorDetail{
-			Message:   string(rawErr.Body),
+			Message:   lo.Ternary(string(rawErr.Body) != "", strings.TrimSpace(string(rawErr.Body)), http.StatusText(rawErr.StatusCode)),
 			Type:      "api_error",
-			Code:      "",
+			Code:      http.StatusText(rawErr.StatusCode),
 			Param:     "",
 			RequestID: "",
 		},
