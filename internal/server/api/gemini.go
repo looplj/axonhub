@@ -179,9 +179,16 @@ type GeminiModel struct {
 func (handlers *GeminiHandlers) ListModels(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	models := handlers.ModelService.ListEnabledModels(ctx)
-	if models == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list models"})
+	models, err := handlers.ModelService.ListEnabledModels(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gemini.GeminiError{
+			Error: gemini.ErrorDetail{
+				Message: err.Error(),
+				Code:    http.StatusInternalServerError,
+				Status:  "internal_server_error",
+			},
+		})
+
 		return
 	}
 

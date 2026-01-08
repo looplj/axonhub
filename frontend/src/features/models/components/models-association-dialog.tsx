@@ -479,6 +479,15 @@ export function ModelsAssociationDialog() {
                     <p className='text-muted-foreground py-8 text-center text-sm'>{t('models.dialogs.association.noRules')}</p>
                   )}
 
+                  {fields.length > 0 && (
+                    <div className='grid grid-cols-[3rem_14rem_1fr_2.25rem] items-center gap-2 border-b px-[13px] pb-2'>
+                      <div className='text-muted-foreground text-center text-xs font-medium'>{t('models.dialogs.association.priority')}</div>
+                      <div className='text-muted-foreground text-center text-xs font-medium'>{t('models.dialogs.association.type')}</div>
+                      <div className='text-muted-foreground text-center text-xs font-medium'>{t('models.dialogs.association.rule')}</div>
+                      <div />
+                    </div>
+                  )}
+
                   {fields
                     .map((field, index) => ({ field, index }))
                     .sort((a, b) => {
@@ -625,15 +634,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
 
   return (
     <div className='flex flex-col gap-2 rounded-lg border p-3'>
-      <div
-        className={`grid items-center gap-2 ${
-          showChannel
-            ? 'grid-cols-[3rem_14rem_1fr_2.25rem]'
-            : showModel && showPattern
-            ? 'grid-cols-[3rem_14rem_1fr_1fr_2.25rem]'
-            : 'grid-cols-[3rem_14rem_1fr_2.25rem]'
-        }`}
-      >
+      <div className='grid grid-cols-[3rem_14rem_1fr_2.25rem] items-center gap-2'>
         {/* Priority Input */}
         <FormField
           control={form.control}

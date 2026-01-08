@@ -222,8 +222,8 @@ type Span struct {
 	// "tool_use": llm responsed tool use.
 	// "tool_result": result of tool running.
 	Type      string     `json:"type"`
-	StartTime time.Time  `json:"startTime,omitempty"`
-	EndTime   time.Time  `json:"endTime,omitempty"`
+	StartTime time.Time  `json:"startTime"`
+	EndTime   time.Time  `json:"endTime"`
 	Value     *SpanValue `json:"value,omitempty"`
 }
 
@@ -762,10 +762,7 @@ func deduplicateSpansWithParent(current, parent []Span) []Span {
 		return current
 	}
 
-	capacity := len(current) - len(parent)
-	if capacity < 0 {
-		capacity = 0
-	}
+	capacity := max(len(current)-len(parent), 0)
 
 	result := make([]Span, 0, capacity)
 

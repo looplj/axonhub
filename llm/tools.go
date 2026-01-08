@@ -3,6 +3,7 @@ package llm
 import (
 	"encoding/json"
 	"errors"
+	"slices"
 	"strings"
 )
 
@@ -11,7 +12,7 @@ type Tool struct {
 	// Type is the type of the tool.
 	// Any of "function", "image_generation", or "google" (for Google-specific tools).
 	Type            string           `json:"type"`
-	Function        Function         `json:"function,omitempty"`
+	Function        Function         `json:"function"`
 	ImageGeneration *ImageGeneration `json:"image_generation,omitempty"`
 
 	// Google contains Google/Gemini-specific grounding tools.
@@ -181,13 +182,7 @@ type GoogleUrlContext struct{}
 // These tools are only supported by native Gemini API format (gemini/gemini_vertex),
 // not by OpenAI-compatible endpoints (gemini_openai).
 func ContainsGoogleNativeTools(tools []Tool) bool {
-	for _, tool := range tools {
-		if IsGoogleNativeTool(tool) {
-			return true
-		}
-	}
-
-	return false
+	return slices.ContainsFunc(tools, IsGoogleNativeTool)
 }
 
 // IsGoogleNativeTool checks if a single tool is a Google native tool.
@@ -218,13 +213,7 @@ func FilterGoogleNativeTools(tools []Tool) []Tool {
 // Currently, this checks for the web_search function which maps to Anthropic's native
 // web_search_20250305 tool type.
 func ContainsAnthropicNativeTools(tools []Tool) bool {
-	for _, tool := range tools {
-		if IsAnthropicNativeTool(tool) {
-			return true
-		}
-	}
-
-	return false
+	return slices.ContainsFunc(tools, IsAnthropicNativeTool)
 }
 
 // IsAnthropicNativeTool checks if a single tool is an Anthropic native tool.

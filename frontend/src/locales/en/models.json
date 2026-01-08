@@ -93,6 +93,7 @@
         "priority": "Priority",
         "priorityTooltip": "Lower value = higher priority",
         "type": "Type",
+        "rule": "Rule",
         "types": {
           "channelModel": "Channel Exact Match",
           "channelRegex": "Channel Regex Match",

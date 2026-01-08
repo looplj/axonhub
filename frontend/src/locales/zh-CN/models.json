@@ -93,6 +93,7 @@
         "priority": "优先级",
         "priorityTooltip": "数值越低优先级越高",
         "type": "类型",
+        "rule": "规则",
         "types": {
           "channelModel": "渠道内精准匹配模型",
           "channelRegex": "渠道内正则匹配模型",
