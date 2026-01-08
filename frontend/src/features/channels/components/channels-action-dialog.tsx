@@ -126,6 +126,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     }
     return false;
   });
+  const [useClaudeCode, setUseClaudeCode] = useState(() => {
+    if (initialRow) {
+      return initialRow.type === 'claudecode';
+    }
+    return false;
+  });
 
   useEffect(() => {
     if (!isEdit || !currentRow) return;
@@ -136,6 +142,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     setSelectedApiFormat(apiFormat);
     setUseGeminiVertex(currentRow.type === 'gemini_vertex');
     setUseAnthropicAws(currentRow.type === 'anthropic_aws');
+    setUseClaudeCode(currentRow.type === 'claudecode');
   }, [isEdit, currentRow]);
 
   useEffect(() => {
@@ -203,13 +210,14 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       return 'gemini_vertex';
     }
 
-    // If anthropic/messages is selected and aws checkbox is checked, use anthropic_aws
-    if (selectedApiFormat === 'anthropic/messages' && useAnthropicAws) {
-      return 'anthropic_aws';
+    // If anthropic/messages is selected, check which variant is selected
+    if (selectedApiFormat === 'anthropic/messages') {
+      if (useClaudeCode) return 'claudecode';
+      if (useAnthropicAws) return 'anthropic_aws';
     }
 
     return getChannelTypeForApiFormat(selectedProvider, selectedApiFormat) || 'openai';
-  }, [isEdit, currentRow, selectedProvider, selectedApiFormat, useGeminiVertex, useAnthropicAws]);
+  }, [isEdit, currentRow, selectedProvider, selectedApiFormat, useGeminiVertex, useAnthropicAws, useClaudeCode]);
 
   const formSchema = isEdit ? updateChannelInputSchema : createChannelInputSchema;
 
@@ -327,6 +335,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       }
       if (provider !== 'anthropic') {
         setUseAnthropicAws(false);
+        setUseClaudeCode(false);
       }
       const formats = getApiFormatsForProvider(provider);
       // Default to first available format
@@ -364,9 +373,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       if (format !== 'gemini/contents') {
         setUseGeminiVertex(false);
       }
-      // Reset aws checkbox if not anthropic/messages
+      // Reset anthropic checkboxes if not anthropic/messages
       if (format !== 'anthropic/messages') {
         setUseAnthropicAws(false);
+        setUseClaudeCode(false);
       }
 
       const channelTypeFromFormat = getChannelTypeForApiFormat(selectedProvider, format);
@@ -416,6 +426,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     (checked: boolean) => {
       if (isEdit) return;
       setUseAnthropicAws(checked);
+      if (checked) {
+        setUseClaudeCode(false); // Uncheck Claude Code when AWS is checked
+      }
 
       if (selectedApiFormat === 'anthropic/messages') {
         const newChannelType = checked ? 'anthropic_aws' : 'anthropic';
@@ -431,6 +444,30 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       }
     },
     [isEdit, selectedApiFormat, form]
+  );
+
+  const handleClaudeCodeChange = useCallback(
+    (checked: boolean) => {
+      if (isEdit) return;
+      setUseClaudeCode(checked);
+      if (checked) {
+        setUseAnthropicAws(false); // Uncheck AWS when Claude Code is checked
+      }
+
+      if (selectedApiFormat === 'anthropic/messages') {
+        const newChannelType = checked ? 'claudecode' : 'anthropic';
+        form.setValue('type', newChannelType);
+
+        const baseURLFieldState = form.getFieldState('baseURL', form.formState);
+        if (!baseURLFieldState.isDirty && !isDuplicate) {
+          const baseURL = getDefaultBaseURL(newChannelType);
+          if (baseURL) {
+            form.resetField('baseURL', { defaultValue: baseURL });
+          }
+        }
+      }
+    },
+    [isEdit, selectedApiFormat, form, isDuplicate]
   );
 
   useEffect(() => {
@@ -766,11 +803,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               setSelectedApiFormat(CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || OPENAI_CHAT_COMPLETIONS);
               setUseGeminiVertex(initialRow.type === 'gemini_vertex');
               setUseAnthropicAws(initialRow.type === 'anthropic_aws');
+              setUseClaudeCode(initialRow.type === 'claudecode');
             } else {
               setSelectedProvider('openai');
               setSelectedApiFormat(OPENAI_CHAT_COMPLETIONS);
               setUseGeminiVertex(false);
               setUseAnthropicAws(false);
+              setUseClaudeCode(false);
             }
           }
           onOpenChange(state);
@@ -876,7 +915,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               </div>
                             )}
                             {selectedApiFormat === 'anthropic/messages' && selectedProvider === 'anthropic' && (
-                              <div className='mt-3'>
+                              <div className='mt-3 space-y-2'>
                                 <label
                                   className={`flex items-center gap-2 text-sm ${
                                     isEdit ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
@@ -888,6 +927,18 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                     disabled={isEdit}
                                   />
                                   <span>{t('channels.dialogs.fields.apiFormat.anthropicAWS.label')}</span>
+                                </label>
+                                <label
+                                  className={`flex items-center gap-2 text-sm ${
+                                    isEdit ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+                                  }`}
+                                >
+                                  <Checkbox
+                                    checked={useClaudeCode}
+                                    onCheckedChange={(checked) => handleClaudeCodeChange(checked === true)}
+                                    disabled={isEdit}
+                                  />
+                                  <span>{t('channels.dialogs.fields.apiFormat.claudeCode.label')}</span>
                                 </label>
                               </div>
                             )}

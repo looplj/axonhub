@@ -74,7 +74,8 @@
       "modelscope": "魔搭",
       "bailian": "百炼",
       "jina": "Jina",
-      "github": "GitHub"
+      "github": "GitHub",
+      "claudecode": "Claude Code"
     },
     "providers": {
       "openai": "OpenAI",
@@ -99,7 +100,8 @@
       "modelscope": "魔搭",
       "bailian": "百炼",
       "jina": "Jina",
-      "github": "GitHub"
+      "github": "GitHub",
+      "claudecode": "Claude Code"
     },
     "actions": {
       "test": "测试",
@@ -258,6 +260,11 @@
             "label": "使用 AWS Bedrock",
             "description": "使用 AWS Bedrock 替代标准 Anthropic API",
             "editDisabled": "无法更改 AWS Bedrock 设置"
+          },
+          "claudeCode": {
+            "label": "使用 Claude Code",
+            "description": "使用 Claude Code CLI API，包含专用头部和系统消息",
+            "editDisabled": "无法更改 Claude Code 设置"
           },
           "formats": {
             "openai/chat_completions": "OpenAI (Chat Completions)",

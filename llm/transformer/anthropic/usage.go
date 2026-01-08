@@ -5,16 +5,16 @@ import "github.com/looplj/axonhub/llm"
 // Usage represents usage information in Anthropic format.
 type Usage struct {
 	// The number of input tokens which were used to bill.
-	InputTokens int64 `json:"input_tokens,omitempty"`
+	InputTokens int64 `json:"input_tokens"`
 
 	// The number of output tokens which were used.
-	OutputTokens int64 `json:"output_tokens,omitempty"`
+	OutputTokens int64 `json:"output_tokens"`
 
 	// The number of input tokens used to create the cache entry.
-	CacheCreationInputTokens int64 `json:"cache_creation_input_tokens,omitempty"`
+	CacheCreationInputTokens int64 `json:"cache_creation_input_tokens"`
 
 	// The number of input tokens read from the cache.
-	CacheReadInputTokens int64 `json:"cache_read_input_tokens,omitempty"`
+	CacheReadInputTokens int64 `json:"cache_read_input_tokens"`
 
 	// Available options: standard, priority, batch
 	ServiceTier string `json:"service_tier,omitempty"`
