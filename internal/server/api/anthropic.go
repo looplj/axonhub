@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -65,9 +66,19 @@ type AnthropicModel struct {
 func (handlers *AnthropicHandlers) ListModels(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	models := handlers.ModelService.ListEnabledModels(ctx)
-	if models == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list models"})
+	models, err := handlers.ModelService.ListEnabledModels(ctx)
+	if err != nil {
+		requestID, _ := contexts.GetRequestID(ctx)
+		c.JSON(http.StatusInternalServerError, anthropic.AnthropicError{
+			StatusCode: http.StatusInternalServerError,
+			Type:       "internal_server_error",
+			RequestID:  requestID,
+			Error: anthropic.ErrorDetail{
+				Type:    "internal_server_error",
+				Message: err.Error(),
+			},
+		})
+
 		return
 	}
 

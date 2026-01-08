@@ -6,8 +6,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
@@ -98,9 +100,20 @@ type OpenAIModel struct {
 func (handlers *OpenAIHandlers) ListModels(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	models := handlers.ModelService.ListEnabledModels(ctx)
-	if models == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list models"})
+	requestID, _ := contexts.GetRequestID(ctx)
+
+	models, err := handlers.ModelService.ListEnabledModels(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, openai.OpenAIError{
+			StatusCode: http.StatusInternalServerError,
+			Detail: llm.ErrorDetail{
+				Code:      "internal_server_error",
+				Message:   err.Error(),
+				Type:      "server_error",
+				RequestID: requestID,
+			},
+		})
+
 		return
 	}
 

@@ -13,7 +13,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/model"
-	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xregexp"
 )
@@ -390,55 +389,71 @@ func (svc *ModelService) ListConfiguredModels(ctx context.Context, statusIn []mo
 // When QueryAllChannelModels in system settings is false, it returns configured models instead.
 // If an API key is present in context and has an active profile with modelIDs configured,
 // only those models will be returned.
-func (svc *ModelService) ListEnabledModels(ctx context.Context) []ModelFacade {
-	// Check if API key has restricted model IDs
+func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, error) {
+	var (
+		channels = svc.channelService.GetEnabledChannels()
+		profile  *objects.APIKeyProfile
+	)
+
 	if apiKey, ok := contexts.GetAPIKey(ctx); ok && apiKey != nil {
-		if profile := apiKey.GetActiveProfile(); profile != nil && len(profile.ModelIDs) > 0 {
-			// Return only the models specified in the profile
-			result := make([]ModelFacade, 0, len(profile.ModelIDs))
-			for _, modelID := range profile.ModelIDs {
-				result = append(result, ModelFacade{
-					ID:          modelID,
-					DisplayName: modelID,
-					CreatedAt:   apiKey.CreatedAt,
-					Created:     apiKey.CreatedAt.Unix(),
-					OwnedBy:     "api_key_profile",
-				})
-			}
+		profile = apiKey.GetActiveProfile()
 
-			return result
-		}
-	}
-
-	// Read system settings to determine whether to query all channels
-	settings := svc.systemService.ModelSettingsOrDefault(ctx)
-	queryAllChannels := settings.QueryAllChannelModels
-
-	if !queryAllChannels {
-		// Return configured models when queryAllChannels is false
-		configuredModels, err := svc.ListConfiguredModels(ctx, nil)
-		if err != nil {
-			log.Warn(ctx, "failed to list configured models", log.Cause(err))
-			return nil
-		}
-
-		result := make([]ModelFacade, 0, len(configuredModels))
-		for _, m := range configuredModels {
-			result = append(result, ModelFacade{
-				ID:          m.ID,
-				DisplayName: m.ID,
-				CreatedAt:   time.Time{},
-				Created:     0,
-				OwnedBy:     "configured",
+		if profile != nil && len(profile.ChannelIDs) > 0 {
+			channels = lo.Filter(channels, func(ch *Channel, _ int) bool {
+				return lo.Contains(profile.ChannelIDs, ch.ID)
 			})
 		}
 
-		return result
+		if profile != nil && len(profile.ChannelTags) > 0 {
+			channels = lo.Filter(channels, func(ch *Channel, _ int) bool {
+				return len(lo.Intersect(profile.ChannelTags, ch.Tags)) > 0
+			})
+		}
 	}
 
-	modelSet := make(map[string]ModelFacade)
+	settings := svc.systemService.ModelSettingsOrDefault(ctx)
+	if !settings.QueryAllChannelModels {
+		query := svc.entFromContext(ctx).
+			Model.
+			Query().
+			Where(model.StatusEQ(model.StatusEnabled))
+		if profile != nil && len(profile.ModelIDs) > 0 {
+			query = query.Where(model.ModelIDIn(profile.ModelIDs...))
+		}
 
-	for _, ch := range svc.channelService.GetEnabledChannels() {
+		enabledModels, err := query.All(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list configured models: %w", err)
+		}
+
+		var models []ModelFacade
+
+		for _, model := range enabledModels {
+			if model.Settings == nil {
+				continue
+			}
+
+			associations := MatchAssociations(model.Settings.Associations, channels)
+			if len(associations) > 0 {
+				models = append(models, ModelFacade{
+					ID:          model.ModelID,
+					DisplayName: model.ModelID,
+					CreatedAt:   model.CreatedAt,
+					Created:     model.CreatedAt.Unix(),
+					OwnedBy:     "configured",
+				})
+			}
+		}
+
+		return models, nil
+	}
+
+	var (
+		models   []ModelFacade
+		modelSet = make(map[string]bool)
+	)
+
+	for _, ch := range channels {
 		entries := ch.GetModelEntries()
 
 		for requestModel := range entries {
@@ -446,17 +461,25 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) []ModelFacade {
 				continue
 			}
 
-			modelSet[requestModel] = ModelFacade{
+			modelSet[requestModel] = true
+
+			models = append(models, ModelFacade{
 				ID:          requestModel,
 				DisplayName: requestModel,
 				CreatedAt:   ch.CreatedAt,
 				Created:     ch.CreatedAt.Unix(),
 				OwnedBy:     ch.Channel.Type.String(),
-			}
+			})
 		}
 	}
 
-	return lo.Values(modelSet)
+	if profile != nil && len(profile.ModelIDs) > 0 {
+		models = lo.Filter(models, func(m ModelFacade, _ int) bool {
+			return lo.Contains(profile.ModelIDs, m.ID)
+		})
+	}
+
+	return models, nil
 }
 
 // CountAssociatedChannels counts the number of unique channels associated with the given model associations.

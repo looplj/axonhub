@@ -263,7 +263,7 @@ type OpenAIError struct {
 // Tool represents a function tool.
 type Tool struct {
 	Type     string   `json:"type"`
-	Function Function `json:"function,omitempty"`
+	Function Function `json:"function"`
 }
 
 // ToLLMTool converts OpenAI Tool to unified llm.Tool.
