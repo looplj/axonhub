@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xcache"
 )
 
 func TestMetricsRecord_CalculateSuccessRate(t *testing.T) {
@@ -299,6 +300,7 @@ func TestChannelService_RecordMetrics(t *testing.T) {
 		AbstractService: &AbstractService{
 			db: client,
 		},
+		channelErrorCounts: make(map[int]map[int]int),
 	}
 
 	// Create a test channel
@@ -782,9 +784,25 @@ func TestChannelService_RecordPerformance_UnrecoverableError(t *testing.T) {
 }
 
 func TestChannelService_RecordPerformance(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
 	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
 	svc := &ChannelService{
+		AbstractService: &AbstractService{
+			db: client,
+		},
+		SystemService: &SystemService{
+			AbstractService: &AbstractService{
+				db: client,
+			},
+			Cache: xcache.NewFromConfig[ent.System](xcache.Config{Mode: xcache.ModeMemory}),
+		},
 		channelPerfMetrics: make(map[int]*channelMetrics),
+		channelErrorCounts: make(map[int]map[int]int),
 		perfWindowSeconds:  600,
 	}
 

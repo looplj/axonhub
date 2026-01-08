@@ -3,6 +3,7 @@ package biz
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/samber/lo"
@@ -446,6 +447,36 @@ func (svc *ChannelService) markChannelUnavailable(ctx context.Context, channelID
 	)
 }
 
+// checkAndHandleChannelError checks if the channel should be disabled based on the error status code.
+func (svc *ChannelService) checkAndHandleChannelError(ctx context.Context, perf *PerformanceRecord, policy *RetryPolicy) bool {
+	for _, statusConfig := range policy.AutoDisableChannel.Statuses {
+		if statusConfig.Status != perf.ErrorStatusCode {
+			continue
+		}
+
+		svc.channelErrorCountsLock.Lock()
+
+		if svc.channelErrorCounts[perf.ChannelID] == nil {
+			svc.channelErrorCounts[perf.ChannelID] = make(map[int]int)
+		}
+
+		svc.channelErrorCounts[perf.ChannelID][perf.ErrorStatusCode]++
+		count := svc.channelErrorCounts[perf.ChannelID][perf.ErrorStatusCode]
+		svc.channelErrorCountsLock.Unlock()
+
+		if count >= statusConfig.Times {
+			svc.markChannelUnavailable(ctx, perf.ChannelID, perf.ErrorStatusCode)
+			svc.channelErrorCountsLock.Lock()
+			delete(svc.channelErrorCounts, perf.ChannelID)
+			svc.channelErrorCountsLock.Unlock()
+
+			return true
+		}
+	}
+
+	return false
+}
+
 // RecordPerformance records performance metrics to in-memory cache.
 // This function is not thread-safe.
 func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *PerformanceRecord) {
@@ -459,12 +490,18 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 		}
 	}()
 
-	// // Check for unrecoverable errors and disable channel immediately
-	// Disable for now to avoid disalbe mistaken
-	// if !perf.Success && !isRecoverable(perf.ErrorStatusCode) {
-	// 	svc.markChannelUnavailable(ctx, perf.ChannelID, perf.ErrorStatusCode)
-	// 	return
-	// }
+	if perf.Success {
+		svc.channelErrorCountsLock.Lock()
+		delete(svc.channelErrorCounts, perf.ChannelID)
+		svc.channelErrorCountsLock.Unlock()
+	} else {
+		policy := svc.SystemService.RetryPolicyOrDefault(ctx)
+		if policy.AutoDisableChannel.Enabled {
+			if svc.checkAndHandleChannelError(ctx, perf, policy) {
+				return
+			}
+		}
+	}
 
 	// Get or create channel metrics
 	svc.channelPerfMetricsLock.Lock()
@@ -621,31 +658,8 @@ func (svc *ChannelService) GetChannelMetrics(ctx context.Context, channelID int)
 	}, nil
 }
 
-// isRecoverable determines the health status based on error code.
-func isRecoverable(errorCode int) bool {
-	switch errorCode {
-	case 401, 403, 404:
-		return false
-	default:
-		return true
-	}
-}
-
-const (
-	ErrMsgUnauthorized        = "Unauthorized"
-	ErrMsgNotFound            = "Not Found"
-	ErrMsgInternalServerError = "Internal Server Error"
-)
-
 func deriveErrorMessage(errorCode int) string {
-	switch errorCode {
-	case 401, 403:
-		return ErrMsgUnauthorized
-	case 404:
-		return ErrMsgNotFound
-	default:
-		return ErrMsgInternalServerError
-	}
+	return http.StatusText(errorCode)
 }
 
 // PerformanceRecord contains performance metrics collected during request processing.

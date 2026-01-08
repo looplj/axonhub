@@ -122,6 +122,18 @@ models:
   UpdateRetryPolicyInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.RetryPolicy
+  AutoDisableChannel:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.AutoDisableChannel
+  AutoDisableChannelStatus:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.AutoDisableChannelStatus
+  AutoDisableChannelInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.AutoDisableChannel
+  AutoDisableChannelStatusInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.AutoDisableChannelStatus
   UpdateAPIKeyProfilesInput:
     model:
       - github.com/looplj/axonhub/internal/objects.APIKeyProfiles

@@ -1,8 +1,25 @@
 import { useCallback, useState, memo } from 'react';
 import { format } from 'date-fns';
-import { ColumnDef, Row, Table } from '@tanstack/react-table';
 import { DotsHorizontalIcon } from '@radix-ui/react-icons';
-import { IconPlayerPlay, IconChevronDown, IconChevronRight, IconAlertTriangle, IconEdit, IconArchive, IconTrash, IconToggleLeft, IconToggleRight, IconCheck, IconWeight, IconTransform, IconNetwork, IconAdjustments, IconRoute, IconCopy } from '@tabler/icons-react';
+import { ColumnDef, Row, Table } from '@tanstack/react-table';
+import {
+  IconPlayerPlay,
+  IconChevronDown,
+  IconChevronRight,
+  IconAlertTriangle,
+  IconEdit,
+  IconArchive,
+  IconTrash,
+  IconToggleLeft,
+  IconToggleRight,
+  IconCheck,
+  IconWeight,
+  IconTransform,
+  IconNetwork,
+  IconAdjustments,
+  IconRoute,
+  IconCopy,
+} from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { formatDuration } from '@/utils/format-duration';
@@ -10,9 +27,6 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Switch } from '@/components/ui/switch';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { DataTableColumnHeader } from '@/components/data-table-column-header';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +34,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { DataTableColumnHeader } from '@/components/data-table-column-header';
 import { useChannels } from '../context/channels-context';
 import { useTestChannel } from '../data/channels';
 import { CHANNEL_CONFIGS, getProvider } from '../data/config_channels';
@@ -94,7 +111,7 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
             <DotsHorizontalIcon className='h-3 w-3' />
           </Button>
         </DropdownMenuTrigger>
-       <DropdownMenuContent align='end' className='w-[160px]'>
+        <DropdownMenuContent align='end' className='w-[160px]'>
           <DropdownMenuItem onClick={handleOpenTestDialog}>
             <IconPlayerPlay size={16} className='mr-2' />
             {t('channels.actions.test')}
@@ -260,7 +277,11 @@ const NameCell = memo(({ row }: { row: Row<Channel> }) => {
         <TooltipTrigger asChild>{content}</TooltipTrigger>
         <TooltipContent>
           <div className='space-y-1'>
-            <p className='text-destructive text-sm'>{t(`channels.messages.${channel.errorMessage}`)}</p>
+            <p className='text-destructive text-sm'>
+              {t(`channels.messages.${channel.errorMessage}`, {
+                fallback: channel.errorMessage,
+              })}
+            </p>
           </div>
         </TooltipContent>
       </Tooltip>
@@ -524,7 +545,9 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
     },
     {
       accessorKey: 'orderingWeight',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.orderingWeight')} className='justify-center' />,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={t('channels.columns.orderingWeight')} className='justify-center' />
+      ),
       cell: OrderingWeightCell,
       meta: {
         className: 'w-20 min-w-20 text-center',

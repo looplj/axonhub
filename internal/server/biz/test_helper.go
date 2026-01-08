@@ -1,15 +1,21 @@
 package biz
 
-import "github.com/looplj/axonhub/internal/ent"
+import (
+	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/pkg/xcache"
+)
 
-// NewChannelServiceForTest creates a minimal ChannelService for testing purposes.
-// It initializes the perfCh channel and starts a goroutine to drain it.
 func NewChannelServiceForTest(client *ent.Client) *ChannelService {
 	perfCh := make(chan *PerformanceRecord, 1024)
-	// Start a goroutine to drain the performance channel
+	mockSysSvc := &SystemService{
+		AbstractService: &AbstractService{
+			db: client,
+		},
+		Cache: xcache.NewFromConfig[ent.System](xcache.Config{Mode: xcache.ModeMemory}),
+	}
+
 	go func() {
 		for range perfCh {
-			// Discard performance records in tests
 		}
 	}()
 
@@ -17,6 +23,7 @@ func NewChannelServiceForTest(client *ent.Client) *ChannelService {
 		AbstractService: &AbstractService{
 			db: client,
 		},
+		SystemService:      mockSysSvc,
 		channelPerfMetrics: make(map[int]*channelMetrics),
 		perfCh:             perfCh,
 		enabledChannels:    []*Channel{},

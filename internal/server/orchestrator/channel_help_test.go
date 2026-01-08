@@ -26,9 +26,12 @@ import (
 
 // newTestChannelServiceForChannels creates a minimal channel service for testing.
 func newTestChannelServiceForChannels(client *ent.Client) *biz.ChannelService {
+	systemService := newTestSystemService(client)
+
 	return biz.NewChannelService(biz.ChannelServiceParams{
-		Executor: executors.NewPoolScheduleExecutor(),
-		Ent:      client,
+		Executor:      executors.NewPoolScheduleExecutor(),
+		Ent:           client,
+		SystemService: systemService,
 	})
 }
 

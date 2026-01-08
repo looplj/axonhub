@@ -55,8 +55,9 @@ type Channel struct {
 type ChannelServiceParams struct {
 	fx.In
 
-	Executor executors.ScheduledExecutor
-	Ent      *ent.Client
+	Executor      executors.ScheduledExecutor
+	Ent           *ent.Client
+	SystemService *SystemService
 }
 
 func NewChannelService(params ChannelServiceParams) *ChannelService {
@@ -67,7 +68,9 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 		Executors: executors.NewPoolScheduleExecutor(
 			executors.WithMaxConcurrent(1),
 		),
+		SystemService:      params.SystemService,
 		channelPerfMetrics: make(map[int]*channelMetrics),
+		channelErrorCounts: make(map[int]map[int]int),
 		perfCh:             make(chan *PerformanceRecord, 1024),
 	}
 
@@ -103,7 +106,8 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 type ChannelService struct {
 	*AbstractService
 
-	Executors executors.ScheduledExecutor
+	Executors     executors.ScheduledExecutor
+	SystemService *SystemService
 
 	// latestUpdate 记录最新的 channel 更新时间，用于优化定时加载
 	enabledChannels []*Channel
@@ -117,6 +121,11 @@ type ChannelService struct {
 	// protected by channelPerfMetricsLock
 	channelPerfMetrics     map[int]*channelMetrics
 	channelPerfMetricsLock sync.RWMutex
+
+	// channelErrorCounts stores the error counts for each channel and status code
+	// channelID -> statusCode -> count
+	channelErrorCounts     map[int]map[int]int
+	channelErrorCountsLock sync.Mutex
 
 	// perfCh is the channel for performance records for async processing.
 	perfCh chan *PerformanceRecord

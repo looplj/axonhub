@@ -83,6 +83,8 @@ type CleanupOption struct {
 
 // RetryPolicy represents the retry policy configuration.
 type RetryPolicy struct {
+	// Enabled controls whether retry policy is active
+	Enabled bool `json:"enabled"`
 	// MaxChannelRetries defines the maximum number of different channels to retry
 	MaxChannelRetries int `json:"max_channel_retries"`
 	// MaxSingleChannelRetries defines the maximum number of retries for a single channel
@@ -92,8 +94,25 @@ type RetryPolicy struct {
 	// LoadBalancerStrategy defines which channel load balancer strategy to use.
 	// Supported values: "adaptive", "weighted".
 	LoadBalancerStrategy string `json:"load_balancer_strategy"`
-	// Enabled controls whether retry policy is active
+
+	// AutoDisableChannel controls whether to auto-disable a channel when it exceeds the maximum number of retries.
+	AutoDisableChannel AutoDisableChannel `json:"auto_disable_channel"`
+}
+
+type AutoDisableChannel struct {
+	// Enabled controls whether auto-disable channel is active
 	Enabled bool `json:"enabled"`
+
+	// Statuses defines the status codes and times to auto-disable a channel
+	Statuses []AutoDisableChannelStatus `json:"statuses"`
+}
+
+type AutoDisableChannelStatus struct {
+	// Status is the HTTP status code to trigger auto-disable.
+	Status int `json:"status"`
+
+	// Times is the number of times the status code occurs before auto-disable the channel.
+	Times int `json:"times"`
 }
 
 // ModelSettings represents model-related configuration settings.
