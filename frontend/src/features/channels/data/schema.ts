@@ -43,6 +43,7 @@ export const channelTypeSchema = z.enum([
   'modelscope',
   'bailian',
   'jina',
+  'github',
 ]);
 export type ChannelType = z.infer<typeof channelTypeSchema>;
 

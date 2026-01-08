@@ -72,7 +72,8 @@
       "burncloud": "BurnCloud",
       "modelscope": "ModelScope",
       "bailian": "Bailian (OpenAI)",
-      "jina": "Jina"
+      "jina": "Jina",
+      "github": "GitHub"
     },
     "providers": {
       "openai": "OpenAI",
@@ -96,7 +97,8 @@
       "burncloud": "BurnCloud",
       "modelscope": "ModelScope",
       "bailian": "Bailian",
-      "jina": "Jina"
+      "jina": "Jina",
+      "github": "GitHub"
     },
     "actions": {
       "test": "Test",
