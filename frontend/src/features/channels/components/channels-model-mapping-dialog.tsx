@@ -58,6 +58,7 @@ const createModelMappingFormSchema = (supportedModels: string[]) =>
       ),
     autoTrimedModelPrefixes: z.array(z.string()).optional(),
     hideOriginalModels: z.boolean().optional(),
+    hideMappedModels: z.boolean().optional(),
   });
 
 const extractAliasFromModelPath = (modelPath: string): string => {
@@ -108,6 +109,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
       modelMappings: currentRow.settings?.modelMappings || [],
       autoTrimedModelPrefixes: currentRow.settings?.autoTrimedModelPrefixes || [],
       hideOriginalModels: currentRow.settings?.hideOriginalModels || false,
+      hideMappedModels: currentRow.settings?.hideMappedModels || false,
     },
   });
 
@@ -205,6 +207,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
       modelMappings: nextMappings,
       autoTrimedModelPrefixes: currentRow.settings?.autoTrimedModelPrefixes || [],
       hideOriginalModels: currentRow.settings?.hideOriginalModels || false,
+      hideMappedModels: currentRow.settings?.hideMappedModels || false,
     });
     exitInlineEditing();
   }, [currentRow, open, form]);
@@ -286,6 +289,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
         modelMappings: values.modelMappings,
         autoTrimedModelPrefixes: values.autoTrimedModelPrefixes || [],
         hideOriginalModels: values.hideOriginalModels,
+        hideMappedModels: values.hideMappedModels,
       });
 
       await updateChannel.mutateAsync({
@@ -362,7 +366,6 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
                   </div>
                 </CardContent>
               </Card>
-
               <Card>
                 <CardHeader>
                   <CardTitle className='text-lg'>{t('channels.dialogs.settings.extraModelPrefix.title')}</CardTitle>
@@ -437,6 +440,22 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
                   <CardDescription>{t('channels.dialogs.settings.modelMapping.description')}</CardDescription>
                 </CardHeader>
                 <CardContent className='space-y-4'>
+                  <div className='flex flex-wrap items-center gap-6 pb-2'>
+                    <div className='flex items-center gap-2'>
+                      <Checkbox
+                        id='hideMappedModels'
+                        checked={form.watch('hideMappedModels') || false}
+                        onCheckedChange={(checked) => form.setValue('hideMappedModels', checked === true)}
+                      />
+                      <label
+                        htmlFor='hideMappedModels'
+                        className='cursor-pointer text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'
+                      >
+                        {t('channels.dialogs.settings.modelMapping.hideMappedModels.label')}
+                      </label>
+                    </div>
+                  </div>
+
                   <div className='flex gap-2'>
                     <div className='flex flex-1 gap-2'>
                       <Input

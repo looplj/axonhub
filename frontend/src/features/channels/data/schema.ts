@@ -100,6 +100,7 @@ export const channelSettingsSchema = z.object({
   modelMappings: z.array(modelMappingSchema).nullable(),
   autoTrimedModelPrefixes: z.array(z.string()).optional().nullable(),
   hideOriginalModels: z.boolean().optional(),
+  hideMappedModels: z.boolean().optional(),
   overrideParameters: z.string().optional(),
   overrideHeaders: z.array(headerEntrySchema).optional().nullable(),
   proxy: proxyConfigSchema.optional().nullable(),

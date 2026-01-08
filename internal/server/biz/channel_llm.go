@@ -485,6 +485,10 @@ func (ch *Channel) GetModelEntries() map[string]ChannelModelEntry {
 					ActualModel:  mapping.To,
 					Source:       "mapping",
 				}
+				// When hideMappedModels is enabled, remove mapped models from the entries
+				if ch.Settings.HideMappedModels {
+					delete(entries, mapping.To)
+				}
 			}
 		}
 	}

@@ -455,7 +455,11 @@
           "useSuggestion": "Use {{alias}}",
           "hideOriginalModels": {
             "label": "Hide Original Models",
-            "description": "When enabled, only the transformed model names will be exposed in the model list, hiding the original model names. This includes models with added prefixes, auto-trimmed prefixes, and aliases. Note: It's recommended not to use both Extra Model Prefix and Auto-Trimmed Model Prefixes at the same time."
+            "description": "When enabled, only the transformed model names (aliases, prefixed models, etc.) will be exposed in the model list, hiding all untransformed original model names."
+          },
+          "hideMappedModels": {
+            "label": "Only Show Aliases",
+            "description": "When enabled, for models with configured aliases, only the alias names will be exposed in the model list, hiding their original target model names."
           }
         },
         "overrides": {

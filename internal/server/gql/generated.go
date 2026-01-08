@@ -283,6 +283,7 @@ type ComplexityRoot struct {
 	ChannelSettings struct {
 		AutoTrimedModelPrefixes func(childComplexity int) int
 		ExtraModelPrefix        func(childComplexity int) int
+		HideMappedModels        func(childComplexity int) int
 		HideOriginalModels      func(childComplexity int) int
 		ModelMappings           func(childComplexity int) int
 		OverrideHeaders         func(childComplexity int) int
@@ -2221,6 +2222,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSettings.ExtraModelPrefix(childComplexity), true
+	case "ChannelSettings.hideMappedModels":
+		if e.complexity.ChannelSettings.HideMappedModels == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.HideMappedModels(childComplexity), true
 	case "ChannelSettings.hideOriginalModels":
 		if e.complexity.ChannelSettings.HideOriginalModels == nil {
 			break
@@ -10702,6 +10709,8 @@ func (ec *executionContext) fieldContext_Channel_settings(_ context.Context, fie
 				return ec.fieldContext_ChannelSettings_autoTrimedModelPrefixes(ctx, field)
 			case "hideOriginalModels":
 				return ec.fieldContext_ChannelSettings_hideOriginalModels(ctx, field)
+			case "hideMappedModels":
+				return ec.fieldContext_ChannelSettings_hideMappedModels(ctx, field)
 			case "overrideParameters":
 				return ec.fieldContext_ChannelSettings_overrideParameters(ctx, field)
 			case "overrideHeaders":
@@ -13017,6 +13026,35 @@ func (ec *executionContext) _ChannelSettings_hideOriginalModels(ctx context.Cont
 }
 
 func (ec *executionContext) fieldContext_ChannelSettings_hideOriginalModels(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSettings_hideMappedModels(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelSettings_hideMappedModels,
+		func(ctx context.Context) (any, error) {
+			return obj.HideMappedModels, nil
+		},
+		nil,
+		ec.marshalOBoolean2bool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_hideMappedModels(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ChannelSettings",
 		Field:      field,
@@ -38866,7 +38904,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "overrideParameters", "overrideHeaders", "proxy", "transformOptions"}
+	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "overrideParameters", "overrideHeaders", "proxy", "transformOptions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -38901,6 +38939,13 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.HideOriginalModels = data
+		case "hideMappedModels":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hideMappedModels"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HideMappedModels = data
 		case "overrideParameters":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("overrideParameters"))
 			data, err := ec.unmarshalOString2string(ctx, v)
@@ -55351,6 +55396,8 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelSettings_autoTrimedModelPrefixes(ctx, field, obj)
 		case "hideOriginalModels":
 			out.Values[i] = ec._ChannelSettings_hideOriginalModels(ctx, field, obj)
+		case "hideMappedModels":
+			out.Values[i] = ec._ChannelSettings_hideMappedModels(ctx, field, obj)
 		case "overrideParameters":
 			out.Values[i] = ec._ChannelSettings_overrideParameters(ctx, field, obj)
 		case "overrideHeaders":
