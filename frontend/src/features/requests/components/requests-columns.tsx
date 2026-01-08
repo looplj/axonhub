@@ -108,44 +108,44 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
     // Channel column - only show if user has permission to view channels
     ...(permissions.canViewChannels
       ? ([
-          {
-            id: 'channel',
-            accessorFn: (row) => row.channel?.id || '',
-            header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.channel')} />,
-            enableSorting: false,
-            cell: ({ row }) => {
-              const channel = row.original.channel;
+        {
+          id: 'channel',
+          accessorFn: (row) => row.channel?.id || '',
+          header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.channel')} />,
+          enableSorting: false,
+          cell: ({ row }) => {
+            const channel = row.original.channel;
 
-              if (!channel) {
-                return <div className='text-muted-foreground font-mono text-xs'>-</div>;
-              }
+            if (!channel) {
+              return <div className='text-muted-foreground font-mono text-xs'>-</div>;
+            }
 
-              return <div className='font-mono text-xs'>{channel.name}</div>;
-            },
-            filterFn: (row, _id, value) => {
-              // For client-side filtering, check if any of the selected channels match
-              if (value.length === 0) return true; // No filter applied
-
-              const channel = row.original.channel;
-              if (!channel) return false;
-
-              return value.includes(channel.id);
-            },
+            return <div className='font-mono text-xs'>{channel.name}</div>;
           },
-        ] as ColumnDef<Request>[])
+          filterFn: (row, _id, value) => {
+            // For client-side filtering, check if any of the selected channels match
+            if (value.length === 0) return true; // No filter applied
+
+            const channel = row.original.channel;
+            if (!channel) return false;
+
+            return value.includes(channel.id);
+          },
+        },
+      ] as ColumnDef<Request>[])
       : []),
     // API Key column - only show if user has permission to view API keys
     ...(permissions.canViewApiKeys
       ? ([
-          {
-            accessorKey: 'apiKey',
-            header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.apiKey')} />,
-            enableSorting: false,
-            cell: ({ row }) => {
-              return <div className='font-mono text-xs'>{row.original.apiKey?.name || '-'}</div>;
-            },
+        {
+          accessorKey: 'apiKey',
+          header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.apiKey')} />,
+          enableSorting: false,
+          cell: ({ row }) => {
+            return <div className='font-mono text-xs'>{row.original.apiKey?.name || '-'}</div>;
           },
-        ] as ColumnDef<Request>[])
+        },
+      ] as ColumnDef<Request>[])
       : []),
 
     {
@@ -182,7 +182,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
 
         return (
           <div className='space-y-0.5 text-xs'>
-            <div className='text-sm font-medium'>{totalTokens.toLocaleString()}</div>
+            <div className='text-sm font-medium'>{t('requests.columns.totalTokens')}{(totalTokens || 0).toLocaleString()}</div>
             <div className='text-muted-foreground'>
               {t('requests.columns.input')}: {promptTokens.toLocaleString()} | {t('requests.columns.output')}:{' '}
               {completionTokens.toLocaleString()}

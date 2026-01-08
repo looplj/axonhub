@@ -18,6 +18,7 @@
       "latency": "Latency",
       "firstTokenLatency": "First Token Latency",
       "tokens": "Tokens",
+      "totalTokens": "Total: ",
       "input": "Input",
       "output": "Output",
       "readCache": "Read Cache",

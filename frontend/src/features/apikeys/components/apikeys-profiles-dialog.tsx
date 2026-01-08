@@ -621,14 +621,7 @@ function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModel
     form.trigger(toFieldName);
   }, [form, toFieldName, toValue]);
 
-  // Filter models based on search
-  const filteredFromModels = availableModels
-    .filter((model) => model.toLowerCase().includes(fromSearch.toLowerCase()))
-    .map((model) => ({ value: model, label: model }));
-
-  const filteredToModels = availableModels
-    .filter((model) => model.toLowerCase().includes(toSearch.toLowerCase()))
-    .map((model) => ({ value: model, label: model }));
+  const modelOptions = useMemo(() => availableModels.map((model) => ({ value: model, label: model })), [availableModels]);
 
   return (
     <div className='flex items-start gap-3'>
@@ -645,7 +638,7 @@ function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModel
                 }}
                 searchValue={fromSearch}
                 onSearchValueChange={setFromSearch}
-                items={filteredFromModels}
+                items={modelOptions}
                 placeholder={t('apikeys.profiles.sourceModel')}
                 emptyMessage={t('apikeys.profiles.noModelsFound')}
                 portalContainer={portalContainer}
@@ -670,7 +663,7 @@ function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModel
                 }}
                 searchValue={toSearch}
                 onSearchValueChange={setToSearch}
-                items={filteredToModels}
+                items={modelOptions}
                 placeholder={t('apikeys.profiles.targetModel')}
                 emptyMessage={t('apikeys.profiles.noModelsFound')}
                 portalContainer={portalContainer}

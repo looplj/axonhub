@@ -73,6 +73,7 @@ linters:
     - nilnil
     - thelper
     - dogsled
+    - unqueryvet
     
 
   # all available settings of specific linters

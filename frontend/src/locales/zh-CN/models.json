@@ -46,7 +46,7 @@
       "detectUnassociated": "检测未关联"
     },
     "filters": {
-      "filterByName": "按名称筛选..."
+      "filterByName": "按名称或模型 ID 筛选..."
     },
     "fields": {
       "developer": "开发者",
