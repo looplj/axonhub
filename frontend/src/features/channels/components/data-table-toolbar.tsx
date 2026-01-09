@@ -112,7 +112,11 @@ export function DataTableToolbar<TData>({
         <DataTableFacetedFilter column={table.getColumn('model')} title={t('channels.filters.model')} options={modelOptions} singleSelect />
       )}
       {isFiltered && (
-        <Button variant='ghost' onClick={() => table.resetColumnFilters()} className='h-8 px-2 lg:px-3'>
+        <Button
+          variant='ghost'
+          onClick={() => table.resetColumnFilters()}
+          className='h-8 px-2 lg:px-3'
+        >
           {t('common.filters.reset')}
           <Cross2Icon className='ml-2 h-4 w-4' />
         </Button>
