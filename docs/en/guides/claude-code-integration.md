@@ -102,9 +102,11 @@ To configure Claude Code as a provider channel, you need a long-lived authentica
    - **Base URL**: This field will be overridden to the standard Claude Code base URL
    - **API Key**: The token from `claude setup-token` (starts with `sk-ant`)
    - **Supported Models**: Add the Claude models you want to expose:
+     - `claude-haiku-4-5`
      - `claude-sonnet-4-5`
-     - `claude-opus-4`
-     - `claude-haiku-4`
+     - `claude-opus-4-5`
+
+     Note: These are the unversioned 'latest' variants. You can also use specific versioned model names (e.g., `claude-sonnet-4-5-20250514`) if you prefer to pin to a specific version.
 
 3. Test the connection using the **Test** button
 

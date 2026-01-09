@@ -102,9 +102,11 @@ AxonHub 还可以将您的 Claude Code 订阅作为后端提供商，允许非 C
    - **基础 URL（Base URL）**：此字段将被覆盖为标准 Claude Code 基础 URL
    - **API 密钥（API Key）**：从 `claude setup-token` 获取的令牌（以 `sk-ant` 开头）
    - **支持的模型（Supported Models）**：添加您想要公开的 Claude 模型：
+     - `claude-haiku-4-5`
      - `claude-sonnet-4-5`
-     - `claude-opus-4`
-     - `claude-haiku-4`
+     - `claude-opus-4-5`
+
+     注意：这些是未指定版本的"最新"变体。如果您希望固定到特定版本，也可以使用特定版本的模型名称（例如 `claude-sonnet-4-5-20250514`）。
 
 3. 使用 **测试（Test）** 按钮测试连接
 

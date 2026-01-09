@@ -2,6 +2,7 @@ package anthropic
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/looplj/axonhub/llm"
@@ -43,7 +44,7 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		require.NotNil(t, httpReq)
 
 		// Verify the URL is fixed
-		assert.Equal(t, "https://api.anthropic.com/v1/messages?beta=true", httpReq.URL)
+		assert.Equal(t, claudeCodeAPIURL, httpReq.URL)
 
 		// Verify Claude Code specific headers
 		assert.Equal(t, "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14", httpReq.Headers.Get("Anthropic-Beta"))
@@ -62,9 +63,15 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		assert.Equal(t, "bearer", string(httpReq.Auth.Type))
 		assert.Equal(t, "test-api-key", httpReq.Auth.APIKey)
 
-		// Note: We can't easily verify the prepended system message without parsing the body,
-		// but we can verify the request was created successfully
-		assert.NotEmpty(t, httpReq.Body)
+		// Verify the prepended system message
+		var anthropicReq MessageRequest
+		err = json.Unmarshal(httpReq.Body, &anthropicReq)
+		require.NoError(t, err)
+
+		// The outbound transformer should move the system message to the dedicated `system` field.
+		require.NotNil(t, anthropicReq.System)
+		require.NotNil(t, anthropicReq.System.Prompt)
+		assert.Contains(t, *anthropicReq.System.Prompt, claudeCodeSystemMessage)
 	})
 
 	t.Run("works with existing system message", func(t *testing.T) {
@@ -92,7 +99,7 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		require.NotNil(t, httpReq)
 
 		// Verify the URL is still fixed
-		assert.Equal(t, "https://api.anthropic.com/v1/messages?beta=true", httpReq.URL)
+		assert.Equal(t, claudeCodeAPIURL, httpReq.URL)
 		assert.NotEmpty(t, httpReq.Body)
 	})
 
@@ -116,7 +123,7 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		require.NotNil(t, httpReq)
 
 		// Verify the URL is still fixed (streaming doesn't change URL)
-		assert.Equal(t, "https://api.anthropic.com/v1/messages?beta=true", httpReq.URL)
+		assert.Equal(t, claudeCodeAPIURL, httpReq.URL)
 	})
 
 	t.Run("requires model", func(t *testing.T) {

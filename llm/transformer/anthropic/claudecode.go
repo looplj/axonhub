@@ -9,6 +9,26 @@ import (
 	"github.com/samber/lo"
 )
 
+const (
+	claudeCodeSystemMessage = "You are Claude Code, Anthropic's official CLI for Claude."
+	claudeCodeAPIURL        = "https://api.anthropic.com/v1/messages?beta=true"
+)
+
+// claudeCodeHeaders contains all headers to set for Claude Code requests.
+// Each entry is a [name, value] pair.
+var claudeCodeHeaders = [][]string{
+	{"Anthropic-Beta", "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14"},
+	{"Anthropic-Version", "2023-06-01"},
+	{"Anthropic-Dangerous-Direct-Browser-Access", "true"},
+	{"User-Agent", "claude-cli/1.0.83 (external, cli)"},
+	{"X-App", "cli"},
+	{"X-Stainless-Helper-Method", "stream"},
+	{"X-Stainless-Retry-Count", "0"},
+	{"X-Stainless-Runtime-Version", "v24.3.0"},
+	{"X-Stainless-Package-Version", "0.55.1"},
+	{"X-Stainless-Runtime", "node"},
+}
+
 // ClaudeCodeTransformer implements the transformer for Claude Code CLI.
 // It wraps an OutboundTransformer and adds Claude Code specific headers and system message.
 type ClaudeCodeTransformer struct {
@@ -27,7 +47,7 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 	systemMsg := llm.Message{
 		Role: "system",
 		Content: llm.MessageContent{
-			Content: lo.ToPtr("You are Claude Code, Anthropic's official CLI for Claude."),
+			Content: lo.ToPtr(claudeCodeSystemMessage),
 		},
 	}
 
@@ -41,19 +61,12 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 	}
 
 	// Override the URL to the fixed Claude Code endpoint
-	httpReq.URL = "https://api.anthropic.com/v1/messages?beta=true"
+	httpReq.URL = claudeCodeAPIURL
 
 	// Add/overwrite Claude Code specific headers
-	httpReq.Headers.Set("Anthropic-Beta", "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14")
-	httpReq.Headers.Set("Anthropic-Version", "2023-06-01")
-	httpReq.Headers.Set("Anthropic-Dangerous-Direct-Browser-Access", "true")
-	httpReq.Headers.Set("User-Agent", "claude-cli/1.0.83 (external, cli)")
-	httpReq.Headers.Set("X-App", "cli")
-	httpReq.Headers.Set("X-Stainless-Helper-Method", "stream")
-	httpReq.Headers.Set("X-Stainless-Retry-Count", "0")
-	httpReq.Headers.Set("X-Stainless-Runtime-Version", "v24.3.0")
-	httpReq.Headers.Set("X-Stainless-Package-Version", "0.55.1")
-	httpReq.Headers.Set("X-Stainless-Runtime", "node")
+	for _, header := range claudeCodeHeaders {
+		httpReq.Headers.Set(header[0], header[1])
+	}
 
 	// Set authentication to Bearer token
 	httpReq.Auth = &httpclient.AuthConfig{
