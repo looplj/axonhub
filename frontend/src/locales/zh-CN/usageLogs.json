@@ -75,6 +75,10 @@
         },
         "notFound": "用量日志未找到"
       }
+    },
+    "errors": {
+      "loadUsageLogsFailed": "加载用量日志失败",
+      "loadUsageLogDetailFailed": "加载用量日志详情失败"
     }
   }
 }

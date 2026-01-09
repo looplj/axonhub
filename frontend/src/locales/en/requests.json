@@ -124,6 +124,10 @@
         "title": "Execution List",
         "noExecutions": "No execution records"
       }
+    },
+    "errors": {
+      "loadRequestsFailed": "Failed to load requests",
+      "loadRequestDetailFailed": "Failed to load request details"
     }
   }
 }

@@ -124,6 +124,10 @@
         "title": "执行列表",
         "noExecutions": "暂无执行记录"
       }
+    },
+    "errors": {
+      "loadRequestsFailed": "加载请求失败",
+      "loadRequestDetailFailed": "加载请求详情失败"
     }
   }
 }

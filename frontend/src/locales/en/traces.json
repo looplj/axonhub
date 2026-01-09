@@ -121,6 +121,10 @@
       "collapseAll": "Collapse All",
       "expandAll": "Expand All",
       "viewRequest": "View Request"
+    },
+    "errors": {
+      "loadTracesFailed": "Failed to load traces",
+      "loadTraceDetailFailed": "Failed to load trace details"
     }
   }
 }

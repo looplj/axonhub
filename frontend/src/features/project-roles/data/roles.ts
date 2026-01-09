@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { graphqlRequest } from '@/gql/graphql';
 import { toast } from 'sonner';
 import { useSelectedProjectId } from '@/stores/projectStore';
@@ -74,6 +75,7 @@ export function useRoles(
   } = {}
 ) {
   const { handleError } = useErrorHandler();
+  const { t } = useTranslation();
   const selectedProjectId = useSelectedProjectId();
 
   return useQuery({
@@ -89,7 +91,7 @@ export function useRoles(
         });
         return roleConnectionSchema.parse(data?.node?.roles);
       } catch (error) {
-        handleError(error, '获取项目角色数据');
+        handleError(error, t('projectRoles.errors.loadProjectRolesFailed'));
         throw error;
       }
     },
@@ -99,6 +101,7 @@ export function useRoles(
 
 export function useRole(id: string) {
   const { handleError } = useErrorHandler();
+  const { t } = useTranslation();
   const selectedProjectId = useSelectedProjectId();
 
   return useQuery({
@@ -118,7 +121,7 @@ export function useRole(id: string) {
         }
         return roleSchema.parse(role);
       } catch (error) {
-        handleError(error, '获取项目角色详情');
+        handleError(error, t('projectRoles.errors.loadProjectRoleDetailFailed'));
         throw error;
       }
     },
@@ -144,7 +147,7 @@ export function useCreateRole() {
         const data = await graphqlRequest<{ createRole: Role }>(CREATE_ROLE_MUTATION, { input: inputWithProjectId });
         return roleSchema.parse(data.createRole);
       } catch (error) {
-        handleError(error, '创建项目角色');
+        handleError(error, i18n.t('projectRoles.errors.createProjectRoleFailed'));
         throw error;
       }
     },
@@ -165,7 +168,7 @@ export function useUpdateRole() {
         const data = await graphqlRequest<{ updateRole: Role }>(UPDATE_ROLE_MUTATION, { id, input });
         return roleSchema.parse(data.updateRole);
       } catch (error) {
-        handleError(error, '更新项目角色');
+        handleError(error, i18n.t('projectRoles.errors.updateProjectRoleFailed'));
         throw error;
       }
     },
@@ -186,7 +189,7 @@ export function useDeleteRole() {
       try {
         await graphqlRequest(DELETE_ROLE_MUTATION, { id });
       } catch (error) {
-        handleError(error, '删除项目角色');
+        handleError(error, i18n.t('projectRoles.errors.deleteProjectRoleFailed'));
         throw error;
       }
     },
