@@ -62,7 +62,7 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     provider: 'anthropic',
     icon: Anthropic,
     color: 'bg-orange-100 text-orange-800 border-orange-200',
-    channelTypes: ['anthropic', 'anthropic_aws', 'anthropic_gcp'],
+    channelTypes: ['anthropic', 'anthropic_aws', 'anthropic_gcp', 'claudecode'],
   },
   moonshot: {
     provider: 'moonshot',

@@ -22,15 +22,16 @@ import (
 type PlatformType string
 
 const (
-	PlatformDirect   PlatformType = "direct"   // Direct Anthropic API
-	PlatformBedrock  PlatformType = "bedrock"  // AWS Bedrock
-	PlatformVertex   PlatformType = "vertex"   // Google Vertex AI
-	PlatformDeepSeek PlatformType = "deepseek" // DeepSeek with Anthropic format
-	PlatformDoubao   PlatformType = "doubao"   // Doubao with Anthropic format
-	PlatformMoonshot PlatformType = "moonshot" // Moonshot with Anthropic format
-	PlatformZhipu    PlatformType = "zhipu"    // Zhipu with Anthropic format
-	PlatformZai      PlatformType = "zai"      // Zai with Anthropic format
-	PlatformLongCat  PlatformType = "longcat"  // LongCat with Anthropic format (Bearer auth)
+	PlatformDirect     PlatformType = "direct"     // Direct Anthropic API
+	PlatformBedrock    PlatformType = "bedrock"    // AWS Bedrock
+	PlatformVertex     PlatformType = "vertex"     // Google Vertex AI
+	PlatformDeepSeek   PlatformType = "deepseek"   // DeepSeek with Anthropic format
+	PlatformDoubao     PlatformType = "doubao"     // Doubao with Anthropic format
+	PlatformMoonshot   PlatformType = "moonshot"   // Moonshot with Anthropic format
+	PlatformZhipu      PlatformType = "zhipu"      // Zhipu with Anthropic format
+	PlatformZai        PlatformType = "zai"        // Zai with Anthropic format
+	PlatformLongCat    PlatformType = "longcat"    // LongCat with Anthropic format (Bearer auth)
+	PlatformClaudeCode PlatformType = "claudecode" // Claude Code CLI
 )
 
 // Config holds all configuration for the Anthropic outbound transformer.
@@ -90,6 +91,12 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		t = &VertexTransformer{
 			Outbound: t,
 			executor: executor,
+		}
+	}
+
+	if config.Type == PlatformClaudeCode {
+		t = &ClaudeCodeTransformer{
+			Outbound: t,
 		}
 	}
 

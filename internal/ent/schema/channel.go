@@ -73,6 +73,7 @@ func (Channel) Fields() []ent.Field {
 				"bailian",
 				"jina",
 				"github",
+				"claudecode",
 			).
 			Immutable(),
 		field.String("base_url").Optional(),

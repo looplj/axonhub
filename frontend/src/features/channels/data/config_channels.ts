@@ -464,6 +464,18 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-gray-100 text-gray-800 border-gray-200',
     icon: Github,
   },
+  claudecode: {
+    channelType: 'claudecode',
+    baseURL: 'https://api.anthropic.com/v1',
+    defaultModels: [
+      'claude-haiku-4-5',
+      'claude-sonnet-4-5',
+      'claude-opus-4-5',
+    ],
+    apiFormat: ANTHROPIC_MESSAGES,
+    color: 'bg-purple-100 text-purple-800 border-purple-200',
+    icon: Anthropic,
+  },
 };
 
 /**
@@ -549,6 +561,7 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   bailian: 'bailian',
   jina: 'jina',
   github: 'github',
+  claudecode: 'anthropic',
 };
 
 /**

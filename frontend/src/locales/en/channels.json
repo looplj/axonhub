@@ -73,7 +73,8 @@
       "modelscope": "ModelScope",
       "bailian": "Bailian (OpenAI)",
       "jina": "Jina",
-      "github": "GitHub"
+      "github": "GitHub",
+      "claudecode": "Claude Code"
     },
     "providers": {
       "openai": "OpenAI",
@@ -98,7 +99,8 @@
       "modelscope": "ModelScope",
       "bailian": "Bailian",
       "jina": "Jina",
-      "github": "GitHub"
+      "github": "GitHub",
+      "claudecode": "Claude Code"
     },
     "actions": {
       "test": "Test",
@@ -256,6 +258,11 @@
             "label": "Use AWS Bedrock",
             "description": "Use AWS Bedrock instead of the standard Anthropic API",
             "editDisabled": "AWS Bedrock setting cannot be changed"
+          },
+          "claudeCode": {
+            "label": "Use Claude Code",
+            "description": "Use Claude Code CLI API with specialized headers and system message",
+            "editDisabled": "Claude Code setting cannot be changed"
           },
           "formats": {
             "openai/chat_completions": "OpenAI (Chat Completions)",
