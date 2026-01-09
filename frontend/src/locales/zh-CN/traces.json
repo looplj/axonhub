@@ -122,6 +122,10 @@
       "collapseAll": "全部收起",
       "expandAll": "全部展开",
       "viewRequest": "查看请求"
+    },
+    "errors": {
+      "loadTracesFailed": "加载追踪失败",
+      "loadTraceDetailFailed": "加载追踪详情失败"
     }
   }
 }

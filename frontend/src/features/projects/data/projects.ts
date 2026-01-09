@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { graphqlRequest } from '@/gql/graphql';
 import { toast } from 'sonner';
 import i18n from '@/lib/i18n';
@@ -92,6 +93,7 @@ export function useProjects(
   } = {}
 ) {
   const { handleError } = useErrorHandler();
+  const { t } = useTranslation();
 
   return useQuery({
     queryKey: ['projects', variables],
@@ -100,7 +102,7 @@ export function useProjects(
         const data = await graphqlRequest<{ projects: ProjectConnection }>(PROJECTS_QUERY, variables);
         return projectConnectionSchema.parse(data?.projects);
       } catch (error) {
-        handleError(error, '获取项目数据');
+        handleError(error, t('projects.errors.loadProjectsFailed'));
         throw error;
       }
     },
@@ -109,6 +111,7 @@ export function useProjects(
 
 export function useProject(id: string) {
   const { handleError } = useErrorHandler();
+  const { t } = useTranslation();
 
   return useQuery({
     queryKey: ['project', id],
@@ -121,7 +124,7 @@ export function useProject(id: string) {
         }
         return projectSchema.parse(project);
       } catch (error) {
-        handleError(error, '获取项目详情');
+        handleError(error, t('projects.errors.loadProjectDetailFailed'));
         throw error;
       }
     },
@@ -131,6 +134,7 @@ export function useProject(id: string) {
 
 export function useMyProjects() {
   const { handleError } = useErrorHandler();
+  const { t } = useTranslation();
 
   return useQuery({
     queryKey: ['myProjects'],
@@ -147,7 +151,7 @@ export function useMyProjects() {
 
         return projects;
       } catch (error) {
-        handleError(error, '获取我的项目');
+        handleError(error, t('projects.errors.loadMyProjectsFailed'));
         return [];
       }
     },
@@ -165,7 +169,7 @@ export function useCreateProject() {
         const data = await graphqlRequest<{ createProject: Project }>(CREATE_PROJECT_MUTATION, { input });
         return projectSchema.parse(data.createProject);
       } catch (error) {
-        handleError(error, '创建项目');
+        handleError(error, i18n.t('projects.errors.createProjectFailed'));
         throw error;
       }
     },
@@ -187,7 +191,7 @@ export function useUpdateProject() {
         const data = await graphqlRequest<{ updateProject: Project }>(UPDATE_PROJECT_MUTATION, { id, input });
         return projectSchema.parse(data.updateProject);
       } catch (error) {
-        handleError(error, '更新项目');
+        handleError(error, i18n.t('projects.errors.updateProjectFailed'));
         throw error;
       }
     },
@@ -213,7 +217,7 @@ export function useArchiveProject() {
         });
         return projectSchema.parse(data.updateProjectStatus);
       } catch (error) {
-        handleError(error, '归档项目');
+        handleError(error, i18n.t('projects.errors.archiveProjectFailed'));
         throw error;
       }
     },
@@ -239,7 +243,7 @@ export function useActivateProject() {
         });
         return projectSchema.parse(data.updateProjectStatus);
       } catch (error) {
-        handleError(error, '激活项目');
+        handleError(error, i18n.t('projects.errors.activateProjectFailed'));
         throw error;
       }
     },
