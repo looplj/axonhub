@@ -3,10 +3,11 @@ package anthropic
 import (
 	"context"
 
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
-	"github.com/samber/lo"
 )
 
 const (
@@ -45,6 +46,7 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 
 	// Check if Claude Code system message already exists
 	hasClaudeCodeMessage := false
+
 	for _, msg := range reqCopy.Messages {
 		if msg.Role == "system" && msg.Content.Content != nil &&
 			*msg.Content.Content == claudeCodeSystemMessage {

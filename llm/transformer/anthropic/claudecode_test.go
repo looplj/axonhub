@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/looplj/axonhub/llm"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/looplj/axonhub/llm"
 )
 
 func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
@@ -60,11 +61,12 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 
 		// Verify Bearer authentication
 		require.NotNil(t, httpReq.Auth)
-		assert.Equal(t, "bearer", string(httpReq.Auth.Type))
+		assert.Equal(t, "bearer", httpReq.Auth.Type)
 		assert.Equal(t, "test-api-key", httpReq.Auth.APIKey)
 
 		// Verify the prepended system message
 		var anthropicReq MessageRequest
+
 		err = json.Unmarshal(httpReq.Body, &anthropicReq)
 		require.NoError(t, err)
 
@@ -131,6 +133,7 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 
 		// Verify the system message is not duplicated
 		var anthropicReq MessageRequest
+
 		err = json.Unmarshal(httpReq.Body, &anthropicReq)
 		require.NoError(t, err)
 
