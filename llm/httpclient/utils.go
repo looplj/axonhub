@@ -85,6 +85,16 @@ var sensitiveHeaders = map[string]bool{
 	"WWW-Authenticate":    true,
 }
 
+var mergeWithAppendHeaders = map[string]bool{}
+
+// RegisterMergeWithAppendHeaders registers headers that should be appended instead of overwritten.
+// It is not goroutine-safe, should call when init.
+func RegisterMergeWithAppendHeaders(headers ...string) {
+	for _, h := range headers {
+		mergeWithAppendHeaders[http.CanonicalHeaderKey(h)] = true
+	}
+}
+
 func MergeInboundRequest(dest, src *Request) *Request {
 	if src == nil || len(src.Headers) == 0 && len(src.Query) == 0 {
 		return dest
@@ -141,16 +151,21 @@ func FinalizeAuthHeaders(req *Request) (*Request, error) {
 }
 
 // MergeHTTPHeaders merges the source headers into the destination headers.
-// If a header already exists in the destination, it adds non-duplicate values from the source.
-// Blocked headers are not merged.
+// If a header is in the mergeWithAppendHeaders list, it adds non-duplicate values from the source.
+// Otherwise, it overwrites the destination header with the source values.
+// Blocked, sensitive, and library-managed headers are not merged.
 func MergeHTTPHeaders(dest, src http.Header) http.Header {
 	for k, v := range src {
 		if sensitiveHeaders[k] || libManagedHeaders[k] || blockedHeaders[k] {
 			continue
 		}
 
-		if existingValues, ok := dest[k]; ok {
-			dest[k] = lo.Uniq(append(existingValues, v...))
+		if mergeWithAppendHeaders[k] {
+			if existingValues, ok := dest[k]; ok {
+				dest[k] = lo.Uniq(append(existingValues, v...))
+			} else {
+				dest[k] = v
+			}
 		} else {
 			dest[k] = v
 		}

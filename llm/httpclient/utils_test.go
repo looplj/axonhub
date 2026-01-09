@@ -36,6 +36,9 @@ func TestIsHTTPStatusCodeRetryable(t *testing.T) {
 }
 
 func TestMergeHTTPHeaders(t *testing.T) {
+	// Register headers for testing append behavior
+	RegisterMergeWithAppendHeaders("User-Agent", "Accept")
+
 	tests := []struct {
 		name string // description of this test case
 		// Named input parameters for target function.
@@ -212,6 +215,18 @@ func TestMergeHTTPHeaders(t *testing.T) {
 				"Accept":     []string{"*/*"},
 			},
 		},
+		{
+			name: "should overwrite non-appendable headers",
+			dest: http.Header{
+				"X-Custom-Header": []string{"old-value"},
+			},
+			src: http.Header{
+				"X-Custom-Header": []string{"new-value"},
+			},
+			want: http.Header{
+				"X-Custom-Header": []string{"new-value"},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -219,4 +234,14 @@ func TestMergeHTTPHeaders(t *testing.T) {
 			require.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestRegisterAppendHeaders(t *testing.T) {
+	RegisterMergeWithAppendHeaders("X-New-Append")
+
+	dest := http.Header{"X-New-Append": []string{"old"}}
+	src := http.Header{"X-New-Append": []string{"new"}}
+
+	got := MergeHTTPHeaders(dest, src)
+	require.Equal(t, []string{"old", "new"}, got["X-New-Append"])
 }

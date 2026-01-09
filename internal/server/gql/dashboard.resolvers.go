@@ -13,6 +13,8 @@ import (
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -24,7 +26,6 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/scopes"
-	"github.com/samber/lo"
 )
 
 // DashboardOverview is the resolver for the dashboardOverview field.
@@ -347,7 +348,6 @@ func (r *queryResolver) TokenStatsByAPIKey(ctx context.Context) ([]*TokenStatsBy
 			)
 		}).
 		Scan(ctx, &results)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tokens by API key: %w", err)
 	}
@@ -362,6 +362,7 @@ func (r *queryResolver) TokenStatsByAPIKey(ctx context.Context) ([]*TokenStatsBy
 			results[i].CachedTokens + results[i].ReasoningTokens
 		totalJ := results[j].InputTokens + results[j].OutputTokens +
 			results[j].CachedTokens + results[j].ReasoningTokens
+
 		return totalI > totalJ
 	})
 
@@ -389,6 +390,7 @@ func (r *queryResolver) TokenStatsByAPIKey(ctx context.Context) ([]*TokenStatsBy
 
 	// Build response
 	var response []*TokenStatsByAPIKey
+
 	for _, result := range results {
 		if ak, exists := apiKeyMap[result.APIKeyID]; exists {
 			totalTokens := result.InputTokens + result.OutputTokens +
