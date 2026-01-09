@@ -81,15 +81,15 @@ claude --api-key "${apiKey}" --base-url "${currentOrigin}/anthropic" "Hello, Cla
 # The configuration will be stored in ~/.config/claude/config.json`
       },
       anthropicSDK: {
-        display: `import anthropic
+        display: `from anthropic import Anthropic
 
-client = anthropic.Anthropic(
+client = Anthropic(
     api_key="${maskedApiKey}",
     base_url="${currentOrigin}/anthropic"
 )
 
 message = client.messages.create(
-    model="claude-3-5-sonnet-20241022",
+    model="claude-sonnet-4-5-20250929",
     max_tokens=1024,
     messages=[
         {
@@ -99,16 +99,16 @@ message = client.messages.create(
     ]
 )
 
-print(message.content[0].text)`,
-        real: `import anthropic
+print(message.content)`,
+        real: `from anthropic import Anthropic
 
-client = anthropic.Anthropic(
+client = Anthropic(
     api_key="${apiKey}",
     base_url="${currentOrigin}/anthropic"
 )
 
 message = client.messages.create(
-    model="claude-3-5-sonnet-20241022",
+    model="claude-sonnet-4-5-20250929",
     max_tokens=1024,
     messages=[
         {
@@ -118,7 +118,7 @@ message = client.messages.create(
     ]
 )
 
-print(message.content[0].text)`
+print(message.content)`
       },
       openAISDK: {
         display: `from openai import OpenAI
@@ -128,14 +128,12 @@ client = OpenAI(
     base_url="${currentOrigin}/v1"
 )
 
-response = client.chat.completions.create(
+response = client.responses.create(
     model="gpt-4o",
-    messages=[
-        {"role": "user", "content": "Hello, Claude!"}
-    ]
+    input="Hello, Claude!"
 )
 
-print(response.choices[0].message.content)`,
+print(response.output_text)`,
         real: `from openai import OpenAI
 
 client = OpenAI(
@@ -143,44 +141,48 @@ client = OpenAI(
     base_url="${currentOrigin}/v1"
 )
 
-response = client.chat.completions.create(
+response = client.responses.create(
     model="gpt-4o",
-    messages=[
-        {"role": "user", "content": "Hello, Claude!"}
-    ]
+    input="Hello, Claude!"
 )
 
-print(response.choices[0].message.content)`
+print(response.output_text)`
       },
       geminiSDK: {
-        display: `import google.generativeai as genai
+        display: `from google import genai
+from google.genai import types
 
-genai.configure(api_key="${maskedApiKey}")
-
-model = genai.GenerativeModel(
-    'gemini-pro',
-    generation_config=genai.GenerationConfig(
-        temperature=0.7,
-        max_output_tokens=1024,
-    )
+client = genai.Client(
+    api_key="${maskedApiKey}",
+    base_url="${currentOrigin}/gemini"
 )
 
-response = model.generate_content("Hello!")
+response = client.models.generate_content(
+    model='gemini-2.5-flash',
+    contents=types.Part.from_text(text='Hello!'),
+    config=types.GenerateContentConfig(
+        temperature=0.7,
+        max_output_tokens=1024,
+    ),
+)
 
 print(response.text)`,
-        real: `import google.generativeai as genai
+        real: `from google import genai
+from google.genai import types
 
-genai.configure(api_key="${apiKey}")
-
-model = genai.GenerativeModel(
-    'gemini-pro',
-    generation_config=genai.GenerationConfig(
-        temperature=0.7,
-        max_output_tokens=1024,
-    )
+client = genai.Client(
+    api_key="${apiKey}",
+    base_url="${currentOrigin}/gemini"
 )
 
-response = model.generate_content("Hello!")
+response = client.models.generate_content(
+    model='gemini-2.5-flash',
+    contents=types.Part.from_text(text='Hello!'),
+    config=types.GenerateContentConfig(
+        temperature=0.7,
+        max_output_tokens=1024,
+    ),
+)
 
 print(response.text)`
       }
