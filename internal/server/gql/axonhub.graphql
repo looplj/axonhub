@@ -51,6 +51,7 @@ type ChannelSettings {
   modelMappings: [ModelMapping!]
   autoTrimedModelPrefixes: [String!]
   hideOriginalModels: Boolean
+  hideMappedModels: Boolean
   overrideParameters: String
   overrideHeaders: [HeaderEntry!]
   proxy: ProxyConfig
@@ -67,6 +68,7 @@ input ChannelSettingsInput {
   modelMappings: [ModelMappingInput!]
   autoTrimedModelPrefixes: [String!]
   hideOriginalModels: Boolean
+  hideMappedModels: Boolean
   overrideParameters: String
   overrideHeaders: [HeaderEntryInput!]
   proxy: ProxyConfigInput
