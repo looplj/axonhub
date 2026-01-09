@@ -169,9 +169,10 @@ func (c *MessageContent) UnmarshalJSON(data []byte) error {
 	if len(data) == 0 || string(data) == "null" {
 		c.Content = nil
 		c.MultipleContent = nil
+
 		return nil
-    }
-	
+	}
+
 	var str string
 
 	err := json.Unmarshal(data, &str)

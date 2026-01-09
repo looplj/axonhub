@@ -18,6 +18,10 @@ import (
 	"github.com/looplj/axonhub/llm/transformer"
 )
 
+func init() {
+	httpclient.RegisterMergeWithAppendHeaders("Anthropic-Beta")
+}
+
 // PlatformType represents the platform type for Anthropic API.
 type PlatformType string
 
