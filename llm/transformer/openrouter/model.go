@@ -70,7 +70,7 @@ func (m *Message) ToOpenAIMessage() openai.Message {
 
 		reasoning := reasoningText.String()
 		m.ReasoningContent = &reasoning
-	} else {
+	} else if m.Reasoning != nil {
 		m.ReasoningContent = m.Reasoning
 	}
 
