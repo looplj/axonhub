@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-contrib/sse"
@@ -193,18 +194,17 @@ func (handlers *GeminiHandlers) ListModels(c *gin.Context) {
 	}
 
 	geminiModels := make([]GeminiModel, 0, len(models))
-	for _, model := range models {
+	for i, model := range models {
 		geminiModels = append(geminiModels, GeminiModel{
 			Name:        "models/" + model.ID,
 			BaseModelID: model.ID,
-			Version:     "001",
+			Version:     fmt.Sprintf("%s-%d", model.ID, i),
 			DisplayName: model.DisplayName,
-			Description: "",
+			Description: model.DisplayName,
 		})
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"object": "list",
-		"data":   geminiModels,
+		"models": geminiModels,
 	})
 }
