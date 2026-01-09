@@ -11,11 +11,13 @@ globs: *.ts,*.tsx
 
 3. Use graphql input to filter the data in stead of filter in the frontend.
 
-4. search filter should use debounce to avoid too many requests.
+4. Update graphql query and schema when add new field.
 
-5. Add sidebar data and route if add new feature page
+5. search filter should use debounce to avoid too many requests.
 
-6. Use extractNumberID to extract int id from the GUID.
+6. Add sidebar data and route if add new feature page
+
+7. Use extractNumberID to extract int id from the GUID.
 
 
 ## i18n rules

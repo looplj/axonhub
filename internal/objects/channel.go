@@ -52,6 +52,10 @@ type ChannelSettings struct {
 	// When enabled, only the mapped model names (from field) will be exposed, not the actual model names (to field).
 	HideOriginalModels bool `json:"hideOriginalModels"`
 
+	// HideMappedModels hides the mapped models from the model list when model mappings are configured.
+	// When enabled, only the original model names (from field) will be exposed, not the mapped model names (to field).
+	HideMappedModels bool `json:"hideMappedModels"`
+
 	// OverrideParameters sets the channel override the request body.
 	// A json string.
 	// e.g. {"max_tokens": 100}, {"temperature": 0.7}
