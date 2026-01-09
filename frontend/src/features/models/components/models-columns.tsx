@@ -4,6 +4,7 @@ import { ColumnDef, Row, Table } from '@tanstack/react-table';
 import { IconCheck, IconX, IconLink, IconChevronDown, IconChevronRight } from '@tabler/icons-react';
 import * as Icons from '@lobehub/icons';
 import { useTranslation } from 'react-i18next';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -34,6 +35,36 @@ function StatusSwitchCell({ row }: { row: Row<Model> }) {
       <Switch checked={isEnabled} onCheckedChange={handleSwitchClick} disabled={isArchived} data-testid='model-status-switch' />
       {dialogOpen && <ModelsStatusDialog open={dialogOpen} onOpenChange={setDialogOpen} currentRow={model} />}
     </>
+  );
+}
+
+// Association Rules Cell Component to handle permission check
+function AssociationRulesCell({ row }: { row: Row<Model> }) {
+  const model = row.original;
+  const { setOpen, setCurrentRow } = useModels();
+  const { channelPermissions } = usePermissions();
+
+  const handleOpenAssociationDialog = useCallback(() => {
+    setCurrentRow(model);
+    setOpen('association');
+  }, [model, setCurrentRow, setOpen]);
+
+  const associationCount = model.settings?.associations?.length || 0;
+
+  // Only show button if user has write permissions
+  if (!channelPermissions.canWrite) {
+    return (
+      <div className='flex justify-center'>
+        <Badge variant='secondary'>{associationCount}</Badge>
+      </div>
+    );
+  }
+
+  return (
+    <Button size='sm' variant='outline' className='h-8 px-3' onClick={handleOpenAssociationDialog}>
+      <IconLink className='mr-1 h-3 w-3' />
+      {`${associationCount}`}
+    </Button>
   );
 }
 
@@ -250,24 +281,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
     {
       id: 'associationRules',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('models.columns.associationRules')} />,
-      cell: ({ row }) => {
-        const model = row.original;
-        const { setOpen, setCurrentRow } = useModels();
-
-        const handleOpenAssociationDialog = useCallback(() => {
-          setCurrentRow(model);
-          setOpen('association');
-        }, [model, setCurrentRow, setOpen]);
-
-        const associationCount = model.settings?.associations?.length || 0;
-
-        return (
-          <Button size='sm' variant='outline' className='h-8 px-3' onClick={handleOpenAssociationDialog}>
-            <IconLink className='mr-1 h-3 w-3' />
-            {`${associationCount}`}
-          </Button>
-        );
-      },
+      cell: AssociationRulesCell,
       enableSorting: false,
     },
     {

@@ -126,9 +126,7 @@ function buildRequestDetailQuery(permissions: { canViewApiKeys: boolean; canView
           modelID
           stream
           projectID
-          dataStorage {
-            id
-          }
+          dataStorageID
           requestHeaders
           requestBody
           responseBody
@@ -180,9 +178,7 @@ function buildRequestExecutionsQuery(permissions: { canViewChannels: boolean }) 
                 requestID${channelFields}
                 modelID
                 projectID
-                dataStorage {
-                  id
-                }
+                dataStorageID
                 requestHeaders
                 requestBody
                 responseBody

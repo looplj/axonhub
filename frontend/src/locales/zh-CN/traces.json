@@ -96,6 +96,12 @@
         "expandRow": "展开行",
         "collapseRow": "折叠行"
       },
+      "filter": {
+        "spanType": "片段类型",
+        "clear": "清除",
+        "selectAll": "全部",
+        "noSpanTypes": "暂无片段类型"
+      },
       "spanTypes": {
         "default": "片段",
         "userQuery": "用户查询",
