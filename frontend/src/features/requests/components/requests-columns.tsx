@@ -67,16 +67,12 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
                   <IconRoute className='h-3.5 w-3.5 opacity-80' />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side='right' className='max-w-xs border-amber-200 bg-white dark:bg-zinc-900'>
-                <div className='flex flex-col gap-1.5 p-1'>
-                  <div className='text-muted-foreground text-[10px] uppercase tracking-wider'>{t('requests.columns.mappedModel')}</div>
-                  <div className='flex items-center gap-2 text-xs'>
-                    <span className='text-muted-foreground rounded bg-muted px-1.5 py-0.5'>{originalModelId}</span>
-                    <IconRoute className='h-3 w-3 text-muted-foreground' />
-                    <span className='rounded bg-amber-100 px-1.5 py-0.5 font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200'>
-                      {executionModelIds.join(', ')}
-                    </span>
-                  </div>
+              <TooltipContent side='right' className='border-amber-200 bg-white dark:bg-zinc-900'>
+                <div className='flex items-center gap-2 p-2'>
+                  <span className='text-muted-foreground whitespace-nowrap text-xs'>{t('requests.columns.executedModelId')}:</span>
+                  <span className='whitespace-nowrap rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200'>
+                    {executionModelIds[0]}
+                  </span>
                 </div>
               </TooltipContent>
             </Tooltip>
@@ -171,13 +167,13 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
                         <IconArrowsJoin2 className='h-3.5 w-3.5 opacity-80' />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent side='right' className='max-w-xs border-rose-200 bg-white dark:bg-zinc-900'>
-                      <div className='flex flex-col gap-1.5 p-1'>
+                    <TooltipContent side='right' className='border-rose-200 bg-white dark:bg-zinc-900'>
+                      <div className='flex flex-col gap-2 p-1'>
                         <div className='text-muted-foreground text-[10px] uppercase tracking-wider'>{t('requests.columns.retryProcess')}</div>
                         <div className='flex items-center gap-2 text-xs'>
-                          <span className='text-muted-foreground rounded bg-muted px-1.5 py-0.5'>{channel.name}</span>
-                          <IconRoute className='h-3 w-3 text-muted-foreground' />
-                          <span className='rounded bg-rose-100 px-1.5 py-0.5 font-medium text-rose-800 dark:bg-rose-900/40 dark:text-rose-200'>
+                          <span className='text-muted-foreground whitespace-nowrap rounded bg-muted px-1.5 py-0.5'>{channel.name}</span>
+                          <IconRoute className='h-3 w-3 shrink-0 text-muted-foreground' />
+                          <span className='whitespace-nowrap rounded bg-rose-100 px-1.5 py-0.5 font-medium text-rose-800 dark:bg-rose-900/40 dark:text-rose-200'>
                             {uniqueExecutionChannelNames.join(', ')}
                           </span>
                         </div>

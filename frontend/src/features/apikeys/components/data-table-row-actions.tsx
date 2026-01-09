@@ -3,6 +3,7 @@ import { DotsHorizontalIcon } from '@radix-ui/react-icons';
 import { Row } from '@tanstack/react-table';
 import { IconUserOff, IconUserCheck, IconEdit, IconSettings, IconArchive } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useApiKeysContext } from '../context/apikeys-context';
@@ -15,8 +16,14 @@ interface DataTableRowActionsProps {
 export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   const { t } = useTranslation();
   const { openDialog } = useApiKeysContext();
+  const { apiKeyPermissions } = usePermissions();
   const apiKey = row.original;
   const [open, setOpen] = React.useState(false);
+
+  // Don't show menu if user has no permissions
+  if (!apiKeyPermissions.canWrite) {
+    return null;
+  }
 
   const handleEdit = (apiKey: ApiKey) => {
     setOpen(false);

@@ -10,8 +10,6 @@ import {
   IconEdit,
   IconArchive,
   IconTrash,
-  IconToggleLeft,
-  IconToggleRight,
   IconCheck,
   IconWeight,
   IconTransform,
@@ -112,11 +110,15 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align='end' className='w-[160px]'>
-          <DropdownMenuItem onClick={handleOpenTestDialog}>
-            <IconPlayerPlay size={16} className='mr-2' />
-            {t('channels.actions.test')}
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
+          {channelPermissions.canWrite && (
+            <>
+              <DropdownMenuItem onClick={handleOpenTestDialog}>
+                <IconPlayerPlay size={16} className='mr-2' />
+                {t('channels.actions.test')}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
           {channelPermissions.canEdit && (
             <DropdownMenuItem onClick={handleEdit}>
               <IconEdit size={16} className='mr-2' />
@@ -202,22 +204,6 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />
-          {channelPermissions.canWrite && (
-            <DropdownMenuItem
-              onClick={() => {
-                setCurrentRow(channel);
-                setOpen('status');
-              }}
-              className={channel.status === 'enabled' ? 'text-red-500!' : 'text-green-500!'}
-            >
-              {channel.status === 'enabled' ? (
-                <IconToggleLeft size={16} className='mr-2' />
-              ) : (
-                <IconToggleRight size={16} className='mr-2' />
-              )}
-              {channel.status === 'enabled' ? t('common.buttons.disable') : t('common.buttons.enable')}
-            </DropdownMenuItem>
-          )}
           {channelPermissions.canWrite && channel.status !== 'archived' && (
             <DropdownMenuItem
               onClick={() => {
@@ -563,12 +549,16 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       enableSorting: true,
       enableHiding: false,
     },
-    {
-      id: 'action',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.action')} />,
-      cell: ActionCell,
-      enableSorting: false,
-      enableHiding: false,
-    },
+    ...(canWrite
+      ? [
+          {
+            id: 'action',
+            header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.action')} />,
+            cell: ActionCell,
+            enableSorting: false,
+            enableHiding: false,
+          },
+        ]
+      : []),
   ];
 };

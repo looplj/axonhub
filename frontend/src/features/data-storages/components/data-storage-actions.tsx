@@ -2,6 +2,7 @@
 
 import { Archive, MoreHorizontal, Pencil } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useDataStoragesContext } from '../context/data-storages-context';
@@ -15,6 +16,7 @@ interface DataStorageActionsProps {
 export function DataStorageActions({ dataStorage, defaultDataStorageID }: DataStorageActionsProps) {
   const { t } = useTranslation();
   const { setEditingDataStorage, setIsEditDialogOpen, setArchiveDataStorage, setIsArchiveDialogOpen } = useDataStoragesContext();
+  const { isOwner } = usePermissions();
 
   const handleEdit = () => {
     setEditingDataStorage(dataStorage);
@@ -25,6 +27,11 @@ export function DataStorageActions({ dataStorage, defaultDataStorageID }: DataSt
     setArchiveDataStorage(dataStorage);
     setIsArchiveDialogOpen(true);
   };
+
+  // Don't show menu if user is not owner
+  if (!isOwner) {
+    return null;
+  }
 
   // Primary data storage cannot be edited
   if (dataStorage.primary) {

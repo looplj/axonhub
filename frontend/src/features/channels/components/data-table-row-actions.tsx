@@ -3,8 +3,6 @@ import { Row } from '@tanstack/react-table';
 import {
   IconEdit,
   IconCopy,
-  IconToggleLeft,
-  IconToggleRight,
   IconArchive,
   IconRoute,
   IconAdjustments,
@@ -158,24 +156,6 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
 
         {/* Separator only if there are both read and write actions */}
         {channelPermissions.canRead && channelPermissions.canWrite && <DropdownMenuSeparator />}
-
-        {/* Status toggle - requires write permission */}
-        {channelPermissions.canWrite && (
-          <DropdownMenuItem
-            onClick={() => {
-              setCurrentRow(row.original);
-              setOpen('status');
-            }}
-            className={row.original.status === 'enabled' ? 'text-red-500!' : 'text-green-500!'}
-          >
-            {row.original.status === 'enabled' ? (
-              <IconToggleLeft size={16} className='mr-2' />
-            ) : (
-              <IconToggleRight size={16} className='mr-2' />
-            )}
-            {row.original.status === 'enabled' ? t('common.buttons.disable') : t('common.buttons.enable')}
-          </DropdownMenuItem>
-        )}
 
         {/* Archive - requires write permission */}
         {channelPermissions.canWrite && row.original.status !== 'archived' && (

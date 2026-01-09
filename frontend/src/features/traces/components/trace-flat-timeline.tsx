@@ -1,12 +1,14 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, Workflow, ChevronsDownUp, ExternalLink } from 'lucide-react';
+import { ChevronDown, ChevronRight, Workflow, ChevronsDownUp, ExternalLink, Filter } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { buildGUID, cn } from '@/lib/utils';
 import { formatNumber } from '@/utils/format-number';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { formatDuration } from '../../../utils/format-duration';
 import type { Segment, RequestMetadata, Span } from '../data/schema';
 import { getSpanDisplayLabels, normalizeSpanType } from '../utils/span-display';
@@ -429,6 +431,7 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
   const { t } = useTranslation();
   const [expandedSegments, setExpandedSegments] = useState<Set<string>>(new Set());
   const [allExpanded, setAllExpanded] = useState(true);
+  const [selectedSpanTypes, setSelectedSpanTypes] = useState<Set<string>>(new Set());
 
   const timelineData = useMemo(() => {
     const earliestStart = findEarliestStart(trace);
@@ -443,6 +446,18 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
     }
 
     const flatSegments = flattenSegments(rootNode, earliestStart);
+
+    // Collect all unique span types
+    const allSpanTypes = new Set<string>();
+    flatSegments.forEach((seg) => {
+      seg.spans.forEach((span) => {
+        if (span.source.type === 'span') {
+          const normalizedType = normalizeSpanType(span.source.span.type);
+          allSpanTypes.add(normalizedType);
+        }
+      });
+    });
+
     // Total duration is the sum of all segment durations (sequential layout)
     const totalDuration = Math.max(
       flatSegments.reduce((sum, seg) => sum + seg.segment.duration, 0),
@@ -484,6 +499,7 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
       totalItems,
       totalTokens,
       totalCachedTokens,
+      allSpanTypes: Array.from(allSpanTypes).sort(),
     };
   }, [trace]);
 
@@ -514,13 +530,60 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
     });
   };
 
+  const handleToggleSpanType = (spanType: string) => {
+    setSelectedSpanTypes((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(spanType)) {
+        newSet.delete(spanType);
+      } else {
+        newSet.add(spanType);
+      }
+      return newSet;
+    });
+  };
+
+  const handleClearSpanTypeFilter = () => {
+    setSelectedSpanTypes(new Set());
+  };
+
+  const handleSelectAllSpanTypes = () => {
+    if (!timelineData) return;
+    setSelectedSpanTypes(new Set(timelineData.allSpanTypes));
+  };
+
+  // Filter segments based on selected span types
+  const filteredSegments = useMemo(() => {
+    if (!timelineData || selectedSpanTypes.size === 0) {
+      return timelineData?.flatSegments || [];
+    }
+
+    return timelineData.flatSegments
+      .map((seg) => {
+        // Filter spans by selected types
+        const filteredSpans = seg.spans.filter((span) => {
+          if (span.source.type === 'span') {
+            const normalizedType = normalizeSpanType(span.source.span.type);
+            return selectedSpanTypes.has(normalizedType);
+          }
+          return false;
+        });
+
+        return {
+          ...seg,
+          spans: filteredSpans,
+        };
+      })
+      .filter((seg) => seg.spans.length > 0); // Only keep segments that have matching spans
+  }, [timelineData, selectedSpanTypes]);
+
   if (!timelineData) {
     return (
       <div className='text-muted-foreground flex h-full items-center justify-center text-sm'>{t('traces.timeline.emptyDescription')}</div>
     );
   }
 
-  const { flatSegments, totalDuration, totalItems, totalTokens, totalCachedTokens } = timelineData;
+  const { flatSegments, totalDuration, totalItems, totalTokens, totalCachedTokens, allSpanTypes } = timelineData;
+  const activeFilterCount = selectedSpanTypes.size;
 
   return (
     <div className='flex h-full flex-col'>
@@ -545,6 +608,83 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
           </div>
           <div className='flex items-center gap-3'>
             <div className='text-muted-foreground text-sm'>{t('traces.timeline.itemsCount', { count: totalItems })}</div>
+
+            {/* Span Type Filter */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  type='button'
+                  variant='ghost'
+                  size='sm'
+                  className={cn(
+                    'h-7 gap-1.5 px-2 text-xs',
+                    activeFilterCount > 0 && 'text-primary'
+                  )}
+                >
+                  <Filter className='h-3.5 w-3.5' />
+                  {activeFilterCount > 0 ? (
+                    <span>{activeFilterCount}</span>
+                  ) : (
+                    <span>{t('traces.timeline.filter.spanType')}</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className='w-64 p-0' align='end'>
+                <div className='border-border/60 flex items-center justify-between border-b px-3 py-2'>
+                  <span className='text-sm font-medium'>{t('traces.timeline.filter.spanType')}</span>
+                  <div className='flex gap-2'>
+                    {activeFilterCount > 0 && (
+                      <Button
+                        variant='ghost'
+                        size='sm'
+                        className='h-7 px-2 text-xs'
+                        onClick={handleClearSpanTypeFilter}
+                      >
+                        {t('traces.timeline.filter.clear')}
+                      </Button>
+                    )}
+                    <Button
+                      variant='ghost'
+                      size='sm'
+                      className='h-7 px-2 text-xs'
+                      onClick={handleSelectAllSpanTypes}
+                    >
+                      {t('traces.timeline.filter.selectAll')}
+                    </Button>
+                  </div>
+                </div>
+                <div className='max-h-[320px] overflow-y-auto p-2'>
+                  {allSpanTypes.length > 0 ? (
+                    <div className='space-y-1'>
+                      {allSpanTypes.map((spanType) => {
+                        const SpanIcon = getSpanIcon(spanType);
+                        const isChecked = selectedSpanTypes.has(spanType);
+                        return (
+                          <label
+                            key={spanType}
+                            className='hover:bg-accent flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 transition-colors'
+                          >
+                            <Checkbox
+                              checked={isChecked}
+                              onCheckedChange={() => handleToggleSpanType(spanType)}
+                            />
+                            <SpanIcon className='text-muted-foreground h-4 w-4 flex-shrink-0' />
+                            <span className='flex-1 text-sm'>
+                              {t(`traces.timeline.spanTypes.${spanType}`, spanType)}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className='text-muted-foreground px-2 py-4 text-center text-sm'>
+                      {t('traces.timeline.filter.noSpanTypes')}
+                    </div>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+
             <Button
               type='button'
               variant='ghost'
@@ -559,7 +699,7 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
         </div>
       </div>
       <div className='border-border/40 bg-card/50 flex-1 overflow-auto rounded-lg border'>
-        {flatSegments.map((flatSegment) => (
+        {filteredSegments.map((flatSegment) => (
           <SegmentRow
             key={flatSegment.segment.id}
             segment={flatSegment.segment}

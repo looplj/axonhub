@@ -96,6 +96,12 @@
         "expandRow": "Expand row",
         "collapseRow": "Collapse row"
       },
+      "filter": {
+        "spanType": "Span Type",
+        "clear": "Clear",
+        "selectAll": "All",
+        "noSpanTypes": "No span types available"
+      },
       "spanTypes": {
         "default": "Span",
         "userQuery": "User Query",
