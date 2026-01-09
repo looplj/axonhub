@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
+	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/predicate"
@@ -668,6 +669,10 @@ type ChannelWhereInput struct {
 	// "channel_performance" edge predicates.
 	HasChannelPerformance     *bool                           `json:"hasChannelPerformance,omitempty"`
 	HasChannelPerformanceWith []*ChannelPerformanceWhereInput `json:"hasChannelPerformanceWith,omitempty"`
+
+	// "channel_probes" edge predicates.
+	HasChannelProbes     *bool                     `json:"hasChannelProbes,omitempty"`
+	HasChannelProbesWith []*ChannelProbeWhereInput `json:"hasChannelProbesWith,omitempty"`
 }
 
 // AddPredicates adds custom predicates to the where input to be used during the filtering phase.
@@ -1176,6 +1181,24 @@ func (i *ChannelWhereInput) P() (predicate.Channel, error) {
 			with = append(with, p)
 		}
 		predicates = append(predicates, channel.HasChannelPerformanceWith(with...))
+	}
+	if i.HasChannelProbes != nil {
+		p := channel.HasChannelProbes()
+		if !*i.HasChannelProbes {
+			p = channel.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasChannelProbesWith) > 0 {
+		with := make([]predicate.ChannelProbe, 0, len(i.HasChannelProbesWith))
+		for _, w := range i.HasChannelProbesWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasChannelProbesWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, channel.HasChannelProbesWith(with...))
 	}
 	switch len(predicates) {
 	case 0:
@@ -2568,6 +2591,272 @@ func (i *ChannelPerformanceWhereInput) P() (predicate.ChannelPerformance, error)
 		return predicates[0], nil
 	default:
 		return channelperformance.And(predicates...), nil
+	}
+}
+
+// ChannelProbeWhereInput represents a where input for filtering ChannelProbe queries.
+type ChannelProbeWhereInput struct {
+	Predicates []predicate.ChannelProbe  `json:"-"`
+	Not        *ChannelProbeWhereInput   `json:"not,omitempty"`
+	Or         []*ChannelProbeWhereInput `json:"or,omitempty"`
+	And        []*ChannelProbeWhereInput `json:"and,omitempty"`
+
+	// "id" field predicates.
+	ID      *int  `json:"id,omitempty"`
+	IDNEQ   *int  `json:"idNEQ,omitempty"`
+	IDIn    []int `json:"idIn,omitempty"`
+	IDNotIn []int `json:"idNotIn,omitempty"`
+	IDGT    *int  `json:"idGT,omitempty"`
+	IDGTE   *int  `json:"idGTE,omitempty"`
+	IDLT    *int  `json:"idLT,omitempty"`
+	IDLTE   *int  `json:"idLTE,omitempty"`
+
+	// "channel_id" field predicates.
+	ChannelID      *int  `json:"channelID,omitempty"`
+	ChannelIDNEQ   *int  `json:"channelIDNEQ,omitempty"`
+	ChannelIDIn    []int `json:"channelIDIn,omitempty"`
+	ChannelIDNotIn []int `json:"channelIDNotIn,omitempty"`
+
+	// "total_request_count" field predicates.
+	TotalRequestCount      *int  `json:"totalRequestCount,omitempty"`
+	TotalRequestCountNEQ   *int  `json:"totalRequestCountNEQ,omitempty"`
+	TotalRequestCountIn    []int `json:"totalRequestCountIn,omitempty"`
+	TotalRequestCountNotIn []int `json:"totalRequestCountNotIn,omitempty"`
+	TotalRequestCountGT    *int  `json:"totalRequestCountGT,omitempty"`
+	TotalRequestCountGTE   *int  `json:"totalRequestCountGTE,omitempty"`
+	TotalRequestCountLT    *int  `json:"totalRequestCountLT,omitempty"`
+	TotalRequestCountLTE   *int  `json:"totalRequestCountLTE,omitempty"`
+
+	// "success_request_count" field predicates.
+	SuccessRequestCount      *int  `json:"successRequestCount,omitempty"`
+	SuccessRequestCountNEQ   *int  `json:"successRequestCountNEQ,omitempty"`
+	SuccessRequestCountIn    []int `json:"successRequestCountIn,omitempty"`
+	SuccessRequestCountNotIn []int `json:"successRequestCountNotIn,omitempty"`
+	SuccessRequestCountGT    *int  `json:"successRequestCountGT,omitempty"`
+	SuccessRequestCountGTE   *int  `json:"successRequestCountGTE,omitempty"`
+	SuccessRequestCountLT    *int  `json:"successRequestCountLT,omitempty"`
+	SuccessRequestCountLTE   *int  `json:"successRequestCountLTE,omitempty"`
+
+	// "timestamp" field predicates.
+	Timestamp      *int64  `json:"timestamp,omitempty"`
+	TimestampNEQ   *int64  `json:"timestampNEQ,omitempty"`
+	TimestampIn    []int64 `json:"timestampIn,omitempty"`
+	TimestampNotIn []int64 `json:"timestampNotIn,omitempty"`
+	TimestampGT    *int64  `json:"timestampGT,omitempty"`
+	TimestampGTE   *int64  `json:"timestampGTE,omitempty"`
+	TimestampLT    *int64  `json:"timestampLT,omitempty"`
+	TimestampLTE   *int64  `json:"timestampLTE,omitempty"`
+
+	// "channel" edge predicates.
+	HasChannel     *bool                `json:"hasChannel,omitempty"`
+	HasChannelWith []*ChannelWhereInput `json:"hasChannelWith,omitempty"`
+}
+
+// AddPredicates adds custom predicates to the where input to be used during the filtering phase.
+func (i *ChannelProbeWhereInput) AddPredicates(predicates ...predicate.ChannelProbe) {
+	i.Predicates = append(i.Predicates, predicates...)
+}
+
+// Filter applies the ChannelProbeWhereInput filter on the ChannelProbeQuery builder.
+func (i *ChannelProbeWhereInput) Filter(q *ChannelProbeQuery) (*ChannelProbeQuery, error) {
+	if i == nil {
+		return q, nil
+	}
+	p, err := i.P()
+	if err != nil {
+		if err == ErrEmptyChannelProbeWhereInput {
+			return q, nil
+		}
+		return nil, err
+	}
+	return q.Where(p), nil
+}
+
+// ErrEmptyChannelProbeWhereInput is returned in case the ChannelProbeWhereInput is empty.
+var ErrEmptyChannelProbeWhereInput = errors.New("ent: empty predicate ChannelProbeWhereInput")
+
+// P returns a predicate for filtering channelprobes.
+// An error is returned if the input is empty or invalid.
+func (i *ChannelProbeWhereInput) P() (predicate.ChannelProbe, error) {
+	var predicates []predicate.ChannelProbe
+	if i.Not != nil {
+		p, err := i.Not.P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'not'", err)
+		}
+		predicates = append(predicates, channelprobe.Not(p))
+	}
+	switch n := len(i.Or); {
+	case n == 1:
+		p, err := i.Or[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'or'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		or := make([]predicate.ChannelProbe, 0, n)
+		for _, w := range i.Or {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'or'", err)
+			}
+			or = append(or, p)
+		}
+		predicates = append(predicates, channelprobe.Or(or...))
+	}
+	switch n := len(i.And); {
+	case n == 1:
+		p, err := i.And[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'and'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		and := make([]predicate.ChannelProbe, 0, n)
+		for _, w := range i.And {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'and'", err)
+			}
+			and = append(and, p)
+		}
+		predicates = append(predicates, channelprobe.And(and...))
+	}
+	predicates = append(predicates, i.Predicates...)
+	if i.ID != nil {
+		predicates = append(predicates, channelprobe.IDEQ(*i.ID))
+	}
+	if i.IDNEQ != nil {
+		predicates = append(predicates, channelprobe.IDNEQ(*i.IDNEQ))
+	}
+	if len(i.IDIn) > 0 {
+		predicates = append(predicates, channelprobe.IDIn(i.IDIn...))
+	}
+	if len(i.IDNotIn) > 0 {
+		predicates = append(predicates, channelprobe.IDNotIn(i.IDNotIn...))
+	}
+	if i.IDGT != nil {
+		predicates = append(predicates, channelprobe.IDGT(*i.IDGT))
+	}
+	if i.IDGTE != nil {
+		predicates = append(predicates, channelprobe.IDGTE(*i.IDGTE))
+	}
+	if i.IDLT != nil {
+		predicates = append(predicates, channelprobe.IDLT(*i.IDLT))
+	}
+	if i.IDLTE != nil {
+		predicates = append(predicates, channelprobe.IDLTE(*i.IDLTE))
+	}
+	if i.ChannelID != nil {
+		predicates = append(predicates, channelprobe.ChannelIDEQ(*i.ChannelID))
+	}
+	if i.ChannelIDNEQ != nil {
+		predicates = append(predicates, channelprobe.ChannelIDNEQ(*i.ChannelIDNEQ))
+	}
+	if len(i.ChannelIDIn) > 0 {
+		predicates = append(predicates, channelprobe.ChannelIDIn(i.ChannelIDIn...))
+	}
+	if len(i.ChannelIDNotIn) > 0 {
+		predicates = append(predicates, channelprobe.ChannelIDNotIn(i.ChannelIDNotIn...))
+	}
+	if i.TotalRequestCount != nil {
+		predicates = append(predicates, channelprobe.TotalRequestCountEQ(*i.TotalRequestCount))
+	}
+	if i.TotalRequestCountNEQ != nil {
+		predicates = append(predicates, channelprobe.TotalRequestCountNEQ(*i.TotalRequestCountNEQ))
+	}
+	if len(i.TotalRequestCountIn) > 0 {
+		predicates = append(predicates, channelprobe.TotalRequestCountIn(i.TotalRequestCountIn...))
+	}
+	if len(i.TotalRequestCountNotIn) > 0 {
+		predicates = append(predicates, channelprobe.TotalRequestCountNotIn(i.TotalRequestCountNotIn...))
+	}
+	if i.TotalRequestCountGT != nil {
+		predicates = append(predicates, channelprobe.TotalRequestCountGT(*i.TotalRequestCountGT))
+	}
+	if i.TotalRequestCountGTE != nil {
+		predicates = append(predicates, channelprobe.TotalRequestCountGTE(*i.TotalRequestCountGTE))
+	}
+	if i.TotalRequestCountLT != nil {
+		predicates = append(predicates, channelprobe.TotalRequestCountLT(*i.TotalRequestCountLT))
+	}
+	if i.TotalRequestCountLTE != nil {
+		predicates = append(predicates, channelprobe.TotalRequestCountLTE(*i.TotalRequestCountLTE))
+	}
+	if i.SuccessRequestCount != nil {
+		predicates = append(predicates, channelprobe.SuccessRequestCountEQ(*i.SuccessRequestCount))
+	}
+	if i.SuccessRequestCountNEQ != nil {
+		predicates = append(predicates, channelprobe.SuccessRequestCountNEQ(*i.SuccessRequestCountNEQ))
+	}
+	if len(i.SuccessRequestCountIn) > 0 {
+		predicates = append(predicates, channelprobe.SuccessRequestCountIn(i.SuccessRequestCountIn...))
+	}
+	if len(i.SuccessRequestCountNotIn) > 0 {
+		predicates = append(predicates, channelprobe.SuccessRequestCountNotIn(i.SuccessRequestCountNotIn...))
+	}
+	if i.SuccessRequestCountGT != nil {
+		predicates = append(predicates, channelprobe.SuccessRequestCountGT(*i.SuccessRequestCountGT))
+	}
+	if i.SuccessRequestCountGTE != nil {
+		predicates = append(predicates, channelprobe.SuccessRequestCountGTE(*i.SuccessRequestCountGTE))
+	}
+	if i.SuccessRequestCountLT != nil {
+		predicates = append(predicates, channelprobe.SuccessRequestCountLT(*i.SuccessRequestCountLT))
+	}
+	if i.SuccessRequestCountLTE != nil {
+		predicates = append(predicates, channelprobe.SuccessRequestCountLTE(*i.SuccessRequestCountLTE))
+	}
+	if i.Timestamp != nil {
+		predicates = append(predicates, channelprobe.TimestampEQ(*i.Timestamp))
+	}
+	if i.TimestampNEQ != nil {
+		predicates = append(predicates, channelprobe.TimestampNEQ(*i.TimestampNEQ))
+	}
+	if len(i.TimestampIn) > 0 {
+		predicates = append(predicates, channelprobe.TimestampIn(i.TimestampIn...))
+	}
+	if len(i.TimestampNotIn) > 0 {
+		predicates = append(predicates, channelprobe.TimestampNotIn(i.TimestampNotIn...))
+	}
+	if i.TimestampGT != nil {
+		predicates = append(predicates, channelprobe.TimestampGT(*i.TimestampGT))
+	}
+	if i.TimestampGTE != nil {
+		predicates = append(predicates, channelprobe.TimestampGTE(*i.TimestampGTE))
+	}
+	if i.TimestampLT != nil {
+		predicates = append(predicates, channelprobe.TimestampLT(*i.TimestampLT))
+	}
+	if i.TimestampLTE != nil {
+		predicates = append(predicates, channelprobe.TimestampLTE(*i.TimestampLTE))
+	}
+
+	if i.HasChannel != nil {
+		p := channelprobe.HasChannel()
+		if !*i.HasChannel {
+			p = channelprobe.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasChannelWith) > 0 {
+		with := make([]predicate.Channel, 0, len(i.HasChannelWith))
+		for _, w := range i.HasChannelWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasChannelWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, channelprobe.HasChannelWith(with...))
+	}
+	switch len(predicates) {
+	case 0:
+		return nil, ErrEmptyChannelProbeWhereInput
+	case 1:
+		return predicates[0], nil
+	default:
+		return channelprobe.And(predicates...), nil
 	}
 }
 

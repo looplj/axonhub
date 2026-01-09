@@ -866,7 +866,7 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 
 	t.Run("QueryAllChannelModels=false returns configured models only", func(t *testing.T) {
 		// Create system setting with QueryAllChannelModels=false
-		modelSettings := ModelSettings{
+		modelSettings := SystemModelSettings{
 			QueryAllChannelModels: false,
 		}
 		err = systemSvc.SetModelSettings(ctx, modelSettings)
@@ -965,7 +965,7 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 
 	t.Run("QueryAllChannelModels=false with profile modelIDs", func(t *testing.T) {
 		// Create system setting with QueryAllChannelModels=false
-		modelSettings := ModelSettings{
+		modelSettings := SystemModelSettings{
 			QueryAllChannelModels: false,
 		}
 		err = systemSvc.SetModelSettings(ctx, modelSettings)
@@ -1058,7 +1058,7 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 
 	t.Run("API key with ChannelIDs filters channels", func(t *testing.T) {
 		// Ensure QueryAllChannelModels is true (default)
-		modelSettings := ModelSettings{
+		modelSettings := SystemModelSettings{
 			QueryAllChannelModels: true,
 		}
 		err = systemSvc.SetModelSettings(ctx, modelSettings)
@@ -1102,7 +1102,7 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 
 	t.Run("API key with ChannelTags filters channels", func(t *testing.T) {
 		// Ensure QueryAllChannelModels is true (default)
-		modelSettings := ModelSettings{
+		modelSettings := SystemModelSettings{
 			QueryAllChannelModels: true,
 		}
 		err = systemSvc.SetModelSettings(ctx, modelSettings)
@@ -1216,7 +1216,7 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 
 	t.Run("QueryAllChannelModels=true with profile modelIDs filters models", func(t *testing.T) {
 		// Ensure QueryAllChannelModels is true (default)
-		modelSettings := ModelSettings{
+		modelSettings := SystemModelSettings{
 			QueryAllChannelModels: true,
 		}
 		err = systemSvc.SetModelSettings(ctx, modelSettings)

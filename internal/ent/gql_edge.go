@@ -116,6 +116,18 @@ func (_m *Channel) ChannelPerformance(ctx context.Context) (*ChannelPerformance,
 	return result, MaskNotFound(err)
 }
 
+func (_m *Channel) ChannelProbes(ctx context.Context) (result []*ChannelProbe, err error) {
+	if fc := graphql.GetFieldContext(ctx); fc != nil && fc.Field.Alias != "" {
+		result, err = _m.NamedChannelProbes(graphql.GetFieldContext(ctx).Field.Alias)
+	} else {
+		result, err = _m.Edges.ChannelProbesOrErr()
+	}
+	if IsNotLoaded(err) {
+		result, err = _m.QueryChannelProbes().All(ctx)
+	}
+	return result, err
+}
+
 func (_m *ChannelOverrideTemplate) User(ctx context.Context) (*User, error) {
 	result, err := _m.Edges.UserOrErr()
 	if IsNotLoaded(err) {
@@ -125,6 +137,14 @@ func (_m *ChannelOverrideTemplate) User(ctx context.Context) (*User, error) {
 }
 
 func (_m *ChannelPerformance) Channel(ctx context.Context) (*Channel, error) {
+	result, err := _m.Edges.ChannelOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryChannel().Only(ctx)
+	}
+	return result, err
+}
+
+func (_m *ChannelProbe) Channel(ctx context.Context) (*Channel, error) {
 	result, err := _m.Edges.ChannelOrErr()
 	if IsNotLoaded(err) {
 		result, err = _m.QueryChannel().Only(ctx)

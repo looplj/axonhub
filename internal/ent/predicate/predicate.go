@@ -18,6 +18,9 @@ type ChannelOverrideTemplate func(*sql.Selector)
 // ChannelPerformance is the predicate function for channelperformance builders.
 type ChannelPerformance func(*sql.Selector)
 
+// ChannelProbe is the predicate function for channelprobe builders.
+type ChannelProbe func(*sql.Selector)
+
 // DataStorage is the predicate function for datastorage builders.
 type DataStorage func(*sql.Selector)
 

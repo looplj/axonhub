@@ -68,15 +68,18 @@ type ChannelEdges struct {
 	UsageLogs []*UsageLog `json:"usage_logs,omitempty"`
 	// ChannelPerformance holds the value of the channel_performance edge.
 	ChannelPerformance *ChannelPerformance `json:"channel_performance,omitempty"`
+	// ChannelProbes holds the value of the channel_probes edge.
+	ChannelProbes []*ChannelProbe `json:"channel_probes,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [4]bool
+	loadedTypes [5]bool
 	// totalCount holds the count of the edges above.
-	totalCount [4]map[string]int
+	totalCount [5]map[string]int
 
-	namedRequests   map[string][]*Request
-	namedExecutions map[string][]*RequestExecution
-	namedUsageLogs  map[string][]*UsageLog
+	namedRequests      map[string][]*Request
+	namedExecutions    map[string][]*RequestExecution
+	namedUsageLogs     map[string][]*UsageLog
+	namedChannelProbes map[string][]*ChannelProbe
 }
 
 // RequestsOrErr returns the Requests value or an error if the edge
@@ -115,6 +118,15 @@ func (e ChannelEdges) ChannelPerformanceOrErr() (*ChannelPerformance, error) {
 		return nil, &NotFoundError{label: channelperformance.Label}
 	}
 	return nil, &NotLoadedError{edge: "channel_performance"}
+}
+
+// ChannelProbesOrErr returns the ChannelProbes value or an error if the edge
+// was not loaded in eager-loading.
+func (e ChannelEdges) ChannelProbesOrErr() ([]*ChannelProbe, error) {
+	if e.loadedTypes[4] {
+		return e.ChannelProbes, nil
+	}
+	return nil, &NotLoadedError{edge: "channel_probes"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -292,6 +304,11 @@ func (_m *Channel) QueryChannelPerformance() *ChannelPerformanceQuery {
 	return NewChannelClient(_m.config).QueryChannelPerformance(_m)
 }
 
+// QueryChannelProbes queries the "channel_probes" edge of the Channel entity.
+func (_m *Channel) QueryChannelProbes() *ChannelProbeQuery {
+	return NewChannelClient(_m.config).QueryChannelProbes(_m)
+}
+
 // Update returns a builder for updating this Channel.
 // Note that you need to call Channel.Unwrap() before calling this method if this Channel
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -438,6 +455,30 @@ func (_m *Channel) appendNamedUsageLogs(name string, edges ...*UsageLog) {
 		_m.Edges.namedUsageLogs[name] = []*UsageLog{}
 	} else {
 		_m.Edges.namedUsageLogs[name] = append(_m.Edges.namedUsageLogs[name], edges...)
+	}
+}
+
+// NamedChannelProbes returns the ChannelProbes named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *Channel) NamedChannelProbes(name string) ([]*ChannelProbe, error) {
+	if _m.Edges.namedChannelProbes == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedChannelProbes[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *Channel) appendNamedChannelProbes(name string, edges ...*ChannelProbe) {
+	if _m.Edges.namedChannelProbes == nil {
+		_m.Edges.namedChannelProbes = make(map[string][]*ChannelProbe)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedChannelProbes[name] = []*ChannelProbe{}
+	} else {
+		_m.Edges.namedChannelProbes[name] = append(_m.Edges.namedChannelProbes[name], edges...)
 	}
 }
 

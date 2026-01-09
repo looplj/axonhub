@@ -16,6 +16,7 @@
       "type": "类型",
       "provider": "服务商",
       "status": "状态",
+      "health": "健康状态",
       "tags": "标签",
       "baseURL": "Base URL",
       "supportedModels": "支持的模型",
@@ -165,6 +166,7 @@
     "errors": {
       "fetchList": "获取渠道列表失败",
       "fetchDetail": "获取渠道详情失败",
+      "fetchProbeData": "获取渠道健康数据失败",
       "notFound": "未找到渠道",
       "fetchNames": "获取已有渠道名称失败",
       "fetchOrdering": "获取渠道排序数据失败",
@@ -179,6 +181,19 @@
       "filterByName": "按名称筛选"
     },
     "dialogs": {
+      "systemSettings": {
+        "title": "渠道设置",
+        "description": "配置系统级渠道设置",
+        "channelProbe": {
+          "label": "渠道健康监控",
+          "enabledLabel": "启用渠道探测",
+          "enabledDescription": "自动监控渠道健康状态和性能指标",
+          "frequencyLabel": "探测频率",
+          "frequencyDescription": "检查渠道健康状态的频率",
+          "probeDescription": "不会真的探测，基于 requests 数据统计",
+          "frequencyWarning": "修改频率会导致历史数据失效"
+        }
+      },
       "create": {
         "title": "添加渠道",
         "description": "创建一个新的 AI 模型渠道"

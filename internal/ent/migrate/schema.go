@@ -174,6 +174,35 @@ var (
 			},
 		},
 	}
+	// ChannelProbesColumns holds the columns for the "channel_probes" table.
+	ChannelProbesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "total_request_count", Type: field.TypeInt},
+		{Name: "success_request_count", Type: field.TypeInt},
+		{Name: "timestamp", Type: field.TypeInt64},
+		{Name: "channel_id", Type: field.TypeInt},
+	}
+	// ChannelProbesTable holds the schema information for the "channel_probes" table.
+	ChannelProbesTable = &schema.Table{
+		Name:       "channel_probes",
+		Columns:    ChannelProbesColumns,
+		PrimaryKey: []*schema.Column{ChannelProbesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "channel_probes_channels_channel_probes",
+				Columns:    []*schema.Column{ChannelProbesColumns[4]},
+				RefColumns: []*schema.Column{ChannelsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "channel_probes_by_channel_id_timestamp",
+				Unique:  false,
+				Columns: []*schema.Column{ChannelProbesColumns[4], ChannelProbesColumns[3]},
+			},
+		},
+	}
 	// DataStoragesColumns holds the columns for the "data_storages" table.
 	DataStoragesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -749,6 +778,7 @@ var (
 		ChannelsTable,
 		ChannelOverrideTemplatesTable,
 		ChannelPerformancesTable,
+		ChannelProbesTable,
 		DataStoragesTable,
 		ModelsTable,
 		ProjectsTable,
@@ -770,6 +800,7 @@ func init() {
 	APIKeysTable.ForeignKeys[1].RefTable = UsersTable
 	ChannelOverrideTemplatesTable.ForeignKeys[0].RefTable = UsersTable
 	ChannelPerformancesTable.ForeignKeys[0].RefTable = ChannelsTable
+	ChannelProbesTable.ForeignKeys[0].RefTable = ChannelsTable
 	RequestsTable.ForeignKeys[0].RefTable = APIKeysTable
 	RequestsTable.ForeignKeys[1].RefTable = ChannelsTable
 	RequestsTable.ForeignKeys[2].RefTable = DataStoragesTable

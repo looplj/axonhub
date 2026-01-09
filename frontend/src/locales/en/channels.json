@@ -15,6 +15,7 @@
       "type": "Type",
       "provider": "Provider",
       "status": "Status",
+      "health": "Health",
       "tags": "Tags",
       "baseURL": "Base URL",
       "supportedModels": "Models",
@@ -171,6 +172,7 @@
     "errors": {
       "fetchList": "Failed to load channels",
       "fetchDetail": "Failed to load channel details",
+      "fetchProbeData": "Failed to load channel health data",
       "notFound": "Channel not found",
       "fetchNames": "Failed to load existing channel names",
       "fetchOrdering": "Failed to load channels for ordering",
@@ -178,6 +180,19 @@
       "fetchTags": "Failed to fetch channel tags"
     },
     "dialogs": {
+      "systemSettings": {
+        "title": "Channel Settings",
+        "description": "Configure system-wide channel settings",
+        "channelProbe": {
+          "label": "Channel Health Monitoring",
+          "enabledLabel": "Enable Channel Probing",
+          "enabledDescription": "Automatically monitor channel health and performance metrics",
+          "frequencyLabel": "Probe Frequency",
+          "frequencyDescription": "How often to check channel health status",
+          "probeDescription": "It won't actually probe, it's based on request data statistics",
+          "frequencyWarning": "Changing the frequency will cause historical data to become invalid"
+        }
+      },
       "create": {
         "title": "Add Channel",
         "description": "Create a new AI model channel."

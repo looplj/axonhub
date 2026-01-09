@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
+	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/predicate"
@@ -45,6 +46,7 @@ const (
 	TypeChannel                 = "Channel"
 	TypeChannelOverrideTemplate = "ChannelOverrideTemplate"
 	TypeChannelPerformance      = "ChannelPerformance"
+	TypeChannelProbe            = "ChannelProbe"
 	TypeDataStorage             = "DataStorage"
 	TypeModel                   = "Model"
 	TypeProject                 = "Project"
@@ -1243,6 +1245,9 @@ type ChannelMutation struct {
 	clearedusage_logs          bool
 	channel_performance        *int
 	clearedchannel_performance bool
+	channel_probes             map[int]struct{}
+	removedchannel_probes      map[int]struct{}
+	clearedchannel_probes      bool
 	done                       bool
 	oldValue                   func(context.Context) (*Channel, error)
 	predicates                 []predicate.Channel
@@ -2259,6 +2264,60 @@ func (m *ChannelMutation) ResetChannelPerformance() {
 	m.clearedchannel_performance = false
 }
 
+// AddChannelProbeIDs adds the "channel_probes" edge to the ChannelProbe entity by ids.
+func (m *ChannelMutation) AddChannelProbeIDs(ids ...int) {
+	if m.channel_probes == nil {
+		m.channel_probes = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.channel_probes[ids[i]] = struct{}{}
+	}
+}
+
+// ClearChannelProbes clears the "channel_probes" edge to the ChannelProbe entity.
+func (m *ChannelMutation) ClearChannelProbes() {
+	m.clearedchannel_probes = true
+}
+
+// ChannelProbesCleared reports if the "channel_probes" edge to the ChannelProbe entity was cleared.
+func (m *ChannelMutation) ChannelProbesCleared() bool {
+	return m.clearedchannel_probes
+}
+
+// RemoveChannelProbeIDs removes the "channel_probes" edge to the ChannelProbe entity by IDs.
+func (m *ChannelMutation) RemoveChannelProbeIDs(ids ...int) {
+	if m.removedchannel_probes == nil {
+		m.removedchannel_probes = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.channel_probes, ids[i])
+		m.removedchannel_probes[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedChannelProbes returns the removed IDs of the "channel_probes" edge to the ChannelProbe entity.
+func (m *ChannelMutation) RemovedChannelProbesIDs() (ids []int) {
+	for id := range m.removedchannel_probes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ChannelProbesIDs returns the "channel_probes" edge IDs in the mutation.
+func (m *ChannelMutation) ChannelProbesIDs() (ids []int) {
+	for id := range m.channel_probes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetChannelProbes resets all changes to the "channel_probes" edge.
+func (m *ChannelMutation) ResetChannelProbes() {
+	m.channel_probes = nil
+	m.clearedchannel_probes = false
+	m.removedchannel_probes = nil
+}
+
 // Where appends a list predicates to the ChannelMutation builder.
 func (m *ChannelMutation) Where(ps ...predicate.Channel) {
 	m.predicates = append(m.predicates, ps...)
@@ -2707,7 +2766,7 @@ func (m *ChannelMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ChannelMutation) AddedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 5)
 	if m.requests != nil {
 		edges = append(edges, channel.EdgeRequests)
 	}
@@ -2719,6 +2778,9 @@ func (m *ChannelMutation) AddedEdges() []string {
 	}
 	if m.channel_performance != nil {
 		edges = append(edges, channel.EdgeChannelPerformance)
+	}
+	if m.channel_probes != nil {
+		edges = append(edges, channel.EdgeChannelProbes)
 	}
 	return edges
 }
@@ -2749,13 +2811,19 @@ func (m *ChannelMutation) AddedIDs(name string) []ent.Value {
 		if id := m.channel_performance; id != nil {
 			return []ent.Value{*id}
 		}
+	case channel.EdgeChannelProbes:
+		ids := make([]ent.Value, 0, len(m.channel_probes))
+		for id := range m.channel_probes {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ChannelMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 5)
 	if m.removedrequests != nil {
 		edges = append(edges, channel.EdgeRequests)
 	}
@@ -2764,6 +2832,9 @@ func (m *ChannelMutation) RemovedEdges() []string {
 	}
 	if m.removedusage_logs != nil {
 		edges = append(edges, channel.EdgeUsageLogs)
+	}
+	if m.removedchannel_probes != nil {
+		edges = append(edges, channel.EdgeChannelProbes)
 	}
 	return edges
 }
@@ -2790,13 +2861,19 @@ func (m *ChannelMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case channel.EdgeChannelProbes:
+		ids := make([]ent.Value, 0, len(m.removedchannel_probes))
+		for id := range m.removedchannel_probes {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ChannelMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 5)
 	if m.clearedrequests {
 		edges = append(edges, channel.EdgeRequests)
 	}
@@ -2808,6 +2885,9 @@ func (m *ChannelMutation) ClearedEdges() []string {
 	}
 	if m.clearedchannel_performance {
 		edges = append(edges, channel.EdgeChannelPerformance)
+	}
+	if m.clearedchannel_probes {
+		edges = append(edges, channel.EdgeChannelProbes)
 	}
 	return edges
 }
@@ -2824,6 +2904,8 @@ func (m *ChannelMutation) EdgeCleared(name string) bool {
 		return m.clearedusage_logs
 	case channel.EdgeChannelPerformance:
 		return m.clearedchannel_performance
+	case channel.EdgeChannelProbes:
+		return m.clearedchannel_probes
 	}
 	return false
 }
@@ -2854,6 +2936,9 @@ func (m *ChannelMutation) ResetEdge(name string) error {
 		return nil
 	case channel.EdgeChannelPerformance:
 		m.ResetChannelPerformance()
+		return nil
+	case channel.EdgeChannelProbes:
+		m.ResetChannelProbes()
 		return nil
 	}
 	return fmt.Errorf("unknown Channel edge %s", name)
@@ -5862,6 +5947,650 @@ func (m *ChannelPerformanceMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown ChannelPerformance edge %s", name)
+}
+
+// ChannelProbeMutation represents an operation that mutates the ChannelProbe nodes in the graph.
+type ChannelProbeMutation struct {
+	config
+	op                       Op
+	typ                      string
+	id                       *int
+	total_request_count      *int
+	addtotal_request_count   *int
+	success_request_count    *int
+	addsuccess_request_count *int
+	timestamp                *int64
+	addtimestamp             *int64
+	clearedFields            map[string]struct{}
+	channel                  *int
+	clearedchannel           bool
+	done                     bool
+	oldValue                 func(context.Context) (*ChannelProbe, error)
+	predicates               []predicate.ChannelProbe
+}
+
+var _ ent.Mutation = (*ChannelProbeMutation)(nil)
+
+// channelprobeOption allows management of the mutation configuration using functional options.
+type channelprobeOption func(*ChannelProbeMutation)
+
+// newChannelProbeMutation creates new mutation for the ChannelProbe entity.
+func newChannelProbeMutation(c config, op Op, opts ...channelprobeOption) *ChannelProbeMutation {
+	m := &ChannelProbeMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeChannelProbe,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withChannelProbeID sets the ID field of the mutation.
+func withChannelProbeID(id int) channelprobeOption {
+	return func(m *ChannelProbeMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ChannelProbe
+		)
+		m.oldValue = func(ctx context.Context) (*ChannelProbe, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ChannelProbe.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withChannelProbe sets the old ChannelProbe of the mutation.
+func withChannelProbe(node *ChannelProbe) channelprobeOption {
+	return func(m *ChannelProbeMutation) {
+		m.oldValue = func(context.Context) (*ChannelProbe, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ChannelProbeMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ChannelProbeMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ChannelProbeMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ChannelProbeMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ChannelProbe.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetChannelID sets the "channel_id" field.
+func (m *ChannelProbeMutation) SetChannelID(i int) {
+	m.channel = &i
+}
+
+// ChannelID returns the value of the "channel_id" field in the mutation.
+func (m *ChannelProbeMutation) ChannelID() (r int, exists bool) {
+	v := m.channel
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChannelID returns the old "channel_id" field's value of the ChannelProbe entity.
+// If the ChannelProbe object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelProbeMutation) OldChannelID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChannelID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChannelID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChannelID: %w", err)
+	}
+	return oldValue.ChannelID, nil
+}
+
+// ResetChannelID resets all changes to the "channel_id" field.
+func (m *ChannelProbeMutation) ResetChannelID() {
+	m.channel = nil
+}
+
+// SetTotalRequestCount sets the "total_request_count" field.
+func (m *ChannelProbeMutation) SetTotalRequestCount(i int) {
+	m.total_request_count = &i
+	m.addtotal_request_count = nil
+}
+
+// TotalRequestCount returns the value of the "total_request_count" field in the mutation.
+func (m *ChannelProbeMutation) TotalRequestCount() (r int, exists bool) {
+	v := m.total_request_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTotalRequestCount returns the old "total_request_count" field's value of the ChannelProbe entity.
+// If the ChannelProbe object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelProbeMutation) OldTotalRequestCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTotalRequestCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTotalRequestCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTotalRequestCount: %w", err)
+	}
+	return oldValue.TotalRequestCount, nil
+}
+
+// AddTotalRequestCount adds i to the "total_request_count" field.
+func (m *ChannelProbeMutation) AddTotalRequestCount(i int) {
+	if m.addtotal_request_count != nil {
+		*m.addtotal_request_count += i
+	} else {
+		m.addtotal_request_count = &i
+	}
+}
+
+// AddedTotalRequestCount returns the value that was added to the "total_request_count" field in this mutation.
+func (m *ChannelProbeMutation) AddedTotalRequestCount() (r int, exists bool) {
+	v := m.addtotal_request_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTotalRequestCount resets all changes to the "total_request_count" field.
+func (m *ChannelProbeMutation) ResetTotalRequestCount() {
+	m.total_request_count = nil
+	m.addtotal_request_count = nil
+}
+
+// SetSuccessRequestCount sets the "success_request_count" field.
+func (m *ChannelProbeMutation) SetSuccessRequestCount(i int) {
+	m.success_request_count = &i
+	m.addsuccess_request_count = nil
+}
+
+// SuccessRequestCount returns the value of the "success_request_count" field in the mutation.
+func (m *ChannelProbeMutation) SuccessRequestCount() (r int, exists bool) {
+	v := m.success_request_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSuccessRequestCount returns the old "success_request_count" field's value of the ChannelProbe entity.
+// If the ChannelProbe object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelProbeMutation) OldSuccessRequestCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSuccessRequestCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSuccessRequestCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSuccessRequestCount: %w", err)
+	}
+	return oldValue.SuccessRequestCount, nil
+}
+
+// AddSuccessRequestCount adds i to the "success_request_count" field.
+func (m *ChannelProbeMutation) AddSuccessRequestCount(i int) {
+	if m.addsuccess_request_count != nil {
+		*m.addsuccess_request_count += i
+	} else {
+		m.addsuccess_request_count = &i
+	}
+}
+
+// AddedSuccessRequestCount returns the value that was added to the "success_request_count" field in this mutation.
+func (m *ChannelProbeMutation) AddedSuccessRequestCount() (r int, exists bool) {
+	v := m.addsuccess_request_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSuccessRequestCount resets all changes to the "success_request_count" field.
+func (m *ChannelProbeMutation) ResetSuccessRequestCount() {
+	m.success_request_count = nil
+	m.addsuccess_request_count = nil
+}
+
+// SetTimestamp sets the "timestamp" field.
+func (m *ChannelProbeMutation) SetTimestamp(i int64) {
+	m.timestamp = &i
+	m.addtimestamp = nil
+}
+
+// Timestamp returns the value of the "timestamp" field in the mutation.
+func (m *ChannelProbeMutation) Timestamp() (r int64, exists bool) {
+	v := m.timestamp
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTimestamp returns the old "timestamp" field's value of the ChannelProbe entity.
+// If the ChannelProbe object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelProbeMutation) OldTimestamp(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTimestamp is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTimestamp requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTimestamp: %w", err)
+	}
+	return oldValue.Timestamp, nil
+}
+
+// AddTimestamp adds i to the "timestamp" field.
+func (m *ChannelProbeMutation) AddTimestamp(i int64) {
+	if m.addtimestamp != nil {
+		*m.addtimestamp += i
+	} else {
+		m.addtimestamp = &i
+	}
+}
+
+// AddedTimestamp returns the value that was added to the "timestamp" field in this mutation.
+func (m *ChannelProbeMutation) AddedTimestamp() (r int64, exists bool) {
+	v := m.addtimestamp
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTimestamp resets all changes to the "timestamp" field.
+func (m *ChannelProbeMutation) ResetTimestamp() {
+	m.timestamp = nil
+	m.addtimestamp = nil
+}
+
+// ClearChannel clears the "channel" edge to the Channel entity.
+func (m *ChannelProbeMutation) ClearChannel() {
+	m.clearedchannel = true
+	m.clearedFields[channelprobe.FieldChannelID] = struct{}{}
+}
+
+// ChannelCleared reports if the "channel" edge to the Channel entity was cleared.
+func (m *ChannelProbeMutation) ChannelCleared() bool {
+	return m.clearedchannel
+}
+
+// ChannelIDs returns the "channel" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ChannelID instead. It exists only for internal usage by the builders.
+func (m *ChannelProbeMutation) ChannelIDs() (ids []int) {
+	if id := m.channel; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetChannel resets all changes to the "channel" edge.
+func (m *ChannelProbeMutation) ResetChannel() {
+	m.channel = nil
+	m.clearedchannel = false
+}
+
+// Where appends a list predicates to the ChannelProbeMutation builder.
+func (m *ChannelProbeMutation) Where(ps ...predicate.ChannelProbe) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ChannelProbeMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ChannelProbeMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ChannelProbe, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ChannelProbeMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ChannelProbeMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ChannelProbe).
+func (m *ChannelProbeMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ChannelProbeMutation) Fields() []string {
+	fields := make([]string, 0, 4)
+	if m.channel != nil {
+		fields = append(fields, channelprobe.FieldChannelID)
+	}
+	if m.total_request_count != nil {
+		fields = append(fields, channelprobe.FieldTotalRequestCount)
+	}
+	if m.success_request_count != nil {
+		fields = append(fields, channelprobe.FieldSuccessRequestCount)
+	}
+	if m.timestamp != nil {
+		fields = append(fields, channelprobe.FieldTimestamp)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ChannelProbeMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case channelprobe.FieldChannelID:
+		return m.ChannelID()
+	case channelprobe.FieldTotalRequestCount:
+		return m.TotalRequestCount()
+	case channelprobe.FieldSuccessRequestCount:
+		return m.SuccessRequestCount()
+	case channelprobe.FieldTimestamp:
+		return m.Timestamp()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ChannelProbeMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case channelprobe.FieldChannelID:
+		return m.OldChannelID(ctx)
+	case channelprobe.FieldTotalRequestCount:
+		return m.OldTotalRequestCount(ctx)
+	case channelprobe.FieldSuccessRequestCount:
+		return m.OldSuccessRequestCount(ctx)
+	case channelprobe.FieldTimestamp:
+		return m.OldTimestamp(ctx)
+	}
+	return nil, fmt.Errorf("unknown ChannelProbe field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ChannelProbeMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case channelprobe.FieldChannelID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChannelID(v)
+		return nil
+	case channelprobe.FieldTotalRequestCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTotalRequestCount(v)
+		return nil
+	case channelprobe.FieldSuccessRequestCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSuccessRequestCount(v)
+		return nil
+	case channelprobe.FieldTimestamp:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTimestamp(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ChannelProbe field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ChannelProbeMutation) AddedFields() []string {
+	var fields []string
+	if m.addtotal_request_count != nil {
+		fields = append(fields, channelprobe.FieldTotalRequestCount)
+	}
+	if m.addsuccess_request_count != nil {
+		fields = append(fields, channelprobe.FieldSuccessRequestCount)
+	}
+	if m.addtimestamp != nil {
+		fields = append(fields, channelprobe.FieldTimestamp)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ChannelProbeMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case channelprobe.FieldTotalRequestCount:
+		return m.AddedTotalRequestCount()
+	case channelprobe.FieldSuccessRequestCount:
+		return m.AddedSuccessRequestCount()
+	case channelprobe.FieldTimestamp:
+		return m.AddedTimestamp()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ChannelProbeMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case channelprobe.FieldTotalRequestCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTotalRequestCount(v)
+		return nil
+	case channelprobe.FieldSuccessRequestCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSuccessRequestCount(v)
+		return nil
+	case channelprobe.FieldTimestamp:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTimestamp(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ChannelProbe numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ChannelProbeMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ChannelProbeMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ChannelProbeMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown ChannelProbe nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ChannelProbeMutation) ResetField(name string) error {
+	switch name {
+	case channelprobe.FieldChannelID:
+		m.ResetChannelID()
+		return nil
+	case channelprobe.FieldTotalRequestCount:
+		m.ResetTotalRequestCount()
+		return nil
+	case channelprobe.FieldSuccessRequestCount:
+		m.ResetSuccessRequestCount()
+		return nil
+	case channelprobe.FieldTimestamp:
+		m.ResetTimestamp()
+		return nil
+	}
+	return fmt.Errorf("unknown ChannelProbe field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ChannelProbeMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.channel != nil {
+		edges = append(edges, channelprobe.EdgeChannel)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ChannelProbeMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case channelprobe.EdgeChannel:
+		if id := m.channel; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ChannelProbeMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ChannelProbeMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ChannelProbeMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedchannel {
+		edges = append(edges, channelprobe.EdgeChannel)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ChannelProbeMutation) EdgeCleared(name string) bool {
+	switch name {
+	case channelprobe.EdgeChannel:
+		return m.clearedchannel
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ChannelProbeMutation) ClearEdge(name string) error {
+	switch name {
+	case channelprobe.EdgeChannel:
+		m.ClearChannel()
+		return nil
+	}
+	return fmt.Errorf("unknown ChannelProbe unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ChannelProbeMutation) ResetEdge(name string) error {
+	switch name {
+	case channelprobe.EdgeChannel:
+		m.ResetChannel()
+		return nil
+	}
+	return fmt.Errorf("unknown ChannelProbe edge %s", name)
 }
 
 // DataStorageMutation represents an operation that mutates the DataStorage nodes in the graph.

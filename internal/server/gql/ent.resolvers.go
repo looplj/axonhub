@@ -80,6 +80,22 @@ func (r *channelPerformanceResolver) ChannelID(ctx context.Context, obj *ent.Cha
 }
 
 // ID is the resolver for the id field.
+func (r *channelProbeResolver) ID(ctx context.Context, obj *ent.ChannelProbe) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeChannelProbe,
+		ID:   obj.ID,
+	}, nil
+}
+
+// ChannelID is the resolver for the channelID field.
+func (r *channelProbeResolver) ChannelID(ctx context.Context, obj *ent.ChannelProbe) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeChannel,
+		ID:   obj.ChannelID,
+	}, nil
+}
+
+// ID is the resolver for the id field.
 func (r *dataStorageResolver) ID(ctx context.Context, obj *ent.DataStorage) (*objects.GUID, error) {
 	return &objects.GUID{
 		Type: ent.TypeDataStorage,
@@ -638,6 +654,9 @@ func (r *Resolver) ChannelPerformance() ChannelPerformanceResolver {
 	return &channelPerformanceResolver{r}
 }
 
+// ChannelProbe returns ChannelProbeResolver implementation.
+func (r *Resolver) ChannelProbe() ChannelProbeResolver { return &channelProbeResolver{r} }
+
 // DataStorage returns DataStorageResolver implementation.
 func (r *Resolver) DataStorage() DataStorageResolver { return &dataStorageResolver{r} }
 
@@ -684,6 +703,7 @@ type aPIKeyResolver struct{ *Resolver }
 type channelResolver struct{ *Resolver }
 type channelOverrideTemplateResolver struct{ *Resolver }
 type channelPerformanceResolver struct{ *Resolver }
+type channelProbeResolver struct{ *Resolver }
 type dataStorageResolver struct{ *Resolver }
 type modelResolver struct{ *Resolver }
 type projectResolver struct{ *Resolver }
