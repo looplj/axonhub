@@ -157,6 +157,12 @@ type RequestStats struct {
 	RequestsThisMonth int `json:"requestsThisMonth"`
 }
 
+type RequestStatsByAPIKey struct {
+	APIKeyID   objects.GUID `json:"apiKeyId"`
+	APIKeyName string       `json:"apiKeyName"`
+	Count      int          `json:"count"`
+}
+
 type RequestStatsByChannel struct {
 	ChannelName string `json:"channelName"`
 	ChannelType string `json:"channelType"`
@@ -228,6 +234,16 @@ type TokenStats struct {
 	TotalInputTokensThisMonth  int `json:"totalInputTokensThisMonth"`
 	TotalOutputTokensThisMonth int `json:"totalOutputTokensThisMonth"`
 	TotalCachedTokensThisMonth int `json:"totalCachedTokensThisMonth"`
+}
+
+type TokenStatsByAPIKey struct {
+	APIKeyID        objects.GUID `json:"apiKeyId"`
+	APIKeyName      string       `json:"apiKeyName"`
+	InputTokens     int          `json:"inputTokens"`
+	OutputTokens    int          `json:"outputTokens"`
+	CachedTokens    int          `json:"cachedTokens"`
+	ReasoningTokens int          `json:"reasoningTokens"`
+	TotalTokens     int          `json:"totalTokens"`
 }
 
 type TopRequestsProjects struct {

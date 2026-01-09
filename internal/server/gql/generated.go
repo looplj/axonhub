@@ -649,6 +649,7 @@ type ComplexityRoot struct {
 		QueryModels                   func(childComplexity int, input QueryModelsInput) int
 		QueryUnassociatedChannels     func(childComplexity int) int
 		RequestStats                  func(childComplexity int) int
+		RequestStatsByAPIKey          func(childComplexity int) int
 		RequestStatsByChannel         func(childComplexity int) int
 		RequestStatsByModel           func(childComplexity int) int
 		Requests                      func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestOrder, where *ent.RequestWhereInput) int
@@ -661,6 +662,7 @@ type ComplexityRoot struct {
 		Systems                       func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.SystemOrder, where *ent.SystemWhereInput) int
 		Threads                       func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ThreadOrder, where *ent.ThreadWhereInput) int
 		TokenStats                    func(childComplexity int) int
+		TokenStatsByAPIKey            func(childComplexity int) int
 		TopRequestsProjects           func(childComplexity int) int
 		Traces                        func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.TraceOrder, where *ent.TraceWhereInput) int
 		UsageLogs                     func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UsageLogOrder, where *ent.UsageLogWhereInput) int
@@ -761,6 +763,12 @@ type ComplexityRoot struct {
 		RequestsThisMonth func(childComplexity int) int
 		RequestsThisWeek  func(childComplexity int) int
 		RequestsToday     func(childComplexity int) int
+	}
+
+	RequestStatsByAPIKey struct {
+		APIKeyID   func(childComplexity int) int
+		APIKeyName func(childComplexity int) int
+		Count      func(childComplexity int) int
 	}
 
 	RequestStatsByChannel struct {
@@ -991,6 +999,16 @@ type ComplexityRoot struct {
 		TotalOutputTokensThisMonth func(childComplexity int) int
 		TotalOutputTokensThisWeek  func(childComplexity int) int
 		TotalOutputTokensToday     func(childComplexity int) int
+	}
+
+	TokenStatsByAPIKey struct {
+		APIKeyID        func(childComplexity int) int
+		APIKeyName      func(childComplexity int) int
+		CachedTokens    func(childComplexity int) int
+		InputTokens     func(childComplexity int) int
+		OutputTokens    func(childComplexity int) int
+		ReasoningTokens func(childComplexity int) int
+		TotalTokens     func(childComplexity int) int
 	}
 
 	TopRequestsProjects struct {
@@ -1275,6 +1293,8 @@ type QueryResolver interface {
 	RequestStats(ctx context.Context) (*RequestStats, error)
 	RequestStatsByChannel(ctx context.Context) ([]*RequestStatsByChannel, error)
 	RequestStatsByModel(ctx context.Context) ([]*RequestStatsByModel, error)
+	RequestStatsByAPIKey(ctx context.Context) ([]*RequestStatsByAPIKey, error)
+	TokenStatsByAPIKey(ctx context.Context) ([]*TokenStatsByAPIKey, error)
 	DailyRequestStats(ctx context.Context) ([]*DailyRequestStats, error)
 	TopRequestsProjects(ctx context.Context) ([]*TopRequestsProjects, error)
 	TokenStats(ctx context.Context) (*TokenStats, error)
@@ -4126,6 +4146,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.RequestStats(childComplexity), true
+	case "Query.requestStatsByAPIKey":
+		if e.complexity.Query.RequestStatsByAPIKey == nil {
+			break
+		}
+
+		return e.complexity.Query.RequestStatsByAPIKey(childComplexity), true
 	case "Query.requestStatsByChannel":
 		if e.complexity.Query.RequestStatsByChannel == nil {
 			break
@@ -4218,6 +4244,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.TokenStats(childComplexity), true
+	case "Query.tokenStatsByAPIKey":
+		if e.complexity.Query.TokenStatsByAPIKey == nil {
+			break
+		}
+
+		return e.complexity.Query.TokenStatsByAPIKey(childComplexity), true
 	case "Query.topRequestsProjects":
 		if e.complexity.Query.TopRequestsProjects == nil {
 			break
@@ -4690,6 +4722,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RequestStats.RequestsToday(childComplexity), true
+
+	case "RequestStatsByAPIKey.apiKeyId":
+		if e.complexity.RequestStatsByAPIKey.APIKeyID == nil {
+			break
+		}
+
+		return e.complexity.RequestStatsByAPIKey.APIKeyID(childComplexity), true
+	case "RequestStatsByAPIKey.apiKeyName":
+		if e.complexity.RequestStatsByAPIKey.APIKeyName == nil {
+			break
+		}
+
+		return e.complexity.RequestStatsByAPIKey.APIKeyName(childComplexity), true
+	case "RequestStatsByAPIKey.count":
+		if e.complexity.RequestStatsByAPIKey.Count == nil {
+			break
+		}
+
+		return e.complexity.RequestStatsByAPIKey.Count(childComplexity), true
 
 	case "RequestStatsByChannel.channelName":
 		if e.complexity.RequestStatsByChannel.ChannelName == nil {
@@ -5485,6 +5536,49 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TokenStats.TotalOutputTokensToday(childComplexity), true
+
+	case "TokenStatsByAPIKey.apiKeyId":
+		if e.complexity.TokenStatsByAPIKey.APIKeyID == nil {
+			break
+		}
+
+		return e.complexity.TokenStatsByAPIKey.APIKeyID(childComplexity), true
+	case "TokenStatsByAPIKey.apiKeyName":
+		if e.complexity.TokenStatsByAPIKey.APIKeyName == nil {
+			break
+		}
+
+		return e.complexity.TokenStatsByAPIKey.APIKeyName(childComplexity), true
+	case "TokenStatsByAPIKey.cachedTokens":
+		if e.complexity.TokenStatsByAPIKey.CachedTokens == nil {
+			break
+		}
+
+		return e.complexity.TokenStatsByAPIKey.CachedTokens(childComplexity), true
+	case "TokenStatsByAPIKey.inputTokens":
+		if e.complexity.TokenStatsByAPIKey.InputTokens == nil {
+			break
+		}
+
+		return e.complexity.TokenStatsByAPIKey.InputTokens(childComplexity), true
+	case "TokenStatsByAPIKey.outputTokens":
+		if e.complexity.TokenStatsByAPIKey.OutputTokens == nil {
+			break
+		}
+
+		return e.complexity.TokenStatsByAPIKey.OutputTokens(childComplexity), true
+	case "TokenStatsByAPIKey.reasoningTokens":
+		if e.complexity.TokenStatsByAPIKey.ReasoningTokens == nil {
+			break
+		}
+
+		return e.complexity.TokenStatsByAPIKey.ReasoningTokens(childComplexity), true
+	case "TokenStatsByAPIKey.totalTokens":
+		if e.complexity.TokenStatsByAPIKey.TotalTokens == nil {
+			break
+		}
+
+		return e.complexity.TokenStatsByAPIKey.TotalTokens(childComplexity), true
 
 	case "TopRequestsProjects.projectDescription":
 		if e.complexity.TopRequestsProjects.ProjectDescription == nil {
@@ -22485,6 +22579,88 @@ func (ec *executionContext) fieldContext_Query_requestStatsByModel(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_requestStatsByAPIKey(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_requestStatsByAPIKey,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().RequestStatsByAPIKey(ctx)
+		},
+		nil,
+		ec.marshalNRequestStatsByAPIKey2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestStatsByAPIKeyᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_requestStatsByAPIKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "apiKeyId":
+				return ec.fieldContext_RequestStatsByAPIKey_apiKeyId(ctx, field)
+			case "apiKeyName":
+				return ec.fieldContext_RequestStatsByAPIKey_apiKeyName(ctx, field)
+			case "count":
+				return ec.fieldContext_RequestStatsByAPIKey_count(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RequestStatsByAPIKey", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_tokenStatsByAPIKey(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_tokenStatsByAPIKey,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().TokenStatsByAPIKey(ctx)
+		},
+		nil,
+		ec.marshalNTokenStatsByAPIKey2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTokenStatsByAPIKeyᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_tokenStatsByAPIKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "apiKeyId":
+				return ec.fieldContext_TokenStatsByAPIKey_apiKeyId(ctx, field)
+			case "apiKeyName":
+				return ec.fieldContext_TokenStatsByAPIKey_apiKeyName(ctx, field)
+			case "inputTokens":
+				return ec.fieldContext_TokenStatsByAPIKey_inputTokens(ctx, field)
+			case "outputTokens":
+				return ec.fieldContext_TokenStatsByAPIKey_outputTokens(ctx, field)
+			case "cachedTokens":
+				return ec.fieldContext_TokenStatsByAPIKey_cachedTokens(ctx, field)
+			case "reasoningTokens":
+				return ec.fieldContext_TokenStatsByAPIKey_reasoningTokens(ctx, field)
+			case "totalTokens":
+				return ec.fieldContext_TokenStatsByAPIKey_totalTokens(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TokenStatsByAPIKey", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_dailyRequestStats(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -25898,6 +26074,93 @@ func (ec *executionContext) _RequestStats_requestsThisMonth(ctx context.Context,
 func (ec *executionContext) fieldContext_RequestStats_requestsThisMonth(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RequestStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequestStatsByAPIKey_apiKeyId(ctx context.Context, field graphql.CollectedField, obj *RequestStatsByAPIKey) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RequestStatsByAPIKey_apiKeyId,
+		func(ctx context.Context) (any, error) {
+			return obj.APIKeyID, nil
+		},
+		nil,
+		ec.marshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RequestStatsByAPIKey_apiKeyId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestStatsByAPIKey",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequestStatsByAPIKey_apiKeyName(ctx context.Context, field graphql.CollectedField, obj *RequestStatsByAPIKey) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RequestStatsByAPIKey_apiKeyName,
+		func(ctx context.Context) (any, error) {
+			return obj.APIKeyName, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RequestStatsByAPIKey_apiKeyName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestStatsByAPIKey",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequestStatsByAPIKey_count(ctx context.Context, field graphql.CollectedField, obj *RequestStatsByAPIKey) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RequestStatsByAPIKey_count,
+		func(ctx context.Context) (any, error) {
+			return obj.Count, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RequestStatsByAPIKey_count(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestStatsByAPIKey",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -29917,6 +30180,209 @@ func (ec *executionContext) _TokenStats_totalCachedTokensThisMonth(ctx context.C
 func (ec *executionContext) fieldContext_TokenStats_totalCachedTokensThisMonth(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TokenStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TokenStatsByAPIKey_apiKeyId(ctx context.Context, field graphql.CollectedField, obj *TokenStatsByAPIKey) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TokenStatsByAPIKey_apiKeyId,
+		func(ctx context.Context) (any, error) {
+			return obj.APIKeyID, nil
+		},
+		nil,
+		ec.marshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TokenStatsByAPIKey_apiKeyId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TokenStatsByAPIKey",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TokenStatsByAPIKey_apiKeyName(ctx context.Context, field graphql.CollectedField, obj *TokenStatsByAPIKey) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TokenStatsByAPIKey_apiKeyName,
+		func(ctx context.Context) (any, error) {
+			return obj.APIKeyName, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TokenStatsByAPIKey_apiKeyName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TokenStatsByAPIKey",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TokenStatsByAPIKey_inputTokens(ctx context.Context, field graphql.CollectedField, obj *TokenStatsByAPIKey) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TokenStatsByAPIKey_inputTokens,
+		func(ctx context.Context) (any, error) {
+			return obj.InputTokens, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TokenStatsByAPIKey_inputTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TokenStatsByAPIKey",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TokenStatsByAPIKey_outputTokens(ctx context.Context, field graphql.CollectedField, obj *TokenStatsByAPIKey) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TokenStatsByAPIKey_outputTokens,
+		func(ctx context.Context) (any, error) {
+			return obj.OutputTokens, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TokenStatsByAPIKey_outputTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TokenStatsByAPIKey",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TokenStatsByAPIKey_cachedTokens(ctx context.Context, field graphql.CollectedField, obj *TokenStatsByAPIKey) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TokenStatsByAPIKey_cachedTokens,
+		func(ctx context.Context) (any, error) {
+			return obj.CachedTokens, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TokenStatsByAPIKey_cachedTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TokenStatsByAPIKey",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TokenStatsByAPIKey_reasoningTokens(ctx context.Context, field graphql.CollectedField, obj *TokenStatsByAPIKey) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TokenStatsByAPIKey_reasoningTokens,
+		func(ctx context.Context) (any, error) {
+			return obj.ReasoningTokens, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TokenStatsByAPIKey_reasoningTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TokenStatsByAPIKey",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TokenStatsByAPIKey_totalTokens(ctx context.Context, field graphql.CollectedField, obj *TokenStatsByAPIKey) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TokenStatsByAPIKey_totalTokens,
+		func(ctx context.Context) (any, error) {
+			return obj.TotalTokens, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TokenStatsByAPIKey_totalTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TokenStatsByAPIKey",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -58801,6 +59267,50 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "requestStatsByAPIKey":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_requestStatsByAPIKey(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "tokenStatsByAPIKey":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_tokenStatsByAPIKey(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "dailyRequestStats":
 			field := field
 
@@ -60592,6 +61102,55 @@ func (ec *executionContext) _RequestStats(ctx context.Context, sel ast.Selection
 			}
 		case "requestsThisMonth":
 			out.Values[i] = ec._RequestStats_requestsThisMonth(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var requestStatsByAPIKeyImplementors = []string{"RequestStatsByAPIKey"}
+
+func (ec *executionContext) _RequestStatsByAPIKey(ctx context.Context, sel ast.SelectionSet, obj *RequestStatsByAPIKey) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, requestStatsByAPIKeyImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RequestStatsByAPIKey")
+		case "apiKeyId":
+			out.Values[i] = ec._RequestStatsByAPIKey_apiKeyId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "apiKeyName":
+			out.Values[i] = ec._RequestStatsByAPIKey_apiKeyName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "count":
+			out.Values[i] = ec._RequestStatsByAPIKey_count(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -62690,6 +63249,75 @@ func (ec *executionContext) _TokenStats(ctx context.Context, sel ast.SelectionSe
 			}
 		case "totalCachedTokensThisMonth":
 			out.Values[i] = ec._TokenStats_totalCachedTokensThisMonth(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var tokenStatsByAPIKeyImplementors = []string{"TokenStatsByAPIKey"}
+
+func (ec *executionContext) _TokenStatsByAPIKey(ctx context.Context, sel ast.SelectionSet, obj *TokenStatsByAPIKey) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, tokenStatsByAPIKeyImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TokenStatsByAPIKey")
+		case "apiKeyId":
+			out.Values[i] = ec._TokenStatsByAPIKey_apiKeyId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "apiKeyName":
+			out.Values[i] = ec._TokenStatsByAPIKey_apiKeyName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "inputTokens":
+			out.Values[i] = ec._TokenStatsByAPIKey_inputTokens(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "outputTokens":
+			out.Values[i] = ec._TokenStatsByAPIKey_outputTokens(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "cachedTokens":
+			out.Values[i] = ec._TokenStatsByAPIKey_cachedTokens(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reasoningTokens":
+			out.Values[i] = ec._TokenStatsByAPIKey_reasoningTokens(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalTokens":
+			out.Values[i] = ec._TokenStatsByAPIKey_totalTokens(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -67064,6 +67692,60 @@ func (ec *executionContext) marshalNRequestStats2ᚖgithubᚗcomᚋloopljᚋaxon
 	return ec._RequestStats(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNRequestStatsByAPIKey2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestStatsByAPIKeyᚄ(ctx context.Context, sel ast.SelectionSet, v []*RequestStatsByAPIKey) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNRequestStatsByAPIKey2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestStatsByAPIKey(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNRequestStatsByAPIKey2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestStatsByAPIKey(ctx context.Context, sel ast.SelectionSet, v *RequestStatsByAPIKey) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RequestStatsByAPIKey(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNRequestStatsByChannel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestStatsByChannelᚄ(ctx context.Context, sel ast.SelectionSet, v []*RequestStatsByChannel) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -67624,6 +68306,60 @@ func (ec *executionContext) marshalNTokenStats2ᚖgithubᚗcomᚋloopljᚋaxonhu
 		return graphql.Null
 	}
 	return ec._TokenStats(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNTokenStatsByAPIKey2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTokenStatsByAPIKeyᚄ(ctx context.Context, sel ast.SelectionSet, v []*TokenStatsByAPIKey) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNTokenStatsByAPIKey2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTokenStatsByAPIKey(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNTokenStatsByAPIKey2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTokenStatsByAPIKey(ctx context.Context, sel ast.SelectionSet, v *TokenStatsByAPIKey) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TokenStatsByAPIKey(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNTopRequestsProjects2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTopRequestsProjectsᚄ(ctx context.Context, sel ast.SelectionSet, v []*TopRequestsProjects) graphql.Marshaler {

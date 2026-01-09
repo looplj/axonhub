@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
@@ -236,6 +237,176 @@ func (r *queryResolver) RequestStatsByModel(ctx context.Context) ([]*RequestStat
 	})
 
 	return stats, nil
+}
+
+// RequestStatsByAPIKey is the resolver for the requestStatsByAPIKey field.
+func (r *queryResolver) RequestStatsByAPIKey(ctx context.Context) ([]*RequestStatsByAPIKey, error) {
+	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	type apiKeyStats struct {
+		APIKeyID int `json:"api_key_id"`
+		Count    int `json:"request_count"`
+	}
+
+	var results []apiKeyStats
+
+	// Database-level aggregation
+	err := r.client.Request.Query().
+		Where(request.APIKeyIDNotNil()).
+		GroupBy(request.FieldAPIKeyID).
+		Aggregate(ent.As(ent.Count(), "request_count")).
+		Scan(ctx, &results)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get requests by API key: %w", err)
+	}
+
+	if len(results) == 0 {
+		return []*RequestStatsByAPIKey{}, nil
+	}
+
+	// Sort by count (descending) and limit to top 10
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Count > results[j].Count
+	})
+
+	if len(results) > 10 {
+		results = results[:10]
+	}
+
+	// Extract API key IDs
+	apiKeyIDs := lo.Map(results, func(item apiKeyStats, _ int) int {
+		return item.APIKeyID
+	})
+
+	// Fetch API key details
+	apiKeys, err := r.client.APIKey.Query().
+		Where(apikey.IDIn(apiKeyIDs...)).
+		All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get API keys: %w", err)
+	}
+
+	// Create lookup map
+	apiKeyMap := lo.SliceToMap(apiKeys, func(ak *ent.APIKey) (int, *ent.APIKey) {
+		return ak.ID, ak
+	})
+
+	// Build response
+	var response []*RequestStatsByAPIKey
+
+	for _, result := range results {
+		if ak, exists := apiKeyMap[result.APIKeyID]; exists {
+			response = append(response, &RequestStatsByAPIKey{
+				APIKeyID:   objects.GUID{Type: "APIKey", ID: result.APIKeyID},
+				APIKeyName: ak.Name,
+				Count:      result.Count,
+			})
+		}
+	}
+
+	return response, nil
+}
+
+// TokenStatsByAPIKey is the resolver for the tokenStatsByAPIKey field.
+func (r *queryResolver) TokenStatsByAPIKey(ctx context.Context) ([]*TokenStatsByAPIKey, error) {
+	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	type tokenStats struct {
+		APIKeyID        int   `json:"api_key_id"`
+		InputTokens     int64 `json:"input_tokens"`
+		OutputTokens    int64 `json:"output_tokens"`
+		CachedTokens    int64 `json:"cached_tokens"`
+		ReasoningTokens int64 `json:"reasoning_tokens"`
+	}
+
+	var results []tokenStats
+
+	// Database-level aggregation with JOIN
+	err := r.client.UsageLog.Query().
+		Modify(func(s *sql.Selector) {
+			// Join to requests table to get api_key_id
+			requestTable := sql.Table(request.Table)
+			s.Join(requestTable).On(
+				s.C(usagelog.FieldRequestID),
+				requestTable.C(request.FieldID),
+			)
+
+			// Filter: only requests with non-null api_key_id
+			s.Where(sql.NotNull(requestTable.C(request.FieldAPIKeyID)))
+
+			// Group by api_key_id
+			s.GroupBy(requestTable.C(request.FieldAPIKeyID))
+
+			// Select aggregations
+			s.Select(
+				sql.As(requestTable.C(request.FieldAPIKeyID), "api_key_id"),
+				sql.As(sql.Sum(s.C(usagelog.FieldPromptTokens)), "input_tokens"),
+				sql.As(sql.Sum(s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
+				sql.As(sql.Sum(s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
+				sql.As(sql.Sum(s.C(usagelog.FieldCompletionReasoningTokens)), "reasoning_tokens"),
+			)
+		}).
+		Scan(ctx, &results)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tokens by API key: %w", err)
+	}
+
+	if len(results) == 0 {
+		return []*TokenStatsByAPIKey{}, nil
+	}
+
+	// Sort by total tokens (descending) and limit to top 3
+	sort.Slice(results, func(i, j int) bool {
+		totalI := results[i].InputTokens + results[i].OutputTokens +
+			results[i].CachedTokens + results[i].ReasoningTokens
+		totalJ := results[j].InputTokens + results[j].OutputTokens +
+			results[j].CachedTokens + results[j].ReasoningTokens
+		return totalI > totalJ
+	})
+
+	if len(results) > 3 {
+		results = results[:3]
+	}
+
+	// Extract API key IDs
+	apiKeyIDs := lo.Map(results, func(item tokenStats, _ int) int {
+		return item.APIKeyID
+	})
+
+	// Fetch API key details
+	apiKeys, err := r.client.APIKey.Query().
+		Where(apikey.IDIn(apiKeyIDs...)).
+		All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get API keys: %w", err)
+	}
+
+	// Create lookup map
+	apiKeyMap := lo.SliceToMap(apiKeys, func(ak *ent.APIKey) (int, *ent.APIKey) {
+		return ak.ID, ak
+	})
+
+	// Build response
+	var response []*TokenStatsByAPIKey
+	for _, result := range results {
+		if ak, exists := apiKeyMap[result.APIKeyID]; exists {
+			totalTokens := result.InputTokens + result.OutputTokens +
+				result.CachedTokens + result.ReasoningTokens
+
+			response = append(response, &TokenStatsByAPIKey{
+				APIKeyID:        objects.GUID{Type: "APIKey", ID: result.APIKeyID},
+				APIKeyName:      ak.Name,
+				InputTokens:     int(result.InputTokens),
+				OutputTokens:    int(result.OutputTokens),
+				CachedTokens:    int(result.CachedTokens),
+				ReasoningTokens: int(result.ReasoningTokens),
+				TotalTokens:     int(totalTokens),
+			})
+		}
+	}
+
+	return response, nil
 }
 
 // DailyRequestStats is the resolver for the dailyRequestStats field.
