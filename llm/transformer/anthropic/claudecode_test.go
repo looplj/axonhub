@@ -103,6 +103,46 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		assert.NotEmpty(t, httpReq.Body)
 	})
 
+	t.Run("does not duplicate Claude Code system message", func(t *testing.T) {
+		// Simulate a request that already has the Claude Code system message
+		// (as would come from the Claude Code CLI)
+		req := &llm.Request{
+			Model: "claude-sonnet-4-5-20250514",
+			Messages: []llm.Message{
+				{
+					Role: "system",
+					Content: llm.MessageContent{
+						Content: lo.ToPtr(claudeCodeSystemMessage),
+					},
+				},
+				{
+					Role: "user",
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("Hello"),
+					},
+				},
+			},
+			MaxTokens: lo.ToPtr(int64(1024)),
+		}
+
+		httpReq, err := transformer.TransformRequest(ctx, req)
+		require.NoError(t, err)
+		require.NotNil(t, httpReq)
+
+		// Verify the system message is not duplicated
+		var anthropicReq MessageRequest
+		err = json.Unmarshal(httpReq.Body, &anthropicReq)
+		require.NoError(t, err)
+
+		// The outbound transformer should move the system message to the dedicated `system` field.
+		require.NotNil(t, anthropicReq.System)
+		require.NotNil(t, anthropicReq.System.Prompt)
+
+		// Verify it contains the Claude Code message exactly once (not duplicated)
+		systemContent := *anthropicReq.System.Prompt
+		assert.Equal(t, claudeCodeSystemMessage, systemContent, "System message should be exactly the Claude Code message, not duplicated")
+	})
+
 	t.Run("works with streaming", func(t *testing.T) {
 		req := &llm.Request{
 			Model: "claude-sonnet-4-5-20250514",

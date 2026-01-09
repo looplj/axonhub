@@ -43,16 +43,27 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 	// Clone the request to avoid mutating the original
 	reqCopy := *llmReq
 
-	// Prepend the Claude Code system message
-	systemMsg := llm.Message{
-		Role: "system",
-		Content: llm.MessageContent{
-			Content: lo.ToPtr(claudeCodeSystemMessage),
-		},
+	// Check if Claude Code system message already exists
+	hasClaudeCodeMessage := false
+	for _, msg := range reqCopy.Messages {
+		if msg.Role == "system" && msg.Content.Content != nil &&
+			*msg.Content.Content == claudeCodeSystemMessage {
+			hasClaudeCodeMessage = true
+			break
+		}
 	}
 
-	// Insert at the beginning of messages
-	reqCopy.Messages = append([]llm.Message{systemMsg}, llmReq.Messages...)
+	// Only prepend the Claude Code system message if it doesn't already exist
+	if !hasClaudeCodeMessage {
+		systemMsg := llm.Message{
+			Role: "system",
+			Content: llm.MessageContent{
+				Content: lo.ToPtr(claudeCodeSystemMessage),
+			},
+		}
+		// Insert at the beginning of messages
+		reqCopy.Messages = append([]llm.Message{systemMsg}, llmReq.Messages...)
+	}
 
 	// Call the base transformer
 	httpReq, err := t.Outbound.TransformRequest(ctx, &reqCopy)
