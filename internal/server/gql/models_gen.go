@@ -236,6 +236,16 @@ type TokenStats struct {
 	TotalCachedTokensThisMonth int `json:"totalCachedTokensThisMonth"`
 }
 
+type TokenStatsByAPIKey struct {
+	APIKeyID        objects.GUID `json:"apiKeyId"`
+	APIKeyName      string       `json:"apiKeyName"`
+	InputTokens     int          `json:"inputTokens"`
+	OutputTokens    int          `json:"outputTokens"`
+	CachedTokens    int          `json:"cachedTokens"`
+	ReasoningTokens int          `json:"reasoningTokens"`
+	TotalTokens     int          `json:"totalTokens"`
+}
+
 type TopRequestsProjects struct {
 	ProjectID          objects.GUID `json:"projectId"`
 	ProjectName        string       `json:"projectName"`

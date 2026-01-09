@@ -35,6 +35,16 @@ export const requestsByAPIKeySchema = z.object({
   count: z.number(),
 });
 
+export const tokensByAPIKeySchema = z.object({
+  apiKeyId: z.string(),
+  apiKeyName: z.string(),
+  inputTokens: z.number(),
+  outputTokens: z.number(),
+  cachedTokens: z.number(),
+  reasoningTokens: z.number(),
+  totalTokens: z.number(),
+});
+
 export const dailyRequestStatsSchema = z.object({
   date: z.string(),
   count: z.number(),
@@ -67,6 +77,7 @@ export type DashboardStats = z.infer<typeof dashboardStatsSchema>;
 export type RequestsByChannel = z.infer<typeof requestsByChannelSchema>;
 export type RequestsByModel = z.infer<typeof requestsByModelSchema>;
 export type RequestsByAPIKey = z.infer<typeof requestsByAPIKeySchema>;
+export type TokensByAPIKey = z.infer<typeof tokensByAPIKeySchema>;
 export type DailyRequestStats = z.infer<typeof dailyRequestStatsSchema>;
 export type HourlyRequestStats = z.infer<typeof hourlyRequestStatsSchema>;
 export type TopProjects = z.infer<typeof topProjectsSchema>;
@@ -129,6 +140,20 @@ const REQUESTS_BY_API_KEY_QUERY = `
       apiKeyId
       apiKeyName
       count
+    }
+  }
+`;
+
+const TOKENS_BY_API_KEY_QUERY = `
+  query GetTokensByAPIKey {
+    tokenStatsByAPIKey {
+      apiKeyId
+      apiKeyName
+      inputTokens
+      outputTokens
+      cachedTokens
+      reasoningTokens
+      totalTokens
     }
   }
 `;
@@ -237,6 +262,17 @@ export function useRequestsByAPIKey() {
       return data.requestStatsByAPIKey.map((item) => requestsByAPIKeySchema.parse(item));
     },
     refetchInterval: 60000,
+  });
+}
+
+export function useTokensByAPIKey() {
+  return useQuery({
+    queryKey: ['tokenStatsByAPIKey'],
+    queryFn: async () => {
+      const data = await graphqlRequest<{ tokenStatsByAPIKey: TokensByAPIKey[] }>(TOKENS_BY_API_KEY_QUERY);
+      return data.tokenStatsByAPIKey.map((item) => tokensByAPIKeySchema.parse(item));
+    },
+    refetchInterval: 60000, // Auto-refresh every 60 seconds
   });
 }
 

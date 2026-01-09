@@ -8,6 +8,7 @@ import { DailyRequestStats } from './components/daily-requests-stats';
 import { RequestsByChannelChart } from './components/requests-by-channel-chart';
 import { RequestsByModelChart } from './components/requests-by-model-chart';
 import { RequestsByAPIKeyChart } from './components/requests-by-api-key-chart';
+import { TokensByAPIKeyChart } from './components/tokens-by-api-key-chart';
 import { SuccessRateCard } from './components/success-rate-card';
 import { TodayRequestsCard } from './components/today-requests-card';
 import { TokenStatsCard } from './components/token-stats-card';
@@ -115,6 +116,15 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <RequestsByAPIKeyChart />
+              </CardContent>
+            </Card>
+            <Card className='hover-card'>
+              <CardHeader>
+                <CardTitle>{t('dashboard.charts.tokensByAPIKey')}</CardTitle>
+                <CardDescription>{t('dashboard.charts.tokensByAPIKeyDescription')}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <TokensByAPIKeyChart />
               </CardContent>
             </Card>
           </div>
