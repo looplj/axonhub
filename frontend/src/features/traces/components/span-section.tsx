@@ -62,6 +62,12 @@ export function SpanSection({ selectedTrace, selectedSpan, selectedSpanType }: S
               <span className='text-muted-foreground'>{t('traces.detail.nameLabel')}</span>
               <span className='font-medium'>{toolUse.name}</span>
             </div>
+            {toolUse.id && (
+              <div className='bg-background/70 flex items-center justify-between rounded-lg border px-3 py-2 text-sm'>
+                <span className='text-muted-foreground'>{t('traces.detail.idLabel')}</span>
+                <span className='font-mono text-xs'>{toolUse.id}</span>
+              </div>
+            )}
             {toolUse.arguments && (
               <div>
                 <p className='text-muted-foreground text-xs tracking-wide uppercase'>{t('traces.detail.argumentsLabel')}</p>

@@ -16,6 +16,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
+import { motion, AnimatePresence } from 'framer-motion';
 import { IconBan, IconCheck, IconX, IconTrash } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +28,8 @@ import { PermissionGuard } from '@/components/permission-guard';
 import { ServerSidePagination } from '@/components/server-side-pagination';
 import { useModels } from '../context/models-context';
 import { Model, ModelConnection } from '../data/schema';
+
+const MotionTableRow = motion(TableRow);
 
 interface ModelsTableProps {
   columns: ColumnDef<Model>[];
@@ -190,7 +193,7 @@ export function ModelsTable({
                 const modelCard = model.modelCard;
                 return (
                   <React.Fragment key={row.id}>
-                    <TableRow
+                    <MotionTableRow
                       key={row.id}
                       data-state={row.getIsSelected() && 'selected'}
                       className='group/row table-row-hover rounded-xl border-0 !bg-[var(--table-background)] transition-all duration-200 ease-in-out'
@@ -200,11 +203,19 @@ export function ModelsTable({
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </TableCell>
                       ))}
-                    </TableRow>
-                    {row.getIsExpanded() && (
-                      <TableRow key={`${row.id}-expanded`} className='bg-muted/30 hover:bg-muted/50'>
-                        <TableCell colSpan={columns.length} className='p-6 whitespace-normal'>
-                          <div className='space-y-6'>
+                    </MotionTableRow>
+                    <AnimatePresence>
+                      {row.getIsExpanded() && (
+                        <TableRow key={`${row.id}-expanded`} className='border-0'>
+                          <TableCell colSpan={columns.length} className='p-0 border-0'>
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.2, ease: 'easeInOut' }}
+                              className='bg-muted/30 p-6 hover:bg-muted/50'
+                            >
+                              <div className='space-y-6'>
                             {/* Top Section: Basic Info (left) + Capabilities (right) */}
                             <div className='grid grid-cols-1 gap-6 md:grid-cols-2'>
                               {/* Basic Info */}
@@ -378,10 +389,12 @@ export function ModelsTable({
                               </div>
                             </div>
                           </div>
-                        </TableCell>
-                      </TableRow>
+                        </motion.div>
+                    </TableCell>
+                  </TableRow>
                     )}
-                  </React.Fragment>
+                  </AnimatePresence>
+                </React.Fragment>
                 );
               })
             ) : (

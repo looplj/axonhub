@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Workflow, ChevronsDownUp, ExternalLink, Filter } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { AnimatePresence, motion } from 'framer-motion';
 import { buildGUID, cn } from '@/lib/utils';
 import { formatNumber } from '@/utils/format-number';
 import { Badge } from '@/components/ui/badge';
@@ -287,20 +288,27 @@ function SegmentRow({
       </div>
 
       {/* Spans - with indentation */}
-      {hasSpans && isExpanded && (
-        <div>
-          {spans.map((span) => (
-            <SpanRow
-              key={span.id}
-              span={span}
-              totalDuration={totalDuration}
-              segmentSequentialOffset={sequentialOffset}
-              onSelectSpan={onSelectSpan}
-              selectedSpanId={selectedSpanId}
-            />
-          ))}
-        </div>
-      )}
+      <AnimatePresence>
+        {hasSpans && isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+          >
+            {spans.map((span) => (
+              <SpanRow
+                key={span.id}
+                span={span}
+                totalDuration={totalDuration}
+                segmentSequentialOffset={sequentialOffset}
+                onSelectSpan={onSelectSpan}
+                selectedSpanId={selectedSpanId}
+              />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }
