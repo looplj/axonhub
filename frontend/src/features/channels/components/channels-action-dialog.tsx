@@ -833,10 +833,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 <form id='channel-form' onSubmit={form.handleSubmit(onSubmit)} className='space-y-6 p-0.5'>
                   {/* Provider Selection - Left Side */}
                   <div className='flex gap-6'>
-                    <div className='w-80 flex-shrink-0'>
+                    <div className='w-60 flex-shrink-0'>
                       <FormItem className='space-y-2'>
                         <FormLabel className='text-base font-semibold'>{t('channels.dialogs.fields.provider.label')}</FormLabel>
-                        <div className={`max-h-[600px] overflow-y-auto pr-2 ${isEdit ? 'cursor-not-allowed opacity-60' : ''}`}>
+                        <div className={`max-h-[720px] overflow-y-auto pr-2 ${isEdit ? 'cursor-not-allowed opacity-60' : ''}`}>
                           <RadioGroup value={selectedProvider} onValueChange={handleProviderChange} disabled={isEdit} className='space-y-2'>
                             {availableProviders.map((provider) => {
                               const Icon = provider.icon;
@@ -1384,7 +1384,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             <div
               className='border-border flex min-h-0 flex-col overflow-hidden border-l pl-4 transition-all duration-300 ease-out'
               style={{
-                width: showFetchedModelsPanel || showSupportedModelsPanel ? '320px' : '0px',
+                width: showFetchedModelsPanel || showSupportedModelsPanel ? '400px' : '0px',
                 opacity: showFetchedModelsPanel || showSupportedModelsPanel ? 1 : 0,
                 paddingLeft: showFetchedModelsPanel || showSupportedModelsPanel ? '16px' : '0px',
               }}

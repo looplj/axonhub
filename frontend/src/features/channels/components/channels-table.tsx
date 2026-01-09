@@ -14,6 +14,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
+import { motion, AnimatePresence } from 'framer-motion';
 import { IconArchive, IconBan, IconCheck, IconTrash, IconTemplate, IconX } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,9 @@ import { ChannelExpandedRow } from './channel-expanded-row';
 import { useChannels } from '../context/channels-context';
 import { Channel, ChannelConnection } from '../data/schema';
 import { DataTableToolbar } from './data-table-toolbar';
+
+const MotionTableRow = motion(TableRow);
+const MotionExpandedRow = motion(TableRow);
 
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -305,7 +309,7 @@ export function ChannelsTable({
                 const channel = row.original;
                 return (
                   <React.Fragment key={row.id}>
-                    <TableRow
+                    <MotionTableRow
                       key={row.id}
                       data-state={row.getIsSelected() && 'selected'}
                       className='group/row table-row-hover rounded-xl border-0 !bg-[var(--table-background)] transition-all duration-200 ease-in-out'
@@ -315,10 +319,23 @@ export function ChannelsTable({
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </TableCell>
                       ))}
-                    </TableRow>
-                    {row.getIsExpanded() && (
-                      <ChannelExpandedRow channel={channel} columnsLength={columns.length} getApiFormatLabel={getApiFormatLabel} />
-                    )}
+                    </MotionTableRow>
+                    <AnimatePresence>
+                      {row.getIsExpanded() && (
+                        <TableRow key={`${row.id}-expanded`} className='border-0'>
+                          <TableCell colSpan={columns.length} className='p-0 border-0'>
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.2, ease: 'easeInOut' }}
+                            >
+                              <ChannelExpandedRow channel={channel} columnsLength={columns.length} getApiFormatLabel={getApiFormatLabel} />
+                            </motion.div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </AnimatePresence>
                   </React.Fragment>
                 );
               })

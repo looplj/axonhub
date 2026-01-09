@@ -70,6 +70,7 @@
       "thinking": "思考内容",
       "functionCall": "函数调用",
       "nameLabel": "名称",
+      "idLabel": "ID",
       "argumentsLabel": "参数",
       "functionResult": "函数结果",
       "error": "错误",

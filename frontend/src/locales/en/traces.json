@@ -70,6 +70,7 @@
       "thinking": "Thinking",
       "functionCall": "Function Call",
       "nameLabel": "Name",
+      "idLabel": "ID",
       "argumentsLabel": "Arguments",
       "functionResult": "Function Result",
       "error": "Error",
