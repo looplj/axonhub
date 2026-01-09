@@ -7,6 +7,7 @@ import { ChannelSuccessRate } from './components/channel-success-rate';
 import { DailyRequestStats } from './components/daily-requests-stats';
 import { RequestsByChannelChart } from './components/requests-by-channel-chart';
 import { RequestsByModelChart } from './components/requests-by-model-chart';
+import { RequestsByAPIKeyChart } from './components/requests-by-api-key-chart';
 import { SuccessRateCard } from './components/success-rate-card';
 import { TodayRequestsCard } from './components/today-requests-card';
 import { TokenStatsCard } from './components/token-stats-card';
@@ -103,6 +104,17 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <RequestsByModelChart />
+              </CardContent>
+            </Card>
+          </div>
+          <div className='grid gap-4 md:grid-cols-2'>
+            <Card className='hover-card'>
+              <CardHeader>
+                <CardTitle>{t('dashboard.charts.requestsByAPIKey')}</CardTitle>
+                <CardDescription>{t('dashboard.charts.requestsByAPIKeyDescription')}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <RequestsByAPIKeyChart />
               </CardContent>
             </Card>
           </div>

@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
@@ -236,6 +237,74 @@ func (r *queryResolver) RequestStatsByModel(ctx context.Context) ([]*RequestStat
 	})
 
 	return stats, nil
+}
+
+// RequestStatsByAPIKey is the resolver for the requestStatsByAPIKey field.
+func (r *queryResolver) RequestStatsByAPIKey(ctx context.Context) ([]*RequestStatsByAPIKey, error) {
+	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	type apiKeyStats struct {
+		APIKeyID int `json:"api_key_id"`
+		Count    int `json:"request_count"`
+	}
+
+	var results []apiKeyStats
+
+	// Database-level aggregation
+	err := r.client.Request.Query().
+		Where(request.APIKeyIDNotNil()).
+		GroupBy(request.FieldAPIKeyID).
+		Aggregate(ent.As(ent.Count(), "request_count")).
+		Scan(ctx, &results)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get requests by API key: %w", err)
+	}
+
+	if len(results) == 0 {
+		return []*RequestStatsByAPIKey{}, nil
+	}
+
+	// Sort by count (descending) and limit to top 10
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Count > results[j].Count
+	})
+
+	if len(results) > 10 {
+		results = results[:10]
+	}
+
+	// Extract API key IDs
+	apiKeyIDs := lo.Map(results, func(item apiKeyStats, _ int) int {
+		return item.APIKeyID
+	})
+
+	// Fetch API key details
+	apiKeys, err := r.client.APIKey.Query().
+		Where(apikey.IDIn(apiKeyIDs...)).
+		All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get API keys: %w", err)
+	}
+
+	// Create lookup map
+	apiKeyMap := lo.SliceToMap(apiKeys, func(ak *ent.APIKey) (int, *ent.APIKey) {
+		return ak.ID, ak
+	})
+
+	// Build response
+	var response []*RequestStatsByAPIKey
+
+	for _, result := range results {
+		if ak, exists := apiKeyMap[result.APIKeyID]; exists {
+			response = append(response, &RequestStatsByAPIKey{
+				APIKeyID:   objects.GUID{Type: "APIKey", ID: result.APIKeyID},
+				APIKeyName: ak.Name,
+				Count:      result.Count,
+			})
+		}
+	}
+
+	return response, nil
 }
 
 // DailyRequestStats is the resolver for the dailyRequestStats field.

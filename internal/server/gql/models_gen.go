@@ -157,6 +157,12 @@ type RequestStats struct {
 	RequestsThisMonth int `json:"requestsThisMonth"`
 }
 
+type RequestStatsByAPIKey struct {
+	APIKeyID   objects.GUID `json:"apiKeyId"`
+	APIKeyName string       `json:"apiKeyName"`
+	Count      int          `json:"count"`
+}
+
 type RequestStatsByChannel struct {
 	ChannelName string `json:"channelName"`
 	ChannelType string `json:"channelType"`

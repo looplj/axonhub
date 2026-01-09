@@ -26,6 +26,12 @@ type RequestStatsByModel {
   count: Int!
 }
 
+type RequestStatsByAPIKey {
+  apiKeyId: ID!
+  apiKeyName: String!
+  count: Int!
+}
+
 type DailyRequestStats {
   date: String!
   count: Int!
@@ -72,6 +78,7 @@ extend type Query {
   requestStats: RequestStats!
   requestStatsByChannel: [RequestStatsByChannel!]!
   requestStatsByModel: [RequestStatsByModel!]!
+  requestStatsByAPIKey: [RequestStatsByAPIKey!]!
   dailyRequestStats: [DailyRequestStats!]!
   topRequestsProjects: [TopRequestsProjects!]!
   tokenStats: TokenStats!
