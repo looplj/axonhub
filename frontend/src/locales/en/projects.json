@@ -61,6 +61,15 @@
     },
     "validation": {
       "nameRequired": "Project name is required"
+    },
+    "errors": {
+      "loadProjectsFailed": "Failed to load projects",
+      "loadProjectDetailFailed": "Failed to load project details",
+      "loadMyProjectsFailed": "Failed to load my projects",
+      "createProjectFailed": "Failed to create project",
+      "updateProjectFailed": "Failed to update project",
+      "archiveProjectFailed": "Failed to archive project",
+      "activateProjectFailed": "Failed to activate project"
     }
   }
 }

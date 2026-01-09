@@ -80,7 +80,14 @@
   "projectRoles": {
     "title": "Project Roles",
     "description": "Manage roles and permissions for the current project.",
-    "createRole": "Add Role to Project"
+    "createRole": "Add Role to Project",
+    "errors": {
+      "loadProjectRolesFailed": "Failed to load project roles",
+      "loadProjectRoleDetailFailed": "Failed to load project role details",
+      "createProjectRoleFailed": "Failed to create project role",
+      "updateProjectRoleFailed": "Failed to update project role",
+      "deleteProjectRoleFailed": "Failed to delete project role"
+    }
   },
   "pagination": {
     "selectedRows": "{{selected}} of {{total}} row(s) selected",

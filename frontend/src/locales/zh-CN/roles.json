@@ -62,6 +62,14 @@
       "nameRequired": "角色名称不能为空",
       "scopesRequired": "至少需要选择一个权限",
       "projectIdRequired": "项目 ID不能为空"
+    },
+    "errors": {
+      "loadRolesFailed": "加载角色失败",
+      "loadRoleDetailFailed": "加载角色详情失败",
+      "createRoleFailed": "创建角色失败",
+      "updateRoleFailed": "更新角色失败",
+      "deleteRoleFailed": "删除角色失败",
+      "deleteRolesBulkFailed": "批量删除角色失败"
     }
   }
 }

@@ -88,7 +88,14 @@
   "projectRoles": {
     "title": "项目角色",
     "description": "管理当前项目的角色和权限。",
-    "createRole": "添加角色到项目"
+    "createRole": "添加角色到项目",
+    "errors": {
+      "loadProjectRolesFailed": "加载项目角色失败",
+      "loadProjectRoleDetailFailed": "加载项目角色详情失败",
+      "createProjectRoleFailed": "创建项目角色失败",
+      "updateProjectRoleFailed": "更新项目角色失败",
+      "deleteProjectRoleFailed": "删除项目角色失败"
+    }
   },
   "pagination": {
     "selectedRows": "已选择 {{selected}} / {{total}} 行",

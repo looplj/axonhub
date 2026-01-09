@@ -75,6 +75,10 @@
         },
         "notFound": "Usage log not found"
       }
+    },
+    "errors": {
+      "loadUsageLogsFailed": "Failed to load usage logs",
+      "loadUsageLogDetailFailed": "Failed to load usage log details"
     }
   }
 }

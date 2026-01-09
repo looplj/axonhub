@@ -62,6 +62,14 @@
       "nameRequired": "Role name is required",
       "scopesRequired": "At least one permission is required",
       "projectIdRequired": "Project ID is required"
+    },
+    "errors": {
+      "loadRolesFailed": "Failed to load roles",
+      "loadRoleDetailFailed": "Failed to load role details",
+      "createRoleFailed": "Failed to create role",
+      "updateRoleFailed": "Failed to update role",
+      "deleteRoleFailed": "Failed to delete role",
+      "deleteRolesBulkFailed": "Failed to delete roles"
     }
   }
 }

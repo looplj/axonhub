@@ -61,6 +61,15 @@
     },
     "validation": {
       "nameRequired": "项目名称不能为空"
+    },
+    "errors": {
+      "loadProjectsFailed": "加载项目失败",
+      "loadProjectDetailFailed": "加载项目详情失败",
+      "loadMyProjectsFailed": "获取我的项目失败",
+      "createProjectFailed": "创建项目失败",
+      "updateProjectFailed": "更新项目失败",
+      "archiveProjectFailed": "归档项目失败",
+      "activateProjectFailed": "激活项目失败"
     }
   }
 }
