@@ -213,7 +213,9 @@
         "testingModel": "测试中...",
         "testSuccess": "✅ 成功",
         "testFailed": "❌ 失败",
-        "notStarted": "未开始"
+        "notStarted": "未开始",
+        "removeFailed": "移除失败模型",
+        "removeFailedConfirm": "确定要从选中列表中移除所有失败的模型吗？"
       },
       "bulkImport": {
         "button": "批量导入",
