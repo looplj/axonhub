@@ -481,14 +481,14 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       filterFn: (row, _id, value) => {
         return value.includes(row.original.type);
       },
-      enableSorting: false,
+      enableSorting: true,
       enableHiding: false,
     },
     {
       accessorKey: 'status',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.status')} />,
       cell: StatusSwitchCell,
-      enableSorting: false,
+      enableSorting: true,
       enableHiding: false,
     },
     {

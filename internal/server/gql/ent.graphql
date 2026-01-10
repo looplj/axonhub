@@ -419,7 +419,9 @@ Properties by which Channel connections can be ordered.
 enum ChannelOrderField {
   CREATED_AT
   UPDATED_AT
+  TYPE
   NAME
+  STATUS
   ORDERING_WEIGHT
 }
 type ChannelOverrideTemplate implements Node {

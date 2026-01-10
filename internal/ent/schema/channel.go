@@ -75,7 +75,10 @@ func (Channel) Fields() []ent.Field {
 				"github",
 				"claudecode",
 			).
-			Immutable(),
+			Immutable().
+			Annotations(
+				entgql.OrderField("TYPE"),
+			),
 		field.String("base_url").Optional(),
 		field.String("name").
 			Annotations(
@@ -84,6 +87,7 @@ func (Channel) Fields() []ent.Field {
 		field.Enum("status").Values("enabled", "disabled", "archived").Default("disabled").
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput),
+				entgql.OrderField("STATUS"),
 			),
 		field.JSON("credentials", &objects.ChannelCredentials{}).Sensitive().Default(&objects.ChannelCredentials{}),
 		field.Strings("supported_models"),
