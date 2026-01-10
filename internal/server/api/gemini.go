@@ -167,11 +167,12 @@ func prependSpace(b []byte) []byte {
 
 // GeminiModel represents a model in the list models response.
 type GeminiModel struct {
-	Name        string `json:"name"`
-	BaseModelID string `json:"baseModelId"`
-	Version     string `json:"version"`
-	DisplayName string `json:"displayName"`
-	Description string `json:"description"`
+	Name                       string   `json:"name"`
+	BaseModelID                string   `json:"baseModelId"`
+	Version                    string   `json:"version"`
+	DisplayName                string   `json:"displayName"`
+	Description                string   `json:"description"`
+	SupportedGenerationMethods []string `json:"supportedGenerationMethods"`
 }
 
 // ListModels returns all available Gemini models.
@@ -196,11 +197,12 @@ func (handlers *GeminiHandlers) ListModels(c *gin.Context) {
 	geminiModels := make([]GeminiModel, 0, len(models))
 	for i, model := range models {
 		geminiModels = append(geminiModels, GeminiModel{
-			Name:        "models/" + model.ID,
-			BaseModelID: model.ID,
-			Version:     fmt.Sprintf("%s-%d", model.ID, i),
-			DisplayName: model.DisplayName,
-			Description: model.DisplayName,
+			Name:                       "models/" + model.ID,
+			BaseModelID:                model.ID,
+			Version:                    fmt.Sprintf("%s-%d", model.ID, i),
+			DisplayName:                model.DisplayName,
+			Description:                model.DisplayName,
+			SupportedGenerationMethods: []string{"generateContent", "streamGenerateContent"},
 		})
 	}
 
