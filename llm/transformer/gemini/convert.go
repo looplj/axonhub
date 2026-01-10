@@ -330,7 +330,18 @@ func convertToLLMUsage(geminiUsage *UsageMetadata) *llm.Usage {
 		usage.CompletionTokensDetails = &llm.CompletionTokensDetails{
 			ReasoningTokens: geminiUsage.ThoughtsTokenCount,
 		}
-		usage.CompletionTokens += geminiUsage.ThoughtsTokenCount
+		// IMPORTANT: Token semantics in both formats
+		// - Gemini format: candidatesTokenCount does NOT include thoughtsTokenCount (they are separate)
+		// - LLM/OpenAI format: completion_tokens does NOT include reasoning_tokens (they are separate)
+		//
+		// Therefore, we directly map CandidatesTokenCount to CompletionTokens without any addition.
+		//
+		// Example:
+		//   Input (Gemini): candidatesTokenCount=64, thoughtsTokenCount=253
+		//   Output (LLM):   completion_tokens=64, reasoning_tokens=253
+		//
+		// The old code incorrectly added: completion_tokens = 64 + 253 = 317 (WRONG!)
+		// This would be inconsistent with the reverse conversion (LLM -> Gemini).
 	}
 
 	if len(geminiUsage.CandidatesTokensDetails) > 0 {
