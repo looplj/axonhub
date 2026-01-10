@@ -229,9 +229,10 @@
     },
     "backup": {
       "title": "Backup",
-      "description": "Create a backup of your system data including channels and models",
+      "description": "Create a backup of your system data including channels, models, and API keys",
       "includeChannels": "Include Channels",
       "includeModels": "Include Models",
+      "includeAPIKeys": "Include API Keys",
       "createBackup": "Create Backup",
       "backingUp": "Backing up...",
       "success": "Backup created successfully",
@@ -242,6 +243,7 @@
       "description": "Restore your system data from a backup file",
       "channelConflictStrategy": "Channel Conflict Strategy",
       "modelConflictStrategy": "Model Conflict Strategy",
+      "apiKeyConflictStrategy": "API Key Conflict Strategy",
       "strategies": {
         "skip": "Skip existing items",
         "overwrite": "Overwrite existing items",

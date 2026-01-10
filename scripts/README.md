@@ -103,7 +103,7 @@
 # 显示最近 10 分钟的负载均衡日志
 ./scripts/filter-load-balance-logs.sh --since 10m server.log
 
-# 按通道 ID 过滤
+# 按渠道 ID 过滤
 ./scripts/filter-load-balance-logs.sh --channel-id 1 server.log
 
 # 显示特定模型的统计信息
@@ -121,26 +121,26 @@
 # 按分数范围过滤
 ./scripts/filter-load-balance-logs.sh --min-score 1000 --max-score 2000 server.log
 
-# 仅显示排名第一的通道
+# 仅显示排名第一的渠道
 ./scripts/filter-load-balance-logs.sh --max-rank 1 server.log
 ```
 
 **功能：**
 - 按时间范围过滤日志（--since, --until）
-- 按通道 ID 过滤（--channel-id）
+- 按渠道 ID 过滤（--channel-id）
 - 按模型名称过滤（--model）
 - 按分数范围过滤（--min-score, --max-score）
 - 按排名过滤（--min-rank, --max-rank）
 - 显示决策摘要（--summary）
 - 显示统计信息（--stats）
 - 显示详细的策略分解（--details）
-- 仅显示决策日志或通道详情（--decision-only, --channel-only）
+- 仅显示决策日志或渠道详情（--decision-only, --channel-only）
 - 限制输出条数（--limit）
 - 多种输出格式：table, json, csv（--format）
 
 **日志类型：**
 - `Load balancing decision completed` - 总体决策信息
-- `Channel load balancing details` - 每个通道的详细信息
+- `Channel load balancing details` - 每个渠道的详细信息
 
 ## 📚 文档
 

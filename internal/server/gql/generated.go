@@ -37614,7 +37614,7 @@ func (ec *executionContext) unmarshalInputBackupOptionsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"includeChannels", "includeModels"}
+	fieldsInOrder := [...]string{"includeChannels", "includeModels", "includeAPIKeys"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -37635,6 +37635,13 @@ func (ec *executionContext) unmarshalInputBackupOptionsInput(ctx context.Context
 				return it, err
 			}
 			it.IncludeModels = data
+		case "includeAPIKeys":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeAPIKeys"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IncludeAPIKeys = data
 		}
 	}
 
@@ -48341,7 +48348,7 @@ func (ec *executionContext) unmarshalInputRestoreOptionsInput(ctx context.Contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"includeChannels", "includeModels", "channelConflictStrategy", "modelConflictStrategy"}
+	fieldsInOrder := [...]string{"includeChannels", "includeModels", "includeAPIKeys", "channelConflictStrategy", "modelConflictStrategy", "apiKeyConflictStrategy"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -48362,6 +48369,13 @@ func (ec *executionContext) unmarshalInputRestoreOptionsInput(ctx context.Contex
 				return it, err
 			}
 			it.IncludeModels = data
+		case "includeAPIKeys":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeAPIKeys"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IncludeAPIKeys = data
 		case "channelConflictStrategy":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelConflictStrategy"))
 			data, err := ec.unmarshalNBackupConflictStrategy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBackupConflictStrategy(ctx, v)
@@ -48376,6 +48390,13 @@ func (ec *executionContext) unmarshalInputRestoreOptionsInput(ctx context.Contex
 				return it, err
 			}
 			it.ModelConflictStrategy = data
+		case "apiKeyConflictStrategy":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyConflictStrategy"))
+			data, err := ec.unmarshalNBackupConflictStrategy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBackupConflictStrategy(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.APIKeyConflictStrategy = data
 		}
 	}
 

@@ -251,6 +251,7 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 					if err != nil {
 						return schema // ignore error and use original
 					}
+
 					return cleaned
 				}
 

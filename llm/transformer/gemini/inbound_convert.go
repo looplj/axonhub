@@ -152,12 +152,14 @@ func convertGeminiToLLMRequest(geminiReq *GenerateContentRequest) (*llm.Request,
 						if schema == nil {
 							return nil
 						}
+
 						transformed, err := xjson.Transform(schema, func(s *jsonschema.Schema) {
 							s.Type = strings.ToLower(s.Type)
 						})
 						if err != nil {
 							return schema // fallback to original on error
 						}
+
 						return transformed
 					}
 

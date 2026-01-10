@@ -39,6 +39,7 @@ type ApplyChannelOverrideTemplatePayload struct {
 type BackupOptionsInput struct {
 	IncludeChannels bool `json:"includeChannels"`
 	IncludeModels   bool `json:"includeModels"`
+	IncludeAPIKeys  bool `json:"includeAPIKeys"`
 }
 
 type BackupPayload struct {
@@ -177,8 +178,10 @@ type RequestStatsByModel struct {
 type RestoreOptionsInput struct {
 	IncludeChannels         bool                   `json:"includeChannels"`
 	IncludeModels           bool                   `json:"includeModels"`
+	IncludeAPIKeys          bool                   `json:"includeAPIKeys"`
 	ChannelConflictStrategy BackupConflictStrategy `json:"channelConflictStrategy"`
 	ModelConflictStrategy   BackupConflictStrategy `json:"modelConflictStrategy"`
+	APIKeyConflictStrategy  BackupConflictStrategy `json:"apiKeyConflictStrategy"`
 }
 
 type RestorePayload struct {

@@ -453,17 +453,19 @@ func TestConvertLLMToGeminiRequest_Gemini3ThinkingLevelvsBudget(t *testing.T) {
 //
 // Bug scenario:
 // With Gemini usage data:
-//   promptTokenCount: 20981 (total tokens in prompt)
-//   cachedContentTokenCount: 20350 (tokens served from cache)
-//   candidatesTokenCount: 22
-//   totalTokenCount: 21097
+//
+//	promptTokenCount: 20981 (total tokens in prompt)
+//	cachedContentTokenCount: 20350 (tokens served from cache)
+//	candidatesTokenCount: 22
+//	totalTokenCount: 21097
 //
 // AxonHub was reporting 0% cache hit because it was incorrectly handling the token counts.
 // The fix ensures:
-//   prompt_tokens = promptTokenCount - cachedContentTokenCount = 631 (only NEW tokens)
-//   cached_tokens = 20350
 //
-// Cache hit rate should be: 20350 / (631 + 20350) * 100 = 97.0%
+//	prompt_tokens = promptTokenCount - cachedContentTokenCount = 631 (only NEW tokens)
+//	cached_tokens = 20350
+//
+// Cache hit rate should be: 20350 / (631 + 20350) * 100 = 97.0%.
 func TestConvertToLLMUsage_CacheHitCalculation(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -561,8 +563,8 @@ func TestConvertToLLMUsage_CacheHitCalculation(t *testing.T) {
 // maintains consistency, especially for cached tokens.
 func TestConvertToGeminiUsage_BidirectionalConsistency(t *testing.T) {
 	tests := []struct {
-		name      string
-		llmUsage  *llm.Usage
+		name       string
+		llmUsage   *llm.Usage
 		wantGemini *UsageMetadata
 	}{
 		{
