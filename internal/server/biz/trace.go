@@ -691,17 +691,17 @@ func getOutboundTransformer(format llm.APIFormat) (transformer.Outbound, error) 
 	switch format {
 	case llm.APIFormatOpenAIChatCompletion:
 		config := &openai.Config{
-			Type:    openai.PlatformOpenAI,
-			BaseURL: "https://api.openai.com/v1",
-			APIKey:  "dummy",
+			PlatformType: openai.PlatformOpenAI,
+			BaseURL:      "https://api.openai.com/v1",
+			APIKey:       "dummy",
 		}
 
 		return openai.NewOutboundTransformerWithConfig(config)
 	case llm.APIFormatOpenAIResponse:
 		config := &openai.Config{
-			Type:    openai.PlatformOpenAI,
-			BaseURL: "https://api.openai.com/v1",
-			APIKey:  "dummy",
+			PlatformType: openai.PlatformOpenAI,
+			BaseURL:      "https://api.openai.com/v1",
+			APIKey:       "dummy",
 		}
 
 		return responses.NewOutboundTransformer(config.BaseURL, config.APIKey)

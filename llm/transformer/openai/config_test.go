@@ -22,17 +22,17 @@ func TestValidateConfig(t *testing.T) {
 		{
 			name: "valid OpenAI config",
 			config: &Config{
-				Type:    PlatformOpenAI,
-				APIKey:  "test-api-key",
-				BaseURL: "https://api.openai.com/v1",
+				PlatformType: PlatformOpenAI,
+				APIKey:       "test-api-key",
+				BaseURL:      "https://api.openai.com/v1",
 			},
 			expectError: false,
 		},
 		{
 			name: "OpenAI config missing API key",
 			config: &Config{
-				Type:    PlatformOpenAI,
-				BaseURL: "https://api.openai.com/v1",
+				PlatformType: PlatformOpenAI,
+				BaseURL:      "https://api.openai.com/v1",
 			},
 			expectError: true,
 			errorMsg:    "API key is required",
@@ -40,8 +40,8 @@ func TestValidateConfig(t *testing.T) {
 		{
 			name: "OpenAI config missing base URL",
 			config: &Config{
-				Type:   PlatformOpenAI,
-				APIKey: "test-api-key",
+				PlatformType: PlatformOpenAI,
+				APIKey:       "test-api-key",
 			},
 			expectError: true,
 			errorMsg:    "base URL is required",
@@ -49,29 +49,29 @@ func TestValidateConfig(t *testing.T) {
 		{
 			name: "valid Azure config with base URL",
 			config: &Config{
-				Type:       PlatformAzure,
-				APIKey:     "azure-api-key",
-				APIVersion: "2024-06-01",
-				BaseURL:    "https://my-resource.openai.azure.com",
+				PlatformType: PlatformAzure,
+				APIKey:       "azure-api-key",
+				APIVersion:   "2024-06-01",
+				BaseURL:      "https://my-resource.openai.azure.com",
 			},
 			expectError: false,
 		},
 		{
 			name: "valid Azure config with custom base URL",
 			config: &Config{
-				Type:       PlatformAzure,
-				APIKey:     "azure-api-key",
-				APIVersion: "2024-06-01",
-				BaseURL:    "https://custom-azure-endpoint.example.com",
+				PlatformType: PlatformAzure,
+				APIKey:       "azure-api-key",
+				APIVersion:   "2024-06-01",
+				BaseURL:      "https://custom-azure-endpoint.example.com",
 			},
 			expectError: false,
 		},
 		{
 			name: "Azure config missing API key",
 			config: &Config{
-				Type:       PlatformAzure,
-				APIVersion: "2024-06-01",
-				BaseURL:    "https://my-resource.openai.azure.com",
+				PlatformType: PlatformAzure,
+				APIVersion:   "2024-06-01",
+				BaseURL:      "https://my-resource.openai.azure.com",
 			},
 			expectError: true,
 			errorMsg:    "API key is required",
@@ -79,9 +79,9 @@ func TestValidateConfig(t *testing.T) {
 		{
 			name: "Azure config missing API version",
 			config: &Config{
-				Type:    PlatformAzure,
-				APIKey:  "azure-api-key",
-				BaseURL: "https://my-resource.openai.azure.com",
+				PlatformType: PlatformAzure,
+				APIKey:       "azure-api-key",
+				BaseURL:      "https://my-resource.openai.azure.com",
 			},
 			expectError: true,
 			errorMsg:    "API version is required for Azure platform",
@@ -89,9 +89,9 @@ func TestValidateConfig(t *testing.T) {
 		{
 			name: "Azure config missing both base URL and resource name",
 			config: &Config{
-				Type:       PlatformAzure,
-				APIKey:     "azure-api-key",
-				APIVersion: "2024-06-01",
+				PlatformType: PlatformAzure,
+				APIKey:       "azure-api-key",
+				APIVersion:   "2024-06-01",
 			},
 			expectError: true,
 			errorMsg:    "base URL is required",
@@ -99,9 +99,9 @@ func TestValidateConfig(t *testing.T) {
 		{
 			name: "unsupported platform type",
 			config: &Config{
-				Type:    "invalid-platform", // Invalid platform type
-				APIKey:  "test-api-key",
-				BaseURL: "https://example.com",
+				PlatformType: "invalid-platform", // Invalid platform type
+				APIKey:       "test-api-key",
+				BaseURL:      "https://example.com",
 			},
 			expectError: true,
 			errorMsg:    "unsupported platform type",
@@ -135,17 +135,17 @@ func TestNewOutboundTransformerWithConfig_Validation(t *testing.T) {
 		{
 			name: "valid config - no error",
 			config: &Config{
-				Type:    PlatformOpenAI,
-				APIKey:  "test-api-key",
-				BaseURL: "https://api.openai.com/v1",
+				PlatformType: PlatformOpenAI,
+				APIKey:       "test-api-key",
+				BaseURL:      "https://api.openai.com/v1",
 			},
 			expectError: false,
 		},
 		{
 			name: "invalid config - missing API key",
 			config: &Config{
-				Type:    PlatformOpenAI,
-				BaseURL: "https://api.openai.com/v1",
+				PlatformType: PlatformOpenAI,
+				BaseURL:      "https://api.openai.com/v1",
 				// Missing API key
 			},
 			expectError: true,
@@ -154,8 +154,8 @@ func TestNewOutboundTransformerWithConfig_Validation(t *testing.T) {
 		{
 			name: "invalid config - missing base URL",
 			config: &Config{
-				Type:   PlatformOpenAI,
-				APIKey: "test-api-key",
+				PlatformType: PlatformOpenAI,
+				APIKey:       "test-api-key",
 				// Missing BaseURL
 			},
 			expectError: true,
@@ -164,9 +164,9 @@ func TestNewOutboundTransformerWithConfig_Validation(t *testing.T) {
 		{
 			name: "Azure config missing API version",
 			config: &Config{
-				Type:    PlatformAzure,
-				APIKey:  "azure-key",
-				BaseURL: "https://my-resource.openai.azure.com",
+				PlatformType: PlatformAzure,
+				APIKey:       "azure-key",
+				BaseURL:      "https://my-resource.openai.azure.com",
 				// Missing API version
 			},
 			expectError: true,
@@ -231,9 +231,9 @@ func TestConfigureForAzure_Validation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a basic transformer first
 			transformerInterface, initErr := NewOutboundTransformerWithConfig(&Config{
-				Type:    PlatformOpenAI,
-				BaseURL: "https://api.openai.com/v1",
-				APIKey:  "initial-key",
+				PlatformType: PlatformOpenAI,
+				BaseURL:      "https://api.openai.com/v1",
+				APIKey:       "initial-key",
 			})
 			require.NoError(t, initErr)
 
@@ -251,7 +251,7 @@ func TestConfigureForAzure_Validation(t *testing.T) {
 				require.NoError(t, err)
 				// Verify the configuration was applied correctly
 				config := transformer.GetConfig()
-				require.Equal(t, PlatformAzure, config.Type)
+				require.Equal(t, PlatformAzure, config.PlatformType)
 				// Note: ResourceName field removed from Config struct
 				require.Equal(t, tt.apiVersion, config.APIVersion)
 				require.Equal(t, tt.apiKey, config.APIKey)
@@ -262,9 +262,9 @@ func TestConfigureForAzure_Validation(t *testing.T) {
 
 func TestSetConfig_Validation(t *testing.T) {
 	transformerInterface, err := NewOutboundTransformerWithConfig(&Config{
-		Type:    PlatformOpenAI,
-		BaseURL: "https://api.openai.com/v1",
-		APIKey:  "initial-key",
+		PlatformType: PlatformOpenAI,
+		BaseURL:      "https://api.openai.com/v1",
+		APIKey:       "initial-key",
 	})
 	require.NoError(t, err)
 
@@ -272,9 +272,9 @@ func TestSetConfig_Validation(t *testing.T) {
 
 	t.Run("valid config update", func(t *testing.T) {
 		newConfig := &Config{
-			Type:    PlatformOpenAI,
-			APIKey:  "new-api-key",
-			BaseURL: "https://api.openai.com/v1",
+			PlatformType: PlatformOpenAI,
+			APIKey:       "new-api-key",
+			BaseURL:      "https://api.openai.com/v1",
 		}
 
 		require.NotPanics(t, func() {
@@ -286,7 +286,7 @@ func TestSetConfig_Validation(t *testing.T) {
 
 	t.Run("invalid config update should panic", func(t *testing.T) {
 		invalidConfig := &Config{
-			Type: PlatformOpenAI,
+			PlatformType: PlatformOpenAI,
 			// Missing API key
 		}
 
@@ -305,9 +305,9 @@ func TestSetConfig_Validation(t *testing.T) {
 
 func TestSetAPIKey_Validation(t *testing.T) {
 	transformerInterface, err := NewOutboundTransformerWithConfig(&Config{
-		Type:    PlatformOpenAI,
-		APIKey:  "initial-key",
-		BaseURL: "https://api.openai.com/v1",
+		PlatformType: PlatformOpenAI,
+		APIKey:       "initial-key",
+		BaseURL:      "https://api.openai.com/v1",
 	})
 	require.NoError(t, err)
 

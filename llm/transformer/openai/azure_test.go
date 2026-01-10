@@ -100,7 +100,7 @@ func TestOutboundTransformer_AzureConfigurations(t *testing.T) {
 			require.Equal(t, "application/json", httpReq.Headers.Get("Content-Type"))
 
 			// Verify authentication based on platform
-			if transformer.GetConfig().Type == PlatformAzure {
+			if transformer.GetConfig().PlatformType == PlatformAzure {
 				require.NotNil(t, httpReq.Auth)
 			} else {
 				// Standard OpenAI uses Bearer token
@@ -129,9 +129,9 @@ func TestOutboundTransformer_AzureConfigurationErrors(t *testing.T) {
 		// This test should panic during SetConfig because API version is missing
 		require.Panics(t, func() {
 			transformer.SetConfig(&Config{
-				Type:    PlatformAzure,
-				BaseURL: "https://test.openai.azure.com",
-				APIKey:  "test-key", // Add API key to avoid that validation error
+				PlatformType: PlatformAzure,
+				BaseURL:      "https://test.openai.azure.com",
+				APIKey:       "test-key", // Add API key to avoid that validation error
 				// APIVersion is missing - this should cause validation to fail
 			})
 		})
@@ -141,9 +141,9 @@ func TestOutboundTransformer_AzureConfigurationErrors(t *testing.T) {
 func TestOutboundTransformer_NewOutboundTransformerWithConfig(t *testing.T) {
 	t.Run("Standard OpenAI configuration", func(t *testing.T) {
 		config := &Config{
-			Type:    PlatformOpenAI,
-			BaseURL: "https://api.openai.com/v1",
-			APIKey:  "test-key",
+			PlatformType: PlatformOpenAI,
+			BaseURL:      "https://api.openai.com/v1",
+			APIKey:       "test-key",
 		}
 
 		transformerInterface, err := NewOutboundTransformerWithConfig(config)
@@ -152,16 +152,16 @@ func TestOutboundTransformer_NewOutboundTransformerWithConfig(t *testing.T) {
 		transformer := transformerInterface.(*OutboundTransformer)
 
 		require.Equal(t, "https://api.openai.com/v1", transformer.config.BaseURL)
-		require.Equal(t, PlatformOpenAI, transformer.config.Type)
+		require.Equal(t, PlatformOpenAI, transformer.config.PlatformType)
 		require.Equal(t, "test-key", transformer.config.APIKey)
 	})
 
 	t.Run("Azure OpenAI configuration", func(t *testing.T) {
 		config := &Config{
-			Type:       PlatformAzure,
-			BaseURL:    "https://my-azure-resource.openai.azure.com",
-			APIVersion: "2024-06-01",
-			APIKey:     "azure-key",
+			PlatformType: PlatformAzure,
+			BaseURL:      "https://my-azure-resource.openai.azure.com",
+			APIVersion:   "2024-06-01",
+			APIKey:       "azure-key",
 		}
 
 		transformerInterface, err := NewOutboundTransformerWithConfig(config)
@@ -170,16 +170,16 @@ func TestOutboundTransformer_NewOutboundTransformerWithConfig(t *testing.T) {
 		transformer := transformerInterface.(*OutboundTransformer)
 
 		require.Equal(t, "https://my-azure-resource.openai.azure.com", transformer.config.BaseURL)
-		require.Equal(t, PlatformAzure, transformer.config.Type)
+		require.Equal(t, PlatformAzure, transformer.config.PlatformType)
 		require.Equal(t, "2024-06-01", transformer.config.APIVersion)
 		require.Equal(t, "azure-key", transformer.config.APIKey)
 	})
 
 	t.Run("Custom base URL overrides default", func(t *testing.T) {
 		config := &Config{
-			Type:    PlatformOpenAI,
-			BaseURL: "https://custom-openai-proxy.example.com",
-			APIKey:  "test-key",
+			PlatformType: PlatformOpenAI,
+			BaseURL:      "https://custom-openai-proxy.example.com",
+			APIKey:       "test-key",
 		}
 
 		transformerInterface, err := NewOutboundTransformerWithConfig(config)
@@ -192,10 +192,10 @@ func TestOutboundTransformer_NewOutboundTransformerWithConfig(t *testing.T) {
 
 	t.Run("Azure with custom base URL", func(t *testing.T) {
 		config := &Config{
-			Type:       PlatformAzure,
-			BaseURL:    "https://custom-azure-endpoint.example.com",
-			APIVersion: "2024-06-01",
-			APIKey:     "azure-key",
+			PlatformType: PlatformAzure,
+			BaseURL:      "https://custom-azure-endpoint.example.com",
+			APIVersion:   "2024-06-01",
+			APIKey:       "azure-key",
 		}
 
 		transformerInterface, err := NewOutboundTransformerWithConfig(config)
@@ -204,6 +204,6 @@ func TestOutboundTransformer_NewOutboundTransformerWithConfig(t *testing.T) {
 		transformer := transformerInterface.(*OutboundTransformer)
 
 		require.Equal(t, "https://custom-azure-endpoint.example.com", transformer.config.BaseURL)
-		require.Equal(t, PlatformAzure, transformer.config.Type)
+		require.Equal(t, PlatformAzure, transformer.config.PlatformType)
 	})
 }

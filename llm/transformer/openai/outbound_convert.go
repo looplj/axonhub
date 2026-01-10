@@ -80,7 +80,8 @@ func RequestFromLLM(r *llm.Request) *Request {
 	// Convert ResponseFormat
 	if r.ResponseFormat != nil {
 		req.ResponseFormat = &ResponseFormat{
-			Type: r.ResponseFormat.Type,
+			Type:       r.ResponseFormat.Type,
+			JSONSchema: r.ResponseFormat.JSONSchema,
 		}
 	}
 

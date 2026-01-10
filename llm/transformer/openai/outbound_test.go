@@ -591,10 +591,10 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 		{
 			name: "raw URL enabled with Config",
 			config: &Config{
-				Type:    PlatformOpenAI,
-				BaseURL: "https://custom.api.com/v1",
-				APIKey:  "test-key",
-				RawURL:  true,
+				PlatformType: PlatformOpenAI,
+				BaseURL:      "https://custom.api.com/v1",
+				APIKey:       "test-key",
+				RawURL:       true,
 			},
 			request: &llm.Request{
 				Model: "gpt-4",
@@ -613,9 +613,9 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 		{
 			name: "raw URL auto-enabled with # suffix",
 			config: &Config{
-				Type:    PlatformOpenAI,
-				BaseURL: "https://custom.api.com/v100#",
-				APIKey:  "test-key",
+				PlatformType: PlatformOpenAI,
+				BaseURL:      "https://custom.api.com/v100#",
+				APIKey:       "test-key",
 			},
 			request: &llm.Request{
 				Model: "gpt-4",
@@ -634,9 +634,9 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 		{
 			name: "raw URL with full path",
 			config: &Config{
-				Type:    PlatformOpenAI,
-				BaseURL: "https://custom.api.com/v1/chat/completions#",
-				APIKey:  "test-key",
+				PlatformType: PlatformOpenAI,
+				BaseURL:      "https://custom.api.com/v1/chat/completions#",
+				APIKey:       "test-key",
 			},
 			request: &llm.Request{
 				Model: "gpt-4",
@@ -655,10 +655,10 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 		{
 			name: "raw URL false with standard URL",
 			config: &Config{
-				Type:    PlatformOpenAI,
-				BaseURL: "https://api.openai.com",
-				APIKey:  "test-key",
-				RawURL:  false,
+				PlatformType: PlatformOpenAI,
+				BaseURL:      "https://api.openai.com",
+				APIKey:       "test-key",
+				RawURL:       false,
 			},
 			request: &llm.Request{
 				Model: "gpt-4",
@@ -677,10 +677,10 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 		{
 			name: "raw URL false with v1 already in URL",
 			config: &Config{
-				Type:    PlatformOpenAI,
-				BaseURL: "https://api.openai.com/v1",
-				APIKey:  "test-key",
-				RawURL:  false,
+				PlatformType: PlatformOpenAI,
+				BaseURL:      "https://api.openai.com/v1",
+				APIKey:       "test-key",
+				RawURL:       false,
 			},
 			request: &llm.Request{
 				Model: "gpt-4",
@@ -699,9 +699,9 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 		{
 			name: "raw URL with custom endpoint without version",
 			config: &Config{
-				Type:    PlatformOpenAI,
-				BaseURL: "https://custom-endpoint.com/api/llm#",
-				APIKey:  "test-key",
+				PlatformType: PlatformOpenAI,
+				BaseURL:      "https://custom-endpoint.com/api/llm#",
+				APIKey:       "test-key",
 			},
 			request: &llm.Request{
 				Model: "gpt-4",

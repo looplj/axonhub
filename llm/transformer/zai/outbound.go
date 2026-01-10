@@ -105,6 +105,12 @@ func (t *OutboundTransformer) TransformRequest(
 	// Convert llm.Request to openai.Request first
 	oaiReq := openai.RequestFromLLM(llmReq)
 
+	// Zai doesn't support json_schema, convert to json_object
+	if oaiReq.ResponseFormat != nil && oaiReq.ResponseFormat.Type == "json_schema" {
+		oaiReq.ResponseFormat.Type = "json_object"
+		oaiReq.ResponseFormat.JSONSchema = nil
+	}
+
 	// Create Zai-specific request by adding request_id/user_id
 	zaiReq := Request{
 		Request:   *oaiReq,
