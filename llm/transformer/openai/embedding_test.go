@@ -266,9 +266,9 @@ func TestEmbeddingInboundTransformer_TransformRequest(t *testing.T) {
 func TestEmbeddingOutboundTransformer_TransformRequest(t *testing.T) {
 	t.Run("valid request with /v1 suffix", func(t *testing.T) {
 		config := &Config{
-			Type:    PlatformOpenAI,
-			BaseURL: "https://api.openai.com/v1",
-			APIKey:  "test-key",
+			PlatformType: PlatformOpenAI,
+			BaseURL:      "https://api.openai.com/v1",
+			APIKey:       "test-key",
 		}
 		transformer, err := NewOutboundTransformerWithConfig(config)
 		require.NoError(t, err)
@@ -295,9 +295,9 @@ func TestEmbeddingOutboundTransformer_TransformRequest(t *testing.T) {
 
 	t.Run("nil llm request", func(t *testing.T) {
 		config := &Config{
-			Type:    PlatformOpenAI,
-			BaseURL: "https://api.openai.com/v1",
-			APIKey:  "test-key",
+			PlatformType: PlatformOpenAI,
+			BaseURL:      "https://api.openai.com/v1",
+			APIKey:       "test-key",
 		}
 		transformer, err := NewOutboundTransformerWithConfig(config)
 		require.NoError(t, err)
@@ -309,9 +309,9 @@ func TestEmbeddingOutboundTransformer_TransformRequest(t *testing.T) {
 
 	t.Run("missing embedding request", func(t *testing.T) {
 		config := &Config{
-			Type:    PlatformOpenAI,
-			BaseURL: "https://api.openai.com/v1",
-			APIKey:  "test-key",
+			PlatformType: PlatformOpenAI,
+			BaseURL:      "https://api.openai.com/v1",
+			APIKey:       "test-key",
 		}
 		transformer, err := NewOutboundTransformerWithConfig(config)
 		require.NoError(t, err)
@@ -329,9 +329,9 @@ func TestEmbeddingOutboundTransformer_TransformRequest(t *testing.T) {
 
 func TestEmbeddingOutboundTransformer_TransformResponse(t *testing.T) {
 	config := &Config{
-		Type:    PlatformOpenAI,
-		BaseURL: "https://api.openai.com/v1",
-		APIKey:  "test-key",
+		PlatformType: PlatformOpenAI,
+		BaseURL:      "https://api.openai.com/v1",
+		APIKey:       "test-key",
 	}
 	transformer, err := NewOutboundTransformerWithConfig(config)
 	require.NoError(t, err)
@@ -577,9 +577,9 @@ func TestEmbeddingTransformers_APIFormat(t *testing.T) {
 	require.Equal(t, llm.APIFormatOpenAIEmbedding, inbound.APIFormat())
 
 	config := &Config{
-		Type:    PlatformOpenAI,
-		BaseURL: "https://api.openai.com/v1",
-		APIKey:  "test-key",
+		PlatformType: PlatformOpenAI,
+		BaseURL:      "https://api.openai.com/v1",
+		APIKey:       "test-key",
 	}
 	outbound, err := NewOutboundTransformerWithConfig(config)
 	require.NoError(t, err)
@@ -588,9 +588,9 @@ func TestEmbeddingTransformers_APIFormat(t *testing.T) {
 
 func TestEmbeddingOutboundTransformer_TransformError(t *testing.T) {
 	config := &Config{
-		Type:    PlatformOpenAI,
-		BaseURL: "https://api.openai.com/v1",
-		APIKey:  "test-key",
+		PlatformType: PlatformOpenAI,
+		BaseURL:      "https://api.openai.com/v1",
+		APIKey:       "test-key",
 	}
 	transformer, err := NewOutboundTransformerWithConfig(config)
 	require.NoError(t, err)
@@ -677,9 +677,9 @@ func TestEmbeddingOutboundTransformer_URLBuilding(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			config := &Config{
-				Type:    PlatformOpenAI,
-				BaseURL: tc.baseURL,
-				APIKey:  "test-key",
+				PlatformType: PlatformOpenAI,
+				BaseURL:      tc.baseURL,
+				APIKey:       "test-key",
 			}
 			transformer, err := NewOutboundTransformerWithConfig(config)
 			require.NoError(t, err)
@@ -709,10 +709,10 @@ func TestOutboundTransformer_RawURL_Embedding(t *testing.T) {
 		{
 			name: "raw URL enabled for embedding",
 			config: &Config{
-				Type:    PlatformOpenAI,
-				BaseURL: "https://custom.api.com/v100",
-				APIKey:  "test-key",
-				RawURL:  true,
+				PlatformType: PlatformOpenAI,
+				BaseURL:      "https://custom.api.com/v100",
+				APIKey:       "test-key",
+				RawURL:       true,
 			},
 			request: &llm.Request{
 				RequestType: llm.RequestTypeEmbedding,
@@ -728,9 +728,9 @@ func TestOutboundTransformer_RawURL_Embedding(t *testing.T) {
 		{
 			name: "raw URL auto-enabled with # suffix for embedding",
 			config: &Config{
-				Type:    PlatformOpenAI,
-				BaseURL: "https://custom.api.com/v20#",
-				APIKey:  "test-key",
+				PlatformType: PlatformOpenAI,
+				BaseURL:      "https://custom.api.com/v20#",
+				APIKey:       "test-key",
 			},
 			request: &llm.Request{
 				RequestType: llm.RequestTypeEmbedding,
@@ -746,10 +746,10 @@ func TestOutboundTransformer_RawURL_Embedding(t *testing.T) {
 		{
 			name: "raw URL false for embedding",
 			config: &Config{
-				Type:    PlatformOpenAI,
-				BaseURL: "https://api.openai.com",
-				APIKey:  "test-key",
-				RawURL:  false,
+				PlatformType: PlatformOpenAI,
+				BaseURL:      "https://api.openai.com",
+				APIKey:       "test-key",
+				RawURL:       false,
 			},
 			request: &llm.Request{
 				RequestType: llm.RequestTypeEmbedding,

@@ -162,6 +162,18 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 		hasGenerationConfig = true
 	}
 
+	// Convert ResponseFormat to ResponseSchema and ResponseMIMEType
+	if chatReq.ResponseFormat != nil {
+		if chatReq.ResponseFormat.Type == "json_schema" && len(chatReq.ResponseFormat.JSONSchema) > 0 {
+			gc.ResponseSchema = chatReq.ResponseFormat.JSONSchema
+			gc.ResponseMIMEType = "application/json"
+			hasGenerationConfig = true
+		} else if chatReq.ResponseFormat.Type == "json_object" {
+			gc.ResponseMIMEType = "application/json"
+			hasGenerationConfig = true
+		}
+	}
+
 	if hasGenerationConfig {
 		req.GenerationConfig = gc
 	}

@@ -31,7 +31,7 @@ const DefaultAzureAPIVersion = "2025-04-01-preview"
 // Config holds all configuration for the OpenAI outbound transformer.
 type Config struct {
 	// Platform configuration
-	Type PlatformType `json:"type"`
+	PlatformType PlatformType `json:"type"`
 
 	// BaseURL is the base URL for the OpenAI API, required.
 	BaseURL string `json:"base_url,omitempty"`
@@ -56,9 +56,9 @@ type OutboundTransformer struct {
 // NewOutboundTransformer creates a new OpenAI OutboundTransformer with legacy parameters.
 func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error) {
 	config := &Config{
-		Type:    PlatformOpenAI,
-		BaseURL: baseURL,
-		APIKey:  apiKey,
+		PlatformType: PlatformOpenAI,
+		BaseURL:      baseURL,
+		APIKey:       apiKey,
 	}
 
 	err := validateConfig(config)
@@ -109,7 +109,7 @@ func validateConfig(config *Config) error {
 		return errors.New("base URL is required")
 	}
 
-	switch config.Type {
+	switch config.PlatformType {
 	case PlatformOpenAI:
 		return nil
 	case PlatformAzure:
@@ -117,7 +117,7 @@ func validateConfig(config *Config) error {
 			return fmt.Errorf("API version is required for Azure platform")
 		}
 	default:
-		return fmt.Errorf("unsupported platform type: %v", config.Type)
+		return fmt.Errorf("unsupported platform type: %v", config.PlatformType)
 	}
 
 	return nil
@@ -154,7 +154,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	if llmReq.IsImageGenerationRequest() {
 		// Platform routing: For now, only standard OpenAI Image Generation API is supported.
 		//nolint:exhaustive // Chcked.
-		switch t.config.Type {
+		switch t.config.PlatformType {
 		case PlatformAzure:
 			return nil, fmt.Errorf("image generation via Image Generation API is not yet supported for Azure platform")
 		default:
@@ -180,7 +180,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	var auth *httpclient.AuthConfig
 
 	//nolint:exhaustive // Chcked.
-	switch t.config.Type {
+	switch t.config.PlatformType {
 	case PlatformAzure:
 		auth = &httpclient.AuthConfig{
 			Type:      "api_key",
@@ -288,7 +288,7 @@ func (t *OutboundTransformer) TransformStreamChunk(
 // buildFullRequestURL constructs the appropriate URL based on the platform.
 func (t *OutboundTransformer) buildFullRequestURL(_ *llm.Request) (string, error) {
 	//nolint:exhaustive // Chcked.
-	switch t.config.Type {
+	switch t.config.PlatformType {
 	case PlatformAzure:
 		if strings.HasSuffix(t.config.BaseURL, "/openai/v1") {
 			// Azure URL already includes /openai/v1
@@ -361,9 +361,9 @@ func (t *OutboundTransformer) SetConfig(config *Config) {
 func (t *OutboundTransformer) ConfigureForAzure(resourceName, apiVersion, apiKey string) error {
 	// Create new Azure configuration
 	newConfig := &Config{
-		Type:       PlatformAzure,
-		APIVersion: apiVersion,
-		APIKey:     apiKey,
+		PlatformType: PlatformAzure,
+		APIVersion:   apiVersion,
+		APIKey:       apiKey,
 	}
 
 	// Set base URL only if resource name is provided

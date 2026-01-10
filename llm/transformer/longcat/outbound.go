@@ -21,9 +21,9 @@ type OutboundTransformer struct {
 // NewOutboundTransformer creates a new Longcat OutboundTransformer.
 func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error) {
 	oaiTransformer, err := openai.NewOutboundTransformerWithConfig(&openai.Config{
-		Type:    openai.PlatformOpenAI,
-		BaseURL: baseURL,
-		APIKey:  apiKey,
+		PlatformType: openai.PlatformOpenAI,
+		BaseURL:      baseURL,
+		APIKey:       apiKey,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create longcat outbound transformer: %w", err)

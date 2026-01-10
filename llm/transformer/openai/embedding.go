@@ -76,7 +76,7 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 	var auth *httpclient.AuthConfig
 
 	//nolint:exhaustive // Checked.
-	switch t.config.Type {
+	switch t.config.PlatformType {
 	case PlatformAzure:
 		auth = &httpclient.AuthConfig{
 			Type:      "api_key",
@@ -111,7 +111,7 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 // buildEmbeddingURL constructs the embedding API URL.
 func (t *OutboundTransformer) buildEmbeddingURL() string {
 	//nolint:exhaustive // Checked.
-	switch t.config.Type {
+	switch t.config.PlatformType {
 	case PlatformAzure:
 		if strings.HasSuffix(t.config.BaseURL, "/openai/v1") {
 			// Azure URL already includes /openai/v1

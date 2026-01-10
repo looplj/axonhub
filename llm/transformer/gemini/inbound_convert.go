@@ -16,6 +16,8 @@ import (
 )
 
 // convertGeminiToLLMRequest converts Gemini GenerateContentRequest to unified Request.
+//
+//nolint:maintidx // Checked.
 func convertGeminiToLLMRequest(geminiReq *GenerateContentRequest) (*llm.Request, error) {
 	chatReq := &llm.Request{
 		RequestType: llm.RequestTypeChat,
@@ -92,6 +94,19 @@ func convertGeminiToLLMRequest(geminiReq *GenerateContentRequest) (*llm.Request,
 		// Convert responseModalities to modalities
 		if len(gc.ResponseModalities) > 0 {
 			chatReq.Modalities = convertGeminiModalitiesToLLM(gc.ResponseModalities)
+		}
+
+		// Convert ResponseSchema to ResponseFormat json_schema
+		if len(gc.ResponseSchema) > 0 {
+			chatReq.ResponseFormat = &llm.ResponseFormat{
+				Type:       "json_schema",
+				JSONSchema: gc.ResponseSchema,
+			}
+		} else if gc.ResponseMIMEType == "application/json" {
+			// If only ResponseMIMEType is set to JSON, use json_object
+			chatReq.ResponseFormat = &llm.ResponseFormat{
+				Type: "json_object",
+			}
 		}
 	}
 

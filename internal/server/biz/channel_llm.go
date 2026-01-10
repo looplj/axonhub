@@ -17,12 +17,14 @@ import (
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/anthropic"
 	"github.com/looplj/axonhub/llm/transformer/bailian"
+	"github.com/looplj/axonhub/llm/transformer/deepseek"
 	"github.com/looplj/axonhub/llm/transformer/doubao"
 	"github.com/looplj/axonhub/llm/transformer/gemini"
 	geminioai "github.com/looplj/axonhub/llm/transformer/gemini/openai"
 	"github.com/looplj/axonhub/llm/transformer/jina"
 	"github.com/looplj/axonhub/llm/transformer/longcat"
 	"github.com/looplj/axonhub/llm/transformer/modelscope"
+	"github.com/looplj/axonhub/llm/transformer/moonshot"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"github.com/looplj/axonhub/llm/transformer/openrouter"
@@ -183,6 +185,21 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		}
 
 		return buildChannelWithTransformer(c, transformer, httpClient), nil
+	case channel.TypeDeepseek:
+		transformer, err := deepseek.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		return buildChannelWithTransformer(c, transformer, httpClient), nil
+	case channel.TypeMoonshot:
+		transformer, err := moonshot.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		return buildChannelWithTransformer(c, transformer, httpClient), nil
+
 	case channel.TypeXai:
 		transformer, err := xai.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
 		if err != nil {
@@ -360,14 +377,13 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		}
 
 		return buildChannelWithTransformer(c, transformer, httpClient), nil
-	case channel.TypeOpenai,
-		channel.TypeDeepseek, channel.TypeDeepinfra, channel.TypeMoonshot, channel.TypeMinimax,
+	case channel.TypeOpenai, channel.TypeDeepinfra, channel.TypeMinimax,
 		channel.TypePpio, channel.TypeSiliconflow,
 		channel.TypeVercel, channel.TypeAihubmix, channel.TypeBurncloud, channel.TypeGithub:
 		transformer, err := openai.NewOutboundTransformerWithConfig(&openai.Config{
-			Type:    openai.PlatformOpenAI,
-			BaseURL: c.BaseURL,
-			APIKey:  c.Credentials.APIKey,
+			PlatformType: openai.PlatformOpenAI,
+			BaseURL:      c.BaseURL,
+			APIKey:       c.Credentials.APIKey,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)

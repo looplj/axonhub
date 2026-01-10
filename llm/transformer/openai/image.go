@@ -150,7 +150,7 @@ func (t *OutboundTransformer) buildImageGenerateRequest(chatReq *llm.Request) (*
 	// Build auth config
 	var auth *httpclient.AuthConfig
 
-	switch t.config.Type {
+	switch t.config.PlatformType {
 	case PlatformAzure:
 		auth = &httpclient.AuthConfig{
 			Type:      "api_key",
@@ -326,7 +326,7 @@ func (t *OutboundTransformer) buildImageEditRequest(chatReq *llm.Request) (*http
 	// Build auth config
 	var auth *httpclient.AuthConfig
 
-	switch t.config.Type {
+	switch t.config.PlatformType {
 	case PlatformAzure:
 		auth = &httpclient.AuthConfig{
 			Type:      "api_key",

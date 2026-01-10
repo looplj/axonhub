@@ -370,6 +370,132 @@ func TestConvertGeminiToLLMRequest_Basic(t *testing.T) {
 	}
 }
 
+func TestConvertGeminiToLLMRequest_ResponseFormat(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    *GenerateContentRequest
+		validate func(t *testing.T, result *llm.Request)
+	}{
+		{
+			name: "request with ResponseSchema converts to json_schema",
+			input: &GenerateContentRequest{
+				Contents: []*Content{
+					{
+						Role: "user",
+						Parts: []*Part{
+							{Text: "Generate JSON"},
+						},
+					},
+				},
+				GenerationConfig: &GenerationConfig{
+					ResponseSchema: json.RawMessage(`{"type":"object","properties":{"name":{"type":"string"},"age":{"type":"integer"}}}`),
+				},
+			},
+			validate: func(t *testing.T, result *llm.Request) {
+				t.Helper()
+				require.NotNil(t, result.ResponseFormat)
+				require.Equal(t, "json_schema", result.ResponseFormat.Type)
+				require.NotNil(t, result.ResponseFormat.JSONSchema)
+				require.Contains(t, string(result.ResponseFormat.JSONSchema), "name")
+				require.Contains(t, string(result.ResponseFormat.JSONSchema), "age")
+			},
+		},
+		{
+			name: "request with ResponseMIMEType application/json converts to json_object",
+			input: &GenerateContentRequest{
+				Contents: []*Content{
+					{
+						Role: "user",
+						Parts: []*Part{
+							{Text: "Generate JSON"},
+						},
+					},
+				},
+				GenerationConfig: &GenerationConfig{
+					ResponseMIMEType: "application/json",
+				},
+			},
+			validate: func(t *testing.T, result *llm.Request) {
+				t.Helper()
+				require.NotNil(t, result.ResponseFormat)
+				require.Equal(t, "json_object", result.ResponseFormat.Type)
+				require.Nil(t, result.ResponseFormat.JSONSchema)
+			},
+		},
+		{
+			name: "request with ResponseSchema takes priority over ResponseMIMEType",
+			input: &GenerateContentRequest{
+				Contents: []*Content{
+					{
+						Role: "user",
+						Parts: []*Part{
+							{Text: "Generate JSON"},
+						},
+					},
+				},
+				GenerationConfig: &GenerationConfig{
+					ResponseMIMEType: "application/json",
+					ResponseSchema:   json.RawMessage(`{"type":"object"}`),
+				},
+			},
+			validate: func(t *testing.T, result *llm.Request) {
+				t.Helper()
+				require.NotNil(t, result.ResponseFormat)
+				require.Equal(t, "json_schema", result.ResponseFormat.Type)
+				require.NotNil(t, result.ResponseFormat.JSONSchema)
+			},
+		},
+		{
+			name: "request without ResponseSchema or JSON MIME type has no ResponseFormat",
+			input: &GenerateContentRequest{
+				Contents: []*Content{
+					{
+						Role: "user",
+						Parts: []*Part{
+							{Text: "Hello"},
+						},
+					},
+				},
+				GenerationConfig: &GenerationConfig{
+					MaxOutputTokens: 1024,
+				},
+			},
+			validate: func(t *testing.T, result *llm.Request) {
+				t.Helper()
+				require.Nil(t, result.ResponseFormat)
+			},
+		},
+		{
+			name: "request with text/plain MIME type has no ResponseFormat",
+			input: &GenerateContentRequest{
+				Contents: []*Content{
+					{
+						Role: "user",
+						Parts: []*Part{
+							{Text: "Hello"},
+						},
+					},
+				},
+				GenerationConfig: &GenerationConfig{
+					ResponseMIMEType: "text/plain",
+				},
+			},
+			validate: func(t *testing.T, result *llm.Request) {
+				t.Helper()
+				require.Nil(t, result.ResponseFormat)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := convertGeminiToLLMRequest(tt.input)
+			require.NoError(t, err)
+			tt.validate(t, result)
+		})
+	}
+}
+
 func TestConvertGeminiToLLMRequest_Tools(t *testing.T) {
 	tests := []struct {
 		name     string

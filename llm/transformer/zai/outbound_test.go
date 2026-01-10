@@ -277,3 +277,104 @@ func TestOutboundTransformer_TransformRequest_WithThinking(t *testing.T) {
 	assert.NotNil(t, zaiReq.Thinking)
 	assert.Equal(t, "enabled", zaiReq.Thinking.Type)
 }
+
+func TestOutboundTransformer_TransformRequest_ResponseFormat(t *testing.T) {
+	config := &Config{
+		BaseURL: "https://api.zai.com/v4",
+		APIKey:  "test-api-key",
+	}
+
+	transformer, err := NewOutboundTransformerWithConfig(config)
+	if err != nil {
+		t.Fatalf("Failed to create transformer: %v", err)
+	}
+
+	tests := []struct {
+		name                  string
+		request               *llm.Request
+		expectedType          string
+		expectedJSONSchemaNil bool
+	}{
+		{
+			name: "json_schema converted to json_object",
+			request: &llm.Request{
+				Model: "gpt-4",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello"),
+						},
+					},
+				},
+				ResponseFormat: &llm.ResponseFormat{
+					Type:       "json_schema",
+					JSONSchema: json.RawMessage(`{"type":"object","properties":{"name":{"type":"string"}}}`),
+				},
+			},
+			expectedType:          "json_object",
+			expectedJSONSchemaNil: true,
+		},
+		{
+			name: "json_object remains unchanged",
+			request: &llm.Request{
+				Model: "gpt-4",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello"),
+						},
+					},
+				},
+				ResponseFormat: &llm.ResponseFormat{
+					Type: "json_object",
+				},
+			},
+			expectedType:          "json_object",
+			expectedJSONSchemaNil: true,
+		},
+		{
+			name: "text remains unchanged",
+			request: &llm.Request{
+				Model: "gpt-4",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello"),
+						},
+					},
+				},
+				ResponseFormat: &llm.ResponseFormat{
+					Type: "text",
+				},
+			},
+			expectedType:          "text",
+			expectedJSONSchemaNil: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			got, err := transformer.TransformRequest(ctx, tt.request)
+
+			assert.NoError(t, err)
+			assert.NotNil(t, got)
+			assert.Equal(t, http.MethodPost, got.Method)
+
+			var zaiReq Request
+
+			err = json.Unmarshal(got.Body, &zaiReq)
+			assert.NoError(t, err)
+
+			assert.NotNil(t, zaiReq.ResponseFormat)
+			assert.Equal(t, tt.expectedType, zaiReq.ResponseFormat.Type)
+
+			if tt.expectedJSONSchemaNil {
+				assert.Nil(t, zaiReq.ResponseFormat.JSONSchema)
+			}
+		})
+	}
+}

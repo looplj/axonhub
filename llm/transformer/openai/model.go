@@ -214,7 +214,8 @@ type Audio struct {
 
 // ResponseFormat specifies the format of the response.
 type ResponseFormat struct {
-	Type string `json:"type"`
+	Type       string          `json:"type"`
+	JSONSchema json.RawMessage `json:"json_schema,omitempty"`
 }
 
 // Response represents an OpenAI chat completion response.
