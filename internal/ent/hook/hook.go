@@ -57,6 +57,18 @@ func (f ChannelPerformanceFunc) Mutate(ctx context.Context, m ent.Mutation) (ent
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChannelPerformanceMutation", m)
 }
 
+// The ChannelProbeFunc type is an adapter to allow the use of ordinary
+// function as ChannelProbe mutator.
+type ChannelProbeFunc func(context.Context, *ent.ChannelProbeMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ChannelProbeFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ChannelProbeMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChannelProbeMutation", m)
+}
+
 // The DataStorageFunc type is an adapter to allow the use of ordinary
 // function as DataStorage mutator.
 type DataStorageFunc func(context.Context, *ent.DataStorageMutation) (ent.Value, error)

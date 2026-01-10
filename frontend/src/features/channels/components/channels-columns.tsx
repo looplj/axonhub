@@ -40,6 +40,7 @@ import { useTestChannel } from '../data/channels';
 import { CHANNEL_CONFIGS, getProvider } from '../data/config_channels';
 import { Channel } from '../data/schema';
 import { ChannelsStatusDialog } from './channels-status-dialog';
+import { ChannelHealthCell } from './channel-health-cell';
 
 // Status Switch Cell Component to handle status toggle with confirmation dialog
 const StatusSwitchCell = memo(({ row }: { row: Row<Channel> }) => {
@@ -56,10 +57,10 @@ const StatusSwitchCell = memo(({ row }: { row: Row<Channel> }) => {
   }, [isArchived]);
 
   return (
-    <>
+    <div className='flex justify-center'>
       <Switch checked={isEnabled} onCheckedChange={handleSwitchClick} disabled={isArchived} data-testid='channel-status-switch' />
       {dialogOpen && <ChannelsStatusDialog open={dialogOpen} onOpenChange={setDialogOpen} currentRow={channel} />}
-    </>
+    </div>
   );
 });
 
@@ -94,7 +95,7 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
   }, [channel, setCurrentRow, setOpen]);
 
   return (
-    <div className='flex items-center gap-1'>
+    <div className='flex items-center justify-center gap-1'>
       {channelPermissions.canEdit && (
         <Button size='sm' variant='outline' className='h-8 w-8 p-0' onClick={handleEdit}>
           <IconEdit className='h-3 w-3' />
@@ -237,9 +238,11 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
 ActionCell.displayName = 'ActionCell';
 
 const ExpandCell = memo(({ row }: { row: any }) => (
-  <Button variant='ghost' size='sm' className='h-6 w-6 p-0' onClick={() => row.toggleExpanded()}>
-    {row.getIsExpanded() ? <IconChevronDown className='h-4 w-4' /> : <IconChevronRight className='h-4 w-4' />}
-  </Button>
+  <div className='flex justify-center'>
+    <Button variant='ghost' size='sm' className='h-6 w-6 p-0' onClick={() => row.toggleExpanded()}>
+      {row.getIsExpanded() ? <IconChevronDown className='h-4 w-4' /> : <IconChevronRight className='h-4 w-4' />}
+    </Button>
+  </div>
 ));
 
 ExpandCell.displayName = 'ExpandCell';
@@ -251,9 +254,11 @@ const NameCell = memo(({ row }: { row: Row<Channel> }) => {
   const hasError = !!channel.errorMessage;
 
   const content = (
-    <div className='flex max-w-56 items-center gap-2'>
-      {hasError && <IconAlertTriangle className='text-destructive h-4 w-4 shrink-0' />}
-      <div className={cn('truncate font-medium', hasError && 'text-destructive')}>{row.getValue('name')}</div>
+    <div className='flex justify-center'>
+      <div className='flex max-w-56 items-center gap-2'>
+        {hasError && <IconAlertTriangle className='text-destructive h-4 w-4 shrink-0' />}
+        <div className={cn('truncate font-medium', hasError && 'text-destructive')}>{row.getValue('name')}</div>
+      </div>
     </div>
   );
 
@@ -286,12 +291,14 @@ const ProviderCell = memo(({ row }: { row: Row<Channel> }) => {
   const provider = getProvider(type);
   const IconComponent = config.icon;
   return (
-    <Badge variant='outline' className={cn('capitalize', config.color)}>
-      <div className='flex items-center gap-2'>
-        <IconComponent size={16} className='shrink-0' />
-        <span>{t(`channels.providers.${provider}`)}</span>
-      </div>
-    </Badge>
+    <div className='flex justify-center'>
+      <Badge variant='outline' className={cn('capitalize', config.color)}>
+        <div className='flex items-center gap-2'>
+          <IconComponent size={16} className='shrink-0' />
+          <span>{t(`channels.providers.${provider}`)}</span>
+        </div>
+      </Badge>
+    </div>
   );
 });
 
@@ -300,10 +307,14 @@ ProviderCell.displayName = 'ProviderCell';
 const TagsCell = memo(({ row }: { row: Row<Channel> }) => {
   const tags = (row.getValue('tags') as string[]) || [];
   if (tags.length === 0) {
-    return <span className='text-muted-foreground text-xs'>-</span>;
+    return (
+      <div className='flex justify-center'>
+        <span className='text-muted-foreground text-xs'>-</span>
+      </div>
+    );
   }
   return (
-    <div className='flex max-w-48 flex-wrap gap-1'>
+    <div className='flex max-w-48 flex-wrap justify-center gap-1'>
       {tags.slice(0, 2).map((tag) => (
         <Badge key={tag} variant='outline' className='text-xs'>
           {tag}
@@ -324,14 +335,18 @@ const PerformanceCell = memo(({ row }: { row: Row<Channel> }) => {
   const { t } = useTranslation();
   const performance = row.getValue('channelPerformance') as any;
   if (!performance) {
-    return <span className='text-muted-foreground text-xs'>-</span>;
+    return (
+      <div className='flex justify-center'>
+        <span className='text-muted-foreground text-xs'>-</span>
+      </div>
+    );
   }
 
   const avgLatency = performance.avgStreamFirstTokenLatencyMs || performance.avgLatencyMs || 0;
   const avgTokensPerSec = performance.avgStreamTokenPerSecond || performance.avgTokenPerSecond || 0;
 
   return (
-    <div className='space-y-1'>
+    <div className='flex flex-col items-center space-y-1'>
       <Tooltip>
         <TooltipTrigger asChild>
           <div className='cursor-help text-xs'>
@@ -372,8 +387,8 @@ const SupportedModelsCell = memo(({ row }: { row: Row<Channel> }) => {
   }, [channel, setCurrentRow, setOpen]);
 
   return (
-    <div className='flex items-center gap-2'>
-      <div className='flex flex-wrap gap-1 overflow-hidden'>
+    <div className='flex items-center justify-center gap-2'>
+      <div className='flex flex-wrap justify-center gap-1 overflow-hidden'>
         {models.slice(0, 5).map((model) => (
           <Badge key={model} variant='secondary' className='block max-w-48 truncate text-left text-xs'>
             {model}
@@ -399,9 +414,17 @@ SupportedModelsCell.displayName = 'SupportedModelsCell';
 const OrderingWeightCell = memo(({ row }: { row: Row<Channel> }) => {
   const weight = row.getValue('orderingWeight') as number | null;
   if (weight == null) {
-    return <span className='text-muted-foreground text-xs'>-</span>;
+    return (
+      <div className='flex justify-center'>
+        <span className='text-muted-foreground text-xs'>-</span>
+      </div>
+    );
   }
-  return <span className='font-mono text-sm'>{weight}</span>;
+  return (
+    <div className='flex justify-center'>
+      <span className='font-mono text-sm'>{weight}</span>
+    </div>
+  );
 });
 
 OrderingWeightCell.displayName = 'OrderingWeightCell';
@@ -411,16 +434,22 @@ const CreatedAtCell = memo(({ row }: { row: Row<Channel> }) => {
   const date = raw instanceof Date ? raw : new Date(raw as string);
 
   if (Number.isNaN(date.getTime())) {
-    return <span className='text-muted-foreground text-xs'>-</span>;
+    return (
+      <div className='flex justify-center'>
+        <span className='text-muted-foreground text-xs'>-</span>
+      </div>
+    );
   }
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <div className='text-muted-foreground cursor-help text-sm'>{format(date, 'yyyy-MM-dd')}</div>
-      </TooltipTrigger>
-      <TooltipContent>{format(date, 'yyyy-MM-dd HH:mm:ss')}</TooltipContent>
-    </Tooltip>
+    <div className='flex justify-center'>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className='text-muted-foreground cursor-help text-sm'>{format(date, 'yyyy-MM-dd')}</div>
+        </TooltipTrigger>
+        <TooltipContent>{format(date, 'yyyy-MM-dd HH:mm:ss')}</TooltipContent>
+      </Tooltip>
+    </div>
   );
 });
 
@@ -432,7 +461,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       id: 'expand',
       header: () => null,
       meta: {
-        className: 'w-8 min-w-8',
+        className: 'w-8 min-w-8 text-center',
       },
       cell: ExpandCell,
       enableSorting: false,
@@ -443,21 +472,28 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
           {
             id: 'select',
             header: ({ table }: { table: Table<Channel> }) => (
-              <Checkbox
-                checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
-                onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-                aria-label={t('channels.columns.selectAll')}
-                className='translate-y-[2px]'
-              />
+              <div className='flex justify-center'>
+                <Checkbox
+                  checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
+                  onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+                  aria-label={t('channels.columns.selectAll')}
+                  className='translate-y-[2px]'
+                />
+              </div>
             ),
             cell: ({ row }: { row: Row<Channel> }) => (
-              <Checkbox
-                checked={row.getIsSelected()}
-                onCheckedChange={(value) => row.toggleSelected(!!value)}
-                aria-label={t('channels.columns.selectRow')}
-                className='translate-y-[2px]'
-              />
+              <div className='flex justify-center'>
+                <Checkbox
+                  checked={row.getIsSelected()}
+                  onCheckedChange={(value) => row.toggleSelected(!!value)}
+                  aria-label={t('channels.columns.selectRow')}
+                  className='translate-y-[2px]'
+                />
+              </div>
             ),
+            meta: {
+              className: 'text-center',
+            },
             enableSorting: false,
             enableHiding: false,
           },
@@ -465,10 +501,10 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       : []),
     {
       accessorKey: 'name',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.name')} />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.name')} className='justify-center' />,
       cell: NameCell,
       meta: {
-        className: 'md:table-cell min-w-48',
+        className: 'md:table-cell min-w-48 text-center',
       },
       enableHiding: false,
       enableSorting: true,
@@ -476,8 +512,11 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
     {
       id: 'provider',
       accessorKey: 'type',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.provider')} />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.provider')} className='justify-center' />,
       cell: ProviderCell,
+      meta: {
+        className: 'text-center',
+      },
       filterFn: (row, _id, value) => {
         return value.includes(row.original.type);
       },
@@ -486,15 +525,22 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
     },
     {
       accessorKey: 'status',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.status')} />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.status')} className='justify-center' />,
       cell: StatusSwitchCell,
+      meta: {
+        className: 'text-center',
+      },
       enableSorting: true,
       enableHiding: false,
     },
+    
     {
       accessorKey: 'tags',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.tags')} />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.tags')} className='justify-center' />,
       cell: TagsCell,
+      meta: {
+        className: 'text-center',
+      },
       filterFn: (row, id, value) => {
         const tags = (row.getValue(id) as string[]) || [];
         // Single select: value is a string, not an array
@@ -516,18 +562,39 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
     },
     {
       accessorKey: 'channelPerformance',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.channelPerformance')} />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.channelPerformance')} className='justify-center' />,
       cell: PerformanceCell,
+      meta: {
+        className: 'text-center',
+      },
       enableSorting: false,
     },
     {
       accessorKey: 'supportedModels',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.supportedModels')} />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.supportedModels')} className='justify-center' />,
       cell: SupportedModelsCell,
       meta: {
-        className: 'max-w-64',
+        className: 'max-w-64 text-center',
       },
       enableSorting: false,
+    },
+    {
+      id: 'health',
+      accessorKey: 'health',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.health')} className='justify-center' />,
+      cell: ({ row }: { row: Row<Channel> }) => {
+        const probePoints = (row.original as any).probePoints || [];
+        return (
+          <div className='flex justify-center'>
+            <ChannelHealthCell points={probePoints} />
+          </div>
+        );
+      },
+      meta: {
+        className: 'text-center',
+      },
+      enableSorting: false,
+      enableHiding: true,
     },
     {
       accessorKey: 'orderingWeight',
@@ -544,8 +611,11 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
     },
     {
       accessorKey: 'createdAt',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.createdAt')} />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.createdAt')} className='justify-center' />,
       cell: CreatedAtCell,
+      meta: {
+        className: 'text-center',
+      },
       enableSorting: true,
       enableHiding: false,
     },
@@ -553,8 +623,11 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       ? [
           {
             id: 'action',
-            header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.action')} />,
+            header: ({ column }: { column: any }) => <DataTableColumnHeader column={column} title={t('channels.columns.action')} className='justify-center' />,
             cell: ActionCell,
+            meta: {
+              className: 'text-center',
+            },
             enableSorting: false,
             enableHiding: false,
           },

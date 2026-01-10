@@ -9,6 +9,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -192,6 +193,16 @@ func (w *Worker) runCleanup(ctx context.Context) {
 					log.String("resource", option.ResourceType))
 			}
 		}
+	}
+
+	// Always cleanup channel probe data older than 3 days
+	err = w.cleanupChannelProbes(ctx, 3)
+	if err != nil {
+		log.Error(ctx, "Failed to cleanup channel probes",
+			log.Cause(err))
+	} else {
+		log.Info(ctx, "Successfully cleaned up channel probes",
+			log.Int("cleanup_days", 3))
 	}
 
 	log.Info(ctx, "Automatic cleanup process completed")
@@ -467,6 +478,30 @@ func (w *Worker) cleanupTraces(ctx context.Context, cleanupDays int) error {
 	}
 
 	log.Debug(ctx, "Cleaned up traces",
+		log.Int("deleted_count", result),
+		log.Time("cutoff_time", cutoffTime))
+
+	return nil
+}
+
+// cleanupChannelProbes deletes channel probes older than the specified number of days.
+func (w *Worker) cleanupChannelProbes(ctx context.Context, cleanupDays int) error {
+	if cleanupDays <= 0 {
+		log.Debug(ctx, "No cleanup needed for channel probes")
+		return nil
+	}
+
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	cutoffTime := time.Now().AddDate(0, 0, -cleanupDays)
+
+	result, err := w.deleteInBatches(ctx, func() (int, error) {
+		return w.Ent.ChannelProbe.Delete().Where(channelprobe.TimestampLT(cutoffTime.Unix())).Exec(ctx)
+	})
+	if err != nil {
+		return fmt.Errorf("failed to delete old channel probes: %w", err)
+	}
+
+	log.Debug(ctx, "Cleaned up channel probes",
 		log.Int("deleted_count", result),
 		log.Time("cutoff_time", cutoffTime))
 

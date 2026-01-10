@@ -62,6 +62,7 @@ interface DataTableProps {
   onStatusFilterChange: (filters: string[]) => void;
   onTagFilterChange: (filter: string) => void;
   onModelFilterChange: (filter: string) => void;
+  onHealthColumnVisibilityChange?: (visible: boolean) => void;
   canWrite?: boolean;
 }
 
@@ -91,6 +92,7 @@ export function ChannelsTable({
   onStatusFilterChange,
   onTagFilterChange,
   onModelFilterChange,
+  onHealthColumnVisibilityChange,
   canWrite = true,
 }: DataTableProps) {
   const { t } = useTranslation();
@@ -138,7 +140,13 @@ export function ChannelsTable({
   // Save column visibility to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('channels-table-column-visibility', JSON.stringify(columnVisibility));
-  }, [columnVisibility]);
+    
+    // Notify parent about health column visibility changes
+    if (onHealthColumnVisibilityChange) {
+      const isHealthVisible = columnVisibility.health !== false;
+      onHealthColumnVisibilityChange(isHealthVisible);
+    }
+  }, [columnVisibility, onHealthColumnVisibilityChange]);
 
   // Handle column filter changes and sync with server
   const handleColumnFiltersChange = useCallback(

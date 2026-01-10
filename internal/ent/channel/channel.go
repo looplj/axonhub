@@ -59,6 +59,8 @@ const (
 	EdgeUsageLogs = "usage_logs"
 	// EdgeChannelPerformance holds the string denoting the channel_performance edge name in mutations.
 	EdgeChannelPerformance = "channel_performance"
+	// EdgeChannelProbes holds the string denoting the channel_probes edge name in mutations.
+	EdgeChannelProbes = "channel_probes"
 	// Table holds the table name of the channel in the database.
 	Table = "channels"
 	// RequestsTable is the table that holds the requests relation/edge.
@@ -89,6 +91,13 @@ const (
 	ChannelPerformanceInverseTable = "channel_performances"
 	// ChannelPerformanceColumn is the table column denoting the channel_performance relation/edge.
 	ChannelPerformanceColumn = "channel_id"
+	// ChannelProbesTable is the table that holds the channel_probes relation/edge.
+	ChannelProbesTable = "channel_probes"
+	// ChannelProbesInverseTable is the table name for the ChannelProbe entity.
+	// It exists in this package in order to avoid circular dependency with the "channelprobe" package.
+	ChannelProbesInverseTable = "channel_probes"
+	// ChannelProbesColumn is the table column denoting the channel_probes relation/edge.
+	ChannelProbesColumn = "channel_id"
 )
 
 // Columns holds all SQL columns for channel fields.
@@ -353,6 +362,20 @@ func ByChannelPerformanceField(field string, opts ...sql.OrderTermOption) OrderO
 		sqlgraph.OrderByNeighborTerms(s, newChannelPerformanceStep(), sql.OrderByField(field, opts...))
 	}
 }
+
+// ByChannelProbesCount orders the results by channel_probes count.
+func ByChannelProbesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newChannelProbesStep(), opts...)
+	}
+}
+
+// ByChannelProbes orders the results by channel_probes terms.
+func ByChannelProbes(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newChannelProbesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newRequestsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -379,6 +402,13 @@ func newChannelPerformanceStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ChannelPerformanceInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2O, false, ChannelPerformanceTable, ChannelPerformanceColumn),
+	)
+}
+func newChannelProbesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ChannelProbesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ChannelProbesTable, ChannelProbesColumn),
 	)
 }
 

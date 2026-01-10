@@ -8,6 +8,7 @@ schema:
   - system.graphql
   - model.graphql
   - backup.graphql
+  - channel_probe.graphql
 
 
 omit_gqlgen_version_in_file_notice: true
@@ -352,7 +353,31 @@ models:
       - github.com/looplj/axonhub/internal/build.Info
   SystemModelSettings:
     model:
-      - github.com/looplj/axonhub/internal/server/biz.ModelSettings
+      - github.com/looplj/axonhub/internal/server/biz.SystemModelSettings
   UpdateSystemModelSettingsInput:
     model:
-      - github.com/looplj/axonhub/internal/server/biz.ModelSettings
+      - github.com/looplj/axonhub/internal/server/biz.SystemModelSettings
+  SystemChannelSettings:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.SystemChannelSettings
+  UpdateSystemChannelSettingsInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.SystemChannelSettings
+  ChannelProbeSetting:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ChannelProbeSetting
+  UpdateChannelProbeSettingInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ChannelProbeSetting
+  ChannelProbePoint:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ChannelProbePoint
+  ChannelProbeData:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ChannelProbeData
+  GetChannelProbeDataInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.GetChannelProbeDataInput
+  ProbeFrequency:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ProbeFrequency

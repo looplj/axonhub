@@ -20,6 +20,8 @@ type Tx struct {
 	ChannelOverrideTemplate *ChannelOverrideTemplateClient
 	// ChannelPerformance is the client for interacting with the ChannelPerformance builders.
 	ChannelPerformance *ChannelPerformanceClient
+	// ChannelProbe is the client for interacting with the ChannelProbe builders.
+	ChannelProbe *ChannelProbeClient
 	// DataStorage is the client for interacting with the DataStorage builders.
 	DataStorage *DataStorageClient
 	// Model is the client for interacting with the Model builders.
@@ -181,6 +183,7 @@ func (tx *Tx) init() {
 	tx.Channel = NewChannelClient(tx.config)
 	tx.ChannelOverrideTemplate = NewChannelOverrideTemplateClient(tx.config)
 	tx.ChannelPerformance = NewChannelPerformanceClient(tx.config)
+	tx.ChannelProbe = NewChannelProbeClient(tx.config)
 	tx.DataStorage = NewDataStorageClient(tx.config)
 	tx.Model = NewModelClient(tx.config)
 	tx.Project = NewProjectClient(tx.config)

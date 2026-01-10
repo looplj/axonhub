@@ -8,6 +8,7 @@ type ChannelsDialogType =
   | 'edit'
   | 'delete'
   | 'settings'
+  | 'channelSettings'
   | 'modelMapping'
   | 'overrides'
   | 'proxy'

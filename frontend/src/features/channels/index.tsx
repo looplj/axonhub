@@ -12,7 +12,7 @@ import { ChannelsPrimaryButtons } from './components/channels-primary-buttons';
 import { ChannelsTable } from './components/channels-table';
 import { ChannelsTypeTabs } from './components/channels-type-tabs';
 import ChannelsProvider from './context/channels-context';
-import { useQueryChannels, useChannelTypes, useErrorChannelsCount } from './data/channels';
+import { useQueryChannels, useChannelTypes, useErrorChannelsCount, useChannelProbeData } from './data/channels';
 
 const ChannelsDialogs = lazy(() => import('./components/channels-dialogs').then((m) => ({ default: m.ChannelsDialogs })));
 
@@ -40,6 +40,18 @@ function ChannelsContent() {
       }
     }
     return [{ id: 'createdAt', desc: true }];
+  });
+  const [isHealthColumnVisible, setIsHealthColumnVisible] = useState<boolean>(() => {
+    const stored = localStorage.getItem('channels-table-column-visibility');
+    if (stored) {
+      try {
+        const visibility = JSON.parse(stored);
+        return visibility.health !== false;
+      } catch {
+        return true;
+      }
+    }
+    return true;
   });
 
   useEffect(() => {
@@ -126,6 +138,23 @@ function ChannelsContent() {
     hasTag: tagFilter || undefined,
     model: modelFilter || undefined,
   });
+
+  const channelIDs = useMemo(() => {
+    return data?.edges?.map((edge) => edge.node.id) || [];
+  }, [data?.edges]);
+
+  const { data: probeData } = useChannelProbeData(channelIDs, { enabled: isHealthColumnVisible });
+
+  const channelsWithProbeData = useMemo(() => {
+    if (!data?.edges) return [];
+    
+    const probeMap = new Map(probeData?.map((probe) => [probe.channelID, probe.points]) || []);
+    
+    return data.edges.map((edge) => ({
+      ...edge.node,
+      probePoints: probeMap.get(edge.node.id) || [],
+    }));
+  }, [data?.edges, probeData]);
 
   const handleNextPage = useCallback(() => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
@@ -218,7 +247,7 @@ function ChannelsContent() {
       <ChannelsTypeTabs typeCounts={channelTypeCounts} selectedTab={selectedTypeTab} onTabChange={handleTabChange} />
       <ChannelsTable
         loading={isLoading}
-        data={data?.edges?.map((edge) => edge.node) || []}
+        data={channelsWithProbeData}
         columns={columns}
         pageInfo={data?.pageInfo}
         pageSize={pageSize}
@@ -242,6 +271,7 @@ function ChannelsContent() {
         onStatusFilterChange={handleStatusFilterChange}
         onTagFilterChange={handleTagFilterChange}
         onModelFilterChange={handleModelFilterChange}
+        onHealthColumnVisibilityChange={setIsHealthColumnVisible}
         canWrite={channelPermissions.canWrite}
       />
     </div>

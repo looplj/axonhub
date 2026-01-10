@@ -17,11 +17,14 @@ import { ChannelsStatusDialog } from './channels-status-dialog';
 import { ChannelsTestDialog } from './channels-test-dialog';
 import { ChannelsTransformOptionsDialog } from './channels-transform-options-dialog';
 import { ChannelsWeightDialog } from './channels-weight-dialog';
+import { ChannelsSystemSettingsDialog } from './channels-system-settings-dialog';
 
 export function ChannelsDialogs() {
   const { open, setOpen, currentRow, setCurrentRow, selectedChannels } = useChannels();
   return (
     <>
+      <ChannelsSystemSettingsDialog />
+
       <ChannelsActionDialog key='channel-add' open={open === 'add'} onOpenChange={(isOpen) => setOpen(isOpen ? 'add' : null)} />
 
       <ChannelsBulkArchiveDialog />

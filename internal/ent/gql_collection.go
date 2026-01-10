@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
+	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
@@ -586,6 +587,19 @@ func (_q *ChannelQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				return err
 			}
 			_q.withChannelPerformance = query
+
+		case "channelProbes":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&ChannelProbeClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, false, opCtx, field, path, mayAddCondition(satisfies, channelprobeImplementors)...); err != nil {
+				return err
+			}
+			_q.WithNamedChannelProbes(alias, func(wq *ChannelProbeQuery) {
+				*wq = *query
+			})
 		case "createdAt":
 			if _, ok := fieldSeen[channel.FieldCreatedAt]; !ok {
 				selectedFields = append(selectedFields, channel.FieldCreatedAt)
@@ -1073,6 +1087,103 @@ func newChannelPerformancePaginateArgs(rv map[string]any) *channelperformancePag
 	}
 	if v, ok := rv[whereField].(*ChannelPerformanceWhereInput); ok {
 		args.opts = append(args.opts, WithChannelPerformanceFilter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *ChannelProbeQuery) CollectFields(ctx context.Context, satisfies ...string) (*ChannelProbeQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *ChannelProbeQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(channelprobe.Columns))
+		selectedFields = []string{channelprobe.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "channel":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&ChannelClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, channelImplementors)...); err != nil {
+				return err
+			}
+			_q.withChannel = query
+			if _, ok := fieldSeen[channelprobe.FieldChannelID]; !ok {
+				selectedFields = append(selectedFields, channelprobe.FieldChannelID)
+				fieldSeen[channelprobe.FieldChannelID] = struct{}{}
+			}
+		case "channelID":
+			if _, ok := fieldSeen[channelprobe.FieldChannelID]; !ok {
+				selectedFields = append(selectedFields, channelprobe.FieldChannelID)
+				fieldSeen[channelprobe.FieldChannelID] = struct{}{}
+			}
+		case "totalRequestCount":
+			if _, ok := fieldSeen[channelprobe.FieldTotalRequestCount]; !ok {
+				selectedFields = append(selectedFields, channelprobe.FieldTotalRequestCount)
+				fieldSeen[channelprobe.FieldTotalRequestCount] = struct{}{}
+			}
+		case "successRequestCount":
+			if _, ok := fieldSeen[channelprobe.FieldSuccessRequestCount]; !ok {
+				selectedFields = append(selectedFields, channelprobe.FieldSuccessRequestCount)
+				fieldSeen[channelprobe.FieldSuccessRequestCount] = struct{}{}
+			}
+		case "timestamp":
+			if _, ok := fieldSeen[channelprobe.FieldTimestamp]; !ok {
+				selectedFields = append(selectedFields, channelprobe.FieldTimestamp)
+				fieldSeen[channelprobe.FieldTimestamp] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type channelprobePaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []ChannelProbePaginateOption
+}
+
+func newChannelProbePaginateArgs(rv map[string]any) *channelprobePaginateArgs {
+	args := &channelprobePaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[whereField].(*ChannelProbeWhereInput); ok {
+		args.opts = append(args.opts, WithChannelProbeFilter(v.Filter))
 	}
 	return args
 }

@@ -95,6 +95,20 @@ export const channelPerformanceSchema = z.object({
 });
 export type ChannelPerformance = z.infer<typeof channelPerformanceSchema>;
 
+// Channel Probe
+export const channelProbePointSchema = z.object({
+  timestamp: z.number(),
+  totalRequestCount: z.number(),
+  successRequestCount: z.number(),
+});
+export type ChannelProbePoint = z.infer<typeof channelProbePointSchema>;
+
+export const channelProbeDataSchema = z.object({
+  channelID: z.string(),
+  points: z.array(channelProbePointSchema),
+});
+export type ChannelProbeData = z.infer<typeof channelProbeDataSchema>;
+
 // Channel Settings
 export const channelSettingsSchema = z.object({
   extraModelPrefix: z.string().optional(),

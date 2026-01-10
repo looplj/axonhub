@@ -15,6 +15,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
+	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -32,11 +33,13 @@ type ChannelQuery struct {
 	withExecutions         *RequestExecutionQuery
 	withUsageLogs          *UsageLogQuery
 	withChannelPerformance *ChannelPerformanceQuery
+	withChannelProbes      *ChannelProbeQuery
 	loadTotal              []func(context.Context, []*Channel) error
 	modifiers              []func(*sql.Selector)
 	withNamedRequests      map[string]*RequestQuery
 	withNamedExecutions    map[string]*RequestExecutionQuery
 	withNamedUsageLogs     map[string]*UsageLogQuery
+	withNamedChannelProbes map[string]*ChannelProbeQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -154,6 +157,28 @@ func (_q *ChannelQuery) QueryChannelPerformance() *ChannelPerformanceQuery {
 			sqlgraph.From(channel.Table, channel.FieldID, selector),
 			sqlgraph.To(channelperformance.Table, channelperformance.FieldID),
 			sqlgraph.Edge(sqlgraph.O2O, false, channel.ChannelPerformanceTable, channel.ChannelPerformanceColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryChannelProbes chains the current query on the "channel_probes" edge.
+func (_q *ChannelQuery) QueryChannelProbes() *ChannelProbeQuery {
+	query := (&ChannelProbeClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(channel.Table, channel.FieldID, selector),
+			sqlgraph.To(channelprobe.Table, channelprobe.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, channel.ChannelProbesTable, channel.ChannelProbesColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -357,6 +382,7 @@ func (_q *ChannelQuery) Clone() *ChannelQuery {
 		withExecutions:         _q.withExecutions.Clone(),
 		withUsageLogs:          _q.withUsageLogs.Clone(),
 		withChannelPerformance: _q.withChannelPerformance.Clone(),
+		withChannelProbes:      _q.withChannelProbes.Clone(),
 		// clone intermediate query.
 		sql:       _q.sql.Clone(),
 		path:      _q.path,
@@ -405,6 +431,17 @@ func (_q *ChannelQuery) WithChannelPerformance(opts ...func(*ChannelPerformanceQ
 		opt(query)
 	}
 	_q.withChannelPerformance = query
+	return _q
+}
+
+// WithChannelProbes tells the query-builder to eager-load the nodes that are connected to
+// the "channel_probes" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ChannelQuery) WithChannelProbes(opts ...func(*ChannelProbeQuery)) *ChannelQuery {
+	query := (&ChannelProbeClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withChannelProbes = query
 	return _q
 }
 
@@ -492,11 +529,12 @@ func (_q *ChannelQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Chan
 	var (
 		nodes       = []*Channel{}
 		_spec       = _q.querySpec()
-		loadedTypes = [4]bool{
+		loadedTypes = [5]bool{
 			_q.withRequests != nil,
 			_q.withExecutions != nil,
 			_q.withUsageLogs != nil,
 			_q.withChannelPerformance != nil,
+			_q.withChannelProbes != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -547,6 +585,13 @@ func (_q *ChannelQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Chan
 			return nil, err
 		}
 	}
+	if query := _q.withChannelProbes; query != nil {
+		if err := _q.loadChannelProbes(ctx, query, nodes,
+			func(n *Channel) { n.Edges.ChannelProbes = []*ChannelProbe{} },
+			func(n *Channel, e *ChannelProbe) { n.Edges.ChannelProbes = append(n.Edges.ChannelProbes, e) }); err != nil {
+			return nil, err
+		}
+	}
 	for name, query := range _q.withNamedRequests {
 		if err := _q.loadRequests(ctx, query, nodes,
 			func(n *Channel) { n.appendNamedRequests(name) },
@@ -565,6 +610,13 @@ func (_q *ChannelQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Chan
 		if err := _q.loadUsageLogs(ctx, query, nodes,
 			func(n *Channel) { n.appendNamedUsageLogs(name) },
 			func(n *Channel, e *UsageLog) { n.appendNamedUsageLogs(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedChannelProbes {
+		if err := _q.loadChannelProbes(ctx, query, nodes,
+			func(n *Channel) { n.appendNamedChannelProbes(name) },
+			func(n *Channel, e *ChannelProbe) { n.appendNamedChannelProbes(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -678,6 +730,36 @@ func (_q *ChannelQuery) loadChannelPerformance(ctx context.Context, query *Chann
 	}
 	query.Where(predicate.ChannelPerformance(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(channel.ChannelPerformanceColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.ChannelID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "channel_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *ChannelQuery) loadChannelProbes(ctx context.Context, query *ChannelProbeQuery, nodes []*Channel, init func(*Channel), assign func(*Channel, *ChannelProbe)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Channel)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(channelprobe.FieldChannelID)
+	}
+	query.Where(predicate.ChannelProbe(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(channel.ChannelProbesColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {
@@ -826,6 +908,20 @@ func (_q *ChannelQuery) WithNamedUsageLogs(name string, opts ...func(*UsageLogQu
 		_q.withNamedUsageLogs = make(map[string]*UsageLogQuery)
 	}
 	_q.withNamedUsageLogs[name] = query
+	return _q
+}
+
+// WithNamedChannelProbes tells the query-builder to eager-load the nodes that are connected to the "channel_probes"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *ChannelQuery) WithNamedChannelProbes(name string, opts ...func(*ChannelProbeQuery)) *ChannelQuery {
+	query := (&ChannelProbeClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedChannelProbes == nil {
+		_q.withNamedChannelProbes = make(map[string]*ChannelProbeQuery)
+	}
+	_q.withNamedChannelProbes[name] = query
 	return _q
 }
 

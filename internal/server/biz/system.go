@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -62,8 +63,12 @@ const (
 	SystemKeyOnboarded = "system_onboarded"
 
 	// SystemKeyModelSettings is the key used to store model-related settings.
-	// The value is JSON-encoded ModelSettings struct.
+	// The value is JSON-encoded SystemModelSettings struct.
 	SystemKeyModelSettings = "system_model_settings"
+
+	// SystemKeyChannelSettings is the key used to store channel settings.
+	// The value is JSON-encoded SystemChannelSettings struct.
+	SystemKeyChannelSettings = "system_channel_settings"
 )
 
 // StoragePolicy represents the storage policy configuration.
@@ -115,8 +120,8 @@ type AutoDisableChannelStatus struct {
 	Times int `json:"times"`
 }
 
-// ModelSettings represents model-related configuration settings.
-type ModelSettings struct {
+// SystemModelSettings represents model-related configuration settings.
+type SystemModelSettings struct {
 	// FallbackToChannelsOnModelNotFound controls whether to fall back to legacy channel
 	// selection when the requested model is not found in AxonHub Model associations.
 	// When true, if a model has no associations or doesn't exist, the system will
@@ -129,6 +134,120 @@ type ModelSettings struct {
 	// When true, the models API will return all models supported by enabled channels.
 	// When false, only models that have explicit Model entity configuration will be returned.
 	QueryAllChannelModels bool `json:"query_all_channel_models"`
+}
+
+type SystemChannelSettings struct {
+	Probe ChannelProbeSetting `json:"probe"`
+}
+
+// ProbeFrequency represents the frequency of channel probing.
+type ProbeFrequency string
+
+const (
+	ProbeFrequency1Min  ProbeFrequency = "1m"
+	ProbeFrequency5Min  ProbeFrequency = "5m"
+	ProbeFrequency30Min ProbeFrequency = "30m"
+	ProbeFrequency1Hour ProbeFrequency = "1h"
+)
+
+// ChannelProbeSetting represents the channel probe configuration.
+type ChannelProbeSetting struct {
+	// Enabled controls whether channel probing is active
+	Enabled bool `json:"enabled"`
+	// Frequency defines how often to probe channels
+	Frequency ProbeFrequency `json:"frequency"`
+}
+
+// GetQueryRangeMinutes returns the query range in minutes based on the probe frequency.
+// 1m -> 10min, 5m -> 60min, 30m -> 720min (12h), 1h -> 1440min (24h).
+func (c *ChannelProbeSetting) GetQueryRangeMinutes() int {
+	switch c.Frequency {
+	case ProbeFrequency1Min:
+		return 10
+	case ProbeFrequency5Min:
+		return 60
+	case ProbeFrequency30Min:
+		return 720
+	case ProbeFrequency1Hour:
+		return 1440
+	default:
+		return 10
+	}
+}
+
+// GetIntervalMinutes returns the interval in minutes based on the probe frequency.
+func (c *ChannelProbeSetting) GetIntervalMinutes() int {
+	switch c.Frequency {
+	case ProbeFrequency1Min:
+		return 1
+	case ProbeFrequency5Min:
+		return 5
+	case ProbeFrequency30Min:
+		return 30
+	case ProbeFrequency1Hour:
+		return 60
+	default:
+		return 1
+	}
+}
+
+// GetCronExpr returns the cron expression based on the probe frequency.
+func (c *ChannelProbeSetting) GetCronExpr() string {
+	switch c.Frequency {
+	case ProbeFrequency1Min:
+		return "* * * * *"
+	case ProbeFrequency5Min:
+		return "*/5 * * * *"
+	case ProbeFrequency30Min:
+		return "*/30 * * * *"
+	case ProbeFrequency1Hour:
+		return "0 * * * *"
+	default:
+		return "* * * * *"
+	}
+}
+
+// MarshalGQL implements the graphql.Marshaler interface for ProbeFrequency.
+func (p ProbeFrequency) MarshalGQL(w io.Writer) {
+	var s string
+
+	switch p {
+	case ProbeFrequency1Min:
+		s = "ONE_MINUTE"
+	case ProbeFrequency5Min:
+		s = "FIVE_MINUTES"
+	case ProbeFrequency30Min:
+		s = "THIRTY_MINUTES"
+	case ProbeFrequency1Hour:
+		s = "ONE_HOUR"
+	default:
+		s = "ONE_MINUTE"
+	}
+
+	_, _ = io.WriteString(w, `"`+s+`"`)
+}
+
+// UnmarshalGQL implements the graphql.Unmarshaler interface for ProbeFrequency.
+func (p *ProbeFrequency) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("ProbeFrequency must be a string")
+	}
+
+	switch str {
+	case "ONE_MINUTE":
+		*p = ProbeFrequency1Min
+	case "FIVE_MINUTES":
+		*p = ProbeFrequency5Min
+	case "THIRTY_MINUTES":
+		*p = ProbeFrequency30Min
+	case "ONE_HOUR":
+		*p = ProbeFrequency1Hour
+	default:
+		return fmt.Errorf("invalid ProbeFrequency: %s", str)
+	}
+
+	return nil
 }
 
 // OnboardingRecord represents the onboarding status and version information.
@@ -457,9 +576,16 @@ var defaultRetryPolicy = RetryPolicy{
 	Enabled:                 true,
 }
 
-var defaultModelSettings = ModelSettings{
+var defaultModelSettings = SystemModelSettings{
 	FallbackToChannelsOnModelNotFound: true,
 	QueryAllChannelModels:             true,
+}
+
+var defaultChannelSetting = SystemChannelSettings{
+	Probe: ChannelProbeSetting{
+		Enabled:   true,
+		Frequency: ProbeFrequency5Min,
+	},
 }
 
 // StoragePolicy retrieves the storage policy configuration.
@@ -559,7 +685,7 @@ func (s *SystemService) SetRetryPolicy(ctx context.Context, policy *RetryPolicy)
 }
 
 // ModelSettings retrieves the model settings configuration.
-func (s *SystemService) ModelSettings(ctx context.Context) (*ModelSettings, error) {
+func (s *SystemService) ModelSettings(ctx context.Context) (*SystemModelSettings, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	value, err := s.getSystemValue(ctx, SystemKeyModelSettings)
@@ -571,7 +697,7 @@ func (s *SystemService) ModelSettings(ctx context.Context) (*ModelSettings, erro
 		return nil, fmt.Errorf("failed to get model settings: %w", err)
 	}
 
-	var settings ModelSettings
+	var settings SystemModelSettings
 	if err := json.Unmarshal([]byte(value), &settings); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal model settings: %w", err)
 	}
@@ -580,7 +706,7 @@ func (s *SystemService) ModelSettings(ctx context.Context) (*ModelSettings, erro
 }
 
 // ModelSettingsOrDefault retrieves the model settings or returns the default if not available.
-func (s *SystemService) ModelSettingsOrDefault(ctx context.Context) *ModelSettings {
+func (s *SystemService) ModelSettingsOrDefault(ctx context.Context) *SystemModelSettings {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	settings, err := s.ModelSettings(ctx)
@@ -598,13 +724,62 @@ func (s *SystemService) ModelSettingsOrDefault(ctx context.Context) *ModelSettin
 }
 
 // SetModelSettings sets the model settings configuration.
-func (s *SystemService) SetModelSettings(ctx context.Context, settings ModelSettings) error {
+func (s *SystemService) SetModelSettings(ctx context.Context, settings SystemModelSettings) error {
 	jsonBytes, err := json.Marshal(settings)
 	if err != nil {
 		return fmt.Errorf("failed to marshal model settings: %w", err)
 	}
 
 	return s.setSystemValue(ctx, SystemKeyModelSettings, string(jsonBytes))
+}
+
+// ChannelSetting retrieves the channel setting configuration.
+func (s *SystemService) ChannelSetting(ctx context.Context) (*SystemChannelSettings, error) {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	value, err := s.getSystemValue(ctx, SystemKeyChannelSettings)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return lo.ToPtr(defaultChannelSetting), nil
+		}
+
+		return nil, fmt.Errorf("failed to get channel setting: %w", err)
+	}
+
+	var setting SystemChannelSettings
+	if err := json.Unmarshal([]byte(value), &setting); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal channel setting: %w", err)
+	}
+
+	return &setting, nil
+}
+
+// ChannelSettingOrDefault retrieves the channel setting or returns the default if not available.
+func (s *SystemService) ChannelSettingOrDefault(ctx context.Context) *SystemChannelSettings {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	setting, err := s.ChannelSetting(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return lo.ToPtr(defaultChannelSetting)
+		}
+
+		log.Warn(ctx, "failed to get channel setting", log.Cause(err))
+
+		return lo.ToPtr(defaultChannelSetting)
+	}
+
+	return setting
+}
+
+// SetChannelSetting sets the channel setting configuration.
+func (s *SystemService) SetChannelSetting(ctx context.Context, setting SystemChannelSettings) error {
+	jsonBytes, err := json.Marshal(setting)
+	if err != nil {
+		return fmt.Errorf("failed to marshal channel setting: %w", err)
+	}
+
+	return s.setSystemValue(ctx, SystemKeyChannelSettings, string(jsonBytes))
 }
 
 // DefaultDataStorageID retrieves the default data storage ID from system settings.

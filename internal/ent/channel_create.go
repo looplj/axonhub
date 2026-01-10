@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
+	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
@@ -257,6 +258,21 @@ func (_c *ChannelCreate) SetNillableChannelPerformanceID(id *int) *ChannelCreate
 // SetChannelPerformance sets the "channel_performance" edge to the ChannelPerformance entity.
 func (_c *ChannelCreate) SetChannelPerformance(v *ChannelPerformance) *ChannelCreate {
 	return _c.SetChannelPerformanceID(v.ID)
+}
+
+// AddChannelProbeIDs adds the "channel_probes" edge to the ChannelProbe entity by IDs.
+func (_c *ChannelCreate) AddChannelProbeIDs(ids ...int) *ChannelCreate {
+	_c.mutation.AddChannelProbeIDs(ids...)
+	return _c
+}
+
+// AddChannelProbes adds the "channel_probes" edges to the ChannelProbe entity.
+func (_c *ChannelCreate) AddChannelProbes(v ...*ChannelProbe) *ChannelCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddChannelProbeIDs(ids...)
 }
 
 // Mutation returns the ChannelMutation object of the builder.
@@ -534,6 +550,22 @@ func (_c *ChannelCreate) createSpec() (*Channel, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(channelperformance.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ChannelProbesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ChannelProbesTable,
+			Columns: []string{channel.ChannelProbesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channelprobe.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

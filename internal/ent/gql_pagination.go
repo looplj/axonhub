@@ -18,6 +18,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
+	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
@@ -1437,6 +1438,255 @@ func (_m *ChannelPerformance) ToEdge(order *ChannelPerformanceOrder) *ChannelPer
 		order = DefaultChannelPerformanceOrder
 	}
 	return &ChannelPerformanceEdge{
+		Node:   _m,
+		Cursor: order.Field.toCursor(_m),
+	}
+}
+
+// ChannelProbeEdge is the edge representation of ChannelProbe.
+type ChannelProbeEdge struct {
+	Node   *ChannelProbe `json:"node"`
+	Cursor Cursor        `json:"cursor"`
+}
+
+// ChannelProbeConnection is the connection containing edges to ChannelProbe.
+type ChannelProbeConnection struct {
+	Edges      []*ChannelProbeEdge `json:"edges"`
+	PageInfo   PageInfo            `json:"pageInfo"`
+	TotalCount int                 `json:"totalCount"`
+}
+
+func (c *ChannelProbeConnection) build(nodes []*ChannelProbe, pager *channelprobePager, after *Cursor, first *int, before *Cursor, last *int) {
+	c.PageInfo.HasNextPage = before != nil
+	c.PageInfo.HasPreviousPage = after != nil
+	if first != nil && *first+1 == len(nodes) {
+		c.PageInfo.HasNextPage = true
+		nodes = nodes[:len(nodes)-1]
+	} else if last != nil && *last+1 == len(nodes) {
+		c.PageInfo.HasPreviousPage = true
+		nodes = nodes[:len(nodes)-1]
+	}
+	var nodeAt func(int) *ChannelProbe
+	if last != nil {
+		n := len(nodes) - 1
+		nodeAt = func(i int) *ChannelProbe {
+			return nodes[n-i]
+		}
+	} else {
+		nodeAt = func(i int) *ChannelProbe {
+			return nodes[i]
+		}
+	}
+	c.Edges = make([]*ChannelProbeEdge, len(nodes))
+	for i := range nodes {
+		node := nodeAt(i)
+		c.Edges[i] = &ChannelProbeEdge{
+			Node:   node,
+			Cursor: pager.toCursor(node),
+		}
+	}
+	if l := len(c.Edges); l > 0 {
+		c.PageInfo.StartCursor = &c.Edges[0].Cursor
+		c.PageInfo.EndCursor = &c.Edges[l-1].Cursor
+	}
+	if c.TotalCount == 0 {
+		c.TotalCount = len(nodes)
+	}
+}
+
+// ChannelProbePaginateOption enables pagination customization.
+type ChannelProbePaginateOption func(*channelprobePager) error
+
+// WithChannelProbeOrder configures pagination ordering.
+func WithChannelProbeOrder(order *ChannelProbeOrder) ChannelProbePaginateOption {
+	if order == nil {
+		order = DefaultChannelProbeOrder
+	}
+	o := *order
+	return func(pager *channelprobePager) error {
+		if err := o.Direction.Validate(); err != nil {
+			return err
+		}
+		if o.Field == nil {
+			o.Field = DefaultChannelProbeOrder.Field
+		}
+		pager.order = &o
+		return nil
+	}
+}
+
+// WithChannelProbeFilter configures pagination filter.
+func WithChannelProbeFilter(filter func(*ChannelProbeQuery) (*ChannelProbeQuery, error)) ChannelProbePaginateOption {
+	return func(pager *channelprobePager) error {
+		if filter == nil {
+			return errors.New("ChannelProbeQuery filter cannot be nil")
+		}
+		pager.filter = filter
+		return nil
+	}
+}
+
+type channelprobePager struct {
+	reverse bool
+	order   *ChannelProbeOrder
+	filter  func(*ChannelProbeQuery) (*ChannelProbeQuery, error)
+}
+
+func newChannelProbePager(opts []ChannelProbePaginateOption, reverse bool) (*channelprobePager, error) {
+	pager := &channelprobePager{reverse: reverse}
+	for _, opt := range opts {
+		if err := opt(pager); err != nil {
+			return nil, err
+		}
+	}
+	if pager.order == nil {
+		pager.order = DefaultChannelProbeOrder
+	}
+	return pager, nil
+}
+
+func (p *channelprobePager) applyFilter(query *ChannelProbeQuery) (*ChannelProbeQuery, error) {
+	if p.filter != nil {
+		return p.filter(query)
+	}
+	return query, nil
+}
+
+func (p *channelprobePager) toCursor(_m *ChannelProbe) Cursor {
+	return p.order.Field.toCursor(_m)
+}
+
+func (p *channelprobePager) applyCursors(query *ChannelProbeQuery, after, before *Cursor) (*ChannelProbeQuery, error) {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	for _, predicate := range entgql.CursorsPredicate(after, before, DefaultChannelProbeOrder.Field.column, p.order.Field.column, direction) {
+		query = query.Where(predicate)
+	}
+	return query, nil
+}
+
+func (p *channelprobePager) applyOrder(query *ChannelProbeQuery) *ChannelProbeQuery {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	query = query.Order(p.order.Field.toTerm(direction.OrderTermOption()))
+	if p.order.Field != DefaultChannelProbeOrder.Field {
+		query = query.Order(DefaultChannelProbeOrder.Field.toTerm(direction.OrderTermOption()))
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return query
+}
+
+func (p *channelprobePager) orderExpr(query *ChannelProbeQuery) sql.Querier {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return sql.ExprFunc(func(b *sql.Builder) {
+		b.Ident(p.order.Field.column).Pad().WriteString(string(direction))
+		if p.order.Field != DefaultChannelProbeOrder.Field {
+			b.Comma().Ident(DefaultChannelProbeOrder.Field.column).Pad().WriteString(string(direction))
+		}
+	})
+}
+
+// Paginate executes the query and returns a relay based cursor connection to ChannelProbe.
+func (_m *ChannelProbeQuery) Paginate(
+	ctx context.Context, after *Cursor, first *int,
+	before *Cursor, last *int, opts ...ChannelProbePaginateOption,
+) (*ChannelProbeConnection, error) {
+	if err := validateFirstLast(first, last); err != nil {
+		return nil, err
+	}
+	pager, err := newChannelProbePager(opts, last != nil)
+	if err != nil {
+		return nil, err
+	}
+	if _m, err = pager.applyFilter(_m); err != nil {
+		return nil, err
+	}
+	conn := &ChannelProbeConnection{Edges: []*ChannelProbeEdge{}}
+	ignoredEdges := !hasCollectedField(ctx, edgesField)
+	if hasCollectedField(ctx, totalCountField) || hasCollectedField(ctx, pageInfoField) {
+		hasPagination := after != nil || first != nil || before != nil || last != nil
+		if hasPagination || ignoredEdges {
+			c := _m.Clone()
+			c.ctx.Fields = nil
+			if conn.TotalCount, err = c.Count(ctx); err != nil {
+				return nil, err
+			}
+			conn.PageInfo.HasNextPage = first != nil && conn.TotalCount > 0
+			conn.PageInfo.HasPreviousPage = last != nil && conn.TotalCount > 0
+		}
+	}
+	if ignoredEdges || (first != nil && *first == 0) || (last != nil && *last == 0) {
+		return conn, nil
+	}
+	if _m, err = pager.applyCursors(_m, after, before); err != nil {
+		return nil, err
+	}
+	limit := paginateLimit(first, last)
+	if limit != 0 {
+		_m.Limit(limit)
+	}
+	if field := collectedField(ctx, edgesField, nodeField); field != nil {
+		if err := _m.collectField(ctx, limit == 1, graphql.GetOperationContext(ctx), *field, []string{edgesField, nodeField}); err != nil {
+			return nil, err
+		}
+	}
+	_m = pager.applyOrder(_m)
+	nodes, err := _m.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn.build(nodes, pager, after, first, before, last)
+	return conn, nil
+}
+
+// ChannelProbeOrderField defines the ordering field of ChannelProbe.
+type ChannelProbeOrderField struct {
+	// Value extracts the ordering value from the given ChannelProbe.
+	Value    func(*ChannelProbe) (ent.Value, error)
+	column   string // field or computed.
+	toTerm   func(...sql.OrderTermOption) channelprobe.OrderOption
+	toCursor func(*ChannelProbe) Cursor
+}
+
+// ChannelProbeOrder defines the ordering of ChannelProbe.
+type ChannelProbeOrder struct {
+	Direction OrderDirection          `json:"direction"`
+	Field     *ChannelProbeOrderField `json:"field"`
+}
+
+// DefaultChannelProbeOrder is the default ordering of ChannelProbe.
+var DefaultChannelProbeOrder = &ChannelProbeOrder{
+	Direction: entgql.OrderDirectionAsc,
+	Field: &ChannelProbeOrderField{
+		Value: func(_m *ChannelProbe) (ent.Value, error) {
+			return _m.ID, nil
+		},
+		column: channelprobe.FieldID,
+		toTerm: channelprobe.ByID,
+		toCursor: func(_m *ChannelProbe) Cursor {
+			return Cursor{ID: _m.ID}
+		},
+	},
+}
+
+// ToEdge converts ChannelProbe into ChannelProbeEdge.
+func (_m *ChannelProbe) ToEdge(order *ChannelProbeOrder) *ChannelProbeEdge {
+	if order == nil {
+		order = DefaultChannelProbeOrder
+	}
+	return &ChannelProbeEdge{
 		Node:   _m,
 		Cursor: order.Field.toCursor(_m),
 	}
