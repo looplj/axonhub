@@ -212,7 +212,9 @@
         "testingModel": "Testing...",
         "testSuccess": "✅ Success",
         "testFailed": "❌ Failed",
-        "notStarted": "Not started"
+        "notStarted": "Not started",
+        "removeFailed": "Remove Failed",
+        "removeFailedConfirm": "Are you sure you want to remove all failed models from the selected list?"
       },
       "bulkImport": {
         "title": "Bulk Import Channels",
