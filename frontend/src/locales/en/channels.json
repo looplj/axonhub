@@ -16,6 +16,10 @@
       "provider": "Provider",
       "status": "Status",
       "health": "Health",
+      "healthTooltip": {
+        "probeTime": "Probe Time",
+        "successRate": "Success Rate"
+      },
       "tags": "Tags",
       "baseURL": "Base URL",
       "supportedModels": "Models",

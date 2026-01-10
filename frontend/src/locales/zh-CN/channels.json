@@ -17,6 +17,10 @@
       "provider": "服务商",
       "status": "状态",
       "health": "健康状态",
+      "healthTooltip": {
+        "probeTime": "探测时间",
+        "successRate": "成功率"
+      },
       "tags": "标签",
       "baseURL": "Base URL",
       "supportedModels": "支持的模型",
