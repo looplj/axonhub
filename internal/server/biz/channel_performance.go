@@ -411,14 +411,16 @@ func (svc *ChannelService) RecordMetrics(ctx context.Context, channelID int, met
 		return
 	}
 
-	log.Debug(ctx, "Recorded channel performance metrics",
-		log.Int("channel_id", channelID),
-		log.Int("success_rate", int(successRate)),
-		log.Int("avg_latency_ms", int(avgLatencyMs)),
-		log.Int("avg_token_per_second", int(avgTokensPerSecond)),
-		log.Int("avg_stream_first_token_ms", int(avgFirstTokenLatencyMs)),
-		log.Float64("avg_stream_token_per_second", avgStreamTokensPerSecond),
-	)
+	if log.DebugEnabled(ctx) {
+		log.Debug(ctx, "Recorded channel performance metrics",
+			log.Int("channel_id", channelID),
+			log.Int("success_rate", int(successRate)),
+			log.Int("avg_latency_ms", int(avgLatencyMs)),
+			log.Int("avg_token_per_second", int(avgTokensPerSecond)),
+			log.Int("avg_stream_first_token_ms", int(avgFirstTokenLatencyMs)),
+			log.Float64("avg_stream_token_per_second", avgStreamTokensPerSecond),
+		)
+	}
 }
 
 func (svc *ChannelService) markChannelUnavailable(ctx context.Context, channelID int, errorStatusCode int) {
@@ -695,11 +697,14 @@ func (svc *ChannelService) IncrementChannelSelection(channelID int) {
 		cm.aggregatedMetrics.LastSuccessAt = &now
 	}
 
-	log.Debug(context.Background(), "IncrementChannelSelection: incremented request count",
-		log.Int("channel_id", channelID),
-		log.Int64("old_count", oldCount),
-		log.Int64("new_count", cm.aggregatedMetrics.RequestCount),
-	)
+	// Log debug message if enabled
+	if log.DebugEnabled(context.Background()) {
+		log.Debug(context.Background(), "IncrementChannelSelection: incremented request count",
+			log.Int("channel_id", channelID),
+			log.Int64("old_count", oldCount),
+			log.Int64("new_count", cm.aggregatedMetrics.RequestCount),
+		)
+	}
 }
 
 func deriveErrorMessage(errorCode int) string {
