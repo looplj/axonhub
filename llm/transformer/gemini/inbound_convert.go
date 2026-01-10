@@ -147,37 +147,29 @@ func convertGeminiToLLMRequest(geminiReq *GenerateContentRequest) (*llm.Request,
 			// Handle function declarations
 			if tool.FunctionDeclarations != nil {
 				for _, fd := range tool.FunctionDeclarations {
+					// The gemini sdk use UPPER case for type, but the unified format use lower case.
+					transform := func(schema json.RawMessage) json.RawMessage {
+						if schema == nil {
+							return nil
+						}
+						transformed, err := xjson.Transform(schema, func(s *jsonschema.Schema) {
+							s.Type = strings.ToLower(s.Type)
+						})
+						if err != nil {
+							return schema // fallback to original on error
+						}
+						return transformed
+					}
+
 					// Determine which format was used and preserve it
 					var parameters, parametersJsonSchema json.RawMessage
 
 					if fd.Parameters != nil {
-						// Old format: use Parameters field
-						parameters = fd.Parameters
+						// Old format
+						parameters = transform(fd.Parameters)
 					} else if fd.ParametersJsonSchema != nil {
-						// New format: use ParametersJsonSchema field
-						parametersJsonSchema = fd.ParametersJsonSchema
-					}
-
-					// Choose the one that's present for type transformation
-					schemaToTransform := parameters
-					if schemaToTransform == nil {
-						schemaToTransform = parametersJsonSchema
-					}
-
-					// The gemini sdk use UPPER case for type, but the unified format use lower case.
-					transformed, err := xjson.Transform(schemaToTransform, func(s *jsonschema.Schema) {
-						s.Type = strings.ToLower(s.Type)
-					})
-					if err != nil {
-						// If transform failed, keep original
-						transformed = schemaToTransform
-					}
-
-					// Update the appropriate field with the transformed schema
-					if parameters != nil {
-						parameters = transformed
-					} else {
-						parametersJsonSchema = transformed
+						// New format
+						parametersJsonSchema = transform(fd.ParametersJsonSchema)
 					}
 
 					llmTool := llm.Tool{

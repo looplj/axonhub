@@ -234,22 +234,20 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 
 				// Handle both parameter formats
 				// Priority: if ParametersJsonSchema is present, use it; otherwise use Parameters
+				cleanSchema := func(schema json.RawMessage) json.RawMessage {
+					cleaned, err := xjson.CleanSchema(schema, "$schema", "additionalProperties")
+					if err != nil {
+						return schema // ignore error and use original
+					}
+					return cleaned
+				}
+
 				if tool.Function.ParametersJsonSchema != nil {
 					// New format: supports full JSON Schema including const, enum, etc.
-					params, err := xjson.CleanSchema(tool.Function.ParametersJsonSchema, "$schema", "additionalProperties")
-					if err != nil {
-						// ignore
-						params = tool.Function.ParametersJsonSchema
-					}
-					fd.ParametersJsonSchema = params
+					fd.ParametersJsonSchema = cleanSchema(tool.Function.ParametersJsonSchema)
 				} else if tool.Function.Parameters != nil {
 					// Old format: limited JSON Schema support
-					params, err := xjson.CleanSchema(tool.Function.Parameters, "$schema", "additionalProperties")
-					if err != nil {
-						// ignore
-						params = tool.Function.Parameters
-					}
-					fd.Parameters = params
+					fd.Parameters = cleanSchema(tool.Function.Parameters)
 				}
 
 				functionDeclarations = append(functionDeclarations, fd)
