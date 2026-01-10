@@ -392,7 +392,19 @@ func convertToGeminiUsage(chatUsage *llm.Usage) *UsageMetadata {
 
 	if chatUsage.CompletionTokensDetails != nil {
 		usage.ThoughtsTokenCount = chatUsage.CompletionTokensDetails.ReasoningTokens
-		usage.CandidatesTokenCount = chatUsage.CompletionTokens - usage.ThoughtsTokenCount
+		// IMPORTANT: Token semantics in both formats
+		// - LLM/OpenAI format: completion_tokens does NOT include reasoning_tokens (they are separate)
+		// - Gemini format: candidatesTokenCount does NOT include thoughtsTokenCount (they are separate)
+		//
+		// Therefore, we directly map CompletionTokens to CandidatesTokenCount without any subtraction.
+		//
+		// Example:
+		//   Input (LLM):  completion_tokens=64, reasoning_tokens=253
+		//   Output (Gemini): candidatesTokenCount=64, thoughtsTokenCount=253
+		//
+		// The old code incorrectly subtracted: candidatesTokenCount = 64 - 253 = -189 (WRONG!)
+		// This caused negative token counts when reasoning tokens exceeded completion tokens.
+		usage.CandidatesTokenCount = chatUsage.CompletionTokens
 	}
 
 	if len(chatUsage.CompletionModalityTokenDetails) > 0 {
