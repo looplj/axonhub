@@ -48,9 +48,18 @@ type anthropicInboundStream struct {
 	toolCalls map[int]*llm.ToolCall // Track tool calls by index
 
 	sourceEvents []*llm.Response
+
+	lastEventType string
 }
 
 func (s *anthropicInboundStream) enqueEvent(ev *StreamEvent) error {
+	// Some providers have a bug that generates duplicate "content_block_stop" events. This check ignores the duplicate to ensure compatibility.
+	if s.lastEventType == "content_block_stop" && ev.Type == "content_block_stop" {
+		return nil
+	}
+
+	s.lastEventType = ev.Type
+
 	eventData, err := json.Marshal(ev)
 	if err != nil {
 		return err
