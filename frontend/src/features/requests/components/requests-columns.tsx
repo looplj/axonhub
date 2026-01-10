@@ -289,7 +289,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
             <div className='text-sm font-medium'>{cachedTokens.toLocaleString()}</div>
             <div className='text-muted-foreground'>
               {t('requests.columns.cacheHitRate', {
-                rate: promptTokens > 0 ? ((cachedTokens / promptTokens) * 100).toFixed(1) : '0.0',
+                rate: promptTokens > 0 ? ((cachedTokens / (promptTokens + cachedTokens)) * 100).toFixed(1) : '0.0',
               })}
             </div>
           </div>
