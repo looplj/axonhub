@@ -534,7 +534,7 @@ export function useChannels(
 }
 
 // Use this hook to query channels with pagination and filtering
-export type ChannelOrderField = 'CREATED_AT' | 'UPDATED_AT' | 'ORDERING_WEIGHT' | 'NAME' | 'STATUS';
+export type ChannelOrderField = 'CREATED_AT' | 'UPDATED_AT' | 'ORDERING_WEIGHT' | 'NAME' | 'STATUS' | 'TYPE';
 
 export function useQueryChannels(
   variables?: {

@@ -75,7 +75,10 @@ func (Channel) Fields() []ent.Field {
 				"github",
 				"claudecode",
 			).
-			Immutable(),
+			Immutable().
+			Annotations(
+				entgql.OrderField("TYPE"),
+			),
 		field.String("base_url").Optional(),
 		field.String("name").
 			Annotations(

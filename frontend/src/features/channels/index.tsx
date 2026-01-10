@@ -103,6 +103,9 @@ function ChannelsContent() {
         return { field: 'NAME', direction: primary.desc ? 'DESC' : 'ASC' } as const;
       case 'status':
         return { field: 'STATUS', direction: primary.desc ? 'DESC' : 'ASC' } as const;
+      case 'provider':
+      case 'type':
+        return { field: 'TYPE', direction: primary.desc ? 'DESC' : 'ASC' } as const;
       case 'createdAt':
         return { field: 'CREATED_AT', direction: primary.desc ? 'DESC' : 'ASC' } as const;
       case 'updatedAt':
