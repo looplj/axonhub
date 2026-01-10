@@ -90,6 +90,7 @@ func (handlers *OpenAIHandlers) CreateEmbedding(c *gin.Context) {
 
 type OpenAIModel struct {
 	ID      string `json:"id"`
+	Object  string `json:"object"`
 	Created int64  `json:"created"`
 	OwnedBy string `json:"owned_by"`
 }
@@ -121,6 +122,7 @@ func (handlers *OpenAIHandlers) ListModels(c *gin.Context) {
 	for _, model := range models {
 		openaiModels = append(openaiModels, OpenAIModel{
 			ID:      model.ID,
+			Object:  "model",
 			Created: model.Created,
 			OwnedBy: model.OwnedBy,
 		})
