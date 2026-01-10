@@ -147,26 +147,46 @@ func convertGeminiToLLMRequest(geminiReq *GenerateContentRequest) (*llm.Request,
 			// Handle function declarations
 			if tool.FunctionDeclarations != nil {
 				for _, fd := range tool.FunctionDeclarations {
-					parameters := fd.Parameters
-					if parameters == nil {
-						// If Parameters is not provided, use ParametersJsonSchema.
-						parameters = fd.ParametersJsonSchema
+					// Determine which format was used and preserve it
+					var parameters, parametersJsonSchema json.RawMessage
+
+					if fd.Parameters != nil {
+						// Old format: use Parameters field
+						parameters = fd.Parameters
+					} else if fd.ParametersJsonSchema != nil {
+						// New format: use ParametersJsonSchema field
+						parametersJsonSchema = fd.ParametersJsonSchema
 					}
+
+					// Choose the one that's present for type transformation
+					schemaToTransform := parameters
+					if schemaToTransform == nil {
+						schemaToTransform = parametersJsonSchema
+					}
+
 					// The gemini sdk use UPPER case for type, but the unified format use lower case.
-					parameters, err := xjson.Transform(parameters, func(s *jsonschema.Schema) {
+					transformed, err := xjson.Transform(schemaToTransform, func(s *jsonschema.Schema) {
 						s.Type = strings.ToLower(s.Type)
 					})
 					if err != nil {
-						// If transform failed, fallback to the original parameters.
-						parameters = fd.Parameters
+						// If transform failed, keep original
+						transformed = schemaToTransform
+					}
+
+					// Update the appropriate field with the transformed schema
+					if parameters != nil {
+						parameters = transformed
+					} else {
+						parametersJsonSchema = transformed
 					}
 
 					llmTool := llm.Tool{
 						Type: "function",
 						Function: llm.Function{
-							Name:        fd.Name,
-							Description: fd.Description,
-							Parameters:  parameters,
+							Name:                 fd.Name,
+							Description:          fd.Description,
+							Parameters:           parameters,
+							ParametersJsonSchema: parametersJsonSchema,
 						},
 					}
 					tools = append(tools, llmTool)
