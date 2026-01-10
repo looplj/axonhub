@@ -275,3 +275,182 @@ func TestConvertLLMToGeminiRequest_WithDocuments(t *testing.T) {
 		})
 	}
 }
+
+// TestConvertToLLMUsage_CacheHitCalculation tests the specific bug reported where
+// Gemini's cachedContentTokenCount was not being reflected correctly in cache hit rate.
+//
+// Bug scenario:
+// With Gemini usage data:
+//   promptTokenCount: 20981 (total tokens in prompt)
+//   cachedContentTokenCount: 20350 (tokens served from cache)
+//   candidatesTokenCount: 22
+//   totalTokenCount: 21097
+//
+// AxonHub was reporting 0% cache hit because it was incorrectly handling the token counts.
+// The fix ensures:
+//   prompt_tokens = promptTokenCount - cachedContentTokenCount = 631 (only NEW tokens)
+//   cached_tokens = 20350
+//
+// Cache hit rate should be: 20350 / (631 + 20350) * 100 = 97.0%
+func TestConvertToLLMUsage_CacheHitCalculation(t *testing.T) {
+	tests := []struct {
+		name          string
+		geminiUsage   *UsageMetadata
+		expectedUsage *llm.Usage
+	}{
+		{
+			name: "high cache hit rate scenario from bug report",
+			geminiUsage: &UsageMetadata{
+				PromptTokenCount:        20981,
+				CandidatesTokenCount:    22,
+				TotalTokenCount:         21097,
+				CachedContentTokenCount: 20350,
+				ThoughtsTokenCount:      94,
+			},
+			expectedUsage: &llm.Usage{
+				PromptTokens:     631, // 20981 - 20350
+				CompletionTokens: 22,
+				TotalTokens:      21097,
+				PromptTokensDetails: &llm.PromptTokensDetails{
+					CachedTokens: 20350,
+				},
+				CompletionTokensDetails: &llm.CompletionTokensDetails{
+					ReasoningTokens: 94,
+				},
+			},
+		},
+		{
+			name: "no cache scenario",
+			geminiUsage: &UsageMetadata{
+				PromptTokenCount:        1000,
+				CandidatesTokenCount:    500,
+				TotalTokenCount:         1500,
+				CachedContentTokenCount: 0,
+			},
+			expectedUsage: &llm.Usage{
+				PromptTokens:     1000,
+				CompletionTokens: 500,
+				TotalTokens:      1500,
+			},
+		},
+		{
+			name: "partial cache scenario",
+			geminiUsage: &UsageMetadata{
+				PromptTokenCount:        1000,
+				CandidatesTokenCount:    100,
+				TotalTokenCount:         1100,
+				CachedContentTokenCount: 600,
+			},
+			expectedUsage: &llm.Usage{
+				PromptTokens:     400, // 1000 - 600
+				CompletionTokens: 100,
+				TotalTokens:      1100,
+				PromptTokensDetails: &llm.PromptTokensDetails{
+					CachedTokens: 600,
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := convertToLLMUsage(tt.geminiUsage)
+
+			require.NotNil(t, result)
+			assert.Equal(t, tt.expectedUsage.PromptTokens, result.PromptTokens,
+				"prompt_tokens should exclude cached tokens")
+			assert.Equal(t, tt.expectedUsage.CompletionTokens, result.CompletionTokens)
+			assert.Equal(t, tt.expectedUsage.TotalTokens, result.TotalTokens)
+
+			if tt.expectedUsage.PromptTokensDetails != nil {
+				require.NotNil(t, result.PromptTokensDetails)
+				assert.Equal(t, tt.expectedUsage.PromptTokensDetails.CachedTokens,
+					result.PromptTokensDetails.CachedTokens,
+					"cached_tokens should match cachedContentTokenCount")
+
+				// Verify cache hit rate calculation would be correct
+				cacheHitRate := float64(result.PromptTokensDetails.CachedTokens) /
+					float64(result.PromptTokens+result.PromptTokensDetails.CachedTokens) * 100
+				t.Logf("Cache hit rate: %.1f%%", cacheHitRate)
+			} else {
+				assert.Nil(t, result.PromptTokensDetails)
+			}
+
+			if tt.expectedUsage.CompletionTokensDetails != nil {
+				require.NotNil(t, result.CompletionTokensDetails)
+				assert.Equal(t, tt.expectedUsage.CompletionTokensDetails.ReasoningTokens,
+					result.CompletionTokensDetails.ReasoningTokens)
+			}
+		})
+	}
+}
+
+// TestConvertToGeminiUsage_BidirectionalConsistency tests that converting LLM -> Gemini -> LLM
+// maintains consistency, especially for cached tokens.
+func TestConvertToGeminiUsage_BidirectionalConsistency(t *testing.T) {
+	tests := []struct {
+		name      string
+		llmUsage  *llm.Usage
+		wantGemini *UsageMetadata
+	}{
+		{
+			name: "with cached tokens",
+			llmUsage: &llm.Usage{
+				PromptTokens:     631,
+				CompletionTokens: 22,
+				TotalTokens:      21097,
+				PromptTokensDetails: &llm.PromptTokensDetails{
+					CachedTokens: 20350,
+				},
+			},
+			wantGemini: &UsageMetadata{
+				PromptTokenCount:        20981, // 631 + 20350
+				CandidatesTokenCount:    22,
+				TotalTokenCount:         21097,
+				CachedContentTokenCount: 20350,
+			},
+		},
+		{
+			name: "without cached tokens",
+			llmUsage: &llm.Usage{
+				PromptTokens:     1000,
+				CompletionTokens: 500,
+				TotalTokens:      1500,
+			},
+			wantGemini: &UsageMetadata{
+				PromptTokenCount:        1000,
+				CandidatesTokenCount:    500,
+				TotalTokenCount:         1500,
+				CachedContentTokenCount: 0,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Convert LLM -> Gemini
+			geminiUsage := convertToGeminiUsage(tt.llmUsage)
+			require.NotNil(t, geminiUsage)
+			assert.Equal(t, tt.wantGemini.PromptTokenCount, geminiUsage.PromptTokenCount,
+				"promptTokenCount should include cached tokens")
+			assert.Equal(t, tt.wantGemini.CachedContentTokenCount, geminiUsage.CachedContentTokenCount)
+			assert.Equal(t, tt.wantGemini.CandidatesTokenCount, geminiUsage.CandidatesTokenCount)
+			assert.Equal(t, tt.wantGemini.TotalTokenCount, geminiUsage.TotalTokenCount)
+
+			// Convert back Gemini -> LLM to verify bidirectional consistency
+			llmUsageRoundtrip := convertToLLMUsage(geminiUsage)
+			require.NotNil(t, llmUsageRoundtrip)
+			assert.Equal(t, tt.llmUsage.PromptTokens, llmUsageRoundtrip.PromptTokens,
+				"round-trip conversion should preserve prompt_tokens")
+			assert.Equal(t, tt.llmUsage.CompletionTokens, llmUsageRoundtrip.CompletionTokens)
+			assert.Equal(t, tt.llmUsage.TotalTokens, llmUsageRoundtrip.TotalTokens)
+
+			if tt.llmUsage.PromptTokensDetails != nil {
+				require.NotNil(t, llmUsageRoundtrip.PromptTokensDetails)
+				assert.Equal(t, tt.llmUsage.PromptTokensDetails.CachedTokens,
+					llmUsageRoundtrip.PromptTokensDetails.CachedTokens,
+					"round-trip conversion should preserve cached_tokens")
+			}
+		})
+	}
+}

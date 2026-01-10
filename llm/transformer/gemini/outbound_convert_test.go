@@ -1397,7 +1397,10 @@ func TestConvertGeminiToLLMResponse_Basic(t *testing.T) {
 			validate: func(t *testing.T, result *llm.Response) {
 				t.Helper()
 				require.NotNil(t, result.Usage)
-				require.Equal(t, int64(100), result.Usage.PromptTokens)
+				// IMPORTANT: Gemini's promptTokenCount INCLUDES cachedContentTokenCount
+				// LLM format's prompt_tokens does NOT include cached_tokens
+				// So: prompt_tokens = promptTokenCount - cachedContentTokenCount = 100 - 20 = 80
+				require.Equal(t, int64(80), result.Usage.PromptTokens)
 				// In Gemini format, CandidatesTokenCount does NOT include ThoughtsTokenCount
 			// In LLM/OpenAI format, CompletionTokens also does NOT include ReasoningTokens
 			// So CompletionTokens should equal CandidatesTokenCount directly (50, not 50+30=80)

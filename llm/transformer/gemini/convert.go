@@ -312,16 +312,41 @@ func convertToLLMUsage(geminiUsage *UsageMetadata) *llm.Usage {
 		return nil
 	}
 
+	// IMPORTANT: Token semantics between Gemini and LLM/OpenAI formats
+	// - Gemini format: promptTokenCount INCLUDES cachedContentTokenCount (all prompt tokens)
+	// - LLM/OpenAI format: prompt_tokens does NOT include cached_tokens (only NEW tokens processed)
+	//
+	// Example from Gemini response:
+	//   promptTokenCount: 20981 (total tokens in prompt)
+	//   cachedContentTokenCount: 20350 (tokens served from cache)
+	//   Actual new tokens processed: 20981 - 20350 = 631
+	//
+	// Converted to LLM format should be:
+	//   prompt_tokens: 631 (only new tokens)
+	//   cached_tokens: 20350 (tokens from cache)
+	//
+	// This ensures cache hit rate calculation works correctly:
+	//   cache_hit_rate = cached_tokens / (prompt_tokens + cached_tokens) * 100
+	//   = 20350 / (631 + 20350) * 100 = 97.0%
+
+	promptTokens := geminiUsage.PromptTokenCount
+	cachedTokens := geminiUsage.CachedContentTokenCount
+
+	// Subtract cached tokens from prompt tokens to get only NEW tokens
+	if cachedTokens > 0 {
+		promptTokens = geminiUsage.PromptTokenCount - cachedTokens
+	}
+
 	usage := &llm.Usage{
-		PromptTokens:     geminiUsage.PromptTokenCount,
+		PromptTokens:     promptTokens,
 		CompletionTokens: geminiUsage.CandidatesTokenCount,
 		TotalTokens:      geminiUsage.TotalTokenCount,
 	}
 
 	// Map cached tokens if present
-	if geminiUsage.CachedContentTokenCount > 0 {
+	if cachedTokens > 0 {
 		usage.PromptTokensDetails = &llm.PromptTokensDetails{
-			CachedTokens: geminiUsage.CachedContentTokenCount,
+			CachedTokens: cachedTokens,
 		}
 	}
 
@@ -388,17 +413,35 @@ func convertToGeminiUsage(chatUsage *llm.Usage) *UsageMetadata {
 		return nil
 	}
 
-	usage := &UsageMetadata{
-		PromptTokenCount:        chatUsage.PromptTokens,
-		CandidatesTokenCount:    chatUsage.CompletionTokens,
-		TotalTokenCount:         chatUsage.TotalTokens,
-		CachedContentTokenCount: 0,
-		ThoughtsTokenCount:      0,
-		CandidatesTokensDetails: nil,
+	// IMPORTANT: Token semantics between LLM/OpenAI and Gemini formats
+	// - LLM/OpenAI format: prompt_tokens does NOT include cached_tokens (only NEW tokens processed)
+	// - Gemini format: promptTokenCount INCLUDES cachedContentTokenCount (all prompt tokens)
+	//
+	// Example from LLM format:
+	//   prompt_tokens: 631 (only new tokens)
+	//   cached_tokens: 20350 (tokens from cache)
+	//
+	// Converted to Gemini format should be:
+	//   promptTokenCount: 21981 (631 + 20350, total tokens in prompt)
+	//   cachedContentTokenCount: 20350 (tokens served from cache)
+	//
+	// This ensures bidirectional conversion consistency.
+
+	cachedTokens := int64(0)
+	if chatUsage.PromptTokensDetails != nil {
+		cachedTokens = chatUsage.PromptTokensDetails.CachedTokens
 	}
 
-	if chatUsage.PromptTokensDetails != nil {
-		usage.CachedContentTokenCount = chatUsage.PromptTokensDetails.CachedTokens
+	// Add cached tokens to prompt tokens to get TOTAL prompt tokens
+	promptTokenCount := chatUsage.PromptTokens + cachedTokens
+
+	usage := &UsageMetadata{
+		PromptTokenCount:        promptTokenCount,
+		CandidatesTokenCount:    chatUsage.CompletionTokens,
+		TotalTokenCount:         chatUsage.TotalTokens,
+		CachedContentTokenCount: cachedTokens,
+		ThoughtsTokenCount:      0,
+		CandidatesTokensDetails: nil,
 	}
 
 	if chatUsage.CompletionTokensDetails != nil {

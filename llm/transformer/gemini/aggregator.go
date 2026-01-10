@@ -228,11 +228,7 @@ func buildGeminiResponse(
 
 	var llmUsage *llm.Usage
 	if usage != nil {
-		llmUsage = &llm.Usage{
-			PromptTokens:     usage.PromptTokenCount,
-			CompletionTokens: usage.CandidatesTokenCount,
-			TotalTokens:      usage.TotalTokenCount,
-		}
+		llmUsage = convertToLLMUsage(usage)
 	}
 
 	return data, llm.ResponseMeta{
