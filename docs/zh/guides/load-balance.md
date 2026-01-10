@@ -105,7 +105,7 @@ response = client.chat.completions.create(
 
 ```bash
 # 设置环境变量
-export AXONHUB_LOAD_BALANCER_DEBUG=true
+export AXONHUB_DEBUG_LOAD_BALANCER_ENABLED=true
 
 # 或在请求中启用
 curl -X POST http://localhost:8090/v1/chat/completions \

@@ -36,7 +36,7 @@ test-simple: setup
 
 test-conversation: setup
 	@echo "Running conversation history tests..."
-	go test -v -run "TestConversation" ./qa_simple
+	go test --count=1 -v -run "TestConversation" ./qa_simple
 
 test-multiple: setup
 	@echo "Running multiple questions tests..."
@@ -45,7 +45,7 @@ test-multiple: setup
 # Run tests with specific verbosity
 test-verbose: setup
 	@echo "Running tests with verbose output..."
-	go test -v -args -test.v=true ./...
+	go test --count=1 -v -args -test.v=true ./...
 
 # Run tests in parallel (be careful with API rate limits)
 test-parallel: setup
@@ -84,7 +84,7 @@ check-env:
 # Quick validation (fast tests only)
 quick: setup check-env
 	@echo "Running quick validation..."
-	go test -short -v ./qa_simple
+	go test --count=1 -short -v ./qa_simple
 
 # Full validation with all features
 validate: setup check-env lint test-coverage

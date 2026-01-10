@@ -34,8 +34,8 @@ func NewChatCompletionOrchestrator(
 		NewConnectionAwareStrategy(channelService, connectionTracker), // Priority 4: Connection count
 	}
 
-	adaptiveLoadBalancer := NewLoadBalancer(systemService, strategies...)
-	weightedLoadBalancer := NewLoadBalancer(systemService, NewWeightStrategy())
+	adaptiveLoadBalancer := NewLoadBalancer(systemService, channelService, strategies...)
+	weightedLoadBalancer := NewLoadBalancer(systemService, channelService, NewWeightStrategy())
 
 	return &ChatCompletionOrchestrator{
 		Inbound:         inbound,

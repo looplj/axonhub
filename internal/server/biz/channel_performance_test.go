@@ -934,6 +934,14 @@ func TestChannelService_RecordPerformance(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// IncrementChannelSelection is called at selection time in production.
+			// It increments aggregatedMetrics.RequestCount before the request completes.
+			// RecordPerformance only increments slot.RequestCount (for sliding window),
+			// not aggregatedMetrics.RequestCount (to avoid double counting).
+			if tt.perf != nil && tt.perf.ChannelID > 0 {
+				svc.IncrementChannelSelection(tt.perf.ChannelID)
+			}
+
 			svc.RecordPerformance(ctx, tt.perf)
 
 			if tt.validateFunc != nil {

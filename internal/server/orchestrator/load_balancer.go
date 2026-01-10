@@ -18,6 +18,13 @@ type ChannelMetricsProvider interface {
 	GetChannelMetrics(ctx context.Context, channelID int) (*biz.AggregatedMetrics, error)
 }
 
+// ChannelSelectionTracker tracks channel selections for load balancing.
+// This is used to increment request count at selection time rather than completion time,
+// ensuring concurrent/burst requests don't all select the same channel.
+type ChannelSelectionTracker interface {
+	IncrementChannelSelection(channelID int)
+}
+
 // LoadBalanceStrategy defines the interface for load balancing strategies.
 // Each strategy can score and sort channels based on different criteria.
 type LoadBalanceStrategy interface {
@@ -78,20 +85,22 @@ type RetryPolicyProvider interface {
 
 // LoadBalancer applies multiple strategies to sort channels by priority.
 type LoadBalancer struct {
-	strategies    []LoadBalanceStrategy
-	systemService RetryPolicyProvider
-	debug         bool
+	strategies       []LoadBalanceStrategy
+	systemService    RetryPolicyProvider
+	selectionTracker ChannelSelectionTracker
+	debug            bool
 }
 
 // NewLoadBalancer creates a new load balancer with the given strategies.
 // Strategies are applied in order, with earlier strategies having higher weight.
-func NewLoadBalancer(systemService RetryPolicyProvider, strategies ...LoadBalanceStrategy) *LoadBalancer {
-	debug := strings.EqualFold(os.Getenv("AXONHUB_LOAD_BALANCER_DEBUG"), "true")
+func NewLoadBalancer(systemService RetryPolicyProvider, selectionTracker ChannelSelectionTracker, strategies ...LoadBalanceStrategy) *LoadBalancer {
+	debug := strings.EqualFold(os.Getenv("AXONHUB_DEBUG_LOAD_BALANCER_ENABLED"), "true")
 
 	return &LoadBalancer{
-		strategies:    strategies,
-		systemService: systemService,
-		debug:         debug,
+		strategies:       strategies,
+		systemService:    systemService,
+		selectionTracker: selectionTracker,
+		debug:            debug,
 	}
 }
 
@@ -145,6 +154,8 @@ func (lb *LoadBalancer) sortProduction(ctx context.Context, candidates []*Channe
 
 	// Use partial sort to efficiently get top k candidates
 	// Sort by total score descending (higher score = higher priority)
+	// When scores are equal, use OrderingWeight as tie-breaker (higher weight = higher priority)
+	// Do NOT use channel ID as tie-breaker to avoid deterministic ordering that causes uneven distribution
 	partial.SortFunc(scored, topK, func(a, b candidateScore) int {
 		if a.score > b.score {
 			return -1
@@ -152,11 +163,28 @@ func (lb *LoadBalancer) sortProduction(ctx context.Context, candidates []*Channe
 			return 1
 		}
 
+		if a.candidate != nil && b.candidate != nil && a.candidate.Channel != nil && b.candidate.Channel != nil {
+			if a.candidate.Channel.OrderingWeight > b.candidate.Channel.OrderingWeight {
+				return -1
+			} else if a.candidate.Channel.OrderingWeight < b.candidate.Channel.OrderingWeight {
+				return 1
+			}
+		}
+
+		// When score and weight are equal, return 0 to preserve original order (non-deterministic)
 		return 0
 	})
 
 	// Extract top k sorted candidates
-	return lo.Map(scored[:topK], func(ch candidateScore, _ int) *ChannelModelCandidate { return ch.candidate })
+	result := lo.Map(scored[:topK], func(ch candidateScore, _ int) *ChannelModelCandidate { return ch.candidate })
+
+	// Increment selection count for the top candidate to ensure subsequent
+	// concurrent requests see the updated count and select different channels
+	if len(result) > 0 && result[0] != nil && result[0].Channel != nil && lb.selectionTracker != nil {
+		lb.selectionTracker.IncrementChannelSelection(result[0].Channel.ID)
+	}
+
+	return result
 }
 
 // sortWithDebug is the debug path with detailed logging.
@@ -189,6 +217,8 @@ func (lb *LoadBalancer) sortWithDebug(ctx context.Context, candidates []*Channel
 
 	// Use partial sort to efficiently get top k candidates
 	// Sort by total score descending (higher score = higher priority)
+	// When scores are equal, use OrderingWeight as tie-breaker (higher weight = higher priority)
+	// Do NOT use channel ID as tie-breaker to avoid deterministic ordering that causes uneven distribution
 	partial.SortFunc(decisions, topK, func(a, b ChannelDecision) int {
 		if a.TotalScore > b.TotalScore {
 			return -1
@@ -196,6 +226,15 @@ func (lb *LoadBalancer) sortWithDebug(ctx context.Context, candidates []*Channel
 			return 1
 		}
 
+		if a.Channel != nil && b.Channel != nil {
+			if a.Channel.OrderingWeight > b.Channel.OrderingWeight {
+				return -1
+			} else if a.Channel.OrderingWeight < b.Channel.OrderingWeight {
+				return 1
+			}
+		}
+
+		// When score and weight are equal, return 0 to preserve original order (non-deterministic)
 		return 0
 	})
 
@@ -207,7 +246,7 @@ func (lb *LoadBalancer) sortWithDebug(ctx context.Context, candidates []*Channel
 	// Log the decision with all details (only top k)
 	lb.logDecision(ctx, candidates, model, decisions[:topK], topK, time.Since(startTime))
 
-	return lo.Map(decisions[:topK], func(decision ChannelDecision, _ int) *ChannelModelCandidate {
+	result := lo.Map(decisions[:topK], func(decision ChannelDecision, _ int) *ChannelModelCandidate {
 		// Find the corresponding candidate by channel ID
 		for _, c := range candidates {
 			if c.Channel.ID == decision.Channel.ID {
@@ -217,6 +256,14 @@ func (lb *LoadBalancer) sortWithDebug(ctx context.Context, candidates []*Channel
 
 		return nil
 	})
+
+	// Increment selection count for the top candidate to ensure subsequent
+	// concurrent requests see the updated count and select different channels
+	if len(result) > 0 && result[0] != nil && result[0].Channel != nil && lb.selectionTracker != nil {
+		lb.selectionTracker.IncrementChannelSelection(result[0].Channel.ID)
+	}
+
+	return result
 }
 
 // calculateTopK determines how many candidates to select based on retry policy.

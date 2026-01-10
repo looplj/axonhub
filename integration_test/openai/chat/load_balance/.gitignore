@@ -1,0 +1,18 @@
+# Test artifacts
+coverage.out
+coverage.html
+
+# Test binaries
+*.test
+*.exe
+
+# Temporary files
+*.tmp
+*.log
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

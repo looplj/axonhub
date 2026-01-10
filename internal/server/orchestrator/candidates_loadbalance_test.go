@@ -505,7 +505,7 @@ func TestLoadBalancedSelector_Select(t *testing.T) {
 		NewWeightRoundRobinStrategy(channelService),
 		NewConnectionAwareStrategy(channelService, connectionTracker),
 	}
-	loadBalancer := NewLoadBalancer(systemService, strategies...)
+	loadBalancer := NewLoadBalancer(systemService, nil, strategies...)
 
 	modelService := newTestModelService(client)
 	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
@@ -551,7 +551,7 @@ func TestLoadBalancedSelector_Select_SingleChannel(t *testing.T) {
 
 	channelService := newTestChannelServiceForChannels(client)
 	systemService := newTestSystemService(client)
-	loadBalancer := NewLoadBalancer(systemService)
+	loadBalancer := NewLoadBalancer(systemService, nil)
 
 	modelService := newTestModelService(client)
 	baseSelector := NewDefaultSelector(channelService, modelService, systemService)

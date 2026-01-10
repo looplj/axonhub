@@ -105,7 +105,7 @@ View detailed load balancing decision process:
 
 ```bash
 # Set environment variable
-export AXONHUB_LOAD_BALANCER_DEBUG=true
+export AXONHUB_DEBUG_LOAD_BALANCER_ENABLED=true
 
 # Or enable in request
 curl -X POST http://localhost:8090/v1/chat/completions \
