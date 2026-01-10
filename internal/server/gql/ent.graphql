@@ -421,6 +421,7 @@ enum ChannelOrderField {
   UPDATED_AT
   TYPE
   NAME
+  STATUS
   ORDERING_WEIGHT
 }
 type ChannelOverrideTemplate implements Node {

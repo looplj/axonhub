@@ -693,6 +693,20 @@ var (
 			}
 		},
 	}
+	// ChannelOrderFieldStatus orders Channel by status.
+	ChannelOrderFieldStatus = &ChannelOrderField{
+		Value: func(_m *Channel) (ent.Value, error) {
+			return _m.Status, nil
+		},
+		column: channel.FieldStatus,
+		toTerm: channel.ByStatus,
+		toCursor: func(_m *Channel) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.Status,
+			}
+		},
+	}
 	// ChannelOrderFieldOrderingWeight orders Channel by ordering_weight.
 	ChannelOrderFieldOrderingWeight = &ChannelOrderField{
 		Value: func(_m *Channel) (ent.Value, error) {
@@ -721,6 +735,8 @@ func (f ChannelOrderField) String() string {
 		str = "TYPE"
 	case ChannelOrderFieldName.column:
 		str = "NAME"
+	case ChannelOrderFieldStatus.column:
+		str = "STATUS"
 	case ChannelOrderFieldOrderingWeight.column:
 		str = "ORDERING_WEIGHT"
 	}
@@ -747,6 +763,8 @@ func (f *ChannelOrderField) UnmarshalGQL(v interface{}) error {
 		*f = *ChannelOrderFieldType
 	case "NAME":
 		*f = *ChannelOrderFieldName
+	case "STATUS":
+		*f = *ChannelOrderFieldStatus
 	case "ORDERING_WEIGHT":
 		*f = *ChannelOrderFieldOrderingWeight
 	default:
