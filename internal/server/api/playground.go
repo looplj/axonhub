@@ -37,6 +37,7 @@ type PlaygroundHandlersParams struct {
 	RequestService  *biz.RequestService
 	SystemService   *biz.SystemService
 	UsageLogService *biz.UsageLogService
+	PromptService   *biz.PromptService
 	HttpClient      *httpclient.HttpClient
 }
 
@@ -56,6 +57,7 @@ func NewPlaygroundHandlers(params PlaygroundHandlersParams) *PlaygroundHandlers 
 			aisdk.NewDataStreamTransformer(),
 			params.SystemService,
 			params.UsageLogService,
+			params.PromptService,
 		),
 	}
 }

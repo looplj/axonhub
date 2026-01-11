@@ -30,6 +30,9 @@ type Model func(*sql.Selector)
 // Project is the predicate function for project builders.
 type Project func(*sql.Selector)
 
+// Prompt is the predicate function for prompt builders.
+type Prompt func(*sql.Selector)
+
 // Request is the predicate function for request builders.
 type Request func(*sql.Selector)
 

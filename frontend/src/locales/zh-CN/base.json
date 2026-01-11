@@ -11,6 +11,7 @@
       "dashboard": "仪表板",
       "channels": "渠道",
       "models": "模型",
+      "prompts": "提示词",
       "dataStorages": "数据存储",
       "users": "用户",
       "roles": "角色",
@@ -275,6 +276,8 @@
   "scopes": {
     "read_channels": "查看渠道/模型",
     "write_channels": "管理渠道/模型",
+    "read_prompts": "查看提示词",
+    "write_prompts": "管理提示词",
     "read_users": "查看用户信息",
     "write_users": "管理用户",
     "read_roles": "查看角色信息",

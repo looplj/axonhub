@@ -28,6 +28,8 @@ type Tx struct {
 	Model *ModelClient
 	// Project is the client for interacting with the Project builders.
 	Project *ProjectClient
+	// Prompt is the client for interacting with the Prompt builders.
+	Prompt *PromptClient
 	// Request is the client for interacting with the Request builders.
 	Request *RequestClient
 	// RequestExecution is the client for interacting with the RequestExecution builders.
@@ -187,6 +189,7 @@ func (tx *Tx) init() {
 	tx.DataStorage = NewDataStorageClient(tx.config)
 	tx.Model = NewModelClient(tx.config)
 	tx.Project = NewProjectClient(tx.config)
+	tx.Prompt = NewPromptClient(tx.config)
 	tx.Request = NewRequestClient(tx.config)
 	tx.RequestExecution = NewRequestExecutionClient(tx.config)
 	tx.Role = NewRoleClient(tx.config)

@@ -68,21 +68,16 @@ func (Model) Annotations() []schema.Annotation {
 	}
 }
 
-// Policy 定义 Model 的权限策略.
 func (Model) Policy() ent.Policy {
 	return scopes.Policy{
 		Query: scopes.QueryPolicy{
 			scopes.APIKeyScopeQueryRule(scopes.ScopeReadChannels),
-			// owner can read all models
 			scopes.OwnerRule(),
-			// shared the read channel scope can read models
-			scopes.UserReadScopeRule(scopes.ScopeReadChannels), // 需要 Models 读取权限
+			scopes.UserReadScopeRule(scopes.ScopeReadChannels),
 		},
 		Mutation: scopes.MutationPolicy{
-			// owner can write all models
 			scopes.OwnerRule(),
-			// shared the write channel scope can write models
-			scopes.UserWriteScopeRule(scopes.ScopeWriteChannels), // 需要 Models 写入权限
+			scopes.UserWriteScopeRule(scopes.ScopeWriteChannels),
 		},
 	}
 }

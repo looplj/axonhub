@@ -23,6 +23,7 @@ func NewChatCompletionOrchestrator(
 	inbound transformer.Inbound,
 	systemService *biz.SystemService,
 	usageLogService *biz.UsageLogService,
+	promptService *biz.PromptService,
 ) *ChatCompletionOrchestrator {
 	connectionTracker := NewDefaultConnectionTracker(256)
 
@@ -43,6 +44,7 @@ func NewChatCompletionOrchestrator(
 		ChannelService:  channelService,
 		SystemService:   systemService,
 		UsageLogService: usageLogService,
+		PromptProvider:  promptService,
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
@@ -63,6 +65,7 @@ type ChatCompletionOrchestrator struct {
 	ChannelService  *biz.ChannelService
 	SystemService   *biz.SystemService
 	UsageLogService *biz.UsageLogService
+	PromptProvider  PromptProvider
 	Middlewares     []pipeline.Middleware
 	PipelineFactory *pipeline.Factory
 	ModelMapper     *ModelMapper
@@ -112,7 +115,6 @@ type ChatCompletionResult struct {
 
 func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, request *httpclient.Request) (ChatCompletionResult, error) {
 	apiKey, _ := contexts.GetAPIKey(ctx)
-	user, _ := contexts.GetUser(ctx)
 
 	// Get retry policy from system settings
 	retryPolicy := processor.SystemService.RetryPolicyOrDefault(ctx)
@@ -138,10 +140,10 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 
 	state := &PersistenceState{
 		APIKey:              apiKey,
-		User:                user,
 		RequestService:      processor.RequestService,
 		UsageLogService:     processor.UsageLogService,
 		ChannelService:      processor.ChannelService,
+		PromptProvider:      processor.PromptProvider,
 		RetryPolicyProvider: processor.SystemService,
 		CandidateSelector:   processor.channelSelector,
 		LoadBalancer:        loadBalancer,
@@ -173,6 +175,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		checkApiKeyModelAccess(inbound),
 		applyModelMapping(inbound),
 		selectCandidates(inbound),
+		injectPrompts(inbound),
 		persistRequest(inbound),
 	)
 

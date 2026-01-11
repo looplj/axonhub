@@ -74,6 +74,7 @@ func (processor *TestChannelOrchestrator) TestChannel(
 		channelSelector: NewSpecifiedChannelSelector(processor.channelService, channelID),
 		RequestService:  processor.requestService,
 		ChannelService:  processor.channelService,
+		PromptProvider:  &stubPromptProvider{},
 		PipelineFactory: pipeline.NewFactory(processor.httpClient),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),

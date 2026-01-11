@@ -20,6 +20,7 @@ type AiSdkHandlersParams struct {
 	RequestService  *biz.RequestService
 	SystemService   *biz.SystemService
 	UsageLogService *biz.UsageLogService
+	PromptService   *biz.PromptService
 	HttpClient      *httpclient.HttpClient
 }
 
@@ -38,6 +39,7 @@ func NewAiSDKHandlers(params AiSdkHandlersParams) *AiSDKHandlers {
 				aisdk.NewDataStreamTransformer(),
 				params.SystemService,
 				params.UsageLogService,
+				params.PromptService,
 			),
 			StreamWriter: WriteJSONStream,
 		},

@@ -365,6 +365,7 @@ func newTestOrchestrator(
 		Inbound:           openai.NewInboundTransformer(),
 		RequestService:    requestService,
 		ChannelService:    channelService,
+		PromptProvider:    &stubPromptProvider{},
 		SystemService:     systemService,
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),

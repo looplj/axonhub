@@ -109,9 +109,9 @@ type ChannelService struct {
 	Executors     executors.ScheduledExecutor
 	SystemService *SystemService
 
-	// latestUpdate 记录最新的 channel 更新时间，用于优化定时加载
 	enabledChannels []*Channel
-	latestUpdate    time.Time
+	// latestUpdate 记录最新的 channel 更新时间，用于优化定时加载
+	latestUpdateTime time.Time
 
 	// perfWindowSeconds is the configurable sliding window size for performance metrics (in seconds)
 	// If not set (0), uses defaultPerformanceWindowSize (600 seconds = 10 minutes)
@@ -152,15 +152,15 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 	// 如果没有找到任何 channels，latestUpdate 会是 nil
 	if latestUpdatedChannel != nil {
 		// 如果最新的更新时间早于或等于我们记录的时间，说明没有新的修改
-		if !latestUpdatedChannel.UpdatedAt.After(svc.latestUpdate) {
+		if !latestUpdatedChannel.UpdatedAt.After(svc.latestUpdateTime) {
 			log.Debug(ctx, "no new channels updated")
 			return nil
 		}
 		// 更新最新的修改时间记录
-		svc.latestUpdate = latestUpdatedChannel.UpdatedAt
+		svc.latestUpdateTime = latestUpdatedChannel.UpdatedAt
 	} else {
 		// 如果没有 channels，确保 latestUpdate 是零值时间
-		svc.latestUpdate = time.Time{}
+		svc.latestUpdateTime = time.Time{}
 	}
 
 	entities, err := svc.entFromContext(ctx).Channel.Query().
@@ -481,7 +481,7 @@ func (svc *ChannelService) asyncReloadChannels() {
 		defer cancel()
 
 		// Force reload by resetting latestUpdate timestamp
-		svc.latestUpdate = time.Time{}
+		svc.latestUpdateTime = time.Time{}
 
 		if reloadErr := svc.loadChannels(reloadCtx); reloadErr != nil {
 			log.Error(reloadCtx, "failed to reload channels after bulk update", log.Cause(reloadErr))

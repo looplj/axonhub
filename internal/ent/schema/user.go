@@ -7,7 +7,6 @@ import (
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
-	"entgo.io/ent/schema/mixin"
 
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/scopes"
@@ -95,21 +94,5 @@ func (User) Policy() ent.Policy {
 			scopes.UserWriteScopeRule(scopes.ScopeWriteUsers),
 			scopes.UserOwnedMutationRule(),
 		},
-	}
-}
-
-type UserOwnedMixin struct {
-	mixin.Schema
-}
-
-func (UserOwnedMixin) Fields() []ent.Field {
-	return []ent.Field{
-		field.Int("user_id").Immutable(),
-	}
-}
-
-func (UserOwnedMixin) Edges() []ent.Edge {
-	return []ent.Edge{
-		edge.From("user", User.Type).Field("user_id").Unique(),
 	}
 }

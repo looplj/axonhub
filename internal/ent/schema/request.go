@@ -149,14 +149,14 @@ func (Request) Policy() ent.Policy {
 		Query: scopes.QueryPolicy{
 			scopes.APIKeyScopeQueryRule(scopes.ScopeWriteRequests),
 			scopes.UserProjectScopeReadRule(scopes.ScopeReadRequests),
-			scopes.OwnerRule(), // owner 用户可以访问所有请求
-			scopes.UserReadScopeRule(scopes.ScopeReadRequests), // 需要 requests 读取权限
+			scopes.OwnerRule(),
+			scopes.UserReadScopeRule(scopes.ScopeReadRequests),
 		},
 		Mutation: scopes.MutationPolicy{
 			scopes.APIKeyScopeMutationRule(scopes.ScopeWriteRequests),
 			scopes.UserProjectScopeWriteRule(scopes.ScopeWriteRequests),
-			scopes.OwnerRule(), // owner 用户可以修改所有请求
-			scopes.UserWriteScopeRule(scopes.ScopeWriteRequests), // 需要 requests 写入权限
+			scopes.OwnerRule(),
+			scopes.UserWriteScopeRule(scopes.ScopeWriteRequests),
 		},
 	}
 }

@@ -1,0 +1,57 @@
+enum PromptActionType {
+  prepend
+  append
+}
+
+enum PromptActivationConditionType {
+  model_id
+  model_pattern
+}
+
+type PromptAction {
+  type: PromptActionType!
+}
+
+type PromptActivationCondition {
+  type: PromptActivationConditionType!
+  modelId: String
+  modelPattern: String
+}
+
+type PromptActivationConditionComposite {
+  conditions: [PromptActivationCondition!]
+}
+
+type PromptSettings {
+  action: PromptAction!
+  conditions: [PromptActivationConditionComposite!]
+}
+
+input PromptActionInput {
+  type: PromptActionType!
+}
+
+input PromptActivationConditionInput {
+  type: PromptActivationConditionType!
+  modelId: String
+  modelPattern: String
+}
+
+input PromptActivationConditionCompositeInput {
+  conditions: [PromptActivationConditionInput!]
+}
+
+input PromptSettingsInput {
+  action: PromptActionInput!
+  conditions: [PromptActivationConditionCompositeInput!]
+}
+
+extend type Mutation {
+  createPrompt(input: CreatePromptInput!): Prompt!
+  updatePrompt(id: ID!, input: UpdatePromptInput!): Prompt!
+  deletePrompt(id: ID!): Boolean!
+  updatePromptStatus(id: ID!, status: PromptStatus!): Boolean!
+  bulkDeletePrompts(ids: [ID!]!): Boolean!
+  bulkEnablePrompts(ids: [ID!]!): Boolean!
+  bulkDisablePrompts(ids: [ID!]!): Boolean!
+}
