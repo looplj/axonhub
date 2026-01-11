@@ -2,7 +2,6 @@
   "system": {
     "title": "系统设置",
     "description": "管理系统配置和选项。",
-    "loading": "加载系统设置...",
     "tabs": {
       "brand": "品牌",
       "storage": "存储",
@@ -17,12 +16,7 @@
         "label": "数据存储",
         "placeholder": "选择数据存储"
       },
-      "title": "存储设置",
-      "description": "配置系统如何处理和存储响应数据",
-      "storeChunks": {
-        "label": "存储响应块",
-        "description": "启用后，系统将在数据库中存储响应数据块，便于后续分析和处理"
-      },
+      "storeChunks": {},
       "policy": {
         "title": "存储策略",
         "description": "配置存储策略和数据清理设置以管理数据保留和存储效率",
@@ -65,11 +59,7 @@
         "notSquare": "请上传正方形图片（宽度等于高度）。"
       }
     },
-    "other": {
-      "title": "其他设置",
-      "description": "更多系统配置选项将在此处添加",
-      "comingSoon": "更多配置选项即将推出..."
-    },
+    "other": {},
     "retry": {
       "title": "重试策略",
       "description": "配置失败请求的自动重试行为以提高系统可靠性",
@@ -85,10 +75,7 @@
           "adaptive": "自适应",
           "weighted": "权重"
         },
-        "documentation": {
-          "adaptive": "基于权重、成功率、轮询和trace等策略综合考虑选择合适的渠道进行请求。智能平衡多个因素以优化渠道选择。",
-          "weighted": "每一次请求都按照渠道权重从高到低顺序请求，直到一次成功。权重更高的渠道在所有请求中都被顺序优先。"
-        }
+        "documentation": {}
       },
       "maxChannelRetries": {
         "label": "最大渠道重试次数",
@@ -120,8 +107,6 @@
       "description": "欢迎使用 AxonHub！让我们快速设置您的系统。",
       "startTour": "开始引导",
       "skipTour": "跳过引导",
-      "nextStep": "下一步",
-      "previousStep": "上一步",
       "completeTour": "完成引导",
       "steps": {
         "welcome": {
@@ -180,10 +165,7 @@
           "title": "数据存储后端",
           "description": "为您的数据选择存储后端。不同的后端提供不同的性能和成本特性。"
         },
-        "storageCleanup": {
-          "title": "数据清理策略",
-          "description": "设置自动清理规则以管理存储空间并符合数据保留策略。"
-        },
+        "storageCleanup": {},
         "storageCleanupRequests": {
           "title": "请求数据清理",
           "description": "配置请求数据的自动清理以管理存储空间并保持系统性能。"

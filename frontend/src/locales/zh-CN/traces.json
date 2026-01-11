@@ -11,52 +11,28 @@
       }
     },
     "columns": {
-      "id": "ID",
       "traceId": "追踪ID",
       "project": "项目",
       "thread": "线程",
       "userQuery": "用户提问",
       "requestCount": "请求次数",
       "details": "详情",
-      "createdAt": "创建时间",
-      "updatedAt": "更新时间",
-      "actions": "操作",
-      "selectAll": "选择全部",
-      "selectRow": "选择行",
       "unknown": "未知",
       "noThread": "-"
     },
     "actions": {
       "viewDetails": "查看详情",
-      "viewTrace": "查看追踪",
       "openMenu": "打开菜单"
     },
     "filters": {
-      "filterId": "按ID筛选...",
-      "filterTraceId": "按追踪ID筛选...",
-      "project": "项目",
-      "thread": "线程"
+      "filterTraceId": "按追踪ID筛选..."
     },
     "detail": {
       "title": "追踪详情",
-      "basic": "基本信息",
-      "additional": "附加信息",
       "notFound": "未找到追踪",
-      "overview": "概览",
-      "requestTrace": "请求追踪",
-      "traceTree": "追踪树",
       "noTraceData": "暂无追踪数据",
-      "metadata": "元数据",
-      "duration": "持续时间",
-      "tokens": "令牌数",
-      "cost": "成本",
-      "items": "项目数",
-      "requestSpans": "请求片段",
-      "responseSpans": "响应片段",
       "levelBadge": "层级 {{level}}",
       "durationLabel": "持续时间",
-      "tokensLabel": "令牌数",
-      "costLabel": "成本",
       "itemsLabel": "项目数",
       "inputTokensLabel": "输入令牌数",
       "outputTokensLabel": "输出令牌数",
@@ -92,7 +68,6 @@
       "title": "时间线",
       "emptyDescription": "该追踪暂无时间线数据。",
       "itemsCount": "{{count}} 项",
-      "itemsCount_plural": "{{count}} 项",
       "aria": {
         "expandRow": "展开行",
         "collapseRow": "折叠行"
@@ -121,14 +96,12 @@
         "imageUrl": "图像",
         "systemInstruction": "系统指令"
       },
-      "totalDurationLabel": "总持续时间",
       "summary": {
         "duration": "持续时间 {{value}}",
         "tokenCount": "令牌数：{{value}}"
       },
       "collapseAll": "全部收起",
-      "expandAll": "全部展开",
-      "viewRequest": "查看请求"
+      "expandAll": "全部展开"
     },
     "errors": {
       "loadTracesFailed": "加载追踪失败",

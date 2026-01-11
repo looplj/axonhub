@@ -2,7 +2,6 @@
   "users": {
     "title": "用户管理",
     "description": "管理系统用户和权限配置。",
-    "inviteUser": "邀请用户",
     "addUser": "添加用户",
     "filterUsers": "筛选用户...",
     "columns": {
@@ -11,24 +10,13 @@
       "email": "邮箱",
       "owner": "所有者",
       "roles": "角色",
-      "status": "状态",
-      "createdAt": "创建时间",
-      "updatedAt": "更新时间",
-      "actions": "操作",
-      "selectAll": "全选",
-      "selectRow": "选择行",
-      "noRoles": "无角色",
       "projectOwner": "项目所有者",
       "projectRoles": "项目角色",
       "projectScopes": "项目权限"
     },
     "status": {
       "activated": "已激活",
-      "deactivated": "已停用",
-      "active": "活跃",
-      "inactive": "非活跃",
-      "invited": "已邀请",
-      "suspended": "已暂停"
+      "deactivated": "已停用"
     },
     "badges": {
       "owner": "所有者",
@@ -39,12 +27,12 @@
       "noScopes": "无权限"
     },
     "filters": {
-      "status": "状态",
-      "role": "角色"
+      "status": "状态"
     },
     "actions": {
       "changePassword": "修改密码",
       "deactivate": "停用",
+      "activate": "激活",
       "addToProject": "添加到项目",
       "removeFromProject": "从项目中移除"
     },
@@ -72,16 +60,8 @@
         "activateInfo": "激活后，该用户将能够正常登录系统。"
       },
       "status": {
-        "activate": {
-          "title": "激活用户",
-          "description": "您确定要激活用户 {{name}} 吗？",
-          "note": "激活后，该用户将能够正常登录系统。"
-        },
-        "deactivate": {
-          "title": "停用用户",
-          "description": "您确定要停用用户 {{name}} 吗？",
-          "note": "停用后，该用户将无法登录系统。"
-        }
+        "activate": {},
+        "deactivate": {}
       },
       "remove": {
         "title": "从项目中移除用户",
@@ -98,7 +78,6 @@
       "email": "邮箱",
       "password": "密码",
       "confirmPassword": "确认密码",
-      "currentPassword": "当前密码",
       "newPassword": "新密码",
       "confirmNewPassword": "确认新密码",
       "isOwner": "所有者",
@@ -115,36 +94,21 @@
       "noUsersFound": "未找到用户",
       "noProjectRoles": "无可用的项目角色",
       "loadingRoles": "加载角色中...",
-      "loadingScopes": "加载权限范围中...",
       "placeholders": {
-        "firstName": "张",
-        "lastName": "三",
-        "email": "zhangsan@example.com",
-        "password": "请输入密码",
-        "confirmPassword": "请确认密码",
-        "currentPassword": "当前密码",
-        "currentPasswordPlaceholder": "输入当前密码",
-        "newPassword": "新密码",
-        "newPasswordPlaceholder": "输入新密码",
-        "confirmNewPassword": "确认新密码",
-        "confirmNewPasswordPlaceholder": "确认新密码"
-      },
-      "passwordMismatch": "密码不匹配"
+        "newPassword": "输入新密码",
+        "confirmNewPassword": "确认新密码"
+      }
     },
     "validation": {
       "firstNameRequired": "名字不能为空",
       "lastNameRequired": "姓氏不能为空",
-      "emailInvalid": "邮箱格式无效",
-      "passwordMinLength": "密码至少需要8个字符",
+      "emailRequired": "邮箱不能为空",
       "passwordsNotMatch": "密码不匹配",
-      "currentPasswordRequired": "当前密码不能为空",
-      "newPasswordRequired": "新密码不能为空",
-      "newPasswordMinLength": "新密码至少需要8个字符",
       "passwordPattern": "密码必须包含至少一个大写字母、一个小写字母和一个数字",
-      "projectRequired": "项目不能为空"
+      "projectRequired": "项目不能为空",
+      "userRequired": "用户不能为空"
     },
     "buttons": {
-      "deactivate": "停用",
       "changePassword": "修改密码",
       "changing": "修改中...",
       "addToProject": "添加到项目",
@@ -166,7 +130,6 @@
       "loadUsersError": "获取用户数据失败",
       "loadUserError": "获取用户详情失败",
       "userNotFound": "用户未找到",
-      "loadRolesError": "加载角色和权限范围失败",
       "addToProjectSuccess": "用户已成功添加到项目",
       "addToProjectError": "添加用户到项目失败",
       "removeFromProjectSuccess": "用户已成功从项目中移除",

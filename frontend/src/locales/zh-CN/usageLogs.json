@@ -3,8 +3,6 @@
     "title": "用量日志",
     "description": "查看和分析AI模型使用情况和令牌消耗",
     "columns": {
-      "id": "ID",
-      "user": "用户",
       "requestId": "请求ID",
       "channel": "渠道",
       "modelId": "模型ID",
@@ -18,20 +16,13 @@
       "cacheWriteLabel": "写入缓存",
       "promptAudioTokens": "输入音频令牌",
       "promptCachedTokens": "输入缓存令牌",
-      "promptWriteCachedTokens": "输入写入缓存令牌",
       "cacheTokens": "缓存令牌",
       "writeCacheTokens": "写入缓存令牌",
       "cacheHitRate": "缓存命中率: {{rate}}%",
       "writeCacheRate": "写入缓存占比: {{rate}}%",
       "completionAudioTokens": "输出音频令牌",
       "completionReasoningTokens": "推理令牌",
-      "source": "来源",
-      "format": "格式",
-      "createdAt": "创建时间",
-      "actions": "操作",
-      "selectAll": "全选",
-      "selectRow": "选择行",
-      "unknown": "未知"
+      "source": "来源"
     },
     "source": {
       "api": "API",
@@ -40,14 +31,12 @@
     },
     "actions": {
       "viewDetails": "查看详情",
-      "copy": "复制"
+      "openMenu": "打开菜单"
     },
     "filters": {
       "filterId": "按ID筛选...",
       "source": "来源",
-      "user": "用户",
-      "channel": "渠道",
-      "model": "模型"
+      "channel": "渠道"
     },
     "dialogs": {
       "usageDetail": {
@@ -58,7 +47,6 @@
           "advanced": "高级令牌"
         },
         "fields": {
-          "userId": "用户ID",
           "requestId": "请求ID",
           "channelId": "渠道ID",
           "modelId": "模型ID",
@@ -67,11 +55,7 @@
           "createdAt": "创建时间"
         },
         "tokenDetails": {
-          "basic": "基础令牌使用",
-          "audio": "音频令牌",
-          "cached": "缓存令牌",
-          "reasoning": "推理令牌",
-          "prediction": "预测令牌"
+          "basic": "基础令牌使用"
         },
         "notFound": "用量日志未找到"
       }

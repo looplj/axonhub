@@ -39,11 +39,11 @@ export const ChannelExpandedRow = memo(({ channel, columnsLength, getApiFormatLa
                 <span className='font-mono text-xs'>{getApiFormatLabel(config?.apiFormat)}</span>
               </div>
               <div className='flex justify-between'>
-                <span className='text-muted-foreground'>{t('channels.columns.createdAt')}:</span>
+                <span className='text-muted-foreground'>{t('common.columns.createdAt')}:</span>
                 <span>{format(channel.createdAt, 'yyyy-MM-dd HH:mm')}</span>
               </div>
               <div className='flex justify-between'>
-                <span className='text-muted-foreground'>{t('channels.columns.updatedAt')}:</span>
+                <span className='text-muted-foreground'>{t('common.columns.updatedAt')}:</span>
                 <span>{format(channel.updatedAt, 'yyyy-MM-dd HH:mm')}</span>
               </div>
             </div>

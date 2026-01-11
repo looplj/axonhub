@@ -181,16 +181,12 @@ function ActionButtons() {
   return (
     <div className='flex gap-2'>
       <PermissionGuard requiredScope='write_channels'>
-        <DetectUnassociatedButton />
-      </PermissionGuard>
-      <PermissionGuard requiredScope='write_channels'>
-        <SettingsButton />
-      </PermissionGuard>
-      <PermissionGuard requiredScope='write_channels'>
-        <BulkAddButton />
-      </PermissionGuard>
-      <PermissionGuard requiredScope='write_channels'>
-        <CreateButton />
+        <>
+          <DetectUnassociatedButton />
+          <SettingsButton />
+          <BulkAddButton />
+          <CreateButton />
+        </>
       </PermissionGuard>
     </div>
   );

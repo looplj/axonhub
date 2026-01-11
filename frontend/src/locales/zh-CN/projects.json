@@ -4,16 +4,7 @@
     "description": "管理系统项目和配置。",
     "createProject": "新建项目",
     "searchProjects": "按名称搜索项目...",
-    "columns": {
-      "name": "名称",
-      "description": "描述",
-      "status": "状态",
-      "createdAt": "创建时间",
-      "updatedAt": "更新时间",
-      "actions": "操作",
-      "selectAll": "全选",
-      "selectRow": "选择行"
-    },
+    "columns": {},
     "status": {
       "active": "活跃",
       "archived": "已归档"
@@ -27,8 +18,7 @@
       },
       "edit": {
         "title": "编辑项目",
-        "description": "修改项目信息。",
-        "slugNotEditable": "项目标识创建后不可修改"
+        "description": "修改项目信息。"
       },
       "archive": {
         "title": "归档项目",
@@ -44,20 +34,14 @@
           "placeholder": "我的项目",
           "description": "项目的显示名称"
         },
-        "slug": {
-          "label": "项目标识",
-          "placeholder": "my-project",
-          "description": "URL 友好的唯一标识符（留空将自动生成）"
-        },
+        "slug": {},
         "description": {
           "label": "项目描述",
           "placeholder": "输入项目描述",
           "description": "项目的详细描述"
         }
       },
-      "buttons": {
-        "create": "创建项目"
-      }
+      "buttons": {}
     },
     "validation": {
       "nameRequired": "项目名称不能为空"

@@ -2,20 +2,10 @@
   "dataStorages": {
     "title": "数据存储管理",
     "description": "管理数据存储配置和设置。",
-    "createStorage": "创建数据存储",
-    "filterStorages": "筛选数据存储...",
     "columns": {
-      "name": "名称",
       "primary": "主存储",
-      "description": "描述",
       "type": "类型",
-      "settings": "配置",
-      "status": "状态",
-      "createdAt": "创建时间",
-      "updatedAt": "更新时间",
-      "actions": "操作",
-      "selectAll": "全选",
-      "selectRow": "选择行"
+      "settings": "配置"
     },
     "status": {
       "active": "活跃",
@@ -29,26 +19,18 @@
     },
     "primary": "主存储",
     "default": "默认",
-    "actions": {
-      "edit": "编辑",
-      "delete": "删除"
-    },
+    "actions": {},
     "filters": {
-      "type": "类型",
-      "status": "状态",
       "searchByName": "按名称搜索..."
     },
     "messages": {
-      "createSuccess": "数据存储创建成功",
-      "createError": "创建数据存储失败",
-      "updateSuccess": "数据存储更新成功",
-      "updateError": "更新数据存储失败",
-      "deleteSuccess": "数据存储删除成功",
-      "deleteError": "删除数据存储失败",
-      "statusUpdateSuccess": "数据存储状态已更新为 {{status}}",
-      "statusUpdateError": "更新状态失败",
       "archiveSuccess": "数据存储已成功归档",
       "archiveError": "归档数据存储失败"
+    },
+    "errors": {
+      "createError": "创建数据存储失败",
+      "fetchData": "获取数据存储失败",
+      "updateError": "更新数据存储失败"
     },
     "dialogs": {
       "create": {
@@ -59,67 +41,31 @@
         "title": "编辑数据存储",
         "description": "修改数据存储配置。"
       },
-      "delete": {
-        "title": "删除数据存储",
-        "description": "确定要删除数据存储 {{name}} 吗？此操作无法撤销。"
-      },
+      "delete": {},
       "status": {
-        "title": "更改状态",
-        "description": "确定要更改此数据存储的状态吗？",
-        "activateTitle": "激活数据存储",
         "archiveTitle": "归档数据存储",
-        "activateDescription": "确定要激活数据存储 {{name}} 吗？",
         "archiveDescription": "确定要归档数据存储 {{name}} 吗？"
       },
       "fields": {
-        "name": {
-          "label": "名称",
-          "placeholder": "输入存储名称",
-          "description": "为此存储设置一个易于识别的名称"
-        },
-        "description": {
-          "label": "描述",
-          "placeholder": "输入存储描述",
-          "description": "存储的详细描述"
-        },
-        "type": {
-          "label": "类型",
-          "description": "选择存储类型"
-        },
-        "directory": {
-          "label": "目录路径",
-          "placeholder": "/var/axonhub/data",
-          "description": "文件系统存储的目录路径"
-        },
+        "name": {},
+        "description": {},
+        "type": {},
+        "directory": {},
         "s3AccessKey": {
-          "label": "Access Key",
-          "placeholder": "输入 S3 access key",
-          "editPlaceholder": "留空表示不更新",
-          "description": "S3 access key 用于身份验证"
+          "editPlaceholder": "留空表示不更新"
         },
         "s3SecretKey": {
-          "label": "Secret Key",
-          "placeholder": "输入 S3 secret key",
-          "editPlaceholder": "留空表示不更新",
-          "description": "S3 secret key 用于身份验证"
+          "editPlaceholder": "留空表示不更新"
         },
         "gcsCredential": {
-          "label": "Service Account JSON",
-          "placeholder": "输入 GCS service account JSON",
-          "editPlaceholder": "留空表示不更新",
-          "description": "GCP service account JSON 凭证"
+          "editPlaceholder": "留空表示不更新"
         }
       },
-      "buttons": {
-        "create": "创建存储",
-        "update": "更新存储",
-        "delete": "删除"
-      }
+      "buttons": {}
     },
     "validation": {
       "nameRequired": "名称不能为空",
       "directoryRequired": "目录路径不能为空",
-      "typeRequired": "存储类型不能为空",
       "s3BucketRequired": "Bucket 名称不能为空",
       "s3AccessKeyRequired": "Access Key 不能为空",
       "s3SecretKeyRequired": "Secret Key 不能为空",
@@ -142,10 +88,6 @@
     },
     "buttons": {
       "create": "创建数据存储",
-      "edit": "编辑",
-      "delete": "删除",
-      "activate": "激活",
-      "archive": "归档",
       "openStorageSettings": "系统存储配置"
     },
     "llmStorageHint": "可用于配置存储 LLM 的请求体和响应体"

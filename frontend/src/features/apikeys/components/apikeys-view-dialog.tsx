@@ -240,7 +240,7 @@ print(response.text)`
 
         <div className='space-y-4 shrink-0'>
           <div>
-            <label className='text-sm font-medium'>{t('apikeys.columns.name')}</label>
+            <label className='text-sm font-medium'>{t('common.columns.name')}</label>
             <div className='bg-muted mt-1 rounded-md p-3'>{selectedApiKey?.name}</div>
           </div>
 

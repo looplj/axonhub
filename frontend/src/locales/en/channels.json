@@ -5,16 +5,12 @@
     "addChannel": "Add Channel",
     "importChannels": "Bulk Import",
     "orderChannels": "Bulk Ordering",
-    "settings": "Settings",
-    "filterChannels": "Filter channels...",
     "tabs": {
       "all": "All"
     },
     "columns": {
-      "name": "Name",
       "type": "Type",
       "provider": "Provider",
-      "status": "Status",
       "health": "Health",
       "healthTooltip": {
         "probeTime": "Probe Time",
@@ -28,13 +24,7 @@
       "tokensPerSecond": "TPS",
       "firstTokenLatencyFull": "First Token Latency",
       "tokensPerSecondFull": "Tokens/Second",
-      "orderingWeight": "Weight",
-      "action": "Action",
-      "createdAt": "Created At",
-      "updatedAt": "Updated At",
-      "actions": "Actions",
-      "selectAll": "Select all",
-      "selectRow": "Select row"
+      "orderingWeight": "Weight"
     },
     "status": {
       "enabled": "Enabled",
@@ -120,7 +110,6 @@
       "exitErrorOnlyButton": "Exit Error Mode"
     },
     "filters": {
-      "type": "Type",
       "status": "Status",
       "tags": "Tags",
       "model": "Model",
@@ -224,8 +213,6 @@
         "title": "Bulk Import Channels",
         "description": "Import multiple channels from CSV data. One channel per line, comma-separated fields.",
         "formatDescription": "Format: type,name,baseURL,apiKey,supportedModels,defaultTestModel",
-        "supportedModelsNote": "Use | to separate multiple models",
-        "requiredFieldsNote": "Note: baseURL and apiKey are required fields",
         "supportedTypes": "Supported types: openai, anthropic, anthropic_aws, anthropic_gcp, gemini_openai, deepseek, doubao, moonshot, zhipu, zai, deepseek_anthropic, moonshot_anthropic, zhipu_anthropic, zai_anthropic, openrouter, xai",
         "loadingChannelNames": "Loading existing channel names...",
         "inputLabel": "Import Data",
@@ -236,10 +223,8 @@
         "errors": "{{count}} errors",
         "validChannels": "Valid Channels",
         "importButton": "Import {{count}} Channels",
-        "importing": "Importing...",
         "formatTitle": "Format Instructions",
         "formatNote": "Use | to separate multiple models",
-        "exampleData": "Example Data",
         "errorMessages": "Error Messages",
         "invalidFormat": "Line {{line}}: Invalid format, should be: type,name,baseURL,apiKey,supportedModels,defaultTestModel",
         "unsupportedType": "Line {{line}}: Unsupported channel type \"{{type}}\"",
@@ -263,27 +248,20 @@
       "fields": {
         "name": {
           "label": "Channel Name",
-          "placeholder": "My Channel",
-          "description": "Set an easily recognizable name for this channel"
+          "placeholder": "My Channel"
         },
         "apiFormat": {
           "label": "API Format",
           "editDisabled": "API format cannot be changed",
           "placeholder": "Select API format",
           "geminiVertex": {
-            "label": "Use Vertex AI",
-            "description": "Use Google Cloud Vertex AI instead of the standard Gemini API",
-            "editDisabled": "Vertex AI setting cannot be changed"
+            "label": "Use Vertex AI"
           },
           "anthropicAWS": {
-            "label": "Use AWS Bedrock",
-            "description": "Use AWS Bedrock instead of the standard Anthropic API",
-            "editDisabled": "AWS Bedrock setting cannot be changed"
+            "label": "Use AWS Bedrock"
           },
           "claudeCode": {
-            "label": "Use Claude Code",
-            "description": "Use Claude Code CLI API with specialized headers and system message",
-            "editDisabled": "Claude Code setting cannot be changed"
+            "label": "Use Claude Code"
           },
           "formats": {
             "openai/chat_completions": "OpenAI (Chat Completions)",
@@ -293,24 +271,17 @@
           }
         },
         "provider": {
-          "label": "Provider",
-          "description": "Select the AI model provider"
+          "label": "Provider"
         },
-        "type": {
-          "label": "Channel Type",
-          "description": "Select the AI model provider type",
-          "helper": "Channel types are OpenAI-compatible by default; types containing \"Anthropic\" follow the Anthropic-compatible format."
-        },
+        "type": {},
         "baseURL": {
           "label": "Base URL",
-          "placeholder": "https://api.openai.com/v1",
-          "description": "The base URL address for the API"
+          "placeholder": "https://api.openai.com/v1"
         },
         "apiKey": {
           "label": "API Key",
           "placeholder": "sk-...",
           "editPlaceholder": "Leave empty to keep unchanged",
-          "description": "API key for authentication",
           "multiLineHint": "One API key per line, will create multiple channels if provided multiple keys."
         },
         "supportedModels": {
@@ -321,7 +292,6 @@
           "fetchedModelsLabel": "Fetched Models",
           "showMore": "+{{count}} more",
           "searchPlaceholder": "Search models...",
-          "showAddedOnly": "Show added only",
           "showNotAddedOnly": "Show not added only",
           "added": "Added",
           "allModels": "All Models ({{count}})",
@@ -348,7 +318,6 @@
           "description": "Add notes or remarks about this channel for reference"
         },
         "transformOptions": {
-          "label": "Transform Options",
           "forceArrayInstructions": {
             "label": "Force Array Instructions",
             "description": "Force the channel to accept array format for instructions"
@@ -358,55 +327,25 @@
             "description": "Force the channel to accept array format for inputs"
           }
         },
-        "modelName": {
-          "label": "Model Name",
-          "placeholder": "Enter model name"
-        },
-        "awsAccessKeyID": {
-          "label": "AWS Access Key ID",
-          "placeholder": "Enter AWS Access Key ID",
-          "description": "AWS access key ID for authentication"
-        },
-        "awsSecretAccessKey": {
-          "label": "AWS Secret Access Key",
-          "placeholder": "Enter AWS Secret Access Key",
-          "description": "AWS secret access key for authentication"
-        },
-        "awsRegion": {
-          "label": "AWS Region",
-          "placeholder": "us-east-1",
-          "description": "AWS service region"
-        },
+        "modelName": {},
+        "awsAccessKeyID": {},
+        "awsSecretAccessKey": {},
+        "awsRegion": {},
         "gcpRegion": {
           "label": "GCP Region",
-          "placeholder": "us-central1",
-          "description": "Google Cloud Platform service region"
+          "placeholder": "us-central1"
         },
         "gcpProjectID": {
           "label": "GCP Project ID",
-          "placeholder": "my-gcp-project",
-          "description": "Google Cloud Platform project identifier"
+          "placeholder": "my-gcp-project"
         },
         "gcpJsonData": {
-          "label": "Service Account JSON",
-          "placeholder": "Paste your GCP service account JSON credentials here",
-          "description": "Complete JSON credentials for GCP service account authentication"
+          "label": "Service Account JSON"
         },
-        "platformType": {
-          "label": "Platform",
-          "vertexLabel": "Vertex AI"
-        },
-        "jsonData": {
-          "label": "GCP Service Account JSON",
-          "placeholder": "Paste your GCP service account JSON credentials here",
-          "description": "Complete JSON credentials for GCP service account authentication"
-        }
+        "platformType": {},
+        "jsonData": {}
       },
       "buttons": {
-        "create": "Create Channel",
-        "update": "Update Channel",
-        "test": "Test Connection",
-        "testing": "Testing...",
         "add": "Add",
         "batchAdd": "Batch Add",
         "batchAddTooltip": "Enter multiple models separated by commas, e.g., gpt-4, gpt-3.5-turbo, claude-3-opus",
@@ -417,8 +356,7 @@
         "deselectAll": "Deselect All",
         "addSelectedCount": "Add Selected ({{count}})",
         "removeDeprecated": "Clean ({{count}})",
-        "clearAll": "Clear all",
-        "addMappingButton": "Add Mapping"
+        "clearAll": "Clear all"
       },
       "status": {
         "enable": {
@@ -444,12 +382,7 @@
         }
       },
       "settings": {
-        "title": "Channel Settings",
-        "description": "Configure advanced settings for {{name}}.",
-        "basic": {
-          "title": "Basic Information",
-          "description": "Basic configuration information for the Channel"
-        },
+        "basic": {},
         "extraModelPrefix": {
           "title": "Extra Model Prefix",
           "description": "Configure extra model prefixes to allow access to this channel using prefixed model names. For example: with prefix 'deepseek', both 'deepseek/deepseek-chat' and 'deepseek-chat' can access this channel.",
@@ -459,7 +392,6 @@
           "title": "Auto-Trimmed Model Prefixes",
           "description": "Configure prefixes to automatically trim from model names. For example: with prefix 'deepseek-ai', model 'deepseek-ai/deepseek-chat' becomes 'deepseek-chat'; both 'deepseek-ai/deepseek-chat' and 'deepseek-chat' can access this channel",
           "placeholder": "e.g., openai, deepseek",
-          "duplicateWarning": "This prefix already exists",
           "noPrefixesFound": "No prefixes found in supported models",
           "allPrefixesAlreadyAdded": "All prefixes have already been added",
           "prefixesAdded": "{{count}} prefix(es) added successfully",
@@ -470,7 +402,6 @@
           "prefixesDetected": "Detected {{count}} prefix(es)"
         },
         "modelMapping": {
-          "action": "Model Alias",
           "title": "Model Alias",
           "description": "Use aliases to expose channel-supported models under alternative names without transforming the request model. For example: register 'gpt-4' as an alias of 'gpt-4-turbo', and both names will be handled by this channel",
           "originalModel": "Alias Name",
@@ -481,13 +412,13 @@
           "targetInvalid": "Target model must be in supported models",
           "duplicateAlias": "Each original model can only be mapped once",
           "useSuggestion": "Use {{alias}}",
+          "addMappingButton": "Add Mapping",
           "hideOriginalModels": {
             "label": "Hide Original Models",
             "description": "When enabled, only the transformed model names (aliases, prefixed models, etc.) will be exposed in the model list, hiding all untransformed original model names."
           },
           "hideMappedModels": {
-            "label": "Only Show Aliases",
-            "description": "When enabled, for models with configured aliases, only the alias names will be exposed in the model list, hiding their original target model names."
+            "label": "Only Show Aliases"
           }
         },
         "overrides": {
@@ -561,7 +492,6 @@
         "description": "Drag and drop to reorder channels. Higher weight channels will be preferred when selecting channels.",
         "dragHint": "Drag channels to reorder them",
         "channelCount": "{{count}} channel",
-        "channelCount_plural": "{{count}} channels",
         "saveButton": "Save Order",
         "orderingWeight": "Weight",
         "noChannels": "No channels available for ordering"
@@ -607,48 +537,19 @@
         "action": "Adjust Weight",
         "rangeHint": "Weight must be between {{min}} and {{max}}. Higher values will be prioritized."
       },
-      "remark": {
-        "title": "Channel Remark",
-        "description": "Add or edit remark for channel \"{{name}}\".",
-        "action": "Remark",
-        "label": "Remark",
-        "placeholder": "Enter a note or remark for this channel..."
-      }
+      "remark": {}
     },
     "expandedRow": {
       "basic": "Basic",
       "additional": "Additional",
       "performance": "Performance",
-      "modelsAndRemark": "Models & Remark",
-      "modes": "Models",
       "supportedModels": "Supported Models",
-      "totalModels": "Total Models",
-      "defaultTestModel": "Default Test Model",
       "remark": "Remark",
       "tags": "Tags",
       "apiFormat": "API Format",
-      "noPerformanceData": "No performance data available",
-      "more": "more"
+      "noPerformanceData": "No performance data available"
     },
-    "validation": {
-      "nameRequired": "Name is required",
-      "baseUrlInvalid": "Please enter a valid URL",
-      "baseUrlRequired": "Base URL is required",
-      "apiKeyRequired": "API Key is required",
-      "supportedModelsRequired": "At least one supported model is required",
-      "defaultTestModelRequired": "Please select a default test model",
-      "importDataRequired": "Please enter data to import",
-      "awsAccessKeyIdRequired": "AWS Access Key ID is required",
-      "awsSecretAccessKeyRequired": "AWS Secret Access Key is required",
-      "awsRegionRequired": "AWS Region is required",
-      "gcpRegionRequired": "GCP Region is required",
-      "gcpProjectIdRequired": "GCP Project ID is required",
-      "gcpJsonDataRequired": "GCP Service Account JSON is required",
-      "atLeastOneChannel": "At least one channel is required",
-      "overrideParametersInvalidJson": "Must be valid JSON",
-      "overrideParametersStreamNotAllowed": "Stream cannot be overridden",
-      "forbiddenHeader": "Header cannot override sensitive headers like Authorization, API-Key, or Cookie"
-    },
+    "validation": {},
     "templates": {
       "section": {
         "title": "Templates",
@@ -687,8 +588,7 @@
         "applyError": "Failed to apply template: {{error}}"
       },
       "errors": {
-        "fetchList": "Failed to load templates",
-        "noUser": "User not authenticated"
+        "fetchList": "Failed to load templates"
       },
       "bulk": {
         "title": "Apply Template to Multiple Channels",

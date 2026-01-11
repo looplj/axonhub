@@ -2,8 +2,6 @@
   "sidebar": {
     "groups": {
       "admin": "管理",
-      "general": "常规",
-      "api": "API",
       "project": "项目",
       "settings": "设置"
     },
@@ -15,7 +13,6 @@
       "dataStorages": "数据存储",
       "users": "用户",
       "roles": "角色",
-      "system": "系统",
       "requests": "请求",
       "traces": "追踪",
       "threads": "线程",
@@ -46,7 +43,6 @@
     },
     "projectSwitcher": {
       "projects": "项目",
-      "project": "项目",
       "selectProject": "选择项目"
     }
   },
@@ -83,8 +79,7 @@
   },
   "projectUsers": {
     "title": "项目用户",
-    "description": "管理当前项目的用户和权限。",
-    "addToProject": "添加用户到项目"
+    "description": "管理当前项目的用户和权限。"
   },
   "projectRoles": {
     "title": "项目角色",
@@ -102,7 +97,6 @@
     "selectedRows": "已选择 {{selected}} / {{total}} 行",
     "selectedInfo": "已选择 {{selectedRows}} / {{dataLength}} 行",
     "selectedInfoWithTotal": "已选择 {{selectedRows}} / {{dataLength}} 行 / 总计 {{totalCount}} 行",
-    "totalRows": "总计 {{total}} 行",
     "rowsPerPage": "每页行数",
     "currentPage": "第 {{current}} 页，共 {{total}} 页",
     "firstPage": "首页",
@@ -117,7 +111,6 @@
     "close": "关闭",
     "refresh": "刷新",
     "autoRefresh": "自动刷新",
-    "autoRefreshEvery": "每 {{seconds}} 秒自动刷新",
     "selected": "已选择",
     "selectedItems": "已选择 {{count}} 项",
     "noResultsFound": "未找到结果",
@@ -134,11 +127,8 @@
     "of": "共",
     "previous": "上一页",
     "next": "下一页",
-    "moveUp": "上移",
-    "moveDown": "下移",
     "moveToTop": "移动到顶部",
     "moveToBottom": "移动到底部",
-    "dragging": "拖拽中",
     "unsavedChanges": "您有未保存的更改",
     "copied": "已复制",
     "sort": {
@@ -148,8 +138,7 @@
     },
     "messages": {
       "errorMessage": "错误信息",
-      "success": "成功",
-      "error": "错误"
+      "success": "成功"
     },
     "buttons": {
       "cancel": "取消",
@@ -162,18 +151,15 @@
       "update": "更新",
       "updating": "更新中...",
       "delete": "删除",
-      "deleting": "删除中...",
       "edit": "编辑",
       "editing": "编辑中...",
       "enable": "启用",
-      "enabling": "启用中...",
       "disable": "禁用",
-      "disabling": "禁用中...",
       "archive": "归档",
       "archiving": "归档中...",
       "activate": "激活",
-      "activating": "激活中...",
-      "remove": "移除"
+      "remove": "移除",
+      "openMenu": "打开菜单"
     },
     "actions": {
       "openMenu": "打开菜单",
@@ -181,10 +167,20 @@
       "duplicate": "复制",
       "delete": "删除"
     },
+    "columns": {
+      "id": "ID",
+      "name": "名称",
+      "description": "描述",
+      "status": "状态",
+      "actions": "操作",
+      "createdAt": "创建时间",
+      "updatedAt": "更新时间",
+      "selectAll": "全选",
+      "selectRow": "选择行"
+    },
     "filters": {
       "reset": "重置",
-      "dateRange": "选择日期范围",
-      "clearDateRange": "清除日期范围"
+      "dateRange": "选择日期范围"
     },
     "routeGuard": {
       "accessDenied": "访问被拒绝",
@@ -214,7 +210,7 @@
       "loadFailed": "加载数据失败",
       "systemUpdateFailed": "系统设置更新失败",
       "onboardingFailed": "引导完成失败",
-      "userLoadFailed": "加载角色和权限失败",
+      "userLoadFailed": "加载用户失败",
       "userSaveFailed": "保存用户失败",
       "userDeleteFailed": "删除用户失败",
       "modelCreateFailed": "创建模型失败",
@@ -233,15 +229,9 @@
       "projectActivated": "项目激活成功",
       "signedIn": "登录成功！",
       "signedOut": "退出登录成功！",
-      "userCreated": "用户创建成功",
-      "userUpdated": "用户更新成功",
       "userDeleted": "用户删除成功",
-      "modelCreated": "模型创建成功",
-      "modelUpdated": "模型更新成功",
-      "modelDeleted": "模型删除成功",
       "systemSettingsUpdated": "系统设置更新成功",
-      "systemUpdated": "系统设置更新成功",
-      "onboardingCompleted": "引导完成成功"
+      "systemUpdated": "系统设置更新成功"
     }
   },
   "initialization": {
@@ -317,26 +307,16 @@
           "label": "密码",
           "placeholder": "输入您的密码"
         },
-        "captcha": {
-          "label": "验证码",
-          "placeholder": "输入验证码",
-          "refresh": "刷新验证码"
-        },
+        "captcha": {},
         "rememberMe": "记住我",
         "signInButton": "登录",
         "signingIn": "登录中..."
       },
       "validation": {
-        "emailRequired": "邮箱不能为空",
-        "emailInvalid": "邮箱格式无效",
-        "passwordRequired": "密码不能为空",
-        "passwordMinLength": "密码至少需要7个字符",
-        "captchaRequired": "验证码不能为空"
+        "emailRequired": "邮箱不能为空"
       },
       "links": {
-        "forgotPassword": "忘记密码？",
-        "noAccount": "还没有账户？",
-        "signUp": "注册"
+        "forgotPassword": "忘记密码？"
       },
       "footer": {
         "agreement": "登录即表示您同意我们的服务条款和隐私政策"

@@ -28,7 +28,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
   const columns: ColumnDef<Request>[] = [
     {
       accessorKey: 'id',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.id')} />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.id')} />,
       cell: ({ row }) => {
         const handleClick = useCallback(() => {
           navigateWithSearch({
@@ -213,7 +213,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
 
     {
       accessorKey: 'status',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.status')} />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.status')} />,
       cell: ({ row }) => {
         const status = row.getValue('status') as string;
         return <Badge className={getStatusColor(status)}>{t(`requests.status.${status}`)}</Badge>;
@@ -388,7 +388,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
     },
     {
       accessorKey: 'createdAt',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.createdAt')} />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.createdAt')} />,
       cell: ({ row }) => {
         const date = new Date(row.getValue('createdAt'));
         return <div className='text-xs'>{format(date, 'yyyy-MM-dd HH:mm:ss', { locale })}</div>;

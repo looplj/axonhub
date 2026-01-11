@@ -6,13 +6,11 @@
       "filterThreadId": "Filter by thread ID..."
     },
     "columns": {
-      "id": "ID",
       "threadId": "Thread ID",
       "project": "Project",
       "unknownProject": "Unknown Project",
       "traceCount": "Trace Count",
       "firstUserQuery": "User Query",
-      "createdAt": "Created At",
       "details": "Details"
     },
     "actions": {

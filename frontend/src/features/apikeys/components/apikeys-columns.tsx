@@ -50,7 +50,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
             <Checkbox
               checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
               onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-              aria-label={t('apikeys.columns.selectAll')}
+              aria-label={t('common.columns.selectAll')}
               className='translate-y-[2px]'
             />
           ),
@@ -58,7 +58,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
             <Checkbox
               checked={row.getIsSelected()}
               onCheckedChange={(value) => row.toggleSelected(!!value)}
-              aria-label={t('apikeys.columns.selectRow')}
+              aria-label={t('common.columns.selectRow')}
               className='translate-y-[2px]'
             />
           ),
@@ -69,13 +69,13 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
     : []),
   {
     accessorKey: 'id',
-    header: ({ column }) => <DataTableColumnHeader column={column} title={t('apikeys.columns.id')} />,
+    header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.id')} />,
     cell: ({ row }) => <div className='font-mono text-xs'>#{extractNumberID(row.getValue('id'))}</div>,
     enableSorting: false,
   },
   {
     accessorKey: 'name',
-    header: ({ column }) => <DataTableColumnHeader column={column} title={t('apikeys.columns.name')} />,
+    header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.name')} />,
     cell: ({ row }) => <LongText className='max-w-36 font-medium'>{row.getValue('name')}</LongText>,
     meta: {
       className: 'md:table-cell',
@@ -135,7 +135,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
   },
   {
     accessorKey: 'status',
-    header: ({ column }) => <DataTableColumnHeader column={column} title={t('apikeys.columns.status')} />,
+    header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.status')} />,
     cell: ({ row }) => {
       const status = row.getValue('status') as string;
       const statusText =
@@ -161,7 +161,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
   },
   {
     accessorKey: 'createdAt',
-    header: ({ column }) => <DataTableColumnHeader column={column} title={t('apikeys.columns.createdAt')} />,
+    header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.createdAt')} />,
     cell: ({ row }) => {
       const date = row.getValue('createdAt') as Date;
       return <div className='text-muted-foreground'>{format(date, 'yyyy-MM-dd HH:mm')}</div>;
@@ -169,7 +169,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
   },
   {
     accessorKey: 'updatedAt',
-    header: ({ column }) => <DataTableColumnHeader column={column} title={t('apikeys.columns.updatedAt')} />,
+    header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.updatedAt')} />,
     cell: ({ row }) => {
       const date = row.getValue('updatedAt') as Date;
       return <div className='text-muted-foreground'>{format(date, 'yyyy-MM-dd HH:mm')}</div>;
@@ -177,6 +177,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
   },
   {
     id: 'actions',
+    header: t('common.columns.actions'),
     cell: DataTableRowActions,
   },
 ];

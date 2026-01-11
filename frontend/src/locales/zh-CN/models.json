@@ -3,10 +3,7 @@
     "title": "模型",
     "description": "管理 AI 模型及其配置",
     "columns": {
-      "selectAll": "全选",
-      "selectRow": "选择行",
       "icon": "图标",
-      "name": "名称",
       "modelId": "模型 ID",
       "developer": "开发者",
       "type": "类型",
@@ -21,9 +18,6 @@
       "maxOutputFull": "最大输出令牌数",
       "associationRules": "关联规则",
       "associatedChannels": "关联渠道",
-      "status": "状态",
-      "createdAt": "创建时间",
-      "updatedAt": "更新时间",
       "group": "分组",
       "remark": "备注"
     },
@@ -32,15 +26,10 @@
       "embedding": "嵌入",
       "rerank": "重排序"
     },
-    "status": {
-      "enabled": "启用",
-      "disabled": "禁用",
-      "archived": "已归档"
-    },
+    "status": {},
     "actions": {
       "create": "添加模型",
       "bulkAdd": "批量添加",
-      "addAssociation": "添加",
       "manageAssociation": "管理关联",
       "settings": "设置",
       "detectUnassociated": "检测未关联"
@@ -54,14 +43,12 @@
       "modelId": "模型 ID",
       "modelIdPlaceholder": "输入或选择模型 ID",
       "noModels": "暂无可用模型",
-      "selectModel": "选择模型",
       "name": "名称",
       "icon": "图标",
       "selectIcon": "选择图标",
       "noIcons": "暂无可用图标",
       "group": "分组",
       "type": "类型",
-      "status": "状态",
       "remark": "备注"
     },
     "dialogs": {
@@ -78,7 +65,6 @@
         "description": "通过输入模型 ID 一次添加多个模型",
         "addRow": "添加行",
         "required": "必填",
-        "validationError": "请填写每行的所有必填字段（开发者、模型 ID、名称、图标）",
         "maxRowsReached": "最多允许添加 {{max}} 行"
       },
       "delete": {
@@ -89,9 +75,7 @@
       "association": {
         "title": "模型关联",
         "description": "配置 {{name}} 的关联模型，请求时优先使用高优先级关联模型（数值越低优先级越高）。",
-        "association": "关联",
         "priority": "优先级",
-        "priorityTooltip": "数值越低优先级越高",
         "type": "类型",
         "rule": "规则",
         "types": {
@@ -102,12 +86,8 @@
           "regex": "全局正则匹配模型",
           "model": "全局精准匹配模型"
         },
-        "channelId": "渠道 ID",
-        "channelIdPlaceholder": "输入渠道 ID",
         "selectChannel": "选择渠道",
         "selectChannelTags": "选择渠道标签",
-        "modelId": "模型 ID",
-        "modelIdPlaceholder": "输入模型 ID",
         "selectModel": "选择模型",
         "noModelsAvailable": "暂无可用模型",
         "noChannelModelsAvailable": "该渠道暂无可用模型",
@@ -116,7 +96,6 @@
         "patternPlaceholder": "输入正则表达式",
         "addRule": "添加规则",
         "noRules": "暂无关联规则。点击\"添加规则\"创建一个。",
-        "invalidRegex": "无效的正则表达式",
         "preview": "预览",
         "previewDescription": "实时预览关联的渠道和模型",
         "filterByChannel": "按渠道名称筛选...",
@@ -126,14 +105,11 @@
         "excludeChannelNamePattern": "排除渠道名称（正则）",
         "excludeChannelIds": "排除渠道",
         "excludeChannelTags": "排除渠道标签",
-        "noChannelsAvailable": "暂无可用渠道",
         "ruleHints": {
           "channelModel": "使用渠道 {{channel}} 的 {{model}} 模型",
           "channelRegex": "使用渠道 {{channel}} 匹配 {{pattern}} 的模型",
           "channelTagsModel": "使用标签为 {{tags}} 的渠道的 {{model}} 模型",
-          "channelTagsRegex": "使用标签为 {{tags}} 的渠道匹配 {{pattern}} 的模型",
-          "model": "使用所有渠道的 {{model}} 模型",
-          "regex": "使用所有渠道匹配 {{pattern}} 的模型"
+          "channelTagsRegex": "使用标签为 {{tags}} 的渠道匹配 {{pattern}} 的模型"
         }
       },
       "status": {
@@ -220,28 +196,14 @@
       "bulkEnableError": "启用模型失败：{{error}}"
     },
     "onboarding": {
-      "title": "欢迎来到模型管理",
-      "description": "让我们快速了解一下模型设置功能",
-      "startTour": "开始导览",
-      "skipTour": "跳过导览",
-      "completeTour": "导览完成！",
       "steps": {
-        "welcome": {
-          "title": "模型管理",
-          "description": "这里是管理所有 AI 模型的地方。您可以配置模型关联、设置等。"
-        },
+        "welcome": {},
         "settingsButton": {
           "title": "模型设置",
           "description": "点击这里访问全局模型设置。让我们一起探索您可以配置的内容。"
         },
-        "fallbackEnabled": {
-          "title": "回退到渠道",
-          "description": "启用后，如果请求的模型在模型关联中找不到，系统将尝试直接查找支持该请求模型的已启用渠道。"
-        },
-        "queryAllChannelModels": {
-          "title": "查询所有渠道模型",
-          "description": "启用后，模型 API 将返回所有已启用渠道的模型。禁用后，仅返回具有显式模型实体配置的模型。"
-        }
+        "fallbackEnabled": {},
+        "queryAllChannelModels": {}
       }
     }
   }

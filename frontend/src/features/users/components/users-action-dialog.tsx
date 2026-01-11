@@ -226,9 +226,9 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
           <DialogDescription>{isEdit ? t('users.dialogs.edit.description') : t('users.dialogs.add.description')}</DialogDescription>
         </DialogHeader>
 
-        <div className='max-h-[60vh] overflow-y-auto'>
+        <div className='max-h-[60vh] overflow-y-auto px-1'>
           <Form {...form}>
-            <form id='user-form' onSubmit={form.handleSubmit(onSubmit)} className='space-y-2'>
+            <form id='user-form' onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
               <div className='grid grid-cols-2 gap-4'>
                 <FormField
                   control={form.control}
@@ -271,7 +271,9 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                     <FormControl>
                       <Input placeholder='john.doe@example.com' aria-invalid={!!fieldState.error} {...field} />
                     </FormControl>
-                    <FormMessage />
+                    <div className='min-h-[1.25rem]'>
+                      <FormMessage />
+                    </div>
                   </FormItem>
                 )}
               />
@@ -286,7 +288,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                       <FormItem>
                         <FormLabel>{t('users.form.password')}</FormLabel>
                         <FormControl>
-                          <Input type='password' placeholder='Enter password' aria-invalid={!!fieldState.error} {...field} />
+                          <Input type='password' aria-invalid={!!fieldState.error} {...field} />
                         </FormControl>
                         <div className='min-h-[1.25rem]'>
                           <FormMessage />
@@ -301,7 +303,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                       <FormItem>
                         <FormLabel>{t('users.form.confirmPassword')}</FormLabel>
                         <FormControl>
-                          <Input type='password' placeholder='Confirm password' aria-invalid={!!fieldState.error} {...field} />
+                          <Input type='password' aria-invalid={!!fieldState.error} {...field} />
                         </FormControl>
                         <div className='min-h-[1.25rem]'>
                           <FormMessage />
@@ -329,7 +331,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
               />
 
               {/* Roles Section */}
-              <div className='space-y-3'>
+              <div className='space-y-3 pt-2'>
                 <FormLabel>{t('users.form.roles')}</FormLabel>
                 {loading ? (
                   <div>{t('users.form.loadingRoles')}</div>
@@ -359,12 +361,14 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                 control={form.control}
                 name='scopes'
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className='pt-2'>
                     <FormLabel>{t('users.form.scopes')}</FormLabel>
                     <FormControl>
                       <ScopesSelect level='system' value={field.value || []} onChange={field.onChange} portalContainer={dialogContent} />
                     </FormControl>
-                    <FormMessage />
+                    <div className='min-h-[1.25rem]'>
+                      <FormMessage />
+                    </div>
                   </FormItem>
                 )}
               />

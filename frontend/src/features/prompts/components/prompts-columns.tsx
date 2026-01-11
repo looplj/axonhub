@@ -40,7 +40,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
               <Checkbox
                 checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
                 onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-                aria-label={t('prompts.columns.selectAll')}
+                aria-label={t('common.columns.selectAll')}
                 className='translate-y-[2px]'
               />
             ),
@@ -48,7 +48,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
               <Checkbox
                 checked={row.getIsSelected()}
                 onCheckedChange={(value) => row.toggleSelected(!!value)}
-                aria-label={t('prompts.columns.selectRow')}
+                aria-label={t('common.columns.selectRow')}
                 className='translate-y-[2px]'
               />
             ),
@@ -59,7 +59,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       : []),
     {
       accessorKey: 'name',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('prompts.columns.name')} />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.name')} />,
       cell: ({ row }) => {
         const prompt = row.original;
         return (
@@ -76,7 +76,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
     },
     {
       accessorKey: 'description',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('prompts.columns.description')} />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.description')} />,
       cell: ({ row }) => {
         const description = row.getValue('description') as string;
         return (
@@ -128,14 +128,14 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
     },
     {
       accessorKey: 'status',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('prompts.columns.status')} />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.status')} />,
       cell: StatusSwitchCell,
       enableSorting: false,
       enableHiding: false,
     },
     {
       accessorKey: 'createdAt',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('prompts.columns.createdAt')} />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.createdAt')} />,
       cell: ({ row }) => {
         const raw = row.getValue('createdAt') as unknown;
         const date = raw instanceof Date ? raw : new Date(raw as string);
@@ -158,7 +158,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
     },
     {
       id: 'actions',
-      header: () => null,
+      header: t('common.columns.actions'),
       cell: DataTableRowActions,
       meta: {
         className: 'w-[56px] min-w-[56px] pr-3 pl-0',

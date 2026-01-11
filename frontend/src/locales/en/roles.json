@@ -5,21 +5,11 @@
     "createRole": "Create Role",
     "searchRoles": "Search roles by name",
     "columns": {
-      "code": "Role Code",
-      "name": "Role Name",
       "scopes": "Scopes",
-      "createdAt": "Created At",
-      "updatedAt": "Updated At",
-      "actions": "Actions",
-      "selectAll": "Select all",
-      "selectRow": "Select row",
       "moreScopes": "more"
     },
     "actions": {},
-    "filters": {
-      "filterByName": "Filter by name...",
-      "filterByCode": "Filter by code..."
-    },
+    "filters": {},
     "dialogs": {
       "create": {
         "title": "Create Role",
@@ -38,11 +28,7 @@
         "description": "Are you sure you want to delete {{count}} selected roles? This action cannot be undone."
       },
       "fields": {
-        "code": {
-          "label": "Role Code",
-          "placeholder": "admin",
-          "description": "Unique identifier"
-        },
+        "code": {},
         "name": {
           "label": "Role Name",
           "placeholder": "Administrator",
@@ -53,10 +39,7 @@
           "description": "Select the permissions this role has"
         }
       },
-      "buttons": {
-        "create": "Create Role",
-        "update": "Update Role"
-      }
+      "buttons": {}
     },
     "validation": {
       "nameRequired": "Role name is required",

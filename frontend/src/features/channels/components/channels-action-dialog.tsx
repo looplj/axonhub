@@ -481,7 +481,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     // Check if there are selected fetched models that haven't been confirmed
     if (selectedFetchedModels.length > 0) {
-      toast.error(t('channels.dialogs.messages.modelsNotConfirmed'));
+      toast.error(t('channels.messages.modelsNotConfirmed'));
       return;
     }
 

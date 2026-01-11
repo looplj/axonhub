@@ -2,12 +2,6 @@
   "settings": {
     "title": "设置",
     "description": "管理您的账户设置和邮件偏好。",
-    "nav": {
-      "profile": "个人资料",
-      "account": "账户",
-      "appearance": "外观",
-      "notifications": "通知",
-      "display": "显示"
-    }
+    "nav": {}
   }
 }

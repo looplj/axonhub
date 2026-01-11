@@ -21,7 +21,7 @@ export function useTracesColumns(): ColumnDef<Trace>[] {
   const columns: ColumnDef<Trace>[] = [
     {
       accessorKey: 'id',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('traces.columns.id')} />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.id')} />,
       cell: ({ row }) => {
         const handleClick = useCallback(() => {
           navigateWithSearch({
@@ -129,7 +129,7 @@ export function useTracesColumns(): ColumnDef<Trace>[] {
     },
     {
       accessorKey: 'createdAt',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('traces.columns.createdAt')} />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.createdAt')} />,
       cell: ({ row }) => {
         const date = new Date(row.getValue('createdAt'));
         return <div className='text-xs'>{format(date, 'yyyy-MM-dd HH:mm:ss', { locale })}</div>;
@@ -137,7 +137,7 @@ export function useTracesColumns(): ColumnDef<Trace>[] {
     },
     // {
     //   accessorKey: 'updatedAt',
-    //   header: ({ column }) => <DataTableColumnHeader column={column} title={t('traces.columns.updatedAt')} />,
+    //   header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.updatedAt')} />,
     //   cell: ({ row }) => {
     //     const date = new Date(row.getValue('updatedAt'))
     //     return <div className='text-xs'>{format(date, 'yyyy-MM-dd HH:mm:ss', { locale })}</div>
