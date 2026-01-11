@@ -5,21 +5,11 @@
     "createRole": "新建角色",
     "searchRoles": "按名称搜索角色...",
     "columns": {
-      "code": "角色代码",
-      "name": "角色名称",
       "scopes": "权限范围",
-      "createdAt": "创建时间",
-      "updatedAt": "更新时间",
-      "actions": "操作",
-      "selectAll": "全选",
-      "selectRow": "选择行",
       "moreScopes": "更多"
     },
     "actions": {},
-    "filters": {
-      "filterByName": "按名称筛选...",
-      "filterByCode": "按代码筛选..."
-    },
+    "filters": {},
     "dialogs": {
       "create": {
         "title": "新建角色",
@@ -38,11 +28,7 @@
         "description": "确定要删除选中的 {{count}} 个角色吗？此操作无法撤销。"
       },
       "fields": {
-        "code": {
-          "label": "角色代码",
-          "placeholder": "admin",
-          "description": "唯一标识符"
-        },
+        "code": {},
         "name": {
           "label": "角色名称",
           "placeholder": "管理员",
@@ -53,10 +39,7 @@
           "description": "选择此角色拥有的权限"
         }
       },
-      "buttons": {
-        "create": "创建角色",
-        "update": "更新角色"
-      }
+      "buttons": {}
     },
     "validation": {
       "nameRequired": "角色名称不能为空",

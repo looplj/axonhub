@@ -3,15 +3,9 @@
     "title": "提示词",
     "description": "管理 AI 模型的提示词",
     "columns": {
-      "selectAll": "全选",
-      "selectRow": "选择行",
-      "name": "名称",
-      "description": "描述",
       "role": "角色",
       "actionType": "操作类型",
-      "conditions": "条件",
-      "status": "状态",
-      "createdAt": "创建时间"
+      "conditions": "条件"
     },
     "actionTypes": {
       "prepend": "前置插入",
@@ -38,9 +32,6 @@
       "actionTypePlaceholder": "请选择操作类型",
       "actionTypeHelpPrepend": "在所有 message 之前插入一条 message",
       "actionTypeHelpAppend": "在所有 message 之后插入一条 message",
-      "conditionType": "条件类型",
-      "conditionTypePlaceholder": "请选择条件类型",
-      "conditionValue": "条件值",
       "conditionValuePlaceholder": "请输入条件值"
     },
     "conditions": {

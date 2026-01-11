@@ -30,7 +30,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
         <Checkbox
           checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label={t('roles.columns.selectAll')}
+          aria-label={t('common.columns.selectAll')}
           className='translate-y-[2px]'
         />
       ),
@@ -38,7 +38,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
         <Checkbox
           checked={row.getIsSelected()}
           onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label={t('roles.columns.selectRow')}
+          aria-label={t('common.columns.selectRow')}
           className='translate-y-[2px]'
         />
       ),
@@ -51,7 +51,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
   columns.push(
     {
       accessorKey: 'name',
-      header: t('roles.columns.name'),
+      header: t('common.columns.name'),
       cell: ({ row }) => {
         const name = row.getValue('name') as string;
         return <div className='font-medium'>{name}</div>;
@@ -79,25 +79,26 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       },
     },
     {
-      accessorKey: 'createdAt',
-      header: t('roles.columns.createdAt'),
-      cell: ({ row }) => {
-        const date = row.getValue('createdAt') as Date;
-        return <div className='text-muted-foreground'>{format(date, 'yyyy-MM-dd HH:mm')}</div>;
-      },
-    },
-    {
-      accessorKey: 'updatedAt',
-      header: t('roles.columns.updatedAt'),
-      cell: ({ row }) => {
-        const date = row.getValue('updatedAt') as Date;
-        return <div className='text-muted-foreground'>{format(date, 'yyyy-MM-dd HH:mm')}</div>;
-      },
-    },
-    {
-      id: 'actions',
-      cell: ({ row }) => <DataTableRowActions row={row} />,
-    }
+          accessorKey: 'createdAt',
+          header: t('common.columns.createdAt'),
+          cell: ({ row }) => {
+            const date = row.getValue('createdAt') as Date;
+            return <div className='text-muted-foreground'>{format(date, 'yyyy-MM-dd HH:mm')}</div>;
+          },
+        },
+        {
+          accessorKey: 'updatedAt',
+          header: t('common.columns.updatedAt'),
+          cell: ({ row }) => {
+            const date = row.getValue('updatedAt') as Date;
+            return <div className='text-muted-foreground'>{format(date, 'yyyy-MM-dd HH:mm')}</div>;
+          },
+        },
+        {
+          id: 'actions',
+          header: t('common.columns.actions'),
+          cell: ({ row }) => <DataTableRowActions row={row} />,
+        }
   );
 
   return columns;

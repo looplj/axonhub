@@ -5,10 +5,8 @@ import {
   IconUsers,
   IconRobot,
   IconShield,
-  IconSettings,
   IconKey,
   IconActivity,
-  IconActivityHeartbeat,
   IconDatabase,
   IconAB2,
   IconBaselineDensityMedium,
@@ -111,14 +109,14 @@ export function useSidebarData(): SidebarData {
       title: t('sidebar.groups.project'),
       items: [
         {
-          title: t('sidebar.items.prompts'),
-          url: '/project/prompts',
-          icon: IconNote,
-        } as NavLink,
-         {
           title: t('sidebar.items.apiKeys'),
           url: '/project/api-keys',
           icon: IconKey,
+        } as NavLink,
+        {
+          title: t('sidebar.items.prompts'),
+          url: '/project/prompts',
+          icon: IconNote,
         } as NavLink,
         {
           title: t('sidebar.items.requests'),

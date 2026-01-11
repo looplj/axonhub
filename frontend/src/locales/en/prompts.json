@@ -3,15 +3,9 @@
     "title": "Prompts",
     "description": "Manage prompts for AI models",
     "columns": {
-      "selectAll": "Select all",
-      "selectRow": "Select row",
-      "name": "Name",
-      "description": "Description",
       "role": "Role",
       "actionType": "Action Type",
-      "conditions": "Conditions",
-      "status": "Status",
-      "createdAt": "Created At"
+      "conditions": "Conditions"
     },
     "actionTypes": {
       "prepend": "Prepend",
@@ -38,9 +32,6 @@
       "actionTypePlaceholder": "Select action type",
       "actionTypeHelpPrepend": "Insert a message before all messages",
       "actionTypeHelpAppend": "Insert a message after all messages",
-      "conditionType": "Condition Type",
-      "conditionTypePlaceholder": "Select condition type",
-      "conditionValue": "Condition Value",
       "conditionValuePlaceholder": "Enter condition value"
     },
     "conditions": {

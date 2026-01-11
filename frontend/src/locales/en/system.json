@@ -2,7 +2,6 @@
   "system": {
     "title": "System Settings",
     "description": "Manage system configurations and options.",
-    "loading": "Loading system settings...",
     "tabs": {
       "brand": "Brand",
       "storage": "Storage",
@@ -17,12 +16,7 @@
         "label": "Data Storage",
         "placeholder": "Select data storage"
       },
-      "title": "Storage Settings",
-      "description": "Configure how the system handles and stores response data",
-      "storeChunks": {
-        "label": "Store Response Chunks",
-        "description": "When enabled, the system will store response data chunks in the database for subsequent analysis and processing"
-      },
+      "storeChunks": {},
       "policy": {
         "title": "Storage Policy",
         "description": "Configure storage policies and data cleanup settings to manage data retention and storage efficiency",
@@ -65,11 +59,7 @@
         "notSquare": "Please upload a square image (width equals height)."
       }
     },
-    "other": {
-      "title": "Other Settings",
-      "description": "More system configuration options will be added here",
-      "comingSoon": "More configuration options coming soon..."
-    },
+    "other": {},
     "retry": {
       "title": "Retry Policy",
       "description": "Configure automatic retry behavior for failed requests to improve system reliability",
@@ -85,10 +75,7 @@
           "adaptive": "Adaptive",
           "weighted": "Weighted"
         },
-        "documentation": {
-          "adaptive": "Based on comprehensive consideration of weight, success rate, round-robin, and trace strategies to select appropriate channels for requests. Intelligently balances multiple factors to optimize channel selection.",
-          "weighted": "Each request follows channel weight order from high to low until one succeeds. Higher weight channels are prioritized sequentially for all requests."
-        }
+        "documentation": {}
       },
       "maxChannelRetries": {
         "label": "Max Channel Retries",
@@ -120,8 +107,6 @@
       "description": "Welcome to AxonHub! Let's set up your system with a quick tour.",
       "startTour": "Start Onboarding Tour",
       "skipTour": "Skip Tour",
-      "nextStep": "Next Step",
-      "previousStep": "Previous Step",
       "completeTour": "Complete Tour",
       "steps": {
         "welcome": {
@@ -180,10 +165,7 @@
           "title": "Data Storage Backend",
           "description": "Choose the storage backend for the request and response data. Different backends offer different performance and cost characteristics. Default is database, you can also configure other storage backends."
         },
-        "storageCleanup": {
-          "title": "Data Cleanup Policies",
-          "description": "Set up automatic cleanup rules to manage storage space and comply with data retention policies."
-        },
+        "storageCleanup": {},
         "storageCleanupRequests": {
           "title": "Request Data Cleanup",
           "description": "Configure automatic cleanup for request data to manage storage space and maintain system performance."

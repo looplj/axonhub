@@ -13,29 +13,22 @@
         "firstName": {
           "label": "First Name",
           "placeholder": "Enter your first name",
-          "description": "Your first name as it will appear to other users.",
-          "required": "First name is required.",
-          "maxLength": "First name must not be longer than 50 characters."
+          "description": "Your first name as it will appear to other users."
         },
         "lastName": {
           "label": "Last Name",
           "placeholder": "Enter your last name",
-          "description": "Your last name as it will appear to other users.",
-          "required": "Last name is required.",
-          "maxLength": "Last name must not be longer than 50 characters."
+          "description": "Your last name as it will appear to other users."
         },
         "email": {
           "label": "Email",
           "placeholder": "Enter your email address",
-          "description": "Your email address for account notifications and login.",
-          "required": "Email is required.",
-          "invalid": "Please enter a valid email address."
+          "description": "Your email address for account notifications and login."
         },
         "preferLanguage": {
           "label": "Preferred Language",
           "placeholder": "Select your preferred language",
           "description": "Choose your preferred language for the interface.",
-          "required": "Please select a preferred language.",
           "options": {
             "en": "English",
             "zh": "中文"
@@ -52,21 +45,15 @@
         "firstNameTooLong": "First name must not be longer than 50 characters.",
         "lastNameRequired": "Last name is required.",
         "lastNameTooLong": "Last name must not be longer than 50 characters.",
-        "emailRequired": "Email is required.",
         "emailInvalid": "Please enter a valid email address.",
         "languageRequired": "Please select a preferred language."
       },
-      "buttons": {
-        "update": "Save Changes"
-      },
+      "buttons": {},
       "messages": {
         "updateSuccess": "Profile updated successfully!",
         "updateError": "Failed to update profile: {{error}}"
       }
     },
-    "languages": {
-      "en": "English",
-      "zh": "中文"
-    }
+    "languages": {}
   }
 }

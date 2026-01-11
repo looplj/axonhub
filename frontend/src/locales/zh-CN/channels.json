@@ -6,16 +6,12 @@
     "addChannel": "添加渠道",
     "importChannels": "批量导入",
     "orderChannels": "批量排序",
-    "settings": "设置",
-    "filterChannels": "筛选渠道...",
     "tabs": {
       "all": "全部"
     },
     "columns": {
-      "name": "名称",
       "type": "类型",
       "provider": "服务商",
-      "status": "状态",
       "health": "健康状态",
       "healthTooltip": {
         "probeTime": "探测时间",
@@ -30,12 +26,7 @@
       "firstTokenLatencyFull": "首令牌延迟",
       "tokensPerSecondFull": "令牌/秒",
       "orderingWeight": "权重",
-      "action": "操作",
-      "createdAt": "创建时间",
-      "updatedAt": "更新时间",
-      "actions": "操作",
-      "selectAll": "全选",
-      "selectRow": "选择行"
+      "action": "操作"
     },
     "status": {
       "enabled": "启用",
@@ -178,7 +169,6 @@
       "fetchTags": "获取渠道标签失败"
     },
     "filters": {
-      "type": "类型",
       "status": "状态",
       "tags": "标签",
       "model": "模型",
@@ -226,8 +216,6 @@
         "title": "批量导入渠道",
         "description": "从 CSV 数据批量导入渠道。每行一个渠道，逗号分隔字段。",
         "formatDescription": "格式：type,name,baseURL,apiKey,supportedModels,defaultTestModel",
-        "supportedModelsNote": "使用 | 分隔多个模型",
-        "requiredFieldsNote": "注意：baseURL 和 apiKey 为必填字段",
         "supportedTypes": "支持的类型：openai, anthropic, anthropic_aws, anthropic_gcp, gemini_openai, deepseek, doubao, moonshot, zhipu, zai, deepseek_anthropic, moonshot_anthropic, zhipu_anthropic, zai_anthropic, openrouter, xai",
         "loadingChannelNames": "正在加载已有渠道名称...",
         "inputLabel": "导入数据",
@@ -238,10 +226,8 @@
         "errors": "{{count}} 个错误",
         "validChannels": "有效的渠道",
         "importButton": "导入 {{count}} 个渠道",
-        "importing": "导入中...",
         "formatTitle": "格式说明",
         "formatNote": "使用 | 分隔多个模型",
-        "exampleData": "示例数据",
         "errorMessages": "错误信息",
         "invalidFormat": "第 {{line}} 行: 格式错误，应为: type,name,baseURL,apiKey,supportedModels,defaultTestModel",
         "unsupportedType": "第 {{line}} 行: 不支持的 channel type \"{{type}}\"",
@@ -265,27 +251,20 @@
       "fields": {
         "name": {
           "label": "渠道名称",
-          "placeholder": "我的渠道",
-          "description": "为此渠道设置一个易于识别的名称"
+          "placeholder": "我的渠道"
         },
         "apiFormat": {
           "label": "API 格式",
           "editDisabled": "无法更改 API 格式",
           "placeholder": "选择 API 格式",
           "geminiVertex": {
-            "label": "使用 Vertex AI",
-            "description": "使用 Google Cloud Vertex AI 替代标准 Gemini API",
-            "editDisabled": "无法更改 Vertex AI 设置"
+            "label": "使用 Vertex AI"
           },
           "anthropicAWS": {
-            "label": "使用 AWS Bedrock",
-            "description": "使用 AWS Bedrock 替代标准 Anthropic API",
-            "editDisabled": "无法更改 AWS Bedrock 设置"
+            "label": "使用 AWS Bedrock"
           },
           "claudeCode": {
-            "label": "使用 Claude Code",
-            "description": "使用 Claude Code CLI API，包含专用头部和系统消息",
-            "editDisabled": "无法更改 Claude Code 设置"
+            "label": "使用 Claude Code"
           },
           "formats": {
             "openai/chat_completions": "OpenAI (Chat Completions)",
@@ -295,24 +274,17 @@
           }
         },
         "provider": {
-          "label": "服务商",
-          "description": "选择 AI 模型服务商"
+          "label": "服务商"
         },
-        "type": {
-          "label": "渠道类型",
-          "description": "选择 AI 模型提供商类型",
-          "helper": "渠道类型默认是 OpenAI 兼容格式，包含 “Anthropic” 的类型为 Anthropic 兼容格式。"
-        },
+        "type": {},
         "baseURL": {
           "label": "Base URL",
-          "placeholder": "https://api.openai.com/v1",
-          "description": "API 的基础 URL 地址"
+          "placeholder": "https://api.openai.com/v1"
         },
         "apiKey": {
           "label": "API Key",
           "placeholder": "sk-...",
           "editPlaceholder": "留空则保持不变",
-          "description": "用于认证的 API 密钥",
           "multiLineHint": "每行一个 API Key, 如果输入了多个 Key，系统将自动创建多个渠道。"
         },
         "supportedModels": {
@@ -323,7 +295,6 @@
           "fetchedModelsLabel": "已获取的模型",
           "showMore": "+{{count}} 个更多",
           "searchPlaceholder": "搜索模型...",
-          "showAddedOnly": "仅显示已添加",
           "showNotAddedOnly": "仅显示未添加",
           "added": "已添加",
           "clearAllTitle": "清空所有支持的模型？",
@@ -350,7 +321,6 @@
           "description": "添加关于此渠道的备注或说明以供参考"
         },
         "transformOptions": {
-          "label": "转换选项",
           "forceArrayInstructions": {
             "label": "强制数组指令",
             "description": "强制渠道接受数组格式的指令"
@@ -360,55 +330,25 @@
             "description": "强制渠道接受数组格式的输入"
           }
         },
-        "modelName": {
-          "label": "模型名称",
-          "placeholder": "输入模型名称"
-        },
-        "awsAccessKeyID": {
-          "label": "AWS Access Key ID",
-          "placeholder": "输入 AWS Access Key ID",
-          "description": "用于 AWS 认证的访问密钥 ID"
-        },
-        "awsSecretAccessKey": {
-          "label": "AWS Secret Access Key",
-          "placeholder": "输入 AWS Secret Access Key",
-          "description": "用于 AWS 认证的秘密访问密钥"
-        },
-        "awsRegion": {
-          "label": "AWS 区域",
-          "placeholder": "us-east-1",
-          "description": "AWS 服务区域"
-        },
+        "modelName": {},
+        "awsAccessKeyID": {},
+        "awsSecretAccessKey": {},
+        "awsRegion": {},
         "gcpRegion": {
           "label": "GCP 区域",
-          "placeholder": "us-central1",
-          "description": "Google Cloud Platform 服务区域"
+          "placeholder": "us-central1"
         },
         "gcpProjectID": {
           "label": "GCP 项目 ID",
-          "placeholder": "my-gcp-project",
-          "description": "Google Cloud Platform 项目标识符"
+          "placeholder": "my-gcp-project"
         },
         "gcpJsonData": {
-          "label": "服务账户 JSON",
-          "placeholder": "在此粘贴您的 GCP 服务账户 JSON 凭据",
-          "description": "用于 GCP 服务账户认证的完整 JSON 凭据"
+          "label": "服务账户 JSON"
         },
-        "platformType": {
-          "label": "平台",
-          "vertexLabel": "Vertex AI"
-        },
-        "jsonData": {
-          "label": "服务账户 JSON",
-          "placeholder": "在此粘贴您的 GCP 服务账户 JSON 凭据",
-          "description": "用于 GCP 服务账户认证的完整 JSON 凭据"
-        }
+        "platformType": {},
+        "jsonData": {}
       },
       "buttons": {
-        "create": "创建渠道",
-        "update": "更新渠道",
-        "test": "测试连接",
-        "testing": "测试中...",
         "add": "添加",
         "batchAdd": "批量添加",
         "batchAddTooltip": "输入多个模型，用逗号分隔，例如：gpt-4, gpt-3.5-turbo, claude-3-opus",
@@ -419,8 +359,7 @@
         "deselectAll": "取消全选",
         "clearAll": "清空全部",
         "addSelectedCount": "确定选中 ({{count}})",
-        "removeDeprecated": "清理 ({{count}})",
-        "addMappingButton": "添加映射"
+        "removeDeprecated": "清理 ({{count}})"
       },
       "status": {
         "enable": {
@@ -446,12 +385,7 @@
         }
       },
       "settings": {
-        "title": "渠道设置",
-        "description": "配置 {{name}} 的高级设置。",
-        "basic": {
-          "title": "基本信息",
-          "description": "渠道的基本配置信息"
-        },
+        "basic": {},
         "extraModelPrefix": {
           "title": "额外模型前缀",
           "description": "配置额外的模型前缀，允许使用带前缀的模型名称访问该渠道。例如：配置前缀为 'deepseek'，则 'deepseek/deepseek-chat' 和 'deepseek-chat' 都可以访问该渠道",
@@ -461,7 +395,6 @@
           "title": "自动裁剪模型前缀",
           "description": "配置需要自动裁剪的模型前缀。例如：配置前缀为 'deepseek-ai'，则模型 'deepseek-ai/deepseek-chat' 将变为 'deepseek-chat'，则 'deepseek-ai/deepseek-chat' 和 'deepseek-chat' 都可以访问该渠道",
           "placeholder": "例如: openai, deepseek",
-          "duplicateWarning": "该前缀已存在",
           "noPrefixesFound": "在支持的模型中未找到前缀",
           "allPrefixesAlreadyAdded": "所有前缀都已添加",
           "prefixesAdded": "成功添加 {{count}} 个前缀",
@@ -472,7 +405,6 @@
           "prefixesDetected": "检测到 {{count}} 个前缀"
         },
         "modelMapping": {
-          "action": "模型别名",
           "title": "模型别名",
           "description": "使用别名暴露渠道支持的模型，而不改变请求中的模型名称。例如将 'gpt-4' 设为 'gpt-4-turbo' 的别名，两者都由该渠道处理",
           "originalModel": "别名",
@@ -483,13 +415,13 @@
           "targetInvalid": "目标模型必须在支持的模型列表中",
           "duplicateAlias": "每个别名只能映射一次",
           "useSuggestion": "使用 {{alias}}",
+          "addMappingButton": "添加映射",
           "hideOriginalModels": {
             "label": "隐藏原始模型",
             "description": "启用后，模型列表中将只显示转换后的模型名称（如别名、带前缀的模型等），隐藏所有未经过转换的原始模型名称。"
           },
           "hideMappedModels": {
-            "label": "仅显示别名",
-            "description": "启用后，对于已配置别名的模型，模型列表中将只显示其别名，隐藏其原始的目标模型名称。"
+            "label": "仅显示别名"
           }
         },
         "overrides": {
@@ -563,7 +495,6 @@
         "description": "拖拽重新排列渠道。拥有更高权重的渠道在选择时将被优先考虑。",
         "dragHint": "拖拽渠道重新排序",
         "channelCount": "{{count}} 条渠道",
-        "channelCount_plural": "{{count}} 条渠道",
         "saveButton": "保存排序",
         "orderingWeight": "权重",
         "noChannels": "没有可用于排序的渠道"
@@ -609,48 +540,19 @@
         "action": "调整权重",
         "rangeHint": "权重必须在 {{min}} 和 {{max}} 之间。数值越高越优先。"
       },
-      "remark": {
-        "title": "渠道备注",
-        "description": "为渠道 \"{{name}}\" 添加或编辑备注。",
-        "action": "备注",
-        "label": "备注",
-        "placeholder": "输入此渠道的备注或说明..."
-      }
+      "remark": {}
     },
     "expandedRow": {
       "basic": "基本信息",
       "additional": "额外信息",
       "performance": "性能",
-      "modelsAndRemark": "模型与备注",
-      "modes": "模型信息",
       "supportedModels": "支持的模型",
-      "totalModels": "模型总数",
-      "defaultTestModel": "默认测试模型",
       "remark": "备注",
       "tags": "标签",
       "apiFormat": "API 格式",
-      "noPerformanceData": "暂无性能数据",
-      "more": "更多"
+      "noPerformanceData": "暂无性能数据"
     },
-    "validation": {
-      "nameRequired": "名称不能为空",
-      "baseUrlInvalid": "请输入有效的 URL",
-      "baseUrlRequired": "Base URL 不能为空",
-      "apiKeyRequired": "API Key 不能为空",
-      "supportedModelsRequired": "至少选择一个支持的模型",
-      "defaultTestModelRequired": "请选择默认测试模型",
-      "importDataRequired": "请输入要导入的数据",
-      "awsAccessKeyIdRequired": "AWS Access Key ID 不能为空",
-      "awsSecretAccessKeyRequired": "AWS Secret Access Key 不能为空",
-      "awsRegionRequired": "AWS Region 不能为空",
-      "gcpRegionRequired": "GCP Region 不能为空",
-      "gcpProjectIdRequired": "GCP Project ID 不能为空",
-      "gcpJsonDataRequired": "GCP Service Account JSON 不能为空",
-      "atLeastOneChannel": "至少需要一个 channel",
-      "overrideParametersInvalidJson": "必须是有效的 JSON",
-      "overrideParametersStreamNotAllowed": "stream 参数不允许覆盖",
-      "forbiddenHeader": "不允许覆盖敏感请求头，如 Authorization、API-Key 或 Cookie"
-    },
+    "validation": {},
     "templates": {
       "section": {
         "title": "模板",
@@ -689,8 +591,7 @@
         "applyError": "应用模板失败：{{error}}"
       },
       "errors": {
-        "fetchList": "加载模板失败",
-        "noUser": "用户未认证"
+        "fetchList": "加载模板失败"
       },
       "bulk": {
         "title": "批量应用模板到多个渠道",

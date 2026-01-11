@@ -4,18 +4,13 @@
     "description": "在交互式环境中测试和体验 AI 模型。",
     "settings": {
       "model": "模型",
-      "modelPlaceholder": "选择模型",
       "selectModel": "选择模型",
       "temperature": "温度",
       "maxTokens": "最大令牌数",
       "systemPrompt": "系统提示",
       "defaultSystemPrompt": "你是一个有用的助手。"
     },
-    "actions": {
-      "copy": "复制",
-      "regenerate": "重新生成",
-      "readAloud": "朗读"
-    },
+    "actions": {},
     "chat": {
       "generating": "生成中...",
       "retry": "重试上次回复",

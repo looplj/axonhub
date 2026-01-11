@@ -2,9 +2,7 @@
   "sidebar": {
     "groups": {
       "admin": "Admin",
-      "general": "General",
       "project": "Project",
-      "api": "API",
       "settings": "Settings"
     },
     "items": {
@@ -15,7 +13,6 @@
       "dataStorages": "Data Storages",
       "users": "Users",
       "roles": "Roles",
-      "system": "System",
       "requests": "Requests",
       "traces": "Traces",
       "threads": "Threads",
@@ -34,7 +31,6 @@
     },
     "projectSwitcher": {
       "projects": "Projects",
-      "project": "Project",
       "selectProject": "Select Project"
     },
     "userMenu": {
@@ -75,8 +71,7 @@
   },
   "projectUsers": {
     "title": "Project Users",
-    "description": "Manage users and permissions for the current project.",
-    "addToProject": "Add User to Project"
+    "description": "Manage users and permissions for the current project."
   },
   "projectRoles": {
     "title": "Project Roles",
@@ -94,7 +89,6 @@
     "selectedRows": "{{selected}} of {{total}} row(s) selected",
     "selectedInfo": "{{selectedRows}} of {{dataLength}} row(s) selected",
     "selectedInfoWithTotal": "{{selectedRows}} of {{dataLength}} row(s) selected / Total {{totalCount}} row(s)",
-    "totalRows": "Total {{total}} row(s)",
     "rowsPerPage": "Rows per page",
     "currentPage": "Page {{current}} of {{total}}",
     "firstPage": "First page",
@@ -109,7 +103,6 @@
     "close": "Close",
     "refresh": "Refresh",
     "autoRefresh": "Auto Refresh",
-    "autoRefreshEvery": "Auto refresh every {{seconds}} seconds",
     "selected": "selected",
     "selectedItems": "{{count}} selected",
     "noResultsFound": "No results found",
@@ -126,11 +119,8 @@
     "of": "of",
     "previous": "Previous",
     "next": "Next",
-    "moveUp": "Move Up",
-    "moveDown": "Move Down",
     "moveToTop": "Move to top",
     "moveToBottom": "Move to bottom",
-    "dragging": "Dragging",
     "unsavedChanges": "You have unsaved changes",
     "copied": "Copied",
     "sort": {
@@ -140,8 +130,7 @@
     },
     "messages": {
       "errorMessage": "Error Message",
-      "success": "Success",
-      "error": "Error"
+      "success": "Success"
     },
     "buttons": {
       "cancel": "Cancel",
@@ -154,30 +143,36 @@
       "update": "Update",
       "updating": "Updating...",
       "delete": "Delete",
-      "deleting": "Deleting...",
       "edit": "Edit",
       "editing": "Editing...",
       "enable": "Enable",
-      "enabling": "Enabling...",
       "disable": "Disable",
-      "disabling": "Disabling...",
       "archive": "Archive",
       "archiving": "Archiving...",
       "activate": "Activate",
-      "activating": "Activating...",
-      "remove": "Remove"
+      "remove": "Remove",
+      "openMenu": "Open menu"
     },
     "actions": {
-      "test": "Test",
       "openMenu": "Open menu",
       "edit": "Edit",
       "duplicate": "Duplicate",
       "delete": "Delete"
     },
+    "columns": {
+      "id": "ID",
+      "description": "Description",
+      "name": "Name",
+      "status": "Status",
+      "actions": "Actions",
+      "createdAt": "Created At",
+      "updatedAt": "Updated At",
+      "selectAll": "Select all",
+      "selectRow": "Select row"
+    },
     "filters": {
       "reset": "Reset",
-      "dateRange": "Pick date range",
-      "clearDateRange": "Clear date range"
+      "dateRange": "Pick date range"
     },
     "routeGuard": {
       "accessDenied": "Access Denied",
@@ -206,7 +201,9 @@
       "copyFailed": "Failed to copy to clipboard.",
       "loadFailed": "Failed to load data",
       "systemUpdateFailed": "Failed to update system settings",
-      "onboardingFailed": "Failed to complete onboarding"
+      "onboardingFailed": "Failed to complete onboarding",
+      "userLoadFailed": "Failed to load user",
+      "userSaveFailed": "Failed to save user"
     },
     "success": {
       "copiedToClipboard": "Copied to clipboard!",
@@ -220,13 +217,8 @@
       "projectActivated": "Project activated successfully",
       "signedIn": "Successfully signed in!",
       "signedOut": "Successfully signed out!",
-      "userCreated": "User created successfully",
-      "userUpdated": "User updated successfully",
-      "modelCreated": "Model created successfully",
-      "modelUpdated": "Model updated successfully",
-      "modelDeleted": "Model deleted successfully",
-      "systemUpdated": "System settings updated successfully",
-      "onboardingCompleted": "Onboarding completed successfully"
+      "userDeleted": "User deleted successfully",
+      "systemUpdated": "System settings updated successfully"
     }
   },
   "initialization": {
@@ -302,27 +294,16 @@
           "label": "Password",
           "placeholder": "Enter your password"
         },
-        "captcha": {
-          "label": "Captcha",
-          "placeholder": "Enter captcha",
-          "refresh": "Refresh captcha"
-        },
+        "captcha": {},
         "rememberMe": "Remember me",
         "signInButton": "Sign in",
         "signingIn": "Signing in..."
       },
       "validation": {
-        "emailRequired": "Email is required",
-        "emailInvalid": "Invalid email format",
-        "passwordRequired": "Password is required",
-        "passwordMinLength": "Password must be at least 8 characters",
-        "captchaRequired": "Captcha is required",
-        "passwordPattern": "Password must contain at least one uppercase letter, one lowercase letter, and one digit"
+        "emailRequired": "Email is required"
       },
       "links": {
-        "forgotPassword": "Forgot password?",
-        "noAccount": "Don't have an account?",
-        "signUp": "Sign up"
+        "forgotPassword": "Forgot password?"
       },
       "footer": {
         "agreement": "By signing in, you agree to our Terms of Service and Privacy Policy"

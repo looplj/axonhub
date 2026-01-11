@@ -3,10 +3,7 @@
     "title": "Models",
     "description": "Manage AI models and their configurations",
     "columns": {
-      "selectAll": "Select all",
-      "selectRow": "Select row",
       "icon": "Icon",
-      "name": "Name",
       "modelId": "Model ID",
       "developer": "Developer",
       "type": "Type",
@@ -21,9 +18,6 @@
       "maxOutputFull": "Max Output Tokens",
       "associationRules": "Rules",
       "associatedChannels": "Channels",
-      "status": "Status",
-      "createdAt": "Created At",
-      "updatedAt": "Updated At",
       "group": "Group",
       "remark": "Remark"
     },
@@ -32,15 +26,10 @@
       "embedding": "Embedding",
       "rerank": "Rerank"
     },
-    "status": {
-      "enabled": "Enabled",
-      "disabled": "Disabled",
-      "archived": "Archived"
-    },
+    "status": {},
     "actions": {
       "create": "Add Model",
       "bulkAdd": "Bulk Add",
-      "addAssociation": "Add",
       "manageAssociation": "Manage Association",
       "settings": "Settings",
       "detectUnassociated": "Detect Unassociated"
@@ -54,14 +43,12 @@
       "modelId": "Model ID",
       "modelIdPlaceholder": "Enter or select model ID",
       "noModels": "No models available",
-      "selectModel": "Select model",
       "name": "Name",
       "icon": "Icon",
       "selectIcon": "Select icon",
       "noIcons": "No icons available",
       "group": "Group",
       "type": "Type",
-      "status": "Status",
       "remark": "Remark"
     },
     "dialogs": {
@@ -78,7 +65,6 @@
         "description": "Add multiple models at once by entering model IDs",
         "addRow": "Add Row",
         "required": "Required",
-        "validationError": "Please fill in all required fields (Developer, Model ID, Name, Icon) for each row",
         "maxRowsReached": "Maximum {{max}} rows allowed"
       },
       "delete": {
@@ -89,9 +75,7 @@
       "association": {
         "title": "Model Association",
         "description": "Configure associated models for {{name}}. During request processing, higher priority (lower value = higher priority) associated models will be used first.",
-        "association": "Association",
         "priority": "Priority",
-        "priorityTooltip": "Lower value = higher priority",
         "type": "Type",
         "rule": "Rule",
         "types": {
@@ -102,12 +86,8 @@
           "regex": "Global Regex Match",
           "model": "Global Exact Match"
         },
-        "channelId": "Channel ID",
-        "channelIdPlaceholder": "Enter channel ID",
         "selectChannel": "Select channel",
         "selectChannelTags": "Select channel tags",
-        "modelId": "Model ID",
-        "modelIdPlaceholder": "Enter model ID",
         "selectModel": "Select model",
         "noModelsAvailable": "No models available",
         "noChannelModelsAvailable": "No models available for this channel",
@@ -116,7 +96,6 @@
         "patternPlaceholder": "Enter regex pattern",
         "addRule": "Add Rule",
         "noRules": "No association rules configured. Click 'Add Rule' to create one.",
-        "invalidRegex": "Invalid regex pattern",
         "preview": "Preview",
         "previewDescription": "Real-time preview of associated channels and models",
         "filterByChannel": "Filter by channel name...",
@@ -126,14 +105,11 @@
         "excludeChannelNamePattern": "Exclude channel name (regex)",
         "excludeChannelIds": "Exclude channels",
         "excludeChannelTags": "Exclude channel tags",
-        "noChannelsAvailable": "No channels available",
         "ruleHints": {
           "channelModel": "Use model {{model}} in channel {{channel}}",
           "channelRegex": "Use model matching {{pattern}} in channel {{channel}}",
           "channelTagsModel": "Use model {{model}} in channels with tags: {{tags}}",
-          "channelTagsRegex": "Use model matching {{pattern}} in channels with tags: {{tags}}",
-          "model": "Use model {{model}} across all channels",
-          "regex": "Use model matching {{pattern}} across all channels"
+          "channelTagsRegex": "Use model matching {{pattern}} in channels with tags: {{tags}}"
         }
       },
       "status": {
@@ -220,28 +196,14 @@
       "bulkEnableError": "Failed to enable models: {{error}}"
     },
     "onboarding": {
-      "title": "Welcome to Models",
-      "description": "Let's take a quick tour to help you understand model settings",
-      "startTour": "Start Tour",
-      "skipTour": "Skip Tour",
-      "completeTour": "Onboarding completed!",
       "steps": {
-        "welcome": {
-          "title": "Models Management",
-          "description": "This is where you manage all your AI models. You can configure model associations, settings, and more."
-        },
+        "welcome": {},
         "settingsButton": {
           "title": "Model Settings",
           "description": "Click here to access global model settings. Let's explore what you can configure."
         },
-        "fallbackEnabled": {
-          "title": "Fallback to Channels",
-          "description": "When enabled, if a requested model is not found in model associations, the system will attempt to find enabled channels that support the requested model directly."
-        },
-        "queryAllChannelModels": {
-          "title": "Query All Channel Models",
-          "description": "When enabled, the models API returns all models from enabled channels. When disabled, only models with explicit Model entity configuration will be returned."
-        }
+        "fallbackEnabled": {},
+        "queryAllChannelModels": {}
       }
     }
   }

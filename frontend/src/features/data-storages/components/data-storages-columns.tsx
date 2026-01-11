@@ -7,7 +7,7 @@ import { DataStorageActions } from './data-storage-actions';
 export const createColumns = (t: TFunction, defaultDataStorageID?: string | null): ColumnDef<DataStorage>[] => [
   {
     accessorKey: 'name',
-    header: t('dataStorages.columns.name'),
+    header: t('common.columns.name'),
     cell: ({ row }) => {
       const isDefault = defaultDataStorageID === row.original.id;
 
@@ -39,7 +39,7 @@ export const createColumns = (t: TFunction, defaultDataStorageID?: string | null
   },
   {
     accessorKey: 'description',
-    header: t('dataStorages.columns.description'),
+    header: t('common.columns.description'),
     cell: ({ row }) => {
       const description = row.getValue('description') as string;
       return <span className='text-muted-foreground'>{description || '-'}</span>;
@@ -83,7 +83,7 @@ export const createColumns = (t: TFunction, defaultDataStorageID?: string | null
   },
   {
     accessorKey: 'status',
-    header: t('dataStorages.columns.status'),
+    header: t('common.columns.status'),
     cell: ({ row }) => {
       const status = row.getValue('status') as string;
       const statusVariants: Record<string, 'default' | 'secondary'> = {
@@ -99,7 +99,7 @@ export const createColumns = (t: TFunction, defaultDataStorageID?: string | null
   },
   {
     id: 'actions',
-    header: t('dataStorages.columns.actions'),
+    header: t('common.columns.actions'),
     cell: ({ row }) => <DataStorageActions dataStorage={row.original} defaultDataStorageID={defaultDataStorageID} />,
   },
 ];

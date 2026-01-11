@@ -10,53 +10,28 @@
       }
     },
     "columns": {
-      "id": "ID",
       "traceId": "Trace ID",
       "project": "Project",
       "thread": "Thread",
       "userQuery": "User Query",
-      "userImageUrl": "User Image URL",
       "requestCount": "Request Count",
       "details": "Details",
-      "createdAt": "Created At",
-      "updatedAt": "Updated At",
-      "actions": "Actions",
-      "selectAll": "Select all",
-      "selectRow": "Select row",
       "unknown": "Unknown",
       "noThread": "-"
     },
     "actions": {
       "viewDetails": "View Details",
-      "viewTrace": "View Trace",
       "openMenu": "Open menu"
     },
     "filters": {
-      "filterId": "Filter by ID...",
-      "filterTraceId": "Filter by Trace ID...",
-      "project": "Project",
-      "thread": "Thread"
+      "filterTraceId": "Filter by Trace ID..."
     },
     "detail": {
       "title": "Trace Details",
-      "basic": "Basic Information",
-      "additional": "Additional Information",
       "notFound": "Trace not found",
-      "overview": "Overview",
-      "requestTrace": "Request Trace",
-      "traceTree": "Trace Tree",
       "noTraceData": "No trace data available",
-      "metadata": "Metadata",
-      "duration": "Duration",
-      "tokens": "Tokens",
-      "cost": "Cost",
-      "items": "Items",
-      "requestSpans": "Request Spans",
-      "responseSpans": "Response Spans",
       "levelBadge": "Level {{level}}",
       "durationLabel": "Duration",
-      "tokensLabel": "Tokens",
-      "costLabel": "Cost",
       "itemsLabel": "Items",
       "inputTokensLabel": "Input Tokens",
       "outputTokensLabel": "Output Tokens",
@@ -92,7 +67,6 @@
       "title": "Timeline",
       "emptyDescription": "Timeline data is unavailable for this trace.",
       "itemsCount": "{{count}} item",
-      "itemsCount_plural": "{{count}} items",
       "aria": {
         "expandRow": "Expand row",
         "collapseRow": "Collapse row"
@@ -120,14 +94,12 @@
         "imageUrl": "Image",
         "systemInstruction": "System Instruction"
       },
-      "totalDurationLabel": "Total Duration",
       "summary": {
         "duration": "Duration {{value}}",
         "tokenCount": "{{value}} tokens"
       },
       "collapseAll": "Collapse All",
-      "expandAll": "Expand All",
-      "viewRequest": "View Request"
+      "expandAll": "Expand All"
     },
     "errors": {
       "loadTracesFailed": "Failed to load traces",
