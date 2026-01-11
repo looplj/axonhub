@@ -316,7 +316,7 @@ func TestShouldUseThinkinLevelForBudget(t *testing.T) {
 	})
 }
 
-func TestConvertLLMToGeminiRequest_Gemini3ThinkinLevelvsBudget(t *testing.T) {
+func TestConvertLLMToGeminiRequest_Gemini3ThinkingLevelvsBudget(t *testing.T) {
 	tests := []struct {
 		name           string
 		input          *llm.Request
