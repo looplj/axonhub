@@ -67,6 +67,9 @@ type Request struct {
 	// ReasoningEffort controls effort on reasoning models.
 	ReasoningEffort string `json:"reasoning_effort,omitempty"`
 
+	// ReasoningBudget is the budget for reasoning tokens.
+	ReasoningBudget *int64 `json:"reasoning_budget,omitempty"`
+
 	// ServiceTier specifies the processing type.
 	ServiceTier *string `json:"service_tier,omitempty"`
 
