@@ -278,6 +278,26 @@ func thinkingBudgetToReasoningEffort(budget int64) string {
 	}
 }
 
+// shouldUseThinkingLevelForBudget returns true if the model is Gemini 3
+// and the budget falls within standard effort ranges, allowing use of
+// thinkingLevel instead of thinkingBudget. Gemini 3 prefers thinkingLevel.
+func shouldUseThinkingLevelForBudget(model string, budget int64) bool {
+	if !strings.Contains(strings.ToLower(model), "gemini-3-") {
+		return false
+	}
+
+	switch {
+	case budget <= 1024:
+		return true
+	case budget <= 8192:
+		return true
+	case budget >= 1024 && budget <= 32768:
+		return true
+	default:
+		return false
+	}
+}
+
 // defaultReasoningEffortMapping returns the default mapping from ReasoningEffort to thinking budget tokens.
 var defaultGeminiReasoningEffortMapping = map[string]int64{
 	"low":    1024,

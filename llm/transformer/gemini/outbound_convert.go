@@ -127,11 +127,23 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 	if !hasExtraBodyThinkingConfig {
 		if chatReq.ReasoningBudget != nil {
 			// Priority 1: Use ReasoningBudget if provided
-			gc.ThinkingConfig = &ThinkingConfig{
-				IncludeThoughts: true,
-				// Gemini max thinking budget is 24576
-				ThinkingBudget: lo.ToPtr(min(*chatReq.ReasoningBudget, 24576)),
+			// Prefer ThinkingLevel for Gemini 3 models when budget falls within standard ranges
+			if shouldUseThinkingLevelForBudget(chatReq.Model, *chatReq.ReasoningBudget) {
+				// Convert budget to effort level for standard ranges
+				effort := thinkingBudgetToReasoningEffort(*chatReq.ReasoningBudget)
+				gc.ThinkingConfig = &ThinkingConfig{
+					IncludeThoughts: true,
+					ThinkingLevel:   effort,
+				}
+			} else {
+				// Use ThinkingBudget for non-standard values
+				gc.ThinkingConfig = &ThinkingConfig{
+					IncludeThoughts: true,
+					// Gemini max thinking budget is 24576
+					ThinkingBudget: lo.ToPtr(min(*chatReq.ReasoningBudget, 24576)),
+				}
 			}
+
 			hasGenerationConfig = true
 		} else if chatReq.ReasoningEffort != "" {
 			// Priority 2: Convert from ReasoningEffort if provided

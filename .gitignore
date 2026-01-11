@@ -143,3 +143,4 @@ scripts/.e2e-backend-db-type
 scripts/migration-test/
 tools
 
+mise.toml

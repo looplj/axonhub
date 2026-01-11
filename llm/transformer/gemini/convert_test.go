@@ -276,6 +276,178 @@ func TestConvertLLMToGeminiRequest_WithDocuments(t *testing.T) {
 	}
 }
 
+func TestShouldUseThinkinLevelForBudget(t *testing.T) {
+	tests := []struct {
+		name   string
+		budget int64
+	}{
+		{"low threshold", 1024},
+		{"medium threshold", 5000},
+		{"high threshold", 20000},
+		{"max threshold", 32768},
+	}
+
+	// Test with Gemini 3 models - should use thinkingLevel
+	gemini3Models := []string{"gemini-3-5m", "gemini-3-5-pro", "gemini-3-pro", "gemini-3-5-flash"}
+	for _, model := range gemini3Models {
+		for _, tt := range tests {
+			t.Run("gemini3/"+model+"/low", func(t *testing.T) {
+				require.True(t, shouldUseThinkingLevelForBudget(model, tt.budget))
+			})
+		}
+	}
+
+	// Test with non-Gemini 3 models - should NOT use thinkingLevel (use budget instead)
+	nonGemini3Models := []string{"gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-pro", "gemini-pro"}
+	for _, model := range nonGemini3Models {
+		for _, tt := range tests {
+			t.Run("non-gemini3/"+model+"/low", func(t *testing.T) {
+				require.False(t, shouldUseThinkingLevelForBudget(model, tt.budget))
+			})
+		}
+	}
+
+	// Test edge cases
+	t.Run("very high budget for Gemini 3", func(t *testing.T) {
+		require.False(t, shouldUseThinkingLevelForBudget("gemini-3-5m", 50000))
+	})
+	t.Run("very low budget for non-Gemini 3", func(t *testing.T) {
+		require.False(t, shouldUseThinkingLevelForBudget("gemini-2.5-flash", 500))
+	})
+}
+
+func TestConvertLLMToGeminiRequest_Gemini3ThinkingLevelvsBudget(t *testing.T) {
+	tests := []struct {
+		name           string
+		input          *llm.Request
+		expectedLevel  *string
+		expectedBudget *int64
+	}{
+		{
+			name: "gemini-3 with budget within standard range uses thinkingLevel",
+			input: &llm.Request{
+				Model:           "gemini-3-5m",
+				ReasoningBudget: lo.ToPtr(int64(16000)),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Test"),
+						},
+					},
+				},
+			},
+			expectedLevel:  lo.ToPtr("high"),
+			expectedBudget: nil,
+		},
+		{
+			name: "gemini-2.5 with budget within standard range still uses thinkingBudget",
+			input: &llm.Request{
+				Model:           "gemini-2.5-flash",
+				ReasoningBudget: lo.ToPtr(int64(16000)),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Test"),
+						},
+					},
+				},
+			},
+			expectedLevel:  nil,
+			expectedBudget: lo.ToPtr(int64(16000)),
+		},
+		{
+			name: "gemini-3 with high budget uses thinkingBudget (non-standard)",
+			input: &llm.Request{
+				Model:           "gemini-3-5m",
+				ReasoningBudget: lo.ToPtr(int64(50000)),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Test"),
+						},
+					},
+				},
+			},
+			expectedLevel:  nil,
+			expectedBudget: lo.ToPtr(int64(24576)), // Capped at max
+		},
+		{
+			name: "gemini-3 with very low budget uses thinkingLevel",
+			input: &llm.Request{
+				Model:           "gemini-3-5m",
+				ReasoningBudget: lo.ToPtr(int64(500)),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Test"),
+						},
+					},
+				},
+			},
+			expectedLevel:  lo.ToPtr("low"),
+			expectedBudget: nil,
+		},
+		{
+			name: "gemini-3 with medium budget uses thinkingLevel",
+			input: &llm.Request{
+				Model:           "gemini-3-5m",
+				ReasoningBudget: lo.ToPtr(int64(4000)),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Test"),
+						},
+					},
+				},
+			},
+			expectedLevel:  lo.ToPtr("medium"),
+			expectedBudget: nil,
+		},
+		{
+			name: "gemini-3 with reasoning effort uses thinkingLevel",
+			input: &llm.Request{
+				Model:           "gemini-3-5m",
+				ReasoningEffort: "high",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Test"),
+						},
+					},
+				},
+			},
+			expectedLevel:  lo.ToPtr("high"),
+			expectedBudget: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := convertLLMToGeminiRequest(tt.input)
+			require.NotNil(t, result.GenerationConfig)
+			require.NotNil(t, result.GenerationConfig.ThinkingConfig)
+
+			if tt.expectedLevel != nil {
+				require.Equal(t, *tt.expectedLevel, result.GenerationConfig.ThinkingConfig.ThinkingLevel)
+			} else {
+				require.Empty(t, result.GenerationConfig.ThinkingConfig.ThinkingLevel)
+			}
+
+			if tt.expectedBudget != nil {
+				require.Equal(t, *tt.expectedBudget, *result.GenerationConfig.ThinkingConfig.ThinkingBudget)
+			} else {
+				require.Nil(t, result.GenerationConfig.ThinkingConfig.ThinkingBudget)
+			}
+		})
+	}
+}
+
 // TestConvertToLLMUsage_CacheHitCalculation tests the specific bug reported where
 // Gemini's cachedContentTokenCount was not being reflected correctly in cache hit rate.
 //
