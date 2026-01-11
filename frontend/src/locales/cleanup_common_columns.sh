@@ -1,7 +1,7 @@
 #!/bin/bash
 
-LOCALES_DIR="/Users/September_1/Projects/AI/axonhub/frontend/src/locales"
-FRONTEND_DIR="/Users/September_1/Projects/AI/axonhub/frontend/src"
+LOCALES_DIR="$(dirname "$0")"
+FRONTEND_DIR="$(dirname "$LOCALES_DIR")"
 
 COMMON_COLUMN_KEYS=(
   "id"
