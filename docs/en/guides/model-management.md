@@ -97,6 +97,11 @@ Matches all models matching the regex pattern in a specific channel.
 }
 ```
 
+**Pattern Syntax**: Patterns are automatically anchored with `^` and `$` to match the entire model string. Use `.*` for flexible matching:
+- `gpt-4.*` - Matches `gpt-4`, `gpt-4-turbo`, `gpt-4-vision-preview`
+- `.*flash.*` - Matches `gemini-2.5-flash-preview`, `gemini-flash-2.0`
+- `claude-3-.*-sonnet` - Matches `claude-3-5-sonnet`, `claude-3-opus-sonnet`
+
 **Use Cases**:
 - Channel supports multiple model variants
 - Need flexible model name matching

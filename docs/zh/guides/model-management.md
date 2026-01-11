@@ -97,6 +97,11 @@ AxonHub 中的模型是抽象的模型定义，包含：
 }
 ```
 
+**模式语法**：模式会自动添加 `^` 和 `$` 锚点来匹配完整模型字符串。使用 `.*` 进行灵活匹配：
+- `gpt-4.*` - 匹配 `gpt-4`、`gpt-4-turbo`、`gpt-4-vision-preview`
+- `.*flash.*` - 匹配 `gemini-2.5-flash-preview`、`gemini-flash-2.0`
+- `claude-3-.*-sonnet` - 匹配 `claude-3-5-sonnet`、`claude-3-opus-sonnet`
+
 **使用场景**：
 - 渠道支持多个模型变体
 - 需要灵活匹配模型名称
