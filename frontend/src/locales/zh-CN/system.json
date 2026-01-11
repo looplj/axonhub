@@ -229,9 +229,10 @@
     },
     "backup": {
       "title": "备份",
-      "description": "创建系统数据备份，包括通道和模型",
-      "includeChannels": "包含通道",
+      "description": "创建系统数据备份，包括渠道、模型和 API 密钥",
+      "includeChannels": "包含渠道",
       "includeModels": "包含模型",
+      "includeAPIKeys": "包含 API 密钥",
       "createBackup": "创建备份",
       "backingUp": "备份中...",
       "success": "备份创建成功",
@@ -240,8 +241,9 @@
     "restore": {
       "title": "恢复",
       "description": "从备份文件恢复系统数据",
-      "channelConflictStrategy": "通道冲突策略",
+      "channelConflictStrategy": "渠道冲突策略",
       "modelConflictStrategy": "模型冲突策略",
+      "apiKeyConflictStrategy": "API 密钥冲突策略",
       "strategies": {
         "skip": "跳过现有项",
         "overwrite": "覆盖现有项",

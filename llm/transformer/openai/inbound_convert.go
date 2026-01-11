@@ -44,6 +44,7 @@ func (r *Request) ToLLMRequest() *llm.Request {
 		Metadata:            r.Metadata,
 		Modalities:          r.Modalities,
 		ReasoningEffort:     r.ReasoningEffort,
+		ReasoningBudget:     r.ReasoningBudget,
 		ServiceTier:         r.ServiceTier,
 		Stream:              r.Stream,
 		ParallelToolCalls:   r.ParallelToolCalls,

@@ -3,11 +3,11 @@ package gemini
 import (
 	"encoding/json"
 	"testing"
-	"github.com/samber/lo"
 
+	"github.com/samber/lo"
+	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
-	"github.com/stretchr/testify/require"
 )
 
 // TestConvertLLMToGeminiRequest_UsesParametersJsonSchema verifies that
@@ -68,6 +68,7 @@ func TestConvertLLMToGeminiRequest_UsesParametersJsonSchema(t *testing.T) {
 
 	// Verify the schema content is correct
 	var schema map[string]any
+
 	err := json.Unmarshal(fd.ParametersJsonSchema, &schema)
 	require.NoError(t, err)
 

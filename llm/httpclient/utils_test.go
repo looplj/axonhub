@@ -2,6 +2,7 @@ package httpclient
 
 import (
 	"net/http"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -244,4 +245,70 @@ func TestRegisterAppendHeaders(t *testing.T) {
 
 	got := MergeHTTPHeaders(dest, src)
 	require.Equal(t, []string{"old", "new"}, got["X-New-Append"])
+}
+
+func TestMergeHTTPQuery(t *testing.T) {
+	tests := []struct {
+		name string
+		dest url.Values
+		src  url.Values
+		want url.Values
+	}{
+		{
+			name: "should merge new query parameters",
+			dest: url.Values{"q": []string{"golang"}},
+			src:  url.Values{"page": []string{"1"}},
+			want: url.Values{"q": []string{"golang"}, "page": []string{"1"}},
+		},
+		{
+			name: "should not overwrite existing query parameters",
+			dest: url.Values{"q": []string{"golang"}},
+			src:  url.Values{"q": []string{"java"}},
+			want: url.Values{"q": []string{"golang"}},
+		},
+		{
+			name: "should handle empty src",
+			dest: url.Values{"q": []string{"golang"}},
+			src:  nil,
+			want: url.Values{"q": []string{"golang"}},
+		},
+		{
+			name: "should handle empty dest",
+			dest: nil,
+			src:  url.Values{"page": []string{"1"}},
+			want: url.Values{"page": []string{"1"}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := MergeHTTPQuery(tt.dest, tt.src)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestMergeInboundRequest(t *testing.T) {
+	t.Run("should merge both headers and query", func(t *testing.T) {
+		dest := &Request{
+			Headers: http.Header{"Content-Type": []string{"application/json"}},
+			Query:   url.Values{"q": []string{"old"}},
+		}
+		src := &Request{
+			Headers: http.Header{"User-Agent": []string{"Test"}},
+			Query:   url.Values{"page": []string{"1"}},
+		}
+
+		got := MergeInboundRequest(dest, src)
+		require.Equal(t, "application/json", got.Headers.Get("Content-Type"))
+		require.Equal(t, "Test", got.Headers.Get("User-Agent"))
+		require.Equal(t, "old", got.Query.Get("q"))
+		require.Equal(t, "1", got.Query.Get("page"))
+	})
+
+	t.Run("should return dest if src is nil", func(t *testing.T) {
+		dest := &Request{Headers: http.Header{"X-Test": []string{"val"}}}
+		got := MergeInboundRequest(dest, nil)
+		require.Equal(t, dest, got)
+	})
 }
