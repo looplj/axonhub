@@ -101,17 +101,25 @@ func MergeInboundRequest(dest, src *Request) *Request {
 	}
 
 	dest.Headers = MergeHTTPHeaders(dest.Headers, src.Headers)
+	dest.Query = MergeHTTPQuery(dest.Query, src.Query)
 
-	// Merge query parameters.
-	if len(src.Query) > 0 {
-		if dest.Query == nil {
-			dest.Query = make(url.Values)
-		}
+	return dest
+}
 
-		for k, v := range src.Query {
-			if _, ok := dest.Query[k]; !ok {
-				dest.Query[k] = v
-			}
+// MergeHTTPQuery merges the source query parameters into the destination query parameters.
+// If a key already exists in the destination, it is not overwritten.
+func MergeHTTPQuery(dest, src url.Values) url.Values {
+	if len(src) == 0 {
+		return dest
+	}
+
+	if dest == nil {
+		dest = make(url.Values)
+	}
+
+	for k, v := range src {
+		if _, ok := dest[k]; !ok {
+			dest[k] = v
 		}
 	}
 

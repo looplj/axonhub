@@ -18,13 +18,16 @@ export function BackupSettings() {
   const [backupOptions, setBackupOptions] = useState<BackupOptionsInput>({
     includeChannels: true,
     includeModels: true,
+    includeAPIKeys: false,
   });
 
   const [restoreOptions, setRestoreOptions] = useState<RestoreOptionsInput>({
     includeChannels: true,
     includeModels: true,
+    includeAPIKeys: false,
     channelConflictStrategy: 'SKIP',
     modelConflictStrategy: 'SKIP',
+    apiKeyConflictStrategy: 'SKIP',
   });
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -73,6 +76,14 @@ export function BackupSettings() {
                 onCheckedChange={(checked) => setBackupOptions({ ...backupOptions, includeModels: checked })}
               />
             </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="include-apikeys">{t('system.backup.includeAPIKeys')}</Label>
+              <Switch
+                id="include-apikeys"
+                checked={backupOptions.includeAPIKeys}
+                onCheckedChange={(checked) => setBackupOptions({ ...backupOptions, includeAPIKeys: checked })}
+              />
+            </div>
           </div>
           <Button onClick={handleBackup} disabled={backup.isPending} className="w-full">
             {backup.isPending ? (
@@ -116,6 +127,14 @@ export function BackupSettings() {
                 onCheckedChange={(checked) => setRestoreOptions({ ...restoreOptions, includeModels: checked })}
               />
             </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="restore-include-apikeys">{t('system.backup.includeAPIKeys')}</Label>
+              <Switch
+                id="restore-include-apikeys"
+                checked={restoreOptions.includeAPIKeys}
+                onCheckedChange={(checked) => setRestoreOptions({ ...restoreOptions, includeAPIKeys: checked })}
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="channel-conflict-strategy">{t('system.restore.channelConflictStrategy')}</Label>
               <Select
@@ -143,6 +162,24 @@ export function BackupSettings() {
                 }
               >
                 <SelectTrigger id="model-conflict-strategy">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="SKIP">{t('system.restore.strategies.skip')}</SelectItem>
+                  <SelectItem value="OVERWRITE">{t('system.restore.strategies.overwrite')}</SelectItem>
+                  <SelectItem value="ERROR">{t('system.restore.strategies.error')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="apikey-conflict-strategy">{t('system.restore.apiKeyConflictStrategy')}</Label>
+              <Select
+                value={restoreOptions.apiKeyConflictStrategy}
+                onValueChange={(value: 'SKIP' | 'OVERWRITE' | 'ERROR') =>
+                  setRestoreOptions({ ...restoreOptions, apiKeyConflictStrategy: value })
+                }
+              >
+                <SelectTrigger id="apikey-conflict-strategy">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

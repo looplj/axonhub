@@ -37,6 +37,30 @@ test-weight: ## Run weight-based load balancing tests
 	@echo "Running weight-based load balancing tests..."
 	$(GO_TEST) -run TestWeight ./...
 
+test-weight2: ## Run weight-based load balancing tests (2 rounds, sleep 1 min between rounds)
+	@echo "Running weight-based load balancing tests (2 rounds)..."
+	@for i in 1 2; do \
+		if [ $$i -gt 1 ]; then \
+			echo "Waiting 1 minute before round $$i..."; \
+			sleep 120; \
+		fi; \
+		echo "Running round $$i of 2..."; \
+		$(GO_TEST) -run TestWeight ./... || exit 1; \
+	done
+	@echo "All 2 rounds completed successfully!"
+
+test-weight3: ## Run weight-based load balancing tests (3 rounds, sleep 1 min between rounds)
+	@echo "Running weight-based load balancing tests (3 rounds)..."
+	@for i in 1 2 3; do \
+		if [ $$i -gt 1 ]; then \
+			echo "Waiting 1 minute before round $$i..."; \
+			sleep 120; \
+		fi; \
+		echo "Running round $$i of 3..."; \
+		$(GO_TEST) -run TestWeight ./... || exit 1; \
+	done
+	@echo "All 3 rounds completed successfully!"
+
 test-advanced: ## Run advanced load balancing tests
 	@echo "Running advanced load balancing tests..."
 	$(GO_TEST) -run "TestConnection|TestError|TestInactivity|TestScaling|TestPriority|TestComposite" ./...
