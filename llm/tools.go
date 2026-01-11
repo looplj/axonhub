@@ -41,8 +41,11 @@ func (t Tool) MarshalJSON() ([]byte, error) {
 type Function struct {
 	Name        string          `json:"name"`
 	Description string          `json:"description,omitempty"`
-	Parameters  json.RawMessage `json:"parameters"`
-	Strict      *bool           `json:"strict,omitempty"`
+	Parameters  json.RawMessage `json:"parameters,omitempty"`
+	// ParametersJsonSchema is the newer Gemini format that supports full JSON Schema Draft 2020-12
+	// including const, enum, and other advanced features. This field is mutually exclusive with Parameters.
+	ParametersJsonSchema json.RawMessage `json:"parametersJsonSchema,omitempty"`
+	Strict               *bool           `json:"strict,omitempty"`
 }
 
 // FunctionCall represents a function call (deprecated).
