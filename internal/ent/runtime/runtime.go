@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
+	"github.com/looplj/axonhub/internal/ent/prompt"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
@@ -385,6 +386,45 @@ func init() {
 	projectDescDescription := projectFields[1].Descriptor()
 	// project.DefaultDescription holds the default value on creation for the description field.
 	project.DefaultDescription = projectDescDescription.Default.(string)
+	promptMixin := schema.Prompt{}.Mixin()
+	prompt.Policy = privacy.NewPolicies(schema.Prompt{})
+	prompt.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := prompt.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	promptMixinHooks1 := promptMixin[1].Hooks()
+
+	prompt.Hooks[1] = promptMixinHooks1[0]
+	promptMixinInters1 := promptMixin[1].Interceptors()
+	prompt.Interceptors[0] = promptMixinInters1[0]
+	promptMixinFields0 := promptMixin[0].Fields()
+	_ = promptMixinFields0
+	promptMixinFields1 := promptMixin[1].Fields()
+	_ = promptMixinFields1
+	promptFields := schema.Prompt{}.Fields()
+	_ = promptFields
+	// promptDescCreatedAt is the schema descriptor for created_at field.
+	promptDescCreatedAt := promptMixinFields0[0].Descriptor()
+	// prompt.DefaultCreatedAt holds the default value on creation for the created_at field.
+	prompt.DefaultCreatedAt = promptDescCreatedAt.Default.(func() time.Time)
+	// promptDescUpdatedAt is the schema descriptor for updated_at field.
+	promptDescUpdatedAt := promptMixinFields0[1].Descriptor()
+	// prompt.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	prompt.DefaultUpdatedAt = promptDescUpdatedAt.Default.(func() time.Time)
+	// prompt.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	prompt.UpdateDefaultUpdatedAt = promptDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// promptDescDeletedAt is the schema descriptor for deleted_at field.
+	promptDescDeletedAt := promptMixinFields1[0].Descriptor()
+	// prompt.DefaultDeletedAt holds the default value on creation for the deleted_at field.
+	prompt.DefaultDeletedAt = promptDescDeletedAt.Default.(int)
+	// promptDescDescription is the schema descriptor for description field.
+	promptDescDescription := promptFields[2].Descriptor()
+	// prompt.DefaultDescription holds the default value on creation for the description field.
+	prompt.DefaultDescription = promptDescDescription.Default.(string)
 	requestMixin := schema.Request{}.Mixin()
 	request.Policy = privacy.NewPolicies(schema.Request{})
 	request.Hooks[0] = func(next ent.Mutator) ent.Mutator {

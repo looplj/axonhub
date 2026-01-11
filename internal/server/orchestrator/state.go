@@ -8,13 +8,14 @@ import (
 )
 
 // PersistenceState holds shared state with channel management and retry capabilities.
+// TODO: move the dependencies out of the state to make it a real state.
 type PersistenceState struct {
 	APIKey *ent.APIKey
-	User   *ent.User
 
 	RequestService      *biz.RequestService
 	UsageLogService     *biz.UsageLogService
 	ChannelService      *biz.ChannelService
+	PromptProvider      PromptProvider
 	RetryPolicyProvider RetryPolicyProvider
 	CandidateSelector   CandidateSelector
 	LoadBalancer        *LoadBalancer

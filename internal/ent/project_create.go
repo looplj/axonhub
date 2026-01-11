@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/project"
+	"github.com/looplj/axonhub/internal/ent/prompt"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/thread"
@@ -209,6 +210,21 @@ func (_c *ProjectCreate) AddTraces(v ...*Trace) *ProjectCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddTraceIDs(ids...)
+}
+
+// AddPromptIDs adds the "prompts" edge to the Prompt entity by IDs.
+func (_c *ProjectCreate) AddPromptIDs(ids ...int) *ProjectCreate {
+	_c.mutation.AddPromptIDs(ids...)
+	return _c
+}
+
+// AddPrompts adds the "prompts" edges to the Prompt entity.
+func (_c *ProjectCreate) AddPrompts(v ...*Prompt) *ProjectCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddPromptIDs(ids...)
 }
 
 // AddProjectUserIDs adds the "project_users" edge to the UserProject entity by IDs.
@@ -477,6 +493,22 @@ func (_c *ProjectCreate) createSpec() (*Project, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(trace.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.PromptsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   project.PromptsTable,
+			Columns: project.PromptsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(prompt.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

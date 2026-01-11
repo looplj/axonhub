@@ -38,8 +38,8 @@ type channelMetrics struct {
 
 // InitializeAllChannelPerformances ensures every channel has a corresponding performance record.
 func (svc *ChannelService) InitializeAllChannelPerformances(ctx context.Context) error {
-	client := svc.entFromContext(ctx)
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	client := svc.entFromContext(ctx)
 
 	channelIDs, err := client.Channel.Query().IDs(ctx)
 	if err != nil {

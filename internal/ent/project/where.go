@@ -511,6 +511,29 @@ func HasTracesWith(preds ...predicate.Trace) predicate.Project {
 	})
 }
 
+// HasPrompts applies the HasEdge predicate on the "prompts" edge.
+func HasPrompts() predicate.Project {
+	return predicate.Project(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, PromptsTable, PromptsPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasPromptsWith applies the HasEdge predicate on the "prompts" edge with a given conditions (other predicates).
+func HasPromptsWith(preds ...predicate.Prompt) predicate.Project {
+	return predicate.Project(func(s *sql.Selector) {
+		step := newPromptsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasProjectUsers applies the HasEdge predicate on the "project_users" edge.
 func HasProjectUsers() predicate.Project {
 	return predicate.Project(func(s *sql.Selector) {

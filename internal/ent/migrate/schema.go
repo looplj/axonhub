@@ -287,6 +287,38 @@ var (
 			},
 		},
 	}
+	// PromptsColumns holds the columns for the "prompts" table.
+	PromptsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "project_id", Type: field.TypeInt},
+		{Name: "name", Type: field.TypeString},
+		{Name: "description", Type: field.TypeString, Default: ""},
+		{Name: "role", Type: field.TypeString},
+		{Name: "content", Type: field.TypeString},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"enabled", "disabled"}, Default: "disabled"},
+		{Name: "settings", Type: field.TypeJSON},
+	}
+	// PromptsTable holds the schema information for the "prompts" table.
+	PromptsTable = &schema.Table{
+		Name:       "prompts",
+		Columns:    PromptsColumns,
+		PrimaryKey: []*schema.Column{PromptsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "prompts_by_project_id",
+				Unique:  false,
+				Columns: []*schema.Column{PromptsColumns[4]},
+			},
+			{
+				Name:    "prompts_by_project_id_name",
+				Unique:  true,
+				Columns: []*schema.Column{PromptsColumns[4], PromptsColumns[5], PromptsColumns[3]},
+			},
+		},
+	}
 	// RequestsColumns holds the columns for the "requests" table.
 	RequestsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -772,6 +804,31 @@ var (
 			},
 		},
 	}
+	// ProjectPromptsColumns holds the columns for the "project_prompts" table.
+	ProjectPromptsColumns = []*schema.Column{
+		{Name: "project_id", Type: field.TypeInt},
+		{Name: "prompt_id", Type: field.TypeInt},
+	}
+	// ProjectPromptsTable holds the schema information for the "project_prompts" table.
+	ProjectPromptsTable = &schema.Table{
+		Name:       "project_prompts",
+		Columns:    ProjectPromptsColumns,
+		PrimaryKey: []*schema.Column{ProjectPromptsColumns[0], ProjectPromptsColumns[1]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "project_prompts_project_id",
+				Columns:    []*schema.Column{ProjectPromptsColumns[0]},
+				RefColumns: []*schema.Column{ProjectsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "project_prompts_prompt_id",
+				Columns:    []*schema.Column{ProjectPromptsColumns[1]},
+				RefColumns: []*schema.Column{PromptsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		APIKeysTable,
@@ -782,6 +839,7 @@ var (
 		DataStoragesTable,
 		ModelsTable,
 		ProjectsTable,
+		PromptsTable,
 		RequestsTable,
 		RequestExecutionsTable,
 		RolesTable,
@@ -792,6 +850,7 @@ var (
 		UsersTable,
 		UserProjectsTable,
 		UserRolesTable,
+		ProjectPromptsTable,
 	}
 )
 
@@ -820,4 +879,6 @@ func init() {
 	UserProjectsTable.ForeignKeys[1].RefTable = ProjectsTable
 	UserRolesTable.ForeignKeys[0].RefTable = UsersTable
 	UserRolesTable.ForeignKeys[1].RefTable = RolesTable
+	ProjectPromptsTable.ForeignKeys[0].RefTable = ProjectsTable
+	ProjectPromptsTable.ForeignKeys[1].RefTable = PromptsTable
 }

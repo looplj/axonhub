@@ -44,6 +44,8 @@ const (
 	EdgeThreads = "threads"
 	// EdgeTraces holds the string denoting the traces edge name in mutations.
 	EdgeTraces = "traces"
+	// EdgePrompts holds the string denoting the prompts edge name in mutations.
+	EdgePrompts = "prompts"
 	// EdgeProjectUsers holds the string denoting the project_users edge name in mutations.
 	EdgeProjectUsers = "project_users"
 	// Table holds the table name of the project in the database.
@@ -95,6 +97,11 @@ const (
 	TracesInverseTable = "traces"
 	// TracesColumn is the table column denoting the traces relation/edge.
 	TracesColumn = "project_id"
+	// PromptsTable is the table that holds the prompts relation/edge. The primary key declared below.
+	PromptsTable = "project_prompts"
+	// PromptsInverseTable is the table name for the Prompt entity.
+	// It exists in this package in order to avoid circular dependency with the "prompt" package.
+	PromptsInverseTable = "prompts"
 	// ProjectUsersTable is the table that holds the project_users relation/edge.
 	ProjectUsersTable = "user_projects"
 	// ProjectUsersInverseTable is the table name for the UserProject entity.
@@ -119,6 +126,9 @@ var (
 	// UsersPrimaryKey and UsersColumn2 are the table columns denoting the
 	// primary key for the users relation (M2M).
 	UsersPrimaryKey = []string{"project_id", "user_id"}
+	// PromptsPrimaryKey and PromptsColumn2 are the table columns denoting the
+	// primary key for the prompts relation (M2M).
+	PromptsPrimaryKey = []string{"project_id", "prompt_id"}
 )
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -314,6 +324,20 @@ func ByTraces(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByPromptsCount orders the results by prompts count.
+func ByPromptsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newPromptsStep(), opts...)
+	}
+}
+
+// ByPrompts orders the results by prompts terms.
+func ByPrompts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newPromptsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByProjectUsersCount orders the results by project_users count.
 func ByProjectUsersCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -374,6 +398,13 @@ func newTracesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(TracesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, TracesTable, TracesColumn),
+	)
+}
+func newPromptsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(PromptsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, false, PromptsTable, PromptsPrimaryKey...),
 	)
 }
 func newProjectUsersStep() *sqlgraph.Step {

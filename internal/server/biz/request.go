@@ -874,8 +874,8 @@ func (s *RequestService) LoadResponseChunks(ctx context.Context, req *ent.Reques
 	if req == nil {
 		return nil, fmt.Errorf("request is nil")
 	}
-	// Only load response body if request is completed
-	if req.Status != request.StatusCompleted {
+	// Only load response chunks if request is completed and streaming.
+	if !req.Stream || req.Status != request.StatusCompleted {
 		return nil, nil
 	}
 
@@ -996,6 +996,11 @@ func (s *RequestService) LoadRequestExecutionResponseBody(ctx context.Context, e
 func (s *RequestService) LoadRequestExecutionResponseChunks(ctx context.Context, exec *ent.RequestExecution) ([]objects.JSONRawMessage, error) {
 	if exec == nil {
 		return nil, fmt.Errorf("request execution is nil")
+	}
+
+	// Only load response body if execution is completed
+	if exec.Status != requestexecution.StatusCompleted {
+		return nil, nil
 	}
 
 	dataStorage, err := s.getDataStorage(ctx, exec.DataStorageID)

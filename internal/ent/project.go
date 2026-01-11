@@ -51,13 +51,15 @@ type ProjectEdges struct {
 	Threads []*Thread `json:"threads,omitempty"`
 	// Traces holds the value of the traces edge.
 	Traces []*Trace `json:"traces,omitempty"`
+	// Prompts holds the value of the prompts edge.
+	Prompts []*Prompt `json:"prompts,omitempty"`
 	// ProjectUsers holds the value of the project_users edge.
 	ProjectUsers []*UserProject `json:"project_users,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [8]bool
+	loadedTypes [9]bool
 	// totalCount holds the count of the edges above.
-	totalCount [8]map[string]int
+	totalCount [9]map[string]int
 
 	namedUsers        map[string][]*User
 	namedRoles        map[string][]*Role
@@ -66,6 +68,7 @@ type ProjectEdges struct {
 	namedUsageLogs    map[string][]*UsageLog
 	namedThreads      map[string][]*Thread
 	namedTraces       map[string][]*Trace
+	namedPrompts      map[string][]*Prompt
 	namedProjectUsers map[string][]*UserProject
 }
 
@@ -132,10 +135,19 @@ func (e ProjectEdges) TracesOrErr() ([]*Trace, error) {
 	return nil, &NotLoadedError{edge: "traces"}
 }
 
+// PromptsOrErr returns the Prompts value or an error if the edge
+// was not loaded in eager-loading.
+func (e ProjectEdges) PromptsOrErr() ([]*Prompt, error) {
+	if e.loadedTypes[7] {
+		return e.Prompts, nil
+	}
+	return nil, &NotLoadedError{edge: "prompts"}
+}
+
 // ProjectUsersOrErr returns the ProjectUsers value or an error if the edge
 // was not loaded in eager-loading.
 func (e ProjectEdges) ProjectUsersOrErr() ([]*UserProject, error) {
-	if e.loadedTypes[7] {
+	if e.loadedTypes[8] {
 		return e.ProjectUsers, nil
 	}
 	return nil, &NotLoadedError{edge: "project_users"}
@@ -255,6 +267,11 @@ func (_m *Project) QueryThreads() *ThreadQuery {
 // QueryTraces queries the "traces" edge of the Project entity.
 func (_m *Project) QueryTraces() *TraceQuery {
 	return NewProjectClient(_m.config).QueryTraces(_m)
+}
+
+// QueryPrompts queries the "prompts" edge of the Project entity.
+func (_m *Project) QueryPrompts() *PromptQuery {
+	return NewProjectClient(_m.config).QueryPrompts(_m)
 }
 
 // QueryProjectUsers queries the "project_users" edge of the Project entity.
@@ -471,6 +488,30 @@ func (_m *Project) appendNamedTraces(name string, edges ...*Trace) {
 		_m.Edges.namedTraces[name] = []*Trace{}
 	} else {
 		_m.Edges.namedTraces[name] = append(_m.Edges.namedTraces[name], edges...)
+	}
+}
+
+// NamedPrompts returns the Prompts named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *Project) NamedPrompts(name string) ([]*Prompt, error) {
+	if _m.Edges.namedPrompts == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedPrompts[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *Project) appendNamedPrompts(name string, edges ...*Prompt) {
+	if _m.Edges.namedPrompts == nil {
+		_m.Edges.namedPrompts = make(map[string][]*Prompt)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedPrompts[name] = []*Prompt{}
+	} else {
+		_m.Edges.namedPrompts[name] = append(_m.Edges.namedPrompts[name], edges...)
 	}
 }
 

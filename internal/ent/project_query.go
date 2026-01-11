@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
+	"github.com/looplj/axonhub/internal/ent/prompt"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/thread"
@@ -39,6 +40,7 @@ type ProjectQuery struct {
 	withUsageLogs         *UsageLogQuery
 	withThreads           *ThreadQuery
 	withTraces            *TraceQuery
+	withPrompts           *PromptQuery
 	withProjectUsers      *UserProjectQuery
 	loadTotal             []func(context.Context, []*Project) error
 	modifiers             []func(*sql.Selector)
@@ -49,6 +51,7 @@ type ProjectQuery struct {
 	withNamedUsageLogs    map[string]*UsageLogQuery
 	withNamedThreads      map[string]*ThreadQuery
 	withNamedTraces       map[string]*TraceQuery
+	withNamedPrompts      map[string]*PromptQuery
 	withNamedProjectUsers map[string]*UserProjectQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
@@ -233,6 +236,28 @@ func (_q *ProjectQuery) QueryTraces() *TraceQuery {
 			sqlgraph.From(project.Table, project.FieldID, selector),
 			sqlgraph.To(trace.Table, trace.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, project.TracesTable, project.TracesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryPrompts chains the current query on the "prompts" edge.
+func (_q *ProjectQuery) QueryPrompts() *PromptQuery {
+	query := (&PromptClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, selector),
+			sqlgraph.To(prompt.Table, prompt.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, project.PromptsTable, project.PromptsPrimaryKey...),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -461,6 +486,7 @@ func (_q *ProjectQuery) Clone() *ProjectQuery {
 		withUsageLogs:    _q.withUsageLogs.Clone(),
 		withThreads:      _q.withThreads.Clone(),
 		withTraces:       _q.withTraces.Clone(),
+		withPrompts:      _q.withPrompts.Clone(),
 		withProjectUsers: _q.withProjectUsers.Clone(),
 		// clone intermediate query.
 		sql:       _q.sql.Clone(),
@@ -543,6 +569,17 @@ func (_q *ProjectQuery) WithTraces(opts ...func(*TraceQuery)) *ProjectQuery {
 		opt(query)
 	}
 	_q.withTraces = query
+	return _q
+}
+
+// WithPrompts tells the query-builder to eager-load the nodes that are connected to
+// the "prompts" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ProjectQuery) WithPrompts(opts ...func(*PromptQuery)) *ProjectQuery {
+	query := (&PromptClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withPrompts = query
 	return _q
 }
 
@@ -641,7 +678,7 @@ func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proj
 	var (
 		nodes       = []*Project{}
 		_spec       = _q.querySpec()
-		loadedTypes = [8]bool{
+		loadedTypes = [9]bool{
 			_q.withUsers != nil,
 			_q.withRoles != nil,
 			_q.withAPIKeys != nil,
@@ -649,6 +686,7 @@ func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proj
 			_q.withUsageLogs != nil,
 			_q.withThreads != nil,
 			_q.withTraces != nil,
+			_q.withPrompts != nil,
 			_q.withProjectUsers != nil,
 		}
 	)
@@ -722,6 +760,13 @@ func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proj
 			return nil, err
 		}
 	}
+	if query := _q.withPrompts; query != nil {
+		if err := _q.loadPrompts(ctx, query, nodes,
+			func(n *Project) { n.Edges.Prompts = []*Prompt{} },
+			func(n *Project, e *Prompt) { n.Edges.Prompts = append(n.Edges.Prompts, e) }); err != nil {
+			return nil, err
+		}
+	}
 	if query := _q.withProjectUsers; query != nil {
 		if err := _q.loadProjectUsers(ctx, query, nodes,
 			func(n *Project) { n.Edges.ProjectUsers = []*UserProject{} },
@@ -775,6 +820,13 @@ func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proj
 		if err := _q.loadTraces(ctx, query, nodes,
 			func(n *Project) { n.appendNamedTraces(name) },
 			func(n *Project, e *Trace) { n.appendNamedTraces(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedPrompts {
+		if err := _q.loadPrompts(ctx, query, nodes,
+			func(n *Project) { n.appendNamedPrompts(name) },
+			func(n *Project, e *Prompt) { n.appendNamedPrompts(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -1037,6 +1089,67 @@ func (_q *ProjectQuery) loadTraces(ctx context.Context, query *TraceQuery, nodes
 	}
 	return nil
 }
+func (_q *ProjectQuery) loadPrompts(ctx context.Context, query *PromptQuery, nodes []*Project, init func(*Project), assign func(*Project, *Prompt)) error {
+	edgeIDs := make([]driver.Value, len(nodes))
+	byID := make(map[int]*Project)
+	nids := make(map[int]map[*Project]struct{})
+	for i, node := range nodes {
+		edgeIDs[i] = node.ID
+		byID[node.ID] = node
+		if init != nil {
+			init(node)
+		}
+	}
+	query.Where(func(s *sql.Selector) {
+		joinT := sql.Table(project.PromptsTable)
+		s.Join(joinT).On(s.C(prompt.FieldID), joinT.C(project.PromptsPrimaryKey[1]))
+		s.Where(sql.InValues(joinT.C(project.PromptsPrimaryKey[0]), edgeIDs...))
+		columns := s.SelectedColumns()
+		s.Select(joinT.C(project.PromptsPrimaryKey[0]))
+		s.AppendSelect(columns...)
+		s.SetDistinct(false)
+	})
+	if err := query.prepareQuery(ctx); err != nil {
+		return err
+	}
+	qr := QuerierFunc(func(ctx context.Context, q Query) (Value, error) {
+		return query.sqlAll(ctx, func(_ context.Context, spec *sqlgraph.QuerySpec) {
+			assign := spec.Assign
+			values := spec.ScanValues
+			spec.ScanValues = func(columns []string) ([]any, error) {
+				values, err := values(columns[1:])
+				if err != nil {
+					return nil, err
+				}
+				return append([]any{new(sql.NullInt64)}, values...), nil
+			}
+			spec.Assign = func(columns []string, values []any) error {
+				outValue := int(values[0].(*sql.NullInt64).Int64)
+				inValue := int(values[1].(*sql.NullInt64).Int64)
+				if nids[inValue] == nil {
+					nids[inValue] = map[*Project]struct{}{byID[outValue]: {}}
+					return assign(columns[1:], values[1:])
+				}
+				nids[inValue][byID[outValue]] = struct{}{}
+				return nil
+			}
+		})
+	})
+	neighbors, err := withInterceptors[[]*Prompt](ctx, query, qr, query.inters)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected "prompts" node returned %v`, n.ID)
+		}
+		for kn := range nodes {
+			assign(kn, n)
+		}
+	}
+	return nil
+}
 func (_q *ProjectQuery) loadProjectUsers(ctx context.Context, query *UserProjectQuery, nodes []*Project, init func(*Project), assign func(*Project, *UserProject)) error {
 	fks := make([]driver.Value, 0, len(nodes))
 	nodeids := make(map[int]*Project)
@@ -1256,6 +1369,20 @@ func (_q *ProjectQuery) WithNamedTraces(name string, opts ...func(*TraceQuery)) 
 		_q.withNamedTraces = make(map[string]*TraceQuery)
 	}
 	_q.withNamedTraces[name] = query
+	return _q
+}
+
+// WithNamedPrompts tells the query-builder to eager-load the nodes that are connected to the "prompts"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *ProjectQuery) WithNamedPrompts(name string, opts ...func(*PromptQuery)) *ProjectQuery {
+	query := (&PromptClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedPrompts == nil {
+		_q.withNamedPrompts = make(map[string]*PromptQuery)
+	}
+	_q.withNamedPrompts[name] = query
 	return _q
 }
 

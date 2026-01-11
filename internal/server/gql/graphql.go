@@ -23,6 +23,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
+	"github.com/looplj/axonhub/internal/ent/prompt"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
@@ -56,6 +57,7 @@ type Dependencies struct {
 	ModelService                   *biz.ModelService
 	BackupService                  *biz.BackupService
 	ChannelProbeService            *biz.ChannelProbeService
+	PromptService                  *biz.PromptService
 }
 
 type GraphqlHandler struct {
@@ -83,6 +85,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 			deps.ModelService,
 			deps.BackupService,
 			deps.ChannelProbeService,
+			deps.PromptService,
 		),
 	)
 
@@ -132,6 +135,7 @@ var guidTypeToNodeType = map[string]string{
 	ent.TypeThread:                  thread.Table,
 	ent.TypeTrace:                   trace.Table,
 	ent.TypeDataStorage:             datastorage.Table,
+	ent.TypePrompt:                  prompt.Table,
 }
 
 const maxPaginationLimit = 1000

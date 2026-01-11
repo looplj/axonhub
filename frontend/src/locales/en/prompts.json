@@ -1,0 +1,106 @@
+{
+  "prompts": {
+    "title": "Prompts",
+    "description": "Manage prompts for AI models",
+    "columns": {
+      "selectAll": "Select all",
+      "selectRow": "Select row",
+      "name": "Name",
+      "description": "Description",
+      "role": "Role",
+      "actionType": "Action Type",
+      "conditions": "Conditions",
+      "status": "Status",
+      "createdAt": "Created At"
+    },
+    "actionTypes": {
+      "prepend": "Prepend",
+      "append": "Append"
+    },
+    "conditionTypes": {
+      "model_id": "Model ID",
+      "model_pattern": "Model Pattern"
+    },
+    "actions": {
+      "create": "Add Prompt"
+    },
+    "filters": {
+      "filterByName": "Filter by name..."
+    },
+    "fields": {
+      "name": "Name",
+      "description": "Description",
+      "role": "Role",
+      "rolePlaceholder": "Select role",
+      "content": "Content",
+      "contentPlaceholder": "Enter prompt content",
+      "actionType": "Action/操作",
+      "actionTypePlaceholder": "Select action type",
+      "actionTypeHelpPrepend": "Insert a message before all messages",
+      "actionTypeHelpAppend": "Insert a message after all messages",
+      "conditionType": "Condition Type",
+      "conditionTypePlaceholder": "Select condition type",
+      "conditionValue": "Condition Value",
+      "conditionValuePlaceholder": "Enter condition value"
+    },
+    "conditions": {
+      "title": "Conditions",
+      "description": "Define when this prompt should be applied",
+      "add": "Add Condition",
+      "addGroup": "Add Group",
+      "group": "Group",
+      "empty": "No conditions set - applies to all requests",
+      "and": "AND",
+      "or": "OR"
+    },
+    "dialogs": {
+      "create": {
+        "title": "Create Prompt",
+        "description": "Add a new prompt"
+      },
+      "edit": {
+        "title": "Edit Prompt",
+        "description": "Update prompt"
+      },
+      "delete": {
+        "title": "Delete Prompt",
+        "description": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone."
+      },
+      "statusChange": {
+        "title": "Change Prompt Status",
+        "description": {
+          "enabled": "Are you sure you want to enable \"{{name}}\"?",
+          "disabled": "Are you sure you want to disable \"{{name}}\"?"
+        }
+      },
+      "bulkEnable": {
+        "title": "Enable Prompts",
+        "description": "Are you sure you want to enable {{count}} prompt(s)?"
+      },
+      "bulkDisable": {
+        "title": "Disable Prompts",
+        "description": "Are you sure you want to disable {{count}} prompt(s)?"
+      },
+      "bulkDelete": {
+        "title": "Delete Prompts",
+        "description": "Are you sure you want to delete {{count}} prompt(s)? This action cannot be undone."
+      }
+    },
+    "messages": {
+      "createSuccess": "Prompt created successfully",
+      "createError": "Failed to create prompt: {{error}}",
+      "updateSuccess": "Prompt updated successfully",
+      "updateError": "Failed to update prompt: {{error}}",
+      "deleteSuccess": "Prompt deleted successfully",
+      "deleteError": "Failed to delete prompt: {{error}}",
+      "statusUpdateSuccess": "Prompt status updated successfully",
+      "statusUpdateError": "Failed to update prompt status: {{error}}",
+      "bulkEnableSuccess": "Successfully enabled {{count}} prompt(s)",
+      "bulkEnableError": "Failed to enable prompts: {{error}}",
+      "bulkDisableSuccess": "Successfully disabled {{count}} prompt(s)",
+      "bulkDisableError": "Failed to disable prompts: {{error}}",
+      "bulkDeleteSuccess": "Successfully deleted {{count}} prompt(s)",
+      "bulkDeleteError": "Failed to delete prompts: {{error}}"
+    }
+  }
+}

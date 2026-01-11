@@ -11,9 +11,9 @@ const (
 	// ScopeReadDashboard read the dashboard of the system.
 	ScopeReadDashboard ScopeSlug = "read_dashboard"
 
-	// ScopeReadChannels read the channels of the system.
+	// ScopeReadChannels read the channels/models of the system.
 	ScopeReadChannels ScopeSlug = "read_channels"
-	// ScopeWriteChannels manage the channels of the system.
+	// ScopeWriteChannels manage the channels/models of the system.
 	ScopeWriteChannels ScopeSlug = "write_channels"
 
 	// ScopeReadDataStorages read the data storages of the system.
@@ -51,6 +51,11 @@ const (
 	ScopeReadRequests ScopeSlug = "read_requests"
 	// ScopeWriteRequests manage the requests of the project.
 	ScopeWriteRequests ScopeSlug = "write_requests"
+
+	// ScopeReadPrompts read the prompts of the project.
+	ScopeReadPrompts ScopeSlug = "read_prompts"
+	// ScopeWritePrompts manage the prompts of the project.
+	ScopeWritePrompts ScopeSlug = "write_prompts"
 )
 
 type ScopeLevel string
@@ -157,6 +162,16 @@ var scopeConfigs = []Scope{
 		Slug:        ScopeWriteRequests,
 		Description: "Manage request records",
 		Levels:      []ScopeLevel{ScopeLevelSystem, ScopeLevelProject},
+	},
+	{
+		Slug:        ScopeReadPrompts,
+		Description: "View prompts",
+		Levels:      []ScopeLevel{ScopeLevelProject},
+	},
+	{
+		Slug:        ScopeWritePrompts,
+		Description: "Manage prompts (create, edit, delete)",
+		Levels:      []ScopeLevel{ScopeLevelProject},
 	},
 }
 

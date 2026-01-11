@@ -11,6 +11,7 @@
       "dashboard": "Dashboard",
       "channels": "Channels",
       "models": "Models",
+      "prompts": "Prompts",
       "dataStorages": "Data Storages",
       "users": "Users",
       "roles": "Roles",
@@ -260,6 +261,8 @@
   "scopes": {
     "read_channels": "View channels/models",
     "write_channels": "Manage channels/models",
+    "read_prompts": "View prompts",
+    "write_prompts": "Manage prompts",
     "read_users": "View user information",
     "write_users": "Manage users",
     "read_roles": "View role information",
