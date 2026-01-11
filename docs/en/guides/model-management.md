@@ -203,70 +203,11 @@ Matches models matching the regex pattern in channels with specified tags (OR lo
 
 ### 1. Create a Model
 
-```bash
-curl -X POST http://localhost:8090/api/models \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
-  -d '{
-    "developer": "openai",
-    "modelId": "gpt-4",
-    "name": "GPT-4",
-    "type": "chat",
-    "group": "gpt",
-    "icon": "🤖",
-    "settings": {
-      "associations": [
-        {
-          "type": "channel_model",
-          "priority": 0,
-          "channelModel": {
-            "channelId": 1,
-            "modelId": "gpt-4-turbo"
-          }
-        },
-        {
-          "type": "regex",
-          "priority": 1,
-          "regex": {
-            "pattern": "gpt-4.*",
-            "exclude": [
-              {
-                "channelTags": ["test"]
-              }
-            ]
-          }
-        }
-      ]
-    }
-  }'
-```
+Models are created and managed via the Admin UI.
 
 ### 2. Configure Channels
 
-Ensure channels are configured and support the corresponding models:
-
-```bash
-curl -X POST http://localhost:8090/api/channels \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
-  -d '{
-    "name": "OpenAI Primary",
-    "type": "openai",
-    "enabled": true,
-    "weight": 100,
-    "tags": ["production", "openai"],
-    "config": {
-      "apiKey": "sk-...",
-      "baseUrl": "https://api.openai.com/v1"
-    },
-    "models": [
-      {
-        "requestModel": "gpt-4",
-        "actualModel": "gpt-4-turbo"
-      }
-    ]
-  }'
-```
+Ensure channels are configured and support the corresponding models via the Admin UI.
 
 ### 3. Use the Model
 
@@ -296,7 +237,9 @@ The system will automatically:
 
 ### Priority Control
 
-Associations are processed in priority order, with smaller priority values being higher priority:
+Associations are processed in priority order, with smaller priority values being higher priority. When multiple candidates have the same priority, the system uses the channel's **weight** to perform load balancing.
+
+For detailed load balancing logic and weight-based distribution, see the [Weight Round Robin Strategy](load-balance.md#weight-round-robin-strategy) in the Adaptive Load Balancing Guide.
 
 ```json
 {
@@ -346,32 +289,6 @@ When a model doesn't exist, it can fall back to traditional channel selection:
 ```
 
 ## 📊 Monitoring and Debugging
-
-### Query Model Associations
-
-```bash
-# Query channel connections for a model
-curl -X POST http://localhost:8090/api/models/connections \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
-  -d '{
-    "associations": [
-      {
-        "type": "regex",
-        "regex": {
-          "pattern": "gpt-4.*"
-        }
-      }
-    ]
-  }'
-```
-
-### Query Unassociated Channels
-
-```bash
-curl -X GET http://localhost:8090/api/models/unassociated-channels \
-  -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
-```
 
 ### Debug Logs
 
@@ -425,7 +342,7 @@ A: Check the following:
 ### Q: How do I verify associations are working?
 
 A:
-1. Use the `/api/models/connections` API to query association results
+1. Use the Admin UI to verify association results
 2. Enable debug logs to view the candidate selection process
 3. Send test requests to verify routing
 
