@@ -152,7 +152,7 @@ export function RetrySettings() {
                 {formData.loadBalancerStrategy && (
                   <div className='bg-muted/50 mt-3 rounded-md border p-3'>
                     <div className='text-muted-foreground text-xs leading-relaxed'>
-                      {t('system.retry.loadBalancerStrategy.documentation.' + formData.loadBalancerStrategy)}
+                      {t(`system.retry.loadBalancerStrategy.documentation.${formData.loadBalancerStrategy}`)}
                     </div>
                   </div>
                 )}

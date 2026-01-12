@@ -75,7 +75,10 @@
           "adaptive": "自适应",
           "weighted": "权重"
         },
-        "documentation": {}
+        "documentation": {
+          "adaptive": "基于权重、成功率、轮询和trace等策略综合考虑选择合适的渠道进行请求。智能平衡多个因素以优化渠道选择。",
+          "weighted": "每一次请求都按照渠道权重从高到低顺序请求，直到一次成功。权重更高的渠道在所有请求中都被顺序优先。"
+        }
       },
       "maxChannelRetries": {
         "label": "最大渠道重试次数",

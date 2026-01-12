@@ -1,5 +1,5 @@
-import { useEffect, useCallback } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useEffect, useCallback, useState, useRef, useMemo } from 'react';
+import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
@@ -10,11 +10,12 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { AutoComplete } from '@/components/auto-complete';
+import { useQueryModels } from '@/gql/models';
 import { usePrompts } from '../context/prompts-context';
 import { useCreatePrompt, useUpdatePrompt } from '../data/prompts';
 import { CreatePromptInput, UpdatePromptInput } from '../data/schema';
 import { useSelectedProjectId } from '@/stores/projectStore';
-import { extractNumberIDAsNumber } from '@/lib/utils';
 
 const conditionSchema = z.object({
   type: z.enum(['model_id', 'model_pattern']),
@@ -45,14 +46,45 @@ const updatePromptSchema = z.object({
 
 type FormData = z.infer<typeof createPromptSchema>;
 
+interface ModelAutoCompleteWrapperProps {
+  field: any;
+  modelOptions: Array<{ value: string; label: string }>;
+  portalContainer: HTMLDivElement | null;
+}
+
+function ModelAutoCompleteWrapper({ field, modelOptions,  portalContainer }: ModelAutoCompleteWrapperProps) {
+  const { t } = useTranslation();
+  const [searchValue, setSearchValue] = useState('');
+
+  useEffect(() => {
+    const selectedOption = modelOptions.find(opt => opt.value === field.value);
+    setSearchValue(selectedOption?.label || field.value || '');
+  }, [field.value, modelOptions]);
+
+  return (
+    <AutoComplete
+      selectedValue={field.value || ''}
+      onSelectedValueChange={field.onChange}
+      searchValue={searchValue}
+      onSearchValueChange={setSearchValue}
+      items={modelOptions}
+      placeholder={t('prompts.fields.conditionValuePlaceholder')}
+      emptyMessage={t('prompts.fields.noModels')}
+      portalContainer={portalContainer}
+    />
+  );
+}
+
 interface ConditionGroupProps {
   groupIndex: number;
   form: any;
   onRemoveGroup: () => void;
   t: any;
+  modelOptions: Array<{ value: string; label: string }>;
+  dialogContentRef: React.RefObject<HTMLDivElement | null>;
 }
 
-function ConditionGroup({ groupIndex, form, onRemoveGroup, t }: ConditionGroupProps) {
+function ConditionGroup({ groupIndex, form, onRemoveGroup, t, modelOptions, dialogContentRef }: ConditionGroupProps) {
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: `conditionGroups.${groupIndex}.conditions`,
@@ -61,6 +93,11 @@ function ConditionGroup({ groupIndex, form, onRemoveGroup, t }: ConditionGroupPr
   const handleAddCondition = useCallback(() => {
     append({ type: 'model_id', value: '' });
   }, [append]);
+
+  const conditions = useWatch({
+    control: form.control,
+    name: `conditionGroups.${groupIndex}.conditions`,
+  });
 
   return (
     <div className='rounded-lg border bg-muted/30 p-3'>
@@ -131,11 +168,19 @@ function ConditionGroup({ groupIndex, form, onRemoveGroup, t }: ConditionGroupPr
                  render={({ field }) => (
                    <FormItem className='space-y-0'>
                      <FormControl>
-                       <Input
-                         {...field}
-                         placeholder={t('prompts.fields.conditionValuePlaceholder')}
-                         className='h-10 text-xs'
-                       />
+                       {conditions?.[conditionIndex]?.type === 'model_id' ? (
+                         <ModelAutoCompleteWrapper
+                           field={field}
+                           modelOptions={modelOptions}
+                           portalContainer={dialogContentRef.current}
+                         />
+                       ) : (
+                         <Input
+                           {...field}
+                           placeholder={t('prompts.fields.conditionValuePlaceholder')}
+                           className='h-10 text-xs'
+                         />
+                       )}
                      </FormControl>
                    </FormItem>
                  )}
@@ -163,9 +208,19 @@ export function PromptsActionDialog() {
   const createPrompt = useCreatePrompt();
   const updatePrompt = useUpdatePrompt();
   const selectedProjectId = useSelectedProjectId();
+  const { data: availableModels, mutateAsync: fetchModels } = useQueryModels();
+  const dialogContentRef = useRef<HTMLDivElement>(null);
 
   const isEdit = open === 'edit';
   const isOpen = open === 'create' || open === 'edit';
+
+  const modelOptions = useMemo(() => {
+    if (!availableModels) return [];
+    return availableModels.map((model) => ({
+      value: model.id,
+      label: model.id,
+    }));
+  }, [availableModels]);
 
   const form = useForm<FormData>({
     resolver: zodResolver(isEdit ? updatePromptSchema : createPromptSchema) as any,
@@ -183,6 +238,16 @@ export function PromptsActionDialog() {
     control: form.control,
     name: 'conditionGroups',
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchModels({
+        statusIn: ['enabled'],
+        includeMapping: true,
+        includePrefix: true,
+      });
+    }
+  }, [isOpen, fetchModels]);
 
   useEffect(() => {
     if (isEdit && currentRow) {
@@ -215,8 +280,6 @@ export function PromptsActionDialog() {
   const onSubmit = useCallback(
     async (data: FormData) => {
       if (!selectedProjectId) return;
-
-      const projectID = extractNumberIDAsNumber(selectedProjectId);
 
       const conditions = data.conditionGroups?.map(group => ({
         conditions: group.conditions.map((condition) => ({
@@ -268,7 +331,7 @@ export function PromptsActionDialog() {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className='flex h-[85vh] max-h-[85vh] flex-col overflow-hidden sm:max-w-6xl'>
+      <DialogContent className='flex h-[85vh] max-h-[85vh] flex-col overflow-hidden sm:max-w-6xl' ref={dialogContentRef}>
         <DialogHeader className='flex-shrink-0'>
           <DialogTitle>{isEdit ? t('prompts.dialogs.edit.title') : t('prompts.dialogs.create.title')}</DialogTitle>
           <DialogDescription>
@@ -417,6 +480,8 @@ export function PromptsActionDialog() {
                               form={form}
                               onRemoveGroup={() => removeGroup(groupIndex)}
                               t={t}
+                              modelOptions={modelOptions}
+                              dialogContentRef={dialogContentRef}
                             />
                           </div>
                         ))}

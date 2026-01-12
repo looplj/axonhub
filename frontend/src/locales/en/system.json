@@ -75,7 +75,10 @@
           "adaptive": "Adaptive",
           "weighted": "Weighted"
         },
-        "documentation": {}
+         "documentation": {
+          "adaptive": "Based on comprehensive consideration of weight, success rate, round-robin, and trace strategies to select appropriate channels for requests. Intelligently balances multiple factors to optimize channel selection.",
+          "weighted": "Each request follows channel weight order from high to low until one succeeds. Higher weight channels are prioritized sequentially for all requests."
+        }
       },
       "maxChannelRetries": {
         "label": "Max Channel Retries",

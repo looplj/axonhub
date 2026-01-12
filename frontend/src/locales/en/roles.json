@@ -6,7 +6,8 @@
     "searchRoles": "Search roles by name",
     "columns": {
       "scopes": "Scopes",
-      "moreScopes": "more"
+      "moreScopes": "more",
+      "showLess": "Show less"
     },
     "actions": {},
     "filters": {},
