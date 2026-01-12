@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+var ErrAPIKeyRequired = errors.New("API key is required")
+
 // APIKeyConfig 配置 API key 提取的选项.
 type APIKeyConfig struct {
 	// Headers 定义要检查的 header 名称列表，按优先级排序
@@ -72,7 +74,7 @@ func ExtractAPIKeyFromRequest(r *http.Request, config *APIKeyConfig) (string, er
 
 			apiKey := strings.TrimPrefix(headerValue, "Bearer ")
 			if apiKey == "" {
-				lastError = errors.New("API key is required")
+				lastError = ErrAPIKeyRequired
 				continue
 			}
 
@@ -101,7 +103,7 @@ func ExtractAPIKeyFromRequest(r *http.Request, config *APIKeyConfig) (string, er
 
 		// 验证 API key 不为空
 		if strings.TrimSpace(apiKey) == "" {
-			lastError = errors.New("API key is required")
+			lastError = ErrAPIKeyRequired
 			continue
 		}
 
@@ -113,7 +115,7 @@ func ExtractAPIKeyFromRequest(r *http.Request, config *APIKeyConfig) (string, er
 		return "", lastError
 	}
 
-	return "", errors.New("API key not found in any of the supported headers")
+	return "", ErrAPIKeyRequired
 }
 
 // ExtractAPIKeyFromRequestSimple 简化版本，使用默认配置.

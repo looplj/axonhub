@@ -212,7 +212,7 @@ func TestExtractAPIKeyFromRequest(t *testing.T) {
 			},
 			config:      nil,
 			expectedKey: "",
-			expectedErr: "API key not found in any of the supported headers",
+			expectedErr: "API key is required",
 		},
 		{
 			name: "Whitespace only API key",
@@ -237,7 +237,7 @@ func TestExtractAPIKeyFromRequest(t *testing.T) {
 			headers:     map[string]string{},
 			config:      nil,
 			expectedKey: "",
-			expectedErr: "API key not found in any of the supported headers",
+			expectedErr: "API key is required",
 		},
 	}
 
