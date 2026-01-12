@@ -32,7 +32,7 @@ import (
 // causing errors like: "json: cannot unmarshal object into Go struct field..."
 //
 // Regression test for: Missing delta field in finish_reason events causes
-// OpenAI client compatibility issues
+// OpenAI client compatibility issues.
 func TestOutboundTransformer_FinishReason_AlwaysIncludesDelta(t *testing.T) {
 	transformer, err := NewOutboundTransformer("https://api.anthropic.com", string(PlatformDirect))
 	require.NoError(t, err)
@@ -46,14 +46,17 @@ func TestOutboundTransformer_FinishReason_AlwaysIncludesDelta(t *testing.T) {
 	require.NoError(t, err)
 
 	var responses []*llm.Response
+
 	for transformedStream.Next() {
 		resp := transformedStream.Current()
 		responses = append(responses, resp)
 	}
+
 	require.NoError(t, transformedStream.Err())
 
 	// Find the response with finish_reason
 	var finishReasonResponse *llm.Response
+
 	for _, resp := range responses {
 		if len(resp.Choices) > 0 && resp.Choices[0].FinishReason != nil {
 			finishReasonResponse = resp
@@ -99,10 +102,12 @@ func TestOutboundTransformer_AllStreamingChunks_HaveDelta(t *testing.T) {
 			require.NoError(t, err)
 
 			var responses []*llm.Response
+
 			for transformedStream.Next() {
 				resp := transformedStream.Current()
 				responses = append(responses, resp)
 			}
+
 			require.NoError(t, transformedStream.Err())
 
 			// Verify every response with choices has Delta
