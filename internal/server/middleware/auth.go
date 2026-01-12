@@ -26,7 +26,6 @@ func WithAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig) gin.HandlerFu
 			return
 		}
 
-		// 查询数据库验证 API key 是否存在
 		apiKey, err := auth.AnthenticateAPIKey(c.Request.Context(), key)
 		if err != nil {
 			if ent.IsNotFound(err) || errors.Is(err, biz.ErrInvalidAPIKey) {
@@ -38,7 +37,6 @@ func WithAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig) gin.HandlerFu
 			return
 		}
 
-		// 将 API key entity 保存到 context 中
 		ctx := contexts.WithAPIKey(c.Request.Context(), apiKey)
 
 		if apiKey.Edges.Project != nil {
@@ -47,7 +45,6 @@ func WithAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig) gin.HandlerFu
 
 		c.Request = c.Request.WithContext(ctx)
 
-		// 继续处理请求
 		c.Next()
 	}
 }
@@ -63,7 +60,6 @@ func WithJWTAuth(auth *biz.AuthService) gin.HandlerFunc {
 			return
 		}
 
-		// 验证 JWT token
 		user, err := auth.AuthenticateJWTToken(c.Request.Context(), token)
 		if err != nil {
 			if errors.Is(err, biz.ErrInvalidJWT) {
@@ -76,6 +72,45 @@ func WithJWTAuth(auth *biz.AuthService) gin.HandlerFunc {
 		}
 
 		ctx := contexts.WithUser(c.Request.Context(), user)
+		c.Request = c.Request.WithContext(ctx)
+
+		c.Next()
+	}
+}
+
+// WithGeminiKeyAuth be compatible with Gemini query key authentication.
+// https://ai.google.dev/api/generate-content?hl=zh-cn#text_gen_text_only_prompt-SHELL
+func WithGeminiKeyAuth(auth *biz.AuthService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		key := c.Query("key")
+		if key == "" {
+			var err error
+
+			key, err = ExtractAPIKeyFromRequest(c.Request, nil)
+			if err != nil {
+				AbortWithError(c, http.StatusUnauthorized, err)
+				return
+			}
+		}
+
+		apiKey, err := auth.AnthenticateAPIKey(c.Request.Context(), key)
+		if err != nil {
+			if ent.IsNotFound(err) || errors.Is(err, biz.ErrInvalidAPIKey) {
+				AbortWithError(c, http.StatusUnauthorized, biz.ErrInvalidAPIKey)
+			} else {
+				AbortWithError(c, http.StatusInternalServerError, errors.New("Failed to validate API key"))
+			}
+
+			return
+		}
+
+		// 将 API key entity 保存到 context 中
+		ctx := contexts.WithAPIKey(c.Request.Context(), apiKey)
+
+		if apiKey.Edges.Project != nil {
+			ctx = contexts.WithProjectID(ctx, apiKey.Edges.Project.ID)
+		}
+
 		c.Request = c.Request.WithContext(ctx)
 
 		c.Next()

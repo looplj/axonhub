@@ -128,7 +128,14 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 	}
 
 	{
-		geminiGroup := apiGroup.Group("/gemini/:gemini-api-version")
+		geminiGroup := server.Group("/gemini/:gemini-api-version",
+			middleware.WithTimeout(server.Config.LLMRequestTimeout),
+			middleware.WithGeminiKeyAuth(services.AuthService),
+			middleware.WithSource(request.SourceAPI),
+			middleware.WithThread(server.Config.Trace, services.ThreadService),
+			middleware.WithTrace(server.Config.Trace, services.TraceService),
+		)
+
 		geminiGroup.POST("/models/*action", handlers.Gemini.GenerateContent)
 		geminiGroup.GET("/models", handlers.Gemini.ListModels)
 	}
