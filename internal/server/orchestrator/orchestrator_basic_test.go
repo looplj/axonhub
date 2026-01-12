@@ -16,12 +16,12 @@ import (
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/request"
-	"github.com/looplj/axonhub/internal/llm/pipeline"
-	"github.com/looplj/axonhub/internal/llm/pipeline/stream"
-	"github.com/looplj/axonhub/internal/llm/transformer/openai"
 	"github.com/looplj/axonhub/internal/objects"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/pipeline/stream"
+	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
 // TestChatCompletionOrchestrator_Process_NonStreaming tests the complete non-streaming flow.
@@ -66,6 +66,7 @@ func TestChatCompletionOrchestrator_Process_NonStreaming(t *testing.T) {
 		Inbound:           openai.NewInboundTransformer(),
 		RequestService:    requestService,
 		ChannelService:    channelService,
+		PromptProvider:    &stubPromptProvider{},
 		SystemService:     systemService,
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),
@@ -195,6 +196,7 @@ func TestChatCompletionOrchestrator_Process_WithModelMapping(t *testing.T) {
 		Inbound:           openai.NewInboundTransformer(),
 		RequestService:    requestService,
 		ChannelService:    channelService,
+		PromptProvider:    &stubPromptProvider{},
 		SystemService:     systemService,
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),
@@ -285,6 +287,7 @@ func TestChatCompletionOrchestrator_Process_WithOverrideParameters(t *testing.T)
 		Inbound:           openai.NewInboundTransformer(),
 		RequestService:    requestService,
 		ChannelService:    channelService,
+		PromptProvider:    &stubPromptProvider{},
 		SystemService:     systemService,
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),
@@ -356,6 +359,7 @@ func TestChatCompletionOrchestrator_Process_MultipleRequests(t *testing.T) {
 		Inbound:           openai.NewInboundTransformer(),
 		RequestService:    requestService,
 		ChannelService:    channelService,
+		PromptProvider:    &stubPromptProvider{},
 		SystemService:     systemService,
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),
@@ -369,7 +373,7 @@ func TestChatCompletionOrchestrator_Process_MultipleRequests(t *testing.T) {
 	ctx = contexts.WithProjectID(ctx, project.ID)
 
 	// Execute multiple requests
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		requestCount++
 		respID := lo.RandomString(10, lo.LettersCharset)
 		mockResp := buildMockOpenAIResponse(

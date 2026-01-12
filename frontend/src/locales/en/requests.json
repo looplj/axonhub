@@ -3,9 +3,7 @@
     "title": "Request Logs",
     "description": "View and manage LLM call request logs",
     "columns": {
-      "id": "ID",
       "modelId": "Model ID",
-      "status": "Status",
       "stream": "Stream",
       "source": "Source",
       "channel": "Channel",
@@ -14,17 +12,24 @@
       "roles": "Roles",
       "noRoles": "No roles",
       "details": "Details",
-      "createdAt": "Created At",
       "latency": "Latency",
       "firstTokenLatency": "First Token Latency",
-      "actions": "Actions",
-      "selectAll": "Select all",
-      "selectRow": "Select row",
+      "tokens": "Tokens",
+      "totalTokens": "Total: ",
+      "input": "Input",
+      "output": "Output",
+      "readCache": "Read Cache",
+      "writeCache": "Write Cache",
+      "cacheHitRate": "{{rate}}% hit",
+      "writeCacheRate": "{{rate}}% write",
       "unknown": "Unknown",
       "requestBody": "Request Body",
       "responseBody": "Response Body",
       "responseChunks": "Response Chunks",
-      "requestHeaders": "Request Headers"
+      "requestHeaders": "Request Headers",
+      "executedModelId": "Executed Model ID",
+      "retryProcess": "Retry Process",
+      "mappedModel": "Mapped Model"
     },
     "status": {
       "pending": "Pending",
@@ -44,8 +49,6 @@
     },
     "actions": {
       "viewDetails": "View Details",
-      "viewRequest": "View Request",
-      "viewResponse": "View Response",
       "copy": "Copy"
     },
     "filters": {
@@ -53,7 +56,6 @@
       "status": "Status",
       "source": "Source",
       "channel": "Channel",
-      "user": "User",
       "apiKey": "API Key"
     },
     "detail": {
@@ -69,50 +71,27 @@
     },
     "dialogs": {
       "jsonViewer": {
-        "requestBody": "Request Body",
-        "responseBody": "Response Body",
         "responseChunks": "Response Chunks",
         "copy": "Copy",
         "copied": "Copied"
       },
-      "executionDetail": {
-        "title": "Execution Details",
-        "channel": "Channel",
-        "modelId": "Model ID",
-        "status": "Status",
-        "createdAt": "Created At",
-        "requestBody": "Request Body",
-        "responseBody": "Response Body",
-        "errorMessage": "Error Message",
-        "noResponse": "No Response",
-        "unknown": "Unknown"
-      },
+      "executionDetail": {},
       "requestDetail": {
-        "title": "Request Details",
-        "tabs": {
-          "overview": "Overview",
-          "request": "Request",
-          "response": "Response",
-          "executions": "Executions",
-          "usage": "Usage"
-        },
+        "tabs": {},
         "fields": {
-          "userId": "User ID",
-          "userName": "User Name",
-          "apiKeyId": "API Key ID",
           "apiKeyName": "API Key Name",
           "startTime": "Start Time",
-          "endTime": "End Time",
-          "notStarted": "Not Started"
+          "endTime": "End Time"
         },
         "execution": "Execution #{{index}}",
         "noExecutions": "No executions",
         "notFound": "Request not found"
       },
-      "executionsDrawer": {
-        "title": "Execution List",
-        "noExecutions": "No execution records"
-      }
+      "executionsDrawer": {}
+    },
+    "errors": {
+      "loadRequestsFailed": "Failed to load requests",
+      "loadRequestDetailFailed": "Failed to load request details"
     }
   }
 }

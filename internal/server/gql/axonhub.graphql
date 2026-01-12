@@ -16,6 +16,16 @@ input HeaderEntryInput {
   value: String!
 }
 
+type TransformOptions {
+  forceArrayInstructions: Boolean!
+  forceArrayInputs: Boolean!
+}
+
+input TransformOptionsInput {
+  forceArrayInstructions: Boolean
+  forceArrayInputs: Boolean
+}
+
 enum ProxyType {
   DISABLED
   ENVIRONMENT
@@ -41,9 +51,11 @@ type ChannelSettings {
   modelMappings: [ModelMapping!]
   autoTrimedModelPrefixes: [String!]
   hideOriginalModels: Boolean
+  hideMappedModels: Boolean
   overrideParameters: String
   overrideHeaders: [HeaderEntry!]
   proxy: ProxyConfig
+  transformOptions: TransformOptions
 }
 
 input ModelMappingInput {
@@ -56,9 +68,11 @@ input ChannelSettingsInput {
   modelMappings: [ModelMappingInput!]
   autoTrimedModelPrefixes: [String!]
   hideOriginalModels: Boolean
+  hideMappedModels: Boolean
   overrideParameters: String
   overrideHeaders: [HeaderEntryInput!]
   proxy: ProxyConfigInput
+  transformOptions: TransformOptionsInput
 }
 
 type ChannelCredentials {

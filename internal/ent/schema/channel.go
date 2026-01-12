@@ -72,8 +72,13 @@ func (Channel) Fields() []ent.Field {
 				"modelscope",
 				"bailian",
 				"jina",
+				"github",
+				"claudecode",
 			).
-			Immutable(),
+			Immutable().
+			Annotations(
+				entgql.OrderField("TYPE"),
+			),
 		field.String("base_url").Optional(),
 		field.String("name").
 			Annotations(
@@ -82,6 +87,7 @@ func (Channel) Fields() []ent.Field {
 		field.Enum("status").Values("enabled", "disabled", "archived").Default("disabled").
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput),
+				entgql.OrderField("STATUS"),
 			),
 		field.JSON("credentials", &objects.ChannelCredentials{}).Sensitive().Default(&objects.ChannelCredentials{}),
 		field.Strings("supported_models"),
@@ -126,6 +132,10 @@ func (Channel) Edges() []ent.Edge {
 			),
 		edge.To("channel_performance", ChannelPerformance.Type).
 			Unique().
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			),
+		edge.To("channel_probes", ChannelProbe.Type).
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 			),

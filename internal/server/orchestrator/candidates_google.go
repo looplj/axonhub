@@ -5,8 +5,8 @@ import (
 
 	"github.com/samber/lo"
 
-	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/llm"
 )
 
 // GoogleNativeToolsSelector is a decorator that prioritizes candidates supporting Google native tools.

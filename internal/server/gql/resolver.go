@@ -4,9 +4,9 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 // This file will not be regenerated automatically.
@@ -29,6 +29,9 @@ type Resolver struct {
 	threadService                  *biz.ThreadService
 	channelOverrideTemplateService *biz.ChannelOverrideTemplateService
 	modelService                   *biz.ModelService
+	backupService                  *biz.BackupService
+	channelProbeService            *biz.ChannelProbeService
+	promptService                  *biz.PromptService
 	httpClient                     *httpclient.HttpClient
 	modelFetcher                   *biz.ModelFetcher
 	TestChannelOrchestrator        *orchestrator.TestChannelOrchestrator
@@ -51,6 +54,9 @@ func NewSchema(
 	usageLogService *biz.UsageLogService,
 	channelOverrideTemplateService *biz.ChannelOverrideTemplateService,
 	modelService *biz.ModelService,
+	backupService *biz.BackupService,
+	channelProbeService *biz.ChannelProbeService,
+	promptService *biz.PromptService,
 ) graphql.ExecutableSchema {
 	httpClient := httpclient.NewHttpClient()
 	modelFetcher := biz.NewModelFetcher(httpClient, channelService)
@@ -71,6 +77,9 @@ func NewSchema(
 			threadService:                  threadService,
 			channelOverrideTemplateService: channelOverrideTemplateService,
 			modelService:                   modelService,
+			backupService:                  backupService,
+			channelProbeService:            channelProbeService,
+			promptService:                  promptService,
 			httpClient:                     httpClient,
 			modelFetcher:                   modelFetcher,
 			TestChannelOrchestrator:        orchestrator.NewTestChannelOrchestrator(channelService, requestService, systemService, usageLogService, httpClient),

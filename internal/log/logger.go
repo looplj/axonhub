@@ -86,7 +86,7 @@ var (
 		}
 	}
 
-	Any = func(key string, value interface{}) Field {
+	Any = func(key string, value any) Field {
 		if value == nil {
 			return Skip
 		}
@@ -188,7 +188,7 @@ func New(config Config) *Logger {
 	return &Logger{
 		config: config,
 		logger: zapLogger,
-		hooks:  []Hook{HookFunc(contextFields), HookFunc(traceFields)},
+		hooks:  []Hook{HookFunc(contextFields)},
 	}
 }
 

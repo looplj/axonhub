@@ -1,9 +1,10 @@
 import { useCallback, useState } from 'react';
 import { format } from 'date-fns';
-import { ColumnDef, Row } from '@tanstack/react-table';
+import { ColumnDef, Row, Table } from '@tanstack/react-table';
 import { IconCheck, IconX, IconLink, IconChevronDown, IconChevronRight } from '@tabler/icons-react';
 import * as Icons from '@lobehub/icons';
 import { useTranslation } from 'react-i18next';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -37,7 +38,37 @@ function StatusSwitchCell({ row }: { row: Row<Model> }) {
   );
 }
 
-export const createColumns = (t: ReturnType<typeof useTranslation>['t']): ColumnDef<Model>[] => {
+// Association Rules Cell Component to handle permission check
+function AssociationRulesCell({ row }: { row: Row<Model> }) {
+  const model = row.original;
+  const { setOpen, setCurrentRow } = useModels();
+  const { channelPermissions } = usePermissions();
+
+  const handleOpenAssociationDialog = useCallback(() => {
+    setCurrentRow(model);
+    setOpen('association');
+  }, [model, setCurrentRow, setOpen]);
+
+  const associationCount = model.settings?.associations?.length || 0;
+
+  // Only show button if user has write permissions
+  if (!channelPermissions.canWrite) {
+    return (
+      <div className='flex justify-center'>
+        <Badge variant='secondary'>{associationCount}</Badge>
+      </div>
+    );
+  }
+
+  return (
+    <Button size='sm' variant='outline' className='h-8 px-3' onClick={handleOpenAssociationDialog}>
+      <IconLink className='mr-1 h-3 w-3' />
+      {`${associationCount}`}
+    </Button>
+  );
+}
+
+export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrite: boolean = true): ColumnDef<Model>[] => {
   return [
     {
       id: 'expand',
@@ -45,7 +76,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       meta: {
         className: 'w-8 min-w-8',
       },
-      cell: ({ row }) => (
+      cell: ({ row }: { row: Row<Model> }) => (
         <Button variant='ghost' size='sm' className='h-6 w-6 p-0' onClick={() => row.toggleExpanded()}>
           {row.getIsExpanded() ? <IconChevronDown className='h-4 w-4' /> : <IconChevronRight className='h-4 w-4' />}
         </Button>
@@ -53,27 +84,31 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       enableSorting: false,
       enableHiding: false,
     },
-    {
-      id: 'select',
-      header: ({ table }) => (
-        <Checkbox
-          checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label={t('models.columns.selectAll')}
-          className='translate-y-[2px]'
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label={t('models.columns.selectRow')}
-          className='translate-y-[2px]'
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    },
+    ...(canWrite
+      ? [
+          {
+            id: 'select',
+            header: ({ table }: { table: Table<Model> }) => (
+              <Checkbox
+                checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
+                onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+                aria-label={t('common.columns.selectAll')}
+                className='translate-y-[2px]'
+              />
+            ),
+            cell: ({ row }: { row: Row<Model> }) => (
+              <Checkbox
+                checked={row.getIsSelected()}
+                onCheckedChange={(value) => row.toggleSelected(!!value)}
+                aria-label={t('common.columns.selectRow')}
+                className='translate-y-[2px]'
+              />
+            ),
+            enableSorting: false,
+            enableHiding: false,
+          },
+        ]
+      : []),
     {
       accessorKey: 'icon',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('models.columns.icon')} />,
@@ -100,7 +135,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
     },
     {
       accessorKey: 'name',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('models.columns.name')} />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.name')} />,
       cell: ({ row }) => {
         const model = row.original;
         return (
@@ -238,7 +273,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
     // },
     {
       accessorKey: 'status',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('models.columns.status')} />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.status')} />,
       cell: StatusSwitchCell,
       enableSorting: false,
       enableHiding: false,
@@ -246,24 +281,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
     {
       id: 'associationRules',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('models.columns.associationRules')} />,
-      cell: ({ row }) => {
-        const model = row.original;
-        const { setOpen, setCurrentRow } = useModels();
-
-        const handleOpenAssociationDialog = useCallback(() => {
-          setCurrentRow(model);
-          setOpen('association');
-        }, [model, setCurrentRow, setOpen]);
-
-        const associationCount = model.settings?.associations?.length || 0;
-
-        return (
-          <Button size='sm' variant='outline' className='h-8 px-3' onClick={handleOpenAssociationDialog}>
-            <IconLink className='mr-1 h-3 w-3' />
-            {`${associationCount}`}
-          </Button>
-        );
-      },
+      cell: AssociationRulesCell,
       enableSorting: false,
     },
     {
@@ -283,37 +301,37 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
     },
 
     {
-      accessorKey: 'createdAt',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('models.columns.createdAt')} />,
-      cell: ({ row }) => {
-        const raw = row.getValue('createdAt') as unknown;
-        const date = raw instanceof Date ? raw : new Date(raw as string);
+          accessorKey: 'createdAt',
+          header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.createdAt')} />,
+          cell: ({ row }) => {
+            const raw = row.getValue('createdAt') as unknown;
+            const date = raw instanceof Date ? raw : new Date(raw as string);
 
-        if (Number.isNaN(date.getTime())) {
-          return <span className='text-muted-foreground text-xs'>-</span>;
-        }
+            if (Number.isNaN(date.getTime())) {
+              return <span className='text-muted-foreground text-xs'>-</span>;
+            }
 
-        return (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className='text-muted-foreground cursor-help text-sm'>{format(date, 'yyyy-MM-dd')}</div>
-            </TooltipTrigger>
-            <TooltipContent>{format(date, 'yyyy-MM-dd HH:mm:ss')}</TooltipContent>
-          </Tooltip>
-        );
-      },
-      enableSorting: true,
-      enableHiding: false,
-    },
-    {
-      id: 'actions',
-      header: () => null,
-      cell: DataTableRowActions,
-      meta: {
-        className: 'w-[56px] min-w-[56px] pr-3 pl-0',
-      },
-      enableSorting: false,
-      enableHiding: false,
-    },
+            return (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className='text-muted-foreground cursor-help text-sm'>{format(date, 'yyyy-MM-dd')}</div>
+                </TooltipTrigger>
+                <TooltipContent>{format(date, 'yyyy-MM-dd HH:mm:ss')}</TooltipContent>
+              </Tooltip>
+            );
+          },
+          enableSorting: true,
+          enableHiding: false,
+        },
+        {
+          id: 'actions',
+          header: t('common.columns.actions'),
+          cell: DataTableRowActions,
+          meta: {
+            className: 'w-[56px] min-w-[56px] pr-3 pl-0',
+          },
+          enableSorting: false,
+          enableHiding: false,
+        },
   ];
 };

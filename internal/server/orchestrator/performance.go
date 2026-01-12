@@ -7,12 +7,12 @@ import (
 
 	"github.com/samber/lo"
 
-	"github.com/looplj/axonhub/internal/llm"
-	"github.com/looplj/axonhub/internal/llm/pipeline"
 	"github.com/looplj/axonhub/internal/log"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
-	"github.com/looplj/axonhub/internal/pkg/streams"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/streams"
 )
 
 // withPerformanceRecording creates a unified middleware that handles all performance tracking.
@@ -107,8 +107,12 @@ func (m *performanceRecording) OnOutboundRawError(ctx context.Context, err error
 	}
 
 	perf := m.outbound.state.Perf
-	errorCode := ExtractErrorCode(err)
-	perf.MarkFailed(errorCode)
+	if errors.Is(err, context.Canceled) {
+		perf.MarkCanceled()
+	} else {
+		errorCode := ExtractErrorCode(err)
+		perf.MarkFailed(errorCode)
+	}
 
 	m.outbound.state.ChannelService.AsyncRecordPerformance(ctx, perf)
 }

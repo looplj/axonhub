@@ -372,9 +372,9 @@ func TestSystemService_BackwardCompatibility(t *testing.T) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	// Create old-style storage policy without new fields
-	oldPolicy := map[string]interface{}{
+	oldPolicy := map[string]any{
 		"store_chunks": true,
-		"cleanup_options": []map[string]interface{}{
+		"cleanup_options": []map[string]any{
 			{
 				"resource_type": "requests",
 				"enabled":       true,

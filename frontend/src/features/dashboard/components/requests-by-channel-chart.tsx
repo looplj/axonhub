@@ -57,6 +57,10 @@ export function RequestsByChannelChart() {
     payload?: Array<{
       name?: string;
       value?: number;
+      payload?: {
+        name: string;
+        value: number;
+      };
     }>;
   };
 
@@ -65,7 +69,8 @@ export function RequestsByChannelChart() {
 
     if (!props.active || !payload?.length) return null;
 
-    const [{ name, value }] = payload;
+    const [{ value }] = payload;
+    const name = payload[0].payload?.name;
     const percent = total ? ((value ?? 0) / total) * 100 : 0;
 
     return (

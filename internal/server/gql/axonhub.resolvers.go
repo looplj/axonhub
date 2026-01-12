@@ -18,9 +18,9 @@ import (
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/samber/lo"
 )
 
@@ -306,7 +306,7 @@ func (r *mutationResolver) UpdateProjectUser(ctx context.Context, input UpdatePr
 	addRoleIDs := objects.IntGuids(input.AddRoleIDs)
 	removeRoleIDs := objects.IntGuids(input.RemoveRoleIDs)
 
-	return r.userService.UpdateProjectUser(ctx, input.UserID.ID, input.ProjectID.ID, input.Scopes, addRoleIDs, removeRoleIDs)
+	return r.userService.UpdateProjectUser(ctx, input.UserID.ID, input.ProjectID.ID, input.IsOwner, input.Scopes, addRoleIDs, removeRoleIDs)
 }
 
 // CreateDataStorage is the resolver for the createDataStorage field.

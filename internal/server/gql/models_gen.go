@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 type AddUserToProjectInput struct {
@@ -33,6 +34,18 @@ type ApplyChannelOverrideTemplatePayload struct {
 	Success  bool           `json:"success"`
 	Updated  int            `json:"updated"`
 	Channels []*ent.Channel `json:"channels"`
+}
+
+type BackupOptionsInput struct {
+	IncludeChannels bool `json:"includeChannels"`
+	IncludeModels   bool `json:"includeModels"`
+	IncludeAPIKeys  bool `json:"includeAPIKeys"`
+}
+
+type BackupPayload struct {
+	Success bool    `json:"success"`
+	Data    *string `json:"data,omitempty"`
+	Message *string `json:"message,omitempty"`
 }
 
 type BrandSettings struct {
@@ -145,6 +158,12 @@ type RequestStats struct {
 	RequestsThisMonth int `json:"requestsThisMonth"`
 }
 
+type RequestStatsByAPIKey struct {
+	APIKeyID   objects.GUID `json:"apiKeyId"`
+	APIKeyName string       `json:"apiKeyName"`
+	Count      int          `json:"count"`
+}
+
 type RequestStatsByChannel struct {
 	ChannelName string `json:"channelName"`
 	ChannelType string `json:"channelType"`
@@ -154,6 +173,20 @@ type RequestStatsByChannel struct {
 type RequestStatsByModel struct {
 	ModelID string `json:"modelId"`
 	Count   int    `json:"count"`
+}
+
+type RestoreOptionsInput struct {
+	IncludeChannels         bool                   `json:"includeChannels"`
+	IncludeModels           bool                   `json:"includeModels"`
+	IncludeAPIKeys          bool                   `json:"includeAPIKeys"`
+	ChannelConflictStrategy BackupConflictStrategy `json:"channelConflictStrategy"`
+	ModelConflictStrategy   BackupConflictStrategy `json:"modelConflictStrategy"`
+	APIKeyConflictStrategy  BackupConflictStrategy `json:"apiKeyConflictStrategy"`
+}
+
+type RestorePayload struct {
+	Success bool    `json:"success"`
+	Message *string `json:"message,omitempty"`
 }
 
 type ScopeInfo struct {
@@ -182,9 +215,9 @@ type SystemStatus struct {
 }
 
 type TestChannelInput struct {
-	ChannelID objects.GUID         `json:"channelID"`
-	ModelID   *string              `json:"modelID,omitempty"`
-	Proxy     *objects.ProxyConfig `json:"proxy,omitempty"`
+	ChannelID objects.GUID            `json:"channelID"`
+	ModelID   *string                 `json:"modelID,omitempty"`
+	Proxy     *httpclient.ProxyConfig `json:"proxy,omitempty"`
 }
 
 type TestChannelPayload struct {
@@ -204,6 +237,16 @@ type TokenStats struct {
 	TotalInputTokensThisMonth  int `json:"totalInputTokensThisMonth"`
 	TotalOutputTokensThisMonth int `json:"totalOutputTokensThisMonth"`
 	TotalCachedTokensThisMonth int `json:"totalCachedTokensThisMonth"`
+}
+
+type TokenStatsByAPIKey struct {
+	APIKeyID        objects.GUID `json:"apiKeyId"`
+	APIKeyName      string       `json:"apiKeyName"`
+	InputTokens     int          `json:"inputTokens"`
+	OutputTokens    int          `json:"outputTokens"`
+	CachedTokens    int          `json:"cachedTokens"`
+	ReasoningTokens int          `json:"reasoningTokens"`
+	TotalTokens     int          `json:"totalTokens"`
 }
 
 type TopRequestsProjects struct {
@@ -248,6 +291,63 @@ type VersionCheck struct {
 	LatestVersion  string `json:"latestVersion"`
 	HasUpdate      bool   `json:"hasUpdate"`
 	ReleaseURL     string `json:"releaseUrl"`
+}
+
+type BackupConflictStrategy string
+
+const (
+	BackupConflictStrategySkip      BackupConflictStrategy = "SKIP"
+	BackupConflictStrategyOverwrite BackupConflictStrategy = "OVERWRITE"
+	BackupConflictStrategyError     BackupConflictStrategy = "ERROR"
+)
+
+var AllBackupConflictStrategy = []BackupConflictStrategy{
+	BackupConflictStrategySkip,
+	BackupConflictStrategyOverwrite,
+	BackupConflictStrategyError,
+}
+
+func (e BackupConflictStrategy) IsValid() bool {
+	switch e {
+	case BackupConflictStrategySkip, BackupConflictStrategyOverwrite, BackupConflictStrategyError:
+		return true
+	}
+	return false
+}
+
+func (e BackupConflictStrategy) String() string {
+	return string(e)
+}
+
+func (e *BackupConflictStrategy) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = BackupConflictStrategy(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid BackupConflictStrategy", str)
+	}
+	return nil
+}
+
+func (e BackupConflictStrategy) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *BackupConflictStrategy) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e BackupConflictStrategy) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type OverrideApplyMode string

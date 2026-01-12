@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/gc"
 	"github.com/looplj/axonhub/internal/server/gql"
 	"github.com/looplj/axonhub/internal/server/middleware"
+	"github.com/looplj/axonhub/internal/tracing"
 )
 
 func New(config Config) *Server {
@@ -89,6 +90,7 @@ func Run(opts ...fx.Option) {
 			api.Module,
 			fx.Invoke(func(cfg log.Config) {
 				log.SetGlobalConfig(cfg)
+				tracing.SetupLogger(log.GetGlobalLogger())
 				slog.SetDefault(log.GetGlobalLogger().AsSlog())
 			}),
 			fx.Invoke(func(lc fx.Lifecycle, worker *gc.Worker) {

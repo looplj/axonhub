@@ -153,7 +153,7 @@ func TestAuthService_GenerateJWTToken(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify token structure
-	parsedToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+	parsedToken, err := jwt.Parse(token, func(token *jwt.Token) (any, error) {
 		return []byte(secretKey), nil
 	})
 	require.NoError(t, err)

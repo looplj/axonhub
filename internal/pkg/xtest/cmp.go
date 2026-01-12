@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 
-	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
+	"github.com/looplj/axonhub/llm"
 )
 
 // Custom comparator for json.RawMessage that compares semantic equality.
@@ -19,7 +20,7 @@ func jsonRawMessageComparer(x, y json.RawMessage) bool {
 		return false
 	}
 
-	var xVal, yVal interface{}
+	var xVal, yVal any
 	if err := json.Unmarshal(x, &xVal); err != nil {
 		return false
 	}
@@ -53,6 +54,7 @@ func Equal(a, b any, opts ...cmp.Option) bool {
 		NilCompletionTokensDetails,
 		NilPromptTokensDetails,
 		ToolCallsTransformer,
+		cmpopts.IgnoreFields(llm.Request{}, "TransformOptions"),
 		cmp.Transformer("", nilString),
 		cmp.Transformer("", nilInt),
 		cmp.Comparer(jsonRawMessageComparer))

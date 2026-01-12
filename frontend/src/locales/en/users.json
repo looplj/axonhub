@@ -2,7 +2,6 @@
   "users": {
     "title": "User Management",
     "description": "Manage system users and permission configurations.",
-    "inviteUser": "Invite User",
     "addUser": "Add User",
     "filterUsers": "Filter users...",
     "columns": {
@@ -11,24 +10,13 @@
       "email": "Email",
       "owner": "Owner",
       "roles": "Roles",
-      "status": "Status",
-      "createdAt": "Created At",
-      "updatedAt": "Updated At",
-      "actions": "actions",
-      "selectAll": "Select all",
-      "selectRow": "Select row",
-      "noRoles": "No roles",
       "projectOwner": "Project Owner",
       "projectRoles": "Project Roles",
       "projectScopes": "Project Scopes"
     },
     "status": {
       "activated": "Activated",
-      "deactivated": "Deactivated",
-      "active": "Active",
-      "inactive": "Inactive",
-      "invited": "Invited",
-      "suspended": "Suspended"
+      "deactivated": "Deactivated"
     },
     "badges": {
       "owner": "Owner",
@@ -39,12 +27,12 @@
       "noScopes": "No scopes"
     },
     "filters": {
-      "status": "Status",
-      "role": "Role"
+      "status": "Status"
     },
     "actions": {
       "changePassword": "Change Password",
       "deactivate": "Deactivate",
+      "activate": "Activate",
       "addToProject": "Add to Project",
       "removeFromProject": "Remove from Project"
     },
@@ -72,16 +60,8 @@
         "activateInfo": "After activation, this user will be able to log in to the system normally."
       },
       "status": {
-        "activate": {
-          "title": "Activate User",
-          "description": "Are you sure you want to activate user {{name}}?",
-          "note": "After activation, this user will be able to log in to the system normally."
-        },
-        "deactivate": {
-          "title": "Deactivate User",
-          "description": "Are you sure you want to deactivate user {{name}}?",
-          "note": "After deactivation, this user will not be able to log in to the system."
-        }
+        "activate": {},
+        "deactivate": {}
       },
       "remove": {
         "title": "Remove User from Project",
@@ -98,7 +78,6 @@
       "email": "Email",
       "password": "Password",
       "confirmPassword": "Confirm Password",
-      "currentPassword": "Current Password",
       "newPassword": "New Password",
       "confirmNewPassword": "Confirm New Password",
       "isOwner": "Owner",
@@ -115,35 +94,20 @@
       "noUsersFound": "No users found",
       "noProjectRoles": "No project roles available",
       "loadingRoles": "Loading roles...",
-      "loadingScopes": "Loading scopes...",
       "placeholders": {
-        "firstName": "John",
-        "lastName": "Doe",
-        "email": "john.doe@example.com",
-        "password": "Enter password",
-        "confirmPassword": "Confirm password",
-        "currentPassword": "Enter current password",
-        "newPassword": "Enter new password",
         "confirmNewPassword": "Confirm new password",
-        "currentPasswordPlaceholder": "Enter current password",
-        "newPasswordPlaceholder": "Enter new password",
-        "confirmNewPasswordPlaceholder": "Confirm new password"
-      },
-      "passwordMismatch": "Passwords don't match"
+        "newPassword": "Enter new password"
+      }
     },
     "validation": {
       "firstNameRequired": "First name is required",
       "lastNameRequired": "Last name is required",
-      "emailInvalid": "Invalid email address",
-      "passwordMinLength": "Password must be at least 8 characters",
+      "emailRequired": "Email is required",
       "passwordsNotMatch": "Passwords don't match",
-      "currentPasswordRequired": "Current password is required",
-      "newPasswordRequired": "New password is required",
-      "newPasswordMinLength": "New password must be at least 8 characters",
-      "projectRequired": "Project is required"
+      "projectRequired": "Project is required",
+      "userRequired": "User is required"
     },
     "buttons": {
-      "deactivate": "Deactivate",
       "changePassword": "Change Password",
       "changing": "Changing...",
       "addToProject": "Add to Project",
@@ -165,7 +129,6 @@
       "loadUsersError": "Failed to load users data",
       "loadUserError": "Failed to load user details",
       "userNotFound": "User not found",
-      "loadRolesError": "Failed to load roles and scopes",
       "addToProjectSuccess": "User added to project successfully",
       "addToProjectError": "Failed to add user to project",
       "removeFromProjectSuccess": "User removed from project successfully",

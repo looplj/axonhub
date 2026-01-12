@@ -6,13 +6,11 @@
       "filterThreadId": "按线程 ID 筛选..."
     },
     "columns": {
-      "id": "ID",
       "threadId": "线程 ID",
       "project": "项目",
       "unknownProject": "未知项目",
       "traceCount": "追踪数量",
       "firstUserQuery": "用户查询",
-      "createdAt": "创建时间",
       "details": "详情"
     },
     "actions": {

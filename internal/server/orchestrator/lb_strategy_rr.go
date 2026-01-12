@@ -125,7 +125,7 @@ func (s *RoundRobinStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Ch
 		return moderateScore, StrategyScore{
 			StrategyName: s.Name(),
 			Score:        moderateScore,
-			Details: map[string]interface{}{
+			Details: map[string]any{
 				"error": err.Error(),
 			},
 		}
@@ -134,7 +134,7 @@ func (s *RoundRobinStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Ch
 	score, cappedCount, effectiveCount, lastActivity, inactivitySeconds := s.calculateScoreComponents(metrics)
 	requestCount := metrics.RequestCount
 
-	details := map[string]interface{}{
+	details := map[string]any{
 		"request_count":                 requestCount,
 		"capped_request_count":          cappedCount,
 		"effective_request_count":       effectiveCount,
@@ -284,9 +284,13 @@ func (s *WeightRoundRobinStrategy) calculateScore(metrics *biz.AggregatedMetrics
 	//   - weight=80, 80 requests → normalized=100
 	//   - weight=20, 20 requests → normalized=100
 	// Both get the same score after receiving their proportional share.
+	//
+	// When weight=0, we treat all channels equally (like standard RoundRobin).
+	// Using weightFactor=1.0 means normalizedCount = effectiveCount, ensuring
+	// fair distribution based purely on request count without weight bias.
 	weightFactor := float64(weight) / 100.0
 	if weightFactor <= 0 {
-		weightFactor = 0.01 // Avoid division by zero, treat as very low weight
+		weightFactor = 1.0 // Treat weight=0 as equal weight (standard round-robin behavior)
 	}
 
 	normalizedCount := effectiveCount / weightFactor
@@ -298,7 +302,7 @@ func (s *WeightRoundRobinStrategy) calculateScore(metrics *biz.AggregatedMetrics
 	}
 
 	if score < s.minScore {
-		score = s.minScore
+		score = s.minScore + (score / s.maxScore)
 	}
 
 	return score, cappedCount, effectiveCount, lastActivity, inactivitySeconds
@@ -342,7 +346,7 @@ func (s *WeightRoundRobinStrategy) ScoreWithDebug(ctx context.Context, channel *
 		return moderateScore, StrategyScore{
 			StrategyName: s.Name(),
 			Score:        moderateScore,
-			Details: map[string]interface{}{
+			Details: map[string]any{
 				"error": err.Error(),
 			},
 		}
@@ -354,12 +358,12 @@ func (s *WeightRoundRobinStrategy) ScoreWithDebug(ctx context.Context, channel *
 	// Calculate normalized count for debug info
 	weightFactor := float64(channel.OrderingWeight) / 100.0
 	if weightFactor <= 0 {
-		weightFactor = 0.01
+		weightFactor = 1.0 // Treat weight=0 as equal weight (standard round-robin behavior)
 	}
 
 	normalizedCount := effectiveCount / weightFactor
 
-	details := map[string]interface{}{
+	details := map[string]any{
 		"request_count":            requestCount,
 		"original_cap":             s.requestCountCap,
 		"capped_request_count":     cappedCount,

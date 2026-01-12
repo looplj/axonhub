@@ -10,23 +10,26 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
-	"github.com/looplj/axonhub/internal/llm/pipeline"
-	"github.com/looplj/axonhub/internal/llm/transformer"
-	"github.com/looplj/axonhub/internal/llm/transformer/anthropic"
-	"github.com/looplj/axonhub/internal/llm/transformer/doubao"
-	"github.com/looplj/axonhub/internal/llm/transformer/gemini"
-	geminioai "github.com/looplj/axonhub/internal/llm/transformer/gemini/openai"
-	"github.com/looplj/axonhub/internal/llm/transformer/jina"
-	"github.com/looplj/axonhub/internal/llm/transformer/longcat"
-	"github.com/looplj/axonhub/internal/llm/transformer/modelscope"
-	"github.com/looplj/axonhub/internal/llm/transformer/openai"
-	"github.com/looplj/axonhub/internal/llm/transformer/openai/responses"
-	"github.com/looplj/axonhub/internal/llm/transformer/openrouter"
-	"github.com/looplj/axonhub/internal/llm/transformer/xai"
-	"github.com/looplj/axonhub/internal/llm/transformer/zai"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/anthropic"
+	"github.com/looplj/axonhub/llm/transformer/bailian"
+	"github.com/looplj/axonhub/llm/transformer/deepseek"
+	"github.com/looplj/axonhub/llm/transformer/doubao"
+	"github.com/looplj/axonhub/llm/transformer/gemini"
+	geminioai "github.com/looplj/axonhub/llm/transformer/gemini/openai"
+	"github.com/looplj/axonhub/llm/transformer/jina"
+	"github.com/looplj/axonhub/llm/transformer/longcat"
+	"github.com/looplj/axonhub/llm/transformer/modelscope"
+	"github.com/looplj/axonhub/llm/transformer/moonshot"
+	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
+	"github.com/looplj/axonhub/llm/transformer/openrouter"
+	"github.com/looplj/axonhub/llm/transformer/xai"
+	"github.com/looplj/axonhub/llm/transformer/zai"
 )
 
 func (c *Channel) IsModelSupported(model string) bool {
@@ -114,11 +117,11 @@ func (c *Channel) GetOverrideHeaders() []objects.HeaderEntry {
 
 // getProxyConfig extracts proxy configuration from channel settings
 // Returns nil if no proxy configuration is set (backward compatibility).
-func getProxyConfig(channelSettings *objects.ChannelSettings) *objects.ProxyConfig {
+func getProxyConfig(channelSettings *objects.ChannelSettings) *httpclient.ProxyConfig {
 	if channelSettings == nil || channelSettings.Proxy == nil {
 		// Backward compatibility: default to environment proxy type
-		return &objects.ProxyConfig{
-			Type: objects.ProxyTypeEnvironment,
+		return &httpclient.ProxyConfig{
+			Type: httpclient.ProxyTypeEnvironment,
 		}
 	}
 
@@ -182,6 +185,21 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		}
 
 		return buildChannelWithTransformer(c, transformer, httpClient), nil
+	case channel.TypeDeepseek:
+		transformer, err := deepseek.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		return buildChannelWithTransformer(c, transformer, httpClient), nil
+	case channel.TypeMoonshot:
+		transformer, err := moonshot.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		return buildChannelWithTransformer(c, transformer, httpClient), nil
+
 	case channel.TypeXai:
 		transformer, err := xai.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
 		if err != nil {
@@ -203,6 +221,17 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 	case channel.TypeAnthropic, channel.TypeMinimaxAnthropic:
 		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
 			Type:    anthropic.PlatformDirect,
+			BaseURL: c.BaseURL,
+			APIKey:  c.Credentials.APIKey,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		return buildChannelWithTransformer(c, transformer, httpClient), nil
+	case channel.TypeClaudecode:
+		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
+			Type:    anthropic.PlatformClaudeCode,
 			BaseURL: c.BaseURL,
 			APIKey:  c.Credentials.APIKey,
 		})
@@ -338,14 +367,23 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		}
 
 		return buildChannelWithTransformer(c, transformer, httpClient), nil
-	case channel.TypeOpenai,
-		channel.TypeDeepseek, channel.TypeDeepinfra, channel.TypeMoonshot, channel.TypeMinimax,
-		channel.TypePpio, channel.TypeSiliconflow,
-		channel.TypeVercel, channel.TypeAihubmix, channel.TypeBurncloud, channel.TypeBailian:
-		transformer, err := openai.NewOutboundTransformerWithConfig(&openai.Config{
-			Type:    openai.PlatformOpenAI,
+	case channel.TypeBailian:
+		transformer, err := bailian.NewOutboundTransformerWithConfig(&bailian.Config{
 			BaseURL: c.BaseURL,
 			APIKey:  c.Credentials.APIKey,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		return buildChannelWithTransformer(c, transformer, httpClient), nil
+	case channel.TypeOpenai, channel.TypeDeepinfra, channel.TypeMinimax,
+		channel.TypePpio, channel.TypeSiliconflow,
+		channel.TypeVercel, channel.TypeAihubmix, channel.TypeBurncloud, channel.TypeGithub:
+		transformer, err := openai.NewOutboundTransformerWithConfig(&openai.Config{
+			PlatformType: openai.PlatformOpenAI,
+			BaseURL:      c.BaseURL,
+			APIKey:       c.Credentials.APIKey,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
@@ -473,6 +511,10 @@ func (ch *Channel) GetModelEntries() map[string]ChannelModelEntry {
 					RequestModel: mapping.From,
 					ActualModel:  mapping.To,
 					Source:       "mapping",
+				}
+				// When hideMappedModels is enabled, remove mapped models from the entries
+				if ch.Settings.HideMappedModels {
+					delete(entries, mapping.To)
 				}
 			}
 		}

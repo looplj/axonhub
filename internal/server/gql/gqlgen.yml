@@ -7,6 +7,9 @@ schema:
   - me.graphql
   - system.graphql
   - model.graphql
+  - backup.graphql
+  - channel_probe.graphql
+  - prompt.graphql
 
 
 omit_gqlgen_version_in_file_notice: true
@@ -121,6 +124,18 @@ models:
   UpdateRetryPolicyInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.RetryPolicy
+  AutoDisableChannel:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.AutoDisableChannel
+  AutoDisableChannelStatus:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.AutoDisableChannelStatus
+  AutoDisableChannelInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.AutoDisableChannel
+  AutoDisableChannelStatusInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.AutoDisableChannelStatus
   UpdateAPIKeyProfilesInput:
     model:
       - github.com/looplj/axonhub/internal/objects.APIKeyProfiles
@@ -328,12 +343,72 @@ models:
   HeaderEntryInput:
     model:
       - github.com/looplj/axonhub/internal/objects.HeaderEntry
+  TransformOptions:
+    model:
+      - github.com/looplj/axonhub/internal/objects.TransformOptions
+  TransformOptionsInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.TransformOptions
   SystemVersion:
     model:
       - github.com/looplj/axonhub/internal/build.Info
   SystemModelSettings:
     model:
-      - github.com/looplj/axonhub/internal/server/biz.ModelSettings
+      - github.com/looplj/axonhub/internal/server/biz.SystemModelSettings
   UpdateSystemModelSettingsInput:
     model:
-      - github.com/looplj/axonhub/internal/server/biz.ModelSettings
+      - github.com/looplj/axonhub/internal/server/biz.SystemModelSettings
+  SystemChannelSettings:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.SystemChannelSettings
+  UpdateSystemChannelSettingsInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.SystemChannelSettings
+  ChannelProbeSetting:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ChannelProbeSetting
+  UpdateChannelProbeSettingInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ChannelProbeSetting
+  ChannelProbePoint:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ChannelProbePoint
+  ChannelProbeData:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ChannelProbeData
+  GetChannelProbeDataInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.GetChannelProbeDataInput
+  ProbeFrequency:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ProbeFrequency
+  PromptSettings:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptSettings
+  PromptSettingsInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptSettings
+  PromptAction:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptAction
+  PromptActionInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptAction
+  PromptActivationCondition:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptActivationCondition
+  PromptActivationConditionInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptActivationCondition
+  PromptActionType:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptActionType
+  PromptActivationConditionType:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptActivationConditionType
+  PromptActivationConditionComposite:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptActivationConditionComposite
+  PromptActivationConditionCompositeInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptActivationConditionComposite

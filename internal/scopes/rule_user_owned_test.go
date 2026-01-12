@@ -94,7 +94,7 @@ func TestUserOwnedQueryRule(t *testing.T) {
 			setupQuery: func() ent.Query {
 				return &ent.APIKeyQuery{}
 			},
-			assertErr: func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
+			assertErr: func(t assert.TestingT, err error, msgAndArgs ...any) bool {
 				return assert.Error(t, err) && !errors.Is(err, privacy.Skip) && !errors.Is(err, privacy.Allow)
 			},
 		},
@@ -106,7 +106,7 @@ func TestUserOwnedQueryRule(t *testing.T) {
 			setupQuery: func() ent.Query {
 				return &ent.APIKeyQuery{}
 			},
-			assertErr: func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
+			assertErr: func(t assert.TestingT, err error, msgAndArgs ...any) bool {
 				return assert.Error(t, err) && errors.Is(err, privacy.Allow)
 			},
 		},
@@ -118,7 +118,7 @@ func TestUserOwnedQueryRule(t *testing.T) {
 			setupQuery: func() ent.Query {
 				return &ent.UserQuery{}
 			},
-			assertErr: func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
+			assertErr: func(t assert.TestingT, err error, msgAndArgs ...any) bool {
 				return assert.Error(t, err) && !errors.Is(err, privacy.Skip) && !errors.Is(err, privacy.Allow)
 			},
 		},

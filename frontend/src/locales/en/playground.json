@@ -4,18 +4,13 @@
     "description": "Test and experiment with AI models in an interactive environment.",
     "settings": {
       "model": "Model",
-      "modelPlaceholder": "Select a model",
       "selectModel": "Select a model",
       "temperature": "Temperature",
       "maxTokens": "Max Tokens",
       "systemPrompt": "System Prompt",
       "defaultSystemPrompt": "You are a helpful assistant."
     },
-    "actions": {
-      "copy": "Copy",
-      "regenerate": "Regenerate",
-      "readAloud": "Read Aloud"
-    },
+    "actions": {},
     "chat": {
       "generating": "Generating...",
       "retry": "Retry Last Response",

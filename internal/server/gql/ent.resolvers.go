@@ -80,6 +80,22 @@ func (r *channelPerformanceResolver) ChannelID(ctx context.Context, obj *ent.Cha
 }
 
 // ID is the resolver for the id field.
+func (r *channelProbeResolver) ID(ctx context.Context, obj *ent.ChannelProbe) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeChannelProbe,
+		ID:   obj.ID,
+	}, nil
+}
+
+// ChannelID is the resolver for the channelID field.
+func (r *channelProbeResolver) ChannelID(ctx context.Context, obj *ent.ChannelProbe) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeChannel,
+		ID:   obj.ChannelID,
+	}, nil
+}
+
+// ID is the resolver for the id field.
 func (r *dataStorageResolver) ID(ctx context.Context, obj *ent.DataStorage) (*objects.GUID, error) {
 	return &objects.GUID{
 		Type: ent.TypeDataStorage,
@@ -106,6 +122,14 @@ func (r *projectResolver) ID(ctx context.Context, obj *ent.Project) (*objects.GU
 // ProjectUsers is the resolver for the projectUsers field.
 func (r *projectResolver) ProjectUsers(ctx context.Context, obj *ent.Project) ([]*ent.UserProject, error) {
 	return obj.QueryProjectUsers().All(ctx)
+}
+
+// ID is the resolver for the id field.
+func (r *promptResolver) ID(ctx context.Context, obj *ent.Prompt) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypePrompt,
+		ID:   obj.ID,
+	}, nil
 }
 
 // Node is the resolver for the node field.
@@ -177,6 +201,18 @@ func (r *queryResolver) Projects(ctx context.Context, after *entgql.Cursor[int],
 	return r.client.Project.Query().Paginate(ctx, after, first, before, last,
 		ent.WithProjectOrder(orderBy),
 		ent.WithProjectFilter(where.Filter),
+	)
+}
+
+// Prompts is the resolver for the prompts field.
+func (r *queryResolver) Prompts(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.PromptOrder, where *ent.PromptWhereInput) (*ent.PromptConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
+	return r.client.Prompt.Query().Paginate(ctx, after, first, before, last,
+		ent.WithPromptOrder(orderBy),
+		ent.WithPromptFilter(where.Filter),
 	)
 }
 
@@ -638,6 +674,9 @@ func (r *Resolver) ChannelPerformance() ChannelPerformanceResolver {
 	return &channelPerformanceResolver{r}
 }
 
+// ChannelProbe returns ChannelProbeResolver implementation.
+func (r *Resolver) ChannelProbe() ChannelProbeResolver { return &channelProbeResolver{r} }
+
 // DataStorage returns DataStorageResolver implementation.
 func (r *Resolver) DataStorage() DataStorageResolver { return &dataStorageResolver{r} }
 
@@ -646,6 +685,9 @@ func (r *Resolver) Model() ModelResolver { return &modelResolver{r} }
 
 // Project returns ProjectResolver implementation.
 func (r *Resolver) Project() ProjectResolver { return &projectResolver{r} }
+
+// Prompt returns PromptResolver implementation.
+func (r *Resolver) Prompt() PromptResolver { return &promptResolver{r} }
 
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
@@ -684,9 +726,11 @@ type aPIKeyResolver struct{ *Resolver }
 type channelResolver struct{ *Resolver }
 type channelOverrideTemplateResolver struct{ *Resolver }
 type channelPerformanceResolver struct{ *Resolver }
+type channelProbeResolver struct{ *Resolver }
 type dataStorageResolver struct{ *Resolver }
 type modelResolver struct{ *Resolver }
 type projectResolver struct{ *Resolver }
+type promptResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type requestResolver struct{ *Resolver }
 type requestExecutionResolver struct{ *Resolver }

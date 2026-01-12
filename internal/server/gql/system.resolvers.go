@@ -56,7 +56,7 @@ func (r *mutationResolver) UpdateRetryPolicy(ctx context.Context, input biz.Retr
 }
 
 // UpdateSystemModelSettings is the resolver for the updateSystemModelSettings field.
-func (r *mutationResolver) UpdateSystemModelSettings(ctx context.Context, input biz.ModelSettings) (bool, error) {
+func (r *mutationResolver) UpdateSystemModelSettings(ctx context.Context, input biz.SystemModelSettings) (bool, error) {
 	err := r.systemService.SetModelSettings(ctx, input)
 	if err != nil {
 		return false, fmt.Errorf("failed to update system model settings: %w", err)
@@ -90,6 +90,16 @@ func (r *mutationResolver) CompleteSystemModelSettingOnboarding(ctx context.Cont
 	err := r.systemService.CompleteSystemModelSettingOnboarding(ctx)
 	if err != nil {
 		return false, fmt.Errorf("failed to complete system model setting onboarding: %w", err)
+	}
+
+	return true, nil
+}
+
+// UpdateSystemChannelSettings is the resolver for the updateSystemChannelSettings field.
+func (r *mutationResolver) UpdateSystemChannelSettings(ctx context.Context, input biz.SystemChannelSettings) (bool, error) {
+	err := r.systemService.SetChannelSetting(ctx, input)
+	if err != nil {
+		return false, fmt.Errorf("failed to update channel setting: %w", err)
 	}
 
 	return true, nil
@@ -138,7 +148,7 @@ func (r *queryResolver) RetryPolicy(ctx context.Context) (*biz.RetryPolicy, erro
 }
 
 // SystemModelSettings is the resolver for the systemModelSettings field.
-func (r *queryResolver) SystemModelSettings(ctx context.Context) (*biz.ModelSettings, error) {
+func (r *queryResolver) SystemModelSettings(ctx context.Context) (*biz.SystemModelSettings, error) {
 	settings, err := r.systemService.ModelSettings(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get system model settings: %w", err)
@@ -209,4 +219,14 @@ func (r *queryResolver) CheckForUpdate(ctx context.Context) (*VersionCheck, erro
 		HasUpdate:      result.HasUpdate,
 		ReleaseURL:     result.ReleaseURL,
 	}, nil
+}
+
+// SystemChannelSettings is the resolver for the systemChannelSettings field.
+func (r *queryResolver) SystemChannelSettings(ctx context.Context) (*biz.SystemChannelSettings, error) {
+	setting, err := r.systemService.ChannelSetting(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get channel setting: %w", err)
+	}
+
+	return setting, nil
 }

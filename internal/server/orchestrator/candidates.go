@@ -11,10 +11,10 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/model"
-	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm"
 )
 
 // ChannelModelCandidate represents a resolved channel and model pair.
@@ -199,6 +199,8 @@ func (s *DefaultSelector) resolveAssociations(ctx context.Context, model *ent.Mo
 	}
 
 	candidates := make([]*ChannelModelCandidate, 0, len(connections))
+	tracker := biz.NewDuplicateKeyTracker()
+
 	for _, conn := range connections {
 		bizCh, found := channelMap[conn.Channel.ID]
 		if !found || bizCh == nil {
@@ -207,12 +209,15 @@ func (s *DefaultSelector) resolveAssociations(ctx context.Context, model *ent.Mo
 
 		// Models are already resolved in MatchAssociations, no need for second lookup
 		for _, entry := range conn.Models {
-			candidates = append(candidates, &ChannelModelCandidate{
-				Channel:      bizCh,
-				RequestModel: entry.RequestModel,
-				ActualModel:  entry.ActualModel,
-				Priority:     conn.Priority,
-			})
+			// Deduplicate by channel and actual model
+			if tracker.Add(bizCh.ID, entry.ActualModel) {
+				candidates = append(candidates, &ChannelModelCandidate{
+					Channel:      bizCh,
+					RequestModel: entry.RequestModel,
+					ActualModel:  entry.ActualModel,
+					Priority:     conn.Priority,
+				})
+			}
 		}
 	}
 

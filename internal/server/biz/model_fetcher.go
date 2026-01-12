@@ -12,8 +12,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/privacy"
-	"github.com/looplj/axonhub/internal/objects"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 // ModelFetcher handles fetching models from provider APIs.
@@ -55,14 +54,14 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 
 	var (
 		apiKey      string
-		proxyConfig *objects.ProxyConfig
+		proxyConfig *httpclient.ProxyConfig
 	)
 
 	if input.APIKey != nil && *input.APIKey != "" {
 		apiKey = *input.APIKey
-	} else if input.ChannelID != nil {
-		// Get API key from channel if not provided
-		// Query channel to get API key
+	}
+
+	if input.ChannelID != nil {
 		ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 		ch, err := f.channelService.entFromContext(ctx).Channel.Get(ctx, *input.ChannelID)
@@ -73,7 +72,10 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 			}, nil
 		}
 
-		apiKey = ch.Credentials.APIKey
+		if apiKey == "" {
+			apiKey = ch.Credentials.APIKey
+		}
+
 		if ch.Settings != nil {
 			proxyConfig = ch.Settings.Proxy
 		}
@@ -103,7 +105,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		Headers: authHeaders,
 	}
 
-	if channelType.IsAnthropic() {
+	if channelType.IsAnthropic() || channelType.IsAnthropicLike() {
 		req.Headers.Set("X-Api-Key", apiKey)
 	} else if channelType.IsGemini() {
 		req.Headers.Set("X-Goog-Api-Key", apiKey)
@@ -118,7 +120,22 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		httpClient = f.httpClient
 	}
 
-	resp, err := httpClient.Do(ctx, req)
+	var (
+		resp *httpclient.Response
+		err  error
+	)
+
+	if channelType.IsAnthropic() || channelType.IsAnthropicLike() {
+		resp, err = httpClient.Do(ctx, req)
+		if err != nil || resp.StatusCode != http.StatusOK {
+			req.Headers.Del("X-Api-Key")
+			req.Headers.Set("Authorization", "Bearer "+apiKey)
+			resp, err = httpClient.Do(ctx, req)
+		}
+	} else {
+		resp, err = httpClient.Do(ctx, req)
+	}
+
 	if err != nil {
 		return &FetchModelsResult{
 			Models: []ModelIdentify{},
@@ -193,6 +210,9 @@ func (f *ModelFetcher) prepareModelsEndpoint(channelType channel.Type, baseURL s
 		}
 
 		return baseURL + "/v1beta/models", headers
+	case channelType == channel.TypeGithub:
+		// GitHub Models uses a separate catalog endpoint
+		return "https://models.github.ai/catalog/models", headers
 	default:
 		if useRawURL {
 			return baseURL + "/models", headers
@@ -222,7 +242,7 @@ type commonModelsResponse struct {
 var jsonArrayRegex = regexp.MustCompile(`\[[^\]]*\]`)
 
 // ExtractJSONArray uses regex to extract JSON array from body and unmarshal to target.
-func ExtractJSONArray(body []byte, target interface{}) error {
+func ExtractJSONArray(body []byte, target any) error {
 	matches := jsonArrayRegex.FindAll(body, -1)
 	if len(matches) == 0 {
 		return fmt.Errorf("no JSON array found in response")
@@ -239,6 +259,12 @@ func ExtractJSONArray(body []byte, target interface{}) error {
 
 // parseModelsResponse parses the models response from the provider API.
 func (f *ModelFetcher) parseModelsResponse(body []byte) ([]ModelIdentify, error) {
+	// First, try to parse as direct array (e.g., GitHub Models response)
+	var directArray []ModelIdentify
+	if err := json.Unmarshal(body, &directArray); err == nil && len(directArray) > 0 {
+		return directArray, nil
+	}
+
 	var response commonModelsResponse
 	if err := json.Unmarshal(body, &response); err != nil {
 		if err := ExtractJSONArray(body, &response.Data); err != nil {

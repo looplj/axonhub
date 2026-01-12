@@ -7,10 +7,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 
-	"github.com/looplj/axonhub/internal/llm/transformer/anthropic"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/anthropic"
 )
 
 type AnthropicHandlersParams struct {
@@ -21,6 +22,7 @@ type AnthropicHandlersParams struct {
 	RequestService  *biz.RequestService
 	SystemService   *biz.SystemService
 	UsageLogService *biz.UsageLogService
+	PromptService   *biz.PromptService
 	HttpClient      *httpclient.HttpClient
 }
 
@@ -42,6 +44,7 @@ func NewAnthropicHandlers(params AnthropicHandlersParams) *AnthropicHandlers {
 				anthropic.NewInboundTransformer(),
 				params.SystemService,
 				params.UsageLogService,
+				params.PromptService,
 			),
 		},
 		ChannelService: params.ChannelService,
@@ -56,6 +59,7 @@ func (handlers *AnthropicHandlers) CreateMessage(c *gin.Context) {
 
 type AnthropicModel struct {
 	ID          string    `json:"id"`
+	Type        string    `json:"type"`
 	DisplayName string    `json:"display_name"`
 	CreatedAt   time.Time `json:"created"`
 }
@@ -65,9 +69,19 @@ type AnthropicModel struct {
 func (handlers *AnthropicHandlers) ListModels(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	models := handlers.ModelService.ListEnabledModels(ctx)
-	if models == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list models"})
+	models, err := handlers.ModelService.ListEnabledModels(ctx)
+	if err != nil {
+		requestID, _ := contexts.GetRequestID(ctx)
+		c.JSON(http.StatusInternalServerError, anthropic.AnthropicError{
+			StatusCode: http.StatusInternalServerError,
+			Type:       "internal_server_error",
+			RequestID:  requestID,
+			Error: anthropic.ErrorDetail{
+				Type:    "internal_server_error",
+				Message: err.Error(),
+			},
+		})
+
 		return
 	}
 
@@ -75,6 +89,7 @@ func (handlers *AnthropicHandlers) ListModels(c *gin.Context) {
 	for _, model := range models {
 		anthropicModels = append(anthropicModels, AnthropicModel{
 			ID:          model.ID,
+			Type:        "model",
 			DisplayName: model.DisplayName,
 			CreatedAt:   model.CreatedAt,
 		})

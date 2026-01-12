@@ -2,11 +2,11 @@
   "system": {
     "title": "System Settings",
     "description": "Manage system configurations and options.",
-    "loading": "Loading system settings...",
     "tabs": {
       "brand": "Brand",
       "storage": "Storage",
       "retry": "Retry",
+      "backup": "Backup",
       "about": "About"
     },
     "storage": {
@@ -16,12 +16,7 @@
         "label": "Data Storage",
         "placeholder": "Select data storage"
       },
-      "title": "Storage Settings",
-      "description": "Configure how the system handles and stores response data",
-      "storeChunks": {
-        "label": "Store Response Chunks",
-        "description": "When enabled, the system will store response data chunks in the database for subsequent analysis and processing"
-      },
+      "storeChunks": {},
       "policy": {
         "title": "Storage Policy",
         "description": "Configure storage policies and data cleanup settings to manage data retention and storage efficiency",
@@ -64,11 +59,7 @@
         "notSquare": "Please upload a square image (width equals height)."
       }
     },
-    "other": {
-      "title": "Other Settings",
-      "description": "More system configuration options will be added here",
-      "comingSoon": "More configuration options coming soon..."
-    },
+    "other": {},
     "retry": {
       "title": "Retry Policy",
       "description": "Configure automatic retry behavior for failed requests to improve system reliability",
@@ -84,10 +75,7 @@
           "adaptive": "Adaptive",
           "weighted": "Weighted"
         },
-        "documentation": {
-          "adaptive": "Based on comprehensive consideration of weight, success rate, round-robin, and trace strategies to select appropriate channels for requests. Intelligently balances multiple factors to optimize channel selection.",
-          "weighted": "Each request follows channel weight order from high to low until one succeeds. Higher weight channels are prioritized sequentially for all requests."
-        }
+        "documentation": {}
       },
       "maxChannelRetries": {
         "label": "Max Channel Retries",
@@ -100,6 +88,18 @@
       "retryDelayMs": {
         "label": "Retry Delay (ms)",
         "description": "Delay between retry attempts in milliseconds (100-10000ms). Shorter delays provide faster recovery but may overwhelm struggling services. Longer delays give services more time to recover."
+      },
+      "autoDisableChannel": {
+        "label": "Auto Disable Channel",
+        "description": "Automatically disable a channel when it exceeds the maximum number of retries for specific HTTP status codes",
+        "statuses": {
+          "label": "Status Codes",
+          "add": "Add Status Code",
+          "empty": "No status codes configured. Add a status code to auto-disable channels.",
+          "times": "times",
+          "statusPlaceholder": "Status",
+          "timesPlaceholder": "Times"
+        }
       }
     },
     "onboarding": {
@@ -107,8 +107,6 @@
       "description": "Welcome to AxonHub! Let's set up your system with a quick tour.",
       "startTour": "Start Onboarding Tour",
       "skipTour": "Skip Tour",
-      "nextStep": "Next Step",
-      "previousStep": "Previous Step",
       "completeTour": "Complete Tour",
       "steps": {
         "welcome": {
@@ -167,10 +165,7 @@
           "title": "Data Storage Backend",
           "description": "Choose the storage backend for the request and response data. Different backends offer different performance and cost characteristics. Default is database, you can also configure other storage backends."
         },
-        "storageCleanup": {
-          "title": "Data Cleanup Policies",
-          "description": "Set up automatic cleanup rules to manage storage space and comply with data retention policies."
-        },
+        "storageCleanup": {},
         "storageCleanupRequests": {
           "title": "Request Data Cleanup",
           "description": "Configure automatic cleanup for request data to manage storage space and maintain system performance."
@@ -213,6 +208,35 @@
         "releases": "Releases",
         "issues": "Report Issue"
       }
+    },
+    "backup": {
+      "title": "Backup",
+      "description": "Create a backup of your system data including channels, models, and API keys",
+      "includeChannels": "Include Channels",
+      "includeModels": "Include Models",
+      "includeAPIKeys": "Include API Keys",
+      "createBackup": "Create Backup",
+      "backingUp": "Backing up...",
+      "success": "Backup created successfully",
+      "failed": "Failed to create backup"
+    },
+    "restore": {
+      "title": "Restore",
+      "description": "Restore your system data from a backup file",
+      "channelConflictStrategy": "Channel Conflict Strategy",
+      "modelConflictStrategy": "Model Conflict Strategy",
+      "apiKeyConflictStrategy": "API Key Conflict Strategy",
+      "strategies": {
+        "skip": "Skip existing items",
+        "overwrite": "Overwrite existing items",
+        "error": "Error on conflict"
+      },
+      "selectFile": "Select Backup File",
+      "restoreBackup": "Restore Backup",
+      "restoring": "Restoring...",
+      "success": "Backup restored successfully",
+      "failed": "Failed to restore backup",
+      "warning": "Warning: Restoring from a backup will overwrite existing data. This action cannot be undone."
     }
   }
 }

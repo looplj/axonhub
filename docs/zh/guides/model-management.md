@@ -97,6 +97,11 @@ AxonHub 中的模型是抽象的模型定义，包含：
 }
 ```
 
+**模式语法**：模式会自动添加 `^` 和 `$` 锚点来匹配完整模型字符串。使用 `.*` 进行灵活匹配：
+- `gpt-4.*` - 匹配 `gpt-4`、`gpt-4-turbo`、`gpt-4-vision-preview`
+- `.*flash.*` - 匹配 `gemini-2.5-flash-preview`、`gemini-flash-2.0`
+- `claude-3-.*-sonnet` - 匹配 `claude-3-5-sonnet`、`claude-3-opus-sonnet`
+
 **使用场景**：
 - 渠道支持多个模型变体
 - 需要灵活匹配模型名称
@@ -198,70 +203,11 @@ AxonHub 中的模型是抽象的模型定义，包含：
 
 ### 1. 创建模型
 
-```bash
-curl -X POST http://localhost:8090/api/models \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
-  -d '{
-    "developer": "openai",
-    "modelId": "gpt-4",
-    "name": "GPT-4",
-    "type": "chat",
-    "group": "gpt",
-    "icon": "🤖",
-    "settings": {
-      "associations": [
-        {
-          "type": "channel_model",
-          "priority": 0,
-          "channelModel": {
-            "channelId": 1,
-            "modelId": "gpt-4-turbo"
-          }
-        },
-        {
-          "type": "regex",
-          "priority": 1,
-          "regex": {
-            "pattern": "gpt-4.*",
-            "exclude": [
-              {
-                "channelTags": ["test"]
-              }
-            ]
-          }
-        }
-      ]
-    }
-  }'
-```
+模型通过管理界面进行创建和管理。
 
 ### 2. 配置渠道
 
-确保渠道已配置并支持相应的模型：
-
-```bash
-curl -X POST http://localhost:8090/api/channels \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
-  -d '{
-    "name": "OpenAI Primary",
-    "type": "openai",
-    "enabled": true,
-    "weight": 100,
-    "tags": ["production", "openai"],
-    "config": {
-      "apiKey": "sk-...",
-      "baseUrl": "https://api.openai.com/v1"
-    },
-    "models": [
-      {
-        "requestModel": "gpt-4",
-        "actualModel": "gpt-4-turbo"
-      }
-    ]
-  }'
-```
+确保通过管理界面配置渠道并支持相应的模型。
 
 ### 3. 使用模型
 
@@ -291,7 +237,9 @@ response = client.chat.completions.create(
 
 ### 优先级控制
 
-关联按优先级顺序处理，优先级值越小越优先：
+关联按优先级顺序处理，优先级值越小越优先。当多个候选渠道具有相同的优先级时，系统将根据渠道的 **权重（weight）** 进行负载均衡。
+
+有关详细的负载均衡逻辑和基于权重的分配，请参阅自适应负载均衡指南中的 [加权轮询策略](load-balance.md#加权轮询策略-weight-round-robin)。
 
 ```json
 {
@@ -341,32 +289,6 @@ response = client.chat.completions.create(
 ```
 
 ## 📊 监控和调试
-
-### 查看模型关联
-
-```bash
-# 查询模型的渠道连接
-curl -X POST http://localhost:8090/api/models/connections \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
-  -d '{
-    "associations": [
-      {
-        "type": "regex",
-        "regex": {
-          "pattern": "gpt-4.*"
-        }
-      }
-    ]
-  }'
-```
-
-### 查看未关联的渠道
-
-```bash
-curl -X GET http://localhost:8090/api/models/unassociated-channels \
-  -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
-```
 
 ### 调试日志
 
@@ -420,7 +342,7 @@ A: 检查以下几点：
 ### Q: 如何验证关联是否生效？
 
 A:
-1. 使用 `/api/models/connections` API 查询关联结果
+1. 使用管理界面查询关联结果
 2. 启用调试日志查看候选选择过程
 3. 发送测试请求验证路由
 

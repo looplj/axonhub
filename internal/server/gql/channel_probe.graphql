@@ -1,0 +1,18 @@
+type ChannelProbePoint {
+  timestamp: Int!
+  totalRequestCount: Int!
+  successRequestCount: Int!
+}
+
+type ChannelProbeData {
+  channelID: ID!
+  points: [ChannelProbePoint!]!
+}
+
+input GetChannelProbeDataInput {
+  channelIDs: [ID!]!
+}
+
+extend type Query {
+  channelProbeData(input: GetChannelProbeDataInput!): [ChannelProbeData!]!
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import { ColumnDef } from '@tanstack/react-table';
+import { ColumnDef, Row, Table } from '@tanstack/react-table';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -15,14 +15,14 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
   if (canWrite) {
     columns.push({
       id: 'select',
-      header: ({ table }) => (
+      header: ({ table }: { table: Table<User> }) => (
         <Checkbox
           checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
           aria-label='Select all'
         />
       ),
-      cell: ({ row }) => (
+      cell: ({ row }: { row: Row<User> }) => (
         <Checkbox checked={row.getIsSelected()} onCheckedChange={(value) => row.toggleSelected(!!value)} aria-label='Select row' />
       ),
       enableSorting: false,
@@ -81,7 +81,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
     },
     {
       accessorKey: 'status',
-      header: t('users.columns.status'),
+      header: t('common.columns.status'),
       cell: ({ row }) => {
         const status = row.getValue('status') as string;
         return (
@@ -93,7 +93,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
     },
     {
       accessorKey: 'createdAt',
-      header: t('users.columns.createdAt'),
+      header: t('common.columns.createdAt'),
       cell: ({ row }) => {
         const date = new Date(row.getValue('createdAt'));
         return date.toLocaleDateString();
@@ -101,7 +101,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
     },
     {
       accessorKey: 'updatedAt',
-      header: t('users.columns.updatedAt'),
+      header: t('common.columns.updatedAt'),
       cell: ({ row }) => {
         const date = new Date(row.getValue('updatedAt'));
         return date.toLocaleDateString();
@@ -109,6 +109,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
     },
     {
       id: 'actions',
+      header: t('common.columns.actions'),
       cell: ({ row }) => <DataTableRowActions row={row} />,
     }
   );

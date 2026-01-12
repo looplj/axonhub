@@ -43,6 +43,8 @@ export const channelTypeSchema = z.enum([
   'modelscope',
   'bailian',
   'jina',
+  'github',
+  'claudecode',
 ]);
 export type ChannelType = z.infer<typeof channelTypeSchema>;
 
@@ -77,6 +79,13 @@ export const proxyConfigSchema = z.object({
 });
 export type ProxyConfig = z.infer<typeof proxyConfigSchema>;
 
+// Transform Options
+export const transformOptionsSchema = z.object({
+  forceArrayInstructions: z.boolean().optional(),
+  forceArrayInputs: z.boolean().optional(),
+});
+export type TransformOptions = z.infer<typeof transformOptionsSchema>;
+
 // Channel Performance
 export const channelPerformanceSchema = z.object({
   avgLatencyMs: z.number(),
@@ -86,15 +95,31 @@ export const channelPerformanceSchema = z.object({
 });
 export type ChannelPerformance = z.infer<typeof channelPerformanceSchema>;
 
+// Channel Probe
+export const channelProbePointSchema = z.object({
+  timestamp: z.number(),
+  totalRequestCount: z.number(),
+  successRequestCount: z.number(),
+});
+export type ChannelProbePoint = z.infer<typeof channelProbePointSchema>;
+
+export const channelProbeDataSchema = z.object({
+  channelID: z.string(),
+  points: z.array(channelProbePointSchema),
+});
+export type ChannelProbeData = z.infer<typeof channelProbeDataSchema>;
+
 // Channel Settings
 export const channelSettingsSchema = z.object({
   extraModelPrefix: z.string().optional(),
   modelMappings: z.array(modelMappingSchema).nullable(),
   autoTrimedModelPrefixes: z.array(z.string()).optional().nullable(),
   hideOriginalModels: z.boolean().optional(),
+  hideMappedModels: z.boolean().optional(),
   overrideParameters: z.string().optional(),
   overrideHeaders: z.array(headerEntrySchema).optional().nullable(),
   proxy: proxyConfigSchema.optional().nullable(),
+  transformOptions: transformOptionsSchema.optional(),
 });
 export type ChannelSettings = z.infer<typeof channelSettingsSchema>;
 

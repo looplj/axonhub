@@ -52,12 +52,17 @@ const CHANNELS_QUERY = `
             }
             autoTrimedModelPrefixes
             hideOriginalModels
+            hideMappedModels
             overrideParameters
             proxy {
               type
               url
               username
               password
+            }
+            transformOptions {
+              forceArrayInstructions
+              forceArrayInputs
             }
           }
           orderingWeight
@@ -138,12 +143,17 @@ const CREATE_CHANNEL_MUTATION = `
         }
         autoTrimedModelPrefixes
         hideOriginalModels
+        hideMappedModels
         overrideParameters
         proxy {
           type
           url
           username
           password
+        }
+        transformOptions {
+          forceArrayInstructions
+          forceArrayInputs
         }
       }
       orderingWeight
@@ -174,12 +184,17 @@ const BULK_CREATE_CHANNELS_MUTATION = `
         }
         autoTrimedModelPrefixes
         hideOriginalModels
+        hideMappedModels
         overrideParameters
         proxy {
           type
           url
           username
           password
+        }
+        transformOptions {
+          forceArrayInstructions
+          forceArrayInputs
         }
       }
       orderingWeight
@@ -210,12 +225,17 @@ const UPDATE_CHANNEL_MUTATION = `
         }
         autoTrimedModelPrefixes
         hideOriginalModels
+        hideMappedModels
         overrideParameters
         proxy {
           type
           url
           username
           password
+        }
+        transformOptions {
+          forceArrayInstructions
+          forceArrayInputs
         }
       }
       orderingWeight
@@ -302,7 +322,12 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           }
           autoTrimedModelPrefixes
           hideOriginalModels
+          hideMappedModels
           overrideParameters
+          transformOptions {
+            forceArrayInstructions
+            forceArrayInputs
+          }
         }
       }
     }
@@ -334,6 +359,11 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
           }
           autoTrimedModelPrefixes
           hideOriginalModels
+          hideMappedModels
+          transformOptions {
+            forceArrayInstructions
+            forceArrayInputs
+          }
         }
       }
     }
@@ -433,6 +463,7 @@ const QUERY_CHANNELS_QUERY = `
             }
             autoTrimedModelPrefixes
             hideOriginalModels
+            hideMappedModels
             overrideParameters
             overrideHeaders{
               key
@@ -443,6 +474,10 @@ const QUERY_CHANNELS_QUERY = `
               url
               username
               password
+            }
+            transformOptions {
+              forceArrayInstructions
+              forceArrayInputs
             }
           }
           orderingWeight
@@ -499,7 +534,7 @@ export function useChannels(
 }
 
 // Use this hook to query channels with pagination and filtering
-export type ChannelOrderField = 'CREATED_AT' | 'UPDATED_AT' | 'ORDERING_WEIGHT' | 'NAME' | 'STATUS';
+export type ChannelOrderField = 'CREATED_AT' | 'UPDATED_AT' | 'ORDERING_WEIGHT' | 'NAME' | 'STATUS' | 'TYPE';
 
 export function useQueryChannels(
   variables?: {
@@ -1058,5 +1093,40 @@ export function useAllChannelTags() {
       }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+const CHANNEL_PROBE_DATA_QUERY = `
+  query GetChannelProbeData($input: GetChannelProbeDataInput!) {
+    channelProbeData(input: $input) {
+      channelID
+      points {
+        timestamp
+        totalRequestCount
+        successRequestCount
+      }
+    }
+  }
+`;
+
+export function useChannelProbeData(channelIDs: string[], options?: { enabled?: boolean }) {
+  const { handleError } = useErrorHandler();
+  const { t } = useTranslation();
+
+  return useQuery({
+    queryKey: ['channelProbeData', channelIDs],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ channelProbeData: any[] }>(CHANNEL_PROBE_DATA_QUERY, {
+          input: { channelIDs },
+        });
+        return data.channelProbeData || [];
+      } catch (error) {
+        handleError(error, t('channels.errors.fetchProbeData'));
+        return [];
+      }
+    },
+    enabled: channelIDs.length > 0 && (options?.enabled !== false),
+    staleTime: 1 * 60 * 1000, // 1 minute
   });
 }

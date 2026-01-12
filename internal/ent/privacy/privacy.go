@@ -207,6 +207,30 @@ func (f ChannelPerformanceMutationRuleFunc) EvalMutation(ctx context.Context, m 
 	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.ChannelPerformanceMutation", m)
 }
 
+// The ChannelProbeQueryRuleFunc type is an adapter to allow the use of ordinary
+// functions as a query rule.
+type ChannelProbeQueryRuleFunc func(context.Context, *ent.ChannelProbeQuery) error
+
+// EvalQuery return f(ctx, q).
+func (f ChannelProbeQueryRuleFunc) EvalQuery(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.ChannelProbeQuery); ok {
+		return f(ctx, q)
+	}
+	return Denyf("ent/privacy: unexpected query type %T, expect *ent.ChannelProbeQuery", q)
+}
+
+// The ChannelProbeMutationRuleFunc type is an adapter to allow the use of ordinary
+// functions as a mutation rule.
+type ChannelProbeMutationRuleFunc func(context.Context, *ent.ChannelProbeMutation) error
+
+// EvalMutation calls f(ctx, m).
+func (f ChannelProbeMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) error {
+	if m, ok := m.(*ent.ChannelProbeMutation); ok {
+		return f(ctx, m)
+	}
+	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.ChannelProbeMutation", m)
+}
+
 // The DataStorageQueryRuleFunc type is an adapter to allow the use of ordinary
 // functions as a query rule.
 type DataStorageQueryRuleFunc func(context.Context, *ent.DataStorageQuery) error
@@ -277,6 +301,30 @@ func (f ProjectMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutatio
 		return f(ctx, m)
 	}
 	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.ProjectMutation", m)
+}
+
+// The PromptQueryRuleFunc type is an adapter to allow the use of ordinary
+// functions as a query rule.
+type PromptQueryRuleFunc func(context.Context, *ent.PromptQuery) error
+
+// EvalQuery return f(ctx, q).
+func (f PromptQueryRuleFunc) EvalQuery(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.PromptQuery); ok {
+		return f(ctx, q)
+	}
+	return Denyf("ent/privacy: unexpected query type %T, expect *ent.PromptQuery", q)
+}
+
+// The PromptMutationRuleFunc type is an adapter to allow the use of ordinary
+// functions as a mutation rule.
+type PromptMutationRuleFunc func(context.Context, *ent.PromptMutation) error
+
+// EvalMutation calls f(ctx, m).
+func (f PromptMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) error {
+	if m, ok := m.(*ent.PromptMutation); ok {
+		return f(ctx, m)
+	}
+	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.PromptMutation", m)
 }
 
 // The RequestQueryRuleFunc type is an adapter to allow the use of ordinary
@@ -562,11 +610,15 @@ func queryFilter(q ent.Query) (Filter, error) {
 		return q.Filter(), nil
 	case *ent.ChannelPerformanceQuery:
 		return q.Filter(), nil
+	case *ent.ChannelProbeQuery:
+		return q.Filter(), nil
 	case *ent.DataStorageQuery:
 		return q.Filter(), nil
 	case *ent.ModelQuery:
 		return q.Filter(), nil
 	case *ent.ProjectQuery:
+		return q.Filter(), nil
+	case *ent.PromptQuery:
 		return q.Filter(), nil
 	case *ent.RequestQuery:
 		return q.Filter(), nil
@@ -603,11 +655,15 @@ func mutationFilter(m ent.Mutation) (Filter, error) {
 		return m.Filter(), nil
 	case *ent.ChannelPerformanceMutation:
 		return m.Filter(), nil
+	case *ent.ChannelProbeMutation:
+		return m.Filter(), nil
 	case *ent.DataStorageMutation:
 		return m.Filter(), nil
 	case *ent.ModelMutation:
 		return m.Filter(), nil
 	case *ent.ProjectMutation:
+		return m.Filter(), nil
+	case *ent.PromptMutation:
 		return m.Filter(), nil
 	case *ent.RequestMutation:
 		return m.Filter(), nil

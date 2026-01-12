@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { graphqlRequest } from '@/gql/graphql';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import { useErrorHandler } from '@/hooks/use-error-handler';
@@ -104,6 +105,7 @@ export function useUsageLogs(variables?: {
   };
 }) {
   const { handleError } = useErrorHandler();
+  const { t } = useTranslation();
   const permissions = useUsageLogPermissions();
   const selectedProjectId = useSelectedProjectId();
 
@@ -116,7 +118,7 @@ export function useUsageLogs(variables?: {
         const data = await graphqlRequest<{ usageLogs: UsageLogConnection }>(query, variables, headers);
         return usageLogConnectionSchema.parse(data?.usageLogs);
       } catch (error) {
-        handleError(error, '获取用量日志数据');
+        handleError(error, t('usageLogs.errors.loadUsageLogsFailed'));
         throw error;
       }
     },
@@ -126,6 +128,7 @@ export function useUsageLogs(variables?: {
 
 export function useUsageLog(id: string) {
   const { handleError } = useErrorHandler();
+  const { t } = useTranslation();
   const permissions = useUsageLogPermissions();
   const selectedProjectId = useSelectedProjectId();
 
@@ -141,7 +144,7 @@ export function useUsageLog(id: string) {
         }
         return usageLogSchema.parse(data.node);
       } catch (error) {
-        handleError(error, '获取用量日志详情');
+        handleError(error, t('usageLogs.errors.loadUsageLogDetailFailed'));
         throw error;
       }
     },

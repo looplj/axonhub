@@ -13,22 +13,25 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/privacy"
-	"github.com/looplj/axonhub/internal/llm"
-	"github.com/looplj/axonhub/internal/llm/pipeline"
-	"github.com/looplj/axonhub/internal/llm/pipeline/stream"
-	"github.com/looplj/axonhub/internal/llm/transformer/openai"
 	"github.com/looplj/axonhub/internal/objects"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
-	"github.com/looplj/axonhub/internal/pkg/streams"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/pipeline/stream"
+	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
 // newTestChannelServiceForChannels creates a minimal channel service for testing.
 func newTestChannelServiceForChannels(client *ent.Client) *biz.ChannelService {
+	systemService := newTestSystemService(client)
+
 	return biz.NewChannelService(biz.ChannelServiceParams{
-		Executor: executors.NewPoolScheduleExecutor(),
-		Ent:      client,
+		Executor:      executors.NewPoolScheduleExecutor(),
+		Ent:           client,
+		SystemService: systemService,
 	})
 }
 
@@ -53,7 +56,7 @@ func newTestLoadBalancedSelector(
 		NewWeightRoundRobinStrategy(channelService),
 		NewConnectionAwareStrategy(channelService, connectionTracker),
 	}
-	loadBalancer := NewLoadBalancer(systemService, strategies...)
+	loadBalancer := NewLoadBalancer(systemService, nil, strategies...)
 
 	modelService := newTestModelService(client)
 	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
@@ -362,6 +365,7 @@ func newTestOrchestrator(
 		Inbound:           openai.NewInboundTransformer(),
 		RequestService:    requestService,
 		ChannelService:    channelService,
+		PromptProvider:    &stubPromptProvider{},
 		SystemService:     systemService,
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),

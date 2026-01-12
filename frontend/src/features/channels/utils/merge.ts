@@ -57,9 +57,11 @@ export function mergeChannelSettingsForUpdate(
     modelMappings: pick('modelMappings', existing?.modelMappings ?? []),
     autoTrimedModelPrefixes: pick('autoTrimedModelPrefixes', existing?.autoTrimedModelPrefixes ?? []),
     hideOriginalModels: pick('hideOriginalModels', existing?.hideOriginalModels ?? false),
+    hideMappedModels: pick('hideMappedModels', existing?.hideMappedModels ?? false),
     overrideParameters: pick('overrideParameters', existing?.overrideParameters ?? ''),
     overrideHeaders: pick('overrideHeaders', existing?.overrideHeaders ?? []),
     proxy: pick('proxy', existing?.proxy ?? null),
+    transformOptions: pick('transformOptions', existing?.transformOptions ?? undefined),
   };
 }
 

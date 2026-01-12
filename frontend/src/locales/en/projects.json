@@ -4,16 +4,7 @@
     "description": "Manage system projects and configurations.",
     "createProject": "Create Project",
     "searchProjects": "Search projects by name",
-    "columns": {
-      "name": "Name",
-      "description": "Description",
-      "status": "Status",
-      "createdAt": "Created At",
-      "updatedAt": "Updated At",
-      "actions": "Actions",
-      "selectAll": "Select all",
-      "selectRow": "Select row"
-    },
+    "columns": {},
     "status": {
       "active": "Active",
       "archived": "Archived"
@@ -27,8 +18,7 @@
       },
       "edit": {
         "title": "Edit Project",
-        "description": "Modify project information.",
-        "slugNotEditable": "Project slug cannot be modified after creation"
+        "description": "Modify project information."
       },
       "archive": {
         "title": "Archive Project",
@@ -44,23 +34,26 @@
           "placeholder": "My Project",
           "description": "Display name of the project"
         },
-        "slug": {
-          "label": "Project Slug",
-          "placeholder": "my-project",
-          "description": "URL-friendly unique identifier (leave empty to auto-generate)"
-        },
+        "slug": {},
         "description": {
           "label": "Project Description",
           "placeholder": "Enter project description",
           "description": "Detailed description of the project"
         }
       },
-      "buttons": {
-        "create": "Create Project"
-      }
+      "buttons": {}
     },
     "validation": {
       "nameRequired": "Project name is required"
+    },
+    "errors": {
+      "loadProjectsFailed": "Failed to load projects",
+      "loadProjectDetailFailed": "Failed to load project details",
+      "loadMyProjectsFailed": "Failed to load my projects",
+      "createProjectFailed": "Failed to create project",
+      "updateProjectFailed": "Failed to update project",
+      "archiveProjectFailed": "Failed to archive project",
+      "activateProjectFailed": "Failed to activate project"
     }
   }
 }

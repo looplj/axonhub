@@ -29,7 +29,11 @@ const formSchema = z
     path: ['confirmPassword'],
   });
 
+import { useTranslation } from 'react-i18next';
+
 export function SignUpForm({ className, ...props }: SignUpFormProps) {
+  const { t } = useTranslation();
+
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -83,7 +87,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
           name='confirmPassword'
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Confirm Password</FormLabel>
+              <FormLabel>{t('users.form.confirmPassword')}</FormLabel>
               <FormControl>
                 <PasswordInput placeholder='********' {...field} />
               </FormControl>

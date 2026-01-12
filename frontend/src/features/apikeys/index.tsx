@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
@@ -17,6 +18,7 @@ type ApiKeyTabKey = ApiKeyType | 'all';
 
 function ApiKeysContent() {
   const { t } = useTranslation();
+  const { apiKeyPermissions } = usePermissions();
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
     defaultPageSize: 20,
     pageSizeStorageKey: 'apikeys-table-page-size',
@@ -86,6 +88,8 @@ function ApiKeysContent() {
     resetCursor();
   };
 
+  const columns = React.useMemo(() => createColumns(t, apiKeyPermissions.canWrite), [t, apiKeyPermissions.canWrite]);
+
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ApiKeyTabKey)} className='w-full'>
@@ -105,7 +109,7 @@ function ApiKeysContent() {
         <ApiKeysTable
           data={data?.edges?.map((edge) => edge.node) || []}
           loading={isLoading}
-          columns={createColumns(t)}
+          columns={columns}
           pageInfo={data?.pageInfo}
           pageSize={pageSize}
           totalCount={data?.totalCount}
@@ -119,6 +123,7 @@ function ApiKeysContent() {
           onStatusFilterChange={setStatusFilter}
           onUserFilterChange={setUserFilter}
           onResetFilters={handleResetFilters}
+          canWrite={apiKeyPermissions.canWrite}
         />
       </div>
     </div>

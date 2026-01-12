@@ -24,7 +24,7 @@ func (m *mockStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel)
 	return m.score, StrategyScore{
 		StrategyName: m.name,
 		Score:        m.score,
-		Details:      map[string]interface{}{"fixed_score": m.score},
+		Details:      map[string]any{"fixed_score": m.score},
 	}
 }
 
@@ -71,9 +71,15 @@ func (m *mockTraceProvider) GetLastSuccessfulChannelID(ctx context.Context, trac
 // newTestChannelService creates a minimal channel service for testing.
 // It bypasses the normal initialization to avoid requiring a ScheduledExecutor.
 func newTestChannelService(client *ent.Client) *biz.ChannelService {
+	systemService := biz.NewSystemService(biz.SystemServiceParams{
+		CacheConfig: xcache.Config{Mode: xcache.ModeMemory},
+		Ent:         client,
+	})
+
 	return biz.NewChannelService(biz.ChannelServiceParams{
-		Executor: executors.NewPoolScheduleExecutor(),
-		Ent:      client,
+		Executor:      executors.NewPoolScheduleExecutor(),
+		Ent:           client,
+		SystemService: systemService,
 	})
 }
 

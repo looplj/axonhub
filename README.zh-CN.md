@@ -9,7 +9,6 @@
 [![测试状态](https://github.com/looplj/axonhub/actions/workflows/test.yml/badge.svg)](https://github.com/looplj/axonhub/actions/workflows/test.yml)
 [![Lint 状态](https://github.com/looplj/axonhub/actions/workflows/lint.yml/badge.svg)](https://github.com/looplj/axonhub/actions/workflows/lint.yml)
 [![Go 版本](https://img.shields.io/github/go-mod/go-version/looplj/axonhub?logo=go&logoColor=white)](https://golang.org/)
-[![许可证: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Docker Ready](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://docker.com)
 
 [English](README.md) | [中文](README.zh-CN.md)
@@ -153,7 +152,7 @@ AxonHub 可以在不改动现有 OpenAI 兼容客户端的前提下，为每一�
 | 格式 Format | 状态 Status | 兼容性 Compatibility | Modalities |
 |-------------|------------|---------------------|----------|
 | **OpenAI Chat Completions** | ✅ Done | 完全兼容 | Text, Image |
-| **OpenAI Responses** | ⚠️ Partial | 不支持 `previous_response_id` | Text |
+| **OpenAI Responses** | ⚠️ Partial | 不支持 `previous_response_id` | Text, Image |
 | **Anthropic API** | ✅ Done | 完全支持 | Text |
 | **Gemini** | ✅ Done | 完全支持 | Text, Image |
 | **AI SDK** | ⚠️ Partial | 部分支持 | Text |
@@ -350,9 +349,11 @@ AxonHub 提供灵活的模型管理系统，支持通过模型关联将抽象模
 
 ### 5. Claude Code/Codex 使用 | Claude Code Integration
 
-关于如何在 Claude Code 与 Claude Codex 中配置与 AxonHub 的集成、排查常见问题以及结合模型配置文件工作流的最佳实践，请参阅专门的 [Claude Code & Codex 集成指南](docs/zh/guides/claude-code-integration.md)。
+关于如何在 Claude Code 与 Claude Codex 中配置与 AxonHub 的集成、排查常见问题以及结合模型配置文件工作流的最佳实践，请参阅专门的集成指南：
+- [Claude Code 集成指南](docs/zh/guides/claude-code-integration.md)
+- [Codex 集成指南](docs/zh/guides/codex-integration.md)
 
-该文档提供了环境变量示例、Codex 配置模板、模型配置文件说明以及工作流示例，帮助您快速完成接入。
+这些文档提供了环境变量示例、Codex 配置模板、模型配置文件说明以及工作流示例，帮助您快速完成接入。
 
 ---
 
@@ -382,8 +383,7 @@ AxonHub 提供灵活的模型管理系统，支持通过模型关联将抽象模
 
 ## 📄 许可证 | License
 
-本项目采用 MIT 许可证开源。详见 [LICENSE](LICENSE) 文件。
-
+本项目采用多种许可证授权（Apache-2.0 和 LGPL-3.0）。详见 [LICENSE](LICENSE) 文件了解详细的项目授权说明与条款。
 ---
 
 <div align="center">

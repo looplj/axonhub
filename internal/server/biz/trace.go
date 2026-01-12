@@ -13,13 +13,13 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/trace"
-	"github.com/looplj/axonhub/internal/llm"
-	"github.com/looplj/axonhub/internal/llm/transformer"
-	"github.com/looplj/axonhub/internal/llm/transformer/anthropic"
-	"github.com/looplj/axonhub/internal/llm/transformer/gemini"
-	"github.com/looplj/axonhub/internal/llm/transformer/openai"
-	"github.com/looplj/axonhub/internal/llm/transformer/openai/responses"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/anthropic"
+	"github.com/looplj/axonhub/llm/transformer/gemini"
+	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
 type TraceServiceParams struct {
@@ -222,8 +222,8 @@ type Span struct {
 	// "tool_use": llm responsed tool use.
 	// "tool_result": result of tool running.
 	Type      string     `json:"type"`
-	StartTime time.Time  `json:"startTime,omitempty"`
-	EndTime   time.Time  `json:"endTime,omitempty"`
+	StartTime time.Time  `json:"startTime"`
+	EndTime   time.Time  `json:"endTime"`
 	Value     *SpanValue `json:"value,omitempty"`
 }
 
@@ -691,17 +691,17 @@ func getOutboundTransformer(format llm.APIFormat) (transformer.Outbound, error) 
 	switch format {
 	case llm.APIFormatOpenAIChatCompletion:
 		config := &openai.Config{
-			Type:    openai.PlatformOpenAI,
-			BaseURL: "https://api.openai.com/v1",
-			APIKey:  "dummy",
+			PlatformType: openai.PlatformOpenAI,
+			BaseURL:      "https://api.openai.com/v1",
+			APIKey:       "dummy",
 		}
 
 		return openai.NewOutboundTransformerWithConfig(config)
 	case llm.APIFormatOpenAIResponse:
 		config := &openai.Config{
-			Type:    openai.PlatformOpenAI,
-			BaseURL: "https://api.openai.com/v1",
-			APIKey:  "dummy",
+			PlatformType: openai.PlatformOpenAI,
+			BaseURL:      "https://api.openai.com/v1",
+			APIKey:       "dummy",
 		}
 
 		return responses.NewOutboundTransformer(config.BaseURL, config.APIKey)
@@ -762,10 +762,7 @@ func deduplicateSpansWithParent(current, parent []Span) []Span {
 		return current
 	}
 
-	capacity := len(current) - len(parent)
-	if capacity < 0 {
-		capacity = 0
-	}
+	capacity := max(len(current)-len(parent), 0)
 
 	result := make([]Span, 0, capacity)
 

@@ -11,14 +11,14 @@ import (
 	"github.com/tidwall/sjson"
 
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/llm"
-	"github.com/looplj/axonhub/internal/llm/pipeline"
-	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/log"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
-	"github.com/looplj/axonhub/internal/pkg/streams"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer"
 )
 
 // OutboundPersistentStream wraps a stream and tracks all responses for final saving to database.
@@ -347,28 +347,10 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	// Use the pre-resolved ActualModel from the candidate
 	llmRequest.Model = candidate.ActualModel
 
-	channelRequest, err := p.wrapped.TransformRequest(ctx, llmRequest)
-	if err != nil {
-		return nil, err
-	}
+	// Apply channel transform options to create a new request
+	llmRequest = applyTransformOptions(llmRequest, p.state.CurrentChannel.Settings)
 
-	// Update request with channel ID after channel selection
-	if p.state.Request != nil && p.state.Request.ChannelID == 0 {
-		ctx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
-		defer cancel()
-
-		err := p.state.RequestService.UpdateRequestChannelID(
-			ctx,
-			p.state.Request.ID,
-			p.state.CurrentChannel.ID,
-		)
-		if err != nil {
-			log.Warn(ctx, "Failed to update request channel ID", log.Cause(err))
-			// Continue processing even if channel ID update fails
-		}
-	}
-
-	return channelRequest, nil
+	return p.wrapped.TransformRequest(ctx, llmRequest)
 }
 
 func (p *PersistentOutboundTransformer) TransformResponse(ctx context.Context, response *httpclient.Response) (*llm.Response, error) {

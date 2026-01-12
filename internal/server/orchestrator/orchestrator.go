@@ -5,15 +5,14 @@ import (
 	"time"
 
 	"github.com/looplj/axonhub/internal/contexts"
-	"github.com/looplj/axonhub/internal/llm/pipeline"
-	"github.com/looplj/axonhub/internal/llm/pipeline/stream"
-	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/log"
-	"github.com/looplj/axonhub/internal/objects"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
-	"github.com/looplj/axonhub/internal/pkg/streams"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/pipeline/stream"
+	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer"
 )
 
 func NewChatCompletionOrchestrator(
@@ -24,6 +23,7 @@ func NewChatCompletionOrchestrator(
 	inbound transformer.Inbound,
 	systemService *biz.SystemService,
 	usageLogService *biz.UsageLogService,
+	promptService *biz.PromptService,
 ) *ChatCompletionOrchestrator {
 	connectionTracker := NewDefaultConnectionTracker(256)
 
@@ -35,8 +35,8 @@ func NewChatCompletionOrchestrator(
 		NewConnectionAwareStrategy(channelService, connectionTracker), // Priority 4: Connection count
 	}
 
-	adaptiveLoadBalancer := NewLoadBalancer(systemService, strategies...)
-	weightedLoadBalancer := NewLoadBalancer(systemService, NewWeightStrategy())
+	adaptiveLoadBalancer := NewLoadBalancer(systemService, channelService, strategies...)
+	weightedLoadBalancer := NewLoadBalancer(systemService, channelService, NewWeightStrategy())
 
 	return &ChatCompletionOrchestrator{
 		Inbound:         inbound,
@@ -44,6 +44,7 @@ func NewChatCompletionOrchestrator(
 		ChannelService:  channelService,
 		SystemService:   systemService,
 		UsageLogService: usageLogService,
+		PromptProvider:  promptService,
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
@@ -64,6 +65,7 @@ type ChatCompletionOrchestrator struct {
 	ChannelService  *biz.ChannelService
 	SystemService   *biz.SystemService
 	UsageLogService *biz.UsageLogService
+	PromptProvider  PromptProvider
 	Middlewares     []pipeline.Middleware
 	PipelineFactory *pipeline.Factory
 	ModelMapper     *ModelMapper
@@ -82,7 +84,7 @@ type ChatCompletionOrchestrator struct {
 
 	// proxy is the proxy configuration for testing
 	// If set, it will override the channel's default proxy configuration
-	proxy *objects.ProxyConfig
+	proxy *httpclient.ProxyConfig
 }
 
 func (processor *ChatCompletionOrchestrator) WithChannelSelector(selector CandidateSelector) *ChatCompletionOrchestrator {
@@ -99,7 +101,7 @@ func (processor *ChatCompletionOrchestrator) WithAllowedChannels(allowedChannelI
 	return &c
 }
 
-func (processor *ChatCompletionOrchestrator) WithProxy(proxy *objects.ProxyConfig) *ChatCompletionOrchestrator {
+func (processor *ChatCompletionOrchestrator) WithProxy(proxy *httpclient.ProxyConfig) *ChatCompletionOrchestrator {
 	c := *processor
 	c.proxy = proxy
 
@@ -113,7 +115,6 @@ type ChatCompletionResult struct {
 
 func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, request *httpclient.Request) (ChatCompletionResult, error) {
 	apiKey, _ := contexts.GetAPIKey(ctx)
-	user, _ := contexts.GetUser(ctx)
 
 	// Get retry policy from system settings
 	retryPolicy := processor.SystemService.RetryPolicyOrDefault(ctx)
@@ -139,10 +140,10 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 
 	state := &PersistenceState{
 		APIKey:              apiKey,
-		User:                user,
 		RequestService:      processor.RequestService,
 		UsageLogService:     processor.UsageLogService,
 		ChannelService:      processor.ChannelService,
+		PromptProvider:      processor.PromptProvider,
 		RetryPolicyProvider: processor.SystemService,
 		CandidateSelector:   processor.channelSelector,
 		LoadBalancer:        loadBalancer,
@@ -172,8 +173,9 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	// Add inbound middlewares (executed after inbound.TransformRequest)
 	middlewares = append(middlewares,
 		checkApiKeyModelAccess(inbound),
-		applyApiKeyModelMapping(inbound),
+		applyModelMapping(inbound),
 		selectCandidates(inbound),
+		injectPrompts(inbound),
 		persistRequest(inbound),
 	)
 

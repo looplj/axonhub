@@ -26,7 +26,10 @@ func (Model) Mixin() []ent.Mixin {
 func (Model) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("name", "deleted_at").
-			StorageKey("Models_by_name").
+			StorageKey("models_by_name").
+			Unique(),
+		index.Fields("model_id", "deleted_at").
+			StorageKey("models_by_model_id").
 			Unique(),
 	}
 }
@@ -65,17 +68,16 @@ func (Model) Annotations() []schema.Annotation {
 	}
 }
 
-// Policy 定义 Model 的权限策略.
 func (Model) Policy() ent.Policy {
 	return scopes.Policy{
 		Query: scopes.QueryPolicy{
 			scopes.APIKeyScopeQueryRule(scopes.ScopeReadChannels),
-			scopes.OwnerRule(), // owner 用户可以访问所有渠道
-			scopes.UserReadScopeRule(scopes.ScopeReadChannels), // 需要 Models 读取权限
+			scopes.OwnerRule(),
+			scopes.UserReadScopeRule(scopes.ScopeReadChannels),
 		},
 		Mutation: scopes.MutationPolicy{
-			scopes.OwnerRule(), // owner 用户可以修改所有渠道
-			scopes.UserWriteScopeRule(scopes.ScopeWriteChannels), // 需要 Models 写入权限
+			scopes.OwnerRule(),
+			scopes.UserWriteScopeRule(scopes.ScopeWriteChannels),
 		},
 	}
 }

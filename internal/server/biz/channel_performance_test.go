@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xcache"
 )
 
 func TestMetricsRecord_CalculateSuccessRate(t *testing.T) {
@@ -299,6 +300,7 @@ func TestChannelService_RecordMetrics(t *testing.T) {
 		AbstractService: &AbstractService{
 			db: client,
 		},
+		channelErrorCounts: make(map[int]map[int]int),
 	}
 
 	// Create a test channel
@@ -607,7 +609,7 @@ func TestChannelMetrics_ConsecutiveFailures(t *testing.T) {
 	}
 
 	// Record 3 consecutive failures
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		perf := &PerformanceRecord{
 			ChannelID:       1,
 			StartTime:       now.Add(-100 * time.Millisecond),
@@ -667,7 +669,7 @@ func TestChannelMetrics_GetOrCreateTimeSlot(t *testing.T) {
 		windowSize := int64(10)
 
 		// Fill the window
-		for i := int64(0); i < windowSize; i++ {
+		for i := range windowSize {
 			ts := now.Add(-time.Duration(i) * time.Second).Unix()
 			cm.getOrCreateTimeSlot(ts, now.Add(-time.Duration(i)*time.Second), windowSize)
 		}
@@ -782,9 +784,25 @@ func TestChannelService_RecordPerformance_UnrecoverableError(t *testing.T) {
 }
 
 func TestChannelService_RecordPerformance(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
 	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
 	svc := &ChannelService{
+		AbstractService: &AbstractService{
+			db: client,
+		},
+		SystemService: &SystemService{
+			AbstractService: &AbstractService{
+				db: client,
+			},
+			Cache: xcache.NewFromConfig[ent.System](xcache.Config{Mode: xcache.ModeMemory}),
+		},
 		channelPerfMetrics: make(map[int]*channelMetrics),
+		channelErrorCounts: make(map[int]map[int]int),
 		perfWindowSeconds:  600,
 	}
 
@@ -916,6 +934,14 @@ func TestChannelService_RecordPerformance(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// IncrementChannelSelection is called at selection time in production.
+			// It increments aggregatedMetrics.RequestCount before the request completes.
+			// RecordPerformance only increments slot.RequestCount (for sliding window),
+			// not aggregatedMetrics.RequestCount (to avoid double counting).
+			if tt.perf != nil && tt.perf.ChannelID > 0 {
+				svc.IncrementChannelSelection(tt.perf.ChannelID)
+			}
+
 			svc.RecordPerformance(ctx, tt.perf)
 
 			if tt.validateFunc != nil {

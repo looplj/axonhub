@@ -54,12 +54,33 @@ input CleanupOptionInput {
   cleanupDays: Int!
 }
 
+type AutoDisableChannelStatus {
+  status: Int!
+  times: Int!
+}
+
+type AutoDisableChannel {
+  enabled: Boolean!
+  statuses: [AutoDisableChannelStatus!]!
+}
+
 type RetryPolicy {
   maxChannelRetries: Int!
   maxSingleChannelRetries: Int!
   retryDelayMs: Int!
   loadBalancerStrategy: String!
   enabled: Boolean!
+  autoDisableChannel: AutoDisableChannel!
+}
+
+input AutoDisableChannelStatusInput {
+  status: Int!
+  times: Int!
+}
+
+input AutoDisableChannelInput {
+  enabled: Boolean
+  statuses: [AutoDisableChannelStatusInput!]
 }
 
 input UpdateRetryPolicyInput {
@@ -68,6 +89,7 @@ input UpdateRetryPolicyInput {
   retryDelayMs: Int
   loadBalancerStrategy: String
   enabled: Boolean
+  autoDisableChannel: AutoDisableChannelInput
 }
 
 type SystemModelSettings {
@@ -104,6 +126,31 @@ input CompleteSystemModelSettingOnboardingInput {
   dummy: String
 }
 
+enum ProbeFrequency {
+  ONE_MINUTE
+  FIVE_MINUTES
+  THIRTY_MINUTES
+  ONE_HOUR
+}
+
+type ChannelProbeSetting {
+  enabled: Boolean!
+  frequency: ProbeFrequency!
+}
+
+type SystemChannelSettings {
+  probe: ChannelProbeSetting!
+}
+
+input UpdateChannelProbeSettingInput {
+  enabled: Boolean!
+  frequency: ProbeFrequency!
+}
+
+input UpdateSystemChannelSettingsInput {
+  probe: UpdateChannelProbeSettingInput
+}
+
 extend type Mutation {
   updateBrandSettings(input: UpdateBrandSettingsInput!): Boolean!
   updateStoragePolicy(input: UpdateStoragePolicyInput!): Boolean!
@@ -112,6 +159,7 @@ extend type Mutation {
   updateDefaultDataStorage(input: UpdateDefaultDataStorageInput!): Boolean!
   completeOnboarding(input: CompleteOnboardingInput!): Boolean!
   completeSystemModelSettingOnboarding(input: CompleteSystemModelSettingOnboardingInput!): Boolean!
+  updateSystemChannelSettings(input: UpdateSystemChannelSettingsInput!): Boolean!
 }
 
 type SystemVersion {
@@ -140,4 +188,5 @@ extend type Query {
   onboardingInfo: OnboardingInfo
   systemVersion: SystemVersion!
   checkForUpdate: VersionCheck!
+  systemChannelSettings: SystemChannelSettings!
 }

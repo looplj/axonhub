@@ -12,11 +12,11 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/privacy"
-	"github.com/looplj/axonhub/internal/llm/pipeline"
-	"github.com/looplj/axonhub/internal/llm/pipeline/stream"
-	"github.com/looplj/axonhub/internal/llm/transformer/openai"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/pipeline/stream"
+	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
 // TestChatCompletionOrchestrator_Process_Streaming tests the complete streaming flow.
@@ -71,6 +71,7 @@ func TestChatCompletionOrchestrator_Process_Streaming(t *testing.T) {
 		Inbound:           openai.NewInboundTransformer(),
 		RequestService:    requestService,
 		ChannelService:    channelService,
+		PromptProvider:    &stubPromptProvider{},
 		SystemService:     systemService,
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),
@@ -170,6 +171,7 @@ func TestChatCompletionOrchestrator_Process_ConnectionTracking(t *testing.T) {
 		Inbound:           openai.NewInboundTransformer(),
 		RequestService:    requestService,
 		ChannelService:    channelService,
+		PromptProvider:    &stubPromptProvider{},
 		SystemService:     systemService,
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),

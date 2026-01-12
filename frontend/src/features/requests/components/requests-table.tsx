@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ColumnFiltersState,
   RowData,
@@ -85,8 +85,24 @@ export function RequestsTable({
   const requestsColumns = useRequestsColumns();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
+    const stored = localStorage.getItem('requests-table-column-visibility');
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch {
+        return {};
+      }
+    }
+    return {};
+  });
+
   const [rowSelection, setRowSelection] = useState({});
+
+  useEffect(() => {
+    localStorage.setItem('requests-table-column-visibility', JSON.stringify(columnVisibility));
+  }, [columnVisibility]);
 
   const displayedData = useAnimatedList(data, autoRefresh);
 
@@ -179,7 +195,8 @@ export function RequestsTable({
         onAutoRefreshChange={onAutoRefreshChange}
       />
       <div className='shadow-soft relative mt-4 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
-        <Table data-testid='requests-table' className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
+        <div className='min-w-max'>
+          <Table data-testid='requests-table' className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className='group/row border-0'>
@@ -240,6 +257,7 @@ export function RequestsTable({
           </TableBody>
         </Table>
       </div>
+    </div>
       <div className='mt-4 flex-shrink-0'>
         <ServerSidePagination
           pageInfo={pageInfo}

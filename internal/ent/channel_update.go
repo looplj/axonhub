@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
+	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -311,6 +312,21 @@ func (_u *ChannelUpdate) SetChannelPerformance(v *ChannelPerformance) *ChannelUp
 	return _u.SetChannelPerformanceID(v.ID)
 }
 
+// AddChannelProbeIDs adds the "channel_probes" edge to the ChannelProbe entity by IDs.
+func (_u *ChannelUpdate) AddChannelProbeIDs(ids ...int) *ChannelUpdate {
+	_u.mutation.AddChannelProbeIDs(ids...)
+	return _u
+}
+
+// AddChannelProbes adds the "channel_probes" edges to the ChannelProbe entity.
+func (_u *ChannelUpdate) AddChannelProbes(v ...*ChannelProbe) *ChannelUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddChannelProbeIDs(ids...)
+}
+
 // Mutation returns the ChannelMutation object of the builder.
 func (_u *ChannelUpdate) Mutation() *ChannelMutation {
 	return _u.mutation
@@ -383,6 +399,27 @@ func (_u *ChannelUpdate) RemoveUsageLogs(v ...*UsageLog) *ChannelUpdate {
 func (_u *ChannelUpdate) ClearChannelPerformance() *ChannelUpdate {
 	_u.mutation.ClearChannelPerformance()
 	return _u
+}
+
+// ClearChannelProbes clears all "channel_probes" edges to the ChannelProbe entity.
+func (_u *ChannelUpdate) ClearChannelProbes() *ChannelUpdate {
+	_u.mutation.ClearChannelProbes()
+	return _u
+}
+
+// RemoveChannelProbeIDs removes the "channel_probes" edge to ChannelProbe entities by IDs.
+func (_u *ChannelUpdate) RemoveChannelProbeIDs(ids ...int) *ChannelUpdate {
+	_u.mutation.RemoveChannelProbeIDs(ids...)
+	return _u
+}
+
+// RemoveChannelProbes removes "channel_probes" edges to ChannelProbe entities.
+func (_u *ChannelUpdate) RemoveChannelProbes(v ...*ChannelProbe) *ChannelUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveChannelProbeIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -692,6 +729,51 @@ func (_u *ChannelUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.ChannelProbesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ChannelProbesTable,
+			Columns: []string{channel.ChannelProbesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channelprobe.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedChannelProbesIDs(); len(nodes) > 0 && !_u.mutation.ChannelProbesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ChannelProbesTable,
+			Columns: []string{channel.ChannelProbesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channelprobe.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ChannelProbesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ChannelProbesTable,
+			Columns: []string{channel.ChannelProbesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channelprobe.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -990,6 +1072,21 @@ func (_u *ChannelUpdateOne) SetChannelPerformance(v *ChannelPerformance) *Channe
 	return _u.SetChannelPerformanceID(v.ID)
 }
 
+// AddChannelProbeIDs adds the "channel_probes" edge to the ChannelProbe entity by IDs.
+func (_u *ChannelUpdateOne) AddChannelProbeIDs(ids ...int) *ChannelUpdateOne {
+	_u.mutation.AddChannelProbeIDs(ids...)
+	return _u
+}
+
+// AddChannelProbes adds the "channel_probes" edges to the ChannelProbe entity.
+func (_u *ChannelUpdateOne) AddChannelProbes(v ...*ChannelProbe) *ChannelUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddChannelProbeIDs(ids...)
+}
+
 // Mutation returns the ChannelMutation object of the builder.
 func (_u *ChannelUpdateOne) Mutation() *ChannelMutation {
 	return _u.mutation
@@ -1062,6 +1159,27 @@ func (_u *ChannelUpdateOne) RemoveUsageLogs(v ...*UsageLog) *ChannelUpdateOne {
 func (_u *ChannelUpdateOne) ClearChannelPerformance() *ChannelUpdateOne {
 	_u.mutation.ClearChannelPerformance()
 	return _u
+}
+
+// ClearChannelProbes clears all "channel_probes" edges to the ChannelProbe entity.
+func (_u *ChannelUpdateOne) ClearChannelProbes() *ChannelUpdateOne {
+	_u.mutation.ClearChannelProbes()
+	return _u
+}
+
+// RemoveChannelProbeIDs removes the "channel_probes" edge to ChannelProbe entities by IDs.
+func (_u *ChannelUpdateOne) RemoveChannelProbeIDs(ids ...int) *ChannelUpdateOne {
+	_u.mutation.RemoveChannelProbeIDs(ids...)
+	return _u
+}
+
+// RemoveChannelProbes removes "channel_probes" edges to ChannelProbe entities.
+func (_u *ChannelUpdateOne) RemoveChannelProbes(v ...*ChannelProbe) *ChannelUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveChannelProbeIDs(ids...)
 }
 
 // Where appends a list predicates to the ChannelUpdate builder.
@@ -1394,6 +1512,51 @@ func (_u *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err er
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(channelperformance.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ChannelProbesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ChannelProbesTable,
+			Columns: []string{channel.ChannelProbesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channelprobe.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedChannelProbesIDs(); len(nodes) > 0 && !_u.mutation.ChannelProbesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ChannelProbesTable,
+			Columns: []string{channel.ChannelProbesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channelprobe.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ChannelProbesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ChannelProbesTable,
+			Columns: []string{channel.ChannelProbesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channelprobe.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

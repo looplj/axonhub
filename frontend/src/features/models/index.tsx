@@ -4,6 +4,7 @@ import { IconPlus, IconSettings, IconAlertCircle } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
@@ -18,6 +19,7 @@ import { useQueryModels } from './data/models';
 
 function ModelsContent() {
   const { t } = useTranslation();
+  const { modelPermissions } = usePermissions();
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
     defaultPageSize: 20,
     pageSizeStorageKey: 'models-table-page-size',
@@ -42,11 +44,15 @@ function ModelsContent() {
   const debouncedNameFilter = useDebounce(nameFilter, 300);
 
   const whereClause = (() => {
-    const where: Record<string, string | string[]> = {};
     if (debouncedNameFilter) {
-      where.nameContainsFold = debouncedNameFilter;
+      return {
+        or: [
+          { nameContainsFold: debouncedNameFilter },
+          { modelIDContainsFold: debouncedNameFilter },
+        ],
+      };
     }
-    return Object.keys(where).length > 0 ? where : undefined;
+    return undefined;
   })();
 
   const currentOrderBy = (() => {
@@ -99,7 +105,7 @@ function ModelsContent() {
     [resetCursor, setNameFilter]
   );
 
-  const columns = useMemo(() => createColumns(t), [t]);
+  const columns = useMemo(() => createColumns(t, modelPermissions.canWrite), [t, modelPermissions.canWrite]);
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
@@ -117,6 +123,7 @@ function ModelsContent() {
         onPreviousPage={handlePreviousPage}
         onPageSizeChange={handlePageSizeChange}
         onNameFilterChange={handleNameFilterChange}
+        canWrite={modelPermissions.canWrite}
       />
     </div>
   );
@@ -174,16 +181,12 @@ function ActionButtons() {
   return (
     <div className='flex gap-2'>
       <PermissionGuard requiredScope='write_channels'>
-        <DetectUnassociatedButton />
-      </PermissionGuard>
-      <PermissionGuard requiredScope='write_channels'>
-        <SettingsButton />
-      </PermissionGuard>
-      <PermissionGuard requiredScope='write_channels'>
-        <BulkAddButton />
-      </PermissionGuard>
-      <PermissionGuard requiredScope='write_channels'>
-        <CreateButton />
+        <>
+          <DetectUnassociatedButton />
+          <SettingsButton />
+          <BulkAddButton />
+          <CreateButton />
+        </>
       </PermissionGuard>
     </div>
   );

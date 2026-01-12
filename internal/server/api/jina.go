@@ -4,10 +4,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 
-	"github.com/looplj/axonhub/internal/llm/transformer/jina"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/jina"
 )
 
 type JinaHandlersParams struct {
@@ -18,6 +18,7 @@ type JinaHandlersParams struct {
 	RequestService  *biz.RequestService
 	SystemService   *biz.SystemService
 	UsageLogService *biz.UsageLogService
+	PromptService   *biz.PromptService
 	HttpClient      *httpclient.HttpClient
 }
 
@@ -32,6 +33,7 @@ func NewJinaHandlers(params JinaHandlersParams) *JinaHandlers {
 				jina.NewRerankInboundTransformer(),
 				params.SystemService,
 				params.UsageLogService,
+				params.PromptService,
 			),
 		},
 		EmbeddingHandlers: &ChatCompletionHandlers{
@@ -43,6 +45,7 @@ func NewJinaHandlers(params JinaHandlersParams) *JinaHandlers {
 				jina.NewEmbeddingInboundTransformer(),
 				params.SystemService,
 				params.UsageLogService,
+				params.PromptService,
 			),
 		},
 	}

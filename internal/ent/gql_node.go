@@ -18,9 +18,11 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
+	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
+	"github.com/looplj/axonhub/internal/ent/prompt"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
@@ -60,6 +62,11 @@ var channelperformanceImplementors = []string{"ChannelPerformance", "Node"}
 // IsNode implements the Node interface check for GQLGen.
 func (*ChannelPerformance) IsNode() {}
 
+var channelprobeImplementors = []string{"ChannelProbe", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*ChannelProbe) IsNode() {}
+
 var datastorageImplementors = []string{"DataStorage", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
@@ -74,6 +81,11 @@ var projectImplementors = []string{"Project", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
 func (*Project) IsNode() {}
+
+var promptImplementors = []string{"Prompt", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*Prompt) IsNode() {}
 
 var requestImplementors = []string{"Request", "Node"}
 
@@ -219,6 +231,15 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 			}
 		}
 		return query.Only(ctx)
+	case channelprobe.Table:
+		query := c.ChannelProbe.Query().
+			Where(channelprobe.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, channelprobeImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
 	case datastorage.Table:
 		query := c.DataStorage.Query().
 			Where(datastorage.ID(id))
@@ -242,6 +263,15 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 			Where(project.ID(id))
 		if fc := graphql.GetFieldContext(ctx); fc != nil {
 			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, projectImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case prompt.Table:
+		query := c.Prompt.Query().
+			Where(prompt.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, promptImplementors...); err != nil {
 				return nil, err
 			}
 		}
@@ -473,6 +503,22 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 				*noder = node
 			}
 		}
+	case channelprobe.Table:
+		query := c.ChannelProbe.Query().
+			Where(channelprobe.IDIn(ids...))
+		query, err := query.CollectFields(ctx, channelprobeImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
 	case datastorage.Table:
 		query := c.DataStorage.Query().
 			Where(datastorage.IDIn(ids...))
@@ -509,6 +555,22 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 		query := c.Project.Query().
 			Where(project.IDIn(ids...))
 		query, err := query.CollectFields(ctx, projectImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case prompt.Table:
+		query := c.Prompt.Query().
+			Where(prompt.IDIn(ids...))
+		query, err := query.CollectFields(ctx, promptImplementors...)
 		if err != nil {
 			return nil, err
 		}

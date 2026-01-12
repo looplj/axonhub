@@ -5,8 +5,8 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
-	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/llm"
 )
 
 // UsageLogService handles usage log operations.

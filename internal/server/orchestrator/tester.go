@@ -10,14 +10,14 @@ import (
 	"github.com/samber/lo"
 	"github.com/tidwall/gjson"
 
-	"github.com/looplj/axonhub/internal/llm"
-	"github.com/looplj/axonhub/internal/llm/pipeline"
-	"github.com/looplj/axonhub/internal/llm/pipeline/stream"
-	"github.com/looplj/axonhub/internal/llm/transformer/openai"
 	"github.com/looplj/axonhub/internal/objects"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/pipeline/stream"
+	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
 // TestChannelOrchestrator handles channel testing functionality.
@@ -66,7 +66,7 @@ func (processor *TestChannelOrchestrator) TestChannel(
 	ctx context.Context,
 	channelID objects.GUID,
 	modelID *string,
-	proxy *objects.ProxyConfig,
+	proxy *httpclient.ProxyConfig,
 ) (*TestChannelResult, error) {
 	inbound := openai.NewInboundTransformer()
 	// Create ChatCompletionOrchestrator for this test request
@@ -74,6 +74,7 @@ func (processor *TestChannelOrchestrator) TestChannel(
 		channelSelector: NewSpecifiedChannelSelector(processor.channelService, channelID),
 		RequestService:  processor.requestService,
 		ChannelService:  processor.channelService,
+		PromptProvider:  &stubPromptProvider{},
 		PipelineFactory: pipeline.NewFactory(processor.httpClient),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
@@ -129,8 +130,8 @@ func (processor *TestChannelOrchestrator) TestChannel(
 				},
 			},
 		},
-		MaxTokens: lo.ToPtr(int64(256)),
-		Stream:    lo.ToPtr(false),
+		MaxCompletionTokens: lo.ToPtr(int64(256)),
+		Stream:              lo.ToPtr(false),
 	}
 
 	body, err := json.Marshal(llmRequest)

@@ -1,18 +1,19 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-contrib/sse"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 
-	"github.com/looplj/axonhub/internal/llm/transformer/gemini"
 	"github.com/looplj/axonhub/internal/log"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
-	"github.com/looplj/axonhub/internal/pkg/streams"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/gemini"
 )
 
 type GeminiHandlersParams struct {
@@ -23,6 +24,7 @@ type GeminiHandlersParams struct {
 	RequestService  *biz.RequestService
 	SystemService   *biz.SystemService
 	UsageLogService *biz.UsageLogService
+	PromptService   *biz.PromptService
 	HttpClient      *httpclient.HttpClient
 }
 
@@ -43,6 +45,7 @@ func NewGeminiHandlers(params GeminiHandlersParams) *GeminiHandlers {
 				gemini.NewInboundTransformer(),
 				params.SystemService,
 				params.UsageLogService,
+				params.PromptService,
 			),
 		),
 		ChannelService: params.ChannelService,
@@ -166,11 +169,12 @@ func prependSpace(b []byte) []byte {
 
 // GeminiModel represents a model in the list models response.
 type GeminiModel struct {
-	Name        string `json:"name"`
-	BaseModelID string `json:"baseModelId"`
-	Version     string `json:"version"`
-	DisplayName string `json:"displayName"`
-	Description string `json:"description"`
+	Name                       string   `json:"name"`
+	BaseModelID                string   `json:"baseModelId"`
+	Version                    string   `json:"version"`
+	DisplayName                string   `json:"displayName"`
+	Description                string   `json:"description"`
+	SupportedGenerationMethods []string `json:"supportedGenerationMethods"`
 }
 
 // ListModels returns all available Gemini models.
@@ -179,25 +183,32 @@ type GeminiModel struct {
 func (handlers *GeminiHandlers) ListModels(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	models := handlers.ModelService.ListEnabledModels(ctx)
-	if models == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list models"})
+	models, err := handlers.ModelService.ListEnabledModels(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gemini.GeminiError{
+			Error: gemini.ErrorDetail{
+				Message: err.Error(),
+				Code:    http.StatusInternalServerError,
+				Status:  "internal_server_error",
+			},
+		})
+
 		return
 	}
 
 	geminiModels := make([]GeminiModel, 0, len(models))
-	for _, model := range models {
+	for i, model := range models {
 		geminiModels = append(geminiModels, GeminiModel{
-			Name:        "models/" + model.ID,
-			BaseModelID: model.ID,
-			Version:     "001",
-			DisplayName: model.DisplayName,
-			Description: "",
+			Name:                       "models/" + model.ID,
+			BaseModelID:                model.ID,
+			Version:                    fmt.Sprintf("%s-%d", model.ID, i),
+			DisplayName:                model.DisplayName,
+			Description:                model.DisplayName,
+			SupportedGenerationMethods: []string{"generateContent", "streamGenerateContent"},
 		})
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"object": "list",
-		"data":   geminiModels,
+		"models": geminiModels,
 	})
 }

@@ -1,19 +1,11 @@
 package objects
 
-type ProxyType string
+import "github.com/looplj/axonhub/llm/httpclient"
 
-const (
-	ProxyTypeDisabled    ProxyType = "disabled"    // Do not use proxy
-	ProxyTypeEnvironment ProxyType = "environment" // Use environment variables (HTTP_PROXY, etc.)
-	ProxyTypeURL         ProxyType = "url"         // Use configured URL
+type (
+	ProxyType   = httpclient.ProxyType
+	ProxyConfig = httpclient.ProxyConfig
 )
-
-type ProxyConfig struct {
-	Type     ProxyType `json:"type"`          // disabled, environment, or url
-	URL      string    `json:"url,omitempty"` // e.g., "http://proxy.example.com:8080"
-	Username string    `json:"username,omitempty"`
-	Password string    `json:"password,omitempty"`
-}
 
 type ModelMapping struct {
 	// From is the model name in the request.
@@ -26,6 +18,14 @@ type ModelMapping struct {
 type HeaderEntry struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
+}
+
+type TransformOptions struct {
+	// ForceArrayInstructions forces the channel to accept array format for instructions.
+	ForceArrayInstructions bool `json:"forceArrayInstructions"`
+
+	// ForceArrayInputs forces the channel to accept array format for inputs.
+	ForceArrayInputs bool `json:"forceArrayInputs"`
 }
 
 type ChannelSettings struct {
@@ -52,6 +52,10 @@ type ChannelSettings struct {
 	// When enabled, only the mapped model names (from field) will be exposed, not the actual model names (to field).
 	HideOriginalModels bool `json:"hideOriginalModels"`
 
+	// HideMappedModels hides the mapped models from the model list when model mappings are configured.
+	// When enabled, only the original model names (from field) will be exposed, not the mapped model names (to field).
+	HideMappedModels bool `json:"hideMappedModels"`
+
 	// OverrideParameters sets the channel override the request body.
 	// A json string.
 	// e.g. {"max_tokens": 100}, {"temperature": 0.7}
@@ -62,7 +66,10 @@ type ChannelSettings struct {
 	OverrideHeaders []HeaderEntry `json:"overrideHeaders"`
 
 	// Proxy configuration for the channel. If not set, defaults to environment proxy type.
-	Proxy *ProxyConfig `json:"proxy,omitempty"`
+	Proxy *httpclient.ProxyConfig `json:"proxy,omitempty"`
+
+	// TransformOptions configures the transform options for the channel.
+	TransformOptions TransformOptions `json:"transformOptions"`
 }
 
 type ChannelCredentials struct {
@@ -102,14 +109,14 @@ type GCPCredential struct {
 
 type GCPCredentialsJSON struct {
 	Type                    string `json:"type" validate:"required"`
-	ProjectID               string `json:"project_id" validate:"required"`
-	PrivateKeyID            string `json:"private_key_id" validate:"required"`
-	PrivateKey              string `json:"private_key" validate:"required"`
-	ClientEmail             string `json:"client_email" validate:"required"`
-	ClientID                string `json:"client_id" validate:"required"`
-	AuthURI                 string `json:"auth_uri" validate:"required"`
-	TokenURI                string `json:"token_uri" validate:"required"`
-	AuthProviderX509CertURL string `json:"auth_provider_x509_cert_url" validate:"required"`
-	ClientX509CertURL       string `json:"client_x509_cert_url" validate:"required"`
-	UniverseDomain          string `json:"universe_domain" validate:"required"`
+	ProjectID               string `json:"projectID" validate:"required"`
+	PrivateKeyID            string `json:"privateKeyID" validate:"required"`
+	PrivateKey              string `json:"privateKey" validate:"required"`
+	ClientEmail             string `json:"clientEmail" validate:"required"`
+	ClientID                string `json:"clientID" validate:"required"`
+	AuthURI                 string `json:"authURI" validate:"required"`
+	TokenURI                string `json:"tokenURI" validate:"required"`
+	AuthProviderX509CertURL string `json:"authProviderX509CertURL" validate:"required"`
+	ClientX509CertURL       string `json:"clientX509CertURL" validate:"required"`
+	UniverseDomain          string `json:"universeDomain" validate:"required"`
 }

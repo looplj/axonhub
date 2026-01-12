@@ -35,13 +35,18 @@ func (c *channelBasedStrategy) ScoreWithDebug(ctx context.Context, channel *biz.
 	return score, StrategyScore{
 		StrategyName: c.name,
 		Score:        score,
-		Details:      map[string]interface{}{"channel_id": channel.ID},
+		Details:      map[string]any{"channel_id": channel.ID},
 	}
 }
 
 func (c *channelBasedStrategy) Name() string {
 	return c.name
 }
+
+// noopSelectionTracker is a no-op implementation of ChannelSelectionTracker for tests.
+type noopSelectionTracker struct{}
+
+func (n *noopSelectionTracker) IncrementChannelSelection(channelID int) {}
 
 // newTestLoadBalancer creates a LoadBalancer with mock system service for testing.
 func newTestLoadBalancer(t *testing.T, retryPolicy *biz.RetryPolicy, strategies ...LoadBalanceStrategy) *LoadBalancer {
@@ -50,12 +55,12 @@ func newTestLoadBalancer(t *testing.T, retryPolicy *biz.RetryPolicy, strategies 
 	if retryPolicy == nil {
 		// Pass nil to mockSystemService so it uses its own default (Enabled: false)
 		mockSvc := &mockSystemService{retryPolicy: nil}
-		return NewLoadBalancer(mockSvc, strategies...)
+		return NewLoadBalancer(mockSvc, &noopSelectionTracker{}, strategies...)
 	}
 	// Use the provided retry policy
 	mockSvc := &mockSystemService{retryPolicy: retryPolicy}
 
-	return NewLoadBalancer(mockSvc, strategies...)
+	return NewLoadBalancer(mockSvc, &noopSelectionTracker{}, strategies...)
 }
 
 func TestLoadBalancer_Sort_EmptyChannels(t *testing.T) {
@@ -278,7 +283,7 @@ func TestLoadBalancer_ErrorAware_ChannelWithErrorsRankedLower(t *testing.T) {
 	channelService := newTestChannelService(client)
 
 	// Record consecutive failures for ch2
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		perf := &biz.PerformanceRecord{
 			ChannelID:        ch2.ID,
 			StartTime:        time.Now().Add(-time.Minute),
@@ -526,7 +531,7 @@ func TestLoadBalancer_Combined_ErrorAndTrace(t *testing.T) {
 	channelService := newTestChannelService(client)
 
 	// Record consecutive failures for ch2
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		perf := &biz.PerformanceRecord{
 			ChannelID:        ch2.ID,
 			StartTime:        time.Now().Add(-time.Minute),

@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/llm"
 )
 
 // TestDecoratorChain_FullStack tests the complete decorator chain: Default -> SelectedChannels -> LoadBalanced.
@@ -25,7 +25,7 @@ func TestDecoratorChain_FullStack(t *testing.T) {
 		NewWeightRoundRobinStrategy(channelService),
 		NewConnectionAwareStrategy(channelService, connectionTracker),
 	}
-	loadBalancer := NewLoadBalancer(systemService, strategies...)
+	loadBalancer := NewLoadBalancer(systemService, nil, strategies...)
 
 	// Build decorator chain: Default -> SelectedChannels -> LoadBalanced
 	modelService := newTestModelService(client)

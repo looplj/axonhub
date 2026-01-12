@@ -5,19 +5,18 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { graphqlRequest } from '@/gql/graphql';
-import { ROLES_QUERY, ALL_SCOPES_QUERY } from '@/gql/roles';
-import { X } from 'lucide-react';
+import { ROLES_QUERY } from '@/gql/roles';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
-import { filterGrantableRoles, filterGrantableScopes, canEditUserPermissions } from '@/lib/permission-utils';
+import { filterGrantableRoles, canEditUserPermissions } from '@/lib/permission-utils';
 import { passwordConfirmationSchema } from '@/lib/validation';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { ScopesSelect } from '@/components/scopes-select';
 import { User, CreateUserInput, UpdateUserInput } from '../data/schema';
 import { useCreateUser, useUpdateUser } from '../data/users';
 
@@ -62,12 +61,6 @@ interface Role {
   scopes?: string[];
 }
 
-interface ScopeInfo {
-  scope: string;
-  description?: string;
-  levels?: string[];
-}
-
 interface Props {
   currentRow?: User;
   open: boolean;
@@ -79,9 +72,9 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
   const currentUser = useAuthStore((state) => state.auth.user);
   const isEdit = !!currentRow;
   const [roles, setRoles] = useState<Role[]>([]);
-  const [allScopes, setAllScopes] = useState<ScopeInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [canEdit, setCanEdit] = useState(true);
+  const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null);
 
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
@@ -119,12 +112,8 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
   const loadRolesAndScopes = useCallback(async () => {
     setLoading(true);
     try {
-      const [rolesData, scopesData] = await Promise.all([
-        graphqlRequest(ROLES_QUERY, { first: 100, where: { level: 'system' } }),
-        graphqlRequest(ALL_SCOPES_QUERY, { level: 'system' }),
-      ]);
+      const rolesData = await graphqlRequest(ROLES_QUERY, { first: 100, where: { level: 'system' } });
 
-      // Type the responses properly
       const rolesResponse = rolesData as {
         roles: {
           edges: Array<{
@@ -138,39 +127,22 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
         };
       };
 
-      const scopesResponse = scopesData as {
-        allScopes: Array<{
-          scope: string;
-          description?: string;
-          levels?: string[];
-        }>;
-      };
-
       const allRoles = rolesResponse.roles.edges.map((edge) => edge.node);
-      const allScopesList = scopesResponse.allScopes;
 
-      // 过滤当前用户可以授予的角色和权限
       const grantableRoles = filterGrantableRoles(currentUser, allRoles);
-      const grantableScopes = filterGrantableScopes(
-        currentUser,
-        allScopesList.map((s) => s.scope)
-      );
-
       setRoles(grantableRoles);
-      setAllScopes(allScopesList.filter((s) => grantableScopes.includes(s.scope)));
 
-      // 检查是否可以编辑当前用户
       if (isEdit && currentRow) {
         const targetScopes = currentRow.scopes || [];
         const canEditTarget = canEditUserPermissions(currentUser, targetScopes, currentRow.isOwner || false);
         setCanEdit(canEditTarget);
       }
     } catch (error) {
-          toast.error(t('common.errors.userLoadFailed'));
-        } finally {
+      toast.error(t('common.errors.userLoadFailed'));
+    } finally {
       setLoading(false);
     }
-  }, [t, setRoles, setAllScopes]);
+  }, [t, setRoles, currentUser, isEdit, currentRow]);
 
   // Load roles and scopes when dialog opens
   useEffect(() => {
@@ -238,20 +210,6 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
     form.setValue('roleIDs', newRoles);
   };
 
-  const handleScopeToggle = (scopeName: string) => {
-    const currentScopes = form.getValues('scopes') || [];
-    const newScopes = currentScopes.includes(scopeName)
-      ? currentScopes.filter((name: string) => name !== scopeName)
-      : [...currentScopes, scopeName];
-    form.setValue('scopes', newScopes);
-  };
-
-  const handleScopeRemove = (scopeName: string) => {
-    const currentScopes = form.getValues('scopes') || [];
-    const newScopes = currentScopes.filter((name: string) => name !== scopeName);
-    form.setValue('scopes', newScopes);
-  };
-
   return (
     <Dialog
       open={open}
@@ -262,15 +220,15 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
         onOpenChange(state);
       }}
     >
-      <DialogContent className='sm:max-w-2xl'>
+      <DialogContent className='sm:max-w-2xl' ref={setDialogContent}>
         <DialogHeader className='text-left'>
           <DialogTitle>{isEdit ? t('users.dialogs.edit.title') : t('users.dialogs.add.title')}</DialogTitle>
           <DialogDescription>{isEdit ? t('users.dialogs.edit.description') : t('users.dialogs.add.description')}</DialogDescription>
         </DialogHeader>
 
-        <div className='max-h-[60vh] overflow-y-auto'>
+        <div className='max-h-[60vh] overflow-y-auto px-1'>
           <Form {...form}>
-            <form id='user-form' onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
+            <form id='user-form' onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
               <div className='grid grid-cols-2 gap-4'>
                 <FormField
                   control={form.control}
@@ -330,7 +288,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                       <FormItem>
                         <FormLabel>{t('users.form.password')}</FormLabel>
                         <FormControl>
-                          <Input type='password' placeholder='Enter password' aria-invalid={!!fieldState.error} {...field} />
+                          <Input type='password' aria-invalid={!!fieldState.error} {...field} />
                         </FormControl>
                         <div className='min-h-[1.25rem]'>
                           <FormMessage />
@@ -345,7 +303,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                       <FormItem>
                         <FormLabel>{t('users.form.confirmPassword')}</FormLabel>
                         <FormControl>
-                          <Input type='password' placeholder='Confirm password' aria-invalid={!!fieldState.error} {...field} />
+                          <Input type='password' aria-invalid={!!fieldState.error} {...field} />
                         </FormControl>
                         <div className='min-h-[1.25rem]'>
                           <FormMessage />
@@ -373,7 +331,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
               />
 
               {/* Roles Section */}
-              <div className='space-y-3'>
+              <div className='space-y-3 pt-2'>
                 <FormLabel>{t('users.form.roles')}</FormLabel>
                 {loading ? (
                   <div>{t('users.form.loadingRoles')}</div>
@@ -399,47 +357,21 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
               </div>
 
               {/* Scopes Section */}
-              <div className='space-y-3'>
-                <FormLabel>{t('users.form.scopes')}</FormLabel>
-
-                {/* Selected Scopes */}
-                <div className='flex flex-wrap gap-2'>
-                  {(form.watch('scopes') || []).map((scope) => (
-                    <Badge key={scope} variant='secondary' className='flex items-center gap-1'>
-                      {scope}
-                      <X className='h-3 w-3 cursor-pointer' onClick={() => handleScopeRemove(scope as string)} />
-                    </Badge>
-                  ))}
-                </div>
-
-                {/* Available Scopes */}
-                {loading ? (
-                  <div>{t('users.form.loadingScopes')}</div>
-                ) : (
-                  <div className='grid max-h-32 grid-cols-2 gap-2 overflow-y-auto rounded border p-2'>
-                    {allScopes.map((scope) => (
-                      <div key={scope.scope} className='flex items-start space-x-2'>
-                        <Checkbox
-                          id={`scope-${scope.scope}`}
-                          checked={(form.watch('scopes') || []).includes(scope.scope)}
-                          onCheckedChange={() => handleScopeToggle(scope.scope)}
-                        />
-                        <div className='space-y-1 leading-none'>
-                          <label
-                            htmlFor={`scope-${scope.scope}`}
-                            className='text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70'
-                          >
-                            <Badge variant='outline' className='mr-2'>
-                              {scope.scope}
-                            </Badge>
-                            {t(`scopes.${scope.scope}`)}
-                          </label>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+              <FormField
+                control={form.control}
+                name='scopes'
+                render={({ field }) => (
+                  <FormItem className='pt-2'>
+                    <FormLabel>{t('users.form.scopes')}</FormLabel>
+                    <FormControl>
+                      <ScopesSelect level='system' value={field.value || []} onChange={field.onChange} portalContainer={dialogContent} />
+                    </FormControl>
+                    <div className='min-h-[1.25rem]'>
+                      <FormMessage />
+                    </div>
+                  </FormItem>
                 )}
-              </div>
+              />
             </form>
           </Form>
         </div>

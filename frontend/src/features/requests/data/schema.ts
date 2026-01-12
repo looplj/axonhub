@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { pageInfoSchema } from '@/gql/pagination';
 import { apiKeySchema } from '@/features/apikeys/data/schema';
 import { channelSchema } from '@/features/channels/data';
+import { usageLogSchema } from '@/features/usage-logs/data/schema';
 
 // Request Status
 export const requestStatusSchema = z.enum(['pending', 'processing', 'completed', 'failed', 'canceled']);
@@ -59,7 +60,7 @@ export const requestSchema = z.object({
     .object({
       edges: z.array(
         z.object({
-          node: requestExecutionSchema,
+          node: requestExecutionSchema.partial().nullable().optional(),
           cursor: z.string(),
         })
       ),
@@ -67,6 +68,20 @@ export const requestSchema = z.object({
       totalCount: z.number(),
     })
     .optional(),
+  usageLogs: z
+    .object({
+      edges: z
+        .array(
+          z.object({
+            node: usageLogSchema.partial().nullable().optional(),
+            cursor: z.string().optional(),
+          })
+        )
+        .optional(),
+      pageInfo: pageInfoSchema.optional(),
+    })
+    .optional()
+    .nullable(),
 });
 
 export type Request = z.infer<typeof requestSchema>;

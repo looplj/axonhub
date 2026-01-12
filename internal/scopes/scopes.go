@@ -1,5 +1,7 @@
 package scopes
 
+import "slices"
+
 // ScopeSlug represents a permission scope to view or manage the data of the system.
 // Every user can view and manage their own data, and manage data of other users if they have the appropriate scopes.
 type ScopeSlug string
@@ -9,9 +11,9 @@ const (
 	// ScopeReadDashboard read the dashboard of the system.
 	ScopeReadDashboard ScopeSlug = "read_dashboard"
 
-	// ScopeReadChannels read the channels of the system.
+	// ScopeReadChannels read the channels/models of the system.
 	ScopeReadChannels ScopeSlug = "read_channels"
-	// ScopeWriteChannels manage the channels of the system.
+	// ScopeWriteChannels manage the channels/models of the system.
 	ScopeWriteChannels ScopeSlug = "write_channels"
 
 	// ScopeReadDataStorages read the data storages of the system.
@@ -49,6 +51,11 @@ const (
 	ScopeReadRequests ScopeSlug = "read_requests"
 	// ScopeWriteRequests manage the requests of the project.
 	ScopeWriteRequests ScopeSlug = "write_requests"
+
+	// ScopeReadPrompts read the prompts of the project.
+	ScopeReadPrompts ScopeSlug = "read_prompts"
+	// ScopeWritePrompts manage the prompts of the project.
+	ScopeWritePrompts ScopeSlug = "write_prompts"
 )
 
 type ScopeLevel string
@@ -93,7 +100,7 @@ var scopeConfigs = []Scope{
 	},
 	{
 		Slug:        ScopeWriteChannels,
-		Description: "Manage channels (create, edit, delete)",
+		Description: "Manage channels/models (create, edit, delete)",
 		Levels:      []ScopeLevel{ScopeLevelSystem},
 	},
 	{
@@ -156,6 +163,16 @@ var scopeConfigs = []Scope{
 		Description: "Manage request records",
 		Levels:      []ScopeLevel{ScopeLevelSystem, ScopeLevelProject},
 	},
+	{
+		Slug:        ScopeReadPrompts,
+		Description: "View prompts",
+		Levels:      []ScopeLevel{ScopeLevelProject},
+	},
+	{
+		Slug:        ScopeWritePrompts,
+		Description: "Manage prompts (create, edit, delete)",
+		Levels:      []ScopeLevel{ScopeLevelProject},
+	},
 }
 
 // AllScopes returns all available scopes, optionally filtered by level.
@@ -167,11 +184,8 @@ func AllScopes(level *ScopeLevel) []Scope {
 	filtered := make([]Scope, 0)
 
 	for _, scope := range scopeConfigs {
-		for _, l := range scope.Levels {
-			if l == *level {
-				filtered = append(filtered, scope)
-				break
-			}
+		if slices.Contains(scope.Levels, *level) {
+			filtered = append(filtered, scope)
 		}
 	}
 

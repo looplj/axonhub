@@ -3,6 +3,7 @@ package biz
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/samber/lo"
@@ -37,8 +38,8 @@ type channelMetrics struct {
 
 // InitializeAllChannelPerformances ensures every channel has a corresponding performance record.
 func (svc *ChannelService) InitializeAllChannelPerformances(ctx context.Context) error {
-	client := svc.entFromContext(ctx)
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	client := svc.entFromContext(ctx)
 
 	channelIDs, err := client.Channel.Query().IDs(ctx)
 	if err != nil {
@@ -410,14 +411,16 @@ func (svc *ChannelService) RecordMetrics(ctx context.Context, channelID int, met
 		return
 	}
 
-	log.Debug(ctx, "Recorded channel performance metrics",
-		log.Int("channel_id", channelID),
-		log.Int("success_rate", int(successRate)),
-		log.Int("avg_latency_ms", int(avgLatencyMs)),
-		log.Int("avg_token_per_second", int(avgTokensPerSecond)),
-		log.Int("avg_stream_first_token_ms", int(avgFirstTokenLatencyMs)),
-		log.Float64("avg_stream_token_per_second", avgStreamTokensPerSecond),
-	)
+	if log.DebugEnabled(ctx) {
+		log.Debug(ctx, "Recorded channel performance metrics",
+			log.Int("channel_id", channelID),
+			log.Int("success_rate", int(successRate)),
+			log.Int("avg_latency_ms", int(avgLatencyMs)),
+			log.Int("avg_token_per_second", int(avgTokensPerSecond)),
+			log.Int("avg_stream_first_token_ms", int(avgFirstTokenLatencyMs)),
+			log.Float64("avg_stream_token_per_second", avgStreamTokensPerSecond),
+		)
+	}
 }
 
 func (svc *ChannelService) markChannelUnavailable(ctx context.Context, channelID int, errorStatusCode int) {
@@ -446,6 +449,36 @@ func (svc *ChannelService) markChannelUnavailable(ctx context.Context, channelID
 	)
 }
 
+// checkAndHandleChannelError checks if the channel should be disabled based on the error status code.
+func (svc *ChannelService) checkAndHandleChannelError(ctx context.Context, perf *PerformanceRecord, policy *RetryPolicy) bool {
+	for _, statusConfig := range policy.AutoDisableChannel.Statuses {
+		if statusConfig.Status != perf.ErrorStatusCode {
+			continue
+		}
+
+		svc.channelErrorCountsLock.Lock()
+
+		if svc.channelErrorCounts[perf.ChannelID] == nil {
+			svc.channelErrorCounts[perf.ChannelID] = make(map[int]int)
+		}
+
+		svc.channelErrorCounts[perf.ChannelID][perf.ErrorStatusCode]++
+		count := svc.channelErrorCounts[perf.ChannelID][perf.ErrorStatusCode]
+		svc.channelErrorCountsLock.Unlock()
+
+		if count >= statusConfig.Times {
+			svc.markChannelUnavailable(ctx, perf.ChannelID, perf.ErrorStatusCode)
+			svc.channelErrorCountsLock.Lock()
+			delete(svc.channelErrorCounts, perf.ChannelID)
+			svc.channelErrorCountsLock.Unlock()
+
+			return true
+		}
+	}
+
+	return false
+}
+
 // RecordPerformance records performance metrics to in-memory cache.
 // This function is not thread-safe.
 func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *PerformanceRecord) {
@@ -459,12 +492,18 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 		}
 	}()
 
-	// // Check for unrecoverable errors and disable channel immediately
-	// Disable for now to avoid disalbe mistaken
-	// if !perf.Success && !isRecoverable(perf.ErrorStatusCode) {
-	// 	svc.markChannelUnavailable(ctx, perf.ChannelID, perf.ErrorStatusCode)
-	// 	return
-	// }
+	if perf.Success {
+		svc.channelErrorCountsLock.Lock()
+		delete(svc.channelErrorCounts, perf.ChannelID)
+		svc.channelErrorCountsLock.Unlock()
+	} else if !perf.Canceled {
+		policy := svc.SystemService.RetryPolicyOrDefault(ctx)
+		if policy.AutoDisableChannel.Enabled {
+			if svc.checkAndHandleChannelError(ctx, perf, policy) {
+				return
+			}
+		}
+	}
 
 	// Get or create channel metrics
 	svc.channelPerfMetricsLock.Lock()
@@ -490,14 +529,26 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 
 	firstTokenLatencyMs, requestLatencyMs, tokensPerSecond := perf.Calculate()
 
-	// Update request counts.
-	slot.RequestCount++
-	cm.aggregatedMetrics.RequestCount++
+	// Update slot request count for sliding window metrics.
+	// Note: aggregatedMetrics.RequestCount is NOT incremented here because it was already
+	// incremented in IncrementChannelSelection() at selection time for immediate load balancing effect.
+	// The cleanup logic will subtract slot.RequestCount from aggregatedMetrics when the slot expires.
+	if !perf.Canceled {
+		slot.RequestCount++
+	} else {
+		// If canceled, decrement the aggregated request count that was incremented at selection time.
+		// We don't increment slot.RequestCount, so it won't be subtracted later.
+		svc.channelPerfMetricsLock.Lock()
+
+		cm.aggregatedMetrics.RequestCount--
+
+		svc.channelPerfMetricsLock.Unlock()
+	}
 
 	// Record success or failure
 	if perf.Success {
 		cm.recordSuccess(slot, perf, firstTokenLatencyMs, requestLatencyMs)
-	} else {
+	} else if !perf.Canceled {
 		cm.recordFailure(slot, perf)
 	}
 
@@ -526,6 +577,7 @@ func (cm *channelMetrics) cleanupExpiredSlots(cutoff time.Time) {
 
 	// Collect metrics to subtract before cleanup
 	var metricsToRemove []*timeSlotMetrics
+
 	cm.window.Range(func(ts int64, metrics *timeSlotMetrics) bool {
 		if ts < cutoffTs {
 			metricsToRemove = append(metricsToRemove, metrics)
@@ -620,31 +672,43 @@ func (svc *ChannelService) GetChannelMetrics(ctx context.Context, channelID int)
 	}, nil
 }
 
-// isRecoverable determines the health status based on error code.
-func isRecoverable(errorCode int) bool {
-	switch errorCode {
-	case 401, 403, 404:
-		return false
-	default:
-		return true
+// IncrementChannelSelection increments the request count for a channel at selection time.
+// This is called when a channel is selected by the load balancer to ensure immediate
+// impact on subsequent selections, preventing the same channel from being selected
+// repeatedly during burst/concurrent requests.
+func (svc *ChannelService) IncrementChannelSelection(channelID int) {
+	svc.channelPerfMetricsLock.Lock()
+	defer svc.channelPerfMetricsLock.Unlock()
+
+	cm, exists := svc.channelPerfMetrics[channelID]
+	if !exists {
+		cm = newChannelMetrics(channelID)
+		svc.channelPerfMetrics[channelID] = cm
+	}
+
+	oldCount := cm.aggregatedMetrics.RequestCount
+
+	// Increment request count immediately to affect subsequent load balancing decisions
+	cm.aggregatedMetrics.RequestCount++
+
+	// Update last activity time to current time
+	now := time.Now()
+	if cm.aggregatedMetrics.LastSuccessAt == nil || cm.aggregatedMetrics.LastSuccessAt.Before(now) {
+		cm.aggregatedMetrics.LastSuccessAt = &now
+	}
+
+	// Log debug message if enabled
+	if log.DebugEnabled(context.Background()) {
+		log.Debug(context.Background(), "IncrementChannelSelection: incremented request count",
+			log.Int("channel_id", channelID),
+			log.Int64("old_count", oldCount),
+			log.Int64("new_count", cm.aggregatedMetrics.RequestCount),
+		)
 	}
 }
 
-const (
-	ErrMsgUnauthorized        = "Unauthorized"
-	ErrMsgNotFound            = "Not Found"
-	ErrMsgInternalServerError = "Internal Server Error"
-)
-
 func deriveErrorMessage(errorCode int) string {
-	switch errorCode {
-	case 401, 403:
-		return ErrMsgUnauthorized
-	case 404:
-		return ErrMsgNotFound
-	default:
-		return ErrMsgInternalServerError
-	}
+	return http.StatusText(errorCode)
 }
 
 // PerformanceRecord contains performance metrics collected during request processing.
@@ -655,6 +719,7 @@ type PerformanceRecord struct {
 	EndTime          time.Time
 	Stream           bool
 	Success          bool
+	Canceled         bool
 	RequestCompleted bool
 
 	// If token count is 0, it means the provider response without token count.
@@ -695,6 +760,14 @@ func (m *PerformanceRecord) MarkSuccess(tokenCount int64) {
 func (m *PerformanceRecord) MarkFailed(errorCode int) {
 	m.Success = false
 	m.ErrorStatusCode = errorCode
+	m.RequestCompleted = true
+	m.EndTime = time.Now()
+}
+
+// MarkCanceled marks the request as canceled by context.
+func (m *PerformanceRecord) MarkCanceled() {
+	m.Success = false
+	m.Canceled = true
 	m.RequestCompleted = true
 	m.EndTime = time.Now()
 }

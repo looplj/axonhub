@@ -94,7 +94,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [fetchedModelsSearch, setFetchedModelsSearch] = useState('');
   const [supportedModelsSearch, setSupportedModelsSearch] = useState('');
   const [selectedFetchedModels, setSelectedFetchedModels] = useState<string[]>([]);
-  const [showAddedModelsOnly, setShowAddedModelsOnly] = useState(false);
+  const [showNotAddedModelsOnly, setShowNotAddedModelsOnly] = useState(false);
   const [supportedModelsExpanded, setSupportedModelsExpanded] = useState(false);
   const [showClearAllPopover, setShowClearAllPopover] = useState(false);
   const hasAutoSetDuplicateNameRef = useRef(false);
@@ -126,6 +126,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     }
     return false;
   });
+  const [useClaudeCode, setUseClaudeCode] = useState(() => {
+    if (initialRow) {
+      return initialRow.type === 'claudecode';
+    }
+    return false;
+  });
 
   useEffect(() => {
     if (!isEdit || !currentRow) return;
@@ -136,6 +142,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     setSelectedApiFormat(apiFormat);
     setUseGeminiVertex(currentRow.type === 'gemini_vertex');
     setUseAnthropicAws(currentRow.type === 'anthropic_aws');
+    setUseClaudeCode(currentRow.type === 'claudecode');
   }, [isEdit, currentRow]);
 
   useEffect(() => {
@@ -203,13 +210,14 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       return 'gemini_vertex';
     }
 
-    // If anthropic/messages is selected and aws checkbox is checked, use anthropic_aws
-    if (selectedApiFormat === 'anthropic/messages' && useAnthropicAws) {
-      return 'anthropic_aws';
+    // If anthropic/messages is selected, check which variant is selected
+    if (selectedApiFormat === 'anthropic/messages') {
+      if (useClaudeCode) return 'claudecode';
+      if (useAnthropicAws) return 'anthropic_aws';
     }
 
     return getChannelTypeForApiFormat(selectedProvider, selectedApiFormat) || 'openai';
-  }, [isEdit, currentRow, selectedProvider, selectedApiFormat, useGeminiVertex, useAnthropicAws]);
+  }, [isEdit, currentRow, selectedProvider, selectedApiFormat, useGeminiVertex, useAnthropicAws, useClaudeCode]);
 
   const formSchema = isEdit ? updateChannelInputSchema : createChannelInputSchema;
 
@@ -327,6 +335,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       }
       if (provider !== 'anthropic') {
         setUseAnthropicAws(false);
+        setUseClaudeCode(false);
       }
       const formats = getApiFormatsForProvider(provider);
       // Default to first available format
@@ -340,12 +349,14 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             : getChannelTypeForApiFormat(provider, newFormat);
       if (newChannelType) {
         form.setValue('type', newChannelType);
-        const baseURL = getDefaultBaseURL(newChannelType);
-        if (baseURL) {
-          form.resetField('baseURL', { defaultValue: baseURL });
+        if (!isDuplicate) {
+          const baseURL = getDefaultBaseURL(newChannelType);
+          if (baseURL) {
+            form.resetField('baseURL', { defaultValue: baseURL });
+          }
         }
         // Reset models when provider changes
-        setSupportedModels([]);
+        // setSupportedModels([]);
         setFetchedModels([]);
         setUseFetchedModels(false);
       }
@@ -362,9 +373,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       if (format !== 'gemini/contents') {
         setUseGeminiVertex(false);
       }
-      // Reset aws checkbox if not anthropic/messages
+      // Reset anthropic checkboxes if not anthropic/messages
       if (format !== 'anthropic/messages') {
         setUseAnthropicAws(false);
+        setUseClaudeCode(false);
       }
 
       const channelTypeFromFormat = getChannelTypeForApiFormat(selectedProvider, format);
@@ -378,7 +390,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         form.setValue('type', newChannelType);
 
         const baseURLFieldState = form.getFieldState('baseURL', form.formState);
-        if (!baseURLFieldState.isDirty) {
+        if (!baseURLFieldState.isDirty && !isDuplicate) {
           const baseURL = getDefaultBaseURL(newChannelType);
           if (baseURL) {
             form.resetField('baseURL', { defaultValue: baseURL });
@@ -399,7 +411,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         form.setValue('type', newChannelType);
 
         const baseURLFieldState = form.getFieldState('baseURL', form.formState);
-        if (!baseURLFieldState.isDirty) {
+        if (!baseURLFieldState.isDirty && !isDuplicate) {
           const baseURL = getDefaultBaseURL(newChannelType);
           if (baseURL) {
             form.resetField('baseURL', { defaultValue: baseURL });
@@ -414,13 +426,16 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     (checked: boolean) => {
       if (isEdit) return;
       setUseAnthropicAws(checked);
+      if (checked) {
+        setUseClaudeCode(false); // Uncheck Claude Code when AWS is checked
+      }
 
       if (selectedApiFormat === 'anthropic/messages') {
         const newChannelType = checked ? 'anthropic_aws' : 'anthropic';
         form.setValue('type', newChannelType);
 
         const baseURLFieldState = form.getFieldState('baseURL', form.formState);
-        if (!baseURLFieldState.isDirty) {
+        if (!baseURLFieldState.isDirty && !isDuplicate) {
           const baseURL = getDefaultBaseURL(newChannelType);
           if (baseURL) {
             form.resetField('baseURL', { defaultValue: baseURL });
@@ -429,6 +444,30 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       }
     },
     [isEdit, selectedApiFormat, form]
+  );
+
+  const handleClaudeCodeChange = useCallback(
+    (checked: boolean) => {
+      if (isEdit) return;
+      setUseClaudeCode(checked);
+      if (checked) {
+        setUseAnthropicAws(false); // Uncheck AWS when Claude Code is checked
+      }
+
+      if (selectedApiFormat === 'anthropic/messages') {
+        const newChannelType = checked ? 'claudecode' : 'anthropic';
+        form.setValue('type', newChannelType);
+
+        const baseURLFieldState = form.getFieldState('baseURL', form.formState);
+        if (!baseURLFieldState.isDirty && !isDuplicate) {
+          const baseURL = getDefaultBaseURL(newChannelType);
+          if (baseURL) {
+            form.resetField('baseURL', { defaultValue: baseURL });
+          }
+        }
+      }
+    },
+    [isEdit, selectedApiFormat, form, isDuplicate]
   );
 
   useEffect(() => {
@@ -442,7 +481,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     // Check if there are selected fetched models that haven't been confirmed
     if (selectedFetchedModels.length > 0) {
-      toast.error(t('channels.dialogs.messages.modelsNotConfirmed'));
+      toast.error(t('channels.messages.modelsNotConfirmed'));
       return;
     }
 
@@ -604,14 +643,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           .map((key) => key.trim())
           .filter((key) => key.length > 0)[0] || '';
 
-      // If in edit mode and user has provided a new API key, use it instead of channelID
-      const hasEditedApiKey = isEdit && firstApiKey && firstApiKey.length > 0;
-
       const result = await fetchModels.mutateAsync({
         channelType,
         baseURL,
-        apiKey: hasEditedApiKey || !isEdit ? firstApiKey : undefined,
-        channelID: hasEditedApiKey || !isEdit ? undefined : currentRow?.id,
+        apiKey: !isEdit ? firstApiKey : firstApiKey || undefined,
+        channelID: isEdit ? currentRow?.id : undefined,
       });
 
       if (result.error) {
@@ -626,7 +662,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         setShowFetchedModelsPanel(true);
         setSelectedFetchedModels([]);
         setFetchedModelsSearch('');
-        setShowAddedModelsOnly(false);
+        setShowNotAddedModelsOnly(false);
       }
     } catch (_error) {
       // Error is already handled by the mutation
@@ -654,15 +690,15 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   // Filtered fetched models based on search and filter
   const filteredFetchedModels = useMemo(() => {
     let models = fetchedModels;
-    if (showAddedModelsOnly) {
-      models = models.filter((model) => supportedModels.includes(model));
+    if (showNotAddedModelsOnly) {
+      models = models.filter((model) => !supportedModels.includes(model));
     }
     if (fetchedModelsSearch.trim()) {
       const search = fetchedModelsSearch.toLowerCase();
       models = models.filter((model) => model.toLowerCase().includes(search));
     }
     return models;
-  }, [fetchedModels, fetchedModelsSearch, showAddedModelsOnly, supportedModels]);
+  }, [fetchedModels, fetchedModelsSearch, showNotAddedModelsOnly, supportedModels]);
 
   // Toggle selection for fetched model
   const toggleFetchedModelSelection = useCallback((model: string) => {
@@ -705,7 +741,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     setShowFetchedModelsPanel(false);
     setSelectedFetchedModels([]);
     setFetchedModelsSearch('');
-    setShowAddedModelsOnly(false);
+    setShowNotAddedModelsOnly(false);
   }, []);
 
   // Close supported models panel handler
@@ -759,7 +795,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             setFetchedModelsSearch('');
             setSupportedModelsSearch('');
             setSelectedFetchedModels([]);
-            setShowAddedModelsOnly(false);
+            setShowNotAddedModelsOnly(false);
             setSupportedModelsExpanded(false);
             // Reset provider and API format state
             if (initialRow) {
@@ -767,11 +803,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               setSelectedApiFormat(CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || OPENAI_CHAT_COMPLETIONS);
               setUseGeminiVertex(initialRow.type === 'gemini_vertex');
               setUseAnthropicAws(initialRow.type === 'anthropic_aws');
+              setUseClaudeCode(initialRow.type === 'claudecode');
             } else {
               setSelectedProvider('openai');
               setSelectedApiFormat(OPENAI_CHAT_COMPLETIONS);
               setUseGeminiVertex(false);
               setUseAnthropicAws(false);
+              setUseClaudeCode(false);
             }
           }
           onOpenChange(state);
@@ -795,10 +833,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 <form id='channel-form' onSubmit={form.handleSubmit(onSubmit)} className='space-y-6 p-0.5'>
                   {/* Provider Selection - Left Side */}
                   <div className='flex gap-6'>
-                    <div className='w-80 flex-shrink-0'>
+                    <div className='w-60 flex-shrink-0'>
                       <FormItem className='space-y-2'>
                         <FormLabel className='text-base font-semibold'>{t('channels.dialogs.fields.provider.label')}</FormLabel>
-                        <div className={`max-h-[500px] overflow-y-auto pr-2 ${isEdit ? 'cursor-not-allowed opacity-60' : ''}`}>
+                        <div className={`max-h-[720px] overflow-y-auto pr-2 ${isEdit ? 'cursor-not-allowed opacity-60' : ''}`}>
                           <RadioGroup value={selectedProvider} onValueChange={handleProviderChange} disabled={isEdit} className='space-y-2'>
                             {availableProviders.map((provider) => {
                               const Icon = provider.icon;
@@ -877,7 +915,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               </div>
                             )}
                             {selectedApiFormat === 'anthropic/messages' && selectedProvider === 'anthropic' && (
-                              <div className='mt-3'>
+                              <div className='mt-3 space-y-2'>
                                 <label
                                   className={`flex items-center gap-2 text-sm ${
                                     isEdit ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
@@ -889,6 +927,18 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                     disabled={isEdit}
                                   />
                                   <span>{t('channels.dialogs.fields.apiFormat.anthropicAWS.label')}</span>
+                                </label>
+                                <label
+                                  className={`flex items-center gap-2 text-sm ${
+                                    isEdit ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+                                  }`}
+                                >
+                                  <Checkbox
+                                    checked={useClaudeCode}
+                                    onCheckedChange={(checked) => handleClaudeCodeChange(checked === true)}
+                                    disabled={isEdit}
+                                  />
+                                  <span>{t('channels.dialogs.fields.apiFormat.claudeCode.label')}</span>
                                 </label>
                               </div>
                             )}
@@ -1334,7 +1384,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             <div
               className='border-border flex min-h-0 flex-col overflow-hidden border-l pl-4 transition-all duration-300 ease-out'
               style={{
-                width: showFetchedModelsPanel || showSupportedModelsPanel ? '320px' : '0px',
+                width: showFetchedModelsPanel || showSupportedModelsPanel ? '400px' : '0px',
                 opacity: showFetchedModelsPanel || showSupportedModelsPanel ? 1 : 0,
                 paddingLeft: showFetchedModelsPanel || showSupportedModelsPanel ? '16px' : '0px',
               }}
@@ -1364,8 +1414,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 {/* Filter and Actions */}
                 <div className='mb-3 flex items-center justify-between gap-2'>
                   <label className='flex cursor-pointer items-center gap-2 text-xs'>
-                    <Checkbox checked={showAddedModelsOnly} onCheckedChange={(checked) => setShowAddedModelsOnly(checked === true)} />
-                    {t('channels.dialogs.fields.supportedModels.showAddedOnly')}
+                    <Checkbox checked={showNotAddedModelsOnly} onCheckedChange={(checked) => setShowNotAddedModelsOnly(checked === true)} />
+                    {t('channels.dialogs.fields.supportedModels.showNotAddedOnly')}
                   </label>
                   <div className='flex gap-1'>
                     <Button type='button' variant='outline' size='sm' className='h-6 px-2 text-xs' onClick={selectAllFilteredModels}>
@@ -1397,7 +1447,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           <Checkbox checked={isSelected} onCheckedChange={() => toggleFetchedModelSelection(model)} />
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <span className='flex-1 cursor-pointer truncate' onClick={() => toggleFetchedModelSelection(model)}>
+                              <span className='max-w-[200px] flex-1 cursor-pointer truncate' onClick={() => toggleFetchedModelSelection(model)}>
                                 {model}
                               </span>
                             </TooltipTrigger>
@@ -1406,12 +1456,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             </TooltipContent>
                           </Tooltip>
                           {isAdded && !isSelected && (
-                            <Badge variant='secondary' className='text-xs'>
+                            <Badge variant='secondary' className='shrink-0 text-xs'>
                               {t('channels.dialogs.fields.supportedModels.added')}
                             </Badge>
                           )}
                           {isAdded && isSelected && (
-                            <Badge variant='destructive' className='text-xs'>
+                            <Badge variant='destructive' className='shrink-0 text-xs'>
                               {t('channels.dialogs.fields.supportedModels.willRemove')}
                             </Badge>
                           )}

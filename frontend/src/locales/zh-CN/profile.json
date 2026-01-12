@@ -13,29 +13,22 @@
         "firstName": {
           "label": "名",
           "placeholder": "输入您的名",
-          "description": "您的名字，将显示给其他用户。",
-          "required": "名字不能为空。",
-          "maxLength": "名字长度不能超过50个字符。"
+          "description": "您的名字，将显示给其他用户。"
         },
         "lastName": {
           "label": "姓",
           "placeholder": "输入您的姓",
-          "description": "您的姓氏，将显示给其他用户。",
-          "required": "姓氏不能为空。",
-          "maxLength": "姓氏长度不能超过50个字符。"
+          "description": "您的姓氏，将显示给其他用户。"
         },
         "email": {
           "label": "邮箱",
           "placeholder": "输入您的邮箱地址",
-          "description": "用于账户通知和登录的邮箱地址。",
-          "required": "邮箱不能为空。",
-          "invalid": "请输入有效的邮箱地址。"
+          "description": "用于账户通知和登录的邮箱地址。"
         },
         "preferLanguage": {
           "label": "首选语言",
           "placeholder": "选择您的首选语言",
           "description": "选择界面的首选语言。",
-          "required": "请选择首选语言。",
           "options": {
             "en": "English",
             "zh": "中文"
@@ -52,21 +45,15 @@
         "firstNameTooLong": "名字长度不能超过50个字符。",
         "lastNameRequired": "姓氏不能为空。",
         "lastNameTooLong": "姓氏长度不能超过50个字符。",
-        "emailRequired": "邮箱不能为空。",
         "emailInvalid": "请输入有效的邮箱地址。",
         "languageRequired": "请选择首选语言。"
       },
-      "buttons": {
-        "update": "保存更改"
-      },
+      "buttons": {},
       "messages": {
         "updateSuccess": "个人资料更新成功！",
         "updateError": "更新个人资料失败：{{error}}"
       }
     },
-    "languages": {
-      "en": "English",
-      "zh": "中文"
-    }
+    "languages": {}
   }
 }

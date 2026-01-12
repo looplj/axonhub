@@ -14,6 +14,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
+import { motion, AnimatePresence } from 'framer-motion';
 import { IconArchive, IconBan, IconCheck, IconTrash, IconTemplate, IconX } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,9 @@ import { ChannelExpandedRow } from './channel-expanded-row';
 import { useChannels } from '../context/channels-context';
 import { Channel, ChannelConnection } from '../data/schema';
 import { DataTableToolbar } from './data-table-toolbar';
+
+const MotionTableRow = motion(TableRow);
+const MotionExpandedRow = motion(TableRow);
 
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -58,6 +62,8 @@ interface DataTableProps {
   onStatusFilterChange: (filters: string[]) => void;
   onTagFilterChange: (filter: string) => void;
   onModelFilterChange: (filter: string) => void;
+  onHealthColumnVisibilityChange?: (visible: boolean) => void;
+  canWrite?: boolean;
 }
 
 export function ChannelsTable({
@@ -86,6 +92,8 @@ export function ChannelsTable({
   onStatusFilterChange,
   onTagFilterChange,
   onModelFilterChange,
+  onHealthColumnVisibilityChange,
+  canWrite = true,
 }: DataTableProps) {
   const { t } = useTranslation();
   const { setSelectedChannels, setResetRowSelection, setOpen } = useChannels();
@@ -132,7 +140,13 @@ export function ChannelsTable({
   // Save column visibility to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('channels-table-column-visibility', JSON.stringify(columnVisibility));
-  }, [columnVisibility]);
+    
+    // Notify parent about health column visibility changes
+    if (onHealthColumnVisibilityChange) {
+      const isHealthVisible = columnVisibility.health !== false;
+      onHealthColumnVisibilityChange(isHealthVisible);
+    }
+  }, [columnVisibility, onHealthColumnVisibilityChange]);
 
   // Handle column filter changes and sync with server
   const handleColumnFiltersChange = useCallback(
@@ -276,6 +290,7 @@ export function ChannelsTable({
         onExitErrorOnlyMode={onExitErrorOnlyMode}
       />
       <div className='shadow-soft relative mt-4 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
+        <div className='min-w-max'>
         <Table data-testid='channels-table' className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -302,7 +317,7 @@ export function ChannelsTable({
                 const channel = row.original;
                 return (
                   <React.Fragment key={row.id}>
-                    <TableRow
+                    <MotionTableRow
                       key={row.id}
                       data-state={row.getIsSelected() && 'selected'}
                       className='group/row table-row-hover rounded-xl border-0 !bg-[var(--table-background)] transition-all duration-200 ease-in-out'
@@ -312,10 +327,23 @@ export function ChannelsTable({
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </TableCell>
                       ))}
-                    </TableRow>
-                    {row.getIsExpanded() && (
-                      <ChannelExpandedRow channel={channel} columnsLength={columns.length} getApiFormatLabel={getApiFormatLabel} />
-                    )}
+                    </MotionTableRow>
+                    <AnimatePresence>
+                      {row.getIsExpanded() && (
+                        <TableRow key={`${row.id}-expanded`} className='border-0'>
+                          <TableCell colSpan={columns.length} className='p-0 border-0'>
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.2, ease: 'easeInOut' }}
+                            >
+                              <ChannelExpandedRow channel={channel} columnsLength={columns.length} getApiFormatLabel={getApiFormatLabel} />
+                            </motion.div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </AnimatePresence>
                   </React.Fragment>
                 );
               })
@@ -328,6 +356,7 @@ export function ChannelsTable({
             )}
           </TableBody>
         </Table>
+        </div>
       </div>
       <div className='mt-4 flex-shrink-0'>
         <ServerSidePagination
@@ -343,7 +372,7 @@ export function ChannelsTable({
         />
       </div>
       {/* Floating Bulk Actions Bar */}
-      {selectedCount > 0 && (
+      {selectedCount > 0 && canWrite && (
         <div className='fixed bottom-6 left-1/2 z-50 -translate-x-1/2'>
           <div className='bg-background flex items-center gap-2 rounded-lg border px-4 py-2 shadow-lg'>
             <Button variant='ghost' size='icon' className='h-8 w-8' onClick={() => setRowSelection({})}>

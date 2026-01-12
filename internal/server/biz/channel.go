@@ -13,11 +13,11 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/privacy"
-	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer"
 )
 
 // ChannelModelEntry represents a model that the channel can handle.
@@ -55,8 +55,9 @@ type Channel struct {
 type ChannelServiceParams struct {
 	fx.In
 
-	Executor executors.ScheduledExecutor
-	Ent      *ent.Client
+	Executor      executors.ScheduledExecutor
+	Ent           *ent.Client
+	SystemService *SystemService
 }
 
 func NewChannelService(params ChannelServiceParams) *ChannelService {
@@ -67,7 +68,9 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 		Executors: executors.NewPoolScheduleExecutor(
 			executors.WithMaxConcurrent(1),
 		),
+		SystemService:      params.SystemService,
 		channelPerfMetrics: make(map[int]*channelMetrics),
+		channelErrorCounts: make(map[int]map[int]int),
 		perfCh:             make(chan *PerformanceRecord, 1024),
 	}
 
@@ -103,11 +106,12 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 type ChannelService struct {
 	*AbstractService
 
-	Executors executors.ScheduledExecutor
+	Executors     executors.ScheduledExecutor
+	SystemService *SystemService
 
-	// latestUpdate 记录最新的 channel 更新时间，用于优化定时加载
 	enabledChannels []*Channel
-	latestUpdate    time.Time
+	// latestUpdate 记录最新的 channel 更新时间，用于优化定时加载
+	latestUpdateTime time.Time
 
 	// perfWindowSeconds is the configurable sliding window size for performance metrics (in seconds)
 	// If not set (0), uses defaultPerformanceWindowSize (600 seconds = 10 minutes)
@@ -117,6 +121,11 @@ type ChannelService struct {
 	// protected by channelPerfMetricsLock
 	channelPerfMetrics     map[int]*channelMetrics
 	channelPerfMetricsLock sync.RWMutex
+
+	// channelErrorCounts stores the error counts for each channel and status code
+	// channelID -> statusCode -> count
+	channelErrorCounts     map[int]map[int]int
+	channelErrorCountsLock sync.Mutex
 
 	// perfCh is the channel for performance records for async processing.
 	perfCh chan *PerformanceRecord
@@ -143,15 +152,15 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 	// 如果没有找到任何 channels，latestUpdate 会是 nil
 	if latestUpdatedChannel != nil {
 		// 如果最新的更新时间早于或等于我们记录的时间，说明没有新的修改
-		if !latestUpdatedChannel.UpdatedAt.After(svc.latestUpdate) {
+		if !latestUpdatedChannel.UpdatedAt.After(svc.latestUpdateTime) {
 			log.Debug(ctx, "no new channels updated")
 			return nil
 		}
 		// 更新最新的修改时间记录
-		svc.latestUpdate = latestUpdatedChannel.UpdatedAt
+		svc.latestUpdateTime = latestUpdatedChannel.UpdatedAt
 	} else {
 		// 如果没有 channels，确保 latestUpdate 是零值时间
-		svc.latestUpdate = time.Time{}
+		svc.latestUpdateTime = time.Time{}
 	}
 
 	entities, err := svc.entFromContext(ctx).Channel.Query().
@@ -472,7 +481,7 @@ func (svc *ChannelService) asyncReloadChannels() {
 		defer cancel()
 
 		// Force reload by resetting latestUpdate timestamp
-		svc.latestUpdate = time.Time{}
+		svc.latestUpdateTime = time.Time{}
 
 		if reloadErr := svc.loadChannels(reloadCtx); reloadErr != nil {
 			log.Error(reloadCtx, "failed to reload channels after bulk update", log.Cause(reloadErr))

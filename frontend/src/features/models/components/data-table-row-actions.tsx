@@ -39,35 +39,30 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align='end' className='w-[160px]'>
         <PermissionGuard requiredScope='write_channels'>
-          <DropdownMenuItem
-            onClick={() => {
-              setCurrentRow(row.original);
-              setOpen('edit');
-            }}
-          >
-            <IconEdit size={16} className='mr-2' />
-            {t('common.actions.edit')}
-          </DropdownMenuItem>
-        </PermissionGuard>
+          <>
+            <DropdownMenuItem
+              onClick={() => {
+                setCurrentRow(row.original);
+                setOpen('edit');
+              }}
+            >
+              <IconEdit size={16} className='mr-2' />
+              {t('common.actions.edit')}
+            </DropdownMenuItem>
 
-        <PermissionGuard requiredScope='write_channels'>
-          <DropdownMenuItem
-            onClick={() => {
-              setCurrentRow(row.original);
-              setOpen('association');
-            }}
-          >
-            <IconNote size={16} className='mr-2' />
-            {t('models.actions.manageAssociation')}
-          </DropdownMenuItem>
-        </PermissionGuard>
+            <DropdownMenuItem
+              onClick={() => {
+                setCurrentRow(row.original);
+                setOpen('association');
+              }}
+            >
+              <IconNote size={16} className='mr-2' />
+              {t('models.actions.manageAssociation')}
+            </DropdownMenuItem>
 
-        {channelPermissions.canRead && channelPermissions.canWrite && <DropdownMenuSeparator />}
+            {channelPermissions.canRead && <DropdownMenuSeparator />}
 
-        <PermissionGuard
-          requiredScope='write_channels'
-          render={(hasPermission) =>
-            hasPermission && model.status !== 'archived' ? (
+            {model.status !== 'archived' && (
               <DropdownMenuItem
                 onClick={() => {
                   setCurrentRow(row.original);
@@ -78,21 +73,19 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
                 <IconArchive size={16} className='mr-2' />
                 {t('common.buttons.archive')}
               </DropdownMenuItem>
-            ) : null
-          }
-        />
+            )}
 
-        <PermissionGuard requiredScope='write_channels'>
-          <DropdownMenuItem
-            onClick={() => {
-              setCurrentRow(row.original);
-              setOpen('delete');
-            }}
-            className='text-red-500!'
-          >
-            <IconTrash size={16} className='mr-2' />
-            {t('common.buttons.delete')}
-          </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                setCurrentRow(row.original);
+                setOpen('delete');
+              }}
+              className='text-red-500!'
+            >
+              <IconTrash size={16} className='mr-2' />
+              {t('common.buttons.delete')}
+            </DropdownMenuItem>
+          </>
         </PermissionGuard>
       </DropdownMenuContent>
     </DropdownMenu>

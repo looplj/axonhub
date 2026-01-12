@@ -16,6 +16,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
+import { motion, AnimatePresence } from 'framer-motion';
 import { IconBan, IconCheck, IconX, IconTrash } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +28,8 @@ import { PermissionGuard } from '@/components/permission-guard';
 import { ServerSidePagination } from '@/components/server-side-pagination';
 import { useModels } from '../context/models-context';
 import { Model, ModelConnection } from '../data/schema';
+
+const MotionTableRow = motion(TableRow);
 
 interface ModelsTableProps {
   columns: ColumnDef<Model>[];
@@ -42,6 +45,7 @@ interface ModelsTableProps {
   onPreviousPage: () => void;
   onPageSizeChange: (pageSize: number) => void;
   onNameFilterChange: (filter: string) => void;
+  canWrite?: boolean;
 }
 
 export function ModelsTable({
@@ -58,6 +62,7 @@ export function ModelsTable({
   onPreviousPage,
   onPageSizeChange,
   onNameFilterChange,
+  canWrite = true,
 }: ModelsTableProps) {
   const { t } = useTranslation();
   const { setSelectedModels, setResetRowSelection, setOpen } = useModels();
@@ -161,6 +166,7 @@ export function ModelsTable({
       </div>
 
       <div className='shadow-soft relative mt-4 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
+        <div className='min-w-max'>
         <Table data-testid='models-table' className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -188,7 +194,7 @@ export function ModelsTable({
                 const modelCard = model.modelCard;
                 return (
                   <React.Fragment key={row.id}>
-                    <TableRow
+                    <MotionTableRow
                       key={row.id}
                       data-state={row.getIsSelected() && 'selected'}
                       className='group/row table-row-hover rounded-xl border-0 !bg-[var(--table-background)] transition-all duration-200 ease-in-out'
@@ -198,11 +204,19 @@ export function ModelsTable({
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </TableCell>
                       ))}
-                    </TableRow>
-                    {row.getIsExpanded() && (
-                      <TableRow key={`${row.id}-expanded`} className='bg-muted/30 hover:bg-muted/50'>
-                        <TableCell colSpan={columns.length} className='p-6 whitespace-normal'>
-                          <div className='space-y-6'>
+                    </MotionTableRow>
+                    <AnimatePresence>
+                      {row.getIsExpanded() && (
+                        <TableRow key={`${row.id}-expanded`} className='border-0'>
+                          <TableCell colSpan={columns.length} className='p-0 border-0'>
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.2, ease: 'easeInOut' }}
+                              className='bg-muted/30 p-6 hover:bg-muted/50'
+                            >
+                              <div className='space-y-6'>
                             {/* Top Section: Basic Info (left) + Capabilities (right) */}
                             <div className='grid grid-cols-1 gap-6 md:grid-cols-2'>
                               {/* Basic Info */}
@@ -222,11 +236,11 @@ export function ModelsTable({
                                     <span>{model.group}</span>
                                   </div>
                                   <div className='flex justify-between'>
-                                    <span className='text-muted-foreground'>{t('models.columns.createdAt')}:</span>
+                                    <span className='text-muted-foreground'>{t('common.columns.createdAt')}:</span>
                                     <span>{format(model.createdAt, 'yyyy-MM-dd HH:mm')}</span>
                                   </div>
                                   <div className='flex justify-between'>
-                                    <span className='text-muted-foreground'>{t('models.columns.updatedAt')}:</span>
+                                    <span className='text-muted-foreground'>{t('common.columns.updatedAt')}:</span>
                                     <span>{format(model.updatedAt, 'yyyy-MM-dd HH:mm')}</span>
                                   </div>
                                   {model.remark && (
@@ -376,10 +390,12 @@ export function ModelsTable({
                               </div>
                             </div>
                           </div>
-                        </TableCell>
-                      </TableRow>
+                        </motion.div>
+                    </TableCell>
+                  </TableRow>
                     )}
-                  </React.Fragment>
+                  </AnimatePresence>
+                </React.Fragment>
                 );
               })
             ) : (
@@ -391,6 +407,7 @@ export function ModelsTable({
             )}
           </TableBody>
         </Table>
+        </div>
       </div>
 
       <div className='mt-4 flex-shrink-0'>
@@ -406,7 +423,7 @@ export function ModelsTable({
         />
       </div>
 
-      {selectedCount > 0 && (
+      {selectedCount > 0 && canWrite && (
         <div className='fixed bottom-6 left-1/2 z-50 -translate-x-1/2'>
           <div className='flex items-center gap-2 rounded-lg border bg-[var(--table-background)] px-4 py-2 shadow-lg'>
             <div className='bg-border mx-2 h-6 w-px' />
@@ -421,37 +438,35 @@ export function ModelsTable({
             </div>
             <div className='bg-border mx-2 h-6 w-px' />
             <PermissionGuard requiredScope='write_channels'>
-              <Button
-                variant='ghost'
-                size='icon'
-                className='h-8 w-8 text-green-600 hover:bg-green-100 hover:text-green-700'
-                onClick={() => setOpen('bulkEnable')}
-                title={t('common.buttons.enable')}
-              >
-                <IconCheck className='h-4 w-4' />
-              </Button>
-            </PermissionGuard>
-            <PermissionGuard requiredScope='write_channels'>
-              <Button
-                variant='ghost'
-                size='icon'
-                className='h-8 w-8 text-amber-600 hover:bg-amber-100 hover:text-amber-700'
-                onClick={() => setOpen('bulkDisable')}
-                title={t('common.buttons.disable')}
-              >
-                <IconBan className='h-4 w-4' />
-              </Button>
-            </PermissionGuard>
-            <PermissionGuard requiredScope='write_channels'>
-              <Button
-                variant='ghost'
-                size='icon'
-                className='text-destructive h-8 w-8 hover:bg-red-100 hover:text-red-700'
-                onClick={() => setOpen('delete')}
-                title={t('common.buttons.delete')}
-              >
-                <IconTrash className='h-4 w-4' />
-              </Button>
+              <>
+                <Button
+                  variant='ghost'
+                  size='icon'
+                  className='h-8 w-8 text-green-600 hover:bg-green-100 hover:text-green-700'
+                  onClick={() => setOpen('bulkEnable')}
+                  title={t('common.buttons.enable')}
+                >
+                  <IconCheck className='h-4 w-4' />
+                </Button>
+                <Button
+                  variant='ghost'
+                  size='icon'
+                  className='h-8 w-8 text-amber-600 hover:bg-amber-100 hover:text-amber-700'
+                  onClick={() => setOpen('bulkDisable')}
+                  title={t('common.buttons.disable')}
+                >
+                  <IconBan className='h-4 w-4' />
+                </Button>
+                <Button
+                  variant='ghost'
+                  size='icon'
+                  className='text-destructive h-8 w-8 hover:bg-red-100 hover:text-red-700'
+                  onClick={() => setOpen('delete')}
+                  title={t('common.buttons.delete')}
+                >
+                  <IconTrash className='h-4 w-4' />
+                </Button>
+              </>
             </PermissionGuard>
           </div>
         </div>

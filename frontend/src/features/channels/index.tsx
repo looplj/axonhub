@@ -3,6 +3,7 @@ import { SortingState } from '@tanstack/react-table';
 import { useTranslation } from 'react-i18next';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
 import { createColumns } from './components/channels-columns';
@@ -11,12 +12,13 @@ import { ChannelsPrimaryButtons } from './components/channels-primary-buttons';
 import { ChannelsTable } from './components/channels-table';
 import { ChannelsTypeTabs } from './components/channels-type-tabs';
 import ChannelsProvider from './context/channels-context';
-import { useQueryChannels, useChannelTypes, useErrorChannelsCount } from './data/channels';
+import { useQueryChannels, useChannelTypes, useErrorChannelsCount, useChannelProbeData } from './data/channels';
 
 const ChannelsDialogs = lazy(() => import('./components/channels-dialogs').then((m) => ({ default: m.ChannelsDialogs })));
 
 function ChannelsContent() {
   const { t } = useTranslation();
+  const { channelPermissions } = usePermissions();
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
     defaultPageSize: 20,
     pageSizeStorageKey: 'channels-table-page-size',
@@ -38,6 +40,18 @@ function ChannelsContent() {
       }
     }
     return [{ id: 'createdAt', desc: true }];
+  });
+  const [isHealthColumnVisible, setIsHealthColumnVisible] = useState<boolean>(() => {
+    const stored = localStorage.getItem('channels-table-column-visibility');
+    if (stored) {
+      try {
+        const visibility = JSON.parse(stored);
+        return visibility.health !== false;
+      } catch {
+        return true;
+      }
+    }
+    return true;
   });
 
   useEffect(() => {
@@ -101,6 +115,9 @@ function ChannelsContent() {
         return { field: 'NAME', direction: primary.desc ? 'DESC' : 'ASC' } as const;
       case 'status':
         return { field: 'STATUS', direction: primary.desc ? 'DESC' : 'ASC' } as const;
+      case 'provider':
+      case 'type':
+        return { field: 'TYPE', direction: primary.desc ? 'DESC' : 'ASC' } as const;
       case 'createdAt':
         return { field: 'CREATED_AT', direction: primary.desc ? 'DESC' : 'ASC' } as const;
       case 'updatedAt':
@@ -121,6 +138,23 @@ function ChannelsContent() {
     hasTag: tagFilter || undefined,
     model: modelFilter || undefined,
   });
+
+  const channelIDs = useMemo(() => {
+    return data?.edges?.map((edge) => edge.node.id) || [];
+  }, [data?.edges]);
+
+  const { data: probeData } = useChannelProbeData(channelIDs, { enabled: isHealthColumnVisible });
+
+  const channelsWithProbeData = useMemo(() => {
+    if (!data?.edges) return [];
+    
+    const probeMap = new Map(probeData?.map((probe) => [probe.channelID, probe.points]) || []);
+    
+    return data.edges.map((edge) => ({
+      ...edge.node,
+      probePoints: probeMap.get(edge.node.id) || [],
+    }));
+  }, [data?.edges, probeData]);
 
   const handleNextPage = useCallback(() => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
@@ -200,8 +234,7 @@ function ChannelsContent() {
     resetCursor();
   }, [resetCursor]);
 
-  // Memoize columns with stable reference
-  const columns = useMemo(() => createColumns(t), [t]);
+  const columns = useMemo(() => createColumns(t, channelPermissions.canWrite), [t, channelPermissions.canWrite]);
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
@@ -214,7 +247,7 @@ function ChannelsContent() {
       <ChannelsTypeTabs typeCounts={channelTypeCounts} selectedTab={selectedTypeTab} onTabChange={handleTabChange} />
       <ChannelsTable
         loading={isLoading}
-        data={data?.edges?.map((edge) => edge.node) || []}
+        data={channelsWithProbeData}
         columns={columns}
         pageInfo={data?.pageInfo}
         pageSize={pageSize}
@@ -238,6 +271,8 @@ function ChannelsContent() {
         onStatusFilterChange={handleStatusFilterChange}
         onTagFilterChange={handleTagFilterChange}
         onModelFilterChange={handleModelFilterChange}
+        onHealthColumnVisibilityChange={setIsHealthColumnVisible}
+        canWrite={channelPermissions.canWrite}
       />
     </div>
   );

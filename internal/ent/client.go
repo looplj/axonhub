@@ -19,9 +19,11 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
+	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
+	"github.com/looplj/axonhub/internal/ent/prompt"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
@@ -47,12 +49,16 @@ type Client struct {
 	ChannelOverrideTemplate *ChannelOverrideTemplateClient
 	// ChannelPerformance is the client for interacting with the ChannelPerformance builders.
 	ChannelPerformance *ChannelPerformanceClient
+	// ChannelProbe is the client for interacting with the ChannelProbe builders.
+	ChannelProbe *ChannelProbeClient
 	// DataStorage is the client for interacting with the DataStorage builders.
 	DataStorage *DataStorageClient
 	// Model is the client for interacting with the Model builders.
 	Model *ModelClient
 	// Project is the client for interacting with the Project builders.
 	Project *ProjectClient
+	// Prompt is the client for interacting with the Prompt builders.
+	Prompt *PromptClient
 	// Request is the client for interacting with the Request builders.
 	Request *RequestClient
 	// RequestExecution is the client for interacting with the RequestExecution builders.
@@ -90,9 +96,11 @@ func (c *Client) init() {
 	c.Channel = NewChannelClient(c.config)
 	c.ChannelOverrideTemplate = NewChannelOverrideTemplateClient(c.config)
 	c.ChannelPerformance = NewChannelPerformanceClient(c.config)
+	c.ChannelProbe = NewChannelProbeClient(c.config)
 	c.DataStorage = NewDataStorageClient(c.config)
 	c.Model = NewModelClient(c.config)
 	c.Project = NewProjectClient(c.config)
+	c.Prompt = NewPromptClient(c.config)
 	c.Request = NewRequestClient(c.config)
 	c.RequestExecution = NewRequestExecutionClient(c.config)
 	c.Role = NewRoleClient(c.config)
@@ -199,9 +207,11 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Channel:                 NewChannelClient(cfg),
 		ChannelOverrideTemplate: NewChannelOverrideTemplateClient(cfg),
 		ChannelPerformance:      NewChannelPerformanceClient(cfg),
+		ChannelProbe:            NewChannelProbeClient(cfg),
 		DataStorage:             NewDataStorageClient(cfg),
 		Model:                   NewModelClient(cfg),
 		Project:                 NewProjectClient(cfg),
+		Prompt:                  NewPromptClient(cfg),
 		Request:                 NewRequestClient(cfg),
 		RequestExecution:        NewRequestExecutionClient(cfg),
 		Role:                    NewRoleClient(cfg),
@@ -235,9 +245,11 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Channel:                 NewChannelClient(cfg),
 		ChannelOverrideTemplate: NewChannelOverrideTemplateClient(cfg),
 		ChannelPerformance:      NewChannelPerformanceClient(cfg),
+		ChannelProbe:            NewChannelProbeClient(cfg),
 		DataStorage:             NewDataStorageClient(cfg),
 		Model:                   NewModelClient(cfg),
 		Project:                 NewProjectClient(cfg),
+		Prompt:                  NewPromptClient(cfg),
 		Request:                 NewRequestClient(cfg),
 		RequestExecution:        NewRequestExecutionClient(cfg),
 		Role:                    NewRoleClient(cfg),
@@ -278,8 +290,9 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.APIKey, c.Channel, c.ChannelOverrideTemplate, c.ChannelPerformance,
-		c.DataStorage, c.Model, c.Project, c.Request, c.RequestExecution, c.Role,
-		c.System, c.Thread, c.Trace, c.UsageLog, c.User, c.UserProject, c.UserRole,
+		c.ChannelProbe, c.DataStorage, c.Model, c.Project, c.Prompt, c.Request,
+		c.RequestExecution, c.Role, c.System, c.Thread, c.Trace, c.UsageLog, c.User,
+		c.UserProject, c.UserRole,
 	} {
 		n.Use(hooks...)
 	}
@@ -290,8 +303,9 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.APIKey, c.Channel, c.ChannelOverrideTemplate, c.ChannelPerformance,
-		c.DataStorage, c.Model, c.Project, c.Request, c.RequestExecution, c.Role,
-		c.System, c.Thread, c.Trace, c.UsageLog, c.User, c.UserProject, c.UserRole,
+		c.ChannelProbe, c.DataStorage, c.Model, c.Project, c.Prompt, c.Request,
+		c.RequestExecution, c.Role, c.System, c.Thread, c.Trace, c.UsageLog, c.User,
+		c.UserProject, c.UserRole,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -308,12 +322,16 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.ChannelOverrideTemplate.mutate(ctx, m)
 	case *ChannelPerformanceMutation:
 		return c.ChannelPerformance.mutate(ctx, m)
+	case *ChannelProbeMutation:
+		return c.ChannelProbe.mutate(ctx, m)
 	case *DataStorageMutation:
 		return c.DataStorage.mutate(ctx, m)
 	case *ModelMutation:
 		return c.Model.mutate(ctx, m)
 	case *ProjectMutation:
 		return c.Project.mutate(ctx, m)
+	case *PromptMutation:
+		return c.Prompt.mutate(ctx, m)
 	case *RequestMutation:
 		return c.Request.mutate(ctx, m)
 	case *RequestExecutionMutation:
@@ -694,6 +712,22 @@ func (c *ChannelClient) QueryChannelPerformance(_m *Channel) *ChannelPerformance
 	return query
 }
 
+// QueryChannelProbes queries the channel_probes edge of a Channel.
+func (c *ChannelClient) QueryChannelProbes(_m *Channel) *ChannelProbeQuery {
+	query := (&ChannelProbeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(channel.Table, channel.FieldID, id),
+			sqlgraph.To(channelprobe.Table, channelprobe.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, channel.ChannelProbesTable, channel.ChannelProbesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *ChannelClient) Hooks() []Hook {
 	hooks := c.hooks.Channel
@@ -1020,6 +1054,155 @@ func (c *ChannelPerformanceClient) mutate(ctx context.Context, m *ChannelPerform
 		return (&ChannelPerformanceDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown ChannelPerformance mutation op: %q", m.Op())
+	}
+}
+
+// ChannelProbeClient is a client for the ChannelProbe schema.
+type ChannelProbeClient struct {
+	config
+}
+
+// NewChannelProbeClient returns a client for the ChannelProbe from the given config.
+func NewChannelProbeClient(c config) *ChannelProbeClient {
+	return &ChannelProbeClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `channelprobe.Hooks(f(g(h())))`.
+func (c *ChannelProbeClient) Use(hooks ...Hook) {
+	c.hooks.ChannelProbe = append(c.hooks.ChannelProbe, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `channelprobe.Intercept(f(g(h())))`.
+func (c *ChannelProbeClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ChannelProbe = append(c.inters.ChannelProbe, interceptors...)
+}
+
+// Create returns a builder for creating a ChannelProbe entity.
+func (c *ChannelProbeClient) Create() *ChannelProbeCreate {
+	mutation := newChannelProbeMutation(c.config, OpCreate)
+	return &ChannelProbeCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ChannelProbe entities.
+func (c *ChannelProbeClient) CreateBulk(builders ...*ChannelProbeCreate) *ChannelProbeCreateBulk {
+	return &ChannelProbeCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ChannelProbeClient) MapCreateBulk(slice any, setFunc func(*ChannelProbeCreate, int)) *ChannelProbeCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ChannelProbeCreateBulk{err: fmt.Errorf("calling to ChannelProbeClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ChannelProbeCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ChannelProbeCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ChannelProbe.
+func (c *ChannelProbeClient) Update() *ChannelProbeUpdate {
+	mutation := newChannelProbeMutation(c.config, OpUpdate)
+	return &ChannelProbeUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ChannelProbeClient) UpdateOne(_m *ChannelProbe) *ChannelProbeUpdateOne {
+	mutation := newChannelProbeMutation(c.config, OpUpdateOne, withChannelProbe(_m))
+	return &ChannelProbeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ChannelProbeClient) UpdateOneID(id int) *ChannelProbeUpdateOne {
+	mutation := newChannelProbeMutation(c.config, OpUpdateOne, withChannelProbeID(id))
+	return &ChannelProbeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ChannelProbe.
+func (c *ChannelProbeClient) Delete() *ChannelProbeDelete {
+	mutation := newChannelProbeMutation(c.config, OpDelete)
+	return &ChannelProbeDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ChannelProbeClient) DeleteOne(_m *ChannelProbe) *ChannelProbeDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ChannelProbeClient) DeleteOneID(id int) *ChannelProbeDeleteOne {
+	builder := c.Delete().Where(channelprobe.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ChannelProbeDeleteOne{builder}
+}
+
+// Query returns a query builder for ChannelProbe.
+func (c *ChannelProbeClient) Query() *ChannelProbeQuery {
+	return &ChannelProbeQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeChannelProbe},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ChannelProbe entity by its id.
+func (c *ChannelProbeClient) Get(ctx context.Context, id int) (*ChannelProbe, error) {
+	return c.Query().Where(channelprobe.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ChannelProbeClient) GetX(ctx context.Context, id int) *ChannelProbe {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryChannel queries the channel edge of a ChannelProbe.
+func (c *ChannelProbeClient) QueryChannel(_m *ChannelProbe) *ChannelQuery {
+	query := (&ChannelClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(channelprobe.Table, channelprobe.FieldID, id),
+			sqlgraph.To(channel.Table, channel.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, channelprobe.ChannelTable, channelprobe.ChannelColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ChannelProbeClient) Hooks() []Hook {
+	return c.hooks.ChannelProbe
+}
+
+// Interceptors returns the client interceptors.
+func (c *ChannelProbeClient) Interceptors() []Interceptor {
+	return c.inters.ChannelProbe
+}
+
+func (c *ChannelProbeClient) mutate(ctx context.Context, m *ChannelProbeMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ChannelProbeCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ChannelProbeUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ChannelProbeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ChannelProbeDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ChannelProbe mutation op: %q", m.Op())
 	}
 }
 
@@ -1545,6 +1728,22 @@ func (c *ProjectClient) QueryTraces(_m *Project) *TraceQuery {
 	return query
 }
 
+// QueryPrompts queries the prompts edge of a Project.
+func (c *ProjectClient) QueryPrompts(_m *Project) *PromptQuery {
+	query := (&PromptClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, id),
+			sqlgraph.To(prompt.Table, prompt.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, project.PromptsTable, project.PromptsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryProjectUsers queries the project_users edge of a Project.
 func (c *ProjectClient) QueryProjectUsers(_m *Project) *UserProjectQuery {
 	query := (&UserProjectClient{config: c.config}).Query()
@@ -1585,6 +1784,157 @@ func (c *ProjectClient) mutate(ctx context.Context, m *ProjectMutation) (Value, 
 		return (&ProjectDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Project mutation op: %q", m.Op())
+	}
+}
+
+// PromptClient is a client for the Prompt schema.
+type PromptClient struct {
+	config
+}
+
+// NewPromptClient returns a client for the Prompt from the given config.
+func NewPromptClient(c config) *PromptClient {
+	return &PromptClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `prompt.Hooks(f(g(h())))`.
+func (c *PromptClient) Use(hooks ...Hook) {
+	c.hooks.Prompt = append(c.hooks.Prompt, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `prompt.Intercept(f(g(h())))`.
+func (c *PromptClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Prompt = append(c.inters.Prompt, interceptors...)
+}
+
+// Create returns a builder for creating a Prompt entity.
+func (c *PromptClient) Create() *PromptCreate {
+	mutation := newPromptMutation(c.config, OpCreate)
+	return &PromptCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Prompt entities.
+func (c *PromptClient) CreateBulk(builders ...*PromptCreate) *PromptCreateBulk {
+	return &PromptCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *PromptClient) MapCreateBulk(slice any, setFunc func(*PromptCreate, int)) *PromptCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &PromptCreateBulk{err: fmt.Errorf("calling to PromptClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*PromptCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &PromptCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Prompt.
+func (c *PromptClient) Update() *PromptUpdate {
+	mutation := newPromptMutation(c.config, OpUpdate)
+	return &PromptUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *PromptClient) UpdateOne(_m *Prompt) *PromptUpdateOne {
+	mutation := newPromptMutation(c.config, OpUpdateOne, withPrompt(_m))
+	return &PromptUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *PromptClient) UpdateOneID(id int) *PromptUpdateOne {
+	mutation := newPromptMutation(c.config, OpUpdateOne, withPromptID(id))
+	return &PromptUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Prompt.
+func (c *PromptClient) Delete() *PromptDelete {
+	mutation := newPromptMutation(c.config, OpDelete)
+	return &PromptDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *PromptClient) DeleteOne(_m *Prompt) *PromptDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *PromptClient) DeleteOneID(id int) *PromptDeleteOne {
+	builder := c.Delete().Where(prompt.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &PromptDeleteOne{builder}
+}
+
+// Query returns a query builder for Prompt.
+func (c *PromptClient) Query() *PromptQuery {
+	return &PromptQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypePrompt},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Prompt entity by its id.
+func (c *PromptClient) Get(ctx context.Context, id int) (*Prompt, error) {
+	return c.Query().Where(prompt.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *PromptClient) GetX(ctx context.Context, id int) *Prompt {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryProjects queries the projects edge of a Prompt.
+func (c *PromptClient) QueryProjects(_m *Prompt) *ProjectQuery {
+	query := (&ProjectClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(prompt.Table, prompt.FieldID, id),
+			sqlgraph.To(project.Table, project.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, prompt.ProjectsTable, prompt.ProjectsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *PromptClient) Hooks() []Hook {
+	hooks := c.hooks.Prompt
+	return append(hooks[:len(hooks):len(hooks)], prompt.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *PromptClient) Interceptors() []Interceptor {
+	inters := c.inters.Prompt
+	return append(inters[:len(inters):len(inters)], prompt.Interceptors[:]...)
+}
+
+func (c *PromptClient) mutate(ctx context.Context, m *PromptMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&PromptCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&PromptUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&PromptUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&PromptDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Prompt mutation op: %q", m.Op())
 	}
 }
 
@@ -3431,13 +3781,13 @@ func (c *UserRoleClient) mutate(ctx context.Context, m *UserRoleMutation) (Value
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		APIKey, Channel, ChannelOverrideTemplate, ChannelPerformance, DataStorage,
-		Model, Project, Request, RequestExecution, Role, System, Thread, Trace,
-		UsageLog, User, UserProject, UserRole []ent.Hook
+		APIKey, Channel, ChannelOverrideTemplate, ChannelPerformance, ChannelProbe,
+		DataStorage, Model, Project, Prompt, Request, RequestExecution, Role, System,
+		Thread, Trace, UsageLog, User, UserProject, UserRole []ent.Hook
 	}
 	inters struct {
-		APIKey, Channel, ChannelOverrideTemplate, ChannelPerformance, DataStorage,
-		Model, Project, Request, RequestExecution, Role, System, Thread, Trace,
-		UsageLog, User, UserProject, UserRole []ent.Interceptor
+		APIKey, Channel, ChannelOverrideTemplate, ChannelPerformance, ChannelProbe,
+		DataStorage, Model, Project, Prompt, Request, RequestExecution, Role, System,
+		Thread, Trace, UsageLog, User, UserProject, UserRole []ent.Interceptor
 	}
 )

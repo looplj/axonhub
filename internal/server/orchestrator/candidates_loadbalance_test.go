@@ -9,9 +9,9 @@ import (
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
-	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm"
 )
 
 // TestLoadBalancedSelector_Select_MultipleChannels_LoadBalancing tests load balancing with multiple channels.
@@ -208,7 +208,7 @@ func TestDefaultChannelSelector_Select_WithChannelFailures(t *testing.T) {
 	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService, connectionTracker)
 
 	// Record failures for the high weight channel to test error awareness
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		perf := &biz.PerformanceRecord{
 			ChannelID:        channels[0].ID,
 			StartTime:        time.Now().Add(-time.Minute),
@@ -313,7 +313,7 @@ func TestDefaultChannelSelector_Select_WeightedRoundRobin_EqualWeights(t *testin
 	// Make multiple selections to test round-robin behavior
 	selections := make([][]*ChannelModelCandidate, 9)
 
-	for i := 0; i < 9; i++ {
+	for i := range 9 {
 		result, err := selector.Select(ctx, req)
 		require.NoError(t, err)
 		require.Len(t, result, 3)
@@ -404,7 +404,7 @@ func TestDefaultChannelSelector_Select_WeightedRoundRobin(t *testing.T) {
 	// Make multiple selections to test round-robin behavior
 	selections := make([][]*ChannelModelCandidate, 6)
 
-	for i := 0; i < 6; i++ {
+	for i := range 6 {
 		result, err := selector.Select(ctx, req)
 		require.NoError(t, err)
 		require.Len(t, result, 3)
@@ -505,7 +505,7 @@ func TestLoadBalancedSelector_Select(t *testing.T) {
 		NewWeightRoundRobinStrategy(channelService),
 		NewConnectionAwareStrategy(channelService, connectionTracker),
 	}
-	loadBalancer := NewLoadBalancer(systemService, strategies...)
+	loadBalancer := NewLoadBalancer(systemService, nil, strategies...)
 
 	modelService := newTestModelService(client)
 	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
@@ -551,7 +551,7 @@ func TestLoadBalancedSelector_Select_SingleChannel(t *testing.T) {
 
 	channelService := newTestChannelServiceForChannels(client)
 	systemService := newTestSystemService(client)
-	loadBalancer := NewLoadBalancer(systemService)
+	loadBalancer := NewLoadBalancer(systemService, nil)
 
 	modelService := newTestModelService(client)
 	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
