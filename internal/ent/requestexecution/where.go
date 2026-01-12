@@ -105,6 +105,11 @@ func ErrorMessage(v string) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldEQ(FieldErrorMessage, v))
 }
 
+// Stream applies equality check predicate on the "stream" field. It's identical to StreamEQ.
+func Stream(v bool) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEQ(FieldStream, v))
+}
+
 // MetricsLatencyMs applies equality check predicate on the "metrics_latency_ms" field. It's identical to MetricsLatencyMsEQ.
 func MetricsLatencyMs(v int64) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldEQ(FieldMetricsLatencyMs, v))
@@ -633,6 +638,16 @@ func StatusIn(vs ...Status) predicate.RequestExecution {
 // StatusNotIn applies the NotIn predicate on the "status" field.
 func StatusNotIn(vs ...Status) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldNotIn(FieldStatus, vs...))
+}
+
+// StreamEQ applies the EQ predicate on the "stream" field.
+func StreamEQ(v bool) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEQ(FieldStream, v))
+}
+
+// StreamNEQ applies the NEQ predicate on the "stream" field.
+func StreamNEQ(v bool) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNEQ(FieldStream, v))
 }
 
 // MetricsLatencyMsEQ applies the EQ predicate on the "metrics_latency_ms" field.

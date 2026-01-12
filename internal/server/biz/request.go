@@ -299,6 +299,7 @@ func (s *RequestService) CreateRequestExecution(
 		SetModelID(modelID).
 		SetRequestBody(requestBodyForDB).
 		SetStatus(requestexecution.StatusProcessing).
+		SetStream(request.Stream).
 		SetRequestHeaders(requestHeadersBytes)
 
 	// Use the same data storage as the request
@@ -999,7 +1000,7 @@ func (s *RequestService) LoadRequestExecutionResponseChunks(ctx context.Context,
 	}
 
 	// Only load response body if execution is completed
-	if exec.Status != requestexecution.StatusCompleted {
+	if !exec.Stream || exec.Status != requestexecution.StatusCompleted {
 		return nil, nil
 	}
 

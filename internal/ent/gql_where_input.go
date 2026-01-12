@@ -5852,6 +5852,10 @@ type RequestExecutionWhereInput struct {
 	StatusIn    []requestexecution.Status `json:"statusIn,omitempty"`
 	StatusNotIn []requestexecution.Status `json:"statusNotIn,omitempty"`
 
+	// "stream" field predicates.
+	Stream    *bool `json:"stream,omitempty"`
+	StreamNEQ *bool `json:"streamNEQ,omitempty"`
+
 	// "metrics_latency_ms" field predicates.
 	MetricsLatencyMs       *int64  `json:"metricsLatencyMs,omitempty"`
 	MetricsLatencyMsNEQ    *int64  `json:"metricsLatencyMsNEQ,omitempty"`
@@ -6283,6 +6287,12 @@ func (i *RequestExecutionWhereInput) P() (predicate.RequestExecution, error) {
 	}
 	if len(i.StatusNotIn) > 0 {
 		predicates = append(predicates, requestexecution.StatusNotIn(i.StatusNotIn...))
+	}
+	if i.Stream != nil {
+		predicates = append(predicates, requestexecution.StreamEQ(*i.Stream))
+	}
+	if i.StreamNEQ != nil {
+		predicates = append(predicates, requestexecution.StreamNEQ(*i.StreamNEQ))
 	}
 	if i.MetricsLatencyMs != nil {
 		predicates = append(predicates, requestexecution.MetricsLatencyMsEQ(*i.MetricsLatencyMs))

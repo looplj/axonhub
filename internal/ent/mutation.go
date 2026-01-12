@@ -13016,6 +13016,7 @@ type RequestExecutionMutation struct {
 	appendresponse_chunks             []objects.JSONRawMessage
 	error_message                     *string
 	status                            *requestexecution.Status
+	stream                            *bool
 	metrics_latency_ms                *int64
 	addmetrics_latency_ms             *int64
 	metrics_first_token_latency_ms    *int64
@@ -13781,6 +13782,42 @@ func (m *RequestExecutionMutation) ResetStatus() {
 	m.status = nil
 }
 
+// SetStream sets the "stream" field.
+func (m *RequestExecutionMutation) SetStream(b bool) {
+	m.stream = &b
+}
+
+// Stream returns the value of the "stream" field in the mutation.
+func (m *RequestExecutionMutation) Stream() (r bool, exists bool) {
+	v := m.stream
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStream returns the old "stream" field's value of the RequestExecution entity.
+// If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestExecutionMutation) OldStream(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStream is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStream requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStream: %w", err)
+	}
+	return oldValue.Stream, nil
+}
+
+// ResetStream resets all changes to the "stream" field.
+func (m *RequestExecutionMutation) ResetStream() {
+	m.stream = nil
+}
+
 // SetMetricsLatencyMs sets the "metrics_latency_ms" field.
 func (m *RequestExecutionMutation) SetMetricsLatencyMs(i int64) {
 	m.metrics_latency_ms = &i
@@ -14101,7 +14138,7 @@ func (m *RequestExecutionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestExecutionMutation) Fields() []string {
-	fields := make([]string, 0, 17)
+	fields := make([]string, 0, 18)
 	if m.created_at != nil {
 		fields = append(fields, requestexecution.FieldCreatedAt)
 	}
@@ -14143,6 +14180,9 @@ func (m *RequestExecutionMutation) Fields() []string {
 	}
 	if m.status != nil {
 		fields = append(fields, requestexecution.FieldStatus)
+	}
+	if m.stream != nil {
+		fields = append(fields, requestexecution.FieldStream)
 	}
 	if m.metrics_latency_ms != nil {
 		fields = append(fields, requestexecution.FieldMetricsLatencyMs)
@@ -14189,6 +14229,8 @@ func (m *RequestExecutionMutation) Field(name string) (ent.Value, bool) {
 		return m.ErrorMessage()
 	case requestexecution.FieldStatus:
 		return m.Status()
+	case requestexecution.FieldStream:
+		return m.Stream()
 	case requestexecution.FieldMetricsLatencyMs:
 		return m.MetricsLatencyMs()
 	case requestexecution.FieldMetricsFirstTokenLatencyMs:
@@ -14232,6 +14274,8 @@ func (m *RequestExecutionMutation) OldField(ctx context.Context, name string) (e
 		return m.OldErrorMessage(ctx)
 	case requestexecution.FieldStatus:
 		return m.OldStatus(ctx)
+	case requestexecution.FieldStream:
+		return m.OldStream(ctx)
 	case requestexecution.FieldMetricsLatencyMs:
 		return m.OldMetricsLatencyMs(ctx)
 	case requestexecution.FieldMetricsFirstTokenLatencyMs:
@@ -14344,6 +14388,13 @@ func (m *RequestExecutionMutation) SetField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetStatus(v)
+		return nil
+	case requestexecution.FieldStream:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStream(v)
 		return nil
 	case requestexecution.FieldMetricsLatencyMs:
 		v, ok := value.(int64)
@@ -14552,6 +14603,9 @@ func (m *RequestExecutionMutation) ResetField(name string) error {
 		return nil
 	case requestexecution.FieldStatus:
 		m.ResetStatus()
+		return nil
+	case requestexecution.FieldStream:
+		m.ResetStream()
 		return nil
 	case requestexecution.FieldMetricsLatencyMs:
 		m.ResetMetricsLatencyMs()

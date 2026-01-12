@@ -484,6 +484,10 @@ func init() {
 	requestexecutionDescFormat := requestexecutionFields[6].Descriptor()
 	// requestexecution.DefaultFormat holds the default value on creation for the format field.
 	requestexecution.DefaultFormat = requestexecutionDescFormat.Default.(string)
+	// requestexecutionDescStream is the schema descriptor for stream field.
+	requestexecutionDescStream := requestexecutionFields[12].Descriptor()
+	// requestexecution.DefaultStream holds the default value on creation for the stream field.
+	requestexecution.DefaultStream = requestexecutionDescStream.Default.(bool)
 	roleMixin := schema.Role{}.Mixin()
 	role.Policy = privacy.NewPolicies(schema.Role{})
 	role.Hooks[0] = func(next ent.Mutator) ent.Mutator {
