@@ -7,6 +7,7 @@ const path = require('path');
 const SOURCE_URL = 'https://raw.githubusercontent.com/ThinkInAIXYZ/PublicProviderConf/refs/heads/dev/dist/all.json';
 const CONSTANTS_PATH = path.join(__dirname, '../frontend/src/features/models/data/constants.ts');
 const OUTPUT_PATH = path.join(__dirname, '../frontend/src/features/models/data/providers.json');
+const MODELS_JSON_PATH = path.join(__dirname, 'models/models.json');
 
 function fetchJSON(url) {
   return new Promise((resolve, reject) => {
@@ -77,6 +78,41 @@ function sortModelsByDate(data) {
   return data;
 }
 
+function mergeWithModelsJson(data, modelsJsonPath) {
+  if (!fs.existsSync(modelsJsonPath)) {
+    console.log('models.json does not exist, skipping merge');
+    return data;
+  }
+
+  console.log('Merging with models.json...');
+  const modelsJson = JSON.parse(fs.readFileSync(modelsJsonPath, 'utf8'));
+
+  for (const [providerKey, models] of Object.entries(modelsJson)) {
+    if (data.providers[providerKey]) {
+      const existingProvider = data.providers[providerKey];
+      if (!existingProvider.models) {
+        existingProvider.models = [];
+      }
+      
+      const existingIds = new Set(existingProvider.models.map(m => m.id));
+      
+      for (const model of models) {
+        if (!existingIds.has(model.id)) {
+          existingProvider.models.push(model);
+          existingIds.add(model.id);
+        }
+      }
+    } else {
+      data.providers[providerKey] = {
+        id: providerKey,
+        models: models
+      };
+    }
+  }
+
+  return data;
+}
+
 async function main() {
   try {
     console.log('Fetching model developers data from:', SOURCE_URL);
@@ -91,6 +127,9 @@ async function main() {
     
     const providerCount = Object.keys(filtered.providers).length;
     console.log(`Filtered to ${providerCount} providers`);
+    
+    console.log('Merging with models.json...');
+    mergeWithModelsJson(filtered, MODELS_JSON_PATH);
     
     console.log('Sorting models by release date...');
     sortModelsByDate(filtered);
