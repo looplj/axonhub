@@ -17,6 +17,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useRequestPermissions } from '../../../hooks/useRequestPermissions';
 import { Request } from '../data/schema';
 import { getStatusColor } from './help';
+import { fa } from 'zod/v4/locales';
 
 export function useRequestsColumns(): ColumnDef<Request>[] {
   const { t, i18n } = useTranslation();
@@ -134,6 +135,16 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
         return value.includes(row.getValue(id));
       },
     },
+    {
+      id: 'clientIP',
+      accessorKey: 'clientIP',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.clientIP')} />,
+      enableSorting: false,
+      cell: ({ row }) => {
+        const clientIP = row.getValue('clientIP') as string;
+        return <div className='font-mono text-xs'>{clientIP || '-'}</div>;
+      },
+    },
     // Channel column - only show if user has permission to view channels
     ...(permissions.canViewChannels
       ? ([
@@ -222,7 +233,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
         return value.includes(row.getValue(id));
       },
       enableSorting: false,
-      enableHiding: true,
+      enableHiding: false,
     },
     {
       id: 'tokens',
@@ -393,6 +404,8 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
         const date = new Date(row.getValue('createdAt'));
         return <div className='text-xs'>{format(date, 'yyyy-MM-dd HH:mm:ss', { locale })}</div>;
       },
+      enableSorting: false,
+      enableHiding: false,
     },
   ];
   return columns;

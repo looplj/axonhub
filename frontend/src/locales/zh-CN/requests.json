@@ -7,6 +7,7 @@
       "stream": "流式",
       "source": "来源",
       "channel": "渠道",
+      "clientIP": "客户端IP",
       "user": "用户",
       "apiKey": "API密钥",
       "roles": "角色",

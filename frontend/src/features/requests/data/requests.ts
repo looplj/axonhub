@@ -50,6 +50,7 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
             modelID
             stream
             status
+            clientIP
             metricsLatencyMs
             metricsFirstTokenLatencyMs
             executions(first: 10, orderBy: { field: CREATED_AT, direction: DESC }) {
@@ -125,6 +126,7 @@ function buildRequestDetailQuery(permissions: { canViewApiKeys: boolean; canView
           source
           modelID
           stream
+          clientIP
           projectID
           dataStorageID
           requestHeaders

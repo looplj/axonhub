@@ -170,6 +170,10 @@ func (s *RequestService) CreateRequest(
 		SetStream(isStream).
 		SetRequestHeaders(requestHeadersBytes)
 
+	if httpRequest != nil && httpRequest.ClientIP != "" {
+		mut = mut.SetClientIP(httpRequest.ClientIP)
+	}
+
 	// Determine if we should store in database or external storage
 	useExternalStorage := storeRequestBody && s.shouldUseExternalStorage(ctx, dataStorage)
 

@@ -53,6 +53,7 @@ export const requestSchema = z.object({
   responseBody: z.any().nullable().optional(), // JSONRawMessage
   responseChunks: z.array(z.any()).nullable().optional(), // [JSONRawMessage!]
   status: requestStatusSchema,
+  clientIP: z.string().nullable().optional(),
   stream: z.boolean().nullable(),
   metricsLatencyMs: z.number().nullable().optional(),
   metricsFirstTokenLatencyMs: z.number().nullable().optional(),

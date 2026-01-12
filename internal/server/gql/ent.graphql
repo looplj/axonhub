@@ -1493,6 +1493,7 @@ input CreateRequestInput {
   externalID: String
   status: RequestStatus!
   stream: Boolean
+  clientIP: String
   metricsLatencyMs: Int
   metricsFirstTokenLatencyMs: Int
   apiKeyID: ID
@@ -3432,6 +3433,7 @@ type Request implements Node {
   externalID: String
   status: RequestStatus!
   stream: Boolean!
+  clientIP: String!
   metricsLatencyMs: Int
   metricsFirstTokenLatencyMs: Int
   apiKey: APIKey
@@ -4012,6 +4014,22 @@ input RequestWhereInput {
   """
   stream: Boolean
   streamNEQ: Boolean
+  """
+  client_ip field predicates
+  """
+  clientIP: String
+  clientIPNEQ: String
+  clientIPIn: [String!]
+  clientIPNotIn: [String!]
+  clientIPGT: String
+  clientIPGTE: String
+  clientIPLT: String
+  clientIPLTE: String
+  clientIPContains: String
+  clientIPHasPrefix: String
+  clientIPHasSuffix: String
+  clientIPEqualFold: String
+  clientIPContainsFold: String
   """
   metrics_latency_ms field predicates
   """
