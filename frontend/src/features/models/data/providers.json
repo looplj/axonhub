@@ -6070,6 +6070,60 @@
           "type": "chat"
         },
         {
+          "id": "gpt-oss-120b",
+          "name": "gpt-oss-120b",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "temperature": false,
+          "tool_call": true,
+          "release_date": "2025-08-05",
+          "last_updated": "2025-08-05",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 131072,
+            "output": 131072
+          },
+          "display_name": "gpt-oss-120b"
+        },
+        {
+          "id": "gpt-oss-20b",
+          "name": "gpt-oss-20b",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "temperature": false,
+          "tool_call": true,
+          "release_date": "2025-08-05",
+          "last_updated": "2025-08-05",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 131072,
+            "output": 32768
+          },
+          "display_name": "gpt-oss-20b"
+        },
+        {
           "id": "o3-pro",
           "name": "o3-pro",
           "family": "o3-pro",
