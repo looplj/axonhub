@@ -3363,6 +3363,11 @@ func (_q *RequestExecutionQuery) collectField(ctx context.Context, oneNode bool,
 				selectedFields = append(selectedFields, requestexecution.FieldStatus)
 				fieldSeen[requestexecution.FieldStatus] = struct{}{}
 			}
+		case "stream":
+			if _, ok := fieldSeen[requestexecution.FieldStream]; !ok {
+				selectedFields = append(selectedFields, requestexecution.FieldStream)
+				fieldSeen[requestexecution.FieldStream] = struct{}{}
+			}
 		case "metricsLatencyMs":
 			if _, ok := fieldSeen[requestexecution.FieldMetricsLatencyMs]; !ok {
 				selectedFields = append(selectedFields, requestexecution.FieldMetricsLatencyMs)

@@ -307,6 +307,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			requestexecution.FieldResponseChunks:             {Type: field.TypeJSON, Column: requestexecution.FieldResponseChunks},
 			requestexecution.FieldErrorMessage:               {Type: field.TypeString, Column: requestexecution.FieldErrorMessage},
 			requestexecution.FieldStatus:                     {Type: field.TypeEnum, Column: requestexecution.FieldStatus},
+			requestexecution.FieldStream:                     {Type: field.TypeBool, Column: requestexecution.FieldStream},
 			requestexecution.FieldMetricsLatencyMs:           {Type: field.TypeInt64, Column: requestexecution.FieldMetricsLatencyMs},
 			requestexecution.FieldMetricsFirstTokenLatencyMs: {Type: field.TypeInt64, Column: requestexecution.FieldMetricsFirstTokenLatencyMs},
 			requestexecution.FieldRequestHeaders:             {Type: field.TypeJSON, Column: requestexecution.FieldRequestHeaders},
@@ -2659,6 +2660,11 @@ func (f *RequestExecutionFilter) WhereErrorMessage(p entql.StringP) {
 // WhereStatus applies the entql string predicate on the status field.
 func (f *RequestExecutionFilter) WhereStatus(p entql.StringP) {
 	f.Where(p.Field(requestexecution.FieldStatus))
+}
+
+// WhereStream applies the entql bool predicate on the stream field.
+func (f *RequestExecutionFilter) WhereStream(p entql.BoolP) {
+	f.Where(p.Field(requestexecution.FieldStream))
 }
 
 // WhereMetricsLatencyMs applies the entql int64 predicate on the metrics_latency_ms field.

@@ -174,6 +174,20 @@ func (_c *RequestExecutionCreate) SetStatus(v requestexecution.Status) *RequestE
 	return _c
 }
 
+// SetStream sets the "stream" field.
+func (_c *RequestExecutionCreate) SetStream(v bool) *RequestExecutionCreate {
+	_c.mutation.SetStream(v)
+	return _c
+}
+
+// SetNillableStream sets the "stream" field if the given value is not nil.
+func (_c *RequestExecutionCreate) SetNillableStream(v *bool) *RequestExecutionCreate {
+	if v != nil {
+		_c.SetStream(*v)
+	}
+	return _c
+}
+
 // SetMetricsLatencyMs sets the "metrics_latency_ms" field.
 func (_c *RequestExecutionCreate) SetMetricsLatencyMs(v int64) *RequestExecutionCreate {
 	_c.mutation.SetMetricsLatencyMs(v)
@@ -274,6 +288,10 @@ func (_c *RequestExecutionCreate) defaults() {
 		v := requestexecution.DefaultFormat
 		_c.mutation.SetFormat(v)
 	}
+	if _, ok := _c.mutation.Stream(); !ok {
+		v := requestexecution.DefaultStream
+		_c.mutation.SetStream(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -306,6 +324,9 @@ func (_c *RequestExecutionCreate) check() error {
 		if err := requestexecution.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "RequestExecution.status": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.Stream(); !ok {
+		return &ValidationError{Name: "stream", err: errors.New(`ent: missing required field "RequestExecution.stream"`)}
 	}
 	if len(_c.mutation.RequestIDs()) == 0 {
 		return &ValidationError{Name: "request", err: errors.New(`ent: missing required edge "RequestExecution.request"`)}
@@ -380,6 +401,10 @@ func (_c *RequestExecutionCreate) createSpec() (*RequestExecution, *sqlgraph.Cre
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(requestexecution.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
+	}
+	if value, ok := _c.mutation.Stream(); ok {
+		_spec.SetField(requestexecution.FieldStream, field.TypeBool, value)
+		_node.Stream = value
 	}
 	if value, ok := _c.mutation.MetricsLatencyMs(); ok {
 		_spec.SetField(requestexecution.FieldMetricsLatencyMs, field.TypeInt64, value)
@@ -692,6 +717,9 @@ func (u *RequestExecutionUpsertOne) UpdateNewValues() *RequestExecutionUpsertOne
 		}
 		if _, exists := u.create.mutation.RequestBody(); exists {
 			s.SetIgnore(requestexecution.FieldRequestBody)
+		}
+		if _, exists := u.create.mutation.Stream(); exists {
+			s.SetIgnore(requestexecution.FieldStream)
 		}
 	}))
 	return u
@@ -1112,6 +1140,9 @@ func (u *RequestExecutionUpsertBulk) UpdateNewValues() *RequestExecutionUpsertBu
 			}
 			if _, exists := b.mutation.RequestBody(); exists {
 				s.SetIgnore(requestexecution.FieldRequestBody)
+			}
+			if _, exists := b.mutation.Stream(); exists {
+				s.SetIgnore(requestexecution.FieldStream)
 			}
 		}
 	}))

@@ -3551,6 +3551,7 @@ type RequestExecution implements Node {
   responseChunks: [JSONRawMessage!] @goField(forceResolver: true)
   errorMessage: String
   status: RequestExecutionStatus!
+  stream: Boolean!
   metricsLatencyMs: Int
   metricsFirstTokenLatencyMs: Int
   """
@@ -3773,6 +3774,11 @@ input RequestExecutionWhereInput {
   statusNEQ: RequestExecutionStatus
   statusIn: [RequestExecutionStatus!]
   statusNotIn: [RequestExecutionStatus!]
+  """
+  stream field predicates
+  """
+  stream: Boolean
+  streamNEQ: Boolean
   """
   metrics_latency_ms field predicates
   """
