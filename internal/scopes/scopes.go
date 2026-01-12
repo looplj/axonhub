@@ -166,12 +166,12 @@ var scopeConfigs = []Scope{
 	{
 		Slug:        ScopeReadPrompts,
 		Description: "View prompts",
-		Levels:      []ScopeLevel{ScopeLevelProject},
+		Levels:      []ScopeLevel{ScopeLevelSystem, ScopeLevelProject},
 	},
 	{
 		Slug:        ScopeWritePrompts,
 		Description: "Manage prompts (create, edit, delete)",
-		Levels:      []ScopeLevel{ScopeLevelProject},
+		Levels:      []ScopeLevel{ScopeLevelSystem, ScopeLevelProject},
 	},
 }
 

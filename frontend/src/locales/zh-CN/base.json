@@ -142,6 +142,7 @@
     },
     "buttons": {
       "cancel": "取消",
+      "processing": "处理中...",
       "confirm": "确认",
       "save": "保存",
       "saving": "保存中...",

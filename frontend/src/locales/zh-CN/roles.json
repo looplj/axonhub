@@ -6,7 +6,8 @@
     "searchRoles": "按名称搜索角色...",
     "columns": {
       "scopes": "权限范围",
-      "moreScopes": "更多"
+      "moreScopes": "更多",
+      "showLess": "收起"
     },
     "actions": {},
     "filters": {},

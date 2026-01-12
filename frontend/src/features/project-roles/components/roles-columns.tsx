@@ -3,10 +3,10 @@
 import { format } from 'date-fns';
 import { ColumnDef, Row, Table } from '@tanstack/react-table';
 import { useTranslation } from 'react-i18next';
-import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Role } from '../data/schema';
 import { DataTableRowActions } from './data-table-row-actions';
+import { ScopesCell } from './scopes-cell';
 
 export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrite: boolean = false): ColumnDef<Role>[] => {
   const columns: ColumnDef<Role>[] = [
@@ -62,20 +62,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       header: t('roles.columns.scopes'),
       cell: ({ row }) => {
         const scopes = row.getValue('scopes') as string[];
-        return (
-          <div className='flex max-w-[300px] flex-wrap gap-1'>
-            {scopes.slice(0, 3).map((scope) => (
-              <Badge key={scope} variant='secondary' className='text-xs'>
-                {scope}
-              </Badge>
-            ))}
-            {scopes.length > 3 && (
-              <Badge variant='outline' className='text-xs'>
-                +{scopes.length - 3} {t('roles.columns.moreScopes')}
-              </Badge>
-            )}
-          </div>
-        );
+        return <ScopesCell scopes={scopes} />;
       },
     },
     {

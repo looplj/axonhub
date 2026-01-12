@@ -134,6 +134,7 @@
     },
     "buttons": {
       "cancel": "Cancel",
+      "processing": "Processing...",
       "confirm": "Confirm",
       "save": "Save",
       "saving": "Saving...",
