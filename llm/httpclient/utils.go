@@ -37,9 +37,10 @@ func ReadHTTPRequest(rawReq *http.Request) (*Request, error) {
 
 func getClientIP(req *http.Request) string {
 	if xff := req.Header.Get("X-Forwarded-For"); xff != "" {
-		if idx := strings.Index(xff, ","); idx != -1 {
-			return strings.TrimSpace(xff[:idx])
+		if before, _, ok := strings.Cut(xff, ","); ok {
+			return strings.TrimSpace(before)
 		}
+
 		return xff
 	}
 

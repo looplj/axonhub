@@ -55,6 +55,15 @@ func (s *ThreadService) GetOrCreateThread(ctx context.Context, projectID int, th
 		SetProjectID(projectID).
 		Save(ctx)
 	if err != nil {
+		if ent.IsConstraintError(err) {
+			return client.Thread.Query().
+				Where(
+					thread.ThreadIDEQ(threadID),
+					thread.ProjectIDEQ(projectID),
+				).
+				Only(ctx)
+		}
+
 		return nil, fmt.Errorf("failed to create thread: %w", err)
 	}
 
