@@ -5083,6 +5083,21 @@ type RequestWhereInput struct {
 	Stream    *bool `json:"stream,omitempty"`
 	StreamNEQ *bool `json:"streamNEQ,omitempty"`
 
+	// "client_ip" field predicates.
+	ClientIP             *string  `json:"clientIP,omitempty"`
+	ClientIPNEQ          *string  `json:"clientIPNEQ,omitempty"`
+	ClientIPIn           []string `json:"clientIPIn,omitempty"`
+	ClientIPNotIn        []string `json:"clientIPNotIn,omitempty"`
+	ClientIPGT           *string  `json:"clientIPGT,omitempty"`
+	ClientIPGTE          *string  `json:"clientIPGTE,omitempty"`
+	ClientIPLT           *string  `json:"clientIPLT,omitempty"`
+	ClientIPLTE          *string  `json:"clientIPLTE,omitempty"`
+	ClientIPContains     *string  `json:"clientIPContains,omitempty"`
+	ClientIPHasPrefix    *string  `json:"clientIPHasPrefix,omitempty"`
+	ClientIPHasSuffix    *string  `json:"clientIPHasSuffix,omitempty"`
+	ClientIPEqualFold    *string  `json:"clientIPEqualFold,omitempty"`
+	ClientIPContainsFold *string  `json:"clientIPContainsFold,omitempty"`
+
 	// "metrics_latency_ms" field predicates.
 	MetricsLatencyMs       *int64  `json:"metricsLatencyMs,omitempty"`
 	MetricsLatencyMsNEQ    *int64  `json:"metricsLatencyMsNEQ,omitempty"`
@@ -5515,6 +5530,45 @@ func (i *RequestWhereInput) P() (predicate.Request, error) {
 	}
 	if i.StreamNEQ != nil {
 		predicates = append(predicates, request.StreamNEQ(*i.StreamNEQ))
+	}
+	if i.ClientIP != nil {
+		predicates = append(predicates, request.ClientIPEQ(*i.ClientIP))
+	}
+	if i.ClientIPNEQ != nil {
+		predicates = append(predicates, request.ClientIPNEQ(*i.ClientIPNEQ))
+	}
+	if len(i.ClientIPIn) > 0 {
+		predicates = append(predicates, request.ClientIPIn(i.ClientIPIn...))
+	}
+	if len(i.ClientIPNotIn) > 0 {
+		predicates = append(predicates, request.ClientIPNotIn(i.ClientIPNotIn...))
+	}
+	if i.ClientIPGT != nil {
+		predicates = append(predicates, request.ClientIPGT(*i.ClientIPGT))
+	}
+	if i.ClientIPGTE != nil {
+		predicates = append(predicates, request.ClientIPGTE(*i.ClientIPGTE))
+	}
+	if i.ClientIPLT != nil {
+		predicates = append(predicates, request.ClientIPLT(*i.ClientIPLT))
+	}
+	if i.ClientIPLTE != nil {
+		predicates = append(predicates, request.ClientIPLTE(*i.ClientIPLTE))
+	}
+	if i.ClientIPContains != nil {
+		predicates = append(predicates, request.ClientIPContains(*i.ClientIPContains))
+	}
+	if i.ClientIPHasPrefix != nil {
+		predicates = append(predicates, request.ClientIPHasPrefix(*i.ClientIPHasPrefix))
+	}
+	if i.ClientIPHasSuffix != nil {
+		predicates = append(predicates, request.ClientIPHasSuffix(*i.ClientIPHasSuffix))
+	}
+	if i.ClientIPEqualFold != nil {
+		predicates = append(predicates, request.ClientIPEqualFold(*i.ClientIPEqualFold))
+	}
+	if i.ClientIPContainsFold != nil {
+		predicates = append(predicates, request.ClientIPContainsFold(*i.ClientIPContainsFold))
 	}
 	if i.MetricsLatencyMs != nil {
 		predicates = append(predicates, request.MetricsLatencyMsEQ(*i.MetricsLatencyMs))

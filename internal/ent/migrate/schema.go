@@ -334,6 +334,7 @@ var (
 		{Name: "external_id", Type: field.TypeString, Nullable: true},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "processing", "completed", "failed", "canceled"}},
 		{Name: "stream", Type: field.TypeBool, Default: false},
+		{Name: "client_ip", Type: field.TypeString, Default: ""},
 		{Name: "metrics_latency_ms", Type: field.TypeInt64, Nullable: true},
 		{Name: "metrics_first_token_latency_ms", Type: field.TypeInt64, Nullable: true},
 		{Name: "api_key_id", Type: field.TypeInt, Nullable: true},
@@ -350,31 +351,31 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "requests_api_keys_requests",
-				Columns:    []*schema.Column{RequestsColumns[15]},
+				Columns:    []*schema.Column{RequestsColumns[16]},
 				RefColumns: []*schema.Column{APIKeysColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "requests_channels_requests",
-				Columns:    []*schema.Column{RequestsColumns[16]},
+				Columns:    []*schema.Column{RequestsColumns[17]},
 				RefColumns: []*schema.Column{ChannelsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "requests_data_storages_requests",
-				Columns:    []*schema.Column{RequestsColumns[17]},
+				Columns:    []*schema.Column{RequestsColumns[18]},
 				RefColumns: []*schema.Column{DataStoragesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "requests_projects_requests",
-				Columns:    []*schema.Column{RequestsColumns[18]},
+				Columns:    []*schema.Column{RequestsColumns[19]},
 				RefColumns: []*schema.Column{ProjectsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "requests_traces_requests",
-				Columns:    []*schema.Column{RequestsColumns[19]},
+				Columns:    []*schema.Column{RequestsColumns[20]},
 				RefColumns: []*schema.Column{TracesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -383,22 +384,22 @@ var (
 			{
 				Name:    "requests_by_api_key_id",
 				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[15]},
+				Columns: []*schema.Column{RequestsColumns[16]},
 			},
 			{
 				Name:    "requests_by_project_id",
 				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[18]},
+				Columns: []*schema.Column{RequestsColumns[19]},
 			},
 			{
 				Name:    "requests_by_channel_id",
 				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[16]},
+				Columns: []*schema.Column{RequestsColumns[17]},
 			},
 			{
 				Name:    "requests_by_trace_id",
 				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[19]},
+				Columns: []*schema.Column{RequestsColumns[20]},
 			},
 			{
 				Name:    "requests_by_created_at",

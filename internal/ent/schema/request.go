@@ -89,6 +89,7 @@ func (Request) Fields() []ent.Field {
 		field.Enum("status").Values("pending", "processing", "completed", "failed", "canceled"),
 		// Whether the request is a streaming request
 		field.Bool("stream").Default(false).Immutable(),
+		field.String("client_ip").Default("").Immutable(),
 		// Total latency in milliseconds from request start to completion
 		field.Int64("metrics_latency_ms").Optional().Nillable(),
 		// First token latency in milliseconds (only for streaming requests)

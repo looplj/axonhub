@@ -7,6 +7,7 @@
       "stream": "Stream",
       "source": "Source",
       "channel": "Channel",
+      "clientIP": "Client IP",
       "user": "User",
       "apiKey": "API Key",
       "roles": "Roles",

@@ -52,6 +52,8 @@ const (
 	FieldStatus = "status"
 	// FieldStream holds the string denoting the stream field in the database.
 	FieldStream = "stream"
+	// FieldClientIP holds the string denoting the client_ip field in the database.
+	FieldClientIP = "client_ip"
 	// FieldMetricsLatencyMs holds the string denoting the metrics_latency_ms field in the database.
 	FieldMetricsLatencyMs = "metrics_latency_ms"
 	// FieldMetricsFirstTokenLatencyMs holds the string denoting the metrics_first_token_latency_ms field in the database.
@@ -143,6 +145,7 @@ var Columns = []string{
 	FieldExternalID,
 	FieldStatus,
 	FieldStream,
+	FieldClientIP,
 	FieldMetricsLatencyMs,
 	FieldMetricsFirstTokenLatencyMs,
 }
@@ -177,6 +180,8 @@ var (
 	DefaultFormat string
 	// DefaultStream holds the default value on creation for the "stream" field.
 	DefaultStream bool
+	// DefaultClientIP holds the default value on creation for the "client_ip" field.
+	DefaultClientIP string
 )
 
 // Source defines the type for the "source" enum field.
@@ -303,6 +308,11 @@ func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 // ByStream orders the results by the stream field.
 func ByStream(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStream, opts...).ToFunc()
+}
+
+// ByClientIP orders the results by the client_ip field.
+func ByClientIP(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldClientIP, opts...).ToFunc()
 }
 
 // ByMetricsLatencyMs orders the results by the metrics_latency_ms field.

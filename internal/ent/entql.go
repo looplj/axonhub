@@ -278,6 +278,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			request.FieldExternalID:                 {Type: field.TypeString, Column: request.FieldExternalID},
 			request.FieldStatus:                     {Type: field.TypeEnum, Column: request.FieldStatus},
 			request.FieldStream:                     {Type: field.TypeBool, Column: request.FieldStream},
+			request.FieldClientIP:                   {Type: field.TypeString, Column: request.FieldClientIP},
 			request.FieldMetricsLatencyMs:           {Type: field.TypeInt64, Column: request.FieldMetricsLatencyMs},
 			request.FieldMetricsFirstTokenLatencyMs: {Type: field.TypeInt64, Column: request.FieldMetricsFirstTokenLatencyMs},
 		},
@@ -2442,6 +2443,11 @@ func (f *RequestFilter) WhereStatus(p entql.StringP) {
 // WhereStream applies the entql bool predicate on the stream field.
 func (f *RequestFilter) WhereStream(p entql.BoolP) {
 	f.Where(p.Field(request.FieldStream))
+}
+
+// WhereClientIP applies the entql string predicate on the client_ip field.
+func (f *RequestFilter) WhereClientIP(p entql.StringP) {
+	f.Where(p.Field(request.FieldClientIP))
 }
 
 // WhereMetricsLatencyMs applies the entql int64 predicate on the metrics_latency_ms field.

@@ -461,6 +461,10 @@ func init() {
 	requestDescStream := requestFields[14].Descriptor()
 	// request.DefaultStream holds the default value on creation for the stream field.
 	request.DefaultStream = requestDescStream.Default.(bool)
+	// requestDescClientIP is the schema descriptor for client_ip field.
+	requestDescClientIP := requestFields[15].Descriptor()
+	// request.DefaultClientIP holds the default value on creation for the client_ip field.
+	request.DefaultClientIP = requestDescClientIP.Default.(string)
 	requestexecutionMixin := schema.RequestExecution{}.Mixin()
 	requestexecutionMixinFields0 := requestexecutionMixin[0].Fields()
 	_ = requestexecutionMixinFields0

@@ -3,8 +3,10 @@ package httpclient
 import (
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/samber/lo"
 )
@@ -19,6 +21,7 @@ func ReadHTTPRequest(rawReq *http.Request) (*Request, error) {
 		Body:       nil,
 		Auth:       &AuthConfig{},
 		RequestID:  "",
+		ClientIP:   getClientIP(rawReq),
 		RawRequest: rawReq,
 	}
 
@@ -30,6 +33,25 @@ func ReadHTTPRequest(rawReq *http.Request) (*Request, error) {
 	req.Body = body
 
 	return req, nil
+}
+
+func getClientIP(req *http.Request) string {
+	if xff := req.Header.Get("X-Forwarded-For"); xff != "" {
+		if idx := strings.Index(xff, ","); idx != -1 {
+			return strings.TrimSpace(xff[:idx])
+		}
+		return xff
+	}
+
+	if xri := req.Header.Get("X-Real-IP"); xri != "" {
+		return xri
+	}
+
+	if ip, _, err := net.SplitHostPort(req.RemoteAddr); err == nil {
+		return ip
+	}
+
+	return req.RemoteAddr
 }
 
 // IsHTTPStatusCodeRetryable checks if an HTTP status code is retryable.
