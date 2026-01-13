@@ -544,15 +544,27 @@ type ResponseMeta struct {
 
 // Usage Represents the total token usage per request to OpenAI.
 type Usage struct {
-	PromptTokens            int64                    `json:"prompt_tokens"`
-	CompletionTokens        int64                    `json:"completion_tokens"`
-	TotalTokens             int64                    `json:"total_tokens"`
-	PromptTokensDetails     *PromptTokensDetails     `json:"prompt_tokens_details"`
+	// Number of tokens in the prompt, including cached tokens.
+	PromptTokens int64 `json:"prompt_tokens"`
+
+	// Number of tokens in the completion.
+	CompletionTokens int64 `json:"completion_tokens"`
+
+	// Total number of tokens used in the request (prompt + completion).
+	TotalTokens int64 `json:"total_tokens"`
+
+	// Output only. A detailed breakdown of the token count for each modality in the prompt.
+	PromptTokensDetails *PromptTokensDetails `json:"prompt_tokens_details"`
+
+	// Output only. A detailed breakdown of the token count for each modality in the completion.
 	CompletionTokensDetails *CompletionTokensDetails `json:"completion_tokens_details"`
 
 	// Output only. A detailed breakdown of the token count for each modality in the prompt.
+	// For gemini models only.
 	PromptModalityTokenDetails []ModalityTokenCount `json:"prompt_modality_token_details,omitempty"`
+
 	// Output only. A detailed breakdown of the token count for each modality in the candidates.
+	// For gemini models only.
 	CompletionModalityTokenDetails []ModalityTokenCount `json:"completion_modality_token_details,omitempty"`
 }
 
