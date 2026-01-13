@@ -140,7 +140,7 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
             {hasCache && (
               <div className='text-muted-foreground text-xs'>
                 {t('usageLogs.columns.cacheHitRate', {
-                  rate: ((cachedTokens / (usage.promptTokens + cachedTokens)) * 100).toFixed(1),
+                  rate: ((cachedTokens / usage.promptTokens) * 100).toFixed(1),
                 })}
               </div>
             )}

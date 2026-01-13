@@ -399,9 +399,11 @@ type PromptFeedback struct {
 // UsageMetadata contains usage metadata about the response.
 type UsageMetadata struct {
 	// PromptTokenCount is the number of tokens in the prompt.
+	// When cachedContent is set, this is still the total effective prompt size meaning this includes the number of tokens in the cached content.
 	PromptTokenCount int64 `json:"promptTokenCount,omitempty"`
 
 	// CandidatesTokenCount is the total number of tokens across all generated candidates.
+	// The CandidatesTokenCount does not include the ThoughtsTokenCount.
 	CandidatesTokenCount int64 `json:"candidatesTokenCount,omitempty"`
 
 	// TotalTokenCount is the total number of tokens.

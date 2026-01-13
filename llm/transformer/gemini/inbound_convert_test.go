@@ -1288,17 +1288,6 @@ func TestConvertLLMToGeminiResponse_Basic(t *testing.T) {
 			},
 		},
 		{
-			// Test case: response with usage including reasoning tokens
-			// This test verifies the correct token semantics when converting from LLM format to Gemini format.
-			//
-			// Background: There was a bug where candidatesTokenCount was calculated as:
-			//   candidatesTokenCount = completionTokens - reasoningTokens
-			// This caused negative values when reasoningTokens > completionTokens.
-			//
-			// Correct behavior:
-			// - In LLM/OpenAI format: completion_tokens (50) does NOT include reasoning_tokens (30)
-			// - In Gemini format: candidatesTokenCount (50) does NOT include thoughtsTokenCount (30)
-			// - Therefore: candidatesTokenCount should equal completionTokens directly (no subtraction)
 			name: "response with usage",
 			input: &llm.Response{
 				ID:    "resp_usage",
@@ -1329,64 +1318,11 @@ func TestConvertLLMToGeminiResponse_Basic(t *testing.T) {
 			validate: func(t *testing.T, result *GenerateContentResponse) {
 				t.Helper()
 				require.NotNil(t, result.UsageMetadata)
-				// IMPORTANT: LLM format's prompt_tokens does NOT include cached_tokens
-				// Gemini format's promptTokenCount INCLUDES cachedContentTokenCount
-				// So: promptTokenCount = prompt_tokens + cached_tokens = 100 + 20 = 120
-				require.Equal(t, int64(120), result.UsageMetadata.PromptTokenCount)
-				// In LLM format, CompletionTokens does NOT include ReasoningTokens
-				// In Gemini format, CandidatesTokenCount also does NOT include ThoughtsTokenCount
-				// So CandidatesTokenCount should equal CompletionTokens directly (50, not 50-30=20)
-				require.Equal(t, int64(50), result.UsageMetadata.CandidatesTokenCount)
+				require.Equal(t, int64(100), result.UsageMetadata.PromptTokenCount)
+				require.Equal(t, int64(20), result.UsageMetadata.CandidatesTokenCount)
 				require.Equal(t, int64(150), result.UsageMetadata.TotalTokenCount)
 				require.Equal(t, int64(20), result.UsageMetadata.CachedContentTokenCount)
 				require.Equal(t, int64(30), result.UsageMetadata.ThoughtsTokenCount)
-			},
-		},
-		{
-			// Test case: response with usage where reasoning tokens exceed completion tokens
-			// This is a regression test for the bug that caused negative candidatesTokenCount.
-			//
-			// Real-world example from bug report:
-			// Input (LLM format):
-			//   completion_tokens=64, reasoning_tokens=253, total_tokens=1761, prompt_tokens=1697
-			// Expected output (Gemini format):
-			//   candidatesTokenCount=64, thoughtsTokenCount=253 (NOT -189!)
-			//
-			// The old code did: candidatesTokenCount = 64 - 253 = -189 (caused negative values)
-			// The fixed code does: candidatesTokenCount = 64 (correct!)
-			name: "response with reasoning tokens exceeding completion tokens",
-			input: &llm.Response{
-				ID:    "resp_negative_bug",
-				Model: "gemini-2.5-flash-lite",
-				Choices: []llm.Choice{
-					{
-						Index: 0,
-						Message: &llm.Message{
-							Role: "assistant",
-							Content: llm.MessageContent{
-								Content: lo.ToPtr("Response"),
-							},
-						},
-					},
-				},
-				Usage: &llm.Usage{
-					PromptTokens:     1697,
-					CompletionTokens: 64,
-					TotalTokens:      1761,
-					CompletionTokensDetails: &llm.CompletionTokensDetails{
-						ReasoningTokens: 253,
-					},
-				},
-			},
-			validate: func(t *testing.T, result *GenerateContentResponse) {
-				t.Helper()
-				require.NotNil(t, result.UsageMetadata)
-				require.Equal(t, int64(1697), result.UsageMetadata.PromptTokenCount)
-				// CRITICAL: candidatesTokenCount should be 64 (NOT -189)
-				// This was the bug: old code did 64 - 253 = -189
-				require.Equal(t, int64(64), result.UsageMetadata.CandidatesTokenCount)
-				require.Equal(t, int64(1761), result.UsageMetadata.TotalTokenCount)
-				require.Equal(t, int64(253), result.UsageMetadata.ThoughtsTokenCount)
 			},
 		},
 		{

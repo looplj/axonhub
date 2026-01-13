@@ -233,10 +233,8 @@ export default function RequestDetailPage() {
               const writeCachedTokens = usage.promptWriteCachedTokens || 0;
               const hasReadCache = cachedTokens > 0;
               const hasWriteCache = writeCachedTokens > 0;
-              // Cache hit rate = cached tokens / (prompt tokens + cached tokens) * 100
-              // This represents the percentage of prompt tokens that were served from cache
-              const cacheHitRate = hasReadCache ? ((cachedTokens / (promptTokens + cachedTokens)) * 100).toFixed(1) : '0.0';
-              const writeCacheRate = hasWriteCache ? ((writeCachedTokens / (promptTokens + writeCachedTokens)) * 100).toFixed(1) : '0.0';
+              const cacheHitRate = hasReadCache ? ((cachedTokens / promptTokens) * 100).toFixed(1) : '0.0';
+              const writeCacheRate = hasWriteCache ? ((writeCachedTokens / promptTokens) * 100).toFixed(1) : '0.0';
 
               return (
                 <Card className='border-0 shadow-sm'>
