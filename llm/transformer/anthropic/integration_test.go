@@ -226,6 +226,10 @@ func TestTransformRequest_Integration(t *testing.T) {
 			name:        "parallel multiple tool request",
 			requestFile: `anthropic-parallel_multiple_tool.request.json`,
 		},
+		{
+			name:        "parallel2 multiple tool request",
+			requestFile: `anthropic-parallel2_multiple_tool.request.json`,
+		},
 	}
 
 	for _, tt := range tests {

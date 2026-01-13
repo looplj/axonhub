@@ -974,6 +974,12 @@ func TestOutboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 			expectedFile: "anthropic-parallel_multiple_tool.request.json",
 			validate:     func(t *testing.T, result *httpclient.Request, llmRequest *llm.Request) {},
 		},
+		{
+			name:         "llm-parallel2_multiple_tool.request, from the Responses API",
+			requestFile:  "llm-parallel2_multiple_tool.request.json",
+			expectedFile: "anthropic-parallel2_multiple_tool.request.json",
+			validate:     func(t *testing.T, result *httpclient.Request, llmRequest *llm.Request) {},
+		},
 	}
 
 	for _, tt := range tests {
