@@ -3,14 +3,14 @@ package codex
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/samber/lo"
 
+	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -33,10 +33,10 @@ type OutboundTransformer struct {
 	credentialsJSON string
 	cacheConfig     xcache.Config
 	channelID       int
-	projectID       int
 
 	httpClient *httpclient.HttpClient
 	cache      xcache.Cache[string]
+	tokens     *TokenProvider
 
 	// reuse existing Responses outbound for payload building.
 	responsesOutbound *responses.OutboundTransformer
@@ -49,7 +49,6 @@ type Params struct {
 	CredentialsJSON string
 	CacheConfig     xcache.Config
 	ChannelID       int
-	ProjectID       int
 	HTTPClient      *httpclient.HttpClient
 }
 
@@ -73,9 +72,9 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 		credentialsJSON:   params.CredentialsJSON,
 		cacheConfig:       params.CacheConfig,
 		channelID:         params.ChannelID,
-		projectID:         params.ProjectID,
 		httpClient:        params.HTTPClient,
 		cache:             xcache.NewFromConfig[string](params.CacheConfig),
+		tokens:            NewTokenProvider(params.CacheConfig, params.HTTPClient),
 		responsesOutbound: ro,
 	}, nil
 }
@@ -88,48 +87,15 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 	return t.responsesOutbound.TransformError(ctx, rawErr)
 }
 
-func (t *OutboundTransformer) getTokenCacheKey() string {
-	return fmt.Sprintf("codex:token:%d:%d", t.projectID, t.channelID)
-}
-
-func (t *OutboundTransformer) getCredentials(ctx context.Context) (*OAuth2Credentials, error) {
-	cacheKey := t.getTokenCacheKey()
-	if cached, err := t.cache.Get(ctx, cacheKey); err == nil {
-		creds, err := ParseCredentialsJSON(cached)
-		if err == nil {
-			return creds, nil
-		}
-	}
-
-	creds, err := ParseCredentialsJSON(t.credentialsJSON)
-	if err != nil {
-		return nil, err
-	}
-
-	return creds, nil
-}
-
 func (t *OutboundTransformer) ensureFreshCredentials(ctx context.Context) (*OAuth2Credentials, error) {
-	creds, err := t.getCredentials(ctx)
+	ch := &ent.Channel{ID: t.channelID, Credentials: &objects.ChannelCredentials{APIKey: t.credentialsJSON}}
+
+	accessToken, accountID, err := t.tokens.Get(ctx, ch)
 	if err != nil {
 		return nil, err
 	}
 
-	if !creds.IsExpired(time.Now()) {
-		return creds, nil
-	}
-
-	updated, err := creds.Refresh(ctx, t.httpClient, t.cache, t.getTokenCacheKey())
-	if err != nil {
-		return nil, err
-	}
-
-	// Cache the refreshed JSON for fast access.
-	if raw, err := updated.ToJSON(); err == nil {
-		_ = t.cache.Set(ctx, t.getTokenCacheKey(), raw, xcache.WithExpiration(55*time.Minute))
-	}
-
-	return updated, nil
+	return &OAuth2Credentials{AccessToken: accessToken, AccountID: accountID}, nil
 }
 
 func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {

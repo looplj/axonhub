@@ -387,7 +387,6 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 				CredentialsJSON: c.Credentials.APIKey,
 				CacheConfig:     svc.SystemService.CacheConfig,
 				ChannelID:       c.ID,
-				ProjectID:       0,
 				HTTPClient:      httpClient,
 			})
 			if err != nil {
@@ -412,7 +411,6 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 				CredentialsJSON: c.Credentials.APIKey,
 				CacheConfig:     svc.SystemService.CacheConfig,
 				ChannelID:       c.ID,
-				ProjectID:       0,
 				HTTPClient:      httpClient,
 			})
 			if err != nil {

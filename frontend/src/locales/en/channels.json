@@ -261,7 +261,9 @@
             "label": "Use AWS Bedrock"
           },
           "claudeCode": {
-            "label": "Use Claude Code"
+            "label": "Use Claude Code",
+            "description": "Use Claude Code CLI API with specialized headers and system message",
+            "editDisabled": "Claude Code settings cannot be changed"
           },
           "codex": {
             "label": "Use Codex",
