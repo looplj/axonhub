@@ -175,11 +175,6 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	instructions := responsesInstructionFromMessages(reqCopy.Messages)
 	isCodex := strings.HasPrefix(instructions, "You are a coding agent running in the Codex CLI") || strings.HasPrefix(instructions, "You are Codex")
 	if !isCodex {
-		// Codex seems strict about some parameters. Follow done-hub behavior.
-		reqCopy.Temperature = nil
-		reqCopy.TopP = nil
-		reqCopy.MaxCompletionTokens = nil
-		reqCopy.MaxTokens = nil
 		reqCopy.Messages = setCodexSystemInstruction(reqCopy.Messages)
 	}
 
@@ -279,6 +274,9 @@ func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*h
 	request.Headers.Set("Originator", "codex_cli_rs")
 	if request.Headers.Get("Session_id") == "" {
 		request.Headers.Set("Session_id", uuid.NewString())
+	}
+	if request.Headers.Get("Conversation_id") == "" {
+		request.Headers.Set("Conversation_id", request.Headers.Get("Session_id"))
 	}
 	request.Headers.Set("Version", "0.21.0")
 

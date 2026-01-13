@@ -285,6 +285,10 @@
             "description": "Use Claude Code CLI API with specialized headers and system message",
             "editDisabled": "Claude Code setting cannot be changed"
           },
+          "codex": {
+            "label": "Use Codex",
+            "description": "Authenticate with OpenAI OAuth"
+          },
           "formats": {
             "openai/chat_completions": "OpenAI (Chat Completions)",
             "openai/responses": "OpenAI (Responses)",

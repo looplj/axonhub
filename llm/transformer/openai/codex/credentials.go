@@ -28,7 +28,7 @@ const (
 	Scopes      = "openid profile email offline_access"
 
 	// Keep consistent with Codex CLI.
-	UA = "codex_cli_rs/0.38.0 (Ubuntu 22.4.0; x86_64) WindowsTerminal"
+	UA = "codex_cli_rs/0.38.0 (Ubuntu 22.04.0; x86_64) WindowsTerminal"
 )
 
 type OAuth2Credentials struct {

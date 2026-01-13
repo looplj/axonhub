@@ -28,7 +28,7 @@ const (
 	codexRedirectURI  = "http://localhost:1455/auth/callback"
 	codexScopes       = "openid profile email offline_access"
 
-	codexUserAgent = "codex_cli_rs/0.38.0 (Ubuntu 22.4.0; x86_64) WindowsTerminal"
+	codexUserAgent = "codex_cli_rs/0.38.0 (Ubuntu 22.04.0; x86_64) WindowsTerminal"
 )
 
 type CodexHandlersParams struct {
@@ -101,7 +101,7 @@ func (h *CodexHandlers) StartOAuth(c *gin.Context) {
 
 	var req StartCodexOAuthRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		JSONError(c, http.StatusBadRequest, errors.New("Invalid request format"))
+		JSONError(c, http.StatusBadRequest, errors.New("invalid request format"))
 		return
 	}
 
@@ -227,7 +227,7 @@ func (h *CodexHandlers) Exchange(c *gin.Context) {
 
 	var req ExchangeCodexOAuthRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		JSONError(c, http.StatusBadRequest, errors.New("Invalid request format"))
+		JSONError(c, http.StatusBadRequest, errors.New("invalid request format"))
 		return
 	}
 
@@ -242,8 +242,6 @@ func (h *CodexHandlers) Exchange(c *gin.Context) {
 		JSONError(c, http.StatusBadRequest, errors.New("invalid or expired oauth session"))
 		return
 	}
-
-	_ = h.stateCache.Delete(ctx, cacheKey)
 
 	code, err := parseCodexCallbackURL(req.CallbackURL)
 	if err != nil {
@@ -280,6 +278,8 @@ func (h *CodexHandlers) Exchange(c *gin.Context) {
 		JSONError(c, http.StatusBadGateway, fmt.Errorf("failed to decode token response: %w", err))
 		return
 	}
+
+	_ = h.stateCache.Delete(ctx, cacheKey)
 
 	accountID := ""
 	if tokenResp.IDToken != "" {

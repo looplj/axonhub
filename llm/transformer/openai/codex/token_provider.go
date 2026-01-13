@@ -80,6 +80,9 @@ func (p *TokenProvider) Get(ctx context.Context, channel *ent.Channel) (string, 
 		return "", "", err
 	}
 
-	fresh := v.(*OAuth2Credentials)
+	fresh, ok := v.(*OAuth2Credentials)
+	if !ok {
+		return "", "", fmt.Errorf("singleflight returned unexpected type %T", v)
+	}
 	return fresh.AccessToken, fresh.AccountID, nil
 }

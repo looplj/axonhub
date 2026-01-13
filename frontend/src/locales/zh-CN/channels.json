@@ -284,8 +284,12 @@
           },
           "claudeCode": {
             "label": "使用 Claude Code",
-            "description": "使用 Claude Code CLI API，包含专用头部和系统消息",
+            "description": "使用 Claude Code CLI API，带有专门的请求头和系统消息",
             "editDisabled": "无法更改 Claude Code 设置"
+          },
+          "codex": {
+            "label": "使用 Codex",
+            "description": "通过 OpenAI OAuth 授权"
           },
           "formats": {
             "openai/chat_completions": "OpenAI (Chat Completions)",
