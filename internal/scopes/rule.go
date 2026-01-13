@@ -28,9 +28,13 @@ func hasScope(scopes []string, requiredScope string) bool {
 	return slices.Contains(scopes, requiredScope)
 }
 
-// hasRoleScope checks if a user has a required scope through their roles.
-func hasRoleScope(user *ent.User, requiredScope ScopeSlug) bool {
+// hasSystemRoleScope checks if a user has a required scope through their roles.
+func hasSystemRoleScope(user *ent.User, requiredScope ScopeSlug) bool {
 	for _, role := range user.Edges.Roles {
+		if !role.IsSystemRole() {
+			continue
+		}
+
 		if hasScope(role.Scopes, string(requiredScope)) {
 			return true
 		}
@@ -39,8 +43,8 @@ func hasRoleScope(user *ent.User, requiredScope ScopeSlug) bool {
 	return false
 }
 
-// userHasScope checks if a user has the required scope either directly or through roles.
-func userHasScope(user *ent.User, requiredScope ScopeSlug) bool {
+// userHasSystemScope checks if a user has the required scope either directly or through roles.
+func userHasSystemScope(user *ent.User, requiredScope ScopeSlug) bool {
 	// Owner has all permissions
 	if user.IsOwner {
 		return true
@@ -52,7 +56,7 @@ func userHasScope(user *ent.User, requiredScope ScopeSlug) bool {
 	}
 
 	// Check user's role scopes
-	return hasRoleScope(user, requiredScope)
+	return hasSystemRoleScope(user, requiredScope)
 }
 
 // getUserFromContext safely retrieves user from context.

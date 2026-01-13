@@ -24,8 +24,6 @@ type UserProject struct {
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
-	// DeletedAt holds the value of the "deleted_at" field.
-	DeletedAt int `json:"deleted_at,omitempty"`
 	// UserID holds the value of the "user_id" field.
 	UserID int `json:"user_id,omitempty"`
 	// ProjectID holds the value of the "project_id" field.
@@ -84,7 +82,7 @@ func (*UserProject) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case userproject.FieldIsOwner:
 			values[i] = new(sql.NullBool)
-		case userproject.FieldID, userproject.FieldDeletedAt, userproject.FieldUserID, userproject.FieldProjectID:
+		case userproject.FieldID, userproject.FieldUserID, userproject.FieldProjectID:
 			values[i] = new(sql.NullInt64)
 		case userproject.FieldCreatedAt, userproject.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -120,12 +118,6 @@ func (_m *UserProject) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
 				_m.UpdatedAt = value.Time
-			}
-		case userproject.FieldDeletedAt:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
-			} else if value.Valid {
-				_m.DeletedAt = int(value.Int64)
 			}
 		case userproject.FieldUserID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -204,9 +196,6 @@ func (_m *UserProject) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
 	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
-	builder.WriteString(", ")
-	builder.WriteString("deleted_at=")
-	builder.WriteString(fmt.Sprintf("%v", _m.DeletedAt))
 	builder.WriteString(", ")
 	builder.WriteString("user_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.UserID))

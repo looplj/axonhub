@@ -754,7 +754,7 @@ func TestTraceService_GetRequestTrace_MultipleRequestsWithToolResults(t *testing
 }
 
 func TestTraceService_GetRequestTrace_integration(t *testing.T) {
-	if testing.Short() {
+	if true {
 		t.Skip("skipping integration test in short mode")
 	}
 

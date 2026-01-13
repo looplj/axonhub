@@ -8,8 +8,6 @@ import (
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
-
-	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 )
 
 // UserRole holds the schema definition for the UserRole entity.
@@ -18,14 +16,12 @@ type UserRole struct {
 }
 
 func (UserRole) Mixin() []ent.Mixin {
-	return []ent.Mixin{
-		schematype.SoftDeleteMixin{},
-	}
+	return []ent.Mixin{}
 }
 
 func (UserRole) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("user_id", "role_id", "deleted_at").
+		index.Fields("user_id", "role_id").
 			StorageKey("user_roles_by_user_id_role_id").
 			Unique(),
 		index.Fields("role_id").

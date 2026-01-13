@@ -185,6 +185,12 @@ func TestProjectMemberQueryRuleWithProjectID(t *testing.T) {
 					ID:     1,
 					Scopes: []string{},
 					Edges: ent.UserEdges{
+						ProjectUsers: []*ent.UserProject{
+							{
+								ProjectID: 100,
+								Scopes:    []string{},
+							},
+						},
 						Roles: []*ent.Role{
 							{
 								ID:        1,
@@ -198,6 +204,27 @@ func TestProjectMemberQueryRuleWithProjectID(t *testing.T) {
 			),
 			requiredScope: ScopeReadRequests,
 			expectAllow:   true,
+		},
+		{
+			name: "user has project role but is not member",
+			ctx: contexts.WithProjectID(
+				contexts.WithUser(context.Background(), &ent.User{
+					ID:     1,
+					Scopes: []string{},
+					Edges: ent.UserEdges{
+						Roles: []*ent.Role{
+							{
+								ID:        1,
+								ProjectID: intPtr(100),
+								Scopes:    []string{"read_requests"},
+							},
+						},
+					},
+				}),
+				100,
+			),
+			requiredScope: ScopeReadRequests,
+			expectAllow:   false,
 		},
 		{
 			name: "user is not project member",

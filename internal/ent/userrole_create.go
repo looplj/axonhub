@@ -24,20 +24,6 @@ type UserRoleCreate struct {
 	conflict []sql.ConflictOption
 }
 
-// SetDeletedAt sets the "deleted_at" field.
-func (_c *UserRoleCreate) SetDeletedAt(v int) *UserRoleCreate {
-	_c.mutation.SetDeletedAt(v)
-	return _c
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (_c *UserRoleCreate) SetNillableDeletedAt(v *int) *UserRoleCreate {
-	if v != nil {
-		_c.SetDeletedAt(*v)
-	}
-	return _c
-}
-
 // SetUserID sets the "user_id" field.
 func (_c *UserRoleCreate) SetUserID(v int) *UserRoleCreate {
 	_c.mutation.SetUserID(v)
@@ -95,9 +81,7 @@ func (_c *UserRoleCreate) Mutation() *UserRoleMutation {
 
 // Save creates the UserRole in the database.
 func (_c *UserRoleCreate) Save(ctx context.Context) (*UserRole, error) {
-	if err := _c.defaults(); err != nil {
-		return nil, err
-	}
+	_c.defaults()
 	return withHooks(ctx, _c.sqlSave, _c.mutation, _c.hooks)
 }
 
@@ -124,33 +108,19 @@ func (_c *UserRoleCreate) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (_c *UserRoleCreate) defaults() error {
-	if _, ok := _c.mutation.DeletedAt(); !ok {
-		v := userrole.DefaultDeletedAt
-		_c.mutation.SetDeletedAt(v)
-	}
+func (_c *UserRoleCreate) defaults() {
 	if _, ok := _c.mutation.CreatedAt(); !ok {
-		if userrole.DefaultCreatedAt == nil {
-			return fmt.Errorf("ent: uninitialized userrole.DefaultCreatedAt (forgotten import ent/runtime?)")
-		}
 		v := userrole.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
 	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
-		if userrole.DefaultUpdatedAt == nil {
-			return fmt.Errorf("ent: uninitialized userrole.DefaultUpdatedAt (forgotten import ent/runtime?)")
-		}
 		v := userrole.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
 	}
-	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *UserRoleCreate) check() error {
-	if _, ok := _c.mutation.DeletedAt(); !ok {
-		return &ValidationError{Name: "deleted_at", err: errors.New(`ent: missing required field "UserRole.deleted_at"`)}
-	}
 	if _, ok := _c.mutation.UserID(); !ok {
 		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "UserRole.user_id"`)}
 	}
@@ -190,10 +160,6 @@ func (_c *UserRoleCreate) createSpec() (*UserRole, *sqlgraph.CreateSpec) {
 		_spec = sqlgraph.NewCreateSpec(userrole.Table, sqlgraph.NewFieldSpec(userrole.FieldID, field.TypeInt))
 	)
 	_spec.OnConflict = _c.conflict
-	if value, ok := _c.mutation.DeletedAt(); ok {
-		_spec.SetField(userrole.FieldDeletedAt, field.TypeInt, value)
-		_node.DeletedAt = value
-	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(userrole.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = &value
@@ -243,7 +209,7 @@ func (_c *UserRoleCreate) createSpec() (*UserRole, *sqlgraph.CreateSpec) {
 // of the `INSERT` statement. For example:
 //
 //	client.UserRole.Create().
-//		SetDeletedAt(v).
+//		SetUserID(v).
 //		OnConflict(
 //			// Update the row with the new values
 //			// the was proposed for insertion.
@@ -252,7 +218,7 @@ func (_c *UserRoleCreate) createSpec() (*UserRole, *sqlgraph.CreateSpec) {
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.UserRoleUpsert) {
-//			SetDeletedAt(v+v).
+//			SetUserID(v+v).
 //		}).
 //		Exec(ctx)
 func (_c *UserRoleCreate) OnConflict(opts ...sql.ConflictOption) *UserRoleUpsertOne {
@@ -287,24 +253,6 @@ type (
 		*sql.UpdateSet
 	}
 )
-
-// SetDeletedAt sets the "deleted_at" field.
-func (u *UserRoleUpsert) SetDeletedAt(v int) *UserRoleUpsert {
-	u.Set(userrole.FieldDeletedAt, v)
-	return u
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *UserRoleUpsert) UpdateDeletedAt() *UserRoleUpsert {
-	u.SetExcluded(userrole.FieldDeletedAt)
-	return u
-}
-
-// AddDeletedAt adds v to the "deleted_at" field.
-func (u *UserRoleUpsert) AddDeletedAt(v int) *UserRoleUpsert {
-	u.Add(userrole.FieldDeletedAt, v)
-	return u
-}
 
 // SetCreatedAt sets the "created_at" field.
 func (u *UserRoleUpsert) SetCreatedAt(v time.Time) *UserRoleUpsert {
@@ -388,27 +336,6 @@ func (u *UserRoleUpsertOne) Update(set func(*UserRoleUpsert)) *UserRoleUpsertOne
 		set(&UserRoleUpsert{UpdateSet: update})
 	}))
 	return u
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (u *UserRoleUpsertOne) SetDeletedAt(v int) *UserRoleUpsertOne {
-	return u.Update(func(s *UserRoleUpsert) {
-		s.SetDeletedAt(v)
-	})
-}
-
-// AddDeletedAt adds v to the "deleted_at" field.
-func (u *UserRoleUpsertOne) AddDeletedAt(v int) *UserRoleUpsertOne {
-	return u.Update(func(s *UserRoleUpsert) {
-		s.AddDeletedAt(v)
-	})
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *UserRoleUpsertOne) UpdateDeletedAt() *UserRoleUpsertOne {
-	return u.Update(func(s *UserRoleUpsert) {
-		s.UpdateDeletedAt()
-	})
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -588,7 +515,7 @@ func (_c *UserRoleCreateBulk) ExecX(ctx context.Context) {
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.UserRoleUpsert) {
-//			SetDeletedAt(v+v).
+//			SetUserID(v+v).
 //		}).
 //		Exec(ctx)
 func (_c *UserRoleCreateBulk) OnConflict(opts ...sql.ConflictOption) *UserRoleUpsertBulk {
@@ -665,27 +592,6 @@ func (u *UserRoleUpsertBulk) Update(set func(*UserRoleUpsert)) *UserRoleUpsertBu
 		set(&UserRoleUpsert{UpdateSet: update})
 	}))
 	return u
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (u *UserRoleUpsertBulk) SetDeletedAt(v int) *UserRoleUpsertBulk {
-	return u.Update(func(s *UserRoleUpsert) {
-		s.SetDeletedAt(v)
-	})
-}
-
-// AddDeletedAt adds v to the "deleted_at" field.
-func (u *UserRoleUpsertBulk) AddDeletedAt(v int) *UserRoleUpsertBulk {
-	return u.Update(func(s *UserRoleUpsert) {
-		s.AddDeletedAt(v)
-	})
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *UserRoleUpsertBulk) UpdateDeletedAt() *UserRoleUpsertBulk {
-	return u.Update(func(s *UserRoleUpsert) {
-		s.UpdateDeletedAt()
-	})
 }
 
 // SetCreatedAt sets the "created_at" field.

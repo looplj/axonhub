@@ -29,6 +29,8 @@ func NewEntClient(t TestingT, driverName, dataSourceName string) *ent.Client {
 		WithMigrateOptions(
 			migrate.WithGlobalUniqueID(false),
 			migrate.WithForeignKeys(false),
+			migrate.WithDropIndex(true),
+			migrate.WithDropColumn(true),
 			schema.WithHooks(schemahook.V0_3_0),
 		),
 	)

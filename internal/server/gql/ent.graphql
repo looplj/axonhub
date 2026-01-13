@@ -5709,7 +5709,6 @@ type UserProject implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   userID: ID!
   projectID: ID!
   """
@@ -5785,17 +5784,6 @@ input UserProjectWhereInput {
   updatedAtLT: Time
   updatedAtLTE: Time
   """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
-  """
   is_owner field predicates
   """
   isOwner: Boolean
@@ -5803,7 +5791,6 @@ input UserProjectWhereInput {
 }
 type UserRole implements Node {
   id: ID!
-  deletedAt: Int!
   userID: ID!
   roleID: ID!
   createdAt: Time
@@ -5850,17 +5837,6 @@ input UserRoleWhereInput {
   idGTE: ID
   idLT: ID
   idLTE: ID
-  """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
   """
   created_at field predicates
   """

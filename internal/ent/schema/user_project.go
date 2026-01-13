@@ -6,7 +6,6 @@ import (
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
 
-	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -18,13 +17,12 @@ type UserProject struct {
 func (UserProject) Mixin() []ent.Mixin {
 	return []ent.Mixin{
 		TimeMixin{},
-		schematype.SoftDeleteMixin{},
 	}
 }
 
 func (UserProject) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("user_id", "project_id", "deleted_at").
+		index.Fields("user_id", "project_id").
 			StorageKey("user_projects_by_user_id_project_id").
 			Unique(),
 		index.Fields("project_id").
