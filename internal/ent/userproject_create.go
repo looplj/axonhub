@@ -52,20 +52,6 @@ func (_c *UserProjectCreate) SetNillableUpdatedAt(v *time.Time) *UserProjectCrea
 	return _c
 }
 
-// SetDeletedAt sets the "deleted_at" field.
-func (_c *UserProjectCreate) SetDeletedAt(v int) *UserProjectCreate {
-	_c.mutation.SetDeletedAt(v)
-	return _c
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (_c *UserProjectCreate) SetNillableDeletedAt(v *int) *UserProjectCreate {
-	if v != nil {
-		_c.SetDeletedAt(*v)
-	}
-	return _c
-}
-
 // SetUserID sets the "user_id" field.
 func (_c *UserProjectCreate) SetUserID(v int) *UserProjectCreate {
 	_c.mutation.SetUserID(v)
@@ -159,10 +145,6 @@ func (_c *UserProjectCreate) defaults() error {
 		v := userproject.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
 	}
-	if _, ok := _c.mutation.DeletedAt(); !ok {
-		v := userproject.DefaultDeletedAt
-		_c.mutation.SetDeletedAt(v)
-	}
 	if _, ok := _c.mutation.IsOwner(); !ok {
 		v := userproject.DefaultIsOwner
 		_c.mutation.SetIsOwner(v)
@@ -181,9 +163,6 @@ func (_c *UserProjectCreate) check() error {
 	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "UserProject.updated_at"`)}
-	}
-	if _, ok := _c.mutation.DeletedAt(); !ok {
-		return &ValidationError{Name: "deleted_at", err: errors.New(`ent: missing required field "UserProject.deleted_at"`)}
 	}
 	if _, ok := _c.mutation.UserID(); !ok {
 		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "UserProject.user_id"`)}
@@ -234,10 +213,6 @@ func (_c *UserProjectCreate) createSpec() (*UserProject, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(userproject.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
-	}
-	if value, ok := _c.mutation.DeletedAt(); ok {
-		_spec.SetField(userproject.FieldDeletedAt, field.TypeInt, value)
-		_node.DeletedAt = value
 	}
 	if value, ok := _c.mutation.IsOwner(); ok {
 		_spec.SetField(userproject.FieldIsOwner, field.TypeBool, value)
@@ -345,24 +320,6 @@ func (u *UserProjectUpsert) UpdateUpdatedAt() *UserProjectUpsert {
 	return u
 }
 
-// SetDeletedAt sets the "deleted_at" field.
-func (u *UserProjectUpsert) SetDeletedAt(v int) *UserProjectUpsert {
-	u.Set(userproject.FieldDeletedAt, v)
-	return u
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *UserProjectUpsert) UpdateDeletedAt() *UserProjectUpsert {
-	u.SetExcluded(userproject.FieldDeletedAt)
-	return u
-}
-
-// AddDeletedAt adds v to the "deleted_at" field.
-func (u *UserProjectUpsert) AddDeletedAt(v int) *UserProjectUpsert {
-	u.Add(userproject.FieldDeletedAt, v)
-	return u
-}
-
 // SetIsOwner sets the "is_owner" field.
 func (u *UserProjectUpsert) SetIsOwner(v bool) *UserProjectUpsert {
 	u.Set(userproject.FieldIsOwner, v)
@@ -455,27 +412,6 @@ func (u *UserProjectUpsertOne) SetUpdatedAt(v time.Time) *UserProjectUpsertOne {
 func (u *UserProjectUpsertOne) UpdateUpdatedAt() *UserProjectUpsertOne {
 	return u.Update(func(s *UserProjectUpsert) {
 		s.UpdateUpdatedAt()
-	})
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (u *UserProjectUpsertOne) SetDeletedAt(v int) *UserProjectUpsertOne {
-	return u.Update(func(s *UserProjectUpsert) {
-		s.SetDeletedAt(v)
-	})
-}
-
-// AddDeletedAt adds v to the "deleted_at" field.
-func (u *UserProjectUpsertOne) AddDeletedAt(v int) *UserProjectUpsertOne {
-	return u.Update(func(s *UserProjectUpsert) {
-		s.AddDeletedAt(v)
-	})
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *UserProjectUpsertOne) UpdateDeletedAt() *UserProjectUpsertOne {
-	return u.Update(func(s *UserProjectUpsert) {
-		s.UpdateDeletedAt()
 	})
 }
 
@@ -742,27 +678,6 @@ func (u *UserProjectUpsertBulk) SetUpdatedAt(v time.Time) *UserProjectUpsertBulk
 func (u *UserProjectUpsertBulk) UpdateUpdatedAt() *UserProjectUpsertBulk {
 	return u.Update(func(s *UserProjectUpsert) {
 		s.UpdateUpdatedAt()
-	})
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (u *UserProjectUpsertBulk) SetDeletedAt(v int) *UserProjectUpsertBulk {
-	return u.Update(func(s *UserProjectUpsert) {
-		s.SetDeletedAt(v)
-	})
-}
-
-// AddDeletedAt adds v to the "deleted_at" field.
-func (u *UserProjectUpsertBulk) AddDeletedAt(v int) *UserProjectUpsertBulk {
-	return u.Update(func(s *UserProjectUpsert) {
-		s.AddDeletedAt(v)
-	})
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *UserProjectUpsertBulk) UpdateDeletedAt() *UserProjectUpsertBulk {
-	return u.Update(func(s *UserProjectUpsert) {
-		s.UpdateDeletedAt()
 	})
 }
 

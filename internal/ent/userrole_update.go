@@ -29,27 +29,6 @@ func (_u *UserRoleUpdate) Where(ps ...predicate.UserRole) *UserRoleUpdate {
 	return _u
 }
 
-// SetDeletedAt sets the "deleted_at" field.
-func (_u *UserRoleUpdate) SetDeletedAt(v int) *UserRoleUpdate {
-	_u.mutation.ResetDeletedAt()
-	_u.mutation.SetDeletedAt(v)
-	return _u
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (_u *UserRoleUpdate) SetNillableDeletedAt(v *int) *UserRoleUpdate {
-	if v != nil {
-		_u.SetDeletedAt(*v)
-	}
-	return _u
-}
-
-// AddDeletedAt adds value to the "deleted_at" field.
-func (_u *UserRoleUpdate) AddDeletedAt(v int) *UserRoleUpdate {
-	_u.mutation.AddDeletedAt(v)
-	return _u
-}
-
 // SetCreatedAt sets the "created_at" field.
 func (_u *UserRoleUpdate) SetCreatedAt(v time.Time) *UserRoleUpdate {
 	_u.mutation.SetCreatedAt(v)
@@ -89,9 +68,7 @@ func (_u *UserRoleUpdate) Mutation() *UserRoleMutation {
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (_u *UserRoleUpdate) Save(ctx context.Context) (int, error) {
-	if err := _u.defaults(); err != nil {
-		return 0, err
-	}
+	_u.defaults()
 	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
@@ -118,15 +95,11 @@ func (_u *UserRoleUpdate) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (_u *UserRoleUpdate) defaults() error {
+func (_u *UserRoleUpdate) defaults() {
 	if _, ok := _u.mutation.UpdatedAt(); !ok && !_u.mutation.UpdatedAtCleared() {
-		if userrole.UpdateDefaultUpdatedAt == nil {
-			return fmt.Errorf("ent: uninitialized userrole.UpdateDefaultUpdatedAt (forgotten import ent/runtime?)")
-		}
 		v := userrole.UpdateDefaultUpdatedAt()
 		_u.mutation.SetUpdatedAt(v)
 	}
-	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -157,12 +130,6 @@ func (_u *UserRoleUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 				ps[i](selector)
 			}
 		}
-	}
-	if value, ok := _u.mutation.DeletedAt(); ok {
-		_spec.SetField(userrole.FieldDeletedAt, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedDeletedAt(); ok {
-		_spec.AddField(userrole.FieldDeletedAt, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(userrole.FieldCreatedAt, field.TypeTime, value)
@@ -196,27 +163,6 @@ type UserRoleUpdateOne struct {
 	hooks     []Hook
 	mutation  *UserRoleMutation
 	modifiers []func(*sql.UpdateBuilder)
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (_u *UserRoleUpdateOne) SetDeletedAt(v int) *UserRoleUpdateOne {
-	_u.mutation.ResetDeletedAt()
-	_u.mutation.SetDeletedAt(v)
-	return _u
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (_u *UserRoleUpdateOne) SetNillableDeletedAt(v *int) *UserRoleUpdateOne {
-	if v != nil {
-		_u.SetDeletedAt(*v)
-	}
-	return _u
-}
-
-// AddDeletedAt adds value to the "deleted_at" field.
-func (_u *UserRoleUpdateOne) AddDeletedAt(v int) *UserRoleUpdateOne {
-	_u.mutation.AddDeletedAt(v)
-	return _u
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -271,9 +217,7 @@ func (_u *UserRoleUpdateOne) Select(field string, fields ...string) *UserRoleUpd
 
 // Save executes the query and returns the updated UserRole entity.
 func (_u *UserRoleUpdateOne) Save(ctx context.Context) (*UserRole, error) {
-	if err := _u.defaults(); err != nil {
-		return nil, err
-	}
+	_u.defaults()
 	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
@@ -300,15 +244,11 @@ func (_u *UserRoleUpdateOne) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (_u *UserRoleUpdateOne) defaults() error {
+func (_u *UserRoleUpdateOne) defaults() {
 	if _, ok := _u.mutation.UpdatedAt(); !ok && !_u.mutation.UpdatedAtCleared() {
-		if userrole.UpdateDefaultUpdatedAt == nil {
-			return fmt.Errorf("ent: uninitialized userrole.UpdateDefaultUpdatedAt (forgotten import ent/runtime?)")
-		}
 		v := userrole.UpdateDefaultUpdatedAt()
 		_u.mutation.SetUpdatedAt(v)
 	}
-	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -356,12 +296,6 @@ func (_u *UserRoleUpdateOne) sqlSave(ctx context.Context) (_node *UserRole, err 
 				ps[i](selector)
 			}
 		}
-	}
-	if value, ok := _u.mutation.DeletedAt(); ok {
-		_spec.SetField(userrole.FieldDeletedAt, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedDeletedAt(); ok {
-		_spec.AddField(userrole.FieldDeletedAt, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(userrole.FieldCreatedAt, field.TypeTime, value)

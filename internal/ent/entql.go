@@ -456,7 +456,6 @@ var schemaGraph = func() *sqlgraph.Schema {
 		Fields: map[string]*sqlgraph.FieldSpec{
 			userproject.FieldCreatedAt: {Type: field.TypeTime, Column: userproject.FieldCreatedAt},
 			userproject.FieldUpdatedAt: {Type: field.TypeTime, Column: userproject.FieldUpdatedAt},
-			userproject.FieldDeletedAt: {Type: field.TypeInt, Column: userproject.FieldDeletedAt},
 			userproject.FieldUserID:    {Type: field.TypeInt, Column: userproject.FieldUserID},
 			userproject.FieldProjectID: {Type: field.TypeInt, Column: userproject.FieldProjectID},
 			userproject.FieldIsOwner:   {Type: field.TypeBool, Column: userproject.FieldIsOwner},
@@ -474,7 +473,6 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 		Type: "UserRole",
 		Fields: map[string]*sqlgraph.FieldSpec{
-			userrole.FieldDeletedAt: {Type: field.TypeInt, Column: userrole.FieldDeletedAt},
 			userrole.FieldUserID:    {Type: field.TypeInt, Column: userrole.FieldUserID},
 			userrole.FieldRoleID:    {Type: field.TypeInt, Column: userrole.FieldRoleID},
 			userrole.FieldCreatedAt: {Type: field.TypeTime, Column: userrole.FieldCreatedAt},
@@ -3513,11 +3511,6 @@ func (f *UserProjectFilter) WhereUpdatedAt(p entql.TimeP) {
 	f.Where(p.Field(userproject.FieldUpdatedAt))
 }
 
-// WhereDeletedAt applies the entql int predicate on the deleted_at field.
-func (f *UserProjectFilter) WhereDeletedAt(p entql.IntP) {
-	f.Where(p.Field(userproject.FieldDeletedAt))
-}
-
 // WhereUserID applies the entql int predicate on the user_id field.
 func (f *UserProjectFilter) WhereUserID(p entql.IntP) {
 	f.Where(p.Field(userproject.FieldUserID))
@@ -3604,11 +3597,6 @@ func (f *UserRoleFilter) Where(p entql.P) {
 // WhereID applies the entql int predicate on the id field.
 func (f *UserRoleFilter) WhereID(p entql.IntP) {
 	f.Where(p.Field(userrole.FieldID))
-}
-
-// WhereDeletedAt applies the entql int predicate on the deleted_at field.
-func (f *UserRoleFilter) WhereDeletedAt(p entql.IntP) {
-	f.Where(p.Field(userrole.FieldDeletedAt))
 }
 
 // WhereUserID applies the entql int predicate on the user_id field.

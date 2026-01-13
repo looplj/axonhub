@@ -655,8 +655,129 @@ func TestRemoveUserFromProject_NotFound(t *testing.T) {
 
 	// Try to remove a relationship that doesn't exist
 	err = userService.RemoveUserFromProject(ctx, testUser.ID, testProject.ID)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "failed to find user project relationship")
+	require.NoError(t, err)
+}
+
+func TestRemoveUserFromProject_WithRoles(t *testing.T) {
+	userService, client := setupTestUserService(t)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Create a user
+	testUser, err := client.User.Create().
+		SetEmail("user@example.com").
+		SetPassword("hashed-password").
+		SetFirstName("Test").
+		SetLastName("User").
+		SetStatus(user.StatusActivated).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create project 1
+	testProject1, err := client.Project.Create().
+		SetName("Test Project 1").
+		SetDescription("A test project 1").
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create project 2
+	testProject2, err := client.Project.Create().
+		SetName("Test Project 2").
+		SetDescription("A test project 2").
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create project roles for project 1
+	projectRole1, err := client.Role.Create().
+		SetName("Project 1 Admin").
+		SetLevel(role.LevelProject).
+		SetProjectID(testProject1.ID).
+		SetScopes([]string{"manage_project_1"}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create project roles for project 2
+	projectRole2, err := client.Role.Create().
+		SetName("Project 2 Admin").
+		SetLevel(role.LevelProject).
+		SetProjectID(testProject2.ID).
+		SetScopes([]string{"manage_project_2"}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create a global role
+	globalRole, err := client.Role.Create().
+		SetName("Global Viewer").
+		SetLevel(role.LevelSystem).
+		SetProjectID(0).
+		SetScopes([]string{"view_all"}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Add user to project 1 with role 1
+	isOwner := false
+	_, err = userService.AddUserToProject(ctx, testUser.ID, testProject1.ID, &isOwner, nil, []int{projectRole1.ID})
+	require.NoError(t, err)
+
+	// Add user to project 2 with role 2
+	_, err = userService.AddUserToProject(ctx, testUser.ID, testProject2.ID, &isOwner, nil, []int{projectRole2.ID})
+	require.NoError(t, err)
+
+	// Assign global role to user
+	err = testUser.Update().AddRoleIDs(globalRole.ID).Exec(ctx)
+	require.NoError(t, err)
+
+	// Verify initial state
+	updatedUser, err := client.User.Query().
+		Where(user.IDEQ(testUser.ID)).
+		WithRoles().
+		Only(ctx)
+	require.NoError(t, err)
+	require.Len(t, updatedUser.Edges.Roles, 3)
+
+	// Remove user from project 1
+	err = userService.RemoveUserFromProject(ctx, testUser.ID, testProject1.ID)
+	require.NoError(t, err)
+
+	// Verify UserProject 1 is gone
+	exists, err := client.UserProject.Query().
+		Where(
+			userproject.UserID(testUser.ID),
+			userproject.ProjectID(testProject1.ID),
+		).
+		Exist(ctx)
+	require.NoError(t, err)
+	require.False(t, exists)
+
+	// Verify UserProject 2 STILL exists
+	exists, err = client.UserProject.Query().
+		Where(
+			userproject.UserID(testUser.ID),
+			userproject.ProjectID(testProject2.ID),
+		).
+		Exist(ctx)
+	require.NoError(t, err)
+	require.True(t, exists)
+
+	// Verify roles: projectRole1 should be gone, projectRole2 and globalRole should remain
+	finalUser, err := client.User.Query().
+		Where(user.IDEQ(testUser.ID)).
+		WithRoles().
+		Only(ctx)
+	require.NoError(t, err)
+	require.Len(t, finalUser.Edges.Roles, 2)
+
+	finalRoleIDs := make([]int, 0)
+	for _, r := range finalUser.Edges.Roles {
+		finalRoleIDs = append(finalRoleIDs, r.ID)
+	}
+
+	require.Contains(t, finalRoleIDs, projectRole2.ID)
+	require.Contains(t, finalRoleIDs, globalRole.ID)
+	require.NotContains(t, finalRoleIDs, projectRole1.ID)
 }
 
 func TestUpdateProjectUser_UpdateScopes(t *testing.T) {

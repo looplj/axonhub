@@ -10,6 +10,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/privacy"
+	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
 	"github.com/looplj/axonhub/internal/log"
@@ -346,21 +347,33 @@ func (s *UserService) RemoveUserFromProject(ctx context.Context, userID, project
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	client := s.entFromContext(ctx)
 
-	// Find the UserProject relationship
-	userProject, err := client.UserProject.Query().
-		Where(
-			userproject.UserID(userID),
-			userproject.ProjectID(projectID),
-		).
-		Only(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to find user project relationship: %w", err)
-	}
-
 	// Delete the relationship (soft delete if enabled)
-	err = client.UserProject.DeleteOne(userProject).Exec(ctx)
+	rowsAffected, err := client.UserProject.Delete().Where(
+		userproject.ProjectIDEQ(projectID),
+		userproject.UserIDEQ(userID),
+	).Exec(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to remove user from project: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return nil
+	}
+
+	projectRoleIDs, err := client.Role.Query().
+		Where(
+			role.ProjectIDEQ(projectID),
+			role.HasUsersWith(user.IDEQ(userID)),
+		).
+		IDs(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to query user project roles: %w", err)
+	}
+
+	if len(projectRoleIDs) > 0 {
+		if err := client.User.UpdateOneID(userID).RemoveRoleIDs(projectRoleIDs...).Exec(ctx); err != nil {
+			return fmt.Errorf("failed to remove user project roles: %w", err)
+		}
 	}
 
 	// Invalidate user cache

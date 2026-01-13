@@ -24,7 +24,7 @@ func (r userScopeQueryRule) EvalQuery(ctx context.Context, q ent.Query) error {
 		return err
 	}
 
-	if userHasScope(user, r.requiredScope) {
+	if userHasSystemScope(user, r.requiredScope) {
 		return privacy.Allow
 	}
 
@@ -39,7 +39,7 @@ func UserWriteScopeRule(writeScope ScopeSlug) privacy.MutationRule {
 			return err
 		}
 
-		if userHasScope(user, writeScope) {
+		if userHasSystemScope(user, writeScope) {
 			return privacy.Allow
 		}
 
@@ -55,7 +55,7 @@ func UserScopeQueryMutationRule(requiredScope ScopeSlug) privacy.QueryMutationRu
 			return err
 		}
 
-		if userHasScope(user, requiredScope) {
+		if userHasSystemScope(user, requiredScope) {
 			return privacy.Allow
 		}
 
@@ -65,11 +65,11 @@ func UserScopeQueryMutationRule(requiredScope ScopeSlug) privacy.QueryMutationRu
 
 func WithUserScopeDecision(ctx context.Context, requiredScope ScopeSlug) context.Context {
 	user, ok := contexts.GetUser(ctx)
-	if !ok {
+	if !ok || user == nil {
 		return privacy.DecisionContext(ctx, privacy.Deny)
 	}
 
-	if userHasScope(user, requiredScope) {
+	if userHasSystemScope(user, requiredScope) {
 		return privacy.DecisionContext(ctx, privacy.Allow)
 	}
 
@@ -78,11 +78,11 @@ func WithUserScopeDecision(ctx context.Context, requiredScope ScopeSlug) context
 
 func UserHasScope(ctx context.Context, requiredScope ScopeSlug) bool {
 	user, ok := contexts.GetUser(ctx)
-	if !ok {
+	if !ok || user == nil {
 		return false
 	}
 
-	if userHasScope(user, requiredScope) {
+	if userHasSystemScope(user, requiredScope) {
 		return true
 	}
 

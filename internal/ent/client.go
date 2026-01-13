@@ -3592,8 +3592,7 @@ func (c *UserProjectClient) Hooks() []Hook {
 
 // Interceptors returns the client interceptors.
 func (c *UserProjectClient) Interceptors() []Interceptor {
-	inters := c.inters.UserProject
-	return append(inters[:len(inters):len(inters)], userproject.Interceptors[:]...)
+	return c.inters.UserProject
 }
 
 func (c *UserProjectClient) mutate(ctx context.Context, m *UserProjectMutation) (Value, error) {
@@ -3753,14 +3752,12 @@ func (c *UserRoleClient) QueryRole(_m *UserRole) *RoleQuery {
 
 // Hooks returns the client hooks.
 func (c *UserRoleClient) Hooks() []Hook {
-	hooks := c.hooks.UserRole
-	return append(hooks[:len(hooks):len(hooks)], userrole.Hooks[:]...)
+	return c.hooks.UserRole
 }
 
 // Interceptors returns the client interceptors.
 func (c *UserRoleClient) Interceptors() []Interceptor {
-	inters := c.inters.UserRole
-	return append(inters[:len(inters):len(inters)], userrole.Interceptors[:]...)
+	return c.inters.UserRole
 }
 
 func (c *UserRoleClient) mutate(ctx context.Context, m *UserRoleMutation) (Value, error) {
