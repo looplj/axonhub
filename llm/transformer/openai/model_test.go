@@ -6,8 +6,6 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
-
-	"github.com/looplj/axonhub/llm"
 )
 
 func TestMessageContent_MarshalJSON(t *testing.T) {
@@ -234,11 +232,9 @@ func TestRoundTrip_Response(t *testing.T) {
 			},
 		},
 		Usage: &Usage{
-			Usage: llm.Usage{
-				PromptTokens:     10,
-				CompletionTokens: 5,
-				TotalTokens:      15,
-			},
+			PromptTokens:     10,
+			CompletionTokens: 5,
+			TotalTokens:      15,
 		},
 		SystemFingerprint: "fp_123",
 		ServiceTier:       "default",

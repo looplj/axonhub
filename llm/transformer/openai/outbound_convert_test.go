@@ -147,11 +147,9 @@ func TestResponse_ToLLMResponse(t *testing.T) {
 					{Index: 0, Message: &Message{Role: "assistant", Content: MessageContent{Content: lo.ToPtr("Hi")}}},
 				},
 				Usage: &Usage{
-					Usage: llm.Usage{
-						PromptTokens:     10,
-						CompletionTokens: 5,
-						TotalTokens:      15,
-					},
+					PromptTokens:     10,
+					CompletionTokens: 5,
+					TotalTokens:      15,
 				},
 			},
 			validate: func(t *testing.T, resp *llm.Response) {

@@ -50,7 +50,8 @@
     },
     "actions": {
       "viewDetails": "查看详情",
-      "copy": "复制"
+      "copy": "复制",
+      "download": "下载"
     },
     "filters": {
       "filterId": "按ID筛选...",
@@ -74,7 +75,8 @@
       "jsonViewer": {
         "responseChunks": "响应块",
         "copy": "复制",
-        "copied": "已复制"
+        "copied": "已复制",
+        "download": "下载"
       },
       "executionDetail": {},
       "requestDetail": {
