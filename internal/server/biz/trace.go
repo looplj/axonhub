@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/trace"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
@@ -429,7 +430,8 @@ func requestToSegment(ctx context.Context, req *ent.Request) (*Segment, error) {
 
 		llmReq, err := inbound.TransformRequest(ctx, httpReq)
 		if err != nil {
-			return nil, fmt.Errorf("failed to transform request body: %w", err)
+			log.Warn(ctx, "Failed to transform request body", log.Cause(err), log.Int("request_id", req.ID))
+			return segment, nil
 		}
 
 		requestSpans = append(requestSpans, extractSpansFromMessages(llmReq.Messages, fmt.Sprintf("request-%d", req.ID))...)
@@ -451,7 +453,8 @@ func requestToSegment(ctx context.Context, req *ent.Request) (*Segment, error) {
 
 		unifiedResp, err := outbound.TransformResponse(ctx, httpResp)
 		if err != nil {
-			return nil, fmt.Errorf("failed to transform response body: %w", err)
+			log.Warn(ctx, "Failed to transform response body", log.Cause(err), log.Int("request_id", req.ID))
+			return segment, nil
 		}
 
 		segment.Metadata = extractMetadataFromResponse(unifiedResp)

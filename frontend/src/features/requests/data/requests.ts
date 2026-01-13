@@ -57,6 +57,7 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
               edges {
                 node {
                   modelID
+                  status
                   channel {
                     id
                     name

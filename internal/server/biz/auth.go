@@ -147,32 +147,32 @@ func (s *AuthService) AuthenticateJWTToken(ctx context.Context, tokenString stri
 
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			return nil, fmt.Errorf("%w: unexpected signing method: %v", ErrInvalidJWT, token.Header["alg"])
 		}
 
 		return []byte(secretKey), nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse jwt token: %w", ErrInvalidJWT)
+		return nil, fmt.Errorf("%w: failed to parse jwt token: %w", ErrInvalidJWT, err)
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok || !token.Valid {
-		return nil, fmt.Errorf("invalid token: %w", ErrInvalidJWT)
+		return nil, fmt.Errorf("%w: invalid token", ErrInvalidJWT)
 	}
 
 	userID, ok := claims["user_id"].(float64)
 	if !ok {
-		return nil, fmt.Errorf("invalid token claims: %w", ErrInvalidJWT)
+		return nil, fmt.Errorf("%w: invalid token claims", ErrInvalidJWT)
 	}
 
 	u, err := s.UserService.GetUserByID(ctx, int(userID))
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user: %w", err)
+		return nil, fmt.Errorf("%w: failed to get user: %w", ErrInvalidJWT, err)
 	}
 
 	if u.Status != user.StatusActivated {
-		return nil, fmt.Errorf("user not activated: %w", ErrInvalidJWT)
+		return nil, fmt.Errorf("%w: user not activated", ErrInvalidJWT)
 	}
 
 	return u, nil
