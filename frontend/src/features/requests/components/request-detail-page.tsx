@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { DashboardIcon } from '@radix-ui/react-icons';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { zhCN, enUS } from 'date-fns/locale';
-import { Copy, Clock, Key, Database, ArrowLeft, FileText, Layers } from 'lucide-react';
+import { Copy, Clock, Key, Database, ArrowLeft, FileText, Layers, Download } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { extractNumberID } from '@/lib/utils';
@@ -47,6 +47,19 @@ export default function RequestDetailPage() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success(t('requests.actions.copy'));
+  };
+
+  const downloadFile = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(t('requests.actions.download'));
   };
 
   const showResponseChunksModal = useCallback(() => {
@@ -303,15 +316,26 @@ export default function RequestDetailPage() {
                           <FileText className='text-primary h-4 w-4' />
                           {t('requests.columns.requestHeaders')}
                         </h4>
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          onClick={() => copyToClipboard(formatJson(request.requestHeaders))}
-                          className='hover:bg-primary hover:text-primary-foreground'
-                        >
-                          <Copy className='mr-2 h-4 w-4' />
-                          {t('requests.dialogs.jsonViewer.copy')}
-                        </Button>
+                        <div className='flex gap-2'>
+                          <Button
+                            variant='outline'
+                            size='sm'
+                            onClick={() => copyToClipboard(formatJson(request.requestHeaders))}
+                            className='hover:bg-primary hover:text-primary-foreground'
+                          >
+                            <Copy className='mr-2 h-4 w-4' />
+                            {t('requests.dialogs.jsonViewer.copy')}
+                          </Button>
+                          <Button
+                            variant='outline'
+                            size='sm'
+                            onClick={() => downloadFile(formatJson(request.requestHeaders), `request-headers-${request.id}.json`)}
+                            className='hover:bg-primary hover:text-primary-foreground'
+                          >
+                            <Download className='mr-2 h-4 w-4' />
+                            {t('requests.dialogs.jsonViewer.download')}
+                          </Button>
+                        </div>
                       </div>
                       <div className='bg-muted/20 h-[300px] w-full overflow-auto rounded-lg border p-4'>
                         <JsonViewer data={request.requestHeaders} rootName='' defaultExpanded={true} className='text-sm' />
@@ -324,15 +348,26 @@ export default function RequestDetailPage() {
                         <FileText className='text-primary h-4 w-4' />
                         {t('requests.columns.requestBody')}
                       </h4>
-                      <Button
-                        variant='outline'
-                        size='sm'
-                        onClick={() => copyToClipboard(formatJson(request.requestBody))}
-                        className='hover:bg-primary hover:text-primary-foreground'
-                      >
-                        <Copy className='mr-2 h-4 w-4' />
-                        {t('requests.dialogs.jsonViewer.copy')}
-                      </Button>
+                      <div className='flex gap-2'>
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          onClick={() => copyToClipboard(formatJson(request.requestBody))}
+                          className='hover:bg-primary hover:text-primary-foreground'
+                        >
+                          <Copy className='mr-2 h-4 w-4' />
+                          {t('requests.dialogs.jsonViewer.copy')}
+                        </Button>
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          onClick={() => downloadFile(formatJson(request.requestBody), `request-body-${request.id}.json`)}
+                          className='hover:bg-primary hover:text-primary-foreground'
+                        >
+                          <Download className='mr-2 h-4 w-4' />
+                          {t('requests.dialogs.jsonViewer.download')}
+                        </Button>
+                      </div>
                     </div>
                     <div className='bg-muted/20 h-[500px] w-full overflow-auto rounded-lg border p-4'>
                       <JsonViewer data={request.requestBody} rootName='' defaultExpanded={true} className='text-sm' />
@@ -367,6 +402,16 @@ export default function RequestDetailPage() {
                         >
                           <Copy className='mr-2 h-4 w-4' />
                           {t('requests.dialogs.jsonViewer.copy')}
+                        </Button>
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          onClick={() => downloadFile(formatJson(request.responseBody), `response-body-${request.id}.json`)}
+                          disabled={!request.responseBody}
+                          className='hover:bg-primary hover:text-primary-foreground disabled:opacity-50'
+                        >
+                          <Download className='mr-2 h-4 w-4' />
+                          {t('requests.dialogs.jsonViewer.download')}
                         </Button>
                       </div>
                     </div>
@@ -491,6 +536,15 @@ export default function RequestDetailPage() {
                                         <Copy className='mr-2 h-4 w-4' />
                                         {t('requests.dialogs.jsonViewer.copy')}
                                       </Button>
+                                      <Button
+                                        variant='outline'
+                                        size='sm'
+                                        onClick={() => downloadFile(formatJson(execution.requestHeaders), `execution-${execution.id}-request-headers.json`)}
+                                        className='hover:bg-primary hover:text-primary-foreground'
+                                      >
+                                        <Download className='mr-2 h-4 w-4' />
+                                        {t('requests.dialogs.jsonViewer.download')}
+                                      </Button>
                                     </div>
                                   </div>
                                   <div className='bg-background h-64 w-full overflow-auto rounded-lg border p-3'>
@@ -515,6 +569,15 @@ export default function RequestDetailPage() {
                                       >
                                         <Copy className='mr-2 h-4 w-4' />
                                         {t('requests.dialogs.jsonViewer.copy')}
+                                      </Button>
+                                      <Button
+                                        variant='outline'
+                                        size='sm'
+                                        onClick={() => downloadFile(formatJson(execution.requestBody), `execution-${execution.id}-request-body.json`)}
+                                        className='hover:bg-primary hover:text-primary-foreground'
+                                      >
+                                        <Download className='mr-2 h-4 w-4' />
+                                        {t('requests.dialogs.jsonViewer.download')}
                                       </Button>
                                     </div>
                                   </div>
@@ -551,6 +614,15 @@ export default function RequestDetailPage() {
                                       >
                                         <Copy className='mr-2 h-4 w-4' />
                                         {t('requests.dialogs.jsonViewer.copy')}
+                                      </Button>
+                                      <Button
+                                        variant='outline'
+                                        size='sm'
+                                        onClick={() => downloadFile(formatJson(execution.responseBody), `execution-${execution.id}-response-body.json`)}
+                                        className='hover:bg-primary hover:text-primary-foreground'
+                                      >
+                                        <Download className='mr-2 h-4 w-4' />
+                                        {t('requests.dialogs.jsonViewer.download')}
                                       </Button>
                                     </div>
                                   </div>

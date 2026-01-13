@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, Download } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -33,6 +33,18 @@ export function JsonViewerDialog({ open, onOpenChange, title, jsonData }: JsonVi
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const downloadFile = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const formattedJson = formatJson(jsonData);
 
   return (
@@ -44,6 +56,10 @@ export function JsonViewerDialog({ open, onOpenChange, title, jsonData }: JsonVi
             <Button className={'ml-4'} variant='outline' size='sm' onClick={() => copyToClipboard(formattedJson)}>
               {copied ? <Check className='mr-2 h-4 w-4' /> : <Copy className='mr-2 h-4 w-4' />}
               {copied ? t('requests.dialogs.jsonViewer.copied') : t('requests.dialogs.jsonViewer.copy')}
+            </Button>
+            <Button className={'ml-2'} variant='outline' size='sm' onClick={() => downloadFile(formattedJson, `${title.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.json`)}>
+              <Download className='mr-2 h-4 w-4' />
+              {t('requests.dialogs.jsonViewer.download')}
             </Button>
           </DialogTitle>
         </DialogHeader>

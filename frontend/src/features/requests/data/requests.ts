@@ -187,6 +187,7 @@ function buildRequestExecutionsQuery(permissions: { canViewChannels: boolean }) 
                 responseChunks
                 errorMessage
                 status
+                stream
                 metricsFirstTokenLatencyMs
               }
               cursor
