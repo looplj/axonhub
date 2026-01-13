@@ -3,19 +3,10 @@
     "title": "API Key Management",
     "description": "Manage system API keys and access permissions.",
     "createApiKey": "Create API Key",
-    "filterApiKeys": "Filter API keys...",
     "columns": {
-      "id": "ID",
-      "name": "Name",
       "key": "API Key",
       "type": "Type",
-      "creator": "Creator",
-      "status": "Status",
-      "createdAt": "Created At",
-      "updatedAt": "Updated At",
-      "actions": "Actions",
-      "selectAll": "Select all",
-      "selectRow": "Select row"
+      "creator": "Creator"
     },
     "type": {
       "user": "User",
@@ -34,8 +25,7 @@
       "copy": "Copy",
       "view": "View",
       "show": "Show",
-      "hide": "Hide",
-      "archive": "Archive"
+      "hide": "Hide"
     },
     "dialogs": {
       "create": {
@@ -46,13 +36,8 @@
         "title": "Edit API Key",
         "description": "Modify API Key information."
       },
-      "delete": {
-        "title": "Delete API Key",
-        "description": "Are you sure you want to delete API Key {{name}}? This action cannot be undone."
-      },
+      "delete": {},
       "status": {
-        "title": "Change Status",
-        "description": "Are you sure you want to change the status of this API Key?",
         "enableTitle": "Enable API Key",
         "disableTitle": "Disable API Key",
         "enableDescription": "Are you sure you want to enable API Key {{name}}?",
@@ -93,8 +78,7 @@
       "fields": {
         "name": {
           "label": "Name",
-          "placeholder": "Enter API Key name",
-          "description": "Set an easily recognizable name for this API Key"
+          "placeholder": "Enter API Key name"
         },
         "type": {
           "label": "Type",
@@ -107,15 +91,9 @@
           "label": "Scopes",
           "description": "Select the permissions for this service account API key"
         },
-        "userID": {
-          "label": "User ID",
-          "placeholder": "Enter User ID",
-          "description": "The user ID associated with this API Key"
-        },
+        "userID": {},
         "key": {
-          "label": "API Key",
-          "placeholder": "Enter API Key",
-          "description": "The API Key value"
+          "label": "API Key"
         }
       },
       "buttons": {}
@@ -126,13 +104,10 @@
       "createError": "Failed to create API Key",
       "updateSuccess": "API Key updated successfully",
       "updateError": "Failed to update API Key",
-      "deleteSuccess": "API Key deleted successfully",
       "statusUpdateSuccess": "API Key status updated to {{status}}",
       "statusUpdateError": "Failed to update status",
       "profilesUpdateSuccess": "Profiles updated successfully",
       "profilesUpdateError": "Failed to update profiles",
-      "scopesUpdateSuccess": "Scopes updated successfully",
-      "scopesUpdateError": "Failed to update scopes",
       "bulkDisableSuccess": "Successfully disabled {{count}} API keys",
       "bulkDisableError": "Failed to disable API keys",
       "bulkArchiveSuccess": "Successfully archived {{count}} API keys",
@@ -146,8 +121,6 @@
     },
     "validation": {
       "nameRequired": "Name is required",
-      "userIdRequired": "User ID is required",
-      "keyRequired": "API Key is required",
       "profileNameRequired": "Profile name is required",
       "sourceModelRequired": "Model in request is required",
       "targetModelRequired": "Target model is required",
@@ -157,17 +130,11 @@
       "duplicateProfileName": "Profile names must be unique"
     },
     "filters": {
-      "filterId": "Filter by ID...",
       "filterName": "Filter by name...",
       "status": "Status",
-      "creator": "Creator",
-      "selectedCount": "{{count}} selected",
-      "clearFilter": "Clear filter"
+      "creator": "Creator"
     },
-    "view": {
-      "title": "View",
-      "toggleColumns": "Toggle columns"
-    },
+    "view": {},
     "profiles": {
       "title": "API Key Profiles",
       "expand": "Expand Profile",
@@ -182,19 +149,15 @@
       "sourceModel": "Model in request (Supports regular expressions)",
       "targetModel": "Target Model",
       "activeProfile": "Active Profile",
-      "searchModels": "Search Model",
       "selectActiveProfile": "Select active profile",
       "noModelsFound": "No models found",
       "regexSupported": "Supports regular expressions",
       "allowedChannels": "Allowed Channels",
       "allowedChannelsDescription": "Select channels that this profile can use. If none selected, all channels are allowed.",
-      "noChannelsAvailable": "No channels available",
       "allowedChannelTags": "Allowed Channel Tags",
       "allowedChannelTagsDescription": "Select tags to filter channels for this profile. Channels with any of the selected tags will be allowed. If none selected, tag filtering is disabled.",
-      "noTagsAvailable": "No tags available",
       "allowedModels": "Allowed Models",
-      "allowedModelsDescription": "Select models that this profile can use. If none selected, all models are allowed.",
-      "noModelsAvailable": "No models available"
+      "allowedModelsDescription": "Select models that this profile can use. If none selected, all models are allowed."
     }
   }
 }

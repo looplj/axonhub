@@ -53,7 +53,7 @@ func (s *TraceService) GetOrCreateTrace(ctx context.Context, projectID int, trac
 	}
 
 	// Try to find existing trace
-	trace, err := client.Trace.Query().
+	existingTrace, err := client.Trace.Query().
 		Where(
 			trace.TraceIDEQ(traceID),
 			trace.ProjectIDEQ(projectID),
@@ -61,7 +61,7 @@ func (s *TraceService) GetOrCreateTrace(ctx context.Context, projectID int, trac
 		Only(ctx)
 	if err == nil {
 		// Trace found
-		return trace, nil
+		return existingTrace, nil
 	}
 
 	// If error is not "not found", return the error
@@ -70,12 +70,25 @@ func (s *TraceService) GetOrCreateTrace(ctx context.Context, projectID int, trac
 	}
 
 	// Trace not found, create new one
-	createTrace := client.Trace.Create().
+	newTrace, err := client.Trace.Create().
 		SetTraceID(traceID).
 		SetProjectID(projectID).
-		SetNillableThreadID(threadID)
+		SetNillableThreadID(threadID).
+		Save(ctx)
+	if err != nil {
+		if ent.IsConstraintError(err) {
+			return client.Trace.Query().
+				Where(
+					trace.TraceIDEQ(traceID),
+					trace.ProjectIDEQ(projectID),
+				).
+				Only(ctx)
+		}
 
-	return createTrace.Save(ctx)
+		return nil, fmt.Errorf("failed to create trace: %w", err)
+	}
+
+	return newTrace, nil
 }
 
 // GetTraceByID retrieves a trace by its trace_id and project_id.

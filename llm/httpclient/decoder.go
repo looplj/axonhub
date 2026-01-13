@@ -47,7 +47,7 @@ func NewDefaultSSEDecoder(ctx context.Context, rc io.ReadCloser) StreamDecoder {
 		// sseStream: sse.NewStream(rc),
 		// 图片生成需要大量数据，设置最大事件大小
 		sseStream: sse.NewStreamWithConfig(rc, &sse.StreamConfig{
-			MaxEventSize: 16 * 1024 * 1024,
+			MaxEventSize: 32 * 1024 * 1024,
 		}),
 	}
 }

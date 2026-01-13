@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { ChevronLeftIcon, ChevronRightIcon, DoubleArrowLeftIcon, DoubleArrowRightIcon } from '@radix-ui/react-icons';
-import { Layers } from 'lucide-react';
+import { Layers, Copy, Check, Download } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,33 @@ export function ChunksDialog({ open, onOpenChange, chunks, title }: ChunksDialog
   const [chunksPage, setChunksPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [pageInputValue, setPageInputValue] = useState('1');
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyAll = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(chunks, null, 2));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  const handleDownloadAll = () => {
+    try {
+      const blob = new Blob([JSON.stringify(chunks, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `chunks-${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to download:', err);
+    }
+  };
 
   // Pagination logic for chunks
   const paginatedChunks = useMemo(() => {
@@ -84,6 +111,22 @@ export function ChunksDialog({ open, onOpenChange, chunks, title }: ChunksDialog
             <Badge variant='secondary' className='ml-2'>
               {chunks.length} {t('requests.columns.responseChunks')}
             </Badge>
+            <Button
+              variant='ghost'
+              size='icon'
+              className='h-8 w-8'
+              onClick={handleCopyAll}
+            >
+              {copied ? <Check className='h-4 w-4 text-green-500' /> : <Copy className='h-4 w-4' />}
+            </Button>
+            <Button
+              variant='ghost'
+              size='icon'
+              className='h-8 w-8'
+              onClick={handleDownloadAll}
+            >
+              <Download className='h-4 w-4' />
+            </Button>
           </DialogTitle>
         </DialogHeader>
 

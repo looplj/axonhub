@@ -244,7 +244,7 @@ func generateTimestamps(setting ChannelProbeSetting, currentTime time.Time) []in
 	startTime := endTime.Add(-time.Duration(rangeMinutes) * time.Minute)
 
 	var timestamps []int64
-	for t := startTime.Unix(); t < endTime.Unix(); t += int64(intervalMinutes * 60) {
+	for t := startTime.Unix(); t <= endTime.Unix(); t += int64(intervalMinutes * 60) {
 		timestamps = append(timestamps, t)
 	}
 
@@ -269,7 +269,7 @@ func (svc *ChannelProbeService) QueryChannelProbes(ctx context.Context, channelI
 		Where(
 			channelprobe.ChannelIDIn(channelIDs...),
 			channelprobe.TimestampGTE(startTime.Unix()),
-			channelprobe.TimestampLT(endTime.Unix()),
+			channelprobe.TimestampLTE(endTime.Unix()),
 		).
 		Order(ent.Asc(channelprobe.FieldTimestamp)).
 		All(ctx)

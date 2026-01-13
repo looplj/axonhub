@@ -39,7 +39,7 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
   const columns: ColumnDef<UsageLog>[] = [
     {
       accessorKey: 'id',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('usageLogs.columns.id')} />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.id')} />,
       cell: ({ row }) => <div className='font-mono text-xs'>#{extractNumberID(row.getValue('id'))}</div>,
       enableSorting: true,
       enableHiding: false,
@@ -140,7 +140,7 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
             {hasCache && (
               <div className='text-muted-foreground text-xs'>
                 {t('usageLogs.columns.cacheHitRate', {
-                  rate: ((cachedTokens / usage.promptTokens) * 100).toFixed(1),
+                  rate: ((cachedTokens / (usage.promptTokens + cachedTokens)) * 100).toFixed(1),
                 })}
               </div>
             )}
@@ -202,7 +202,7 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
     // },
     {
       accessorKey: 'createdAt',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('usageLogs.columns.createdAt')} />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.createdAt')} />,
       cell: ({ row }) => {
         const date = new Date(row.getValue('createdAt'));
         return <div className='text-xs'>{format(date, 'yyyy-MM-dd HH:mm:ss', { locale })}</div>;
@@ -210,6 +210,7 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
     },
     {
       id: 'actions',
+      header: t('common.columns.actions'),
       cell: ({ row }) => {
         const usageLog = row.original;
         const { setCurrentUsageLog, setDetailDialogOpen } = useUsageLogsContext();

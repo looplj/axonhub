@@ -148,6 +148,64 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			wantErr:     true,
 			errContains: "messages are required",
 		},
+		{
+			name: "request with reasoning budget",
+			request: &httpclient.Request{
+				Method: http.MethodPost,
+				URL:    "/v1/chat/completions",
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
+				},
+				Body: mustMarshal(Request{
+					Model: "o1",
+					Messages: []Message{
+						{
+							Role: "user",
+							Content: MessageContent{
+								Content: lo.ToPtr("Test with reasoning budget"),
+							},
+						},
+					},
+					ReasoningBudget: lo.ToPtr(int64(8192)),
+				}),
+			},
+			wantErr: false,
+			validate: func(req *llm.Request) bool {
+				return req != nil &&
+					req.ReasoningBudget != nil &&
+					*req.ReasoningBudget == 8192
+			},
+		},
+		{
+			name: "request with reasoning budget and effort",
+			request: &httpclient.Request{
+				Method: http.MethodPost,
+				URL:    "/v1/chat/completions",
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
+				},
+				Body: mustMarshal(Request{
+					Model: "o1",
+					Messages: []Message{
+						{
+							Role: "user",
+							Content: MessageContent{
+								Content: lo.ToPtr("Test with reasoning"),
+							},
+						},
+					},
+					ReasoningEffort: "high",
+					ReasoningBudget: lo.ToPtr(int64(16384)),
+				}),
+			},
+			wantErr: false,
+			validate: func(req *llm.Request) bool {
+				return req != nil &&
+					req.ReasoningEffort == "high" &&
+					req.ReasoningBudget != nil &&
+					*req.ReasoningBudget == 16384
+			},
+		},
 	}
 
 	for _, tt := range tests {

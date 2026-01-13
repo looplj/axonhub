@@ -74,8 +74,7 @@ func TestSimpleQAWithDifferentQuestion(t *testing.T) {
 
 	contents := []*genai.Content{{
 		Parts: []*genai.Part{{Text: question}},
-	},
-	}
+	}}
 
 	config := helper.MergeHTTPOptions(nil)
 	response, err := helper.Client.Models.GenerateContent(ctx, modelName, contents, config)

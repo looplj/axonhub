@@ -170,6 +170,10 @@ func (s *RequestService) CreateRequest(
 		SetStream(isStream).
 		SetRequestHeaders(requestHeadersBytes)
 
+	if httpRequest != nil && httpRequest.ClientIP != "" {
+		mut = mut.SetClientIP(httpRequest.ClientIP)
+	}
+
 	// Determine if we should store in database or external storage
 	useExternalStorage := storeRequestBody && s.shouldUseExternalStorage(ctx, dataStorage)
 
@@ -299,6 +303,7 @@ func (s *RequestService) CreateRequestExecution(
 		SetModelID(modelID).
 		SetRequestBody(requestBodyForDB).
 		SetStatus(requestexecution.StatusProcessing).
+		SetStream(request.Stream).
 		SetRequestHeaders(requestHeadersBytes)
 
 	// Use the same data storage as the request
@@ -874,8 +879,8 @@ func (s *RequestService) LoadResponseChunks(ctx context.Context, req *ent.Reques
 	if req == nil {
 		return nil, fmt.Errorf("request is nil")
 	}
-	// Only load response body if request is completed
-	if req.Status != request.StatusCompleted {
+	// Only load response chunks if request is completed and streaming.
+	if !req.Stream || req.Status != request.StatusCompleted {
 		return nil, nil
 	}
 
@@ -996,6 +1001,11 @@ func (s *RequestService) LoadRequestExecutionResponseBody(ctx context.Context, e
 func (s *RequestService) LoadRequestExecutionResponseChunks(ctx context.Context, exec *ent.RequestExecution) ([]objects.JSONRawMessage, error) {
 	if exec == nil {
 		return nil, fmt.Errorf("request execution is nil")
+	}
+
+	// Only load response body if execution is completed
+	if !exec.Stream || exec.Status != requestexecution.StatusCompleted {
+		return nil, nil
 	}
 
 	dataStorage, err := s.getDataStorage(ctx, exec.DataStorageID)

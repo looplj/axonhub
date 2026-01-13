@@ -165,7 +165,8 @@ export function ModelsTable({
         </div>
       </div>
 
-      <div className='shadow-soft relative mt-4 flex-1 overflow-auto overflow-x-hidden rounded-2xl border border-[var(--table-border)]'>
+      <div className='shadow-soft relative mt-4 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
+        <div className='min-w-max'>
         <Table data-testid='models-table' className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -235,11 +236,11 @@ export function ModelsTable({
                                     <span>{model.group}</span>
                                   </div>
                                   <div className='flex justify-between'>
-                                    <span className='text-muted-foreground'>{t('models.columns.createdAt')}:</span>
+                                    <span className='text-muted-foreground'>{t('common.columns.createdAt')}:</span>
                                     <span>{format(model.createdAt, 'yyyy-MM-dd HH:mm')}</span>
                                   </div>
                                   <div className='flex justify-between'>
-                                    <span className='text-muted-foreground'>{t('models.columns.updatedAt')}:</span>
+                                    <span className='text-muted-foreground'>{t('common.columns.updatedAt')}:</span>
                                     <span>{format(model.updatedAt, 'yyyy-MM-dd HH:mm')}</span>
                                   </div>
                                   {model.remark && (
@@ -406,6 +407,7 @@ export function ModelsTable({
             )}
           </TableBody>
         </Table>
+        </div>
       </div>
 
       <div className='mt-4 flex-shrink-0'>
@@ -436,37 +438,35 @@ export function ModelsTable({
             </div>
             <div className='bg-border mx-2 h-6 w-px' />
             <PermissionGuard requiredScope='write_channels'>
-              <Button
-                variant='ghost'
-                size='icon'
-                className='h-8 w-8 text-green-600 hover:bg-green-100 hover:text-green-700'
-                onClick={() => setOpen('bulkEnable')}
-                title={t('common.buttons.enable')}
-              >
-                <IconCheck className='h-4 w-4' />
-              </Button>
-            </PermissionGuard>
-            <PermissionGuard requiredScope='write_channels'>
-              <Button
-                variant='ghost'
-                size='icon'
-                className='h-8 w-8 text-amber-600 hover:bg-amber-100 hover:text-amber-700'
-                onClick={() => setOpen('bulkDisable')}
-                title={t('common.buttons.disable')}
-              >
-                <IconBan className='h-4 w-4' />
-              </Button>
-            </PermissionGuard>
-            <PermissionGuard requiredScope='write_channels'>
-              <Button
-                variant='ghost'
-                size='icon'
-                className='text-destructive h-8 w-8 hover:bg-red-100 hover:text-red-700'
-                onClick={() => setOpen('delete')}
-                title={t('common.buttons.delete')}
-              >
-                <IconTrash className='h-4 w-4' />
-              </Button>
+              <>
+                <Button
+                  variant='ghost'
+                  size='icon'
+                  className='h-8 w-8 text-green-600 hover:bg-green-100 hover:text-green-700'
+                  onClick={() => setOpen('bulkEnable')}
+                  title={t('common.buttons.enable')}
+                >
+                  <IconCheck className='h-4 w-4' />
+                </Button>
+                <Button
+                  variant='ghost'
+                  size='icon'
+                  className='h-8 w-8 text-amber-600 hover:bg-amber-100 hover:text-amber-700'
+                  onClick={() => setOpen('bulkDisable')}
+                  title={t('common.buttons.disable')}
+                >
+                  <IconBan className='h-4 w-4' />
+                </Button>
+                <Button
+                  variant='ghost'
+                  size='icon'
+                  className='text-destructive h-8 w-8 hover:bg-red-100 hover:text-red-700'
+                  onClick={() => setOpen('delete')}
+                  title={t('common.buttons.delete')}
+                >
+                  <IconTrash className='h-4 w-4' />
+                </Button>
+              </>
             </PermissionGuard>
           </div>
         </div>

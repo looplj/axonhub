@@ -124,6 +124,14 @@ func (r *projectResolver) ProjectUsers(ctx context.Context, obj *ent.Project) ([
 	return obj.QueryProjectUsers().All(ctx)
 }
 
+// ID is the resolver for the id field.
+func (r *promptResolver) ID(ctx context.Context, obj *ent.Prompt) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypePrompt,
+		ID:   obj.ID,
+	}, nil
+}
+
 // Node is the resolver for the node field.
 func (r *queryResolver) Node(ctx context.Context, id objects.GUID) (ent.Noder, error) {
 	typ, ok := guidTypeToNodeType[id.Type]
@@ -193,6 +201,18 @@ func (r *queryResolver) Projects(ctx context.Context, after *entgql.Cursor[int],
 	return r.client.Project.Query().Paginate(ctx, after, first, before, last,
 		ent.WithProjectOrder(orderBy),
 		ent.WithProjectFilter(where.Filter),
+	)
+}
+
+// Prompts is the resolver for the prompts field.
+func (r *queryResolver) Prompts(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.PromptOrder, where *ent.PromptWhereInput) (*ent.PromptConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
+	return r.client.Prompt.Query().Paginate(ctx, after, first, before, last,
+		ent.WithPromptOrder(orderBy),
+		ent.WithPromptFilter(where.Filter),
 	)
 }
 
@@ -666,6 +686,9 @@ func (r *Resolver) Model() ModelResolver { return &modelResolver{r} }
 // Project returns ProjectResolver implementation.
 func (r *Resolver) Project() ProjectResolver { return &projectResolver{r} }
 
+// Prompt returns PromptResolver implementation.
+func (r *Resolver) Prompt() PromptResolver { return &promptResolver{r} }
+
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
@@ -707,6 +730,7 @@ type channelProbeResolver struct{ *Resolver }
 type dataStorageResolver struct{ *Resolver }
 type modelResolver struct{ *Resolver }
 type projectResolver struct{ *Resolver }
+type promptResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type requestResolver struct{ *Resolver }
 type requestExecutionResolver struct{ *Resolver }

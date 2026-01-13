@@ -31,8 +31,8 @@ test-qa: setup
 
 test-tools: setup
 	@echo "Running tool calling tests..."
-	go test -v ./tool_single
-	go test -v ./tool_multiple
+	go test --count=1 -v ./tool_single
+	go test --count=1 -v ./tool_multiple
 
 test-streaming: setup
 	@echo "Running streaming tests..."
@@ -40,7 +40,7 @@ test-streaming: setup
 
 test-conversation: setup
 	@echo "Running conversation tests..."
-	go test -v ./conversation
+	go test --count=1 -v ./conversation
 
 test-trace: setup
 	@echo "Running trace tests..."
@@ -48,7 +48,7 @@ test-trace: setup
 
 test-thread: setup
 	@echo "Running thread tests..."
-	go test -v ./tread_multiple_traces
+	go test --count=1 -v ./tread_multiple_traces
 
 # Run tests with specific verbosity
 test-verbose: setup
@@ -85,7 +85,7 @@ check-env:
 # Quick validation (fast tests only)
 quick: setup check-env
 	@echo "Running quick validation..."
-	go test -short -v ./qa_simple
+	go test --count=1 -short -v ./qa_simple
 
 # Full validation with all features
 validate: setup check-env lint test-coverage

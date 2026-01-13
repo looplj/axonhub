@@ -1,4 +1,4 @@
-FROM node:20-alpine AS frontend-builder
+FROM --platform=$BUILDPLATFORM node:20-alpine AS frontend-builder
 
 WORKDIR /build
 RUN corepack enable && corepack prepare pnpm@latest --activate
@@ -9,6 +9,10 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
 COPY ./frontend .
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN pnpm build
+
+# Copy dist to a stage with the target platform to avoid architecture mismatch
+FROM alpine AS frontend-dist
+COPY --from=frontend-builder /build/dist /dist
 
 FROM golang:alpine AS backend-builder
 
@@ -22,7 +26,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     GOTOOLCHAIN=auto go mod download
 
 COPY . .
-COPY --from=frontend-builder /build/dist /build/internal/server/static/dist
+COPY --from=frontend-dist /dist /build/internal/server/static/dist
 
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \

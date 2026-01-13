@@ -341,6 +341,27 @@ func (_m *Project) Traces(
 	return _m.QueryTraces().Paginate(ctx, after, first, before, last, opts...)
 }
 
+func (_m *Project) Prompts(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *PromptOrder, where *PromptWhereInput,
+) (*PromptConnection, error) {
+	opts := []PromptPaginateOption{
+		WithPromptOrder(orderBy),
+		WithPromptFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[7][alias]
+	if nodes, err := _m.NamedPrompts(alias); err == nil || hasTotalCount {
+		pager, err := newPromptPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &PromptConnection{Edges: []*PromptEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryPrompts().Paginate(ctx, after, first, before, last, opts...)
+}
+
 func (_m *Project) ProjectUsers(
 	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *UserProjectOrder, where *UserProjectWhereInput,
 ) (*UserProjectConnection, error) {
@@ -349,7 +370,7 @@ func (_m *Project) ProjectUsers(
 		WithUserProjectFilter(where.Filter),
 	}
 	alias := graphql.GetFieldContext(ctx).Field.Alias
-	totalCount, hasTotalCount := _m.Edges.totalCount[7][alias]
+	totalCount, hasTotalCount := _m.Edges.totalCount[8][alias]
 	if nodes, err := _m.NamedProjectUsers(alias); err == nil || hasTotalCount {
 		pager, err := newUserProjectPager(opts, last != nil)
 		if err != nil {
@@ -360,6 +381,27 @@ func (_m *Project) ProjectUsers(
 		return conn, nil
 	}
 	return _m.QueryProjectUsers().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *Prompt) Projects(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *ProjectOrder, where *ProjectWhereInput,
+) (*ProjectConnection, error) {
+	opts := []ProjectPaginateOption{
+		WithProjectOrder(orderBy),
+		WithProjectFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[0][alias]
+	if nodes, err := _m.NamedProjects(alias); err == nil || hasTotalCount {
+		pager, err := newProjectPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &ProjectConnection{Edges: []*ProjectEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryProjects().Paginate(ctx, after, first, before, last, opts...)
 }
 
 func (_m *Request) APIKey(ctx context.Context) (*APIKey, error) {

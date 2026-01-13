@@ -3,8 +3,10 @@ package httpclient
 import (
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/samber/lo"
 )
@@ -19,6 +21,7 @@ func ReadHTTPRequest(rawReq *http.Request) (*Request, error) {
 		Body:       nil,
 		Auth:       &AuthConfig{},
 		RequestID:  "",
+		ClientIP:   getClientIP(rawReq),
 		RawRequest: rawReq,
 	}
 
@@ -30,6 +33,26 @@ func ReadHTTPRequest(rawReq *http.Request) (*Request, error) {
 	req.Body = body
 
 	return req, nil
+}
+
+func getClientIP(req *http.Request) string {
+	if xff := req.Header.Get("X-Forwarded-For"); xff != "" {
+		if before, _, ok := strings.Cut(xff, ","); ok {
+			return strings.TrimSpace(before)
+		}
+
+		return xff
+	}
+
+	if xri := req.Header.Get("X-Real-IP"); xri != "" {
+		return xri
+	}
+
+	if ip, _, err := net.SplitHostPort(req.RemoteAddr); err == nil {
+		return ip
+	}
+
+	return req.RemoteAddr
 }
 
 // IsHTTPStatusCodeRetryable checks if an HTTP status code is retryable.
@@ -114,17 +137,25 @@ func MergeInboundRequest(dest, src *Request) *Request {
 	}
 
 	dest.Headers = MergeHTTPHeaders(dest.Headers, src.Headers)
+	dest.Query = MergeHTTPQuery(dest.Query, src.Query)
 
-	// Merge query parameters.
-	if len(src.Query) > 0 {
-		if dest.Query == nil {
-			dest.Query = make(url.Values)
-		}
+	return dest
+}
 
-		for k, v := range src.Query {
-			if _, ok := dest.Query[k]; !ok {
-				dest.Query[k] = v
-			}
+// MergeHTTPQuery merges the source query parameters into the destination query parameters.
+// If a key already exists in the destination, it is not overwritten.
+func MergeHTTPQuery(dest, src url.Values) url.Values {
+	if len(src) == 0 {
+		return dest
+	}
+
+	if dest == nil {
+		dest = make(url.Values)
+	}
+
+	for k, v := range src {
+		if _, ok := dest[k]; !ok {
+			dest[k] = v
 		}
 	}
 

@@ -32,6 +32,7 @@ type Request struct {
 
 	// Request tracking
 	RequestID string `json:"request_id"`
+	ClientIP  string `json:"client_ip"`
 
 	// Raw HTTP request for advanced use cases
 	RawRequest *http.Request `json:"-"`

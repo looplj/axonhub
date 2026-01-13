@@ -21,7 +21,7 @@ export function useThreadsColumns(): ColumnDef<Thread>[] {
   const columns: ColumnDef<Thread>[] = [
     {
       accessorKey: 'id',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('threads.columns.id')} />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.id')} />,
       cell: ({ row }) => {
         const handleClick = useCallback(() => {
           navigateWithSearch({
@@ -94,7 +94,7 @@ export function useThreadsColumns(): ColumnDef<Thread>[] {
 
     {
       accessorKey: 'createdAt',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('threads.columns.createdAt')} />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.createdAt')} />,
       cell: ({ row }) => {
         const date = new Date(row.getValue('createdAt'));
         return <div className='text-xs'>{format(date, 'yyyy-MM-dd HH:mm:ss', { locale })}</div>;

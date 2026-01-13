@@ -9,6 +9,7 @@ schema:
   - model.graphql
   - backup.graphql
   - channel_probe.graphql
+  - prompt.graphql
 
 
 omit_gqlgen_version_in_file_notice: true
@@ -381,3 +382,33 @@ models:
   ProbeFrequency:
     model:
       - github.com/looplj/axonhub/internal/server/biz.ProbeFrequency
+  PromptSettings:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptSettings
+  PromptSettingsInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptSettings
+  PromptAction:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptAction
+  PromptActionInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptAction
+  PromptActivationCondition:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptActivationCondition
+  PromptActivationConditionInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptActivationCondition
+  PromptActionType:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptActionType
+  PromptActivationConditionType:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptActivationConditionType
+  PromptActivationConditionComposite:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptActivationConditionComposite
+  PromptActivationConditionCompositeInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptActivationConditionComposite

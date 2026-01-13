@@ -3,10 +3,10 @@
 import { format } from 'date-fns';
 import { ColumnDef, Row, Table } from '@tanstack/react-table';
 import { useTranslation } from 'react-i18next';
-import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Role } from '../data/schema';
 import { DataTableRowActions } from './data-table-row-actions';
+import { ScopesCell } from './scopes-cell';
 
 export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrite: boolean = false): ColumnDef<Role>[] => {
   const columns: ColumnDef<Role>[] = [
@@ -30,7 +30,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
         <Checkbox
           checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label={t('roles.columns.selectAll')}
+          aria-label={t('common.columns.selectAll')}
           className='translate-y-[2px]'
         />
       ),
@@ -38,7 +38,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
         <Checkbox
           checked={row.getIsSelected()}
           onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label={t('roles.columns.selectRow')}
+          aria-label={t('common.columns.selectRow')}
           className='translate-y-[2px]'
         />
       ),
@@ -51,7 +51,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
   columns.push(
     {
       accessorKey: 'name',
-      header: t('roles.columns.name'),
+      header: t('common.columns.name'),
       cell: ({ row }) => {
         const name = row.getValue('name') as string;
         return <div className='font-medium'>{name}</div>;
@@ -62,25 +62,12 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       header: t('roles.columns.scopes'),
       cell: ({ row }) => {
         const scopes = row.getValue('scopes') as string[];
-        return (
-          <div className='flex max-w-[300px] flex-wrap gap-1'>
-            {scopes.slice(0, 3).map((scope) => (
-              <Badge key={scope} variant='secondary' className='text-xs'>
-                {scope}
-              </Badge>
-            ))}
-            {scopes.length > 3 && (
-              <Badge variant='outline' className='text-xs'>
-                +{scopes.length - 3} {t('roles.columns.moreScopes')}
-              </Badge>
-            )}
-          </div>
-        );
+        return <ScopesCell scopes={scopes} />;
       },
     },
     {
       accessorKey: 'createdAt',
-      header: t('roles.columns.createdAt'),
+      header: t('common.columns.createdAt'),
       cell: ({ row }) => {
         const date = row.getValue('createdAt') as Date;
         return <div className='text-muted-foreground'>{format(date, 'yyyy-MM-dd HH:mm')}</div>;
@@ -88,7 +75,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
     },
     {
       accessorKey: 'updatedAt',
-      header: t('roles.columns.updatedAt'),
+      header: t('common.columns.updatedAt'),
       cell: ({ row }) => {
         const date = row.getValue('updatedAt') as Date;
         return <div className='text-muted-foreground'>{format(date, 'yyyy-MM-dd HH:mm')}</div>;

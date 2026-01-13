@@ -70,12 +70,6 @@ func TestResponse_ToOpenAIResponse(t *testing.T) {
 					PromptTokens:     7,
 					CompletionTokens: 1290,
 					TotalTokens:      1297,
-					PromptTokensDetails: &llm.PromptTokensDetails{
-						CachedTokens: 0,
-					},
-					CompletionTokensDetails: &llm.CompletionTokensDetails{
-						ReasoningTokens: 0,
-					},
 				},
 			},
 		},
@@ -113,16 +107,6 @@ func TestResponse_ToOpenAIResponse(t *testing.T) {
 					PromptTokens:     15604,
 					CompletionTokens: 71,
 					TotalTokens:      15675,
-					PromptTokensDetails: &llm.PromptTokensDetails{
-						AudioTokens:  0,
-						CachedTokens: 0,
-					},
-					CompletionTokensDetails: &llm.CompletionTokensDetails{
-						AudioTokens:              0,
-						ReasoningTokens:          0,
-						AcceptedPredictionTokens: 0,
-						RejectedPredictionTokens: 0,
-					},
 				},
 			},
 		},
@@ -161,16 +145,6 @@ func TestResponse_ToOpenAIResponse(t *testing.T) {
 					PromptTokens:     18810,
 					CompletionTokens: 68,
 					TotalTokens:      18878,
-					PromptTokensDetails: &llm.PromptTokensDetails{
-						AudioTokens:  0,
-						CachedTokens: 0,
-					},
-					CompletionTokensDetails: &llm.CompletionTokensDetails{
-						AudioTokens:              0,
-						ReasoningTokens:          0,
-						AcceptedPredictionTokens: 0,
-						RejectedPredictionTokens: 0,
-					},
 				},
 			},
 		},

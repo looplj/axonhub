@@ -23,6 +23,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
+	"github.com/looplj/axonhub/internal/ent/prompt"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
@@ -56,6 +57,8 @@ type Client struct {
 	Model *ModelClient
 	// Project is the client for interacting with the Project builders.
 	Project *ProjectClient
+	// Prompt is the client for interacting with the Prompt builders.
+	Prompt *PromptClient
 	// Request is the client for interacting with the Request builders.
 	Request *RequestClient
 	// RequestExecution is the client for interacting with the RequestExecution builders.
@@ -97,6 +100,7 @@ func (c *Client) init() {
 	c.DataStorage = NewDataStorageClient(c.config)
 	c.Model = NewModelClient(c.config)
 	c.Project = NewProjectClient(c.config)
+	c.Prompt = NewPromptClient(c.config)
 	c.Request = NewRequestClient(c.config)
 	c.RequestExecution = NewRequestExecutionClient(c.config)
 	c.Role = NewRoleClient(c.config)
@@ -207,6 +211,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		DataStorage:             NewDataStorageClient(cfg),
 		Model:                   NewModelClient(cfg),
 		Project:                 NewProjectClient(cfg),
+		Prompt:                  NewPromptClient(cfg),
 		Request:                 NewRequestClient(cfg),
 		RequestExecution:        NewRequestExecutionClient(cfg),
 		Role:                    NewRoleClient(cfg),
@@ -244,6 +249,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		DataStorage:             NewDataStorageClient(cfg),
 		Model:                   NewModelClient(cfg),
 		Project:                 NewProjectClient(cfg),
+		Prompt:                  NewPromptClient(cfg),
 		Request:                 NewRequestClient(cfg),
 		RequestExecution:        NewRequestExecutionClient(cfg),
 		Role:                    NewRoleClient(cfg),
@@ -284,7 +290,7 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.APIKey, c.Channel, c.ChannelOverrideTemplate, c.ChannelPerformance,
-		c.ChannelProbe, c.DataStorage, c.Model, c.Project, c.Request,
+		c.ChannelProbe, c.DataStorage, c.Model, c.Project, c.Prompt, c.Request,
 		c.RequestExecution, c.Role, c.System, c.Thread, c.Trace, c.UsageLog, c.User,
 		c.UserProject, c.UserRole,
 	} {
@@ -297,7 +303,7 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.APIKey, c.Channel, c.ChannelOverrideTemplate, c.ChannelPerformance,
-		c.ChannelProbe, c.DataStorage, c.Model, c.Project, c.Request,
+		c.ChannelProbe, c.DataStorage, c.Model, c.Project, c.Prompt, c.Request,
 		c.RequestExecution, c.Role, c.System, c.Thread, c.Trace, c.UsageLog, c.User,
 		c.UserProject, c.UserRole,
 	} {
@@ -324,6 +330,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Model.mutate(ctx, m)
 	case *ProjectMutation:
 		return c.Project.mutate(ctx, m)
+	case *PromptMutation:
+		return c.Prompt.mutate(ctx, m)
 	case *RequestMutation:
 		return c.Request.mutate(ctx, m)
 	case *RequestExecutionMutation:
@@ -1720,6 +1728,22 @@ func (c *ProjectClient) QueryTraces(_m *Project) *TraceQuery {
 	return query
 }
 
+// QueryPrompts queries the prompts edge of a Project.
+func (c *ProjectClient) QueryPrompts(_m *Project) *PromptQuery {
+	query := (&PromptClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, id),
+			sqlgraph.To(prompt.Table, prompt.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, project.PromptsTable, project.PromptsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryProjectUsers queries the project_users edge of a Project.
 func (c *ProjectClient) QueryProjectUsers(_m *Project) *UserProjectQuery {
 	query := (&UserProjectClient{config: c.config}).Query()
@@ -1760,6 +1784,157 @@ func (c *ProjectClient) mutate(ctx context.Context, m *ProjectMutation) (Value, 
 		return (&ProjectDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Project mutation op: %q", m.Op())
+	}
+}
+
+// PromptClient is a client for the Prompt schema.
+type PromptClient struct {
+	config
+}
+
+// NewPromptClient returns a client for the Prompt from the given config.
+func NewPromptClient(c config) *PromptClient {
+	return &PromptClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `prompt.Hooks(f(g(h())))`.
+func (c *PromptClient) Use(hooks ...Hook) {
+	c.hooks.Prompt = append(c.hooks.Prompt, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `prompt.Intercept(f(g(h())))`.
+func (c *PromptClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Prompt = append(c.inters.Prompt, interceptors...)
+}
+
+// Create returns a builder for creating a Prompt entity.
+func (c *PromptClient) Create() *PromptCreate {
+	mutation := newPromptMutation(c.config, OpCreate)
+	return &PromptCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Prompt entities.
+func (c *PromptClient) CreateBulk(builders ...*PromptCreate) *PromptCreateBulk {
+	return &PromptCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *PromptClient) MapCreateBulk(slice any, setFunc func(*PromptCreate, int)) *PromptCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &PromptCreateBulk{err: fmt.Errorf("calling to PromptClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*PromptCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &PromptCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Prompt.
+func (c *PromptClient) Update() *PromptUpdate {
+	mutation := newPromptMutation(c.config, OpUpdate)
+	return &PromptUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *PromptClient) UpdateOne(_m *Prompt) *PromptUpdateOne {
+	mutation := newPromptMutation(c.config, OpUpdateOne, withPrompt(_m))
+	return &PromptUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *PromptClient) UpdateOneID(id int) *PromptUpdateOne {
+	mutation := newPromptMutation(c.config, OpUpdateOne, withPromptID(id))
+	return &PromptUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Prompt.
+func (c *PromptClient) Delete() *PromptDelete {
+	mutation := newPromptMutation(c.config, OpDelete)
+	return &PromptDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *PromptClient) DeleteOne(_m *Prompt) *PromptDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *PromptClient) DeleteOneID(id int) *PromptDeleteOne {
+	builder := c.Delete().Where(prompt.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &PromptDeleteOne{builder}
+}
+
+// Query returns a query builder for Prompt.
+func (c *PromptClient) Query() *PromptQuery {
+	return &PromptQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypePrompt},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Prompt entity by its id.
+func (c *PromptClient) Get(ctx context.Context, id int) (*Prompt, error) {
+	return c.Query().Where(prompt.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *PromptClient) GetX(ctx context.Context, id int) *Prompt {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryProjects queries the projects edge of a Prompt.
+func (c *PromptClient) QueryProjects(_m *Prompt) *ProjectQuery {
+	query := (&ProjectClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(prompt.Table, prompt.FieldID, id),
+			sqlgraph.To(project.Table, project.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, prompt.ProjectsTable, prompt.ProjectsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *PromptClient) Hooks() []Hook {
+	hooks := c.hooks.Prompt
+	return append(hooks[:len(hooks):len(hooks)], prompt.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *PromptClient) Interceptors() []Interceptor {
+	inters := c.inters.Prompt
+	return append(inters[:len(inters):len(inters)], prompt.Interceptors[:]...)
+}
+
+func (c *PromptClient) mutate(ctx context.Context, m *PromptMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&PromptCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&PromptUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&PromptUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&PromptDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Prompt mutation op: %q", m.Op())
 	}
 }
 
@@ -3607,12 +3782,12 @@ func (c *UserRoleClient) mutate(ctx context.Context, m *UserRoleMutation) (Value
 type (
 	hooks struct {
 		APIKey, Channel, ChannelOverrideTemplate, ChannelPerformance, ChannelProbe,
-		DataStorage, Model, Project, Request, RequestExecution, Role, System, Thread,
-		Trace, UsageLog, User, UserProject, UserRole []ent.Hook
+		DataStorage, Model, Project, Prompt, Request, RequestExecution, Role, System,
+		Thread, Trace, UsageLog, User, UserProject, UserRole []ent.Hook
 	}
 	inters struct {
 		APIKey, Channel, ChannelOverrideTemplate, ChannelPerformance, ChannelProbe,
-		DataStorage, Model, Project, Request, RequestExecution, Role, System, Thread,
-		Trace, UsageLog, User, UserProject, UserRole []ent.Interceptor
+		DataStorage, Model, Project, Prompt, Request, RequestExecution, Role, System,
+		Thread, Trace, UsageLog, User, UserProject, UserRole []ent.Interceptor
 	}
 )

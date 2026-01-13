@@ -67,6 +67,9 @@ type Request struct {
 	// ReasoningEffort controls effort on reasoning models.
 	ReasoningEffort string `json:"reasoning_effort,omitempty"`
 
+	// ReasoningBudget is the budget for reasoning tokens.
+	ReasoningBudget *int64 `json:"reasoning_budget,omitempty"`
+
 	// ServiceTier specifies the processing type.
 	ServiceTier *string `json:"service_tier,omitempty"`
 
@@ -132,7 +135,11 @@ func (s *Stop) UnmarshalJSON(data []byte) error {
 
 // Message represents a message in the conversation.
 type Message struct {
-	Role    string         `json:"role,omitempty"`
+	// user, assistant, system, tool, developer
+	Role string `json:"role,omitempty"`
+	// Content of the message.
+	// string or []ContentPart, be careful about the omitzero tag, it required.
+	// Some framework may depended on the behavior, we should not response the field if not present.
 	Content MessageContent `json:"content,omitzero"`
 	Name    *string        `json:"name,omitempty"`
 
@@ -225,7 +232,7 @@ type Response struct {
 	Object  string   `json:"object"`
 	Created int64    `json:"created"`
 	Model   string   `json:"model"`
-	Usage   *Usage   `json:"usage,omitempty"`
+	Usage   *Usage   `json:"usage"`
 
 	SystemFingerprint string `json:"system_fingerprint,omitempty"`
 	ServiceTier       string `json:"service_tier,omitempty"`
@@ -238,8 +245,8 @@ type Choice struct {
 	Index        int       `json:"index"`
 	Message      *Message  `json:"message,omitempty"`
 	Delta        *Message  `json:"delta,omitempty"`
-	FinishReason *string   `json:"finish_reason,omitempty"`
-	Logprobs     *Logprobs `json:"logprobs,omitempty"`
+	FinishReason *string   `json:"finish_reason"`
+	Logprobs     *Logprobs `json:"logprobs"`
 }
 
 // Logprobs represents logprobs information.

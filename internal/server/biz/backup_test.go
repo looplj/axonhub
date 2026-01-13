@@ -134,6 +134,42 @@ func createBackupTestModel(t *testing.T, client *ent.Client, ctx context.Context
 	return m
 }
 
+func createBackupTestProject(t *testing.T, client *ent.Client, ctx context.Context, name, description string) *ent.Project {
+	proj, err := client.Project.Create().
+		SetName(name).
+		SetDescription(description).
+		Save(ctx)
+	require.NoError(t, err)
+
+	return proj
+}
+
+func createBackupTestAPIKey(t *testing.T, client *ent.Client, ctx context.Context, user *ent.User, project *ent.Project, name, key string) *ent.APIKey {
+	profiles := &objects.APIKeyProfiles{
+		ActiveProfile: "default",
+		Profiles: []objects.APIKeyProfile{
+			{
+				Name:     "default",
+				ModelIDs: []string{"gpt-4"},
+			},
+		},
+	}
+
+	ak, err := client.APIKey.Create().
+		SetKey(key).
+		SetName(name).
+		SetType("user").
+		SetStatus("enabled").
+		SetScopes([]string{"chat"}).
+		SetProfiles(profiles).
+		SetUserID(user.ID).
+		SetProjectID(project.ID).
+		Save(ctx)
+	require.NoError(t, err)
+
+	return ak
+}
+
 func TestBackupService_Backup(t *testing.T) {
 	client, service, ctx := setupBackupTest(t)
 	defer client.Close()
@@ -261,6 +297,9 @@ func TestBackupService_Restore_NewData(t *testing.T) {
 					DefaultTestModel:        "new-model-1",
 					OrderingWeight:          10,
 				},
+				Credentials: &objects.ChannelCredentials{
+					APIKey: "test-api-key",
+				},
 			},
 		},
 		Models: []*BackupModel{
@@ -334,6 +373,9 @@ func TestBackupService_Restore_UpdateExisting(t *testing.T) {
 					Tags:                    []string{"updated"},
 					DefaultTestModel:        "updated-model",
 					OrderingWeight:          20,
+				},
+				Credentials: &objects.ChannelCredentials{
+					APIKey: "test-api-key",
 				},
 			},
 		},

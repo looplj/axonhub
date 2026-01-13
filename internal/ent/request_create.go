@@ -220,6 +220,20 @@ func (_c *RequestCreate) SetNillableStream(v *bool) *RequestCreate {
 	return _c
 }
 
+// SetClientIP sets the "client_ip" field.
+func (_c *RequestCreate) SetClientIP(v string) *RequestCreate {
+	_c.mutation.SetClientIP(v)
+	return _c
+}
+
+// SetNillableClientIP sets the "client_ip" field if the given value is not nil.
+func (_c *RequestCreate) SetNillableClientIP(v *string) *RequestCreate {
+	if v != nil {
+		_c.SetClientIP(*v)
+	}
+	return _c
+}
+
 // SetMetricsLatencyMs sets the "metrics_latency_ms" field.
 func (_c *RequestCreate) SetMetricsLatencyMs(v int64) *RequestCreate {
 	_c.mutation.SetMetricsLatencyMs(v)
@@ -370,6 +384,10 @@ func (_c *RequestCreate) defaults() error {
 		v := request.DefaultStream
 		_c.mutation.SetStream(v)
 	}
+	if _, ok := _c.mutation.ClientIP(); !ok {
+		v := request.DefaultClientIP
+		_c.mutation.SetClientIP(v)
+	}
 	return nil
 }
 
@@ -411,6 +429,9 @@ func (_c *RequestCreate) check() error {
 	}
 	if _, ok := _c.mutation.Stream(); !ok {
 		return &ValidationError{Name: "stream", err: errors.New(`ent: missing required field "Request.stream"`)}
+	}
+	if _, ok := _c.mutation.ClientIP(); !ok {
+		return &ValidationError{Name: "client_ip", err: errors.New(`ent: missing required field "Request.client_ip"`)}
 	}
 	if len(_c.mutation.ProjectIDs()) == 0 {
 		return &ValidationError{Name: "project", err: errors.New(`ent: missing required edge "Request.project"`)}
@@ -489,6 +510,10 @@ func (_c *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Stream(); ok {
 		_spec.SetField(request.FieldStream, field.TypeBool, value)
 		_node.Stream = value
+	}
+	if value, ok := _c.mutation.ClientIP(); ok {
+		_spec.SetField(request.FieldClientIP, field.TypeString, value)
+		_node.ClientIP = value
 	}
 	if value, ok := _c.mutation.MetricsLatencyMs(); ok {
 		_spec.SetField(request.FieldMetricsLatencyMs, field.TypeInt64, value)
@@ -869,6 +894,9 @@ func (u *RequestUpsertOne) UpdateNewValues() *RequestUpsertOne {
 		}
 		if _, exists := u.create.mutation.Stream(); exists {
 			s.SetIgnore(request.FieldStream)
+		}
+		if _, exists := u.create.mutation.ClientIP(); exists {
+			s.SetIgnore(request.FieldClientIP)
 		}
 	}))
 	return u
@@ -1295,6 +1323,9 @@ func (u *RequestUpsertBulk) UpdateNewValues() *RequestUpsertBulk {
 			}
 			if _, exists := b.mutation.Stream(); exists {
 				s.SetIgnore(request.FieldStream)
+			}
+			if _, exists := b.mutation.ClientIP(); exists {
+				s.SetIgnore(request.FieldClientIP)
 			}
 		}
 	}))

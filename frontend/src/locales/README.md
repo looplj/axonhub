@@ -29,11 +29,18 @@
 - 扫描翻译文件中所有定义的 key
 - 检测缺失的翻译 key（代码中使用但翻译文件中不存在）
 - 检测多余的翻译 key（翻译文件中存在但代码中未使用）
+- **自动修复**：支持自动删除翻译文件中不再使用的多余 key
 
 **使用方法：**
 
 ```bash
+# 仅检查
 ./check_translation_keys.sh
+
+# 检查并自动删除多余的 key
+./check_translation_keys.sh --fix
+# 或
+./check_translation_keys.sh -f
 ```
 
 **输出说明：**

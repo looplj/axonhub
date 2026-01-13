@@ -275,9 +275,26 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 				finishReason = streamEvent.Delta.StopReason
 			}
 
+			// CRITICAL: Always include Delta field (even if empty) when finish_reason is present.
+			//
+			// The openai-go client (and potentially other OpenAI-compatible clients) expects
+			// ALL streaming chunks to have a "delta" field in the JSON. When a chunk contains
+			// "finish_reason" without "delta", it causes JSON unmarshalling errors.
+			//
+			// OpenAI's actual API format includes "delta": {} in finish_reason chunks:
+			//   {"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
+			//
+			// Without the delta field, clients see:
+			//   {"choices":[{"index":0,"finish_reason":"stop"}]}
+			//
+			// This breaks compatibility with the openai-go client's streaming parser which
+			// expects the delta field to always be present.  Specifically, this breaks charm's 'crush' tool.
+			//
+			// See: https://github.com/openai/openai-go/blob/main/packages/ssestream/ssestream.go
 			resp.Choices = []llm.Choice{
 				{
 					Index:        0,
+					Delta:        &llm.Message{}, // OpenAI format requires delta even when empty
 					FinishReason: finishReason,
 				},
 			}

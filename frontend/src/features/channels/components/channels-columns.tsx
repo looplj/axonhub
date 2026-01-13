@@ -476,7 +476,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
                 <Checkbox
                   checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
                   onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-                  aria-label={t('channels.columns.selectAll')}
+                  aria-label={t('common.columns.selectAll')}
                   className='translate-y-[2px]'
                 />
               </div>
@@ -486,7 +486,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
                 <Checkbox
                   checked={row.getIsSelected()}
                   onCheckedChange={(value) => row.toggleSelected(!!value)}
-                  aria-label={t('channels.columns.selectRow')}
+                  aria-label={t('common.columns.selectRow')}
                   className='translate-y-[2px]'
                 />
               </div>
@@ -501,7 +501,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       : []),
     {
       accessorKey: 'name',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.name')} className='justify-center' />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.name')} className='justify-center' />,
       cell: NameCell,
       meta: {
         className: 'md:table-cell min-w-48 text-center',
@@ -525,7 +525,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
     },
     {
       accessorKey: 'status',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.status')} className='justify-center' />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.status')} className='justify-center' />,
       cell: StatusSwitchCell,
       meta: {
         className: 'text-center',
@@ -610,20 +610,20 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       enableHiding: true,
     },
     {
-      accessorKey: 'createdAt',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.createdAt')} className='justify-center' />,
-      cell: CreatedAtCell,
-      meta: {
-        className: 'text-center',
-      },
-      enableSorting: true,
-      enableHiding: false,
-    },
+          accessorKey: 'createdAt',
+          header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.createdAt')} className='justify-center' />,
+          cell: CreatedAtCell,
+          meta: {
+            className: 'text-center',
+          },
+          enableSorting: true,
+          enableHiding: false,
+        },
     ...(canWrite
       ? [
           {
             id: 'action',
-            header: ({ column }: { column: any }) => <DataTableColumnHeader column={column} title={t('channels.columns.action')} className='justify-center' />,
+            header: ({ column }: { column: any }) => <DataTableColumnHeader column={column} title={t('common.columns.actions')} className='justify-center' />,
             cell: ActionCell,
             meta: {
               className: 'text-center',

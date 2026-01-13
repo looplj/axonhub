@@ -2,7 +2,6 @@
   "system": {
     "title": "系统设置",
     "description": "管理系统配置和选项。",
-    "loading": "加载系统设置...",
     "tabs": {
       "brand": "品牌",
       "storage": "存储",
@@ -17,12 +16,7 @@
         "label": "数据存储",
         "placeholder": "选择数据存储"
       },
-      "title": "存储设置",
-      "description": "配置系统如何处理和存储响应数据",
-      "storeChunks": {
-        "label": "存储响应块",
-        "description": "启用后，系统将在数据库中存储响应数据块，便于后续分析和处理"
-      },
+      "storeChunks": {},
       "policy": {
         "title": "存储策略",
         "description": "配置存储策略和数据清理设置以管理数据保留和存储效率",
@@ -65,11 +59,7 @@
         "notSquare": "请上传正方形图片（宽度等于高度）。"
       }
     },
-    "other": {
-      "title": "其他设置",
-      "description": "更多系统配置选项将在此处添加",
-      "comingSoon": "更多配置选项即将推出..."
-    },
+    "other": {},
     "retry": {
       "title": "重试策略",
       "description": "配置失败请求的自动重试行为以提高系统可靠性",
@@ -120,8 +110,6 @@
       "description": "欢迎使用 AxonHub！让我们快速设置您的系统。",
       "startTour": "开始引导",
       "skipTour": "跳过引导",
-      "nextStep": "下一步",
-      "previousStep": "上一步",
       "completeTour": "完成引导",
       "steps": {
         "welcome": {
@@ -180,10 +168,7 @@
           "title": "数据存储后端",
           "description": "为您的数据选择存储后端。不同的后端提供不同的性能和成本特性。"
         },
-        "storageCleanup": {
-          "title": "数据清理策略",
-          "description": "设置自动清理规则以管理存储空间并符合数据保留策略。"
-        },
+        "storageCleanup": {},
         "storageCleanupRequests": {
           "title": "请求数据清理",
           "description": "配置请求数据的自动清理以管理存储空间并保持系统性能。"
@@ -229,9 +214,10 @@
     },
     "backup": {
       "title": "备份",
-      "description": "创建系统数据备份，包括通道和模型",
-      "includeChannels": "包含通道",
+      "description": "创建系统数据备份，包括渠道、模型和 API 密钥",
+      "includeChannels": "包含渠道",
       "includeModels": "包含模型",
+      "includeAPIKeys": "包含 API 密钥",
       "createBackup": "创建备份",
       "backingUp": "备份中...",
       "success": "备份创建成功",
@@ -240,8 +226,9 @@
     "restore": {
       "title": "恢复",
       "description": "从备份文件恢复系统数据",
-      "channelConflictStrategy": "通道冲突策略",
+      "channelConflictStrategy": "渠道冲突策略",
       "modelConflictStrategy": "模型冲突策略",
+      "apiKeyConflictStrategy": "API 密钥冲突策略",
       "strategies": {
         "skip": "跳过现有项",
         "overwrite": "覆盖现有项",
