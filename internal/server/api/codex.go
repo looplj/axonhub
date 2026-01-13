@@ -13,12 +13,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 )
 
 const (
@@ -188,32 +188,6 @@ func parseCodexCallbackURL(callbackURL string) (string, error) {
 	return code, nil
 }
 
-func extractChatGPTAccountIDFromJWT(tokenStr string) string {
-	parser := jwt.NewParser(jwt.WithoutClaimsValidation())
-
-	token, _, err := parser.ParseUnverified(tokenStr, jwt.MapClaims{})
-	if err != nil {
-		return ""
-	}
-
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		return ""
-	}
-
-	authClaims, ok := claims["https://api.openai.com/auth"].(map[string]any)
-	if !ok {
-		return ""
-	}
-
-	accountID, ok := authClaims["chatgpt_account_id"].(string)
-	if !ok {
-		return ""
-	}
-
-	return accountID
-}
-
 // Exchange exchanges callback URL for OAuth credentials JSON.
 // POST /admin/codex/oauth/exchange
 func (h *CodexHandlers) Exchange(c *gin.Context) {
@@ -283,10 +257,10 @@ func (h *CodexHandlers) Exchange(c *gin.Context) {
 
 	accountID := ""
 	if tokenResp.IDToken != "" {
-		accountID = extractChatGPTAccountIDFromJWT(tokenResp.IDToken)
+		accountID = codex.ExtractChatGPTAccountIDFromJWT(tokenResp.IDToken)
 	}
 	if accountID == "" {
-		accountID = extractChatGPTAccountIDFromJWT(tokenResp.AccessToken)
+		accountID = codex.ExtractChatGPTAccountIDFromJWT(tokenResp.AccessToken)
 	}
 
 	expiresAt := time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
