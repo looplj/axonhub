@@ -37,6 +37,8 @@ import {
   getChannelTypeForApiFormat,
 } from '../data/config_providers';
 import { Channel, ChannelType, ApiFormat, createChannelInputSchema, updateChannelInputSchema } from '../data/schema';
+import { codexOAuthExchange, codexOAuthStart } from '../data/codex';
+import { useSelectedProjectId } from '@/stores/projectStore';
 
 interface Props {
   currentRow?: Channel;
@@ -81,6 +83,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const fetchModels = useFetchModels();
   const { data: allChannelNames = [], isSuccess: allChannelNamesLoaded } = useAllChannelNames({ enabled: open && isDuplicate });
   const { data: allTags = [], isLoading: isLoadingTags } = useAllChannelTags();
+  const selectedProjectId = useSelectedProjectId();
   const [supportedModels, setSupportedModels] = useState<string[]>(() => initialRow?.supportedModels || []);
   const [newModel, setNewModel] = useState('');
   const [selectedDefaultModels, setSelectedDefaultModels] = useState<string[]>([]);
@@ -100,6 +103,18 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const hasAutoSetDuplicateNameRef = useRef(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [showGcpJsonData, setShowGcpJsonData] = useState(false);
+
+  const [useCodex, setUseCodex] = useState(() => {
+    if (initialRow) {
+      return initialRow.credentials?.platformType === 'codex'
+    }
+    return false
+  })
+  const [codexSessionId, setCodexSessionId] = useState<string | null>(null)
+  const [codexAuthUrl, setCodexAuthUrl] = useState<string | null>(null)
+  const [codexCallbackUrl, setCodexCallbackUrl] = useState('')
+  const [isCodexStarting, setIsCodexStarting] = useState(false)
+  const [isCodexExchanging, setIsCodexExchanging] = useState(false)
 
   // Provider-based selection state
   const [selectedProvider, setSelectedProvider] = useState<string>(() => {
@@ -147,9 +162,20 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
   useEffect(() => {
     if (!open) {
-      hasAutoSetDuplicateNameRef.current = false;
+      hasAutoSetDuplicateNameRef.current = false
+      setCodexSessionId(null)
+      setCodexAuthUrl(null)
+      setCodexCallbackUrl('')
+      setIsCodexStarting(false)
+      setIsCodexExchanging(false)
     }
-  }, [open]);
+  }, [open])
+
+  // Keep Codex toggle in sync with loaded row
+  useEffect(() => {
+    if (!open) return
+    setUseCodex(initialRow?.credentials?.platformType === 'codex')
+  }, [open, initialRow])
 
   useEffect(() => {
     if (!open || !isEdit) return;
@@ -236,6 +262,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             remark: currentRow.remark || '',
             credentials: {
               apiKey: currentRow.credentials?.apiKey || '',
+              platformType: currentRow.credentials?.platformType || '',
               aws: {
                 accessKeyID: currentRow.credentials?.aws?.accessKeyID || '',
                 secretAccessKey: currentRow.credentials?.aws?.secretAccessKey || '',
@@ -261,6 +288,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               settings: duplicateFromRow.settings ?? undefined,
               credentials: {
                 apiKey: duplicateFromRow.credentials?.apiKey || '',
+                platformType: duplicateFromRow.credentials?.platformType || '',
                 aws: {
                   accessKeyID: duplicateFromRow.credentials?.aws?.accessKeyID || '',
                   secretAccessKey: duplicateFromRow.credentials?.aws?.secretAccessKey || '',
@@ -279,6 +307,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               name: '',
               credentials: {
                 apiKey: '',
+                platformType: '',
                 aws: {
                   accessKeyID: '',
                   secretAccessKey: '',
@@ -469,6 +498,75 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     },
     [isEdit, selectedApiFormat, form, isDuplicate]
   );
+
+  const handleCodexChange = useCallback(
+    (checked: boolean) => {
+      setUseCodex(checked)
+      if (checked) {
+        form.setValue('credentials.platformType', 'codex')
+      } else {
+        form.setValue('credentials.platformType', '')
+        setCodexSessionId(null)
+        setCodexAuthUrl(null)
+        setCodexCallbackUrl('')
+      }
+    },
+    [form]
+  )
+
+  const startCodexOAuth = useCallback(async () => {
+    if (!selectedProjectId) {
+      toast.error('Please select a project first')
+      return
+    }
+
+    setIsCodexStarting(true)
+    try {
+      const result = await codexOAuthStart({ 'X-Project-ID': selectedProjectId })
+      setCodexSessionId(result.session_id)
+      setCodexAuthUrl(result.auth_url)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error))
+    } finally {
+      setIsCodexStarting(false)
+    }
+  }, [selectedProjectId])
+
+  const exchangeCodexOAuth = useCallback(async () => {
+    if (!selectedProjectId) {
+      toast.error('Please select a project first')
+      return
+    }
+
+    if (!codexSessionId) {
+      toast.error('Missing OAuth session')
+      return
+    }
+
+    if (!codexCallbackUrl.trim()) {
+      toast.error('Please paste the callback URL')
+      return
+    }
+
+    setIsCodexExchanging(true)
+    try {
+      const result = await codexOAuthExchange(
+        {
+          session_id: codexSessionId,
+          callback_url: codexCallbackUrl.trim(),
+        },
+        { 'X-Project-ID': selectedProjectId }
+      )
+
+      form.setValue('credentials.apiKey', result.credentials)
+      form.setValue('credentials.platformType', 'codex')
+      toast.success('Codex credentials imported')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error))
+    } finally {
+      setIsCodexExchanging(false)
+    }
+  }, [selectedProjectId, codexSessionId, codexCallbackUrl, form])
 
   useEffect(() => {
     if (isEdit) return;
@@ -942,6 +1040,66 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 </label>
                               </div>
                             )}
+
+                            {selectedProvider === 'openai' &&
+                              (selectedApiFormat === 'openai/chat_completions' || selectedApiFormat === 'openai/responses') && (
+                                <div className='mt-3 space-y-2'>
+                                  <label className='flex items-center gap-2 text-sm'>
+                                    <Checkbox checked={useCodex} onCheckedChange={(checked) => handleCodexChange(checked === true)} />
+                                    <span>{t('channels.dialogs.fields.apiFormat.codex.label')}</span>
+                                  </label>
+
+                                  {useCodex && (
+                                    <div className='rounded-md border p-3'>
+                                      <div className='flex flex-wrap items-center gap-2'>
+                                        <Button type='button' variant='secondary' onClick={startCodexOAuth} disabled={isCodexStarting}>
+                                          {isCodexStarting ? 'Starting...' : 'Start OAuth'}
+                                        </Button>
+                                        {codexAuthUrl && (
+                                          <>
+                                            <Button
+                                              type='button'
+                                              variant='ghost'
+                                              onClick={() => window.open(codexAuthUrl, '_blank', 'noopener,noreferrer')}
+                                            >
+                                              Open OAuth Link
+                                            </Button>
+                                          </>
+                                        )}
+                                      </div>
+
+                                      {codexAuthUrl && (
+                                        <div className='mt-3 space-y-2'>
+                                          <FormLabel className='text-sm font-medium'>OAuth Authorization URL</FormLabel>
+                                          <Textarea
+                                            value={codexAuthUrl}
+                                            readOnly
+                                            className='min-h-[60px] resize-none font-mono text-xs'
+                                            placeholder='OAuth URL will appear here after starting OAuth'
+                                          />
+                                        </div>
+                                      )}
+
+                                      <div className='mt-3 space-y-2'>
+                                        <FormLabel className='text-sm font-medium'>Callback URL</FormLabel>
+                                        <Textarea
+                                          value={codexCallbackUrl}
+                                          onChange={(e) => setCodexCallbackUrl(e.target.value)}
+                                          placeholder='Paste the full callback URL here'
+                                          className='min-h-[80px] resize-y font-mono text-xs'
+                                        />
+                                        <Button type='button' onClick={exchangeCodexOAuth} disabled={isCodexExchanging || !codexSessionId}>
+                                          {isCodexExchanging ? 'Exchanging...' : 'Exchange & Fill API Key'}
+                                        </Button>
+                                      </div>
+
+                                      <p className='text-muted-foreground mt-2 text-xs'>
+                                        {t('channels.dialogs.fields.apiFormat.codex.description')}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                           </div>
                         </FormItem>
                       )}

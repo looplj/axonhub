@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 )
 
 // ModelFetcher handles fetching models from provider APIs.
@@ -76,11 +77,20 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 			apiKey = ch.Credentials.APIKey
 		}
 
+		if ch.Credentials != nil && ch.Credentials.PlatformType == codex.PlatformTypeCodex {
+			models := lo.Map(codex.DefaultModels(), func(id string, _ int) ModelIdentify {
+				return ModelIdentify{ID: id}
+			})
+			return &FetchModelsResult{
+				Models: models,
+				Error:  nil,
+			}, nil
+		}
+
 		if ch.Settings != nil {
 			proxyConfig = ch.Settings.Proxy
 		}
 	}
-
 	if apiKey == "" {
 		return &FetchModelsResult{
 			Models: []ModelIdentify{},

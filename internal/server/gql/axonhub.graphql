@@ -77,6 +77,7 @@ input ChannelSettingsInput {
 
 type ChannelCredentials {
   apiKey: String
+  platformType: String
   aws: AWSCredential
   gcp: GCPCredential
 }
@@ -95,6 +96,7 @@ type AWSCredential {
 
 input ChannelCredentialsInput {
   apiKey: String
+  platformType: String
   aws: AWSCredentialInput
   gcp: GCPCredentialInput
 }

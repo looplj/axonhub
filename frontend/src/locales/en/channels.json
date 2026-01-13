@@ -263,6 +263,10 @@
           "claudeCode": {
             "label": "Use Claude Code"
           },
+          "codex": {
+            "label": "Use Codex",
+            "description": "Authenticate with OpenAI OAuth"
+          },
           "formats": {
             "openai/chat_completions": "OpenAI (Chat Completions)",
             "openai/responses": "OpenAI (Responses)",

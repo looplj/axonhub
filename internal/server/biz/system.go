@@ -278,14 +278,16 @@ func NewSystemService(params SystemServiceParams) *SystemService {
 		AbstractService: &AbstractService{
 			db: params.Ent,
 		},
-		Cache: xcache.NewFromConfig[ent.System](params.CacheConfig),
+		CacheConfig: params.CacheConfig,
+		Cache:       xcache.NewFromConfig[ent.System](params.CacheConfig),
 	}
 }
 
 type SystemService struct {
 	*AbstractService
 
-	Cache xcache.Cache[ent.System]
+	CacheConfig xcache.Config
+	Cache       xcache.Cache[ent.System]
 }
 
 func (s *SystemService) IsInitialized(ctx context.Context) (bool, error) {

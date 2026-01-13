@@ -134,6 +134,7 @@ export type ChannelModelEntry = z.infer<typeof channelModelEntrySchema>;
 // Channel Credentials
 export const channelCredentialsSchema = z.object({
   apiKey: z.string().optional().nullable(),
+  platformType: z.string().optional().nullable(),
   aws: z
     .object({
       accessKeyID: z.string(),
@@ -188,23 +189,24 @@ export const createChannelInputSchema = z
     defaultTestModel: z.string().min(1, 'Please select a default test model'),
     remark: z.string().optional(),
     settings: channelSettingsSchema.optional(),
-    credentials: z.object({
-      apiKey: z.string().min(1, 'API Key is required'),
-      aws: z
-        .object({
-          accessKeyID: z.string().optional(),
-          secretAccessKey: z.string().optional(),
-          region: z.string().optional(),
-        })
-        .optional(),
-      gcp: z
-        .object({
-          region: z.string().optional(),
-          projectID: z.string().optional(),
-          jsonData: z.string().optional(),
-        })
-        .optional(),
-    }),
+      credentials: z.object({
+        apiKey: z.string().min(1, 'API Key is required'),
+        platformType: z.string().optional().nullable(),
+        aws: z
+          .object({
+            accessKeyID: z.string().optional(),
+            secretAccessKey: z.string().optional(),
+            region: z.string().optional(),
+          })
+          .optional(),
+        gcp: z
+          .object({
+            region: z.string().optional(),
+            projectID: z.string().optional(),
+            jsonData: z.string().optional(),
+          })
+          .optional(),
+      }),
   })
   .superRefine((data, ctx) => {
     // 如果是 anthropic_gcp 类型，GCP 字段必填（精确到字段级报错）
@@ -251,6 +253,7 @@ export const updateChannelInputSchema = z
     credentials: z
       .object({
         apiKey: z.string().optional(),
+        platformType: z.string().optional().nullable(),
         aws: z
           .object({
             accessKeyID: z.string().optional(),
