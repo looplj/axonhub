@@ -482,8 +482,8 @@ func TestConvertToLLMUsage_CacheHitCalculation(t *testing.T) {
 				ThoughtsTokenCount:      94,
 			},
 			expectedUsage: &llm.Usage{
-				PromptTokens:     631, // 20981 - 20350
-				CompletionTokens: 22,
+				PromptTokens:     20981, // total includes cached
+				CompletionTokens: 116,   // 22 + 94
 				TotalTokens:      21097,
 				PromptTokensDetails: &llm.PromptTokensDetails{
 					CachedTokens: 20350,
@@ -516,7 +516,7 @@ func TestConvertToLLMUsage_CacheHitCalculation(t *testing.T) {
 				CachedContentTokenCount: 600,
 			},
 			expectedUsage: &llm.Usage{
-				PromptTokens:     400, // 1000 - 600
+				PromptTokens:     1000,
 				CompletionTokens: 100,
 				TotalTokens:      1100,
 				PromptTokensDetails: &llm.PromptTokensDetails{
@@ -532,7 +532,7 @@ func TestConvertToLLMUsage_CacheHitCalculation(t *testing.T) {
 
 			require.NotNil(t, result)
 			assert.Equal(t, tt.expectedUsage.PromptTokens, result.PromptTokens,
-				"prompt_tokens should exclude cached tokens")
+				"prompt_tokens should include cached tokens per OpenAI spec")
 			assert.Equal(t, tt.expectedUsage.CompletionTokens, result.CompletionTokens)
 			assert.Equal(t, tt.expectedUsage.TotalTokens, result.TotalTokens)
 
@@ -544,7 +544,7 @@ func TestConvertToLLMUsage_CacheHitCalculation(t *testing.T) {
 
 				// Verify cache hit rate calculation would be correct
 				cacheHitRate := float64(result.PromptTokensDetails.CachedTokens) /
-					float64(result.PromptTokens+result.PromptTokensDetails.CachedTokens) * 100
+					float64(result.PromptTokens) * 100
 				t.Logf("Cache hit rate: %.1f%%", cacheHitRate)
 			} else {
 				assert.Nil(t, result.PromptTokensDetails)
@@ -570,18 +570,22 @@ func TestConvertToGeminiUsage_BidirectionalConsistency(t *testing.T) {
 		{
 			name: "with cached tokens",
 			llmUsage: &llm.Usage{
-				PromptTokens:     631,
-				CompletionTokens: 22,
+				PromptTokens:     20981, // total
+				CompletionTokens: 116,   // total
 				TotalTokens:      21097,
 				PromptTokensDetails: &llm.PromptTokensDetails{
 					CachedTokens: 20350,
 				},
+				CompletionTokensDetails: &llm.CompletionTokensDetails{
+					ReasoningTokens: 94,
+				},
 			},
 			wantGemini: &UsageMetadata{
-				PromptTokenCount:        20981, // 631 + 20350
-				CandidatesTokenCount:    22,
+				PromptTokenCount:        20981,
+				CandidatesTokenCount:    22, // 116 - 94
 				TotalTokenCount:         21097,
 				CachedContentTokenCount: 20350,
+				ThoughtsTokenCount:      94,
 			},
 		},
 		{
@@ -596,6 +600,23 @@ func TestConvertToGeminiUsage_BidirectionalConsistency(t *testing.T) {
 				CandidatesTokenCount:    500,
 				TotalTokenCount:         1500,
 				CachedContentTokenCount: 0,
+			},
+		},
+		{
+			name: "with thoughts tokens",
+			llmUsage: &llm.Usage{
+				PromptTokens:     1000,
+				CompletionTokens: 500,
+				TotalTokens:      1500,
+				CompletionTokensDetails: &llm.CompletionTokensDetails{
+					ReasoningTokens: 100,
+				},
+			},
+			wantGemini: &UsageMetadata{
+				PromptTokenCount:     1000,
+				CandidatesTokenCount: 400, // 500 - 100
+				TotalTokenCount:      1500,
+				ThoughtsTokenCount:   100,
 			},
 		},
 	}

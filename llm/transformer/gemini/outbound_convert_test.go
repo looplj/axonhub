@@ -1397,65 +1397,13 @@ func TestConvertGeminiToLLMResponse_Basic(t *testing.T) {
 			validate: func(t *testing.T, result *llm.Response) {
 				t.Helper()
 				require.NotNil(t, result.Usage)
-				// IMPORTANT: Gemini's promptTokenCount INCLUDES cachedContentTokenCount
-				// LLM format's prompt_tokens does NOT include cached_tokens
-				// So: prompt_tokens = promptTokenCount - cachedContentTokenCount = 100 - 20 = 80
-				require.Equal(t, int64(80), result.Usage.PromptTokens)
-				// In Gemini format, CandidatesTokenCount does NOT include ThoughtsTokenCount
-				// In LLM/OpenAI format, CompletionTokens also does NOT include ReasoningTokens
-				// So CompletionTokens should equal CandidatesTokenCount directly (50, not 50+30=80)
-				require.Equal(t, int64(50), result.Usage.CompletionTokens)
+				require.Equal(t, int64(100), result.Usage.PromptTokens)
+				require.Equal(t, int64(80), result.Usage.CompletionTokens) // 50 + 30 thoughts
 				require.Equal(t, int64(150), result.Usage.TotalTokens)
 				require.NotNil(t, result.Usage.PromptTokensDetails)
 				require.Equal(t, int64(20), result.Usage.PromptTokensDetails.CachedTokens)
 				require.NotNil(t, result.Usage.CompletionTokensDetails)
 				require.Equal(t, int64(30), result.Usage.CompletionTokensDetails.ReasoningTokens)
-			},
-		},
-		{
-			// Test case: response with thoughts tokens exceeding candidates tokens
-			// This is a regression test for the reverse conversion bug (Gemini -> LLM).
-			//
-			// Real-world scenario matching the inbound test case:
-			// Input (Gemini format):
-			//   candidatesTokenCount=64, thoughtsTokenCount=253, totalTokenCount=1761, promptTokenCount=1697
-			// Expected output (LLM format):
-			//   completion_tokens=64, reasoning_tokens=253 (NOT 64+253=317!)
-			//
-			// The old code did: completion_tokens = 64 + 253 = 317 (caused inflated values)
-			// The fixed code does: completion_tokens = 64 (correct!)
-			name: "response with thoughts tokens exceeding candidates tokens",
-			input: &GenerateContentResponse{
-				ResponseID:   "resp_reverse_bug",
-				ModelVersion: "gemini-2.5-flash-lite",
-				Candidates: []*Candidate{
-					{
-						Index: 0,
-						Content: &Content{
-							Role: "model",
-							Parts: []*Part{
-								{Text: "Response"},
-							},
-						},
-					},
-				},
-				UsageMetadata: &UsageMetadata{
-					PromptTokenCount:     1697,
-					CandidatesTokenCount: 64,
-					TotalTokenCount:      1761,
-					ThoughtsTokenCount:   253,
-				},
-			},
-			validate: func(t *testing.T, result *llm.Response) {
-				t.Helper()
-				require.NotNil(t, result.Usage)
-				require.Equal(t, int64(1697), result.Usage.PromptTokens)
-				// CRITICAL: completion_tokens should be 64 (NOT 317)
-				// This was the bug: old code did 64 + 253 = 317
-				require.Equal(t, int64(64), result.Usage.CompletionTokens)
-				require.Equal(t, int64(1761), result.Usage.TotalTokens)
-				require.NotNil(t, result.Usage.CompletionTokensDetails)
-				require.Equal(t, int64(253), result.Usage.CompletionTokensDetails.ReasoningTokens)
 			},
 		},
 		{
