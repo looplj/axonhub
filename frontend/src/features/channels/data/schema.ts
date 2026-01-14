@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { pageInfoSchema } from '@/gql/pagination';
 
-const apiFormatSchema = z.enum(['openai/chat_completions', 'openai/responses', 'anthropic/messages', 'gemini/contents']);
+export const apiFormatSchema = z.enum(['openai/chat_completions', 'openai/responses', 'anthropic/messages', 'gemini/contents']);
 
 export type ApiFormat = z.infer<typeof apiFormatSchema>;
 
@@ -210,15 +210,17 @@ export const createChannelInputSchema = z
   })
   .superRefine((data, ctx) => {
     if (data.credentials?.platformType === 'codex') {
+      const issue = {
+        code: 'custom' as const,
+        message: 'Invalid Codex credentials JSON',
+        path: ['credentials', 'apiKey'] as const,
+      }
+
       let json: unknown
       try {
         json = JSON.parse(data.credentials.apiKey)
       } catch {
-        ctx.addIssue({
-          code: 'custom',
-          message: 'Invalid Codex credentials JSON',
-          path: ['credentials', 'apiKey'],
-        })
+        ctx.addIssue(issue)
         return
       }
 
@@ -230,11 +232,7 @@ export const createChannelInputSchema = z
         .safeParse(json)
 
       if (!parsed.success) {
-        ctx.addIssue({
-          code: 'custom',
-          message: 'Invalid Codex credentials JSON',
-          path: ['credentials', 'apiKey'],
-        })
+        ctx.addIssue(issue)
       }
     }
 
