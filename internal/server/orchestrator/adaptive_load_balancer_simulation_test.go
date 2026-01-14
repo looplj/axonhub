@@ -170,11 +170,11 @@ func (f *fakeTraceProvider) GetLastSuccessfulChannelID(_ context.Context, traceI
 	return f.lastSuccessful[traceID], nil
 }
 
-func buildSimulationCandidates(weights []int) []*ChannelModelCandidate {
-	candidates := make([]*ChannelModelCandidate, 0, len(weights))
+func buildSimulationCandidates(weights []int) []*ChannelModelsCandidate {
+	candidates := make([]*ChannelModelsCandidate, 0, len(weights))
 	for i, w := range weights {
 		id := i + 1
-		candidates = append(candidates, &ChannelModelCandidate{
+		candidates = append(candidates, &ChannelModelsCandidate{
 			Channel:  &biz.Channel{Channel: &ent.Channel{ID: id, Name: fmt.Sprintf("ch-%d", id), OrderingWeight: w}},
 			Priority: 0,
 		})

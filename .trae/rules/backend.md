@@ -1,6 +1,6 @@
 ---
 alwaysApply: false
-globs: *.go
+globs: **/*.go
 ---
 # Backend Rules
 
@@ -19,3 +19,5 @@ globs: *.go
 # Golang Rules
 
 1. USE github.com/samber/lo package to handle collection, slice, map, ptr, etc.
+
+2. DO NOT RUN golangci-lint run, I will run manually.

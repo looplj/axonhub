@@ -67,7 +67,7 @@ func TestLoadBalancer_Sort_EmptyChannels(t *testing.T) {
 	ctx := context.Background()
 	lb := newTestLoadBalancer(t, &biz.RetryPolicy{Enabled: true, MaxChannelRetries: 3})
 
-	result := lb.Sort(ctx, []*ChannelModelCandidate{}, "")
+	result := lb.Sort(ctx, []*ChannelModelsCandidate{}, "")
 	assert.Empty(t, result)
 }
 
@@ -75,7 +75,7 @@ func TestLoadBalancer_Sort_SingleChannel(t *testing.T) {
 	ctx := context.Background()
 	lb := newTestLoadBalancer(t, &biz.RetryPolicy{Enabled: true, MaxChannelRetries: 3})
 
-	candidates := []*ChannelModelCandidate{
+	candidates := []*ChannelModelsCandidate{
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "ch1"}}},
 	}
 
@@ -88,7 +88,7 @@ func TestLoadBalancer_Sort_NoStrategies(t *testing.T) {
 	ctx := context.Background()
 	lb := newTestLoadBalancer(t, &biz.RetryPolicy{Enabled: true, MaxChannelRetries: 3})
 
-	candidates := []*ChannelModelCandidate{
+	candidates := []*ChannelModelsCandidate{
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "ch1"}}},
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "ch2"}}},
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "ch3"}}},
@@ -114,7 +114,7 @@ func TestLoadBalancer_Sort_SingleStrategy(t *testing.T) {
 	// Mock SystemService for testing
 	lb := newTestLoadBalancer(t, &biz.RetryPolicy{Enabled: true, MaxChannelRetries: 3}, strategy)
 
-	candidates := []*ChannelModelCandidate{
+	candidates := []*ChannelModelsCandidate{
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "ch1"}}},
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "ch2"}}},
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "ch3"}}},
@@ -155,7 +155,7 @@ func TestLoadBalancer_Sort_MultipleStrategies(t *testing.T) {
 	// Mock SystemService for testing
 	lb := newTestLoadBalancer(t, &biz.RetryPolicy{Enabled: true, MaxChannelRetries: 3}, strategy1, strategy2)
 
-	candidates := []*ChannelModelCandidate{
+	candidates := []*ChannelModelsCandidate{
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "ch1"}}},
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "ch2"}}},
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "ch3"}}},
@@ -181,7 +181,7 @@ func TestLoadBalancer_Sort_AdditiveScoring(t *testing.T) {
 	// Mock SystemService for testing
 	lb := newTestLoadBalancer(t, &biz.RetryPolicy{Enabled: true, MaxChannelRetries: 3}, s1, s2, s3)
 
-	candidates := []*ChannelModelCandidate{
+	candidates := []*ChannelModelsCandidate{
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "ch1"}}},
 	}
 
@@ -200,7 +200,7 @@ func TestLoadBalancer_Sort_Stability(t *testing.T) {
 	// Mock SystemService for testing
 	lb := newTestLoadBalancer(t, &biz.RetryPolicy{Enabled: true, MaxChannelRetries: 3}, strategy)
 
-	candidates := []*ChannelModelCandidate{
+	candidates := []*ChannelModelsCandidate{
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "ch1"}}},
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "ch2"}}},
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "ch3"}}},
@@ -228,7 +228,7 @@ func TestLoadBalancer_Sort_NegativeScores(t *testing.T) {
 	// Mock SystemService for testing
 	lb := newTestLoadBalancer(t, &biz.RetryPolicy{Enabled: true, MaxChannelRetries: 3}, strategy)
 
-	candidates := []*ChannelModelCandidate{
+	candidates := []*ChannelModelsCandidate{
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "ch1"}}},
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "ch2"}}},
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "ch3"}}},
@@ -314,7 +314,7 @@ func TestLoadBalancer_ErrorAware_ChannelWithErrorsRankedLower(t *testing.T) {
 	// Mock SystemService for testing
 	lb := newTestLoadBalancer(t, &biz.RetryPolicy{Enabled: true, MaxChannelRetries: 3}, errorStrategy, weightStrategy)
 
-	candidates := []*ChannelModelCandidate{
+	candidates := []*ChannelModelsCandidate{
 		{Channel: &biz.Channel{Channel: ch1}},
 		{Channel: &biz.Channel{Channel: ch2}},
 		{Channel: &biz.Channel{Channel: ch3}},
@@ -387,7 +387,7 @@ func TestLoadBalancer_ErrorAware_ShortTermErrorPenalty(t *testing.T) {
 	// Mock SystemService for testing
 	lb := newTestLoadBalancer(t, &biz.RetryPolicy{Enabled: true, MaxChannelRetries: 3}, errorStrategy)
 
-	candidates := []*ChannelModelCandidate{
+	candidates := []*ChannelModelsCandidate{
 		{Channel: &biz.Channel{Channel: ch1}},
 		{Channel: &biz.Channel{Channel: ch2}},
 	}
@@ -472,7 +472,7 @@ func TestLoadBalancer_TraceAware_SameChannelPrioritized(t *testing.T) {
 	// Mock SystemService for testing
 	lb := newTestLoadBalancer(t, &biz.RetryPolicy{Enabled: true, MaxChannelRetries: 3}, traceStrategy, weightStrategy)
 
-	candidates := []*ChannelModelCandidate{
+	candidates := []*ChannelModelsCandidate{
 		{Channel: &biz.Channel{Channel: ch1}},
 		{Channel: &biz.Channel{Channel: ch2}},
 		{Channel: &biz.Channel{Channel: ch3}},
@@ -573,7 +573,7 @@ func TestLoadBalancer_Combined_ErrorAndTrace(t *testing.T) {
 	// Mock SystemService for testing
 	lb := newTestLoadBalancer(t, &biz.RetryPolicy{Enabled: true, MaxChannelRetries: 3}, traceStrategy, errorStrategy, weightStrategy)
 
-	candidates := []*ChannelModelCandidate{
+	candidates := []*ChannelModelsCandidate{
 		{Channel: &biz.Channel{Channel: ch1}},
 		{Channel: &biz.Channel{Channel: ch2}},
 		{Channel: &biz.Channel{Channel: ch3}},
@@ -625,7 +625,7 @@ func TestLoadBalancer_TopK_OnlyOneChannel(t *testing.T) {
 	// Mock SystemService with retry disabled
 	lb := newTestLoadBalancer(t, &biz.RetryPolicy{Enabled: false}, strategy)
 
-	candidates := []*ChannelModelCandidate{
+	candidates := []*ChannelModelsCandidate{
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "ch1"}}},
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "ch2"}}},
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "ch3"}}},
@@ -658,7 +658,7 @@ func TestLoadBalancer_TopK_TopThreeChannels(t *testing.T) {
 	// Mock SystemService with 2 retries (topK=1+2=3)
 	lb := newTestLoadBalancer(t, &biz.RetryPolicy{Enabled: true, MaxChannelRetries: 2}, strategy)
 
-	candidates := []*ChannelModelCandidate{
+	candidates := []*ChannelModelsCandidate{
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "ch1"}}},
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "ch2"}}},
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "ch3"}}},
@@ -692,7 +692,7 @@ func TestLoadBalancer_TopK_MoreThanAvailable(t *testing.T) {
 	// Mock SystemService with 10 retries (topK=1+10=11) but only 3 channels
 	lb := newTestLoadBalancer(t, &biz.RetryPolicy{Enabled: true, MaxChannelRetries: 10}, strategy)
 
-	candidates := []*ChannelModelCandidate{
+	candidates := []*ChannelModelsCandidate{
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "ch1"}}},
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "ch2"}}},
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "ch3"}}},
@@ -724,7 +724,7 @@ func TestLoadBalancer_TopK_RetryDisabled(t *testing.T) {
 	// Mock SystemService with retry disabled
 	lb := newTestLoadBalancer(t, &biz.RetryPolicy{Enabled: false}, strategy)
 
-	candidates := []*ChannelModelCandidate{
+	candidates := []*ChannelModelsCandidate{
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "ch1"}}},
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "ch2"}}},
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "ch3"}}},
@@ -756,7 +756,7 @@ func TestLoadBalancer_TopK_RetryEnabled(t *testing.T) {
 	// Mock SystemService with 3 retries (topK=1+3=4)
 	lb := newTestLoadBalancer(t, &biz.RetryPolicy{Enabled: true, MaxChannelRetries: 3}, strategy)
 
-	candidates := []*ChannelModelCandidate{
+	candidates := []*ChannelModelsCandidate{
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "ch1"}}},
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "ch2"}}},
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "ch3"}}},
@@ -790,7 +790,7 @@ func TestLoadBalancer_TopK_FewChannelsManyRetries(t *testing.T) {
 	// Mock SystemService with 10 retries but only 3 channels
 	lb := newTestLoadBalancer(t, &biz.RetryPolicy{Enabled: true, MaxChannelRetries: 10}, strategy)
 
-	candidates := []*ChannelModelCandidate{
+	candidates := []*ChannelModelsCandidate{
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "ch1"}}},
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "ch2"}}},
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "ch3"}}},
@@ -820,7 +820,7 @@ func TestLoadBalancer_TopK_DefaultPolicy(t *testing.T) {
 	// Mock SystemService with nil policy (should use default)
 	lb := newTestLoadBalancer(t, nil, strategy)
 
-	candidates := []*ChannelModelCandidate{
+	candidates := []*ChannelModelsCandidate{
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "ch1"}}},
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "ch2"}}},
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "ch3"}}},

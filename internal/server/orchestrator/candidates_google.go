@@ -24,7 +24,7 @@ func WithGoogleNativeToolsSelector(wrapped CandidateSelector) *GoogleNativeTools
 	}
 }
 
-func (s *GoogleNativeToolsSelector) Select(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error) {
+func (s *GoogleNativeToolsSelector) Select(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
 	candidates, err := s.wrapped.Select(ctx, req)
 	if err != nil {
 		return nil, err
@@ -36,7 +36,7 @@ func (s *GoogleNativeToolsSelector) Select(ctx context.Context, req *llm.Request
 	}
 
 	// Filter: keep only candidates whose channels support Google native tools
-	compatible := lo.Filter(candidates, func(c *ChannelModelCandidate, _ int) bool {
+	compatible := lo.Filter(candidates, func(c *ChannelModelsCandidate, _ int) bool {
 		return c.Channel.Type.SupportsGoogleNativeTools()
 	})
 

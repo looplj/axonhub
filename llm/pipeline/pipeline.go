@@ -15,18 +15,22 @@ import (
 // Retryable interface for transformers that support channel switching.
 type Retryable interface {
 	// HasMoreChannels returns true if there are more channels to switch to.
+	// It will only be called if the attempt count is less than maxRetries.
 	HasMoreChannels() bool
 
 	// NextChannel switches to the next channel.
+	// It will be called if HasMoreChannels returns true.
 	NextChannel(ctx context.Context) error
 }
 
 // ChannelRetryable interface for transformers that support same-channel retry.
 type ChannelRetryable interface {
 	// CanRetry returns true if the transformer can retry for current channel given the error that occurred.
+	// It will only be called if the attempt count is less than maxSameChannelRetries.
 	CanRetry(err error) bool
 
 	// PrepareForRetry prepares the transformer for retry.
+	// It will be called if CanRetry returns true.
 	PrepareForRetry(ctx context.Context) error
 }
 
@@ -41,9 +45,12 @@ type ChannelCustomizedExecutor interface {
 type Option func(*pipeline)
 
 // WithRetry configures both cross-channel and same-channel retry behavior for the pipeline.
-func WithRetry(maxRetries, maxSameChannelRetries int, retryDelay time.Duration) Option {
+// maxChannelRetries: the maximum number of times to switch to the next channel.
+// maxSameChannelRetries: the maximum number of times to retry the same channel.
+// retryDelay: the delay between retries.
+func WithRetry(maxChannelRetries, maxSameChannelRetries int, retryDelay time.Duration) Option {
 	return func(p *pipeline) {
-		p.maxRetries = maxRetries
+		p.maxChannelRetries = maxChannelRetries
 		p.maxSameChannelRetries = maxSameChannelRetries
 		p.retryDelay = retryDelay
 	}
@@ -94,7 +101,7 @@ type pipeline struct {
 	Inbound               transformer.Inbound
 	Outbound              transformer.Outbound
 	middlewares           []Middleware
-	maxRetries            int
+	maxChannelRetries     int
 	maxSameChannelRetries int
 	retryDelay            time.Duration
 }
@@ -229,68 +236,11 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 
 	var lastErr error
 
-	maxAttempts := p.maxRetries + 1 // maxRetries + initial attempt
-	sameChannelAttempts := 0
+	channelSwitches := 0
+	sameChannelRetries := 0
 
 	// Step 3: Process the request
-	for attempt := range maxAttempts {
-		if attempt > 0 {
-			log.Debug(ctx, "retrying pipeline process", log.Any("attempt", attempt))
-
-			// First try same-channel retry if available and not exhausted
-			if channelRetryable, ok := p.Outbound.(ChannelRetryable); ok {
-				if sameChannelAttempts < p.getMaxSameChannelRetries() && channelRetryable.CanRetry(lastErr) {
-					err := channelRetryable.PrepareForRetry(ctx)
-					if err != nil {
-						log.Warn(ctx, "failed to prepare same channel retry", log.Cause(err))
-					} else {
-						sameChannelAttempts++
-						log.Debug(ctx, "retrying same channel",
-							log.Any("sameChannelAttempt", sameChannelAttempts),
-							log.Any("maxSameChannelRetries", p.getMaxSameChannelRetries()))
-					}
-				} else {
-					// Same-channel retries exhausted, try to switch to next channel
-					if retryable, ok := p.Outbound.(Retryable); ok {
-						if retryable.HasMoreChannels() {
-							err := retryable.NextChannel(ctx)
-							if err != nil {
-								log.Warn(ctx, "failed to switch to next channel", log.Cause(err))
-								break
-							}
-
-							sameChannelAttempts = 0 // Reset same-channel attempts for new channel
-						} else {
-							log.Debug(ctx, "no more channels available for retry")
-							break
-						}
-					} else {
-						log.Debug(ctx, "same channel retries exhausted and no channel switching available")
-						break
-					}
-				}
-			} else {
-				// Fallback to channel switching if same-channel retry not supported
-				if retryable, ok := p.Outbound.(Retryable); ok {
-					if retryable.HasMoreChannels() {
-						err := retryable.NextChannel(ctx)
-						if err != nil {
-							log.Warn(ctx, "failed to switch to next channel", log.Cause(err))
-							break
-						}
-					} else {
-						log.Debug(ctx, "no more channels available for retry")
-						break
-					}
-				}
-			}
-
-			// Add retry delay if configured
-			if p.retryDelay > 0 {
-				time.Sleep(p.retryDelay)
-			}
-		}
-
+	for {
 		result, err := p.processRequest(ctx, llmRequest)
 		if err == nil {
 			return result, nil
@@ -300,14 +250,64 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 
 		// Stop retrying if the context is canceled or the deadline is exceeded.
 		if ctx.Err() != nil {
+			return nil, lastErr
+		}
+
+		// Determine retry strategy
+		canRetry := false
+
+		// 1. Try same-channel retry first if supported
+		if channelRetryable, ok := p.Outbound.(ChannelRetryable); ok {
+			if sameChannelRetries < p.getMaxSameChannelRetries() && channelRetryable.CanRetry(lastErr) {
+				if err := channelRetryable.PrepareForRetry(ctx); err == nil {
+					sameChannelRetries++
+					canRetry = true
+
+					log.Debug(ctx, "retrying same channel",
+						log.Int("same_channel_attempt", sameChannelRetries),
+						log.Int("max_same_channel_retries", p.getMaxSameChannelRetries()),
+					)
+				} else {
+					log.Warn(ctx, "failed to prepare same channel retry, will try channel switch", log.Cause(err))
+				}
+			}
+		}
+
+		// 2. If same-channel retry not possible/exhausted, try channel switching
+		if !canRetry {
+			if retryable, ok := p.Outbound.(Retryable); ok {
+				if channelSwitches < p.maxChannelRetries && retryable.HasMoreChannels() {
+					if err := retryable.NextChannel(ctx); err == nil {
+						channelSwitches++
+						sameChannelRetries = 0 // Reset same-channel attempts for new channel
+						canRetry = true
+
+						log.Debug(ctx, "switched to next channel",
+							log.Int("channel_switch_attempt", channelSwitches),
+							log.Int("max_channel_retries", p.maxChannelRetries),
+						)
+					} else {
+						log.Warn(ctx, "failed to switch to next channel", log.Cause(err))
+					}
+				}
+			}
+		}
+
+		// If no retry strategy worked, break and return last error
+		if !canRetry {
 			break
 		}
 
-		log.Warn(ctx, "request process failed, will retry",
-			log.Cause(err),
-			log.Any("attempt", attempt),
-			log.Any("maxRetries", p.maxRetries),
-			log.Any("sameChannelAttempts", sameChannelAttempts))
+		// Add retry delay if configured
+		if p.retryDelay > 0 {
+			time.Sleep(p.retryDelay)
+		}
+
+		log.Warn(ctx, "request process failed, retrying...",
+			log.Cause(lastErr),
+			log.Int("channel_switches", channelSwitches),
+			log.Int("same_channel_retries", sameChannelRetries),
+		)
 	}
 
 	return nil, lastErr
