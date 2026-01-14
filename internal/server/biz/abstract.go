@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"errors"
 
 	"github.com/looplj/axonhub/internal/ent"
 )
@@ -31,6 +32,12 @@ func (a *AbstractService) RunInTransaction(ctx context.Context, fn func(context.
 
 	tx, err := db.Tx(ctx)
 	if err != nil {
+		// If the client is already transactional (e.g., from tx.Client()),
+		// just run the function with the existing transactional client.
+		if errors.Is(err, ent.ErrTxStarted) {
+			return fn(ctx)
+		}
+
 		return err
 	}
 

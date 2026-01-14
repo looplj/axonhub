@@ -823,7 +823,13 @@ func (s *RequestService) LoadRequestBody(ctx context.Context, req *ent.Request) 
 
 	data, err := s.DataStorageService.LoadData(ctx, dataStorage, key)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load request body: %w", err)
+		if os.IsNotExist(err) {
+			return req.RequestBody, nil
+		}
+
+		log.Warn(ctx, "Failed to load request body", log.Cause(err), log.Int("request_id", req.ID))
+
+		return xjson.EmptyJSONRawMessage, nil
 	}
 
 	if json.Valid(data) {

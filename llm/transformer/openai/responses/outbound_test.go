@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/samber/lo"
@@ -56,15 +57,80 @@ func TestNewOutboundTransformer(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, transformer)
-				require.Equal(t, tt.apiKey, transformer.APIKey)
+				require.Equal(t, tt.apiKey, transformer.config.APIKey)
 				// Base URL should have trailing slash removed
 				expectedURL := tt.baseURL
 				if expectedURL == "https://api.openai.com/" {
 					expectedURL = "https://api.openai.com"
 				}
 
-				require.Equal(t, expectedURL, transformer.BaseURL)
+				require.Equal(t, expectedURL, transformer.config.BaseURL)
 			}
+		})
+	}
+}
+
+func TestOutboundTransformer_buildFullRequestURL(t *testing.T) {
+	tests := []struct {
+		name     string
+		baseURL  string
+		rawURL   bool
+		expected string
+	}{
+		{
+			name:     "no v1 prefix",
+			baseURL:  "https://api.openai.com",
+			rawURL:   false,
+			expected: "https://api.openai.com/v1/responses",
+		},
+		{
+			name:     "with v1 suffix",
+			baseURL:  "https://api.openai.com/v1",
+			rawURL:   false,
+			expected: "https://api.openai.com/v1/responses",
+		},
+		{
+			name:     "with v1 in path",
+			baseURL:  "https://api.openai.com/v1/custom",
+			rawURL:   false,
+			expected: "https://api.openai.com/v1/custom/responses",
+		},
+		{
+			name:     "raw url with # suffix",
+			baseURL:  "https://api.openai.com/custom#",
+			rawURL:   true,
+			expected: "https://api.openai.com/custom/responses",
+		},
+		{
+			name:     "raw url with explicit config",
+			baseURL:  "https://api.openai.com/custom",
+			rawURL:   true,
+			expected: "https://api.openai.com/custom/responses",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				transformer *OutboundTransformer
+				err         error
+			)
+
+			if tt.rawURL && strings.HasSuffix(tt.baseURL, "#") {
+				transformer, err = NewOutboundTransformer(tt.baseURL, "test-key")
+			} else {
+				transformer, err = NewOutboundTransformerWithConfig(&Config{
+					BaseURL: tt.baseURL,
+					APIKey:  "test-key",
+					RawURL:  tt.rawURL,
+				})
+			}
+
+			require.NoError(t, err)
+
+			url, err := transformer.buildFullRequestURL(nil)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, url)
 		})
 	}
 }
@@ -104,7 +170,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			expectError: false,
 			validate: func(t *testing.T, result *httpclient.Request, chatReq *llm.Request) {
 				require.Equal(t, http.MethodPost, result.Method)
-				require.Equal(t, "https://api.openai.com/responses", result.URL)
+				require.Equal(t, "https://api.openai.com/v1/responses", result.URL)
 				require.Equal(t, "application/json", result.Headers.Get("Content-Type"))
 				require.Equal(t, "application/json", result.Headers.Get("Accept"))
 				require.NotNil(t, result.Auth)
@@ -709,7 +775,7 @@ func TestOutboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 			validate: func(t *testing.T, result *httpclient.Request, expectedReq *llm.Request) {
 				// Verify basic HTTP request properties
 				require.Equal(t, http.MethodPost, result.Method)
-				require.Equal(t, "https://api.openai.com/responses", result.URL)
+				require.Equal(t, "https://api.openai.com/v1/responses", result.URL)
 				require.Equal(t, "application/json", result.Headers.Get("Content-Type"))
 				require.Equal(t, "application/json", result.Headers.Get("Accept"))
 				require.NotEmpty(t, result.Body)

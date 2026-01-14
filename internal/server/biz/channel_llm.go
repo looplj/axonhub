@@ -391,7 +391,10 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 
 		return buildChannelWithTransformer(c, transformer, httpClient), nil
 	case channel.TypeOpenaiResponses:
-		transformer, err := responses.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
+		transformer, err := responses.NewOutboundTransformerWithConfig(&responses.Config{
+			BaseURL: c.BaseURL,
+			APIKey:  c.Credentials.APIKey,
+		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
 		}

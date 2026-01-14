@@ -83,7 +83,11 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 
 	config.BaseURL = strings.TrimSuffix(config.BaseURL, "/")
 
-	rt, err := oairesp.NewOutboundTransformer(config.BaseURL, config.APIKey)
+	rt, err := oairesp.NewOutboundTransformerWithConfig(&oairesp.Config{
+		BaseURL: config.BaseURL,
+		APIKey:  config.APIKey,
+		RawURL:  config.RawURL,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OpenAI outbound transformer: %w", err)
 	}

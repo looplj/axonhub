@@ -166,14 +166,16 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
               }
 
               // Check if there are any executions with different channels
-              const executions = request.executions?.edges?.map((edge) => edge.node) || [];
-              const executionChannels = executions
-                .map((exe) => exe?.channel)
-                .filter((c): c is { id: string; name: string } => !!c && c.id !== channel.id);
+              const executions = request.executions?.edges?.map((edge) => edge.node).filter((exe) => !!exe) || [];
+              const hasMultipleChannels = executions.some((exe) => exe.channel?.id && exe.channel.id !== channel.id);
 
-              const uniqueExecutionChannelNames = Array.from(new Set(executionChannels.map((c) => c.name)));
+              if (executions.length > 1 || hasMultipleChannels) {
+                const sortedExecutions = [...executions].sort((a, b) => {
+                  const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                  const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                  return dateB - dateA;
+                });
 
-              if (uniqueExecutionChannelNames.length > 0) {
                 return (
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -185,17 +187,37 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
                         <IconArrowsJoin2 className='h-3.5 w-3.5 opacity-80' />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent side='right' className='border-rose-200 bg-white dark:bg-zinc-900'>
-                      <div className='flex flex-col gap-2 p-1'>
-                        <div className='text-muted-foreground text-[10px] tracking-wider uppercase'>
-                          {t('requests.columns.retryProcess')}
+                    <TooltipContent side='right' className='border-rose-200 bg-white p-0 dark:bg-zinc-900'>
+                      <div className='flex min-w-[240px] flex-col'>
+                        <div className='flex flex-col gap-1 border-b p-3 bg-rose-50/50 dark:bg-rose-900/10'>
+                          <div className='text-rose-900 dark:text-rose-300 flex items-center gap-2 text-xs font-bold tracking-wider uppercase'>
+                            <IconArrowsJoin2 className='h-3.5 w-3.5' />
+                            {t('requests.columns.retryProcess')}
+                          </div>
                         </div>
-                        <div className='flex items-center gap-2 text-xs'>
-                          <span className='text-muted-foreground bg-muted rounded px-1.5 py-0.5 whitespace-nowrap'>{channel.name}</span>
-                          <IconRoute className='text-muted-foreground h-3 w-3 shrink-0' />
-                          <span className='rounded bg-rose-100 px-1.5 py-0.5 font-medium whitespace-nowrap text-rose-800 dark:bg-rose-900/40 dark:text-rose-200'>
-                            {uniqueExecutionChannelNames.join(', ')}
-                          </span>
+                        <div className='flex flex-col gap-1 p-2'>
+                          {sortedExecutions.map((exe, idx) => (
+                            <div
+                              key={exe.id || idx}
+                              className='hover:bg-muted/50 flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors'
+                            >
+                              <Badge
+                                className={`${getStatusColor(exe.status || '')} h-5 shrink-0 px-1.5 text-[10px] font-bold uppercase`}
+                              >
+                                {t(`requests.status.${exe.status}`)}
+                              </Badge>
+                              <div className='flex min-w-0 flex-col'>
+                                <span className='text-foreground truncate text-xs font-semibold'>
+                                  {exe.channel?.name || t('requests.columns.unknown')}
+                                </span>
+                                {exe.createdAt && (
+                                  <span className='text-muted-foreground text-[10px]'>
+                                    {format(new Date(exe.createdAt), 'HH:mm:ss', { locale })}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     </TooltipContent>
