@@ -5,9 +5,9 @@ const fs = require('fs');
 const path = require('path');
 
 const SOURCE_URL = 'https://raw.githubusercontent.com/ThinkInAIXYZ/PublicProviderConf/refs/heads/dev/dist/all.json';
-const CONSTANTS_PATH = path.join(__dirname, '../frontend/src/features/models/data/constants.ts');
-const OUTPUT_PATH = path.join(__dirname, '../frontend/src/features/models/data/providers.json');
-const MODELS_JSON_PATH = path.join(__dirname, 'models/models.json');
+const CONSTANTS_PATH = path.join(__dirname, '../../frontend/src/features/models/data/constants.ts');
+const OUTPUT_PATH = path.join(__dirname, '../../frontend/src/features/models/data/providers.json');
+const MODELS_JSON_PATH = path.join(__dirname, './models.json');
 
 function fetchJSON(url) {
   return new Promise((resolve, reject) => {

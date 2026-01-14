@@ -6,7 +6,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 E2E_DB="${SCRIPT_DIR}/axonhub-e2e.db"
 E2E_PORT=8099
 BINARY_NAME="axonhub-e2e"
