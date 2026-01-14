@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { pageInfoSchema } from '@/gql/pagination';
 
-const apiFormatSchema = z.enum(['openai/chat_completions', 'openai/responses', 'anthropic/messages', 'gemini/contents']);
+export const apiFormatSchema = z.enum(['openai/chat_completions', 'openai/responses', 'anthropic/messages', 'gemini/contents']);
 
 export type ApiFormat = z.infer<typeof apiFormatSchema>;
 
@@ -189,26 +189,53 @@ export const createChannelInputSchema = z
     defaultTestModel: z.string().min(1, 'Please select a default test model'),
     remark: z.string().optional(),
     settings: channelSettingsSchema.optional(),
-      credentials: z.object({
-        apiKey: z.string().min(1, 'API Key is required'),
-        platformType: z.string().optional().nullable(),
-        aws: z
-          .object({
-            accessKeyID: z.string().optional(),
-            secretAccessKey: z.string().optional(),
-            region: z.string().optional(),
-          })
-          .optional(),
-        gcp: z
-          .object({
-            region: z.string().optional(),
-            projectID: z.string().optional(),
-            jsonData: z.string().optional(),
-          })
-          .optional(),
-      }),
+    credentials: z.object({
+      apiKey: z.string().min(1, 'API Key is required'),
+      platformType: z.string().optional().nullable(),
+      aws: z
+        .object({
+          accessKeyID: z.string().optional(),
+          secretAccessKey: z.string().optional(),
+          region: z.string().optional(),
+        })
+        .optional(),
+      gcp: z
+        .object({
+          region: z.string().optional(),
+          projectID: z.string().optional(),
+          jsonData: z.string().optional(),
+        })
+        .optional(),
+    }),
   })
   .superRefine((data, ctx) => {
+    if (data.credentials?.platformType === 'codex') {
+      const issue = {
+        code: 'custom' as const,
+        message: 'Invalid Codex credentials JSON',
+        path: ['credentials', 'apiKey'] as const,
+      }
+
+      let json: unknown
+      try {
+        json = JSON.parse(data.credentials.apiKey)
+      } catch {
+        ctx.addIssue(issue)
+        return
+      }
+
+      const parsed = z
+        .object({
+          access_token: z.string().min(1),
+          refresh_token: z.string().min(1),
+        })
+        .safeParse(json)
+
+      if (!parsed.success) {
+        ctx.addIssue(issue)
+      }
+    }
+
     // 如果是 anthropic_gcp 类型，GCP 字段必填（精确到字段级报错）
     if (data.type === 'anthropic_gcp') {
       const gcp = data.credentials?.gcp;
