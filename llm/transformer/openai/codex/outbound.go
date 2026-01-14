@@ -31,12 +31,8 @@ const codexAPIURL = "https://chatgpt.com/backend-api/codex/responses"
 //nolint:containedctx // It is used as a transformer.
 type OutboundTransformer struct {
 	credentialsJSON string
-	cacheConfig     xcache.Config
 	channelID       int
-
-	httpClient *httpclient.HttpClient
-	cache      xcache.Cache[string]
-	tokens     *TokenProvider
+	tokens          *TokenProvider
 
 	// reuse existing Responses outbound for payload building.
 	responsesOutbound *responses.OutboundTransformer
@@ -70,10 +66,7 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 
 	return &OutboundTransformer{
 		credentialsJSON:   params.CredentialsJSON,
-		cacheConfig:       params.CacheConfig,
 		channelID:         params.ChannelID,
-		httpClient:        params.HTTPClient,
-		cache:             xcache.NewFromConfig[string](params.CacheConfig),
 		tokens:            NewTokenProvider(params.CacheConfig, params.HTTPClient),
 		responsesOutbound: ro,
 	}, nil

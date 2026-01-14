@@ -169,23 +169,30 @@ type codexOAuth2Credentials struct {
 	Scopes       []string  `json:"scopes,omitempty"`
 }
 
-func parseCodexCallbackURL(callbackURL string) (string, error) {
+func parseCodexCallbackURL(callbackURL string) (string, string, error) {
 	trimmed := strings.TrimSpace(callbackURL)
 	if !strings.HasPrefix(trimmed, "http://") && !strings.HasPrefix(trimmed, "https://") {
-		return "", fmt.Errorf("callback_url must be a full URL")
+		return "", "", fmt.Errorf("callback_url must be a full URL")
 	}
 
 	u, err := url.Parse(trimmed)
 	if err != nil {
-		return "", fmt.Errorf("invalid callback_url: %w", err)
+		return "", "", fmt.Errorf("invalid callback_url: %w", err)
 	}
 
-	code := u.Query().Get("code")
+	q := u.Query()
+
+	code := q.Get("code")
 	if code == "" {
-		return "", fmt.Errorf("code parameter not found in callback_url")
+		return "", "", fmt.Errorf("code parameter not found in callback_url")
 	}
 
-	return code, nil
+	state := q.Get("state")
+	if state == "" {
+		return "", "", fmt.Errorf("state parameter not found in callback_url")
+	}
+
+	return code, state, nil
 }
 
 // Exchange exchanges callback URL for OAuth credentials JSON.
@@ -217,9 +224,16 @@ func (h *CodexHandlers) Exchange(c *gin.Context) {
 		return
 	}
 
-	code, err := parseCodexCallbackURL(req.CallbackURL)
+	_ = h.stateCache.Delete(ctx, cacheKey)
+
+	code, callbackState, err := parseCodexCallbackURL(req.CallbackURL)
 	if err != nil {
 		JSONError(c, http.StatusBadRequest, err)
+		return
+	}
+
+	if callbackState != req.SessionID {
+		JSONError(c, http.StatusBadRequest, errors.New("oauth state mismatch"))
 		return
 	}
 
@@ -253,7 +267,10 @@ func (h *CodexHandlers) Exchange(c *gin.Context) {
 		return
 	}
 
-	_ = h.stateCache.Delete(ctx, cacheKey)
+	if tokenResp.AccessToken == "" || tokenResp.RefreshToken == "" {
+		JSONError(c, http.StatusBadGateway, errors.New("token response missing required fields"))
+		return
+	}
 
 	accountID := ""
 	if tokenResp.IDToken != "" {
