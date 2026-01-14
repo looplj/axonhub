@@ -71,15 +71,69 @@ func TestDefaultSelector_Select_Deduplication(t *testing.T) {
 	result, err := selector.Select(ctx, req)
 	require.NoError(t, err)
 
-	// Currently, it might return 3 candidates because MatchAssociations deduplicates by RequestModel.
-	// We want it to return only 1 candidate because they all have the same ActualModel ("gpt-4").
-
-	// Print actual models for debugging
-	for i, c := range result {
-		t.Logf("Candidate %d: Channel=%d, RequestModel=%s, ActualModel=%s", i, c.Channel.ID, c.RequestModel, c.ActualModel)
-	}
-
 	require.Len(t, result, 1, "Should only have one candidate for the same actual model")
 	require.Equal(t, ch.ID, result[0].Channel.ID)
-	require.Equal(t, "gpt-4", result[0].ActualModel)
+	require.Len(t, result[0].Models, 1)
+	require.Equal(t, "gpt-4", result[0].Models[0].ActualModel)
+}
+
+func TestDefaultSelector_Select_AggregateSameChannelSamePriority(t *testing.T) {
+	ctx, client := setupTest(t)
+
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Aggregation Channel").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"gpt-4", "gpt-3.5-turbo"}).
+		SetDefaultTestModel("gpt-4").
+		SetStatus(channel.StatusEnabled).
+		Save(ctx)
+	require.NoError(t, err)
+
+	channelService := newTestChannelServiceForChannels(client)
+	modelService := newTestModelService(client)
+	systemService := newTestSystemService(client)
+	selector := NewDefaultSelector(channelService, modelService, systemService)
+
+	model, err := client.Model.Create().
+		SetModelID("my-model").
+		SetName("My Model").
+		SetDeveloper("openai").
+		SetIcon("openai").
+		SetGroup("test").
+		SetModelCard(&objects.ModelCard{}).
+		SetStatus("enabled").
+		SetSettings(&objects.ModelSettings{
+			Associations: []*objects.ModelAssociation{
+				{
+					Type:     "regex",
+					Priority: 1,
+					Regex: &objects.RegexAssociation{
+						Pattern: "gpt-4$",
+					},
+				},
+				{
+					Type:     "regex",
+					Priority: 1,
+					Regex: &objects.RegexAssociation{
+						Pattern: "gpt-3.5-.*",
+					},
+				},
+			},
+		}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	req := &llm.Request{Model: model.ModelID}
+	result, err := selector.Select(ctx, req)
+	require.NoError(t, err)
+
+	require.Len(t, result, 1)
+	require.Equal(t, ch.ID, result[0].Channel.ID)
+	require.Equal(t, 1, result[0].Priority)
+	require.Len(t, result[0].Models, 2)
+
+	actualModels := []string{result[0].Models[0].ActualModel, result[0].Models[1].ActualModel}
+	require.ElementsMatch(t, []string{"gpt-4", "gpt-3.5-turbo"}, actualModels)
 }

@@ -113,6 +113,7 @@ openspec
 .vercel
 .tanstack
 .trae/tasks
+.trae/summary
 playwright-report/
 test-results
 .claude

@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"errors"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -20,10 +21,14 @@ func ExtractStatusCodeFromError(err error) int {
 		return 0
 	}
 
-	// Try to extract from httpclient.Error
 	var httpErr *httpclient.Error
 	if errors.As(err, &httpErr) {
 		return httpErr.StatusCode
+	}
+
+	var llmErr *llm.ResponseError
+	if errors.As(err, &llmErr) {
+		return llmErr.StatusCode
 	}
 
 	return 0

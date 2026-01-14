@@ -106,14 +106,14 @@ func NewLoadBalancer(systemService RetryPolicyProvider, selectionTracker Channel
 
 // candidateScore holds a candidate and its calculated score.
 type candidateScore struct {
-	candidate *ChannelModelCandidate
+	candidate *ChannelModelsCandidate
 	score     float64
 }
 
 // Sort sorts candidates according to the configured strategies.
 // Returns a new slice with top k candidates sorted by descending priority.
 // The top k value is calculated internally based on the retry policy.
-func (lb *LoadBalancer) Sort(ctx context.Context, candidates []*ChannelModelCandidate, model string) []*ChannelModelCandidate {
+func (lb *LoadBalancer) Sort(ctx context.Context, candidates []*ChannelModelsCandidate, model string) []*ChannelModelsCandidate {
 	if len(candidates) == 0 {
 		return candidates
 	}
@@ -137,7 +137,7 @@ func (lb *LoadBalancer) Sort(ctx context.Context, candidates []*ChannelModelCand
 
 // sortProduction is the fast path without debug overhead.
 // Uses partial sorting to efficiently get only the top k candidates.
-func (lb *LoadBalancer) sortProduction(ctx context.Context, candidates []*ChannelModelCandidate, topK int) []*ChannelModelCandidate {
+func (lb *LoadBalancer) sortProduction(ctx context.Context, candidates []*ChannelModelsCandidate, topK int) []*ChannelModelsCandidate {
 	scored := make([]candidateScore, len(candidates))
 	for i, c := range candidates {
 		totalScore := 0.0
@@ -176,7 +176,7 @@ func (lb *LoadBalancer) sortProduction(ctx context.Context, candidates []*Channe
 	})
 
 	// Extract top k sorted candidates
-	result := lo.Map(scored[:topK], func(ch candidateScore, _ int) *ChannelModelCandidate { return ch.candidate })
+	result := lo.Map(scored[:topK], func(ch candidateScore, _ int) *ChannelModelsCandidate { return ch.candidate })
 
 	// Increment selection count for the top candidate to ensure subsequent
 	// concurrent requests see the updated count and select different channels
@@ -189,7 +189,7 @@ func (lb *LoadBalancer) sortProduction(ctx context.Context, candidates []*Channe
 
 // sortWithDebug is the debug path with detailed logging.
 // Uses partial sorting to efficiently get only the top k candidates.
-func (lb *LoadBalancer) sortWithDebug(ctx context.Context, candidates []*ChannelModelCandidate, model string, topK int) []*ChannelModelCandidate {
+func (lb *LoadBalancer) sortWithDebug(ctx context.Context, candidates []*ChannelModelsCandidate, model string, topK int) []*ChannelModelsCandidate {
 	startTime := time.Now()
 
 	// Calculate detailed scores for each candidate
@@ -246,7 +246,7 @@ func (lb *LoadBalancer) sortWithDebug(ctx context.Context, candidates []*Channel
 	// Log the decision with all details (only top k)
 	lb.logDecision(ctx, candidates, model, decisions[:topK], topK, time.Since(startTime))
 
-	result := lo.Map(decisions[:topK], func(decision ChannelDecision, _ int) *ChannelModelCandidate {
+	result := lo.Map(decisions[:topK], func(decision ChannelDecision, _ int) *ChannelModelsCandidate {
 		// Find the corresponding candidate by channel ID
 		for _, c := range candidates {
 			if c.Channel.ID == decision.Channel.ID {
@@ -267,7 +267,7 @@ func (lb *LoadBalancer) sortWithDebug(ctx context.Context, candidates []*Channel
 }
 
 // calculateTopK determines how many candidates to select based on retry policy.
-func (lb *LoadBalancer) calculateTopK(ctx context.Context, candidates []*ChannelModelCandidate) int {
+func (lb *LoadBalancer) calculateTopK(ctx context.Context, candidates []*ChannelModelsCandidate) int {
 	retryPolicy := lb.systemService.RetryPolicyOrDefault(ctx)
 
 	// Calculate topK based on retry policy
@@ -289,7 +289,7 @@ func (lb *LoadBalancer) calculateTopK(ctx context.Context, candidates []*Channel
 }
 
 // logDecision logs the complete load balancing decision.
-func (lb *LoadBalancer) logDecision(ctx context.Context, candidates []*ChannelModelCandidate, model string, decisions []ChannelDecision, topK int, totalDuration time.Duration) {
+func (lb *LoadBalancer) logDecision(ctx context.Context, candidates []*ChannelModelsCandidate, model string, decisions []ChannelDecision, topK int, totalDuration time.Duration) {
 	// Log summary
 	if len(decisions) > 0 {
 		topChannel := decisions[0]

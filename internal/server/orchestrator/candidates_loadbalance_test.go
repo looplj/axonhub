@@ -311,7 +311,7 @@ func TestDefaultChannelSelector_Select_WeightedRoundRobin_EqualWeights(t *testin
 	}
 
 	// Make multiple selections to test round-robin behavior
-	selections := make([][]*ChannelModelCandidate, 9)
+	selections := make([][]*ChannelModelsCandidate, 9)
 
 	for i := range 9 {
 		result, err := selector.Select(ctx, req)
@@ -402,7 +402,7 @@ func TestDefaultChannelSelector_Select_WeightedRoundRobin(t *testing.T) {
 	}
 
 	// Make multiple selections to test round-robin behavior
-	selections := make([][]*ChannelModelCandidate, 6)
+	selections := make([][]*ChannelModelsCandidate, 6)
 
 	for i := range 6 {
 		result, err := selector.Select(ctx, req)

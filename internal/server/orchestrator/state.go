@@ -34,18 +34,15 @@ type PersistenceState struct {
 	Request     *ent.Request
 	RequestExec *ent.RequestExecution
 
-	// ChannelModelCandidates is the primary state for channel selection
-	ChannelModelCandidates []*ChannelModelCandidate
+	// ChannelModelsCandidates is the primary state for channel selection
+	ChannelModelsCandidates []*ChannelModelsCandidate
+	// Candidate state - current candidate index of ChannelModelsCandidates
+	CurrentCandidateIndex int
+	// CurrentCandidate is the currently selected candidate of ChannelModelsCandidates
+	CurrentCandidate *ChannelModelsCandidate
+	// CurrentModelIndex is the current model index in CurrentCandidate.Models
+	CurrentModelIndex int
 
-	// Candidate state - current candidate index of ChannelModelCandidates
-	CandidateIndex int
-
-	// CurrentCandidate is the currently selected candidate (includes channel and model info)
-	CurrentCandidate *ChannelModelCandidate
-
-	// CurrentChannel is kept for backward compatibility with code that uses it directly,
-	// It should equal to CurrentCandidate.Channel
-	CurrentChannel *biz.Channel
-
+	// Perf is the performance record for the current request.
 	Perf *biz.PerformanceRecord
 }

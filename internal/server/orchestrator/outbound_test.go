@@ -80,10 +80,10 @@ func TestOverrideParameters(t *testing.T) {
 	processor := &PersistentOutboundTransformer{
 		wrapped: &mockTransformer{},
 		state: &PersistenceState{
-			CurrentChannel:         channel,
-			ChannelModelCandidates: []*ChannelModelCandidate{{Channel: channel, RequestModel: "gpt-4", ActualModel: "gpt-4", Priority: 0}},
-			CandidateIndex:         0,
-			RequestExec:            &ent.RequestExecution{ID: 1}, // Dummy to skip creation
+			CurrentCandidate:        &ChannelModelsCandidate{Channel: channel},
+			ChannelModelsCandidates: []*ChannelModelsCandidate{{Channel: channel, Priority: 0, Models: []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}}}},
+			CurrentCandidateIndex:   0,
+			RequestExec:             &ent.RequestExecution{ID: 1}, // Dummy to skip creation
 		},
 	}
 
@@ -165,13 +165,13 @@ func TestPersistentOutboundTransformer_TransformRequest_OriginalModelRestoration
 			processor := &PersistentOutboundTransformer{
 				wrapped: &mockTransformer{},
 				state: &PersistenceState{
-					OriginalModel:  tt.originalModel,
-					CurrentChannel: channel,
-					ChannelModelCandidates: []*ChannelModelCandidate{
-						{Channel: channel, RequestModel: tt.inputModel, ActualModel: tt.actualModel, Priority: 0},
+					OriginalModel:    tt.originalModel,
+					CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+					ChannelModelsCandidates: []*ChannelModelsCandidate{
+						{Channel: channel, Priority: 0, Models: []biz.ChannelModelEntry{{RequestModel: tt.inputModel, ActualModel: tt.actualModel}}},
 					},
-					CandidateIndex: 0,
-					RequestExec:    &ent.RequestExecution{ID: 1}, // Dummy to skip creation
+					CurrentCandidateIndex: 0,
+					RequestExec:           &ent.RequestExecution{ID: 1}, // Dummy to skip creation
 				},
 			}
 
@@ -206,6 +206,139 @@ func TestPersistentOutboundTransformer_TransformRequest_OriginalModelRestoration
 	}
 }
 
+func TestPersistentOutboundTransformer_PrepareForRetry(t *testing.T) {
+	// Setup
+	ctx := context.Background()
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test-channel",
+		},
+		Outbound: &mockTransformer{},
+	}
+
+	t.Run("single model, retry should trigger 'reuse same model' logic", func(t *testing.T) {
+		// Case: single model, retry should trigger "reuse same model" logic
+		processor := &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{
+					Channel: channel,
+					Models: []biz.ChannelModelEntry{
+						{RequestModel: "gpt-4", ActualModel: "gpt-4"},
+					},
+				},
+				CurrentModelIndex: 0,
+				RequestExec:       &ent.RequestExecution{ID: 1},
+			},
+		}
+
+		// Execute PrepareForRetry
+		// It should reset RequestExec and do not increase the CurrentModelIndex
+		err := processor.PrepareForRetry(ctx)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Zero(t, processor.state.CurrentModelIndex)
+		assert.Nil(t, processor.state.RequestExec)
+	})
+
+	t.Run("multiple models, retry should trigger 'reuse same model' logic", func(t *testing.T) {
+		// Case: multiple models, retry should trigger "reuse same model" logic
+		processor := &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{
+					Channel: channel,
+					Models: []biz.ChannelModelEntry{
+						{RequestModel: "gpt-4", ActualModel: "gpt-4"},
+						{RequestModel: "gpt-3.5-turbo", ActualModel: "gpt-3.5-turbo"},
+					},
+				},
+				CurrentModelIndex: 0,
+				RequestExec:       &ent.RequestExecution{ID: 1},
+			},
+		}
+
+		// Execute PrepareForRetry
+		// It should reset RequestExec and do increased the CurrentModelIndex
+		err := processor.PrepareForRetry(ctx)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, 1, processor.state.CurrentModelIndex)
+		assert.Nil(t, processor.state.RequestExec)
+	})
+}
+
+func TestPersistentOutboundTransformer_CanRetry(t *testing.T) {
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test-channel",
+		},
+		Outbound: &mockTransformer{},
+	}
+
+	retryableErr := &httpclient.Error{StatusCode: http.StatusTooManyRequests}
+	nonRetryableErr := &httpclient.Error{StatusCode: http.StatusBadRequest}
+
+	t.Run("no current candidate", func(t *testing.T) {
+		outbound := &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate: nil,
+			},
+		}
+
+		require.False(t, outbound.CanRetry(retryableErr))
+	})
+
+	t.Run("nil error", func(t *testing.T) {
+		outbound := &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{
+					Channel: channel,
+					Models:  []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
+				},
+			},
+		}
+
+		require.False(t, outbound.CanRetry(nil))
+	})
+
+	t.Run("non-retryable error", func(t *testing.T) {
+		outbound := &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{
+					Channel: channel,
+					Models:  []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
+				},
+			},
+		}
+
+		require.False(t, outbound.CanRetry(nonRetryableErr))
+	})
+
+	t.Run("retryable error does not depend on model index", func(t *testing.T) {
+		outbound := &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{
+					Channel: channel,
+					Models:  []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
+				},
+				CurrentModelIndex: 0,
+			},
+		}
+
+		require.True(t, outbound.CanRetry(retryableErr))
+	})
+}
+
 func TestPersistentOutboundTransformer_TransformRequest_WithChannelSelection(t *testing.T) {
 	// Setup
 	ctx := context.Background()
@@ -225,11 +358,11 @@ func TestPersistentOutboundTransformer_TransformRequest_WithChannelSelection(t *
 		wrapped: &mockTransformer{},
 		state: &PersistenceState{
 			OriginalModel: "gpt-3.5-turbo",
-			ChannelModelCandidates: []*ChannelModelCandidate{
-				{Channel: testChannel, RequestModel: "gpt-3.5-turbo", ActualModel: "gpt-3.5-turbo", Priority: 0},
+			ChannelModelsCandidates: []*ChannelModelsCandidate{
+				{Channel: testChannel, Priority: 0, Models: []biz.ChannelModelEntry{{RequestModel: "gpt-3.5-turbo", ActualModel: "gpt-3.5-turbo"}}},
 			}, // Pre-populated by inbound
-			CandidateIndex: 0,
-			RequestExec:    &ent.RequestExecution{ID: 1}, // Dummy to skip creation
+			CurrentCandidateIndex: 0,
+			RequestExec:           &ent.RequestExecution{ID: 1}, // Dummy to skip creation
 		},
 	}
 
@@ -257,20 +390,20 @@ func TestPersistentOutboundTransformer_TransformRequest_WithChannelSelection(t *
 	assert.Equal(t, "gpt-3.5-turbo", llmRequest.Model)
 
 	// Verify channel was used
-	assert.Equal(t, testChannel, processor.state.CurrentChannel)
+	assert.Equal(t, testChannel, processor.state.CurrentCandidate.Channel)
 }
 
 // mockChannelSelector for testing.
 type mockChannelSelector struct {
-	selectFunc func(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error)
+	selectFunc func(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error)
 }
 
-func (m *mockChannelSelector) Select(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error) {
+func (m *mockChannelSelector) Select(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
 	if m.selectFunc != nil {
 		return m.selectFunc(ctx, req)
 	}
 
-	return []*ChannelModelCandidate{}, nil
+	return []*ChannelModelsCandidate{}, nil
 }
 
 func TestOverrideParametersMiddleware(t *testing.T) {
@@ -364,9 +497,12 @@ func TestOverrideParametersMiddleware(t *testing.T) {
 			outbound := &PersistentOutboundTransformer{
 				wrapped: &mockTransformer{},
 				state: &PersistenceState{
-					CurrentChannel:         channel,
-					ChannelModelCandidates: []*ChannelModelCandidate{{Channel: channel, RequestModel: "gpt-4", ActualModel: "gpt-4", Priority: 0}},
-					CandidateIndex:         0,
+					CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+					ChannelModelsCandidates: []*ChannelModelsCandidate{
+						{Channel: channel, Priority: 0, Models: []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}}},
+					},
+					CurrentCandidateIndex: 0,
+					CurrentModelIndex:     0,
 				},
 			}
 
@@ -423,7 +559,7 @@ func TestOverrideParametersMiddleware_NoChannel(t *testing.T) {
 	outbound := &PersistentOutboundTransformer{
 		wrapped: &mockTransformer{},
 		state: &PersistenceState{
-			CurrentChannel: nil,
+			CurrentCandidate: nil,
 		},
 	}
 
@@ -472,9 +608,10 @@ func TestOverrideParametersMiddleware_InvalidJSON(t *testing.T) {
 	outbound := &PersistentOutboundTransformer{
 		wrapped: &mockTransformer{},
 		state: &PersistenceState{
-			CurrentChannel:         channel,
-			ChannelModelCandidates: []*ChannelModelCandidate{{Channel: channel, RequestModel: "gpt-4", ActualModel: "gpt-4", Priority: 0}},
-			CandidateIndex:         0,
+			CurrentCandidate:        &ChannelModelsCandidate{Channel: channel},
+			ChannelModelsCandidates: []*ChannelModelsCandidate{{Channel: channel, Priority: 0, Models: []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}}}},
+			CurrentCandidateIndex:   0,
+			CurrentModelIndex:       0,
 		},
 	}
 
@@ -523,9 +660,10 @@ func TestOverrideParametersMiddleware_EmptySettings(t *testing.T) {
 	outbound := &PersistentOutboundTransformer{
 		wrapped: &mockTransformer{},
 		state: &PersistenceState{
-			CurrentChannel:         channel,
-			ChannelModelCandidates: []*ChannelModelCandidate{{Channel: channel, RequestModel: "gpt-4", ActualModel: "gpt-4", Priority: 0}},
-			CandidateIndex:         0,
+			CurrentCandidate:        &ChannelModelsCandidate{Channel: channel},
+			ChannelModelsCandidates: []*ChannelModelsCandidate{{Channel: channel, Priority: 0, Models: []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}}}},
+			CurrentCandidateIndex:   0,
+			CurrentModelIndex:       0,
 		},
 	}
 
@@ -675,9 +813,12 @@ func TestOverrideParametersMiddleware_AxonHubClear(t *testing.T) {
 			outbound := &PersistentOutboundTransformer{
 				wrapped: &mockTransformer{},
 				state: &PersistenceState{
-					CurrentChannel:         channel,
-					ChannelModelCandidates: []*ChannelModelCandidate{{Channel: channel, RequestModel: "gpt-4", ActualModel: "gpt-4", Priority: 0}},
-					CandidateIndex:         0,
+					CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+					ChannelModelsCandidates: []*ChannelModelsCandidate{
+						{Channel: channel, Priority: 0, Models: []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}}},
+					},
+					CurrentCandidateIndex: 0,
+					CurrentModelIndex:     0,
 				},
 			}
 
@@ -821,10 +962,13 @@ func TestOverrideHeadersMiddleware(t *testing.T) {
 			outbound := &PersistentOutboundTransformer{
 				wrapped: &mockTransformer{},
 				state: &PersistenceState{
-					CurrentChannel:         channel,
-					ChannelModelCandidates: []*ChannelModelCandidate{{Channel: channel, RequestModel: "gpt-4", ActualModel: "gpt-4", Priority: 0}},
-					CandidateIndex:         0,
-					RequestExec:            &ent.RequestExecution{ID: 1}, // Dummy to skip creation
+					CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+					ChannelModelsCandidates: []*ChannelModelsCandidate{
+						{Channel: channel, Priority: 0, Models: []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}}},
+					},
+					CurrentCandidateIndex: 0,
+					CurrentModelIndex:     0,
+					RequestExec:           &ent.RequestExecution{ID: 1}, // Dummy to skip creation
 				},
 			}
 
@@ -862,7 +1006,7 @@ func TestOverrideHeadersMiddleware_NoChannel(t *testing.T) {
 	outbound := &PersistentOutboundTransformer{
 		wrapped: &mockTransformer{},
 		state: &PersistenceState{
-			CurrentChannel: nil,
+			CurrentCandidate: nil,
 		},
 	}
 
@@ -906,10 +1050,11 @@ func TestOverrideHeadersMiddleware_EmptySettings(t *testing.T) {
 	outbound := &PersistentOutboundTransformer{
 		wrapped: &mockTransformer{},
 		state: &PersistenceState{
-			CurrentChannel:         channel,
-			ChannelModelCandidates: []*ChannelModelCandidate{{Channel: channel, RequestModel: "gpt-4", ActualModel: "gpt-4", Priority: 0}},
-			CandidateIndex:         0,
-			RequestExec:            &ent.RequestExecution{ID: 1}, // Dummy to skip creation
+			CurrentCandidate:        &ChannelModelsCandidate{Channel: channel},
+			ChannelModelsCandidates: []*ChannelModelsCandidate{{Channel: channel, Priority: 0, Models: []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}}}},
+			CurrentCandidateIndex:   0,
+			CurrentModelIndex:       0,
+			RequestExec:             &ent.RequestExecution{ID: 1}, // Dummy to skip creation
 		},
 	}
 
@@ -955,10 +1100,11 @@ func TestOverrideHeadersMiddleware_EmptyOverrideHeaders(t *testing.T) {
 	outbound := &PersistentOutboundTransformer{
 		wrapped: &mockTransformer{},
 		state: &PersistenceState{
-			CurrentChannel:         channel,
-			ChannelModelCandidates: []*ChannelModelCandidate{{Channel: channel, RequestModel: "gpt-4", ActualModel: "gpt-4", Priority: 0}},
-			CandidateIndex:         0,
-			RequestExec:            &ent.RequestExecution{ID: 1}, // Dummy to skip creation
+			CurrentCandidate:        &ChannelModelsCandidate{Channel: channel},
+			ChannelModelsCandidates: []*ChannelModelsCandidate{{Channel: channel, Priority: 0, Models: []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}}}},
+			CurrentCandidateIndex:   0,
+			CurrentModelIndex:       0,
+			RequestExec:             &ent.RequestExecution{ID: 1}, // Dummy to skip creation
 		},
 	}
 
@@ -1006,10 +1152,11 @@ func TestOverrideHeadersMiddleware_OverrideExistingAuth(t *testing.T) {
 	outbound := &PersistentOutboundTransformer{
 		wrapped: &mockTransformer{},
 		state: &PersistenceState{
-			CurrentChannel:         channel,
-			ChannelModelCandidates: []*ChannelModelCandidate{{Channel: channel, RequestModel: "gpt-4", ActualModel: "gpt-4", Priority: 0}},
-			CandidateIndex:         0,
-			RequestExec:            &ent.RequestExecution{ID: 1},
+			CurrentCandidate:        &ChannelModelsCandidate{Channel: channel},
+			ChannelModelsCandidates: []*ChannelModelsCandidate{{Channel: channel, Priority: 0, Models: []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}}}},
+			CurrentCandidateIndex:   0,
+			CurrentModelIndex:       0,
+			RequestExec:             &ent.RequestExecution{ID: 1},
 		},
 	}
 
@@ -1136,10 +1283,13 @@ func TestOverrideHeadersMiddleware_BlockedHeaders(t *testing.T) {
 			outbound := &PersistentOutboundTransformer{
 				wrapped: &mockTransformer{},
 				state: &PersistenceState{
-					CurrentChannel:         channel,
-					ChannelModelCandidates: []*ChannelModelCandidate{{Channel: channel, RequestModel: "gpt-4", ActualModel: "gpt-4", Priority: 0}},
-					CandidateIndex:         0,
-					RequestExec:            &ent.RequestExecution{ID: 1}, // Dummy to skip creation
+					CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+					ChannelModelsCandidates: []*ChannelModelsCandidate{
+						{Channel: channel, Priority: 0, Models: []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}}},
+					},
+					CurrentCandidateIndex: 0,
+					CurrentModelIndex:     0,
+					RequestExec:           &ent.RequestExecution{ID: 1}, // Dummy to skip creation
 				},
 			}
 

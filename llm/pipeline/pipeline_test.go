@@ -237,7 +237,7 @@ func TestWithRetry(t *testing.T) {
 	option := WithRetry(5, 3, 100*time.Millisecond)
 	option(p)
 
-	require.Equal(t, 5, p.maxRetries)
+	require.Equal(t, 5, p.maxChannelRetries)
 	require.Equal(t, 3, p.maxSameChannelRetries)
 	require.Equal(t, 100*time.Millisecond, p.retryDelay)
 }
