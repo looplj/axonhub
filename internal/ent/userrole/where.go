@@ -55,11 +55,6 @@ func IDLTE(id int) predicate.UserRole {
 	return predicate.UserRole(sql.FieldLTE(FieldID, id))
 }
 
-// DeletedAt applies equality check predicate on the "deleted_at" field. It's identical to DeletedAtEQ.
-func DeletedAt(v int) predicate.UserRole {
-	return predicate.UserRole(sql.FieldEQ(FieldDeletedAt, v))
-}
-
 // UserID applies equality check predicate on the "user_id" field. It's identical to UserIDEQ.
 func UserID(v int) predicate.UserRole {
 	return predicate.UserRole(sql.FieldEQ(FieldUserID, v))
@@ -78,46 +73,6 @@ func CreatedAt(v time.Time) predicate.UserRole {
 // UpdatedAt applies equality check predicate on the "updated_at" field. It's identical to UpdatedAtEQ.
 func UpdatedAt(v time.Time) predicate.UserRole {
 	return predicate.UserRole(sql.FieldEQ(FieldUpdatedAt, v))
-}
-
-// DeletedAtEQ applies the EQ predicate on the "deleted_at" field.
-func DeletedAtEQ(v int) predicate.UserRole {
-	return predicate.UserRole(sql.FieldEQ(FieldDeletedAt, v))
-}
-
-// DeletedAtNEQ applies the NEQ predicate on the "deleted_at" field.
-func DeletedAtNEQ(v int) predicate.UserRole {
-	return predicate.UserRole(sql.FieldNEQ(FieldDeletedAt, v))
-}
-
-// DeletedAtIn applies the In predicate on the "deleted_at" field.
-func DeletedAtIn(vs ...int) predicate.UserRole {
-	return predicate.UserRole(sql.FieldIn(FieldDeletedAt, vs...))
-}
-
-// DeletedAtNotIn applies the NotIn predicate on the "deleted_at" field.
-func DeletedAtNotIn(vs ...int) predicate.UserRole {
-	return predicate.UserRole(sql.FieldNotIn(FieldDeletedAt, vs...))
-}
-
-// DeletedAtGT applies the GT predicate on the "deleted_at" field.
-func DeletedAtGT(v int) predicate.UserRole {
-	return predicate.UserRole(sql.FieldGT(FieldDeletedAt, v))
-}
-
-// DeletedAtGTE applies the GTE predicate on the "deleted_at" field.
-func DeletedAtGTE(v int) predicate.UserRole {
-	return predicate.UserRole(sql.FieldGTE(FieldDeletedAt, v))
-}
-
-// DeletedAtLT applies the LT predicate on the "deleted_at" field.
-func DeletedAtLT(v int) predicate.UserRole {
-	return predicate.UserRole(sql.FieldLT(FieldDeletedAt, v))
-}
-
-// DeletedAtLTE applies the LTE predicate on the "deleted_at" field.
-func DeletedAtLTE(v int) predicate.UserRole {
-	return predicate.UserRole(sql.FieldLTE(FieldDeletedAt, v))
 }
 
 // UserIDEQ applies the EQ predicate on the "user_id" field.

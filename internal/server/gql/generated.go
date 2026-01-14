@@ -1232,7 +1232,6 @@ type ComplexityRoot struct {
 
 	UserProject struct {
 		CreatedAt func(childComplexity int) int
-		DeletedAt func(childComplexity int) int
 		ID        func(childComplexity int) int
 		IsOwner   func(childComplexity int) int
 		Project   func(childComplexity int) int
@@ -1252,7 +1251,6 @@ type ComplexityRoot struct {
 
 	UserRole struct {
 		CreatedAt func(childComplexity int) int
-		DeletedAt func(childComplexity int) int
 		ID        func(childComplexity int) int
 		Role      func(childComplexity int) int
 		RoleID    func(childComplexity int) int
@@ -1515,7 +1513,6 @@ type UserProjectResolver interface {
 }
 type UserRoleResolver interface {
 	ID(ctx context.Context, obj *ent.UserRole) (*objects.GUID, error)
-
 	UserID(ctx context.Context, obj *ent.UserRole) (*objects.GUID, error)
 	RoleID(ctx context.Context, obj *ent.UserRole) (*objects.GUID, error)
 }
@@ -6651,12 +6648,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UserProject.CreatedAt(childComplexity), true
-	case "UserProject.deletedAt":
-		if e.complexity.UserProject.DeletedAt == nil {
-			break
-		}
-
-		return e.complexity.UserProject.DeletedAt(childComplexity), true
 	case "UserProject.id":
 		if e.complexity.UserProject.ID == nil {
 			break
@@ -6737,12 +6728,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UserRole.CreatedAt(childComplexity), true
-	case "UserRole.deletedAt":
-		if e.complexity.UserRole.DeletedAt == nil {
-			break
-		}
-
-		return e.complexity.UserRole.DeletedAt(childComplexity), true
 	case "UserRole.id":
 		if e.complexity.UserRole.ID == nil {
 			break
@@ -20250,8 +20235,6 @@ func (ec *executionContext) fieldContext_Mutation_addUserToProject(ctx context.C
 				return ec.fieldContext_UserProject_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_UserProject_updatedAt(ctx, field)
-			case "deletedAt":
-				return ec.fieldContext_UserProject_deletedAt(ctx, field)
 			case "userID":
 				return ec.fieldContext_UserProject_userID(ctx, field)
 			case "projectID":
@@ -20354,8 +20337,6 @@ func (ec *executionContext) fieldContext_Mutation_updateProjectUser(ctx context.
 				return ec.fieldContext_UserProject_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_UserProject_updatedAt(ctx, field)
-			case "deletedAt":
-				return ec.fieldContext_UserProject_deletedAt(ctx, field)
 			case "userID":
 				return ec.fieldContext_UserProject_userID(ctx, field)
 			case "projectID":
@@ -22910,8 +22891,6 @@ func (ec *executionContext) fieldContext_Project_projectUsers(_ context.Context,
 				return ec.fieldContext_UserProject_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_UserProject_updatedAt(ctx, field)
-			case "deletedAt":
-				return ec.fieldContext_UserProject_deletedAt(ctx, field)
 			case "userID":
 				return ec.fieldContext_UserProject_userID(ctx, field)
 			case "projectID":
@@ -29613,8 +29592,6 @@ func (ec *executionContext) fieldContext_Role_userRoles(_ context.Context, field
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_UserRole_id(ctx, field)
-			case "deletedAt":
-				return ec.fieldContext_UserRole_deletedAt(ctx, field)
 			case "userID":
 				return ec.fieldContext_UserRole_userID(ctx, field)
 			case "roleID":
@@ -35620,8 +35597,6 @@ func (ec *executionContext) fieldContext_User_projectUsers(_ context.Context, fi
 				return ec.fieldContext_UserProject_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_UserProject_updatedAt(ctx, field)
-			case "deletedAt":
-				return ec.fieldContext_UserProject_deletedAt(ctx, field)
 			case "userID":
 				return ec.fieldContext_UserProject_userID(ctx, field)
 			case "projectID":
@@ -35667,8 +35642,6 @@ func (ec *executionContext) fieldContext_User_userRoles(_ context.Context, field
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_UserRole_id(ctx, field)
-			case "deletedAt":
-				return ec.fieldContext_UserRole_deletedAt(ctx, field)
 			case "userID":
 				return ec.fieldContext_UserRole_userID(ctx, field)
 			case "roleID":
@@ -36278,35 +36251,6 @@ func (ec *executionContext) fieldContext_UserProject_updatedAt(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _UserProject_deletedAt(ctx context.Context, field graphql.CollectedField, obj *ent.UserProject) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_UserProject_deletedAt,
-		func(ctx context.Context) (any, error) {
-			return obj.DeletedAt, nil
-		},
-		nil,
-		ec.marshalNInt2int,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_UserProject_deletedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UserProject",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _UserProject_userID(ctx context.Context, field graphql.CollectedField, obj *ent.UserProject) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -36697,35 +36641,6 @@ func (ec *executionContext) fieldContext_UserRole_id(_ context.Context, field gr
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type ID does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UserRole_deletedAt(ctx context.Context, field graphql.CollectedField, obj *ent.UserRole) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_UserRole_deletedAt,
-		func(ctx context.Context) (any, error) {
-			return obj.DeletedAt, nil
-		},
-		nil,
-		ec.marshalNInt2int,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_UserRole_deletedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UserRole",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -56680,7 +56595,7 @@ func (ec *executionContext) unmarshalInputUserProjectWhereInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "isOwner", "isOwnerNEQ"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "isOwner", "isOwnerNEQ"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -56908,62 +56823,6 @@ func (ec *executionContext) unmarshalInputUserProjectWhereInput(ctx context.Cont
 				return it, err
 			}
 			it.UpdatedAtLTE = data
-		case "deletedAt":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAt"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAt = data
-		case "deletedAtNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtNEQ"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtNEQ = data
-		case "deletedAtIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtIn = data
-		case "deletedAtNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtNotIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtNotIn = data
-		case "deletedAtGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtGT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtGT = data
-		case "deletedAtGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtGTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtGTE = data
-		case "deletedAtLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtLT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtLT = data
-		case "deletedAtLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtLTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtLTE = data
 		case "isOwner":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isOwner"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -57029,7 +56888,7 @@ func (ec *executionContext) unmarshalInputUserRoleWhereInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "createdAtIsNil", "createdAtNotNil", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "updatedAtIsNil", "updatedAtNotNil"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "createdAtIsNil", "createdAtNotNil", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "updatedAtIsNil", "updatedAtNotNil"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -57145,62 +57004,6 @@ func (ec *executionContext) unmarshalInputUserRoleWhereInput(ctx context.Context
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 			it.IDLTE = converted
-		case "deletedAt":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAt"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAt = data
-		case "deletedAtNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtNEQ"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtNEQ = data
-		case "deletedAtIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtIn = data
-		case "deletedAtNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtNotIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtNotIn = data
-		case "deletedAtGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtGT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtGT = data
-		case "deletedAtGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtGTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtGTE = data
-		case "deletedAtLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtLT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtLT = data
-		case "deletedAtLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtLTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtLTE = data
 		case "createdAt":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAt"))
 			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
@@ -70363,11 +70166,6 @@ func (ec *executionContext) _UserProject(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "deletedAt":
-			out.Values[i] = ec._UserProject_deletedAt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "userID":
 			field := field
 
@@ -70643,11 +70441,6 @@ func (ec *executionContext) _UserRole(ctx context.Context, sel ast.SelectionSet,
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "deletedAt":
-			out.Values[i] = ec._UserRole_deletedAt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "userID":
 			field := field
 

@@ -36,27 +36,6 @@ func (_u *UserProjectUpdate) SetUpdatedAt(v time.Time) *UserProjectUpdate {
 	return _u
 }
 
-// SetDeletedAt sets the "deleted_at" field.
-func (_u *UserProjectUpdate) SetDeletedAt(v int) *UserProjectUpdate {
-	_u.mutation.ResetDeletedAt()
-	_u.mutation.SetDeletedAt(v)
-	return _u
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (_u *UserProjectUpdate) SetNillableDeletedAt(v *int) *UserProjectUpdate {
-	if v != nil {
-		_u.SetDeletedAt(*v)
-	}
-	return _u
-}
-
-// AddDeletedAt adds value to the "deleted_at" field.
-func (_u *UserProjectUpdate) AddDeletedAt(v int) *UserProjectUpdate {
-	_u.mutation.AddDeletedAt(v)
-	return _u
-}
-
 // SetIsOwner sets the "is_owner" field.
 func (_u *UserProjectUpdate) SetIsOwner(v bool) *UserProjectUpdate {
 	_u.mutation.SetIsOwner(v)
@@ -168,12 +147,6 @@ func (_u *UserProjectUpdate) sqlSave(ctx context.Context) (_node int, err error)
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(userproject.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := _u.mutation.DeletedAt(); ok {
-		_spec.SetField(userproject.FieldDeletedAt, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedDeletedAt(); ok {
-		_spec.AddField(userproject.FieldDeletedAt, field.TypeInt, value)
-	}
 	if value, ok := _u.mutation.IsOwner(); ok {
 		_spec.SetField(userproject.FieldIsOwner, field.TypeBool, value)
 	}
@@ -213,27 +186,6 @@ type UserProjectUpdateOne struct {
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *UserProjectUpdateOne) SetUpdatedAt(v time.Time) *UserProjectUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
-	return _u
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (_u *UserProjectUpdateOne) SetDeletedAt(v int) *UserProjectUpdateOne {
-	_u.mutation.ResetDeletedAt()
-	_u.mutation.SetDeletedAt(v)
-	return _u
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (_u *UserProjectUpdateOne) SetNillableDeletedAt(v *int) *UserProjectUpdateOne {
-	if v != nil {
-		_u.SetDeletedAt(*v)
-	}
-	return _u
-}
-
-// AddDeletedAt adds value to the "deleted_at" field.
-func (_u *UserProjectUpdateOne) AddDeletedAt(v int) *UserProjectUpdateOne {
-	_u.mutation.AddDeletedAt(v)
 	return _u
 }
 
@@ -377,12 +329,6 @@ func (_u *UserProjectUpdateOne) sqlSave(ctx context.Context) (_node *UserProject
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(userproject.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if value, ok := _u.mutation.DeletedAt(); ok {
-		_spec.SetField(userproject.FieldDeletedAt, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedDeletedAt(); ok {
-		_spec.AddField(userproject.FieldDeletedAt, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.IsOwner(); ok {
 		_spec.SetField(userproject.FieldIsOwner, field.TypeBool, value)

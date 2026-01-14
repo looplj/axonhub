@@ -5,7 +5,6 @@ package userrole
 import (
 	"time"
 
-	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 )
@@ -15,8 +14,6 @@ const (
 	Label = "user_role"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
-	// FieldDeletedAt holds the string denoting the deleted_at field in the database.
-	FieldDeletedAt = "deleted_at"
 	// FieldUserID holds the string denoting the user_id field in the database.
 	FieldUserID = "user_id"
 	// FieldRoleID holds the string denoting the role_id field in the database.
@@ -50,7 +47,6 @@ const (
 // Columns holds all SQL columns for userrole fields.
 var Columns = []string{
 	FieldID,
-	FieldDeletedAt,
 	FieldUserID,
 	FieldRoleID,
 	FieldCreatedAt,
@@ -67,16 +63,7 @@ func ValidColumn(column string) bool {
 	return false
 }
 
-// Note that the variables below are initialized by the runtime
-// package on the initialization of the application. Therefore,
-// it should be imported in the main as follows:
-//
-//	import _ "github.com/looplj/axonhub/internal/ent/runtime"
 var (
-	Hooks        [1]ent.Hook
-	Interceptors [1]ent.Interceptor
-	// DefaultDeletedAt holds the default value on creation for the "deleted_at" field.
-	DefaultDeletedAt int
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
@@ -91,11 +78,6 @@ type OrderOption func(*sql.Selector)
 // ByID orders the results by the id field.
 func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
-}
-
-// ByDeletedAt orders the results by the deleted_at field.
-func ByDeletedAt(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldDeletedAt, opts...).ToFunc()
 }
 
 // ByUserID orders the results by the user_id field.

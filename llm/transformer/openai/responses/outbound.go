@@ -17,22 +17,51 @@ import (
 
 var _ transformer.Outbound = (*OutboundTransformer)(nil)
 
+// Config holds all configuration for the OpenAI Responses outbound transformer.
+type Config struct {
+	// BaseURL is the base URL for the OpenAI API, required.
+	BaseURL string `json:"base_url,omitempty"`
+
+	// RawURL is whether to use raw URL for requests, default is false.
+	// If true, the base URL will be used as is, without appending the version.
+	RawURL bool `json:"raw_url,omitempty"`
+
+	// APIKey is the API key for authentication, required.
+	APIKey string `json:"api_key,omitempty"`
+}
+
 func NewOutboundTransformer(baseURL, apiKey string) (*OutboundTransformer, error) {
 	if apiKey == "" || baseURL == "" {
 		return nil, fmt.Errorf("apiKey or baseURL is empty")
 	}
 
-	baseURL = strings.TrimSuffix(baseURL, "/")
+	config := &Config{
+		BaseURL: baseURL,
+		APIKey:  apiKey,
+	}
+
+	return NewOutboundTransformerWithConfig(config)
+}
+
+func NewOutboundTransformerWithConfig(config *Config) (*OutboundTransformer, error) {
+	if config == nil {
+		return nil, fmt.Errorf("config is nil")
+	}
+
+	if before, ok := strings.CutSuffix(config.BaseURL, "#"); ok {
+		config.BaseURL = before
+		config.RawURL = true
+	}
+
+	config.BaseURL = strings.TrimSuffix(config.BaseURL, "/")
 
 	return &OutboundTransformer{
-		APIKey:  apiKey,
-		BaseURL: baseURL,
+		config: config,
 	}, nil
 }
 
 type OutboundTransformer struct {
-	APIKey  string
-	BaseURL string
+	config *Config
 }
 
 func (t *OutboundTransformer) APIFormat() llm.APIFormat {
@@ -156,17 +185,42 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	headers.Set("Content-Type", "application/json")
 	headers.Set("Accept", "application/json")
 
+	fullURL, err := t.buildFullRequestURL(llmReq)
+	if err != nil {
+		return nil, err
+	}
+
 	return &httpclient.Request{
 		Method:  http.MethodPost,
-		URL:     t.BaseURL + "/responses",
+		URL:     fullURL,
 		Headers: headers,
 		Body:    body,
 		Auth: &httpclient.AuthConfig{
 			Type:   "bearer",
-			APIKey: t.APIKey,
+			APIKey: t.config.APIKey,
 		},
 		TransformerMetadata: llmReq.TransformerMetadata,
 	}, nil
+}
+
+// buildFullRequestURL constructs the appropriate URL based on the platform.
+func (t *OutboundTransformer) buildFullRequestURL(_ *llm.Request) (string, error) {
+	// RawURL is true, use the base URL as is
+	if t.config.RawURL {
+		return t.config.BaseURL + "/responses", nil
+	}
+
+	// Standard OpenAI API
+	// Check if URL already contains /v1/ in the path (e.g., https://api.deepinfra.com/v1/openai)
+	if strings.Contains(t.config.BaseURL, "/v1/") {
+		return t.config.BaseURL + "/responses", nil
+	}
+
+	if strings.HasSuffix(t.config.BaseURL, "/v1") {
+		return t.config.BaseURL + "/responses", nil
+	}
+
+	return t.config.BaseURL + "/v1/responses", nil
 }
 
 // TransformResponse converts an OpenAI Responses API HTTP response to unified llm.Response.

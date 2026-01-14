@@ -751,15 +751,8 @@ func init() {
 			return next.Mutate(ctx, m)
 		})
 	}
-	userprojectMixinHooks1 := userprojectMixin[1].Hooks()
-
-	userproject.Hooks[1] = userprojectMixinHooks1[0]
-	userprojectMixinInters1 := userprojectMixin[1].Interceptors()
-	userproject.Interceptors[0] = userprojectMixinInters1[0]
 	userprojectMixinFields0 := userprojectMixin[0].Fields()
 	_ = userprojectMixinFields0
-	userprojectMixinFields1 := userprojectMixin[1].Fields()
-	_ = userprojectMixinFields1
 	userprojectFields := schema.UserProject{}.Fields()
 	_ = userprojectFields
 	// userprojectDescCreatedAt is the schema descriptor for created_at field.
@@ -772,10 +765,6 @@ func init() {
 	userproject.DefaultUpdatedAt = userprojectDescUpdatedAt.Default.(func() time.Time)
 	// userproject.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	userproject.UpdateDefaultUpdatedAt = userprojectDescUpdatedAt.UpdateDefault.(func() time.Time)
-	// userprojectDescDeletedAt is the schema descriptor for deleted_at field.
-	userprojectDescDeletedAt := userprojectMixinFields1[0].Descriptor()
-	// userproject.DefaultDeletedAt holds the default value on creation for the deleted_at field.
-	userproject.DefaultDeletedAt = userprojectDescDeletedAt.Default.(int)
 	// userprojectDescIsOwner is the schema descriptor for is_owner field.
 	userprojectDescIsOwner := userprojectFields[2].Descriptor()
 	// userproject.DefaultIsOwner holds the default value on creation for the is_owner field.
@@ -784,19 +773,8 @@ func init() {
 	userprojectDescScopes := userprojectFields[3].Descriptor()
 	// userproject.DefaultScopes holds the default value on creation for the scopes field.
 	userproject.DefaultScopes = userprojectDescScopes.Default.([]string)
-	userroleMixin := schema.UserRole{}.Mixin()
-	userroleMixinHooks0 := userroleMixin[0].Hooks()
-	userrole.Hooks[0] = userroleMixinHooks0[0]
-	userroleMixinInters0 := userroleMixin[0].Interceptors()
-	userrole.Interceptors[0] = userroleMixinInters0[0]
-	userroleMixinFields0 := userroleMixin[0].Fields()
-	_ = userroleMixinFields0
 	userroleFields := schema.UserRole{}.Fields()
 	_ = userroleFields
-	// userroleDescDeletedAt is the schema descriptor for deleted_at field.
-	userroleDescDeletedAt := userroleMixinFields0[0].Descriptor()
-	// userrole.DefaultDeletedAt holds the default value on creation for the deleted_at field.
-	userrole.DefaultDeletedAt = userroleDescDeletedAt.Default.(int)
 	// userroleDescCreatedAt is the schema descriptor for created_at field.
 	userroleDescCreatedAt := userroleFields[2].Descriptor()
 	// userrole.DefaultCreatedAt holds the default value on creation for the created_at field.
