@@ -8,7 +8,7 @@ set -e
 echo "🚀 Starting E2E Test Suite..."
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 FRONTEND_DIR="$PROJECT_ROOT/frontend"
 
 # Prioritize environment variables from migration tests, fallback to command line args
@@ -89,10 +89,10 @@ cleanup() {
   if [ "$KEEP_DB" = true ]; then
     echo "💾 Keeping database (--keep-db flag set)"
     # Only stop the server, don't cleanup database
-    ./scripts/e2e-backend.sh stop > /dev/null 2>&1 || true
+    ./scripts/e2e/e2e-backend.sh stop > /dev/null 2>&1 || true
   else
     echo "🗑️  Removing database and stopping server..."
-    ./scripts/e2e-backend.sh stop > /dev/null 2>&1 || true
+    ./scripts/e2e/e2e-backend.sh stop > /dev/null 2>&1 || true
   fi
 }
 
@@ -105,7 +105,7 @@ echo "🗄️  Database type: $DB_TYPE"
 cd "$PROJECT_ROOT"
 
 # Clean up any existing database type configuration
-rm -f ./scripts/.e2e-backend-db-type
+rm -f ./scripts/e2e/.e2e-backend-db-type
 
 # Pass environment variables to backend script
 export AXONHUB_E2E_DB_TYPE="$DB_TYPE"
@@ -115,7 +115,7 @@ export AXONHUB_E2E_USE_EXISTING_DB="${AXONHUB_E2E_USE_EXISTING_DB:-false}"
 export AXONHUB_E2E_KEEP_DB="$KEEP_DB"
 
 # Start backend with specified database type
-./scripts/e2e-backend.sh start
+./scripts/e2e/e2e-backend.sh start
 
 if [ $? -ne 0 ]; then
   echo "❌ Failed to start E2E backend server"
@@ -144,7 +144,7 @@ if [ $TEST_EXIT_CODE -eq 0 ]; then
     echo "📊 Database location:"
     case "$DB_TYPE" in
       sqlite)
-        echo "   SQLite: ./scripts/axonhub-e2e.db"
+        echo "   SQLite: ./scripts/e2e/axonhub-e2e.db"
         ;;
       mysql)
         echo "   MySQL container: axonhub-e2e-mysql (port 13306)"
@@ -161,7 +161,7 @@ else
     echo "📊 Database location:"
     case "$DB_TYPE" in
       sqlite)
-        echo "   SQLite: ./scripts/axonhub-e2e.db"
+        echo "   SQLite: ./scripts/e2e/axonhub-e2e.db"
         ;;
       mysql)
         echo "   MySQL container: axonhub-e2e-mysql (port 13306)"
@@ -174,8 +174,8 @@ else
     echo ""
     echo "💡 Tips:"
     echo "  - View report: pnpm test:e2e:report"
-    echo "  - Check backend logs: cat ../scripts/e2e-backend.log"
-    echo "  - Inspect database: sqlite3 ../scripts/axonhub-e2e.db"
+    echo "  - Check backend logs: cat ../scripts/e2e/e2e-backend.log"
+    echo "  - Inspect database: sqlite3 ../scripts/e2e/axonhub-e2e.db"
   fi
 fi
 

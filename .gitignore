@@ -115,7 +115,6 @@ openspec
 .trae/tasks
 playwright-report/
 test-results
-.trae
 .claude
 .qoder
 .codebuddy
@@ -133,14 +132,14 @@ internal/server/static/dist
 coverage.out
 
 # E2E testing artifacts
-scripts/.e2e-backend.pid
-scripts/axonhub-e2e.db
-scripts/e2e-backend.log
-scripts/axonhub-e2e
-scripts/.e2e-backend-db-type
-
+scripts/e2e/.e2e-backend.pid
+scripts/e2e/axonhub-e2e.db
+scripts/e2e/e2e-backend.log
+scripts/e2e/axonhub-e2e
+scripts/e2e/.e2e-backend-db-type
+scripts/migration/migration-test/
 # Migration testing artifacts
-scripts/migration-test/
+scripts/migration/migration-test/
 tools
 
 mise.toml

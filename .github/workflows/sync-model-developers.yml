@@ -25,7 +25,7 @@ jobs:
 
       - name: Fetch and filter model developers data
         run: |
-          node scripts/sync-model-developers.js
+          node scripts/sync/sync-model-developers.js
 
       - name: Check for changes
         id: check_changes

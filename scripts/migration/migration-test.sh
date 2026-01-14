@@ -15,7 +15,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 CACHE_DIR="${SCRIPT_DIR}/migration-test/cache"
 WORK_DIR="${SCRIPT_DIR}/migration-test/work"
 DB_FILE="${WORK_DIR}/migration-test.db"
@@ -801,14 +801,14 @@ run_e2e_tests() {
     db_dialect=$(get_db_dialect)
 
     if [[ "$DB_TYPE" == "sqlite" ]]; then
-        local e2e_db="${SCRIPT_DIR}/axonhub-e2e.db"
+        local e2e_db="${SCRIPT_DIR}/../e2e/axonhub-e2e.db"
         cp "$DB_FILE" "$e2e_db"
         print_info "Database copied to e2e location: $e2e_db" >&2
         cd "$PROJECT_ROOT"
         if env \
             AXONHUB_E2E_DB_TYPE="$DB_TYPE" \
             AXONHUB_E2E_DB_DIALECT="$db_dialect" \
-            ./scripts/e2e-test.sh; then
+            ./scripts/e2e/e2e-test.sh; then
             print_success "E2E tests passed!" >&2
             return 0
         else
@@ -825,7 +825,7 @@ run_e2e_tests() {
         AXONHUB_E2E_DB_DIALECT="$db_dialect" \
         AXONHUB_E2E_DB_DSN="$db_dsn" \
         AXONHUB_E2E_USE_EXISTING_DB="true" \
-        ./scripts/e2e-test.sh; then
+        ./scripts/e2e/e2e-test.sh; then
         print_success "E2E tests passed!" >&2
         return 0
     else

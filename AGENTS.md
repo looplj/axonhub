@@ -40,13 +40,13 @@ This guide helps contributors navigate and work effectively in this repository.
 - `pnpm test:e2e` (frontend) — launches backend (port 8099), runs Playwright, cleans up
 - `pnpm test:e2e:ui` — Playwright UI mode
 - `pnpm test:e2e:headed` — headed browser
-- `./scripts/e2e-test.sh` — script entrypoint; see `scripts/README.md`
-- `./scripts/e2e-backend.sh {start|stop|restart|clean}` — manage e2e backend
+- `./scripts/e2e/e2e-test.sh` — script entrypoint; see `scripts/README.md`
+- `./scripts/e2e/e2e-backend.sh {start|stop|restart|clean}` — manage e2e backend
 
 ### Database Migrations And Tests
 
-- `./scripts/migration-test.sh <tag>` — download release binary, init DB, migrate to current, run e2e (see `scripts/MIGRATION_TEST.md`)
-- `./scripts/migration-test-all.sh` — batch migration tests across recent tags
+- `./scripts/migration/migration-test.sh <tag>` — download release binary, init DB, migrate to current, run e2e (see `scripts/migration/MIGRATION_TEST.md`)
+- `./scripts/migration/migration-test-all.sh` — batch migration tests across recent tags
 
 ## Coding Style & Naming
 
