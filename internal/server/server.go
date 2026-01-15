@@ -43,13 +43,12 @@ type Server struct {
 }
 
 func (srv *Server) Run() error {
-	log.Info(
-		context.Background(),
-		"run server",
+	log.Info(context.Background(), "run server",
 		log.String("name", srv.Config.Name),
+		log.String("host", srv.Config.Host),
 		log.Int("port", srv.Config.Port),
 	)
-	addr := fmt.Sprintf("0.0.0.0:%d", srv.Config.Port)
+	addr := fmt.Sprintf("%s:%d", srv.Config.Host, srv.Config.Port)
 	srv.server = &http.Server{
 		Addr:         addr,
 		Handler:      srv.Engine,
