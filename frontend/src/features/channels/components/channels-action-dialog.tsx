@@ -330,6 +330,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     hasAutoSetDuplicateNameRef.current = true;
   }, [open, isDuplicate, duplicateFromRow, allChannelNamesLoaded, allChannelNames, form]);
 
+  const selectedType = form.watch('type') as ChannelType | undefined;
+
+  const isCodexType = (selectedType || derivedChannelType) === 'codex';
+
   const baseURLPlaceholder = useMemo(() => {
     const currentType = selectedType || derivedChannelType;
     const defaultURL = getDefaultBaseURL(currentType);
