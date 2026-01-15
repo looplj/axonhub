@@ -24,7 +24,7 @@ AxonHub can act as a drop-in replacement for Anthropic endpoints, letting Claude
 2. Launch Claude Code. It will read the environment variables and route all Anthropic requests through AxonHub.
 3. (Optional) Confirm the integration by triggering a chat completion and checking AxonHub traces.
 
-#### Trace aggregation (optional)
+#### Trace aggregation (important)
 To aggregate requests from the same Claude Code session into a single trace, enable the following in `config.yml`:
 
 ```yaml
@@ -32,6 +32,8 @@ server:
   trace:
     claude_code_trace_enabled: true
 ```
+
+**Note**: Enabling this also ensures that requests from the same trace are prioritized to be sent to the same upstream channel, significantly improving provider-side cache hit rates (e.g., Anthropic Prompt Caching).
 
 #### Tips
 - Keep your API key secret; store it in a shell profile or secret manager.
