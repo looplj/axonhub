@@ -3,6 +3,7 @@
 
 # Server configuration
 server:
+  host: "0.0.0.0"               # Server host (env: AXONHUB_SERVER_HOST)
   port: 8090                    # Server port (env: AXONHUB_SERVER_PORT)
   name: "AxonHub"               # Server name (env: AXONHUB_SERVER_NAME)
   base_path: ""                 # Base path for API routes (env: AXONHUB_SERVER_BASE_PATH)

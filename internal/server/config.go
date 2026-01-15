@@ -7,6 +7,7 @@ import (
 )
 
 type Config struct {
+	Host        string        `conf:"host" yaml:"host" json:"host"`
 	Port        int           `conf:"port" yaml:"port" json:"port"`
 	Name        string        `conf:"name" yaml:"name" json:"name"`
 	BasePath    string        `conf:"base_path" yaml:"base_path" json:"base_path"`

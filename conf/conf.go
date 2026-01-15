@@ -117,6 +117,7 @@ func customizedDecodeHook(srcType reflect.Type, dstType reflect.Type, data any) 
 // setDefaults sets default configuration values.
 func setDefaults(v *viper.Viper) {
 	// Server defaults
+	v.SetDefault("server.host", "0.0.0.0")
 	v.SetDefault("server.port", 8090)
 	v.SetDefault("server.name", "AxonHub")
 	v.SetDefault("server.base_path", "")
