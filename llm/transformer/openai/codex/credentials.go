@@ -212,7 +212,9 @@ func (c *OAuth2Credentials) Refresh(ctx context.Context, hc *httpclient.HttpClie
 
 	if cache != nil && cacheKey != "" {
 		if raw, err := updated.ToJSON(); err == nil {
-			_ = cache.Set(ctx, cacheKey, raw, xcache.WithExpiration(55*time.Minute))
+			if err := cache.Set(ctx, cacheKey, raw, xcache.WithExpiration(55*time.Minute)); err != nil {
+				log.Warn(ctx, "failed to cache refreshed codex token", log.String("key", cacheKey), log.Cause(err))
+			}
 		}
 	}
 

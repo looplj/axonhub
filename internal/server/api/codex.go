@@ -16,6 +16,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
@@ -224,7 +225,9 @@ func (h *CodexHandlers) Exchange(c *gin.Context) {
 		return
 	}
 
-	_ = h.stateCache.Delete(ctx, cacheKey)
+	if err := h.stateCache.Delete(ctx, cacheKey); err != nil {
+		log.Warn(ctx, "failed to delete used oauth state from cache", log.String("key", cacheKey), log.Cause(err))
+	}
 
 	code, callbackState, err := parseCodexCallbackURL(req.CallbackURL)
 	if err != nil {
