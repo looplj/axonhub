@@ -397,13 +397,6 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 	case channel.TypeOpenai, channel.TypeDeepinfra, channel.TypeMinimax,
 		channel.TypePpio, channel.TypeSiliconflow,
 		channel.TypeVercel, channel.TypeAihubmix, channel.TypeBurncloud, channel.TypeGithub:
-		if c.Credentials != nil && c.Credentials.PlatformType == codex.PlatformTypeCodex {
-			log.Warn(context.Background(), "deprecated codex platformType on non-codex channel type",
-				log.String("channel", c.Name),
-				log.String("type", c.Type.String()),
-			)
-			return buildCodexTransformer()
-		}
 
 		transformer, err := openai.NewOutboundTransformerWithConfig(&openai.Config{
 			PlatformType: openai.PlatformOpenAI,
@@ -416,12 +409,6 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 
 		return buildChannelWithTransformer(c, transformer, httpClient), nil
 	case channel.TypeOpenaiResponses:
-		if c.Credentials != nil && c.Credentials.PlatformType == codex.PlatformTypeCodex {
-			log.Warn(context.Background(), "deprecated codex platformType on openai_responses channel type",
-				log.String("channel", c.Name),
-			)
-			return buildCodexTransformer()
-		}
 
 		transformer, err := responses.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
 		if err != nil {

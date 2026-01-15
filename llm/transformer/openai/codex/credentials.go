@@ -18,8 +18,6 @@ import (
 )
 
 const (
-	PlatformTypeCodex = "codex"
-
 	AuthorizeURL = "https://auth.openai.com/oauth/authorize"
 	TokenURL     = "https://auth.openai.com/oauth/token"
 
