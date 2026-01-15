@@ -611,31 +611,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       };
 
       if (isCodexType) {
-        const platformType = valuesForSubmit.credentials?.platformType;
-        const apiKey = valuesForSubmit.credentials?.apiKey || '';
-        if (platformType !== 'codex') {
-          toast.error('Codex channel requires OAuth credentials');
-          return;
-        }
-
-        try {
-          const json = JSON.parse(apiKey);
-          const parsed = z
-            .object({
-              access_token: z.string().min(1),
-              refresh_token: z.string().min(1),
-            })
-            .safeParse(json);
-
-          if (!parsed.success) {
-            toast.error('Codex channel requires OAuth credentials');
-            return;
-          }
-        } catch {
-          toast.error('Codex channel requires OAuth credentials');
-          return;
-        }
-
         const baseURL = getDefaultBaseURL('codex');
         if (baseURL) {
           dataWithModels.baseURL = baseURL;

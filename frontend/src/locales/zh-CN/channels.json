@@ -309,7 +309,8 @@
           "clearAllDescription": "确定要清空所有 {{count}} 个模型吗？",
           "willRemove": "将移除",
           "allModels": "全部模型 ({{count}})",
-          "codexUnsupported": "Codex 暂不支持此功能"
+          "codexUnsupported": "Codex 暂不支持此功能",
+          "codexOAuthCredentialsRequired": "Codex 渠道需要 OAuth 凭证 JSON"
         },
         "autoSyncSupportedModels": {
           "label": "自动同步支持的模型",

@@ -306,7 +306,8 @@
           "clearAllTitle": "Clear all supported models?",
           "clearAllDescription": "Are you sure you want to clear all {{count}} models?",
           "willRemove": "Will remove",
-          "codexUnsupported": "Not supported for Codex"
+          "codexUnsupported": "Not supported for Codex",
+          "codexOAuthCredentialsRequired": "Codex channel requires OAuth credentials JSON"
         },
         "autoSyncSupportedModels": {
           "label": "Auto-sync supported models",
