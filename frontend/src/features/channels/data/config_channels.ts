@@ -74,6 +74,14 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-green-100 text-green-800 border-green-200',
     icon: OpenAI,
   },
+  codex: {
+    channelType: 'codex',
+    baseURL: 'https://api.openai.com/v1',
+    defaultModels: ['gpt-5.2', 'gpt-5.2-codex'],
+    apiFormat: OPENAI_RESPONSES,
+    color: 'bg-[#32746D] text-white border-[#32746D]',
+    icon: OpenAI,
+  },
   deepseek: {
     channelType: 'deepseek',
     baseURL: 'https://api.deepseek.com/v1',
@@ -390,12 +398,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
   modelscope: {
     channelType: 'modelscope',
     baseURL: 'https://api-inference.modelscope.cn/v1',
-    defaultModels: [
-      'qwen-plus',
-      'qwen-turbo',
-      'qwen-max',
-      'qwen2.5-72b-instruct',
-    ],
+    defaultModels: ['qwen-plus', 'qwen-turbo', 'qwen-max', 'qwen2.5-72b-instruct'],
     apiFormat: OPENAI_CHAT_COMPLETIONS,
     color: 'bg-purple-100 text-purple-800 border-purple-200',
     icon: ModelScope,
@@ -467,11 +470,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
   claudecode: {
     channelType: 'claudecode',
     baseURL: 'https://api.anthropic.com/v1',
-    defaultModels: [
-      'claude-haiku-4-5',
-      'claude-sonnet-4-5',
-      'claude-opus-4-5',
-    ],
+    defaultModels: ['claude-haiku-4-5', 'claude-sonnet-4-5', 'claude-opus-4-5'],
     apiFormat: ANTHROPIC_MESSAGES,
     color: 'bg-purple-100 text-purple-800 border-purple-200',
     icon: Anthropic,
@@ -518,7 +517,8 @@ export type Provider =
   | 'modelscope'
   | 'bailian'
   | 'jina'
-  | 'github';
+  | 'github'
+  | 'codex';
 
 /**
  * Map channel type to provider
@@ -561,6 +561,7 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   bailian: 'bailian',
   jina: 'jina',
   github: 'github',
+  codex: 'codex',
   claudecode: 'anthropic',
 };
 

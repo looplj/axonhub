@@ -77,6 +77,16 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 			apiKey = ch.Credentials.APIKey
 		}
 
+		if ch.Type == channel.TypeCodex {
+			models := lo.Map(codex.DefaultModels(), func(id string, _ int) ModelIdentify {
+				return ModelIdentify{ID: id}
+			})
+			return &FetchModelsResult{
+				Models: models,
+				Error:  nil,
+			}, nil
+		}
+
 		if ch.Credentials != nil && ch.Credentials.PlatformType == codex.PlatformTypeCodex {
 			models := lo.Map(codex.DefaultModels(), func(id string, _ int) ModelIdentify {
 				return ModelIdentify{ID: id}
@@ -92,6 +102,15 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		}
 	}
 	if apiKey == "" {
+		if channel.Type(input.ChannelType) == channel.TypeCodex {
+			models := lo.Map(codex.DefaultModels(), func(id string, _ int) ModelIdentify {
+				return ModelIdentify{ID: id}
+			})
+			return &FetchModelsResult{
+				Models: models,
+				Error:  nil,
+			}, nil
+		}
 		return &FetchModelsResult{
 			Models: []ModelIdentify{},
 			Error:  lo.ToPtr("API key is required"),

@@ -9,6 +9,7 @@ export type ApiFormat = z.infer<typeof apiFormatSchema>;
 export const channelTypeSchema = z.enum([
   'openai',
   'openai_responses',
+  'codex',
   'anthropic',
   'anthropic_aws',
   'anthropic_gcp',
@@ -209,19 +210,24 @@ export const createChannelInputSchema = z
     }),
   })
   .superRefine((data, ctx) => {
-    if (data.credentials?.platformType === 'codex') {
+    if (data.type === 'codex') {
       const issue = {
         code: 'custom' as const,
-        message: 'Invalid Codex credentials JSON',
+        message: 'channels.dialogs.fields.supportedModels.codexOAuthCredentialsRequired',
         path: ['credentials', 'apiKey'] as const,
+      };
+
+      if (data.credentials?.platformType !== 'codex') {
+        ctx.addIssue(issue);
+        return;
       }
 
-      let json: unknown
+      let json: unknown;
       try {
-        json = JSON.parse(data.credentials.apiKey)
+        json = JSON.parse(data.credentials.apiKey);
       } catch {
-        ctx.addIssue(issue)
-        return
+        ctx.addIssue(issue);
+        return;
       }
 
       const parsed = z
@@ -229,10 +235,10 @@ export const createChannelInputSchema = z
           access_token: z.string().min(1),
           refresh_token: z.string().min(1),
         })
-        .safeParse(json)
+        .safeParse(json);
 
       if (!parsed.success) {
-        ctx.addIssue(issue)
+        ctx.addIssue(issue);
       }
     }
 
@@ -300,6 +306,45 @@ export const updateChannelInputSchema = z
     orderingWeight: z.number().optional(),
   })
   .superRefine((data, ctx) => {
+    if (data.type === 'codex') {
+      const issue = {
+        code: 'custom' as const,
+        message: 'channels.dialogs.fields.supportedModels.codexOAuthCredentialsRequired',
+        path: ['credentials', 'apiKey'] as const,
+      };
+
+      if (!data.credentials) return;
+
+      const platformType = data.credentials.platformType;
+      const apiKey = data.credentials.apiKey;
+
+      if (platformType || apiKey) {
+        if (platformType !== 'codex' || !apiKey) {
+          ctx.addIssue(issue);
+          return;
+        }
+
+        let json: unknown;
+        try {
+          json = JSON.parse(apiKey);
+        } catch {
+          ctx.addIssue(issue);
+          return;
+        }
+
+        const parsed = z
+          .object({
+            access_token: z.string().min(1),
+            refresh_token: z.string().min(1),
+          })
+          .safeParse(json);
+
+        if (!parsed.success) {
+          ctx.addIssue(issue);
+        }
+      }
+    }
+
     // 如果是 anthropic_gcp 类型且提供了 credentials，GCP 字段必填（字段级报错）
     if (data.type === 'anthropic_gcp' && data.credentials) {
       const gcp = data.credentials.gcp;
