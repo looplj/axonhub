@@ -9,6 +9,7 @@ export type ApiFormat = z.infer<typeof apiFormatSchema>;
 export const channelTypeSchema = z.enum([
   'openai',
   'openai_responses',
+  'codex',
   'anthropic',
   'anthropic_aws',
   'anthropic_gcp',
@@ -209,19 +210,24 @@ export const createChannelInputSchema = z
     }),
   })
   .superRefine((data, ctx) => {
-    if (data.credentials?.platformType === 'codex') {
+    if (data.type === 'codex') {
       const issue = {
         code: 'custom' as const,
-        message: 'Invalid Codex credentials JSON',
+        message: 'Codex channel requires OAuth credentials JSON',
         path: ['credentials', 'apiKey'] as const,
+      };
+
+      if (data.credentials?.platformType !== 'codex') {
+        ctx.addIssue(issue);
+        return;
       }
 
-      let json: unknown
+      let json: unknown;
       try {
-        json = JSON.parse(data.credentials.apiKey)
+        json = JSON.parse(data.credentials.apiKey);
       } catch {
-        ctx.addIssue(issue)
-        return
+        ctx.addIssue(issue);
+        return;
       }
 
       const parsed = z
@@ -229,10 +235,10 @@ export const createChannelInputSchema = z
           access_token: z.string().min(1),
           refresh_token: z.string().min(1),
         })
-        .safeParse(json)
+        .safeParse(json);
 
       if (!parsed.success) {
-        ctx.addIssue(issue)
+        ctx.addIssue(issue);
       }
     }
 

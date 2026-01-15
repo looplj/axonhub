@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { X, RefreshCw, Search, ChevronLeft, ChevronRight, PanelLeft, Plus, Trash2, Eye, EyeOff, Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { useSelectedProjectId } from '@/stores/projectStore';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -29,7 +30,8 @@ import {
   useAllChannelNames,
   useAllChannelTags,
 } from '../data/channels';
-import { getDefaultBaseURL, getDefaultModels, CHANNEL_CONFIGS, OPENAI_CHAT_COMPLETIONS } from '../data/config_channels';
+import { codexOAuthExchange, codexOAuthStart } from '../data/codex';
+import { getDefaultBaseURL, getDefaultModels, CHANNEL_CONFIGS, OPENAI_CHAT_COMPLETIONS, OPENAI_RESPONSES } from '../data/config_channels';
 import {
   PROVIDER_CONFIGS,
   getProviderFromChannelType,
@@ -37,8 +39,6 @@ import {
   getChannelTypeForApiFormat,
 } from '../data/config_providers';
 import { Channel, ChannelType, ApiFormat, createChannelInputSchema, updateChannelInputSchema } from '../data/schema';
-import { codexOAuthExchange, codexOAuthStart } from '../data/codex';
-import { useSelectedProjectId } from '@/stores/projectStore';
 
 interface Props {
   currentRow?: Channel;
@@ -106,15 +106,16 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
   const [useCodex, setUseCodex] = useState(() => {
     if (initialRow) {
-      return initialRow.credentials?.platformType === 'codex'
+      return initialRow.type === 'codex';
     }
-    return false
-  })
-  const [codexSessionId, setCodexSessionId] = useState<string | null>(null)
-  const [codexAuthUrl, setCodexAuthUrl] = useState<string | null>(null)
-  const [codexCallbackUrl, setCodexCallbackUrl] = useState('')
-  const [isCodexStarting, setIsCodexStarting] = useState(false)
-  const [isCodexExchanging, setIsCodexExchanging] = useState(false)
+    return false;
+  });
+
+  const [codexSessionId, setCodexSessionId] = useState<string | null>(null);
+  const [codexAuthUrl, setCodexAuthUrl] = useState<string | null>(null);
+  const [codexCallbackUrl, setCodexCallbackUrl] = useState('');
+  const [isCodexStarting, setIsCodexStarting] = useState(false);
+  const [isCodexExchanging, setIsCodexExchanging] = useState(false);
 
   // Provider-based selection state
   const [selectedProvider, setSelectedProvider] = useState<string>(() => {
@@ -162,20 +163,19 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
   useEffect(() => {
     if (!open) {
-      hasAutoSetDuplicateNameRef.current = false
-      setCodexSessionId(null)
-      setCodexAuthUrl(null)
-      setCodexCallbackUrl('')
-      setIsCodexStarting(false)
-      setIsCodexExchanging(false)
+      hasAutoSetDuplicateNameRef.current = false;
+      setCodexSessionId(null);
+      setCodexAuthUrl(null);
+      setCodexCallbackUrl('');
+      setIsCodexStarting(false);
+      setIsCodexExchanging(false);
     }
-  }, [open])
+  }, [open]);
 
-  // Keep Codex toggle in sync with loaded row
   useEffect(() => {
-    if (!open) return
-    setUseCodex(initialRow?.credentials?.platformType === 'codex')
-  }, [open, initialRow])
+    if (!open) return;
+    setUseCodex(initialRow?.type === 'codex');
+  }, [open, initialRow]);
 
   useEffect(() => {
     if (!open || !isEdit) return;
@@ -344,6 +344,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
   const selectedType = form.watch('type') as ChannelType | undefined;
 
+  const isCodexType = (selectedType || derivedChannelType) === 'codex';
+
   const baseURLPlaceholder = useMemo(() => {
     const currentType = selectedType || derivedChannelType;
     const defaultURL = getDefaultBaseURL(currentType);
@@ -366,6 +368,22 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         setUseAnthropicAws(false);
         setUseClaudeCode(false);
       }
+
+      if (provider === 'codex') {
+        setSelectedApiFormat(OPENAI_RESPONSES);
+        form.setValue('type', 'codex');
+        form.setValue('credentials.platformType', 'codex');
+        if (!isDuplicate) {
+          const baseURL = getDefaultBaseURL('codex');
+          if (baseURL) {
+            form.resetField('baseURL', { defaultValue: baseURL });
+          }
+        }
+        setFetchedModels([]);
+        setUseFetchedModels(false);
+        return;
+      }
+
       const formats = getApiFormatsForProvider(provider);
       // Default to first available format
       const newFormat = formats[0] || 'openai/chat_completions';
@@ -390,12 +408,14 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         setUseFetchedModels(false);
       }
     },
-    [isEdit, form, useGeminiVertex, useAnthropicAws]
+    [isEdit, form, useGeminiVertex, useAnthropicAws, isDuplicate]
   );
 
   const handleApiFormatChange = useCallback(
     (format: ApiFormat) => {
       if (isEdit) return;
+      if (selectedProvider === 'codex') return;
+
       setSelectedApiFormat(format);
 
       // Reset vertex checkbox if not gemini/contents
@@ -427,7 +447,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         }
       }
     },
-    [isEdit, selectedProvider, form, useGeminiVertex, useAnthropicAws]
+    [isEdit, selectedProvider, form, useGeminiVertex, useAnthropicAws, isDuplicate]
   );
 
   const handleGeminiVertexChange = useCallback(
@@ -499,56 +519,41 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     [isEdit, selectedApiFormat, form, isDuplicate]
   );
 
-  const handleCodexChange = useCallback(
-    (checked: boolean) => {
-      setUseCodex(checked)
-      if (checked) {
-        form.setValue('credentials.platformType', 'codex')
-      } else {
-        form.setValue('credentials.platformType', '')
-        setCodexSessionId(null)
-        setCodexAuthUrl(null)
-        setCodexCallbackUrl('')
-      }
-    },
-    [form]
-  )
-
   const startCodexOAuth = useCallback(async () => {
     if (!selectedProjectId) {
-      toast.error('Please select a project first')
-      return
+      toast.error('Please select a project first');
+      return;
     }
 
-    setIsCodexStarting(true)
+    setIsCodexStarting(true);
     try {
-      const result = await codexOAuthStart({ 'X-Project-ID': selectedProjectId })
-      setCodexSessionId(result.session_id)
-      setCodexAuthUrl(result.auth_url)
+      const result = await codexOAuthStart({ 'X-Project-ID': selectedProjectId });
+      setCodexSessionId(result.session_id);
+      setCodexAuthUrl(result.auth_url);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      toast.error(error instanceof Error ? error.message : String(error));
     } finally {
-      setIsCodexStarting(false)
+      setIsCodexStarting(false);
     }
-  }, [selectedProjectId])
+  }, [selectedProjectId]);
 
   const exchangeCodexOAuth = useCallback(async () => {
     if (!selectedProjectId) {
-      toast.error('Please select a project first')
-      return
+      toast.error('Please select a project first');
+      return;
     }
 
     if (!codexSessionId) {
-      toast.error('Missing OAuth session')
-      return
+      toast.error('Missing OAuth session');
+      return;
     }
 
     if (!codexCallbackUrl.trim()) {
-      toast.error('Please paste the callback URL')
-      return
+      toast.error('Please paste the callback URL');
+      return;
     }
 
-    setIsCodexExchanging(true)
+    setIsCodexExchanging(true);
     try {
       const result = await codexOAuthExchange(
         {
@@ -556,25 +561,36 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           callback_url: codexCallbackUrl.trim(),
         },
         { 'X-Project-ID': selectedProjectId }
-      )
+      );
 
-      form.setValue('credentials.apiKey', result.credentials)
-      form.setValue('credentials.platformType', 'codex')
-      toast.success('Codex credentials imported')
+      form.setValue('credentials.apiKey', result.credentials);
+      form.setValue('credentials.platformType', 'codex');
+      toast.success('Codex credentials imported');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      toast.error(error instanceof Error ? error.message : String(error));
     } finally {
-      setIsCodexExchanging(false)
+      setIsCodexExchanging(false);
     }
-  }, [selectedProjectId, codexSessionId, codexCallbackUrl, form])
+  }, [selectedProjectId, codexSessionId, codexCallbackUrl, form]);
 
   useEffect(() => {
     if (isEdit) return;
-    if (!availableApiFormats.includes(selectedApiFormat)) {
-      const fallbackFormat = availableApiFormats[0] || OPENAI_CHAT_COMPLETIONS;
-      handleApiFormatChange(fallbackFormat);
+    if (!isCodexType) {
+      setUseCodex(false);
+      setCodexSessionId(null);
+      setCodexAuthUrl(null);
+      setCodexCallbackUrl('');
+      form.setValue('credentials.platformType', '');
+      return;
     }
-  }, [availableApiFormats, selectedApiFormat, handleApiFormatChange, isEdit]);
+
+    setUseCodex(true);
+    form.setValue('credentials.platformType', 'codex');
+    const baseURL = getDefaultBaseURL('codex');
+    if (baseURL) {
+      form.resetField('baseURL', { defaultValue: baseURL });
+    }
+  }, [isEdit, isCodexType, form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     // Check if there are selected fetched models that haven't been confirmed
@@ -595,6 +611,38 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         ...valuesForSubmit,
         supportedModels,
       };
+
+      if (isCodexType) {
+        const platformType = valuesForSubmit.credentials?.platformType;
+        const apiKey = valuesForSubmit.credentials?.apiKey || '';
+        if (platformType !== 'codex') {
+          toast.error('Codex channel requires OAuth credentials');
+          return;
+        }
+
+        try {
+          const json = JSON.parse(apiKey);
+          const parsed = z
+            .object({
+              access_token: z.string().min(1),
+              refresh_token: z.string().min(1),
+            })
+            .safeParse(json);
+
+          if (!parsed.success) {
+            toast.error('Codex channel requires OAuth credentials');
+            return;
+          }
+        } catch {
+          toast.error('Codex channel requires OAuth credentials');
+          return;
+        }
+
+        const baseURL = getDefaultBaseURL('codex');
+        if (baseURL) {
+          dataWithModels.baseURL = baseURL;
+        }
+      }
 
       if (isEdit && currentRow) {
         // For edit mode, only include credentials if user actually entered new values
@@ -639,6 +687,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             .filter((key) => key.length > 0) || [];
 
         if (apiKeys.length > 1) {
+          if (isCodexType) {
+            toast.error('Codex channel does not support bulk create');
+            return;
+          }
+
           const settings = values.settings ?? duplicateFromRow?.settings ?? undefined;
           // Bulk create: use bulk mutation
           await bulkCreateChannels.mutateAsync({
@@ -744,7 +797,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       const result = await fetchModels.mutateAsync({
         channelType,
         baseURL,
-        apiKey: !isEdit ? firstApiKey : firstApiKey || undefined,
+        apiKey: isCodexType ? undefined : !isEdit ? firstApiKey : firstApiKey || undefined,
         channelID: isEdit ? currentRow?.id : undefined,
       });
 
@@ -765,11 +818,15 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     } catch (_error) {
       // Error is already handled by the mutation
     }
-  }, [fetchModels, form, isEdit, currentRow]);
+  }, [fetchModels, form, isEdit, currentRow, isCodexType]);
 
   const canFetchModels = () => {
     const baseURL = form.watch('baseURL');
     const apiKey = form.watch('credentials.apiKey');
+
+    if (isCodexType) {
+      return !!baseURL;
+    }
 
     if (isEdit) {
       return !!baseURL;
@@ -975,7 +1032,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
                     {/* Right Side - Form Fields */}
                     <div className='flex-1 space-y-6'>
-                      {selectedProvider !== 'jina' && (
+                      {selectedProvider !== 'jina' && selectedProvider !== 'codex' && (
                         <FormItem className='grid grid-cols-8 items-start gap-x-6'>
                           <FormLabel className='col-span-2 pt-2 text-right font-medium'>
                             {t('channels.dialogs.fields.apiFormat.label')}
@@ -999,9 +1056,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             {selectedApiFormat === 'gemini/contents' && (
                               <div className='mt-3'>
                                 <label
-                                  className={`flex items-center gap-2 text-sm ${
-                                    isEdit ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
-                                  }`}
+                                  className={`flex items-center gap-2 text-sm ${isEdit ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                                 >
                                   <Checkbox
                                     checked={useGeminiVertex}
@@ -1015,9 +1070,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             {selectedApiFormat === 'anthropic/messages' && selectedProvider === 'anthropic' && (
                               <div className='mt-3 space-y-2'>
                                 <label
-                                  className={`flex items-center gap-2 text-sm ${
-                                    isEdit ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
-                                  }`}
+                                  className={`flex items-center gap-2 text-sm ${isEdit ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                                 >
                                   <Checkbox
                                     checked={useAnthropicAws}
@@ -1027,9 +1080,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   <span>{t('channels.dialogs.fields.apiFormat.anthropicAWS.label')}</span>
                                 </label>
                                 <label
-                                  className={`flex items-center gap-2 text-sm ${
-                                    isEdit ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
-                                  }`}
+                                  className={`flex items-center gap-2 text-sm ${isEdit ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                                 >
                                   <Checkbox
                                     checked={useClaudeCode}
@@ -1040,66 +1091,65 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 </label>
                               </div>
                             )}
+                          </div>
+                        </FormItem>
+                      )}
+                      {selectedProvider === 'codex' && (
+                        <FormItem className='grid grid-cols-8 items-start gap-x-6'>
+                          <FormLabel className='col-span-2 pt-2 text-right font-medium'>
+                            {t('channels.dialogs.fields.apiFormat.label')}
+                          </FormLabel>
+                          <div className='col-span-6 space-y-1'>
+                            <div className='text-sm'>{getApiFormatLabel(OPENAI_RESPONSES)}</div>
+                            <p className='text-muted-foreground mt-1 text-xs'>{t('channels.dialogs.fields.apiFormat.editDisabled')}</p>
 
-                            {selectedProvider === 'openai' &&
-                              (selectedApiFormat === 'openai/chat_completions' || selectedApiFormat === 'openai/responses') && (
-                                <div className='mt-3 space-y-2'>
-                                  <label className='flex items-center gap-2 text-sm'>
-                                    <Checkbox checked={useCodex} onCheckedChange={(checked) => handleCodexChange(checked === true)} />
-                                    <span>{t('channels.dialogs.fields.apiFormat.codex.label')}</span>
-                                  </label>
-
-                                  {useCodex && (
-                                    <div className='rounded-md border p-3'>
-                                      <div className='flex flex-wrap items-center gap-2'>
-                                        <Button type='button' variant='secondary' onClick={startCodexOAuth} disabled={isCodexStarting}>
-                                          {isCodexStarting ? 'Starting...' : 'Start OAuth'}
-                                        </Button>
-                                        {codexAuthUrl && (
-                                          <>
-                                            <Button
-                                              type='button'
-                                              variant='ghost'
-                                              onClick={() => window.open(codexAuthUrl, '_blank', 'noopener,noreferrer')}
-                                            >
-                                              Open OAuth Link
-                                            </Button>
-                                          </>
-                                        )}
-                                      </div>
-
-                                      {codexAuthUrl && (
-                                        <div className='mt-3 space-y-2'>
-                                          <FormLabel className='text-sm font-medium'>OAuth Authorization URL</FormLabel>
-                                          <Textarea
-                                            value={codexAuthUrl}
-                                            readOnly
-                                            className='min-h-[60px] resize-none font-mono text-xs'
-                                            placeholder='OAuth URL will appear here after starting OAuth'
-                                          />
-                                        </div>
-                                      )}
-
-                                      <div className='mt-3 space-y-2'>
-                                        <FormLabel className='text-sm font-medium'>Callback URL</FormLabel>
-                                        <Textarea
-                                          value={codexCallbackUrl}
-                                          onChange={(e) => setCodexCallbackUrl(e.target.value)}
-                                          placeholder='Paste the full callback URL here'
-                                          className='min-h-[80px] resize-y font-mono text-xs'
-                                        />
-                                        <Button type='button' onClick={exchangeCodexOAuth} disabled={isCodexExchanging || !codexSessionId}>
-                                          {isCodexExchanging ? 'Exchanging...' : 'Exchange & Fill API Key'}
-                                        </Button>
-                                      </div>
-
-                                      <p className='text-muted-foreground mt-2 text-xs'>
-                                        {t('channels.dialogs.fields.apiFormat.codex.description')}
-                                      </p>
-                                    </div>
+                            <div className='mt-3 space-y-2'>
+                              <div className='rounded-md border p-3'>
+                                <div className='flex flex-wrap items-center gap-2'>
+                                  <Button type='button' variant='secondary' onClick={startCodexOAuth} disabled={isCodexStarting}>
+                                    {isCodexStarting ? 'Starting...' : 'Start OAuth'}
+                                  </Button>
+                                  {codexAuthUrl && (
+                                    <Button
+                                      type='button'
+                                      variant='ghost'
+                                      onClick={() => window.open(codexAuthUrl, '_blank', 'noopener,noreferrer')}
+                                    >
+                                      Open OAuth Link
+                                    </Button>
                                   )}
                                 </div>
-                              )}
+
+                                {codexAuthUrl && (
+                                  <div className='mt-3 space-y-2'>
+                                    <FormLabel className='text-sm font-medium'>OAuth Authorization URL</FormLabel>
+                                    <Textarea
+                                      value={codexAuthUrl}
+                                      readOnly
+                                      className='min-h-[60px] resize-none font-mono text-xs'
+                                      placeholder='OAuth URL will appear here after starting OAuth'
+                                    />
+                                  </div>
+                                )}
+
+                                <div className='mt-3 space-y-2'>
+                                  <FormLabel className='text-sm font-medium'>Callback URL</FormLabel>
+                                  <Textarea
+                                    value={codexCallbackUrl}
+                                    onChange={(e) => setCodexCallbackUrl(e.target.value)}
+                                    placeholder='Paste the full callback URL here'
+                                    className='min-h-[80px] resize-y font-mono text-xs'
+                                  />
+                                  <Button type='button' onClick={exchangeCodexOAuth} disabled={isCodexExchanging || !codexSessionId}>
+                                    {isCodexExchanging ? 'Exchanging...' : 'Exchange & Fill API Key'}
+                                  </Button>
+                                </div>
+
+                                <p className='text-muted-foreground mt-2 text-xs'>
+                                  {t('channels.dialogs.fields.apiFormat.codex.description')}
+                                </p>
+                              </div>
+                            </div>
                           </div>
                         </FormItem>
                       )}
@@ -1140,6 +1190,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 autoComplete='off'
                                 aria-invalid={!!fieldState.error}
                                 data-testid='channel-base-url-input'
+                                disabled={isCodexType}
                                 {...field}
                               />
                               <FormMessage />
@@ -1148,7 +1199,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         )}
                       />
 
-                      {selectedType !== 'anthropic_gcp' && (
+                      {!isCodexType && selectedType !== 'anthropic_gcp' && (
                         <FormField
                           control={form.control}
                           name='credentials.apiKey'
@@ -1605,7 +1656,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           <Checkbox checked={isSelected} onCheckedChange={() => toggleFetchedModelSelection(model)} />
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <span className='max-w-[200px] flex-1 cursor-pointer truncate' onClick={() => toggleFetchedModelSelection(model)}>
+                              <span
+                                className='max-w-[200px] flex-1 cursor-pointer truncate'
+                                onClick={() => toggleFetchedModelSelection(model)}
+                              >
                                 {model}
                               </span>
                             </TooltipTrigger>

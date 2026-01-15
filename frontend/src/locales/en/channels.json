@@ -69,6 +69,7 @@
       "bailian": "Bailian (OpenAI)",
       "jina": "Jina",
       "github": "GitHub",
+      "codex": "Codex",
       "claudecode": "Claude Code"
     },
     "providers": {
@@ -95,6 +96,7 @@
       "bailian": "Bailian",
       "jina": "Jina",
       "github": "GitHub",
+      "codex": "Codex",
       "claudecode": "Claude Code"
     },
     "actions": {
@@ -266,7 +268,7 @@
             "editDisabled": "Claude Code settings cannot be changed"
           },
           "codex": {
-            "label": "Use Codex",
+            "label": "Codex OAuth",
             "description": "Authenticate with OpenAI OAuth"
           },
           "formats": {

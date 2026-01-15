@@ -71,6 +71,7 @@
       "bailian": "百炼",
       "jina": "Jina",
       "github": "GitHub",
+      "codex": "Codex",
       "claudecode": "Claude Code"
     },
     "providers": {
@@ -97,6 +98,7 @@
       "bailian": "百炼",
       "jina": "Jina",
       "github": "GitHub",
+      "codex": "Codex",
       "claudecode": "Claude Code"
     },
     "actions": {
@@ -269,7 +271,7 @@
             "editDisabled": "无法更改 Claude Code 设置"
           },
           "codex": {
-            "label": "使用 Codex",
+            "label": "Codex OAuth",
             "description": "通过 OpenAI OAuth 授权"
           },
           "formats": {
