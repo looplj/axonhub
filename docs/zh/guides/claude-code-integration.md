@@ -24,7 +24,7 @@ AxonHub 可以作为 Anthropic 接口的直接替代方案，使 Claude Code 能
 2. 启动 Claude Code，程序会自动读取上述变量并将所有 Anthropic 请求代理到 AxonHub。
 3. （可选）触发一次对话并在 AxonHub 的 Traces 页面确认流量已成功记录。
 
-#### Trace 聚合（可选）
+#### Trace 聚合（重要）
 若希望将 Claude Code 同一次会话的请求聚合到同一条 Trace，可在 `config.yml` 中开启：
 
 ```yaml
@@ -32,6 +32,8 @@ server:
   trace:
     claude_code_trace_enabled: true
 ```
+
+**提示**：开启此功能后，AxonHub 会将同一个 Trace 的请求优先转发到同一个上游渠道，从而大幅提高提供商端的缓存命中率（例如 Anthropic 的 Prompt Caching）。
 
 #### 提示
 - 请务必保密 API Key，可写入 shell profile 或使用密钥管理工具。
