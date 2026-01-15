@@ -247,6 +247,32 @@
           "blockedHint": "Import blocked - fix errors first"
         }
       },
+      "codex": {
+        "buttons": {
+          "startOAuth": "Start OAuth",
+          "starting": "Starting...",
+          "openOAuthLink": "Open OAuth Link",
+          "exchangeAndFillApiKey": "Exchange & Fill API Key",
+          "exchanging": "Exchanging..."
+        },
+        "labels": {
+          "authorizationUrl": "OAuth Authorization URL",
+          "callbackUrl": "Callback URL"
+        },
+        "placeholders": {
+          "authorizationUrl": "OAuth URL will appear here after starting OAuth",
+          "callbackUrl": "Paste the full callback URL here"
+        },
+        "errors": {
+          "projectRequired": "Please select a project first",
+          "sessionMissing": "Missing OAuth session",
+          "callbackUrlRequired": "Please paste the callback URL",
+          "bulkCreateUnsupported": "Codex channel does not support bulk create"
+        },
+        "messages": {
+          "credentialsImported": "Codex credentials imported"
+        }
+      },
       "fields": {
         "name": {
           "label": "Channel Name",

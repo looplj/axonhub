@@ -519,7 +519,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
   const startCodexOAuth = useCallback(async () => {
     if (!selectedProjectId) {
-      toast.error('Please select a project first');
+      toast.error(t('channels.dialogs.codex.errors.projectRequired'));
       return;
     }
 
@@ -537,17 +537,17 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
   const exchangeCodexOAuth = useCallback(async () => {
     if (!selectedProjectId) {
-      toast.error('Please select a project first');
+      toast.error(t('channels.dialogs.codex.errors.projectRequired'));
       return;
     }
 
     if (!codexSessionId) {
-      toast.error('Missing OAuth session');
+      toast.error(t('channels.dialogs.codex.errors.sessionMissing'));
       return;
     }
 
     if (!codexCallbackUrl.trim()) {
-      toast.error('Please paste the callback URL');
+      toast.error(t('channels.dialogs.codex.errors.callbackUrlRequired'));
       return;
     }
 
@@ -563,7 +563,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
       form.setValue('credentials.apiKey', result.credentials);
       form.setValue('credentials.platformType', 'codex');
-      toast.success('Codex credentials imported');
+      toast.success(t('channels.dialogs.codex.messages.credentialsImported'));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error));
     } finally {
@@ -659,8 +659,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
         if (apiKeys.length > 1) {
           if (isCodexType) {
-            toast.error('Codex channel does not support bulk create');
-            return;
+      toast.error(t('channels.dialogs.codex.errors.bulkCreateUnsupported'));
+      return;
           }
 
           const settings = values.settings ?? duplicateFromRow?.settings ?? undefined;
@@ -1078,7 +1078,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               <div className='rounded-md border p-3'>
                                 <div className='flex flex-wrap items-center gap-2'>
                                   <Button type='button' variant='secondary' onClick={startCodexOAuth} disabled={isCodexStarting}>
-                                    {isCodexStarting ? 'Starting...' : 'Start OAuth'}
+                                    {isCodexStarting
+                                      ? t('channels.dialogs.codex.buttons.starting')
+                                      : t('channels.dialogs.codex.buttons.startOAuth')}
                                   </Button>
                                   {codexAuthUrl && (
                                     <Button
@@ -1086,33 +1088,37 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                       variant='ghost'
                                       onClick={() => window.open(codexAuthUrl, '_blank', 'noopener,noreferrer')}
                                     >
-                                      Open OAuth Link
+                                      {t('channels.dialogs.codex.buttons.openOAuthLink')}
                                     </Button>
                                   )}
                                 </div>
 
                                 {codexAuthUrl && (
                                   <div className='mt-3 space-y-2'>
-                                    <FormLabel className='text-sm font-medium'>OAuth Authorization URL</FormLabel>
+                                    <FormLabel className='text-sm font-medium'>
+                                      {t('channels.dialogs.codex.labels.authorizationUrl')}
+                                    </FormLabel>
                                     <Textarea
                                       value={codexAuthUrl}
                                       readOnly
                                       className='min-h-[60px] resize-none font-mono text-xs'
-                                      placeholder='OAuth URL will appear here after starting OAuth'
+                                      placeholder={t('channels.dialogs.codex.placeholders.authorizationUrl')}
                                     />
                                   </div>
                                 )}
 
                                 <div className='mt-3 space-y-2'>
-                                  <FormLabel className='text-sm font-medium'>Callback URL</FormLabel>
+                                  <FormLabel className='text-sm font-medium'>{t('channels.dialogs.codex.labels.callbackUrl')}</FormLabel>
                                   <Textarea
                                     value={codexCallbackUrl}
                                     onChange={(e) => setCodexCallbackUrl(e.target.value)}
-                                    placeholder='Paste the full callback URL here'
+                                    placeholder={t('channels.dialogs.codex.placeholders.callbackUrl')}
                                     className='min-h-[80px] resize-y font-mono text-xs'
                                   />
                                   <Button type='button' onClick={exchangeCodexOAuth} disabled={isCodexExchanging || !codexSessionId}>
-                                    {isCodexExchanging ? 'Exchanging...' : 'Exchange & Fill API Key'}
+                                    {isCodexExchanging
+                                      ? t('channels.dialogs.codex.buttons.exchanging')
+                                      : t('channels.dialogs.codex.buttons.exchangeAndFillApiKey')}
                                   </Button>
                                 </div>
 
