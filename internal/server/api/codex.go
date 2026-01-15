@@ -226,7 +226,7 @@ func (h *CodexHandlers) Exchange(c *gin.Context) {
 	}
 
 	if err := h.stateCache.Delete(ctx, cacheKey); err != nil {
-		log.Warn(ctx, "failed to delete used oauth state from cache", log.Int("project_id", projectID), log.Cause(err))
+		log.Warn(ctx, "failed to delete used oauth state from cache", log.Int("project_id", projectID), log.String("session_id", req.SessionID), log.Cause(err))
 	}
 
 	code, callbackState, err := parseCodexCallbackURL(req.CallbackURL)
