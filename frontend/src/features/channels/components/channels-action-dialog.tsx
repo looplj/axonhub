@@ -372,11 +372,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       if (provider === 'codex') {
         setSelectedApiFormat(OPENAI_RESPONSES);
         form.setValue('type', 'codex');
-        form.setValue('credentials.platformType', 'codex');
-        const baseURL = getDefaultBaseURL('codex');
-        if (baseURL) {
-          form.resetField('baseURL', { defaultValue: baseURL });
-        }
         setFetchedModels([]);
         setUseFetchedModels(false);
         return;
