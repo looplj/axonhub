@@ -35,13 +35,13 @@ export function BrandSettings() {
 
     // Validate file type
     if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.type)) {
-      toast.error(t('system.general.brandLogo.invalidFormat'));
+      toast.error(t('system.brand.brandLogo.invalidFormat'));
       return;
     }
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error(t('system.general.brandLogo.fileTooLarge'));
+    // Validate file size (max 2MB to match description)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error(t('system.brand.brandLogo.fileTooLarge'));
       return;
     }
 
@@ -51,7 +51,7 @@ export function BrandSettings() {
       img.onload = () => {
         // Check if image is square
         if (img.width !== img.height) {
-          toast.error(t('system.general.brandLogo.notSquare'));
+          toast.error(t('system.brand.brandLogo.notSquare'));
           return;
         }
         setBrandLogo(e.target?.result as string);
@@ -95,26 +95,26 @@ export function BrandSettings() {
     <div className='space-y-6'>
       <Card>
         <CardHeader>
-          <CardTitle>{t('system.general.title')}</CardTitle>
-          <CardDescription>{t('system.general.description')}</CardDescription>
+          <CardTitle>{t('system.brand.title')}</CardTitle>
+          <CardDescription>{t('system.brand.description')}</CardDescription>
         </CardHeader>
         <CardContent className='space-y-6'>
           <div className='space-y-2'>
-            <Label htmlFor='brand-name'>{t('system.general.brandName.label')}</Label>
+            <Label htmlFor='brand-name'>{t('system.brand.brandName.label')}</Label>
             <Input
               id='brand-name'
               type='text'
-              placeholder={t('system.general.brandName.placeholder')}
+              placeholder={t('system.brand.brandName.placeholder')}
               value={brandName}
               onChange={(e) => setBrandName(e.target.value)}
               disabled={isLoading}
               className='max-w-md'
             />
-            <div className='text-muted-foreground text-sm'>{t('system.general.brandName.description')}</div>
+            <div className='text-muted-foreground text-sm'>{t('system.brand.brandName.description')}</div>
           </div>
 
           <div className='space-y-2'>
-            <Label htmlFor='brand-logo'>{t('system.general.brandLogo.label')}</Label>
+            <Label htmlFor='brand-logo'>{t('system.brand.brandLogo.label')}</Label>
             {brandLogo && (
               <div className='mb-4 flex justify-start'>
                 <div className='relative'>
@@ -157,9 +157,9 @@ export function BrandSettings() {
                 className='w-full max-w-md'
               >
                 <Upload className='mr-2 h-4 w-4' />
-                {t('system.general.brandLogo.upload')}
+                {t('system.brand.brandLogo.upload')}
               </Button>
-              <div className='text-muted-foreground text-sm'>{t('system.general.brandLogo.description')}</div>
+              <div className='text-muted-foreground text-sm'>{t('system.brand.brandLogo.description')}</div>
             </div>
           </div>
         </CardContent>

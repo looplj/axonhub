@@ -10,6 +10,8 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
+	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -28,7 +30,6 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
-
 	"github.com/looplj/axonhub/llm/transformer/openrouter"
 	"github.com/looplj/axonhub/llm/transformer/xai"
 	"github.com/looplj/axonhub/llm/transformer/zai"
@@ -172,6 +173,7 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to create codex outbound transformer: %w", err)
 		}
+
 		return buildChannelWithTransformer(c, transformer, httpClient), nil
 	}
 
@@ -397,7 +399,6 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 	case channel.TypeOpenai, channel.TypeDeepinfra, channel.TypeMinimax,
 		channel.TypePpio, channel.TypeSiliconflow,
 		channel.TypeVercel, channel.TypeAihubmix, channel.TypeBurncloud, channel.TypeGithub:
-
 		transformer, err := openai.NewOutboundTransformerWithConfig(&openai.Config{
 			PlatformType: openai.PlatformOpenAI,
 			BaseURL:      c.BaseURL,
@@ -409,7 +410,6 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 
 		return buildChannelWithTransformer(c, transformer, httpClient), nil
 	case channel.TypeOpenaiResponses:
-
 		transformer, err := responses.NewOutboundTransformerWithConfig(&responses.Config{
 			BaseURL: c.BaseURL,
 			APIKey:  c.Credentials.APIKey,
@@ -449,6 +449,32 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		return buildChannelWithTransformer(c, transformer, httpClient), nil
 	default:
 		return nil, errors.New("unknown channel type")
+	}
+}
+
+// preloadModelPrices loads active model prices for a channel and caches them.
+func (svc *ChannelService) preloadModelPrices(ctx context.Context, ch *Channel) {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	prices, err := svc.entFromContext(ctx).ChannelModelPrice.Query().
+		Where(
+			channelmodelprice.ChannelID(ch.ID),
+			channelmodelprice.DeletedAtEQ(0),
+		).
+		All(ctx)
+	if err != nil {
+		log.Warn(ctx, "failed to preload model prices", log.Int("channel_id", ch.ID), log.Cause(err))
+		return
+	}
+
+	cache := make(map[string]objects.ModelPrice, len(prices))
+	for _, p := range prices {
+		cache[p.ModelID] = p.Price
+	}
+
+	ch.cachedModelPrices = cache
+	if log.DebugEnabled(ctx) {
+		log.Debug(ctx, "preloaded model prices", log.Int("channel_id", ch.ID), log.Int("count", len(cache)))
 	}
 }
 

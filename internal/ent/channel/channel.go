@@ -61,6 +61,8 @@ const (
 	EdgeChannelPerformance = "channel_performance"
 	// EdgeChannelProbes holds the string denoting the channel_probes edge name in mutations.
 	EdgeChannelProbes = "channel_probes"
+	// EdgeChannelModelPrices holds the string denoting the channel_model_prices edge name in mutations.
+	EdgeChannelModelPrices = "channel_model_prices"
 	// Table holds the table name of the channel in the database.
 	Table = "channels"
 	// RequestsTable is the table that holds the requests relation/edge.
@@ -98,6 +100,13 @@ const (
 	ChannelProbesInverseTable = "channel_probes"
 	// ChannelProbesColumn is the table column denoting the channel_probes relation/edge.
 	ChannelProbesColumn = "channel_id"
+	// ChannelModelPricesTable is the table that holds the channel_model_prices relation/edge.
+	ChannelModelPricesTable = "channel_model_prices"
+	// ChannelModelPricesInverseTable is the table name for the ChannelModelPrice entity.
+	// It exists in this package in order to avoid circular dependency with the "channelmodelprice" package.
+	ChannelModelPricesInverseTable = "channel_model_prices"
+	// ChannelModelPricesColumn is the table column denoting the channel_model_prices relation/edge.
+	ChannelModelPricesColumn = "channel_id"
 )
 
 // Columns holds all SQL columns for channel fields.
@@ -377,6 +386,20 @@ func ByChannelProbes(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newChannelProbesStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByChannelModelPricesCount orders the results by channel_model_prices count.
+func ByChannelModelPricesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newChannelModelPricesStep(), opts...)
+	}
+}
+
+// ByChannelModelPrices orders the results by channel_model_prices terms.
+func ByChannelModelPrices(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newChannelModelPricesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newRequestsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -410,6 +433,13 @@ func newChannelProbesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ChannelProbesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, ChannelProbesTable, ChannelProbesColumn),
+	)
+}
+func newChannelModelPricesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ChannelModelPricesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ChannelModelPricesTable, ChannelModelPricesColumn),
 	)
 }
 

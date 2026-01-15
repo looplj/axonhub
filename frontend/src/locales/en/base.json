@@ -207,6 +207,7 @@
       "userSaveFailed": "Failed to save user"
     },
     "success": {
+      "duplicated": "Duplicated successfully",
       "copiedToClipboard": "Copied to clipboard!",
       "roleCreated": "Role created successfully",
       "roleUpdated": "Role updated successfully",
@@ -249,6 +250,41 @@
       },
       "submit": "Initialize System",
       "submitting": "Initializing..."
+    }
+  },
+  "price": {
+    "title": "Model Price",
+    "description": "Set prices for models in channel {{name}}",
+    "addPrice": "Add Price",
+    "noPrices": "No prices configured for this channel.",
+    "model": "Model",
+    "items": "Price Items",
+    "addItem": "Add Price Item",
+    "itemCode": "Item Code",
+    "itemCodes": {
+      "prompt_tokens": "Prompt Tokens",
+      "completion_tokens": "Completion Tokens",
+      "prompt_cached_tokens": "Cached Tokens",
+      "prompt_write_cached_tokens": "Write Cached Tokens"
+    },
+    "mode": "Mode",
+    "mode_flat_fee": "Flat Fee",
+    "mode_usage_per_unit": "Usage Per Unit",
+    "mode_usage_tiered": "Usage Tiered",
+    "tiers": "Tiers",
+    "upTo": "Up To",
+    "pricePerUnit": "Price per Unit",
+    "promptWriteCacheVariants": "Write Cached Variants",
+    "addVariant": "Add Variant",
+    "variantCode": "Variant Code",
+    "variantCodes": {
+      "five_min": "5 min",
+      "one_hour": "1 hour"
+    },
+    "duplicateItemCode": "Duplicate item code",
+    "duplicateVariantCode": "Duplicate variant code",
+    "validation": {
+      "modelRequired": "Model is required"
     }
   },
   "scopes": {

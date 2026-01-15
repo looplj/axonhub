@@ -95,7 +95,8 @@ func newTestRequestService(client *ent.Client) *biz.RequestService {
 		CacheConfig:   xcache.Config{},
 		Executor:      executors.NewPoolScheduleExecutor(),
 	})
-	usageLogService := biz.NewUsageLogService(client, systemService)
+	channelService := biz.NewChannelServiceForTest(client)
+	usageLogService := biz.NewUsageLogService(client, systemService, channelService)
 
 	return biz.NewRequestService(client, systemService, usageLogService, dataStorageService)
 }

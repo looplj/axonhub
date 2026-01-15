@@ -29,7 +29,8 @@ import { ServerSidePagination } from '@/components/server-side-pagination';
 import { useModels } from '../context/models-context';
 import { Model, ModelConnection } from '../data/schema';
 
-const MotionTableRow = motion(TableRow);
+const MotionTableRow = motion.create(TableRow);
+const MotionExpandedRow = motion.create(TableRow);
 
 interface ModelsTableProps {
   columns: ColumnDef<Model>[];

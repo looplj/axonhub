@@ -140,6 +140,11 @@ func Format(v string) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldFormat, v))
 }
 
+// TotalCost applies equality check predicate on the "total_cost" field. It's identical to TotalCostEQ.
+func TotalCost(v float64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldTotalCost, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldCreatedAt, v))
@@ -908,6 +913,56 @@ func FormatEqualFold(v string) predicate.UsageLog {
 // FormatContainsFold applies the ContainsFold predicate on the "format" field.
 func FormatContainsFold(v string) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldContainsFold(FieldFormat, v))
+}
+
+// TotalCostEQ applies the EQ predicate on the "total_cost" field.
+func TotalCostEQ(v float64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldTotalCost, v))
+}
+
+// TotalCostNEQ applies the NEQ predicate on the "total_cost" field.
+func TotalCostNEQ(v float64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNEQ(FieldTotalCost, v))
+}
+
+// TotalCostIn applies the In predicate on the "total_cost" field.
+func TotalCostIn(vs ...float64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIn(FieldTotalCost, vs...))
+}
+
+// TotalCostNotIn applies the NotIn predicate on the "total_cost" field.
+func TotalCostNotIn(vs ...float64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotIn(FieldTotalCost, vs...))
+}
+
+// TotalCostGT applies the GT predicate on the "total_cost" field.
+func TotalCostGT(v float64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGT(FieldTotalCost, v))
+}
+
+// TotalCostGTE applies the GTE predicate on the "total_cost" field.
+func TotalCostGTE(v float64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGTE(FieldTotalCost, v))
+}
+
+// TotalCostLT applies the LT predicate on the "total_cost" field.
+func TotalCostLT(v float64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLT(FieldTotalCost, v))
+}
+
+// TotalCostLTE applies the LTE predicate on the "total_cost" field.
+func TotalCostLTE(v float64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLTE(FieldTotalCost, v))
+}
+
+// CostItemsIsNil applies the IsNil predicate on the "cost_items" field.
+func CostItemsIsNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIsNull(FieldCostItems))
+}
+
+// CostItemsNotNil applies the NotNil predicate on the "cost_items" field.
+func CostItemsNotNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotNull(FieldCostItems))
 }
 
 // HasRequest applies the HasEdge predicate on the "request" edge.

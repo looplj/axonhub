@@ -1,0 +1,33 @@
+type TierCost {
+  upTo: Int
+  units: Int!
+  pricePerUnit: Decimal!
+  subtotal: Decimal!
+}
+
+type CostItem {
+  itemCode: PriceItemCode!
+  mode: PricingMode!
+  quantity: Int!
+  unitPrice: Decimal
+  flatFee: Decimal
+  tierBreakdown: [TierCost!]
+  subtotal: Decimal!
+}
+
+input TierCostInput {
+  upTo: Int
+  units: Int!
+  pricePerUnit: Decimal!
+  subtotal: Decimal!
+}
+
+input CostItemInput {
+  itemCode: PriceItemCode!
+  mode: PricingMode!
+  quantity: Int!
+  unitPrice: Decimal
+  flatFee: Decimal
+  tierBreakdown: [TierCostInput!]
+  subtotal: Decimal!
+}

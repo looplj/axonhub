@@ -93,6 +93,67 @@ var (
 			},
 		},
 	}
+	// ChannelModelPricesColumns holds the columns for the "channel_model_prices" table.
+	ChannelModelPricesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "model_id", Type: field.TypeString},
+		{Name: "price", Type: field.TypeJSON},
+		{Name: "refreance_id", Type: field.TypeString, Unique: true},
+		{Name: "channel_id", Type: field.TypeInt},
+	}
+	// ChannelModelPricesTable holds the schema information for the "channel_model_prices" table.
+	ChannelModelPricesTable = &schema.Table{
+		Name:       "channel_model_prices",
+		Columns:    ChannelModelPricesColumns,
+		PrimaryKey: []*schema.Column{ChannelModelPricesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "channel_model_prices_channels_channel_model_prices",
+				Columns:    []*schema.Column{ChannelModelPricesColumns[7]},
+				RefColumns: []*schema.Column{ChannelsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "channel_model_prices_by_channel_id_model_id",
+				Unique:  true,
+				Columns: []*schema.Column{ChannelModelPricesColumns[7], ChannelModelPricesColumns[4], ChannelModelPricesColumns[3]},
+			},
+		},
+	}
+	// ChannelModelPriceVersionsColumns holds the columns for the "channel_model_price_versions" table.
+	ChannelModelPriceVersionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "channel_id", Type: field.TypeInt},
+		{Name: "model_id", Type: field.TypeString},
+		{Name: "price", Type: field.TypeJSON},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "archived"}},
+		{Name: "effective_start_at", Type: field.TypeTime},
+		{Name: "effective_end_at", Type: field.TypeTime, Nullable: true},
+		{Name: "refreance_id", Type: field.TypeString, Unique: true},
+		{Name: "channel_model_price_id", Type: field.TypeInt},
+	}
+	// ChannelModelPriceVersionsTable holds the schema information for the "channel_model_price_versions" table.
+	ChannelModelPriceVersionsTable = &schema.Table{
+		Name:       "channel_model_price_versions",
+		Columns:    ChannelModelPriceVersionsColumns,
+		PrimaryKey: []*schema.Column{ChannelModelPriceVersionsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "channel_model_price_versions_channel_model_prices_versions",
+				Columns:    []*schema.Column{ChannelModelPriceVersionsColumns[11]},
+				RefColumns: []*schema.Column{ChannelModelPricesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
 	// ChannelOverrideTemplatesColumns holds the columns for the "channel_override_templates" table.
 	ChannelOverrideTemplatesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -623,6 +684,8 @@ var (
 		{Name: "completion_rejected_prediction_tokens", Type: field.TypeInt64, Nullable: true, Default: 0},
 		{Name: "source", Type: field.TypeEnum, Enums: []string{"api", "playground", "test"}, Default: "api"},
 		{Name: "format", Type: field.TypeString, Default: "openai/chat_completions"},
+		{Name: "total_cost", Type: field.TypeFloat64, Default: 0},
+		{Name: "cost_items", Type: field.TypeJSON, Nullable: true},
 		{Name: "channel_id", Type: field.TypeInt, Nullable: true},
 		{Name: "project_id", Type: field.TypeInt, Default: 1},
 		{Name: "request_id", Type: field.TypeInt},
@@ -635,19 +698,19 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "usage_logs_channels_usage_logs",
-				Columns:    []*schema.Column{UsageLogsColumns[16]},
+				Columns:    []*schema.Column{UsageLogsColumns[18]},
 				RefColumns: []*schema.Column{ChannelsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "usage_logs_projects_usage_logs",
-				Columns:    []*schema.Column{UsageLogsColumns[17]},
+				Columns:    []*schema.Column{UsageLogsColumns[19]},
 				RefColumns: []*schema.Column{ProjectsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "usage_logs_requests_usage_logs",
-				Columns:    []*schema.Column{UsageLogsColumns[18]},
+				Columns:    []*schema.Column{UsageLogsColumns[20]},
 				RefColumns: []*schema.Column{RequestsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -656,17 +719,17 @@ var (
 			{
 				Name:    "usage_logs_by_request_id",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[18]},
+				Columns: []*schema.Column{UsageLogsColumns[20]},
 			},
 			{
 				Name:    "usage_logs_by_project_id",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[17]},
+				Columns: []*schema.Column{UsageLogsColumns[19]},
 			},
 			{
 				Name:    "usage_logs_by_channel_id",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[16]},
+				Columns: []*schema.Column{UsageLogsColumns[18]},
 			},
 			{
 				Name:    "usage_logs_by_created_at",
@@ -681,12 +744,12 @@ var (
 			{
 				Name:    "usage_logs_by_project_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[17], UsageLogsColumns[1]},
+				Columns: []*schema.Column{UsageLogsColumns[19], UsageLogsColumns[1]},
 			},
 			{
 				Name:    "usage_logs_by_channel_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[16], UsageLogsColumns[1]},
+				Columns: []*schema.Column{UsageLogsColumns[18], UsageLogsColumns[1]},
 			},
 		},
 	}
@@ -823,6 +886,8 @@ var (
 	Tables = []*schema.Table{
 		APIKeysTable,
 		ChannelsTable,
+		ChannelModelPricesTable,
+		ChannelModelPriceVersionsTable,
 		ChannelOverrideTemplatesTable,
 		ChannelPerformancesTable,
 		ChannelProbesTable,
@@ -847,6 +912,8 @@ var (
 func init() {
 	APIKeysTable.ForeignKeys[0].RefTable = ProjectsTable
 	APIKeysTable.ForeignKeys[1].RefTable = UsersTable
+	ChannelModelPricesTable.ForeignKeys[0].RefTable = ChannelsTable
+	ChannelModelPriceVersionsTable.ForeignKeys[0].RefTable = ChannelModelPricesTable
 	ChannelOverrideTemplatesTable.ForeignKeys[0].RefTable = UsersTable
 	ChannelPerformancesTable.ForeignKeys[0].RefTable = ChannelsTable
 	ChannelProbesTable.ForeignKeys[0].RefTable = ChannelsTable

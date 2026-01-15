@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { JsonViewer } from '@/components/json-tree-view';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
+import { useGeneralSettings } from '@/features/system/data/system';
 import { useUsageLogs } from '../../usage-logs/data/usage-logs';
 import { useRequest, useRequestExecutions } from '../data';
 import { ChunksDialog } from './chunks-dialog';
@@ -33,6 +34,7 @@ export default function RequestDetailPage() {
   const [selectedResponseChunks, setSelectedResponseChunks] = useState<any[]>([]);
   const [selectedExecutionChunks, setSelectedExecutionChunks] = useState<any[]>([]);
 
+  const { data: settings } = useGeneralSettings();
   const { data: request, isLoading } = useRequest(requestId);
   const { data: executions } = useRequestExecutions(requestId, {
     first: 10,
@@ -235,6 +237,7 @@ export default function RequestDetailPage() {
               const hasWriteCache = writeCachedTokens > 0;
               const cacheHitRate = hasReadCache ? ((cachedTokens / promptTokens) * 100).toFixed(1) : '0.0';
               const writeCacheRate = hasWriteCache ? ((writeCachedTokens / promptTokens) * 100).toFixed(1) : '0.0';
+              const cost = usage.totalCost || 0;
 
               return (
                 <Card className='border-0 shadow-sm'>
@@ -245,6 +248,12 @@ export default function RequestDetailPage() {
                           <Database className='text-primary h-3.5 w-3.5' />
                         </div>
                         <span className='text-base'>{t('requests.detail.tabs.usage')}</span>
+                        {cost > 0 && (
+                          <div className='ml-2 flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-400'>
+                            <span>{t('requests.columns.cost')}:</span>
+                            <span className='font-mono'>{settings?.currencyCode} {cost.toFixed(6)}</span>
+                          </div>
+                        )}
                       </div>
                       <Badge className='bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' variant='secondary'>
                         {t(`usageLogs.source.${usage.source}`)}

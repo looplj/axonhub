@@ -8,6 +8,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
 
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -67,6 +68,13 @@ func (UsageLog) Fields() []ent.Field {
 		// Additional metadata
 		field.Enum("source").Values("api", "playground", "test").Default("api").Immutable().Comment("Source of the request"),
 		field.String("format").Immutable().Default("openai/chat_completions").Comment("Request format used"),
+
+		// Cost fields
+		field.Float("total_cost").Default(0).Comment("Total cost calculated based on channel model price"),
+		field.JSON("cost_items", []objects.CostItem{}).
+			Default([]objects.CostItem{}).
+			Comment("Detailed cost breakdown items in JSON").
+			Optional(),
 	}
 }
 

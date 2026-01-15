@@ -151,6 +151,14 @@ input UpdateSystemChannelSettingsInput {
   probe: UpdateChannelProbeSettingInput
 }
 
+type SystemGeneralSettings {
+  currencyCode: String!
+}
+
+input UpdateSystemGeneralSettingsInput {
+  currencyCode: String
+}
+
 extend type Mutation {
   updateBrandSettings(input: UpdateBrandSettingsInput!): Boolean!
   updateStoragePolicy(input: UpdateStoragePolicyInput!): Boolean!
@@ -160,6 +168,7 @@ extend type Mutation {
   completeOnboarding(input: CompleteOnboardingInput!): Boolean!
   completeSystemModelSettingOnboarding(input: CompleteSystemModelSettingOnboardingInput!): Boolean!
   updateSystemChannelSettings(input: UpdateSystemChannelSettingsInput!): Boolean!
+  updateSystemGeneralSettings(input: UpdateSystemGeneralSettingsInput!): Boolean!
 }
 
 type SystemVersion {
@@ -189,4 +198,5 @@ extend type Query {
   systemVersion: SystemVersion!
   checkForUpdate: VersionCheck!
   systemChannelSettings: SystemChannelSettings!
+  systemGeneralSettings: SystemGeneralSettings!
 }

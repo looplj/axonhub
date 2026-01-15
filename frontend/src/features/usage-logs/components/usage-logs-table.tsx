@@ -24,7 +24,7 @@ import { UsageLog, UsageLogConnection } from '../data/schema';
 import { DataTableToolbar } from './data-table-toolbar';
 import { useUsageLogsColumns } from './usage-logs-columns';
 
-const MotionTableRow = motion(TableRow);
+const MotionTableRow = motion.create(TableRow);
 
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

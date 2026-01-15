@@ -25,6 +25,7 @@ type ChannelsDialogType =
   | 'errorResolved'
   | 'weight'
   | 'viewModels'
+  | 'price'
   | 'transformOptions';
 
 interface ChannelsContextType {

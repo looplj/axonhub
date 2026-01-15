@@ -5,12 +5,13 @@ import { useTranslation } from 'react-i18next';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { AboutSettings } from './about-settings';
 import { BrandSettings } from './brand-settings';
+import { GeneralSettings } from './general-settings';
 import { RetrySettings } from './retry-settings';
 import { StorageSettings } from './storage-settings';
 import { BackupSettings } from './backup-settings';
 import { usePermissions } from '@/hooks/usePermissions';
 
-type SystemTabKey = 'brand' | 'storage' | 'retry' | 'backup' | 'about';
+type SystemTabKey = 'general' | 'brand' | 'storage' | 'retry' | 'backup' | 'about';
 
 interface SystemSettingsTabsProps {
   initialTab?: SystemTabKey;
@@ -19,7 +20,7 @@ interface SystemSettingsTabsProps {
 export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
   const { t } = useTranslation();
   const { isOwner } = usePermissions();
-  const [activeTab, setActiveTab] = useState<SystemTabKey>('brand');
+  const [activeTab, setActiveTab] = useState<SystemTabKey>('general');
 
   useEffect(() => {
     if (initialTab) {
@@ -29,7 +30,10 @@ export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
 
   return (
     <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as SystemTabKey)} className='w-full'>
-      <TabsList className={`shadow-soft border-border bg-background grid w-full rounded-2xl border ${isOwner ? 'grid-cols-5' : 'grid-cols-4'}`}>
+      <TabsList className={`shadow-soft border-border bg-background grid w-full rounded-2xl border ${isOwner ? 'grid-cols-6' : 'grid-cols-5'}`}>
+        <TabsTrigger value='general' data-value='general'>
+          {t('system.tabs.general')}
+        </TabsTrigger>
         <TabsTrigger value='brand' data-value='brand'>
           {t('system.tabs.brand')}
         </TabsTrigger>
@@ -49,6 +53,9 @@ export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
         </TabsTrigger>
       </TabsList>
       <div className='shadow-soft border-border bg-card mt-6 rounded-2xl border p-6'>
+        <TabsContent value='general' className='mt-0 p-0'>
+          <GeneralSettings />
+        </TabsContent>
         <TabsContent value='brand' className='mt-0 p-0'>
           <BrandSettings />
         </TabsContent>

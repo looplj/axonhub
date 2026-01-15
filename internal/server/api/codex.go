@@ -24,10 +24,11 @@ import (
 
 const (
 	codexAuthorizeURL = "https://auth.openai.com/oauth/authorize"
-	codexTokenURL     = "https://auth.openai.com/oauth/token"
-	codexClientID     = "app_EMoamEEZ73f0CkXaXp7hrann"
-	codexRedirectURI  = "http://localhost:1455/auth/callback"
-	codexScopes       = "openid profile email offline_access"
+	//nolint:gosec // false alert.
+	codexTokenURL    = "https://auth.openai.com/oauth/token"
+	codexClientID    = "app_EMoamEEZ73f0CkXaXp7hrann"
+	codexRedirectURI = "http://localhost:1455/auth/callback"
+	codexScopes      = "openid profile email offline_access"
 
 	codexUserAgent = "codex_cli_rs/0.38.0 (Ubuntu 22.04.0; x86_64) WindowsTerminal"
 )
@@ -51,8 +52,7 @@ func NewCodexHandlers(params CodexHandlersParams) *CodexHandlers {
 	}
 }
 
-type StartCodexOAuthRequest struct {
-}
+type StartCodexOAuthRequest struct{}
 
 type StartCodexOAuthResponse struct {
 	SessionID string `json:"session_id"`
@@ -69,6 +69,7 @@ func generateCodexCodeVerifier() (string, error) {
 	if _, err := rand.Read(b); err != nil {
 		return "", err
 	}
+
 	return base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(b), nil
 }
 
@@ -82,6 +83,7 @@ func generateCodexState() (string, error) {
 	if _, err := rand.Read(b); err != nil {
 		return "", err
 	}
+
 	return base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(b), nil
 }
 
@@ -90,7 +92,7 @@ func codexOAuthCacheKey(projectID int, sessionID string) string {
 }
 
 // StartOAuth creates a PKCE session and returns the authorize URL.
-// POST /admin/codex/oauth/start
+// POST /admin/codex/oauth/start.
 func (h *CodexHandlers) StartOAuth(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -197,7 +199,7 @@ func parseCodexCallbackURL(callbackURL string) (string, string, error) {
 }
 
 // Exchange exchanges callback URL for OAuth credentials JSON.
-// POST /admin/codex/oauth/exchange
+// POST /admin/codex/oauth/exchange.
 func (h *CodexHandlers) Exchange(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -219,6 +221,7 @@ func (h *CodexHandlers) Exchange(c *gin.Context) {
 	}
 
 	cacheKey := codexOAuthCacheKey(projectID, req.SessionID)
+
 	state, err := h.stateCache.Get(ctx, cacheKey)
 	if err != nil {
 		JSONError(c, http.StatusBadRequest, errors.New("invalid or expired oauth session"))
@@ -279,6 +282,7 @@ func (h *CodexHandlers) Exchange(c *gin.Context) {
 	if tokenResp.IDToken != "" {
 		accountID = codex.ExtractChatGPTAccountIDFromJWT(tokenResp.IDToken)
 	}
+
 	if accountID == "" {
 		accountID = codex.ExtractChatGPTAccountIDFromJWT(tokenResp.AccessToken)
 	}

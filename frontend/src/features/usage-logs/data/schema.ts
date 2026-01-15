@@ -26,6 +26,7 @@ export const usageLogSchema = z.object({
   completionRejectedPredictionTokens: z.number().nullable().optional(),
   source: usageLogSourceSchema,
   format: z.string(),
+  totalCost: z.number().nullable().optional(),
 });
 export type UsageLog = z.infer<typeof usageLogSchema>;
 

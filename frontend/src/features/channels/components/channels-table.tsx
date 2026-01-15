@@ -26,8 +26,8 @@ import { useChannels } from '../context/channels-context';
 import { Channel, ChannelConnection } from '../data/schema';
 import { DataTableToolbar } from './data-table-toolbar';
 
-const MotionTableRow = motion(TableRow);
-const MotionExpandedRow = motion(TableRow);
+const MotionTableRow = motion.create(TableRow);
+const MotionExpandedRow = motion.create(TableRow);
 
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

@@ -39,6 +39,7 @@ func TestCodexHandlers_StartOAuth_InvalidJSON(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/admin/codex/oauth/start", bytes.NewBufferString("{"))
 	req.Header.Set("Content-Type", "application/json")
+
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, req)
@@ -50,8 +51,10 @@ func TestCodexHandlers_Exchange_StateDeletedOnTokenExchangeFailure(t *testing.T)
 	gin.SetMode(gin.TestMode)
 
 	var tokenCalls int
+
 	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tokenCalls++
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadGateway)
 		_, _ = w.Write([]byte(`{"error":"bad_gateway"}`))
@@ -64,7 +67,9 @@ func TestCodexHandlers_Exchange_StateDeletedOnTokenExchangeFailure(t *testing.T)
 			if err != nil {
 				return nil, err
 			}
+
 			proxyReq.Header = req.Header.Clone()
+
 			return http.DefaultTransport.RoundTrip(proxyReq)
 		}
 
@@ -88,6 +93,7 @@ func TestCodexHandlers_Exchange_StateDeletedOnTokenExchangeFailure(t *testing.T)
 
 	startReq := httptest.NewRequest(http.MethodPost, "/admin/codex/oauth/start", bytes.NewBufferString("{}"))
 	startReq.Header.Set("Content-Type", "application/json")
+
 	startW := httptest.NewRecorder()
 	router.ServeHTTP(startW, startReq)
 	require.Equal(t, http.StatusOK, startW.Code)
@@ -104,6 +110,7 @@ func TestCodexHandlers_Exchange_StateDeletedOnTokenExchangeFailure(t *testing.T)
 
 	exchangeReq := httptest.NewRequest(http.MethodPost, "/admin/codex/oauth/exchange", bytes.NewBuffer(exchangeBody))
 	exchangeReq.Header.Set("Content-Type", "application/json")
+
 	exchangeW := httptest.NewRecorder()
 	router.ServeHTTP(exchangeW, exchangeReq)
 	require.Equal(t, http.StatusBadGateway, exchangeW.Code)
@@ -111,6 +118,7 @@ func TestCodexHandlers_Exchange_StateDeletedOnTokenExchangeFailure(t *testing.T)
 
 	exchangeReq2 := httptest.NewRequest(http.MethodPost, "/admin/codex/oauth/exchange", bytes.NewBuffer(exchangeBody))
 	exchangeReq2.Header.Set("Content-Type", "application/json")
+
 	exchangeW2 := httptest.NewRecorder()
 	router.ServeHTTP(exchangeW2, exchangeReq2)
 	require.Equal(t, http.StatusBadRequest, exchangeW2.Code)
@@ -130,11 +138,14 @@ func TestCodexHandlers_Exchange_RejectsStateMismatch(t *testing.T) {
 		if req.URL.String() == codexTokenURL {
 			body, _ := io.ReadAll(req.Body)
 			_ = req.Body.Close()
+
 			proxyReq, err := http.NewRequestWithContext(req.Context(), req.Method, tokenServer.URL, bytes.NewBuffer(body))
 			if err != nil {
 				return nil, err
 			}
+
 			proxyReq.Header = req.Header.Clone()
+
 			return http.DefaultTransport.RoundTrip(proxyReq)
 		}
 
@@ -158,6 +169,7 @@ func TestCodexHandlers_Exchange_RejectsStateMismatch(t *testing.T) {
 
 	startReq := httptest.NewRequest(http.MethodPost, "/admin/codex/oauth/start", bytes.NewBufferString("{}"))
 	startReq.Header.Set("Content-Type", "application/json")
+
 	startW := httptest.NewRecorder()
 	router.ServeHTTP(startW, startReq)
 	require.Equal(t, http.StatusOK, startW.Code)
@@ -174,10 +186,12 @@ func TestCodexHandlers_Exchange_RejectsStateMismatch(t *testing.T) {
 
 	exchangeReq := httptest.NewRequest(http.MethodPost, "/admin/codex/oauth/exchange", bytes.NewBuffer(exchangeBody))
 	exchangeReq.Header.Set("Content-Type", "application/json")
+
 	exchangeW := httptest.NewRecorder()
 	router.ServeHTTP(exchangeW, exchangeReq)
 	require.Equal(t, http.StatusBadRequest, exchangeW.Code)
 	require.Contains(t, exchangeW.Body.String(), "oauth state mismatch")
+
 	exchangeBody2, err := json.Marshal(ExchangeCodexOAuthRequest{
 		SessionID:   startResp.SessionID,
 		CallbackURL: "http://localhost:1455/auth/callback?code=test-code&state=" + startResp.SessionID,
@@ -186,11 +200,13 @@ func TestCodexHandlers_Exchange_RejectsStateMismatch(t *testing.T) {
 
 	exchangeReq2 := httptest.NewRequest(http.MethodPost, "/admin/codex/oauth/exchange", bytes.NewBuffer(exchangeBody2))
 	exchangeReq2.Header.Set("Content-Type", "application/json")
+
 	exchangeW2 := httptest.NewRecorder()
 	router.ServeHTTP(exchangeW2, exchangeReq2)
 	require.Equal(t, http.StatusBadRequest, exchangeW2.Code)
 	require.Contains(t, exchangeW2.Body.String(), "invalid or expired oauth session")
 }
+
 func TestCodexHandlers_Exchange_DeletesStateOnSuccess(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -204,11 +220,14 @@ func TestCodexHandlers_Exchange_DeletesStateOnSuccess(t *testing.T) {
 		if req.URL.String() == codexTokenURL {
 			body, _ := io.ReadAll(req.Body)
 			_ = req.Body.Close()
+
 			proxyReq, err := http.NewRequestWithContext(req.Context(), req.Method, tokenServer.URL, bytes.NewBuffer(body))
 			if err != nil {
 				return nil, err
 			}
+
 			proxyReq.Header = req.Header.Clone()
+
 			return http.DefaultTransport.RoundTrip(proxyReq)
 		}
 
@@ -232,6 +251,7 @@ func TestCodexHandlers_Exchange_DeletesStateOnSuccess(t *testing.T) {
 
 	startReq := httptest.NewRequest(http.MethodPost, "/admin/codex/oauth/start", bytes.NewBufferString("{}"))
 	startReq.Header.Set("Content-Type", "application/json")
+
 	startW := httptest.NewRecorder()
 	router.ServeHTTP(startW, startReq)
 	require.Equal(t, http.StatusOK, startW.Code)
@@ -247,12 +267,14 @@ func TestCodexHandlers_Exchange_DeletesStateOnSuccess(t *testing.T) {
 
 	exchangeReq := httptest.NewRequest(http.MethodPost, "/admin/codex/oauth/exchange", bytes.NewBuffer(exchangeBody))
 	exchangeReq.Header.Set("Content-Type", "application/json")
+
 	exchangeW := httptest.NewRecorder()
 	router.ServeHTTP(exchangeW, exchangeReq)
 	require.Equal(t, http.StatusOK, exchangeW.Code)
 
 	exchangeReq2 := httptest.NewRequest(http.MethodPost, "/admin/codex/oauth/exchange", bytes.NewBuffer(exchangeBody))
 	exchangeReq2.Header.Set("Content-Type", "application/json")
+
 	exchangeW2 := httptest.NewRecorder()
 	router.ServeHTTP(exchangeW2, exchangeReq2)
 	require.Equal(t, http.StatusBadRequest, exchangeW2.Code)

@@ -8,6 +8,8 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
+	"github.com/looplj/axonhub/internal/ent/channelmodelpriceversion"
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
@@ -137,6 +139,76 @@ func init() {
 	channelDescOrderingWeight := channelFields[10].Descriptor()
 	// channel.DefaultOrderingWeight holds the default value on creation for the ordering_weight field.
 	channel.DefaultOrderingWeight = channelDescOrderingWeight.Default.(int)
+	channelmodelpriceMixin := schema.ChannelModelPrice{}.Mixin()
+	channelmodelprice.Policy = privacy.NewPolicies(schema.ChannelModelPrice{})
+	channelmodelprice.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := channelmodelprice.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	channelmodelpriceMixinHooks1 := channelmodelpriceMixin[1].Hooks()
+
+	channelmodelprice.Hooks[1] = channelmodelpriceMixinHooks1[0]
+	channelmodelpriceMixinInters1 := channelmodelpriceMixin[1].Interceptors()
+	channelmodelprice.Interceptors[0] = channelmodelpriceMixinInters1[0]
+	channelmodelpriceMixinFields0 := channelmodelpriceMixin[0].Fields()
+	_ = channelmodelpriceMixinFields0
+	channelmodelpriceMixinFields1 := channelmodelpriceMixin[1].Fields()
+	_ = channelmodelpriceMixinFields1
+	channelmodelpriceFields := schema.ChannelModelPrice{}.Fields()
+	_ = channelmodelpriceFields
+	// channelmodelpriceDescCreatedAt is the schema descriptor for created_at field.
+	channelmodelpriceDescCreatedAt := channelmodelpriceMixinFields0[0].Descriptor()
+	// channelmodelprice.DefaultCreatedAt holds the default value on creation for the created_at field.
+	channelmodelprice.DefaultCreatedAt = channelmodelpriceDescCreatedAt.Default.(func() time.Time)
+	// channelmodelpriceDescUpdatedAt is the schema descriptor for updated_at field.
+	channelmodelpriceDescUpdatedAt := channelmodelpriceMixinFields0[1].Descriptor()
+	// channelmodelprice.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	channelmodelprice.DefaultUpdatedAt = channelmodelpriceDescUpdatedAt.Default.(func() time.Time)
+	// channelmodelprice.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	channelmodelprice.UpdateDefaultUpdatedAt = channelmodelpriceDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// channelmodelpriceDescDeletedAt is the schema descriptor for deleted_at field.
+	channelmodelpriceDescDeletedAt := channelmodelpriceMixinFields1[0].Descriptor()
+	// channelmodelprice.DefaultDeletedAt holds the default value on creation for the deleted_at field.
+	channelmodelprice.DefaultDeletedAt = channelmodelpriceDescDeletedAt.Default.(int)
+	channelmodelpriceversionMixin := schema.ChannelModelPriceVersion{}.Mixin()
+	channelmodelpriceversion.Policy = privacy.NewPolicies(schema.ChannelModelPriceVersion{})
+	channelmodelpriceversion.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := channelmodelpriceversion.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	channelmodelpriceversionMixinHooks1 := channelmodelpriceversionMixin[1].Hooks()
+
+	channelmodelpriceversion.Hooks[1] = channelmodelpriceversionMixinHooks1[0]
+	channelmodelpriceversionMixinInters1 := channelmodelpriceversionMixin[1].Interceptors()
+	channelmodelpriceversion.Interceptors[0] = channelmodelpriceversionMixinInters1[0]
+	channelmodelpriceversionMixinFields0 := channelmodelpriceversionMixin[0].Fields()
+	_ = channelmodelpriceversionMixinFields0
+	channelmodelpriceversionMixinFields1 := channelmodelpriceversionMixin[1].Fields()
+	_ = channelmodelpriceversionMixinFields1
+	channelmodelpriceversionFields := schema.ChannelModelPriceVersion{}.Fields()
+	_ = channelmodelpriceversionFields
+	// channelmodelpriceversionDescCreatedAt is the schema descriptor for created_at field.
+	channelmodelpriceversionDescCreatedAt := channelmodelpriceversionMixinFields0[0].Descriptor()
+	// channelmodelpriceversion.DefaultCreatedAt holds the default value on creation for the created_at field.
+	channelmodelpriceversion.DefaultCreatedAt = channelmodelpriceversionDescCreatedAt.Default.(func() time.Time)
+	// channelmodelpriceversionDescUpdatedAt is the schema descriptor for updated_at field.
+	channelmodelpriceversionDescUpdatedAt := channelmodelpriceversionMixinFields0[1].Descriptor()
+	// channelmodelpriceversion.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	channelmodelpriceversion.DefaultUpdatedAt = channelmodelpriceversionDescUpdatedAt.Default.(func() time.Time)
+	// channelmodelpriceversion.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	channelmodelpriceversion.UpdateDefaultUpdatedAt = channelmodelpriceversionDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// channelmodelpriceversionDescDeletedAt is the schema descriptor for deleted_at field.
+	channelmodelpriceversionDescDeletedAt := channelmodelpriceversionMixinFields1[0].Descriptor()
+	// channelmodelpriceversion.DefaultDeletedAt holds the default value on creation for the deleted_at field.
+	channelmodelpriceversion.DefaultDeletedAt = channelmodelpriceversionDescDeletedAt.Default.(int)
 	channeloverridetemplateMixin := schema.ChannelOverrideTemplate{}.Mixin()
 	channeloverridetemplate.Policy = privacy.NewPolicies(schema.ChannelOverrideTemplate{})
 	channeloverridetemplate.Hooks[0] = func(next ent.Mutator) ent.Mutator {
@@ -686,6 +758,14 @@ func init() {
 	usagelogDescFormat := usagelogFields[15].Descriptor()
 	// usagelog.DefaultFormat holds the default value on creation for the format field.
 	usagelog.DefaultFormat = usagelogDescFormat.Default.(string)
+	// usagelogDescTotalCost is the schema descriptor for total_cost field.
+	usagelogDescTotalCost := usagelogFields[16].Descriptor()
+	// usagelog.DefaultTotalCost holds the default value on creation for the total_cost field.
+	usagelog.DefaultTotalCost = usagelogDescTotalCost.Default.(float64)
+	// usagelogDescCostItems is the schema descriptor for cost_items field.
+	usagelogDescCostItems := usagelogFields[17].Descriptor()
+	// usagelog.DefaultCostItems holds the default value on creation for the cost_items field.
+	usagelog.DefaultCostItems = usagelogDescCostItems.Default.([]objects.CostItem)
 	userMixin := schema.User{}.Mixin()
 	user.Policy = privacy.NewPolicies(schema.User{})
 	user.Hooks[0] = func(next ent.Mutator) ent.Mutator {

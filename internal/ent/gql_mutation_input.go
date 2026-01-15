@@ -1031,6 +1031,8 @@ type CreateUsageLogInput struct {
 	CompletionRejectedPredictionTokens *int64
 	Source                             *usagelog.Source
 	Format                             *string
+	TotalCost                          *float64
+	CostItems                          []objects.CostItem
 	RequestID                          int
 	ProjectID                          int
 	ChannelID                          *int
@@ -1075,6 +1077,12 @@ func (i *CreateUsageLogInput) Mutate(m *UsageLogMutation) {
 	if v := i.Format; v != nil {
 		m.SetFormat(*v)
 	}
+	if v := i.TotalCost; v != nil {
+		m.SetTotalCost(*v)
+	}
+	if v := i.CostItems; v != nil {
+		m.SetCostItems(v)
+	}
 	m.SetRequestID(i.RequestID)
 	m.SetProjectID(i.ProjectID)
 	if v := i.ChannelID; v != nil {
@@ -1107,6 +1115,10 @@ type UpdateUsageLogInput struct {
 	CompletionAcceptedPredictionTokens      *int64
 	ClearCompletionRejectedPredictionTokens bool
 	CompletionRejectedPredictionTokens      *int64
+	TotalCost                               *float64
+	ClearCostItems                          bool
+	CostItems                               []objects.CostItem
+	AppendCostItems                         []objects.CostItem
 	ClearChannel                            bool
 	ChannelID                               *int
 }
@@ -1163,6 +1175,18 @@ func (i *UpdateUsageLogInput) Mutate(m *UsageLogMutation) {
 	}
 	if v := i.CompletionRejectedPredictionTokens; v != nil {
 		m.SetCompletionRejectedPredictionTokens(*v)
+	}
+	if v := i.TotalCost; v != nil {
+		m.SetTotalCost(*v)
+	}
+	if i.ClearCostItems {
+		m.ClearCostItems()
+	}
+	if v := i.CostItems; v != nil {
+		m.SetCostItems(v)
+	}
+	if i.AppendCostItems != nil {
+		m.AppendCostItems(i.CostItems)
 	}
 	if i.ClearChannel {
 		m.ClearChannel()

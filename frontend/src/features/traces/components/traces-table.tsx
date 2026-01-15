@@ -23,7 +23,8 @@ import { Trace, TraceConnection } from '../data/schema';
 import { DataTableToolbar } from './data-table-toolbar';
 import { useTracesColumns } from './traces-columns';
 
-const MotionTableRow = motion(TableRow);
+const MotionTableRow = motion.create(TableRow);
+const MotionExpandedRow = motion.create(TableRow);
 
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

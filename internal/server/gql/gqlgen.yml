@@ -10,6 +10,8 @@ schema:
   - backup.graphql
   - channel_probe.graphql
   - prompt.graphql
+  - price.graphql
+  - cost.graphql
 
 
 omit_gqlgen_version_in_file_notice: true
@@ -73,6 +75,18 @@ models:
   Node:
     model:
       - github.com/looplj/axonhub/internal/ent.Noder
+  JSONRawMessage:
+    model:
+      - github.com/looplj/axonhub/internal/objects.JSONRawMessage
+  JSONRawMessageInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.JSONRawMessage
+  Decimal:
+    model:
+      - github.com/looplj/axonhub/internal/objects.Decimal
+  DecimalInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.Decimal
   ModelMapping:
     model:
       - github.com/looplj/axonhub/internal/objects.ModelMapping
@@ -160,12 +174,6 @@ models:
   GCPCredentialInput:
     model:
       - github.com/looplj/axonhub/internal/objects.GCPCredential
-  JSONRawMessage:
-    model:
-      - github.com/looplj/axonhub/internal/objects.JSONRawMessage
-  JSONRawMessageInput:
-    model:
-      - github.com/looplj/axonhub/internal/objects.JSONRawMessage
   ModelIdentify:
     model:
       - github.com/looplj/axonhub/internal/server/biz.ModelIdentify
@@ -244,6 +252,54 @@ models:
   ModelIdentityWithStatus:
     model:
       - github.com/looplj/axonhub/internal/server/biz.ModelIdentityWithStatus
+  SaveChannelModelPriceInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.SaveChannelModelPriceInput
+  ModelPrice:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelPrice
+  ModelPriceInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelPrice
+  ModelPriceItem:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelPriceItem
+  ModelPriceItemInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelPriceItem
+  Pricing:
+    model:
+      - github.com/looplj/axonhub/internal/objects.Pricing
+  PricingInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.Pricing
+  TieredPricing:
+    model:
+      - github.com/looplj/axonhub/internal/objects.TieredPricing
+  TieredPricingInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.TieredPricing
+  PriceTier:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PriceTier
+  PriceTierInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PriceTier
+  PromptWriteCacheVariant:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptWriteCacheVariant
+  PromptWriteCacheVariantInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptWriteCacheVariant
+  PricingMode:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PricingMode
+  PriceItemCode:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PriceItemCode
+  PromptWriteCacheVariantCode:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptWriteCacheVariantCode
   ModelCard:
     model:
       - github.com/looplj/axonhub/internal/objects.ModelCard
@@ -343,6 +399,18 @@ models:
   HeaderEntryInput:
     model:
       - github.com/looplj/axonhub/internal/objects.HeaderEntry
+  TierCost:
+    model:
+      - github.com/looplj/axonhub/internal/objects.TierCost
+  CostItem:
+    model:
+      - github.com/looplj/axonhub/internal/objects.CostItem
+  TierCostInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.TierCost
+  CostItemInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.CostItem
   TransformOptions:
     model:
       - github.com/looplj/axonhub/internal/objects.TransformOptions
@@ -364,6 +432,12 @@ models:
   UpdateSystemChannelSettingsInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.SystemChannelSettings
+  SystemGeneralSettings:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.SystemGeneralSettings
+  UpdateSystemGeneralSettingsInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.SystemGeneralSettings
   ChannelProbeSetting:
     model:
       - github.com/looplj/axonhub/internal/server/biz.ChannelProbeSetting

@@ -3,6 +3,7 @@
     "title": "系统设置",
     "description": "管理系统配置和选项。",
     "tabs": {
+      "general": "常规",
       "brand": "品牌",
       "storage": "存储",
       "retry": "重试",
@@ -44,6 +45,15 @@
     },
     "general": {
       "title": "常规设置",
+      "description": "管理系统的通用配置选项",
+      "currencyCode": {
+        "label": "货币代码",
+        "placeholder": "例如：USD, RMB",
+        "description": "仅供系统展示费用使用，不会用来实际计费，修改以后实时生效"
+      }
+    },
+    "brand": {
+      "title": "品牌设置",
       "description": "配置系统的基本信息和品牌设置",
       "brandName": {
         "label": "品牌名称",

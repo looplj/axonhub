@@ -178,6 +178,68 @@ export const channelSchema = z.object({
 });
 export type Channel = z.infer<typeof channelSchema>;
 
+// Pricing Schemas
+export const pricingModeSchema = z.enum(['flat_fee', 'usage_per_unit', 'usage_tiered']);
+export type PricingMode = z.infer<typeof pricingModeSchema>;
+
+export const priceItemCodeSchema = z.enum([
+  'prompt_tokens',
+  'completion_tokens',
+  'prompt_cached_tokens',
+  'prompt_write_cached_tokens',
+]);
+export type PriceItemCode = z.infer<typeof priceItemCodeSchema>;
+
+export const priceTierSchema = z.object({
+  upTo: z.number().nullable().optional(),
+  pricePerUnit: z.union([z.string(), z.number()]),
+});
+export type PriceTier = z.infer<typeof priceTierSchema>;
+
+export const tieredPricingSchema = z.object({
+  tiers: z.array(priceTierSchema),
+});
+export type TieredPricing = z.infer<typeof tieredPricingSchema>;
+
+export const pricingSchema = z.object({
+  mode: pricingModeSchema,
+  flatFee: z.union([z.string(), z.number()]).nullable().optional(),
+  usagePerUnit: z.union([z.string(), z.number()]).nullable().optional(),
+  usageTiered: tieredPricingSchema.nullable().optional(),
+});
+export type Pricing = z.infer<typeof pricingSchema>;
+
+export const promptWriteCacheVariantSchema = z.object({
+  variantCode: z.enum(['five_min', 'one_hour']),
+  pricing: pricingSchema,
+});
+export type PromptWriteCacheVariant = z.infer<typeof promptWriteCacheVariantSchema>;
+
+export const modelPriceItemSchema = z.object({
+  itemCode: priceItemCodeSchema,
+  pricing: pricingSchema,
+  promptWriteCacheVariants: z.array(promptWriteCacheVariantSchema).nullable().optional(),
+});
+export type ModelPriceItem = z.infer<typeof modelPriceItemSchema>;
+
+export const modelPriceSchema = z.object({
+  items: z.array(modelPriceItemSchema),
+});
+export type ModelPrice = z.infer<typeof modelPriceSchema>;
+
+export const channelModelPriceSchema = z.object({
+  id: z.string(),
+  modelID: z.string(),
+  price: modelPriceSchema,
+});
+export type ChannelModelPrice = z.infer<typeof channelModelPriceSchema>;
+
+export const saveChannelModelPriceInputSchema = z.object({
+  modelId: z.string(),
+  price: modelPriceSchema,
+});
+export type SaveChannelModelPriceInput = z.infer<typeof saveChannelModelPriceInputSchema>;
+
 // Create Channel Input
 export const createChannelInputSchema = z
   .object({
