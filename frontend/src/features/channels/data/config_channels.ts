@@ -77,9 +77,9 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
   codex: {
     channelType: 'codex',
     baseURL: 'https://api.openai.com/v1',
-    defaultModels: ['gpt-5', 'gpt-5.1', 'gpt-5.2', 'gpt-5-codex', 'gpt-5-codex-mini'],
+    defaultModels: ['gpt-5.2', 'gpt-5.2-codex'],
     apiFormat: OPENAI_RESPONSES,
-    color: 'bg-white-100 text-white-800 border-white-200',
+    color: 'bg-[#32746D] text-white border-[#32746D]',
     icon: OpenAI,
   },
   deepseek: {

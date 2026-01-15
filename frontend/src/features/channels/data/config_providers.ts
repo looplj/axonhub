@@ -175,7 +175,7 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
   codex: {
     provider: 'codex',
     icon: OpenAI,
-    color: 'bg-white-100 text-white-800 border-white-200',
+    color: 'bg-[#32746D] text-white border-[#32746D]',
     channelTypes: ['codex'],
   },
   github: {

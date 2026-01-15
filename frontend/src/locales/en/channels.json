@@ -305,7 +305,8 @@
           "allModels": "All Models ({{count}})",
           "clearAllTitle": "Clear all supported models?",
           "clearAllDescription": "Are you sure you want to clear all {{count}} models?",
-          "willRemove": "Will remove"
+          "willRemove": "Will remove",
+          "codexUnsupported": "Not supported for Codex"
         },
         "autoSyncSupportedModels": {
           "label": "Auto-sync supported models",

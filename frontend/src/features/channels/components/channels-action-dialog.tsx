@@ -373,11 +373,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         setSelectedApiFormat(OPENAI_RESPONSES);
         form.setValue('type', 'codex');
         form.setValue('credentials.platformType', 'codex');
-        if (!isDuplicate) {
-          const baseURL = getDefaultBaseURL('codex');
-          if (baseURL) {
-            form.resetField('baseURL', { defaultValue: baseURL });
-          }
+        const baseURL = getDefaultBaseURL('codex');
+        if (baseURL) {
+          form.resetField('baseURL', { defaultValue: baseURL });
         }
         setFetchedModels([]);
         setUseFetchedModels(false);
@@ -1449,12 +1447,31 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               control={form.control}
                               name='autoSyncSupportedModels'
                               render={({ field }) => (
-                                <FormItem className='flex items-center gap-2'>
-                                  <Checkbox
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                    data-testid='auto-sync-supported-models-checkbox'
-                                  />
+                                <FormItem className={`flex items-center gap-2 ${isCodexType ? 'opacity-60' : ''}`}>
+                                  {isCodexType ? (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className='inline-flex items-center'>
+                                          <Checkbox
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                            data-testid='auto-sync-supported-models-checkbox'
+                                            disabled={true}
+                                            className='pointer-events-none'
+                                          />
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>{t('channels.dialogs.fields.supportedModels.codexUnsupported')}</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  ) : (
+                                    <Checkbox
+                                      checked={field.value}
+                                      onCheckedChange={field.onChange}
+                                      data-testid='auto-sync-supported-models-checkbox'
+                                    />
+                                  )}
                                   <div className='space-y-0.5'>
                                     <FormLabel className='cursor-pointer text-sm font-normal'>
                                       {t('channels.dialogs.fields.autoSyncSupportedModels.label')}
@@ -1473,16 +1490,38 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             <div className='mb-2 flex items-center justify-between'>
                               <span className='text-sm font-medium'>{t('channels.dialogs.fields.supportedModels.defaultModelsLabel')}</span>
                               <div className='flex items-center gap-2'>
-                                <Button
-                                  type='button'
-                                  onClick={handleFetchModels}
-                                  size='sm'
-                                  variant='outline'
-                                  disabled={!canFetchModels() || fetchModels.isPending}
-                                >
-                                  <RefreshCw className={`mr-1 h-4 w-4 ${fetchModels.isPending ? 'animate-spin' : ''}`} />
-                                  {t('channels.dialogs.buttons.fetchModels')}
-                                </Button>
+                                {isCodexType ? (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className='inline-flex w-fit'>
+                                        <Button
+                                          type='button'
+                                          onClick={handleFetchModels}
+                                          size='sm'
+                                          variant='outline'
+                                          disabled={true}
+                                        >
+                                          <RefreshCw className={`mr-1 h-4 w-4 ${fetchModels.isPending ? 'animate-spin' : ''}`} />
+                                          {t('channels.dialogs.buttons.fetchModels')}
+                                        </Button>
+                                      </span>
+                                    </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>{t('channels.dialogs.fields.supportedModels.codexUnsupported')}</p>
+                                      </TooltipContent>
+                                  </Tooltip>
+                                ) : (
+                                  <Button
+                                    type='button'
+                                    onClick={handleFetchModels}
+                                    size='sm'
+                                    variant='outline'
+                                    disabled={!canFetchModels() || fetchModels.isPending}
+                                  >
+                                    <RefreshCw className={`mr-1 h-4 w-4 ${fetchModels.isPending ? 'animate-spin' : ''}`} />
+                                    {t('channels.dialogs.buttons.fetchModels')}
+                                  </Button>
+                                )}
                                 <Button
                                   type='button'
                                   onClick={addSelectedDefaultModels}
