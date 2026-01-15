@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import LongText from '@/components/long-text';
 import { useTestChannel, useUpdateChannel } from '../data/channels';
 import { Channel } from '../data/schema';
 
@@ -225,7 +226,11 @@ export function ChannelsTestDialog({ open, onOpenChange, channel }: Props) {
                         </TableCell>
                         <TableCell className='font-medium'>
                           <div>{model}</div>
-                          {result?.error && <div className='mt-1 text-xs text-red-600'>{result.error}</div>}
+                          {result?.error && (
+                            <LongText className='mt-1 max-w-[200px] cursor-help text-xs text-red-600'>
+                              {result.error}
+                            </LongText>
+                          )}
                         </TableCell>
                         <TableCell>
                           {getStatusBadge(result?.status || 'not_started')}

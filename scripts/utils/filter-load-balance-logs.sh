@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Filter and analyze load balance logs
-# Usage: ./scripts/filter-load-balance-logs.sh [options] [log_file]
+# Usage: ./scripts/utils/filter-load-balance-logs.sh [options] [log_file]
 
 set -e
 

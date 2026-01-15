@@ -221,7 +221,7 @@ When adding new types or inputs to the GraphQL schema, you need to:
 - **Frontend**: Playwright E2E tests with UI and headed modes
 - **Integration**: Both layers tested together
 - **Code Quality**: golangci-lint for Go, ESLint for TypeScript
-- **E2E Testing**: Use `bash ./scripts/e2e-test.sh` for full integration tests
+- **E2E Testing**: Use `bash ./scripts/e2e/e2e-test.sh` for full integration tests
 - **Test Database**: Use in-memory SQLite for isolated tests
 - **Test Credentials**: Frontend testing uses `my@example.com` / `pwd123456`
 

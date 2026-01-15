@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import LongText from '@/components/long-text';
 import { useUpdateChannel, useTestChannel } from '../data/channels';
 import { Channel } from '../data/schema';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
@@ -270,7 +271,11 @@ export function ChannelsProxyDialog({ open, onOpenChange, currentRow }: Props) {
                     <span className='font-medium'>{t('channels.dialogs.proxy.latency')}:</span> {testResult.latency.toFixed(2)}s
                   </p>
                 )}
-                {testResult.message && <p className='text-muted-foreground mt-2 text-sm'>{testResult.message}</p>}
+                {testResult.message && (
+                  <LongText className='text-muted-foreground mt-2 text-sm'>
+                    {testResult.message}
+                  </LongText>
+                )}
               </CardContent>
             </Card>
           )}

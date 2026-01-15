@@ -117,7 +117,7 @@ func TestChatCompletionOrchestrator_Process_NoChannelsAvailable(t *testing.T) {
 	executor := &mockExecutor{}
 
 	// Empty channel selector
-	channelSelector := &staticChannelSelector{candidates: []*ChannelModelCandidate{}}
+	channelSelector := &staticChannelSelector{candidates: []*ChannelModelsCandidate{}}
 
 	orchestrator := &ChatCompletionOrchestrator{
 		channelSelector:   channelSelector,

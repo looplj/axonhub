@@ -38,17 +38,17 @@ The E2E test suite supports multiple database types:
 
 ```bash
 # SQLite (default)
-./scripts/e2e-test.sh
+./scripts/e2e/e2e-test.sh
 
 # MySQL
-./scripts/e2e-test.sh -d mysql
+./scripts/e2e/e2e-test.sh -d mysql
 
 # PostgreSQL
-./scripts/e2e-test.sh --dbtype postgres
+./scripts/e2e/e2e-test.sh --dbtype postgres
 
 # With Playwright options
-./scripts/e2e-test.sh -d mysql --headed
-./scripts/e2e-test.sh --dbtype postgres --grep "user"
+./scripts/e2e/e2e-test.sh -d mysql --headed
+./scripts/e2e/e2e-test.sh --dbtype postgres --grep "user"
 ```
 
 **Database requirements:**
@@ -57,7 +57,7 @@ The E2E test suite supports multiple database types:
 - **SQLite**: No additional requirements
 
 **Database configuration:**
-- SQLite uses `scripts/axonhub-e2e.db`
+- SQLite uses `scripts/e2e/axonhub-e2e.db`
 - MySQL uses Docker container `axonhub-e2e-mysql` on port 13306
 - PostgreSQL uses Docker container `axonhub-e2e-postgres` on port 15432
 

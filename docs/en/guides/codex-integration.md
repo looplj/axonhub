@@ -34,7 +34,7 @@ AxonHub can act as a drop-in replacement for OpenAI endpoints, letting Codex con
    ```
 3. Restart Codex to apply the configuration.
 
-#### Trace aggregation by conversation (optional)
+#### Trace aggregation by conversation (important)
 If Codex sends a stable conversation identifier header (for example `Conversation_id`), you can configure AxonHub to use it as a fallback trace header in `config.yml`:
 
 ```yaml
@@ -43,6 +43,8 @@ server:
     extra_trace_headers:
       - Conversation_id
 ```
+
+**Note**: Enabling this also ensures that requests from the same trace are prioritized to be sent to the same upstream channel, significantly improving provider-side cache hit rates (e.g., Anthropic Prompt Caching).
 
 #### Testing
 - Send a sample prompt; AxonHub's request logs should show a `/v1/chat/completions` call.

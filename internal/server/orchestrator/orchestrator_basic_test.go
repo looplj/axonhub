@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"testing"
 
@@ -21,6 +22,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/pipeline/stream"
+	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
@@ -410,4 +412,143 @@ func TestChatCompletionOrchestrator_Process_MultipleRequests(t *testing.T) {
 	usageLogs, err := client.UsageLog.Query().All(ctx)
 	require.NoError(t, err)
 	assert.Len(t, usageLogs, 3)
+}
+
+type executorStep struct {
+	resp *httpclient.Response
+	err  error
+}
+
+type sequenceExecutor struct {
+	steps    []executorStep
+	stepIdx  int
+	requests []*httpclient.Request
+}
+
+func (e *sequenceExecutor) Do(ctx context.Context, request *httpclient.Request) (*httpclient.Response, error) {
+	e.requests = append(e.requests, request)
+
+	if e.stepIdx >= len(e.steps) {
+		return nil, errors.New("no more steps available")
+	}
+
+	step := e.steps[e.stepIdx]
+	e.stepIdx++
+
+	if step.err != nil {
+		return nil, step.err
+	}
+
+	return step.resp, nil
+}
+
+func (e *sequenceExecutor) DoStream(ctx context.Context, request *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+	return nil, errors.New("streaming not supported by this executor")
+}
+
+func TestChatCompletionOrchestrator_Process_SameChannelRetryNextModel(t *testing.T) {
+	ctx := context.Background()
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx = ent.NewContext(ctx, client)
+
+	project := createTestProject(t, ctx, client)
+	ch := createTestChannel(t, ctx, client)
+	channelService, requestService, systemService, usageLogService := setupTestServices(t, client)
+
+	err := systemService.SetRetryPolicy(ctx, &biz.RetryPolicy{
+		Enabled:                 true,
+		MaxChannelRetries:       1,
+		MaxSingleChannelRetries: 1,
+		RetryDelayMs:            0,
+		LoadBalancerStrategy:    "adaptive",
+	})
+	require.NoError(t, err)
+
+	mockResp := buildMockOpenAIResponse("chatcmpl-retry-1", "gpt-3.5-turbo", "Recovered", 10, 20)
+	executor := &sequenceExecutor{
+		steps: []executorStep{
+			{
+				err: &httpclient.Error{
+					StatusCode: 500,
+					Body:       []byte(`{"error":{"message":"upstream error","type":"api_error"}}`),
+				},
+			},
+			{
+				resp: &httpclient.Response{
+					StatusCode: 200,
+					Body:       mockResp,
+					Headers:    http.Header{"Content-Type": []string{"application/json"}},
+				},
+			},
+		},
+	}
+
+	outbound, err := openai.NewOutboundTransformer(ch.BaseURL, ch.Credentials.APIKey)
+	require.NoError(t, err)
+
+	bizChannel := &biz.Channel{
+		Channel:  ch,
+		Outbound: outbound,
+	}
+
+	channelSelector := &staticChannelSelector{
+		candidates: []*ChannelModelsCandidate{
+			{
+				Channel:  bizChannel,
+				Priority: 0,
+				Models: []biz.ChannelModelEntry{
+					{RequestModel: "gpt-4", ActualModel: "gpt-4"},
+					{RequestModel: "gpt-4", ActualModel: "gpt-3.5-turbo"},
+				},
+			},
+		},
+	}
+
+	orchestrator := &ChatCompletionOrchestrator{
+		channelSelector:   channelSelector,
+		Inbound:           openai.NewInboundTransformer(),
+		RequestService:    requestService,
+		ChannelService:    channelService,
+		PromptProvider:    &stubPromptProvider{},
+		SystemService:     systemService,
+		UsageLogService:   usageLogService,
+		PipelineFactory:   pipeline.NewFactory(executor),
+		ModelMapper:       NewModelMapper(),
+		connectionTracker: NewDefaultConnectionTracker(1024),
+		Middlewares: []pipeline.Middleware{
+			stream.EnsureUsage(),
+		},
+	}
+
+	httpRequest := buildTestRequest("gpt-4", "Hello!", false)
+	ctx = contexts.WithProjectID(ctx, project.ID)
+
+	result, err := orchestrator.Process(ctx, httpRequest)
+	require.NoError(t, err)
+	require.NotNil(t, result.ChatCompletion)
+	require.Len(t, executor.requests, 2)
+
+	var firstBody map[string]any
+
+	err = json.Unmarshal(executor.requests[0].Body, &firstBody)
+	require.NoError(t, err)
+	assert.Equal(t, "gpt-4", firstBody["model"])
+
+	var secondBody map[string]any
+
+	err = json.Unmarshal(executor.requests[1].Body, &secondBody)
+	require.NoError(t, err)
+	assert.Equal(t, "gpt-3.5-turbo", secondBody["model"])
+
+	requests, err := client.Request.Query().All(ctx)
+	require.NoError(t, err)
+	require.Len(t, requests, 1)
+
+	executions, err := client.RequestExecution.Query().All(ctx)
+	require.NoError(t, err)
+	require.Len(t, executions, 2)
 }

@@ -128,7 +128,7 @@ go test ./...
 ### 运行 E2E 测试
 
 ```bash
-bash ./scripts/e2e-test.sh
+bash ./scripts/e2e/e2e-test.sh
 ```
 
 ## 代码质量

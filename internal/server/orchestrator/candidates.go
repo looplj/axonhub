@@ -17,22 +17,21 @@ import (
 	"github.com/looplj/axonhub/llm"
 )
 
-// ChannelModelCandidate represents a resolved channel and model pair.
-type ChannelModelCandidate struct {
-	Channel      *biz.Channel
-	RequestModel string
-	ActualModel  string
-	Priority     int
+// ChannelModelsCandidate represents a resolved channel and its matched model entries.
+type ChannelModelsCandidate struct {
+	Channel  *biz.Channel
+	Priority int
+	Models   []biz.ChannelModelEntry
 }
 
 // CandidateSelector defines the interface for selecting channel model candidates.
 type CandidateSelector interface {
-	Select(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error)
+	Select(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error)
 }
 
 // associationCacheEntry stores cached association resolution results.
 type associationCacheEntry struct {
-	candidates              []*ChannelModelCandidate
+	candidates              []*ChannelModelsCandidate
 	channelCount            int
 	latestChannelUpdateTime time.Time
 	latestModelUpdatedAt    time.Time
@@ -65,7 +64,7 @@ func NewDefaultSelector(channelService *biz.ChannelService, modelService *biz.Mo
 	}
 }
 
-func (s *DefaultSelector) Select(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error) {
+func (s *DefaultSelector) Select(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
 	candidates, err := s.selectModelCandidates(ctx, req)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -85,10 +84,10 @@ func (s *DefaultSelector) Select(ctx context.Context, req *llm.Request) ([]*Chan
 }
 
 // selectChannelCadidates performs the original channel selection logic.
-func (s *DefaultSelector) selectChannelCadidates(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error) {
+func (s *DefaultSelector) selectChannelCadidates(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
 	channels := s.ChannelService.GetEnabledChannels()
 
-	candidates := make([]*ChannelModelCandidate, 0, len(channels))
+	candidates := make([]*ChannelModelsCandidate, 0, len(channels))
 	for _, ch := range channels {
 		entries := ch.GetModelEntries()
 
@@ -97,11 +96,10 @@ func (s *DefaultSelector) selectChannelCadidates(ctx context.Context, req *llm.R
 			continue
 		}
 
-		candidates = append(candidates, &ChannelModelCandidate{
-			Channel:      ch,
-			RequestModel: entry.RequestModel,
-			ActualModel:  entry.ActualModel,
-			Priority:     0,
+		candidates = append(candidates, &ChannelModelsCandidate{
+			Channel:  ch,
+			Priority: 0,
+			Models:   []biz.ChannelModelEntry{entry},
 		})
 	}
 
@@ -116,7 +114,7 @@ func (s *DefaultSelector) selectChannelCadidates(ctx context.Context, req *llm.R
 	return candidates, nil
 }
 
-func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error) {
+func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
 	model, err := s.ModelService.GetModelByModelID(ctx, req.Model, model.StatusEnabled)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query AxonHub Model: %w", err)
@@ -127,7 +125,7 @@ func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Re
 			log.Debug(ctx, "model has no associations", log.String("model", req.Model))
 		}
 
-		return []*ChannelModelCandidate{}, nil
+		return []*ChannelModelsCandidate{}, nil
 	}
 
 	candidates, err := s.resolveAssociations(ctx, model, model.Settings.Associations)
@@ -149,10 +147,10 @@ func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Re
 // resolveAssociations uses biz.MatchAssociations to resolve model associations
 // and converts the results to ChannelModelCandidate.
 // Results are cached per model ID and invalidated when channel count, latest update time, or model update time changes.
-func (s *DefaultSelector) resolveAssociations(ctx context.Context, model *ent.Model, associations []*objects.ModelAssociation) ([]*ChannelModelCandidate, error) {
+func (s *DefaultSelector) resolveAssociations(ctx context.Context, model *ent.Model, associations []*objects.ModelAssociation) ([]*ChannelModelsCandidate, error) {
 	channels := s.ChannelService.GetEnabledChannels()
 	if len(channels) == 0 {
-		return []*ChannelModelCandidate{}, nil
+		return []*ChannelModelsCandidate{}, nil
 	}
 
 	// Use model ID as cache key
@@ -198,8 +196,14 @@ func (s *DefaultSelector) resolveAssociations(ctx context.Context, model *ent.Mo
 		channelMap[ch.ID] = ch
 	}
 
-	candidates := make([]*ChannelModelCandidate, 0, len(connections))
-	tracker := biz.NewDuplicateKeyTracker()
+	type candidateKey struct {
+		channelID int
+		priority  int
+	}
+
+	candidates := make([]*ChannelModelsCandidate, 0, len(connections))
+	candidateIndexByKey := make(map[candidateKey]int, len(connections))
+	seenActualModelsByKey := make(map[candidateKey]map[string]struct{}, len(connections))
 
 	for _, conn := range connections {
 		bizCh, found := channelMap[conn.Channel.ID]
@@ -207,17 +211,29 @@ func (s *DefaultSelector) resolveAssociations(ctx context.Context, model *ent.Mo
 			continue
 		}
 
-		// Models are already resolved in MatchAssociations, no need for second lookup
+		key := candidateKey{channelID: bizCh.ID, priority: conn.Priority}
+
+		idx, ok := candidateIndexByKey[key]
+		if !ok {
+			candidates = append(candidates, &ChannelModelsCandidate{
+				Channel:  bizCh,
+				Priority: conn.Priority,
+				Models:   []biz.ChannelModelEntry{},
+			})
+			idx = len(candidates) - 1
+			candidateIndexByKey[key] = idx
+			seenActualModelsByKey[key] = make(map[string]struct{})
+		}
+
+		seenActualModels := seenActualModelsByKey[key]
+
 		for _, entry := range conn.Models {
-			// Deduplicate by channel and actual model
-			if tracker.Add(bizCh.ID, entry.ActualModel) {
-				candidates = append(candidates, &ChannelModelCandidate{
-					Channel:      bizCh,
-					RequestModel: entry.RequestModel,
-					ActualModel:  entry.ActualModel,
-					Priority:     conn.Priority,
-				})
+			if _, exists := seenActualModels[entry.ActualModel]; exists {
+				continue
 			}
+
+			seenActualModels[entry.ActualModel] = struct{}{}
+			candidates[idx].Models = append(candidates[idx].Models, entry)
 		}
 	}
 
@@ -272,7 +288,7 @@ func WithSelectedChannelsSelector(wrapped CandidateSelector, allowedChannelIDs [
 	}
 }
 
-func (s *SelectedChannelsSelector) Select(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error) {
+func (s *SelectedChannelsSelector) Select(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
 	candidates, err := s.wrapped.Select(ctx, req)
 	if err != nil {
 		return nil, err
@@ -289,7 +305,7 @@ func (s *SelectedChannelsSelector) Select(ctx context.Context, req *llm.Request)
 	})
 
 	// Filter candidates by allowed channel IDs
-	filtered := lo.Filter(candidates, func(c *ChannelModelCandidate, _ int) bool {
+	filtered := lo.Filter(candidates, func(c *ChannelModelsCandidate, _ int) bool {
 		_, ok := allowedSet[c.Channel.ID]
 		return ok
 	})
@@ -314,7 +330,7 @@ func WithLoadBalancedSelector(wrapped CandidateSelector, loadBalancer *LoadBalan
 	}
 }
 
-func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error) {
+func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
 	candidates, err := s.wrapped.Select(ctx, req)
 	if err != nil {
 		return nil, err
@@ -333,7 +349,7 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 	}
 
 	// Group candidates by priority first (lower priority value = higher priority)
-	priorityGroups := make(map[int][]*ChannelModelCandidate)
+	priorityGroups := make(map[int][]*ChannelModelsCandidate)
 	for _, c := range candidates {
 		priorityGroups[c.Priority] = append(priorityGroups[c.Priority], c)
 	}
@@ -346,7 +362,7 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 
 	// For each priority group, apply load balancing to sort candidates within the group
 	// Stop early if we have collected enough candidates
-	var result []*ChannelModelCandidate
+	var result []*ChannelModelsCandidate
 
 	for _, p := range priorities {
 		group := priorityGroups[p]
@@ -395,7 +411,7 @@ func WithTagsFilterSelector(wrapped CandidateSelector, allowedTags []string) *Ta
 	}
 }
 
-func (s *TagsFilterSelector) Select(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error) {
+func (s *TagsFilterSelector) Select(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
 	candidates, err := s.wrapped.Select(ctx, req)
 	if err != nil {
 		return nil, err
@@ -412,7 +428,7 @@ func (s *TagsFilterSelector) Select(ctx context.Context, req *llm.Request) ([]*C
 	})
 
 	// Filter candidates: keep only those whose channel has at least one allowed tag (OR logic)
-	candidates = lo.Filter(candidates, func(c *ChannelModelCandidate, _ int) bool {
+	candidates = lo.Filter(candidates, func(c *ChannelModelsCandidate, _ int) bool {
 		for _, tag := range c.Channel.Tags {
 			if _, ok := allowedSet[tag]; ok {
 				return true
@@ -438,7 +454,7 @@ func NewSpecifiedChannelSelector(channelService *biz.ChannelService, channelID o
 	}
 }
 
-func (s *SpecifiedChannelSelector) Select(ctx context.Context, req *llm.Request) ([]*ChannelModelCandidate, error) {
+func (s *SpecifiedChannelSelector) Select(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
 	channel, err := s.ChannelService.GetChannelForTest(ctx, s.ChannelID.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get channel for test: %w", err)
@@ -451,12 +467,11 @@ func (s *SpecifiedChannelSelector) Select(ctx context.Context, req *llm.Request)
 		return nil, fmt.Errorf("model %s not supported in channel %s", req.Model, channel.Name)
 	}
 
-	candidate := &ChannelModelCandidate{
-		Channel:      channel,
-		RequestModel: entry.RequestModel,
-		ActualModel:  entry.ActualModel,
-		Priority:     0,
+	candidate := &ChannelModelsCandidate{
+		Channel:  channel,
+		Priority: 0,
+		Models:   []biz.ChannelModelEntry{entry},
 	}
 
-	return []*ChannelModelCandidate{candidate}, nil
+	return []*ChannelModelsCandidate{candidate}, nil
 }
