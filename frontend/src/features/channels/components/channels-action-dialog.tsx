@@ -343,6 +343,23 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     return t('channels.dialogs.fields.baseURL.placeholder');
   }, [selectedType, derivedChannelType, t]);
 
+  const wrapCodexUnsupported = useCallback(
+    (enabled: boolean, children: React.ReactNode, wrapperClassName: string) => {
+      if (!enabled) return children;
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className={wrapperClassName}>{children}</span>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{t('channels.dialogs.fields.supportedModels.codexUnsupported')}</p>
+          </TooltipContent>
+        </Tooltip>
+      );
+    },
+    [t]
+  );
+
   // Sync form type when provider or API format changes (only for create mode)
   const handleProviderChange = useCallback(
     (provider: string) => {
@@ -1404,29 +1421,16 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               name='autoSyncSupportedModels'
                               render={({ field }) => (
                                 <FormItem className={`flex items-center gap-2 ${isCodexType ? 'opacity-60' : ''}`}>
-                                  {isCodexType ? (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <span className='inline-flex items-center'>
-                                          <Checkbox
-                                            checked={field.value}
-                                            onCheckedChange={field.onChange}
-                                            data-testid='auto-sync-supported-models-checkbox'
-                                            disabled={true}
-                                            className='pointer-events-none'
-                                          />
-                                        </span>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>{t('channels.dialogs.fields.supportedModels.codexUnsupported')}</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  ) : (
+                                  {wrapCodexUnsupported(
+                                    isCodexType,
                                     <Checkbox
                                       checked={field.value}
                                       onCheckedChange={field.onChange}
                                       data-testid='auto-sync-supported-models-checkbox'
-                                    />
+                                      disabled={isCodexType}
+                                      className={isCodexType ? 'pointer-events-none' : undefined}
+                                    />,
+                                    'inline-flex items-center'
                                   )}
                                   <div className='space-y-0.5'>
                                     <FormLabel className='cursor-pointer text-sm font-normal'>
@@ -1446,37 +1450,19 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             <div className='mb-2 flex items-center justify-between'>
                               <span className='text-sm font-medium'>{t('channels.dialogs.fields.supportedModels.defaultModelsLabel')}</span>
                               <div className='flex items-center gap-2'>
-                                {isCodexType ? (
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span className='inline-flex w-fit'>
-                                        <Button
-                                          type='button'
-                                          onClick={handleFetchModels}
-                                          size='sm'
-                                          variant='outline'
-                                          disabled={true}
-                                        >
-                                          <RefreshCw className={`mr-1 h-4 w-4 ${fetchModels.isPending ? 'animate-spin' : ''}`} />
-                                          {t('channels.dialogs.buttons.fetchModels')}
-                                        </Button>
-                                      </span>
-                                    </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>{t('channels.dialogs.fields.supportedModels.codexUnsupported')}</p>
-                                      </TooltipContent>
-                                  </Tooltip>
-                                ) : (
+                                {wrapCodexUnsupported(
+                                  isCodexType,
                                   <Button
                                     type='button'
                                     onClick={handleFetchModels}
                                     size='sm'
                                     variant='outline'
-                                    disabled={!canFetchModels() || fetchModels.isPending}
+                                    disabled={!canFetchModels() || fetchModels.isPending || isCodexType}
                                   >
                                     <RefreshCw className={`mr-1 h-4 w-4 ${fetchModels.isPending ? 'animate-spin' : ''}`} />
                                     {t('channels.dialogs.buttons.fetchModels')}
-                                  </Button>
+                                  </Button>,
+                                  'inline-flex w-fit'
                                 )}
                                 <Button
                                   type='button'

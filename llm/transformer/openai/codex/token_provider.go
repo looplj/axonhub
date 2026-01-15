@@ -9,6 +9,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
@@ -55,7 +56,9 @@ func (p *TokenProvider) Get(ctx context.Context, channel *ent.Channel) (string, 
 	}
 
 	if !creds.IsExpired(time.Now()) {
-		_ = p.cache.Set(ctx, key, channel.Credentials.APIKey, xcache.WithExpiration(55*time.Minute))
+		if err := p.cache.Set(ctx, key, channel.Credentials.APIKey, xcache.WithExpiration(55*time.Minute)); err != nil {
+			log.Warn(ctx, "failed to cache codex credentials", log.String("key", key), log.Cause(err))
+		}
 		return creds.AccessToken, creds.AccountID, nil
 	}
 
@@ -72,7 +75,9 @@ func (p *TokenProvider) Get(ctx context.Context, channel *ent.Channel) (string, 
 			return nil, err
 		}
 
-		_ = p.cache.Set(ctx, key, raw, xcache.WithExpiration(55*time.Minute))
+		if err := p.cache.Set(ctx, key, raw, xcache.WithExpiration(55*time.Minute)); err != nil {
+			log.Warn(ctx, "failed to cache refreshed codex credentials", log.String("key", key), log.Cause(err))
+		}
 
 		return fresh, nil
 	})
