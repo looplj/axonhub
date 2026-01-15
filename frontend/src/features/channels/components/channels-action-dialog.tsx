@@ -104,13 +104,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [showApiKey, setShowApiKey] = useState(false);
   const [showGcpJsonData, setShowGcpJsonData] = useState(false);
 
-  const [useCodex, setUseCodex] = useState(() => {
-    if (initialRow) {
-      return initialRow.type === 'codex';
-    }
-    return false;
-  });
-
   const [codexSessionId, setCodexSessionId] = useState<string | null>(null);
   const [codexAuthUrl, setCodexAuthUrl] = useState<string | null>(null);
   const [codexCallbackUrl, setCodexCallbackUrl] = useState('');
@@ -174,11 +167,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
   useEffect(() => {
     if (!open) return;
-    setUseCodex(initialRow?.type === 'codex');
-  }, [open, initialRow]);
-
-  useEffect(() => {
-    if (!open || !isEdit) return;
 
     const frame = requestAnimationFrame(() => {
       const target = providerRefs.current[selectedProvider];
@@ -569,7 +557,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   useEffect(() => {
     if (isEdit) return;
     if (!isCodexType) {
-      setUseCodex(false);
       setCodexSessionId(null);
       setCodexAuthUrl(null);
       setCodexCallbackUrl('');
@@ -577,7 +564,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       return;
     }
 
-    setUseCodex(true);
     form.setValue('credentials.platformType', 'codex');
     const baseURL = getDefaultBaseURL('codex');
     if (baseURL) {
