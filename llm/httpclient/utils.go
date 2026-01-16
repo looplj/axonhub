@@ -92,6 +92,19 @@ var blockedHeaders = map[string]bool{
 	"X-Forwarded-Proto": true,
 	"X-Forwarded-Host":  true,
 	"X-Forwarded-Port":  true,
+
+	// Browser-only / hop-by-hop-ish headers that should not be forwarded to upstream.
+	"Accept-Language":    true,
+	"Dnt":                true,
+	"Origin":             true,
+	"Referer":            true,
+	"Sec-Fetch-Dest":     true,
+	"Sec-Fetch-Mode":     true,
+	"Sec-Fetch-Site":     true,
+	"Sec-Fetch-User":     true,
+	"Sec-Ch-Ua":          true,
+	"Sec-Ch-Ua-Mobile":   true,
+	"Sec-Ch-Ua-Platform": true,
 }
 
 var sensitiveHeaders = map[string]bool{

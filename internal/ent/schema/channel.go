@@ -38,6 +38,7 @@ func (Channel) Fields() []ent.Field {
 			Values(
 				"openai",
 				"openai_responses",
+				"codex",
 				"vercel",
 				"anthropic",
 				"anthropic_aws",

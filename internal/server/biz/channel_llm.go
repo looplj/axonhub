@@ -26,7 +26,9 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/modelscope"
 	"github.com/looplj/axonhub/llm/transformer/moonshot"
 	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
+
 	"github.com/looplj/axonhub/llm/transformer/openrouter"
 	"github.com/looplj/axonhub/llm/transformer/xai"
 	"github.com/looplj/axonhub/llm/transformer/zai"
@@ -160,6 +162,19 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 	httpClient := httpclient.NewHttpClientWithProxy(getProxyConfig(c.Settings))
 
 	//nolint:exhaustive // TODO SUPPORT more providers.
+	buildCodexTransformer := func() (*Channel, error) {
+		transformer, err := codex.NewOutboundTransformer(codex.Params{
+			CredentialsJSON: c.Credentials.APIKey,
+			CacheConfig:     svc.SystemService.CacheConfig,
+			ChannelID:       c.ID,
+			HTTPClient:      httpClient,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create codex outbound transformer: %w", err)
+		}
+		return buildChannelWithTransformer(c, transformer, httpClient), nil
+	}
+
 	switch c.Type {
 	case channel.TypeDoubao, channel.TypeVolcengine:
 		transformer, err := doubao.NewOutboundTransformerWithConfig(&doubao.Config{
@@ -377,9 +392,12 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		}
 
 		return buildChannelWithTransformer(c, transformer, httpClient), nil
+	case channel.TypeCodex:
+		return buildCodexTransformer()
 	case channel.TypeOpenai, channel.TypeDeepinfra, channel.TypeMinimax,
 		channel.TypePpio, channel.TypeSiliconflow,
 		channel.TypeVercel, channel.TypeAihubmix, channel.TypeBurncloud, channel.TypeGithub:
+
 		transformer, err := openai.NewOutboundTransformerWithConfig(&openai.Config{
 			PlatformType: openai.PlatformOpenAI,
 			BaseURL:      c.BaseURL,
@@ -391,6 +409,7 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 
 		return buildChannelWithTransformer(c, transformer, httpClient), nil
 	case channel.TypeOpenaiResponses:
+
 		transformer, err := responses.NewOutboundTransformerWithConfig(&responses.Config{
 			BaseURL: c.BaseURL,
 			APIKey:  c.Credentials.APIKey,

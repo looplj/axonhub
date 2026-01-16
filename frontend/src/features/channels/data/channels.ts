@@ -440,6 +440,7 @@ const QUERY_CHANNELS_QUERY = `
           status
           credentials {
             apiKey
+            platformType
             aws {
               accessKeyID
               secretAccessKey
