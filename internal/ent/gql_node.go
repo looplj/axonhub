@@ -16,6 +16,8 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
+	"github.com/looplj/axonhub/internal/ent/channelmodelpriceversion"
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
@@ -51,6 +53,16 @@ var channelImplementors = []string{"Channel", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
 func (*Channel) IsNode() {}
+
+var channelmodelpriceImplementors = []string{"ChannelModelPrice", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*ChannelModelPrice) IsNode() {}
+
+var channelmodelpriceversionImplementors = []string{"ChannelModelPriceVersion", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*ChannelModelPriceVersion) IsNode() {}
 
 var channeloverridetemplateImplementors = []string{"ChannelOverrideTemplate", "Node"}
 
@@ -209,6 +221,24 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 			Where(channel.ID(id))
 		if fc := graphql.GetFieldContext(ctx); fc != nil {
 			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, channelImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case channelmodelprice.Table:
+		query := c.ChannelModelPrice.Query().
+			Where(channelmodelprice.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, channelmodelpriceImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case channelmodelpriceversion.Table:
+		query := c.ChannelModelPriceVersion.Query().
+			Where(channelmodelpriceversion.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, channelmodelpriceversionImplementors...); err != nil {
 				return nil, err
 			}
 		}
@@ -459,6 +489,38 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 		query := c.Channel.Query().
 			Where(channel.IDIn(ids...))
 		query, err := query.CollectFields(ctx, channelImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case channelmodelprice.Table:
+		query := c.ChannelModelPrice.Query().
+			Where(channelmodelprice.IDIn(ids...))
+		query, err := query.CollectFields(ctx, channelmodelpriceImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case channelmodelpriceversion.Table:
+		query := c.ChannelModelPriceVersion.Query().
+			Where(channelmodelpriceversion.IDIn(ids...))
+		query, err := query.CollectFields(ctx, channelmodelpriceversionImplementors...)
 		if err != nil {
 			return nil, err
 		}

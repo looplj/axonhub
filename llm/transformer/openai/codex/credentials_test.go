@@ -31,6 +31,7 @@ func TestCredentialsRefresh(t *testing.T) {
 	// Override token url for test
 	old := DefaultTokenURLs
 	DefaultTokenURLs = TokenURLs{Authorize: old.Authorize, Token: ts.URL + "/oauth/token"}
+
 	t.Cleanup(func() { DefaultTokenURLs = old })
 
 	hc := httpclient.NewHttpClient()

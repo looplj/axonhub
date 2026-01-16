@@ -13,6 +13,7 @@
       "roles": "角色",
       "noRoles": "无角色",
       "details": "详情",
+      "cost": "成本",
       "latency": "耗时",
       "firstTokenLatency": "首字耗时",
       "tokens": "令牌",

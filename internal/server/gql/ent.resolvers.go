@@ -48,6 +48,38 @@ func (r *channelResolver) ID(ctx context.Context, obj *ent.Channel) (*objects.GU
 }
 
 // ID is the resolver for the id field.
+func (r *channelModelPriceResolver) ID(ctx context.Context, obj *ent.ChannelModelPrice) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeChannelModelPrice,
+		ID:   obj.ID,
+	}, nil
+}
+
+// ChannelID is the resolver for the channelID field.
+func (r *channelModelPriceResolver) ChannelID(ctx context.Context, obj *ent.ChannelModelPrice) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeChannel,
+		ID:   obj.ChannelID,
+	}, nil
+}
+
+// ID is the resolver for the id field.
+func (r *channelModelPriceVersionResolver) ID(ctx context.Context, obj *ent.ChannelModelPriceVersion) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeChannelModelPriceVersion,
+		ID:   obj.ID,
+	}, nil
+}
+
+// ChannelModelPriceID is the resolver for the channelModelPriceID field.
+func (r *channelModelPriceVersionResolver) ChannelModelPriceID(ctx context.Context, obj *ent.ChannelModelPriceVersion) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeChannelModelPrice,
+		ID:   obj.ChannelModelPriceID,
+	}, nil
+}
+
+// ID is the resolver for the id field.
 func (r *channelOverrideTemplateResolver) ID(ctx context.Context, obj *ent.ChannelOverrideTemplate) (*objects.GUID, error) {
 	return &objects.GUID{
 		Type: ent.TypeChannelOverrideTemplate,
@@ -664,6 +696,16 @@ func (r *Resolver) APIKey() APIKeyResolver { return &aPIKeyResolver{r} }
 // Channel returns ChannelResolver implementation.
 func (r *Resolver) Channel() ChannelResolver { return &channelResolver{r} }
 
+// ChannelModelPrice returns ChannelModelPriceResolver implementation.
+func (r *Resolver) ChannelModelPrice() ChannelModelPriceResolver {
+	return &channelModelPriceResolver{r}
+}
+
+// ChannelModelPriceVersion returns ChannelModelPriceVersionResolver implementation.
+func (r *Resolver) ChannelModelPriceVersion() ChannelModelPriceVersionResolver {
+	return &channelModelPriceVersionResolver{r}
+}
+
 // ChannelOverrideTemplate returns ChannelOverrideTemplateResolver implementation.
 func (r *Resolver) ChannelOverrideTemplate() ChannelOverrideTemplateResolver {
 	return &channelOverrideTemplateResolver{r}
@@ -724,6 +766,8 @@ func (r *Resolver) UserRole() UserRoleResolver { return &userRoleResolver{r} }
 
 type aPIKeyResolver struct{ *Resolver }
 type channelResolver struct{ *Resolver }
+type channelModelPriceResolver struct{ *Resolver }
+type channelModelPriceVersionResolver struct{ *Resolver }
 type channelOverrideTemplateResolver struct{ *Resolver }
 type channelPerformanceResolver struct{ *Resolver }
 type channelProbeResolver struct{ *Resolver }

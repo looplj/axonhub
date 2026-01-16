@@ -28,7 +28,7 @@ func setupTestThreadService(t *testing.T) (*ThreadService, *ent.Client) {
 			RequestService: NewRequestService(
 				client,
 				systemService,
-				NewUsageLogService(client, systemService),
+				NewUsageLogService(client, systemService, NewChannelServiceForTest(client)),
 				NewDataStorageService(
 					DataStorageServiceParams{
 						SystemService: systemService,

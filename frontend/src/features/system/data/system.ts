@@ -135,6 +135,14 @@ export interface BrandSettings {
   brandLogo?: string;
 }
 
+export interface SystemGeneralSettings {
+  currencyCode: string;
+}
+
+export interface UpdateSystemGeneralSettingsInput {
+  currencyCode?: string;
+}
+
 export interface StoragePolicy {
   storeChunks: boolean;
   storeRequestBody: boolean;
@@ -495,6 +503,20 @@ const UPDATE_CHANNEL_SETTINGS_MUTATION = `
   }
 `;
 
+const SYSTEM_GENERAL_SETTINGS_QUERY = `
+  query SystemGeneralSettings {
+    systemGeneralSettings {
+      currencyCode
+    }
+  }
+`;
+
+const UPDATE_SYSTEM_GENERAL_SETTINGS_MUTATION = `
+  mutation UpdateSystemGeneralSettings($input: UpdateSystemGeneralSettingsInput!) {
+    updateSystemGeneralSettings(input: $input)
+  }
+`;
+
 export interface ModelSettings {
   fallbackToChannelsOnModelNotFound: boolean;
   queryAllChannelModels: boolean;
@@ -588,6 +610,41 @@ export function useUpdateChannelSetting() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['channelSetting'] });
       queryClient.invalidateQueries({ queryKey: ['channelProbeData'] });
+      toast.success(i18n.t('common.success.systemUpdated'));
+    },
+    onError: () => {
+      toast.error(i18n.t('common.errors.systemUpdateFailed'));
+    },
+  });
+}
+
+export function useGeneralSettings() {
+  const { handleError } = useErrorHandler();
+
+  return useQuery({
+    queryKey: ['generalSettings'],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ systemGeneralSettings: SystemGeneralSettings }>(SYSTEM_GENERAL_SETTINGS_QUERY);
+        return data.systemGeneralSettings;
+      } catch (error) {
+        handleError(error, i18n.t('common.errors.internalServerError'));
+        throw error;
+      }
+    },
+  });
+}
+
+export function useUpdateGeneralSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: UpdateSystemGeneralSettingsInput) => {
+      const data = await graphqlRequest<{ updateSystemGeneralSettings: boolean }>(UPDATE_SYSTEM_GENERAL_SETTINGS_MUTATION, { input });
+      return data.updateSystemGeneralSettings;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['generalSettings'] });
       toast.success(i18n.t('common.success.systemUpdated'));
     },
     onError: () => {

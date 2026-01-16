@@ -107,6 +107,41 @@
     "hasNext": "有下一页",
     "showing": "显示第 {{start}} - {{end}} 条，共 {{total}} 条"
   },
+  "price": {
+    "title": "模型价格",
+    "description": "设置渠道 {{name}} 中模型的具体价格",
+    "addPrice": "添加模型价格",
+    "noPrices": "该渠道尚未配置价格。",
+    "model": "模型",
+    "items": "价格项",
+    "addItem": "添加价格项",
+    "itemCode": "计费项",
+    "itemCodes": {
+      "prompt_tokens": "提示词 Token",
+      "completion_tokens": "补全 Token",
+      "prompt_cached_tokens": "缓存 Token",
+      "prompt_write_cached_tokens": "写入缓存 Token"
+    },
+    "mode": "计费模式",
+    "mode_flat_fee": "固定费用",
+    "mode_usage_per_unit": "按单位计费",
+    "mode_usage_tiered": "阶梯计费",
+    "tiers": "阶梯价格",
+    "upTo": "截止用量",
+    "pricePerUnit": "单位价格",
+    "promptWriteCacheVariants": "写入缓存变体",
+    "addVariant": "添加变体",
+    "variantCode": "变体代码",
+    "variantCodes": {
+      "five_min": "5 分钟",
+      "one_hour": "1 小时"
+    },
+    "duplicateItemCode": "计费项不能重复",
+    "duplicateVariantCode": "变体代码不能重复",
+    "validation": {
+      "modelRequired": "请选择模型"
+    }
+  },
   "common": {
     "close": "关闭",
     "refresh": "刷新",
@@ -219,6 +254,7 @@
       "modelDeleteFailed": "删除模型失败"
     },
     "success": {
+      "duplicated": "复制成功",
       "copiedToClipboard": "已复制到剪贴板！",
       "roleCreated": "角色创建成功",
       "roleUpdated": "角色更新成功",

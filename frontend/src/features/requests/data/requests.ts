@@ -82,6 +82,7 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
                   totalTokens
                   promptCachedTokens
                   promptWriteCachedTokens
+                  totalCost
                 }
               }
             }
@@ -138,13 +139,14 @@ function buildRequestDetailQuery(permissions: { canViewApiKeys: boolean; canView
           usageLogs(first: 1) {
             edges {
               node {
-                id
-                promptTokens
-                completionTokens
-                totalTokens
-                promptCachedTokens
-                promptWriteCachedTokens
-              }
+                  id
+                  promptTokens
+                  completionTokens
+                  totalTokens
+                  promptCachedTokens
+                  promptWriteCachedTokens
+                  totalCost
+                }
             }
           }
         }

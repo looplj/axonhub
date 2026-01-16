@@ -2,6 +2,7 @@ package codex
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -29,6 +30,7 @@ func TestTokenProviderGet_SingleflightDedupesRefresh(t *testing.T) {
 
 	old := DefaultTokenURLs
 	DefaultTokenURLs = TokenURLs{Authorize: old.Authorize, Token: server.URL}
+
 	t.Cleanup(func() { DefaultTokenURLs = old })
 
 	hc := httpclient.NewHttpClientWithClient(server.Client())
@@ -41,17 +43,35 @@ func TestTokenProviderGet_SingleflightDedupesRefresh(t *testing.T) {
 
 	ctx := contexts.WithProjectID(context.Background(), 123)
 
+	start := make(chan struct{})
+	errs := make(chan error, 10)
+
 	var wg sync.WaitGroup
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 10 {
+		wg.Go(func() {
+			<-start
+
 			tok, _, err := p.Get(ctx, ch)
-			require.NoError(t, err)
-			require.Equal(t, "new", tok)
-		}()
+			if err != nil {
+				errs <- err
+				return
+			}
+
+			if tok != "new" {
+				errs <- fmt.Errorf("unexpected token: %q", tok)
+				return
+			}
+		})
 	}
+
+	close(start)
+
 	wg.Wait()
+	close(errs)
+
+	for err := range errs {
+		require.NoError(t, err)
+	}
 
 	require.Equal(t, int64(1), calls.Load())
 }
@@ -68,6 +88,7 @@ func TestTokenProviderGet_UsesCacheAfterRefresh(t *testing.T) {
 
 	old := DefaultTokenURLs
 	DefaultTokenURLs = TokenURLs{Authorize: old.Authorize, Token: server.URL}
+
 	t.Cleanup(func() { DefaultTokenURLs = old })
 
 	hc := httpclient.NewHttpClientWithClient(server.Client())

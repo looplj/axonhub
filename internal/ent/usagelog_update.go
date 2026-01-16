@@ -10,10 +10,12 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
+	"github.com/looplj/axonhub/internal/objects"
 )
 
 // UsageLogUpdate is the builder for updating UsageLog entities.
@@ -308,6 +310,45 @@ func (_u *UsageLogUpdate) ClearCompletionRejectedPredictionTokens() *UsageLogUpd
 	return _u
 }
 
+// SetTotalCost sets the "total_cost" field.
+func (_u *UsageLogUpdate) SetTotalCost(v float64) *UsageLogUpdate {
+	_u.mutation.ResetTotalCost()
+	_u.mutation.SetTotalCost(v)
+	return _u
+}
+
+// SetNillableTotalCost sets the "total_cost" field if the given value is not nil.
+func (_u *UsageLogUpdate) SetNillableTotalCost(v *float64) *UsageLogUpdate {
+	if v != nil {
+		_u.SetTotalCost(*v)
+	}
+	return _u
+}
+
+// AddTotalCost adds value to the "total_cost" field.
+func (_u *UsageLogUpdate) AddTotalCost(v float64) *UsageLogUpdate {
+	_u.mutation.AddTotalCost(v)
+	return _u
+}
+
+// SetCostItems sets the "cost_items" field.
+func (_u *UsageLogUpdate) SetCostItems(v []objects.CostItem) *UsageLogUpdate {
+	_u.mutation.SetCostItems(v)
+	return _u
+}
+
+// AppendCostItems appends value to the "cost_items" field.
+func (_u *UsageLogUpdate) AppendCostItems(v []objects.CostItem) *UsageLogUpdate {
+	_u.mutation.AppendCostItems(v)
+	return _u
+}
+
+// ClearCostItems clears the value of the "cost_items" field.
+func (_u *UsageLogUpdate) ClearCostItems() *UsageLogUpdate {
+	_u.mutation.ClearCostItems()
+	return _u
+}
+
 // SetChannel sets the "channel" edge to the Channel entity.
 func (_u *UsageLogUpdate) SetChannel(v *Channel) *UsageLogUpdate {
 	return _u.SetChannelID(v.ID)
@@ -478,6 +519,23 @@ func (_u *UsageLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.CompletionRejectedPredictionTokensCleared() {
 		_spec.ClearField(usagelog.FieldCompletionRejectedPredictionTokens, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.TotalCost(); ok {
+		_spec.SetField(usagelog.FieldTotalCost, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedTotalCost(); ok {
+		_spec.AddField(usagelog.FieldTotalCost, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.CostItems(); ok {
+		_spec.SetField(usagelog.FieldCostItems, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedCostItems(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, usagelog.FieldCostItems, value)
+		})
+	}
+	if _u.mutation.CostItemsCleared() {
+		_spec.ClearField(usagelog.FieldCostItems, field.TypeJSON)
 	}
 	if _u.mutation.ChannelCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -808,6 +866,45 @@ func (_u *UsageLogUpdateOne) ClearCompletionRejectedPredictionTokens() *UsageLog
 	return _u
 }
 
+// SetTotalCost sets the "total_cost" field.
+func (_u *UsageLogUpdateOne) SetTotalCost(v float64) *UsageLogUpdateOne {
+	_u.mutation.ResetTotalCost()
+	_u.mutation.SetTotalCost(v)
+	return _u
+}
+
+// SetNillableTotalCost sets the "total_cost" field if the given value is not nil.
+func (_u *UsageLogUpdateOne) SetNillableTotalCost(v *float64) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetTotalCost(*v)
+	}
+	return _u
+}
+
+// AddTotalCost adds value to the "total_cost" field.
+func (_u *UsageLogUpdateOne) AddTotalCost(v float64) *UsageLogUpdateOne {
+	_u.mutation.AddTotalCost(v)
+	return _u
+}
+
+// SetCostItems sets the "cost_items" field.
+func (_u *UsageLogUpdateOne) SetCostItems(v []objects.CostItem) *UsageLogUpdateOne {
+	_u.mutation.SetCostItems(v)
+	return _u
+}
+
+// AppendCostItems appends value to the "cost_items" field.
+func (_u *UsageLogUpdateOne) AppendCostItems(v []objects.CostItem) *UsageLogUpdateOne {
+	_u.mutation.AppendCostItems(v)
+	return _u
+}
+
+// ClearCostItems clears the value of the "cost_items" field.
+func (_u *UsageLogUpdateOne) ClearCostItems() *UsageLogUpdateOne {
+	_u.mutation.ClearCostItems()
+	return _u
+}
+
 // SetChannel sets the "channel" edge to the Channel entity.
 func (_u *UsageLogUpdateOne) SetChannel(v *Channel) *UsageLogUpdateOne {
 	return _u.SetChannelID(v.ID)
@@ -1008,6 +1105,23 @@ func (_u *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, err 
 	}
 	if _u.mutation.CompletionRejectedPredictionTokensCleared() {
 		_spec.ClearField(usagelog.FieldCompletionRejectedPredictionTokens, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.TotalCost(); ok {
+		_spec.SetField(usagelog.FieldTotalCost, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedTotalCost(); ok {
+		_spec.AddField(usagelog.FieldTotalCost, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.CostItems(); ok {
+		_spec.SetField(usagelog.FieldCostItems, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedCostItems(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, usagelog.FieldCostItems, value)
+		})
+	}
+	if _u.mutation.CostItemsCleared() {
+		_spec.ClearField(usagelog.FieldCostItems, field.TypeJSON)
 	}
 	if _u.mutation.ChannelCleared() {
 		edge := &sqlgraph.EdgeSpec{

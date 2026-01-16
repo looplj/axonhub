@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
+	"github.com/looplj/axonhub/internal/objects"
 )
 
 // UsageLog is the model entity for the UsageLog schema.
@@ -56,6 +58,10 @@ type UsageLog struct {
 	Source usagelog.Source `json:"source,omitempty"`
 	// Request format used
 	Format string `json:"format,omitempty"`
+	// Total cost calculated based on channel model price
+	TotalCost float64 `json:"total_cost,omitempty"`
+	// Detailed cost breakdown items in JSON
+	CostItems []objects.CostItem `json:"cost_items,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the UsageLogQuery when eager-loading is set.
 	Edges        UsageLogEdges `json:"edges"`
@@ -115,6 +121,10 @@ func (*UsageLog) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case usagelog.FieldCostItems:
+			values[i] = new([]byte)
+		case usagelog.FieldTotalCost:
+			values[i] = new(sql.NullFloat64)
 		case usagelog.FieldID, usagelog.FieldRequestID, usagelog.FieldProjectID, usagelog.FieldChannelID, usagelog.FieldPromptTokens, usagelog.FieldCompletionTokens, usagelog.FieldTotalTokens, usagelog.FieldPromptAudioTokens, usagelog.FieldPromptCachedTokens, usagelog.FieldPromptWriteCachedTokens, usagelog.FieldCompletionAudioTokens, usagelog.FieldCompletionReasoningTokens, usagelog.FieldCompletionAcceptedPredictionTokens, usagelog.FieldCompletionRejectedPredictionTokens:
 			values[i] = new(sql.NullInt64)
 		case usagelog.FieldModelID, usagelog.FieldSource, usagelog.FieldFormat:
@@ -250,6 +260,20 @@ func (_m *UsageLog) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Format = value.String
 			}
+		case usagelog.FieldTotalCost:
+			if value, ok := values[i].(*sql.NullFloat64); !ok {
+				return fmt.Errorf("unexpected type %T for field total_cost", values[i])
+			} else if value.Valid {
+				_m.TotalCost = value.Float64
+			}
+		case usagelog.FieldCostItems:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field cost_items", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.CostItems); err != nil {
+					return fmt.Errorf("unmarshal field cost_items: %w", err)
+				}
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -354,6 +378,12 @@ func (_m *UsageLog) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("format=")
 	builder.WriteString(_m.Format)
+	builder.WriteString(", ")
+	builder.WriteString("total_cost=")
+	builder.WriteString(fmt.Sprintf("%v", _m.TotalCost))
+	builder.WriteString(", ")
+	builder.WriteString("cost_items=")
+	builder.WriteString(fmt.Sprintf("%v", _m.CostItems))
 	builder.WriteByte(')')
 	return builder.String()
 }

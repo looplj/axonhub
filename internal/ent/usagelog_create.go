@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
+	"github.com/looplj/axonhub/internal/objects"
 )
 
 // UsageLogCreate is the builder for creating a UsageLog entity.
@@ -261,6 +262,26 @@ func (_c *UsageLogCreate) SetNillableFormat(v *string) *UsageLogCreate {
 	return _c
 }
 
+// SetTotalCost sets the "total_cost" field.
+func (_c *UsageLogCreate) SetTotalCost(v float64) *UsageLogCreate {
+	_c.mutation.SetTotalCost(v)
+	return _c
+}
+
+// SetNillableTotalCost sets the "total_cost" field if the given value is not nil.
+func (_c *UsageLogCreate) SetNillableTotalCost(v *float64) *UsageLogCreate {
+	if v != nil {
+		_c.SetTotalCost(*v)
+	}
+	return _c
+}
+
+// SetCostItems sets the "cost_items" field.
+func (_c *UsageLogCreate) SetCostItems(v []objects.CostItem) *UsageLogCreate {
+	_c.mutation.SetCostItems(v)
+	return _c
+}
+
 // SetRequest sets the "request" edge to the Request entity.
 func (_c *UsageLogCreate) SetRequest(v *Request) *UsageLogCreate {
 	return _c.SetRequestID(v.ID)
@@ -379,6 +400,14 @@ func (_c *UsageLogCreate) defaults() error {
 		v := usagelog.DefaultFormat
 		_c.mutation.SetFormat(v)
 	}
+	if _, ok := _c.mutation.TotalCost(); !ok {
+		v := usagelog.DefaultTotalCost
+		_c.mutation.SetTotalCost(v)
+	}
+	if _, ok := _c.mutation.CostItems(); !ok {
+		v := usagelog.DefaultCostItems
+		_c.mutation.SetCostItems(v)
+	}
 	return nil
 }
 
@@ -418,6 +447,9 @@ func (_c *UsageLogCreate) check() error {
 	}
 	if _, ok := _c.mutation.Format(); !ok {
 		return &ValidationError{Name: "format", err: errors.New(`ent: missing required field "UsageLog.format"`)}
+	}
+	if _, ok := _c.mutation.TotalCost(); !ok {
+		return &ValidationError{Name: "total_cost", err: errors.New(`ent: missing required field "UsageLog.total_cost"`)}
 	}
 	if len(_c.mutation.RequestIDs()) == 0 {
 		return &ValidationError{Name: "request", err: errors.New(`ent: missing required edge "UsageLog.request"`)}
@@ -511,6 +543,14 @@ func (_c *UsageLogCreate) createSpec() (*UsageLog, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Format(); ok {
 		_spec.SetField(usagelog.FieldFormat, field.TypeString, value)
 		_node.Format = value
+	}
+	if value, ok := _c.mutation.TotalCost(); ok {
+		_spec.SetField(usagelog.FieldTotalCost, field.TypeFloat64, value)
+		_node.TotalCost = value
+	}
+	if value, ok := _c.mutation.CostItems(); ok {
+		_spec.SetField(usagelog.FieldCostItems, field.TypeJSON, value)
+		_node.CostItems = value
 	}
 	if nodes := _c.mutation.RequestIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -867,6 +907,42 @@ func (u *UsageLogUpsert) ClearCompletionRejectedPredictionTokens() *UsageLogUpse
 	return u
 }
 
+// SetTotalCost sets the "total_cost" field.
+func (u *UsageLogUpsert) SetTotalCost(v float64) *UsageLogUpsert {
+	u.Set(usagelog.FieldTotalCost, v)
+	return u
+}
+
+// UpdateTotalCost sets the "total_cost" field to the value that was provided on create.
+func (u *UsageLogUpsert) UpdateTotalCost() *UsageLogUpsert {
+	u.SetExcluded(usagelog.FieldTotalCost)
+	return u
+}
+
+// AddTotalCost adds v to the "total_cost" field.
+func (u *UsageLogUpsert) AddTotalCost(v float64) *UsageLogUpsert {
+	u.Add(usagelog.FieldTotalCost, v)
+	return u
+}
+
+// SetCostItems sets the "cost_items" field.
+func (u *UsageLogUpsert) SetCostItems(v []objects.CostItem) *UsageLogUpsert {
+	u.Set(usagelog.FieldCostItems, v)
+	return u
+}
+
+// UpdateCostItems sets the "cost_items" field to the value that was provided on create.
+func (u *UsageLogUpsert) UpdateCostItems() *UsageLogUpsert {
+	u.SetExcluded(usagelog.FieldCostItems)
+	return u
+}
+
+// ClearCostItems clears the value of the "cost_items" field.
+func (u *UsageLogUpsert) ClearCostItems() *UsageLogUpsert {
+	u.SetNull(usagelog.FieldCostItems)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -1218,6 +1294,48 @@ func (u *UsageLogUpsertOne) UpdateCompletionRejectedPredictionTokens() *UsageLog
 func (u *UsageLogUpsertOne) ClearCompletionRejectedPredictionTokens() *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.ClearCompletionRejectedPredictionTokens()
+	})
+}
+
+// SetTotalCost sets the "total_cost" field.
+func (u *UsageLogUpsertOne) SetTotalCost(v float64) *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetTotalCost(v)
+	})
+}
+
+// AddTotalCost adds v to the "total_cost" field.
+func (u *UsageLogUpsertOne) AddTotalCost(v float64) *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.AddTotalCost(v)
+	})
+}
+
+// UpdateTotalCost sets the "total_cost" field to the value that was provided on create.
+func (u *UsageLogUpsertOne) UpdateTotalCost() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateTotalCost()
+	})
+}
+
+// SetCostItems sets the "cost_items" field.
+func (u *UsageLogUpsertOne) SetCostItems(v []objects.CostItem) *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetCostItems(v)
+	})
+}
+
+// UpdateCostItems sets the "cost_items" field to the value that was provided on create.
+func (u *UsageLogUpsertOne) UpdateCostItems() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateCostItems()
+	})
+}
+
+// ClearCostItems clears the value of the "cost_items" field.
+func (u *UsageLogUpsertOne) ClearCostItems() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearCostItems()
 	})
 }
 
@@ -1738,6 +1856,48 @@ func (u *UsageLogUpsertBulk) UpdateCompletionRejectedPredictionTokens() *UsageLo
 func (u *UsageLogUpsertBulk) ClearCompletionRejectedPredictionTokens() *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.ClearCompletionRejectedPredictionTokens()
+	})
+}
+
+// SetTotalCost sets the "total_cost" field.
+func (u *UsageLogUpsertBulk) SetTotalCost(v float64) *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetTotalCost(v)
+	})
+}
+
+// AddTotalCost adds v to the "total_cost" field.
+func (u *UsageLogUpsertBulk) AddTotalCost(v float64) *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.AddTotalCost(v)
+	})
+}
+
+// UpdateTotalCost sets the "total_cost" field to the value that was provided on create.
+func (u *UsageLogUpsertBulk) UpdateTotalCost() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateTotalCost()
+	})
+}
+
+// SetCostItems sets the "cost_items" field.
+func (u *UsageLogUpsertBulk) SetCostItems(v []objects.CostItem) *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetCostItems(v)
+	})
+}
+
+// UpdateCostItems sets the "cost_items" field to the value that was provided on create.
+func (u *UsageLogUpsertBulk) UpdateCostItems() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateCostItems()
+	})
+}
+
+// ClearCostItems clears the value of the "cost_items" field.
+func (u *UsageLogUpsertBulk) ClearCostItems() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearCostItems()
 	})
 }
 

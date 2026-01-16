@@ -233,6 +233,7 @@ linters:
           - errname
           - noinlineerr
           - nilnil
+          - exhaustive
 
       - path: _mock\.go$
         linters:
@@ -288,7 +289,7 @@ formatters:
     - gofmt
     - gofumpt
     - goimports
-    - golines
+    # - golines
   settings:
     gci:
       # Section configuration to compare against.

@@ -81,6 +81,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 			models := lo.Map(codex.DefaultModels(), func(id string, _ int) ModelIdentify {
 				return ModelIdentify{ID: id}
 			})
+
 			return &FetchModelsResult{
 				Models: models,
 				Error:  nil,
@@ -91,16 +92,19 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 			proxyConfig = ch.Settings.Proxy
 		}
 	}
+
 	if apiKey == "" {
 		if channel.Type(input.ChannelType) == channel.TypeCodex {
 			models := lo.Map(codex.DefaultModels(), func(id string, _ int) ModelIdentify {
 				return ModelIdentify{ID: id}
 			})
+
 			return &FetchModelsResult{
 				Models: models,
 				Error:  nil,
 			}, nil
 		}
+
 		return &FetchModelsResult{
 			Models: []ModelIdentify{},
 			Error:  lo.ToPtr("API key is required"),

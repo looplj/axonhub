@@ -159,6 +159,54 @@ func (f ChannelMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutatio
 	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.ChannelMutation", m)
 }
 
+// The ChannelModelPriceQueryRuleFunc type is an adapter to allow the use of ordinary
+// functions as a query rule.
+type ChannelModelPriceQueryRuleFunc func(context.Context, *ent.ChannelModelPriceQuery) error
+
+// EvalQuery return f(ctx, q).
+func (f ChannelModelPriceQueryRuleFunc) EvalQuery(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.ChannelModelPriceQuery); ok {
+		return f(ctx, q)
+	}
+	return Denyf("ent/privacy: unexpected query type %T, expect *ent.ChannelModelPriceQuery", q)
+}
+
+// The ChannelModelPriceMutationRuleFunc type is an adapter to allow the use of ordinary
+// functions as a mutation rule.
+type ChannelModelPriceMutationRuleFunc func(context.Context, *ent.ChannelModelPriceMutation) error
+
+// EvalMutation calls f(ctx, m).
+func (f ChannelModelPriceMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) error {
+	if m, ok := m.(*ent.ChannelModelPriceMutation); ok {
+		return f(ctx, m)
+	}
+	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.ChannelModelPriceMutation", m)
+}
+
+// The ChannelModelPriceVersionQueryRuleFunc type is an adapter to allow the use of ordinary
+// functions as a query rule.
+type ChannelModelPriceVersionQueryRuleFunc func(context.Context, *ent.ChannelModelPriceVersionQuery) error
+
+// EvalQuery return f(ctx, q).
+func (f ChannelModelPriceVersionQueryRuleFunc) EvalQuery(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.ChannelModelPriceVersionQuery); ok {
+		return f(ctx, q)
+	}
+	return Denyf("ent/privacy: unexpected query type %T, expect *ent.ChannelModelPriceVersionQuery", q)
+}
+
+// The ChannelModelPriceVersionMutationRuleFunc type is an adapter to allow the use of ordinary
+// functions as a mutation rule.
+type ChannelModelPriceVersionMutationRuleFunc func(context.Context, *ent.ChannelModelPriceVersionMutation) error
+
+// EvalMutation calls f(ctx, m).
+func (f ChannelModelPriceVersionMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) error {
+	if m, ok := m.(*ent.ChannelModelPriceVersionMutation); ok {
+		return f(ctx, m)
+	}
+	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.ChannelModelPriceVersionMutation", m)
+}
+
 // The ChannelOverrideTemplateQueryRuleFunc type is an adapter to allow the use of ordinary
 // functions as a query rule.
 type ChannelOverrideTemplateQueryRuleFunc func(context.Context, *ent.ChannelOverrideTemplateQuery) error
@@ -606,6 +654,10 @@ func queryFilter(q ent.Query) (Filter, error) {
 		return q.Filter(), nil
 	case *ent.ChannelQuery:
 		return q.Filter(), nil
+	case *ent.ChannelModelPriceQuery:
+		return q.Filter(), nil
+	case *ent.ChannelModelPriceVersionQuery:
+		return q.Filter(), nil
 	case *ent.ChannelOverrideTemplateQuery:
 		return q.Filter(), nil
 	case *ent.ChannelPerformanceQuery:
@@ -650,6 +702,10 @@ func mutationFilter(m ent.Mutation) (Filter, error) {
 	case *ent.APIKeyMutation:
 		return m.Filter(), nil
 	case *ent.ChannelMutation:
+		return m.Filter(), nil
+	case *ent.ChannelModelPriceMutation:
+		return m.Filter(), nil
+	case *ent.ChannelModelPriceVersionMutation:
 		return m.Filter(), nil
 	case *ent.ChannelOverrideTemplateMutation:
 		return m.Filter(), nil

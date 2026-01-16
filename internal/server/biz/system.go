@@ -69,7 +69,17 @@ const (
 	// SystemKeyChannelSettings is the key used to store channel settings.
 	// The value is JSON-encoded SystemChannelSettings struct.
 	SystemKeyChannelSettings = "system_channel_settings"
+
+	// SystemKeyGeneralSettings is the key used to store general settings.
+	// The value is JSON-encoded SystemGeneralSettings struct.
+	SystemKeyGeneralSettings = "system_general_settings"
 )
+
+// SystemGeneralSettings represents general system configuration settings.
+type SystemGeneralSettings struct {
+	// CurrencyCode is the code used for currency display (e.g., USD, RMB).
+	CurrencyCode string `json:"currency_code"`
+}
 
 // StoragePolicy represents the storage policy configuration.
 type StoragePolicy struct {
@@ -590,6 +600,10 @@ var defaultChannelSetting = SystemChannelSettings{
 	},
 }
 
+var defaultGeneralSettings = SystemGeneralSettings{
+	CurrencyCode: "USD",
+}
+
 // StoragePolicy retrieves the storage policy configuration.
 func (s *SystemService) StoragePolicy(ctx context.Context) (*StoragePolicy, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
@@ -782,6 +796,37 @@ func (s *SystemService) SetChannelSetting(ctx context.Context, setting SystemCha
 	}
 
 	return s.setSystemValue(ctx, SystemKeyChannelSettings, string(jsonBytes))
+}
+
+// GeneralSettings retrieves the general settings configuration.
+func (s *SystemService) GeneralSettings(ctx context.Context) (*SystemGeneralSettings, error) {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	value, err := s.getSystemValue(ctx, SystemKeyGeneralSettings)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return lo.ToPtr(defaultGeneralSettings), nil
+		}
+
+		return nil, fmt.Errorf("failed to get general settings: %w", err)
+	}
+
+	var settings SystemGeneralSettings
+	if err := json.Unmarshal([]byte(value), &settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal general settings: %w", err)
+	}
+
+	return &settings, nil
+}
+
+// SetGeneralSettings sets the general settings configuration.
+func (s *SystemService) SetGeneralSettings(ctx context.Context, settings SystemGeneralSettings) error {
+	jsonBytes, err := json.Marshal(settings)
+	if err != nil {
+		return fmt.Errorf("failed to marshal general settings: %w", err)
+	}
+
+	return s.setSystemValue(ctx, SystemKeyGeneralSettings, string(jsonBytes))
 }
 
 // DefaultDataStorageID retrieves the default data storage ID from system settings.

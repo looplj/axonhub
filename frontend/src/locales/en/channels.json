@@ -102,6 +102,7 @@
     "actions": {
       "test": "Test",
       "settings": "Settings",
+      "price": "Price",
       "errorResolved": "Error Resolved",
       "viewModels": "View Models"
     },
@@ -160,6 +161,8 @@
       "batchCreateError": "Failed to create channels: {{error}}",
       "errorResolvedSuccess": "Channel error resolved successfully",
       "errorResolvedError": "Failed to resolve channel error: {{error}}",
+      "savePricesSuccess": "Model prices saved successfully",
+      "savePricesError": "Failed to save model prices: {{error}}",
       "Unauthorized": "Unauthorized, please check the API key of the channel",
       "Not Found": "Endpoint not found, pleast check the base url of the channel",
       "Interval Server Error": "Interval server error, please confirm the channel configuration"
@@ -172,7 +175,8 @@
       "fetchNames": "Failed to load existing channel names",
       "fetchOrdering": "Failed to load channels for ordering",
       "fetchTypes": "Failed to fetch channel types",
-      "fetchTags": "Failed to fetch channel tags"
+      "fetchTags": "Failed to fetch channel tags",
+      "fetchPrices": "Failed to load model prices"
     },
     "dialogs": {
       "systemSettings": {

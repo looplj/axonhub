@@ -3,6 +3,7 @@
     "title": "System Settings",
     "description": "Manage system configurations and options.",
     "tabs": {
+      "general": "General",
       "brand": "Brand",
       "storage": "Storage",
       "retry": "Retry",
@@ -44,6 +45,15 @@
     },
     "general": {
       "title": "General Settings",
+      "description": "Manage general system configuration options",
+      "currencyCode": {
+        "label": "Currency Code",
+        "placeholder": "e.g. USD, RMB",
+        "description": "For system fee display only, not used for actual billing, changes take effect in real-time"
+      }
+    },
+    "brand": {
+      "title": "Brand Settings",
       "description": "Configure basic system information and branding settings",
       "brandName": {
         "label": "Brand Name",

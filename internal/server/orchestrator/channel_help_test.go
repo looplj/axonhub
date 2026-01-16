@@ -79,7 +79,8 @@ func newTestRequestServiceForChannels(client *ent.Client, systemService *biz.Sys
 		SystemService:   systemService,
 		Cache:           xcache.NewFromConfig[ent.DataStorage](xcache.Config{Mode: xcache.ModeMemory}),
 	}
-	usageLogService := biz.NewUsageLogService(client, systemService)
+	channelService := biz.NewChannelServiceForTest(client)
+	usageLogService := biz.NewUsageLogService(client, systemService, channelService)
 
 	return biz.NewRequestService(client, systemService, usageLogService, dataStorageService)
 }
@@ -227,10 +228,11 @@ func setupTestServices(t *testing.T, client *ent.Client) (*biz.ChannelService, *
 		Cache:           xcache.NewFromConfig[ent.DataStorage](cacheConfig),
 	}
 
-	usageLogService := biz.NewUsageLogService(client, systemService)
+	channelService := biz.NewChannelServiceForTest(client)
+	usageLogService := biz.NewUsageLogService(client, systemService, channelService)
 	requestService := biz.NewRequestService(client, systemService, usageLogService, dataStorageService)
 
-	channelService := biz.NewChannelServiceForTest(client)
+	channelService = biz.NewChannelServiceForTest(client)
 
 	return channelService, requestService, systemService, usageLogService
 }

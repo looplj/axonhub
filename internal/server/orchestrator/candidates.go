@@ -455,7 +455,7 @@ func NewSpecifiedChannelSelector(channelService *biz.ChannelService, channelID o
 }
 
 func (s *SpecifiedChannelSelector) Select(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
-	channel, err := s.ChannelService.GetChannelForTest(ctx, s.ChannelID.ID)
+	channel, err := s.ChannelService.GetChannel(ctx, s.ChannelID.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get channel for test: %w", err)
 	}

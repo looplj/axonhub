@@ -38,8 +38,10 @@ type OutboundTransformer struct {
 	responsesOutbound *responses.OutboundTransformer
 }
 
-var _ transformer.Outbound = (*OutboundTransformer)(nil)
-var _ pipeline.ChannelCustomizedExecutor = (*OutboundTransformer)(nil)
+var (
+	_ transformer.Outbound               = (*OutboundTransformer)(nil)
+	_ pipeline.ChannelCustomizedExecutor = (*OutboundTransformer)(nil)
+)
 
 type Params struct {
 	CredentialsJSON string
@@ -116,6 +118,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	if reqCopy.TransformerMetadata == nil {
 		reqCopy.TransformerMetadata = map[string]any{}
 	}
+
 	if _, ok := reqCopy.TransformerMetadata["include"]; !ok {
 		reqCopy.TransformerMetadata["include"] = []string{"reasoning.encrypted_content"}
 	}
@@ -132,6 +135,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	// Codex upstream validates the raw `instructions` string more strictly.
 	// If incoming request is not already a Codex CLI prompt, force the Codex CLI instructions.
 	instructions := responsesInstructionFromMessages(reqCopy.Messages)
+
 	isCodex := strings.HasPrefix(instructions, "You are a coding agent running in the Codex CLI") || strings.HasPrefix(instructions, "You are Codex")
 	if !isCodex {
 		reqCopy.Messages = setCodexSystemInstruction(reqCopy.Messages)
@@ -158,8 +162,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	// Keep Codex-specific headers.
 	hreq.Headers.Set("User-Agent", UA)
+
 	if creds.AccountID != "" {
-		hreq.Headers.Set("chatgpt-account-id", creds.AccountID)
+		hreq.Headers.Set("Chatgpt-Account-Id", creds.AccountID)
 	}
 
 	return hreq, nil
@@ -175,10 +180,12 @@ func setCodexSystemInstruction(msgs []llm.Message) []llm.Message {
 
 	// Drop existing system/developer instructions to keep Codex `instructions` clean.
 	var filtered []llm.Message
+
 	for _, msg := range msgs {
 		if msg.Role == "system" || msg.Role == "developer" {
 			continue
 		}
+
 		filtered = append(filtered, msg)
 	}
 
@@ -187,10 +194,12 @@ func setCodexSystemInstruction(msgs []llm.Message) []llm.Message {
 
 func responsesInstructionFromMessages(msgs []llm.Message) string {
 	var parts []string
+
 	for _, msg := range msgs {
 		if msg.Role != "system" && msg.Role != "developer" {
 			continue
 		}
+
 		if msg.Content.Content != nil {
 			parts = append(parts, *msg.Content.Content)
 		}
@@ -231,23 +240,28 @@ func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*h
 	request.Headers.Set("Connection", "Keep-Alive")
 	request.Headers.Set("Openai-Beta", "responses=experimental")
 	request.Headers.Set("Originator", "codex_cli_rs")
+
 	if request.Headers.Get("Session_id") == "" {
 		request.Headers.Set("Session_id", uuid.NewString())
 	}
+
 	if request.Headers.Get("Conversation_id") == "" {
 		request.Headers.Set("Conversation_id", request.Headers.Get("Session_id"))
 	}
+
 	request.Headers.Set("Version", "0.21.0")
 
 	stream, err := e.inner.DoStream(ctx, request)
 	if err != nil {
 		return nil, err
 	}
+
 	defer func() {
 		_ = stream.Close()
 	}()
 
 	var chunks []*httpclient.StreamEvent
+
 	for stream.Next() {
 		ev := stream.Current()
 		if ev == nil {
@@ -257,6 +271,7 @@ func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*h
 		copied := &httpclient.StreamEvent{Type: ev.Type, LastEventID: ev.LastEventID, Data: append([]byte(nil), ev.Data...)}
 		chunks = append(chunks, copied)
 	}
+
 	if err := stream.Err(); err != nil {
 		return nil, err
 	}
@@ -283,12 +298,15 @@ func (e *codexExecutor) DoStream(ctx context.Context, request *httpclient.Reques
 	request.Headers.Set("Connection", "Keep-Alive")
 	request.Headers.Set("Openai-Beta", "responses=experimental")
 	request.Headers.Set("Originator", "codex_cli_rs")
+
 	if request.Headers.Get("Session_id") == "" {
 		request.Headers.Set("Session_id", uuid.NewString())
 	}
+
 	if request.Headers.Get("Conversation_id") == "" {
 		request.Headers.Set("Conversation_id", request.Headers.Get("Session_id"))
 	}
+
 	request.Headers.Set("Version", "0.21.0")
 
 	return e.inner.DoStream(ctx, request)
