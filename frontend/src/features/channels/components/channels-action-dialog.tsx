@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { X, RefreshCw, Search, ChevronLeft, ChevronRight, PanelLeft, Plus, Trash2, Eye, EyeOff, Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { useSelectedProjectId } from '@/stores/projectStore';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -29,7 +30,8 @@ import {
   useAllChannelNames,
   useAllChannelTags,
 } from '../data/channels';
-import { getDefaultBaseURL, getDefaultModels, CHANNEL_CONFIGS, OPENAI_CHAT_COMPLETIONS } from '../data/config_channels';
+import { codexOAuthExchange, codexOAuthStart } from '../data/codex';
+import { getDefaultBaseURL, getDefaultModels, CHANNEL_CONFIGS, OPENAI_CHAT_COMPLETIONS, OPENAI_RESPONSES } from '../data/config_channels';
 import {
   PROVIDER_CONFIGS,
   getProviderFromChannelType,
@@ -81,6 +83,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const fetchModels = useFetchModels();
   const { data: allChannelNames = [], isSuccess: allChannelNamesLoaded } = useAllChannelNames({ enabled: open && isDuplicate });
   const { data: allTags = [], isLoading: isLoadingTags } = useAllChannelTags();
+  const selectedProjectId = useSelectedProjectId();
   const [supportedModels, setSupportedModels] = useState<string[]>(() => initialRow?.supportedModels || []);
   const [newModel, setNewModel] = useState('');
   const [selectedDefaultModels, setSelectedDefaultModels] = useState<string[]>([]);
@@ -100,6 +103,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const hasAutoSetDuplicateNameRef = useRef(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [showGcpJsonData, setShowGcpJsonData] = useState(false);
+
+  const [codexSessionId, setCodexSessionId] = useState<string | null>(null);
+  const [codexAuthUrl, setCodexAuthUrl] = useState<string | null>(null);
+  const [codexCallbackUrl, setCodexCallbackUrl] = useState('');
+  const [isCodexStarting, setIsCodexStarting] = useState(false);
+  const [isCodexExchanging, setIsCodexExchanging] = useState(false);
 
   // Provider-based selection state
   const [selectedProvider, setSelectedProvider] = useState<string>(() => {
@@ -148,11 +157,16 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   useEffect(() => {
     if (!open) {
       hasAutoSetDuplicateNameRef.current = false;
+      setCodexSessionId(null);
+      setCodexAuthUrl(null);
+      setCodexCallbackUrl('');
+      setIsCodexStarting(false);
+      setIsCodexExchanging(false);
     }
   }, [open]);
 
   useEffect(() => {
-    if (!open || !isEdit) return;
+    if (!open) return;
 
     const frame = requestAnimationFrame(() => {
       const target = providerRefs.current[selectedProvider];
@@ -236,6 +250,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             remark: currentRow.remark || '',
             credentials: {
               apiKey: currentRow.credentials?.apiKey || '',
+              platformType: currentRow.credentials?.platformType || '',
               aws: {
                 accessKeyID: currentRow.credentials?.aws?.accessKeyID || '',
                 secretAccessKey: currentRow.credentials?.aws?.secretAccessKey || '',
@@ -261,6 +276,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               settings: duplicateFromRow.settings ?? undefined,
               credentials: {
                 apiKey: duplicateFromRow.credentials?.apiKey || '',
+                platformType: duplicateFromRow.credentials?.platformType || '',
                 aws: {
                   accessKeyID: duplicateFromRow.credentials?.aws?.accessKeyID || '',
                   secretAccessKey: duplicateFromRow.credentials?.aws?.secretAccessKey || '',
@@ -279,6 +295,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               name: '',
               credentials: {
                 apiKey: '',
+                platformType: '',
                 aws: {
                   accessKeyID: '',
                   secretAccessKey: '',
@@ -315,6 +332,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
   const selectedType = form.watch('type') as ChannelType | undefined;
 
+  const isCodexType = (selectedType || derivedChannelType) === 'codex';
+
   const baseURLPlaceholder = useMemo(() => {
     const currentType = selectedType || derivedChannelType;
     const defaultURL = getDefaultBaseURL(currentType);
@@ -323,6 +342,23 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     }
     return t('channels.dialogs.fields.baseURL.placeholder');
   }, [selectedType, derivedChannelType, t]);
+
+  const wrapCodexUnsupported = useCallback(
+    (enabled: boolean, children: React.ReactNode, wrapperClassName: string) => {
+      if (!enabled) return children;
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className={wrapperClassName}>{children}</span>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{t('channels.dialogs.fields.supportedModels.codexUnsupported')}</p>
+          </TooltipContent>
+        </Tooltip>
+      );
+    },
+    [t]
+  );
 
   // Sync form type when provider or API format changes (only for create mode)
   const handleProviderChange = useCallback(
@@ -337,6 +373,15 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         setUseAnthropicAws(false);
         setUseClaudeCode(false);
       }
+
+      if (provider === 'codex') {
+        setSelectedApiFormat(OPENAI_RESPONSES);
+        form.setValue('type', 'codex');
+        setFetchedModels([]);
+        setUseFetchedModels(false);
+        return;
+      }
+
       const formats = getApiFormatsForProvider(provider);
       // Default to first available format
       const newFormat = formats[0] || 'openai/chat_completions';
@@ -361,12 +406,14 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         setUseFetchedModels(false);
       }
     },
-    [isEdit, form, useGeminiVertex, useAnthropicAws]
+    [isEdit, form, useGeminiVertex, useAnthropicAws, isDuplicate]
   );
 
   const handleApiFormatChange = useCallback(
     (format: ApiFormat) => {
       if (isEdit) return;
+      if (selectedProvider === 'codex') return;
+
       setSelectedApiFormat(format);
 
       // Reset vertex checkbox if not gemini/contents
@@ -398,7 +445,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         }
       }
     },
-    [isEdit, selectedProvider, form, useGeminiVertex, useAnthropicAws]
+    [isEdit, selectedProvider, form, useGeminiVertex, useAnthropicAws, isDuplicate]
   );
 
   const handleGeminiVertexChange = useCallback(
@@ -470,13 +517,76 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     [isEdit, selectedApiFormat, form, isDuplicate]
   );
 
+  const startCodexOAuth = useCallback(async () => {
+    if (!selectedProjectId) {
+      toast.error(t('channels.dialogs.codex.errors.projectRequired'));
+      return;
+    }
+
+    setIsCodexStarting(true);
+    try {
+      const result = await codexOAuthStart({ 'X-Project-ID': selectedProjectId });
+      setCodexSessionId(result.session_id);
+      setCodexAuthUrl(result.auth_url);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsCodexStarting(false);
+    }
+  }, [selectedProjectId]);
+
+  const exchangeCodexOAuth = useCallback(async () => {
+    if (!selectedProjectId) {
+      toast.error(t('channels.dialogs.codex.errors.projectRequired'));
+      return;
+    }
+
+    if (!codexSessionId) {
+      toast.error(t('channels.dialogs.codex.errors.sessionMissing'));
+      return;
+    }
+
+    if (!codexCallbackUrl.trim()) {
+      toast.error(t('channels.dialogs.codex.errors.callbackUrlRequired'));
+      return;
+    }
+
+    setIsCodexExchanging(true);
+    try {
+      const result = await codexOAuthExchange(
+        {
+          session_id: codexSessionId,
+          callback_url: codexCallbackUrl.trim(),
+        },
+        { 'X-Project-ID': selectedProjectId }
+      );
+
+      form.setValue('credentials.apiKey', result.credentials);
+      form.setValue('credentials.platformType', 'codex');
+      toast.success(t('channels.dialogs.codex.messages.credentialsImported'));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsCodexExchanging(false);
+    }
+  }, [selectedProjectId, codexSessionId, codexCallbackUrl, form]);
+
   useEffect(() => {
     if (isEdit) return;
-    if (!availableApiFormats.includes(selectedApiFormat)) {
-      const fallbackFormat = availableApiFormats[0] || OPENAI_CHAT_COMPLETIONS;
-      handleApiFormatChange(fallbackFormat);
+    if (!isCodexType) {
+      setCodexSessionId(null);
+      setCodexAuthUrl(null);
+      setCodexCallbackUrl('');
+      form.setValue('credentials.platformType', '');
+      return;
     }
-  }, [availableApiFormats, selectedApiFormat, handleApiFormatChange, isEdit]);
+
+    form.setValue('credentials.platformType', 'codex');
+    const baseURL = getDefaultBaseURL('codex');
+    if (baseURL) {
+      form.resetField('baseURL', { defaultValue: baseURL });
+    }
+  }, [isEdit, isCodexType, form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     // Check if there are selected fetched models that haven't been confirmed
@@ -497,6 +607,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         ...valuesForSubmit,
         supportedModels,
       };
+
+      if (isCodexType) {
+        const baseURL = getDefaultBaseURL('codex');
+        if (baseURL) {
+          dataWithModels.baseURL = baseURL;
+        }
+      }
 
       if (isEdit && currentRow) {
         // For edit mode, only include credentials if user actually entered new values
@@ -541,6 +658,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             .filter((key) => key.length > 0) || [];
 
         if (apiKeys.length > 1) {
+          if (isCodexType) {
+      toast.error(t('channels.dialogs.codex.errors.bulkCreateUnsupported'));
+      return;
+          }
+
           const settings = values.settings ?? duplicateFromRow?.settings ?? undefined;
           // Bulk create: use bulk mutation
           await bulkCreateChannels.mutateAsync({
@@ -646,7 +768,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       const result = await fetchModels.mutateAsync({
         channelType,
         baseURL,
-        apiKey: !isEdit ? firstApiKey : firstApiKey || undefined,
+        apiKey: isCodexType ? undefined : !isEdit ? firstApiKey : firstApiKey || undefined,
         channelID: isEdit ? currentRow?.id : undefined,
       });
 
@@ -667,11 +789,15 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     } catch (_error) {
       // Error is already handled by the mutation
     }
-  }, [fetchModels, form, isEdit, currentRow]);
+  }, [fetchModels, form, isEdit, currentRow, isCodexType]);
 
   const canFetchModels = () => {
     const baseURL = form.watch('baseURL');
     const apiKey = form.watch('credentials.apiKey');
+
+    if (isCodexType) {
+      return !!baseURL;
+    }
 
     if (isEdit) {
       return !!baseURL;
@@ -877,7 +1003,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
                     {/* Right Side - Form Fields */}
                     <div className='flex-1 space-y-6'>
-                      {selectedProvider !== 'jina' && (
+                      {selectedProvider !== 'jina' && selectedProvider !== 'codex' && (
                         <FormItem className='grid grid-cols-8 items-start gap-x-6'>
                           <FormLabel className='col-span-2 pt-2 text-right font-medium'>
                             {t('channels.dialogs.fields.apiFormat.label')}
@@ -901,9 +1027,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             {selectedApiFormat === 'gemini/contents' && (
                               <div className='mt-3'>
                                 <label
-                                  className={`flex items-center gap-2 text-sm ${
-                                    isEdit ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
-                                  }`}
+                                  className={`flex items-center gap-2 text-sm ${isEdit ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                                 >
                                   <Checkbox
                                     checked={useGeminiVertex}
@@ -917,9 +1041,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             {selectedApiFormat === 'anthropic/messages' && selectedProvider === 'anthropic' && (
                               <div className='mt-3 space-y-2'>
                                 <label
-                                  className={`flex items-center gap-2 text-sm ${
-                                    isEdit ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
-                                  }`}
+                                  className={`flex items-center gap-2 text-sm ${isEdit ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                                 >
                                   <Checkbox
                                     checked={useAnthropicAws}
@@ -929,9 +1051,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   <span>{t('channels.dialogs.fields.apiFormat.anthropicAWS.label')}</span>
                                 </label>
                                 <label
-                                  className={`flex items-center gap-2 text-sm ${
-                                    isEdit ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
-                                  }`}
+                                  className={`flex items-center gap-2 text-sm ${isEdit ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                                 >
                                   <Checkbox
                                     checked={useClaudeCode}
@@ -942,6 +1062,71 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 </label>
                               </div>
                             )}
+                          </div>
+                        </FormItem>
+                      )}
+                      {selectedProvider === 'codex' && (
+                        <FormItem className='grid grid-cols-8 items-start gap-x-6'>
+                          <FormLabel className='col-span-2 pt-2 text-right font-medium'>
+                            {t('channels.dialogs.fields.apiFormat.label')}
+                          </FormLabel>
+                          <div className='col-span-6 space-y-1'>
+                            <div className='text-sm'>{getApiFormatLabel(OPENAI_RESPONSES)}</div>
+                            <p className='text-muted-foreground mt-1 text-xs'>{t('channels.dialogs.fields.apiFormat.editDisabled')}</p>
+
+                            <div className='mt-3 space-y-2'>
+                              <div className='rounded-md border p-3'>
+                                <div className='flex flex-wrap items-center gap-2'>
+                                  <Button type='button' variant='secondary' onClick={startCodexOAuth} disabled={isCodexStarting}>
+                                    {isCodexStarting
+                                      ? t('channels.dialogs.codex.buttons.starting')
+                                      : t('channels.dialogs.codex.buttons.startOAuth')}
+                                  </Button>
+                                  {codexAuthUrl && (
+                                    <Button
+                                      type='button'
+                                      variant='ghost'
+                                      onClick={() => window.open(codexAuthUrl, '_blank', 'noopener,noreferrer')}
+                                    >
+                                      {t('channels.dialogs.codex.buttons.openOAuthLink')}
+                                    </Button>
+                                  )}
+                                </div>
+
+                                {codexAuthUrl && (
+                                  <div className='mt-3 space-y-2'>
+                                    <FormLabel className='text-sm font-medium'>
+                                      {t('channels.dialogs.codex.labels.authorizationUrl')}
+                                    </FormLabel>
+                                    <Textarea
+                                      value={codexAuthUrl}
+                                      readOnly
+                                      className='min-h-[60px] resize-none font-mono text-xs'
+                                      placeholder={t('channels.dialogs.codex.placeholders.authorizationUrl')}
+                                    />
+                                  </div>
+                                )}
+
+                                <div className='mt-3 space-y-2'>
+                                  <FormLabel className='text-sm font-medium'>{t('channels.dialogs.codex.labels.callbackUrl')}</FormLabel>
+                                  <Textarea
+                                    value={codexCallbackUrl}
+                                    onChange={(e) => setCodexCallbackUrl(e.target.value)}
+                                    placeholder={t('channels.dialogs.codex.placeholders.callbackUrl')}
+                                    className='min-h-[80px] resize-y font-mono text-xs'
+                                  />
+                                  <Button type='button' onClick={exchangeCodexOAuth} disabled={isCodexExchanging || !codexSessionId}>
+                                    {isCodexExchanging
+                                      ? t('channels.dialogs.codex.buttons.exchanging')
+                                      : t('channels.dialogs.codex.buttons.exchangeAndFillApiKey')}
+                                  </Button>
+                                </div>
+
+                                <p className='text-muted-foreground mt-2 text-xs'>
+                                  {t('channels.dialogs.fields.apiFormat.codex.description')}
+                                </p>
+                              </div>
+                            </div>
                           </div>
                         </FormItem>
                       )}
@@ -982,6 +1167,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 autoComplete='off'
                                 aria-invalid={!!fieldState.error}
                                 data-testid='channel-base-url-input'
+                                disabled={isCodexType}
                                 {...field}
                               />
                               <FormMessage />
@@ -990,7 +1176,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         )}
                       />
 
-                      {selectedType !== 'anthropic_gcp' && (
+                      {!isCodexType && selectedType !== 'anthropic_gcp' && (
                         <FormField
                           control={form.control}
                           name='credentials.apiKey'
@@ -1240,12 +1426,18 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               control={form.control}
                               name='autoSyncSupportedModels'
                               render={({ field }) => (
-                                <FormItem className='flex items-center gap-2'>
-                                  <Checkbox
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                    data-testid='auto-sync-supported-models-checkbox'
-                                  />
+                                <FormItem className={`flex items-center gap-2 ${isCodexType ? 'opacity-60' : ''}`}>
+                                  {wrapCodexUnsupported(
+                                    isCodexType,
+                                    <Checkbox
+                                      checked={field.value}
+                                      onCheckedChange={field.onChange}
+                                      data-testid='auto-sync-supported-models-checkbox'
+                                      disabled={isCodexType}
+                                      className={isCodexType ? 'pointer-events-none' : undefined}
+                                    />,
+                                    'inline-flex items-center'
+                                  )}
                                   <div className='space-y-0.5'>
                                     <FormLabel className='cursor-pointer text-sm font-normal'>
                                       {t('channels.dialogs.fields.autoSyncSupportedModels.label')}
@@ -1264,16 +1456,20 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             <div className='mb-2 flex items-center justify-between'>
                               <span className='text-sm font-medium'>{t('channels.dialogs.fields.supportedModels.defaultModelsLabel')}</span>
                               <div className='flex items-center gap-2'>
-                                <Button
-                                  type='button'
-                                  onClick={handleFetchModels}
-                                  size='sm'
-                                  variant='outline'
-                                  disabled={!canFetchModels() || fetchModels.isPending}
-                                >
-                                  <RefreshCw className={`mr-1 h-4 w-4 ${fetchModels.isPending ? 'animate-spin' : ''}`} />
-                                  {t('channels.dialogs.buttons.fetchModels')}
-                                </Button>
+                                {wrapCodexUnsupported(
+                                  isCodexType,
+                                  <Button
+                                    type='button'
+                                    onClick={handleFetchModels}
+                                    size='sm'
+                                    variant='outline'
+                                    disabled={!canFetchModels() || fetchModels.isPending || isCodexType}
+                                  >
+                                    <RefreshCw className={`mr-1 h-4 w-4 ${fetchModels.isPending ? 'animate-spin' : ''}`} />
+                                    {t('channels.dialogs.buttons.fetchModels')}
+                                  </Button>,
+                                  'inline-flex w-fit'
+                                )}
                                 <Button
                                   type='button'
                                   onClick={addSelectedDefaultModels}
@@ -1447,7 +1643,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           <Checkbox checked={isSelected} onCheckedChange={() => toggleFetchedModelSelection(model)} />
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <span className='max-w-[200px] flex-1 cursor-pointer truncate' onClick={() => toggleFetchedModelSelection(model)}>
+                              <span
+                                className='max-w-[200px] flex-1 cursor-pointer truncate'
+                                onClick={() => toggleFetchedModelSelection(model)}
+                              >
                                 {model}
                               </span>
                             </TooltipTrigger>

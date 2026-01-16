@@ -69,6 +69,7 @@
       "bailian": "Bailian (OpenAI)",
       "jina": "Jina",
       "github": "GitHub",
+      "codex": "Codex",
       "claudecode": "Claude Code"
     },
     "providers": {
@@ -95,6 +96,7 @@
       "bailian": "Bailian",
       "jina": "Jina",
       "github": "GitHub",
+      "codex": "Codex",
       "claudecode": "Claude Code"
     },
     "actions": {
@@ -245,6 +247,32 @@
           "blockedHint": "Import blocked - fix errors first"
         }
       },
+      "codex": {
+        "buttons": {
+          "startOAuth": "Start OAuth",
+          "starting": "Starting...",
+          "openOAuthLink": "Open OAuth Link",
+          "exchangeAndFillApiKey": "Exchange & Fill API Key",
+          "exchanging": "Exchanging..."
+        },
+        "labels": {
+          "authorizationUrl": "OAuth Authorization URL",
+          "callbackUrl": "Callback URL"
+        },
+        "placeholders": {
+          "authorizationUrl": "OAuth URL will appear here after starting OAuth",
+          "callbackUrl": "Paste the full callback URL here"
+        },
+        "errors": {
+          "projectRequired": "Please select a project first",
+          "sessionMissing": "Missing OAuth session",
+          "callbackUrlRequired": "Please paste the callback URL",
+          "bulkCreateUnsupported": "Codex channel does not support bulk create"
+        },
+        "messages": {
+          "credentialsImported": "Codex credentials imported"
+        }
+      },
       "fields": {
         "name": {
           "label": "Channel Name",
@@ -261,7 +289,13 @@
             "label": "Use AWS Bedrock"
           },
           "claudeCode": {
-            "label": "Use Claude Code"
+            "label": "Use Claude Code",
+            "description": "Use Claude Code CLI API with specialized headers and system message",
+            "editDisabled": "Claude Code settings cannot be changed"
+          },
+          "codex": {
+            "label": "Codex OAuth",
+            "description": "Authenticate with OpenAI OAuth"
           },
           "formats": {
             "openai/chat_completions": "OpenAI (Chat Completions)",
@@ -297,7 +331,9 @@
           "allModels": "All Models ({{count}})",
           "clearAllTitle": "Clear all supported models?",
           "clearAllDescription": "Are you sure you want to clear all {{count}} models?",
-          "willRemove": "Will remove"
+          "willRemove": "Will remove",
+          "codexUnsupported": "Not supported for Codex",
+          "codexOAuthCredentialsRequired": "Codex channel requires OAuth credentials JSON"
         },
         "autoSyncSupportedModels": {
           "label": "Auto-sync supported models",

@@ -71,6 +71,7 @@
       "bailian": "百炼",
       "jina": "Jina",
       "github": "GitHub",
+      "codex": "Codex",
       "claudecode": "Claude Code"
     },
     "providers": {
@@ -97,6 +98,7 @@
       "bailian": "百炼",
       "jina": "Jina",
       "github": "GitHub",
+      "codex": "Codex",
       "claudecode": "Claude Code"
     },
     "actions": {
@@ -248,6 +250,32 @@
           "blockedHint": "导入已被阻止 - 请先修复错误"
         }
       },
+      "codex": {
+        "buttons": {
+          "startOAuth": "开始 OAuth 授权",
+          "starting": "正在启动...",
+          "openOAuthLink": "打开 OAuth 链接",
+          "exchangeAndFillApiKey": "验证回调 URL",
+          "exchanging": "正在验证..."
+        },
+        "labels": {
+          "authorizationUrl": "OAuth 授权地址",
+          "callbackUrl": "回调 URL"
+        },
+        "placeholders": {
+          "authorizationUrl": "启动 OAuth 后将在此显示授权地址",
+          "callbackUrl": "请粘贴完整回调 URL"
+        },
+        "errors": {
+          "projectRequired": "请先选择项目",
+          "sessionMissing": "OAuth 会话缺失",
+          "callbackUrlRequired": "请粘贴回调 URL",
+          "bulkCreateUnsupported": "Codex 渠道不支持批量创建"
+        },
+        "messages": {
+          "credentialsImported": "Codex 凭证已导入"
+        }
+      },
       "fields": {
         "name": {
           "label": "渠道名称",
@@ -264,7 +292,13 @@
             "label": "使用 AWS Bedrock"
           },
           "claudeCode": {
-            "label": "使用 Claude Code"
+            "label": "使用 Claude Code",
+            "description": "使用 Claude Code CLI API，带有专门的请求头和系统消息",
+            "editDisabled": "无法更改 Claude Code 设置"
+          },
+          "codex": {
+            "label": "Codex OAuth",
+            "description": "通过 OpenAI OAuth 授权"
           },
           "formats": {
             "openai/chat_completions": "OpenAI (Chat Completions)",
@@ -300,7 +334,9 @@
           "clearAllTitle": "清空所有支持的模型？",
           "clearAllDescription": "确定要清空所有 {{count}} 个模型吗？",
           "willRemove": "将移除",
-          "allModels": "全部模型 ({{count}})"
+          "allModels": "全部模型 ({{count}})",
+          "codexUnsupported": "Codex 暂不支持此功能",
+          "codexOAuthCredentialsRequired": "Codex 渠道需要 OAuth 凭证 JSON"
         },
         "autoSyncSupportedModels": {
           "label": "自动同步支持的模型",

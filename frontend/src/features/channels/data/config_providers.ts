@@ -172,6 +172,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     color: 'bg-purple-100 text-purple-800 border-purple-200',
     channelTypes: ['jina'],
   },
+  codex: {
+    provider: 'codex',
+    icon: OpenAI,
+    color: 'bg-[#32746D] text-white border-[#32746D]',
+    channelTypes: ['codex'],
+  },
   github: {
     provider: 'github',
     icon: Github,
