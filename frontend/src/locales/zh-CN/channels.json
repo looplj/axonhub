@@ -368,6 +368,10 @@
           "forceArrayInputs": {
             "label": "强制数组输入",
             "description": "强制渠道接受数组格式的输入"
+          },
+          "replaceDeveloperRoleWithSystem": {
+            "label": "将 developer 角色替换为 system",
+            "description": "发送请求前把 developer 角色替换为 system（仅百炼）"
           }
         },
         "modelName": {},

@@ -365,6 +365,10 @@
           "forceArrayInputs": {
             "label": "Force Array Inputs",
             "description": "Force the channel to accept array format for inputs"
+          },
+          "replaceDeveloperRoleWithSystem": {
+            "label": "Replace developer role with system",
+            "description": "Replace developer role with system before sending requests (Bailian only)"
           }
         },
         "modelName": {},

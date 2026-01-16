@@ -21,11 +21,13 @@ input HeaderEntryInput {
 type TransformOptions {
   forceArrayInstructions: Boolean!
   forceArrayInputs: Boolean!
+  replaceDeveloperRoleWithSystem: Boolean!
 }
 
 input TransformOptionsInput {
   forceArrayInstructions: Boolean
   forceArrayInputs: Boolean
+  replaceDeveloperRoleWithSystem: Boolean
 }
 
 enum ProxyType {

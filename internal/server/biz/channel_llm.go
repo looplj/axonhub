@@ -388,6 +388,8 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		transformer, err := bailian.NewOutboundTransformerWithConfig(&bailian.Config{
 			BaseURL: c.BaseURL,
 			APIKey:  c.Credentials.APIKey,
+			ReplaceDeveloperRoleWithSystem: c.Settings != nil &&
+				c.Settings.TransformOptions.ReplaceDeveloperRoleWithSystem,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)

@@ -1251,8 +1251,9 @@ type ComplexityRoot struct {
 	}
 
 	TransformOptions struct {
-		ForceArrayInputs       func(childComplexity int) int
-		ForceArrayInstructions func(childComplexity int) int
+		ForceArrayInputs               func(childComplexity int) int
+		ForceArrayInstructions         func(childComplexity int) int
+		ReplaceDeveloperRoleWithSystem func(childComplexity int) int
 	}
 
 	UnassociatedChannel struct {
@@ -6764,6 +6765,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TransformOptions.ForceArrayInstructions(childComplexity), true
+	case "TransformOptions.replaceDeveloperRoleWithSystem":
+		if e.complexity.TransformOptions.ReplaceDeveloperRoleWithSystem == nil {
+			break
+		}
+
+		return e.complexity.TransformOptions.ReplaceDeveloperRoleWithSystem(childComplexity), true
 
 	case "UnassociatedChannel.channel":
 		if e.complexity.UnassociatedChannel.Channel == nil {
@@ -16326,6 +16333,8 @@ func (ec *executionContext) fieldContext_ChannelSettings_transformOptions(_ cont
 				return ec.fieldContext_TransformOptions_forceArrayInstructions(ctx, field)
 			case "forceArrayInputs":
 				return ec.fieldContext_TransformOptions_forceArrayInputs(ctx, field)
+			case "replaceDeveloperRoleWithSystem":
+				return ec.fieldContext_TransformOptions_replaceDeveloperRoleWithSystem(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TransformOptions", field.Name)
 		},
@@ -36638,6 +36647,35 @@ func (ec *executionContext) _TransformOptions_forceArrayInputs(ctx context.Conte
 }
 
 func (ec *executionContext) fieldContext_TransformOptions_forceArrayInputs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TransformOptions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TransformOptions_replaceDeveloperRoleWithSystem(ctx context.Context, field graphql.CollectedField, obj *objects.TransformOptions) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TransformOptions_replaceDeveloperRoleWithSystem,
+		func(ctx context.Context) (any, error) {
+			return obj.ReplaceDeveloperRoleWithSystem, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TransformOptions_replaceDeveloperRoleWithSystem(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TransformOptions",
 		Field:      field,
@@ -58063,7 +58101,7 @@ func (ec *executionContext) unmarshalInputTransformOptionsInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"forceArrayInstructions", "forceArrayInputs"}
+	fieldsInOrder := [...]string{"forceArrayInstructions", "forceArrayInputs", "replaceDeveloperRoleWithSystem"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -58084,6 +58122,13 @@ func (ec *executionContext) unmarshalInputTransformOptionsInput(ctx context.Cont
 				return it, err
 			}
 			it.ForceArrayInputs = data
+		case "replaceDeveloperRoleWithSystem":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("replaceDeveloperRoleWithSystem"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReplaceDeveloperRoleWithSystem = data
 		}
 	}
 
@@ -74847,6 +74892,11 @@ func (ec *executionContext) _TransformOptions(ctx context.Context, sel ast.Selec
 			}
 		case "forceArrayInputs":
 			out.Values[i] = ec._TransformOptions_forceArrayInputs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "replaceDeveloperRoleWithSystem":
+			out.Values[i] = ec._TransformOptions_replaceDeveloperRoleWithSystem(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

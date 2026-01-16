@@ -26,6 +26,9 @@ type TransformOptions struct {
 
 	// ForceArrayInputs forces the channel to accept array format for inputs.
 	ForceArrayInputs bool `json:"forceArrayInputs"`
+
+	// ReplaceDeveloperRoleWithSystem replaces developer role with system in messages for Bailian compatibility.
+	ReplaceDeveloperRoleWithSystem bool `json:"replaceDeveloperRoleWithSystem"`
 }
 
 type ChannelSettings struct {
