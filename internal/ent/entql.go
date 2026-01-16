@@ -5,6 +5,8 @@ package ent
 import (
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
+	"github.com/looplj/axonhub/internal/ent/channelmodelpriceversion"
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
@@ -32,7 +34,7 @@ import (
 
 // schemaGraph holds a representation of ent/schema at runtime.
 var schemaGraph = func() *sqlgraph.Schema {
-	graph := &sqlgraph.Schema{Nodes: make([]*sqlgraph.Node, 19)}
+	graph := &sqlgraph.Schema{Nodes: make([]*sqlgraph.Node, 21)}
 	graph.Nodes[0] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   apikey.Table,
@@ -88,6 +90,50 @@ var schemaGraph = func() *sqlgraph.Schema {
 	}
 	graph.Nodes[2] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
+			Table:   channelmodelprice.Table,
+			Columns: channelmodelprice.Columns,
+			ID: &sqlgraph.FieldSpec{
+				Type:   field.TypeInt,
+				Column: channelmodelprice.FieldID,
+			},
+		},
+		Type: "ChannelModelPrice",
+		Fields: map[string]*sqlgraph.FieldSpec{
+			channelmodelprice.FieldCreatedAt:   {Type: field.TypeTime, Column: channelmodelprice.FieldCreatedAt},
+			channelmodelprice.FieldUpdatedAt:   {Type: field.TypeTime, Column: channelmodelprice.FieldUpdatedAt},
+			channelmodelprice.FieldDeletedAt:   {Type: field.TypeInt, Column: channelmodelprice.FieldDeletedAt},
+			channelmodelprice.FieldChannelID:   {Type: field.TypeInt, Column: channelmodelprice.FieldChannelID},
+			channelmodelprice.FieldModelID:     {Type: field.TypeString, Column: channelmodelprice.FieldModelID},
+			channelmodelprice.FieldPrice:       {Type: field.TypeJSON, Column: channelmodelprice.FieldPrice},
+			channelmodelprice.FieldRefreanceID: {Type: field.TypeString, Column: channelmodelprice.FieldRefreanceID},
+		},
+	}
+	graph.Nodes[3] = &sqlgraph.Node{
+		NodeSpec: sqlgraph.NodeSpec{
+			Table:   channelmodelpriceversion.Table,
+			Columns: channelmodelpriceversion.Columns,
+			ID: &sqlgraph.FieldSpec{
+				Type:   field.TypeInt,
+				Column: channelmodelpriceversion.FieldID,
+			},
+		},
+		Type: "ChannelModelPriceVersion",
+		Fields: map[string]*sqlgraph.FieldSpec{
+			channelmodelpriceversion.FieldCreatedAt:           {Type: field.TypeTime, Column: channelmodelpriceversion.FieldCreatedAt},
+			channelmodelpriceversion.FieldUpdatedAt:           {Type: field.TypeTime, Column: channelmodelpriceversion.FieldUpdatedAt},
+			channelmodelpriceversion.FieldDeletedAt:           {Type: field.TypeInt, Column: channelmodelpriceversion.FieldDeletedAt},
+			channelmodelpriceversion.FieldChannelID:           {Type: field.TypeInt, Column: channelmodelpriceversion.FieldChannelID},
+			channelmodelpriceversion.FieldModelID:             {Type: field.TypeString, Column: channelmodelpriceversion.FieldModelID},
+			channelmodelpriceversion.FieldChannelModelPriceID: {Type: field.TypeInt, Column: channelmodelpriceversion.FieldChannelModelPriceID},
+			channelmodelpriceversion.FieldPrice:               {Type: field.TypeJSON, Column: channelmodelpriceversion.FieldPrice},
+			channelmodelpriceversion.FieldStatus:              {Type: field.TypeEnum, Column: channelmodelpriceversion.FieldStatus},
+			channelmodelpriceversion.FieldEffectiveStartAt:    {Type: field.TypeTime, Column: channelmodelpriceversion.FieldEffectiveStartAt},
+			channelmodelpriceversion.FieldEffectiveEndAt:      {Type: field.TypeTime, Column: channelmodelpriceversion.FieldEffectiveEndAt},
+			channelmodelpriceversion.FieldRefreanceID:         {Type: field.TypeString, Column: channelmodelpriceversion.FieldRefreanceID},
+		},
+	}
+	graph.Nodes[4] = &sqlgraph.Node{
+		NodeSpec: sqlgraph.NodeSpec{
 			Table:   channeloverridetemplate.Table,
 			Columns: channeloverridetemplate.Columns,
 			ID: &sqlgraph.FieldSpec{
@@ -108,7 +154,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			channeloverridetemplate.FieldOverrideHeaders:    {Type: field.TypeJSON, Column: channeloverridetemplate.FieldOverrideHeaders},
 		},
 	}
-	graph.Nodes[3] = &sqlgraph.Node{
+	graph.Nodes[5] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   channelperformance.Table,
 			Columns: channelperformance.Columns,
@@ -143,7 +189,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			channelperformance.FieldConsecutiveFailures:            {Type: field.TypeInt64, Column: channelperformance.FieldConsecutiveFailures},
 		},
 	}
-	graph.Nodes[4] = &sqlgraph.Node{
+	graph.Nodes[6] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   channelprobe.Table,
 			Columns: channelprobe.Columns,
@@ -160,7 +206,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			channelprobe.FieldTimestamp:           {Type: field.TypeInt64, Column: channelprobe.FieldTimestamp},
 		},
 	}
-	graph.Nodes[5] = &sqlgraph.Node{
+	graph.Nodes[7] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   datastorage.Table,
 			Columns: datastorage.Columns,
@@ -182,7 +228,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			datastorage.FieldStatus:      {Type: field.TypeEnum, Column: datastorage.FieldStatus},
 		},
 	}
-	graph.Nodes[6] = &sqlgraph.Node{
+	graph.Nodes[8] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   model.Table,
 			Columns: model.Columns,
@@ -208,7 +254,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			model.FieldRemark:    {Type: field.TypeString, Column: model.FieldRemark},
 		},
 	}
-	graph.Nodes[7] = &sqlgraph.Node{
+	graph.Nodes[9] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   project.Table,
 			Columns: project.Columns,
@@ -227,7 +273,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			project.FieldStatus:      {Type: field.TypeEnum, Column: project.FieldStatus},
 		},
 	}
-	graph.Nodes[8] = &sqlgraph.Node{
+	graph.Nodes[10] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   prompt.Table,
 			Columns: prompt.Columns,
@@ -250,7 +296,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			prompt.FieldSettings:    {Type: field.TypeJSON, Column: prompt.FieldSettings},
 		},
 	}
-	graph.Nodes[9] = &sqlgraph.Node{
+	graph.Nodes[11] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   request.Table,
 			Columns: request.Columns,
@@ -283,7 +329,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			request.FieldMetricsFirstTokenLatencyMs: {Type: field.TypeInt64, Column: request.FieldMetricsFirstTokenLatencyMs},
 		},
 	}
-	graph.Nodes[10] = &sqlgraph.Node{
+	graph.Nodes[12] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   requestexecution.Table,
 			Columns: requestexecution.Columns,
@@ -314,7 +360,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			requestexecution.FieldRequestHeaders:             {Type: field.TypeJSON, Column: requestexecution.FieldRequestHeaders},
 		},
 	}
-	graph.Nodes[11] = &sqlgraph.Node{
+	graph.Nodes[13] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   role.Table,
 			Columns: role.Columns,
@@ -334,7 +380,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			role.FieldScopes:    {Type: field.TypeJSON, Column: role.FieldScopes},
 		},
 	}
-	graph.Nodes[12] = &sqlgraph.Node{
+	graph.Nodes[14] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   system.Table,
 			Columns: system.Columns,
@@ -352,7 +398,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			system.FieldValue:     {Type: field.TypeString, Column: system.FieldValue},
 		},
 	}
-	graph.Nodes[13] = &sqlgraph.Node{
+	graph.Nodes[15] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   thread.Table,
 			Columns: thread.Columns,
@@ -369,7 +415,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			thread.FieldThreadID:  {Type: field.TypeString, Column: thread.FieldThreadID},
 		},
 	}
-	graph.Nodes[14] = &sqlgraph.Node{
+	graph.Nodes[16] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   trace.Table,
 			Columns: trace.Columns,
@@ -387,7 +433,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			trace.FieldThreadID:  {Type: field.TypeInt, Column: trace.FieldThreadID},
 		},
 	}
-	graph.Nodes[15] = &sqlgraph.Node{
+	graph.Nodes[17] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   usagelog.Table,
 			Columns: usagelog.Columns,
@@ -416,9 +462,11 @@ var schemaGraph = func() *sqlgraph.Schema {
 			usagelog.FieldCompletionRejectedPredictionTokens: {Type: field.TypeInt64, Column: usagelog.FieldCompletionRejectedPredictionTokens},
 			usagelog.FieldSource:                             {Type: field.TypeEnum, Column: usagelog.FieldSource},
 			usagelog.FieldFormat:                             {Type: field.TypeString, Column: usagelog.FieldFormat},
+			usagelog.FieldTotalCost:                          {Type: field.TypeFloat64, Column: usagelog.FieldTotalCost},
+			usagelog.FieldCostItems:                          {Type: field.TypeJSON, Column: usagelog.FieldCostItems},
 		},
 	}
-	graph.Nodes[16] = &sqlgraph.Node{
+	graph.Nodes[18] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   user.Table,
 			Columns: user.Columns,
@@ -443,7 +491,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			user.FieldScopes:         {Type: field.TypeJSON, Column: user.FieldScopes},
 		},
 	}
-	graph.Nodes[17] = &sqlgraph.Node{
+	graph.Nodes[19] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   userproject.Table,
 			Columns: userproject.Columns,
@@ -462,7 +510,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			userproject.FieldScopes:    {Type: field.TypeJSON, Column: userproject.FieldScopes},
 		},
 	}
-	graph.Nodes[18] = &sqlgraph.Node{
+	graph.Nodes[20] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   userrole.Table,
 			Columns: userrole.Columns,
@@ -574,6 +622,54 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 		"Channel",
 		"ChannelProbe",
+	)
+	graph.MustAddE(
+		"channel_model_prices",
+		&sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ChannelModelPricesTable,
+			Columns: []string{channel.ChannelModelPricesColumn},
+			Bidi:    false,
+		},
+		"Channel",
+		"ChannelModelPrice",
+	)
+	graph.MustAddE(
+		"channel",
+		&sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   channelmodelprice.ChannelTable,
+			Columns: []string{channelmodelprice.ChannelColumn},
+			Bidi:    false,
+		},
+		"ChannelModelPrice",
+		"Channel",
+	)
+	graph.MustAddE(
+		"versions",
+		&sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channelmodelprice.VersionsTable,
+			Columns: []string{channelmodelprice.VersionsColumn},
+			Bidi:    false,
+		},
+		"ChannelModelPrice",
+		"ChannelModelPriceVersion",
+	)
+	graph.MustAddE(
+		"channel_model_price",
+		&sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   channelmodelpriceversion.ChannelModelPriceTable,
+			Columns: []string{channelmodelpriceversion.ChannelModelPriceColumn},
+			Bidi:    false,
+		},
+		"ChannelModelPriceVersion",
+		"ChannelModelPrice",
 	)
 	graph.MustAddE(
 		"user",
@@ -1463,6 +1559,232 @@ func (f *ChannelFilter) WhereHasChannelProbesWith(preds ...predicate.ChannelProb
 	})))
 }
 
+// WhereHasChannelModelPrices applies a predicate to check if query has an edge channel_model_prices.
+func (f *ChannelFilter) WhereHasChannelModelPrices() {
+	f.Where(entql.HasEdge("channel_model_prices"))
+}
+
+// WhereHasChannelModelPricesWith applies a predicate to check if query has an edge channel_model_prices with a given conditions (other predicates).
+func (f *ChannelFilter) WhereHasChannelModelPricesWith(preds ...predicate.ChannelModelPrice) {
+	f.Where(entql.HasEdgeWith("channel_model_prices", sqlgraph.WrapFunc(func(s *sql.Selector) {
+		for _, p := range preds {
+			p(s)
+		}
+	})))
+}
+
+// addPredicate implements the predicateAdder interface.
+func (_q *ChannelModelPriceQuery) addPredicate(pred func(s *sql.Selector)) {
+	_q.predicates = append(_q.predicates, pred)
+}
+
+// Filter returns a Filter implementation to apply filters on the ChannelModelPriceQuery builder.
+func (_q *ChannelModelPriceQuery) Filter() *ChannelModelPriceFilter {
+	return &ChannelModelPriceFilter{config: _q.config, predicateAdder: _q}
+}
+
+// addPredicate implements the predicateAdder interface.
+func (m *ChannelModelPriceMutation) addPredicate(pred func(s *sql.Selector)) {
+	m.predicates = append(m.predicates, pred)
+}
+
+// Filter returns an entql.Where implementation to apply filters on the ChannelModelPriceMutation builder.
+func (m *ChannelModelPriceMutation) Filter() *ChannelModelPriceFilter {
+	return &ChannelModelPriceFilter{config: m.config, predicateAdder: m}
+}
+
+// ChannelModelPriceFilter provides a generic filtering capability at runtime for ChannelModelPriceQuery.
+type ChannelModelPriceFilter struct {
+	predicateAdder
+	config
+}
+
+// Where applies the entql predicate on the query filter.
+func (f *ChannelModelPriceFilter) Where(p entql.P) {
+	f.addPredicate(func(s *sql.Selector) {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[2].Type, p, s); err != nil {
+			s.AddError(err)
+		}
+	})
+}
+
+// WhereID applies the entql int predicate on the id field.
+func (f *ChannelModelPriceFilter) WhereID(p entql.IntP) {
+	f.Where(p.Field(channelmodelprice.FieldID))
+}
+
+// WhereCreatedAt applies the entql time.Time predicate on the created_at field.
+func (f *ChannelModelPriceFilter) WhereCreatedAt(p entql.TimeP) {
+	f.Where(p.Field(channelmodelprice.FieldCreatedAt))
+}
+
+// WhereUpdatedAt applies the entql time.Time predicate on the updated_at field.
+func (f *ChannelModelPriceFilter) WhereUpdatedAt(p entql.TimeP) {
+	f.Where(p.Field(channelmodelprice.FieldUpdatedAt))
+}
+
+// WhereDeletedAt applies the entql int predicate on the deleted_at field.
+func (f *ChannelModelPriceFilter) WhereDeletedAt(p entql.IntP) {
+	f.Where(p.Field(channelmodelprice.FieldDeletedAt))
+}
+
+// WhereChannelID applies the entql int predicate on the channel_id field.
+func (f *ChannelModelPriceFilter) WhereChannelID(p entql.IntP) {
+	f.Where(p.Field(channelmodelprice.FieldChannelID))
+}
+
+// WhereModelID applies the entql string predicate on the model_id field.
+func (f *ChannelModelPriceFilter) WhereModelID(p entql.StringP) {
+	f.Where(p.Field(channelmodelprice.FieldModelID))
+}
+
+// WherePrice applies the entql json.RawMessage predicate on the price field.
+func (f *ChannelModelPriceFilter) WherePrice(p entql.BytesP) {
+	f.Where(p.Field(channelmodelprice.FieldPrice))
+}
+
+// WhereRefreanceID applies the entql string predicate on the refreance_id field.
+func (f *ChannelModelPriceFilter) WhereRefreanceID(p entql.StringP) {
+	f.Where(p.Field(channelmodelprice.FieldRefreanceID))
+}
+
+// WhereHasChannel applies a predicate to check if query has an edge channel.
+func (f *ChannelModelPriceFilter) WhereHasChannel() {
+	f.Where(entql.HasEdge("channel"))
+}
+
+// WhereHasChannelWith applies a predicate to check if query has an edge channel with a given conditions (other predicates).
+func (f *ChannelModelPriceFilter) WhereHasChannelWith(preds ...predicate.Channel) {
+	f.Where(entql.HasEdgeWith("channel", sqlgraph.WrapFunc(func(s *sql.Selector) {
+		for _, p := range preds {
+			p(s)
+		}
+	})))
+}
+
+// WhereHasVersions applies a predicate to check if query has an edge versions.
+func (f *ChannelModelPriceFilter) WhereHasVersions() {
+	f.Where(entql.HasEdge("versions"))
+}
+
+// WhereHasVersionsWith applies a predicate to check if query has an edge versions with a given conditions (other predicates).
+func (f *ChannelModelPriceFilter) WhereHasVersionsWith(preds ...predicate.ChannelModelPriceVersion) {
+	f.Where(entql.HasEdgeWith("versions", sqlgraph.WrapFunc(func(s *sql.Selector) {
+		for _, p := range preds {
+			p(s)
+		}
+	})))
+}
+
+// addPredicate implements the predicateAdder interface.
+func (_q *ChannelModelPriceVersionQuery) addPredicate(pred func(s *sql.Selector)) {
+	_q.predicates = append(_q.predicates, pred)
+}
+
+// Filter returns a Filter implementation to apply filters on the ChannelModelPriceVersionQuery builder.
+func (_q *ChannelModelPriceVersionQuery) Filter() *ChannelModelPriceVersionFilter {
+	return &ChannelModelPriceVersionFilter{config: _q.config, predicateAdder: _q}
+}
+
+// addPredicate implements the predicateAdder interface.
+func (m *ChannelModelPriceVersionMutation) addPredicate(pred func(s *sql.Selector)) {
+	m.predicates = append(m.predicates, pred)
+}
+
+// Filter returns an entql.Where implementation to apply filters on the ChannelModelPriceVersionMutation builder.
+func (m *ChannelModelPriceVersionMutation) Filter() *ChannelModelPriceVersionFilter {
+	return &ChannelModelPriceVersionFilter{config: m.config, predicateAdder: m}
+}
+
+// ChannelModelPriceVersionFilter provides a generic filtering capability at runtime for ChannelModelPriceVersionQuery.
+type ChannelModelPriceVersionFilter struct {
+	predicateAdder
+	config
+}
+
+// Where applies the entql predicate on the query filter.
+func (f *ChannelModelPriceVersionFilter) Where(p entql.P) {
+	f.addPredicate(func(s *sql.Selector) {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[3].Type, p, s); err != nil {
+			s.AddError(err)
+		}
+	})
+}
+
+// WhereID applies the entql int predicate on the id field.
+func (f *ChannelModelPriceVersionFilter) WhereID(p entql.IntP) {
+	f.Where(p.Field(channelmodelpriceversion.FieldID))
+}
+
+// WhereCreatedAt applies the entql time.Time predicate on the created_at field.
+func (f *ChannelModelPriceVersionFilter) WhereCreatedAt(p entql.TimeP) {
+	f.Where(p.Field(channelmodelpriceversion.FieldCreatedAt))
+}
+
+// WhereUpdatedAt applies the entql time.Time predicate on the updated_at field.
+func (f *ChannelModelPriceVersionFilter) WhereUpdatedAt(p entql.TimeP) {
+	f.Where(p.Field(channelmodelpriceversion.FieldUpdatedAt))
+}
+
+// WhereDeletedAt applies the entql int predicate on the deleted_at field.
+func (f *ChannelModelPriceVersionFilter) WhereDeletedAt(p entql.IntP) {
+	f.Where(p.Field(channelmodelpriceversion.FieldDeletedAt))
+}
+
+// WhereChannelID applies the entql int predicate on the channel_id field.
+func (f *ChannelModelPriceVersionFilter) WhereChannelID(p entql.IntP) {
+	f.Where(p.Field(channelmodelpriceversion.FieldChannelID))
+}
+
+// WhereModelID applies the entql string predicate on the model_id field.
+func (f *ChannelModelPriceVersionFilter) WhereModelID(p entql.StringP) {
+	f.Where(p.Field(channelmodelpriceversion.FieldModelID))
+}
+
+// WhereChannelModelPriceID applies the entql int predicate on the channel_model_price_id field.
+func (f *ChannelModelPriceVersionFilter) WhereChannelModelPriceID(p entql.IntP) {
+	f.Where(p.Field(channelmodelpriceversion.FieldChannelModelPriceID))
+}
+
+// WherePrice applies the entql json.RawMessage predicate on the price field.
+func (f *ChannelModelPriceVersionFilter) WherePrice(p entql.BytesP) {
+	f.Where(p.Field(channelmodelpriceversion.FieldPrice))
+}
+
+// WhereStatus applies the entql string predicate on the status field.
+func (f *ChannelModelPriceVersionFilter) WhereStatus(p entql.StringP) {
+	f.Where(p.Field(channelmodelpriceversion.FieldStatus))
+}
+
+// WhereEffectiveStartAt applies the entql time.Time predicate on the effective_start_at field.
+func (f *ChannelModelPriceVersionFilter) WhereEffectiveStartAt(p entql.TimeP) {
+	f.Where(p.Field(channelmodelpriceversion.FieldEffectiveStartAt))
+}
+
+// WhereEffectiveEndAt applies the entql time.Time predicate on the effective_end_at field.
+func (f *ChannelModelPriceVersionFilter) WhereEffectiveEndAt(p entql.TimeP) {
+	f.Where(p.Field(channelmodelpriceversion.FieldEffectiveEndAt))
+}
+
+// WhereRefreanceID applies the entql string predicate on the refreance_id field.
+func (f *ChannelModelPriceVersionFilter) WhereRefreanceID(p entql.StringP) {
+	f.Where(p.Field(channelmodelpriceversion.FieldRefreanceID))
+}
+
+// WhereHasChannelModelPrice applies a predicate to check if query has an edge channel_model_price.
+func (f *ChannelModelPriceVersionFilter) WhereHasChannelModelPrice() {
+	f.Where(entql.HasEdge("channel_model_price"))
+}
+
+// WhereHasChannelModelPriceWith applies a predicate to check if query has an edge channel_model_price with a given conditions (other predicates).
+func (f *ChannelModelPriceVersionFilter) WhereHasChannelModelPriceWith(preds ...predicate.ChannelModelPrice) {
+	f.Where(entql.HasEdgeWith("channel_model_price", sqlgraph.WrapFunc(func(s *sql.Selector) {
+		for _, p := range preds {
+			p(s)
+		}
+	})))
+}
+
 // addPredicate implements the predicateAdder interface.
 func (_q *ChannelOverrideTemplateQuery) addPredicate(pred func(s *sql.Selector)) {
 	_q.predicates = append(_q.predicates, pred)
@@ -1492,7 +1814,7 @@ type ChannelOverrideTemplateFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *ChannelOverrideTemplateFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[2].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[4].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -1591,7 +1913,7 @@ type ChannelPerformanceFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *ChannelPerformanceFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[3].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[5].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -1755,7 +2077,7 @@ type ChannelProbeFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *ChannelProbeFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[4].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[6].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -1829,7 +2151,7 @@ type DataStorageFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *DataStorageFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[5].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[7].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -1942,7 +2264,7 @@ type ModelFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *ModelFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[6].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[8].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -2047,7 +2369,7 @@ type ProjectFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *ProjectFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[7].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[9].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -2243,7 +2565,7 @@ type PromptFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *PromptFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[8].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[10].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -2347,7 +2669,7 @@ type RequestFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *RequestFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[9].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[11].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -2585,7 +2907,7 @@ type RequestExecutionFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *RequestExecutionFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[10].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[12].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -2757,7 +3079,7 @@ type RoleFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *RoleFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[11].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[13].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -2874,7 +3196,7 @@ type SystemFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *SystemFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[12].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[14].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -2939,7 +3261,7 @@ type ThreadFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *ThreadFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[13].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[15].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -3027,7 +3349,7 @@ type TraceFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *TraceFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[14].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[16].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -3134,7 +3456,7 @@ type UsageLogFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *UsageLogFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[15].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[17].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -3235,6 +3557,16 @@ func (f *UsageLogFilter) WhereFormat(p entql.StringP) {
 	f.Where(p.Field(usagelog.FieldFormat))
 }
 
+// WhereTotalCost applies the entql float64 predicate on the total_cost field.
+func (f *UsageLogFilter) WhereTotalCost(p entql.Float64P) {
+	f.Where(p.Field(usagelog.FieldTotalCost))
+}
+
+// WhereCostItems applies the entql json.RawMessage predicate on the cost_items field.
+func (f *UsageLogFilter) WhereCostItems(p entql.BytesP) {
+	f.Where(p.Field(usagelog.FieldCostItems))
+}
+
 // WhereHasRequest applies a predicate to check if query has an edge request.
 func (f *UsageLogFilter) WhereHasRequest() {
 	f.Where(entql.HasEdge("request"))
@@ -3306,7 +3638,7 @@ type UserFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *UserFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[16].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[18].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -3490,7 +3822,7 @@ type UserProjectFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *UserProjectFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[17].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[19].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -3588,7 +3920,7 @@ type UserRoleFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *UserRoleFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[18].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[20].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})

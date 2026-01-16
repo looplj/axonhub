@@ -104,6 +104,7 @@
     "actions": {
       "test": "测试",
       "settings": "设置",
+      "price": "价格",
       "errorResolved": "错误已解决",
       "viewModels": "查看模型"
     },
@@ -156,6 +157,8 @@
       "batchCreateError": "批量创建失败：{{error}}",
       "errorResolvedSuccess": "渠道错误解决成功",
       "errorResolvedError": "解决渠道错误失败：{{error}}",
+      "savePricesSuccess": "模型价格保存成功",
+      "savePricesError": "模型价格保存失败：{{error}}",
       "Unauthorized": "无权限访问，请检查渠道的 API 密钥",
       "Not Found": "未找到端点，请检查渠道的 base url",
       "Interval Server Error": "服务器错误，请确认渠道配置"
@@ -168,7 +171,8 @@
       "fetchNames": "获取已有渠道名称失败",
       "fetchOrdering": "获取渠道排序数据失败",
       "fetchTypes": "获取渠道类型失败",
-      "fetchTags": "获取渠道标签失败"
+      "fetchTags": "获取渠道标签失败",
+      "fetchPrices": "获取模型价格失败"
     },
     "filters": {
       "status": "状态",

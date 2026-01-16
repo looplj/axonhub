@@ -13,6 +13,7 @@
       "roles": "Roles",
       "noRoles": "No roles",
       "details": "Details",
+      "cost": "Cost",
       "latency": "Latency",
       "firstTokenLatency": "First Token Latency",
       "tokens": "Tokens",

@@ -13,6 +13,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
+	"github.com/looplj/axonhub/internal/ent/channelmodelpriceversion"
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
@@ -43,25 +45,27 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeAPIKey                  = "APIKey"
-	TypeChannel                 = "Channel"
-	TypeChannelOverrideTemplate = "ChannelOverrideTemplate"
-	TypeChannelPerformance      = "ChannelPerformance"
-	TypeChannelProbe            = "ChannelProbe"
-	TypeDataStorage             = "DataStorage"
-	TypeModel                   = "Model"
-	TypeProject                 = "Project"
-	TypePrompt                  = "Prompt"
-	TypeRequest                 = "Request"
-	TypeRequestExecution        = "RequestExecution"
-	TypeRole                    = "Role"
-	TypeSystem                  = "System"
-	TypeThread                  = "Thread"
-	TypeTrace                   = "Trace"
-	TypeUsageLog                = "UsageLog"
-	TypeUser                    = "User"
-	TypeUserProject             = "UserProject"
-	TypeUserRole                = "UserRole"
+	TypeAPIKey                   = "APIKey"
+	TypeChannel                  = "Channel"
+	TypeChannelModelPrice        = "ChannelModelPrice"
+	TypeChannelModelPriceVersion = "ChannelModelPriceVersion"
+	TypeChannelOverrideTemplate  = "ChannelOverrideTemplate"
+	TypeChannelPerformance       = "ChannelPerformance"
+	TypeChannelProbe             = "ChannelProbe"
+	TypeDataStorage              = "DataStorage"
+	TypeModel                    = "Model"
+	TypeProject                  = "Project"
+	TypePrompt                   = "Prompt"
+	TypeRequest                  = "Request"
+	TypeRequestExecution         = "RequestExecution"
+	TypeRole                     = "Role"
+	TypeSystem                   = "System"
+	TypeThread                   = "Thread"
+	TypeTrace                    = "Trace"
+	TypeUsageLog                 = "UsageLog"
+	TypeUser                     = "User"
+	TypeUserProject              = "UserProject"
+	TypeUserRole                 = "UserRole"
 )
 
 // APIKeyMutation represents an operation that mutates the APIKey nodes in the graph.
@@ -1212,47 +1216,50 @@ func (m *APIKeyMutation) ResetEdge(name string) error {
 // ChannelMutation represents an operation that mutates the Channel nodes in the graph.
 type ChannelMutation struct {
 	config
-	op                         Op
-	typ                        string
-	id                         *int
-	created_at                 *time.Time
-	updated_at                 *time.Time
-	deleted_at                 *int
-	adddeleted_at              *int
-	_type                      *channel.Type
-	base_url                   *string
-	name                       *string
-	status                     *channel.Status
-	credentials                **objects.ChannelCredentials
-	supported_models           *[]string
-	appendsupported_models     []string
-	auto_sync_supported_models *bool
-	tags                       *[]string
-	appendtags                 []string
-	default_test_model         *string
-	settings                   **objects.ChannelSettings
-	ordering_weight            *int
-	addordering_weight         *int
-	error_message              *string
-	remark                     *string
-	clearedFields              map[string]struct{}
-	requests                   map[int]struct{}
-	removedrequests            map[int]struct{}
-	clearedrequests            bool
-	executions                 map[int]struct{}
-	removedexecutions          map[int]struct{}
-	clearedexecutions          bool
-	usage_logs                 map[int]struct{}
-	removedusage_logs          map[int]struct{}
-	clearedusage_logs          bool
-	channel_performance        *int
-	clearedchannel_performance bool
-	channel_probes             map[int]struct{}
-	removedchannel_probes      map[int]struct{}
-	clearedchannel_probes      bool
-	done                       bool
-	oldValue                   func(context.Context) (*Channel, error)
-	predicates                 []predicate.Channel
+	op                          Op
+	typ                         string
+	id                          *int
+	created_at                  *time.Time
+	updated_at                  *time.Time
+	deleted_at                  *int
+	adddeleted_at               *int
+	_type                       *channel.Type
+	base_url                    *string
+	name                        *string
+	status                      *channel.Status
+	credentials                 **objects.ChannelCredentials
+	supported_models            *[]string
+	appendsupported_models      []string
+	auto_sync_supported_models  *bool
+	tags                        *[]string
+	appendtags                  []string
+	default_test_model          *string
+	settings                    **objects.ChannelSettings
+	ordering_weight             *int
+	addordering_weight          *int
+	error_message               *string
+	remark                      *string
+	clearedFields               map[string]struct{}
+	requests                    map[int]struct{}
+	removedrequests             map[int]struct{}
+	clearedrequests             bool
+	executions                  map[int]struct{}
+	removedexecutions           map[int]struct{}
+	clearedexecutions           bool
+	usage_logs                  map[int]struct{}
+	removedusage_logs           map[int]struct{}
+	clearedusage_logs           bool
+	channel_performance         *int
+	clearedchannel_performance  bool
+	channel_probes              map[int]struct{}
+	removedchannel_probes       map[int]struct{}
+	clearedchannel_probes       bool
+	channel_model_prices        map[int]struct{}
+	removedchannel_model_prices map[int]struct{}
+	clearedchannel_model_prices bool
+	done                        bool
+	oldValue                    func(context.Context) (*Channel, error)
+	predicates                  []predicate.Channel
 }
 
 var _ ent.Mutation = (*ChannelMutation)(nil)
@@ -2320,6 +2327,60 @@ func (m *ChannelMutation) ResetChannelProbes() {
 	m.removedchannel_probes = nil
 }
 
+// AddChannelModelPriceIDs adds the "channel_model_prices" edge to the ChannelModelPrice entity by ids.
+func (m *ChannelMutation) AddChannelModelPriceIDs(ids ...int) {
+	if m.channel_model_prices == nil {
+		m.channel_model_prices = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.channel_model_prices[ids[i]] = struct{}{}
+	}
+}
+
+// ClearChannelModelPrices clears the "channel_model_prices" edge to the ChannelModelPrice entity.
+func (m *ChannelMutation) ClearChannelModelPrices() {
+	m.clearedchannel_model_prices = true
+}
+
+// ChannelModelPricesCleared reports if the "channel_model_prices" edge to the ChannelModelPrice entity was cleared.
+func (m *ChannelMutation) ChannelModelPricesCleared() bool {
+	return m.clearedchannel_model_prices
+}
+
+// RemoveChannelModelPriceIDs removes the "channel_model_prices" edge to the ChannelModelPrice entity by IDs.
+func (m *ChannelMutation) RemoveChannelModelPriceIDs(ids ...int) {
+	if m.removedchannel_model_prices == nil {
+		m.removedchannel_model_prices = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.channel_model_prices, ids[i])
+		m.removedchannel_model_prices[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedChannelModelPrices returns the removed IDs of the "channel_model_prices" edge to the ChannelModelPrice entity.
+func (m *ChannelMutation) RemovedChannelModelPricesIDs() (ids []int) {
+	for id := range m.removedchannel_model_prices {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ChannelModelPricesIDs returns the "channel_model_prices" edge IDs in the mutation.
+func (m *ChannelMutation) ChannelModelPricesIDs() (ids []int) {
+	for id := range m.channel_model_prices {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetChannelModelPrices resets all changes to the "channel_model_prices" edge.
+func (m *ChannelMutation) ResetChannelModelPrices() {
+	m.channel_model_prices = nil
+	m.clearedchannel_model_prices = false
+	m.removedchannel_model_prices = nil
+}
+
 // Where appends a list predicates to the ChannelMutation builder.
 func (m *ChannelMutation) Where(ps ...predicate.Channel) {
 	m.predicates = append(m.predicates, ps...)
@@ -2768,7 +2829,7 @@ func (m *ChannelMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ChannelMutation) AddedEdges() []string {
-	edges := make([]string, 0, 5)
+	edges := make([]string, 0, 6)
 	if m.requests != nil {
 		edges = append(edges, channel.EdgeRequests)
 	}
@@ -2783,6 +2844,9 @@ func (m *ChannelMutation) AddedEdges() []string {
 	}
 	if m.channel_probes != nil {
 		edges = append(edges, channel.EdgeChannelProbes)
+	}
+	if m.channel_model_prices != nil {
+		edges = append(edges, channel.EdgeChannelModelPrices)
 	}
 	return edges
 }
@@ -2819,13 +2883,19 @@ func (m *ChannelMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case channel.EdgeChannelModelPrices:
+		ids := make([]ent.Value, 0, len(m.channel_model_prices))
+		for id := range m.channel_model_prices {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ChannelMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 5)
+	edges := make([]string, 0, 6)
 	if m.removedrequests != nil {
 		edges = append(edges, channel.EdgeRequests)
 	}
@@ -2837,6 +2907,9 @@ func (m *ChannelMutation) RemovedEdges() []string {
 	}
 	if m.removedchannel_probes != nil {
 		edges = append(edges, channel.EdgeChannelProbes)
+	}
+	if m.removedchannel_model_prices != nil {
+		edges = append(edges, channel.EdgeChannelModelPrices)
 	}
 	return edges
 }
@@ -2869,13 +2942,19 @@ func (m *ChannelMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case channel.EdgeChannelModelPrices:
+		ids := make([]ent.Value, 0, len(m.removedchannel_model_prices))
+		for id := range m.removedchannel_model_prices {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ChannelMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 5)
+	edges := make([]string, 0, 6)
 	if m.clearedrequests {
 		edges = append(edges, channel.EdgeRequests)
 	}
@@ -2890,6 +2969,9 @@ func (m *ChannelMutation) ClearedEdges() []string {
 	}
 	if m.clearedchannel_probes {
 		edges = append(edges, channel.EdgeChannelProbes)
+	}
+	if m.clearedchannel_model_prices {
+		edges = append(edges, channel.EdgeChannelModelPrices)
 	}
 	return edges
 }
@@ -2908,6 +2990,8 @@ func (m *ChannelMutation) EdgeCleared(name string) bool {
 		return m.clearedchannel_performance
 	case channel.EdgeChannelProbes:
 		return m.clearedchannel_probes
+	case channel.EdgeChannelModelPrices:
+		return m.clearedchannel_model_prices
 	}
 	return false
 }
@@ -2942,8 +3026,1847 @@ func (m *ChannelMutation) ResetEdge(name string) error {
 	case channel.EdgeChannelProbes:
 		m.ResetChannelProbes()
 		return nil
+	case channel.EdgeChannelModelPrices:
+		m.ResetChannelModelPrices()
+		return nil
 	}
 	return fmt.Errorf("unknown Channel edge %s", name)
+}
+
+// ChannelModelPriceMutation represents an operation that mutates the ChannelModelPrice nodes in the graph.
+type ChannelModelPriceMutation struct {
+	config
+	op              Op
+	typ             string
+	id              *int
+	created_at      *time.Time
+	updated_at      *time.Time
+	deleted_at      *int
+	adddeleted_at   *int
+	model_id        *string
+	price           *objects.ModelPrice
+	refreance_id    *string
+	clearedFields   map[string]struct{}
+	channel         *int
+	clearedchannel  bool
+	versions        map[int]struct{}
+	removedversions map[int]struct{}
+	clearedversions bool
+	done            bool
+	oldValue        func(context.Context) (*ChannelModelPrice, error)
+	predicates      []predicate.ChannelModelPrice
+}
+
+var _ ent.Mutation = (*ChannelModelPriceMutation)(nil)
+
+// channelmodelpriceOption allows management of the mutation configuration using functional options.
+type channelmodelpriceOption func(*ChannelModelPriceMutation)
+
+// newChannelModelPriceMutation creates new mutation for the ChannelModelPrice entity.
+func newChannelModelPriceMutation(c config, op Op, opts ...channelmodelpriceOption) *ChannelModelPriceMutation {
+	m := &ChannelModelPriceMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeChannelModelPrice,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withChannelModelPriceID sets the ID field of the mutation.
+func withChannelModelPriceID(id int) channelmodelpriceOption {
+	return func(m *ChannelModelPriceMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ChannelModelPrice
+		)
+		m.oldValue = func(ctx context.Context) (*ChannelModelPrice, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ChannelModelPrice.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withChannelModelPrice sets the old ChannelModelPrice of the mutation.
+func withChannelModelPrice(node *ChannelModelPrice) channelmodelpriceOption {
+	return func(m *ChannelModelPriceMutation) {
+		m.oldValue = func(context.Context) (*ChannelModelPrice, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ChannelModelPriceMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ChannelModelPriceMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ChannelModelPriceMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ChannelModelPriceMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ChannelModelPrice.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *ChannelModelPriceMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *ChannelModelPriceMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the ChannelModelPrice entity.
+// If the ChannelModelPrice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelModelPriceMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *ChannelModelPriceMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *ChannelModelPriceMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *ChannelModelPriceMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the ChannelModelPrice entity.
+// If the ChannelModelPrice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelModelPriceMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *ChannelModelPriceMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (m *ChannelModelPriceMutation) SetDeletedAt(i int) {
+	m.deleted_at = &i
+	m.adddeleted_at = nil
+}
+
+// DeletedAt returns the value of the "deleted_at" field in the mutation.
+func (m *ChannelModelPriceMutation) DeletedAt() (r int, exists bool) {
+	v := m.deleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeletedAt returns the old "deleted_at" field's value of the ChannelModelPrice entity.
+// If the ChannelModelPrice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelModelPriceMutation) OldDeletedAt(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
+	}
+	return oldValue.DeletedAt, nil
+}
+
+// AddDeletedAt adds i to the "deleted_at" field.
+func (m *ChannelModelPriceMutation) AddDeletedAt(i int) {
+	if m.adddeleted_at != nil {
+		*m.adddeleted_at += i
+	} else {
+		m.adddeleted_at = &i
+	}
+}
+
+// AddedDeletedAt returns the value that was added to the "deleted_at" field in this mutation.
+func (m *ChannelModelPriceMutation) AddedDeletedAt() (r int, exists bool) {
+	v := m.adddeleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetDeletedAt resets all changes to the "deleted_at" field.
+func (m *ChannelModelPriceMutation) ResetDeletedAt() {
+	m.deleted_at = nil
+	m.adddeleted_at = nil
+}
+
+// SetChannelID sets the "channel_id" field.
+func (m *ChannelModelPriceMutation) SetChannelID(i int) {
+	m.channel = &i
+}
+
+// ChannelID returns the value of the "channel_id" field in the mutation.
+func (m *ChannelModelPriceMutation) ChannelID() (r int, exists bool) {
+	v := m.channel
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChannelID returns the old "channel_id" field's value of the ChannelModelPrice entity.
+// If the ChannelModelPrice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelModelPriceMutation) OldChannelID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChannelID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChannelID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChannelID: %w", err)
+	}
+	return oldValue.ChannelID, nil
+}
+
+// ResetChannelID resets all changes to the "channel_id" field.
+func (m *ChannelModelPriceMutation) ResetChannelID() {
+	m.channel = nil
+}
+
+// SetModelID sets the "model_id" field.
+func (m *ChannelModelPriceMutation) SetModelID(s string) {
+	m.model_id = &s
+}
+
+// ModelID returns the value of the "model_id" field in the mutation.
+func (m *ChannelModelPriceMutation) ModelID() (r string, exists bool) {
+	v := m.model_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldModelID returns the old "model_id" field's value of the ChannelModelPrice entity.
+// If the ChannelModelPrice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelModelPriceMutation) OldModelID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldModelID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldModelID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldModelID: %w", err)
+	}
+	return oldValue.ModelID, nil
+}
+
+// ResetModelID resets all changes to the "model_id" field.
+func (m *ChannelModelPriceMutation) ResetModelID() {
+	m.model_id = nil
+}
+
+// SetPrice sets the "price" field.
+func (m *ChannelModelPriceMutation) SetPrice(op objects.ModelPrice) {
+	m.price = &op
+}
+
+// Price returns the value of the "price" field in the mutation.
+func (m *ChannelModelPriceMutation) Price() (r objects.ModelPrice, exists bool) {
+	v := m.price
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPrice returns the old "price" field's value of the ChannelModelPrice entity.
+// If the ChannelModelPrice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelModelPriceMutation) OldPrice(ctx context.Context) (v objects.ModelPrice, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPrice is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPrice requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPrice: %w", err)
+	}
+	return oldValue.Price, nil
+}
+
+// ResetPrice resets all changes to the "price" field.
+func (m *ChannelModelPriceMutation) ResetPrice() {
+	m.price = nil
+}
+
+// SetRefreanceID sets the "refreance_id" field.
+func (m *ChannelModelPriceMutation) SetRefreanceID(s string) {
+	m.refreance_id = &s
+}
+
+// RefreanceID returns the value of the "refreance_id" field in the mutation.
+func (m *ChannelModelPriceMutation) RefreanceID() (r string, exists bool) {
+	v := m.refreance_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRefreanceID returns the old "refreance_id" field's value of the ChannelModelPrice entity.
+// If the ChannelModelPrice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelModelPriceMutation) OldRefreanceID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRefreanceID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRefreanceID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRefreanceID: %w", err)
+	}
+	return oldValue.RefreanceID, nil
+}
+
+// ResetRefreanceID resets all changes to the "refreance_id" field.
+func (m *ChannelModelPriceMutation) ResetRefreanceID() {
+	m.refreance_id = nil
+}
+
+// ClearChannel clears the "channel" edge to the Channel entity.
+func (m *ChannelModelPriceMutation) ClearChannel() {
+	m.clearedchannel = true
+	m.clearedFields[channelmodelprice.FieldChannelID] = struct{}{}
+}
+
+// ChannelCleared reports if the "channel" edge to the Channel entity was cleared.
+func (m *ChannelModelPriceMutation) ChannelCleared() bool {
+	return m.clearedchannel
+}
+
+// ChannelIDs returns the "channel" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ChannelID instead. It exists only for internal usage by the builders.
+func (m *ChannelModelPriceMutation) ChannelIDs() (ids []int) {
+	if id := m.channel; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetChannel resets all changes to the "channel" edge.
+func (m *ChannelModelPriceMutation) ResetChannel() {
+	m.channel = nil
+	m.clearedchannel = false
+}
+
+// AddVersionIDs adds the "versions" edge to the ChannelModelPriceVersion entity by ids.
+func (m *ChannelModelPriceMutation) AddVersionIDs(ids ...int) {
+	if m.versions == nil {
+		m.versions = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.versions[ids[i]] = struct{}{}
+	}
+}
+
+// ClearVersions clears the "versions" edge to the ChannelModelPriceVersion entity.
+func (m *ChannelModelPriceMutation) ClearVersions() {
+	m.clearedversions = true
+}
+
+// VersionsCleared reports if the "versions" edge to the ChannelModelPriceVersion entity was cleared.
+func (m *ChannelModelPriceMutation) VersionsCleared() bool {
+	return m.clearedversions
+}
+
+// RemoveVersionIDs removes the "versions" edge to the ChannelModelPriceVersion entity by IDs.
+func (m *ChannelModelPriceMutation) RemoveVersionIDs(ids ...int) {
+	if m.removedversions == nil {
+		m.removedversions = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.versions, ids[i])
+		m.removedversions[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedVersions returns the removed IDs of the "versions" edge to the ChannelModelPriceVersion entity.
+func (m *ChannelModelPriceMutation) RemovedVersionsIDs() (ids []int) {
+	for id := range m.removedversions {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// VersionsIDs returns the "versions" edge IDs in the mutation.
+func (m *ChannelModelPriceMutation) VersionsIDs() (ids []int) {
+	for id := range m.versions {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetVersions resets all changes to the "versions" edge.
+func (m *ChannelModelPriceMutation) ResetVersions() {
+	m.versions = nil
+	m.clearedversions = false
+	m.removedversions = nil
+}
+
+// Where appends a list predicates to the ChannelModelPriceMutation builder.
+func (m *ChannelModelPriceMutation) Where(ps ...predicate.ChannelModelPrice) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ChannelModelPriceMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ChannelModelPriceMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ChannelModelPrice, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ChannelModelPriceMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ChannelModelPriceMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ChannelModelPrice).
+func (m *ChannelModelPriceMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ChannelModelPriceMutation) Fields() []string {
+	fields := make([]string, 0, 7)
+	if m.created_at != nil {
+		fields = append(fields, channelmodelprice.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, channelmodelprice.FieldUpdatedAt)
+	}
+	if m.deleted_at != nil {
+		fields = append(fields, channelmodelprice.FieldDeletedAt)
+	}
+	if m.channel != nil {
+		fields = append(fields, channelmodelprice.FieldChannelID)
+	}
+	if m.model_id != nil {
+		fields = append(fields, channelmodelprice.FieldModelID)
+	}
+	if m.price != nil {
+		fields = append(fields, channelmodelprice.FieldPrice)
+	}
+	if m.refreance_id != nil {
+		fields = append(fields, channelmodelprice.FieldRefreanceID)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ChannelModelPriceMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case channelmodelprice.FieldCreatedAt:
+		return m.CreatedAt()
+	case channelmodelprice.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case channelmodelprice.FieldDeletedAt:
+		return m.DeletedAt()
+	case channelmodelprice.FieldChannelID:
+		return m.ChannelID()
+	case channelmodelprice.FieldModelID:
+		return m.ModelID()
+	case channelmodelprice.FieldPrice:
+		return m.Price()
+	case channelmodelprice.FieldRefreanceID:
+		return m.RefreanceID()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ChannelModelPriceMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case channelmodelprice.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case channelmodelprice.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case channelmodelprice.FieldDeletedAt:
+		return m.OldDeletedAt(ctx)
+	case channelmodelprice.FieldChannelID:
+		return m.OldChannelID(ctx)
+	case channelmodelprice.FieldModelID:
+		return m.OldModelID(ctx)
+	case channelmodelprice.FieldPrice:
+		return m.OldPrice(ctx)
+	case channelmodelprice.FieldRefreanceID:
+		return m.OldRefreanceID(ctx)
+	}
+	return nil, fmt.Errorf("unknown ChannelModelPrice field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ChannelModelPriceMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case channelmodelprice.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case channelmodelprice.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case channelmodelprice.FieldDeletedAt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeletedAt(v)
+		return nil
+	case channelmodelprice.FieldChannelID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChannelID(v)
+		return nil
+	case channelmodelprice.FieldModelID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetModelID(v)
+		return nil
+	case channelmodelprice.FieldPrice:
+		v, ok := value.(objects.ModelPrice)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPrice(v)
+		return nil
+	case channelmodelprice.FieldRefreanceID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRefreanceID(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ChannelModelPrice field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ChannelModelPriceMutation) AddedFields() []string {
+	var fields []string
+	if m.adddeleted_at != nil {
+		fields = append(fields, channelmodelprice.FieldDeletedAt)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ChannelModelPriceMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case channelmodelprice.FieldDeletedAt:
+		return m.AddedDeletedAt()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ChannelModelPriceMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case channelmodelprice.FieldDeletedAt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddDeletedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ChannelModelPrice numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ChannelModelPriceMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ChannelModelPriceMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ChannelModelPriceMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown ChannelModelPrice nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ChannelModelPriceMutation) ResetField(name string) error {
+	switch name {
+	case channelmodelprice.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case channelmodelprice.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case channelmodelprice.FieldDeletedAt:
+		m.ResetDeletedAt()
+		return nil
+	case channelmodelprice.FieldChannelID:
+		m.ResetChannelID()
+		return nil
+	case channelmodelprice.FieldModelID:
+		m.ResetModelID()
+		return nil
+	case channelmodelprice.FieldPrice:
+		m.ResetPrice()
+		return nil
+	case channelmodelprice.FieldRefreanceID:
+		m.ResetRefreanceID()
+		return nil
+	}
+	return fmt.Errorf("unknown ChannelModelPrice field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ChannelModelPriceMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.channel != nil {
+		edges = append(edges, channelmodelprice.EdgeChannel)
+	}
+	if m.versions != nil {
+		edges = append(edges, channelmodelprice.EdgeVersions)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ChannelModelPriceMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case channelmodelprice.EdgeChannel:
+		if id := m.channel; id != nil {
+			return []ent.Value{*id}
+		}
+	case channelmodelprice.EdgeVersions:
+		ids := make([]ent.Value, 0, len(m.versions))
+		for id := range m.versions {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ChannelModelPriceMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.removedversions != nil {
+		edges = append(edges, channelmodelprice.EdgeVersions)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ChannelModelPriceMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case channelmodelprice.EdgeVersions:
+		ids := make([]ent.Value, 0, len(m.removedversions))
+		for id := range m.removedversions {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ChannelModelPriceMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedchannel {
+		edges = append(edges, channelmodelprice.EdgeChannel)
+	}
+	if m.clearedversions {
+		edges = append(edges, channelmodelprice.EdgeVersions)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ChannelModelPriceMutation) EdgeCleared(name string) bool {
+	switch name {
+	case channelmodelprice.EdgeChannel:
+		return m.clearedchannel
+	case channelmodelprice.EdgeVersions:
+		return m.clearedversions
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ChannelModelPriceMutation) ClearEdge(name string) error {
+	switch name {
+	case channelmodelprice.EdgeChannel:
+		m.ClearChannel()
+		return nil
+	}
+	return fmt.Errorf("unknown ChannelModelPrice unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ChannelModelPriceMutation) ResetEdge(name string) error {
+	switch name {
+	case channelmodelprice.EdgeChannel:
+		m.ResetChannel()
+		return nil
+	case channelmodelprice.EdgeVersions:
+		m.ResetVersions()
+		return nil
+	}
+	return fmt.Errorf("unknown ChannelModelPrice edge %s", name)
+}
+
+// ChannelModelPriceVersionMutation represents an operation that mutates the ChannelModelPriceVersion nodes in the graph.
+type ChannelModelPriceVersionMutation struct {
+	config
+	op                         Op
+	typ                        string
+	id                         *int
+	created_at                 *time.Time
+	updated_at                 *time.Time
+	deleted_at                 *int
+	adddeleted_at              *int
+	channel_id                 *int
+	addchannel_id              *int
+	model_id                   *string
+	price                      *objects.ModelPrice
+	status                     *channelmodelpriceversion.Status
+	effective_start_at         *time.Time
+	effective_end_at           *time.Time
+	refreance_id               *string
+	clearedFields              map[string]struct{}
+	channel_model_price        *int
+	clearedchannel_model_price bool
+	done                       bool
+	oldValue                   func(context.Context) (*ChannelModelPriceVersion, error)
+	predicates                 []predicate.ChannelModelPriceVersion
+}
+
+var _ ent.Mutation = (*ChannelModelPriceVersionMutation)(nil)
+
+// channelmodelpriceversionOption allows management of the mutation configuration using functional options.
+type channelmodelpriceversionOption func(*ChannelModelPriceVersionMutation)
+
+// newChannelModelPriceVersionMutation creates new mutation for the ChannelModelPriceVersion entity.
+func newChannelModelPriceVersionMutation(c config, op Op, opts ...channelmodelpriceversionOption) *ChannelModelPriceVersionMutation {
+	m := &ChannelModelPriceVersionMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeChannelModelPriceVersion,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withChannelModelPriceVersionID sets the ID field of the mutation.
+func withChannelModelPriceVersionID(id int) channelmodelpriceversionOption {
+	return func(m *ChannelModelPriceVersionMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ChannelModelPriceVersion
+		)
+		m.oldValue = func(ctx context.Context) (*ChannelModelPriceVersion, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ChannelModelPriceVersion.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withChannelModelPriceVersion sets the old ChannelModelPriceVersion of the mutation.
+func withChannelModelPriceVersion(node *ChannelModelPriceVersion) channelmodelpriceversionOption {
+	return func(m *ChannelModelPriceVersionMutation) {
+		m.oldValue = func(context.Context) (*ChannelModelPriceVersion, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ChannelModelPriceVersionMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ChannelModelPriceVersionMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ChannelModelPriceVersionMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ChannelModelPriceVersionMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ChannelModelPriceVersion.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *ChannelModelPriceVersionMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *ChannelModelPriceVersionMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the ChannelModelPriceVersion entity.
+// If the ChannelModelPriceVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelModelPriceVersionMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *ChannelModelPriceVersionMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *ChannelModelPriceVersionMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *ChannelModelPriceVersionMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the ChannelModelPriceVersion entity.
+// If the ChannelModelPriceVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelModelPriceVersionMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *ChannelModelPriceVersionMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (m *ChannelModelPriceVersionMutation) SetDeletedAt(i int) {
+	m.deleted_at = &i
+	m.adddeleted_at = nil
+}
+
+// DeletedAt returns the value of the "deleted_at" field in the mutation.
+func (m *ChannelModelPriceVersionMutation) DeletedAt() (r int, exists bool) {
+	v := m.deleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeletedAt returns the old "deleted_at" field's value of the ChannelModelPriceVersion entity.
+// If the ChannelModelPriceVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelModelPriceVersionMutation) OldDeletedAt(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
+	}
+	return oldValue.DeletedAt, nil
+}
+
+// AddDeletedAt adds i to the "deleted_at" field.
+func (m *ChannelModelPriceVersionMutation) AddDeletedAt(i int) {
+	if m.adddeleted_at != nil {
+		*m.adddeleted_at += i
+	} else {
+		m.adddeleted_at = &i
+	}
+}
+
+// AddedDeletedAt returns the value that was added to the "deleted_at" field in this mutation.
+func (m *ChannelModelPriceVersionMutation) AddedDeletedAt() (r int, exists bool) {
+	v := m.adddeleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetDeletedAt resets all changes to the "deleted_at" field.
+func (m *ChannelModelPriceVersionMutation) ResetDeletedAt() {
+	m.deleted_at = nil
+	m.adddeleted_at = nil
+}
+
+// SetChannelID sets the "channel_id" field.
+func (m *ChannelModelPriceVersionMutation) SetChannelID(i int) {
+	m.channel_id = &i
+	m.addchannel_id = nil
+}
+
+// ChannelID returns the value of the "channel_id" field in the mutation.
+func (m *ChannelModelPriceVersionMutation) ChannelID() (r int, exists bool) {
+	v := m.channel_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChannelID returns the old "channel_id" field's value of the ChannelModelPriceVersion entity.
+// If the ChannelModelPriceVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelModelPriceVersionMutation) OldChannelID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChannelID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChannelID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChannelID: %w", err)
+	}
+	return oldValue.ChannelID, nil
+}
+
+// AddChannelID adds i to the "channel_id" field.
+func (m *ChannelModelPriceVersionMutation) AddChannelID(i int) {
+	if m.addchannel_id != nil {
+		*m.addchannel_id += i
+	} else {
+		m.addchannel_id = &i
+	}
+}
+
+// AddedChannelID returns the value that was added to the "channel_id" field in this mutation.
+func (m *ChannelModelPriceVersionMutation) AddedChannelID() (r int, exists bool) {
+	v := m.addchannel_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetChannelID resets all changes to the "channel_id" field.
+func (m *ChannelModelPriceVersionMutation) ResetChannelID() {
+	m.channel_id = nil
+	m.addchannel_id = nil
+}
+
+// SetModelID sets the "model_id" field.
+func (m *ChannelModelPriceVersionMutation) SetModelID(s string) {
+	m.model_id = &s
+}
+
+// ModelID returns the value of the "model_id" field in the mutation.
+func (m *ChannelModelPriceVersionMutation) ModelID() (r string, exists bool) {
+	v := m.model_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldModelID returns the old "model_id" field's value of the ChannelModelPriceVersion entity.
+// If the ChannelModelPriceVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelModelPriceVersionMutation) OldModelID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldModelID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldModelID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldModelID: %w", err)
+	}
+	return oldValue.ModelID, nil
+}
+
+// ResetModelID resets all changes to the "model_id" field.
+func (m *ChannelModelPriceVersionMutation) ResetModelID() {
+	m.model_id = nil
+}
+
+// SetChannelModelPriceID sets the "channel_model_price_id" field.
+func (m *ChannelModelPriceVersionMutation) SetChannelModelPriceID(i int) {
+	m.channel_model_price = &i
+}
+
+// ChannelModelPriceID returns the value of the "channel_model_price_id" field in the mutation.
+func (m *ChannelModelPriceVersionMutation) ChannelModelPriceID() (r int, exists bool) {
+	v := m.channel_model_price
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChannelModelPriceID returns the old "channel_model_price_id" field's value of the ChannelModelPriceVersion entity.
+// If the ChannelModelPriceVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelModelPriceVersionMutation) OldChannelModelPriceID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChannelModelPriceID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChannelModelPriceID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChannelModelPriceID: %w", err)
+	}
+	return oldValue.ChannelModelPriceID, nil
+}
+
+// ResetChannelModelPriceID resets all changes to the "channel_model_price_id" field.
+func (m *ChannelModelPriceVersionMutation) ResetChannelModelPriceID() {
+	m.channel_model_price = nil
+}
+
+// SetPrice sets the "price" field.
+func (m *ChannelModelPriceVersionMutation) SetPrice(op objects.ModelPrice) {
+	m.price = &op
+}
+
+// Price returns the value of the "price" field in the mutation.
+func (m *ChannelModelPriceVersionMutation) Price() (r objects.ModelPrice, exists bool) {
+	v := m.price
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPrice returns the old "price" field's value of the ChannelModelPriceVersion entity.
+// If the ChannelModelPriceVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelModelPriceVersionMutation) OldPrice(ctx context.Context) (v objects.ModelPrice, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPrice is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPrice requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPrice: %w", err)
+	}
+	return oldValue.Price, nil
+}
+
+// ResetPrice resets all changes to the "price" field.
+func (m *ChannelModelPriceVersionMutation) ResetPrice() {
+	m.price = nil
+}
+
+// SetStatus sets the "status" field.
+func (m *ChannelModelPriceVersionMutation) SetStatus(c channelmodelpriceversion.Status) {
+	m.status = &c
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *ChannelModelPriceVersionMutation) Status() (r channelmodelpriceversion.Status, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the ChannelModelPriceVersion entity.
+// If the ChannelModelPriceVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelModelPriceVersionMutation) OldStatus(ctx context.Context) (v channelmodelpriceversion.Status, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *ChannelModelPriceVersionMutation) ResetStatus() {
+	m.status = nil
+}
+
+// SetEffectiveStartAt sets the "effective_start_at" field.
+func (m *ChannelModelPriceVersionMutation) SetEffectiveStartAt(t time.Time) {
+	m.effective_start_at = &t
+}
+
+// EffectiveStartAt returns the value of the "effective_start_at" field in the mutation.
+func (m *ChannelModelPriceVersionMutation) EffectiveStartAt() (r time.Time, exists bool) {
+	v := m.effective_start_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEffectiveStartAt returns the old "effective_start_at" field's value of the ChannelModelPriceVersion entity.
+// If the ChannelModelPriceVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelModelPriceVersionMutation) OldEffectiveStartAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEffectiveStartAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEffectiveStartAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEffectiveStartAt: %w", err)
+	}
+	return oldValue.EffectiveStartAt, nil
+}
+
+// ResetEffectiveStartAt resets all changes to the "effective_start_at" field.
+func (m *ChannelModelPriceVersionMutation) ResetEffectiveStartAt() {
+	m.effective_start_at = nil
+}
+
+// SetEffectiveEndAt sets the "effective_end_at" field.
+func (m *ChannelModelPriceVersionMutation) SetEffectiveEndAt(t time.Time) {
+	m.effective_end_at = &t
+}
+
+// EffectiveEndAt returns the value of the "effective_end_at" field in the mutation.
+func (m *ChannelModelPriceVersionMutation) EffectiveEndAt() (r time.Time, exists bool) {
+	v := m.effective_end_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEffectiveEndAt returns the old "effective_end_at" field's value of the ChannelModelPriceVersion entity.
+// If the ChannelModelPriceVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelModelPriceVersionMutation) OldEffectiveEndAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEffectiveEndAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEffectiveEndAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEffectiveEndAt: %w", err)
+	}
+	return oldValue.EffectiveEndAt, nil
+}
+
+// ClearEffectiveEndAt clears the value of the "effective_end_at" field.
+func (m *ChannelModelPriceVersionMutation) ClearEffectiveEndAt() {
+	m.effective_end_at = nil
+	m.clearedFields[channelmodelpriceversion.FieldEffectiveEndAt] = struct{}{}
+}
+
+// EffectiveEndAtCleared returns if the "effective_end_at" field was cleared in this mutation.
+func (m *ChannelModelPriceVersionMutation) EffectiveEndAtCleared() bool {
+	_, ok := m.clearedFields[channelmodelpriceversion.FieldEffectiveEndAt]
+	return ok
+}
+
+// ResetEffectiveEndAt resets all changes to the "effective_end_at" field.
+func (m *ChannelModelPriceVersionMutation) ResetEffectiveEndAt() {
+	m.effective_end_at = nil
+	delete(m.clearedFields, channelmodelpriceversion.FieldEffectiveEndAt)
+}
+
+// SetRefreanceID sets the "refreance_id" field.
+func (m *ChannelModelPriceVersionMutation) SetRefreanceID(s string) {
+	m.refreance_id = &s
+}
+
+// RefreanceID returns the value of the "refreance_id" field in the mutation.
+func (m *ChannelModelPriceVersionMutation) RefreanceID() (r string, exists bool) {
+	v := m.refreance_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRefreanceID returns the old "refreance_id" field's value of the ChannelModelPriceVersion entity.
+// If the ChannelModelPriceVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelModelPriceVersionMutation) OldRefreanceID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRefreanceID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRefreanceID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRefreanceID: %w", err)
+	}
+	return oldValue.RefreanceID, nil
+}
+
+// ResetRefreanceID resets all changes to the "refreance_id" field.
+func (m *ChannelModelPriceVersionMutation) ResetRefreanceID() {
+	m.refreance_id = nil
+}
+
+// ClearChannelModelPrice clears the "channel_model_price" edge to the ChannelModelPrice entity.
+func (m *ChannelModelPriceVersionMutation) ClearChannelModelPrice() {
+	m.clearedchannel_model_price = true
+	m.clearedFields[channelmodelpriceversion.FieldChannelModelPriceID] = struct{}{}
+}
+
+// ChannelModelPriceCleared reports if the "channel_model_price" edge to the ChannelModelPrice entity was cleared.
+func (m *ChannelModelPriceVersionMutation) ChannelModelPriceCleared() bool {
+	return m.clearedchannel_model_price
+}
+
+// ChannelModelPriceIDs returns the "channel_model_price" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ChannelModelPriceID instead. It exists only for internal usage by the builders.
+func (m *ChannelModelPriceVersionMutation) ChannelModelPriceIDs() (ids []int) {
+	if id := m.channel_model_price; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetChannelModelPrice resets all changes to the "channel_model_price" edge.
+func (m *ChannelModelPriceVersionMutation) ResetChannelModelPrice() {
+	m.channel_model_price = nil
+	m.clearedchannel_model_price = false
+}
+
+// Where appends a list predicates to the ChannelModelPriceVersionMutation builder.
+func (m *ChannelModelPriceVersionMutation) Where(ps ...predicate.ChannelModelPriceVersion) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ChannelModelPriceVersionMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ChannelModelPriceVersionMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ChannelModelPriceVersion, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ChannelModelPriceVersionMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ChannelModelPriceVersionMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ChannelModelPriceVersion).
+func (m *ChannelModelPriceVersionMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ChannelModelPriceVersionMutation) Fields() []string {
+	fields := make([]string, 0, 11)
+	if m.created_at != nil {
+		fields = append(fields, channelmodelpriceversion.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, channelmodelpriceversion.FieldUpdatedAt)
+	}
+	if m.deleted_at != nil {
+		fields = append(fields, channelmodelpriceversion.FieldDeletedAt)
+	}
+	if m.channel_id != nil {
+		fields = append(fields, channelmodelpriceversion.FieldChannelID)
+	}
+	if m.model_id != nil {
+		fields = append(fields, channelmodelpriceversion.FieldModelID)
+	}
+	if m.channel_model_price != nil {
+		fields = append(fields, channelmodelpriceversion.FieldChannelModelPriceID)
+	}
+	if m.price != nil {
+		fields = append(fields, channelmodelpriceversion.FieldPrice)
+	}
+	if m.status != nil {
+		fields = append(fields, channelmodelpriceversion.FieldStatus)
+	}
+	if m.effective_start_at != nil {
+		fields = append(fields, channelmodelpriceversion.FieldEffectiveStartAt)
+	}
+	if m.effective_end_at != nil {
+		fields = append(fields, channelmodelpriceversion.FieldEffectiveEndAt)
+	}
+	if m.refreance_id != nil {
+		fields = append(fields, channelmodelpriceversion.FieldRefreanceID)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ChannelModelPriceVersionMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case channelmodelpriceversion.FieldCreatedAt:
+		return m.CreatedAt()
+	case channelmodelpriceversion.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case channelmodelpriceversion.FieldDeletedAt:
+		return m.DeletedAt()
+	case channelmodelpriceversion.FieldChannelID:
+		return m.ChannelID()
+	case channelmodelpriceversion.FieldModelID:
+		return m.ModelID()
+	case channelmodelpriceversion.FieldChannelModelPriceID:
+		return m.ChannelModelPriceID()
+	case channelmodelpriceversion.FieldPrice:
+		return m.Price()
+	case channelmodelpriceversion.FieldStatus:
+		return m.Status()
+	case channelmodelpriceversion.FieldEffectiveStartAt:
+		return m.EffectiveStartAt()
+	case channelmodelpriceversion.FieldEffectiveEndAt:
+		return m.EffectiveEndAt()
+	case channelmodelpriceversion.FieldRefreanceID:
+		return m.RefreanceID()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ChannelModelPriceVersionMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case channelmodelpriceversion.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case channelmodelpriceversion.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case channelmodelpriceversion.FieldDeletedAt:
+		return m.OldDeletedAt(ctx)
+	case channelmodelpriceversion.FieldChannelID:
+		return m.OldChannelID(ctx)
+	case channelmodelpriceversion.FieldModelID:
+		return m.OldModelID(ctx)
+	case channelmodelpriceversion.FieldChannelModelPriceID:
+		return m.OldChannelModelPriceID(ctx)
+	case channelmodelpriceversion.FieldPrice:
+		return m.OldPrice(ctx)
+	case channelmodelpriceversion.FieldStatus:
+		return m.OldStatus(ctx)
+	case channelmodelpriceversion.FieldEffectiveStartAt:
+		return m.OldEffectiveStartAt(ctx)
+	case channelmodelpriceversion.FieldEffectiveEndAt:
+		return m.OldEffectiveEndAt(ctx)
+	case channelmodelpriceversion.FieldRefreanceID:
+		return m.OldRefreanceID(ctx)
+	}
+	return nil, fmt.Errorf("unknown ChannelModelPriceVersion field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ChannelModelPriceVersionMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case channelmodelpriceversion.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case channelmodelpriceversion.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case channelmodelpriceversion.FieldDeletedAt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeletedAt(v)
+		return nil
+	case channelmodelpriceversion.FieldChannelID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChannelID(v)
+		return nil
+	case channelmodelpriceversion.FieldModelID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetModelID(v)
+		return nil
+	case channelmodelpriceversion.FieldChannelModelPriceID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChannelModelPriceID(v)
+		return nil
+	case channelmodelpriceversion.FieldPrice:
+		v, ok := value.(objects.ModelPrice)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPrice(v)
+		return nil
+	case channelmodelpriceversion.FieldStatus:
+		v, ok := value.(channelmodelpriceversion.Status)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
+	case channelmodelpriceversion.FieldEffectiveStartAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEffectiveStartAt(v)
+		return nil
+	case channelmodelpriceversion.FieldEffectiveEndAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEffectiveEndAt(v)
+		return nil
+	case channelmodelpriceversion.FieldRefreanceID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRefreanceID(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ChannelModelPriceVersion field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ChannelModelPriceVersionMutation) AddedFields() []string {
+	var fields []string
+	if m.adddeleted_at != nil {
+		fields = append(fields, channelmodelpriceversion.FieldDeletedAt)
+	}
+	if m.addchannel_id != nil {
+		fields = append(fields, channelmodelpriceversion.FieldChannelID)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ChannelModelPriceVersionMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case channelmodelpriceversion.FieldDeletedAt:
+		return m.AddedDeletedAt()
+	case channelmodelpriceversion.FieldChannelID:
+		return m.AddedChannelID()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ChannelModelPriceVersionMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case channelmodelpriceversion.FieldDeletedAt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddDeletedAt(v)
+		return nil
+	case channelmodelpriceversion.FieldChannelID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddChannelID(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ChannelModelPriceVersion numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ChannelModelPriceVersionMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(channelmodelpriceversion.FieldEffectiveEndAt) {
+		fields = append(fields, channelmodelpriceversion.FieldEffectiveEndAt)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ChannelModelPriceVersionMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ChannelModelPriceVersionMutation) ClearField(name string) error {
+	switch name {
+	case channelmodelpriceversion.FieldEffectiveEndAt:
+		m.ClearEffectiveEndAt()
+		return nil
+	}
+	return fmt.Errorf("unknown ChannelModelPriceVersion nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ChannelModelPriceVersionMutation) ResetField(name string) error {
+	switch name {
+	case channelmodelpriceversion.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case channelmodelpriceversion.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case channelmodelpriceversion.FieldDeletedAt:
+		m.ResetDeletedAt()
+		return nil
+	case channelmodelpriceversion.FieldChannelID:
+		m.ResetChannelID()
+		return nil
+	case channelmodelpriceversion.FieldModelID:
+		m.ResetModelID()
+		return nil
+	case channelmodelpriceversion.FieldChannelModelPriceID:
+		m.ResetChannelModelPriceID()
+		return nil
+	case channelmodelpriceversion.FieldPrice:
+		m.ResetPrice()
+		return nil
+	case channelmodelpriceversion.FieldStatus:
+		m.ResetStatus()
+		return nil
+	case channelmodelpriceversion.FieldEffectiveStartAt:
+		m.ResetEffectiveStartAt()
+		return nil
+	case channelmodelpriceversion.FieldEffectiveEndAt:
+		m.ResetEffectiveEndAt()
+		return nil
+	case channelmodelpriceversion.FieldRefreanceID:
+		m.ResetRefreanceID()
+		return nil
+	}
+	return fmt.Errorf("unknown ChannelModelPriceVersion field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ChannelModelPriceVersionMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.channel_model_price != nil {
+		edges = append(edges, channelmodelpriceversion.EdgeChannelModelPrice)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ChannelModelPriceVersionMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case channelmodelpriceversion.EdgeChannelModelPrice:
+		if id := m.channel_model_price; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ChannelModelPriceVersionMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ChannelModelPriceVersionMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ChannelModelPriceVersionMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedchannel_model_price {
+		edges = append(edges, channelmodelpriceversion.EdgeChannelModelPrice)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ChannelModelPriceVersionMutation) EdgeCleared(name string) bool {
+	switch name {
+	case channelmodelpriceversion.EdgeChannelModelPrice:
+		return m.clearedchannel_model_price
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ChannelModelPriceVersionMutation) ClearEdge(name string) error {
+	switch name {
+	case channelmodelpriceversion.EdgeChannelModelPrice:
+		m.ClearChannelModelPrice()
+		return nil
+	}
+	return fmt.Errorf("unknown ChannelModelPriceVersion unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ChannelModelPriceVersionMutation) ResetEdge(name string) error {
+	switch name {
+	case channelmodelpriceversion.EdgeChannelModelPrice:
+		m.ResetChannelModelPrice()
+		return nil
+	}
+	return fmt.Errorf("unknown ChannelModelPriceVersion edge %s", name)
 }
 
 // ChannelOverrideTemplateMutation represents an operation that mutates the ChannelOverrideTemplate nodes in the graph.
@@ -17741,6 +19664,10 @@ type UsageLogMutation struct {
 	addcompletion_rejected_prediction_tokens *int64
 	source                                   *usagelog.Source
 	format                                   *string
+	total_cost                               *float64
+	addtotal_cost                            *float64
+	cost_items                               *[]objects.CostItem
+	appendcost_items                         []objects.CostItem
 	clearedFields                            map[string]struct{}
 	request                                  *int
 	clearedrequest                           bool
@@ -18810,6 +20737,127 @@ func (m *UsageLogMutation) ResetFormat() {
 	m.format = nil
 }
 
+// SetTotalCost sets the "total_cost" field.
+func (m *UsageLogMutation) SetTotalCost(f float64) {
+	m.total_cost = &f
+	m.addtotal_cost = nil
+}
+
+// TotalCost returns the value of the "total_cost" field in the mutation.
+func (m *UsageLogMutation) TotalCost() (r float64, exists bool) {
+	v := m.total_cost
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTotalCost returns the old "total_cost" field's value of the UsageLog entity.
+// If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageLogMutation) OldTotalCost(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTotalCost is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTotalCost requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTotalCost: %w", err)
+	}
+	return oldValue.TotalCost, nil
+}
+
+// AddTotalCost adds f to the "total_cost" field.
+func (m *UsageLogMutation) AddTotalCost(f float64) {
+	if m.addtotal_cost != nil {
+		*m.addtotal_cost += f
+	} else {
+		m.addtotal_cost = &f
+	}
+}
+
+// AddedTotalCost returns the value that was added to the "total_cost" field in this mutation.
+func (m *UsageLogMutation) AddedTotalCost() (r float64, exists bool) {
+	v := m.addtotal_cost
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTotalCost resets all changes to the "total_cost" field.
+func (m *UsageLogMutation) ResetTotalCost() {
+	m.total_cost = nil
+	m.addtotal_cost = nil
+}
+
+// SetCostItems sets the "cost_items" field.
+func (m *UsageLogMutation) SetCostItems(oi []objects.CostItem) {
+	m.cost_items = &oi
+	m.appendcost_items = nil
+}
+
+// CostItems returns the value of the "cost_items" field in the mutation.
+func (m *UsageLogMutation) CostItems() (r []objects.CostItem, exists bool) {
+	v := m.cost_items
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCostItems returns the old "cost_items" field's value of the UsageLog entity.
+// If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageLogMutation) OldCostItems(ctx context.Context) (v []objects.CostItem, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCostItems is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCostItems requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCostItems: %w", err)
+	}
+	return oldValue.CostItems, nil
+}
+
+// AppendCostItems adds oi to the "cost_items" field.
+func (m *UsageLogMutation) AppendCostItems(oi []objects.CostItem) {
+	m.appendcost_items = append(m.appendcost_items, oi...)
+}
+
+// AppendedCostItems returns the list of values that were appended to the "cost_items" field in this mutation.
+func (m *UsageLogMutation) AppendedCostItems() ([]objects.CostItem, bool) {
+	if len(m.appendcost_items) == 0 {
+		return nil, false
+	}
+	return m.appendcost_items, true
+}
+
+// ClearCostItems clears the value of the "cost_items" field.
+func (m *UsageLogMutation) ClearCostItems() {
+	m.cost_items = nil
+	m.appendcost_items = nil
+	m.clearedFields[usagelog.FieldCostItems] = struct{}{}
+}
+
+// CostItemsCleared returns if the "cost_items" field was cleared in this mutation.
+func (m *UsageLogMutation) CostItemsCleared() bool {
+	_, ok := m.clearedFields[usagelog.FieldCostItems]
+	return ok
+}
+
+// ResetCostItems resets all changes to the "cost_items" field.
+func (m *UsageLogMutation) ResetCostItems() {
+	m.cost_items = nil
+	m.appendcost_items = nil
+	delete(m.clearedFields, usagelog.FieldCostItems)
+}
+
 // ClearRequest clears the "request" edge to the Request entity.
 func (m *UsageLogMutation) ClearRequest() {
 	m.clearedrequest = true
@@ -18925,7 +20973,7 @@ func (m *UsageLogMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UsageLogMutation) Fields() []string {
-	fields := make([]string, 0, 18)
+	fields := make([]string, 0, 20)
 	if m.created_at != nil {
 		fields = append(fields, usagelog.FieldCreatedAt)
 	}
@@ -18980,6 +21028,12 @@ func (m *UsageLogMutation) Fields() []string {
 	if m.format != nil {
 		fields = append(fields, usagelog.FieldFormat)
 	}
+	if m.total_cost != nil {
+		fields = append(fields, usagelog.FieldTotalCost)
+	}
+	if m.cost_items != nil {
+		fields = append(fields, usagelog.FieldCostItems)
+	}
 	return fields
 }
 
@@ -19024,6 +21078,10 @@ func (m *UsageLogMutation) Field(name string) (ent.Value, bool) {
 		return m.Source()
 	case usagelog.FieldFormat:
 		return m.Format()
+	case usagelog.FieldTotalCost:
+		return m.TotalCost()
+	case usagelog.FieldCostItems:
+		return m.CostItems()
 	}
 	return nil, false
 }
@@ -19069,6 +21127,10 @@ func (m *UsageLogMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldSource(ctx)
 	case usagelog.FieldFormat:
 		return m.OldFormat(ctx)
+	case usagelog.FieldTotalCost:
+		return m.OldTotalCost(ctx)
+	case usagelog.FieldCostItems:
+		return m.OldCostItems(ctx)
 	}
 	return nil, fmt.Errorf("unknown UsageLog field %s", name)
 }
@@ -19204,6 +21266,20 @@ func (m *UsageLogMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetFormat(v)
 		return nil
+	case usagelog.FieldTotalCost:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTotalCost(v)
+		return nil
+	case usagelog.FieldCostItems:
+		v, ok := value.([]objects.CostItem)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCostItems(v)
+		return nil
 	}
 	return fmt.Errorf("unknown UsageLog field %s", name)
 }
@@ -19242,6 +21318,9 @@ func (m *UsageLogMutation) AddedFields() []string {
 	if m.addcompletion_rejected_prediction_tokens != nil {
 		fields = append(fields, usagelog.FieldCompletionRejectedPredictionTokens)
 	}
+	if m.addtotal_cost != nil {
+		fields = append(fields, usagelog.FieldTotalCost)
+	}
 	return fields
 }
 
@@ -19270,6 +21349,8 @@ func (m *UsageLogMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedCompletionAcceptedPredictionTokens()
 	case usagelog.FieldCompletionRejectedPredictionTokens:
 		return m.AddedCompletionRejectedPredictionTokens()
+	case usagelog.FieldTotalCost:
+		return m.AddedTotalCost()
 	}
 	return nil, false
 }
@@ -19349,6 +21430,13 @@ func (m *UsageLogMutation) AddField(name string, value ent.Value) error {
 		}
 		m.AddCompletionRejectedPredictionTokens(v)
 		return nil
+	case usagelog.FieldTotalCost:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTotalCost(v)
+		return nil
 	}
 	return fmt.Errorf("unknown UsageLog numeric field %s", name)
 }
@@ -19380,6 +21468,9 @@ func (m *UsageLogMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(usagelog.FieldCompletionRejectedPredictionTokens) {
 		fields = append(fields, usagelog.FieldCompletionRejectedPredictionTokens)
+	}
+	if m.FieldCleared(usagelog.FieldCostItems) {
+		fields = append(fields, usagelog.FieldCostItems)
 	}
 	return fields
 }
@@ -19418,6 +21509,9 @@ func (m *UsageLogMutation) ClearField(name string) error {
 		return nil
 	case usagelog.FieldCompletionRejectedPredictionTokens:
 		m.ClearCompletionRejectedPredictionTokens()
+		return nil
+	case usagelog.FieldCostItems:
+		m.ClearCostItems()
 		return nil
 	}
 	return fmt.Errorf("unknown UsageLog nullable field %s", name)
@@ -19480,6 +21574,12 @@ func (m *UsageLogMutation) ResetField(name string) error {
 		return nil
 	case usagelog.FieldFormat:
 		m.ResetFormat()
+		return nil
+	case usagelog.FieldTotalCost:
+		m.ResetTotalCost()
+		return nil
+	case usagelog.FieldCostItems:
+		m.ResetCostItems()
 		return nil
 	}
 	return fmt.Errorf("unknown UsageLog field %s", name)

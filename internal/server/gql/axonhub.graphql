@@ -1,5 +1,7 @@
 scalar JSONRawMessage
 scalar JSONRawMessageInput
+scalar Decimal
+scalar DecimalInput
 
 type ModelMapping {
   from: String!

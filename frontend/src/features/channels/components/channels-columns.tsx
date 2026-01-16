@@ -17,6 +17,7 @@ import {
   IconAdjustments,
   IconRoute,
   IconCopy,
+  IconCoin,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -39,8 +40,8 @@ import { useChannels } from '../context/channels-context';
 import { useTestChannel } from '../data/channels';
 import { CHANNEL_CONFIGS, getProvider } from '../data/config_channels';
 import { Channel } from '../data/schema';
-import { ChannelsStatusDialog } from './channels-status-dialog';
 import { ChannelHealthCell } from './channel-health-cell';
+import { ChannelsStatusDialog } from './channels-status-dialog';
 
 // Status Switch Cell Component to handle status toggle with confirmation dialog
 const StatusSwitchCell = memo(({ row }: { row: Row<Channel> }) => {
@@ -96,11 +97,9 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
 
   return (
     <div className='flex items-center justify-center gap-1'>
-      {channelPermissions.canEdit && (
-        <Button size='sm' variant='outline' className='h-8 w-8 p-0' onClick={handleEdit}>
-          <IconEdit className='h-3 w-3' />
-        </Button>
-      )}
+      <Button size='sm' variant='outline' className='h-8 w-8 p-0' onClick={handleEdit}>
+        <IconEdit className='h-3 w-3' />
+      </Button>
       <Button size='sm' variant='outline' className='h-8 px-3' onClick={handleDefaultTest} disabled={testChannel.isPending}>
         <IconPlayerPlay className='mr-1 h-3 w-3' />
       </Button>
@@ -111,124 +110,106 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align='end' className='w-[160px]'>
-          {channelPermissions.canWrite && (
-            <>
-              <DropdownMenuItem onClick={handleOpenTestDialog}>
-                <IconPlayerPlay size={16} className='mr-2' />
-                {t('channels.actions.test')}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-            </>
-          )}
-          {channelPermissions.canEdit && (
-            <DropdownMenuItem onClick={handleEdit}>
-              <IconEdit size={16} className='mr-2' />
-              {t('common.actions.edit')}
-            </DropdownMenuItem>
-          )}
-          {channelPermissions.canEdit && (
-            <DropdownMenuItem
-              onClick={() => {
-                setCurrentRow(channel);
-                setOpen('duplicate');
-              }}
-            >
-              <IconCopy size={16} className='mr-2' />
-              {t('common.actions.duplicate')}
-            </DropdownMenuItem>
-          )}
-          {channelPermissions.canWrite && (
-            <DropdownMenuItem
-              onClick={() => {
-                setCurrentRow(channel);
-                setOpen('modelMapping');
-              }}
-            >
-              <IconRoute size={16} className='mr-2' />
-              {t('channels.dialogs.settings.modelMapping.title')}
-            </DropdownMenuItem>
-          )}
-          {channelPermissions.canWrite && (
-            <DropdownMenuItem
-              onClick={() => {
-                setCurrentRow(channel);
-                setOpen('overrides');
-              }}
-            >
-              <IconAdjustments size={16} className='mr-2' />
-              {t('channels.dialogs.settings.overrides.action')}
-            </DropdownMenuItem>
-          )}
-          {channelPermissions.canWrite && (
-            <DropdownMenuItem
-              onClick={() => {
-                setCurrentRow(channel);
-                setOpen('proxy');
-              }}
-            >
-              <IconNetwork size={16} className='mr-2' />
-              {t('channels.dialogs.proxy.action')}
-            </DropdownMenuItem>
-          )}
-          {channelPermissions.canWrite && (
-            <DropdownMenuItem
-              onClick={() => {
-                setCurrentRow(channel);
-                setOpen('transformOptions');
-              }}
-            >
-              <IconTransform size={16} className='mr-2' />
-              {t('channels.dialogs.transformOptions.action')}
-            </DropdownMenuItem>
-          )}
-          {channelPermissions.canWrite && (
-            <DropdownMenuItem
-              onClick={() => {
-                setCurrentRow(channel);
-                setOpen('weight');
-              }}
-            >
-              <IconWeight size={16} className='mr-2' />
-              {t('channels.dialogs.weight.action')}
-            </DropdownMenuItem>
-          )}
-          {channelPermissions.canWrite && hasError && (
-            <DropdownMenuItem
-              onClick={() => {
-                setCurrentRow(channel);
-                setOpen('errorResolved');
-              }}
-              className='text-green-500!'
-            >
-              <IconCheck size={16} className='mr-2' />
-              {t('channels.actions.errorResolved')}
-            </DropdownMenuItem>
-          )}
+          <DropdownMenuItem onClick={handleOpenTestDialog}>
+            <IconPlayerPlay size={16} className='mr-2' />
+            {t('channels.actions.test')}
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
-          {channelPermissions.canWrite && channel.status !== 'archived' && (
-            <DropdownMenuItem
-              onClick={() => {
-                setCurrentRow(channel);
-                setOpen('archive');
-              }}
-              className='text-orange-500!'
-            >
-              <IconArchive size={16} className='mr-2' />
-              {t('common.buttons.archive')}
-            </DropdownMenuItem>
-          )}
-          {channelPermissions.canWrite && (
-            <DropdownMenuItem
-              onClick={() => {
-                setCurrentRow(channel);
-                setOpen('delete');
-              }}
-              className='text-red-500!'
-            >
-              <IconTrash size={16} className='mr-2' />
-              {t('common.buttons.delete')}
-            </DropdownMenuItem>
-          )}
+
+          <DropdownMenuItem
+            onClick={() => {
+              setCurrentRow(channel);
+              setOpen('duplicate');
+            }}
+          >
+            <IconCopy size={16} className='mr-2' />
+            {t('common.actions.duplicate')}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              setCurrentRow(channel);
+              setOpen('modelMapping');
+            }}
+          >
+            <IconRoute size={16} className='mr-2' />
+            {t('channels.dialogs.settings.modelMapping.title')}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              setCurrentRow(channel);
+              setOpen('overrides');
+            }}
+          >
+            <IconAdjustments size={16} className='mr-2' />
+            {t('channels.dialogs.settings.overrides.action')}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              setCurrentRow(channel);
+              setOpen('price');
+            }}
+          >
+            <IconCoin size={16} className='mr-2' />
+             {t('channels.actions.price')}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              setCurrentRow(channel);
+              setOpen('proxy');
+            }}
+          >
+            <IconNetwork size={16} className='mr-2' />
+            {t('channels.dialogs.proxy.action')}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              setCurrentRow(channel);
+              setOpen('transformOptions');
+            }}
+          >
+            <IconTransform size={16} className='mr-2' />
+            {t('channels.dialogs.transformOptions.action')}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              setCurrentRow(channel);
+              setOpen('weight');
+            }}
+          >
+            <IconWeight size={16} className='mr-2' />
+            {t('channels.dialogs.weight.action')}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              setCurrentRow(channel);
+              setOpen('errorResolved');
+            }}
+            className='text-green-500!'
+          >
+            <IconCheck size={16} className='mr-2' />
+            {t('channels.actions.errorResolved')}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => {
+              setCurrentRow(channel);
+              setOpen('archive');
+            }}
+            className='text-orange-500!'
+          >
+            <IconArchive size={16} className='mr-2' />
+            {t('common.buttons.archive')}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              setCurrentRow(channel);
+              setOpen('delete');
+            }}
+            className='text-red-500!'
+          >
+            <IconTrash size={16} className='mr-2' />
+            {t('common.buttons.delete')}
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
@@ -533,7 +514,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       enableSorting: true,
       enableHiding: false,
     },
-    
+
     {
       accessorKey: 'tags',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.tags')} className='justify-center' />,
@@ -562,7 +543,9 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
     },
     {
       accessorKey: 'channelPerformance',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.channelPerformance')} className='justify-center' />,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={t('channels.columns.channelPerformance')} className='justify-center' />
+      ),
       cell: PerformanceCell,
       meta: {
         className: 'text-center',
@@ -571,7 +554,9 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
     },
     {
       accessorKey: 'supportedModels',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.supportedModels')} className='justify-center' />,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={t('channels.columns.supportedModels')} className='justify-center' />
+      ),
       cell: SupportedModelsCell,
       meta: {
         className: 'max-w-64 text-center',
@@ -610,20 +595,22 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       enableHiding: true,
     },
     {
-          accessorKey: 'createdAt',
-          header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.createdAt')} className='justify-center' />,
-          cell: CreatedAtCell,
-          meta: {
-            className: 'text-center',
-          },
-          enableSorting: true,
-          enableHiding: false,
-        },
+      accessorKey: 'createdAt',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.createdAt')} className='justify-center' />,
+      cell: CreatedAtCell,
+      meta: {
+        className: 'text-center',
+      },
+      enableSorting: true,
+      enableHiding: false,
+    },
     ...(canWrite
       ? [
           {
             id: 'action',
-            header: ({ column }: { column: any }) => <DataTableColumnHeader column={column} title={t('common.columns.actions')} className='justify-center' />,
+            header: ({ column }: { column: any }) => (
+              <DataTableColumnHeader column={column} title={t('common.columns.actions')} className='justify-center' />
+            ),
             cell: ActionCell,
             meta: {
               className: 'text-center',

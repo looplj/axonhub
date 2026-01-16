@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/looplj/axonhub/internal/objects"
 )
 
 const (
@@ -54,6 +55,10 @@ const (
 	FieldSource = "source"
 	// FieldFormat holds the string denoting the format field in the database.
 	FieldFormat = "format"
+	// FieldTotalCost holds the string denoting the total_cost field in the database.
+	FieldTotalCost = "total_cost"
+	// FieldCostItems holds the string denoting the cost_items field in the database.
+	FieldCostItems = "cost_items"
 	// EdgeRequest holds the string denoting the request edge name in mutations.
 	EdgeRequest = "request"
 	// EdgeProject holds the string denoting the project edge name in mutations.
@@ -106,6 +111,8 @@ var Columns = []string{
 	FieldCompletionRejectedPredictionTokens,
 	FieldSource,
 	FieldFormat,
+	FieldTotalCost,
+	FieldCostItems,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -156,6 +163,10 @@ var (
 	DefaultCompletionRejectedPredictionTokens int64
 	// DefaultFormat holds the default value on creation for the "format" field.
 	DefaultFormat string
+	// DefaultTotalCost holds the default value on creation for the "total_cost" field.
+	DefaultTotalCost float64
+	// DefaultCostItems holds the default value on creation for the "cost_items" field.
+	DefaultCostItems []objects.CostItem
 )
 
 // Source defines the type for the "source" enum field.
@@ -281,6 +292,11 @@ func BySource(opts ...sql.OrderTermOption) OrderOption {
 // ByFormat orders the results by the format field.
 func ByFormat(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldFormat, opts...).ToFunc()
+}
+
+// ByTotalCost orders the results by the total_cost field.
+func ByTotalCost(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTotalCost, opts...).ToFunc()
 }
 
 // ByRequestField orders the results by request field.

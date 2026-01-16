@@ -20,6 +20,9 @@ import {
   bulkUpdateChannelOrderingResultSchema,
   channelOrderingConnectionSchema,
   ChannelSettings,
+  ChannelModelPrice,
+  SaveChannelModelPriceInput,
+  channelModelPriceSchema,
 } from './schema';
 
 // GraphQL queries and mutations
@@ -334,6 +337,89 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
   }
 `;
 
+const GET_CHANNEL_MODEL_PRICES_QUERY = `
+  query GetChannelModelPrices($id: ID!) {
+    node(id: $id) {
+    ... on Channel {
+      id
+      channelModelPrices {
+        id
+        modelID
+        price {
+          items {
+            itemCode
+            pricing {
+              mode
+              flatFee
+              usagePerUnit
+              usageTiered {
+                tiers {
+                  upTo
+                  pricePerUnit
+                }
+              }
+            }
+            promptWriteCacheVariants {
+              variantCode
+              pricing {
+                mode
+                flatFee
+                usagePerUnit
+                usageTiered {
+                  tiers {
+                    upTo
+                    pricePerUnit
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+`;
+
+const SAVE_CHANNEL_MODEL_PRICES_MUTATION = `
+  mutation SaveChannelModelPrices($channelId: ID!, $input: [SaveChannelModelPriceInput!]!) {
+    saveChannelModelPrices(channelId: $channelId, input: $input) {
+      id
+      modelID
+      price {
+        items {
+          itemCode
+          pricing {
+            mode
+            flatFee
+            usagePerUnit
+            usageTiered {
+              tiers {
+                upTo
+                pricePerUnit
+              }
+            }
+          }
+          promptWriteCacheVariants {
+            variantCode
+            pricing {
+              mode
+              flatFee
+              usagePerUnit
+              usageTiered {
+                tiers {
+                  upTo
+                  pricePerUnit
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
 const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
   mutation BulkUpdateChannelOrdering($input: BulkUpdateChannelOrderingInput!) {
     bulkUpdateChannelOrdering(input: $input) {
@@ -530,6 +616,54 @@ export function useChannels(
         handleError(error, t('channels.errors.fetchList'));
         throw error;
       }
+    },
+  });
+}
+
+export function useChannelModelPrices(channelId: string) {
+  const { handleError } = useErrorHandler();
+  const { t } = useTranslation();
+
+  return useQuery({
+    queryKey: ['channelModelPrices', channelId],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ node: { channelModelPrices: ChannelModelPrice[] } }>(
+          GET_CHANNEL_MODEL_PRICES_QUERY,
+          { id: channelId }
+        );
+        const node = data.node as { channelModelPrices: ChannelModelPrice[] };
+        return (node?.channelModelPrices || []).map((p) => channelModelPriceSchema.parse(p));
+      } catch (error) {
+        handleError(error, t('channels.errors.fetchPrices'));
+        throw error;
+      }
+    },
+    enabled: !!channelId,
+  });
+}
+
+export function useSaveChannelModelPrices() {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+
+  return useMutation({
+    mutationFn: async ({ channelId, input }: { channelId: string; input: SaveChannelModelPriceInput[] }) => {
+      const data = await graphqlRequest<{ saveChannelModelPrices: ChannelModelPrice[] }>(
+        SAVE_CHANNEL_MODEL_PRICES_MUTATION,
+        {
+          channelId,
+          input,
+        }
+      );
+      return data.saveChannelModelPrices.map((p) => channelModelPriceSchema.parse(p));
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['channelModelPrices', variables.channelId] });
+      toast.success(t('channels.messages.savePricesSuccess'));
+    },
+    onError: (error) => {
+      toast.error(t('channels.messages.savePricesError', { error: error.message }));
     },
   });
 }

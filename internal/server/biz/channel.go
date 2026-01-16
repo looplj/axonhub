@@ -50,6 +50,10 @@ type Channel struct {
 	// cachedModelEntries caches GetModelEntries results
 	// RequestModel -> Entry
 	cachedModelEntries map[string]ChannelModelEntry
+
+	// cachedModelPrices caches model prices per request model id
+	// RequestModel -> ModelPrice
+	cachedModelPrices map[string]objects.ModelPrice
 }
 
 type ChannelServiceParams struct {
@@ -195,6 +199,9 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 			)
 		}
 
+		// Preload model prices
+		svc.preloadModelPrices(ctx, channel)
+
 		channels = append(channels, channel)
 	}
 
@@ -215,9 +222,20 @@ func (svc *ChannelService) GetEnabledChannels() []*Channel {
 	return svc.enabledChannels
 }
 
-// GetChannelForTest retrieves a specific channel by ID for testing purposes,
+// GetEnabledChannel returns the enabled channel by id, or nil if not found.
+func (svc *ChannelService) GetEnabledChannel(id int) *Channel {
+	for _, ch := range svc.enabledChannels {
+		if ch.ID == id {
+			return ch
+		}
+	}
+
+	return nil
+}
+
+// GetChannel retrieves a specific channel by ID for testing purposes,
 // including disabled channels. This bypasses the normal enabled-only filtering.
-func (svc *ChannelService) GetChannelForTest(ctx context.Context, channelID int) (*Channel, error) {
+func (svc *ChannelService) GetChannel(ctx context.Context, channelID int) (*Channel, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	// Get the channel entity from database (including disabled ones)

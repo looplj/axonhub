@@ -59,12 +59,21 @@ func (p *TokenProvider) Get(ctx context.Context, channel *ent.Channel) (string, 
 		if err := p.cache.Set(ctx, key, channel.Credentials.APIKey, xcache.WithExpiration(55*time.Minute)); err != nil {
 			log.Warn(ctx, "failed to cache codex credentials", log.String("key", key), log.Cause(err))
 		}
+
 		return creds.AccessToken, creds.AccountID, nil
 	}
 
 	// Refresh with singleflight to avoid stampede.
 	sfKey := fmt.Sprintf("codex:refresh:%d", channel.ID)
+
 	v, err, _ := p.sf.Do(sfKey, func() (any, error) {
+		if cached, err := p.cache.Get(ctx, key); err == nil {
+			cachedCreds, err := ParseCredentialsJSON(cached)
+			if err == nil && !cachedCreds.IsExpired(time.Now()) {
+				return cachedCreds, nil
+			}
+		}
+
 		fresh, err := creds.Refresh(ctx, p.httpClient, p.cache, key)
 		if err != nil {
 			return nil, err
@@ -89,5 +98,6 @@ func (p *TokenProvider) Get(ctx context.Context, channel *ent.Channel) (string, 
 	if !ok {
 		return "", "", fmt.Errorf("singleflight returned unexpected type %T", v)
 	}
+
 	return fresh.AccessToken, fresh.AccountID, nil
 }

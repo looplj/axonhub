@@ -1,0 +1,91 @@
+# Enum types
+enum PricingMode {
+  flat_fee
+  usage_per_unit
+  usage_tiered
+}
+
+enum PriceItemCode {
+  prompt_tokens
+  completion_tokens
+  prompt_cached_tokens
+  prompt_write_cached_tokens
+}
+
+enum PromptWriteCacheVariantCode {
+  five_min
+  one_hour
+}
+
+# ModelPrice represents pricing configuration for a model
+type ModelPrice {
+  items: [ModelPriceItem!]!
+}
+
+type ModelPriceItem {
+  itemCode: PriceItemCode!
+  pricing: Pricing!
+  promptWriteCacheVariants: [PromptWriteCacheVariant!]
+}
+
+type Pricing {
+  mode: PricingMode!
+  flatFee: Decimal
+  usagePerUnit: Decimal
+  usageTiered: TieredPricing
+}
+
+type TieredPricing {
+  tiers: [PriceTier!]!
+}
+
+type PriceTier {
+  upTo: Int
+  pricePerUnit: Decimal!
+}
+
+type PromptWriteCacheVariant {
+  variantCode: PromptWriteCacheVariantCode!
+  pricing: Pricing!
+}
+
+# Input types for ModelPrice
+input ModelPriceInput {
+  items: [ModelPriceItemInput!]!
+}
+
+input ModelPriceItemInput {
+  itemCode: PriceItemCode!
+  pricing: PricingInput!
+  promptWriteCacheVariants: [PromptWriteCacheVariantInput!]
+}
+
+input PricingInput {
+  mode: PricingMode!
+  flatFee: Decimal
+  usagePerUnit: Decimal
+  usageTiered: TieredPricingInput
+}
+
+input TieredPricingInput {
+  tiers: [PriceTierInput!]!
+}
+
+input PriceTierInput {
+  upTo: Int
+  pricePerUnit: Decimal!
+}
+
+input PromptWriteCacheVariantInput {
+  variantCode: PromptWriteCacheVariantCode!
+  pricing: PricingInput!
+}
+
+input SaveChannelModelPriceInput {
+  modelId: String!
+  price: ModelPriceInput!
+}
+
+extend type Mutation {
+  saveChannelModelPrices(channelId: ID!, input: [SaveChannelModelPriceInput!]!): [ChannelModelPrice!]!
+}

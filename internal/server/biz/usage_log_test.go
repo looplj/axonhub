@@ -43,7 +43,8 @@ func TestUsageLogService_CreateUsageLog_PromptWriteCachedTokens(t *testing.T) {
 		CacheConfig: xcache.Config{},
 		Ent:         client,
 	})
-	svc := NewUsageLogService(client, systemService)
+	channelService := NewChannelServiceForTest(client)
+	svc := NewUsageLogService(client, systemService, channelService)
 
 	usage := &llm.Usage{
 		PromptTokens:     10,

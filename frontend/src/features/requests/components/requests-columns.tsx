@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DataTableColumnHeader } from '@/components/data-table-column-header';
+import { useGeneralSettings } from '@/features/system/data/system';
 import { useRequestPermissions } from '../../../hooks/useRequestPermissions';
 import { Request } from '../data/schema';
 import { getStatusColor } from './help';
@@ -22,6 +23,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
   const { t, i18n } = useTranslation();
   const locale = i18n.language === 'zh' ? zhCN : enUS;
   const permissions = useRequestPermissions();
+  const { data: settings } = useGeneralSettings();
   const { navigateWithSearch } = usePaginationSearch({ defaultPageSize: 20 });
 
   // Define all columns
@@ -46,6 +48,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
       enableSorting: true,
       enableHiding: false,
     },
+
     {
       id: 'modelId',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.modelId')} />,
@@ -152,105 +155,105 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
     // Channel column - only show if user has permission to view channels
     ...(permissions.canViewChannels
       ? ([
-          {
-            id: 'channel',
-            accessorFn: (row) => row.channel?.id || '',
-            header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.channel')} />,
-            enableSorting: false,
-            cell: ({ row }) => {
-              const request = row.original;
-              const channel = request.channel;
+        {
+          id: 'channel',
+          accessorFn: (row) => row.channel?.id || '',
+          header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.channel')} />,
+          enableSorting: false,
+          cell: ({ row }) => {
+            const request = row.original;
+            const channel = request.channel;
 
-              if (!channel) {
-                return <div className='text-muted-foreground font-mono text-xs'>-</div>;
-              }
+            if (!channel) {
+              return <div className='text-muted-foreground font-mono text-xs'>-</div>;
+            }
 
-              // Check if there are any executions with different channels
-              const executions = request.executions?.edges?.map((edge) => edge.node).filter((exe) => !!exe) || [];
-              const hasMultipleChannels = executions.some((exe) => exe.channel?.id && exe.channel.id !== channel.id);
+            // Check if there are any executions with different channels
+            const executions = request.executions?.edges?.map((edge) => edge.node).filter((exe) => !!exe) || [];
+            const hasMultipleChannels = executions.some((exe) => exe.channel?.id && exe.channel.id !== channel.id);
 
-              if (executions.length > 1 || hasMultipleChannels) {
-                const sortedExecutions = [...executions].sort((a, b) => {
-                  const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-                  const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-                  return dateB - dateA;
-                });
+            if (executions.length > 1 || hasMultipleChannels) {
+              const sortedExecutions = [...executions].sort((a, b) => {
+                const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                return dateB - dateA;
+              });
 
-                return (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type='button'
-                        className='flex w-fit cursor-help items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700 transition-colors hover:bg-rose-100 dark:border-rose-800/50 dark:bg-rose-900/30 dark:text-rose-300 dark:hover:bg-rose-900/50'
-                      >
-                        <span>{channel.name}</span>
-                        <IconArrowsJoin2 className='h-3.5 w-3.5 opacity-80' />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side='right' className='border-rose-200 bg-white p-0 dark:bg-zinc-900'>
-                      <div className='flex min-w-[240px] flex-col'>
-                        <div className='flex flex-col gap-1 border-b p-3 bg-rose-50/50 dark:bg-rose-900/10'>
-                          <div className='text-rose-900 dark:text-rose-300 flex items-center gap-2 text-xs font-bold tracking-wider uppercase'>
-                            <IconArrowsJoin2 className='h-3.5 w-3.5' />
-                            {t('requests.columns.retryProcess')}
-                          </div>
-                        </div>
-                        <div className='flex flex-col gap-1 p-2'>
-                          {sortedExecutions.map((exe, idx) => (
-                            <div
-                              key={exe.id || idx}
-                              className='hover:bg-muted/50 flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors'
-                            >
-                              <Badge
-                                className={`${getStatusColor(exe.status || '')} h-5 shrink-0 px-1.5 text-[10px] font-bold uppercase`}
-                              >
-                                {t(`requests.status.${exe.status}`)}
-                              </Badge>
-                              <div className='flex min-w-0 flex-col'>
-                                <span className='text-foreground truncate text-xs font-semibold'>
-                                  {exe.channel?.name || t('requests.columns.unknown')}
-                                </span>
-                                {exe.createdAt && (
-                                  <span className='text-muted-foreground text-[10px]'>
-                                    {format(new Date(exe.createdAt), 'HH:mm:ss', { locale })}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
+              return (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type='button'
+                      className='flex w-fit cursor-help items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700 transition-colors hover:bg-rose-100 dark:border-rose-800/50 dark:bg-rose-900/30 dark:text-rose-300 dark:hover:bg-rose-900/50'
+                    >
+                      <span>{channel.name}</span>
+                      <IconArrowsJoin2 className='h-3.5 w-3.5 opacity-80' />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side='right' className='border-rose-200 bg-white p-0 dark:bg-zinc-900'>
+                    <div className='flex min-w-[240px] flex-col'>
+                      <div className='flex flex-col gap-1 border-b p-3 bg-rose-50/50 dark:bg-rose-900/10'>
+                        <div className='text-rose-900 dark:text-rose-300 flex items-center gap-2 text-xs font-bold tracking-wider uppercase'>
+                          <IconArrowsJoin2 className='h-3.5 w-3.5' />
+                          {t('requests.columns.retryProcess')}
                         </div>
                       </div>
-                    </TooltipContent>
-                  </Tooltip>
-                );
-              }
+                      <div className='flex flex-col gap-1 p-2'>
+                        {sortedExecutions.map((exe, idx) => (
+                          <div
+                            key={exe.id || idx}
+                            className='hover:bg-muted/50 flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors'
+                          >
+                            <Badge
+                              className={`${getStatusColor(exe.status || '')} h-5 shrink-0 px-1.5 text-[10px] font-bold uppercase`}
+                            >
+                              {t(`requests.status.${exe.status}`)}
+                            </Badge>
+                            <div className='flex min-w-0 flex-col'>
+                              <span className='text-foreground truncate text-xs font-semibold'>
+                                {exe.channel?.name || t('requests.columns.unknown')}
+                              </span>
+                              {exe.createdAt && (
+                                <span className='text-muted-foreground text-[10px]'>
+                                  {format(new Date(exe.createdAt), 'HH:mm:ss', { locale })}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
 
-              return <div className='px-2 font-mono text-xs'>{channel.name}</div>;
-            },
-            filterFn: (row, _id, value) => {
-              // For client-side filtering, check if any of the selected channels match
-              if (value.length === 0) return true; // No filter applied
-
-              const channel = row.original.channel;
-              if (!channel) return false;
-
-              return value.includes(channel.id);
-            },
+            return <div className='px-2 font-mono text-xs'>{channel.name}</div>;
           },
-        ] as ColumnDef<Request>[])
+          filterFn: (row, _id, value) => {
+            // For client-side filtering, check if any of the selected channels match
+            if (value.length === 0) return true; // No filter applied
+
+            const channel = row.original.channel;
+            if (!channel) return false;
+
+            return value.includes(channel.id);
+          },
+        },
+      ] as ColumnDef<Request>[])
       : []),
     // API Key column - only show if user has permission to view API keys
     ...(permissions.canViewApiKeys
       ? ([
-          {
-            accessorKey: 'apiKey',
-            header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.apiKey')} />,
-            enableSorting: false,
-            cell: ({ row }) => {
-              return <div className='font-mono text-xs'>{row.original.apiKey?.name || '-'}</div>;
-            },
+        {
+          accessorKey: 'apiKey',
+          header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.apiKey')} />,
+          enableSorting: false,
+          cell: ({ row }) => {
+            return <div className='font-mono text-xs'>{row.original.apiKey?.name || '-'}</div>;
           },
-        ] as ColumnDef<Request>[])
+        },
+      ] as ColumnDef<Request>[])
       : []),
 
     {
@@ -384,6 +387,23 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
         const a = rowA.original.usageLogs?.edges?.[0]?.node?.promptWriteCachedTokens || 0;
         const b = rowB.original.usageLogs?.edges?.[0]?.node?.promptWriteCachedTokens || 0;
         return a - b;
+      },
+    },
+    {
+      id: 'cost',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.cost')} />,
+      enableSorting: false,
+      enableHiding: true,
+      cell: ({ row }) => {
+        const usageLog = row.original.usageLogs?.edges?.[0]?.node;
+        const cost = usageLog?.totalCost;
+        if (cost === undefined || cost === null) return <div className='font-mono text-xs'>-</div>;
+
+        return (
+          <div className='font-mono text-xs font-medium'>
+            {settings?.currencyCode} {cost.toFixed(6)}
+          </div>
+        );
       },
     },
     {

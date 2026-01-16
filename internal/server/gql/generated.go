@@ -20,6 +20,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channelmodelpriceversion"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
@@ -32,6 +33,7 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/shopspring/decimal"
 	gqlparser "github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 )
@@ -58,6 +60,8 @@ type Config struct {
 type ResolverRoot interface {
 	APIKey() APIKeyResolver
 	Channel() ChannelResolver
+	ChannelModelPrice() ChannelModelPriceResolver
+	ChannelModelPriceVersion() ChannelModelPriceVersionResolver
 	ChannelOverrideTemplate() ChannelOverrideTemplateResolver
 	ChannelPerformance() ChannelPerformanceResolver
 	ChannelProbe() ChannelProbeResolver
@@ -178,6 +182,7 @@ type ComplexityRoot struct {
 		AllModelEntries         func(childComplexity int) int
 		AutoSyncSupportedModels func(childComplexity int) int
 		BaseURL                 func(childComplexity int) int
+		ChannelModelPrices      func(childComplexity int) int
 		ChannelPerformance      func(childComplexity int) int
 		ChannelProbes           func(childComplexity int) int
 		CreatedAt               func(childComplexity int) int
@@ -227,6 +232,57 @@ type ComplexityRoot struct {
 		ActualModel  func(childComplexity int) int
 		RequestModel func(childComplexity int) int
 		Source       func(childComplexity int) int
+	}
+
+	ChannelModelPrice struct {
+		Channel     func(childComplexity int) int
+		ChannelID   func(childComplexity int) int
+		CreatedAt   func(childComplexity int) int
+		DeletedAt   func(childComplexity int) int
+		ID          func(childComplexity int) int
+		ModelID     func(childComplexity int) int
+		Price       func(childComplexity int) int
+		RefreanceID func(childComplexity int) int
+		UpdatedAt   func(childComplexity int) int
+		Versions    func(childComplexity int) int
+	}
+
+	ChannelModelPriceConnection struct {
+		Edges      func(childComplexity int) int
+		PageInfo   func(childComplexity int) int
+		TotalCount func(childComplexity int) int
+	}
+
+	ChannelModelPriceEdge struct {
+		Cursor func(childComplexity int) int
+		Node   func(childComplexity int) int
+	}
+
+	ChannelModelPriceVersion struct {
+		ChannelID           func(childComplexity int) int
+		ChannelModelPrice   func(childComplexity int) int
+		ChannelModelPriceID func(childComplexity int) int
+		CreatedAt           func(childComplexity int) int
+		DeletedAt           func(childComplexity int) int
+		EffectiveEndAt      func(childComplexity int) int
+		EffectiveStartAt    func(childComplexity int) int
+		ID                  func(childComplexity int) int
+		ModelID             func(childComplexity int) int
+		Price               func(childComplexity int) int
+		RefreanceID         func(childComplexity int) int
+		Status              func(childComplexity int) int
+		UpdatedAt           func(childComplexity int) int
+	}
+
+	ChannelModelPriceVersionConnection struct {
+		Edges      func(childComplexity int) int
+		PageInfo   func(childComplexity int) int
+		TotalCount func(childComplexity int) int
+	}
+
+	ChannelModelPriceVersionEdge struct {
+		Cursor func(childComplexity int) int
+		Node   func(childComplexity int) int
 	}
 
 	ChannelOverrideTemplate struct {
@@ -352,6 +408,16 @@ type ComplexityRoot struct {
 		CleanupDays  func(childComplexity int) int
 		Enabled      func(childComplexity int) int
 		ResourceType func(childComplexity int) int
+	}
+
+	CostItem struct {
+		FlatFee       func(childComplexity int) int
+		ItemCode      func(childComplexity int) int
+		Mode          func(childComplexity int) int
+		Quantity      func(childComplexity int) int
+		Subtotal      func(childComplexity int) int
+		TierBreakdown func(childComplexity int) int
+		UnitPrice     func(childComplexity int) int
 	}
 
 	DailyRequestStats struct {
@@ -538,6 +604,16 @@ type ComplexityRoot struct {
 		To   func(childComplexity int) int
 	}
 
+	ModelPrice struct {
+		Items func(childComplexity int) int
+	}
+
+	ModelPriceItem struct {
+		ItemCode                 func(childComplexity int) int
+		Pricing                  func(childComplexity int) int
+		PromptWriteCacheVariants func(childComplexity int) int
+	}
+
 	ModelSettings struct {
 		Associations func(childComplexity int) int
 	}
@@ -583,6 +659,7 @@ type ComplexityRoot struct {
 		DeleteRole                           func(childComplexity int, id objects.GUID) int
 		RemoveUserFromProject                func(childComplexity int, input RemoveUserFromProjectInput) int
 		Restore                              func(childComplexity int, file graphql.Upload, input RestoreOptionsInput) int
+		SaveChannelModelPrices               func(childComplexity int, channelID objects.GUID, input []*biz.SaveChannelModelPriceInput) int
 		TestChannel                          func(childComplexity int, input TestChannelInput) int
 		UpdateAPIKey                         func(childComplexity int, id objects.GUID, input ent.UpdateAPIKeyInput) int
 		UpdateAPIKeyProfiles                 func(childComplexity int, id objects.GUID, input objects.APIKeyProfiles) int
@@ -605,6 +682,7 @@ type ComplexityRoot struct {
 		UpdateRole                           func(childComplexity int, id objects.GUID, input ent.UpdateRoleInput) int
 		UpdateStoragePolicy                  func(childComplexity int, input biz.StoragePolicy) int
 		UpdateSystemChannelSettings          func(childComplexity int, input biz.SystemChannelSettings) int
+		UpdateSystemGeneralSettings          func(childComplexity int, input biz.SystemGeneralSettings) int
 		UpdateSystemModelSettings            func(childComplexity int, input biz.SystemModelSettings) int
 		UpdateUser                           func(childComplexity int, id objects.GUID, input ent.UpdateUserInput) int
 		UpdateUserStatus                     func(childComplexity int, id objects.GUID, status user.Status) int
@@ -622,6 +700,18 @@ type ComplexityRoot struct {
 		HasNextPage     func(childComplexity int) int
 		HasPreviousPage func(childComplexity int) int
 		StartCursor     func(childComplexity int) int
+	}
+
+	PriceTier struct {
+		PricePerUnit func(childComplexity int) int
+		UpTo         func(childComplexity int) int
+	}
+
+	Pricing struct {
+		FlatFee      func(childComplexity int) int
+		Mode         func(childComplexity int) int
+		UsagePerUnit func(childComplexity int) int
+		UsageTiered  func(childComplexity int) int
 	}
 
 	Project struct {
@@ -699,6 +789,11 @@ type ComplexityRoot struct {
 		Conditions func(childComplexity int) int
 	}
 
+	PromptWriteCacheVariant struct {
+		Pricing     func(childComplexity int) int
+		VariantCode func(childComplexity int) int
+	}
+
 	ProxyConfig struct {
 		Password func(childComplexity int) int
 		Type     func(childComplexity int) int
@@ -744,6 +839,7 @@ type ComplexityRoot struct {
 		Roles                         func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RoleOrder, where *ent.RoleWhereInput) int
 		StoragePolicy                 func(childComplexity int) int
 		SystemChannelSettings         func(childComplexity int) int
+		SystemGeneralSettings         func(childComplexity int) int
 		SystemModelSettings           func(childComplexity int) int
 		SystemStatus                  func(childComplexity int) int
 		SystemVersion                 func(childComplexity int) int
@@ -1031,6 +1127,10 @@ type ComplexityRoot struct {
 		Node   func(childComplexity int) int
 	}
 
+	SystemGeneralSettings struct {
+		CurrencyCode func(childComplexity int) int
+	}
+
 	SystemModelSettingOnboarding struct {
 		CompletedAt func(childComplexity int) int
 		Onboarded   func(childComplexity int) int
@@ -1081,6 +1181,17 @@ type ComplexityRoot struct {
 	ThreadEdge struct {
 		Cursor func(childComplexity int) int
 		Node   func(childComplexity int) int
+	}
+
+	TierCost struct {
+		PricePerUnit func(childComplexity int) int
+		Subtotal     func(childComplexity int) int
+		Units        func(childComplexity int) int
+		UpTo         func(childComplexity int) int
+	}
+
+	TieredPricing struct {
+		Tiers func(childComplexity int) int
 	}
 
 	TokenStats struct {
@@ -1157,6 +1268,7 @@ type ComplexityRoot struct {
 		CompletionReasoningTokens          func(childComplexity int) int
 		CompletionRejectedPredictionTokens func(childComplexity int) int
 		CompletionTokens                   func(childComplexity int) int
+		CostItems                          func(childComplexity int) int
 		CreatedAt                          func(childComplexity int) int
 		Format                             func(childComplexity int) int
 		ID                                 func(childComplexity int) int
@@ -1170,6 +1282,7 @@ type ComplexityRoot struct {
 		Request                            func(childComplexity int) int
 		RequestID                          func(childComplexity int) int
 		Source                             func(childComplexity int) int
+		TotalCost                          func(childComplexity int) int
 		TotalTokens                        func(childComplexity int) int
 		UpdatedAt                          func(childComplexity int) int
 	}
@@ -1279,6 +1392,16 @@ type ChannelResolver interface {
 	AllModelEntries(ctx context.Context, obj *ent.Channel) ([]*biz.ChannelModelEntry, error)
 	Credentials(ctx context.Context, obj *ent.Channel) (*objects.ChannelCredentials, error)
 }
+type ChannelModelPriceResolver interface {
+	ID(ctx context.Context, obj *ent.ChannelModelPrice) (*objects.GUID, error)
+
+	ChannelID(ctx context.Context, obj *ent.ChannelModelPrice) (*objects.GUID, error)
+}
+type ChannelModelPriceVersionResolver interface {
+	ID(ctx context.Context, obj *ent.ChannelModelPriceVersion) (*objects.GUID, error)
+
+	ChannelModelPriceID(ctx context.Context, obj *ent.ChannelModelPriceVersion) (*objects.GUID, error)
+}
 type ChannelOverrideTemplateResolver interface {
 	ID(ctx context.Context, obj *ent.ChannelOverrideTemplate) (*objects.GUID, error)
 
@@ -1352,6 +1475,7 @@ type MutationResolver interface {
 	CompleteOnboarding(ctx context.Context, input CompleteOnboardingInput) (bool, error)
 	CompleteSystemModelSettingOnboarding(ctx context.Context, input CompleteSystemModelSettingOnboardingInput) (bool, error)
 	UpdateSystemChannelSettings(ctx context.Context, input biz.SystemChannelSettings) (bool, error)
+	UpdateSystemGeneralSettings(ctx context.Context, input biz.SystemGeneralSettings) (bool, error)
 	CreateModel(ctx context.Context, input ent.CreateModelInput) (*ent.Model, error)
 	BulkCreateModels(ctx context.Context, inputs []*ent.CreateModelInput) ([]*ent.Model, error)
 	UpdateModel(ctx context.Context, id objects.GUID, input ent.UpdateModelInput) (*ent.Model, error)
@@ -1370,6 +1494,7 @@ type MutationResolver interface {
 	BulkDeletePrompts(ctx context.Context, ids []*objects.GUID) (bool, error)
 	BulkEnablePrompts(ctx context.Context, ids []*objects.GUID) (bool, error)
 	BulkDisablePrompts(ctx context.Context, ids []*objects.GUID) (bool, error)
+	SaveChannelModelPrices(ctx context.Context, channelID objects.GUID, input []*biz.SaveChannelModelPriceInput) ([]*ent.ChannelModelPrice, error)
 }
 type ProjectResolver interface {
 	ID(ctx context.Context, obj *ent.Project) (*objects.GUID, error)
@@ -1423,6 +1548,7 @@ type QueryResolver interface {
 	SystemVersion(ctx context.Context) (*build.Info, error)
 	CheckForUpdate(ctx context.Context) (*VersionCheck, error)
 	SystemChannelSettings(ctx context.Context) (*biz.SystemChannelSettings, error)
+	SystemGeneralSettings(ctx context.Context) (*biz.SystemGeneralSettings, error)
 	FetchModels(ctx context.Context, input biz.FetchModelsInput) (*FetchModelsPayload, error)
 	QueryModels(ctx context.Context, input QueryModelsInput) ([]*biz.ModelIdentityWithStatus, error)
 	QueryModelChannelConnections(ctx context.Context, associations []*objects.ModelAssociation) ([]*biz.ModelChannelConnection, error)
@@ -1872,6 +1998,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Channel.BaseURL(childComplexity), true
+	case "Channel.channelModelPrices":
+		if e.complexity.Channel.ChannelModelPrices == nil {
+			break
+		}
+
+		return e.complexity.Channel.ChannelModelPrices(childComplexity), true
 	case "Channel.channelPerformance":
 		if e.complexity.Channel.ChannelPerformance == nil {
 			break
@@ -2096,6 +2228,210 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelModelEntry.Source(childComplexity), true
+
+	case "ChannelModelPrice.channel":
+		if e.complexity.ChannelModelPrice.Channel == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPrice.Channel(childComplexity), true
+	case "ChannelModelPrice.channelID":
+		if e.complexity.ChannelModelPrice.ChannelID == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPrice.ChannelID(childComplexity), true
+	case "ChannelModelPrice.createdAt":
+		if e.complexity.ChannelModelPrice.CreatedAt == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPrice.CreatedAt(childComplexity), true
+	case "ChannelModelPrice.deletedAt":
+		if e.complexity.ChannelModelPrice.DeletedAt == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPrice.DeletedAt(childComplexity), true
+	case "ChannelModelPrice.id":
+		if e.complexity.ChannelModelPrice.ID == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPrice.ID(childComplexity), true
+	case "ChannelModelPrice.modelID":
+		if e.complexity.ChannelModelPrice.ModelID == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPrice.ModelID(childComplexity), true
+	case "ChannelModelPrice.price":
+		if e.complexity.ChannelModelPrice.Price == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPrice.Price(childComplexity), true
+	case "ChannelModelPrice.refreanceID":
+		if e.complexity.ChannelModelPrice.RefreanceID == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPrice.RefreanceID(childComplexity), true
+	case "ChannelModelPrice.updatedAt":
+		if e.complexity.ChannelModelPrice.UpdatedAt == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPrice.UpdatedAt(childComplexity), true
+	case "ChannelModelPrice.versions":
+		if e.complexity.ChannelModelPrice.Versions == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPrice.Versions(childComplexity), true
+
+	case "ChannelModelPriceConnection.edges":
+		if e.complexity.ChannelModelPriceConnection.Edges == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPriceConnection.Edges(childComplexity), true
+	case "ChannelModelPriceConnection.pageInfo":
+		if e.complexity.ChannelModelPriceConnection.PageInfo == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPriceConnection.PageInfo(childComplexity), true
+	case "ChannelModelPriceConnection.totalCount":
+		if e.complexity.ChannelModelPriceConnection.TotalCount == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPriceConnection.TotalCount(childComplexity), true
+
+	case "ChannelModelPriceEdge.cursor":
+		if e.complexity.ChannelModelPriceEdge.Cursor == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPriceEdge.Cursor(childComplexity), true
+	case "ChannelModelPriceEdge.node":
+		if e.complexity.ChannelModelPriceEdge.Node == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPriceEdge.Node(childComplexity), true
+
+	case "ChannelModelPriceVersion.channelID":
+		if e.complexity.ChannelModelPriceVersion.ChannelID == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPriceVersion.ChannelID(childComplexity), true
+	case "ChannelModelPriceVersion.channelModelPrice":
+		if e.complexity.ChannelModelPriceVersion.ChannelModelPrice == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPriceVersion.ChannelModelPrice(childComplexity), true
+	case "ChannelModelPriceVersion.channelModelPriceID":
+		if e.complexity.ChannelModelPriceVersion.ChannelModelPriceID == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPriceVersion.ChannelModelPriceID(childComplexity), true
+	case "ChannelModelPriceVersion.createdAt":
+		if e.complexity.ChannelModelPriceVersion.CreatedAt == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPriceVersion.CreatedAt(childComplexity), true
+	case "ChannelModelPriceVersion.deletedAt":
+		if e.complexity.ChannelModelPriceVersion.DeletedAt == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPriceVersion.DeletedAt(childComplexity), true
+	case "ChannelModelPriceVersion.effectiveEndAt":
+		if e.complexity.ChannelModelPriceVersion.EffectiveEndAt == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPriceVersion.EffectiveEndAt(childComplexity), true
+	case "ChannelModelPriceVersion.effectiveStartAt":
+		if e.complexity.ChannelModelPriceVersion.EffectiveStartAt == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPriceVersion.EffectiveStartAt(childComplexity), true
+	case "ChannelModelPriceVersion.id":
+		if e.complexity.ChannelModelPriceVersion.ID == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPriceVersion.ID(childComplexity), true
+	case "ChannelModelPriceVersion.modelID":
+		if e.complexity.ChannelModelPriceVersion.ModelID == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPriceVersion.ModelID(childComplexity), true
+	case "ChannelModelPriceVersion.price":
+		if e.complexity.ChannelModelPriceVersion.Price == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPriceVersion.Price(childComplexity), true
+	case "ChannelModelPriceVersion.refreanceID":
+		if e.complexity.ChannelModelPriceVersion.RefreanceID == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPriceVersion.RefreanceID(childComplexity), true
+	case "ChannelModelPriceVersion.status":
+		if e.complexity.ChannelModelPriceVersion.Status == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPriceVersion.Status(childComplexity), true
+	case "ChannelModelPriceVersion.updatedAt":
+		if e.complexity.ChannelModelPriceVersion.UpdatedAt == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPriceVersion.UpdatedAt(childComplexity), true
+
+	case "ChannelModelPriceVersionConnection.edges":
+		if e.complexity.ChannelModelPriceVersionConnection.Edges == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPriceVersionConnection.Edges(childComplexity), true
+	case "ChannelModelPriceVersionConnection.pageInfo":
+		if e.complexity.ChannelModelPriceVersionConnection.PageInfo == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPriceVersionConnection.PageInfo(childComplexity), true
+	case "ChannelModelPriceVersionConnection.totalCount":
+		if e.complexity.ChannelModelPriceVersionConnection.TotalCount == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPriceVersionConnection.TotalCount(childComplexity), true
+
+	case "ChannelModelPriceVersionEdge.cursor":
+		if e.complexity.ChannelModelPriceVersionEdge.Cursor == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPriceVersionEdge.Cursor(childComplexity), true
+	case "ChannelModelPriceVersionEdge.node":
+		if e.complexity.ChannelModelPriceVersionEdge.Node == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPriceVersionEdge.Node(childComplexity), true
 
 	case "ChannelOverrideTemplate.channelType":
 		if e.complexity.ChannelOverrideTemplate.ChannelType == nil {
@@ -2591,6 +2927,49 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.CleanupOption.ResourceType(childComplexity), true
+
+	case "CostItem.flatFee":
+		if e.complexity.CostItem.FlatFee == nil {
+			break
+		}
+
+		return e.complexity.CostItem.FlatFee(childComplexity), true
+	case "CostItem.itemCode":
+		if e.complexity.CostItem.ItemCode == nil {
+			break
+		}
+
+		return e.complexity.CostItem.ItemCode(childComplexity), true
+	case "CostItem.mode":
+		if e.complexity.CostItem.Mode == nil {
+			break
+		}
+
+		return e.complexity.CostItem.Mode(childComplexity), true
+	case "CostItem.quantity":
+		if e.complexity.CostItem.Quantity == nil {
+			break
+		}
+
+		return e.complexity.CostItem.Quantity(childComplexity), true
+	case "CostItem.subtotal":
+		if e.complexity.CostItem.Subtotal == nil {
+			break
+		}
+
+		return e.complexity.CostItem.Subtotal(childComplexity), true
+	case "CostItem.tierBreakdown":
+		if e.complexity.CostItem.TierBreakdown == nil {
+			break
+		}
+
+		return e.complexity.CostItem.TierBreakdown(childComplexity), true
+	case "CostItem.unitPrice":
+		if e.complexity.CostItem.UnitPrice == nil {
+			break
+		}
+
+		return e.complexity.CostItem.UnitPrice(childComplexity), true
 
 	case "DailyRequestStats.count":
 		if e.complexity.DailyRequestStats.Count == nil {
@@ -3247,6 +3626,32 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ModelMapping.To(childComplexity), true
 
+	case "ModelPrice.items":
+		if e.complexity.ModelPrice.Items == nil {
+			break
+		}
+
+		return e.complexity.ModelPrice.Items(childComplexity), true
+
+	case "ModelPriceItem.itemCode":
+		if e.complexity.ModelPriceItem.ItemCode == nil {
+			break
+		}
+
+		return e.complexity.ModelPriceItem.ItemCode(childComplexity), true
+	case "ModelPriceItem.pricing":
+		if e.complexity.ModelPriceItem.Pricing == nil {
+			break
+		}
+
+		return e.complexity.ModelPriceItem.Pricing(childComplexity), true
+	case "ModelPriceItem.promptWriteCacheVariants":
+		if e.complexity.ModelPriceItem.PromptWriteCacheVariants == nil {
+			break
+		}
+
+		return e.complexity.ModelPriceItem.PromptWriteCacheVariants(childComplexity), true
+
 	case "ModelSettings.associations":
 		if e.complexity.ModelSettings.Associations == nil {
 			break
@@ -3694,6 +4099,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.Restore(childComplexity, args["file"].(graphql.Upload), args["input"].(RestoreOptionsInput)), true
+	case "Mutation.saveChannelModelPrices":
+		if e.complexity.Mutation.SaveChannelModelPrices == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_saveChannelModelPrices_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SaveChannelModelPrices(childComplexity, args["channelId"].(objects.GUID), args["input"].([]*biz.SaveChannelModelPriceInput)), true
 	case "Mutation.testChannel":
 		if e.complexity.Mutation.TestChannel == nil {
 			break
@@ -3936,6 +4352,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdateSystemChannelSettings(childComplexity, args["input"].(biz.SystemChannelSettings)), true
+	case "Mutation.updateSystemGeneralSettings":
+		if e.complexity.Mutation.UpdateSystemGeneralSettings == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateSystemGeneralSettings_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateSystemGeneralSettings(childComplexity, args["input"].(biz.SystemGeneralSettings)), true
 	case "Mutation.updateSystemModelSettings":
 		if e.complexity.Mutation.UpdateSystemModelSettings == nil {
 			break
@@ -4019,6 +4446,44 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PageInfo.StartCursor(childComplexity), true
+
+	case "PriceTier.pricePerUnit":
+		if e.complexity.PriceTier.PricePerUnit == nil {
+			break
+		}
+
+		return e.complexity.PriceTier.PricePerUnit(childComplexity), true
+	case "PriceTier.upTo":
+		if e.complexity.PriceTier.UpTo == nil {
+			break
+		}
+
+		return e.complexity.PriceTier.UpTo(childComplexity), true
+
+	case "Pricing.flatFee":
+		if e.complexity.Pricing.FlatFee == nil {
+			break
+		}
+
+		return e.complexity.Pricing.FlatFee(childComplexity), true
+	case "Pricing.mode":
+		if e.complexity.Pricing.Mode == nil {
+			break
+		}
+
+		return e.complexity.Pricing.Mode(childComplexity), true
+	case "Pricing.usagePerUnit":
+		if e.complexity.Pricing.UsagePerUnit == nil {
+			break
+		}
+
+		return e.complexity.Pricing.UsagePerUnit(childComplexity), true
+	case "Pricing.usageTiered":
+		if e.complexity.Pricing.UsageTiered == nil {
+			break
+		}
+
+		return e.complexity.Pricing.UsageTiered(childComplexity), true
 
 	case "Project.apiKeys":
 		if e.complexity.Project.APIKeys == nil {
@@ -4344,6 +4809,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PromptSettings.Conditions(childComplexity), true
+
+	case "PromptWriteCacheVariant.pricing":
+		if e.complexity.PromptWriteCacheVariant.Pricing == nil {
+			break
+		}
+
+		return e.complexity.PromptWriteCacheVariant.Pricing(childComplexity), true
+	case "PromptWriteCacheVariant.variantCode":
+		if e.complexity.PromptWriteCacheVariant.VariantCode == nil {
+			break
+		}
+
+		return e.complexity.PromptWriteCacheVariant.VariantCode(childComplexity), true
 
 	case "ProxyConfig.password":
 		if e.complexity.ProxyConfig.Password == nil {
@@ -4687,6 +5165,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.SystemChannelSettings(childComplexity), true
+	case "Query.systemGeneralSettings":
+		if e.complexity.Query.SystemGeneralSettings == nil {
+			break
+		}
+
+		return e.complexity.Query.SystemGeneralSettings(childComplexity), true
 	case "Query.systemModelSettings":
 		if e.complexity.Query.SystemModelSettings == nil {
 			break
@@ -5809,6 +6293,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.SystemEdge.Node(childComplexity), true
 
+	case "SystemGeneralSettings.currencyCode":
+		if e.complexity.SystemGeneralSettings.CurrencyCode == nil {
+			break
+		}
+
+		return e.complexity.SystemGeneralSettings.CurrencyCode(childComplexity), true
+
 	case "SystemModelSettingOnboarding.completedAt":
 		if e.complexity.SystemModelSettingOnboarding.CompletedAt == nil {
 			break
@@ -5989,6 +6480,38 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ThreadEdge.Node(childComplexity), true
+
+	case "TierCost.pricePerUnit":
+		if e.complexity.TierCost.PricePerUnit == nil {
+			break
+		}
+
+		return e.complexity.TierCost.PricePerUnit(childComplexity), true
+	case "TierCost.subtotal":
+		if e.complexity.TierCost.Subtotal == nil {
+			break
+		}
+
+		return e.complexity.TierCost.Subtotal(childComplexity), true
+	case "TierCost.units":
+		if e.complexity.TierCost.Units == nil {
+			break
+		}
+
+		return e.complexity.TierCost.Units(childComplexity), true
+	case "TierCost.upTo":
+		if e.complexity.TierCost.UpTo == nil {
+			break
+		}
+
+		return e.complexity.TierCost.UpTo(childComplexity), true
+
+	case "TieredPricing.tiers":
+		if e.complexity.TieredPricing.Tiers == nil {
+			break
+		}
+
+		return e.complexity.TieredPricing.Tiers(childComplexity), true
 
 	case "TokenStats.totalCachedTokensThisMonth":
 		if e.complexity.TokenStats.TotalCachedTokensThisMonth == nil {
@@ -6297,6 +6820,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UsageLog.CompletionTokens(childComplexity), true
+	case "UsageLog.costItems":
+		if e.complexity.UsageLog.CostItems == nil {
+			break
+		}
+
+		return e.complexity.UsageLog.CostItems(childComplexity), true
 	case "UsageLog.createdAt":
 		if e.complexity.UsageLog.CreatedAt == nil {
 			break
@@ -6375,6 +6904,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UsageLog.Source(childComplexity), true
+	case "UsageLog.totalCost":
+		if e.complexity.UsageLog.TotalCost == nil {
+			break
+		}
+
+		return e.complexity.UsageLog.TotalCost(childComplexity), true
 	case "UsageLog.totalTokens":
 		if e.complexity.UsageLog.TotalTokens == nil {
 			break
@@ -6813,6 +7348,10 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputBulkUpdateChannelOrderingInput,
 		ec.unmarshalInputChannelCredentialsInput,
 		ec.unmarshalInputChannelModelAssociationInput,
+		ec.unmarshalInputChannelModelPriceOrder,
+		ec.unmarshalInputChannelModelPriceVersionOrder,
+		ec.unmarshalInputChannelModelPriceVersionWhereInput,
+		ec.unmarshalInputChannelModelPriceWhereInput,
 		ec.unmarshalInputChannelOrder,
 		ec.unmarshalInputChannelOrderingItem,
 		ec.unmarshalInputChannelOverrideTemplateOrder,
@@ -6828,6 +7367,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCleanupOptionInput,
 		ec.unmarshalInputCompleteOnboardingInput,
 		ec.unmarshalInputCompleteSystemModelSettingOnboardingInput,
+		ec.unmarshalInputCostItemInput,
 		ec.unmarshalInputCountChannelsByTypeInput,
 		ec.unmarshalInputCreateAPIKeyInput,
 		ec.unmarshalInputCreateChannelInput,
@@ -6862,8 +7402,12 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputModelIDAssociationInput,
 		ec.unmarshalInputModelMappingInput,
 		ec.unmarshalInputModelOrder,
+		ec.unmarshalInputModelPriceInput,
+		ec.unmarshalInputModelPriceItemInput,
 		ec.unmarshalInputModelSettingsInput,
 		ec.unmarshalInputModelWhereInput,
+		ec.unmarshalInputPriceTierInput,
+		ec.unmarshalInputPricingInput,
 		ec.unmarshalInputProjectOrder,
 		ec.unmarshalInputProjectWhereInput,
 		ec.unmarshalInputPromptActionInput,
@@ -6872,6 +7416,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputPromptOrder,
 		ec.unmarshalInputPromptSettingsInput,
 		ec.unmarshalInputPromptWhereInput,
+		ec.unmarshalInputPromptWriteCacheVariantInput,
 		ec.unmarshalInputProxyConfigInput,
 		ec.unmarshalInputQueryChannelInput,
 		ec.unmarshalInputQueryChannelOverrideTemplatesInput,
@@ -6886,12 +7431,15 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputRoleOrder,
 		ec.unmarshalInputRoleWhereInput,
 		ec.unmarshalInputS3Input,
+		ec.unmarshalInputSaveChannelModelPriceInput,
 		ec.unmarshalInputSignInInput,
 		ec.unmarshalInputSystemOrder,
 		ec.unmarshalInputSystemWhereInput,
 		ec.unmarshalInputTestChannelInput,
 		ec.unmarshalInputThreadOrder,
 		ec.unmarshalInputThreadWhereInput,
+		ec.unmarshalInputTierCostInput,
+		ec.unmarshalInputTieredPricingInput,
 		ec.unmarshalInputTraceOrder,
 		ec.unmarshalInputTraceWhereInput,
 		ec.unmarshalInputTransformOptionsInput,
@@ -6914,6 +7462,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputUpdateRoleInput,
 		ec.unmarshalInputUpdateStoragePolicyInput,
 		ec.unmarshalInputUpdateSystemChannelSettingsInput,
+		ec.unmarshalInputUpdateSystemGeneralSettingsInput,
 		ec.unmarshalInputUpdateSystemInput,
 		ec.unmarshalInputUpdateSystemModelSettingsInput,
 		ec.unmarshalInputUpdateThreadInput,
@@ -7024,7 +7573,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(ec.Schema(), ec.Schema().Types[name]), nil
 }
 
-//go:embed "ent.graphql" "axonhub.graphql" "dashboard.graphql" "scopes.graphql" "me.graphql" "system.graphql" "model.graphql" "backup.graphql" "channel_probe.graphql" "prompt.graphql"
+//go:embed "ent.graphql" "axonhub.graphql" "dashboard.graphql" "scopes.graphql" "me.graphql" "system.graphql" "model.graphql" "backup.graphql" "channel_probe.graphql" "prompt.graphql" "price.graphql" "cost.graphql"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -7046,6 +7595,8 @@ var sources = []*ast.Source{
 	{Name: "backup.graphql", Input: sourceData("backup.graphql"), BuiltIn: false},
 	{Name: "channel_probe.graphql", Input: sourceData("channel_probe.graphql"), BuiltIn: false},
 	{Name: "prompt.graphql", Input: sourceData("prompt.graphql"), BuiltIn: false},
+	{Name: "price.graphql", Input: sourceData("price.graphql"), BuiltIn: false},
+	{Name: "cost.graphql", Input: sourceData("cost.graphql"), BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
@@ -7714,6 +8265,22 @@ func (ec *executionContext) field_Mutation_restore_args(ctx context.Context, raw
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_saveChannelModelPrices_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "channelId", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
+	if err != nil {
+		return nil, err
+	}
+	args["channelId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNSaveChannelModelPriceInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSaveChannelModelPriceInputᚄ)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_testChannel_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -8019,6 +8586,17 @@ func (ec *executionContext) field_Mutation_updateSystemChannelSettings_args(ctx 
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateSystemChannelSettingsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSystemChannelSettings)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateSystemGeneralSettings_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateSystemGeneralSettingsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSystemGeneralSettings)
 	if err != nil {
 		return nil, err
 	}
@@ -10552,6 +11130,8 @@ func (ec *executionContext) fieldContext_ApplyChannelOverrideTemplatePayload_cha
 				return ec.fieldContext_Channel_channelPerformance(ctx, field)
 			case "channelProbes":
 				return ec.fieldContext_Channel_channelProbes(ctx, field)
+			case "channelModelPrices":
+				return ec.fieldContext_Channel_channelModelPrices(ctx, field)
 			case "allModelEntries":
 				return ec.fieldContext_Channel_allModelEntries(ctx, field)
 			case "credentials":
@@ -11012,6 +11592,8 @@ func (ec *executionContext) fieldContext_BulkImportChannelsResult_channels(_ con
 				return ec.fieldContext_Channel_channelPerformance(ctx, field)
 			case "channelProbes":
 				return ec.fieldContext_Channel_channelProbes(ctx, field)
+			case "channelModelPrices":
+				return ec.fieldContext_Channel_channelModelPrices(ctx, field)
 			case "allModelEntries":
 				return ec.fieldContext_Channel_allModelEntries(ctx, field)
 			case "credentials":
@@ -11147,6 +11729,8 @@ func (ec *executionContext) fieldContext_BulkUpdateChannelOrderingResult_channel
 				return ec.fieldContext_Channel_channelPerformance(ctx, field)
 			case "channelProbes":
 				return ec.fieldContext_Channel_channelProbes(ctx, field)
+			case "channelModelPrices":
+				return ec.fieldContext_Channel_channelModelPrices(ctx, field)
 			case "allModelEntries":
 				return ec.fieldContext_Channel_allModelEntries(ctx, field)
 			case "credentials":
@@ -11911,6 +12495,57 @@ func (ec *executionContext) fieldContext_Channel_channelProbes(_ context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _Channel_channelModelPrices(ctx context.Context, field graphql.CollectedField, obj *ent.Channel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Channel_channelModelPrices,
+		func(ctx context.Context) (any, error) {
+			return obj.ChannelModelPrices(ctx)
+		},
+		nil,
+		ec.marshalOChannelModelPrice2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Channel_channelModelPrices(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Channel",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_ChannelModelPrice_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_ChannelModelPrice_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_ChannelModelPrice_updatedAt(ctx, field)
+			case "deletedAt":
+				return ec.fieldContext_ChannelModelPrice_deletedAt(ctx, field)
+			case "channelID":
+				return ec.fieldContext_ChannelModelPrice_channelID(ctx, field)
+			case "modelID":
+				return ec.fieldContext_ChannelModelPrice_modelID(ctx, field)
+			case "price":
+				return ec.fieldContext_ChannelModelPrice_price(ctx, field)
+			case "refreanceID":
+				return ec.fieldContext_ChannelModelPrice_refreanceID(ctx, field)
+			case "channel":
+				return ec.fieldContext_ChannelModelPrice_channel(ctx, field)
+			case "versions":
+				return ec.fieldContext_ChannelModelPrice_versions(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ChannelModelPrice", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Channel_allModelEntries(ctx context.Context, field graphql.CollectedField, obj *ent.Channel) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -12288,6 +12923,8 @@ func (ec *executionContext) fieldContext_ChannelEdge_node(_ context.Context, fie
 				return ec.fieldContext_Channel_channelPerformance(ctx, field)
 			case "channelProbes":
 				return ec.fieldContext_Channel_channelProbes(ctx, field)
+			case "channelModelPrices":
+				return ec.fieldContext_Channel_channelModelPrices(ctx, field)
 			case "allModelEntries":
 				return ec.fieldContext_Channel_allModelEntries(ctx, field)
 			case "credentials":
@@ -12468,6 +13105,1153 @@ func (ec *executionContext) fieldContext_ChannelModelEntry_source(_ context.Cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPrice_id(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPrice) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPrice_id,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.ChannelModelPrice().ID(ctx, obj)
+		},
+		nil,
+		ec.marshalNID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPrice_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPrice",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPrice_createdAt(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPrice) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPrice_createdAt,
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPrice_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPrice",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPrice_updatedAt(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPrice) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPrice_updatedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.UpdatedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPrice_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPrice",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPrice_deletedAt(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPrice) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPrice_deletedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.DeletedAt, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPrice_deletedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPrice",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPrice_channelID(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPrice) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPrice_channelID,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.ChannelModelPrice().ChannelID(ctx, obj)
+		},
+		nil,
+		ec.marshalNID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPrice_channelID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPrice",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPrice_modelID(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPrice) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPrice_modelID,
+		func(ctx context.Context) (any, error) {
+			return obj.ModelID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPrice_modelID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPrice",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPrice_price(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPrice) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPrice_price,
+		func(ctx context.Context) (any, error) {
+			return obj.Price, nil
+		},
+		nil,
+		ec.marshalNModelPrice2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelPrice,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPrice_price(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPrice",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "items":
+				return ec.fieldContext_ModelPrice_items(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ModelPrice", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPrice_refreanceID(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPrice) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPrice_refreanceID,
+		func(ctx context.Context) (any, error) {
+			return obj.RefreanceID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPrice_refreanceID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPrice",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPrice_channel(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPrice) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPrice_channel,
+		func(ctx context.Context) (any, error) {
+			return obj.Channel(ctx)
+		},
+		nil,
+		ec.marshalNChannel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannel,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPrice_channel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPrice",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Channel_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Channel_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Channel_updatedAt(ctx, field)
+			case "deletedAt":
+				return ec.fieldContext_Channel_deletedAt(ctx, field)
+			case "type":
+				return ec.fieldContext_Channel_type(ctx, field)
+			case "baseURL":
+				return ec.fieldContext_Channel_baseURL(ctx, field)
+			case "name":
+				return ec.fieldContext_Channel_name(ctx, field)
+			case "status":
+				return ec.fieldContext_Channel_status(ctx, field)
+			case "supportedModels":
+				return ec.fieldContext_Channel_supportedModels(ctx, field)
+			case "autoSyncSupportedModels":
+				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
+			case "tags":
+				return ec.fieldContext_Channel_tags(ctx, field)
+			case "defaultTestModel":
+				return ec.fieldContext_Channel_defaultTestModel(ctx, field)
+			case "settings":
+				return ec.fieldContext_Channel_settings(ctx, field)
+			case "orderingWeight":
+				return ec.fieldContext_Channel_orderingWeight(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_Channel_errorMessage(ctx, field)
+			case "remark":
+				return ec.fieldContext_Channel_remark(ctx, field)
+			case "requests":
+				return ec.fieldContext_Channel_requests(ctx, field)
+			case "executions":
+				return ec.fieldContext_Channel_executions(ctx, field)
+			case "usageLogs":
+				return ec.fieldContext_Channel_usageLogs(ctx, field)
+			case "channelPerformance":
+				return ec.fieldContext_Channel_channelPerformance(ctx, field)
+			case "channelProbes":
+				return ec.fieldContext_Channel_channelProbes(ctx, field)
+			case "channelModelPrices":
+				return ec.fieldContext_Channel_channelModelPrices(ctx, field)
+			case "allModelEntries":
+				return ec.fieldContext_Channel_allModelEntries(ctx, field)
+			case "credentials":
+				return ec.fieldContext_Channel_credentials(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPrice_versions(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPrice) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPrice_versions,
+		func(ctx context.Context) (any, error) {
+			return obj.Versions(ctx)
+		},
+		nil,
+		ec.marshalOChannelModelPriceVersion2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceVersionᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPrice_versions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPrice",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_ChannelModelPriceVersion_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_ChannelModelPriceVersion_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_ChannelModelPriceVersion_updatedAt(ctx, field)
+			case "deletedAt":
+				return ec.fieldContext_ChannelModelPriceVersion_deletedAt(ctx, field)
+			case "channelID":
+				return ec.fieldContext_ChannelModelPriceVersion_channelID(ctx, field)
+			case "modelID":
+				return ec.fieldContext_ChannelModelPriceVersion_modelID(ctx, field)
+			case "channelModelPriceID":
+				return ec.fieldContext_ChannelModelPriceVersion_channelModelPriceID(ctx, field)
+			case "price":
+				return ec.fieldContext_ChannelModelPriceVersion_price(ctx, field)
+			case "status":
+				return ec.fieldContext_ChannelModelPriceVersion_status(ctx, field)
+			case "effectiveStartAt":
+				return ec.fieldContext_ChannelModelPriceVersion_effectiveStartAt(ctx, field)
+			case "effectiveEndAt":
+				return ec.fieldContext_ChannelModelPriceVersion_effectiveEndAt(ctx, field)
+			case "refreanceID":
+				return ec.fieldContext_ChannelModelPriceVersion_refreanceID(ctx, field)
+			case "channelModelPrice":
+				return ec.fieldContext_ChannelModelPriceVersion_channelModelPrice(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ChannelModelPriceVersion", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPriceConnection_edges(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPriceConnection_edges,
+		func(ctx context.Context) (any, error) {
+			return obj.Edges, nil
+		},
+		nil,
+		ec.marshalOChannelModelPriceEdge2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceEdge,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPriceConnection_edges(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPriceConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "node":
+				return ec.fieldContext_ChannelModelPriceEdge_node(ctx, field)
+			case "cursor":
+				return ec.fieldContext_ChannelModelPriceEdge_cursor(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ChannelModelPriceEdge", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPriceConnection_pageInfo(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPriceConnection_pageInfo,
+		func(ctx context.Context) (any, error) {
+			return obj.PageInfo, nil
+		},
+		nil,
+		ec.marshalNPageInfo2entgoᚗioᚋcontribᚋentgqlᚐPageInfo,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPriceConnection_pageInfo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPriceConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "hasNextPage":
+				return ec.fieldContext_PageInfo_hasNextPage(ctx, field)
+			case "hasPreviousPage":
+				return ec.fieldContext_PageInfo_hasPreviousPage(ctx, field)
+			case "startCursor":
+				return ec.fieldContext_PageInfo_startCursor(ctx, field)
+			case "endCursor":
+				return ec.fieldContext_PageInfo_endCursor(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PageInfo", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPriceConnection_totalCount(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPriceConnection_totalCount,
+		func(ctx context.Context) (any, error) {
+			return obj.TotalCount, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPriceConnection_totalCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPriceConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPriceEdge_node(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceEdge) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPriceEdge_node,
+		func(ctx context.Context) (any, error) {
+			return obj.Node, nil
+		},
+		nil,
+		ec.marshalOChannelModelPrice2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPrice,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPriceEdge_node(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPriceEdge",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_ChannelModelPrice_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_ChannelModelPrice_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_ChannelModelPrice_updatedAt(ctx, field)
+			case "deletedAt":
+				return ec.fieldContext_ChannelModelPrice_deletedAt(ctx, field)
+			case "channelID":
+				return ec.fieldContext_ChannelModelPrice_channelID(ctx, field)
+			case "modelID":
+				return ec.fieldContext_ChannelModelPrice_modelID(ctx, field)
+			case "price":
+				return ec.fieldContext_ChannelModelPrice_price(ctx, field)
+			case "refreanceID":
+				return ec.fieldContext_ChannelModelPrice_refreanceID(ctx, field)
+			case "channel":
+				return ec.fieldContext_ChannelModelPrice_channel(ctx, field)
+			case "versions":
+				return ec.fieldContext_ChannelModelPrice_versions(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ChannelModelPrice", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPriceEdge_cursor(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceEdge) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPriceEdge_cursor,
+		func(ctx context.Context) (any, error) {
+			return obj.Cursor, nil
+		},
+		nil,
+		ec.marshalNCursor2entgoᚗioᚋcontribᚋentgqlᚐCursor,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPriceEdge_cursor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPriceEdge",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Cursor does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPriceVersion_id(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPriceVersion_id,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.ChannelModelPriceVersion().ID(ctx, obj)
+		},
+		nil,
+		ec.marshalNID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPriceVersion_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPriceVersion",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPriceVersion_createdAt(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPriceVersion_createdAt,
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPriceVersion_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPriceVersion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPriceVersion_updatedAt(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPriceVersion_updatedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.UpdatedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPriceVersion_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPriceVersion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPriceVersion_deletedAt(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPriceVersion_deletedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.DeletedAt, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPriceVersion_deletedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPriceVersion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPriceVersion_channelID(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPriceVersion_channelID,
+		func(ctx context.Context) (any, error) {
+			return obj.ChannelID, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPriceVersion_channelID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPriceVersion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPriceVersion_modelID(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPriceVersion_modelID,
+		func(ctx context.Context) (any, error) {
+			return obj.ModelID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPriceVersion_modelID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPriceVersion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPriceVersion_channelModelPriceID(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPriceVersion_channelModelPriceID,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.ChannelModelPriceVersion().ChannelModelPriceID(ctx, obj)
+		},
+		nil,
+		ec.marshalNID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPriceVersion_channelModelPriceID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPriceVersion",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPriceVersion_price(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPriceVersion_price,
+		func(ctx context.Context) (any, error) {
+			return obj.Price, nil
+		},
+		nil,
+		ec.marshalNModelPrice2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelPrice,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPriceVersion_price(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPriceVersion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "items":
+				return ec.fieldContext_ModelPrice_items(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ModelPrice", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPriceVersion_status(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPriceVersion_status,
+		func(ctx context.Context) (any, error) {
+			return obj.Status, nil
+		},
+		nil,
+		ec.marshalNChannelModelPriceVersionStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelmodelpriceversionᚐStatus,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPriceVersion_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPriceVersion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ChannelModelPriceVersionStatus does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPriceVersion_effectiveStartAt(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPriceVersion_effectiveStartAt,
+		func(ctx context.Context) (any, error) {
+			return obj.EffectiveStartAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPriceVersion_effectiveStartAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPriceVersion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPriceVersion_effectiveEndAt(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPriceVersion_effectiveEndAt,
+		func(ctx context.Context) (any, error) {
+			return obj.EffectiveEndAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPriceVersion_effectiveEndAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPriceVersion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPriceVersion_refreanceID(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPriceVersion_refreanceID,
+		func(ctx context.Context) (any, error) {
+			return obj.RefreanceID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPriceVersion_refreanceID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPriceVersion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPriceVersion_channelModelPrice(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPriceVersion_channelModelPrice,
+		func(ctx context.Context) (any, error) {
+			return obj.ChannelModelPrice(ctx)
+		},
+		nil,
+		ec.marshalNChannelModelPrice2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPrice,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPriceVersion_channelModelPrice(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPriceVersion",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_ChannelModelPrice_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_ChannelModelPrice_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_ChannelModelPrice_updatedAt(ctx, field)
+			case "deletedAt":
+				return ec.fieldContext_ChannelModelPrice_deletedAt(ctx, field)
+			case "channelID":
+				return ec.fieldContext_ChannelModelPrice_channelID(ctx, field)
+			case "modelID":
+				return ec.fieldContext_ChannelModelPrice_modelID(ctx, field)
+			case "price":
+				return ec.fieldContext_ChannelModelPrice_price(ctx, field)
+			case "refreanceID":
+				return ec.fieldContext_ChannelModelPrice_refreanceID(ctx, field)
+			case "channel":
+				return ec.fieldContext_ChannelModelPrice_channel(ctx, field)
+			case "versions":
+				return ec.fieldContext_ChannelModelPrice_versions(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ChannelModelPrice", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPriceVersionConnection_edges(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceVersionConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPriceVersionConnection_edges,
+		func(ctx context.Context) (any, error) {
+			return obj.Edges, nil
+		},
+		nil,
+		ec.marshalOChannelModelPriceVersionEdge2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceVersionEdge,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPriceVersionConnection_edges(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPriceVersionConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "node":
+				return ec.fieldContext_ChannelModelPriceVersionEdge_node(ctx, field)
+			case "cursor":
+				return ec.fieldContext_ChannelModelPriceVersionEdge_cursor(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ChannelModelPriceVersionEdge", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPriceVersionConnection_pageInfo(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceVersionConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPriceVersionConnection_pageInfo,
+		func(ctx context.Context) (any, error) {
+			return obj.PageInfo, nil
+		},
+		nil,
+		ec.marshalNPageInfo2entgoᚗioᚋcontribᚋentgqlᚐPageInfo,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPriceVersionConnection_pageInfo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPriceVersionConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "hasNextPage":
+				return ec.fieldContext_PageInfo_hasNextPage(ctx, field)
+			case "hasPreviousPage":
+				return ec.fieldContext_PageInfo_hasPreviousPage(ctx, field)
+			case "startCursor":
+				return ec.fieldContext_PageInfo_startCursor(ctx, field)
+			case "endCursor":
+				return ec.fieldContext_PageInfo_endCursor(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PageInfo", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPriceVersionConnection_totalCount(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceVersionConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPriceVersionConnection_totalCount,
+		func(ctx context.Context) (any, error) {
+			return obj.TotalCount, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPriceVersionConnection_totalCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPriceVersionConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPriceVersionEdge_node(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceVersionEdge) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPriceVersionEdge_node,
+		func(ctx context.Context) (any, error) {
+			return obj.Node, nil
+		},
+		nil,
+		ec.marshalOChannelModelPriceVersion2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceVersion,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPriceVersionEdge_node(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPriceVersionEdge",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_ChannelModelPriceVersion_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_ChannelModelPriceVersion_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_ChannelModelPriceVersion_updatedAt(ctx, field)
+			case "deletedAt":
+				return ec.fieldContext_ChannelModelPriceVersion_deletedAt(ctx, field)
+			case "channelID":
+				return ec.fieldContext_ChannelModelPriceVersion_channelID(ctx, field)
+			case "modelID":
+				return ec.fieldContext_ChannelModelPriceVersion_modelID(ctx, field)
+			case "channelModelPriceID":
+				return ec.fieldContext_ChannelModelPriceVersion_channelModelPriceID(ctx, field)
+			case "price":
+				return ec.fieldContext_ChannelModelPriceVersion_price(ctx, field)
+			case "status":
+				return ec.fieldContext_ChannelModelPriceVersion_status(ctx, field)
+			case "effectiveStartAt":
+				return ec.fieldContext_ChannelModelPriceVersion_effectiveStartAt(ctx, field)
+			case "effectiveEndAt":
+				return ec.fieldContext_ChannelModelPriceVersion_effectiveEndAt(ctx, field)
+			case "refreanceID":
+				return ec.fieldContext_ChannelModelPriceVersion_refreanceID(ctx, field)
+			case "channelModelPrice":
+				return ec.fieldContext_ChannelModelPriceVersion_channelModelPrice(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ChannelModelPriceVersion", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelPriceVersionEdge_cursor(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceVersionEdge) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPriceVersionEdge_cursor,
+		func(ctx context.Context) (any, error) {
+			return obj.Cursor, nil
+		},
+		nil,
+		ec.marshalNCursor2entgoᚗioᚋcontribᚋentgqlᚐCursor,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPriceVersionEdge_cursor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPriceVersionEdge",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Cursor does not have child fields")
 		},
 	}
 	return fc, nil
@@ -13754,6 +15538,8 @@ func (ec *executionContext) fieldContext_ChannelPerformance_channel(_ context.Co
 				return ec.fieldContext_Channel_channelPerformance(ctx, field)
 			case "channelProbes":
 				return ec.fieldContext_Channel_channelProbes(ctx, field)
+			case "channelModelPrices":
+				return ec.fieldContext_Channel_channelModelPrices(ctx, field)
 			case "allModelEntries":
 				return ec.fieldContext_Channel_allModelEntries(ctx, field)
 			case "credentials":
@@ -13976,6 +15762,8 @@ func (ec *executionContext) fieldContext_ChannelProbe_channel(_ context.Context,
 				return ec.fieldContext_Channel_channelPerformance(ctx, field)
 			case "channelProbes":
 				return ec.fieldContext_Channel_channelProbes(ctx, field)
+			case "channelModelPrices":
+				return ec.fieldContext_Channel_channelModelPrices(ctx, field)
 			case "allModelEntries":
 				return ec.fieldContext_Channel_allModelEntries(ctx, field)
 			case "credentials":
@@ -15004,6 +16792,219 @@ func (ec *executionContext) fieldContext_CleanupOption_cleanupDays(_ context.Con
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CostItem_itemCode(ctx context.Context, field graphql.CollectedField, obj *objects.CostItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CostItem_itemCode,
+		func(ctx context.Context) (any, error) {
+			return obj.ItemCode, nil
+		},
+		nil,
+		ec.marshalNPriceItemCode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceItemCode,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CostItem_itemCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CostItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type PriceItemCode does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CostItem_mode(ctx context.Context, field graphql.CollectedField, obj *objects.CostItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CostItem_mode,
+		func(ctx context.Context) (any, error) {
+			return obj.Mode, nil
+		},
+		nil,
+		ec.marshalNPricingMode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPricingMode,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CostItem_mode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CostItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type PricingMode does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CostItem_quantity(ctx context.Context, field graphql.CollectedField, obj *objects.CostItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CostItem_quantity,
+		func(ctx context.Context) (any, error) {
+			return obj.Quantity, nil
+		},
+		nil,
+		ec.marshalNInt2int64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CostItem_quantity(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CostItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CostItem_unitPrice(ctx context.Context, field graphql.CollectedField, obj *objects.CostItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CostItem_unitPrice,
+		func(ctx context.Context) (any, error) {
+			return obj.UnitPrice, nil
+		},
+		nil,
+		ec.marshalODecimal2ᚖgithubᚗcomᚋshopspringᚋdecimalᚐDecimal,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_CostItem_unitPrice(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CostItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Decimal does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CostItem_flatFee(ctx context.Context, field graphql.CollectedField, obj *objects.CostItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CostItem_flatFee,
+		func(ctx context.Context) (any, error) {
+			return obj.FlatFee, nil
+		},
+		nil,
+		ec.marshalODecimal2ᚖgithubᚗcomᚋshopspringᚋdecimalᚐDecimal,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_CostItem_flatFee(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CostItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Decimal does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CostItem_tierBreakdown(ctx context.Context, field graphql.CollectedField, obj *objects.CostItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CostItem_tierBreakdown,
+		func(ctx context.Context) (any, error) {
+			return obj.TierBreakdown, nil
+		},
+		nil,
+		ec.marshalOTierCost2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐTierCostᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_CostItem_tierBreakdown(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CostItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "upTo":
+				return ec.fieldContext_TierCost_upTo(ctx, field)
+			case "units":
+				return ec.fieldContext_TierCost_units(ctx, field)
+			case "pricePerUnit":
+				return ec.fieldContext_TierCost_pricePerUnit(ctx, field)
+			case "subtotal":
+				return ec.fieldContext_TierCost_subtotal(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TierCost", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CostItem_subtotal(ctx context.Context, field graphql.CollectedField, obj *objects.CostItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CostItem_subtotal,
+		func(ctx context.Context) (any, error) {
+			return obj.Subtotal, nil
+		},
+		nil,
+		ec.marshalNDecimal2githubᚗcomᚋshopspringᚋdecimalᚐDecimal,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CostItem_subtotal(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CostItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Decimal does not have child fields")
 		},
 	}
 	return fc, nil
@@ -17873,6 +19874,8 @@ func (ec *executionContext) fieldContext_ModelChannelConnection_channel(_ contex
 				return ec.fieldContext_Channel_channelPerformance(ctx, field)
 			case "channelProbes":
 				return ec.fieldContext_Channel_channelProbes(ctx, field)
+			case "channelModelPrices":
+				return ec.fieldContext_Channel_channelModelPrices(ctx, field)
 			case "allModelEntries":
 				return ec.fieldContext_Channel_allModelEntries(ctx, field)
 			case "credentials":
@@ -18354,6 +20357,146 @@ func (ec *executionContext) fieldContext_ModelMapping_to(_ context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _ModelPrice_items(ctx context.Context, field graphql.CollectedField, obj *objects.ModelPrice) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelPrice_items,
+		func(ctx context.Context) (any, error) {
+			return obj.Items, nil
+		},
+		nil,
+		ec.marshalNModelPriceItem2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelPriceItemᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelPrice_items(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelPrice",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "itemCode":
+				return ec.fieldContext_ModelPriceItem_itemCode(ctx, field)
+			case "pricing":
+				return ec.fieldContext_ModelPriceItem_pricing(ctx, field)
+			case "promptWriteCacheVariants":
+				return ec.fieldContext_ModelPriceItem_promptWriteCacheVariants(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ModelPriceItem", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelPriceItem_itemCode(ctx context.Context, field graphql.CollectedField, obj *objects.ModelPriceItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelPriceItem_itemCode,
+		func(ctx context.Context) (any, error) {
+			return obj.ItemCode, nil
+		},
+		nil,
+		ec.marshalNPriceItemCode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceItemCode,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelPriceItem_itemCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelPriceItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type PriceItemCode does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelPriceItem_pricing(ctx context.Context, field graphql.CollectedField, obj *objects.ModelPriceItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelPriceItem_pricing,
+		func(ctx context.Context) (any, error) {
+			return obj.Pricing, nil
+		},
+		nil,
+		ec.marshalNPricing2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPricing,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelPriceItem_pricing(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelPriceItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "mode":
+				return ec.fieldContext_Pricing_mode(ctx, field)
+			case "flatFee":
+				return ec.fieldContext_Pricing_flatFee(ctx, field)
+			case "usagePerUnit":
+				return ec.fieldContext_Pricing_usagePerUnit(ctx, field)
+			case "usageTiered":
+				return ec.fieldContext_Pricing_usageTiered(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Pricing", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelPriceItem_promptWriteCacheVariants(ctx context.Context, field graphql.CollectedField, obj *objects.ModelPriceItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelPriceItem_promptWriteCacheVariants,
+		func(ctx context.Context) (any, error) {
+			return obj.PromptWriteCacheVariants, nil
+		},
+		nil,
+		ec.marshalOPromptWriteCacheVariant2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPromptWriteCacheVariantᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelPriceItem_promptWriteCacheVariants(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelPriceItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "variantCode":
+				return ec.fieldContext_PromptWriteCacheVariant_variantCode(ctx, field)
+			case "pricing":
+				return ec.fieldContext_PromptWriteCacheVariant_pricing(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PromptWriteCacheVariant", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ModelSettings_associations(ctx context.Context, field graphql.CollectedField, obj *objects.ModelSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -18468,6 +20611,8 @@ func (ec *executionContext) fieldContext_Mutation_createChannel(ctx context.Cont
 				return ec.fieldContext_Channel_channelPerformance(ctx, field)
 			case "channelProbes":
 				return ec.fieldContext_Channel_channelProbes(ctx, field)
+			case "channelModelPrices":
+				return ec.fieldContext_Channel_channelModelPrices(ctx, field)
 			case "allModelEntries":
 				return ec.fieldContext_Channel_allModelEntries(ctx, field)
 			case "credentials":
@@ -18557,6 +20702,8 @@ func (ec *executionContext) fieldContext_Mutation_bulkCreateChannels(ctx context
 				return ec.fieldContext_Channel_channelPerformance(ctx, field)
 			case "channelProbes":
 				return ec.fieldContext_Channel_channelProbes(ctx, field)
+			case "channelModelPrices":
+				return ec.fieldContext_Channel_channelModelPrices(ctx, field)
 			case "allModelEntries":
 				return ec.fieldContext_Channel_allModelEntries(ctx, field)
 			case "credentials":
@@ -18646,6 +20793,8 @@ func (ec *executionContext) fieldContext_Mutation_updateChannel(ctx context.Cont
 				return ec.fieldContext_Channel_channelPerformance(ctx, field)
 			case "channelProbes":
 				return ec.fieldContext_Channel_channelProbes(ctx, field)
+			case "channelModelPrices":
+				return ec.fieldContext_Channel_channelModelPrices(ctx, field)
 			case "allModelEntries":
 				return ec.fieldContext_Channel_allModelEntries(ctx, field)
 			case "credentials":
@@ -18735,6 +20884,8 @@ func (ec *executionContext) fieldContext_Mutation_updateChannelStatus(ctx contex
 				return ec.fieldContext_Channel_channelPerformance(ctx, field)
 			case "channelProbes":
 				return ec.fieldContext_Channel_channelProbes(ctx, field)
+			case "channelModelPrices":
+				return ec.fieldContext_Channel_channelModelPrices(ctx, field)
 			case "allModelEntries":
 				return ec.fieldContext_Channel_allModelEntries(ctx, field)
 			case "credentials":
@@ -21128,6 +23279,47 @@ func (ec *executionContext) fieldContext_Mutation_updateSystemChannelSettings(ct
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_updateSystemGeneralSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_updateSystemGeneralSettings,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().UpdateSystemGeneralSettings(ctx, fc.Args["input"].(biz.SystemGeneralSettings))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateSystemGeneralSettings(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateSystemGeneralSettings_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_createModel(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -22028,6 +24220,69 @@ func (ec *executionContext) fieldContext_Mutation_bulkDisablePrompts(ctx context
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_saveChannelModelPrices(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_saveChannelModelPrices,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().SaveChannelModelPrices(ctx, fc.Args["channelId"].(objects.GUID), fc.Args["input"].([]*biz.SaveChannelModelPriceInput))
+		},
+		nil,
+		ec.marshalNChannelModelPrice2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_saveChannelModelPrices(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_ChannelModelPrice_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_ChannelModelPrice_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_ChannelModelPrice_updatedAt(ctx, field)
+			case "deletedAt":
+				return ec.fieldContext_ChannelModelPrice_deletedAt(ctx, field)
+			case "channelID":
+				return ec.fieldContext_ChannelModelPrice_channelID(ctx, field)
+			case "modelID":
+				return ec.fieldContext_ChannelModelPrice_modelID(ctx, field)
+			case "price":
+				return ec.fieldContext_ChannelModelPrice_price(ctx, field)
+			case "refreanceID":
+				return ec.fieldContext_ChannelModelPrice_refreanceID(ctx, field)
+			case "channel":
+				return ec.fieldContext_ChannelModelPrice_channel(ctx, field)
+			case "versions":
+				return ec.fieldContext_ChannelModelPrice_versions(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ChannelModelPrice", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_saveChannelModelPrices_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _OnboardingInfo_onboarded(ctx context.Context, field graphql.CollectedField, obj *OnboardingInfo) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -22261,6 +24516,184 @@ func (ec *executionContext) fieldContext_PageInfo_endCursor(_ context.Context, f
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Cursor does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PriceTier_upTo(ctx context.Context, field graphql.CollectedField, obj *objects.PriceTier) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PriceTier_upTo,
+		func(ctx context.Context) (any, error) {
+			return obj.UpTo, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_PriceTier_upTo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PriceTier",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PriceTier_pricePerUnit(ctx context.Context, field graphql.CollectedField, obj *objects.PriceTier) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PriceTier_pricePerUnit,
+		func(ctx context.Context) (any, error) {
+			return obj.PricePerUnit, nil
+		},
+		nil,
+		ec.marshalNDecimal2githubᚗcomᚋshopspringᚋdecimalᚐDecimal,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PriceTier_pricePerUnit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PriceTier",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Decimal does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Pricing_mode(ctx context.Context, field graphql.CollectedField, obj *objects.Pricing) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Pricing_mode,
+		func(ctx context.Context) (any, error) {
+			return obj.Mode, nil
+		},
+		nil,
+		ec.marshalNPricingMode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPricingMode,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Pricing_mode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Pricing",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type PricingMode does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Pricing_flatFee(ctx context.Context, field graphql.CollectedField, obj *objects.Pricing) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Pricing_flatFee,
+		func(ctx context.Context) (any, error) {
+			return obj.FlatFee, nil
+		},
+		nil,
+		ec.marshalODecimal2ᚖgithubᚗcomᚋshopspringᚋdecimalᚐDecimal,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Pricing_flatFee(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Pricing",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Decimal does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Pricing_usagePerUnit(ctx context.Context, field graphql.CollectedField, obj *objects.Pricing) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Pricing_usagePerUnit,
+		func(ctx context.Context) (any, error) {
+			return obj.UsagePerUnit, nil
+		},
+		nil,
+		ec.marshalODecimal2ᚖgithubᚗcomᚋshopspringᚋdecimalᚐDecimal,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Pricing_usagePerUnit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Pricing",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Decimal does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Pricing_usageTiered(ctx context.Context, field graphql.CollectedField, obj *objects.Pricing) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Pricing_usageTiered,
+		func(ctx context.Context) (any, error) {
+			return obj.UsageTiered, nil
+		},
+		nil,
+		ec.marshalOTieredPricing2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐTieredPricing,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Pricing_usageTiered(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Pricing",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "tiers":
+				return ec.fieldContext_TieredPricing_tiers(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TieredPricing", field.Name)
 		},
 	}
 	return fc, nil
@@ -23880,6 +26313,74 @@ func (ec *executionContext) fieldContext_PromptSettings_conditions(_ context.Con
 				return ec.fieldContext_PromptActivationConditionComposite_conditions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PromptActivationConditionComposite", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PromptWriteCacheVariant_variantCode(ctx context.Context, field graphql.CollectedField, obj *objects.PromptWriteCacheVariant) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PromptWriteCacheVariant_variantCode,
+		func(ctx context.Context) (any, error) {
+			return obj.VariantCode, nil
+		},
+		nil,
+		ec.marshalNPromptWriteCacheVariantCode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPromptWriteCacheVariantCode,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PromptWriteCacheVariant_variantCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PromptWriteCacheVariant",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type PromptWriteCacheVariantCode does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PromptWriteCacheVariant_pricing(ctx context.Context, field graphql.CollectedField, obj *objects.PromptWriteCacheVariant) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PromptWriteCacheVariant_pricing,
+		func(ctx context.Context) (any, error) {
+			return obj.Pricing, nil
+		},
+		nil,
+		ec.marshalNPricing2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPricing,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PromptWriteCacheVariant_pricing(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PromptWriteCacheVariant",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "mode":
+				return ec.fieldContext_Pricing_mode(ctx, field)
+			case "flatFee":
+				return ec.fieldContext_Pricing_flatFee(ctx, field)
+			case "usagePerUnit":
+				return ec.fieldContext_Pricing_usagePerUnit(ctx, field)
+			case "usageTiered":
+				return ec.fieldContext_Pricing_usageTiered(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Pricing", field.Name)
 		},
 	}
 	return fc, nil
@@ -25876,6 +28377,39 @@ func (ec *executionContext) fieldContext_Query_systemChannelSettings(_ context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_systemGeneralSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_systemGeneralSettings,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().SystemGeneralSettings(ctx)
+		},
+		nil,
+		ec.marshalNSystemGeneralSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSystemGeneralSettings,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_systemGeneralSettings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "currencyCode":
+				return ec.fieldContext_SystemGeneralSettings_currencyCode(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SystemGeneralSettings", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_fetchModels(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -27235,6 +29769,8 @@ func (ec *executionContext) fieldContext_Request_channel(_ context.Context, fiel
 				return ec.fieldContext_Channel_channelPerformance(ctx, field)
 			case "channelProbes":
 				return ec.fieldContext_Channel_channelProbes(ctx, field)
+			case "channelModelPrices":
+				return ec.fieldContext_Channel_channelModelPrices(ctx, field)
 			case "allModelEntries":
 				return ec.fieldContext_Channel_allModelEntries(ctx, field)
 			case "credentials":
@@ -28218,6 +30754,8 @@ func (ec *executionContext) fieldContext_RequestExecution_channel(_ context.Cont
 				return ec.fieldContext_Channel_channelPerformance(ctx, field)
 			case "channelProbes":
 				return ec.fieldContext_Channel_channelProbes(ctx, field)
+			case "channelModelPrices":
+				return ec.fieldContext_Channel_channelModelPrices(ctx, field)
 			case "allModelEntries":
 				return ec.fieldContext_Channel_allModelEntries(ctx, field)
 			case "credentials":
@@ -31734,6 +34272,35 @@ func (ec *executionContext) fieldContext_SystemEdge_cursor(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _SystemGeneralSettings_currencyCode(ctx context.Context, field graphql.CollectedField, obj *biz.SystemGeneralSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SystemGeneralSettings_currencyCode,
+		func(ctx context.Context) (any, error) {
+			return obj.CurrencyCode, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SystemGeneralSettings_currencyCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SystemGeneralSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SystemModelSettingOnboarding_onboarded(ctx context.Context, field graphql.CollectedField, obj *SystemModelSettingOnboarding) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -32629,6 +35196,157 @@ func (ec *executionContext) fieldContext_ThreadEdge_cursor(_ context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Cursor does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TierCost_upTo(ctx context.Context, field graphql.CollectedField, obj *objects.TierCost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TierCost_upTo,
+		func(ctx context.Context) (any, error) {
+			return obj.UpTo, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TierCost_upTo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TierCost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TierCost_units(ctx context.Context, field graphql.CollectedField, obj *objects.TierCost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TierCost_units,
+		func(ctx context.Context) (any, error) {
+			return obj.Units, nil
+		},
+		nil,
+		ec.marshalNInt2int64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TierCost_units(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TierCost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TierCost_pricePerUnit(ctx context.Context, field graphql.CollectedField, obj *objects.TierCost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TierCost_pricePerUnit,
+		func(ctx context.Context) (any, error) {
+			return obj.PricePerUnit, nil
+		},
+		nil,
+		ec.marshalNDecimal2githubᚗcomᚋshopspringᚋdecimalᚐDecimal,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TierCost_pricePerUnit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TierCost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Decimal does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TierCost_subtotal(ctx context.Context, field graphql.CollectedField, obj *objects.TierCost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TierCost_subtotal,
+		func(ctx context.Context) (any, error) {
+			return obj.Subtotal, nil
+		},
+		nil,
+		ec.marshalNDecimal2githubᚗcomᚋshopspringᚋdecimalᚐDecimal,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TierCost_subtotal(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TierCost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Decimal does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TieredPricing_tiers(ctx context.Context, field graphql.CollectedField, obj *objects.TieredPricing) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TieredPricing_tiers,
+		func(ctx context.Context) (any, error) {
+			return obj.Tiers, nil
+		},
+		nil,
+		ec.marshalNPriceTier2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceTierᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TieredPricing_tiers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TieredPricing",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "upTo":
+				return ec.fieldContext_PriceTier_upTo(ctx, field)
+			case "pricePerUnit":
+				return ec.fieldContext_PriceTier_pricePerUnit(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PriceTier", field.Name)
 		},
 	}
 	return fc, nil
@@ -33998,6 +36716,8 @@ func (ec *executionContext) fieldContext_UnassociatedChannel_channel(_ context.C
 				return ec.fieldContext_Channel_channelPerformance(ctx, field)
 			case "channelProbes":
 				return ec.fieldContext_Channel_channelProbes(ctx, field)
+			case "channelModelPrices":
+				return ec.fieldContext_Channel_channelModelPrices(ctx, field)
 			case "allModelEntries":
 				return ec.fieldContext_Channel_allModelEntries(ctx, field)
 			case "credentials":
@@ -34589,6 +37309,80 @@ func (ec *executionContext) fieldContext_UsageLog_format(_ context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _UsageLog_totalCost(ctx context.Context, field graphql.CollectedField, obj *ent.UsageLog) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UsageLog_totalCost,
+		func(ctx context.Context) (any, error) {
+			return obj.TotalCost, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_UsageLog_totalCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UsageLog",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UsageLog_costItems(ctx context.Context, field graphql.CollectedField, obj *ent.UsageLog) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UsageLog_costItems,
+		func(ctx context.Context) (any, error) {
+			return obj.CostItems, nil
+		},
+		nil,
+		ec.marshalOCostItem2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCostItemᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_UsageLog_costItems(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UsageLog",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "itemCode":
+				return ec.fieldContext_CostItem_itemCode(ctx, field)
+			case "mode":
+				return ec.fieldContext_CostItem_mode(ctx, field)
+			case "quantity":
+				return ec.fieldContext_CostItem_quantity(ctx, field)
+			case "unitPrice":
+				return ec.fieldContext_CostItem_unitPrice(ctx, field)
+			case "flatFee":
+				return ec.fieldContext_CostItem_flatFee(ctx, field)
+			case "tierBreakdown":
+				return ec.fieldContext_CostItem_tierBreakdown(ctx, field)
+			case "subtotal":
+				return ec.fieldContext_CostItem_subtotal(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CostItem", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _UsageLog_request(ctx context.Context, field graphql.CollectedField, obj *ent.UsageLog) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -34805,6 +37599,8 @@ func (ec *executionContext) fieldContext_UsageLog_channel(_ context.Context, fie
 				return ec.fieldContext_Channel_channelPerformance(ctx, field)
 			case "channelProbes":
 				return ec.fieldContext_Channel_channelProbes(ctx, field)
+			case "channelModelPrices":
+				return ec.fieldContext_Channel_channelModelPrices(ctx, field)
 			case "allModelEntries":
 				return ec.fieldContext_Channel_allModelEntries(ctx, field)
 			case "credentials":
@@ -34981,6 +37777,10 @@ func (ec *executionContext) fieldContext_UsageLogEdge_node(_ context.Context, fi
 				return ec.fieldContext_UsageLog_source(ctx, field)
 			case "format":
 				return ec.fieldContext_UsageLog_format(ctx, field)
+			case "totalCost":
+				return ec.fieldContext_UsageLog_totalCost(ctx, field)
+			case "costItems":
+				return ec.fieldContext_UsageLog_costItems(ctx, field)
 			case "request":
 				return ec.fieldContext_UsageLog_request(ctx, field)
 			case "project":
@@ -39722,6 +42522,1380 @@ func (ec *executionContext) unmarshalInputChannelModelAssociationInput(ctx conte
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputChannelModelPriceOrder(ctx context.Context, obj any) (ent.ChannelModelPriceOrder, error) {
+	var it ent.ChannelModelPriceOrder
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	if _, present := asMap["direction"]; !present {
+		asMap["direction"] = "ASC"
+	}
+
+	fieldsInOrder := [...]string{"direction", "field"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "direction":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("direction"))
+			data, err := ec.unmarshalNOrderDirection2entgoᚗioᚋcontribᚋentgqlᚐOrderDirection(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Direction = data
+		case "field":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("field"))
+			data, err := ec.unmarshalNChannelModelPriceOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceOrderField(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Field = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputChannelModelPriceVersionOrder(ctx context.Context, obj any) (ent.ChannelModelPriceVersionOrder, error) {
+	var it ent.ChannelModelPriceVersionOrder
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	if _, present := asMap["direction"]; !present {
+		asMap["direction"] = "ASC"
+	}
+
+	fieldsInOrder := [...]string{"direction", "field"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "direction":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("direction"))
+			data, err := ec.unmarshalNOrderDirection2entgoᚗioᚋcontribᚋentgqlᚐOrderDirection(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Direction = data
+		case "field":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("field"))
+			data, err := ec.unmarshalNChannelModelPriceVersionOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceVersionOrderField(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Field = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputChannelModelPriceVersionWhereInput(ctx context.Context, obj any) (ent.ChannelModelPriceVersionWhereInput, error) {
+	var it ent.ChannelModelPriceVersionWhereInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDGT", "channelIDGTE", "channelIDLT", "channelIDLTE", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "channelModelPriceID", "channelModelPriceIDNEQ", "channelModelPriceIDIn", "channelModelPriceIDNotIn", "status", "statusNEQ", "statusIn", "statusNotIn", "effectiveStartAt", "effectiveStartAtNEQ", "effectiveStartAtIn", "effectiveStartAtNotIn", "effectiveStartAtGT", "effectiveStartAtGTE", "effectiveStartAtLT", "effectiveStartAtLTE", "effectiveEndAt", "effectiveEndAtNEQ", "effectiveEndAtIn", "effectiveEndAtNotIn", "effectiveEndAtGT", "effectiveEndAtGTE", "effectiveEndAtLT", "effectiveEndAtLTE", "effectiveEndAtIsNil", "effectiveEndAtNotNil", "refreanceID", "refreanceIDNEQ", "refreanceIDIn", "refreanceIDNotIn", "refreanceIDGT", "refreanceIDGTE", "refreanceIDLT", "refreanceIDLTE", "refreanceIDContains", "refreanceIDHasPrefix", "refreanceIDHasSuffix", "refreanceIDEqualFold", "refreanceIDContainsFold", "hasChannelModelPrice", "hasChannelModelPriceWith"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "not":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
+			data, err := ec.unmarshalOChannelModelPriceVersionWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceVersionWhereInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Not = data
+		case "and":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
+			data, err := ec.unmarshalOChannelModelPriceVersionWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceVersionWhereInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.And = data
+		case "or":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
+			data, err := ec.unmarshalOChannelModelPriceVersionWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceVersionWhereInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Or = data
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.ID = converted
+		case "idNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idNEQ"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDNEQ = converted
+		case "idIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idIn"))
+			data, err := ec.unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrsToInts(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDIn = converted
+		case "idNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idNotIn"))
+			data, err := ec.unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrsToInts(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDNotIn = converted
+		case "idGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idGT"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDGT = converted
+		case "idGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idGTE"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDGTE = converted
+		case "idLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idLT"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDLT = converted
+		case "idLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idLTE"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDLTE = converted
+		case "createdAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAt"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAt = data
+		case "createdAtNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtNEQ"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtNEQ = data
+		case "createdAtIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtIn"))
+			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtIn = data
+		case "createdAtNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtNotIn"))
+			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtNotIn = data
+		case "createdAtGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtGT"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtGT = data
+		case "createdAtGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtGTE"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtGTE = data
+		case "createdAtLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtLT"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtLT = data
+		case "createdAtLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtLTE"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtLTE = data
+		case "updatedAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAt"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpdatedAt = data
+		case "updatedAtNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtNEQ"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpdatedAtNEQ = data
+		case "updatedAtIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtIn"))
+			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpdatedAtIn = data
+		case "updatedAtNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtNotIn"))
+			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpdatedAtNotIn = data
+		case "updatedAtGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtGT"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpdatedAtGT = data
+		case "updatedAtGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtGTE"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpdatedAtGTE = data
+		case "updatedAtLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtLT"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpdatedAtLT = data
+		case "updatedAtLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtLTE"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpdatedAtLTE = data
+		case "deletedAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAt"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DeletedAt = data
+		case "deletedAtNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtNEQ"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DeletedAtNEQ = data
+		case "deletedAtIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtIn"))
+			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DeletedAtIn = data
+		case "deletedAtNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtNotIn"))
+			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DeletedAtNotIn = data
+		case "deletedAtGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtGT"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DeletedAtGT = data
+		case "deletedAtGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtGTE"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DeletedAtGTE = data
+		case "deletedAtLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtLT"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DeletedAtLT = data
+		case "deletedAtLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtLTE"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DeletedAtLTE = data
+		case "channelID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelID"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelID = data
+		case "channelIDNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelIDNEQ"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelIDNEQ = data
+		case "channelIDIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelIDIn"))
+			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelIDIn = data
+		case "channelIDNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelIDNotIn"))
+			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelIDNotIn = data
+		case "channelIDGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelIDGT"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelIDGT = data
+		case "channelIDGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelIDGTE"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelIDGTE = data
+		case "channelIDLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelIDLT"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelIDLT = data
+		case "channelIDLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelIDLTE"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelIDLTE = data
+		case "modelID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelID"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelID = data
+		case "modelIDNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDNEQ = data
+		case "modelIDIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDIn = data
+		case "modelIDNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDNotIn = data
+		case "modelIDGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDGT = data
+		case "modelIDGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDGTE = data
+		case "modelIDLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDLT = data
+		case "modelIDLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDLTE = data
+		case "modelIDContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDContains = data
+		case "modelIDHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDHasPrefix = data
+		case "modelIDHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDHasSuffix = data
+		case "modelIDEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDEqualFold = data
+		case "modelIDContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDContainsFold = data
+		case "channelModelPriceID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelModelPriceID"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.ChannelModelPriceID = converted
+		case "channelModelPriceIDNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelModelPriceIDNEQ"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.ChannelModelPriceIDNEQ = converted
+		case "channelModelPriceIDIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelModelPriceIDIn"))
+			data, err := ec.unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrsToInts(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.ChannelModelPriceIDIn = converted
+		case "channelModelPriceIDNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelModelPriceIDNotIn"))
+			data, err := ec.unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrsToInts(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.ChannelModelPriceIDNotIn = converted
+		case "status":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
+			data, err := ec.unmarshalOChannelModelPriceVersionStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelmodelpriceversionᚐStatus(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Status = data
+		case "statusNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusNEQ"))
+			data, err := ec.unmarshalOChannelModelPriceVersionStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelmodelpriceversionᚐStatus(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StatusNEQ = data
+		case "statusIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusIn"))
+			data, err := ec.unmarshalOChannelModelPriceVersionStatus2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelmodelpriceversionᚐStatusᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StatusIn = data
+		case "statusNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusNotIn"))
+			data, err := ec.unmarshalOChannelModelPriceVersionStatus2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelmodelpriceversionᚐStatusᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StatusNotIn = data
+		case "effectiveStartAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveStartAt"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveStartAt = data
+		case "effectiveStartAtNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveStartAtNEQ"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveStartAtNEQ = data
+		case "effectiveStartAtIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveStartAtIn"))
+			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveStartAtIn = data
+		case "effectiveStartAtNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveStartAtNotIn"))
+			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveStartAtNotIn = data
+		case "effectiveStartAtGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveStartAtGT"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveStartAtGT = data
+		case "effectiveStartAtGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveStartAtGTE"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveStartAtGTE = data
+		case "effectiveStartAtLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveStartAtLT"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveStartAtLT = data
+		case "effectiveStartAtLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveStartAtLTE"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveStartAtLTE = data
+		case "effectiveEndAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveEndAt"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveEndAt = data
+		case "effectiveEndAtNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveEndAtNEQ"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveEndAtNEQ = data
+		case "effectiveEndAtIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveEndAtIn"))
+			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveEndAtIn = data
+		case "effectiveEndAtNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveEndAtNotIn"))
+			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveEndAtNotIn = data
+		case "effectiveEndAtGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveEndAtGT"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveEndAtGT = data
+		case "effectiveEndAtGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveEndAtGTE"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveEndAtGTE = data
+		case "effectiveEndAtLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveEndAtLT"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveEndAtLT = data
+		case "effectiveEndAtLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveEndAtLTE"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveEndAtLTE = data
+		case "effectiveEndAtIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveEndAtIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveEndAtIsNil = data
+		case "effectiveEndAtNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveEndAtNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveEndAtNotNil = data
+		case "refreanceID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceID"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreanceID = data
+		case "refreanceIDNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreanceIDNEQ = data
+		case "refreanceIDIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreanceIDIn = data
+		case "refreanceIDNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreanceIDNotIn = data
+		case "refreanceIDGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreanceIDGT = data
+		case "refreanceIDGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreanceIDGTE = data
+		case "refreanceIDLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreanceIDLT = data
+		case "refreanceIDLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreanceIDLTE = data
+		case "refreanceIDContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreanceIDContains = data
+		case "refreanceIDHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreanceIDHasPrefix = data
+		case "refreanceIDHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreanceIDHasSuffix = data
+		case "refreanceIDEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreanceIDEqualFold = data
+		case "refreanceIDContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreanceIDContainsFold = data
+		case "hasChannelModelPrice":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasChannelModelPrice"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasChannelModelPrice = data
+		case "hasChannelModelPriceWith":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasChannelModelPriceWith"))
+			data, err := ec.unmarshalOChannelModelPriceWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceWhereInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasChannelModelPriceWith = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputChannelModelPriceWhereInput(ctx context.Context, obj any) (ent.ChannelModelPriceWhereInput, error) {
+	var it ent.ChannelModelPriceWhereInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "refreanceID", "refreanceIDNEQ", "refreanceIDIn", "refreanceIDNotIn", "refreanceIDGT", "refreanceIDGTE", "refreanceIDLT", "refreanceIDLTE", "refreanceIDContains", "refreanceIDHasPrefix", "refreanceIDHasSuffix", "refreanceIDEqualFold", "refreanceIDContainsFold", "hasChannel", "hasChannelWith", "hasVersions", "hasVersionsWith"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "not":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
+			data, err := ec.unmarshalOChannelModelPriceWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceWhereInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Not = data
+		case "and":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
+			data, err := ec.unmarshalOChannelModelPriceWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceWhereInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.And = data
+		case "or":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
+			data, err := ec.unmarshalOChannelModelPriceWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceWhereInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Or = data
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.ID = converted
+		case "idNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idNEQ"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDNEQ = converted
+		case "idIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idIn"))
+			data, err := ec.unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrsToInts(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDIn = converted
+		case "idNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idNotIn"))
+			data, err := ec.unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrsToInts(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDNotIn = converted
+		case "idGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idGT"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDGT = converted
+		case "idGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idGTE"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDGTE = converted
+		case "idLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idLT"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDLT = converted
+		case "idLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idLTE"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDLTE = converted
+		case "createdAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAt"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAt = data
+		case "createdAtNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtNEQ"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtNEQ = data
+		case "createdAtIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtIn"))
+			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtIn = data
+		case "createdAtNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtNotIn"))
+			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtNotIn = data
+		case "createdAtGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtGT"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtGT = data
+		case "createdAtGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtGTE"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtGTE = data
+		case "createdAtLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtLT"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtLT = data
+		case "createdAtLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtLTE"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtLTE = data
+		case "updatedAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAt"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpdatedAt = data
+		case "updatedAtNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtNEQ"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpdatedAtNEQ = data
+		case "updatedAtIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtIn"))
+			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpdatedAtIn = data
+		case "updatedAtNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtNotIn"))
+			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpdatedAtNotIn = data
+		case "updatedAtGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtGT"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpdatedAtGT = data
+		case "updatedAtGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtGTE"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpdatedAtGTE = data
+		case "updatedAtLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtLT"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpdatedAtLT = data
+		case "updatedAtLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtLTE"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpdatedAtLTE = data
+		case "deletedAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAt"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DeletedAt = data
+		case "deletedAtNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtNEQ"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DeletedAtNEQ = data
+		case "deletedAtIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtIn"))
+			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DeletedAtIn = data
+		case "deletedAtNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtNotIn"))
+			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DeletedAtNotIn = data
+		case "deletedAtGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtGT"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DeletedAtGT = data
+		case "deletedAtGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtGTE"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DeletedAtGTE = data
+		case "deletedAtLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtLT"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DeletedAtLT = data
+		case "deletedAtLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtLTE"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DeletedAtLTE = data
+		case "channelID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelID"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.ChannelID = converted
+		case "channelIDNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelIDNEQ"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.ChannelIDNEQ = converted
+		case "channelIDIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelIDIn"))
+			data, err := ec.unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrsToInts(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.ChannelIDIn = converted
+		case "channelIDNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelIDNotIn"))
+			data, err := ec.unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrsToInts(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.ChannelIDNotIn = converted
+		case "modelID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelID"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelID = data
+		case "modelIDNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDNEQ = data
+		case "modelIDIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDIn = data
+		case "modelIDNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDNotIn = data
+		case "modelIDGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDGT = data
+		case "modelIDGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDGTE = data
+		case "modelIDLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDLT = data
+		case "modelIDLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDLTE = data
+		case "modelIDContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDContains = data
+		case "modelIDHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDHasPrefix = data
+		case "modelIDHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDHasSuffix = data
+		case "modelIDEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDEqualFold = data
+		case "modelIDContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDContainsFold = data
+		case "refreanceID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceID"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreanceID = data
+		case "refreanceIDNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreanceIDNEQ = data
+		case "refreanceIDIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreanceIDIn = data
+		case "refreanceIDNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreanceIDNotIn = data
+		case "refreanceIDGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreanceIDGT = data
+		case "refreanceIDGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreanceIDGTE = data
+		case "refreanceIDLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreanceIDLT = data
+		case "refreanceIDLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreanceIDLTE = data
+		case "refreanceIDContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreanceIDContains = data
+		case "refreanceIDHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreanceIDHasPrefix = data
+		case "refreanceIDHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreanceIDHasSuffix = data
+		case "refreanceIDEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreanceIDEqualFold = data
+		case "refreanceIDContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreanceIDContainsFold = data
+		case "hasChannel":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasChannel"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasChannel = data
+		case "hasChannelWith":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasChannelWith"))
+			data, err := ec.unmarshalOChannelWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelWhereInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasChannelWith = data
+		case "hasVersions":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasVersions"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasVersions = data
+		case "hasVersionsWith":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasVersionsWith"))
+			data, err := ec.unmarshalOChannelModelPriceVersionWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceVersionWhereInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasVersionsWith = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputChannelOrder(ctx context.Context, obj any) (ent.ChannelOrder, error) {
 	var it ent.ChannelOrder
 	asMap := map[string]any{}
@@ -42545,7 +46719,7 @@ func (ec *executionContext) unmarshalInputChannelWhereInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "type", "typeNEQ", "typeIn", "typeNotIn", "baseURL", "baseURLNEQ", "baseURLIn", "baseURLNotIn", "baseURLGT", "baseURLGTE", "baseURLLT", "baseURLLTE", "baseURLContains", "baseURLHasPrefix", "baseURLHasSuffix", "baseURLIsNil", "baseURLNotNil", "baseURLEqualFold", "baseURLContainsFold", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "autoSyncSupportedModels", "autoSyncSupportedModelsNEQ", "defaultTestModel", "defaultTestModelNEQ", "defaultTestModelIn", "defaultTestModelNotIn", "defaultTestModelGT", "defaultTestModelGTE", "defaultTestModelLT", "defaultTestModelLTE", "defaultTestModelContains", "defaultTestModelHasPrefix", "defaultTestModelHasSuffix", "defaultTestModelEqualFold", "defaultTestModelContainsFold", "orderingWeight", "orderingWeightNEQ", "orderingWeightIn", "orderingWeightNotIn", "orderingWeightGT", "orderingWeightGTE", "orderingWeightLT", "orderingWeightLTE", "errorMessage", "errorMessageNEQ", "errorMessageIn", "errorMessageNotIn", "errorMessageGT", "errorMessageGTE", "errorMessageLT", "errorMessageLTE", "errorMessageContains", "errorMessageHasPrefix", "errorMessageHasSuffix", "errorMessageIsNil", "errorMessageNotNil", "errorMessageEqualFold", "errorMessageContainsFold", "remark", "remarkNEQ", "remarkIn", "remarkNotIn", "remarkGT", "remarkGTE", "remarkLT", "remarkLTE", "remarkContains", "remarkHasPrefix", "remarkHasSuffix", "remarkIsNil", "remarkNotNil", "remarkEqualFold", "remarkContainsFold", "hasRequests", "hasRequestsWith", "hasExecutions", "hasExecutionsWith", "hasUsageLogs", "hasUsageLogsWith", "hasChannelPerformance", "hasChannelPerformanceWith", "hasChannelProbes", "hasChannelProbesWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "type", "typeNEQ", "typeIn", "typeNotIn", "baseURL", "baseURLNEQ", "baseURLIn", "baseURLNotIn", "baseURLGT", "baseURLGTE", "baseURLLT", "baseURLLTE", "baseURLContains", "baseURLHasPrefix", "baseURLHasSuffix", "baseURLIsNil", "baseURLNotNil", "baseURLEqualFold", "baseURLContainsFold", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "autoSyncSupportedModels", "autoSyncSupportedModelsNEQ", "defaultTestModel", "defaultTestModelNEQ", "defaultTestModelIn", "defaultTestModelNotIn", "defaultTestModelGT", "defaultTestModelGTE", "defaultTestModelLT", "defaultTestModelLTE", "defaultTestModelContains", "defaultTestModelHasPrefix", "defaultTestModelHasSuffix", "defaultTestModelEqualFold", "defaultTestModelContainsFold", "orderingWeight", "orderingWeightNEQ", "orderingWeightIn", "orderingWeightNotIn", "orderingWeightGT", "orderingWeightGTE", "orderingWeightLT", "orderingWeightLTE", "errorMessage", "errorMessageNEQ", "errorMessageIn", "errorMessageNotIn", "errorMessageGT", "errorMessageGTE", "errorMessageLT", "errorMessageLTE", "errorMessageContains", "errorMessageHasPrefix", "errorMessageHasSuffix", "errorMessageIsNil", "errorMessageNotNil", "errorMessageEqualFold", "errorMessageContainsFold", "remark", "remarkNEQ", "remarkIn", "remarkNotIn", "remarkGT", "remarkGTE", "remarkLT", "remarkLTE", "remarkContains", "remarkHasPrefix", "remarkHasSuffix", "remarkIsNil", "remarkNotNil", "remarkEqualFold", "remarkContainsFold", "hasRequests", "hasRequestsWith", "hasExecutions", "hasExecutionsWith", "hasUsageLogs", "hasUsageLogsWith", "hasChannelPerformance", "hasChannelPerformanceWith", "hasChannelProbes", "hasChannelProbesWith", "hasChannelModelPrices", "hasChannelModelPricesWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -43522,6 +47696,20 @@ func (ec *executionContext) unmarshalInputChannelWhereInput(ctx context.Context,
 				return it, err
 			}
 			it.HasChannelProbesWith = data
+		case "hasChannelModelPrices":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasChannelModelPrices"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasChannelModelPrices = data
+		case "hasChannelModelPricesWith":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasChannelModelPricesWith"))
+			data, err := ec.unmarshalOChannelModelPriceWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceWhereInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasChannelModelPricesWith = data
 		}
 	}
 
@@ -43617,6 +47805,75 @@ func (ec *executionContext) unmarshalInputCompleteSystemModelSettingOnboardingIn
 				return it, err
 			}
 			it.Dummy = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputCostItemInput(ctx context.Context, obj any) (objects.CostItem, error) {
+	var it objects.CostItem
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"itemCode", "mode", "quantity", "unitPrice", "flatFee", "tierBreakdown", "subtotal"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "itemCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("itemCode"))
+			data, err := ec.unmarshalNPriceItemCode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceItemCode(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ItemCode = data
+		case "mode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mode"))
+			data, err := ec.unmarshalNPricingMode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPricingMode(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Mode = data
+		case "quantity":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("quantity"))
+			data, err := ec.unmarshalNInt2int64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Quantity = data
+		case "unitPrice":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("unitPrice"))
+			data, err := ec.unmarshalODecimal2ᚖgithubᚗcomᚋshopspringᚋdecimalᚐDecimal(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UnitPrice = data
+		case "flatFee":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("flatFee"))
+			data, err := ec.unmarshalODecimal2ᚖgithubᚗcomᚋshopspringᚋdecimalᚐDecimal(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FlatFee = data
+		case "tierBreakdown":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tierBreakdown"))
+			data, err := ec.unmarshalOTierCostInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐTierCostᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TierBreakdown = data
+		case "subtotal":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("subtotal"))
+			data, err := ec.unmarshalNDecimal2githubᚗcomᚋshopspringᚋdecimalᚐDecimal(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Subtotal = data
 		}
 	}
 
@@ -44474,7 +48731,7 @@ func (ec *executionContext) unmarshalInputCreateUsageLogInput(ctx context.Contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"modelID", "promptTokens", "completionTokens", "totalTokens", "promptAudioTokens", "promptCachedTokens", "promptWriteCachedTokens", "completionAudioTokens", "completionReasoningTokens", "completionAcceptedPredictionTokens", "completionRejectedPredictionTokens", "source", "format", "requestID", "projectID", "channelID"}
+	fieldsInOrder := [...]string{"modelID", "promptTokens", "completionTokens", "totalTokens", "promptAudioTokens", "promptCachedTokens", "promptWriteCachedTokens", "completionAudioTokens", "completionReasoningTokens", "completionAcceptedPredictionTokens", "completionRejectedPredictionTokens", "source", "format", "totalCost", "costItems", "requestID", "projectID", "channelID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -44572,6 +48829,20 @@ func (ec *executionContext) unmarshalInputCreateUsageLogInput(ctx context.Contex
 				return it, err
 			}
 			it.Format = data
+		case "totalCost":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalCost"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalCost = data
+		case "costItems":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("costItems"))
+			data, err := ec.unmarshalOCostItemInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCostItemᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CostItems = data
 		case "requestID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestID"))
 			data, err := ec.unmarshalNID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
@@ -46089,6 +50360,74 @@ func (ec *executionContext) unmarshalInputModelOrder(ctx context.Context, obj an
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputModelPriceInput(ctx context.Context, obj any) (objects.ModelPrice, error) {
+	var it objects.ModelPrice
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"items"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "items":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("items"))
+			data, err := ec.unmarshalNModelPriceItemInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelPriceItemᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Items = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputModelPriceItemInput(ctx context.Context, obj any) (objects.ModelPriceItem, error) {
+	var it objects.ModelPriceItem
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"itemCode", "pricing", "promptWriteCacheVariants"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "itemCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("itemCode"))
+			data, err := ec.unmarshalNPriceItemCode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceItemCode(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ItemCode = data
+		case "pricing":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("pricing"))
+			data, err := ec.unmarshalNPricingInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPricing(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Pricing = data
+		case "promptWriteCacheVariants":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptWriteCacheVariants"))
+			data, err := ec.unmarshalOPromptWriteCacheVariantInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPromptWriteCacheVariantᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PromptWriteCacheVariants = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputModelSettingsInput(ctx context.Context, obj any) (objects.ModelSettings, error) {
 	var it objects.ModelSettings
 	asMap := map[string]any{}
@@ -47023,6 +51362,88 @@ func (ec *executionContext) unmarshalInputModelWhereInput(ctx context.Context, o
 				return it, err
 			}
 			it.RemarkContainsFold = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputPriceTierInput(ctx context.Context, obj any) (objects.PriceTier, error) {
+	var it objects.PriceTier
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"upTo", "pricePerUnit"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "upTo":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("upTo"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpTo = data
+		case "pricePerUnit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("pricePerUnit"))
+			data, err := ec.unmarshalNDecimal2githubᚗcomᚋshopspringᚋdecimalᚐDecimal(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PricePerUnit = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputPricingInput(ctx context.Context, obj any) (objects.Pricing, error) {
+	var it objects.Pricing
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"mode", "flatFee", "usagePerUnit", "usageTiered"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "mode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mode"))
+			data, err := ec.unmarshalNPricingMode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPricingMode(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Mode = data
+		case "flatFee":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("flatFee"))
+			data, err := ec.unmarshalODecimal2ᚖgithubᚗcomᚋshopspringᚋdecimalᚐDecimal(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FlatFee = data
+		case "usagePerUnit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("usagePerUnit"))
+			data, err := ec.unmarshalODecimal2ᚖgithubᚗcomᚋshopspringᚋdecimalᚐDecimal(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UsagePerUnit = data
+		case "usageTiered":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("usageTiered"))
+			data, err := ec.unmarshalOTieredPricingInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐTieredPricing(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UsageTiered = data
 		}
 	}
 
@@ -48620,6 +53041,40 @@ func (ec *executionContext) unmarshalInputPromptWhereInput(ctx context.Context, 
 				return it, err
 			}
 			it.HasProjectsWith = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputPromptWriteCacheVariantInput(ctx context.Context, obj any) (objects.PromptWriteCacheVariant, error) {
+	var it objects.PromptWriteCacheVariant
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"variantCode", "pricing"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "variantCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("variantCode"))
+			data, err := ec.unmarshalNPromptWriteCacheVariantCode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPromptWriteCacheVariantCode(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.VariantCode = data
+		case "pricing":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("pricing"))
+			data, err := ec.unmarshalNPricingInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPricing(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Pricing = data
 		}
 	}
 
@@ -51944,6 +56399,40 @@ func (ec *executionContext) unmarshalInputS3Input(ctx context.Context, obj any) 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputSaveChannelModelPriceInput(ctx context.Context, obj any) (biz.SaveChannelModelPriceInput, error) {
+	var it biz.SaveChannelModelPriceInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"modelId", "price"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "modelId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelId"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelID = data
+		case "price":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("price"))
+			data, err := ec.unmarshalNModelPriceInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelPrice(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Price = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputSignInInput(ctx context.Context, obj any) (SignInInput, error) {
 	var it SignInInput
 	asMap := map[string]any{}
@@ -52972,6 +57461,81 @@ func (ec *executionContext) unmarshalInputThreadWhereInput(ctx context.Context, 
 				return it, err
 			}
 			it.HasTracesWith = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputTierCostInput(ctx context.Context, obj any) (objects.TierCost, error) {
+	var it objects.TierCost
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"upTo", "units", "pricePerUnit", "subtotal"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "upTo":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("upTo"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpTo = data
+		case "units":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("units"))
+			data, err := ec.unmarshalNInt2int64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Units = data
+		case "pricePerUnit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("pricePerUnit"))
+			data, err := ec.unmarshalNDecimal2githubᚗcomᚋshopspringᚋdecimalᚐDecimal(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PricePerUnit = data
+		case "subtotal":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("subtotal"))
+			data, err := ec.unmarshalNDecimal2githubᚗcomᚋshopspringᚋdecimalᚐDecimal(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Subtotal = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputTieredPricingInput(ctx context.Context, obj any) (objects.TieredPricing, error) {
+	var it objects.TieredPricing
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"tiers"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "tiers":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tiers"))
+			data, err := ec.unmarshalNPriceTierInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceTierᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Tiers = data
 		}
 	}
 
@@ -54736,6 +59300,33 @@ func (ec *executionContext) unmarshalInputUpdateSystemChannelSettingsInput(ctx c
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdateSystemGeneralSettingsInput(ctx context.Context, obj any) (biz.SystemGeneralSettings, error) {
+	var it biz.SystemGeneralSettings
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"currencyCode"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "currencyCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCode"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCode = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateSystemInput(ctx context.Context, obj any) (ent.UpdateSystemInput, error) {
 	var it ent.UpdateSystemInput
 	asMap := map[string]any{}
@@ -54865,7 +59456,7 @@ func (ec *executionContext) unmarshalInputUpdateUsageLogInput(ctx context.Contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"promptTokens", "completionTokens", "totalTokens", "promptAudioTokens", "clearPromptAudioTokens", "promptCachedTokens", "clearPromptCachedTokens", "promptWriteCachedTokens", "clearPromptWriteCachedTokens", "completionAudioTokens", "clearCompletionAudioTokens", "completionReasoningTokens", "clearCompletionReasoningTokens", "completionAcceptedPredictionTokens", "clearCompletionAcceptedPredictionTokens", "completionRejectedPredictionTokens", "clearCompletionRejectedPredictionTokens", "channelID", "clearChannel"}
+	fieldsInOrder := [...]string{"promptTokens", "completionTokens", "totalTokens", "promptAudioTokens", "clearPromptAudioTokens", "promptCachedTokens", "clearPromptCachedTokens", "promptWriteCachedTokens", "clearPromptWriteCachedTokens", "completionAudioTokens", "clearCompletionAudioTokens", "completionReasoningTokens", "clearCompletionReasoningTokens", "completionAcceptedPredictionTokens", "clearCompletionAcceptedPredictionTokens", "completionRejectedPredictionTokens", "clearCompletionRejectedPredictionTokens", "totalCost", "costItems", "appendCostItems", "clearCostItems", "channelID", "clearChannel"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -54991,6 +59582,34 @@ func (ec *executionContext) unmarshalInputUpdateUsageLogInput(ctx context.Contex
 				return it, err
 			}
 			it.ClearCompletionRejectedPredictionTokens = data
+		case "totalCost":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalCost"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalCost = data
+		case "costItems":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("costItems"))
+			data, err := ec.unmarshalOCostItemInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCostItemᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CostItems = data
+		case "appendCostItems":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("appendCostItems"))
+			data, err := ec.unmarshalOCostItemInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCostItemᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AppendCostItems = data
+		case "clearCostItems":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearCostItems"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClearCostItems = data
 		case "channelID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelID"))
 			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
@@ -55222,7 +59841,7 @@ func (ec *executionContext) unmarshalInputUsageLogWhereInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "requestID", "requestIDNEQ", "requestIDIn", "requestIDNotIn", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "promptTokens", "promptTokensNEQ", "promptTokensIn", "promptTokensNotIn", "promptTokensGT", "promptTokensGTE", "promptTokensLT", "promptTokensLTE", "completionTokens", "completionTokensNEQ", "completionTokensIn", "completionTokensNotIn", "completionTokensGT", "completionTokensGTE", "completionTokensLT", "completionTokensLTE", "totalTokens", "totalTokensNEQ", "totalTokensIn", "totalTokensNotIn", "totalTokensGT", "totalTokensGTE", "totalTokensLT", "totalTokensLTE", "promptAudioTokens", "promptAudioTokensNEQ", "promptAudioTokensIn", "promptAudioTokensNotIn", "promptAudioTokensGT", "promptAudioTokensGTE", "promptAudioTokensLT", "promptAudioTokensLTE", "promptAudioTokensIsNil", "promptAudioTokensNotNil", "promptCachedTokens", "promptCachedTokensNEQ", "promptCachedTokensIn", "promptCachedTokensNotIn", "promptCachedTokensGT", "promptCachedTokensGTE", "promptCachedTokensLT", "promptCachedTokensLTE", "promptCachedTokensIsNil", "promptCachedTokensNotNil", "promptWriteCachedTokens", "promptWriteCachedTokensNEQ", "promptWriteCachedTokensIn", "promptWriteCachedTokensNotIn", "promptWriteCachedTokensGT", "promptWriteCachedTokensGTE", "promptWriteCachedTokensLT", "promptWriteCachedTokensLTE", "promptWriteCachedTokensIsNil", "promptWriteCachedTokensNotNil", "completionAudioTokens", "completionAudioTokensNEQ", "completionAudioTokensIn", "completionAudioTokensNotIn", "completionAudioTokensGT", "completionAudioTokensGTE", "completionAudioTokensLT", "completionAudioTokensLTE", "completionAudioTokensIsNil", "completionAudioTokensNotNil", "completionReasoningTokens", "completionReasoningTokensNEQ", "completionReasoningTokensIn", "completionReasoningTokensNotIn", "completionReasoningTokensGT", "completionReasoningTokensGTE", "completionReasoningTokensLT", "completionReasoningTokensLTE", "completionReasoningTokensIsNil", "completionReasoningTokensNotNil", "completionAcceptedPredictionTokens", "completionAcceptedPredictionTokensNEQ", "completionAcceptedPredictionTokensIn", "completionAcceptedPredictionTokensNotIn", "completionAcceptedPredictionTokensGT", "completionAcceptedPredictionTokensGTE", "completionAcceptedPredictionTokensLT", "completionAcceptedPredictionTokensLTE", "completionAcceptedPredictionTokensIsNil", "completionAcceptedPredictionTokensNotNil", "completionRejectedPredictionTokens", "completionRejectedPredictionTokensNEQ", "completionRejectedPredictionTokensIn", "completionRejectedPredictionTokensNotIn", "completionRejectedPredictionTokensGT", "completionRejectedPredictionTokensGTE", "completionRejectedPredictionTokensLT", "completionRejectedPredictionTokensLTE", "completionRejectedPredictionTokensIsNil", "completionRejectedPredictionTokensNotNil", "source", "sourceNEQ", "sourceIn", "sourceNotIn", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "hasRequest", "hasRequestWith", "hasProject", "hasProjectWith", "hasChannel", "hasChannelWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "requestID", "requestIDNEQ", "requestIDIn", "requestIDNotIn", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "promptTokens", "promptTokensNEQ", "promptTokensIn", "promptTokensNotIn", "promptTokensGT", "promptTokensGTE", "promptTokensLT", "promptTokensLTE", "completionTokens", "completionTokensNEQ", "completionTokensIn", "completionTokensNotIn", "completionTokensGT", "completionTokensGTE", "completionTokensLT", "completionTokensLTE", "totalTokens", "totalTokensNEQ", "totalTokensIn", "totalTokensNotIn", "totalTokensGT", "totalTokensGTE", "totalTokensLT", "totalTokensLTE", "promptAudioTokens", "promptAudioTokensNEQ", "promptAudioTokensIn", "promptAudioTokensNotIn", "promptAudioTokensGT", "promptAudioTokensGTE", "promptAudioTokensLT", "promptAudioTokensLTE", "promptAudioTokensIsNil", "promptAudioTokensNotNil", "promptCachedTokens", "promptCachedTokensNEQ", "promptCachedTokensIn", "promptCachedTokensNotIn", "promptCachedTokensGT", "promptCachedTokensGTE", "promptCachedTokensLT", "promptCachedTokensLTE", "promptCachedTokensIsNil", "promptCachedTokensNotNil", "promptWriteCachedTokens", "promptWriteCachedTokensNEQ", "promptWriteCachedTokensIn", "promptWriteCachedTokensNotIn", "promptWriteCachedTokensGT", "promptWriteCachedTokensGTE", "promptWriteCachedTokensLT", "promptWriteCachedTokensLTE", "promptWriteCachedTokensIsNil", "promptWriteCachedTokensNotNil", "completionAudioTokens", "completionAudioTokensNEQ", "completionAudioTokensIn", "completionAudioTokensNotIn", "completionAudioTokensGT", "completionAudioTokensGTE", "completionAudioTokensLT", "completionAudioTokensLTE", "completionAudioTokensIsNil", "completionAudioTokensNotNil", "completionReasoningTokens", "completionReasoningTokensNEQ", "completionReasoningTokensIn", "completionReasoningTokensNotIn", "completionReasoningTokensGT", "completionReasoningTokensGTE", "completionReasoningTokensLT", "completionReasoningTokensLTE", "completionReasoningTokensIsNil", "completionReasoningTokensNotNil", "completionAcceptedPredictionTokens", "completionAcceptedPredictionTokensNEQ", "completionAcceptedPredictionTokensIn", "completionAcceptedPredictionTokensNotIn", "completionAcceptedPredictionTokensGT", "completionAcceptedPredictionTokensGTE", "completionAcceptedPredictionTokensLT", "completionAcceptedPredictionTokensLTE", "completionAcceptedPredictionTokensIsNil", "completionAcceptedPredictionTokensNotNil", "completionRejectedPredictionTokens", "completionRejectedPredictionTokensNEQ", "completionRejectedPredictionTokensIn", "completionRejectedPredictionTokensNotIn", "completionRejectedPredictionTokensGT", "completionRejectedPredictionTokensGTE", "completionRejectedPredictionTokensLT", "completionRejectedPredictionTokensLTE", "completionRejectedPredictionTokensIsNil", "completionRejectedPredictionTokensNotNil", "source", "sourceNEQ", "sourceIn", "sourceNotIn", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "totalCost", "totalCostNEQ", "totalCostIn", "totalCostNotIn", "totalCostGT", "totalCostGTE", "totalCostLT", "totalCostLTE", "hasRequest", "hasRequestWith", "hasProject", "hasProjectWith", "hasChannel", "hasChannelWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -56464,6 +61083,62 @@ func (ec *executionContext) unmarshalInputUsageLogWhereInput(ctx context.Context
 				return it, err
 			}
 			it.FormatContainsFold = data
+		case "totalCost":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalCost"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalCost = data
+		case "totalCostNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalCostNEQ"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalCostNEQ = data
+		case "totalCostIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalCostIn"))
+			data, err := ec.unmarshalOFloat2ᚕfloat64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalCostIn = data
+		case "totalCostNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalCostNotIn"))
+			data, err := ec.unmarshalOFloat2ᚕfloat64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalCostNotIn = data
+		case "totalCostGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalCostGT"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalCostGT = data
+		case "totalCostGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalCostGTE"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalCostGTE = data
+		case "totalCostLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalCostLT"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalCostLT = data
+		case "totalCostLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalCostLTE"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalCostLTE = data
 		case "hasRequest":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasRequest"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -58135,6 +62810,16 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._ChannelOverrideTemplate(ctx, sel, obj)
+	case *ent.ChannelModelPriceVersion:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._ChannelModelPriceVersion(ctx, sel, obj)
+	case *ent.ChannelModelPrice:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._ChannelModelPrice(ctx, sel, obj)
 	case *ent.Channel:
 		if obj == nil {
 			return graphql.Null
@@ -59271,6 +63956,39 @@ func (ec *executionContext) _Channel(ctx context.Context, sel ast.SelectionSet, 
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "channelModelPrices":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Channel_channelModelPrices(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "allModelEntries":
 			field := field
 
@@ -59559,6 +64277,574 @@ func (ec *executionContext) _ChannelModelEntry(ctx context.Context, sel ast.Sele
 			}
 		case "source":
 			out.Values[i] = ec._ChannelModelEntry_source(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var channelModelPriceImplementors = []string{"ChannelModelPrice", "Node"}
+
+func (ec *executionContext) _ChannelModelPrice(ctx context.Context, sel ast.SelectionSet, obj *ent.ChannelModelPrice) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, channelModelPriceImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ChannelModelPrice")
+		case "id":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ChannelModelPrice_id(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "createdAt":
+			out.Values[i] = ec._ChannelModelPrice_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "updatedAt":
+			out.Values[i] = ec._ChannelModelPrice_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "deletedAt":
+			out.Values[i] = ec._ChannelModelPrice_deletedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "channelID":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ChannelModelPrice_channelID(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "modelID":
+			out.Values[i] = ec._ChannelModelPrice_modelID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "price":
+			out.Values[i] = ec._ChannelModelPrice_price(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "refreanceID":
+			out.Values[i] = ec._ChannelModelPrice_refreanceID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "channel":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ChannelModelPrice_channel(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "versions":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ChannelModelPrice_versions(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var channelModelPriceConnectionImplementors = []string{"ChannelModelPriceConnection"}
+
+func (ec *executionContext) _ChannelModelPriceConnection(ctx context.Context, sel ast.SelectionSet, obj *ent.ChannelModelPriceConnection) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, channelModelPriceConnectionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ChannelModelPriceConnection")
+		case "edges":
+			out.Values[i] = ec._ChannelModelPriceConnection_edges(ctx, field, obj)
+		case "pageInfo":
+			out.Values[i] = ec._ChannelModelPriceConnection_pageInfo(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalCount":
+			out.Values[i] = ec._ChannelModelPriceConnection_totalCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var channelModelPriceEdgeImplementors = []string{"ChannelModelPriceEdge"}
+
+func (ec *executionContext) _ChannelModelPriceEdge(ctx context.Context, sel ast.SelectionSet, obj *ent.ChannelModelPriceEdge) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, channelModelPriceEdgeImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ChannelModelPriceEdge")
+		case "node":
+			out.Values[i] = ec._ChannelModelPriceEdge_node(ctx, field, obj)
+		case "cursor":
+			out.Values[i] = ec._ChannelModelPriceEdge_cursor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var channelModelPriceVersionImplementors = []string{"ChannelModelPriceVersion", "Node"}
+
+func (ec *executionContext) _ChannelModelPriceVersion(ctx context.Context, sel ast.SelectionSet, obj *ent.ChannelModelPriceVersion) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, channelModelPriceVersionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ChannelModelPriceVersion")
+		case "id":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ChannelModelPriceVersion_id(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "createdAt":
+			out.Values[i] = ec._ChannelModelPriceVersion_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "updatedAt":
+			out.Values[i] = ec._ChannelModelPriceVersion_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "deletedAt":
+			out.Values[i] = ec._ChannelModelPriceVersion_deletedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "channelID":
+			out.Values[i] = ec._ChannelModelPriceVersion_channelID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "modelID":
+			out.Values[i] = ec._ChannelModelPriceVersion_modelID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "channelModelPriceID":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ChannelModelPriceVersion_channelModelPriceID(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "price":
+			out.Values[i] = ec._ChannelModelPriceVersion_price(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "status":
+			out.Values[i] = ec._ChannelModelPriceVersion_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "effectiveStartAt":
+			out.Values[i] = ec._ChannelModelPriceVersion_effectiveStartAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "effectiveEndAt":
+			out.Values[i] = ec._ChannelModelPriceVersion_effectiveEndAt(ctx, field, obj)
+		case "refreanceID":
+			out.Values[i] = ec._ChannelModelPriceVersion_refreanceID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "channelModelPrice":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ChannelModelPriceVersion_channelModelPrice(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var channelModelPriceVersionConnectionImplementors = []string{"ChannelModelPriceVersionConnection"}
+
+func (ec *executionContext) _ChannelModelPriceVersionConnection(ctx context.Context, sel ast.SelectionSet, obj *ent.ChannelModelPriceVersionConnection) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, channelModelPriceVersionConnectionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ChannelModelPriceVersionConnection")
+		case "edges":
+			out.Values[i] = ec._ChannelModelPriceVersionConnection_edges(ctx, field, obj)
+		case "pageInfo":
+			out.Values[i] = ec._ChannelModelPriceVersionConnection_pageInfo(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalCount":
+			out.Values[i] = ec._ChannelModelPriceVersionConnection_totalCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var channelModelPriceVersionEdgeImplementors = []string{"ChannelModelPriceVersionEdge"}
+
+func (ec *executionContext) _ChannelModelPriceVersionEdge(ctx context.Context, sel ast.SelectionSet, obj *ent.ChannelModelPriceVersionEdge) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, channelModelPriceVersionEdgeImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ChannelModelPriceVersionEdge")
+		case "node":
+			out.Values[i] = ec._ChannelModelPriceVersionEdge_node(ctx, field, obj)
+		case "cursor":
+			out.Values[i] = ec._ChannelModelPriceVersionEdge_cursor(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -60737,6 +66023,66 @@ func (ec *executionContext) _CleanupOption(ctx context.Context, sel ast.Selectio
 			}
 		case "cleanupDays":
 			out.Values[i] = ec._CleanupOption_cleanupDays(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var costItemImplementors = []string{"CostItem"}
+
+func (ec *executionContext) _CostItem(ctx context.Context, sel ast.SelectionSet, obj *objects.CostItem) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, costItemImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CostItem")
+		case "itemCode":
+			out.Values[i] = ec._CostItem_itemCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "mode":
+			out.Values[i] = ec._CostItem_mode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "quantity":
+			out.Values[i] = ec._CostItem_quantity(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "unitPrice":
+			out.Values[i] = ec._CostItem_unitPrice(ctx, field, obj)
+		case "flatFee":
+			out.Values[i] = ec._CostItem_flatFee(ctx, field, obj)
+		case "tierBreakdown":
+			out.Values[i] = ec._CostItem_tierBreakdown(ctx, field, obj)
+		case "subtotal":
+			out.Values[i] = ec._CostItem_subtotal(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -62270,6 +67616,91 @@ func (ec *executionContext) _ModelMapping(ctx context.Context, sel ast.Selection
 	return out
 }
 
+var modelPriceImplementors = []string{"ModelPrice"}
+
+func (ec *executionContext) _ModelPrice(ctx context.Context, sel ast.SelectionSet, obj *objects.ModelPrice) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, modelPriceImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ModelPrice")
+		case "items":
+			out.Values[i] = ec._ModelPrice_items(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var modelPriceItemImplementors = []string{"ModelPriceItem"}
+
+func (ec *executionContext) _ModelPriceItem(ctx context.Context, sel ast.SelectionSet, obj *objects.ModelPriceItem) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, modelPriceItemImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ModelPriceItem")
+		case "itemCode":
+			out.Values[i] = ec._ModelPriceItem_itemCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "pricing":
+			out.Values[i] = ec._ModelPriceItem_pricing(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "promptWriteCacheVariants":
+			out.Values[i] = ec._ModelPriceItem_promptWriteCacheVariants(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var modelSettingsImplementors = []string{"ModelSettings"}
 
 func (ec *executionContext) _ModelSettings(ctx context.Context, sel ast.SelectionSet, obj *objects.ModelSettings) graphql.Marshaler {
@@ -62657,6 +68088,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "updateSystemGeneralSettings":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateSystemGeneralSettings(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "createModel":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createModel(ctx, field)
@@ -62783,6 +68221,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "saveChannelModelPrices":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_saveChannelModelPrices(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -62879,6 +68324,92 @@ func (ec *executionContext) _PageInfo(ctx context.Context, sel ast.SelectionSet,
 			out.Values[i] = ec._PageInfo_startCursor(ctx, field, obj)
 		case "endCursor":
 			out.Values[i] = ec._PageInfo_endCursor(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var priceTierImplementors = []string{"PriceTier"}
+
+func (ec *executionContext) _PriceTier(ctx context.Context, sel ast.SelectionSet, obj *objects.PriceTier) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, priceTierImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PriceTier")
+		case "upTo":
+			out.Values[i] = ec._PriceTier_upTo(ctx, field, obj)
+		case "pricePerUnit":
+			out.Values[i] = ec._PriceTier_pricePerUnit(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var pricingImplementors = []string{"Pricing"}
+
+func (ec *executionContext) _Pricing(ctx context.Context, sel ast.SelectionSet, obj *objects.Pricing) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, pricingImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Pricing")
+		case "mode":
+			out.Values[i] = ec._Pricing_mode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "flatFee":
+			out.Values[i] = ec._Pricing_flatFee(ctx, field, obj)
+		case "usagePerUnit":
+			out.Values[i] = ec._Pricing_usagePerUnit(ctx, field, obj)
+		case "usageTiered":
+			out.Values[i] = ec._Pricing_usageTiered(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -63789,6 +69320,50 @@ func (ec *executionContext) _PromptSettings(ctx context.Context, sel ast.Selecti
 			}
 		case "conditions":
 			out.Values[i] = ec._PromptSettings_conditions(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var promptWriteCacheVariantImplementors = []string{"PromptWriteCacheVariant"}
+
+func (ec *executionContext) _PromptWriteCacheVariant(ctx context.Context, sel ast.SelectionSet, obj *objects.PromptWriteCacheVariant) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, promptWriteCacheVariantImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PromptWriteCacheVariant")
+		case "variantCode":
+			out.Values[i] = ec._PromptWriteCacheVariant_variantCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "pricing":
+			out.Values[i] = ec._PromptWriteCacheVariant_pricing(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -64801,6 +70376,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_systemChannelSettings(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "systemGeneralSettings":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_systemGeneralSettings(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -67874,6 +73471,45 @@ func (ec *executionContext) _SystemEdge(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var systemGeneralSettingsImplementors = []string{"SystemGeneralSettings"}
+
+func (ec *executionContext) _SystemGeneralSettings(ctx context.Context, sel ast.SelectionSet, obj *biz.SystemGeneralSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, systemGeneralSettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SystemGeneralSettings")
+		case "currencyCode":
+			out.Values[i] = ec._SystemGeneralSettings_currencyCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var systemModelSettingOnboardingImplementors = []string{"SystemModelSettingOnboarding"}
 
 func (ec *executionContext) _SystemModelSettingOnboarding(ctx context.Context, sel ast.SelectionSet, obj *SystemModelSettingOnboarding) graphql.Marshaler {
@@ -68397,6 +74033,96 @@ func (ec *executionContext) _ThreadEdge(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._ThreadEdge_node(ctx, field, obj)
 		case "cursor":
 			out.Values[i] = ec._ThreadEdge_cursor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var tierCostImplementors = []string{"TierCost"}
+
+func (ec *executionContext) _TierCost(ctx context.Context, sel ast.SelectionSet, obj *objects.TierCost) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, tierCostImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TierCost")
+		case "upTo":
+			out.Values[i] = ec._TierCost_upTo(ctx, field, obj)
+		case "units":
+			out.Values[i] = ec._TierCost_units(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "pricePerUnit":
+			out.Values[i] = ec._TierCost_pricePerUnit(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "subtotal":
+			out.Values[i] = ec._TierCost_subtotal(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var tieredPricingImplementors = []string{"TieredPricing"}
+
+func (ec *executionContext) _TieredPricing(ctx context.Context, sel ast.SelectionSet, obj *objects.TieredPricing) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, tieredPricingImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TieredPricing")
+		case "tiers":
+			out.Values[i] = ec._TieredPricing_tiers(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -69397,6 +75123,13 @@ func (ec *executionContext) _UsageLog(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "totalCost":
+			out.Values[i] = ec._UsageLog_totalCost(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "costItems":
+			out.Values[i] = ec._UsageLog_costItems(ctx, field, obj)
 		case "request":
 			field := field
 
@@ -71456,6 +77189,122 @@ func (ec *executionContext) marshalNChannelModelEntry2ᚖgithubᚗcomᚋlooplj�
 	return ec._ChannelModelEntry(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNChannelModelPrice2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.ChannelModelPrice) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNChannelModelPrice2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPrice(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNChannelModelPrice2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPrice(ctx context.Context, sel ast.SelectionSet, v *ent.ChannelModelPrice) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ChannelModelPrice(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNChannelModelPriceOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceOrderField(ctx context.Context, v any) (*ent.ChannelModelPriceOrderField, error) {
+	var res = new(ent.ChannelModelPriceOrderField)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNChannelModelPriceOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceOrderField(ctx context.Context, sel ast.SelectionSet, v *ent.ChannelModelPriceOrderField) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return v
+}
+
+func (ec *executionContext) marshalNChannelModelPriceVersion2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceVersion(ctx context.Context, sel ast.SelectionSet, v *ent.ChannelModelPriceVersion) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ChannelModelPriceVersion(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNChannelModelPriceVersionOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceVersionOrderField(ctx context.Context, v any) (*ent.ChannelModelPriceVersionOrderField, error) {
+	var res = new(ent.ChannelModelPriceVersionOrderField)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNChannelModelPriceVersionOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceVersionOrderField(ctx context.Context, sel ast.SelectionSet, v *ent.ChannelModelPriceVersionOrderField) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return v
+}
+
+func (ec *executionContext) unmarshalNChannelModelPriceVersionStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelmodelpriceversionᚐStatus(ctx context.Context, v any) (channelmodelpriceversion.Status, error) {
+	var res channelmodelpriceversion.Status
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNChannelModelPriceVersionStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelmodelpriceversionᚐStatus(ctx context.Context, sel ast.SelectionSet, v channelmodelpriceversion.Status) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalNChannelModelPriceVersionWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceVersionWhereInput(ctx context.Context, v any) (*ent.ChannelModelPriceVersionWhereInput, error) {
+	res, err := ec.unmarshalInputChannelModelPriceVersionWhereInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNChannelModelPriceWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceWhereInput(ctx context.Context, v any) (*ent.ChannelModelPriceWhereInput, error) {
+	res, err := ec.unmarshalInputChannelModelPriceWhereInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNChannelOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelOrderField(ctx context.Context, v any) (*ent.ChannelOrderField, error) {
 	var res = new(ent.ChannelOrderField)
 	err := res.UnmarshalGQL(v)
@@ -71885,6 +77734,15 @@ func (ec *executionContext) unmarshalNCompleteSystemModelSettingOnboardingInput2
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNCostItem2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCostItem(ctx context.Context, sel ast.SelectionSet, v objects.CostItem) graphql.Marshaler {
+	return ec._CostItem(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNCostItemInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCostItem(ctx context.Context, v any) (objects.CostItem, error) {
+	res, err := ec.unmarshalInputCostItemInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNCountChannelsByTypeInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐCountChannelsByTypeInput(ctx context.Context, v any) (CountChannelsByTypeInput, error) {
 	res, err := ec.unmarshalInputCountChannelsByTypeInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -72115,6 +77973,22 @@ func (ec *executionContext) marshalNDataStorageType2githubᚗcomᚋloopljᚋaxon
 func (ec *executionContext) unmarshalNDataStorageWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐDataStorageWhereInput(ctx context.Context, v any) (*ent.DataStorageWhereInput, error) {
 	res, err := ec.unmarshalInputDataStorageWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNDecimal2githubᚗcomᚋshopspringᚋdecimalᚐDecimal(ctx context.Context, v any) (decimal.Decimal, error) {
+	res, err := objects.UnmarshalDecimal(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNDecimal2githubᚗcomᚋshopspringᚋdecimalᚐDecimal(ctx context.Context, sel ast.SelectionSet, v decimal.Decimal) graphql.Marshaler {
+	_ = sel
+	res := objects.MarshalDecimal(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
 
 func (ec *executionContext) marshalNExcludeAssociation2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐExcludeAssociation(ctx context.Context, sel ast.SelectionSet, v *objects.ExcludeAssociation) graphql.Marshaler {
@@ -72709,6 +78583,83 @@ func (ec *executionContext) marshalNModelOrderField2ᚖgithubᚗcomᚋloopljᚋa
 	return v
 }
 
+func (ec *executionContext) marshalNModelPrice2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelPrice(ctx context.Context, sel ast.SelectionSet, v objects.ModelPrice) graphql.Marshaler {
+	return ec._ModelPrice(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNModelPriceInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelPrice(ctx context.Context, v any) (objects.ModelPrice, error) {
+	res, err := ec.unmarshalInputModelPriceInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNModelPriceItem2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelPriceItem(ctx context.Context, sel ast.SelectionSet, v objects.ModelPriceItem) graphql.Marshaler {
+	return ec._ModelPriceItem(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNModelPriceItem2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelPriceItemᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.ModelPriceItem) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNModelPriceItem2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelPriceItem(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalNModelPriceItemInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelPriceItem(ctx context.Context, v any) (objects.ModelPriceItem, error) {
+	res, err := ec.unmarshalInputModelPriceItemInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNModelPriceItemInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelPriceItemᚄ(ctx context.Context, v any) ([]objects.ModelPriceItem, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]objects.ModelPriceItem, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNModelPriceItemInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelPriceItem(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
 func (ec *executionContext) marshalNModelSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelSettings(ctx context.Context, sel ast.SelectionSet, v *objects.ModelSettings) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -72799,6 +78750,117 @@ func (ec *executionContext) marshalNOrderDirection2entgoᚗioᚋcontribᚋentgql
 
 func (ec *executionContext) marshalNPageInfo2entgoᚗioᚋcontribᚋentgqlᚐPageInfo(ctx context.Context, sel ast.SelectionSet, v entgql.PageInfo[int]) graphql.Marshaler {
 	return ec._PageInfo(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNPriceItemCode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceItemCode(ctx context.Context, v any) (objects.PriceItemCode, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := objects.PriceItemCode(tmp)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNPriceItemCode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceItemCode(ctx context.Context, sel ast.SelectionSet, v objects.PriceItemCode) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalString(string(v))
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) marshalNPriceTier2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceTier(ctx context.Context, sel ast.SelectionSet, v objects.PriceTier) graphql.Marshaler {
+	return ec._PriceTier(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPriceTier2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceTierᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.PriceTier) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPriceTier2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceTier(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalNPriceTierInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceTier(ctx context.Context, v any) (objects.PriceTier, error) {
+	res, err := ec.unmarshalInputPriceTierInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNPriceTierInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceTierᚄ(ctx context.Context, v any) ([]objects.PriceTier, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]objects.PriceTier, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNPriceTierInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceTier(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalNPricing2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPricing(ctx context.Context, sel ast.SelectionSet, v objects.Pricing) graphql.Marshaler {
+	return ec._Pricing(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNPricingInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPricing(ctx context.Context, v any) (objects.Pricing, error) {
+	res, err := ec.unmarshalInputPricingInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNPricingMode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPricingMode(ctx context.Context, v any) (objects.PricingMode, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := objects.PricingMode(tmp)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNPricingMode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPricingMode(ctx context.Context, sel ast.SelectionSet, v objects.PricingMode) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalString(string(v))
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
 
 func (ec *executionContext) unmarshalNProbeFrequency2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐProbeFrequency(ctx context.Context, v any) (biz.ProbeFrequency, error) {
@@ -73041,6 +79103,32 @@ func (ec *executionContext) marshalNPromptStatus2githubᚗcomᚋloopljᚋaxonhub
 func (ec *executionContext) unmarshalNPromptWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐPromptWhereInput(ctx context.Context, v any) (*ent.PromptWhereInput, error) {
 	res, err := ec.unmarshalInputPromptWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNPromptWriteCacheVariant2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPromptWriteCacheVariant(ctx context.Context, sel ast.SelectionSet, v objects.PromptWriteCacheVariant) graphql.Marshaler {
+	return ec._PromptWriteCacheVariant(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNPromptWriteCacheVariantCode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPromptWriteCacheVariantCode(ctx context.Context, v any) (objects.PromptWriteCacheVariantCode, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := objects.PromptWriteCacheVariantCode(tmp)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNPromptWriteCacheVariantCode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPromptWriteCacheVariantCode(ctx context.Context, sel ast.SelectionSet, v objects.PromptWriteCacheVariantCode) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalString(string(v))
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) unmarshalNPromptWriteCacheVariantInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPromptWriteCacheVariant(ctx context.Context, v any) (objects.PromptWriteCacheVariant, error) {
+	res, err := ec.unmarshalInputPromptWriteCacheVariantInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNProxyType2githubᚗcomᚋloopljᚋaxonhubᚋllmᚋhttpclientᚐProxyType(ctx context.Context, v any) (httpclient.ProxyType, error) {
@@ -73502,6 +79590,26 @@ func (ec *executionContext) unmarshalNRoleWhereInput2ᚖgithubᚗcomᚋloopljᚋ
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNSaveChannelModelPriceInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSaveChannelModelPriceInputᚄ(ctx context.Context, v any) ([]*biz.SaveChannelModelPriceInput, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*biz.SaveChannelModelPriceInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNSaveChannelModelPriceInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSaveChannelModelPriceInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNSaveChannelModelPriceInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSaveChannelModelPriceInput(ctx context.Context, v any) (*biz.SaveChannelModelPriceInput, error) {
+	res, err := ec.unmarshalInputSaveChannelModelPriceInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNScopeInfo2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐScopeInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []*ScopeInfo) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -73668,6 +79776,20 @@ func (ec *executionContext) marshalNSystemConnection2ᚖgithubᚗcomᚋloopljᚋ
 	return ec._SystemConnection(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNSystemGeneralSettings2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSystemGeneralSettings(ctx context.Context, sel ast.SelectionSet, v biz.SystemGeneralSettings) graphql.Marshaler {
+	return ec._SystemGeneralSettings(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNSystemGeneralSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSystemGeneralSettings(ctx context.Context, sel ast.SelectionSet, v *biz.SystemGeneralSettings) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SystemGeneralSettings(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNSystemModelSettings2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSystemModelSettings(ctx context.Context, sel ast.SelectionSet, v biz.SystemModelSettings) graphql.Marshaler {
 	return ec._SystemModelSettings(ctx, sel, &v)
 }
@@ -73783,6 +79905,15 @@ func (ec *executionContext) marshalNThreadOrderField2ᚖgithubᚗcomᚋloopljᚋ
 func (ec *executionContext) unmarshalNThreadWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐThreadWhereInput(ctx context.Context, v any) (*ent.ThreadWhereInput, error) {
 	res, err := ec.unmarshalInputThreadWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNTierCost2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐTierCost(ctx context.Context, sel ast.SelectionSet, v objects.TierCost) graphql.Marshaler {
+	return ec._TierCost(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNTierCostInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐTierCost(ctx context.Context, v any) (objects.TierCost, error) {
+	res, err := ec.unmarshalInputTierCostInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNTime2timeᚐTime(ctx context.Context, v any) (time.Time, error) {
@@ -74089,6 +80220,11 @@ func (ec *executionContext) unmarshalNUpdateStoragePolicyInput2githubᚗcomᚋlo
 
 func (ec *executionContext) unmarshalNUpdateSystemChannelSettingsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSystemChannelSettings(ctx context.Context, v any) (biz.SystemChannelSettings, error) {
 	res, err := ec.unmarshalInputUpdateSystemChannelSettingsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateSystemGeneralSettingsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSystemGeneralSettings(ctx context.Context, v any) (biz.SystemGeneralSettings, error) {
+	res, err := ec.unmarshalInputUpdateSystemGeneralSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -75093,6 +81229,343 @@ func (ec *executionContext) unmarshalOChannelModelAssociationInput2ᚖgithubᚗc
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalOChannelModelPrice2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.ChannelModelPrice) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNChannelModelPrice2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPrice(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalOChannelModelPrice2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPrice(ctx context.Context, sel ast.SelectionSet, v *ent.ChannelModelPrice) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ChannelModelPrice(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOChannelModelPriceEdge2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceEdge(ctx context.Context, sel ast.SelectionSet, v []*ent.ChannelModelPriceEdge) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalOChannelModelPriceEdge2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceEdge(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	return ret
+}
+
+func (ec *executionContext) marshalOChannelModelPriceEdge2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceEdge(ctx context.Context, sel ast.SelectionSet, v *ent.ChannelModelPriceEdge) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ChannelModelPriceEdge(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOChannelModelPriceVersion2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceVersionᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.ChannelModelPriceVersion) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNChannelModelPriceVersion2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceVersion(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalOChannelModelPriceVersion2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceVersion(ctx context.Context, sel ast.SelectionSet, v *ent.ChannelModelPriceVersion) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ChannelModelPriceVersion(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOChannelModelPriceVersionEdge2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceVersionEdge(ctx context.Context, sel ast.SelectionSet, v []*ent.ChannelModelPriceVersionEdge) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalOChannelModelPriceVersionEdge2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceVersionEdge(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	return ret
+}
+
+func (ec *executionContext) marshalOChannelModelPriceVersionEdge2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceVersionEdge(ctx context.Context, sel ast.SelectionSet, v *ent.ChannelModelPriceVersionEdge) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ChannelModelPriceVersionEdge(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOChannelModelPriceVersionStatus2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelmodelpriceversionᚐStatusᚄ(ctx context.Context, v any) ([]channelmodelpriceversion.Status, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]channelmodelpriceversion.Status, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNChannelModelPriceVersionStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelmodelpriceversionᚐStatus(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOChannelModelPriceVersionStatus2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelmodelpriceversionᚐStatusᚄ(ctx context.Context, sel ast.SelectionSet, v []channelmodelpriceversion.Status) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNChannelModelPriceVersionStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelmodelpriceversionᚐStatus(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOChannelModelPriceVersionStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelmodelpriceversionᚐStatus(ctx context.Context, v any) (*channelmodelpriceversion.Status, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(channelmodelpriceversion.Status)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOChannelModelPriceVersionStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelmodelpriceversionᚐStatus(ctx context.Context, sel ast.SelectionSet, v *channelmodelpriceversion.Status) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
+func (ec *executionContext) unmarshalOChannelModelPriceVersionWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceVersionWhereInputᚄ(ctx context.Context, v any) ([]*ent.ChannelModelPriceVersionWhereInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*ent.ChannelModelPriceVersionWhereInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNChannelModelPriceVersionWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceVersionWhereInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalOChannelModelPriceVersionWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceVersionWhereInput(ctx context.Context, v any) (*ent.ChannelModelPriceVersionWhereInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputChannelModelPriceVersionWhereInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOChannelModelPriceWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceWhereInputᚄ(ctx context.Context, v any) ([]*ent.ChannelModelPriceWhereInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*ent.ChannelModelPriceWhereInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNChannelModelPriceWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceWhereInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalOChannelModelPriceWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceWhereInput(ctx context.Context, v any) (*ent.ChannelModelPriceWhereInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputChannelModelPriceWhereInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalOChannelOrder2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelOrder(ctx context.Context, v any) (*ent.ChannelOrder, error) {
 	if v == nil {
 		return nil, nil
@@ -75562,6 +82035,71 @@ func (ec *executionContext) unmarshalOCleanupOptionInput2ᚕgithubᚗcomᚋloopl
 	return res, nil
 }
 
+func (ec *executionContext) marshalOCostItem2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCostItemᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.CostItem) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNCostItem2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCostItem(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOCostItemInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCostItemᚄ(ctx context.Context, v any) ([]objects.CostItem, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]objects.CostItem, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNCostItemInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCostItem(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
 func (ec *executionContext) unmarshalOCursor2ᚖentgoᚗioᚋcontribᚋentgqlᚐCursor(ctx context.Context, v any) (*entgql.Cursor[int], error) {
 	if v == nil {
 		return nil, nil
@@ -75835,6 +82373,24 @@ func (ec *executionContext) unmarshalODataStorageWhereInput2ᚖgithubᚗcomᚋlo
 	}
 	res, err := ec.unmarshalInputDataStorageWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalODecimal2ᚖgithubᚗcomᚋshopspringᚋdecimalᚐDecimal(ctx context.Context, v any) (*decimal.Decimal, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := objects.UnmarshalDecimal(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalODecimal2ᚖgithubᚗcomᚋshopspringᚋdecimalᚐDecimal(ctx context.Context, sel ast.SelectionSet, v *decimal.Decimal) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := objects.MarshalDecimal(*v)
+	return res
 }
 
 func (ec *executionContext) marshalOExcludeAssociation2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐExcludeAssociationᚄ(ctx context.Context, sel ast.SelectionSet, v []*objects.ExcludeAssociation) graphql.Marshaler {
@@ -77224,6 +83780,71 @@ func (ec *executionContext) unmarshalOPromptWhereInput2ᚖgithubᚗcomᚋlooplj�
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalOPromptWriteCacheVariant2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPromptWriteCacheVariantᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.PromptWriteCacheVariant) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPromptWriteCacheVariant2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPromptWriteCacheVariant(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOPromptWriteCacheVariantInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPromptWriteCacheVariantᚄ(ctx context.Context, v any) ([]objects.PromptWriteCacheVariant, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]objects.PromptWriteCacheVariant, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNPromptWriteCacheVariantInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPromptWriteCacheVariant(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
 func (ec *executionContext) marshalOProxyConfig2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋllmᚋhttpclientᚐProxyConfig(ctx context.Context, sel ast.SelectionSet, v *httpclient.ProxyConfig) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -78279,6 +84900,86 @@ func (ec *executionContext) unmarshalOThreadWhereInput2ᚖgithubᚗcomᚋlooplj�
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputThreadWhereInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOTierCost2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐTierCostᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.TierCost) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNTierCost2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐTierCost(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOTierCostInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐTierCostᚄ(ctx context.Context, v any) ([]objects.TierCost, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]objects.TierCost, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNTierCostInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐTierCost(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOTieredPricing2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐTieredPricing(ctx context.Context, sel ast.SelectionSet, v *objects.TieredPricing) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._TieredPricing(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOTieredPricingInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐTieredPricing(ctx context.Context, v any) (*objects.TieredPricing, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputTieredPricingInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 

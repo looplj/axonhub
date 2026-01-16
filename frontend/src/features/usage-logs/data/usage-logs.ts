@@ -39,6 +39,7 @@ function buildUsageLogsQuery(permissions: { canViewChannels: boolean }) {
             completionRejectedPredictionTokens
             source
             format
+            totalCost
           }
           cursor
         }
@@ -85,6 +86,7 @@ function buildUsageLogDetailQuery(permissions: { canViewChannels: boolean }) {
           completionRejectedPredictionTokens
           source
           format
+          totalCost
         }
       }
     }

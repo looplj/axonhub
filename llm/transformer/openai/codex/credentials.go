@@ -19,13 +19,13 @@ import (
 
 const (
 	AuthorizeURL = "https://auth.openai.com/oauth/authorize"
-	TokenURL     = "https://auth.openai.com/oauth/token"
-
+	//nolint:gosec // false alert.
+	TokenURL    = "https://auth.openai.com/oauth/token"
 	ClientID    = "app_EMoamEEZ73f0CkXaXp7hrann"
 	RedirectURI = "http://localhost:1455/auth/callback"
 	Scopes      = "openid profile email offline_access"
 
-	// Keep consistent with Codex CLI.
+	// UA keep consistent with Codex CLI.
 	UA = "codex_cli_rs/0.38.0 (Ubuntu 22.04.0; x86_64) WindowsTerminal"
 )
 
@@ -102,6 +102,7 @@ func (c *OAuth2Credentials) ToJSON() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return string(b), nil
 }
 
@@ -195,13 +196,16 @@ func (c *OAuth2Credentials) Refresh(ctx context.Context, hc *httpclient.HttpClie
 
 	updated := *c
 	updated.AccessToken = tokenResp.AccessToken
+
 	updated.TokenType = tokenResp.TokenType
 	if tokenResp.RefreshToken != "" {
 		updated.RefreshToken = tokenResp.RefreshToken
 	}
+
 	if tokenResp.Scope != "" {
 		updated.Scopes = strings.Fields(tokenResp.Scope)
 	}
+
 	if tokenResp.ExpiresIn > 0 {
 		updated.ExpiresAt = now.Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
 	}

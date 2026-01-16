@@ -16,6 +16,8 @@ import (
 	"github.com/99designs/gqlgen/graphql/errcode"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
+	"github.com/looplj/axonhub/internal/ent/channelmodelpriceversion"
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
@@ -811,6 +813,634 @@ func (_m *Channel) ToEdge(order *ChannelOrder) *ChannelEdge {
 		order = DefaultChannelOrder
 	}
 	return &ChannelEdge{
+		Node:   _m,
+		Cursor: order.Field.toCursor(_m),
+	}
+}
+
+// ChannelModelPriceEdge is the edge representation of ChannelModelPrice.
+type ChannelModelPriceEdge struct {
+	Node   *ChannelModelPrice `json:"node"`
+	Cursor Cursor             `json:"cursor"`
+}
+
+// ChannelModelPriceConnection is the connection containing edges to ChannelModelPrice.
+type ChannelModelPriceConnection struct {
+	Edges      []*ChannelModelPriceEdge `json:"edges"`
+	PageInfo   PageInfo                 `json:"pageInfo"`
+	TotalCount int                      `json:"totalCount"`
+}
+
+func (c *ChannelModelPriceConnection) build(nodes []*ChannelModelPrice, pager *channelmodelpricePager, after *Cursor, first *int, before *Cursor, last *int) {
+	c.PageInfo.HasNextPage = before != nil
+	c.PageInfo.HasPreviousPage = after != nil
+	if first != nil && *first+1 == len(nodes) {
+		c.PageInfo.HasNextPage = true
+		nodes = nodes[:len(nodes)-1]
+	} else if last != nil && *last+1 == len(nodes) {
+		c.PageInfo.HasPreviousPage = true
+		nodes = nodes[:len(nodes)-1]
+	}
+	var nodeAt func(int) *ChannelModelPrice
+	if last != nil {
+		n := len(nodes) - 1
+		nodeAt = func(i int) *ChannelModelPrice {
+			return nodes[n-i]
+		}
+	} else {
+		nodeAt = func(i int) *ChannelModelPrice {
+			return nodes[i]
+		}
+	}
+	c.Edges = make([]*ChannelModelPriceEdge, len(nodes))
+	for i := range nodes {
+		node := nodeAt(i)
+		c.Edges[i] = &ChannelModelPriceEdge{
+			Node:   node,
+			Cursor: pager.toCursor(node),
+		}
+	}
+	if l := len(c.Edges); l > 0 {
+		c.PageInfo.StartCursor = &c.Edges[0].Cursor
+		c.PageInfo.EndCursor = &c.Edges[l-1].Cursor
+	}
+	if c.TotalCount == 0 {
+		c.TotalCount = len(nodes)
+	}
+}
+
+// ChannelModelPricePaginateOption enables pagination customization.
+type ChannelModelPricePaginateOption func(*channelmodelpricePager) error
+
+// WithChannelModelPriceOrder configures pagination ordering.
+func WithChannelModelPriceOrder(order *ChannelModelPriceOrder) ChannelModelPricePaginateOption {
+	if order == nil {
+		order = DefaultChannelModelPriceOrder
+	}
+	o := *order
+	return func(pager *channelmodelpricePager) error {
+		if err := o.Direction.Validate(); err != nil {
+			return err
+		}
+		if o.Field == nil {
+			o.Field = DefaultChannelModelPriceOrder.Field
+		}
+		pager.order = &o
+		return nil
+	}
+}
+
+// WithChannelModelPriceFilter configures pagination filter.
+func WithChannelModelPriceFilter(filter func(*ChannelModelPriceQuery) (*ChannelModelPriceQuery, error)) ChannelModelPricePaginateOption {
+	return func(pager *channelmodelpricePager) error {
+		if filter == nil {
+			return errors.New("ChannelModelPriceQuery filter cannot be nil")
+		}
+		pager.filter = filter
+		return nil
+	}
+}
+
+type channelmodelpricePager struct {
+	reverse bool
+	order   *ChannelModelPriceOrder
+	filter  func(*ChannelModelPriceQuery) (*ChannelModelPriceQuery, error)
+}
+
+func newChannelModelPricePager(opts []ChannelModelPricePaginateOption, reverse bool) (*channelmodelpricePager, error) {
+	pager := &channelmodelpricePager{reverse: reverse}
+	for _, opt := range opts {
+		if err := opt(pager); err != nil {
+			return nil, err
+		}
+	}
+	if pager.order == nil {
+		pager.order = DefaultChannelModelPriceOrder
+	}
+	return pager, nil
+}
+
+func (p *channelmodelpricePager) applyFilter(query *ChannelModelPriceQuery) (*ChannelModelPriceQuery, error) {
+	if p.filter != nil {
+		return p.filter(query)
+	}
+	return query, nil
+}
+
+func (p *channelmodelpricePager) toCursor(_m *ChannelModelPrice) Cursor {
+	return p.order.Field.toCursor(_m)
+}
+
+func (p *channelmodelpricePager) applyCursors(query *ChannelModelPriceQuery, after, before *Cursor) (*ChannelModelPriceQuery, error) {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	for _, predicate := range entgql.CursorsPredicate(after, before, DefaultChannelModelPriceOrder.Field.column, p.order.Field.column, direction) {
+		query = query.Where(predicate)
+	}
+	return query, nil
+}
+
+func (p *channelmodelpricePager) applyOrder(query *ChannelModelPriceQuery) *ChannelModelPriceQuery {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	query = query.Order(p.order.Field.toTerm(direction.OrderTermOption()))
+	if p.order.Field != DefaultChannelModelPriceOrder.Field {
+		query = query.Order(DefaultChannelModelPriceOrder.Field.toTerm(direction.OrderTermOption()))
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return query
+}
+
+func (p *channelmodelpricePager) orderExpr(query *ChannelModelPriceQuery) sql.Querier {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return sql.ExprFunc(func(b *sql.Builder) {
+		b.Ident(p.order.Field.column).Pad().WriteString(string(direction))
+		if p.order.Field != DefaultChannelModelPriceOrder.Field {
+			b.Comma().Ident(DefaultChannelModelPriceOrder.Field.column).Pad().WriteString(string(direction))
+		}
+	})
+}
+
+// Paginate executes the query and returns a relay based cursor connection to ChannelModelPrice.
+func (_m *ChannelModelPriceQuery) Paginate(
+	ctx context.Context, after *Cursor, first *int,
+	before *Cursor, last *int, opts ...ChannelModelPricePaginateOption,
+) (*ChannelModelPriceConnection, error) {
+	if err := validateFirstLast(first, last); err != nil {
+		return nil, err
+	}
+	pager, err := newChannelModelPricePager(opts, last != nil)
+	if err != nil {
+		return nil, err
+	}
+	if _m, err = pager.applyFilter(_m); err != nil {
+		return nil, err
+	}
+	conn := &ChannelModelPriceConnection{Edges: []*ChannelModelPriceEdge{}}
+	ignoredEdges := !hasCollectedField(ctx, edgesField)
+	if hasCollectedField(ctx, totalCountField) || hasCollectedField(ctx, pageInfoField) {
+		hasPagination := after != nil || first != nil || before != nil || last != nil
+		if hasPagination || ignoredEdges {
+			c := _m.Clone()
+			c.ctx.Fields = nil
+			if conn.TotalCount, err = c.Count(ctx); err != nil {
+				return nil, err
+			}
+			conn.PageInfo.HasNextPage = first != nil && conn.TotalCount > 0
+			conn.PageInfo.HasPreviousPage = last != nil && conn.TotalCount > 0
+		}
+	}
+	if ignoredEdges || (first != nil && *first == 0) || (last != nil && *last == 0) {
+		return conn, nil
+	}
+	if _m, err = pager.applyCursors(_m, after, before); err != nil {
+		return nil, err
+	}
+	limit := paginateLimit(first, last)
+	if limit != 0 {
+		_m.Limit(limit)
+	}
+	if field := collectedField(ctx, edgesField, nodeField); field != nil {
+		if err := _m.collectField(ctx, limit == 1, graphql.GetOperationContext(ctx), *field, []string{edgesField, nodeField}); err != nil {
+			return nil, err
+		}
+	}
+	_m = pager.applyOrder(_m)
+	nodes, err := _m.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn.build(nodes, pager, after, first, before, last)
+	return conn, nil
+}
+
+var (
+	// ChannelModelPriceOrderFieldCreatedAt orders ChannelModelPrice by created_at.
+	ChannelModelPriceOrderFieldCreatedAt = &ChannelModelPriceOrderField{
+		Value: func(_m *ChannelModelPrice) (ent.Value, error) {
+			return _m.CreatedAt, nil
+		},
+		column: channelmodelprice.FieldCreatedAt,
+		toTerm: channelmodelprice.ByCreatedAt,
+		toCursor: func(_m *ChannelModelPrice) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.CreatedAt,
+			}
+		},
+	}
+	// ChannelModelPriceOrderFieldUpdatedAt orders ChannelModelPrice by updated_at.
+	ChannelModelPriceOrderFieldUpdatedAt = &ChannelModelPriceOrderField{
+		Value: func(_m *ChannelModelPrice) (ent.Value, error) {
+			return _m.UpdatedAt, nil
+		},
+		column: channelmodelprice.FieldUpdatedAt,
+		toTerm: channelmodelprice.ByUpdatedAt,
+		toCursor: func(_m *ChannelModelPrice) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.UpdatedAt,
+			}
+		},
+	}
+)
+
+// String implement fmt.Stringer interface.
+func (f ChannelModelPriceOrderField) String() string {
+	var str string
+	switch f.column {
+	case ChannelModelPriceOrderFieldCreatedAt.column:
+		str = "CREATED_AT"
+	case ChannelModelPriceOrderFieldUpdatedAt.column:
+		str = "UPDATED_AT"
+	}
+	return str
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (f ChannelModelPriceOrderField) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(f.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (f *ChannelModelPriceOrderField) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("ChannelModelPriceOrderField %T must be a string", v)
+	}
+	switch str {
+	case "CREATED_AT":
+		*f = *ChannelModelPriceOrderFieldCreatedAt
+	case "UPDATED_AT":
+		*f = *ChannelModelPriceOrderFieldUpdatedAt
+	default:
+		return fmt.Errorf("%s is not a valid ChannelModelPriceOrderField", str)
+	}
+	return nil
+}
+
+// ChannelModelPriceOrderField defines the ordering field of ChannelModelPrice.
+type ChannelModelPriceOrderField struct {
+	// Value extracts the ordering value from the given ChannelModelPrice.
+	Value    func(*ChannelModelPrice) (ent.Value, error)
+	column   string // field or computed.
+	toTerm   func(...sql.OrderTermOption) channelmodelprice.OrderOption
+	toCursor func(*ChannelModelPrice) Cursor
+}
+
+// ChannelModelPriceOrder defines the ordering of ChannelModelPrice.
+type ChannelModelPriceOrder struct {
+	Direction OrderDirection               `json:"direction"`
+	Field     *ChannelModelPriceOrderField `json:"field"`
+}
+
+// DefaultChannelModelPriceOrder is the default ordering of ChannelModelPrice.
+var DefaultChannelModelPriceOrder = &ChannelModelPriceOrder{
+	Direction: entgql.OrderDirectionAsc,
+	Field: &ChannelModelPriceOrderField{
+		Value: func(_m *ChannelModelPrice) (ent.Value, error) {
+			return _m.ID, nil
+		},
+		column: channelmodelprice.FieldID,
+		toTerm: channelmodelprice.ByID,
+		toCursor: func(_m *ChannelModelPrice) Cursor {
+			return Cursor{ID: _m.ID}
+		},
+	},
+}
+
+// ToEdge converts ChannelModelPrice into ChannelModelPriceEdge.
+func (_m *ChannelModelPrice) ToEdge(order *ChannelModelPriceOrder) *ChannelModelPriceEdge {
+	if order == nil {
+		order = DefaultChannelModelPriceOrder
+	}
+	return &ChannelModelPriceEdge{
+		Node:   _m,
+		Cursor: order.Field.toCursor(_m),
+	}
+}
+
+// ChannelModelPriceVersionEdge is the edge representation of ChannelModelPriceVersion.
+type ChannelModelPriceVersionEdge struct {
+	Node   *ChannelModelPriceVersion `json:"node"`
+	Cursor Cursor                    `json:"cursor"`
+}
+
+// ChannelModelPriceVersionConnection is the connection containing edges to ChannelModelPriceVersion.
+type ChannelModelPriceVersionConnection struct {
+	Edges      []*ChannelModelPriceVersionEdge `json:"edges"`
+	PageInfo   PageInfo                        `json:"pageInfo"`
+	TotalCount int                             `json:"totalCount"`
+}
+
+func (c *ChannelModelPriceVersionConnection) build(nodes []*ChannelModelPriceVersion, pager *channelmodelpriceversionPager, after *Cursor, first *int, before *Cursor, last *int) {
+	c.PageInfo.HasNextPage = before != nil
+	c.PageInfo.HasPreviousPage = after != nil
+	if first != nil && *first+1 == len(nodes) {
+		c.PageInfo.HasNextPage = true
+		nodes = nodes[:len(nodes)-1]
+	} else if last != nil && *last+1 == len(nodes) {
+		c.PageInfo.HasPreviousPage = true
+		nodes = nodes[:len(nodes)-1]
+	}
+	var nodeAt func(int) *ChannelModelPriceVersion
+	if last != nil {
+		n := len(nodes) - 1
+		nodeAt = func(i int) *ChannelModelPriceVersion {
+			return nodes[n-i]
+		}
+	} else {
+		nodeAt = func(i int) *ChannelModelPriceVersion {
+			return nodes[i]
+		}
+	}
+	c.Edges = make([]*ChannelModelPriceVersionEdge, len(nodes))
+	for i := range nodes {
+		node := nodeAt(i)
+		c.Edges[i] = &ChannelModelPriceVersionEdge{
+			Node:   node,
+			Cursor: pager.toCursor(node),
+		}
+	}
+	if l := len(c.Edges); l > 0 {
+		c.PageInfo.StartCursor = &c.Edges[0].Cursor
+		c.PageInfo.EndCursor = &c.Edges[l-1].Cursor
+	}
+	if c.TotalCount == 0 {
+		c.TotalCount = len(nodes)
+	}
+}
+
+// ChannelModelPriceVersionPaginateOption enables pagination customization.
+type ChannelModelPriceVersionPaginateOption func(*channelmodelpriceversionPager) error
+
+// WithChannelModelPriceVersionOrder configures pagination ordering.
+func WithChannelModelPriceVersionOrder(order *ChannelModelPriceVersionOrder) ChannelModelPriceVersionPaginateOption {
+	if order == nil {
+		order = DefaultChannelModelPriceVersionOrder
+	}
+	o := *order
+	return func(pager *channelmodelpriceversionPager) error {
+		if err := o.Direction.Validate(); err != nil {
+			return err
+		}
+		if o.Field == nil {
+			o.Field = DefaultChannelModelPriceVersionOrder.Field
+		}
+		pager.order = &o
+		return nil
+	}
+}
+
+// WithChannelModelPriceVersionFilter configures pagination filter.
+func WithChannelModelPriceVersionFilter(filter func(*ChannelModelPriceVersionQuery) (*ChannelModelPriceVersionQuery, error)) ChannelModelPriceVersionPaginateOption {
+	return func(pager *channelmodelpriceversionPager) error {
+		if filter == nil {
+			return errors.New("ChannelModelPriceVersionQuery filter cannot be nil")
+		}
+		pager.filter = filter
+		return nil
+	}
+}
+
+type channelmodelpriceversionPager struct {
+	reverse bool
+	order   *ChannelModelPriceVersionOrder
+	filter  func(*ChannelModelPriceVersionQuery) (*ChannelModelPriceVersionQuery, error)
+}
+
+func newChannelModelPriceVersionPager(opts []ChannelModelPriceVersionPaginateOption, reverse bool) (*channelmodelpriceversionPager, error) {
+	pager := &channelmodelpriceversionPager{reverse: reverse}
+	for _, opt := range opts {
+		if err := opt(pager); err != nil {
+			return nil, err
+		}
+	}
+	if pager.order == nil {
+		pager.order = DefaultChannelModelPriceVersionOrder
+	}
+	return pager, nil
+}
+
+func (p *channelmodelpriceversionPager) applyFilter(query *ChannelModelPriceVersionQuery) (*ChannelModelPriceVersionQuery, error) {
+	if p.filter != nil {
+		return p.filter(query)
+	}
+	return query, nil
+}
+
+func (p *channelmodelpriceversionPager) toCursor(_m *ChannelModelPriceVersion) Cursor {
+	return p.order.Field.toCursor(_m)
+}
+
+func (p *channelmodelpriceversionPager) applyCursors(query *ChannelModelPriceVersionQuery, after, before *Cursor) (*ChannelModelPriceVersionQuery, error) {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	for _, predicate := range entgql.CursorsPredicate(after, before, DefaultChannelModelPriceVersionOrder.Field.column, p.order.Field.column, direction) {
+		query = query.Where(predicate)
+	}
+	return query, nil
+}
+
+func (p *channelmodelpriceversionPager) applyOrder(query *ChannelModelPriceVersionQuery) *ChannelModelPriceVersionQuery {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	query = query.Order(p.order.Field.toTerm(direction.OrderTermOption()))
+	if p.order.Field != DefaultChannelModelPriceVersionOrder.Field {
+		query = query.Order(DefaultChannelModelPriceVersionOrder.Field.toTerm(direction.OrderTermOption()))
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return query
+}
+
+func (p *channelmodelpriceversionPager) orderExpr(query *ChannelModelPriceVersionQuery) sql.Querier {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return sql.ExprFunc(func(b *sql.Builder) {
+		b.Ident(p.order.Field.column).Pad().WriteString(string(direction))
+		if p.order.Field != DefaultChannelModelPriceVersionOrder.Field {
+			b.Comma().Ident(DefaultChannelModelPriceVersionOrder.Field.column).Pad().WriteString(string(direction))
+		}
+	})
+}
+
+// Paginate executes the query and returns a relay based cursor connection to ChannelModelPriceVersion.
+func (_m *ChannelModelPriceVersionQuery) Paginate(
+	ctx context.Context, after *Cursor, first *int,
+	before *Cursor, last *int, opts ...ChannelModelPriceVersionPaginateOption,
+) (*ChannelModelPriceVersionConnection, error) {
+	if err := validateFirstLast(first, last); err != nil {
+		return nil, err
+	}
+	pager, err := newChannelModelPriceVersionPager(opts, last != nil)
+	if err != nil {
+		return nil, err
+	}
+	if _m, err = pager.applyFilter(_m); err != nil {
+		return nil, err
+	}
+	conn := &ChannelModelPriceVersionConnection{Edges: []*ChannelModelPriceVersionEdge{}}
+	ignoredEdges := !hasCollectedField(ctx, edgesField)
+	if hasCollectedField(ctx, totalCountField) || hasCollectedField(ctx, pageInfoField) {
+		hasPagination := after != nil || first != nil || before != nil || last != nil
+		if hasPagination || ignoredEdges {
+			c := _m.Clone()
+			c.ctx.Fields = nil
+			if conn.TotalCount, err = c.Count(ctx); err != nil {
+				return nil, err
+			}
+			conn.PageInfo.HasNextPage = first != nil && conn.TotalCount > 0
+			conn.PageInfo.HasPreviousPage = last != nil && conn.TotalCount > 0
+		}
+	}
+	if ignoredEdges || (first != nil && *first == 0) || (last != nil && *last == 0) {
+		return conn, nil
+	}
+	if _m, err = pager.applyCursors(_m, after, before); err != nil {
+		return nil, err
+	}
+	limit := paginateLimit(first, last)
+	if limit != 0 {
+		_m.Limit(limit)
+	}
+	if field := collectedField(ctx, edgesField, nodeField); field != nil {
+		if err := _m.collectField(ctx, limit == 1, graphql.GetOperationContext(ctx), *field, []string{edgesField, nodeField}); err != nil {
+			return nil, err
+		}
+	}
+	_m = pager.applyOrder(_m)
+	nodes, err := _m.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn.build(nodes, pager, after, first, before, last)
+	return conn, nil
+}
+
+var (
+	// ChannelModelPriceVersionOrderFieldCreatedAt orders ChannelModelPriceVersion by created_at.
+	ChannelModelPriceVersionOrderFieldCreatedAt = &ChannelModelPriceVersionOrderField{
+		Value: func(_m *ChannelModelPriceVersion) (ent.Value, error) {
+			return _m.CreatedAt, nil
+		},
+		column: channelmodelpriceversion.FieldCreatedAt,
+		toTerm: channelmodelpriceversion.ByCreatedAt,
+		toCursor: func(_m *ChannelModelPriceVersion) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.CreatedAt,
+			}
+		},
+	}
+	// ChannelModelPriceVersionOrderFieldUpdatedAt orders ChannelModelPriceVersion by updated_at.
+	ChannelModelPriceVersionOrderFieldUpdatedAt = &ChannelModelPriceVersionOrderField{
+		Value: func(_m *ChannelModelPriceVersion) (ent.Value, error) {
+			return _m.UpdatedAt, nil
+		},
+		column: channelmodelpriceversion.FieldUpdatedAt,
+		toTerm: channelmodelpriceversion.ByUpdatedAt,
+		toCursor: func(_m *ChannelModelPriceVersion) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.UpdatedAt,
+			}
+		},
+	}
+)
+
+// String implement fmt.Stringer interface.
+func (f ChannelModelPriceVersionOrderField) String() string {
+	var str string
+	switch f.column {
+	case ChannelModelPriceVersionOrderFieldCreatedAt.column:
+		str = "CREATED_AT"
+	case ChannelModelPriceVersionOrderFieldUpdatedAt.column:
+		str = "UPDATED_AT"
+	}
+	return str
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (f ChannelModelPriceVersionOrderField) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(f.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (f *ChannelModelPriceVersionOrderField) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("ChannelModelPriceVersionOrderField %T must be a string", v)
+	}
+	switch str {
+	case "CREATED_AT":
+		*f = *ChannelModelPriceVersionOrderFieldCreatedAt
+	case "UPDATED_AT":
+		*f = *ChannelModelPriceVersionOrderFieldUpdatedAt
+	default:
+		return fmt.Errorf("%s is not a valid ChannelModelPriceVersionOrderField", str)
+	}
+	return nil
+}
+
+// ChannelModelPriceVersionOrderField defines the ordering field of ChannelModelPriceVersion.
+type ChannelModelPriceVersionOrderField struct {
+	// Value extracts the ordering value from the given ChannelModelPriceVersion.
+	Value    func(*ChannelModelPriceVersion) (ent.Value, error)
+	column   string // field or computed.
+	toTerm   func(...sql.OrderTermOption) channelmodelpriceversion.OrderOption
+	toCursor func(*ChannelModelPriceVersion) Cursor
+}
+
+// ChannelModelPriceVersionOrder defines the ordering of ChannelModelPriceVersion.
+type ChannelModelPriceVersionOrder struct {
+	Direction OrderDirection                      `json:"direction"`
+	Field     *ChannelModelPriceVersionOrderField `json:"field"`
+}
+
+// DefaultChannelModelPriceVersionOrder is the default ordering of ChannelModelPriceVersion.
+var DefaultChannelModelPriceVersionOrder = &ChannelModelPriceVersionOrder{
+	Direction: entgql.OrderDirectionAsc,
+	Field: &ChannelModelPriceVersionOrderField{
+		Value: func(_m *ChannelModelPriceVersion) (ent.Value, error) {
+			return _m.ID, nil
+		},
+		column: channelmodelpriceversion.FieldID,
+		toTerm: channelmodelpriceversion.ByID,
+		toCursor: func(_m *ChannelModelPriceVersion) Cursor {
+			return Cursor{ID: _m.ID}
+		},
+	},
+}
+
+// ToEdge converts ChannelModelPriceVersion into ChannelModelPriceVersionEdge.
+func (_m *ChannelModelPriceVersion) ToEdge(order *ChannelModelPriceVersionOrder) *ChannelModelPriceVersionEdge {
+	if order == nil {
+		order = DefaultChannelModelPriceVersionOrder
+	}
+	return &ChannelModelPriceVersionEdge{
 		Node:   _m,
 		Cursor: order.Field.toCursor(_m),
 	}
