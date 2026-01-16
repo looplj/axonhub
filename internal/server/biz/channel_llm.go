@@ -469,9 +469,9 @@ func (svc *ChannelService) preloadModelPrices(ctx context.Context, ch *Channel) 
 		return
 	}
 
-	cache := make(map[string]objects.ModelPrice, len(prices))
+	cache := make(map[string]*ent.ChannelModelPrice, len(prices))
 	for _, p := range prices {
-		cache[p.ModelID] = p.Price
+		cache[p.ModelID] = p
 	}
 
 	ch.cachedModelPrices = cache

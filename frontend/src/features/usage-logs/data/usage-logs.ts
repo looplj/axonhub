@@ -40,6 +40,11 @@ function buildUsageLogsQuery(permissions: { canViewChannels: boolean }) {
             source
             format
             totalCost
+            costItems {
+              itemCode
+              quantity
+              subtotal
+            }
           }
           cursor
         }
@@ -87,6 +92,11 @@ function buildUsageLogDetailQuery(permissions: { canViewChannels: boolean }) {
           source
           format
           totalCost
+          costItems {
+            itemCode
+            quantity
+            subtotal
+          }
         }
       }
     }

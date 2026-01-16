@@ -171,6 +171,11 @@ func (_u *ChannelModelPriceUpdate) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *ChannelModelPriceUpdate) check() error {
+	if v, ok := _u.mutation.Price(); ok {
+		if err := v.Validate(); err != nil {
+			return &ValidationError{Name: "price", err: fmt.Errorf(`ent: validator failed for field "ChannelModelPrice.price": %w`, err)}
+		}
+	}
 	if _u.mutation.ChannelCleared() && len(_u.mutation.ChannelIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "ChannelModelPrice.channel"`)
 	}
@@ -430,6 +435,11 @@ func (_u *ChannelModelPriceUpdateOne) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *ChannelModelPriceUpdateOne) check() error {
+	if v, ok := _u.mutation.Price(); ok {
+		if err := v.Validate(); err != nil {
+			return &ValidationError{Name: "price", err: fmt.Errorf(`ent: validator failed for field "ChannelModelPrice.price": %w`, err)}
+		}
+	}
 	if _u.mutation.ChannelCleared() && len(_u.mutation.ChannelIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "ChannelModelPrice.channel"`)
 	}

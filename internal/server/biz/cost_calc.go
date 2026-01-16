@@ -17,14 +17,12 @@ func unitsInMillionTokens(units int64) decimal.Decimal {
 
 func computeItemSubtotal(quantity int64, pricing objects.Pricing) (objects.CostItem, decimal.Decimal) {
 	item := objects.CostItem{
-		Mode:     pricing.Mode,
 		Quantity: quantity,
 	}
 
 	switch pricing.Mode {
 	case objects.PricingModeFlatFee:
 		if pricing.FlatFee != nil {
-			item.FlatFee = pricing.FlatFee
 			item.Subtotal = *pricing.FlatFee
 
 			return item, *pricing.FlatFee
@@ -33,7 +31,6 @@ func computeItemSubtotal(quantity int64, pricing objects.Pricing) (objects.CostI
 		return item, decimal.Zero
 	case objects.PricingModeUsagePerUnit:
 		if pricing.UsagePerUnit != nil {
-			item.UnitPrice = pricing.UsagePerUnit
 			sub := pricing.UsagePerUnit.Mul(unitsInMillionTokens(quantity))
 			item.Subtotal = sub
 
@@ -75,10 +72,9 @@ func computeItemSubtotal(quantity int64, pricing objects.Pricing) (objects.CostI
 				sub := tier.PricePerUnit.Mul(unitsInMillionTokens(tierUnits))
 				total = total.Add(sub)
 				item.TierBreakdown = append(item.TierBreakdown, objects.TierCost{
-					UpTo:         tier.UpTo,
-					Units:        tierUnits,
-					PricePerUnit: tier.PricePerUnit,
-					Subtotal:     sub,
+					UpTo:     tier.UpTo,
+					Units:    tierUnits,
+					Subtotal: sub,
 				})
 				prevUpTo = getUpToOrZero(tier.UpTo)
 
@@ -133,7 +129,33 @@ func ComputeUsageCost(usage *llm.Usage, price objects.ModelPrice) ([]objects.Cos
 				quantity = usage.PromptTokensDetails.CachedTokens
 			}
 		case objects.PriceItemCodeWriteCachedTokens:
+			// Handle write cached tokens with variant support
 			if usage.PromptTokensDetails != nil {
+				// Check if we have 5m/1h cache variants to calculate separately
+				if usage.PromptTokensDetails.WriteCached5MinTokens > 0 || usage.PromptTokensDetails.WriteCached1HourTokens > 0 {
+					// Process 5m variant if present
+					if usage.PromptTokensDetails.WriteCached5MinTokens > 0 {
+						pricing := it.FindPromptWriteCacheVariantPricing(objects.PromptWriteCacheVariantCode5Min)
+						item, sub := computeItemSubtotal(usage.PromptTokensDetails.WriteCached5MinTokens, pricing)
+						item.ItemCode = it.ItemCode
+						items = append(items, item)
+						total = total.Add(sub)
+					}
+
+					// Process 1h variant if present
+					if usage.PromptTokensDetails.WriteCached1HourTokens > 0 {
+						pricing := it.FindPromptWriteCacheVariantPricing(objects.PromptWriteCacheVariantCode1Hour)
+						item, sub := computeItemSubtotal(usage.PromptTokensDetails.WriteCached1HourTokens, pricing)
+						item.ItemCode = it.ItemCode
+						items = append(items, item)
+						total = total.Add(sub)
+					}
+
+					// Skip the shared pricing calculation
+					continue
+				}
+
+				// Fallback to shared WriteCachedTokens if no variants present
 				quantity = usage.PromptTokensDetails.WriteCachedTokens
 			}
 		default:

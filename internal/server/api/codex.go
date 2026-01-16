@@ -167,7 +167,7 @@ type codexOAuth2Credentials struct {
 	RefreshToken string    `json:"refresh_token"`
 	ClientID     string    `json:"client_id,omitempty"`
 	AccountID    string    `json:"account_id,omitempty"`
-	ExpiresAt    time.Time `json:"expires_at,omitempty"`
+	ExpiresAt    time.Time `json:"expires_at"`
 	TokenType    string    `json:"token_type,omitempty"`
 	Scopes       []string  `json:"scopes,omitempty"`
 }

@@ -117,15 +117,15 @@
     "addItem": "添加价格项",
     "itemCode": "计费项",
     "itemCodes": {
-      "prompt_tokens": "提示词 Token",
-      "completion_tokens": "补全 Token",
-      "prompt_cached_tokens": "缓存 Token",
+      "prompt_tokens": "输入 Token",
+      "completion_tokens": "输出 Token",
+      "prompt_cached_tokens": "输入缓存 Token",
       "prompt_write_cached_tokens": "写入缓存 Token"
     },
     "mode": "计费模式",
-    "mode_flat_fee": "固定费用",
-    "mode_usage_per_unit": "按单位计费",
-    "mode_usage_tiered": "阶梯计费",
+    "mode_flat_fee": "按次收费",
+    "mode_usage_per_unit": "每一百万令牌",
+    "mode_usage_tiered": "按令牌阶梯计费",
     "tiers": "阶梯价格",
     "upTo": "截止用量",
     "pricePerUnit": "单位价格",
@@ -298,6 +298,42 @@
       },
       "submit": "初始化系统",
       "submitting": "初始化中..."
+    }
+  },
+  "price": {
+    "title": "模型定价",
+    "description": "为渠道 {{name}} 中的模型设置价格",
+    "addPrice": "添加定价",
+    "noPrices": "此渠道暂无定价配置。",
+    "model": "模型",
+    "items": "计费项",
+    "addItem": "添加计费项",
+    "itemCode": "计费项代码",
+    "itemCodes": {
+      "prompt_tokens": "输入 Token",
+      "completion_tokens": "输出 Token",
+      "prompt_cached_tokens": "输入缓存 Token",
+      "prompt_write_cached_tokens": "写入缓存 Token"
+    },
+    "mode": "计费模式",
+    "mode_flat_fee": "固定费用",
+    "mode_usage_per_unit": "按百万 Token",
+    "mode_usage_tiered": "阶梯 Token",
+    "tiers": "阶梯",
+    "upTo": "上限",
+    "pricePerUnit": "单价",
+    "promptWriteCacheVariants": "写入缓存变体",
+    "addVariant": "添加变体",
+    "variantCode": "变体代码",
+    "variantCodes": {
+      "five_min": "5 分钟",
+      "one_hour": "1 小时"
+    },
+    "duplicateItemCode": "计费项代码重复",
+    "duplicateVariantCode": "变体代码重复",
+    "validation": {
+      "modelRequired": "模型不能为空",
+      "priceRequired": "金额不能为空"
     }
   },
   "scopes": {

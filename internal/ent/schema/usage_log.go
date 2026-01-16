@@ -55,9 +55,11 @@ func (UsageLog) Fields() []ent.Field {
 		field.Int64("total_tokens").Default(0).Comment("Total number of tokens used"),
 
 		// Prompt tokens details from llm.PromptTokensDetails
-		field.Int64("prompt_audio_tokens").Default(0).Optional().Comment("Number of audio tokens in the prompt"),
-		field.Int64("prompt_cached_tokens").Default(0).Optional().Comment("Number of cached tokens in the prompt"),
-		field.Int64("prompt_write_cached_tokens").Default(0).Optional(),
+		field.Int64("prompt_audio_tokens").Default(0).Comment("Number of audio tokens in the prompt"),
+		field.Int64("prompt_cached_tokens").Default(0).Comment("Number of cached tokens in the prompt"),
+		field.Int64("prompt_write_cached_tokens").Default(0).Optional().Comment("Number of total write cache tokens, if 5m or 1h ttl variant is present, the field is the sum of 5m and 1h"),
+		field.Int64("prompt_write_cached_tokens_5m").Default(0).Optional().Comment("Number of token write cache with 5m ttl"),
+		field.Int64("prompt_write_cached_tokens_1h").Default(0).Optional().Comment("Number of token write cache with 1h ttl"),
 
 		// Completion tokens details from llm.CompletionTokensDetails
 		field.Int64("completion_audio_tokens").Default(0).Optional().Comment("Number of audio tokens in the completion"),
@@ -70,11 +72,17 @@ func (UsageLog) Fields() []ent.Field {
 		field.String("format").Immutable().Default("openai/chat_completions").Comment("Request format used"),
 
 		// Cost fields
-		field.Float("total_cost").Default(0).Comment("Total cost calculated based on channel model price"),
+		field.Float("total_cost").
+			Nillable().
+			Optional().
+			Comment("Total cost calculated based on channel model price"),
 		field.JSON("cost_items", []objects.CostItem{}).
 			Default([]objects.CostItem{}).
 			Comment("Detailed cost breakdown items in JSON").
 			Optional(),
+		field.String("cost_price_reference_id").
+			Optional().
+			Comment("Reference ID to the channel model price version used for cost calculation"),
 	}
 }
 

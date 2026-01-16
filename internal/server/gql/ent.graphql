@@ -1979,7 +1979,18 @@ input CreateUsageLogInput {
   Number of cached tokens in the prompt
   """
   promptCachedTokens: Int
+  """
+  Number of total write cache tokens, if 5m or 1h ttl variant is present, the field is the sum of 5m and 1h
+  """
   promptWriteCachedTokens: Int
+  """
+  Number of token write cache with 5m ttl
+  """
+  promptWriteCachedTokens5m: Int
+  """
+  Number of token write cache with 1h ttl
+  """
+  promptWriteCachedTokens1h: Int
   """
   Number of audio tokens in the completion
   """
@@ -2012,6 +2023,10 @@ input CreateUsageLogInput {
   Detailed cost breakdown items in JSON
   """
   costItems: [CostItemInput!]
+  """
+  Reference ID to the channel model price version used for cost calculation
+  """
+  costPriceReferenceID: String
   requestID: ID!
   projectID: ID!
   channelID: ID
@@ -5480,14 +5495,25 @@ input UpdateUsageLogInput {
   Number of audio tokens in the prompt
   """
   promptAudioTokens: Int
-  clearPromptAudioTokens: Boolean
   """
   Number of cached tokens in the prompt
   """
   promptCachedTokens: Int
-  clearPromptCachedTokens: Boolean
+  """
+  Number of total write cache tokens, if 5m or 1h ttl variant is present, the field is the sum of 5m and 1h
+  """
   promptWriteCachedTokens: Int
   clearPromptWriteCachedTokens: Boolean
+  """
+  Number of token write cache with 5m ttl
+  """
+  promptWriteCachedTokens5m: Int
+  clearPromptWriteCachedTokens5m: Boolean
+  """
+  Number of token write cache with 1h ttl
+  """
+  promptWriteCachedTokens1h: Int
+  clearPromptWriteCachedTokens1h: Boolean
   """
   Number of audio tokens in the completion
   """
@@ -5512,12 +5538,18 @@ input UpdateUsageLogInput {
   Total cost calculated based on channel model price
   """
   totalCost: Float
+  clearTotalCost: Boolean
   """
   Detailed cost breakdown items in JSON
   """
   costItems: [CostItemInput!]
   appendCostItems: [CostItemInput!]
   clearCostItems: Boolean
+  """
+  Reference ID to the channel model price version used for cost calculation
+  """
+  costPriceReferenceID: String
+  clearCostPriceReferenceID: Boolean
   channelID: ID
   clearChannel: Boolean
 }
@@ -5589,12 +5621,23 @@ type UsageLog implements Node {
   """
   Number of audio tokens in the prompt
   """
-  promptAudioTokens: Int
+  promptAudioTokens: Int!
   """
   Number of cached tokens in the prompt
   """
-  promptCachedTokens: Int
+  promptCachedTokens: Int!
+  """
+  Number of total write cache tokens, if 5m or 1h ttl variant is present, the field is the sum of 5m and 1h
+  """
   promptWriteCachedTokens: Int
+  """
+  Number of token write cache with 5m ttl
+  """
+  promptWriteCachedTokens5m: Int
+  """
+  Number of token write cache with 1h ttl
+  """
+  promptWriteCachedTokens1h: Int
   """
   Number of audio tokens in the completion
   """
@@ -5622,11 +5665,15 @@ type UsageLog implements Node {
   """
   Total cost calculated based on channel model price
   """
-  totalCost: Float!
+  totalCost: Float
   """
   Detailed cost breakdown items in JSON
   """
   costItems: [CostItem!]
+  """
+  Reference ID to the channel model price version used for cost calculation
+  """
+  costPriceReferenceID: String
   request: Request!
   project: Project!
   channel: Channel @goField(forceResolver: true)
@@ -5813,8 +5860,6 @@ input UsageLogWhereInput {
   promptAudioTokensGTE: Int
   promptAudioTokensLT: Int
   promptAudioTokensLTE: Int
-  promptAudioTokensIsNil: Boolean
-  promptAudioTokensNotNil: Boolean
   """
   prompt_cached_tokens field predicates
   """
@@ -5826,8 +5871,6 @@ input UsageLogWhereInput {
   promptCachedTokensGTE: Int
   promptCachedTokensLT: Int
   promptCachedTokensLTE: Int
-  promptCachedTokensIsNil: Boolean
-  promptCachedTokensNotNil: Boolean
   """
   prompt_write_cached_tokens field predicates
   """
@@ -5841,6 +5884,32 @@ input UsageLogWhereInput {
   promptWriteCachedTokensLTE: Int
   promptWriteCachedTokensIsNil: Boolean
   promptWriteCachedTokensNotNil: Boolean
+  """
+  prompt_write_cached_tokens_5m field predicates
+  """
+  promptWriteCachedTokens5m: Int
+  promptWriteCachedTokens5mNEQ: Int
+  promptWriteCachedTokens5mIn: [Int!]
+  promptWriteCachedTokens5mNotIn: [Int!]
+  promptWriteCachedTokens5mGT: Int
+  promptWriteCachedTokens5mGTE: Int
+  promptWriteCachedTokens5mLT: Int
+  promptWriteCachedTokens5mLTE: Int
+  promptWriteCachedTokens5mIsNil: Boolean
+  promptWriteCachedTokens5mNotNil: Boolean
+  """
+  prompt_write_cached_tokens_1h field predicates
+  """
+  promptWriteCachedTokens1h: Int
+  promptWriteCachedTokens1hNEQ: Int
+  promptWriteCachedTokens1hIn: [Int!]
+  promptWriteCachedTokens1hNotIn: [Int!]
+  promptWriteCachedTokens1hGT: Int
+  promptWriteCachedTokens1hGTE: Int
+  promptWriteCachedTokens1hLT: Int
+  promptWriteCachedTokens1hLTE: Int
+  promptWriteCachedTokens1hIsNil: Boolean
+  promptWriteCachedTokens1hNotNil: Boolean
   """
   completion_audio_tokens field predicates
   """
@@ -5927,6 +5996,26 @@ input UsageLogWhereInput {
   totalCostGTE: Float
   totalCostLT: Float
   totalCostLTE: Float
+  totalCostIsNil: Boolean
+  totalCostNotNil: Boolean
+  """
+  cost_price_reference_id field predicates
+  """
+  costPriceReferenceID: String
+  costPriceReferenceIDNEQ: String
+  costPriceReferenceIDIn: [String!]
+  costPriceReferenceIDNotIn: [String!]
+  costPriceReferenceIDGT: String
+  costPriceReferenceIDGTE: String
+  costPriceReferenceIDLT: String
+  costPriceReferenceIDLTE: String
+  costPriceReferenceIDContains: String
+  costPriceReferenceIDHasPrefix: String
+  costPriceReferenceIDHasSuffix: String
+  costPriceReferenceIDIsNil: Boolean
+  costPriceReferenceIDNotNil: Boolean
+  costPriceReferenceIDEqualFold: String
+  costPriceReferenceIDContainsFold: String
   """
   request edge predicates
   """

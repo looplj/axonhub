@@ -401,7 +401,12 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
 
         return (
           <div className='font-mono text-xs font-medium'>
-            {settings?.currencyCode} {cost.toFixed(6)}
+            {t('currencies.format', {
+              val: cost,
+              currency: settings?.currencyCode,
+              locale: i18n.language === 'zh' ? 'zh-CN' : 'en-US',
+              minimumFractionDigits: 6,
+            })}
           </div>
         );
       },

@@ -596,8 +596,16 @@ type CompletionTokensDetails struct {
 type PromptTokensDetails struct {
 	AudioTokens  int64 `json:"audio_tokens"`
 	CachedTokens int64 `json:"cached_tokens"`
-	// hidden field, used for internal calculation.
+
+	// WriteCachedTokens is the number of total tokens cached write for the current request.
+	// If WriteCached5MinTokens or WriteCached1HourTokens present, the WriteCachedTokens is the sum of WriteCached5MinTokens and WriteCached1HourTokens.
 	WriteCachedTokens int64 `json:"write_cached_tokens,omitempty"`
+
+	// WriteCached5MinTokens is the number of tokens cached write for 5 min ttl, for the anthropic.
+	WriteCached5MinTokens int64 `json:"write_cached_5min_tokens,omitempty"`
+
+	// WriteCached1HourTokens is the number of tokens cached write for 1 hour ttl, for the anthropic.
+	WriteCached1HourTokens int64 `json:"write_cached_1hour_tokens,omitempty"`
 }
 
 // ResponseError represents an error response.

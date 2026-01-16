@@ -3,6 +3,7 @@ package anthropic
 import "github.com/looplj/axonhub/llm"
 
 // Usage represents usage information in Anthropic format.
+// Total input tokens in a request is the summation of input_tokens, cache_creation_input_tokens, and cache_read_input_tokens.
 type Usage struct {
 	// The number of input tokens which were used to bill.
 	InputTokens int64 `json:"input_tokens"`
@@ -16,11 +17,19 @@ type Usage struct {
 	// The number of input tokens read from the cache.
 	CacheReadInputTokens int64 `json:"cache_read_input_tokens"`
 
+	// CacheCreation is the breakdown of cached tokens by TTL
+	CacheCreation CacheCreation `json:"cache_creation"`
+
 	// Available options: standard, priority, batch
 	ServiceTier string `json:"service_tier,omitempty"`
 
 	// For moonshot anthropic endpoint, it uses cached tokens instead of cache read input tokens.
 	CachedTokens int64 `json:"cached_tokens,omitempty"`
+}
+
+type CacheCreation struct {
+	Ephemeral5mInputTokens int64 `json:"ephemeral_5m_input_tokens"`
+	Ephemeral1hInputTokens int64 `json:"ephemeral_1h_input_tokens"`
 }
 
 // https://docs.claude.com/en/api/messages#response-usage
@@ -60,10 +69,13 @@ func convertToLlmUsage(usage *Usage, platformType PlatformType) *llm.Usage {
 		TotalTokens:             promptTokens + usage.OutputTokens,
 	}
 
-	if usage.CacheReadInputTokens > 0 || usage.CacheCreationInputTokens > 0 {
+	if usage.CacheReadInputTokens > 0 || usage.CacheCreationInputTokens > 0 ||
+		usage.CacheCreation.Ephemeral5mInputTokens > 0 || usage.CacheCreation.Ephemeral1hInputTokens > 0 {
 		u.PromptTokensDetails = &llm.PromptTokensDetails{
-			CachedTokens:      usage.CacheReadInputTokens,
-			WriteCachedTokens: usage.CacheCreationInputTokens,
+			CachedTokens:           usage.CacheReadInputTokens,
+			WriteCachedTokens:      usage.CacheCreationInputTokens,
+			WriteCached5MinTokens:  usage.CacheCreation.Ephemeral5mInputTokens,
+			WriteCached1HourTokens: usage.CacheCreation.Ephemeral1hInputTokens,
 		}
 	}
 
@@ -80,6 +92,10 @@ func convertToAnthropicUsage(llmUsage *llm.Usage) *Usage {
 	if llmUsage.PromptTokensDetails != nil {
 		usage.CacheReadInputTokens = llmUsage.PromptTokensDetails.CachedTokens
 		usage.CacheCreationInputTokens = llmUsage.PromptTokensDetails.WriteCachedTokens
+		usage.CacheCreation = CacheCreation{
+			Ephemeral5mInputTokens: llmUsage.PromptTokensDetails.WriteCached5MinTokens,
+			Ephemeral1hInputTokens: llmUsage.PromptTokensDetails.WriteCached1HourTokens,
+		}
 		usage.InputTokens -= (usage.CacheReadInputTokens + usage.CacheCreationInputTokens)
 	}
 

@@ -8886,28 +8886,24 @@ type UsageLogWhereInput struct {
 	TotalTokensLTE   *int64  `json:"totalTokensLTE,omitempty"`
 
 	// "prompt_audio_tokens" field predicates.
-	PromptAudioTokens       *int64  `json:"promptAudioTokens,omitempty"`
-	PromptAudioTokensNEQ    *int64  `json:"promptAudioTokensNEQ,omitempty"`
-	PromptAudioTokensIn     []int64 `json:"promptAudioTokensIn,omitempty"`
-	PromptAudioTokensNotIn  []int64 `json:"promptAudioTokensNotIn,omitempty"`
-	PromptAudioTokensGT     *int64  `json:"promptAudioTokensGT,omitempty"`
-	PromptAudioTokensGTE    *int64  `json:"promptAudioTokensGTE,omitempty"`
-	PromptAudioTokensLT     *int64  `json:"promptAudioTokensLT,omitempty"`
-	PromptAudioTokensLTE    *int64  `json:"promptAudioTokensLTE,omitempty"`
-	PromptAudioTokensIsNil  bool    `json:"promptAudioTokensIsNil,omitempty"`
-	PromptAudioTokensNotNil bool    `json:"promptAudioTokensNotNil,omitempty"`
+	PromptAudioTokens      *int64  `json:"promptAudioTokens,omitempty"`
+	PromptAudioTokensNEQ   *int64  `json:"promptAudioTokensNEQ,omitempty"`
+	PromptAudioTokensIn    []int64 `json:"promptAudioTokensIn,omitempty"`
+	PromptAudioTokensNotIn []int64 `json:"promptAudioTokensNotIn,omitempty"`
+	PromptAudioTokensGT    *int64  `json:"promptAudioTokensGT,omitempty"`
+	PromptAudioTokensGTE   *int64  `json:"promptAudioTokensGTE,omitempty"`
+	PromptAudioTokensLT    *int64  `json:"promptAudioTokensLT,omitempty"`
+	PromptAudioTokensLTE   *int64  `json:"promptAudioTokensLTE,omitempty"`
 
 	// "prompt_cached_tokens" field predicates.
-	PromptCachedTokens       *int64  `json:"promptCachedTokens,omitempty"`
-	PromptCachedTokensNEQ    *int64  `json:"promptCachedTokensNEQ,omitempty"`
-	PromptCachedTokensIn     []int64 `json:"promptCachedTokensIn,omitempty"`
-	PromptCachedTokensNotIn  []int64 `json:"promptCachedTokensNotIn,omitempty"`
-	PromptCachedTokensGT     *int64  `json:"promptCachedTokensGT,omitempty"`
-	PromptCachedTokensGTE    *int64  `json:"promptCachedTokensGTE,omitempty"`
-	PromptCachedTokensLT     *int64  `json:"promptCachedTokensLT,omitempty"`
-	PromptCachedTokensLTE    *int64  `json:"promptCachedTokensLTE,omitempty"`
-	PromptCachedTokensIsNil  bool    `json:"promptCachedTokensIsNil,omitempty"`
-	PromptCachedTokensNotNil bool    `json:"promptCachedTokensNotNil,omitempty"`
+	PromptCachedTokens      *int64  `json:"promptCachedTokens,omitempty"`
+	PromptCachedTokensNEQ   *int64  `json:"promptCachedTokensNEQ,omitempty"`
+	PromptCachedTokensIn    []int64 `json:"promptCachedTokensIn,omitempty"`
+	PromptCachedTokensNotIn []int64 `json:"promptCachedTokensNotIn,omitempty"`
+	PromptCachedTokensGT    *int64  `json:"promptCachedTokensGT,omitempty"`
+	PromptCachedTokensGTE   *int64  `json:"promptCachedTokensGTE,omitempty"`
+	PromptCachedTokensLT    *int64  `json:"promptCachedTokensLT,omitempty"`
+	PromptCachedTokensLTE   *int64  `json:"promptCachedTokensLTE,omitempty"`
 
 	// "prompt_write_cached_tokens" field predicates.
 	PromptWriteCachedTokens       *int64  `json:"promptWriteCachedTokens,omitempty"`
@@ -8920,6 +8916,30 @@ type UsageLogWhereInput struct {
 	PromptWriteCachedTokensLTE    *int64  `json:"promptWriteCachedTokensLTE,omitempty"`
 	PromptWriteCachedTokensIsNil  bool    `json:"promptWriteCachedTokensIsNil,omitempty"`
 	PromptWriteCachedTokensNotNil bool    `json:"promptWriteCachedTokensNotNil,omitempty"`
+
+	// "prompt_write_cached_tokens_5m" field predicates.
+	PromptWriteCachedTokens5m       *int64  `json:"promptWriteCachedTokens5m,omitempty"`
+	PromptWriteCachedTokens5mNEQ    *int64  `json:"promptWriteCachedTokens5mNEQ,omitempty"`
+	PromptWriteCachedTokens5mIn     []int64 `json:"promptWriteCachedTokens5mIn,omitempty"`
+	PromptWriteCachedTokens5mNotIn  []int64 `json:"promptWriteCachedTokens5mNotIn,omitempty"`
+	PromptWriteCachedTokens5mGT     *int64  `json:"promptWriteCachedTokens5mGT,omitempty"`
+	PromptWriteCachedTokens5mGTE    *int64  `json:"promptWriteCachedTokens5mGTE,omitempty"`
+	PromptWriteCachedTokens5mLT     *int64  `json:"promptWriteCachedTokens5mLT,omitempty"`
+	PromptWriteCachedTokens5mLTE    *int64  `json:"promptWriteCachedTokens5mLTE,omitempty"`
+	PromptWriteCachedTokens5mIsNil  bool    `json:"promptWriteCachedTokens5mIsNil,omitempty"`
+	PromptWriteCachedTokens5mNotNil bool    `json:"promptWriteCachedTokens5mNotNil,omitempty"`
+
+	// "prompt_write_cached_tokens_1h" field predicates.
+	PromptWriteCachedTokens1h       *int64  `json:"promptWriteCachedTokens1h,omitempty"`
+	PromptWriteCachedTokens1hNEQ    *int64  `json:"promptWriteCachedTokens1hNEQ,omitempty"`
+	PromptWriteCachedTokens1hIn     []int64 `json:"promptWriteCachedTokens1hIn,omitempty"`
+	PromptWriteCachedTokens1hNotIn  []int64 `json:"promptWriteCachedTokens1hNotIn,omitempty"`
+	PromptWriteCachedTokens1hGT     *int64  `json:"promptWriteCachedTokens1hGT,omitempty"`
+	PromptWriteCachedTokens1hGTE    *int64  `json:"promptWriteCachedTokens1hGTE,omitempty"`
+	PromptWriteCachedTokens1hLT     *int64  `json:"promptWriteCachedTokens1hLT,omitempty"`
+	PromptWriteCachedTokens1hLTE    *int64  `json:"promptWriteCachedTokens1hLTE,omitempty"`
+	PromptWriteCachedTokens1hIsNil  bool    `json:"promptWriteCachedTokens1hIsNil,omitempty"`
+	PromptWriteCachedTokens1hNotNil bool    `json:"promptWriteCachedTokens1hNotNil,omitempty"`
 
 	// "completion_audio_tokens" field predicates.
 	CompletionAudioTokens       *int64  `json:"completionAudioTokens,omitempty"`
@@ -8991,14 +9011,33 @@ type UsageLogWhereInput struct {
 	FormatContainsFold *string  `json:"formatContainsFold,omitempty"`
 
 	// "total_cost" field predicates.
-	TotalCost      *float64  `json:"totalCost,omitempty"`
-	TotalCostNEQ   *float64  `json:"totalCostNEQ,omitempty"`
-	TotalCostIn    []float64 `json:"totalCostIn,omitempty"`
-	TotalCostNotIn []float64 `json:"totalCostNotIn,omitempty"`
-	TotalCostGT    *float64  `json:"totalCostGT,omitempty"`
-	TotalCostGTE   *float64  `json:"totalCostGTE,omitempty"`
-	TotalCostLT    *float64  `json:"totalCostLT,omitempty"`
-	TotalCostLTE   *float64  `json:"totalCostLTE,omitempty"`
+	TotalCost       *float64  `json:"totalCost,omitempty"`
+	TotalCostNEQ    *float64  `json:"totalCostNEQ,omitempty"`
+	TotalCostIn     []float64 `json:"totalCostIn,omitempty"`
+	TotalCostNotIn  []float64 `json:"totalCostNotIn,omitempty"`
+	TotalCostGT     *float64  `json:"totalCostGT,omitempty"`
+	TotalCostGTE    *float64  `json:"totalCostGTE,omitempty"`
+	TotalCostLT     *float64  `json:"totalCostLT,omitempty"`
+	TotalCostLTE    *float64  `json:"totalCostLTE,omitempty"`
+	TotalCostIsNil  bool      `json:"totalCostIsNil,omitempty"`
+	TotalCostNotNil bool      `json:"totalCostNotNil,omitempty"`
+
+	// "cost_price_reference_id" field predicates.
+	CostPriceReferenceID             *string  `json:"costPriceReferenceID,omitempty"`
+	CostPriceReferenceIDNEQ          *string  `json:"costPriceReferenceIDNEQ,omitempty"`
+	CostPriceReferenceIDIn           []string `json:"costPriceReferenceIDIn,omitempty"`
+	CostPriceReferenceIDNotIn        []string `json:"costPriceReferenceIDNotIn,omitempty"`
+	CostPriceReferenceIDGT           *string  `json:"costPriceReferenceIDGT,omitempty"`
+	CostPriceReferenceIDGTE          *string  `json:"costPriceReferenceIDGTE,omitempty"`
+	CostPriceReferenceIDLT           *string  `json:"costPriceReferenceIDLT,omitempty"`
+	CostPriceReferenceIDLTE          *string  `json:"costPriceReferenceIDLTE,omitempty"`
+	CostPriceReferenceIDContains     *string  `json:"costPriceReferenceIDContains,omitempty"`
+	CostPriceReferenceIDHasPrefix    *string  `json:"costPriceReferenceIDHasPrefix,omitempty"`
+	CostPriceReferenceIDHasSuffix    *string  `json:"costPriceReferenceIDHasSuffix,omitempty"`
+	CostPriceReferenceIDIsNil        bool     `json:"costPriceReferenceIDIsNil,omitempty"`
+	CostPriceReferenceIDNotNil       bool     `json:"costPriceReferenceIDNotNil,omitempty"`
+	CostPriceReferenceIDEqualFold    *string  `json:"costPriceReferenceIDEqualFold,omitempty"`
+	CostPriceReferenceIDContainsFold *string  `json:"costPriceReferenceIDContainsFold,omitempty"`
 
 	// "request" edge predicates.
 	HasRequest     *bool                `json:"hasRequest,omitempty"`
@@ -9333,12 +9372,6 @@ func (i *UsageLogWhereInput) P() (predicate.UsageLog, error) {
 	if i.PromptAudioTokensLTE != nil {
 		predicates = append(predicates, usagelog.PromptAudioTokensLTE(*i.PromptAudioTokensLTE))
 	}
-	if i.PromptAudioTokensIsNil {
-		predicates = append(predicates, usagelog.PromptAudioTokensIsNil())
-	}
-	if i.PromptAudioTokensNotNil {
-		predicates = append(predicates, usagelog.PromptAudioTokensNotNil())
-	}
 	if i.PromptCachedTokens != nil {
 		predicates = append(predicates, usagelog.PromptCachedTokensEQ(*i.PromptCachedTokens))
 	}
@@ -9362,12 +9395,6 @@ func (i *UsageLogWhereInput) P() (predicate.UsageLog, error) {
 	}
 	if i.PromptCachedTokensLTE != nil {
 		predicates = append(predicates, usagelog.PromptCachedTokensLTE(*i.PromptCachedTokensLTE))
-	}
-	if i.PromptCachedTokensIsNil {
-		predicates = append(predicates, usagelog.PromptCachedTokensIsNil())
-	}
-	if i.PromptCachedTokensNotNil {
-		predicates = append(predicates, usagelog.PromptCachedTokensNotNil())
 	}
 	if i.PromptWriteCachedTokens != nil {
 		predicates = append(predicates, usagelog.PromptWriteCachedTokensEQ(*i.PromptWriteCachedTokens))
@@ -9398,6 +9425,66 @@ func (i *UsageLogWhereInput) P() (predicate.UsageLog, error) {
 	}
 	if i.PromptWriteCachedTokensNotNil {
 		predicates = append(predicates, usagelog.PromptWriteCachedTokensNotNil())
+	}
+	if i.PromptWriteCachedTokens5m != nil {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokens5mEQ(*i.PromptWriteCachedTokens5m))
+	}
+	if i.PromptWriteCachedTokens5mNEQ != nil {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokens5mNEQ(*i.PromptWriteCachedTokens5mNEQ))
+	}
+	if len(i.PromptWriteCachedTokens5mIn) > 0 {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokens5mIn(i.PromptWriteCachedTokens5mIn...))
+	}
+	if len(i.PromptWriteCachedTokens5mNotIn) > 0 {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokens5mNotIn(i.PromptWriteCachedTokens5mNotIn...))
+	}
+	if i.PromptWriteCachedTokens5mGT != nil {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokens5mGT(*i.PromptWriteCachedTokens5mGT))
+	}
+	if i.PromptWriteCachedTokens5mGTE != nil {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokens5mGTE(*i.PromptWriteCachedTokens5mGTE))
+	}
+	if i.PromptWriteCachedTokens5mLT != nil {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokens5mLT(*i.PromptWriteCachedTokens5mLT))
+	}
+	if i.PromptWriteCachedTokens5mLTE != nil {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokens5mLTE(*i.PromptWriteCachedTokens5mLTE))
+	}
+	if i.PromptWriteCachedTokens5mIsNil {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokens5mIsNil())
+	}
+	if i.PromptWriteCachedTokens5mNotNil {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokens5mNotNil())
+	}
+	if i.PromptWriteCachedTokens1h != nil {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokens1hEQ(*i.PromptWriteCachedTokens1h))
+	}
+	if i.PromptWriteCachedTokens1hNEQ != nil {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokens1hNEQ(*i.PromptWriteCachedTokens1hNEQ))
+	}
+	if len(i.PromptWriteCachedTokens1hIn) > 0 {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokens1hIn(i.PromptWriteCachedTokens1hIn...))
+	}
+	if len(i.PromptWriteCachedTokens1hNotIn) > 0 {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokens1hNotIn(i.PromptWriteCachedTokens1hNotIn...))
+	}
+	if i.PromptWriteCachedTokens1hGT != nil {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokens1hGT(*i.PromptWriteCachedTokens1hGT))
+	}
+	if i.PromptWriteCachedTokens1hGTE != nil {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokens1hGTE(*i.PromptWriteCachedTokens1hGTE))
+	}
+	if i.PromptWriteCachedTokens1hLT != nil {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokens1hLT(*i.PromptWriteCachedTokens1hLT))
+	}
+	if i.PromptWriteCachedTokens1hLTE != nil {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokens1hLTE(*i.PromptWriteCachedTokens1hLTE))
+	}
+	if i.PromptWriteCachedTokens1hIsNil {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokens1hIsNil())
+	}
+	if i.PromptWriteCachedTokens1hNotNil {
+		predicates = append(predicates, usagelog.PromptWriteCachedTokens1hNotNil())
 	}
 	if i.CompletionAudioTokens != nil {
 		predicates = append(predicates, usagelog.CompletionAudioTokensEQ(*i.CompletionAudioTokens))
@@ -9593,6 +9680,57 @@ func (i *UsageLogWhereInput) P() (predicate.UsageLog, error) {
 	}
 	if i.TotalCostLTE != nil {
 		predicates = append(predicates, usagelog.TotalCostLTE(*i.TotalCostLTE))
+	}
+	if i.TotalCostIsNil {
+		predicates = append(predicates, usagelog.TotalCostIsNil())
+	}
+	if i.TotalCostNotNil {
+		predicates = append(predicates, usagelog.TotalCostNotNil())
+	}
+	if i.CostPriceReferenceID != nil {
+		predicates = append(predicates, usagelog.CostPriceReferenceIDEQ(*i.CostPriceReferenceID))
+	}
+	if i.CostPriceReferenceIDNEQ != nil {
+		predicates = append(predicates, usagelog.CostPriceReferenceIDNEQ(*i.CostPriceReferenceIDNEQ))
+	}
+	if len(i.CostPriceReferenceIDIn) > 0 {
+		predicates = append(predicates, usagelog.CostPriceReferenceIDIn(i.CostPriceReferenceIDIn...))
+	}
+	if len(i.CostPriceReferenceIDNotIn) > 0 {
+		predicates = append(predicates, usagelog.CostPriceReferenceIDNotIn(i.CostPriceReferenceIDNotIn...))
+	}
+	if i.CostPriceReferenceIDGT != nil {
+		predicates = append(predicates, usagelog.CostPriceReferenceIDGT(*i.CostPriceReferenceIDGT))
+	}
+	if i.CostPriceReferenceIDGTE != nil {
+		predicates = append(predicates, usagelog.CostPriceReferenceIDGTE(*i.CostPriceReferenceIDGTE))
+	}
+	if i.CostPriceReferenceIDLT != nil {
+		predicates = append(predicates, usagelog.CostPriceReferenceIDLT(*i.CostPriceReferenceIDLT))
+	}
+	if i.CostPriceReferenceIDLTE != nil {
+		predicates = append(predicates, usagelog.CostPriceReferenceIDLTE(*i.CostPriceReferenceIDLTE))
+	}
+	if i.CostPriceReferenceIDContains != nil {
+		predicates = append(predicates, usagelog.CostPriceReferenceIDContains(*i.CostPriceReferenceIDContains))
+	}
+	if i.CostPriceReferenceIDHasPrefix != nil {
+		predicates = append(predicates, usagelog.CostPriceReferenceIDHasPrefix(*i.CostPriceReferenceIDHasPrefix))
+	}
+	if i.CostPriceReferenceIDHasSuffix != nil {
+		predicates = append(predicates, usagelog.CostPriceReferenceIDHasSuffix(*i.CostPriceReferenceIDHasSuffix))
+	}
+	if i.CostPriceReferenceIDIsNil {
+		predicates = append(predicates, usagelog.CostPriceReferenceIDIsNil())
+	}
+	if i.CostPriceReferenceIDNotNil {
+		predicates = append(predicates, usagelog.CostPriceReferenceIDNotNil())
+	}
+	if i.CostPriceReferenceIDEqualFold != nil {
+		predicates = append(predicates, usagelog.CostPriceReferenceIDEqualFold(*i.CostPriceReferenceIDEqualFold))
+	}
+	if i.CostPriceReferenceIDContainsFold != nil {
+		predicates = append(predicates, usagelog.CostPriceReferenceIDContainsFold(*i.CostPriceReferenceIDContainsFold))
 	}
 
 	if i.HasRequest != nil {

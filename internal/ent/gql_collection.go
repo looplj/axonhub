@@ -4754,6 +4754,16 @@ func (_q *UsageLogQuery) collectField(ctx context.Context, oneNode bool, opCtx *
 				selectedFields = append(selectedFields, usagelog.FieldPromptWriteCachedTokens)
 				fieldSeen[usagelog.FieldPromptWriteCachedTokens] = struct{}{}
 			}
+		case "promptWriteCachedTokens5m":
+			if _, ok := fieldSeen[usagelog.FieldPromptWriteCachedTokens5m]; !ok {
+				selectedFields = append(selectedFields, usagelog.FieldPromptWriteCachedTokens5m)
+				fieldSeen[usagelog.FieldPromptWriteCachedTokens5m] = struct{}{}
+			}
+		case "promptWriteCachedTokens1h":
+			if _, ok := fieldSeen[usagelog.FieldPromptWriteCachedTokens1h]; !ok {
+				selectedFields = append(selectedFields, usagelog.FieldPromptWriteCachedTokens1h)
+				fieldSeen[usagelog.FieldPromptWriteCachedTokens1h] = struct{}{}
+			}
 		case "completionAudioTokens":
 			if _, ok := fieldSeen[usagelog.FieldCompletionAudioTokens]; !ok {
 				selectedFields = append(selectedFields, usagelog.FieldCompletionAudioTokens)
@@ -4793,6 +4803,11 @@ func (_q *UsageLogQuery) collectField(ctx context.Context, oneNode bool, opCtx *
 			if _, ok := fieldSeen[usagelog.FieldCostItems]; !ok {
 				selectedFields = append(selectedFields, usagelog.FieldCostItems)
 				fieldSeen[usagelog.FieldCostItems] = struct{}{}
+			}
+		case "costPriceReferenceID":
+			if _, ok := fieldSeen[usagelog.FieldCostPriceReferenceID]; !ok {
+				selectedFields = append(selectedFields, usagelog.FieldCostPriceReferenceID)
+				fieldSeen[usagelog.FieldCostPriceReferenceID] = struct{}{}
 			}
 		case "id":
 		case "__typename":

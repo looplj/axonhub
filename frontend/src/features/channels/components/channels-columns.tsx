@@ -137,21 +137,22 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
           <DropdownMenuItem
             onClick={() => {
               setCurrentRow(channel);
+              setOpen('price');
+            }}
+          >
+            <IconCoin size={16} className='mr-2' />
+            {t('channels.actions.modelPrice')}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              setCurrentRow(channel);
               setOpen('overrides');
             }}
           >
             <IconAdjustments size={16} className='mr-2' />
             {t('channels.dialogs.settings.overrides.action')}
           </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => {
-              setCurrentRow(channel);
-              setOpen('price');
-            }}
-          >
-            <IconCoin size={16} className='mr-2' />
-             {t('channels.actions.price')}
-          </DropdownMenuItem>
+
           <DropdownMenuItem
             onClick={() => {
               setCurrentRow(channel);
