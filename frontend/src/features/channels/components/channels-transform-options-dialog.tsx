@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -24,17 +24,20 @@ interface Props {
 const transformOptionsFormSchema = z.object({
   forceArrayInstructions: z.boolean().optional(),
   forceArrayInputs: z.boolean().optional(),
+  replaceDeveloperRoleWithSystem: z.boolean().optional(),
 });
 
 export function ChannelsTransformOptionsDialog({ open, onOpenChange, currentRow }: Props) {
   const { t } = useTranslation();
   const updateChannel = useUpdateChannel();
+  const showDeveloperRoleOption = currentRow.type === 'bailian';
 
   const form = useForm<TransformOptions>({
     resolver: zodResolver(transformOptionsFormSchema),
     defaultValues: {
       forceArrayInstructions: currentRow.settings?.transformOptions?.forceArrayInstructions || false,
       forceArrayInputs: currentRow.settings?.transformOptions?.forceArrayInputs || false,
+      replaceDeveloperRoleWithSystem: currentRow.settings?.transformOptions?.replaceDeveloperRoleWithSystem || false,
     },
   });
 
@@ -43,6 +46,7 @@ export function ChannelsTransformOptionsDialog({ open, onOpenChange, currentRow 
       form.reset({
         forceArrayInstructions: currentRow.settings?.transformOptions?.forceArrayInstructions || false,
         forceArrayInputs: currentRow.settings?.transformOptions?.forceArrayInputs || false,
+        replaceDeveloperRoleWithSystem: currentRow.settings?.transformOptions?.replaceDeveloperRoleWithSystem || false,
       });
     }
   }, [open, currentRow, form]);
@@ -132,6 +136,29 @@ export function ChannelsTransformOptionsDialog({ open, onOpenChange, currentRow 
                       </FormItem>
                     )}
                   />
+
+                  {showDeveloperRoleOption ? (
+                    <FormField
+                      control={form.control}
+                      name='replaceDeveloperRoleWithSystem'
+                      render={({ field }) => (
+                        <FormItem className='flex items-center gap-2'>
+                          <FormControl>
+                            <Checkbox checked={field.value || false} onCheckedChange={field.onChange} />
+                          </FormControl>
+                          <div className='space-y-0.5'>
+                            <FormLabel className='cursor-pointer text-sm font-normal'>
+                              {t('channels.dialogs.fields.transformOptions.replaceDeveloperRoleWithSystem.label')}
+                            </FormLabel>
+                            <p className='text-muted-foreground text-xs'>
+                              {t('channels.dialogs.fields.transformOptions.replaceDeveloperRoleWithSystem.description')}
+                            </p>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  ) : null}
                 </form>
               </Form>
             </CardContent>

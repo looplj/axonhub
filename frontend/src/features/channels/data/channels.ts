@@ -63,6 +63,7 @@ const CHANNELS_QUERY = `
             transformOptions {
               forceArrayInstructions
               forceArrayInputs
+              replaceDeveloperRoleWithSystem
             }
           }
           orderingWeight
@@ -154,6 +155,7 @@ const CREATE_CHANNEL_MUTATION = `
         transformOptions {
           forceArrayInstructions
           forceArrayInputs
+          replaceDeveloperRoleWithSystem
         }
       }
       orderingWeight
@@ -195,6 +197,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
         transformOptions {
           forceArrayInstructions
           forceArrayInputs
+          replaceDeveloperRoleWithSystem
         }
       }
       orderingWeight
@@ -236,6 +239,7 @@ const UPDATE_CHANNEL_MUTATION = `
         transformOptions {
           forceArrayInstructions
           forceArrayInputs
+          replaceDeveloperRoleWithSystem
         }
       }
       orderingWeight
@@ -327,6 +331,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           transformOptions {
             forceArrayInstructions
             forceArrayInputs
+            replaceDeveloperRoleWithSystem
           }
         }
       }
@@ -363,6 +368,7 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
           transformOptions {
             forceArrayInstructions
             forceArrayInputs
+            replaceDeveloperRoleWithSystem
           }
         }
       }
@@ -478,6 +484,7 @@ const QUERY_CHANNELS_QUERY = `
             transformOptions {
               forceArrayInstructions
               forceArrayInputs
+              replaceDeveloperRoleWithSystem
             }
           }
           orderingWeight
