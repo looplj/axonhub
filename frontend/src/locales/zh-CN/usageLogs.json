@@ -1,69 +1,47 @@
 {
-  "usageLogs": {
-    "title": "用量日志",
-    "description": "查看和分析AI模型使用情况和令牌消耗",
-    "columns": {
-      "requestId": "请求ID",
-      "channel": "渠道",
-      "modelId": "模型ID",
-      "promptTokens": "输入令牌",
-      "completionTokens": "输出令牌",
-      "totalTokens": "总令牌",
-      "totalLabel": "总计:",
-      "inputLabel": "输入:",
-      "outputLabel": "输出:",
-      "cacheReadLabel": "读取缓存",
-      "cacheWriteLabel": "写入缓存",
-      "promptAudioTokens": "输入音频令牌",
-      "promptCachedTokens": "输入缓存令牌",
-      "cacheTokens": "缓存令牌",
-      "writeCacheTokens": "写入缓存令牌",
-      "cacheHitRate": "缓存命中率: {{rate}}%",
-      "writeCacheRate": "写入缓存占比: {{rate}}%",
-      "completionAudioTokens": "输出音频令牌",
-      "completionReasoningTokens": "输出推理令牌",
-      "totalCost": "总费用",
-      "source": "来源"
-    },
-    "source": {
-      "api": "API",
-      "playground": "测试场",
-      "test": "测试"
-    },
-    "actions": {
-      "viewDetails": "查看详情",
-      "openMenu": "打开菜单"
-    },
-    "filters": {
-      "filterId": "按ID筛选...",
-      "source": "来源",
-      "channel": "渠道"
-    },
-    "dialogs": {
-      "usageDetail": {
-        "title": "使用详情",
-        "tabs": {
-          "overview": "概览",
-          "tokens": "令牌使用",
-          "advanced": "高级令牌"
-        },
-        "fields": {
-          "requestId": "请求ID",
-          "channelId": "渠道ID",
-          "modelId": "模型ID",
-          "source": "来源",
-          "format": "格式",
-          "createdAt": "创建时间"
-        },
-        "tokenDetails": {
-          "basic": "基础令牌使用"
-        },
-        "notFound": "用量日志未找到"
-      }
-    },
-    "errors": {
-      "loadUsageLogsFailed": "加载用量日志失败",
-      "loadUsageLogDetailFailed": "加载用量日志详情失败"
-    }
-  }
+  "usageLogs.title": "用量日志",
+  "usageLogs.description": "查看和分析AI模型使用情况和令牌消耗",
+  "usageLogs.columns.requestId": "请求ID",
+  "usageLogs.columns.channel": "渠道",
+  "usageLogs.columns.modelId": "模型ID",
+  "usageLogs.columns.promptTokens": "输入令牌",
+  "usageLogs.columns.completionTokens": "输出令牌",
+  "usageLogs.columns.totalTokens": "总令牌",
+  "usageLogs.columns.totalLabel": "总计:",
+  "usageLogs.columns.inputLabel": "输入:",
+  "usageLogs.columns.outputLabel": "输出:",
+  "usageLogs.columns.cacheReadLabel": "读取缓存",
+  "usageLogs.columns.cacheWriteLabel": "写入缓存",
+  "usageLogs.columns.promptAudioTokens": "输入音频令牌",
+  "usageLogs.columns.promptCachedTokens": "输入缓存令牌",
+  "usageLogs.columns.cacheTokens": "缓存令牌",
+  "usageLogs.columns.writeCacheTokens": "写入缓存令牌",
+  "usageLogs.columns.cacheHitRate": "缓存命中率: {{rate}}%",
+  "usageLogs.columns.writeCacheRate": "写入缓存占比: {{rate}}%",
+  "usageLogs.columns.completionAudioTokens": "输出音频令牌",
+  "usageLogs.columns.completionReasoningTokens": "输出推理令牌",
+  "usageLogs.columns.totalCost": "总费用",
+  "usageLogs.columns.source": "来源",
+  "usageLogs.source.api": "API",
+  "usageLogs.source.playground": "测试场",
+  "usageLogs.source.test": "测试",
+  "usageLogs.actions.viewDetails": "查看详情",
+  "usageLogs.actions.openMenu": "打开菜单",
+  "usageLogs.filters.filterId": "按ID筛选...",
+  "usageLogs.filters.source": "来源",
+  "usageLogs.filters.channel": "渠道",
+  "usageLogs.dialogs.usageDetail.title": "使用详情",
+  "usageLogs.dialogs.usageDetail.tabs.overview": "概览",
+  "usageLogs.dialogs.usageDetail.tabs.tokens": "令牌使用",
+  "usageLogs.dialogs.usageDetail.tabs.advanced": "高级令牌",
+  "usageLogs.dialogs.usageDetail.fields.requestId": "请求ID",
+  "usageLogs.dialogs.usageDetail.fields.channelId": "渠道ID",
+  "usageLogs.dialogs.usageDetail.fields.modelId": "模型ID",
+  "usageLogs.dialogs.usageDetail.fields.source": "来源",
+  "usageLogs.dialogs.usageDetail.fields.format": "格式",
+  "usageLogs.dialogs.usageDetail.fields.createdAt": "创建时间",
+  "usageLogs.dialogs.usageDetail.tokenDetails.basic": "基础令牌使用",
+  "usageLogs.dialogs.usageDetail.notFound": "用量日志未找到",
+  "usageLogs.errors.loadUsageLogsFailed": "加载用量日志失败",
+  "usageLogs.errors.loadUsageLogDetailFailed": "加载用量日志详情失败"
 }

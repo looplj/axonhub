@@ -1,69 +1,47 @@
 {
-  "usageLogs": {
-    "title": "Usage Logs",
-    "description": "View and analyze AI model usage and token consumption",
-    "columns": {
-      "requestId": "Request ID",
-      "channel": "Channel",
-      "modelId": "Model ID",
-      "promptTokens": "Input Tokens",
-      "completionTokens": "Output Tokens",
-      "totalTokens": "Total Tokens",
-      "totalLabel": "Total:",
-      "inputLabel": "Input:",
-      "outputLabel": "Output:",
-      "cacheReadLabel": "Read cache",
-      "cacheWriteLabel": "Write cache",
-      "promptAudioTokens": "Input Audio Tokens",
-      "promptCachedTokens": "Input Cached Tokens",
-      "cacheTokens": "Cache Tokens",
-      "writeCacheTokens": "Write Cache Tokens",
-      "cacheHitRate": "Cache Hit Rate: {{rate}}%",
-      "writeCacheRate": "Write Cache Fill: {{rate}}%",
-      "completionAudioTokens": "Output Audio Tokens",
-      "completionReasoningTokens": "Output Reasoning Tokens",
-      "totalCost": "Total Cost",
-      "source": "Source"
-    },
-    "source": {
-      "api": "API",
-      "playground": "Playground",
-      "test": "Test"
-    },
-    "actions": {
-      "viewDetails": "View Details",
-      "openMenu": "Open menu"
-    },
-    "filters": {
-      "filterId": "Filter by ID...",
-      "source": "Source",
-      "channel": "Channel"
-    },
-    "dialogs": {
-      "usageDetail": {
-        "title": "Usage Details",
-        "tabs": {
-          "overview": "Overview",
-          "tokens": "Token Usage",
-          "advanced": "Advanced Tokens"
-        },
-        "fields": {
-          "requestId": "Request ID",
-          "channelId": "Channel ID",
-          "modelId": "Model ID",
-          "source": "Source",
-          "format": "Format",
-          "createdAt": "Created At"
-        },
-        "tokenDetails": {
-          "basic": "Basic Token Usage"
-        },
-        "notFound": "Usage log not found"
-      }
-    },
-    "errors": {
-      "loadUsageLogsFailed": "Failed to load usage logs",
-      "loadUsageLogDetailFailed": "Failed to load usage log details"
-    }
-  }
+  "usageLogs.title": "Usage Logs",
+  "usageLogs.description": "View and analyze AI model usage and token consumption",
+  "usageLogs.columns.requestId": "Request ID",
+  "usageLogs.columns.channel": "Channel",
+  "usageLogs.columns.modelId": "Model ID",
+  "usageLogs.columns.promptTokens": "Input Tokens",
+  "usageLogs.columns.completionTokens": "Output Tokens",
+  "usageLogs.columns.totalTokens": "Total Tokens",
+  "usageLogs.columns.totalLabel": "Total:",
+  "usageLogs.columns.inputLabel": "Input:",
+  "usageLogs.columns.outputLabel": "Output:",
+  "usageLogs.columns.cacheReadLabel": "Read cache",
+  "usageLogs.columns.cacheWriteLabel": "Write cache",
+  "usageLogs.columns.promptAudioTokens": "Input Audio Tokens",
+  "usageLogs.columns.promptCachedTokens": "Input Cached Tokens",
+  "usageLogs.columns.cacheTokens": "Cache Tokens",
+  "usageLogs.columns.writeCacheTokens": "Write Cache Tokens",
+  "usageLogs.columns.cacheHitRate": "Cache Hit Rate: {{rate}}%",
+  "usageLogs.columns.writeCacheRate": "Write Cache Fill: {{rate}}%",
+  "usageLogs.columns.completionAudioTokens": "Output Audio Tokens",
+  "usageLogs.columns.completionReasoningTokens": "Output Reasoning Tokens",
+  "usageLogs.columns.totalCost": "Total Cost",
+  "usageLogs.columns.source": "Source",
+  "usageLogs.source.api": "API",
+  "usageLogs.source.playground": "Playground",
+  "usageLogs.source.test": "Test",
+  "usageLogs.actions.viewDetails": "View Details",
+  "usageLogs.actions.openMenu": "Open menu",
+  "usageLogs.filters.filterId": "Filter by ID...",
+  "usageLogs.filters.source": "Source",
+  "usageLogs.filters.channel": "Channel",
+  "usageLogs.dialogs.usageDetail.title": "Usage Details",
+  "usageLogs.dialogs.usageDetail.tabs.overview": "Overview",
+  "usageLogs.dialogs.usageDetail.tabs.tokens": "Token Usage",
+  "usageLogs.dialogs.usageDetail.tabs.advanced": "Advanced Tokens",
+  "usageLogs.dialogs.usageDetail.fields.requestId": "Request ID",
+  "usageLogs.dialogs.usageDetail.fields.channelId": "Channel ID",
+  "usageLogs.dialogs.usageDetail.fields.modelId": "Model ID",
+  "usageLogs.dialogs.usageDetail.fields.source": "Source",
+  "usageLogs.dialogs.usageDetail.fields.format": "Format",
+  "usageLogs.dialogs.usageDetail.fields.createdAt": "Created At",
+  "usageLogs.dialogs.usageDetail.tokenDetails.basic": "Basic Token Usage",
+  "usageLogs.dialogs.usageDetail.notFound": "Usage log not found",
+  "usageLogs.errors.loadUsageLogsFailed": "Failed to load usage logs",
+  "usageLogs.errors.loadUsageLogDetailFailed": "Failed to load usage log details"
 }

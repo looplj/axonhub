@@ -1,28 +1,19 @@
 {
-  "playground": {
-    "title": "Playground",
-    "description": "Test and experiment with AI models in an interactive environment.",
-    "settings": {
-      "model": "Model",
-      "selectModel": "Select a model",
-      "temperature": "Temperature",
-      "maxTokens": "Max Tokens",
-      "systemPrompt": "System Prompt",
-      "defaultSystemPrompt": "You are a helpful assistant."
-    },
-    "actions": {},
-    "chat": {
-      "generating": "Generating...",
-      "retry": "Retry Last Response",
-      "clear": "Clear Chat",
-      "startConversation": "Start a conversation",
-      "typeMessageBelow": "Type your message below to begin",
-      "typeMessage": "Type a message...",
-      "noMessages": "No messages to retry"
-    },
-    "errors": {
-      "noChannelsAvailable": "No models available"
-    },
-    "modelsAvailable": "{{count}} models available across {{channels}} channels"
-  }
+  "playground.title": "Playground",
+  "playground.description": "Test and experiment with AI models in an interactive environment.",
+  "playground.settings.model": "Model",
+  "playground.settings.selectModel": "Select a model",
+  "playground.settings.temperature": "Temperature",
+  "playground.settings.maxTokens": "Max Tokens",
+  "playground.settings.systemPrompt": "System Prompt",
+  "playground.settings.defaultSystemPrompt": "You are a helpful assistant.",
+  "playground.chat.generating": "Generating...",
+  "playground.chat.retry": "Retry Last Response",
+  "playground.chat.clear": "Clear Chat",
+  "playground.chat.startConversation": "Start a conversation",
+  "playground.chat.typeMessageBelow": "Type your message below to begin",
+  "playground.chat.typeMessage": "Type a message...",
+  "playground.chat.noMessages": "No messages to retry",
+  "playground.errors.noChannelsAvailable": "No models available",
+  "playground.modelsAvailable": "{{count}} models available across {{channels}} channels"
 }

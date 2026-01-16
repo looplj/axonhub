@@ -1,59 +1,31 @@
 {
-  "roles": {
-    "title": "角色管理",
-    "description": "管理系统角色和权限配置。",
-    "createRole": "新建角色",
-    "searchRoles": "按名称搜索角色...",
-    "columns": {
-      "scopes": "权限范围",
-      "moreScopes": "更多",
-      "showLess": "收起"
-    },
-    "actions": {},
-    "filters": {},
-    "dialogs": {
-      "create": {
-        "title": "新建角色",
-        "description": "创建一个新的角色并配置其权限范围。"
-      },
-      "edit": {
-        "title": "编辑角色",
-        "description": "修改角色信息和权限配置。"
-      },
-      "delete": {
-        "title": "删除角色",
-        "description": "确定要删除这个角色吗？此操作无法撤销。"
-      },
-      "bulkDelete": {
-        "title": "批量删除角色",
-        "description": "确定要删除选中的 {{count}} 个角色吗？此操作无法撤销。"
-      },
-      "fields": {
-        "code": {},
-        "name": {
-          "label": "角色名称",
-          "placeholder": "管理员",
-          "description": "用户友好的角色名称"
-        },
-        "scopes": {
-          "label": "权限范围",
-          "description": "选择此角色拥有的权限"
-        }
-      },
-      "buttons": {}
-    },
-    "validation": {
-      "nameRequired": "角色名称不能为空",
-      "scopesRequired": "至少需要选择一个权限",
-      "projectIdRequired": "项目 ID不能为空"
-    },
-    "errors": {
-      "loadRolesFailed": "加载角色失败",
-      "loadRoleDetailFailed": "加载角色详情失败",
-      "createRoleFailed": "创建角色失败",
-      "updateRoleFailed": "更新角色失败",
-      "deleteRoleFailed": "删除角色失败",
-      "deleteRolesBulkFailed": "批量删除角色失败"
-    }
-  }
+  "roles.title": "角色管理",
+  "roles.description": "管理系统角色和权限配置。",
+  "roles.createRole": "新建角色",
+  "roles.searchRoles": "按名称搜索角色...",
+  "roles.columns.scopes": "权限范围",
+  "roles.columns.moreScopes": "更多",
+  "roles.columns.showLess": "收起",
+  "roles.dialogs.create.title": "新建角色",
+  "roles.dialogs.create.description": "创建一个新的角色并配置其权限范围。",
+  "roles.dialogs.edit.title": "编辑角色",
+  "roles.dialogs.edit.description": "修改角色信息和权限配置。",
+  "roles.dialogs.delete.title": "删除角色",
+  "roles.dialogs.delete.description": "确定要删除这个角色吗？此操作无法撤销。",
+  "roles.dialogs.bulkDelete.title": "批量删除角色",
+  "roles.dialogs.bulkDelete.description": "确定要删除选中的 {{count}} 个角色吗？此操作无法撤销。",
+  "roles.dialogs.fields.name.label": "角色名称",
+  "roles.dialogs.fields.name.placeholder": "管理员",
+  "roles.dialogs.fields.name.description": "用户友好的角色名称",
+  "roles.dialogs.fields.scopes.label": "权限范围",
+  "roles.dialogs.fields.scopes.description": "选择此角色拥有的权限",
+  "roles.validation.nameRequired": "角色名称不能为空",
+  "roles.validation.scopesRequired": "至少需要选择一个权限",
+  "roles.validation.projectIdRequired": "项目 ID不能为空",
+  "roles.errors.loadRolesFailed": "加载角色失败",
+  "roles.errors.loadRoleDetailFailed": "加载角色详情失败",
+  "roles.errors.createRoleFailed": "创建角色失败",
+  "roles.errors.updateRoleFailed": "更新角色失败",
+  "roles.errors.deleteRoleFailed": "删除角色失败",
+  "roles.errors.deleteRolesBulkFailed": "批量删除角色失败"
 }

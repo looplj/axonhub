@@ -1,165 +1,109 @@
 {
-  "apikeys": {
-    "title": "API 密钥管理",
-    "description": "管理系统 API 密钥和访问权限。",
-    "createApiKey": "创建 API Key",
-    "columns": {
-      "key": "API Key",
-      "type": "类型",
-      "creator": "创建者"
-    },
-    "type": {
-      "user": "用户",
-      "service_account": "服务账号"
-    },
-    "tabs": {
-      "all": "全部"
-    },
-    "status": {
-      "enabled": "已启用",
-      "disabled": "已禁用",
-      "archived": "已归档"
-    },
-    "actions": {
-      "profiles": "配置文件",
-      "copy": "复制",
-      "view": "查看",
-      "show": "显示",
-      "hide": "隐藏"
-    },
-    "dialogs": {
-      "create": {
-        "title": "创建 API Key",
-        "description": "创建一个新的 API Key 用于访问系统。"
-      },
-      "edit": {
-        "title": "编辑 API Key",
-        "description": "修改 API Key 信息。"
-      },
-      "delete": {},
-      "status": {
-        "disableTitle": "禁用 API Key",
-        "enableTitle": "启用 API Key",
-        "disableDescription": "确定要禁用 API Key {{name}} 吗？",
-        "enableDescription": "确定要启用 API Key {{name}} 吗？"
-      },
-      "archive": {
-        "title": "归档 API Key",
-        "description": "确定要归档 API Key {{name}} 吗？",
-        "warning": "此操作将从列表中隐藏 API Key。您仍然可以通过使用状态筛选器来查看已归档的密钥。"
-      },
-      "view": {
-        "title": "查看 API 密钥",
-        "description": "查看完整的 API 密钥详情。",
-        "warning": "⚠️ 请妥善保管您的 API 密钥，不要与未授权的人员分享。任何拥有此密钥的人都可以代表您发出请求。",
-        "usageExamples": "使用示例",
-        "noExamples": "使用示例仅适用于用户 API 密钥",
-        "tabs": {
-          "anthropicSDK": "Anthropic SDK",
-          "openAISDK": "OpenAI SDK",
-          "codex": "Codex",
-          "claudeCode": "Claude Code",
-          "geminiSDK": "Gemini SDK"
-        }
-      },
-      "bulkDisable": {
-        "title": "批量禁用 API Keys",
-        "description": "确定要禁用 {{count}} 个选定的 API Keys 吗？此操作无法撤销。"
-      },
-      "bulkArchive": {
-        "title": "批量归档 API Keys",
-        "description": "确定要归档 {{count}} 个选定的 API Keys 吗？此操作无法撤销。"
-      },
-      "bulkEnable": {
-        "title": "批量启用 API Keys",
-        "description": "确定要启用 {{count}} 个选定的 API Keys 吗？",
-        "warning": "此操作将启用所有选定的 API Keys。它们将能够向系统发出请求。"
-      },
-      "fields": {
-        "name": {
-          "label": "名称",
-          "placeholder": "输入 API Key 名称"
-        },
-        "type": {
-          "label": "类型",
-          "user": "用户",
-          "serviceAccount": "服务账号",
-          "userDescription": "用户 API Key 从用户的项目权限中继承 scopes。适用于个人使用。",
-          "serviceAccountDescription": "服务账号 API Key 拥有自定义的 scopes。适用于应用程序和服务。"
-        },
-        "scopes": {
-          "label": "权限范围",
-          "description": "选择此服务账号 API Key 的权限"
-        },
-        "userID": {},
-        "key": {
-          "label": "API Key"
-        }
-      },
-      "buttons": {}
-    },
-    "messages": {
-      "copied": "API Key 已复制到剪贴板",
-      "createSuccess": "API Key 创建成功",
-      "createError": "创建 API Key 失败",
-      "updateSuccess": "API Key 更新成功",
-      "updateError": "更新 API Key 失败",
-      "statusUpdateSuccess": "API Key 状态已更新为 {{status}}",
-      "statusUpdateError": "状态更新失败",
-      "profilesUpdateSuccess": "配置文件更新成功",
-      "profilesUpdateError": "配置文件更新失败",
-      "bulkDisableSuccess": "成功禁用了 {{count}} 个 API Keys",
-      "bulkDisableError": "禁用 API Keys 失败",
-      "bulkArchiveSuccess": "成功归档了 {{count}} 个 API Keys",
-      "bulkArchiveError": "归档 API Keys 失败",
-      "bulkEnableSuccess": "成功启用了 {{count}} 个 API Keys",
-      "bulkEnableError": "启用 API Keys 失败"
-    },
-    "errors": {
-      "fetchData": "获取API密钥数据",
-      "fetchDetails": "获取API密钥详情"
-    },
-    "validation": {
-      "nameRequired": "名称不能为空",
-      "profileNameRequired": "配置名称不能为空",
-      "sourceModelRequired": "请求中的模型不能为空",
-      "targetModelRequired": "目标模型不能为空",
-      "activeProfileRequired": "生效配置不能为空",
-      "atLeastOneProfile": "至少需要一个配置",
-      "activeProfileMustExist": "生效配置必须存在于配置列表中",
-      "duplicateProfileName": "配置名称不能重复"
-    },
-    "filters": {
-      "filterName": "按名称筛选...",
-      "status": "状态",
-      "creator": "创建人",
-      "reset": "重置",
-      "noResults": "没有找到结果"
-    },
-    "view": {},
-    "profiles": {
-      "title": "配置文件管理",
-      "expand": "展开配置",
-      "collapse": "收起配置",
-      "description": "为以下 API Key {{name}} 配置模型映射, 当一个活动配置有模型映射配置时, 系统将自动在 API 请求时将请求模型映射到目标模型",
-      "profilesTitle": "配置文件",
-      "addProfile": "新增配置",
-      "modelMappings": "模型映射",
-      "addMapping": "新增映射",
-      "noMappings": "暂无模型映射",
-      "profileName": "配置名称",
-      "sourceModel": "请求中的模型 (支持正则表达式)",
-      "targetModel": "目标模型",
-      "activeProfile": "生效配置",
-      "selectActiveProfile": "选择生效配置",
-      "noModelsFound": "未找到模型",
-      "regexSupported": "支持正则表达式",
-      "allowedChannels": "允许的渠道",
-      "allowedChannelsDescription": "选择此配置可以使用的渠道。如果未选择任何渠道，则允许使用所有渠道。",
-      "allowedChannelTags": "允许的渠道标签",
-      "allowedChannelTagsDescription": "选择标签来过滤此配置可用的渠道。包含任一所选标签的渠道将被允许使用。如果未选择任何标签，则禁用标签过滤。",
-      "allowedModels": "允许的模型",
-      "allowedModelsDescription": "选择此配置可以使用的模型。如果未选择任何模型，则允许使用所有模型。"
-    }
-  }
+  "apikeys.title": "API 密钥管理",
+  "apikeys.description": "管理系统 API 密钥和访问权限。",
+  "apikeys.createApiKey": "创建 API Key",
+  "apikeys.columns.key": "API Key",
+  "apikeys.columns.type": "类型",
+  "apikeys.columns.creator": "创建者",
+  "apikeys.type.user": "用户",
+  "apikeys.type.service_account": "服务账号",
+  "apikeys.tabs.all": "全部",
+  "apikeys.status.enabled": "已启用",
+  "apikeys.status.disabled": "已禁用",
+  "apikeys.status.archived": "已归档",
+  "apikeys.actions.profiles": "配置文件",
+  "apikeys.actions.copy": "复制",
+  "apikeys.actions.view": "查看",
+  "apikeys.actions.show": "显示",
+  "apikeys.actions.hide": "隐藏",
+  "apikeys.dialogs.create.title": "创建 API Key",
+  "apikeys.dialogs.create.description": "创建一个新的 API Key 用于访问系统。",
+  "apikeys.dialogs.edit.title": "编辑 API Key",
+  "apikeys.dialogs.edit.description": "修改 API Key 信息。",
+  "apikeys.dialogs.status.disableTitle": "禁用 API Key",
+  "apikeys.dialogs.status.enableTitle": "启用 API Key",
+  "apikeys.dialogs.status.disableDescription": "确定要禁用 API Key {{name}} 吗？",
+  "apikeys.dialogs.status.enableDescription": "确定要启用 API Key {{name}} 吗？",
+  "apikeys.dialogs.archive.title": "归档 API Key",
+  "apikeys.dialogs.archive.description": "确定要归档 API Key {{name}} 吗？",
+  "apikeys.dialogs.archive.warning": "此操作将从列表中隐藏 API Key。您仍然可以通过使用状态筛选器来查看已归档的密钥。",
+  "apikeys.dialogs.view.title": "查看 API 密钥",
+  "apikeys.dialogs.view.description": "查看完整的 API 密钥详情。",
+  "apikeys.dialogs.view.warning": "⚠️ 请妥善保管您的 API 密钥，不要与未授权的人员分享。任何拥有此密钥的人都可以代表您发出请求。",
+  "apikeys.dialogs.view.usageExamples": "使用示例",
+  "apikeys.dialogs.view.noExamples": "使用示例仅适用于用户 API 密钥",
+  "apikeys.dialogs.view.tabs.anthropicSDK": "Anthropic SDK",
+  "apikeys.dialogs.view.tabs.openAISDK": "OpenAI SDK",
+  "apikeys.dialogs.view.tabs.codex": "Codex",
+  "apikeys.dialogs.view.tabs.claudeCode": "Claude Code",
+  "apikeys.dialogs.view.tabs.geminiSDK": "Gemini SDK",
+  "apikeys.dialogs.bulkDisable.title": "批量禁用 API Keys",
+  "apikeys.dialogs.bulkDisable.description": "确定要禁用 {{count}} 个选定的 API Keys 吗？此操作无法撤销。",
+  "apikeys.dialogs.bulkArchive.title": "批量归档 API Keys",
+  "apikeys.dialogs.bulkArchive.description": "确定要归档 {{count}} 个选定的 API Keys 吗？此操作无法撤销。",
+  "apikeys.dialogs.bulkEnable.title": "批量启用 API Keys",
+  "apikeys.dialogs.bulkEnable.description": "确定要启用 {{count}} 个选定的 API Keys 吗？",
+  "apikeys.dialogs.bulkEnable.warning": "此操作将启用所有选定的 API Keys。它们将能够向系统发出请求。",
+  "apikeys.dialogs.fields.name.label": "名称",
+  "apikeys.dialogs.fields.name.placeholder": "输入 API Key 名称",
+  "apikeys.dialogs.fields.type.label": "类型",
+  "apikeys.dialogs.fields.type.user": "用户",
+  "apikeys.dialogs.fields.type.serviceAccount": "服务账号",
+  "apikeys.dialogs.fields.type.userDescription": "用户 API Key 从用户的项目权限中继承 scopes。适用于个人使用。",
+  "apikeys.dialogs.fields.type.serviceAccountDescription": "服务账号 API Key 拥有自定义的 scopes。适用于应用程序和服务。",
+  "apikeys.dialogs.fields.scopes.label": "权限范围",
+  "apikeys.dialogs.fields.scopes.description": "选择此服务账号 API Key 的权限",
+  "apikeys.dialogs.fields.key.label": "API Key",
+  "apikeys.messages.copied": "API Key 已复制到剪贴板",
+  "apikeys.messages.createSuccess": "API Key 创建成功",
+  "apikeys.messages.createError": "创建 API Key 失败",
+  "apikeys.messages.updateSuccess": "API Key 更新成功",
+  "apikeys.messages.updateError": "更新 API Key 失败",
+  "apikeys.messages.statusUpdateSuccess": "API Key 状态已更新为 {{status}}",
+  "apikeys.messages.statusUpdateError": "状态更新失败",
+  "apikeys.messages.profilesUpdateSuccess": "配置文件更新成功",
+  "apikeys.messages.profilesUpdateError": "配置文件更新失败",
+  "apikeys.messages.bulkDisableSuccess": "成功禁用了 {{count}} 个 API Keys",
+  "apikeys.messages.bulkDisableError": "禁用 API Keys 失败",
+  "apikeys.messages.bulkArchiveSuccess": "成功归档了 {{count}} 个 API Keys",
+  "apikeys.messages.bulkArchiveError": "归档 API Keys 失败",
+  "apikeys.messages.bulkEnableSuccess": "成功启用了 {{count}} 个 API Keys",
+  "apikeys.messages.bulkEnableError": "启用 API Keys 失败",
+  "apikeys.errors.fetchData": "获取API密钥数据",
+  "apikeys.errors.fetchDetails": "获取API密钥详情",
+  "apikeys.validation.nameRequired": "名称不能为空",
+  "apikeys.validation.profileNameRequired": "配置名称不能为空",
+  "apikeys.validation.sourceModelRequired": "请求中的模型不能为空",
+  "apikeys.validation.targetModelRequired": "目标模型不能为空",
+  "apikeys.validation.activeProfileRequired": "生效配置不能为空",
+  "apikeys.validation.atLeastOneProfile": "至少需要一个配置",
+  "apikeys.validation.activeProfileMustExist": "生效配置必须存在于配置列表中",
+  "apikeys.validation.duplicateProfileName": "配置名称不能重复",
+  "apikeys.filters.filterName": "按名称筛选...",
+  "apikeys.filters.status": "状态",
+  "apikeys.filters.creator": "创建人",
+  "apikeys.filters.reset": "重置",
+  "apikeys.filters.noResults": "没有找到结果",
+  "apikeys.profiles.title": "配置文件管理",
+  "apikeys.profiles.expand": "展开配置",
+  "apikeys.profiles.collapse": "收起配置",
+  "apikeys.profiles.description": "为以下 API Key {{name}} 配置模型映射, 当一个活动配置有模型映射配置时, 系统将自动在 API 请求时将请求模型映射到目标模型",
+  "apikeys.profiles.profilesTitle": "配置文件",
+  "apikeys.profiles.addProfile": "新增配置",
+  "apikeys.profiles.modelMappings": "模型映射",
+  "apikeys.profiles.addMapping": "新增映射",
+  "apikeys.profiles.noMappings": "暂无模型映射",
+  "apikeys.profiles.profileName": "配置名称",
+  "apikeys.profiles.sourceModel": "请求中的模型 (支持正则表达式)",
+  "apikeys.profiles.targetModel": "目标模型",
+  "apikeys.profiles.activeProfile": "生效配置",
+  "apikeys.profiles.selectActiveProfile": "选择生效配置",
+  "apikeys.profiles.noModelsFound": "未找到模型",
+  "apikeys.profiles.regexSupported": "支持正则表达式",
+  "apikeys.profiles.allowedChannels": "允许的渠道",
+  "apikeys.profiles.allowedChannelsDescription": "选择此配置可以使用的渠道。如果未选择任何渠道，则允许使用所有渠道。",
+  "apikeys.profiles.allowedChannelTags": "允许的渠道标签",
+  "apikeys.profiles.allowedChannelTagsDescription": "选择标签来过滤此配置可用的渠道。包含任一所选标签的渠道将被允许使用。如果未选择任何标签，则禁用标签过滤。",
+  "apikeys.profiles.allowedModels": "允许的模型",
+  "apikeys.profiles.allowedModelsDescription": "选择此配置可以使用的模型。如果未选择任何模型，则允许使用所有模型。"
 }

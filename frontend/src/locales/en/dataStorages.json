@@ -1,95 +1,52 @@
 {
-  "dataStorages": {
-    "title": "Data Storage Management",
-    "description": "Manage your data storage configurations and settings.",
-    "columns": {
-      "primary": "Primary",
-      "type": "Type",
-      "settings": "Settings"
-    },
-    "status": {
-      "active": "Active",
-      "archived": "Archived"
-    },
-    "types": {
-      "database": "Database",
-      "fs": "File System",
-      "s3": "S3",
-      "gcs": "GCS"
-    },
-    "primary": "Primary",
-    "default": "Default",
-    "actions": {},
-    "filters": {
-      "searchByName": "Search by name..."
-    },
-    "messages": {
-      "archiveSuccess": "Data storage archived successfully",
-      "archiveError": "Failed to archive data storage"
-    },
-    "errors": {
-      "createError": "Failed to create data storage",
-      "fetchData": "Failed to fetch data storages",
-      "updateError": "Failed to update data storage"
-    },
-    "dialogs": {
-      "create": {
-        "title": "Create Data Storage",
-        "description": "Configure a new data storage location."
-      },
-      "edit": {
-        "title": "Edit Data Storage",
-        "description": "Modify data storage configuration."
-      },
-      "delete": {},
-      "status": {
-        "archiveTitle": "Archive Data Storage",
-        "archiveDescription": "Are you sure you want to archive data storage {{name}}?"
-      },
-      "fields": {
-        "name": {},
-        "description": {},
-        "type": {},
-        "directory": {},
-        "s3AccessKey": {
-          "editPlaceholder": "Leave empty to keep current value"
-        },
-        "s3SecretKey": {
-          "editPlaceholder": "Leave empty to keep current value"
-        },
-        "gcsCredential": {
-          "editPlaceholder": "Leave empty to keep current value"
-        }
-      },
-      "buttons": {}
-    },
-    "validation": {
-      "nameRequired": "Name is required",
-      "directoryRequired": "Directory path is required",
-      "s3BucketRequired": "S3 bucket name is required",
-      "s3AccessKeyRequired": "S3 access key is required",
-      "s3SecretKeyRequired": "S3 secret key is required",
-      "gcsBucketRequired": "GCS bucket name is required",
-      "gcsCredentialRequired": "GCS service account JSON is required",
-      "gcsCredentialInvalid": "GCS credential must be a valid JSON object"
-    },
-    "fields": {
-      "name": "Name",
-      "description": "Description",
-      "type": "Type",
-      "directory": "Directory Path",
-      "s3BucketName": "Bucket Name",
-      "s3Endpoint": "Endpoint (optional)",
-      "s3Region": "Region",
-      "s3AccessKey": "Access Key",
-      "s3SecretKey": "Secret Key",
-      "gcsBucketName": "Bucket Name",
-      "gcsCredential": "Service Account JSON"
-    },
-    "buttons": {
-      "create": "Create Data Storage",
-      "openStorageSettings": "Storage Settings"
-    },
-    "llmStorageHint": "Can be used to configure storage for LLM request and response bodies"
-  }
+  "dataStorages.title": "Data Storage Management",
+  "dataStorages.description": "Manage your data storage configurations and settings.",
+  "dataStorages.columns.primary": "Primary",
+  "dataStorages.columns.type": "Type",
+  "dataStorages.columns.settings": "Settings",
+  "dataStorages.status.active": "Active",
+  "dataStorages.status.archived": "Archived",
+  "dataStorages.types.database": "Database",
+  "dataStorages.types.fs": "File System",
+  "dataStorages.types.s3": "S3",
+  "dataStorages.types.gcs": "GCS",
+  "dataStorages.primary": "Primary",
+  "dataStorages.default": "Default",
+  "dataStorages.filters.searchByName": "Search by name...",
+  "dataStorages.messages.archiveSuccess": "Data storage archived successfully",
+  "dataStorages.messages.archiveError": "Failed to archive data storage",
+  "dataStorages.errors.createError": "Failed to create data storage",
+  "dataStorages.errors.fetchData": "Failed to fetch data storages",
+  "dataStorages.errors.updateError": "Failed to update data storage",
+  "dataStorages.dialogs.create.title": "Create Data Storage",
+  "dataStorages.dialogs.create.description": "Configure a new data storage location.",
+  "dataStorages.dialogs.edit.title": "Edit Data Storage",
+  "dataStorages.dialogs.edit.description": "Modify data storage configuration.",
+  "dataStorages.dialogs.status.archiveTitle": "Archive Data Storage",
+  "dataStorages.dialogs.status.archiveDescription": "Are you sure you want to archive data storage {{name}}?",
+  "dataStorages.dialogs.fields.s3AccessKey.editPlaceholder": "Leave empty to keep current value",
+  "dataStorages.dialogs.fields.s3SecretKey.editPlaceholder": "Leave empty to keep current value",
+  "dataStorages.dialogs.fields.gcsCredential.editPlaceholder": "Leave empty to keep current value",
+  "dataStorages.validation.nameRequired": "Name is required",
+  "dataStorages.validation.directoryRequired": "Directory path is required",
+  "dataStorages.validation.s3BucketRequired": "S3 bucket name is required",
+  "dataStorages.validation.s3AccessKeyRequired": "S3 access key is required",
+  "dataStorages.validation.s3SecretKeyRequired": "S3 secret key is required",
+  "dataStorages.validation.gcsBucketRequired": "GCS bucket name is required",
+  "dataStorages.validation.gcsCredentialRequired": "GCS service account JSON is required",
+  "dataStorages.validation.gcsCredentialInvalid": "GCS credential must be a valid JSON object",
+  "dataStorages.fields.name": "Name",
+  "dataStorages.fields.description": "Description",
+  "dataStorages.fields.type": "Type",
+  "dataStorages.fields.directory": "Directory Path",
+  "dataStorages.fields.s3BucketName": "Bucket Name",
+  "dataStorages.fields.s3Endpoint": "Endpoint (optional)",
+  "dataStorages.fields.s3Region": "Region",
+  "dataStorages.fields.s3AccessKey": "Access Key",
+  "dataStorages.fields.s3SecretKey": "Secret Key",
+  "dataStorages.fields.gcsBucketName": "Bucket Name",
+  "dataStorages.fields.gcsCredential": "Service Account JSON",
+  "dataStorages.buttons.create": "Create Data Storage",
+  "dataStorages.buttons.openStorageSettings": "Storage Settings",
+  "dataStorages.llmStorageHint": "Can be used to configure storage for LLM request and response bodies"
 }

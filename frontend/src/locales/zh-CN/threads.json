@@ -1,38 +1,26 @@
 {
-  "threads": {
-    "title": "线程管理",
-    "description": "查看和管理 AI 会话线程及相关追踪",
-    "filters": {
-      "filterThreadId": "按线程 ID 筛选..."
-    },
-    "columns": {
-      "threadId": "线程 ID",
-      "project": "项目",
-      "unknownProject": "未知项目",
-      "traceCount": "追踪数量",
-      "firstUserQuery": "用户查询",
-      "details": "详情"
-    },
-    "actions": {
-      "viewDetails": "查看详情"
-    },
-    "detail": {
-      "title": "线程详情",
-      "notFound": "未找到线程",
-      "project": "项目",
-      "unknownProject": "未知项目",
-      "createdAt": "创建时间",
-      "updatedAt": "更新时间",
-      "traceCount": "追踪数量",
-      "tracesTitle": "追踪列表",
-      "tracesSubtitle": "查看该线程的最新追踪与执行记录",
-      "noTraces": "暂无追踪记录",
-      "traces": "条追踪"
-    },
-    "errors": {
-      "fetchList": "获取线程列表失败",
-      "fetchDetail": "获取线程详情失败",
-      "notFound": "未找到线程"
-    }
-  }
+  "threads.title": "线程管理",
+  "threads.description": "查看和管理 AI 会话线程及相关追踪",
+  "threads.filters.filterThreadId": "按线程 ID 筛选...",
+  "threads.columns.threadId": "线程 ID",
+  "threads.columns.project": "项目",
+  "threads.columns.unknownProject": "未知项目",
+  "threads.columns.traceCount": "追踪数量",
+  "threads.columns.firstUserQuery": "用户查询",
+  "threads.columns.details": "详情",
+  "threads.actions.viewDetails": "查看详情",
+  "threads.detail.title": "线程详情",
+  "threads.detail.notFound": "未找到线程",
+  "threads.detail.project": "项目",
+  "threads.detail.unknownProject": "未知项目",
+  "threads.detail.createdAt": "创建时间",
+  "threads.detail.updatedAt": "更新时间",
+  "threads.detail.traceCount": "追踪数量",
+  "threads.detail.tracesTitle": "追踪列表",
+  "threads.detail.tracesSubtitle": "查看该线程的最新追踪与执行记录",
+  "threads.detail.noTraces": "暂无追踪记录",
+  "threads.detail.traces": "条追踪",
+  "threads.errors.fetchList": "获取线程列表失败",
+  "threads.errors.fetchDetail": "获取线程详情失败",
+  "threads.errors.notFound": "未找到线程"
 }
