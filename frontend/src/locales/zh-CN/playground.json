@@ -1,28 +1,19 @@
 {
-  "playground": {
-    "title": "测试场",
-    "description": "在交互式环境中测试和体验 AI 模型。",
-    "settings": {
-      "model": "模型",
-      "selectModel": "选择模型",
-      "temperature": "温度",
-      "maxTokens": "最大令牌数",
-      "systemPrompt": "系统提示",
-      "defaultSystemPrompt": "你是一个有用的助手。"
-    },
-    "actions": {},
-    "chat": {
-      "generating": "生成中...",
-      "retry": "重试上次回复",
-      "clear": "清除聊天",
-      "startConversation": "开始对话",
-      "typeMessageBelow": "在下方输入消息开始交流",
-      "typeMessage": "输入消息...",
-      "noMessages": "没有消息可重试"
-    },
-    "errors": {
-      "noChannelsAvailable": "没有可用的模型"
-    },
-    "modelsAvailable": "{{count}} 个模型可用，跨 {{channels}} 个渠道"
-  }
+  "playground.title": "测试场",
+  "playground.description": "在交互式环境中测试和体验 AI 模型。",
+  "playground.settings.model": "模型",
+  "playground.settings.selectModel": "选择模型",
+  "playground.settings.temperature": "温度",
+  "playground.settings.maxTokens": "最大令牌数",
+  "playground.settings.systemPrompt": "系统提示",
+  "playground.settings.defaultSystemPrompt": "你是一个有用的助手。",
+  "playground.chat.generating": "生成中...",
+  "playground.chat.retry": "重试上次回复",
+  "playground.chat.clear": "清除聊天",
+  "playground.chat.startConversation": "开始对话",
+  "playground.chat.typeMessageBelow": "在下方输入消息开始交流",
+  "playground.chat.typeMessage": "输入消息...",
+  "playground.chat.noMessages": "没有消息可重试",
+  "playground.errors.noChannelsAvailable": "没有可用的模型",
+  "playground.modelsAvailable": "{{count}} 个模型可用，跨 {{channels}} 个渠道"
 }

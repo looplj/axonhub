@@ -1,59 +1,30 @@
 {
-  "projects": {
-    "title": "项目管理",
-    "description": "管理系统项目和配置。",
-    "createProject": "新建项目",
-    "searchProjects": "按名称搜索项目...",
-    "columns": {},
-    "status": {
-      "active": "活跃",
-      "archived": "已归档"
-    },
-    "actions": {},
-    "filters": {},
-    "dialogs": {
-      "create": {
-        "title": "新建项目",
-        "description": "创建一个新的项目。"
-      },
-      "edit": {
-        "title": "编辑项目",
-        "description": "修改项目信息。"
-      },
-      "archive": {
-        "title": "归档项目",
-        "description": "确定要归档项目 \"{{name}}\" 吗？归档后的项目将不再显示在活跃列表中。"
-      },
-      "activate": {
-        "title": "激活项目",
-        "description": "确定要激活项目 \"{{name}}\" 吗？激活后的项目将重新显示在活跃列表中。"
-      },
-      "fields": {
-        "name": {
-          "label": "项目名称",
-          "placeholder": "我的项目",
-          "description": "项目的显示名称"
-        },
-        "slug": {},
-        "description": {
-          "label": "项目描述",
-          "placeholder": "输入项目描述",
-          "description": "项目的详细描述"
-        }
-      },
-      "buttons": {}
-    },
-    "validation": {
-      "nameRequired": "项目名称不能为空"
-    },
-    "errors": {
-      "loadProjectsFailed": "加载项目失败",
-      "loadProjectDetailFailed": "加载项目详情失败",
-      "loadMyProjectsFailed": "获取我的项目失败",
-      "createProjectFailed": "创建项目失败",
-      "updateProjectFailed": "更新项目失败",
-      "archiveProjectFailed": "归档项目失败",
-      "activateProjectFailed": "激活项目失败"
-    }
-  }
+  "projects.title": "项目管理",
+  "projects.description": "管理系统项目和配置。",
+  "projects.createProject": "新建项目",
+  "projects.searchProjects": "按名称搜索项目...",
+  "projects.status.active": "活跃",
+  "projects.status.archived": "已归档",
+  "projects.dialogs.create.title": "新建项目",
+  "projects.dialogs.create.description": "创建一个新的项目。",
+  "projects.dialogs.edit.title": "编辑项目",
+  "projects.dialogs.edit.description": "修改项目信息。",
+  "projects.dialogs.archive.title": "归档项目",
+  "projects.dialogs.archive.description": "确定要归档项目 \"{{name}}\" 吗？归档后的项目将不再显示在活跃列表中。",
+  "projects.dialogs.activate.title": "激活项目",
+  "projects.dialogs.activate.description": "确定要激活项目 \"{{name}}\" 吗？激活后的项目将重新显示在活跃列表中。",
+  "projects.dialogs.fields.name.label": "项目名称",
+  "projects.dialogs.fields.name.placeholder": "我的项目",
+  "projects.dialogs.fields.name.description": "项目的显示名称",
+  "projects.dialogs.fields.description.label": "项目描述",
+  "projects.dialogs.fields.description.placeholder": "输入项目描述",
+  "projects.dialogs.fields.description.description": "项目的详细描述",
+  "projects.validation.nameRequired": "项目名称不能为空",
+  "projects.errors.loadProjectsFailed": "加载项目失败",
+  "projects.errors.loadProjectDetailFailed": "加载项目详情失败",
+  "projects.errors.loadMyProjectsFailed": "获取我的项目失败",
+  "projects.errors.createProjectFailed": "创建项目失败",
+  "projects.errors.updateProjectFailed": "更新项目失败",
+  "projects.errors.archiveProjectFailed": "归档项目失败",
+  "projects.errors.activateProjectFailed": "激活项目失败"
 }

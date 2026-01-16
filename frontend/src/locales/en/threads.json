@@ -1,38 +1,26 @@
 {
-  "threads": {
-    "title": "Thread Management",
-    "description": "View and manage AI conversation threads and related traces",
-    "filters": {
-      "filterThreadId": "Filter by thread ID..."
-    },
-    "columns": {
-      "threadId": "Thread ID",
-      "project": "Project",
-      "unknownProject": "Unknown Project",
-      "traceCount": "Trace Count",
-      "firstUserQuery": "User Query",
-      "details": "Details"
-    },
-    "actions": {
-      "viewDetails": "View Details"
-    },
-    "detail": {
-      "title": "Thread Details",
-      "notFound": "Thread not found",
-      "project": "Project",
-      "unknownProject": "Unknown Project",
-      "createdAt": "Created At",
-      "updatedAt": "Updated At",
-      "traceCount": "Trace Count",
-      "tracesTitle": "Traces",
-      "tracesSubtitle": "Review recent traces and executions for this thread",
-      "noTraces": "No traces found",
-      "traces": "traces"
-    },
-    "errors": {
-      "fetchList": "Failed to fetch thread list",
-      "fetchDetail": "Failed to fetch thread details",
-      "notFound": "Thread not found"
-    }
-  }
+  "threads.title": "Thread Management",
+  "threads.description": "View and manage AI conversation threads and related traces",
+  "threads.filters.filterThreadId": "Filter by thread ID...",
+  "threads.columns.threadId": "Thread ID",
+  "threads.columns.project": "Project",
+  "threads.columns.unknownProject": "Unknown Project",
+  "threads.columns.traceCount": "Trace Count",
+  "threads.columns.firstUserQuery": "User Query",
+  "threads.columns.details": "Details",
+  "threads.actions.viewDetails": "View Details",
+  "threads.detail.title": "Thread Details",
+  "threads.detail.notFound": "Thread not found",
+  "threads.detail.project": "Project",
+  "threads.detail.unknownProject": "Unknown Project",
+  "threads.detail.createdAt": "Created At",
+  "threads.detail.updatedAt": "Updated At",
+  "threads.detail.traceCount": "Trace Count",
+  "threads.detail.tracesTitle": "Traces",
+  "threads.detail.tracesSubtitle": "Review recent traces and executions for this thread",
+  "threads.detail.noTraces": "No traces found",
+  "threads.detail.traces": "traces",
+  "threads.errors.fetchList": "Failed to fetch thread list",
+  "threads.errors.fetchDetail": "Failed to fetch thread details",
+  "threads.errors.notFound": "Thread not found"
 }

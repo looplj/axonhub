@@ -1,97 +1,61 @@
 {
-  "prompts": {
-    "title": "Prompts",
-    "description": "Manage prompts for AI models",
-    "columns": {
-      "role": "Role",
-      "actionType": "Action Type",
-      "conditions": "Conditions"
-    },
-    "actionTypes": {
-      "prepend": "Prepend",
-      "append": "Append"
-    },
-    "conditionTypes": {
-      "model_id": "Model ID",
-      "model_pattern": "Model Pattern"
-    },
-    "actions": {
-      "create": "Add Prompt"
-    },
-    "filters": {
-      "filterByName": "Filter by name..."
-    },
-    "fields": {
-      "name": "Name",
-      "description": "Description",
-      "role": "Role",
-      "rolePlaceholder": "Select role",
-      "content": "Content",
-      "contentPlaceholder": "Enter prompt content",
-      "actionType": "Action/操作",
-      "actionTypePlaceholder": "Select action type",
-      "actionTypeHelpPrepend": "Insert a message before all messages",
-      "actionTypeHelpAppend": "Insert a message after all messages",
-      "conditionValuePlaceholder": "Enter condition value"
-    },
-    "conditions": {
-      "title": "Conditions",
-      "description": "Define when this prompt should be applied",
-      "add": "Add Condition",
-      "addGroup": "Add Group",
-      "group": "Group",
-      "empty": "No conditions set - applies to all requests",
-      "and": "AND",
-      "or": "OR"
-    },
-    "dialogs": {
-      "create": {
-        "title": "Create Prompt",
-        "description": "Add a new prompt"
-      },
-      "edit": {
-        "title": "Edit Prompt",
-        "description": "Update prompt"
-      },
-      "delete": {
-        "title": "Delete Prompt",
-        "description": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone."
-      },
-      "statusChange": {
-        "title": "Change Prompt Status",
-        "description": {
-          "enabled": "Are you sure you want to enable \"{{name}}\"?",
-          "disabled": "Are you sure you want to disable \"{{name}}\"?"
-        }
-      },
-      "bulkEnable": {
-        "title": "Enable Prompts",
-        "description": "Are you sure you want to enable {{count}} prompt(s)?"
-      },
-      "bulkDisable": {
-        "title": "Disable Prompts",
-        "description": "Are you sure you want to disable {{count}} prompt(s)?"
-      },
-      "bulkDelete": {
-        "title": "Delete Prompts",
-        "description": "Are you sure you want to delete {{count}} prompt(s)? This action cannot be undone."
-      }
-    },
-    "messages": {
-      "createSuccess": "Prompt created successfully",
-      "createError": "Failed to create prompt: {{error}}",
-      "updateSuccess": "Prompt updated successfully",
-      "updateError": "Failed to update prompt: {{error}}",
-      "deleteSuccess": "Prompt deleted successfully",
-      "deleteError": "Failed to delete prompt: {{error}}",
-      "statusUpdateSuccess": "Prompt status updated successfully",
-      "statusUpdateError": "Failed to update prompt status: {{error}}",
-      "bulkEnableSuccess": "Successfully enabled {{count}} prompt(s)",
-      "bulkEnableError": "Failed to enable prompts: {{error}}",
-      "bulkDisableSuccess": "Successfully disabled {{count}} prompt(s)",
-      "bulkDisableError": "Failed to disable prompts: {{error}}",
-      "bulkDeleteSuccess": "Successfully deleted {{count}} prompt(s)",
-      "bulkDeleteError": "Failed to delete prompts: {{error}}"
-    }
-  }
+  "prompts.title": "Prompts",
+  "prompts.description": "Manage prompts for AI models",
+  "prompts.columns.role": "Role",
+  "prompts.columns.actionType": "Action Type",
+  "prompts.columns.conditions": "Conditions",
+  "prompts.actionTypes.prepend": "Prepend",
+  "prompts.actionTypes.append": "Append",
+  "prompts.conditionTypes.model_id": "Model ID",
+  "prompts.conditionTypes.model_pattern": "Model Pattern",
+  "prompts.actions.create": "Add Prompt",
+  "prompts.filters.filterByName": "Filter by name...",
+  "prompts.fields.name": "Name",
+  "prompts.fields.description": "Description",
+  "prompts.fields.role": "Role",
+  "prompts.fields.rolePlaceholder": "Select role",
+  "prompts.fields.content": "Content",
+  "prompts.fields.contentPlaceholder": "Enter prompt content",
+  "prompts.fields.actionType": "Action/操作",
+  "prompts.fields.actionTypePlaceholder": "Select action type",
+  "prompts.fields.actionTypeHelpPrepend": "Insert a message before all messages",
+  "prompts.fields.actionTypeHelpAppend": "Insert a message after all messages",
+  "prompts.fields.conditionValuePlaceholder": "Enter condition value",
+  "prompts.conditions.title": "Conditions",
+  "prompts.conditions.description": "Define when this prompt should be applied",
+  "prompts.conditions.add": "Add Condition",
+  "prompts.conditions.addGroup": "Add Group",
+  "prompts.conditions.group": "Group",
+  "prompts.conditions.empty": "No conditions set - applies to all requests",
+  "prompts.conditions.and": "AND",
+  "prompts.conditions.or": "OR",
+  "prompts.dialogs.create.title": "Create Prompt",
+  "prompts.dialogs.create.description": "Add a new prompt",
+  "prompts.dialogs.edit.title": "Edit Prompt",
+  "prompts.dialogs.edit.description": "Update prompt",
+  "prompts.dialogs.delete.title": "Delete Prompt",
+  "prompts.dialogs.delete.description": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
+  "prompts.dialogs.statusChange.title": "Change Prompt Status",
+  "prompts.dialogs.statusChange.description.enabled": "Are you sure you want to enable \"{{name}}\"?",
+  "prompts.dialogs.statusChange.description.disabled": "Are you sure you want to disable \"{{name}}\"?",
+  "prompts.dialogs.bulkEnable.title": "Enable Prompts",
+  "prompts.dialogs.bulkEnable.description": "Are you sure you want to enable {{count}} prompt(s)?",
+  "prompts.dialogs.bulkDisable.title": "Disable Prompts",
+  "prompts.dialogs.bulkDisable.description": "Are you sure you want to disable {{count}} prompt(s)?",
+  "prompts.dialogs.bulkDelete.title": "Delete Prompts",
+  "prompts.dialogs.bulkDelete.description": "Are you sure you want to delete {{count}} prompt(s)? This action cannot be undone.",
+  "prompts.messages.createSuccess": "Prompt created successfully",
+  "prompts.messages.createError": "Failed to create prompt: {{error}}",
+  "prompts.messages.updateSuccess": "Prompt updated successfully",
+  "prompts.messages.updateError": "Failed to update prompt: {{error}}",
+  "prompts.messages.deleteSuccess": "Prompt deleted successfully",
+  "prompts.messages.deleteError": "Failed to delete prompt: {{error}}",
+  "prompts.messages.statusUpdateSuccess": "Prompt status updated successfully",
+  "prompts.messages.statusUpdateError": "Failed to update prompt status: {{error}}",
+  "prompts.messages.bulkEnableSuccess": "Successfully enabled {{count}} prompt(s)",
+  "prompts.messages.bulkEnableError": "Failed to enable prompts: {{error}}",
+  "prompts.messages.bulkDisableSuccess": "Successfully disabled {{count}} prompt(s)",
+  "prompts.messages.bulkDisableError": "Failed to disable prompts: {{error}}",
+  "prompts.messages.bulkDeleteSuccess": "Successfully deleted {{count}} prompt(s)",
+  "prompts.messages.bulkDeleteError": "Failed to delete prompts: {{error}}"
 }

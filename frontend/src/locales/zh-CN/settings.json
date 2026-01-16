@@ -1,7 +1,4 @@
 {
-  "settings": {
-    "title": "设置",
-    "description": "管理您的账户设置和邮件偏好。",
-    "nav": {}
-  }
+  "settings.title": "设置",
+  "settings.description": "管理您的账户设置和邮件偏好。"
 }

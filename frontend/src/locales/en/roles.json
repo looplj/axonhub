@@ -1,59 +1,31 @@
 {
-  "roles": {
-    "title": "Role Management",
-    "description": "Manage system roles and permission configurations.",
-    "createRole": "Create Role",
-    "searchRoles": "Search roles by name",
-    "columns": {
-      "scopes": "Scopes",
-      "moreScopes": "more",
-      "showLess": "Show less"
-    },
-    "actions": {},
-    "filters": {},
-    "dialogs": {
-      "create": {
-        "title": "Create Role",
-        "description": "Create a new role and configure its permission scopes."
-      },
-      "edit": {
-        "title": "Edit Role",
-        "description": "Modify role information and permission configuration."
-      },
-      "delete": {
-        "title": "Delete Role",
-        "description": "Are you sure you want to delete this role? This action cannot be undone."
-      },
-      "bulkDelete": {
-        "title": "Bulk Delete Roles",
-        "description": "Are you sure you want to delete {{count}} selected roles? This action cannot be undone."
-      },
-      "fields": {
-        "code": {},
-        "name": {
-          "label": "Role Name",
-          "placeholder": "Administrator",
-          "description": "User-friendly role name"
-        },
-        "scopes": {
-          "label": "Permission Scopes",
-          "description": "Select the permissions this role has"
-        }
-      },
-      "buttons": {}
-    },
-    "validation": {
-      "nameRequired": "Role name is required",
-      "scopesRequired": "At least one permission is required",
-      "projectIdRequired": "Project ID is required"
-    },
-    "errors": {
-      "loadRolesFailed": "Failed to load roles",
-      "loadRoleDetailFailed": "Failed to load role details",
-      "createRoleFailed": "Failed to create role",
-      "updateRoleFailed": "Failed to update role",
-      "deleteRoleFailed": "Failed to delete role",
-      "deleteRolesBulkFailed": "Failed to delete roles"
-    }
-  }
+  "roles.title": "Role Management",
+  "roles.description": "Manage system roles and permission configurations.",
+  "roles.createRole": "Create Role",
+  "roles.searchRoles": "Search roles by name",
+  "roles.columns.scopes": "Scopes",
+  "roles.columns.moreScopes": "more",
+  "roles.columns.showLess": "Show less",
+  "roles.dialogs.create.title": "Create Role",
+  "roles.dialogs.create.description": "Create a new role and configure its permission scopes.",
+  "roles.dialogs.edit.title": "Edit Role",
+  "roles.dialogs.edit.description": "Modify role information and permission configuration.",
+  "roles.dialogs.delete.title": "Delete Role",
+  "roles.dialogs.delete.description": "Are you sure you want to delete this role? This action cannot be undone.",
+  "roles.dialogs.bulkDelete.title": "Bulk Delete Roles",
+  "roles.dialogs.bulkDelete.description": "Are you sure you want to delete {{count}} selected roles? This action cannot be undone.",
+  "roles.dialogs.fields.name.label": "Role Name",
+  "roles.dialogs.fields.name.placeholder": "Administrator",
+  "roles.dialogs.fields.name.description": "User-friendly role name",
+  "roles.dialogs.fields.scopes.label": "Permission Scopes",
+  "roles.dialogs.fields.scopes.description": "Select the permissions this role has",
+  "roles.validation.nameRequired": "Role name is required",
+  "roles.validation.scopesRequired": "At least one permission is required",
+  "roles.validation.projectIdRequired": "Project ID is required",
+  "roles.errors.loadRolesFailed": "Failed to load roles",
+  "roles.errors.loadRoleDetailFailed": "Failed to load role details",
+  "roles.errors.createRoleFailed": "Failed to create role",
+  "roles.errors.updateRoleFailed": "Failed to update role",
+  "roles.errors.deleteRoleFailed": "Failed to delete role",
+  "roles.errors.deleteRolesBulkFailed": "Failed to delete roles"
 }
