@@ -1,5 +1,6 @@
 {
   "currencies": {
+    "format": "{{val, currency}}",
     "AED": "AED - 阿联酋迪拉姆",
     "AFN": "AFN - 阿富汗尼",
     "ALL": "ALL - 阿尔巴尼亚列克",

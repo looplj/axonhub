@@ -21,7 +21,8 @@
       "cacheHitRate": "缓存命中率: {{rate}}%",
       "writeCacheRate": "写入缓存占比: {{rate}}%",
       "completionAudioTokens": "输出音频令牌",
-      "completionReasoningTokens": "推理令牌",
+      "completionReasoningTokens": "输出推理令牌",
+      "totalCost": "总费用",
       "source": "来源"
     },
     "source": {

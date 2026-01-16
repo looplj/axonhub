@@ -1025,6 +1025,8 @@ type CreateUsageLogInput struct {
 	PromptAudioTokens                  *int64
 	PromptCachedTokens                 *int64
 	PromptWriteCachedTokens            *int64
+	PromptWriteCachedTokens5m          *int64
+	PromptWriteCachedTokens1h          *int64
 	CompletionAudioTokens              *int64
 	CompletionReasoningTokens          *int64
 	CompletionAcceptedPredictionTokens *int64
@@ -1033,6 +1035,7 @@ type CreateUsageLogInput struct {
 	Format                             *string
 	TotalCost                          *float64
 	CostItems                          []objects.CostItem
+	CostPriceReferenceID               *string
 	RequestID                          int
 	ProjectID                          int
 	ChannelID                          *int
@@ -1059,6 +1062,12 @@ func (i *CreateUsageLogInput) Mutate(m *UsageLogMutation) {
 	if v := i.PromptWriteCachedTokens; v != nil {
 		m.SetPromptWriteCachedTokens(*v)
 	}
+	if v := i.PromptWriteCachedTokens5m; v != nil {
+		m.SetPromptWriteCachedTokens5m(*v)
+	}
+	if v := i.PromptWriteCachedTokens1h; v != nil {
+		m.SetPromptWriteCachedTokens1h(*v)
+	}
 	if v := i.CompletionAudioTokens; v != nil {
 		m.SetCompletionAudioTokens(*v)
 	}
@@ -1083,6 +1092,9 @@ func (i *CreateUsageLogInput) Mutate(m *UsageLogMutation) {
 	if v := i.CostItems; v != nil {
 		m.SetCostItems(v)
 	}
+	if v := i.CostPriceReferenceID; v != nil {
+		m.SetCostPriceReferenceID(*v)
+	}
 	m.SetRequestID(i.RequestID)
 	m.SetProjectID(i.ProjectID)
 	if v := i.ChannelID; v != nil {
@@ -1101,12 +1113,14 @@ type UpdateUsageLogInput struct {
 	PromptTokens                            *int64
 	CompletionTokens                        *int64
 	TotalTokens                             *int64
-	ClearPromptAudioTokens                  bool
 	PromptAudioTokens                       *int64
-	ClearPromptCachedTokens                 bool
 	PromptCachedTokens                      *int64
 	ClearPromptWriteCachedTokens            bool
 	PromptWriteCachedTokens                 *int64
+	ClearPromptWriteCachedTokens5m          bool
+	PromptWriteCachedTokens5m               *int64
+	ClearPromptWriteCachedTokens1h          bool
+	PromptWriteCachedTokens1h               *int64
 	ClearCompletionAudioTokens              bool
 	CompletionAudioTokens                   *int64
 	ClearCompletionReasoningTokens          bool
@@ -1115,10 +1129,13 @@ type UpdateUsageLogInput struct {
 	CompletionAcceptedPredictionTokens      *int64
 	ClearCompletionRejectedPredictionTokens bool
 	CompletionRejectedPredictionTokens      *int64
+	ClearTotalCost                          bool
 	TotalCost                               *float64
 	ClearCostItems                          bool
 	CostItems                               []objects.CostItem
 	AppendCostItems                         []objects.CostItem
+	ClearCostPriceReferenceID               bool
+	CostPriceReferenceID                    *string
 	ClearChannel                            bool
 	ChannelID                               *int
 }
@@ -1134,14 +1151,8 @@ func (i *UpdateUsageLogInput) Mutate(m *UsageLogMutation) {
 	if v := i.TotalTokens; v != nil {
 		m.SetTotalTokens(*v)
 	}
-	if i.ClearPromptAudioTokens {
-		m.ClearPromptAudioTokens()
-	}
 	if v := i.PromptAudioTokens; v != nil {
 		m.SetPromptAudioTokens(*v)
-	}
-	if i.ClearPromptCachedTokens {
-		m.ClearPromptCachedTokens()
 	}
 	if v := i.PromptCachedTokens; v != nil {
 		m.SetPromptCachedTokens(*v)
@@ -1151,6 +1162,18 @@ func (i *UpdateUsageLogInput) Mutate(m *UsageLogMutation) {
 	}
 	if v := i.PromptWriteCachedTokens; v != nil {
 		m.SetPromptWriteCachedTokens(*v)
+	}
+	if i.ClearPromptWriteCachedTokens5m {
+		m.ClearPromptWriteCachedTokens5m()
+	}
+	if v := i.PromptWriteCachedTokens5m; v != nil {
+		m.SetPromptWriteCachedTokens5m(*v)
+	}
+	if i.ClearPromptWriteCachedTokens1h {
+		m.ClearPromptWriteCachedTokens1h()
+	}
+	if v := i.PromptWriteCachedTokens1h; v != nil {
+		m.SetPromptWriteCachedTokens1h(*v)
 	}
 	if i.ClearCompletionAudioTokens {
 		m.ClearCompletionAudioTokens()
@@ -1176,6 +1199,9 @@ func (i *UpdateUsageLogInput) Mutate(m *UsageLogMutation) {
 	if v := i.CompletionRejectedPredictionTokens; v != nil {
 		m.SetCompletionRejectedPredictionTokens(*v)
 	}
+	if i.ClearTotalCost {
+		m.ClearTotalCost()
+	}
 	if v := i.TotalCost; v != nil {
 		m.SetTotalCost(*v)
 	}
@@ -1187,6 +1213,12 @@ func (i *UpdateUsageLogInput) Mutate(m *UsageLogMutation) {
 	}
 	if i.AppendCostItems != nil {
 		m.AppendCostItems(i.CostItems)
+	}
+	if i.ClearCostPriceReferenceID {
+		m.ClearCostPriceReferenceID()
+	}
+	if v := i.CostPriceReferenceID; v != nil {
+		m.SetCostPriceReferenceID(*v)
 	}
 	if i.ClearChannel {
 		m.ClearChannel()

@@ -104,7 +104,7 @@
     "actions": {
       "test": "测试",
       "settings": "设置",
-      "price": "价格",
+      "modelPrice": "模型价格",
       "errorResolved": "错误已解决",
       "viewModels": "查看模型"
     },

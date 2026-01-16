@@ -102,7 +102,7 @@
     "actions": {
       "test": "Test",
       "settings": "Settings",
-      "price": "Price",
+      "modelPrice": "Model Price",
       "errorResolved": "Error Resolved",
       "viewModels": "View Models"
     },

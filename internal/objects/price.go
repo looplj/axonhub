@@ -1,6 +1,8 @@
 package objects
 
 import (
+	"fmt"
+
 	"github.com/shopspring/decimal"
 )
 
@@ -64,6 +66,107 @@ func (p *Pricing) Equals(other *Pricing) bool {
 	}
 
 	return true
+}
+
+func (p *Pricing) Validate() error {
+	if p == nil {
+		return fmt.Errorf("pricing is nil")
+	}
+
+	switch p.Mode {
+	case PricingModeFlatFee:
+		if p.FlatFee == nil {
+			return fmt.Errorf("flatFee is required")
+		}
+	case PricingModeUsagePerUnit:
+		if p.UsagePerUnit == nil {
+			return fmt.Errorf("usagePerUnit is required")
+		}
+	case PricingModeTiered:
+		if p.UsageTiered == nil {
+			return fmt.Errorf("usageTiered is required")
+		}
+
+		if err := p.UsageTiered.Validate(); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("unknown pricing mode: %s", p.Mode)
+	}
+
+	return nil
+}
+
+func (p *TieredPricing) Validate() error {
+	if p == nil {
+		return fmt.Errorf("usageTiered is nil")
+	}
+
+	if len(p.Tiers) == 0 {
+		return fmt.Errorf("tiers is required")
+	}
+
+	lastIdx := len(p.Tiers) - 1
+	for i := range p.Tiers {
+		tier := p.Tiers[i]
+		if i == lastIdx {
+			if tier.UpTo != nil {
+				return fmt.Errorf("tiers[%d].upTo must be null", i)
+			}
+
+			continue
+		}
+
+		if tier.UpTo == nil {
+			return fmt.Errorf("tiers[%d].upTo is required", i)
+		}
+	}
+
+	return nil
+}
+
+func (p *PromptWriteCacheVariant) Validate() error {
+	if p == nil {
+		return fmt.Errorf("promptWriteCacheVariant is nil")
+	}
+
+	if err := p.Pricing.Validate(); err != nil {
+		return fmt.Errorf("pricing: %w", err)
+	}
+
+	return nil
+}
+
+func (i *ModelPriceItem) Validate() error {
+	if i == nil {
+		return fmt.Errorf("modelPriceItem is nil")
+	}
+
+	if err := i.Pricing.Validate(); err != nil {
+		return fmt.Errorf("pricing: %w", err)
+	}
+
+	for idx := range i.PromptWriteCacheVariants {
+		if err := i.PromptWriteCacheVariants[idx].Validate(); err != nil {
+			return fmt.Errorf("promptWriteCacheVariants[%d]: %w", idx, err)
+		}
+	}
+
+	return nil
+}
+
+func (p *ModelPrice) Validate() error {
+	if p == nil {
+		return fmt.Errorf("modelPrice is nil")
+	}
+
+	for idx := range p.Items {
+		if err := p.Items[idx].Validate(); err != nil {
+			return fmt.Errorf("items[%d]: %w", idx, err)
+		}
+	}
+
+	return nil
 }
 
 type TieredPricing struct {

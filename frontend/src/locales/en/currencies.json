@@ -1,5 +1,6 @@
 {
   "currencies": {
+    "format": "{{val, currency}}",
     "AED": "AED - United Arab Emirates Dirham",
     "AFN": "AFN - Afghan Afghani",
     "ALL": "ALL - Albanian Lek",

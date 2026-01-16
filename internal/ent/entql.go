@@ -456,6 +456,8 @@ var schemaGraph = func() *sqlgraph.Schema {
 			usagelog.FieldPromptAudioTokens:                  {Type: field.TypeInt64, Column: usagelog.FieldPromptAudioTokens},
 			usagelog.FieldPromptCachedTokens:                 {Type: field.TypeInt64, Column: usagelog.FieldPromptCachedTokens},
 			usagelog.FieldPromptWriteCachedTokens:            {Type: field.TypeInt64, Column: usagelog.FieldPromptWriteCachedTokens},
+			usagelog.FieldPromptWriteCachedTokens5m:          {Type: field.TypeInt64, Column: usagelog.FieldPromptWriteCachedTokens5m},
+			usagelog.FieldPromptWriteCachedTokens1h:          {Type: field.TypeInt64, Column: usagelog.FieldPromptWriteCachedTokens1h},
 			usagelog.FieldCompletionAudioTokens:              {Type: field.TypeInt64, Column: usagelog.FieldCompletionAudioTokens},
 			usagelog.FieldCompletionReasoningTokens:          {Type: field.TypeInt64, Column: usagelog.FieldCompletionReasoningTokens},
 			usagelog.FieldCompletionAcceptedPredictionTokens: {Type: field.TypeInt64, Column: usagelog.FieldCompletionAcceptedPredictionTokens},
@@ -464,6 +466,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			usagelog.FieldFormat:                             {Type: field.TypeString, Column: usagelog.FieldFormat},
 			usagelog.FieldTotalCost:                          {Type: field.TypeFloat64, Column: usagelog.FieldTotalCost},
 			usagelog.FieldCostItems:                          {Type: field.TypeJSON, Column: usagelog.FieldCostItems},
+			usagelog.FieldCostPriceReferenceID:               {Type: field.TypeString, Column: usagelog.FieldCostPriceReferenceID},
 		},
 	}
 	graph.Nodes[18] = &sqlgraph.Node{
@@ -3527,6 +3530,16 @@ func (f *UsageLogFilter) WherePromptWriteCachedTokens(p entql.Int64P) {
 	f.Where(p.Field(usagelog.FieldPromptWriteCachedTokens))
 }
 
+// WherePromptWriteCachedTokens5m applies the entql int64 predicate on the prompt_write_cached_tokens_5m field.
+func (f *UsageLogFilter) WherePromptWriteCachedTokens5m(p entql.Int64P) {
+	f.Where(p.Field(usagelog.FieldPromptWriteCachedTokens5m))
+}
+
+// WherePromptWriteCachedTokens1h applies the entql int64 predicate on the prompt_write_cached_tokens_1h field.
+func (f *UsageLogFilter) WherePromptWriteCachedTokens1h(p entql.Int64P) {
+	f.Where(p.Field(usagelog.FieldPromptWriteCachedTokens1h))
+}
+
 // WhereCompletionAudioTokens applies the entql int64 predicate on the completion_audio_tokens field.
 func (f *UsageLogFilter) WhereCompletionAudioTokens(p entql.Int64P) {
 	f.Where(p.Field(usagelog.FieldCompletionAudioTokens))
@@ -3565,6 +3578,11 @@ func (f *UsageLogFilter) WhereTotalCost(p entql.Float64P) {
 // WhereCostItems applies the entql json.RawMessage predicate on the cost_items field.
 func (f *UsageLogFilter) WhereCostItems(p entql.BytesP) {
 	f.Where(p.Field(usagelog.FieldCostItems))
+}
+
+// WhereCostPriceReferenceID applies the entql string predicate on the cost_price_reference_id field.
+func (f *UsageLogFilter) WhereCostPriceReferenceID(p entql.StringP) {
+	f.Where(p.Field(usagelog.FieldCostPriceReferenceID))
 }
 
 // WhereHasRequest applies a predicate to check if query has an edge request.

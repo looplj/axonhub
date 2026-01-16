@@ -142,12 +142,6 @@ func (_u *UsageLogUpdate) AddPromptAudioTokens(v int64) *UsageLogUpdate {
 	return _u
 }
 
-// ClearPromptAudioTokens clears the value of the "prompt_audio_tokens" field.
-func (_u *UsageLogUpdate) ClearPromptAudioTokens() *UsageLogUpdate {
-	_u.mutation.ClearPromptAudioTokens()
-	return _u
-}
-
 // SetPromptCachedTokens sets the "prompt_cached_tokens" field.
 func (_u *UsageLogUpdate) SetPromptCachedTokens(v int64) *UsageLogUpdate {
 	_u.mutation.ResetPromptCachedTokens()
@@ -166,12 +160,6 @@ func (_u *UsageLogUpdate) SetNillablePromptCachedTokens(v *int64) *UsageLogUpdat
 // AddPromptCachedTokens adds value to the "prompt_cached_tokens" field.
 func (_u *UsageLogUpdate) AddPromptCachedTokens(v int64) *UsageLogUpdate {
 	_u.mutation.AddPromptCachedTokens(v)
-	return _u
-}
-
-// ClearPromptCachedTokens clears the value of the "prompt_cached_tokens" field.
-func (_u *UsageLogUpdate) ClearPromptCachedTokens() *UsageLogUpdate {
-	_u.mutation.ClearPromptCachedTokens()
 	return _u
 }
 
@@ -199,6 +187,60 @@ func (_u *UsageLogUpdate) AddPromptWriteCachedTokens(v int64) *UsageLogUpdate {
 // ClearPromptWriteCachedTokens clears the value of the "prompt_write_cached_tokens" field.
 func (_u *UsageLogUpdate) ClearPromptWriteCachedTokens() *UsageLogUpdate {
 	_u.mutation.ClearPromptWriteCachedTokens()
+	return _u
+}
+
+// SetPromptWriteCachedTokens5m sets the "prompt_write_cached_tokens_5m" field.
+func (_u *UsageLogUpdate) SetPromptWriteCachedTokens5m(v int64) *UsageLogUpdate {
+	_u.mutation.ResetPromptWriteCachedTokens5m()
+	_u.mutation.SetPromptWriteCachedTokens5m(v)
+	return _u
+}
+
+// SetNillablePromptWriteCachedTokens5m sets the "prompt_write_cached_tokens_5m" field if the given value is not nil.
+func (_u *UsageLogUpdate) SetNillablePromptWriteCachedTokens5m(v *int64) *UsageLogUpdate {
+	if v != nil {
+		_u.SetPromptWriteCachedTokens5m(*v)
+	}
+	return _u
+}
+
+// AddPromptWriteCachedTokens5m adds value to the "prompt_write_cached_tokens_5m" field.
+func (_u *UsageLogUpdate) AddPromptWriteCachedTokens5m(v int64) *UsageLogUpdate {
+	_u.mutation.AddPromptWriteCachedTokens5m(v)
+	return _u
+}
+
+// ClearPromptWriteCachedTokens5m clears the value of the "prompt_write_cached_tokens_5m" field.
+func (_u *UsageLogUpdate) ClearPromptWriteCachedTokens5m() *UsageLogUpdate {
+	_u.mutation.ClearPromptWriteCachedTokens5m()
+	return _u
+}
+
+// SetPromptWriteCachedTokens1h sets the "prompt_write_cached_tokens_1h" field.
+func (_u *UsageLogUpdate) SetPromptWriteCachedTokens1h(v int64) *UsageLogUpdate {
+	_u.mutation.ResetPromptWriteCachedTokens1h()
+	_u.mutation.SetPromptWriteCachedTokens1h(v)
+	return _u
+}
+
+// SetNillablePromptWriteCachedTokens1h sets the "prompt_write_cached_tokens_1h" field if the given value is not nil.
+func (_u *UsageLogUpdate) SetNillablePromptWriteCachedTokens1h(v *int64) *UsageLogUpdate {
+	if v != nil {
+		_u.SetPromptWriteCachedTokens1h(*v)
+	}
+	return _u
+}
+
+// AddPromptWriteCachedTokens1h adds value to the "prompt_write_cached_tokens_1h" field.
+func (_u *UsageLogUpdate) AddPromptWriteCachedTokens1h(v int64) *UsageLogUpdate {
+	_u.mutation.AddPromptWriteCachedTokens1h(v)
+	return _u
+}
+
+// ClearPromptWriteCachedTokens1h clears the value of the "prompt_write_cached_tokens_1h" field.
+func (_u *UsageLogUpdate) ClearPromptWriteCachedTokens1h() *UsageLogUpdate {
+	_u.mutation.ClearPromptWriteCachedTokens1h()
 	return _u
 }
 
@@ -331,6 +373,12 @@ func (_u *UsageLogUpdate) AddTotalCost(v float64) *UsageLogUpdate {
 	return _u
 }
 
+// ClearTotalCost clears the value of the "total_cost" field.
+func (_u *UsageLogUpdate) ClearTotalCost() *UsageLogUpdate {
+	_u.mutation.ClearTotalCost()
+	return _u
+}
+
 // SetCostItems sets the "cost_items" field.
 func (_u *UsageLogUpdate) SetCostItems(v []objects.CostItem) *UsageLogUpdate {
 	_u.mutation.SetCostItems(v)
@@ -346,6 +394,26 @@ func (_u *UsageLogUpdate) AppendCostItems(v []objects.CostItem) *UsageLogUpdate 
 // ClearCostItems clears the value of the "cost_items" field.
 func (_u *UsageLogUpdate) ClearCostItems() *UsageLogUpdate {
 	_u.mutation.ClearCostItems()
+	return _u
+}
+
+// SetCostPriceReferenceID sets the "cost_price_reference_id" field.
+func (_u *UsageLogUpdate) SetCostPriceReferenceID(v string) *UsageLogUpdate {
+	_u.mutation.SetCostPriceReferenceID(v)
+	return _u
+}
+
+// SetNillableCostPriceReferenceID sets the "cost_price_reference_id" field if the given value is not nil.
+func (_u *UsageLogUpdate) SetNillableCostPriceReferenceID(v *string) *UsageLogUpdate {
+	if v != nil {
+		_u.SetCostPriceReferenceID(*v)
+	}
+	return _u
+}
+
+// ClearCostPriceReferenceID clears the value of the "cost_price_reference_id" field.
+func (_u *UsageLogUpdate) ClearCostPriceReferenceID() *UsageLogUpdate {
+	_u.mutation.ClearCostPriceReferenceID()
 	return _u
 }
 
@@ -463,17 +531,11 @@ func (_u *UsageLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.AddedPromptAudioTokens(); ok {
 		_spec.AddField(usagelog.FieldPromptAudioTokens, field.TypeInt64, value)
 	}
-	if _u.mutation.PromptAudioTokensCleared() {
-		_spec.ClearField(usagelog.FieldPromptAudioTokens, field.TypeInt64)
-	}
 	if value, ok := _u.mutation.PromptCachedTokens(); ok {
 		_spec.SetField(usagelog.FieldPromptCachedTokens, field.TypeInt64, value)
 	}
 	if value, ok := _u.mutation.AddedPromptCachedTokens(); ok {
 		_spec.AddField(usagelog.FieldPromptCachedTokens, field.TypeInt64, value)
-	}
-	if _u.mutation.PromptCachedTokensCleared() {
-		_spec.ClearField(usagelog.FieldPromptCachedTokens, field.TypeInt64)
 	}
 	if value, ok := _u.mutation.PromptWriteCachedTokens(); ok {
 		_spec.SetField(usagelog.FieldPromptWriteCachedTokens, field.TypeInt64, value)
@@ -483,6 +545,24 @@ func (_u *UsageLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.PromptWriteCachedTokensCleared() {
 		_spec.ClearField(usagelog.FieldPromptWriteCachedTokens, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.PromptWriteCachedTokens5m(); ok {
+		_spec.SetField(usagelog.FieldPromptWriteCachedTokens5m, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedPromptWriteCachedTokens5m(); ok {
+		_spec.AddField(usagelog.FieldPromptWriteCachedTokens5m, field.TypeInt64, value)
+	}
+	if _u.mutation.PromptWriteCachedTokens5mCleared() {
+		_spec.ClearField(usagelog.FieldPromptWriteCachedTokens5m, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.PromptWriteCachedTokens1h(); ok {
+		_spec.SetField(usagelog.FieldPromptWriteCachedTokens1h, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedPromptWriteCachedTokens1h(); ok {
+		_spec.AddField(usagelog.FieldPromptWriteCachedTokens1h, field.TypeInt64, value)
+	}
+	if _u.mutation.PromptWriteCachedTokens1hCleared() {
+		_spec.ClearField(usagelog.FieldPromptWriteCachedTokens1h, field.TypeInt64)
 	}
 	if value, ok := _u.mutation.CompletionAudioTokens(); ok {
 		_spec.SetField(usagelog.FieldCompletionAudioTokens, field.TypeInt64, value)
@@ -526,6 +606,9 @@ func (_u *UsageLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.AddedTotalCost(); ok {
 		_spec.AddField(usagelog.FieldTotalCost, field.TypeFloat64, value)
 	}
+	if _u.mutation.TotalCostCleared() {
+		_spec.ClearField(usagelog.FieldTotalCost, field.TypeFloat64)
+	}
 	if value, ok := _u.mutation.CostItems(); ok {
 		_spec.SetField(usagelog.FieldCostItems, field.TypeJSON, value)
 	}
@@ -536,6 +619,12 @@ func (_u *UsageLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.CostItemsCleared() {
 		_spec.ClearField(usagelog.FieldCostItems, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.CostPriceReferenceID(); ok {
+		_spec.SetField(usagelog.FieldCostPriceReferenceID, field.TypeString, value)
+	}
+	if _u.mutation.CostPriceReferenceIDCleared() {
+		_spec.ClearField(usagelog.FieldCostPriceReferenceID, field.TypeString)
 	}
 	if _u.mutation.ChannelCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -698,12 +787,6 @@ func (_u *UsageLogUpdateOne) AddPromptAudioTokens(v int64) *UsageLogUpdateOne {
 	return _u
 }
 
-// ClearPromptAudioTokens clears the value of the "prompt_audio_tokens" field.
-func (_u *UsageLogUpdateOne) ClearPromptAudioTokens() *UsageLogUpdateOne {
-	_u.mutation.ClearPromptAudioTokens()
-	return _u
-}
-
 // SetPromptCachedTokens sets the "prompt_cached_tokens" field.
 func (_u *UsageLogUpdateOne) SetPromptCachedTokens(v int64) *UsageLogUpdateOne {
 	_u.mutation.ResetPromptCachedTokens()
@@ -722,12 +805,6 @@ func (_u *UsageLogUpdateOne) SetNillablePromptCachedTokens(v *int64) *UsageLogUp
 // AddPromptCachedTokens adds value to the "prompt_cached_tokens" field.
 func (_u *UsageLogUpdateOne) AddPromptCachedTokens(v int64) *UsageLogUpdateOne {
 	_u.mutation.AddPromptCachedTokens(v)
-	return _u
-}
-
-// ClearPromptCachedTokens clears the value of the "prompt_cached_tokens" field.
-func (_u *UsageLogUpdateOne) ClearPromptCachedTokens() *UsageLogUpdateOne {
-	_u.mutation.ClearPromptCachedTokens()
 	return _u
 }
 
@@ -755,6 +832,60 @@ func (_u *UsageLogUpdateOne) AddPromptWriteCachedTokens(v int64) *UsageLogUpdate
 // ClearPromptWriteCachedTokens clears the value of the "prompt_write_cached_tokens" field.
 func (_u *UsageLogUpdateOne) ClearPromptWriteCachedTokens() *UsageLogUpdateOne {
 	_u.mutation.ClearPromptWriteCachedTokens()
+	return _u
+}
+
+// SetPromptWriteCachedTokens5m sets the "prompt_write_cached_tokens_5m" field.
+func (_u *UsageLogUpdateOne) SetPromptWriteCachedTokens5m(v int64) *UsageLogUpdateOne {
+	_u.mutation.ResetPromptWriteCachedTokens5m()
+	_u.mutation.SetPromptWriteCachedTokens5m(v)
+	return _u
+}
+
+// SetNillablePromptWriteCachedTokens5m sets the "prompt_write_cached_tokens_5m" field if the given value is not nil.
+func (_u *UsageLogUpdateOne) SetNillablePromptWriteCachedTokens5m(v *int64) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetPromptWriteCachedTokens5m(*v)
+	}
+	return _u
+}
+
+// AddPromptWriteCachedTokens5m adds value to the "prompt_write_cached_tokens_5m" field.
+func (_u *UsageLogUpdateOne) AddPromptWriteCachedTokens5m(v int64) *UsageLogUpdateOne {
+	_u.mutation.AddPromptWriteCachedTokens5m(v)
+	return _u
+}
+
+// ClearPromptWriteCachedTokens5m clears the value of the "prompt_write_cached_tokens_5m" field.
+func (_u *UsageLogUpdateOne) ClearPromptWriteCachedTokens5m() *UsageLogUpdateOne {
+	_u.mutation.ClearPromptWriteCachedTokens5m()
+	return _u
+}
+
+// SetPromptWriteCachedTokens1h sets the "prompt_write_cached_tokens_1h" field.
+func (_u *UsageLogUpdateOne) SetPromptWriteCachedTokens1h(v int64) *UsageLogUpdateOne {
+	_u.mutation.ResetPromptWriteCachedTokens1h()
+	_u.mutation.SetPromptWriteCachedTokens1h(v)
+	return _u
+}
+
+// SetNillablePromptWriteCachedTokens1h sets the "prompt_write_cached_tokens_1h" field if the given value is not nil.
+func (_u *UsageLogUpdateOne) SetNillablePromptWriteCachedTokens1h(v *int64) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetPromptWriteCachedTokens1h(*v)
+	}
+	return _u
+}
+
+// AddPromptWriteCachedTokens1h adds value to the "prompt_write_cached_tokens_1h" field.
+func (_u *UsageLogUpdateOne) AddPromptWriteCachedTokens1h(v int64) *UsageLogUpdateOne {
+	_u.mutation.AddPromptWriteCachedTokens1h(v)
+	return _u
+}
+
+// ClearPromptWriteCachedTokens1h clears the value of the "prompt_write_cached_tokens_1h" field.
+func (_u *UsageLogUpdateOne) ClearPromptWriteCachedTokens1h() *UsageLogUpdateOne {
+	_u.mutation.ClearPromptWriteCachedTokens1h()
 	return _u
 }
 
@@ -887,6 +1018,12 @@ func (_u *UsageLogUpdateOne) AddTotalCost(v float64) *UsageLogUpdateOne {
 	return _u
 }
 
+// ClearTotalCost clears the value of the "total_cost" field.
+func (_u *UsageLogUpdateOne) ClearTotalCost() *UsageLogUpdateOne {
+	_u.mutation.ClearTotalCost()
+	return _u
+}
+
 // SetCostItems sets the "cost_items" field.
 func (_u *UsageLogUpdateOne) SetCostItems(v []objects.CostItem) *UsageLogUpdateOne {
 	_u.mutation.SetCostItems(v)
@@ -902,6 +1039,26 @@ func (_u *UsageLogUpdateOne) AppendCostItems(v []objects.CostItem) *UsageLogUpda
 // ClearCostItems clears the value of the "cost_items" field.
 func (_u *UsageLogUpdateOne) ClearCostItems() *UsageLogUpdateOne {
 	_u.mutation.ClearCostItems()
+	return _u
+}
+
+// SetCostPriceReferenceID sets the "cost_price_reference_id" field.
+func (_u *UsageLogUpdateOne) SetCostPriceReferenceID(v string) *UsageLogUpdateOne {
+	_u.mutation.SetCostPriceReferenceID(v)
+	return _u
+}
+
+// SetNillableCostPriceReferenceID sets the "cost_price_reference_id" field if the given value is not nil.
+func (_u *UsageLogUpdateOne) SetNillableCostPriceReferenceID(v *string) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetCostPriceReferenceID(*v)
+	}
+	return _u
+}
+
+// ClearCostPriceReferenceID clears the value of the "cost_price_reference_id" field.
+func (_u *UsageLogUpdateOne) ClearCostPriceReferenceID() *UsageLogUpdateOne {
+	_u.mutation.ClearCostPriceReferenceID()
 	return _u
 }
 
@@ -1049,17 +1206,11 @@ func (_u *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, err 
 	if value, ok := _u.mutation.AddedPromptAudioTokens(); ok {
 		_spec.AddField(usagelog.FieldPromptAudioTokens, field.TypeInt64, value)
 	}
-	if _u.mutation.PromptAudioTokensCleared() {
-		_spec.ClearField(usagelog.FieldPromptAudioTokens, field.TypeInt64)
-	}
 	if value, ok := _u.mutation.PromptCachedTokens(); ok {
 		_spec.SetField(usagelog.FieldPromptCachedTokens, field.TypeInt64, value)
 	}
 	if value, ok := _u.mutation.AddedPromptCachedTokens(); ok {
 		_spec.AddField(usagelog.FieldPromptCachedTokens, field.TypeInt64, value)
-	}
-	if _u.mutation.PromptCachedTokensCleared() {
-		_spec.ClearField(usagelog.FieldPromptCachedTokens, field.TypeInt64)
 	}
 	if value, ok := _u.mutation.PromptWriteCachedTokens(); ok {
 		_spec.SetField(usagelog.FieldPromptWriteCachedTokens, field.TypeInt64, value)
@@ -1069,6 +1220,24 @@ func (_u *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, err 
 	}
 	if _u.mutation.PromptWriteCachedTokensCleared() {
 		_spec.ClearField(usagelog.FieldPromptWriteCachedTokens, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.PromptWriteCachedTokens5m(); ok {
+		_spec.SetField(usagelog.FieldPromptWriteCachedTokens5m, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedPromptWriteCachedTokens5m(); ok {
+		_spec.AddField(usagelog.FieldPromptWriteCachedTokens5m, field.TypeInt64, value)
+	}
+	if _u.mutation.PromptWriteCachedTokens5mCleared() {
+		_spec.ClearField(usagelog.FieldPromptWriteCachedTokens5m, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.PromptWriteCachedTokens1h(); ok {
+		_spec.SetField(usagelog.FieldPromptWriteCachedTokens1h, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedPromptWriteCachedTokens1h(); ok {
+		_spec.AddField(usagelog.FieldPromptWriteCachedTokens1h, field.TypeInt64, value)
+	}
+	if _u.mutation.PromptWriteCachedTokens1hCleared() {
+		_spec.ClearField(usagelog.FieldPromptWriteCachedTokens1h, field.TypeInt64)
 	}
 	if value, ok := _u.mutation.CompletionAudioTokens(); ok {
 		_spec.SetField(usagelog.FieldCompletionAudioTokens, field.TypeInt64, value)
@@ -1112,6 +1281,9 @@ func (_u *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, err 
 	if value, ok := _u.mutation.AddedTotalCost(); ok {
 		_spec.AddField(usagelog.FieldTotalCost, field.TypeFloat64, value)
 	}
+	if _u.mutation.TotalCostCleared() {
+		_spec.ClearField(usagelog.FieldTotalCost, field.TypeFloat64)
+	}
 	if value, ok := _u.mutation.CostItems(); ok {
 		_spec.SetField(usagelog.FieldCostItems, field.TypeJSON, value)
 	}
@@ -1122,6 +1294,12 @@ func (_u *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, err 
 	}
 	if _u.mutation.CostItemsCleared() {
 		_spec.ClearField(usagelog.FieldCostItems, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.CostPriceReferenceID(); ok {
+		_spec.SetField(usagelog.FieldCostPriceReferenceID, field.TypeString, value)
+	}
+	if _u.mutation.CostPriceReferenceIDCleared() {
+		_spec.ClearField(usagelog.FieldCostPriceReferenceID, field.TypeString)
 	}
 	if _u.mutation.ChannelCleared() {
 		edge := &sqlgraph.EdgeSpec{
