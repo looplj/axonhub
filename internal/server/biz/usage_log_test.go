@@ -57,16 +57,16 @@ func TestUsageLogService_CreateUsageLog_PromptWriteCachedTokens(t *testing.T) {
 		},
 	}
 
-	created, err := svc.CreateUsageLog(
-		ctx,
-		req.ID,
-		p.ID,
-		nil,
-		"test-model",
-		usage,
-		usagelog.SourceAPI,
-		"openai/chat_completions",
-	)
+	created, err := svc.CreateUsageLog(ctx, CreateUsageLogParams{
+		RequestID:     req.ID,
+		ProjectID:     p.ID,
+		ChannelID:     nil,
+		ActualModelID: "test-model",
+		Usage:         usage,
+		Source:        usagelog.SourceAPI,
+		Format:        "openai/chat_completions",
+		APIKeyID:      nil,
+	})
 	require.NoError(t, err)
 	require.NotNil(t, created)
 
@@ -164,16 +164,16 @@ func TestUsageLogService_CreateUsageLog_WithPriceReferenceID(t *testing.T) {
 	}
 
 	channelID := ch.ID
-	created, err := svc.CreateUsageLog(
-		ctx,
-		req.ID,
-		p.ID,
-		&channelID,
-		"gpt-4",
-		usage,
-		usagelog.SourceAPI,
-		"openai/chat_completions",
-	)
+	created, err := svc.CreateUsageLog(ctx, CreateUsageLogParams{
+		RequestID:     req.ID,
+		ProjectID:     p.ID,
+		ChannelID:     &channelID,
+		ActualModelID: "gpt-4",
+		Usage:         usage,
+		Source:        usagelog.SourceAPI,
+		Format:        "openai/chat_completions",
+		APIKeyID:      nil,
+	})
 	require.NoError(t, err)
 	require.NotNil(t, created)
 

@@ -50,12 +50,12 @@ func computeItemSubtotal(quantity int64, pricing objects.Pricing) (objects.CostI
 
 				if tier.UpTo != nil {
 					if quantity <= *tier.UpTo {
-						tierUnits = max64(quantity-prevUpTo, 0)
+						tierUnits = max(quantity-prevUpTo, 0)
 					} else {
-						tierUnits = max64(*tier.UpTo-prevUpTo, 0)
+						tierUnits = max(*tier.UpTo-prevUpTo, 0)
 					}
 				} else {
-					tierUnits = max64(quantity-prevUpTo, 0)
+					tierUnits = max(quantity-prevUpTo, 0)
 				}
 
 				if tierUnits <= 0 {
@@ -102,14 +102,6 @@ func getUpToOrZero(v *int64) int64 {
 	return *v
 }
 
-func max64(a, b int64) int64 {
-	if a > b {
-		return a
-	}
-
-	return b
-}
-
 // ComputeUsageCost calculates total cost and cost items breakdown for the given usage and model price.
 func ComputeUsageCost(usage *llm.Usage, price objects.ModelPrice) ([]objects.CostItem, decimal.Decimal) {
 	var items []objects.CostItem
@@ -138,6 +130,7 @@ func ComputeUsageCost(usage *llm.Usage, price objects.ModelPrice) ([]objects.Cos
 						pricing := it.FindPromptWriteCacheVariantPricing(objects.PromptWriteCacheVariantCode5Min)
 						item, sub := computeItemSubtotal(usage.PromptTokensDetails.WriteCached5MinTokens, pricing)
 						item.ItemCode = it.ItemCode
+						item.PromptWriteCacheVariantCode = objects.PromptWriteCacheVariantCode5Min
 						items = append(items, item)
 						total = total.Add(sub)
 					}
@@ -147,6 +140,7 @@ func ComputeUsageCost(usage *llm.Usage, price objects.ModelPrice) ([]objects.Cos
 						pricing := it.FindPromptWriteCacheVariantPricing(objects.PromptWriteCacheVariantCode1Hour)
 						item, sub := computeItemSubtotal(usage.PromptTokensDetails.WriteCached1HourTokens, pricing)
 						item.ItemCode = it.ItemCode
+						item.PromptWriteCacheVariantCode = objects.PromptWriteCacheVariantCode1Hour
 						items = append(items, item)
 						total = total.Add(sub)
 					}

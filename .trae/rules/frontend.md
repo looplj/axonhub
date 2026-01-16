@@ -24,6 +24,17 @@ globs: frontend/**/*.ts, frontend/**/*.tsx
 
 2. MUST keep keys in code and JSON files identical.
 
+3. The amount must be format with currency symbol.
+   e.g
+   ```ts
+   t('currencies.format', {
+     val: cost,
+     currency: settings?.currencyCode,
+     locale: i18n.language === 'zh' ? 'zh-CN' : 'en-US',
+     minimumFractionDigits: 6,
+   })
+   ```
+
 ## React
 
 1. Use `useCallback` to wrap callback functions to reduce re-renders.

@@ -73,6 +73,14 @@ function buildThreadDetailQuery() {
           threadID
           createdAt
           updatedAt
+          usageMetadata {
+            totalInputTokens
+            totalOutputTokens
+            totalTokens
+            totalCost
+            totalCachedTokens
+            totalCachedWriteTokens
+          }
           project {
             id
             name

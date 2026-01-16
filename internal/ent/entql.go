@@ -447,6 +447,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			usagelog.FieldCreatedAt:                          {Type: field.TypeTime, Column: usagelog.FieldCreatedAt},
 			usagelog.FieldUpdatedAt:                          {Type: field.TypeTime, Column: usagelog.FieldUpdatedAt},
 			usagelog.FieldRequestID:                          {Type: field.TypeInt, Column: usagelog.FieldRequestID},
+			usagelog.FieldAPIKeyID:                           {Type: field.TypeInt, Column: usagelog.FieldAPIKeyID},
 			usagelog.FieldProjectID:                          {Type: field.TypeInt, Column: usagelog.FieldProjectID},
 			usagelog.FieldChannelID:                          {Type: field.TypeInt, Column: usagelog.FieldChannelID},
 			usagelog.FieldModelID:                            {Type: field.TypeString, Column: usagelog.FieldModelID},
@@ -3483,6 +3484,11 @@ func (f *UsageLogFilter) WhereUpdatedAt(p entql.TimeP) {
 // WhereRequestID applies the entql int predicate on the request_id field.
 func (f *UsageLogFilter) WhereRequestID(p entql.IntP) {
 	f.Where(p.Field(usagelog.FieldRequestID))
+}
+
+// WhereAPIKeyID applies the entql int predicate on the api_key_id field.
+func (f *UsageLogFilter) WhereAPIKeyID(p entql.IntP) {
+	f.Where(p.Field(usagelog.FieldAPIKeyID))
 }
 
 // WhereProjectID applies the entql int predicate on the project_id field.

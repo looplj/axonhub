@@ -119,7 +119,7 @@ func (h *SystemHandlers) InitializeSystem(c *gin.Context) {
 	}
 
 	// Initialize system
-	err = h.SystemService.Initialize(c.Request.Context(), &biz.InitializeSystemArgs{
+	err = h.SystemService.Initialize(c.Request.Context(), &biz.InitializeSystemParams{
 		OwnerEmail:     req.OwnerEmail,
 		OwnerPassword:  req.OwnerPassword,
 		OwnerFirstName: req.OwnerFirstName,

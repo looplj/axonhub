@@ -316,7 +316,7 @@ func (s *SystemService) IsInitialized(ctx context.Context) (bool, error) {
 	return strings.EqualFold(sys.Value, "true"), nil
 }
 
-type InitializeSystemArgs struct {
+type InitializeSystemParams struct {
 	OwnerEmail     string
 	OwnerPassword  string
 	OwnerFirstName string
@@ -325,7 +325,7 @@ type InitializeSystemArgs struct {
 }
 
 // Initialize initializes the system with a secret key and sets the initialized flag.
-func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemArgs) (err error) {
+func (s *SystemService) Initialize(ctx context.Context, params *InitializeSystemParams) (err error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	// Check if system is already initialized
 	isInitialized, err := s.IsInitialized(ctx)
@@ -358,17 +358,17 @@ func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemAr
 
 	ctx = ent.NewContext(ctx, tx.Client())
 
-	hashedPassword, err := HashPassword(args.OwnerPassword)
+	hashedPassword, err := HashPassword(params.OwnerPassword)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
 
 	// Create owner user.
 	user, err := tx.User.Create().
-		SetEmail(args.OwnerEmail).
+		SetEmail(params.OwnerEmail).
 		SetPassword(hashedPassword).
-		SetFirstName(args.OwnerFirstName).
-		SetLastName(args.OwnerLastName).
+		SetFirstName(params.OwnerFirstName).
+		SetLastName(params.OwnerLastName).
 		SetIsOwner(true).
 		SetScopes([]string{"*"}). // Give owner all scopes
 		Save(ctx)
@@ -401,7 +401,7 @@ func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemAr
 	}
 
 	// Set brand name.
-	err = s.setSystemValue(ctx, SystemKeyBrandName, args.BrandName)
+	err = s.setSystemValue(ctx, SystemKeyBrandName, params.BrandName)
 	if err != nil {
 		return fmt.Errorf("failed to set brand name: %w", err)
 	}

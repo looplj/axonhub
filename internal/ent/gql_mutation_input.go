@@ -1018,6 +1018,7 @@ func (c *TraceUpdateOne) SetInput(i UpdateTraceInput) *TraceUpdateOne {
 
 // CreateUsageLogInput represents a mutation input for creating usagelogs.
 type CreateUsageLogInput struct {
+	APIKeyID                           *int
 	ModelID                            string
 	PromptTokens                       *int64
 	CompletionTokens                   *int64
@@ -1043,6 +1044,9 @@ type CreateUsageLogInput struct {
 
 // Mutate applies the CreateUsageLogInput on the UsageLogMutation builder.
 func (i *CreateUsageLogInput) Mutate(m *UsageLogMutation) {
+	if v := i.APIKeyID; v != nil {
+		m.SetAPIKeyID(*v)
+	}
 	m.SetModelID(i.ModelID)
 	if v := i.PromptTokens; v != nil {
 		m.SetPromptTokens(*v)

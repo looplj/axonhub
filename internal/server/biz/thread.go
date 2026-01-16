@@ -5,7 +5,10 @@ import (
 	"fmt"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/thread"
+	"github.com/looplj/axonhub/internal/ent/trace"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/log"
 )
 
@@ -118,4 +121,19 @@ func (s *ThreadService) FirstText(ctx context.Context, id int) (*string, error) 
 	}
 
 	return s.traceService.GetFirstText(ctx, trace.ID)
+}
+
+func (s *ThreadService) UsageMetadata(ctx context.Context, threadID int) (*UsageMetadata, error) {
+	client := s.entFromContext(ctx)
+	if client == nil {
+		return nil, fmt.Errorf("ent client not found in context")
+	}
+
+	q := client.UsageLog.Query().
+		Where(usagelog.HasRequestWith(
+			request.HasTraceWith(trace.ThreadIDEQ(threadID)),
+			request.StatusEQ(request.StatusCompleted),
+		))
+
+	return aggregateUsageMetadata(ctx, q)
 }

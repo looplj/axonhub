@@ -51,6 +51,7 @@ i18n
           return new Intl.NumberFormat(options?.locale || lng, {
             style: 'currency',
             currency: options?.currency || 'USD',
+             currencyDisplay: 'narrowSymbol',
             ...options,
           }).format(value);
         }

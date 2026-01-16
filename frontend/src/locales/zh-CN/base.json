@@ -85,7 +85,7 @@
   "price.itemCodes.prompt_write_cached_tokens": "写入缓存 Token",
   "price.mode": "计费模式",
   "price.mode_flat_fee": "固定费用",
-  "price.mode_usage_per_unit": "按百万 Token",
+  "price.mode_usage_per_unit": "每百万 Token",
   "price.mode_usage_tiered": "阶梯 Token",
   "price.tiers": "阶梯",
   "price.upTo": "上限",

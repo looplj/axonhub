@@ -15,6 +15,7 @@ import i18n from './lib/i18n';
 // Generated Routes
 import { routeTree } from './routeTree.gen';
 
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

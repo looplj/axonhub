@@ -46,10 +46,8 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawRequest(ctx context.Con
 		return request, nil
 	}
 
-	llmRequest := state.LlmRequest
-	if llmRequest == nil {
-		return request, nil
-	}
+	candidate := state.ChannelModelsCandidates[state.CurrentCandidateIndex]
+	entry := candidate.Models[state.CurrentModelIndex]
 
 	var requestExec *ent.RequestExecution
 
@@ -59,7 +57,7 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawRequest(ctx context.Con
 		requestExec, err = state.RequestService.CreateRequestExecution(
 			ctx,
 			channel,
-			llmRequest.Model,
+			entry.ActualModel,
 			state.Request,
 			*request,
 			m.outbound.APIFormat(),

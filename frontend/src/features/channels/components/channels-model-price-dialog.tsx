@@ -79,6 +79,78 @@ const createPriceFormSchema = (t: (key: string) => string) =>
       ),
     })
     .superRefine((data, ctx) => {
+      type UsageTier = {
+        upTo?: number | null;
+        pricePerUnit?: string;
+      };
+      type PricingLike = {
+        mode?: (typeof pricingModes)[number];
+        flatFee?: string | null;
+        usagePerUnit?: string | null;
+        usageTiered?: {
+          tiers: UsageTier[];
+        } | null;
+      };
+
+      const validatePricing = (pricing: PricingLike | null | undefined, pathPrefix: Array<string | number>) => {
+        const requiredMsg = t('price.validation.priceRequired');
+        const { mode, flatFee, usagePerUnit, usageTiered } = pricing || {};
+        if (mode === 'flat_fee' && !flatFee) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: requiredMsg,
+            path: [...pathPrefix, 'flatFee'],
+          });
+        }
+        if (mode === 'usage_per_unit' && !usagePerUnit) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: requiredMsg,
+            path: [...pathPrefix, 'usagePerUnit'],
+          });
+        }
+        if (mode === 'usage_tiered') {
+          const tiers = usageTiered?.tiers || [];
+          if (tiers.length === 0) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: requiredMsg,
+              path: [...pathPrefix, 'usageTiered'],
+            });
+          }
+
+          const lastTierIndex = tiers.length - 1;
+          tiers.forEach((tier: UsageTier, tierIndex: number) => {
+            if (!tier.pricePerUnit) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: requiredMsg,
+                path: [...pathPrefix, 'usageTiered', 'tiers', tierIndex, 'pricePerUnit'],
+              });
+            }
+
+            const isLastTier = tierIndex === lastTierIndex;
+            if (isLastTier) {
+              if (tier.upTo != null) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message: requiredMsg,
+                  path: [...pathPrefix, 'usageTiered', 'tiers', tierIndex, 'upTo'],
+                });
+              }
+            } else {
+              if (tier.upTo == null) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message: requiredMsg,
+                  path: [...pathPrefix, 'usageTiered', 'tiers', tierIndex, 'upTo'],
+                });
+              }
+            }
+          });
+        }
+      };
+
       data.prices.forEach((price, priceIndex) => {
         // Check for duplicate item codes
         const itemCodes = new Map<string, number[]>();
@@ -126,120 +198,20 @@ const createPriceFormSchema = (t: (key: string) => string) =>
           });
 
           // Validate item pricing based on mode
-          const { mode, flatFee, usagePerUnit, usageTiered } = item.pricing;
-          const requiredMsg = t('price.validation.priceRequired');
-          if (mode === 'flat_fee' && !flatFee) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: requiredMsg,
-              path: ['prices', priceIndex, 'price', 'items', itemIndex, 'pricing', 'flatFee'],
-            });
-          }
-          if (mode === 'usage_per_unit' && !usagePerUnit) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: requiredMsg,
-              path: ['prices', priceIndex, 'price', 'items', itemIndex, 'pricing', 'usagePerUnit'],
-            });
-          }
-          if (mode === 'usage_tiered') {
-            const tiers = usageTiered?.tiers || [];
-            if (tiers.length === 0) {
-              ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: requiredMsg,
-                path: ['prices', priceIndex, 'price', 'items', itemIndex, 'pricing', 'usageTiered'],
-              });
-            }
-
-            const lastTierIndex = tiers.length - 1;
-            tiers.forEach((tier, tierIndex) => {
-              if (!tier.pricePerUnit) {
-                ctx.addIssue({
-                  code: z.ZodIssueCode.custom,
-                  message: requiredMsg,
-                  path: ['prices', priceIndex, 'price', 'items', itemIndex, 'pricing', 'usageTiered', 'tiers', tierIndex, 'pricePerUnit'],
-                });
-              }
-
-              const isLastTier = tierIndex === lastTierIndex;
-              if (isLastTier) {
-                if (tier.upTo != null) {
-                  ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
-                    message: t('price.validation.priceRequired'),
-                    path: ['prices', priceIndex, 'price', 'items', itemIndex, 'pricing', 'usageTiered', 'tiers', tierIndex, 'upTo'],
-                  });
-                }
-              } else {
-                if (tier.upTo == null) {
-                  ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
-                    message: requiredMsg,
-                    path: ['prices', priceIndex, 'price', 'items', itemIndex, 'pricing', 'usageTiered', 'tiers', tierIndex, 'upTo'],
-                  });
-                }
-              }
-            });
-          }
+          validatePricing(item.pricing, ['prices', priceIndex, 'price', 'items', itemIndex, 'pricing']);
 
           // Validate variant pricing based on mode
           (item.promptWriteCacheVariants || []).forEach((variant, variantIndex) => {
-            const { mode: vMode, flatFee: vFlatFee, usagePerUnit: vUsagePerUnit, usageTiered: vUsageTiered } = variant.pricing;
-            if (vMode === 'flat_fee' && !vFlatFee) {
-              ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: requiredMsg,
-                path: ['prices', priceIndex, 'price', 'items', itemIndex, 'promptWriteCacheVariants', variantIndex, 'pricing', 'flatFee'],
-              });
-            }
-            if (vMode === 'usage_per_unit' && !vUsagePerUnit) {
-              ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: requiredMsg,
-                path: ['prices', priceIndex, 'price', 'items', itemIndex, 'promptWriteCacheVariants', variantIndex, 'pricing', 'usagePerUnit'],
-              });
-            }
-            if (vMode === 'usage_tiered') {
-              const vTiers = vUsageTiered?.tiers || [];
-              if (vTiers.length === 0) {
-                ctx.addIssue({
-                  code: z.ZodIssueCode.custom,
-                  message: requiredMsg,
-                  path: ['prices', priceIndex, 'price', 'items', itemIndex, 'promptWriteCacheVariants', variantIndex, 'pricing', 'usageTiered'],
-                });
-              }
-
-              const lastTierIndex = vTiers.length - 1;
-              vTiers.forEach((tier, tierIndex) => {
-                if (!tier.pricePerUnit) {
-                  ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
-                    message: requiredMsg,
-                    path: ['prices', priceIndex, 'price', 'items', itemIndex, 'promptWriteCacheVariants', variantIndex, 'pricing', 'usageTiered', 'tiers', tierIndex, 'pricePerUnit'],
-                  });
-                }
-
-                const isLastTier = tierIndex === lastTierIndex;
-                if (isLastTier) {
-                  if (tier.upTo != null) {
-                    ctx.addIssue({
-                      code: z.ZodIssueCode.custom,
-                      message: t('price.validation.priceRequired'),
-                      path: ['prices', priceIndex, 'price', 'items', itemIndex, 'promptWriteCacheVariants', variantIndex, 'pricing', 'usageTiered', 'tiers', tierIndex, 'upTo'],
-                    });
-                  }
-                } else {
-                  if (tier.upTo == null) {
-                    ctx.addIssue({
-                      code: z.ZodIssueCode.custom,
-                      message: requiredMsg,
-                      path: ['prices', priceIndex, 'price', 'items', itemIndex, 'promptWriteCacheVariants', variantIndex, 'pricing', 'usageTiered', 'tiers', tierIndex, 'upTo'],
-                    });
-                  }
-                }
-              });
-            }
+            validatePricing(variant.pricing, [
+              'prices',
+              priceIndex,
+              'price',
+              'items',
+              itemIndex,
+              'promptWriteCacheVariants',
+              variantIndex,
+              'pricing',
+            ]);
           });
         });
       });
@@ -614,7 +586,7 @@ export function ChannelsModelPriceDialog() {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className='flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden'>
-            <ScrollArea className='min-h-0 min-w-0 flex-1 overflow-x-hidden'>
+            <ScrollArea className='min-h-0 min-w-0 flex-1 [&>[data-slot=scroll-area-viewport]]:!overflow-x-hidden'>
               <div className='space-y-4 py-4 pr-4'>
                 {fields.map((field, index) => (
                   <PriceCard

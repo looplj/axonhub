@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
 import { AutoComplete } from '@/components/auto-complete';
 import { useAllChannelsForOrdering } from '@/features/channels/data/channels';
@@ -468,36 +469,255 @@ function ProfileCard({
         </div>
       </CardHeader>
       {!isCollapsed && (
-        <CardContent className='space-y-4'>
-          <div className='flex items-center justify-between'>
-            <h4 className='text-sm font-medium'>{t('apikeys.profiles.modelMappings')}</h4>
-            <Button type='button' variant='outline' size='sm' onClick={addMapping} className='flex items-center gap-2'>
-              <IconPlus className='h-4 w-4' />
-              {t('apikeys.profiles.addMapping')}
-            </Button>
+        <CardContent className='space-y-6'>
+          {/* Quota Section */}
+          <div className='space-y-4'>
+            <div className='flex items-center justify-between gap-3'>
+              <div>
+                <h4 className='text-sm font-medium'>{t('apikeys.profiles.quotaTitle')}</h4>
+                <p className='text-muted-foreground mt-1 text-xs'>{t('apikeys.profiles.quotaDescription')}</p>
+              </div>
+              <FormField
+                control={form.control}
+                name={`profiles.${profileIndex}.quota`}
+                render={({ field }) => (
+                  <FormItem className='flex items-center space-y-0 gap-x-2'>
+                    <FormLabel className='text-sm'>{t('apikeys.profiles.quotaEnabled')}</FormLabel>
+                    <FormControl>
+                      <Switch
+                        checked={field.value != null}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            field.onChange({
+                              requests: null,
+                              totalTokens: null,
+                              cost: null,
+                              period: {
+                                type: 'all_time',
+                                pastDuration: null,
+                                calendarDuration: null,
+                              },
+                            });
+                          } else {
+                            field.onChange(null);
+                          }
+                        }}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {form.watch(`profiles.${profileIndex}.quota`) != null && (
+              <div className='space-y-4'>
+                <div className='grid gap-4 md:grid-cols-3'>
+                  <FormField
+                    control={form.control}
+                    name={`profiles.${profileIndex}.quota.requests`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('apikeys.profiles.quotaRequests')}</FormLabel>
+                        <FormControl>
+                          <Input
+                            type='number'
+                            min={1}
+                            value={(field.value as unknown as number | null | undefined) ?? ''}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              field.onChange(v === '' ? null : Number(v));
+                            }}
+                            placeholder={t('apikeys.profiles.quotaRequestsPlaceholder')}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name={`profiles.${profileIndex}.quota.totalTokens`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('apikeys.profiles.quotaTotalTokens')}</FormLabel>
+                        <FormControl>
+                          <Input
+                            type='number'
+                            min={1}
+                            value={(field.value as unknown as number | null | undefined) ?? ''}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              field.onChange(v === '' ? null : Number(v));
+                            }}
+                            placeholder={t('apikeys.profiles.quotaTotalTokensPlaceholder')}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name={`profiles.${profileIndex}.quota.cost`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('apikeys.profiles.quotaCost')}</FormLabel>
+                        <FormControl>
+                          <Input
+                            inputMode='decimal'
+                            value={(field.value as unknown as string | null | undefined) ?? ''}
+                            onChange={(e) => field.onChange(e.target.value === '' ? null : e.target.value)}
+                            placeholder={t('apikeys.profiles.quotaCostPlaceholder')}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className='grid gap-4 md:grid-cols-3'>
+                  <FormField
+                    control={form.control}
+                    name={`profiles.${profileIndex}.quota.period.type`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('apikeys.profiles.quotaPeriodType')}</FormLabel>
+                        <FormControl>
+                          <Select
+                            value={field.value}
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              if (value === 'past_duration') {
+                                form.setValue(`profiles.${profileIndex}.quota.period.pastDuration`, { value: 1, unit: 'day' });
+                                form.setValue(`profiles.${profileIndex}.quota.period.calendarDuration`, null);
+                              } else if (value === 'calendar_duration') {
+                                form.setValue(`profiles.${profileIndex}.quota.period.calendarDuration`, { unit: 'day' });
+                                form.setValue(`profiles.${profileIndex}.quota.period.pastDuration`, null);
+                              } else {
+                                form.setValue(`profiles.${profileIndex}.quota.period.pastDuration`, null);
+                                form.setValue(`profiles.${profileIndex}.quota.period.calendarDuration`, null);
+                              }
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value='all_time'>{t('apikeys.profiles.quotaPeriodAllTime')}</SelectItem>
+                              <SelectItem value='past_duration'>{t('apikeys.profiles.quotaPeriodPastDuration')}</SelectItem>
+                              <SelectItem value='calendar_duration'>{t('apikeys.profiles.quotaPeriodCalendarDuration')}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {form.watch(`profiles.${profileIndex}.quota.period.type`) === 'past_duration' && (
+                    <>
+                      <FormField
+                        control={form.control}
+                        name={`profiles.${profileIndex}.quota.period.pastDuration.value`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t('apikeys.profiles.quotaPastDurationValue')}</FormLabel>
+                            <FormControl>
+                              <Input
+                                type='number'
+                                min={1}
+                                value={(field.value as unknown as number | null | undefined) ?? ''}
+                                onChange={(e) => field.onChange(Number(e.target.value))}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`profiles.${profileIndex}.quota.period.pastDuration.unit`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t('apikeys.profiles.quotaPastDurationUnit')}</FormLabel>
+                            <FormControl>
+                              <Select value={field.value} onValueChange={field.onChange}>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value='hour'>{t('apikeys.profiles.quotaUnitHour')}</SelectItem>
+                                  <SelectItem value='day'>{t('apikeys.profiles.quotaUnitDay')}</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </>
+                  )}
+
+                  {form.watch(`profiles.${profileIndex}.quota.period.type`) === 'calendar_duration' && (
+                    <FormField
+                      control={form.control}
+                      name={`profiles.${profileIndex}.quota.period.calendarDuration.unit`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('apikeys.profiles.quotaCalendarDurationUnit')}</FormLabel>
+                          <FormControl>
+                            <Select value={field.value} onValueChange={field.onChange}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value='day'>{t('apikeys.profiles.quotaUnitDay')}</SelectItem>
+                                <SelectItem value='month'>{t('apikeys.profiles.quotaUnitMonth')}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
-          {mappingFields.length === 0 && (
-            <p className='text-muted-foreground py-4 text-center text-sm'>{t('apikeys.profiles.noMappings')}</p>
-          )}
+          <div className='border-t pt-4'>
+            <div className='flex items-center justify-between'>
+              <h4 className='text-sm font-medium'>{t('apikeys.profiles.modelMappings')}</h4>
+              <Button type='button' variant='outline' size='sm' onClick={addMapping} className='flex items-center gap-2'>
+                <IconPlus className='h-4 w-4' />
+                {t('apikeys.profiles.addMapping')}
+              </Button>
+            </div>
 
-          <div className='space-y-3'>
-            {mappingFields.map((mapping, mappingIndex) => (
-              <MappingRow
-                key={mapping.id}
-                profileIndex={profileIndex}
-                mappingIndex={mappingIndex}
-                form={form}
-                onRemove={() => removeMapping(mappingIndex)}
-                availableModels={availableModels}
-                t={t}
-                portalContainer={portalContainer}
-              />
-            ))}
+            {mappingFields.length === 0 && (
+              <p className='text-muted-foreground py-4 text-center text-sm'>{t('apikeys.profiles.noMappings')}</p>
+            )}
+
+            <div className='space-y-3'>
+              {mappingFields.map((mapping, mappingIndex) => (
+                <MappingRow
+                  key={mapping.id}
+                  profileIndex={profileIndex}
+                  mappingIndex={mappingIndex}
+                  form={form}
+                  onRemove={() => removeMapping(mappingIndex)}
+                  availableModels={availableModels}
+                  t={t}
+                  portalContainer={portalContainer}
+                />
+              ))}
+            </div>
           </div>
 
           {/* Model IDs Restrictions Section */}
-          <div className='mt-4 border-t pt-4'>
+          <div className='border-t pt-4'>
             <h4 className='mb-3 text-sm font-medium'>{t('apikeys.profiles.allowedModels')}</h4>
             <p className='text-muted-foreground mb-3 text-xs'>{t('apikeys.profiles.allowedModelsDescription')}</p>
             <FormField
@@ -556,7 +776,7 @@ function ProfileCard({
           </div>
 
           {/* Channel Tags Restrictions Section */}
-          <div className='mt-4 border-t pt-4'>
+          <div className='border-t pt-4'>
             <h4 className='mb-3 text-sm font-medium'>{t('apikeys.profiles.allowedChannelTags')}</h4>
             <p className='text-muted-foreground mb-3 text-xs'>{t('apikeys.profiles.allowedChannelTagsDescription')}</p>
             <FormField

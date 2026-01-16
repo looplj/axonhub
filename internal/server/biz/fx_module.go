@@ -22,4 +22,5 @@ var Module = fx.Module("biz",
 	fx.Provide(NewBackupService),
 	fx.Provide(NewChannelProbeService),
 	fx.Provide(NewPromptService),
+	fx.Provide(NewQuotaService),
 )

@@ -77,6 +77,16 @@ function buildApiKeyQuery(permissions: { canViewUsers: boolean }) {
             channelIDs
             channelTags
             modelIDs
+            quota {
+              requests
+              totalTokens
+              cost
+              period {
+                type
+                pastDuration { value unit }
+                calendarDuration { unit }
+              }
+            }
           }
         }
       }
@@ -163,6 +173,16 @@ const UPDATE_APIKEY_PROFILES_MUTATION = `
           channelIDs
           channelTags
           modelIDs
+          quota {
+            requests
+            totalTokens
+            cost
+            period {
+              type
+              pastDuration { value unit }
+              calendarDuration { unit }
+            }
+          }
         }
       }
     }
@@ -198,7 +218,7 @@ export function useApiKeys(
       status?: string;
       userID?: string;
       projectID?: string;
-      [key: string]: any;
+      [key: string]: unknown;
     };
   },
   options?: {
@@ -271,7 +291,7 @@ export function useCreateApiKey() {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] });
       toast.success(t('apikeys.messages.createSuccess'));
     },
-    onError: (error) => {
+    onError: (_error) => {
       toast.error(t('apikeys.messages.createError'));
     },
   });
@@ -294,7 +314,7 @@ export function useUpdateApiKey() {
       queryClient.invalidateQueries({ queryKey: ['apiKey', variables.id] });
       toast.success(t('apikeys.messages.updateSuccess'));
     },
-    onError: (error) => {
+    onError: (_error) => {
       toast.error(t('apikeys.messages.updateError'));
     },
   });
@@ -321,7 +341,7 @@ export function useUpdateApiKeyStatus() {
             : t('apikeys.status.archived');
       toast.success(t('apikeys.messages.statusUpdateSuccess', { status: statusText }));
     },
-    onError: (error) => {
+    onError: (_error) => {
       toast.error(t('apikeys.messages.statusUpdateError'));
     },
   });
@@ -342,7 +362,7 @@ export function useUpdateApiKeyProfiles() {
       queryClient.invalidateQueries({ queryKey: ['apiKey', variables.id] });
       toast.success(t('apikeys.messages.profilesUpdateSuccess'));
     },
-    onError: (error) => {
+    onError: (_error) => {
       toast.error(t('apikeys.messages.profilesUpdateError'));
     },
   });
@@ -363,7 +383,7 @@ export function useBulkDisableApiKeys() {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] });
       toast.success(t('apikeys.messages.bulkDisableSuccess', { count: variables.length }));
     },
-    onError: (error) => {
+    onError: (_error) => {
       toast.error(t('apikeys.messages.bulkDisableError'));
     },
   });
@@ -384,7 +404,7 @@ export function useBulkEnableApiKeys() {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] });
       toast.success(t('apikeys.messages.bulkEnableSuccess', { count: variables.length }));
     },
-    onError: (error) => {
+    onError: (_error) => {
       toast.error(t('apikeys.messages.bulkEnableError'));
     },
   });
@@ -405,7 +425,7 @@ export function useBulkArchiveApiKeys() {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] });
       toast.success(t('apikeys.messages.bulkArchiveSuccess', { count: variables.length }));
     },
-    onError: (error) => {
+    onError: (_error) => {
       toast.error(t('apikeys.messages.bulkArchiveError'));
     },
   });

@@ -97,7 +97,16 @@ func TestUsageCost_PerUnitPromptAndCompletion(t *testing.T) {
 		TotalTokens:      300,
 	}
 
-	ul, err := usageLogService.CreateUsageLog(ctx, 1, 1, &ch.ID, "m1", usage, "api", "openai/chat_completions")
+	ul, err := usageLogService.CreateUsageLog(ctx, CreateUsageLogParams{
+		RequestID:     1,
+		ProjectID:     1,
+		ChannelID:     &ch.ID,
+		ActualModelID: "m1",
+		Usage:         usage,
+		Source:        "api",
+		Format:        "openai/chat_completions",
+		APIKeyID:      nil,
+	})
 	require.NoError(t, err)
 	require.NotNil(t, ul)
 
@@ -162,7 +171,16 @@ func TestUsageCost_TieredPrompt(t *testing.T) {
 		TotalTokens:      1500,
 	}
 
-	ul, err := usageLogService.CreateUsageLog(ctx, 1, 1, &ch.ID, "m2", usage, "api", "openai/chat_completions")
+	ul, err := usageLogService.CreateUsageLog(ctx, CreateUsageLogParams{
+		RequestID:     1,
+		ProjectID:     1,
+		ChannelID:     &ch.ID,
+		ActualModelID: "m2",
+		Usage:         usage,
+		Source:        "api",
+		Format:        "openai/chat_completions",
+		APIKeyID:      nil,
+	})
 	require.NoError(t, err)
 	require.NotNil(t, ul)
 
@@ -205,7 +223,16 @@ func TestUsageCost_NoPriceConfigured(t *testing.T) {
 		TotalTokens:      300,
 	}
 
-	ul, err := usageLogService.CreateUsageLog(ctx, 1, 1, &ch.ID, "m3", usage, "api", "openai/chat_completions")
+	ul, err := usageLogService.CreateUsageLog(ctx, CreateUsageLogParams{
+		RequestID:     1,
+		ProjectID:     1,
+		ChannelID:     &ch.ID,
+		ActualModelID: "m3",
+		Usage:         usage,
+		Source:        "api",
+		Format:        "openai/chat_completions",
+		APIKeyID:      nil,
+	})
 	require.NoError(t, err)
 	require.NotNil(t, ul)
 	require.Nil(t, ul.TotalCost)
@@ -279,7 +306,16 @@ func TestUsageCost_CacheVariant5Min(t *testing.T) {
 		},
 	}
 
-	ul, err := usageLogService.CreateUsageLog(ctx, 1, 1, &ch.ID, "m4", usage, "api", "openai/chat_completions")
+	ul, err := usageLogService.CreateUsageLog(ctx, CreateUsageLogParams{
+		RequestID:     1,
+		ProjectID:     1,
+		ChannelID:     &ch.ID,
+		ActualModelID: "m4",
+		Usage:         usage,
+		Source:        "api",
+		Format:        "openai/chat_completions",
+		APIKeyID:      nil,
+	})
 	require.NoError(t, err)
 	require.NotNil(t, ul)
 
@@ -357,7 +393,16 @@ func TestUsageCost_CacheVariant1Hour(t *testing.T) {
 		},
 	}
 
-	ul, err := usageLogService.CreateUsageLog(ctx, 1, 1, &ch.ID, "m5", usage, "api", "openai/chat_completions")
+	ul, err := usageLogService.CreateUsageLog(ctx, CreateUsageLogParams{
+		RequestID:     1,
+		ProjectID:     1,
+		ChannelID:     &ch.ID,
+		ActualModelID: "m5",
+		Usage:         usage,
+		Source:        "api",
+		Format:        "openai/chat_completions",
+		APIKeyID:      nil,
+	})
 	require.NoError(t, err)
 	require.NotNil(t, ul)
 
@@ -440,7 +485,16 @@ func TestUsageCost_CacheVariantBoth5MinAnd1Hour(t *testing.T) {
 		},
 	}
 
-	ul, err := usageLogService.CreateUsageLog(ctx, 1, 1, &ch.ID, "m6", usage, "api", "openai/chat_completions")
+	ul, err := usageLogService.CreateUsageLog(ctx, CreateUsageLogParams{
+		RequestID:     1,
+		ProjectID:     1,
+		ChannelID:     &ch.ID,
+		ActualModelID: "m6",
+		Usage:         usage,
+		Source:        "api",
+		Format:        "openai/chat_completions",
+		APIKeyID:      nil,
+	})
 	require.NoError(t, err)
 	require.NotNil(t, ul)
 
@@ -513,7 +567,16 @@ func TestUsageCost_CacheVariantFallbackToShared(t *testing.T) {
 		},
 	}
 
-	ul, err := usageLogService.CreateUsageLog(ctx, 1, 1, &ch.ID, "m7", usage, "api", "openai/chat_completions")
+	ul, err := usageLogService.CreateUsageLog(ctx, CreateUsageLogParams{
+		RequestID:     1,
+		ProjectID:     1,
+		ChannelID:     &ch.ID,
+		ActualModelID: "m7",
+		Usage:         usage,
+		Source:        "api",
+		Format:        "openai/chat_completions",
+		APIKeyID:      nil,
+	})
 	require.NoError(t, err)
 	require.NotNil(t, ul)
 

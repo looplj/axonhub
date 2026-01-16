@@ -8826,6 +8826,18 @@ type UsageLogWhereInput struct {
 	RequestIDIn    []int `json:"requestIDIn,omitempty"`
 	RequestIDNotIn []int `json:"requestIDNotIn,omitempty"`
 
+	// "api_key_id" field predicates.
+	APIKeyID       *int  `json:"apiKeyID,omitempty"`
+	APIKeyIDNEQ    *int  `json:"apiKeyIDNEQ,omitempty"`
+	APIKeyIDIn     []int `json:"apiKeyIDIn,omitempty"`
+	APIKeyIDNotIn  []int `json:"apiKeyIDNotIn,omitempty"`
+	APIKeyIDGT     *int  `json:"apiKeyIDGT,omitempty"`
+	APIKeyIDGTE    *int  `json:"apiKeyIDGTE,omitempty"`
+	APIKeyIDLT     *int  `json:"apiKeyIDLT,omitempty"`
+	APIKeyIDLTE    *int  `json:"apiKeyIDLTE,omitempty"`
+	APIKeyIDIsNil  bool  `json:"apiKeyIDIsNil,omitempty"`
+	APIKeyIDNotNil bool  `json:"apiKeyIDNotNil,omitempty"`
+
 	// "project_id" field predicates.
 	ProjectID      *int  `json:"projectID,omitempty"`
 	ProjectIDNEQ   *int  `json:"projectIDNEQ,omitempty"`
@@ -9206,6 +9218,36 @@ func (i *UsageLogWhereInput) P() (predicate.UsageLog, error) {
 	}
 	if len(i.RequestIDNotIn) > 0 {
 		predicates = append(predicates, usagelog.RequestIDNotIn(i.RequestIDNotIn...))
+	}
+	if i.APIKeyID != nil {
+		predicates = append(predicates, usagelog.APIKeyIDEQ(*i.APIKeyID))
+	}
+	if i.APIKeyIDNEQ != nil {
+		predicates = append(predicates, usagelog.APIKeyIDNEQ(*i.APIKeyIDNEQ))
+	}
+	if len(i.APIKeyIDIn) > 0 {
+		predicates = append(predicates, usagelog.APIKeyIDIn(i.APIKeyIDIn...))
+	}
+	if len(i.APIKeyIDNotIn) > 0 {
+		predicates = append(predicates, usagelog.APIKeyIDNotIn(i.APIKeyIDNotIn...))
+	}
+	if i.APIKeyIDGT != nil {
+		predicates = append(predicates, usagelog.APIKeyIDGT(*i.APIKeyIDGT))
+	}
+	if i.APIKeyIDGTE != nil {
+		predicates = append(predicates, usagelog.APIKeyIDGTE(*i.APIKeyIDGTE))
+	}
+	if i.APIKeyIDLT != nil {
+		predicates = append(predicates, usagelog.APIKeyIDLT(*i.APIKeyIDLT))
+	}
+	if i.APIKeyIDLTE != nil {
+		predicates = append(predicates, usagelog.APIKeyIDLTE(*i.APIKeyIDLTE))
+	}
+	if i.APIKeyIDIsNil {
+		predicates = append(predicates, usagelog.APIKeyIDIsNil())
+	}
+	if i.APIKeyIDNotNil {
+		predicates = append(predicates, usagelog.APIKeyIDNotNil())
 	}
 	if i.ProjectID != nil {
 		predicates = append(predicates, usagelog.ProjectIDEQ(*i.ProjectID))

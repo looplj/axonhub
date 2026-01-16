@@ -70,6 +70,11 @@ func RequestID(v int) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldRequestID, v))
 }
 
+// APIKeyID applies equality check predicate on the "api_key_id" field. It's identical to APIKeyIDEQ.
+func APIKeyID(v int) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldAPIKeyID, v))
+}
+
 // ProjectID applies equality check predicate on the "project_id" field. It's identical to ProjectIDEQ.
 func ProjectID(v int) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldProjectID, v))
@@ -258,6 +263,56 @@ func RequestIDIn(vs ...int) predicate.UsageLog {
 // RequestIDNotIn applies the NotIn predicate on the "request_id" field.
 func RequestIDNotIn(vs ...int) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNotIn(FieldRequestID, vs...))
+}
+
+// APIKeyIDEQ applies the EQ predicate on the "api_key_id" field.
+func APIKeyIDEQ(v int) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldAPIKeyID, v))
+}
+
+// APIKeyIDNEQ applies the NEQ predicate on the "api_key_id" field.
+func APIKeyIDNEQ(v int) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNEQ(FieldAPIKeyID, v))
+}
+
+// APIKeyIDIn applies the In predicate on the "api_key_id" field.
+func APIKeyIDIn(vs ...int) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIn(FieldAPIKeyID, vs...))
+}
+
+// APIKeyIDNotIn applies the NotIn predicate on the "api_key_id" field.
+func APIKeyIDNotIn(vs ...int) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotIn(FieldAPIKeyID, vs...))
+}
+
+// APIKeyIDGT applies the GT predicate on the "api_key_id" field.
+func APIKeyIDGT(v int) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGT(FieldAPIKeyID, v))
+}
+
+// APIKeyIDGTE applies the GTE predicate on the "api_key_id" field.
+func APIKeyIDGTE(v int) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGTE(FieldAPIKeyID, v))
+}
+
+// APIKeyIDLT applies the LT predicate on the "api_key_id" field.
+func APIKeyIDLT(v int) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLT(FieldAPIKeyID, v))
+}
+
+// APIKeyIDLTE applies the LTE predicate on the "api_key_id" field.
+func APIKeyIDLTE(v int) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLTE(FieldAPIKeyID, v))
+}
+
+// APIKeyIDIsNil applies the IsNil predicate on the "api_key_id" field.
+func APIKeyIDIsNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIsNull(FieldAPIKeyID))
+}
+
+// APIKeyIDNotNil applies the NotNil predicate on the "api_key_id" field.
+func APIKeyIDNotNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotNull(FieldAPIKeyID))
 }
 
 // ProjectIDEQ applies the EQ predicate on the "project_id" field.
