@@ -7,7 +7,7 @@ AxonHub can act as a drop-in replacement for OpenAI endpoints, letting Codex con
 
 ### Key Points
 - AxonHub performs AI protocol/format transformation. You can configure multiple upstream channels (providers) and expose a single OpenAI-compatible interface for Codex.
-- You can aggregate Codex requests from the same conversation by configuring `server.trace.extra_trace_headers`.
+- You can aggregate Codex requests from the same conversation by enabling `server.trace.codex_trace_enabled` (uses `Session_id`) or adding extra headers via `server.trace.extra_trace_headers`.
 
 ### Prerequisites
 - AxonHub instance reachable from your development machine.
@@ -35,7 +35,15 @@ AxonHub can act as a drop-in replacement for OpenAI endpoints, letting Codex con
 3. Restart Codex to apply the configuration.
 
 #### Trace aggregation by conversation (important)
-If Codex sends a stable conversation identifier header (for example `Conversation_id`), you can configure AxonHub to use it as a fallback trace header in `config.yml`:
+Enable the built-in Codex trace extraction to reuse the `Session_id` header as the trace ID:
+
+```yaml
+server:
+  trace:
+    codex_trace_enabled: true
+```
+
+If Codex sends a different stable conversation identifier header (for example `Conversation_id`), you can configure AxonHub to use it as a fallback trace header in `config.yml`:
 
 ```yaml
 server:

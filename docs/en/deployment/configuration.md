@@ -67,6 +67,7 @@ server:
     trace_header: "AH-Trace-Id" # Trace ID header name
     extra_trace_headers: []     # Extra trace headers
     claude_code_trace_enabled: false # Enable Claude Code trace extraction
+    codex_trace_enabled: false # Enable Codex trace extraction
   debug: false                  # Enable debug mode
 ```
 
@@ -80,6 +81,7 @@ server:
 - `AXONHUB_SERVER_TRACE_TRACE_HEADER`
 - `AXONHUB_SERVER_TRACE_EXTRA_TRACE_HEADERS`
 - `AXONHUB_SERVER_TRACE_CLAUDE_CODE_TRACE_ENABLED`
+- `AXONHUB_SERVER_TRACE_CODEX_TRACE_ENABLED`
 - `AXONHUB_SERVER_DEBUG`
 
 ### Database Configuration

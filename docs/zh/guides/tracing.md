@@ -149,6 +149,10 @@ func sendTracedMessage(ctx context.Context, apiKey string) (*anthropic.Message, 
 - `/anthropic/v1/messages` 的 `metadata.user_id` 会作为追踪 ID 使用，同时不会影响请求体给后续逻辑的读取。
 - 如果请求已经带有追踪请求头，系统会优先使用该值，与自动提取机制兼容。
 
+### Codex 追踪支持
+- 将 `server.trace.codex_trace_enabled` 设为 `true`，AxonHub 会将 `Session_id` header 作为追踪 ID 使用。
+- 如果请求已经带有追踪请求头，系统会优先使用该值，与自动提取机制兼容。
+
 ### 在控制台中探索追踪
 1. 在 AxonHub 管理后台进入 **Traces** 页面。
 2. 按项目、模型或时间范围筛选目标追踪。

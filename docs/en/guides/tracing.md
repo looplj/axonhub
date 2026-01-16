@@ -149,6 +149,10 @@ func sendTracedMessage(ctx context.Context, apiKey string) (*anthropic.Message, 
 - The `/anthropic/v1/messages` endpoint will reuse the Claude Code `metadata.user_id` as the trace ID while keeping your payload untouched for downstream usage.
 - If you already send a trace header, AxonHub keeps your value—manual instrumentation and auto-extraction work together.
 
+### Codex Trace Support
+- Turn on Codex extraction with `server.trace.codex_trace_enabled: true` so AxonHub can reuse the `Session_id` header as the trace ID.
+- If you already send a trace header, AxonHub keeps your value—manual instrumentation and auto-extraction work together.
+
 ### Exploring Traces in the Console
 1. Navigate to **Traces** in the AxonHub admin console.
 2. Filter by project, model, or time range to locate the trace of interest.
