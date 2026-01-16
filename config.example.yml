@@ -15,6 +15,7 @@ server:
     extra_trace_headers: [] # Extra trace headers (env: AXONHUB_SERVER_TRACE_EXTRA_TRACE_HEADERS)
     extra_trace_body_fields: [] # Extra trace body fields (env: AXONHUB_SERVER_TRACE_EXTRA_TRACE_BODY_FIELDS)
     claude_code_trace_enabled: false # Enable extracting trace IDs from Claude Code request metadata (env: AXONHUB_SERVER_TRACE_CLAUDE_CODE_TRACE_ENABLED)
+    codex_trace_enabled: false # Enable extracting trace IDs from Codex Session_id header (env: AXONHUB_SERVER_TRACE_CODEX_TRACE_ENABLED)
   debug: false                  # Enable debug mode (env: AXONHUB_SERVER_DEBUG)
   cors:
     enabled: true               # Enable CORS middleware (env: AXONHUB_SERVER_CORS_ENABLED)

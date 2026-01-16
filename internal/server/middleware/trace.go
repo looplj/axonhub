@@ -81,6 +81,10 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 			}
 		}
 
+		if traceID == "" && config.CodexTraceEnabled {
+			traceID = tryExtractTraceIDFromCodexRequest(c)
+		}
+
 		if traceID == "" && len(config.ExtraTraceBodyFields) > 0 {
 			var err error
 
@@ -166,6 +170,8 @@ func tryExtractTraceIDFromClaudeCodeRequest(c *gin.Context, config tracing.Confi
 
 var claudeUserIDPattern = regexp.MustCompile(`(?i)^user_[0-9a-f]{64}_account__session_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
+const codexTraceHeader = "Session_id"
+
 func extractClaudeTraceID(userID string) string {
 	if !claudeUserIDPattern.MatchString(userID) {
 		return ""
@@ -181,4 +187,15 @@ func extractClaudeTraceID(userID string) string {
 	}
 
 	return strings.TrimSpace(traceID)
+}
+
+func tryExtractTraceIDFromCodexRequest(c *gin.Context) string {
+	traceID := strings.TrimSpace(c.GetHeader(codexTraceHeader))
+	if traceID == "" {
+		return ""
+	}
+
+	log.Debug(c.Request.Context(), "Extracted trace ID from codex header", log.String("trace_id", traceID))
+
+	return traceID
 }

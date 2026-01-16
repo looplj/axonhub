@@ -36,6 +36,10 @@ type Config struct {
 	// ClaudeCodeTraceEnabled enables extracting trace IDs from Claude Code request metadata.
 	// Default to false.
 	ClaudeCodeTraceEnabled bool `conf:"claude_code_trace_enabled" yaml:"claude_code_trace_enabled" json:"claude_code_trace_enabled"`
+
+	// CodexTraceEnabled enables extracting trace IDs from Codex request headers.
+	// Default to false.
+	CodexTraceEnabled bool `conf:"codex_trace_enabled" yaml:"codex_trace_enabled" json:"codex_trace_enabled"`
 }
 
 // GenerateTraceID generate trace id, format as at-{{uuid}}.

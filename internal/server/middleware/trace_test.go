@@ -316,6 +316,105 @@ func TestWithTrace_ClaudeCodePreservesExistingTraceHeader(t *testing.T) {
 	require.JSONEq(t, string(expectedBody), string(capturedBody))
 }
 
+func TestWithTrace_CodexDisabled(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	config := tracing.Config{
+		TraceHeader:       "AH-Trace-Id",
+		CodexTraceEnabled: false,
+	}
+
+	router, client, traceService := setupTestTraceMiddleware(t)
+	defer client.Close()
+
+	ctx := privacy.DecisionContext(httptest.NewRequest(http.MethodGet, "/", nil).Context(), privacy.Allow)
+	ctx = ent.NewContext(ctx, client)
+
+	// Create a test project
+	testProject, err := client.Project.Create().
+		SetName("test-project").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	router.Use(func(c *gin.Context) {
+		ctx := privacy.DecisionContext(c.Request.Context(), privacy.Allow)
+		ctx = ent.NewContext(ctx, client)
+		ctx = contexts.WithProjectID(ctx, testProject.ID)
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.Use(WithTrace(config, traceService))
+
+	var hasTrace bool
+
+	router.POST("/v1/chat/completions", func(c *gin.Context) {
+		_, ok := contexts.GetTrace(c.Request.Context())
+		hasTrace = ok
+		c.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader([]byte("{}")))
+	req.Header.Set("Session_id", "codex-session-123")
+
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.False(t, hasTrace)
+}
+
+func TestWithTrace_CodexHeaderSetsTrace(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	config := tracing.Config{
+		TraceHeader:       "AH-Trace-Id",
+		CodexTraceEnabled: true,
+	}
+
+	router, client, traceService := setupTestTraceMiddleware(t)
+	defer client.Close()
+
+	ctx := privacy.DecisionContext(httptest.NewRequest(http.MethodGet, "/", nil).Context(), privacy.Allow)
+	ctx = ent.NewContext(ctx, client)
+
+	// Create a test project
+	testProject, err := client.Project.Create().
+		SetName("test-project").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	router.Use(func(c *gin.Context) {
+		ctx := privacy.DecisionContext(c.Request.Context(), privacy.Allow)
+		ctx = ent.NewContext(ctx, client)
+		ctx = contexts.WithProjectID(ctx, testProject.ID)
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.Use(WithTrace(config, traceService))
+
+	var capturedTraceID string
+
+	router.POST("/v1/chat/completions", func(c *gin.Context) {
+		trace, ok := contexts.GetTrace(c.Request.Context())
+		require.True(t, ok)
+		capturedTraceID = trace.TraceID
+		c.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader([]byte("{}")))
+	req.Header.Set("Session_id", "codex-session-123")
+
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, "codex-session-123", capturedTraceID)
+}
+
 func TestWithTraceID_Success(t *testing.T) {
 	config := tracing.Config{}
 
