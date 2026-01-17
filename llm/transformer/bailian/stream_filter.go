@@ -92,7 +92,6 @@ func (s *bailianStreamFilter) filterResponse(resp *llm.Response) *llm.Response {
 		choice := &resp.Choices[i]
 		if choice.Delta != nil && len(choice.Delta.ToolCalls) > 0 {
 			s.sawToolCalls = true
-			s.bufferedText.Reset()
 			s.filterToolCalls(choice.Index, choice.Delta.ToolCalls)
 		}
 	}
