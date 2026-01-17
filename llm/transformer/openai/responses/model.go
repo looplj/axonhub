@@ -384,7 +384,9 @@ type Item struct {
 
 	// Reasoning fields (for type="reasoning")
 	// Reasoning summary content - array of summary text items.
-	Summary []ReasoningSummary `json:"summary,omitempty"`
+	// Note: Do not use omitempty here - Codex requires the "summary" field to be present
+	// (even as empty array) for parsing ResponseItem::Reasoning correctly.
+	Summary []ReasoningSummary `json:"summary"`
 	// Reasoning text content - array of reasoning text items.
 	ReasoningContent []ReasoningContent `json:"reasoning_content,omitempty"`
 	// The encrypted content of the reasoning item.
