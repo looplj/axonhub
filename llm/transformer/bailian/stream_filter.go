@@ -87,6 +87,21 @@ func (s *bailianStreamFilter) filterResponse(resp *llm.Response) *llm.Response {
 		return nil
 	}
 
+	// Check for tool calls in this response
+	for i := range resp.Choices {
+		choice := &resp.Choices[i]
+		if choice.Delta != nil && len(choice.Delta.ToolCalls) > 0 {
+			s.sawToolCalls = true
+			s.filterToolCalls(choice.Index, choice.Delta.ToolCalls)
+		}
+	}
+
+	// If no tool calls detected yet, pass through response unchanged for true streaming
+	if !s.sawToolCalls {
+		return resp
+	}
+
+	// Tool calls mode: buffer text and filter out text after tool calls
 	hasFinish := false
 
 	for i := range resp.Choices {
@@ -95,30 +110,16 @@ func (s *bailianStreamFilter) filterResponse(resp *llm.Response) *llm.Response {
 			hasFinish = true
 		}
 
-		if choice.Delta != nil && len(choice.Delta.ToolCalls) > 0 {
-			s.sawToolCalls = true
-			s.bufferedText.Reset()
-			s.filterToolCalls(choice.Index, choice.Delta.ToolCalls)
-		}
-	}
-
-	for i := range resp.Choices {
-		choice := &resp.Choices[i]
-
+		// Extract and buffer text content after tool calls to prevent interference
 		text := extractTextDelta(choice)
-		if text == "" {
-			continue
+		if text != "" {
+			s.lastTextChoice = choice.Index
+			s.bufferedText.WriteString(text)
 		}
-
-		if s.sawToolCalls {
-			continue
-		}
-
-		s.lastTextChoice = choice.Index
-		s.bufferedText.WriteString(text)
 	}
 
-	if hasFinish && !s.sawToolCalls && s.bufferedText.Len() > 0 {
+	// On finish, output any buffered text before the final response
+	if hasFinish && s.bufferedText.Len() > 0 {
 		textChunk := buildTextChunk(resp, s.lastTextChoice, s.bufferedText.String())
 		s.bufferedText.Reset()
 		s.pending = append(s.pending, textChunk, resp)
