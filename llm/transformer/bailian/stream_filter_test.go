@@ -85,6 +85,16 @@ func TestBailianStreamFilter_DropsTextAfterToolCalls(t *testing.T) {
 			ID:     "resp_1",
 			Object: "chat.completion.chunk",
 			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{
+					Content: llm.MessageContent{Content: strPtr("after tool calls")},
+				},
+			}},
+		},
+		{
+			ID:     "resp_1",
+			Object: "chat.completion.chunk",
+			Choices: []llm.Choice{{
 				Index:        0,
 				FinishReason: strPtr("tool_calls"),
 			}},
@@ -94,27 +104,30 @@ func TestBailianStreamFilter_DropsTextAfterToolCalls(t *testing.T) {
 	stream := newBailianStreamFilter(&mockLLMStream{responses: responses})
 	output := collectStream(stream)
 
+	// Verify: text before tool calls is preserved, text after is suppressed
+	var textChunks []string
+
 	for _, resp := range output {
 		if resp == nil || resp == llm.DoneResponse {
 			continue
 		}
 
 		for _, choice := range resp.Choices {
-			if choice.Delta == nil {
+			if choice.Delta == nil || choice.Delta.Content.Content == nil {
 				continue
 			}
 
-			if choice.Delta.Content.Content != nil {
-				require.Empty(t, *choice.Delta.Content.Content, "text delta should be suppressed after tool calls")
-			}
-
-			for _, part := range choice.Delta.Content.MultipleContent {
-				if part.Type == "text" && part.Text != nil {
-					require.Empty(t, *part.Text, "text delta should be suppressed after tool calls")
-				}
+			if *choice.Delta.Content.Content != "" {
+				textChunks = append(textChunks, *choice.Delta.Content.Content)
 			}
 		}
 	}
+
+	// "hello " should pass through (before tool calls)
+	// "after tool calls" should be buffered and output at the end
+	require.Len(t, textChunks, 2)
+	require.Equal(t, "hello ", textChunks[0], "text before tool calls should be preserved")
+	require.Equal(t, "after tool calls", textChunks[1], "text after tool calls should be buffered and output at finish")
 }
 
 func TestBailianStreamFilter_IgnoresRedundantEmptyToolArgs(t *testing.T) {
@@ -167,7 +180,7 @@ func TestBailianStreamFilter_IgnoresRedundantEmptyToolArgs(t *testing.T) {
 	require.Empty(t, second.Choices[0].Delta.ToolCalls[0].Function.Arguments, "redundant '{}' should be stripped")
 }
 
-func TestBailianStreamFilter_FlushesBufferedTextWhenNoToolCalls(t *testing.T) {
+func TestBailianStreamFilter_PassesThroughTextWhenNoToolCalls(t *testing.T) {
 	responses := []*llm.Response{
 		{
 			ID:     "resp_3",
@@ -202,6 +215,9 @@ func TestBailianStreamFilter_FlushesBufferedTextWhenNoToolCalls(t *testing.T) {
 	stream := newBailianStreamFilter(&mockLLMStream{responses: responses})
 	output := collectStream(stream)
 
+	// Without tool calls, chunks should pass through unchanged for true streaming
+	require.Len(t, output, 3, "all chunks should pass through")
+
 	var textChunks []string
 
 	for _, resp := range output {
@@ -214,10 +230,14 @@ func TestBailianStreamFilter_FlushesBufferedTextWhenNoToolCalls(t *testing.T) {
 				continue
 			}
 
-			textChunks = append(textChunks, *choice.Delta.Content.Content)
+			if *choice.Delta.Content.Content != "" {
+				textChunks = append(textChunks, *choice.Delta.Content.Content)
+			}
 		}
 	}
 
-	require.Len(t, textChunks, 1)
-	require.Equal(t, "Hello world", textChunks[0])
+	// Text should be streamed as separate chunks, not buffered
+	require.Len(t, textChunks, 2)
+	require.Equal(t, "Hello ", textChunks[0])
+	require.Equal(t, "world", textChunks[1])
 }
