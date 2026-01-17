@@ -102,7 +102,9 @@ func TestBailianStreamFilter_DropsTextAfterToolCalls(t *testing.T) {
 	}
 
 	stream := newBailianStreamFilter(&mockLLMStream{responses: responses})
-	output := collectStream(stream)
+output := collectStream(stream)
+
+	require.Len(t, output, 5, "expected 5 chunks: text, tool_call, empty text, flushed text, finish")
 
 	// Verify: text before tool calls is preserved, text after is suppressed
 	var textChunks []string
