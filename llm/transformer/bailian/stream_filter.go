@@ -111,7 +111,7 @@ func (s *bailianStreamFilter) filterResponse(resp *llm.Response) *llm.Response {
 			hasFinish = true
 		}
 
-		// Extract and discard text content after tool calls to prevent interference
+		// Extract and buffer text content after tool calls to prevent interference
 		text := extractTextDelta(choice)
 		if text != "" {
 			s.lastTextChoice = choice.Index
