@@ -1,255 +1,152 @@
 {
-  "system": {
-    "title": "系统设置",
-    "description": "管理系统配置和选项。",
-    "tabs": {
-      "general": "常规",
-      "brand": "品牌",
-      "storage": "存储",
-      "retry": "重试",
-      "backup": "备份",
-      "about": "关于"
-    },
-    "storage": {
-      "dataStorage": {
-        "title": "默认数据存储",
-        "description": "选择用于存储请求和响应数据的默认存储位置",
-        "label": "数据存储",
-        "placeholder": "选择数据存储"
-      },
-      "storeChunks": {},
-      "policy": {
-        "title": "存储策略",
-        "description": "配置存储策略和数据清理设置以管理数据保留和存储效率",
-        "storeChunks": {
-          "label": "存储响应块",
-          "description": "启用后，系统将在数据库中存储响应数据块，便于后续分析和处理。这可以启用详细的请求跟踪和调试，但会增加存储使用量。"
-        },
-        "storeRequestBody": {
-          "label": "存储请求体",
-          "description": "关闭后，将不保存原始请求体。启用此功能可进行完整的请求审计和调试。禁用可减少存储使用量并提高隐私性。"
-        },
-        "storeResponseBody": {
-          "label": "存储响应体",
-          "description": "关闭后，将不保存最终响应体。启用此功能可进行完整的响应分析和调试。禁用可显著减少存储需求。"
-        },
-        "cleanupOptions": "清理选项",
-        "cleanupDays": "清理周期",
-        "days": "天",
-        "resourceTypes": {
-          "requests": "请求日志",
-          "usage_logs": "用量日志"
-        },
-        "cleanupDescription": "在指定天数后自动移除旧数据，以管理存储增长并符合数据保留策略。"
-      }
-    },
-    "general": {
-      "title": "常规设置",
-      "description": "管理系统的通用配置选项",
-      "currencyCode": {
-        "label": "货币代码",
-        "placeholder": "例如：USD, RMB",
-        "description": "仅供系统展示费用使用，不会用来实际计费，修改以后实时生效"
-      }
-    },
-    "brand": {
-      "title": "品牌设置",
-      "description": "配置系统的基本信息和品牌设置",
-      "brandName": {
-        "label": "品牌名称",
-        "placeholder": "输入系统品牌名称",
-        "description": "设置系统的品牌名称，将在界面中显示"
-      },
-      "brandLogo": {
-        "label": "品牌标识",
-        "upload": "上传标识",
-        "description": "上传正方形的PNG或JPEG标识（最大2MB）。标识将在系统界面中显示。",
-        "invalidFormat": "请上传PNG或JPEG格式的图片文件。",
-        "fileTooLarge": "文件大小必须小于2MB。",
-        "notSquare": "请上传正方形图片（宽度等于高度）。"
-      }
-    },
-    "other": {},
-    "retry": {
-      "title": "重试策略",
-      "description": "配置失败请求的自动重试行为以提高系统可靠性",
-      "enabled": {
-        "label": "启用重试",
-        "description": "启用后，系统将自动重试失败的请求。这有助于在遇到临时网络问题或服务不可用时提高可靠性。"
-      },
-      "loadBalancerStrategy": {
-        "label": "负载均衡策略",
-        "description": "选择系统在路由请求时如何对渠道进行排序。",
-        "placeholder": "选择策略",
-        "options": {
-          "adaptive": "自适应",
-          "weighted": "权重"
-        },
-        "documentation": {
-          "adaptive": "基于权重、成功率、轮询和trace等策略综合考虑选择合适的渠道进行请求。智能平衡多个因素以优化渠道选择。",
-          "weighted": "每一次请求都按照渠道权重从高到低顺序请求，直到一次成功。权重更高的渠道在所有请求中都被顺序优先。"
-        }
-      },
-      "maxChannelRetries": {
-        "label": "最大渠道重试次数",
-        "description": "跨不同渠道的最大重试次数 (0-10)。当某个渠道失败时，系统将尝试其他可用渠道，最多不超过此限制。较高的值可提高可靠性，但可能会增加延迟。"
-      },
-      "maxSingleChannelRetries": {
-        "label": "单渠道最大重试次数",
-        "description": "同一渠道的最大重试次数 (0-5)。控制在同一渠道上重试的次数，然后切换到不同的渠道。对于临时故障很有用。"
-      },
-      "retryDelayMs": {
-        "label": "重试延迟",
-        "description": "重试间隔时间，单位毫秒 (100-10000ms)。较短的延迟提供更快的恢复速度，但可能会压倒 struggling 服务。较长的延迟给服务更多时间恢复。"
-      },
-      "autoDisableChannel": {
-        "label": "自动禁用渠道",
-        "description": "当渠道在特定 HTTP 状态码下超过最大重试次数时，自动禁用该渠道",
-        "statuses": {
-          "label": "状态码",
-          "add": "添加状态码",
-          "empty": "未配置状态码。添加状态码以自动禁用渠道。",
-          "times": "次",
-          "statusPlaceholder": "状态码",
-          "timesPlaceholder": "次数"
-        }
-      }
-    },
-    "onboarding": {
-      "title": "系统引导",
-      "description": "欢迎使用 AxonHub！让我们快速设置您的系统。",
-      "startTour": "开始引导",
-      "skipTour": "跳过引导",
-      "completeTour": "完成引导",
-      "steps": {
-        "welcome": {
-          "title": "欢迎使用 AxonHub！",
-          "description": "让我们配置您的系统设置以开始使用。本引导将帮助您设置品牌、重试策略和数据存储。"
-        },
-        "brandName": {
-          "title": "设置品牌名称",
-          "description": "输入您的组织或项目名称。这将整个界面中显示。"
-        },
-        "brandLogo": {
-          "title": "添加标识",
-          "description": "上传您的标识以自定义 AxonHub 的外观，使其符合您的组织形象。"
-        },
-        "retryPolicy": {
-          "title": "配置重试策略",
-          "description": "设置失败请求的自动重试行为以提高可靠性。"
-        },
-        "retryEnabled": {
-          "title": "启用/禁用重试",
-          "description": "开启或关闭重试功能。启用后，失败的请求将自动重试。"
-        },
-        "retryMaxRetries": {
-          "title": "最大重试次数",
-          "description": "设置失败请求的最大重试次数。较高的值可提高可靠性，但可能延迟失败通知。"
-        },
-        "retrySingleChannel": {
-          "title": "单渠道重试",
-          "description": "配置在同一渠道上重试的次数，然后才切换到其他渠道。对临时故障很有用。"
-        },
-        "retryDelay": {
-          "title": "重试延迟",
-          "description": "设置重试之间的延迟时间。较短的延迟提供更快的恢复，但可能会压倒 struggling 服务。"
-        },
-        "dataStorage": {
-          "title": "数据存储设置",
-          "description": "配置请求和响应详情数据的存储和管理方式，这对性能和合规性很重要。默认存储在数据库，您也可以配置其他存储后端。"
-        },
-        "storageEnabled": {
-          "title": "数据存储选项",
-          "description": "选择要存储的数据类型。您可以启用对数据块、请求正文和响应正文的存储。"
-        },
-        "storageChunks": {
-          "title": "存储数据块",
-          "description": "启用流式响应的数据块存储。这允许您查看部分响应并分析流式行为。"
-        },
-        "storageRequestBody": {
-          "title": "存储请求正文",
-          "description": "保存请求负载以进行调试和分析。这会增加存储使用量，但提供有价值的洞察。"
-        },
-        "storageResponseBody": {
-          "title": "存储响应正文",
-          "description": "保存响应负载以进行审计和分析。这会显著增加存储使用量，但提供完整的数据。"
-        },
-        "dataStorageSelection": {
-          "title": "数据存储后端",
-          "description": "为您的数据选择存储后端。不同的后端提供不同的性能和成本特性。"
-        },
-        "storageCleanup": {},
-        "storageCleanupRequests": {
-          "title": "请求数据清理",
-          "description": "配置请求数据的自动清理以管理存储空间并保持系统性能。"
-        },
-        "storageCleanupUsageLogs": {
-          "title": "使用日志清理",
-          "description": "设置使用日志的清理策略以符合数据保留要求并优化存储。"
-        },
-        "complete": {
-          "title": "设置完成！",
-          "description": "太好了！您的系统现已配置完成。您可以随时在系统设置页面中修改这些设置。"
-        }
-      }
-    },
-    "buttons": {
-      "save": "保存设置",
-      "saving": "保存中..."
-    },
-    "about": {
-      "title": "关于 AxonHub",
-      "description": "系统版本信息和更新状态",
-      "version": "版本",
-      "commit": "提交",
-      "buildTime": "构建时间",
-      "goVersion": "Go 版本",
-      "platform": "平台",
-      "uptime": "运行时间",
-      "updateCheck": {
-        "title": "检查更新",
-        "description": "检查是否有新版本可用",
-        "button": "立即检查",
-        "newVersionAvailable": "发现新版本！",
-        "currentVersion": "当前版本",
-        "latestVersion": "最新版本",
-        "viewRelease": "查看发布说明",
-        "upToDate": "您正在运行最新版本"
-      },
-      "links": {
-        "title": "链接",
-        "releases": "版本发布",
-        "issues": "报告问题"
-      }
-    },
-    "backup": {
-      "title": "备份",
-      "description": "创建系统数据备份，包括渠道、模型和 API 密钥",
-      "includeChannels": "包含渠道",
-      "includeModels": "包含模型",
-      "includeAPIKeys": "包含 API 密钥",
-      "createBackup": "创建备份",
-      "backingUp": "备份中...",
-      "success": "备份创建成功",
-      "failed": "备份创建失败"
-    },
-    "restore": {
-      "title": "恢复",
-      "description": "从备份文件恢复系统数据",
-      "channelConflictStrategy": "渠道冲突策略",
-      "modelConflictStrategy": "模型冲突策略",
-      "apiKeyConflictStrategy": "API 密钥冲突策略",
-      "strategies": {
-        "skip": "跳过现有项",
-        "overwrite": "覆盖现有项",
-        "error": "冲突时报错"
-      },
-      "selectFile": "选择备份文件",
-      "restoreBackup": "恢复备份",
-      "restoring": "恢复中...",
-      "success": "备份恢复成功",
-      "failed": "备份恢复失败",
-      "warning": "警告：从备份恢复将覆盖现有数据。此操作无法撤销。"
-    }
-  }
+  "system.title": "系统设置",
+  "system.description": "管理系统配置和选项。",
+  "system.tabs.general": "常规",
+  "system.tabs.brand": "品牌",
+  "system.tabs.storage": "存储",
+  "system.tabs.retry": "重试",
+  "system.tabs.backup": "备份",
+  "system.tabs.about": "关于",
+  "system.storage.dataStorage.title": "默认数据存储",
+  "system.storage.dataStorage.description": "选择用于存储请求和响应数据的默认存储位置",
+  "system.storage.dataStorage.label": "数据存储",
+  "system.storage.dataStorage.placeholder": "选择数据存储",
+  "system.storage.policy.title": "存储策略",
+  "system.storage.policy.description": "配置存储策略和数据清理设置以管理数据保留和存储效率",
+  "system.storage.policy.storeChunks.label": "存储响应块",
+  "system.storage.policy.storeChunks.description": "启用后，系统将在数据库中存储响应数据块，便于后续分析和处理。这可以启用详细的请求跟踪和调试，但会增加存储使用量。",
+  "system.storage.policy.storeRequestBody.label": "存储请求体",
+  "system.storage.policy.storeRequestBody.description": "关闭后，将不保存原始请求体。启用此功能可进行完整的请求审计和调试。禁用可减少存储使用量并提高隐私性。",
+  "system.storage.policy.storeResponseBody.label": "存储响应体",
+  "system.storage.policy.storeResponseBody.description": "关闭后，将不保存最终响应体。启用此功能可进行完整的响应分析和调试。禁用可显著减少存储需求。",
+  "system.storage.policy.cleanupOptions": "清理选项",
+  "system.storage.policy.cleanupDays": "清理周期",
+  "system.storage.policy.days": "天",
+  "system.storage.policy.resourceTypes.requests": "请求日志",
+  "system.storage.policy.resourceTypes.usage_logs": "用量日志",
+  "system.storage.policy.cleanupDescription": "在指定天数后自动移除旧数据，以管理存储增长并符合数据保留策略。",
+  "system.general.title": "常规设置",
+  "system.general.description": "管理系统的通用配置选项",
+  "system.general.currencyCode.label": "货币代码",
+  "system.general.currencyCode.placeholder": "例如：USD, RMB",
+  "system.general.currencyCode.description": "仅供系统展示费用使用，不会用来实际计费，修改以后实时生效",
+  "system.brand.title": "品牌设置",
+  "system.brand.description": "配置系统的基本信息和品牌设置",
+  "system.brand.brandName.label": "品牌名称",
+  "system.brand.brandName.placeholder": "输入系统品牌名称",
+  "system.brand.brandName.description": "设置系统的品牌名称，将在界面中显示",
+  "system.brand.brandLogo.label": "品牌标识",
+  "system.brand.brandLogo.upload": "上传标识",
+  "system.brand.brandLogo.description": "上传正方形的PNG或JPEG标识（最大2MB）。标识将在系统界面中显示。",
+  "system.brand.brandLogo.invalidFormat": "请上传PNG或JPEG格式的图片文件。",
+  "system.brand.brandLogo.fileTooLarge": "文件大小必须小于2MB。",
+  "system.brand.brandLogo.notSquare": "请上传正方形图片（宽度等于高度）。",
+  "system.retry.title": "重试策略",
+  "system.retry.description": "配置失败请求的自动重试行为以提高系统可靠性",
+  "system.retry.enabled.label": "启用重试",
+  "system.retry.enabled.description": "启用后，系统将自动重试失败的请求。这有助于在遇到临时网络问题或服务不可用时提高可靠性。",
+  "system.retry.loadBalancerStrategy.label": "负载均衡策略",
+  "system.retry.loadBalancerStrategy.description": "选择系统在路由请求时如何对渠道进行排序。",
+  "system.retry.loadBalancerStrategy.placeholder": "选择策略",
+  "system.retry.loadBalancerStrategy.options.adaptive": "自适应",
+  "system.retry.loadBalancerStrategy.options.weighted": "权重",
+  "system.retry.loadBalancerStrategy.documentation.adaptive": "基于权重、成功率、轮询和trace等策略综合考虑选择合适的渠道进行请求。智能平衡多个因素以优化渠道选择。",
+  "system.retry.loadBalancerStrategy.documentation.weighted": "每一次请求都按照渠道权重从高到低顺序请求，直到一次成功。权重更高的渠道在所有请求中都被顺序优先。",
+  "system.retry.maxChannelRetries.label": "最大渠道重试次数",
+  "system.retry.maxChannelRetries.description": "跨不同渠道的最大重试次数 (0-10)。当某个渠道失败时，系统将尝试其他可用渠道，最多不超过此限制。较高的值可提高可靠性，但可能会增加延迟。",
+  "system.retry.maxSingleChannelRetries.label": "单渠道最大重试次数",
+  "system.retry.maxSingleChannelRetries.description": "同一渠道的最大重试次数 (0-5)。控制在同一渠道上重试的次数，然后切换到不同的渠道。对于临时故障很有用。",
+  "system.retry.retryDelayMs.label": "重试延迟",
+  "system.retry.retryDelayMs.description": "重试间隔时间，单位毫秒 (100-10000ms)。较短的延迟提供更快的恢复速度，但可能会压倒 struggling 服务。较长的延迟给服务更多时间恢复。",
+  "system.retry.autoDisableChannel.label": "自动禁用渠道",
+  "system.retry.autoDisableChannel.description": "当渠道在特定 HTTP 状态码下超过最大重试次数时，自动禁用该渠道",
+  "system.retry.autoDisableChannel.statuses.label": "状态码",
+  "system.retry.autoDisableChannel.statuses.add": "添加状态码",
+  "system.retry.autoDisableChannel.statuses.empty": "未配置状态码。添加状态码以自动禁用渠道。",
+  "system.retry.autoDisableChannel.statuses.times": "次",
+  "system.retry.autoDisableChannel.statuses.statusPlaceholder": "状态码",
+  "system.retry.autoDisableChannel.statuses.timesPlaceholder": "次数",
+  "system.onboarding.title": "系统引导",
+  "system.onboarding.description": "欢迎使用 AxonHub！让我们快速设置您的系统。",
+  "system.onboarding.startTour": "开始引导",
+  "system.onboarding.skipTour": "跳过引导",
+  "system.onboarding.completeTour": "完成引导",
+  "system.onboarding.steps.welcome.title": "欢迎使用 AxonHub！",
+  "system.onboarding.steps.welcome.description": "让我们配置您的系统设置以开始使用。本引导将帮助您设置品牌、重试策略和数据存储。",
+  "system.onboarding.steps.brandName.title": "设置品牌名称",
+  "system.onboarding.steps.brandName.description": "输入您的组织或项目名称。这将整个界面中显示。",
+  "system.onboarding.steps.brandLogo.title": "添加标识",
+  "system.onboarding.steps.brandLogo.description": "上传您的标识以自定义 AxonHub 的外观，使其符合您的组织形象。",
+  "system.onboarding.steps.retryPolicy.title": "配置重试策略",
+  "system.onboarding.steps.retryPolicy.description": "设置失败请求的自动重试行为以提高可靠性。",
+  "system.onboarding.steps.retryEnabled.title": "启用/禁用重试",
+  "system.onboarding.steps.retryEnabled.description": "开启或关闭重试功能。启用后，失败的请求将自动重试。",
+  "system.onboarding.steps.retryMaxRetries.title": "最大重试次数",
+  "system.onboarding.steps.retryMaxRetries.description": "设置失败请求的最大重试次数。较高的值可提高可靠性，但可能延迟失败通知。",
+  "system.onboarding.steps.retrySingleChannel.title": "单渠道重试",
+  "system.onboarding.steps.retrySingleChannel.description": "配置在同一渠道上重试的次数，然后才切换到其他渠道。对临时故障很有用。",
+  "system.onboarding.steps.retryDelay.title": "重试延迟",
+  "system.onboarding.steps.retryDelay.description": "设置重试之间的延迟时间。较短的延迟提供更快的恢复，但可能会压倒 struggling 服务。",
+  "system.onboarding.steps.dataStorage.title": "数据存储设置",
+  "system.onboarding.steps.dataStorage.description": "配置请求和响应详情数据的存储和管理方式，这对性能和合规性很重要。默认存储在数据库，您也可以配置其他存储后端。",
+  "system.onboarding.steps.storageEnabled.title": "数据存储选项",
+  "system.onboarding.steps.storageEnabled.description": "选择要存储的数据类型。您可以启用对数据块、请求正文和响应正文的存储。",
+  "system.onboarding.steps.storageChunks.title": "存储数据块",
+  "system.onboarding.steps.storageChunks.description": "启用流式响应的数据块存储。这允许您查看部分响应并分析流式行为。",
+  "system.onboarding.steps.storageRequestBody.title": "存储请求正文",
+  "system.onboarding.steps.storageRequestBody.description": "保存请求负载以进行调试和分析。这会增加存储使用量，但提供有价值的洞察。",
+  "system.onboarding.steps.storageResponseBody.title": "存储响应正文",
+  "system.onboarding.steps.storageResponseBody.description": "保存响应负载以进行审计和分析。这会显著增加存储使用量，但提供完整的数据。",
+  "system.onboarding.steps.dataStorageSelection.title": "数据存储后端",
+  "system.onboarding.steps.dataStorageSelection.description": "为您的数据选择存储后端。不同的后端提供不同的性能和成本特性。",
+  "system.onboarding.steps.storageCleanupRequests.title": "请求数据清理",
+  "system.onboarding.steps.storageCleanupRequests.description": "配置请求数据的自动清理以管理存储空间并保持系统性能。",
+  "system.onboarding.steps.storageCleanupUsageLogs.title": "使用日志清理",
+  "system.onboarding.steps.storageCleanupUsageLogs.description": "设置使用日志的清理策略以符合数据保留要求并优化存储。",
+  "system.onboarding.steps.complete.title": "设置完成！",
+  "system.onboarding.steps.complete.description": "太好了！您的系统现已配置完成。您可以随时在系统设置页面中修改这些设置。",
+  "system.buttons.save": "保存设置",
+  "system.buttons.saving": "保存中...",
+  "system.about.title": "关于 AxonHub",
+  "system.about.description": "系统版本信息和更新状态",
+  "system.about.version": "版本",
+  "system.about.commit": "提交",
+  "system.about.buildTime": "构建时间",
+  "system.about.goVersion": "Go 版本",
+  "system.about.platform": "平台",
+  "system.about.uptime": "运行时间",
+  "system.about.updateCheck.title": "检查更新",
+  "system.about.updateCheck.description": "检查是否有新版本可用",
+  "system.about.updateCheck.button": "立即检查",
+  "system.about.updateCheck.newVersionAvailable": "发现新版本！",
+  "system.about.updateCheck.currentVersion": "当前版本",
+  "system.about.updateCheck.latestVersion": "最新版本",
+  "system.about.updateCheck.viewRelease": "查看发布说明",
+  "system.about.updateCheck.upToDate": "您正在运行最新版本",
+  "system.about.links.title": "链接",
+  "system.about.links.releases": "版本发布",
+  "system.about.links.issues": "报告问题",
+  "system.backup.title": "备份",
+  "system.backup.description": "创建系统数据备份，包括渠道、模型和 API 密钥",
+  "system.backup.includeChannels": "包含渠道",
+  "system.backup.includeModels": "包含模型",
+  "system.backup.includeAPIKeys": "包含 API 密钥",
+  "system.backup.createBackup": "创建备份",
+  "system.backup.backingUp": "备份中...",
+  "system.backup.success": "备份创建成功",
+  "system.backup.failed": "备份创建失败",
+  "system.restore.title": "恢复",
+  "system.restore.description": "从备份文件恢复系统数据",
+  "system.restore.channelConflictStrategy": "渠道冲突策略",
+  "system.restore.modelConflictStrategy": "模型冲突策略",
+  "system.restore.apiKeyConflictStrategy": "API 密钥冲突策略",
+  "system.restore.strategies.skip": "跳过现有项",
+  "system.restore.strategies.overwrite": "覆盖现有项",
+  "system.restore.strategies.error": "冲突时报错",
+  "system.restore.selectFile": "选择备份文件",
+  "system.restore.restoreBackup": "恢复备份",
+  "system.restore.restoring": "恢复中...",
+  "system.restore.success": "备份恢复成功",
+  "system.restore.failed": "备份恢复失败",
+  "system.restore.warning": "警告：从备份恢复将覆盖现有数据。此操作无法撤销。"
 }

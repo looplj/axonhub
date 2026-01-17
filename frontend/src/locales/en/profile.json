@@ -1,59 +1,33 @@
 {
-  "profile": {
-    "dropdown": {
-      "user": "User",
-      "defaultEmail": "user@example.com",
-      "settings": "Settings",
-      "logOut": "Log out"
-    },
-    "title": "Profile",
-    "description": "This is how others will see you on the site.",
-    "form": {
-      "fields": {
-        "firstName": {
-          "label": "First Name",
-          "placeholder": "Enter your first name",
-          "description": "Your first name as it will appear to other users."
-        },
-        "lastName": {
-          "label": "Last Name",
-          "placeholder": "Enter your last name",
-          "description": "Your last name as it will appear to other users."
-        },
-        "email": {
-          "label": "Email",
-          "placeholder": "Enter your email address",
-          "description": "Your email address for account notifications and login."
-        },
-        "preferLanguage": {
-          "label": "Preferred Language",
-          "placeholder": "Select your preferred language",
-          "description": "Choose your preferred language for the interface.",
-          "options": {
-            "en": "English",
-            "zh": "中文"
-          }
-        },
-        "avatar": {
-          "label": "Avatar",
-          "upload": "Upload Avatar",
-          "description": "Upload a profile picture. Recommended size is 200x200 pixels."
-        }
-      },
-      "validation": {
-        "firstNameRequired": "First name is required.",
-        "firstNameTooLong": "First name must not be longer than 50 characters.",
-        "lastNameRequired": "Last name is required.",
-        "lastNameTooLong": "Last name must not be longer than 50 characters.",
-        "emailInvalid": "Please enter a valid email address.",
-        "languageRequired": "Please select a preferred language."
-      },
-      "buttons": {},
-      "messages": {
-        "updateSuccess": "Profile updated successfully!",
-        "updateError": "Failed to update profile: {{error}}"
-      }
-    },
-    "languages": {}
-  }
+  "profile.dropdown.user": "User",
+  "profile.dropdown.defaultEmail": "user@example.com",
+  "profile.dropdown.settings": "Settings",
+  "profile.dropdown.logOut": "Log out",
+  "profile.title": "Profile",
+  "profile.description": "This is how others will see you on the site.",
+  "profile.form.fields.firstName.label": "First Name",
+  "profile.form.fields.firstName.placeholder": "Enter your first name",
+  "profile.form.fields.firstName.description": "Your first name as it will appear to other users.",
+  "profile.form.fields.lastName.label": "Last Name",
+  "profile.form.fields.lastName.placeholder": "Enter your last name",
+  "profile.form.fields.lastName.description": "Your last name as it will appear to other users.",
+  "profile.form.fields.email.label": "Email",
+  "profile.form.fields.email.placeholder": "Enter your email address",
+  "profile.form.fields.email.description": "Your email address for account notifications and login.",
+  "profile.form.fields.preferLanguage.label": "Preferred Language",
+  "profile.form.fields.preferLanguage.placeholder": "Select your preferred language",
+  "profile.form.fields.preferLanguage.description": "Choose your preferred language for the interface.",
+  "profile.form.fields.preferLanguage.options.en": "English",
+  "profile.form.fields.preferLanguage.options.zh": "中文",
+  "profile.form.fields.avatar.label": "Avatar",
+  "profile.form.fields.avatar.upload": "Upload Avatar",
+  "profile.form.fields.avatar.description": "Upload a profile picture. Recommended size is 200x200 pixels.",
+  "profile.form.validation.firstNameRequired": "First name is required.",
+  "profile.form.validation.firstNameTooLong": "First name must not be longer than 50 characters.",
+  "profile.form.validation.lastNameRequired": "Last name is required.",
+  "profile.form.validation.lastNameTooLong": "Last name must not be longer than 50 characters.",
+  "profile.form.validation.emailInvalid": "Please enter a valid email address.",
+  "profile.form.validation.languageRequired": "Please select a preferred language.",
+  "profile.form.messages.updateSuccess": "Profile updated successfully!",
+  "profile.form.messages.updateError": "Failed to update profile: {{error}}"
 }

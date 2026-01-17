@@ -24,6 +24,7 @@ type Config struct {
 // OutboundTransformer implements transformer.Outbound for Bailian (OpenAI-compatible) format.
 type OutboundTransformer struct {
 	transformer.Outbound
+
 	config *Config
 }
 
@@ -69,12 +70,14 @@ func replaceDeveloperRole(req *llm.Request) *llm.Request {
 	}
 
 	replaced := false
+
 	messages := make([]llm.Message, len(req.Messages))
 	for i, msg := range req.Messages {
 		if strings.EqualFold(msg.Role, "developer") {
 			msg.Role = "system"
 			replaced = true
 		}
+
 		messages[i] = msg
 	}
 
@@ -95,6 +98,7 @@ func mergeConsecutiveToolCallMessages(req *llm.Request) *llm.Request {
 
 	changed := false
 	messages := make([]llm.Message, 0, len(req.Messages))
+
 	var pending *llm.Message
 
 	for i := range req.Messages {

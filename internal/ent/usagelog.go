@@ -44,8 +44,12 @@ type UsageLog struct {
 	PromptAudioTokens int64 `json:"prompt_audio_tokens,omitempty"`
 	// Number of cached tokens in the prompt
 	PromptCachedTokens int64 `json:"prompt_cached_tokens,omitempty"`
-	// PromptWriteCachedTokens holds the value of the "prompt_write_cached_tokens" field.
+	// Number of total write cache tokens, if 5m or 1h ttl variant is present, the field is the sum of 5m and 1h
 	PromptWriteCachedTokens int64 `json:"prompt_write_cached_tokens,omitempty"`
+	// Number of token write cache with 5m ttl
+	PromptWriteCachedTokens5m int64 `json:"prompt_write_cached_tokens_5m,omitempty"`
+	// Number of token write cache with 1h ttl
+	PromptWriteCachedTokens1h int64 `json:"prompt_write_cached_tokens_1h,omitempty"`
 	// Number of audio tokens in the completion
 	CompletionAudioTokens int64 `json:"completion_audio_tokens,omitempty"`
 	// Number of reasoning tokens in the completion
@@ -59,9 +63,11 @@ type UsageLog struct {
 	// Request format used
 	Format string `json:"format,omitempty"`
 	// Total cost calculated based on channel model price
-	TotalCost float64 `json:"total_cost,omitempty"`
+	TotalCost *float64 `json:"total_cost,omitempty"`
 	// Detailed cost breakdown items in JSON
 	CostItems []objects.CostItem `json:"cost_items,omitempty"`
+	// Reference ID to the channel model price version used for cost calculation
+	CostPriceReferenceID string `json:"cost_price_reference_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the UsageLogQuery when eager-loading is set.
 	Edges        UsageLogEdges `json:"edges"`
@@ -125,9 +131,9 @@ func (*UsageLog) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case usagelog.FieldTotalCost:
 			values[i] = new(sql.NullFloat64)
-		case usagelog.FieldID, usagelog.FieldRequestID, usagelog.FieldProjectID, usagelog.FieldChannelID, usagelog.FieldPromptTokens, usagelog.FieldCompletionTokens, usagelog.FieldTotalTokens, usagelog.FieldPromptAudioTokens, usagelog.FieldPromptCachedTokens, usagelog.FieldPromptWriteCachedTokens, usagelog.FieldCompletionAudioTokens, usagelog.FieldCompletionReasoningTokens, usagelog.FieldCompletionAcceptedPredictionTokens, usagelog.FieldCompletionRejectedPredictionTokens:
+		case usagelog.FieldID, usagelog.FieldRequestID, usagelog.FieldProjectID, usagelog.FieldChannelID, usagelog.FieldPromptTokens, usagelog.FieldCompletionTokens, usagelog.FieldTotalTokens, usagelog.FieldPromptAudioTokens, usagelog.FieldPromptCachedTokens, usagelog.FieldPromptWriteCachedTokens, usagelog.FieldPromptWriteCachedTokens5m, usagelog.FieldPromptWriteCachedTokens1h, usagelog.FieldCompletionAudioTokens, usagelog.FieldCompletionReasoningTokens, usagelog.FieldCompletionAcceptedPredictionTokens, usagelog.FieldCompletionRejectedPredictionTokens:
 			values[i] = new(sql.NullInt64)
-		case usagelog.FieldModelID, usagelog.FieldSource, usagelog.FieldFormat:
+		case usagelog.FieldModelID, usagelog.FieldSource, usagelog.FieldFormat, usagelog.FieldCostPriceReferenceID:
 			values[i] = new(sql.NullString)
 		case usagelog.FieldCreatedAt, usagelog.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -224,6 +230,18 @@ func (_m *UsageLog) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.PromptWriteCachedTokens = value.Int64
 			}
+		case usagelog.FieldPromptWriteCachedTokens5m:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field prompt_write_cached_tokens_5m", values[i])
+			} else if value.Valid {
+				_m.PromptWriteCachedTokens5m = value.Int64
+			}
+		case usagelog.FieldPromptWriteCachedTokens1h:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field prompt_write_cached_tokens_1h", values[i])
+			} else if value.Valid {
+				_m.PromptWriteCachedTokens1h = value.Int64
+			}
 		case usagelog.FieldCompletionAudioTokens:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field completion_audio_tokens", values[i])
@@ -264,7 +282,8 @@ func (_m *UsageLog) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullFloat64); !ok {
 				return fmt.Errorf("unexpected type %T for field total_cost", values[i])
 			} else if value.Valid {
-				_m.TotalCost = value.Float64
+				_m.TotalCost = new(float64)
+				*_m.TotalCost = value.Float64
 			}
 		case usagelog.FieldCostItems:
 			if value, ok := values[i].(*[]byte); !ok {
@@ -273,6 +292,12 @@ func (_m *UsageLog) assignValues(columns []string, values []any) error {
 				if err := json.Unmarshal(*value, &_m.CostItems); err != nil {
 					return fmt.Errorf("unmarshal field cost_items: %w", err)
 				}
+			}
+		case usagelog.FieldCostPriceReferenceID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field cost_price_reference_id", values[i])
+			} else if value.Valid {
+				_m.CostPriceReferenceID = value.String
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -361,6 +386,12 @@ func (_m *UsageLog) String() string {
 	builder.WriteString("prompt_write_cached_tokens=")
 	builder.WriteString(fmt.Sprintf("%v", _m.PromptWriteCachedTokens))
 	builder.WriteString(", ")
+	builder.WriteString("prompt_write_cached_tokens_5m=")
+	builder.WriteString(fmt.Sprintf("%v", _m.PromptWriteCachedTokens5m))
+	builder.WriteString(", ")
+	builder.WriteString("prompt_write_cached_tokens_1h=")
+	builder.WriteString(fmt.Sprintf("%v", _m.PromptWriteCachedTokens1h))
+	builder.WriteString(", ")
 	builder.WriteString("completion_audio_tokens=")
 	builder.WriteString(fmt.Sprintf("%v", _m.CompletionAudioTokens))
 	builder.WriteString(", ")
@@ -379,11 +410,16 @@ func (_m *UsageLog) String() string {
 	builder.WriteString("format=")
 	builder.WriteString(_m.Format)
 	builder.WriteString(", ")
-	builder.WriteString("total_cost=")
-	builder.WriteString(fmt.Sprintf("%v", _m.TotalCost))
+	if v := _m.TotalCost; v != nil {
+		builder.WriteString("total_cost=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteString(", ")
 	builder.WriteString("cost_items=")
 	builder.WriteString(fmt.Sprintf("%v", _m.CostItems))
+	builder.WriteString(", ")
+	builder.WriteString("cost_price_reference_id=")
+	builder.WriteString(_m.CostPriceReferenceID)
 	builder.WriteByte(')')
 	return builder.String()
 }

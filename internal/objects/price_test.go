@@ -5,6 +5,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestModelPrice_Equals(t *testing.T) {
@@ -214,4 +215,107 @@ func TestModelPrice_Equals(t *testing.T) {
 			assert.Equal(t, tt.expected, tt.p2.Equals(tt.p1))
 		})
 	}
+}
+
+func TestModelPrice_Validate(t *testing.T) {
+	t.Run("flat_fee requires flatFee", func(t *testing.T) {
+		mp := ModelPrice{
+			Items: []ModelPriceItem{
+				{
+					ItemCode: PriceItemCodeUsage,
+					Pricing:  Pricing{Mode: PricingModeFlatFee},
+				},
+			},
+		}
+
+		err := mp.Validate()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "flatFee is required")
+	})
+
+	t.Run("usage_per_unit requires usagePerUnit", func(t *testing.T) {
+		mp := ModelPrice{
+			Items: []ModelPriceItem{
+				{
+					ItemCode: PriceItemCodeUsage,
+					Pricing:  Pricing{Mode: PricingModeUsagePerUnit},
+				},
+			},
+		}
+
+		err := mp.Validate()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "usagePerUnit is required")
+	})
+
+	t.Run("tiered requires last upTo null and others non-null", func(t *testing.T) {
+		mp := ModelPrice{
+			Items: []ModelPriceItem{
+				{
+					ItemCode: PriceItemCodeUsage,
+					Pricing: Pricing{
+						Mode: PricingModeTiered,
+						UsageTiered: &TieredPricing{
+							Tiers: []PriceTier{
+								{UpTo: nil, PricePerUnit: decimal.NewFromFloat(0.01)},
+								{UpTo: nil, PricePerUnit: decimal.NewFromFloat(0.02)},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		err := mp.Validate()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "tiers[0].upTo is required")
+	})
+
+	t.Run("tiered last upTo must be null", func(t *testing.T) {
+		upTo1000 := int64(1000)
+		upTo2000 := int64(2000)
+		mp := ModelPrice{
+			Items: []ModelPriceItem{
+				{
+					ItemCode: PriceItemCodeUsage,
+					Pricing: Pricing{
+						Mode: PricingModeTiered,
+						UsageTiered: &TieredPricing{
+							Tiers: []PriceTier{
+								{UpTo: &upTo1000, PricePerUnit: decimal.NewFromFloat(0.01)},
+								{UpTo: &upTo2000, PricePerUnit: decimal.NewFromFloat(0.02)},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		err := mp.Validate()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "tiers[1].upTo must be null")
+	})
+
+	t.Run("variant pricing is also validated", func(t *testing.T) {
+		d := decimal.NewFromFloat(0.01)
+		mp := ModelPrice{
+			Items: []ModelPriceItem{
+				{
+					ItemCode: PriceItemCodeWriteCachedTokens,
+					Pricing:  Pricing{Mode: PricingModeUsagePerUnit, UsagePerUnit: &d},
+					PromptWriteCacheVariants: []PromptWriteCacheVariant{
+						{
+							VariantCode: PromptWriteCacheVariantCode5Min,
+							Pricing:     Pricing{Mode: PricingModeUsagePerUnit},
+						},
+					},
+				},
+			},
+		}
+
+		err := mp.Validate()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "promptWriteCacheVariants[0]")
+		assert.Contains(t, err.Error(), "usagePerUnit is required")
+	})
 }

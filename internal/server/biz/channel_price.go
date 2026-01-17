@@ -98,7 +98,11 @@ func (svc *ChannelService) SaveChannelModelPrices(
 	channelID int,
 	inputs []SaveChannelModelPriceInput,
 ) ([]*ent.ChannelModelPrice, error) {
-	now := time.Now()
+	for _, input := range inputs {
+		if err := input.Price.Validate(); err != nil {
+			return nil, fmt.Errorf("invalid model price: model_id=%s: %w", input.ModelID, err)
+		}
+	}
 
 	db := svc.entFromContext(ctx)
 
@@ -114,6 +118,8 @@ func (svc *ChannelService) SaveChannelModelPrices(
 	actions := calculatePriceChanges(prices, inputs)
 
 	var results []*ent.ChannelModelPrice
+
+	now := time.Now()
 
 	err = svc.RunInTransaction(ctx, func(ctx context.Context) error {
 		db := svc.entFromContext(ctx)

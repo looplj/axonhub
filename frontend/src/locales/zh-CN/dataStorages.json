@@ -1,95 +1,52 @@
 {
-  "dataStorages": {
-    "title": "数据存储管理",
-    "description": "管理数据存储配置和设置。",
-    "columns": {
-      "primary": "主存储",
-      "type": "类型",
-      "settings": "配置"
-    },
-    "status": {
-      "active": "活跃",
-      "archived": "已归档"
-    },
-    "types": {
-      "database": "数据库",
-      "fs": "文件系统",
-      "s3": "S3",
-      "gcs": "GCS"
-    },
-    "primary": "主存储",
-    "default": "默认",
-    "actions": {},
-    "filters": {
-      "searchByName": "按名称搜索..."
-    },
-    "messages": {
-      "archiveSuccess": "数据存储已成功归档",
-      "archiveError": "归档数据存储失败"
-    },
-    "errors": {
-      "createError": "创建数据存储失败",
-      "fetchData": "获取数据存储失败",
-      "updateError": "更新数据存储失败"
-    },
-    "dialogs": {
-      "create": {
-        "title": "创建数据存储",
-        "description": "配置新的数据存储位置。"
-      },
-      "edit": {
-        "title": "编辑数据存储",
-        "description": "修改数据存储配置。"
-      },
-      "delete": {},
-      "status": {
-        "archiveTitle": "归档数据存储",
-        "archiveDescription": "确定要归档数据存储 {{name}} 吗？"
-      },
-      "fields": {
-        "name": {},
-        "description": {},
-        "type": {},
-        "directory": {},
-        "s3AccessKey": {
-          "editPlaceholder": "留空表示不更新"
-        },
-        "s3SecretKey": {
-          "editPlaceholder": "留空表示不更新"
-        },
-        "gcsCredential": {
-          "editPlaceholder": "留空表示不更新"
-        }
-      },
-      "buttons": {}
-    },
-    "validation": {
-      "nameRequired": "名称不能为空",
-      "directoryRequired": "目录路径不能为空",
-      "s3BucketRequired": "Bucket 名称不能为空",
-      "s3AccessKeyRequired": "Access Key 不能为空",
-      "s3SecretKeyRequired": "Secret Key 不能为空",
-      "gcsBucketRequired": "GCS 存储桶名称不能为空",
-      "gcsCredentialRequired": "GCS 服务账号 JSON 不能为空",
-      "gcsCredentialInvalid": "GCS 凭证必须是有效的 JSON 对象"
-    },
-    "fields": {
-      "name": "名称",
-      "description": "描述",
-      "type": "类型",
-      "directory": "目录路径",
-      "s3BucketName": "Bucket 名称",
-      "s3Endpoint": "Endpoint (可选)",
-      "s3Region": "Region",
-      "s3AccessKey": "Access Key",
-      "s3SecretKey": "Secret Key",
-      "gcsBucketName": "Bucket 名称",
-      "gcsCredential": "Service Account JSON"
-    },
-    "buttons": {
-      "create": "创建数据存储",
-      "openStorageSettings": "系统存储配置"
-    },
-    "llmStorageHint": "可用于配置存储 LLM 的请求体和响应体"
-  }
+  "dataStorages.title": "数据存储管理",
+  "dataStorages.description": "管理数据存储配置和设置。",
+  "dataStorages.columns.primary": "主存储",
+  "dataStorages.columns.type": "类型",
+  "dataStorages.columns.settings": "配置",
+  "dataStorages.status.active": "活跃",
+  "dataStorages.status.archived": "已归档",
+  "dataStorages.types.database": "数据库",
+  "dataStorages.types.fs": "文件系统",
+  "dataStorages.types.s3": "S3",
+  "dataStorages.types.gcs": "GCS",
+  "dataStorages.primary": "主存储",
+  "dataStorages.default": "默认",
+  "dataStorages.filters.searchByName": "按名称搜索...",
+  "dataStorages.messages.archiveSuccess": "数据存储已成功归档",
+  "dataStorages.messages.archiveError": "归档数据存储失败",
+  "dataStorages.errors.createError": "创建数据存储失败",
+  "dataStorages.errors.fetchData": "获取数据存储失败",
+  "dataStorages.errors.updateError": "更新数据存储失败",
+  "dataStorages.dialogs.create.title": "创建数据存储",
+  "dataStorages.dialogs.create.description": "配置新的数据存储位置。",
+  "dataStorages.dialogs.edit.title": "编辑数据存储",
+  "dataStorages.dialogs.edit.description": "修改数据存储配置。",
+  "dataStorages.dialogs.status.archiveTitle": "归档数据存储",
+  "dataStorages.dialogs.status.archiveDescription": "确定要归档数据存储 {{name}} 吗？",
+  "dataStorages.dialogs.fields.s3AccessKey.editPlaceholder": "留空表示不更新",
+  "dataStorages.dialogs.fields.s3SecretKey.editPlaceholder": "留空表示不更新",
+  "dataStorages.dialogs.fields.gcsCredential.editPlaceholder": "留空表示不更新",
+  "dataStorages.validation.nameRequired": "名称不能为空",
+  "dataStorages.validation.directoryRequired": "目录路径不能为空",
+  "dataStorages.validation.s3BucketRequired": "Bucket 名称不能为空",
+  "dataStorages.validation.s3AccessKeyRequired": "Access Key 不能为空",
+  "dataStorages.validation.s3SecretKeyRequired": "Secret Key 不能为空",
+  "dataStorages.validation.gcsBucketRequired": "GCS 存储桶名称不能为空",
+  "dataStorages.validation.gcsCredentialRequired": "GCS 服务账号 JSON 不能为空",
+  "dataStorages.validation.gcsCredentialInvalid": "GCS 凭证必须是有效的 JSON 对象",
+  "dataStorages.fields.name": "名称",
+  "dataStorages.fields.description": "描述",
+  "dataStorages.fields.type": "类型",
+  "dataStorages.fields.directory": "目录路径",
+  "dataStorages.fields.s3BucketName": "Bucket 名称",
+  "dataStorages.fields.s3Endpoint": "Endpoint (可选)",
+  "dataStorages.fields.s3Region": "Region",
+  "dataStorages.fields.s3AccessKey": "Access Key",
+  "dataStorages.fields.s3SecretKey": "Secret Key",
+  "dataStorages.fields.gcsBucketName": "Bucket 名称",
+  "dataStorages.fields.gcsCredential": "Service Account JSON",
+  "dataStorages.buttons.create": "创建数据存储",
+  "dataStorages.buttons.openStorageSettings": "系统存储配置",
+  "dataStorages.llmStorageHint": "可用于配置存储 LLM 的请求体和响应体"
 }

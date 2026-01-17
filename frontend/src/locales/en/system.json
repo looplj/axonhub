@@ -1,255 +1,152 @@
 {
-  "system": {
-    "title": "System Settings",
-    "description": "Manage system configurations and options.",
-    "tabs": {
-      "general": "General",
-      "brand": "Brand",
-      "storage": "Storage",
-      "retry": "Retry",
-      "backup": "Backup",
-      "about": "About"
-    },
-    "storage": {
-      "dataStorage": {
-        "title": "Default Data Storage",
-        "description": "Select the default storage location for storing request and response data",
-        "label": "Data Storage",
-        "placeholder": "Select data storage"
-      },
-      "storeChunks": {},
-      "policy": {
-        "title": "Storage Policy",
-        "description": "Configure storage policies and data cleanup settings to manage data retention and storage efficiency",
-        "storeChunks": {
-          "label": "Store Response Chunks",
-          "description": "When enabled, the system will store response data chunks in the database for subsequent analysis and processing. This enables detailed request tracing and debugging but increases storage usage."
-        },
-        "storeRequestBody": {
-          "label": "Store Request Body",
-          "description": "If disabled, original request body will not be persisted. Enable this for complete request auditing and debugging. Disabling reduces storage usage and improves privacy."
-        },
-        "storeResponseBody": {
-          "label": "Store Response Body",
-          "description": "If disabled, final response body will not be persisted. Enable this for complete response analysis and debugging. Disabling significantly reduces storage requirements."
-        },
-        "cleanupOptions": "Cleanup Options",
-        "cleanupDays": "Cleanup after",
-        "days": "days",
-        "resourceTypes": {
-          "requests": "Request Logs",
-          "usage_logs": "Usage Logs"
-        },
-        "cleanupDescription": "Automatically remove old data after specified days to manage storage growth and comply with data retention policies."
-      }
-    },
-    "general": {
-      "title": "General Settings",
-      "description": "Manage general system configuration options",
-      "currencyCode": {
-        "label": "Currency Code",
-        "placeholder": "e.g. USD, RMB",
-        "description": "For system fee display only, not used for actual billing, changes take effect in real-time"
-      }
-    },
-    "brand": {
-      "title": "Brand Settings",
-      "description": "Configure basic system information and branding settings",
-      "brandName": {
-        "label": "Brand Name",
-        "placeholder": "Enter system brand name",
-        "description": "Set the system brand name that will be displayed in the interface"
-      },
-      "brandLogo": {
-        "label": "Brand Logo",
-        "upload": "Upload Logo",
-        "description": "Upload a square PNG or JPEG logo (max 2MB). The logo will be displayed in the system interface.",
-        "invalidFormat": "Please upload a PNG or JPEG image file.",
-        "fileTooLarge": "File size must be less than 2MB.",
-        "notSquare": "Please upload a square image (width equals height)."
-      }
-    },
-    "other": {},
-    "retry": {
-      "title": "Retry Policy",
-      "description": "Configure automatic retry behavior for failed requests to improve system reliability",
-      "enabled": {
-        "label": "Enable Retry",
-        "description": "When enabled, the system will automatically retry failed requests. This helps improve reliability when experiencing temporary network issues or service unavailability."
-      },
-      "loadBalancerStrategy": {
-        "label": "Load Balancer Strategy",
-        "description": "Choose how channels are ordered when routing requests.",
-        "placeholder": "Select strategy",
-        "options": {
-          "adaptive": "Adaptive",
-          "weighted": "Weighted"
-        },
-         "documentation": {
-          "adaptive": "Based on comprehensive consideration of weight, success rate, round-robin, and trace strategies to select appropriate channels for requests. Intelligently balances multiple factors to optimize channel selection.",
-          "weighted": "Each request follows channel weight order from high to low until one succeeds. Higher weight channels are prioritized sequentially for all requests."
-        }
-      },
-      "maxChannelRetries": {
-        "label": "Max Channel Retries",
-        "description": "Maximum number of times to retry across different channels (0-10). When a channel fails, the system will try other available channels up to this limit. Higher values increase reliability but may increase latency."
-      },
-      "maxSingleChannelRetries": {
-        "label": "Max Single Channel Retries",
-        "description": "Maximum number of times to retry on the same channel (0-5). Controls how many times to retry the same channel before switching to a different channel. Useful for temporary glitches."
-      },
-      "retryDelayMs": {
-        "label": "Retry Delay (ms)",
-        "description": "Delay between retry attempts in milliseconds (100-10000ms). Shorter delays provide faster recovery but may overwhelm struggling services. Longer delays give services more time to recover."
-      },
-      "autoDisableChannel": {
-        "label": "Auto Disable Channel",
-        "description": "Automatically disable a channel when it exceeds the maximum number of retries for specific HTTP status codes",
-        "statuses": {
-          "label": "Status Codes",
-          "add": "Add Status Code",
-          "empty": "No status codes configured. Add a status code to auto-disable channels.",
-          "times": "times",
-          "statusPlaceholder": "Status",
-          "timesPlaceholder": "Times"
-        }
-      }
-    },
-    "onboarding": {
-      "title": "System Onboarding",
-      "description": "Welcome to AxonHub! Let's set up your system with a quick tour.",
-      "startTour": "Start Onboarding Tour",
-      "skipTour": "Skip Tour",
-      "completeTour": "Complete Tour",
-      "steps": {
-        "welcome": {
-          "title": "Welcome to AxonHub!",
-          "description": "Let's configure your system settings to get started. This tour will guide you through setting up your brand, retry policies, and data storage."
-        },
-        "brandName": {
-          "title": "Set Your Brand Name",
-          "description": "Enter your organization or project name. This will be displayed throughout the interface."
-        },
-        "brandLogo": {
-          "title": "Add Your Logo",
-          "description": "Upload your logo to customize the look and feel of AxonHub for your organization."
-        },
-        "retryPolicy": {
-          "title": "Configure Retry Policy",
-          "description": "Set up automatic retry behavior for failed requests to improve reliability."
-        },
-        "retryEnabled": {
-          "title": "Enable/Disable Retry",
-          "description": "Toggle retry functionality on or off. When enabled, failed requests will be automatically retried."
-        },
-        "retryMaxRetries": {
-          "title": "Maximum Retry Attempts",
-          "description": "Set the maximum number of retry attempts for failed requests. Higher values increase reliability but may delay failure notifications."
-        },
-        "retrySingleChannel": {
-          "title": "Single Channel Retries",
-          "description": "Configure how many times to retry on the same channel before switching. Useful for temporary glitches."
-        },
-        "retryDelay": {
-          "title": "Retry Delay",
-          "description": "Set the delay between retry attempts. Shorter delays provide faster recovery but may overwhelm struggling services."
-        },
-        "dataStorage": {
-          "title": "Data Storage Settings",
-          "description": "Configure how your data is stored and managed. This is important for performance and compliance."
-        },
-        "storageEnabled": {
-          "title": "Data Storage Options",
-          "description": "Choose what types of data to store. You can enable storage for chunks, request bodies, and response bodies."
-        },
-        "storageChunks": {
-          "title": "Store Chunks",
-          "description": "Enable chunk storage for streaming responses. This allows you to view partial responses and analyze streaming behavior."
-        },
-        "storageRequestBody": {
-          "title": "Store Request Bodies",
-          "description": "Save request payloads for debugging and analysis. This increases storage usage but provides valuable insights."
-        },
-        "storageResponseBody": {
-          "title": "Store Response Bodies",
-          "description": "Save response payloads for auditing and analysis. This significantly increases storage usage but provides complete data."
-        },
-        "dataStorageSelection": {
-          "title": "Data Storage Backend",
-          "description": "Choose the storage backend for the request and response data. Different backends offer different performance and cost characteristics. Default is database, you can also configure other storage backends."
-        },
-        "storageCleanup": {},
-        "storageCleanupRequests": {
-          "title": "Request Data Cleanup",
-          "description": "Configure automatic cleanup for request data to manage storage space and maintain system performance."
-        },
-        "storageCleanupUsageLogs": {
-          "title": "Usage Logs Cleanup",
-          "description": "Set up cleanup policies for usage logs to comply with data retention requirements and optimize storage."
-        },
-        "complete": {
-          "title": "Setup Complete!",
-          "description": "Great! Your system is now configured. You can always modify these settings later in the System Settings page."
-        }
-      }
-    },
-    "buttons": {
-      "save": "Save Settings",
-      "saving": "Saving..."
-    },
-    "about": {
-      "title": "About AxonHub",
-      "description": "System version information and update status",
-      "version": "Version",
-      "commit": "Commit",
-      "buildTime": "Build Time",
-      "goVersion": "Go Version",
-      "platform": "Platform",
-      "uptime": "Uptime",
-      "updateCheck": {
-        "title": "Check for Updates",
-        "description": "Check if a newer version is available",
-        "button": "Check Now",
-        "newVersionAvailable": "A new version is available!",
-        "currentVersion": "Current",
-        "latestVersion": "Latest",
-        "viewRelease": "View Release Notes",
-        "upToDate": "You are running the latest version"
-      },
-      "links": {
-        "title": "Links",
-        "releases": "Releases",
-        "issues": "Report Issue"
-      }
-    },
-    "backup": {
-      "title": "Backup",
-      "description": "Create a backup of your system data including channels, models, and API keys",
-      "includeChannels": "Include Channels",
-      "includeModels": "Include Models",
-      "includeAPIKeys": "Include API Keys",
-      "createBackup": "Create Backup",
-      "backingUp": "Backing up...",
-      "success": "Backup created successfully",
-      "failed": "Failed to create backup"
-    },
-    "restore": {
-      "title": "Restore",
-      "description": "Restore your system data from a backup file",
-      "channelConflictStrategy": "Channel Conflict Strategy",
-      "modelConflictStrategy": "Model Conflict Strategy",
-      "apiKeyConflictStrategy": "API Key Conflict Strategy",
-      "strategies": {
-        "skip": "Skip existing items",
-        "overwrite": "Overwrite existing items",
-        "error": "Error on conflict"
-      },
-      "selectFile": "Select Backup File",
-      "restoreBackup": "Restore Backup",
-      "restoring": "Restoring...",
-      "success": "Backup restored successfully",
-      "failed": "Failed to restore backup",
-      "warning": "Warning: Restoring from a backup will overwrite existing data. This action cannot be undone."
-    }
-  }
+  "system.title": "System Settings",
+  "system.description": "Manage system configurations and options.",
+  "system.tabs.general": "General",
+  "system.tabs.brand": "Brand",
+  "system.tabs.storage": "Storage",
+  "system.tabs.retry": "Retry",
+  "system.tabs.backup": "Backup",
+  "system.tabs.about": "About",
+  "system.storage.dataStorage.title": "Default Data Storage",
+  "system.storage.dataStorage.description": "Select the default storage location for storing request and response data",
+  "system.storage.dataStorage.label": "Data Storage",
+  "system.storage.dataStorage.placeholder": "Select data storage",
+  "system.storage.policy.title": "Storage Policy",
+  "system.storage.policy.description": "Configure storage policies and data cleanup settings to manage data retention and storage efficiency",
+  "system.storage.policy.storeChunks.label": "Store Response Chunks",
+  "system.storage.policy.storeChunks.description": "When enabled, the system will store response data chunks in the database for subsequent analysis and processing. This enables detailed request tracing and debugging but increases storage usage.",
+  "system.storage.policy.storeRequestBody.label": "Store Request Body",
+  "system.storage.policy.storeRequestBody.description": "If disabled, original request body will not be persisted. Enable this for complete request auditing and debugging. Disabling reduces storage usage and improves privacy.",
+  "system.storage.policy.storeResponseBody.label": "Store Response Body",
+  "system.storage.policy.storeResponseBody.description": "If disabled, final response body will not be persisted. Enable this for complete response analysis and debugging. Disabling significantly reduces storage requirements.",
+  "system.storage.policy.cleanupOptions": "Cleanup Options",
+  "system.storage.policy.cleanupDays": "Cleanup after",
+  "system.storage.policy.days": "days",
+  "system.storage.policy.resourceTypes.requests": "Request Logs",
+  "system.storage.policy.resourceTypes.usage_logs": "Usage Logs",
+  "system.storage.policy.cleanupDescription": "Automatically remove old data after specified days to manage storage growth and comply with data retention policies.",
+  "system.general.title": "General Settings",
+  "system.general.description": "Manage general system configuration options",
+  "system.general.currencyCode.label": "Currency Code",
+  "system.general.currencyCode.placeholder": "e.g. USD, RMB",
+  "system.general.currencyCode.description": "For system fee display only, not used for actual billing, changes take effect in real-time",
+  "system.brand.title": "Brand Settings",
+  "system.brand.description": "Configure basic system information and branding settings",
+  "system.brand.brandName.label": "Brand Name",
+  "system.brand.brandName.placeholder": "Enter system brand name",
+  "system.brand.brandName.description": "Set the system brand name that will be displayed in the interface",
+  "system.brand.brandLogo.label": "Brand Logo",
+  "system.brand.brandLogo.upload": "Upload Logo",
+  "system.brand.brandLogo.description": "Upload a square PNG or JPEG logo (max 2MB). The logo will be displayed in the system interface.",
+  "system.brand.brandLogo.invalidFormat": "Please upload a PNG or JPEG image file.",
+  "system.brand.brandLogo.fileTooLarge": "File size must be less than 2MB.",
+  "system.brand.brandLogo.notSquare": "Please upload a square image (width equals height).",
+  "system.retry.title": "Retry Policy",
+  "system.retry.description": "Configure automatic retry behavior for failed requests to improve system reliability",
+  "system.retry.enabled.label": "Enable Retry",
+  "system.retry.enabled.description": "When enabled, the system will automatically retry failed requests. This helps improve reliability when experiencing temporary network issues or service unavailability.",
+  "system.retry.loadBalancerStrategy.label": "Load Balancer Strategy",
+  "system.retry.loadBalancerStrategy.description": "Choose how channels are ordered when routing requests.",
+  "system.retry.loadBalancerStrategy.placeholder": "Select strategy",
+  "system.retry.loadBalancerStrategy.options.adaptive": "Adaptive",
+  "system.retry.loadBalancerStrategy.options.weighted": "Weighted",
+  "system.retry.loadBalancerStrategy.documentation.adaptive": "Based on comprehensive consideration of weight, success rate, round-robin, and trace strategies to select appropriate channels for requests. Intelligently balances multiple factors to optimize channel selection.",
+  "system.retry.loadBalancerStrategy.documentation.weighted": "Each request follows channel weight order from high to low until one succeeds. Higher weight channels are prioritized sequentially for all requests.",
+  "system.retry.maxChannelRetries.label": "Max Channel Retries",
+  "system.retry.maxChannelRetries.description": "Maximum number of times to retry across different channels (0-10). When a channel fails, the system will try other available channels up to this limit. Higher values increase reliability but may increase latency.",
+  "system.retry.maxSingleChannelRetries.label": "Max Single Channel Retries",
+  "system.retry.maxSingleChannelRetries.description": "Maximum number of times to retry on the same channel (0-5). Controls how many times to retry the same channel before switching to a different channel. Useful for temporary glitches.",
+  "system.retry.retryDelayMs.label": "Retry Delay (ms)",
+  "system.retry.retryDelayMs.description": "Delay between retry attempts in milliseconds (100-10000ms). Shorter delays provide faster recovery but may overwhelm struggling services. Longer delays give services more time to recover.",
+  "system.retry.autoDisableChannel.label": "Auto Disable Channel",
+  "system.retry.autoDisableChannel.description": "Automatically disable a channel when it exceeds the maximum number of retries for specific HTTP status codes",
+  "system.retry.autoDisableChannel.statuses.label": "Status Codes",
+  "system.retry.autoDisableChannel.statuses.add": "Add Status Code",
+  "system.retry.autoDisableChannel.statuses.empty": "No status codes configured. Add a status code to auto-disable channels.",
+  "system.retry.autoDisableChannel.statuses.times": "times",
+  "system.retry.autoDisableChannel.statuses.statusPlaceholder": "Status",
+  "system.retry.autoDisableChannel.statuses.timesPlaceholder": "Times",
+  "system.onboarding.title": "System Onboarding",
+  "system.onboarding.description": "Welcome to AxonHub! Let's set up your system with a quick tour.",
+  "system.onboarding.startTour": "Start Onboarding Tour",
+  "system.onboarding.skipTour": "Skip Tour",
+  "system.onboarding.completeTour": "Complete Tour",
+  "system.onboarding.steps.welcome.title": "Welcome to AxonHub!",
+  "system.onboarding.steps.welcome.description": "Let's configure your system settings to get started. This tour will guide you through setting up your brand, retry policies, and data storage.",
+  "system.onboarding.steps.brandName.title": "Set Your Brand Name",
+  "system.onboarding.steps.brandName.description": "Enter your organization or project name. This will be displayed throughout the interface.",
+  "system.onboarding.steps.brandLogo.title": "Add Your Logo",
+  "system.onboarding.steps.brandLogo.description": "Upload your logo to customize the look and feel of AxonHub for your organization.",
+  "system.onboarding.steps.retryPolicy.title": "Configure Retry Policy",
+  "system.onboarding.steps.retryPolicy.description": "Set up automatic retry behavior for failed requests to improve reliability.",
+  "system.onboarding.steps.retryEnabled.title": "Enable/Disable Retry",
+  "system.onboarding.steps.retryEnabled.description": "Toggle retry functionality on or off. When enabled, failed requests will be automatically retried.",
+  "system.onboarding.steps.retryMaxRetries.title": "Maximum Retry Attempts",
+  "system.onboarding.steps.retryMaxRetries.description": "Set the maximum number of retry attempts for failed requests. Higher values increase reliability but may delay failure notifications.",
+  "system.onboarding.steps.retrySingleChannel.title": "Single Channel Retries",
+  "system.onboarding.steps.retrySingleChannel.description": "Configure how many times to retry on the same channel before switching. Useful for temporary glitches.",
+  "system.onboarding.steps.retryDelay.title": "Retry Delay",
+  "system.onboarding.steps.retryDelay.description": "Set the delay between retry attempts. Shorter delays provide faster recovery but may overwhelm struggling services.",
+  "system.onboarding.steps.dataStorage.title": "Data Storage Settings",
+  "system.onboarding.steps.dataStorage.description": "Configure how your data is stored and managed. This is important for performance and compliance.",
+  "system.onboarding.steps.storageEnabled.title": "Data Storage Options",
+  "system.onboarding.steps.storageEnabled.description": "Choose what types of data to store. You can enable storage for chunks, request bodies, and response bodies.",
+  "system.onboarding.steps.storageChunks.title": "Store Chunks",
+  "system.onboarding.steps.storageChunks.description": "Enable chunk storage for streaming responses. This allows you to view partial responses and analyze streaming behavior.",
+  "system.onboarding.steps.storageRequestBody.title": "Store Request Bodies",
+  "system.onboarding.steps.storageRequestBody.description": "Save request payloads for debugging and analysis. This increases storage usage but provides valuable insights.",
+  "system.onboarding.steps.storageResponseBody.title": "Store Response Bodies",
+  "system.onboarding.steps.storageResponseBody.description": "Save response payloads for auditing and analysis. This significantly increases storage usage but provides complete data.",
+  "system.onboarding.steps.dataStorageSelection.title": "Data Storage Backend",
+  "system.onboarding.steps.dataStorageSelection.description": "Choose the storage backend for the request and response data. Different backends offer different performance and cost characteristics. Default is database, you can also configure other storage backends.",
+  "system.onboarding.steps.storageCleanupRequests.title": "Request Data Cleanup",
+  "system.onboarding.steps.storageCleanupRequests.description": "Configure automatic cleanup for request data to manage storage space and maintain system performance.",
+  "system.onboarding.steps.storageCleanupUsageLogs.title": "Usage Logs Cleanup",
+  "system.onboarding.steps.storageCleanupUsageLogs.description": "Set up cleanup policies for usage logs to comply with data retention requirements and optimize storage.",
+  "system.onboarding.steps.complete.title": "Setup Complete!",
+  "system.onboarding.steps.complete.description": "Great! Your system is now configured. You can always modify these settings later in the System Settings page.",
+  "system.buttons.save": "Save Settings",
+  "system.buttons.saving": "Saving...",
+  "system.about.title": "About AxonHub",
+  "system.about.description": "System version information and update status",
+  "system.about.version": "Version",
+  "system.about.commit": "Commit",
+  "system.about.buildTime": "Build Time",
+  "system.about.goVersion": "Go Version",
+  "system.about.platform": "Platform",
+  "system.about.uptime": "Uptime",
+  "system.about.updateCheck.title": "Check for Updates",
+  "system.about.updateCheck.description": "Check if a newer version is available",
+  "system.about.updateCheck.button": "Check Now",
+  "system.about.updateCheck.newVersionAvailable": "A new version is available!",
+  "system.about.updateCheck.currentVersion": "Current",
+  "system.about.updateCheck.latestVersion": "Latest",
+  "system.about.updateCheck.viewRelease": "View Release Notes",
+  "system.about.updateCheck.upToDate": "You are running the latest version",
+  "system.about.links.title": "Links",
+  "system.about.links.releases": "Releases",
+  "system.about.links.issues": "Report Issue",
+  "system.backup.title": "Backup",
+  "system.backup.description": "Create a backup of your system data including channels, models, and API keys",
+  "system.backup.includeChannels": "Include Channels",
+  "system.backup.includeModels": "Include Models",
+  "system.backup.includeAPIKeys": "Include API Keys",
+  "system.backup.createBackup": "Create Backup",
+  "system.backup.backingUp": "Backing up...",
+  "system.backup.success": "Backup created successfully",
+  "system.backup.failed": "Failed to create backup",
+  "system.restore.title": "Restore",
+  "system.restore.description": "Restore your system data from a backup file",
+  "system.restore.channelConflictStrategy": "Channel Conflict Strategy",
+  "system.restore.modelConflictStrategy": "Model Conflict Strategy",
+  "system.restore.apiKeyConflictStrategy": "API Key Conflict Strategy",
+  "system.restore.strategies.skip": "Skip existing items",
+  "system.restore.strategies.overwrite": "Overwrite existing items",
+  "system.restore.strategies.error": "Error on conflict",
+  "system.restore.selectFile": "Select Backup File",
+  "system.restore.restoreBackup": "Restore Backup",
+  "system.restore.restoring": "Restoring...",
+  "system.restore.success": "Backup restored successfully",
+  "system.restore.failed": "Failed to restore backup",
+  "system.restore.warning": "Warning: Restoring from a backup will overwrite existing data. This action cannot be undone."
 }

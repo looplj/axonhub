@@ -1,97 +1,61 @@
 {
-  "prompts": {
-    "title": "提示词",
-    "description": "管理 AI 模型的提示词",
-    "columns": {
-      "role": "角色",
-      "actionType": "操作类型",
-      "conditions": "条件"
-    },
-    "actionTypes": {
-      "prepend": "前置插入",
-      "append": "后置插入"
-    },
-    "conditionTypes": {
-      "model_id": "模型 ID",
-      "model_pattern": "模型匹配"
-    },
-    "actions": {
-      "create": "添加提示词"
-    },
-    "filters": {
-      "filterByName": "按名称筛选..."
-    },
-    "fields": {
-      "name": "名称",
-      "description": "描述",
-      "role": "角色",
-      "rolePlaceholder": "请选择角色",
-      "content": "内容",
-      "contentPlaceholder": "请输入提示词内容",
-      "actionType": "Action/操作",
-      "actionTypePlaceholder": "请选择操作类型",
-      "actionTypeHelpPrepend": "在所有 message 之前插入一条 message",
-      "actionTypeHelpAppend": "在所有 message 之后插入一条 message",
-      "conditionValuePlaceholder": "请输入条件值"
-    },
-    "conditions": {
-      "title": "条件",
-      "description": "定义何时应用此提示词",
-      "add": "添加条件",
-      "addGroup": "添加条件组",
-      "group": "条件组",
-      "empty": "未设置条件 - 应用于所有请求",
-      "and": "并且",
-      "or": "或者"
-    },
-    "dialogs": {
-      "create": {
-        "title": "创建提示词",
-        "description": "添加新的提示词模板"
-      },
-      "edit": {
-        "title": "编辑提示词",
-        "description": "更新提示词模板"
-      },
-      "delete": {
-        "title": "删除提示词",
-        "description": "确定要删除 \"{{name}}\" 吗？此操作无法撤销。"
-      },
-      "statusChange": {
-        "title": "更改提示词状态",
-        "description": {
-          "enabled": "确定要启用 \"{{name}}\" 吗？",
-          "disabled": "确定要禁用 \"{{name}}\" 吗？"
-        }
-      },
-      "bulkEnable": {
-        "title": "启用提示词",
-        "description": "确定要启用 {{count}} 个提示词吗？"
-      },
-      "bulkDisable": {
-        "title": "禁用提示词",
-        "description": "确定要禁用 {{count}} 个提示词吗？"
-      },
-      "bulkDelete": {
-        "title": "删除提示词",
-        "description": "确定要删除 {{count}} 个提示词吗？此操作无法撤销。"
-      }
-    },
-    "messages": {
-      "createSuccess": "提示词创建成功",
-      "createError": "创建提示词失败：{{error}}",
-      "updateSuccess": "提示词更新成功",
-      "updateError": "更新提示词失败：{{error}}",
-      "deleteSuccess": "提示词删除成功",
-      "deleteError": "删除提示词失败：{{error}}",
-      "statusUpdateSuccess": "提示词状态更新成功",
-      "statusUpdateError": "更新提示词状态失败：{{error}}",
-      "bulkEnableSuccess": "成功启用 {{count}} 个提示词",
-      "bulkEnableError": "启用提示词失败：{{error}}",
-      "bulkDisableSuccess": "成功禁用 {{count}} 个提示词",
-      "bulkDisableError": "禁用提示词失败：{{error}}",
-      "bulkDeleteSuccess": "成功删除 {{count}} 个提示词",
-      "bulkDeleteError": "删除提示词失败：{{error}}"
-    }
-  }
+  "prompts.title": "提示词",
+  "prompts.description": "管理 AI 模型的提示词",
+  "prompts.columns.role": "角色",
+  "prompts.columns.actionType": "操作类型",
+  "prompts.columns.conditions": "条件",
+  "prompts.actionTypes.prepend": "前置插入",
+  "prompts.actionTypes.append": "后置插入",
+  "prompts.conditionTypes.model_id": "模型 ID",
+  "prompts.conditionTypes.model_pattern": "模型匹配",
+  "prompts.actions.create": "添加提示词",
+  "prompts.filters.filterByName": "按名称筛选...",
+  "prompts.fields.name": "名称",
+  "prompts.fields.description": "描述",
+  "prompts.fields.role": "角色",
+  "prompts.fields.rolePlaceholder": "请选择角色",
+  "prompts.fields.content": "内容",
+  "prompts.fields.contentPlaceholder": "请输入提示词内容",
+  "prompts.fields.actionType": "Action/操作",
+  "prompts.fields.actionTypePlaceholder": "请选择操作类型",
+  "prompts.fields.actionTypeHelpPrepend": "在所有 message 之前插入一条 message",
+  "prompts.fields.actionTypeHelpAppend": "在所有 message 之后插入一条 message",
+  "prompts.fields.conditionValuePlaceholder": "请输入条件值",
+  "prompts.conditions.title": "条件",
+  "prompts.conditions.description": "定义何时应用此提示词",
+  "prompts.conditions.add": "添加条件",
+  "prompts.conditions.addGroup": "添加条件组",
+  "prompts.conditions.group": "条件组",
+  "prompts.conditions.empty": "未设置条件 - 应用于所有请求",
+  "prompts.conditions.and": "并且",
+  "prompts.conditions.or": "或者",
+  "prompts.dialogs.create.title": "创建提示词",
+  "prompts.dialogs.create.description": "添加新的提示词模板",
+  "prompts.dialogs.edit.title": "编辑提示词",
+  "prompts.dialogs.edit.description": "更新提示词模板",
+  "prompts.dialogs.delete.title": "删除提示词",
+  "prompts.dialogs.delete.description": "确定要删除 \"{{name}}\" 吗？此操作无法撤销。",
+  "prompts.dialogs.statusChange.title": "更改提示词状态",
+  "prompts.dialogs.statusChange.description.enabled": "确定要启用 \"{{name}}\" 吗？",
+  "prompts.dialogs.statusChange.description.disabled": "确定要禁用 \"{{name}}\" 吗？",
+  "prompts.dialogs.bulkEnable.title": "启用提示词",
+  "prompts.dialogs.bulkEnable.description": "确定要启用 {{count}} 个提示词吗？",
+  "prompts.dialogs.bulkDisable.title": "禁用提示词",
+  "prompts.dialogs.bulkDisable.description": "确定要禁用 {{count}} 个提示词吗？",
+  "prompts.dialogs.bulkDelete.title": "删除提示词",
+  "prompts.dialogs.bulkDelete.description": "确定要删除 {{count}} 个提示词吗？此操作无法撤销。",
+  "prompts.messages.createSuccess": "提示词创建成功",
+  "prompts.messages.createError": "创建提示词失败：{{error}}",
+  "prompts.messages.updateSuccess": "提示词更新成功",
+  "prompts.messages.updateError": "更新提示词失败：{{error}}",
+  "prompts.messages.deleteSuccess": "提示词删除成功",
+  "prompts.messages.deleteError": "删除提示词失败：{{error}}",
+  "prompts.messages.statusUpdateSuccess": "提示词状态更新成功",
+  "prompts.messages.statusUpdateError": "更新提示词状态失败：{{error}}",
+  "prompts.messages.bulkEnableSuccess": "成功启用 {{count}} 个提示词",
+  "prompts.messages.bulkEnableError": "启用提示词失败：{{error}}",
+  "prompts.messages.bulkDisableSuccess": "成功禁用 {{count}} 个提示词",
+  "prompts.messages.bulkDisableError": "禁用提示词失败：{{error}}",
+  "prompts.messages.bulkDeleteSuccess": "成功删除 {{count}} 个提示词",
+  "prompts.messages.bulkDeleteError": "删除提示词失败：{{error}}"
 }

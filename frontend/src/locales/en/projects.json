@@ -1,59 +1,30 @@
 {
-  "projects": {
-    "title": "Project Management",
-    "description": "Manage system projects and configurations.",
-    "createProject": "Create Project",
-    "searchProjects": "Search projects by name",
-    "columns": {},
-    "status": {
-      "active": "Active",
-      "archived": "Archived"
-    },
-    "actions": {},
-    "filters": {},
-    "dialogs": {
-      "create": {
-        "title": "Create Project",
-        "description": "Create a new project."
-      },
-      "edit": {
-        "title": "Edit Project",
-        "description": "Modify project information."
-      },
-      "archive": {
-        "title": "Archive Project",
-        "description": "Are you sure you want to archive project \"{{name}}\"? Archived projects will no longer appear in the active list."
-      },
-      "activate": {
-        "title": "Activate Project",
-        "description": "Are you sure you want to activate project \"{{name}}\"? Activated projects will appear in the active list again."
-      },
-      "fields": {
-        "name": {
-          "label": "Project Name",
-          "placeholder": "My Project",
-          "description": "Display name of the project"
-        },
-        "slug": {},
-        "description": {
-          "label": "Project Description",
-          "placeholder": "Enter project description",
-          "description": "Detailed description of the project"
-        }
-      },
-      "buttons": {}
-    },
-    "validation": {
-      "nameRequired": "Project name is required"
-    },
-    "errors": {
-      "loadProjectsFailed": "Failed to load projects",
-      "loadProjectDetailFailed": "Failed to load project details",
-      "loadMyProjectsFailed": "Failed to load my projects",
-      "createProjectFailed": "Failed to create project",
-      "updateProjectFailed": "Failed to update project",
-      "archiveProjectFailed": "Failed to archive project",
-      "activateProjectFailed": "Failed to activate project"
-    }
-  }
+  "projects.title": "Project Management",
+  "projects.description": "Manage system projects and configurations.",
+  "projects.createProject": "Create Project",
+  "projects.searchProjects": "Search projects by name",
+  "projects.status.active": "Active",
+  "projects.status.archived": "Archived",
+  "projects.dialogs.create.title": "Create Project",
+  "projects.dialogs.create.description": "Create a new project.",
+  "projects.dialogs.edit.title": "Edit Project",
+  "projects.dialogs.edit.description": "Modify project information.",
+  "projects.dialogs.archive.title": "Archive Project",
+  "projects.dialogs.archive.description": "Are you sure you want to archive project \"{{name}}\"? Archived projects will no longer appear in the active list.",
+  "projects.dialogs.activate.title": "Activate Project",
+  "projects.dialogs.activate.description": "Are you sure you want to activate project \"{{name}}\"? Activated projects will appear in the active list again.",
+  "projects.dialogs.fields.name.label": "Project Name",
+  "projects.dialogs.fields.name.placeholder": "My Project",
+  "projects.dialogs.fields.name.description": "Display name of the project",
+  "projects.dialogs.fields.description.label": "Project Description",
+  "projects.dialogs.fields.description.placeholder": "Enter project description",
+  "projects.dialogs.fields.description.description": "Detailed description of the project",
+  "projects.validation.nameRequired": "Project name is required",
+  "projects.errors.loadProjectsFailed": "Failed to load projects",
+  "projects.errors.loadProjectDetailFailed": "Failed to load project details",
+  "projects.errors.loadMyProjectsFailed": "Failed to load my projects",
+  "projects.errors.createProjectFailed": "Failed to create project",
+  "projects.errors.updateProjectFailed": "Failed to update project",
+  "projects.errors.archiveProjectFailed": "Failed to archive project",
+  "projects.errors.activateProjectFailed": "Failed to activate project"
 }

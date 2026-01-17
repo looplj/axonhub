@@ -189,6 +189,11 @@ func (_c *ChannelModelPriceCreate) check() error {
 	if _, ok := _c.mutation.Price(); !ok {
 		return &ValidationError{Name: "price", err: errors.New(`ent: missing required field "ChannelModelPrice.price"`)}
 	}
+	if v, ok := _c.mutation.Price(); ok {
+		if err := v.Validate(); err != nil {
+			return &ValidationError{Name: "price", err: fmt.Errorf(`ent: validator failed for field "ChannelModelPrice.price": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.RefreanceID(); !ok {
 		return &ValidationError{Name: "refreance_id", err: errors.New(`ent: missing required field "ChannelModelPrice.refreance_id"`)}
 	}

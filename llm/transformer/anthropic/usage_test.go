@@ -255,6 +255,34 @@ func Test_convertUsage(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "cache creation with ttl - Anthropic official",
+			args: args{
+				usage: &Usage{
+					InputTokens:              100,
+					OutputTokens:             50,
+					CacheCreationInputTokens: 20,
+					CacheReadInputTokens:     30,
+					CacheCreation: CacheCreation{
+						Ephemeral5mInputTokens: 10,
+						Ephemeral1hInputTokens: 10,
+					},
+					ServiceTier: "standard",
+				},
+				platformType: PlatformDirect,
+			},
+			want: &llm.Usage{
+				PromptTokens:     150, // 100 + 20 + 30
+				CompletionTokens: 50,
+				TotalTokens:      200, // 150 + 50
+				PromptTokensDetails: &llm.PromptTokensDetails{
+					CachedTokens:           30,
+					WriteCachedTokens:      20,
+					WriteCached5MinTokens:  10,
+					WriteCached1HourTokens: 10,
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -267,6 +295,57 @@ func Test_convertUsage(t *testing.T) {
 				t.Fatalf("diff: %v", cmp.Diff(tt.want, got))
 			}
 			// require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func Test_convertToAnthropicUsage(t *testing.T) {
+	tests := []struct {
+		name     string
+		llmUsage *llm.Usage
+		want     *Usage
+	}{
+		{
+			name: "base case",
+			llmUsage: &llm.Usage{
+				PromptTokens:     150,
+				CompletionTokens: 50,
+				PromptTokensDetails: &llm.PromptTokensDetails{
+					CachedTokens:           30,
+					WriteCachedTokens:      20,
+					WriteCached5MinTokens:  10,
+					WriteCached1HourTokens: 10,
+				},
+			},
+			want: &Usage{
+				InputTokens:              100, // 150 - 30 - 20
+				OutputTokens:             50,
+				CacheReadInputTokens:     30,
+				CacheCreationInputTokens: 20,
+				CacheCreation: CacheCreation{
+					Ephemeral5mInputTokens: 10,
+					Ephemeral1hInputTokens: 10,
+				},
+			},
+		},
+		{
+			name: "no details",
+			llmUsage: &llm.Usage{
+				PromptTokens:     100,
+				CompletionTokens: 50,
+			},
+			want: &Usage{
+				InputTokens:  100,
+				OutputTokens: 50,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := convertToAnthropicUsage(tt.llmUsage)
+			if !cmp.Equal(tt.want, got) {
+				t.Fatalf("diff: %v", cmp.Diff(tt.want, got))
+			}
 		})
 	}
 }

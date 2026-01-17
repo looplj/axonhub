@@ -351,6 +351,7 @@ func TestWithTrace_CodexDisabled(t *testing.T) {
 	router.POST("/v1/chat/completions", func(c *gin.Context) {
 		_, ok := contexts.GetTrace(c.Request.Context())
 		hasTrace = ok
+
 		c.Status(http.StatusOK)
 	})
 
@@ -400,7 +401,9 @@ func TestWithTrace_CodexHeaderSetsTrace(t *testing.T) {
 	router.POST("/v1/chat/completions", func(c *gin.Context) {
 		trace, ok := contexts.GetTrace(c.Request.Context())
 		require.True(t, ok)
+
 		capturedTraceID = trace.TraceID
+
 		c.Status(http.StatusOK)
 	})
 

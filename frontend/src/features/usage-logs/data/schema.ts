@@ -6,6 +6,12 @@ import { channelSchema } from '@/features/channels/data';
 export const usageLogSourceSchema = z.enum(['api', 'playground', 'test']);
 export type UsageLogSource = z.infer<typeof usageLogSourceSchema>;
 
+export const costItemSchema = z.object({
+  itemCode: z.string(),
+  quantity: z.number(),
+  subtotal: z.number(),
+});
+
 // Usage Log schema based on backend entity structure
 export const usageLogSchema = z.object({
   id: z.string(),
@@ -27,6 +33,7 @@ export const usageLogSchema = z.object({
   source: usageLogSourceSchema,
   format: z.string(),
   totalCost: z.number().nullable().optional(),
+  costItems: z.array(costItemSchema).nullable().optional(),
 });
 export type UsageLog = z.infer<typeof usageLogSchema>;
 

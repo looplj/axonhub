@@ -1,59 +1,33 @@
 {
-  "profile": {
-    "dropdown": {
-      "user": "用户",
-      "defaultEmail": "user@example.com",
-      "settings": "设置",
-      "logOut": "退出登录"
-    },
-    "title": "个人资料",
-    "description": "这是其他人在网站上看到您的方式。",
-    "form": {
-      "fields": {
-        "firstName": {
-          "label": "名",
-          "placeholder": "输入您的名",
-          "description": "您的名字，将显示给其他用户。"
-        },
-        "lastName": {
-          "label": "姓",
-          "placeholder": "输入您的姓",
-          "description": "您的姓氏，将显示给其他用户。"
-        },
-        "email": {
-          "label": "邮箱",
-          "placeholder": "输入您的邮箱地址",
-          "description": "用于账户通知和登录的邮箱地址。"
-        },
-        "preferLanguage": {
-          "label": "首选语言",
-          "placeholder": "选择您的首选语言",
-          "description": "选择界面的首选语言。",
-          "options": {
-            "en": "English",
-            "zh": "中文"
-          }
-        },
-        "avatar": {
-          "label": "头像",
-          "upload": "上传头像",
-          "description": "上传个人头像。推荐尺寸为200x200像素。"
-        }
-      },
-      "validation": {
-        "firstNameRequired": "名字不能为空。",
-        "firstNameTooLong": "名字长度不能超过50个字符。",
-        "lastNameRequired": "姓氏不能为空。",
-        "lastNameTooLong": "姓氏长度不能超过50个字符。",
-        "emailInvalid": "请输入有效的邮箱地址。",
-        "languageRequired": "请选择首选语言。"
-      },
-      "buttons": {},
-      "messages": {
-        "updateSuccess": "个人资料更新成功！",
-        "updateError": "更新个人资料失败：{{error}}"
-      }
-    },
-    "languages": {}
-  }
+  "profile.dropdown.user": "用户",
+  "profile.dropdown.defaultEmail": "user@example.com",
+  "profile.dropdown.settings": "设置",
+  "profile.dropdown.logOut": "退出登录",
+  "profile.title": "个人资料",
+  "profile.description": "这是其他人在网站上看到您的方式。",
+  "profile.form.fields.firstName.label": "名",
+  "profile.form.fields.firstName.placeholder": "输入您的名",
+  "profile.form.fields.firstName.description": "您的名字，将显示给其他用户。",
+  "profile.form.fields.lastName.label": "姓",
+  "profile.form.fields.lastName.placeholder": "输入您的姓",
+  "profile.form.fields.lastName.description": "您的姓氏，将显示给其他用户。",
+  "profile.form.fields.email.label": "邮箱",
+  "profile.form.fields.email.placeholder": "输入您的邮箱地址",
+  "profile.form.fields.email.description": "用于账户通知和登录的邮箱地址。",
+  "profile.form.fields.preferLanguage.label": "首选语言",
+  "profile.form.fields.preferLanguage.placeholder": "选择您的首选语言",
+  "profile.form.fields.preferLanguage.description": "选择界面的首选语言。",
+  "profile.form.fields.preferLanguage.options.en": "English",
+  "profile.form.fields.preferLanguage.options.zh": "中文",
+  "profile.form.fields.avatar.label": "头像",
+  "profile.form.fields.avatar.upload": "上传头像",
+  "profile.form.fields.avatar.description": "上传个人头像。推荐尺寸为200x200像素。",
+  "profile.form.validation.firstNameRequired": "名字不能为空。",
+  "profile.form.validation.firstNameTooLong": "名字长度不能超过50个字符。",
+  "profile.form.validation.lastNameRequired": "姓氏不能为空。",
+  "profile.form.validation.lastNameTooLong": "姓氏长度不能超过50个字符。",
+  "profile.form.validation.emailInvalid": "请输入有效的邮箱地址。",
+  "profile.form.validation.languageRequired": "请选择首选语言。",
+  "profile.form.messages.updateSuccess": "个人资料更新成功！",
+  "profile.form.messages.updateError": "更新个人资料失败：{{error}}"
 }

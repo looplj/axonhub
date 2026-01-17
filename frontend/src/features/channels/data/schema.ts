@@ -245,7 +245,7 @@ export type SaveChannelModelPriceInput = z.infer<typeof saveChannelModelPriceInp
 export const createChannelInputSchema = z
   .object({
     type: channelTypeSchema,
-    baseURL: z.string().url('Please enter a valid URL'),
+    baseURL: z.url('Please enter a valid URL'),
     name: z.string().min(1, 'Name is required'),
     supportedModels: z.array(z.string()).min(0, 'At least one supported model is required'),
     autoSyncSupportedModels: z.boolean().optional().default(false),

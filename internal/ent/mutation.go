@@ -19654,6 +19654,10 @@ type UsageLogMutation struct {
 	addprompt_cached_tokens                  *int64
 	prompt_write_cached_tokens               *int64
 	addprompt_write_cached_tokens            *int64
+	prompt_write_cached_tokens_5m            *int64
+	addprompt_write_cached_tokens_5m         *int64
+	prompt_write_cached_tokens_1h            *int64
+	addprompt_write_cached_tokens_1h         *int64
 	completion_audio_tokens                  *int64
 	addcompletion_audio_tokens               *int64
 	completion_reasoning_tokens              *int64
@@ -19668,6 +19672,7 @@ type UsageLogMutation struct {
 	addtotal_cost                            *float64
 	cost_items                               *[]objects.CostItem
 	appendcost_items                         []objects.CostItem
+	cost_price_reference_id                  *string
 	clearedFields                            map[string]struct{}
 	request                                  *int
 	clearedrequest                           bool
@@ -20225,24 +20230,10 @@ func (m *UsageLogMutation) AddedPromptAudioTokens() (r int64, exists bool) {
 	return *v, true
 }
 
-// ClearPromptAudioTokens clears the value of the "prompt_audio_tokens" field.
-func (m *UsageLogMutation) ClearPromptAudioTokens() {
-	m.prompt_audio_tokens = nil
-	m.addprompt_audio_tokens = nil
-	m.clearedFields[usagelog.FieldPromptAudioTokens] = struct{}{}
-}
-
-// PromptAudioTokensCleared returns if the "prompt_audio_tokens" field was cleared in this mutation.
-func (m *UsageLogMutation) PromptAudioTokensCleared() bool {
-	_, ok := m.clearedFields[usagelog.FieldPromptAudioTokens]
-	return ok
-}
-
 // ResetPromptAudioTokens resets all changes to the "prompt_audio_tokens" field.
 func (m *UsageLogMutation) ResetPromptAudioTokens() {
 	m.prompt_audio_tokens = nil
 	m.addprompt_audio_tokens = nil
-	delete(m.clearedFields, usagelog.FieldPromptAudioTokens)
 }
 
 // SetPromptCachedTokens sets the "prompt_cached_tokens" field.
@@ -20295,24 +20286,10 @@ func (m *UsageLogMutation) AddedPromptCachedTokens() (r int64, exists bool) {
 	return *v, true
 }
 
-// ClearPromptCachedTokens clears the value of the "prompt_cached_tokens" field.
-func (m *UsageLogMutation) ClearPromptCachedTokens() {
-	m.prompt_cached_tokens = nil
-	m.addprompt_cached_tokens = nil
-	m.clearedFields[usagelog.FieldPromptCachedTokens] = struct{}{}
-}
-
-// PromptCachedTokensCleared returns if the "prompt_cached_tokens" field was cleared in this mutation.
-func (m *UsageLogMutation) PromptCachedTokensCleared() bool {
-	_, ok := m.clearedFields[usagelog.FieldPromptCachedTokens]
-	return ok
-}
-
 // ResetPromptCachedTokens resets all changes to the "prompt_cached_tokens" field.
 func (m *UsageLogMutation) ResetPromptCachedTokens() {
 	m.prompt_cached_tokens = nil
 	m.addprompt_cached_tokens = nil
-	delete(m.clearedFields, usagelog.FieldPromptCachedTokens)
 }
 
 // SetPromptWriteCachedTokens sets the "prompt_write_cached_tokens" field.
@@ -20383,6 +20360,146 @@ func (m *UsageLogMutation) ResetPromptWriteCachedTokens() {
 	m.prompt_write_cached_tokens = nil
 	m.addprompt_write_cached_tokens = nil
 	delete(m.clearedFields, usagelog.FieldPromptWriteCachedTokens)
+}
+
+// SetPromptWriteCachedTokens5m sets the "prompt_write_cached_tokens_5m" field.
+func (m *UsageLogMutation) SetPromptWriteCachedTokens5m(i int64) {
+	m.prompt_write_cached_tokens_5m = &i
+	m.addprompt_write_cached_tokens_5m = nil
+}
+
+// PromptWriteCachedTokens5m returns the value of the "prompt_write_cached_tokens_5m" field in the mutation.
+func (m *UsageLogMutation) PromptWriteCachedTokens5m() (r int64, exists bool) {
+	v := m.prompt_write_cached_tokens_5m
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPromptWriteCachedTokens5m returns the old "prompt_write_cached_tokens_5m" field's value of the UsageLog entity.
+// If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageLogMutation) OldPromptWriteCachedTokens5m(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPromptWriteCachedTokens5m is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPromptWriteCachedTokens5m requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPromptWriteCachedTokens5m: %w", err)
+	}
+	return oldValue.PromptWriteCachedTokens5m, nil
+}
+
+// AddPromptWriteCachedTokens5m adds i to the "prompt_write_cached_tokens_5m" field.
+func (m *UsageLogMutation) AddPromptWriteCachedTokens5m(i int64) {
+	if m.addprompt_write_cached_tokens_5m != nil {
+		*m.addprompt_write_cached_tokens_5m += i
+	} else {
+		m.addprompt_write_cached_tokens_5m = &i
+	}
+}
+
+// AddedPromptWriteCachedTokens5m returns the value that was added to the "prompt_write_cached_tokens_5m" field in this mutation.
+func (m *UsageLogMutation) AddedPromptWriteCachedTokens5m() (r int64, exists bool) {
+	v := m.addprompt_write_cached_tokens_5m
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearPromptWriteCachedTokens5m clears the value of the "prompt_write_cached_tokens_5m" field.
+func (m *UsageLogMutation) ClearPromptWriteCachedTokens5m() {
+	m.prompt_write_cached_tokens_5m = nil
+	m.addprompt_write_cached_tokens_5m = nil
+	m.clearedFields[usagelog.FieldPromptWriteCachedTokens5m] = struct{}{}
+}
+
+// PromptWriteCachedTokens5mCleared returns if the "prompt_write_cached_tokens_5m" field was cleared in this mutation.
+func (m *UsageLogMutation) PromptWriteCachedTokens5mCleared() bool {
+	_, ok := m.clearedFields[usagelog.FieldPromptWriteCachedTokens5m]
+	return ok
+}
+
+// ResetPromptWriteCachedTokens5m resets all changes to the "prompt_write_cached_tokens_5m" field.
+func (m *UsageLogMutation) ResetPromptWriteCachedTokens5m() {
+	m.prompt_write_cached_tokens_5m = nil
+	m.addprompt_write_cached_tokens_5m = nil
+	delete(m.clearedFields, usagelog.FieldPromptWriteCachedTokens5m)
+}
+
+// SetPromptWriteCachedTokens1h sets the "prompt_write_cached_tokens_1h" field.
+func (m *UsageLogMutation) SetPromptWriteCachedTokens1h(i int64) {
+	m.prompt_write_cached_tokens_1h = &i
+	m.addprompt_write_cached_tokens_1h = nil
+}
+
+// PromptWriteCachedTokens1h returns the value of the "prompt_write_cached_tokens_1h" field in the mutation.
+func (m *UsageLogMutation) PromptWriteCachedTokens1h() (r int64, exists bool) {
+	v := m.prompt_write_cached_tokens_1h
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPromptWriteCachedTokens1h returns the old "prompt_write_cached_tokens_1h" field's value of the UsageLog entity.
+// If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageLogMutation) OldPromptWriteCachedTokens1h(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPromptWriteCachedTokens1h is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPromptWriteCachedTokens1h requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPromptWriteCachedTokens1h: %w", err)
+	}
+	return oldValue.PromptWriteCachedTokens1h, nil
+}
+
+// AddPromptWriteCachedTokens1h adds i to the "prompt_write_cached_tokens_1h" field.
+func (m *UsageLogMutation) AddPromptWriteCachedTokens1h(i int64) {
+	if m.addprompt_write_cached_tokens_1h != nil {
+		*m.addprompt_write_cached_tokens_1h += i
+	} else {
+		m.addprompt_write_cached_tokens_1h = &i
+	}
+}
+
+// AddedPromptWriteCachedTokens1h returns the value that was added to the "prompt_write_cached_tokens_1h" field in this mutation.
+func (m *UsageLogMutation) AddedPromptWriteCachedTokens1h() (r int64, exists bool) {
+	v := m.addprompt_write_cached_tokens_1h
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearPromptWriteCachedTokens1h clears the value of the "prompt_write_cached_tokens_1h" field.
+func (m *UsageLogMutation) ClearPromptWriteCachedTokens1h() {
+	m.prompt_write_cached_tokens_1h = nil
+	m.addprompt_write_cached_tokens_1h = nil
+	m.clearedFields[usagelog.FieldPromptWriteCachedTokens1h] = struct{}{}
+}
+
+// PromptWriteCachedTokens1hCleared returns if the "prompt_write_cached_tokens_1h" field was cleared in this mutation.
+func (m *UsageLogMutation) PromptWriteCachedTokens1hCleared() bool {
+	_, ok := m.clearedFields[usagelog.FieldPromptWriteCachedTokens1h]
+	return ok
+}
+
+// ResetPromptWriteCachedTokens1h resets all changes to the "prompt_write_cached_tokens_1h" field.
+func (m *UsageLogMutation) ResetPromptWriteCachedTokens1h() {
+	m.prompt_write_cached_tokens_1h = nil
+	m.addprompt_write_cached_tokens_1h = nil
+	delete(m.clearedFields, usagelog.FieldPromptWriteCachedTokens1h)
 }
 
 // SetCompletionAudioTokens sets the "completion_audio_tokens" field.
@@ -20755,7 +20872,7 @@ func (m *UsageLogMutation) TotalCost() (r float64, exists bool) {
 // OldTotalCost returns the old "total_cost" field's value of the UsageLog entity.
 // If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UsageLogMutation) OldTotalCost(ctx context.Context) (v float64, err error) {
+func (m *UsageLogMutation) OldTotalCost(ctx context.Context) (v *float64, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldTotalCost is only allowed on UpdateOne operations")
 	}
@@ -20787,10 +20904,24 @@ func (m *UsageLogMutation) AddedTotalCost() (r float64, exists bool) {
 	return *v, true
 }
 
+// ClearTotalCost clears the value of the "total_cost" field.
+func (m *UsageLogMutation) ClearTotalCost() {
+	m.total_cost = nil
+	m.addtotal_cost = nil
+	m.clearedFields[usagelog.FieldTotalCost] = struct{}{}
+}
+
+// TotalCostCleared returns if the "total_cost" field was cleared in this mutation.
+func (m *UsageLogMutation) TotalCostCleared() bool {
+	_, ok := m.clearedFields[usagelog.FieldTotalCost]
+	return ok
+}
+
 // ResetTotalCost resets all changes to the "total_cost" field.
 func (m *UsageLogMutation) ResetTotalCost() {
 	m.total_cost = nil
 	m.addtotal_cost = nil
+	delete(m.clearedFields, usagelog.FieldTotalCost)
 }
 
 // SetCostItems sets the "cost_items" field.
@@ -20856,6 +20987,55 @@ func (m *UsageLogMutation) ResetCostItems() {
 	m.cost_items = nil
 	m.appendcost_items = nil
 	delete(m.clearedFields, usagelog.FieldCostItems)
+}
+
+// SetCostPriceReferenceID sets the "cost_price_reference_id" field.
+func (m *UsageLogMutation) SetCostPriceReferenceID(s string) {
+	m.cost_price_reference_id = &s
+}
+
+// CostPriceReferenceID returns the value of the "cost_price_reference_id" field in the mutation.
+func (m *UsageLogMutation) CostPriceReferenceID() (r string, exists bool) {
+	v := m.cost_price_reference_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCostPriceReferenceID returns the old "cost_price_reference_id" field's value of the UsageLog entity.
+// If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageLogMutation) OldCostPriceReferenceID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCostPriceReferenceID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCostPriceReferenceID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCostPriceReferenceID: %w", err)
+	}
+	return oldValue.CostPriceReferenceID, nil
+}
+
+// ClearCostPriceReferenceID clears the value of the "cost_price_reference_id" field.
+func (m *UsageLogMutation) ClearCostPriceReferenceID() {
+	m.cost_price_reference_id = nil
+	m.clearedFields[usagelog.FieldCostPriceReferenceID] = struct{}{}
+}
+
+// CostPriceReferenceIDCleared returns if the "cost_price_reference_id" field was cleared in this mutation.
+func (m *UsageLogMutation) CostPriceReferenceIDCleared() bool {
+	_, ok := m.clearedFields[usagelog.FieldCostPriceReferenceID]
+	return ok
+}
+
+// ResetCostPriceReferenceID resets all changes to the "cost_price_reference_id" field.
+func (m *UsageLogMutation) ResetCostPriceReferenceID() {
+	m.cost_price_reference_id = nil
+	delete(m.clearedFields, usagelog.FieldCostPriceReferenceID)
 }
 
 // ClearRequest clears the "request" edge to the Request entity.
@@ -20973,7 +21153,7 @@ func (m *UsageLogMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UsageLogMutation) Fields() []string {
-	fields := make([]string, 0, 20)
+	fields := make([]string, 0, 23)
 	if m.created_at != nil {
 		fields = append(fields, usagelog.FieldCreatedAt)
 	}
@@ -21010,6 +21190,12 @@ func (m *UsageLogMutation) Fields() []string {
 	if m.prompt_write_cached_tokens != nil {
 		fields = append(fields, usagelog.FieldPromptWriteCachedTokens)
 	}
+	if m.prompt_write_cached_tokens_5m != nil {
+		fields = append(fields, usagelog.FieldPromptWriteCachedTokens5m)
+	}
+	if m.prompt_write_cached_tokens_1h != nil {
+		fields = append(fields, usagelog.FieldPromptWriteCachedTokens1h)
+	}
 	if m.completion_audio_tokens != nil {
 		fields = append(fields, usagelog.FieldCompletionAudioTokens)
 	}
@@ -21033,6 +21219,9 @@ func (m *UsageLogMutation) Fields() []string {
 	}
 	if m.cost_items != nil {
 		fields = append(fields, usagelog.FieldCostItems)
+	}
+	if m.cost_price_reference_id != nil {
+		fields = append(fields, usagelog.FieldCostPriceReferenceID)
 	}
 	return fields
 }
@@ -21066,6 +21255,10 @@ func (m *UsageLogMutation) Field(name string) (ent.Value, bool) {
 		return m.PromptCachedTokens()
 	case usagelog.FieldPromptWriteCachedTokens:
 		return m.PromptWriteCachedTokens()
+	case usagelog.FieldPromptWriteCachedTokens5m:
+		return m.PromptWriteCachedTokens5m()
+	case usagelog.FieldPromptWriteCachedTokens1h:
+		return m.PromptWriteCachedTokens1h()
 	case usagelog.FieldCompletionAudioTokens:
 		return m.CompletionAudioTokens()
 	case usagelog.FieldCompletionReasoningTokens:
@@ -21082,6 +21275,8 @@ func (m *UsageLogMutation) Field(name string) (ent.Value, bool) {
 		return m.TotalCost()
 	case usagelog.FieldCostItems:
 		return m.CostItems()
+	case usagelog.FieldCostPriceReferenceID:
+		return m.CostPriceReferenceID()
 	}
 	return nil, false
 }
@@ -21115,6 +21310,10 @@ func (m *UsageLogMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldPromptCachedTokens(ctx)
 	case usagelog.FieldPromptWriteCachedTokens:
 		return m.OldPromptWriteCachedTokens(ctx)
+	case usagelog.FieldPromptWriteCachedTokens5m:
+		return m.OldPromptWriteCachedTokens5m(ctx)
+	case usagelog.FieldPromptWriteCachedTokens1h:
+		return m.OldPromptWriteCachedTokens1h(ctx)
 	case usagelog.FieldCompletionAudioTokens:
 		return m.OldCompletionAudioTokens(ctx)
 	case usagelog.FieldCompletionReasoningTokens:
@@ -21131,6 +21330,8 @@ func (m *UsageLogMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldTotalCost(ctx)
 	case usagelog.FieldCostItems:
 		return m.OldCostItems(ctx)
+	case usagelog.FieldCostPriceReferenceID:
+		return m.OldCostPriceReferenceID(ctx)
 	}
 	return nil, fmt.Errorf("unknown UsageLog field %s", name)
 }
@@ -21224,6 +21425,20 @@ func (m *UsageLogMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetPromptWriteCachedTokens(v)
 		return nil
+	case usagelog.FieldPromptWriteCachedTokens5m:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPromptWriteCachedTokens5m(v)
+		return nil
+	case usagelog.FieldPromptWriteCachedTokens1h:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPromptWriteCachedTokens1h(v)
+		return nil
 	case usagelog.FieldCompletionAudioTokens:
 		v, ok := value.(int64)
 		if !ok {
@@ -21280,6 +21495,13 @@ func (m *UsageLogMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetCostItems(v)
 		return nil
+	case usagelog.FieldCostPriceReferenceID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCostPriceReferenceID(v)
+		return nil
 	}
 	return fmt.Errorf("unknown UsageLog field %s", name)
 }
@@ -21305,6 +21527,12 @@ func (m *UsageLogMutation) AddedFields() []string {
 	}
 	if m.addprompt_write_cached_tokens != nil {
 		fields = append(fields, usagelog.FieldPromptWriteCachedTokens)
+	}
+	if m.addprompt_write_cached_tokens_5m != nil {
+		fields = append(fields, usagelog.FieldPromptWriteCachedTokens5m)
+	}
+	if m.addprompt_write_cached_tokens_1h != nil {
+		fields = append(fields, usagelog.FieldPromptWriteCachedTokens1h)
 	}
 	if m.addcompletion_audio_tokens != nil {
 		fields = append(fields, usagelog.FieldCompletionAudioTokens)
@@ -21341,6 +21569,10 @@ func (m *UsageLogMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedPromptCachedTokens()
 	case usagelog.FieldPromptWriteCachedTokens:
 		return m.AddedPromptWriteCachedTokens()
+	case usagelog.FieldPromptWriteCachedTokens5m:
+		return m.AddedPromptWriteCachedTokens5m()
+	case usagelog.FieldPromptWriteCachedTokens1h:
+		return m.AddedPromptWriteCachedTokens1h()
 	case usagelog.FieldCompletionAudioTokens:
 		return m.AddedCompletionAudioTokens()
 	case usagelog.FieldCompletionReasoningTokens:
@@ -21402,6 +21634,20 @@ func (m *UsageLogMutation) AddField(name string, value ent.Value) error {
 		}
 		m.AddPromptWriteCachedTokens(v)
 		return nil
+	case usagelog.FieldPromptWriteCachedTokens5m:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddPromptWriteCachedTokens5m(v)
+		return nil
+	case usagelog.FieldPromptWriteCachedTokens1h:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddPromptWriteCachedTokens1h(v)
+		return nil
 	case usagelog.FieldCompletionAudioTokens:
 		v, ok := value.(int64)
 		if !ok {
@@ -21448,14 +21694,14 @@ func (m *UsageLogMutation) ClearedFields() []string {
 	if m.FieldCleared(usagelog.FieldChannelID) {
 		fields = append(fields, usagelog.FieldChannelID)
 	}
-	if m.FieldCleared(usagelog.FieldPromptAudioTokens) {
-		fields = append(fields, usagelog.FieldPromptAudioTokens)
-	}
-	if m.FieldCleared(usagelog.FieldPromptCachedTokens) {
-		fields = append(fields, usagelog.FieldPromptCachedTokens)
-	}
 	if m.FieldCleared(usagelog.FieldPromptWriteCachedTokens) {
 		fields = append(fields, usagelog.FieldPromptWriteCachedTokens)
+	}
+	if m.FieldCleared(usagelog.FieldPromptWriteCachedTokens5m) {
+		fields = append(fields, usagelog.FieldPromptWriteCachedTokens5m)
+	}
+	if m.FieldCleared(usagelog.FieldPromptWriteCachedTokens1h) {
+		fields = append(fields, usagelog.FieldPromptWriteCachedTokens1h)
 	}
 	if m.FieldCleared(usagelog.FieldCompletionAudioTokens) {
 		fields = append(fields, usagelog.FieldCompletionAudioTokens)
@@ -21469,8 +21715,14 @@ func (m *UsageLogMutation) ClearedFields() []string {
 	if m.FieldCleared(usagelog.FieldCompletionRejectedPredictionTokens) {
 		fields = append(fields, usagelog.FieldCompletionRejectedPredictionTokens)
 	}
+	if m.FieldCleared(usagelog.FieldTotalCost) {
+		fields = append(fields, usagelog.FieldTotalCost)
+	}
 	if m.FieldCleared(usagelog.FieldCostItems) {
 		fields = append(fields, usagelog.FieldCostItems)
+	}
+	if m.FieldCleared(usagelog.FieldCostPriceReferenceID) {
+		fields = append(fields, usagelog.FieldCostPriceReferenceID)
 	}
 	return fields
 }
@@ -21489,14 +21741,14 @@ func (m *UsageLogMutation) ClearField(name string) error {
 	case usagelog.FieldChannelID:
 		m.ClearChannelID()
 		return nil
-	case usagelog.FieldPromptAudioTokens:
-		m.ClearPromptAudioTokens()
-		return nil
-	case usagelog.FieldPromptCachedTokens:
-		m.ClearPromptCachedTokens()
-		return nil
 	case usagelog.FieldPromptWriteCachedTokens:
 		m.ClearPromptWriteCachedTokens()
+		return nil
+	case usagelog.FieldPromptWriteCachedTokens5m:
+		m.ClearPromptWriteCachedTokens5m()
+		return nil
+	case usagelog.FieldPromptWriteCachedTokens1h:
+		m.ClearPromptWriteCachedTokens1h()
 		return nil
 	case usagelog.FieldCompletionAudioTokens:
 		m.ClearCompletionAudioTokens()
@@ -21510,8 +21762,14 @@ func (m *UsageLogMutation) ClearField(name string) error {
 	case usagelog.FieldCompletionRejectedPredictionTokens:
 		m.ClearCompletionRejectedPredictionTokens()
 		return nil
+	case usagelog.FieldTotalCost:
+		m.ClearTotalCost()
+		return nil
 	case usagelog.FieldCostItems:
 		m.ClearCostItems()
+		return nil
+	case usagelog.FieldCostPriceReferenceID:
+		m.ClearCostPriceReferenceID()
 		return nil
 	}
 	return fmt.Errorf("unknown UsageLog nullable field %s", name)
@@ -21557,6 +21815,12 @@ func (m *UsageLogMutation) ResetField(name string) error {
 	case usagelog.FieldPromptWriteCachedTokens:
 		m.ResetPromptWriteCachedTokens()
 		return nil
+	case usagelog.FieldPromptWriteCachedTokens5m:
+		m.ResetPromptWriteCachedTokens5m()
+		return nil
+	case usagelog.FieldPromptWriteCachedTokens1h:
+		m.ResetPromptWriteCachedTokens1h()
+		return nil
 	case usagelog.FieldCompletionAudioTokens:
 		m.ResetCompletionAudioTokens()
 		return nil
@@ -21580,6 +21844,9 @@ func (m *UsageLogMutation) ResetField(name string) error {
 		return nil
 	case usagelog.FieldCostItems:
 		m.ResetCostItems()
+		return nil
+	case usagelog.FieldCostPriceReferenceID:
+		m.ResetCostPriceReferenceID()
 		return nil
 	}
 	return fmt.Errorf("unknown UsageLog field %s", name)

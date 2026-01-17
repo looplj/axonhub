@@ -3,9 +3,9 @@ package biz
 import (
 	"context"
 
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
@@ -20,9 +20,9 @@ type UsageLogService struct {
 	ChannelService *ChannelService
 }
 
-func (s *UsageLogService) computeUsageCost(ctx context.Context, channelID int, modelID string, usage *llm.Usage) ([]objects.CostItem, float64) {
-	if s.ChannelService == nil || usage == nil {
-		return nil, 0
+func (s *UsageLogService) computeUsageCost(ctx context.Context, channelID int, modelID string, usage *llm.Usage) ([]objects.CostItem, *float64, string) {
+	if usage == nil {
+		return nil, nil, ""
 	}
 
 	ch := s.ChannelService.GetEnabledChannel(channelID)
@@ -32,7 +32,7 @@ func (s *UsageLogService) computeUsageCost(ctx context.Context, channelID int, m
 			log.String("model_id", modelID),
 		)
 
-		return nil, 0
+		return nil, nil, ""
 	}
 
 	if log.DebugEnabled(ctx) {
@@ -43,8 +43,8 @@ func (s *UsageLogService) computeUsageCost(ctx context.Context, channelID int, m
 		)
 	}
 
-	if price, ok := ch.cachedModelPrices[modelID]; ok {
-		items, total := ComputeUsageCost(usage, price)
+	if modelPrice, ok := ch.cachedModelPrices[modelID]; ok {
+		items, total := ComputeUsageCost(usage, modelPrice.Price)
 
 		totalCost := total.InexactFloat64()
 		if log.DebugEnabled(ctx) {
@@ -53,58 +53,14 @@ func (s *UsageLogService) computeUsageCost(ctx context.Context, channelID int, m
 				log.String("model_id", modelID),
 				log.Float64("total_cost", totalCost),
 				log.Int64("total_tokens", usage.TotalTokens),
+				log.String("price_reference_id", modelPrice.RefreanceID),
 			)
 		}
 
-		return items, totalCost
+		return items, lo.ToPtr(totalCost), modelPrice.RefreanceID
 	}
 
-	if log.DebugEnabled(ctx) {
-		log.Debug(ctx, "cached price not found, querying database",
-			log.Int("channel_id", channelID),
-			log.String("model_id", modelID),
-		)
-	}
-
-	client := s.entFromContext(ctx)
-	dbCtx := privacy.DecisionContext(ctx, privacy.Allow)
-
-	p, err := client.ChannelModelPrice.Query().
-		Where(
-			channelmodelprice.ChannelID(channelID),
-			channelmodelprice.ModelIDEQ(modelID),
-			channelmodelprice.DeletedAtEQ(0),
-		).
-		First(dbCtx)
-	if err != nil {
-		log.Warn(ctx, "model price not found in database",
-			log.Int("channel_id", channelID),
-			log.String("model_id", modelID),
-			log.Cause(err),
-		)
-
-		return nil, 0
-	}
-
-	items, total := ComputeUsageCost(usage, p.Price)
-	totalCost := total.InexactFloat64()
-
-	if ch.cachedModelPrices == nil {
-		ch.cachedModelPrices = make(map[string]objects.ModelPrice)
-	}
-
-	ch.cachedModelPrices[modelID] = p.Price
-
-	if log.DebugEnabled(ctx) {
-		log.Debug(ctx, "computed usage cost from db and refreshed cache",
-			log.Int("channel_id", channelID),
-			log.String("model_id", modelID),
-			log.Float64("total_cost", totalCost),
-			log.Int("cached_price_count", len(ch.cachedModelPrices)),
-		)
-	}
-
-	return items, totalCost
+	return nil, nil, ""
 }
 
 // NewUsageLogService creates a new UsageLogService.
@@ -155,7 +111,9 @@ func (s *UsageLogService) CreateUsageLog(
 		mut = mut.
 			SetPromptAudioTokens(usage.PromptTokensDetails.AudioTokens).
 			SetPromptCachedTokens(usage.PromptTokensDetails.CachedTokens).
-			SetPromptWriteCachedTokens(usage.PromptTokensDetails.WriteCachedTokens)
+			SetPromptWriteCachedTokens(usage.PromptTokensDetails.WriteCachedTokens).
+			SetPromptWriteCachedTokens5m(usage.PromptTokensDetails.WriteCached5MinTokens).
+			SetPromptWriteCachedTokens1h(usage.PromptTokensDetails.WriteCached1HourTokens)
 	}
 
 	// Set completion tokens details if available
@@ -169,15 +127,22 @@ func (s *UsageLogService) CreateUsageLog(
 
 	// Calculate cost if price is configured
 	var (
-		totalCost float64
-		costItems []objects.CostItem
+		totalCost        *float64
+		costItems        []objects.CostItem
+		priceReferenceID string
 	)
 
-	if channelID != nil && s.ChannelService != nil {
-		costItems, totalCost = s.computeUsageCost(ctx, *channelID, modelID, usage)
+	if channelID != nil {
+		costItems, totalCost, priceReferenceID = s.computeUsageCost(ctx, *channelID, modelID, usage)
 	}
 
-	mut = mut.SetTotalCost(totalCost).SetCostItems(costItems)
+	mut = mut.
+		SetNillableTotalCost(totalCost).
+		SetCostItems(costItems)
+
+	if priceReferenceID != "" {
+		mut = mut.SetCostPriceReferenceID(priceReferenceID)
+	}
 
 	usageLog, err := mut.Save(ctx)
 	if err != nil {
@@ -185,12 +150,14 @@ func (s *UsageLogService) CreateUsageLog(
 		return nil, err
 	}
 
-	log.Debug(ctx, "Created usage log",
-		log.Int("usage_log_id", usageLog.ID),
-		log.Int("request_id", requestID),
-		log.String("model_id", modelID),
-		log.Int64("total_tokens", usage.TotalTokens),
-	)
+	if log.DebugEnabled(ctx) {
+		log.Debug(ctx, "Created usage log",
+			log.Int("usage_log_id", usageLog.ID),
+			log.Int("request_id", requestID),
+			log.String("model_id", modelID),
+			log.Int64("total_tokens", usage.TotalTokens),
+		)
+	}
 
 	return usageLog, nil
 }
