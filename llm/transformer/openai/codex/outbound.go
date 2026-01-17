@@ -9,9 +9,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/samber/lo"
 
-	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/objects"
-	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
@@ -30,9 +27,7 @@ const codexAPIURL = "https://chatgpt.com/backend-api/codex/responses"
 //
 //nolint:containedctx // It is used as a transformer.
 type OutboundTransformer struct {
-	credentialsJSON string
-	channelID       int
-	tokens          *TokenProvider
+	tokens *TokenProvider
 
 	// reuse existing Responses outbound for payload building.
 	responsesOutbound *responses.OutboundTransformer
@@ -45,8 +40,6 @@ var (
 
 type Params struct {
 	CredentialsJSON string
-	CacheConfig     xcache.Config
-	ChannelID       int
 	HTTPClient      *httpclient.HttpClient
 }
 
@@ -59,6 +52,11 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 		params.HTTPClient = httpclient.NewHttpClient()
 	}
 
+	creds, err := ParseCredentialsJSON(params.CredentialsJSON)
+	if err != nil {
+		return nil, err
+	}
+
 	// The underlying responses outbound requires baseURL/apiKey. We only need its request body logic.
 	// Use a dummy config and then override URL/auth.
 	ro, err := responses.NewOutboundTransformer("https://api.openai.com/v1", "dummy")
@@ -67,9 +65,7 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 	}
 
 	return &OutboundTransformer{
-		credentialsJSON:   params.CredentialsJSON,
-		channelID:         params.ChannelID,
-		tokens:            NewTokenProvider(params.CacheConfig, params.HTTPClient),
+		tokens:            NewTokenProvider(creds, params.HTTPClient),
 		responsesOutbound: ro,
 	}, nil
 }
@@ -83,9 +79,7 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 }
 
 func (t *OutboundTransformer) ensureFreshCredentials(ctx context.Context) (*OAuth2Credentials, error) {
-	ch := &ent.Channel{ID: t.channelID, Credentials: &objects.ChannelCredentials{APIKey: t.credentialsJSON}}
-
-	accessToken, accountID, err := t.tokens.Get(ctx, ch)
+	accessToken, accountID, err := t.tokens.Get(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -235,10 +235,9 @@ type ComplexityRoot struct {
 	}
 
 	ChannelCredentials struct {
-		APIKey       func(childComplexity int) int
-		AWS          func(childComplexity int) int
-		GCP          func(childComplexity int) int
-		PlatformType func(childComplexity int) int
+		APIKey func(childComplexity int) int
+		AWS    func(childComplexity int) int
+		GCP    func(childComplexity int) int
 	}
 
 	ChannelEdge struct {
@@ -2285,12 +2284,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelCredentials.GCP(childComplexity), true
-	case "ChannelCredentials.platformType":
-		if e.complexity.ChannelCredentials.PlatformType == nil {
-			break
-		}
-
-		return e.complexity.ChannelCredentials.PlatformType(childComplexity), true
 
 	case "ChannelEdge.cursor":
 		if e.complexity.ChannelEdge.Cursor == nil {
@@ -13125,8 +13118,6 @@ func (ec *executionContext) fieldContext_Channel_credentials(_ context.Context, 
 			switch field.Name {
 			case "apiKey":
 				return ec.fieldContext_ChannelCredentials_apiKey(ctx, field)
-			case "platformType":
-				return ec.fieldContext_ChannelCredentials_platformType(ctx, field)
 			case "aws":
 				return ec.fieldContext_ChannelCredentials_aws(ctx, field)
 			case "gcp":
@@ -13258,35 +13249,6 @@ func (ec *executionContext) _ChannelCredentials_apiKey(ctx context.Context, fiel
 }
 
 func (ec *executionContext) fieldContext_ChannelCredentials_apiKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ChannelCredentials",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelCredentials_platformType(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelCredentials) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ChannelCredentials_platformType,
-		func(ctx context.Context) (any, error) {
-			return obj.PlatformType, nil
-		},
-		nil,
-		ec.marshalOString2string,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ChannelCredentials_platformType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ChannelCredentials",
 		Field:      field,
@@ -43419,7 +43381,7 @@ func (ec *executionContext) unmarshalInputChannelCredentialsInput(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"apiKey", "platformType", "aws", "gcp"}
+	fieldsInOrder := [...]string{"apiKey", "aws", "gcp"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -43433,13 +43395,6 @@ func (ec *executionContext) unmarshalInputChannelCredentialsInput(ctx context.Co
 				return it, err
 			}
 			it.APIKey = data
-		case "platformType":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("platformType"))
-			data, err := ec.unmarshalOString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.PlatformType = data
 		case "aws":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("aws"))
 			data, err := ec.unmarshalOAWSCredentialInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAWSCredential(ctx, v)
@@ -65628,8 +65583,6 @@ func (ec *executionContext) _ChannelCredentials(ctx context.Context, sel ast.Sel
 			out.Values[i] = graphql.MarshalString("ChannelCredentials")
 		case "apiKey":
 			out.Values[i] = ec._ChannelCredentials_apiKey(ctx, field, obj)
-		case "platformType":
-			out.Values[i] = ec._ChannelCredentials_platformType(ctx, field, obj)
 		case "aws":
 			out.Values[i] = ec._ChannelCredentials_aws(ctx, field, obj)
 		case "gcp":

@@ -565,8 +565,11 @@ function ProfileCard({
                         <FormControl>
                           <Input
                             inputMode='decimal'
-                            value={(field.value as unknown as string | null | undefined) ?? ''}
-                            onChange={(e) => field.onChange(e.target.value === '' ? null : e.target.value)}
+                            value={(field.value as unknown as number | null | undefined) ?? ''}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              field.onChange(v === '' ? null : Number(v));
+                            }}
                             placeholder={t('apikeys.profiles.quotaCostPlaceholder')}
                           />
                         </FormControl>

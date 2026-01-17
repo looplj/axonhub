@@ -13,7 +13,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/looplj/axonhub/internal/log"
-	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -143,7 +142,7 @@ var DefaultTokenURLs = TokenURLs{
 	Token:     TokenURL,
 }
 
-func (c *OAuth2Credentials) Refresh(ctx context.Context, hc *httpclient.HttpClient, cache xcache.Cache[string], cacheKey string) (*OAuth2Credentials, error) {
+func (c *OAuth2Credentials) Refresh(ctx context.Context, hc *httpclient.HttpClient) (*OAuth2Credentials, error) {
 	if c == nil {
 		return nil, errors.New("nil credentials")
 	}
@@ -211,14 +210,6 @@ func (c *OAuth2Credentials) Refresh(ctx context.Context, hc *httpclient.HttpClie
 	}
 
 	updated.AccountID = ExtractChatGPTAccountIDFromJWT(updated.AccessToken)
-
-	if cache != nil && cacheKey != "" {
-		if raw, err := updated.ToJSON(); err == nil {
-			if err := cache.Set(ctx, cacheKey, raw, xcache.WithExpiration(55*time.Minute)); err != nil {
-				log.Warn(ctx, "failed to cache refreshed codex token", log.String("key", cacheKey), log.Cause(err))
-			}
-		}
-	}
 
 	log.Debug(ctx, "codex token refreshed", log.String("expires_at", updated.ExpiresAt.Format(time.RFC3339)))
 

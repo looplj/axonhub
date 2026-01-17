@@ -79,10 +79,6 @@ type ChannelCredentials struct {
 	// APIKey is the API key for the channel.
 	APIKey string `json:"apiKey,omitempty"`
 
-	// PlatformType distinguishes different platform configurations (e.g., "openai", "azure").
-	// e.g., "openai", "azure", "anthropic", "vertex" etc.
-	PlatformType string `json:"platformType,omitempty"`
-
 	// Azure configuration for the channel.
 	Azure *AzureCredential `json:"azure,omitempty"`
 
