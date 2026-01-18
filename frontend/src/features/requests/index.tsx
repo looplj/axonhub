@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { buildDateRangeWhereClause } from '@/utils/date-range';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import useInterval from '@/hooks/useInterval';
+import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
 import { RequestsTable } from './components';
 import { RequestsProvider } from './context';
@@ -149,15 +150,16 @@ export default function RequestsManagement() {
 
   return (
     <RequestsProvider>
-      {/* <Header fixed></Header> */}
-
-      <Main fixed>
-        <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
+      <Header fixed>
+        <div className='flex flex-1 items-center justify-between'>
           <div>
-            <h2 className='text-2xl font-bold tracking-tight'>{t('requests.title')}</h2>
-            <p className='text-muted-foreground'>{t('requests.description')}</p>
+            <h2 className='text-xl font-bold tracking-tight'>{t('requests.title')}</h2>
+            <p className='text-sm text-muted-foreground'>{t('requests.description')}</p>
           </div>
         </div>
+      </Header>
+
+      <Main fixed>
         <RequestsContent />
       </Main>
     </RequestsProvider>

@@ -103,16 +103,17 @@ export default function UsersManagement() {
 
   return (
     <UsersProvider>
-      <Header fixed>{/* <Search /> */}</Header>
-
-      <Main fixed>
-        <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
+      <Header fixed>
+        <div className='flex flex-1 items-center justify-between'>
           <div>
-            <h2 className='text-2xl font-bold tracking-tight'>{t('users.title')}</h2>
-            <p className='text-muted-foreground'>{t('users.description')}</p>
+            <h2 className='text-xl font-bold tracking-tight'>{t('users.title')}</h2>
+            <p className='text-sm text-muted-foreground'>{t('users.description')}</p>
           </div>
           <UsersPrimaryButtons />
         </div>
+      </Header>
+
+      <Main fixed>
         <UsersContent />
       </Main>
       <UsersDialogs />

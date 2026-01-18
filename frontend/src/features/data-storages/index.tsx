@@ -114,17 +114,18 @@ export default function DataStoragesManagement() {
 
   return (
     <DataStoragesProvider>
-      <Header fixed></Header>
-
-      <Main fixed>
-        <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
+      <Header fixed>
+        <div className='flex flex-1 items-center justify-between'>
           <div>
-            <h2 className='text-2xl font-bold tracking-tight'>{t('dataStorages.title')}</h2>
-            <p className='text-muted-foreground'>{t('dataStorages.description')}</p>
-            <p className='text-muted-foreground text-sm'>{t('dataStorages.llmStorageHint')}</p>
+            <h2 className='text-xl font-bold tracking-tight'>{t('dataStorages.title')}</h2>
+            <p className='text-sm text-muted-foreground'>{t('dataStorages.description')}</p>
+            <p className='text-sm text-muted-foreground'>{t('dataStorages.llmStorageHint')}</p>
           </div>
           <DataStoragesPrimaryButtons />
         </div>
+      </Header>
+
+      <Main fixed>
         <DataStoragesContent />
       </Main>
       <DataStorageDialogs />
