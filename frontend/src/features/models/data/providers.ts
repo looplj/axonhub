@@ -29,7 +29,7 @@ export function useProvidersData() {
 
 export function useDevelopersData() {
   return useQuery<ProvidersData>({
-    queryKey: ['providers-data'],
+    queryKey: ['developers-data'],
     queryFn: async () => {
       try {
         const response = await fetch(DEVELOPERS_URL);

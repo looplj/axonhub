@@ -24,6 +24,7 @@ This guide helps contributors navigate and work effectively in this repository.
 - `make build-backend` — builds `axonhub` binary via `go build -o axonhub ./cmd/axonhub`
 - `golangci-lint run -v` — lint with `.golangci.yml` config (concurrency 4, timeout 10m)
 - `air` — optional hot-reload for development if installed
+- Linting is handled by CI. Please refrain from running it locally before committing.
 
 ### Frontend (TypeScript/React)
 

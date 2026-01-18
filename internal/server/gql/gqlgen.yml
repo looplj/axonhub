@@ -113,6 +113,12 @@ models:
   ChannelCredentialsInput:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelCredentials
+  OAuthCredentials:
+    model:
+      - github.com/looplj/axonhub/internal/objects.OAuthCredentials
+  OAuthCredentialsInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.OAuthCredentials
   BulkCreateChannelsInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.BulkCreateChannelsInput

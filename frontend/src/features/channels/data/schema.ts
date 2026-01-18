@@ -136,6 +136,18 @@ export type ChannelModelEntry = z.infer<typeof channelModelEntrySchema>;
 // Channel Credentials
 export const channelCredentialsSchema = z.object({
   apiKey: z.string().optional().nullable(),
+  oauth: z
+    .object({
+      accessToken: z.string().optional().nullable(),
+      refreshToken: z.string().optional().nullable(),
+      clientID: z.string().optional().nullable(),
+      accountID: z.string().optional().nullable(),
+      expiresAt: z.string().optional().nullable(),
+      tokenType: z.string().optional().nullable(),
+      scopes: z.array(z.string()).optional().nullable(),
+    })
+    .optional()
+    .nullable(),
   aws: z
     .object({
       accessKeyID: z.string(),

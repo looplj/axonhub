@@ -83,6 +83,16 @@ type ChannelCredentials {
   apiKey: String
   aws: AWSCredential
   gcp: GCPCredential
+  oauth: OAuthCredentials
+}
+
+type OAuthCredentials {
+  accessToken: String
+  refreshToken: String
+  clientID: String
+  expiresAt: Time
+  tokenType: String
+  scopes: [String!]
 }
 
 type GCPCredential {
@@ -101,6 +111,16 @@ input ChannelCredentialsInput {
   apiKey: String
   aws: AWSCredentialInput
   gcp: GCPCredentialInput
+  oauth: OAuthCredentialsInput
+}
+
+input OAuthCredentialsInput {
+  accessToken: String
+  refreshToken: String
+  clientID: String
+  expiresAt: Time
+  tokenType: String
+  scopes: [String!]
 }
 
 input AWSCredentialInput {

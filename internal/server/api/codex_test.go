@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 )
 
 type roundTripperFunc func(req *http.Request) (*http.Response, error)
@@ -62,7 +63,7 @@ func TestCodexHandlers_Exchange_StateDeletedOnTokenExchangeFailure(t *testing.T)
 	t.Cleanup(tokenServer.Close)
 
 	transport := roundTripperFunc(func(req *http.Request) (*http.Response, error) {
-		if req.URL.String() == codexTokenURL {
+		if req.URL.String() == codex.TokenURL {
 			proxyReq, err := http.NewRequestWithContext(req.Context(), req.Method, tokenServer.URL, req.Body)
 			if err != nil {
 				return nil, err
@@ -135,7 +136,7 @@ func TestCodexHandlers_Exchange_RejectsStateMismatch(t *testing.T) {
 	t.Cleanup(tokenServer.Close)
 
 	transport := roundTripperFunc(func(req *http.Request) (*http.Response, error) {
-		if req.URL.String() == codexTokenURL {
+		if req.URL.String() == codex.TokenURL {
 			body, _ := io.ReadAll(req.Body)
 			_ = req.Body.Close()
 
@@ -217,7 +218,7 @@ func TestCodexHandlers_Exchange_DeletesStateOnSuccess(t *testing.T) {
 	t.Cleanup(tokenServer.Close)
 
 	transport := roundTripperFunc(func(req *http.Request) (*http.Response, error) {
-		if req.URL.String() == codexTokenURL {
+		if req.URL.String() == codex.TokenURL {
 			body, _ := io.ReadAll(req.Body)
 			_ = req.Body.Close()
 

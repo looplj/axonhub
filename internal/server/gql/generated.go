@@ -33,6 +33,7 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/oauth"
 	"github.com/shopspring/decimal"
 	gqlparser "github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
@@ -238,6 +239,7 @@ type ComplexityRoot struct {
 		APIKey func(childComplexity int) int
 		AWS    func(childComplexity int) int
 		GCP    func(childComplexity int) int
+		OAuth  func(childComplexity int) int
 	}
 
 	ChannelEdge struct {
@@ -704,6 +706,15 @@ type ComplexityRoot struct {
 		UpdateSystemModelSettings            func(childComplexity int, input biz.SystemModelSettings) int
 		UpdateUser                           func(childComplexity int, id objects.GUID, input ent.UpdateUserInput) int
 		UpdateUserStatus                     func(childComplexity int, id objects.GUID, status user.Status) int
+	}
+
+	OAuthCredentials struct {
+		AccessToken  func(childComplexity int) int
+		ClientID     func(childComplexity int) int
+		ExpiresAt    func(childComplexity int) int
+		RefreshToken func(childComplexity int) int
+		Scopes       func(childComplexity int) int
+		TokenType    func(childComplexity int) int
 	}
 
 	OnboardingInfo struct {
@@ -2283,6 +2294,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelCredentials.GCP(childComplexity), true
+	case "ChannelCredentials.oauth":
+		if e.complexity.ChannelCredentials.OAuth == nil {
+			break
+		}
+
+		return e.complexity.ChannelCredentials.OAuth(childComplexity), true
 
 	case "ChannelEdge.cursor":
 		if e.complexity.ChannelEdge.Cursor == nil {
@@ -4472,6 +4489,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdateUserStatus(childComplexity, args["id"].(objects.GUID), args["status"].(user.Status)), true
+
+	case "OAuthCredentials.accessToken":
+		if e.complexity.OAuthCredentials.AccessToken == nil {
+			break
+		}
+
+		return e.complexity.OAuthCredentials.AccessToken(childComplexity), true
+	case "OAuthCredentials.clientID":
+		if e.complexity.OAuthCredentials.ClientID == nil {
+			break
+		}
+
+		return e.complexity.OAuthCredentials.ClientID(childComplexity), true
+	case "OAuthCredentials.expiresAt":
+		if e.complexity.OAuthCredentials.ExpiresAt == nil {
+			break
+		}
+
+		return e.complexity.OAuthCredentials.ExpiresAt(childComplexity), true
+	case "OAuthCredentials.refreshToken":
+		if e.complexity.OAuthCredentials.RefreshToken == nil {
+			break
+		}
+
+		return e.complexity.OAuthCredentials.RefreshToken(childComplexity), true
+	case "OAuthCredentials.scopes":
+		if e.complexity.OAuthCredentials.Scopes == nil {
+			break
+		}
+
+		return e.complexity.OAuthCredentials.Scopes(childComplexity), true
+	case "OAuthCredentials.tokenType":
+		if e.complexity.OAuthCredentials.TokenType == nil {
+			break
+		}
+
+		return e.complexity.OAuthCredentials.TokenType(childComplexity), true
 
 	case "OnboardingInfo.completedAt":
 		if e.complexity.OnboardingInfo.CompletedAt == nil {
@@ -7559,6 +7613,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputModelPriceItemInput,
 		ec.unmarshalInputModelSettingsInput,
 		ec.unmarshalInputModelWhereInput,
+		ec.unmarshalInputOAuthCredentialsInput,
 		ec.unmarshalInputPriceTierInput,
 		ec.unmarshalInputPricingInput,
 		ec.unmarshalInputProjectOrder,
@@ -13115,6 +13170,8 @@ func (ec *executionContext) fieldContext_Channel_credentials(_ context.Context, 
 				return ec.fieldContext_ChannelCredentials_aws(ctx, field)
 			case "gcp":
 				return ec.fieldContext_ChannelCredentials_gcp(ctx, field)
+			case "oauth":
+				return ec.fieldContext_ChannelCredentials_oauth(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelCredentials", field.Name)
 		},
@@ -13323,6 +13380,49 @@ func (ec *executionContext) fieldContext_ChannelCredentials_gcp(_ context.Contex
 				return ec.fieldContext_GCPCredential_jsonData(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GCPCredential", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelCredentials_oauth(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelCredentials) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelCredentials_oauth,
+		func(ctx context.Context) (any, error) {
+			return obj.OAuth, nil
+		},
+		nil,
+		ec.marshalOOAuthCredentials2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋllmᚋoauthᚐOAuthCredentials,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelCredentials_oauth(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelCredentials",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "accessToken":
+				return ec.fieldContext_OAuthCredentials_accessToken(ctx, field)
+			case "refreshToken":
+				return ec.fieldContext_OAuthCredentials_refreshToken(ctx, field)
+			case "clientID":
+				return ec.fieldContext_OAuthCredentials_clientID(ctx, field)
+			case "expiresAt":
+				return ec.fieldContext_OAuthCredentials_expiresAt(ctx, field)
+			case "tokenType":
+				return ec.fieldContext_OAuthCredentials_tokenType(ctx, field)
+			case "scopes":
+				return ec.fieldContext_OAuthCredentials_scopes(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type OAuthCredentials", field.Name)
 		},
 	}
 	return fc, nil
@@ -24630,6 +24730,180 @@ func (ec *executionContext) fieldContext_Mutation_saveChannelModelPrices(ctx con
 	if fc.Args, err = ec.field_Mutation_saveChannelModelPrices_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OAuthCredentials_accessToken(ctx context.Context, field graphql.CollectedField, obj *oauth.OAuthCredentials) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OAuthCredentials_accessToken,
+		func(ctx context.Context) (any, error) {
+			return obj.AccessToken, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OAuthCredentials_accessToken(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OAuthCredentials",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OAuthCredentials_refreshToken(ctx context.Context, field graphql.CollectedField, obj *oauth.OAuthCredentials) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OAuthCredentials_refreshToken,
+		func(ctx context.Context) (any, error) {
+			return obj.RefreshToken, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OAuthCredentials_refreshToken(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OAuthCredentials",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OAuthCredentials_clientID(ctx context.Context, field graphql.CollectedField, obj *oauth.OAuthCredentials) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OAuthCredentials_clientID,
+		func(ctx context.Context) (any, error) {
+			return obj.ClientID, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OAuthCredentials_clientID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OAuthCredentials",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OAuthCredentials_expiresAt(ctx context.Context, field graphql.CollectedField, obj *oauth.OAuthCredentials) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OAuthCredentials_expiresAt,
+		func(ctx context.Context) (any, error) {
+			return obj.ExpiresAt, nil
+		},
+		nil,
+		ec.marshalOTime2timeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OAuthCredentials_expiresAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OAuthCredentials",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OAuthCredentials_tokenType(ctx context.Context, field graphql.CollectedField, obj *oauth.OAuthCredentials) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OAuthCredentials_tokenType,
+		func(ctx context.Context) (any, error) {
+			return obj.TokenType, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OAuthCredentials_tokenType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OAuthCredentials",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OAuthCredentials_scopes(ctx context.Context, field graphql.CollectedField, obj *oauth.OAuthCredentials) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OAuthCredentials_scopes,
+		func(ctx context.Context) (any, error) {
+			return obj.Scopes, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OAuthCredentials_scopes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OAuthCredentials",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
 	}
 	return fc, nil
 }
@@ -43352,7 +43626,7 @@ func (ec *executionContext) unmarshalInputChannelCredentialsInput(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"apiKey", "aws", "gcp"}
+	fieldsInOrder := [...]string{"apiKey", "aws", "gcp", "oauth"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -43380,6 +43654,13 @@ func (ec *executionContext) unmarshalInputChannelCredentialsInput(ctx context.Co
 				return it, err
 			}
 			it.GCP = data
+		case "oauth":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("oauth"))
+			data, err := ec.unmarshalOOAuthCredentialsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋllmᚋoauthᚐOAuthCredentials(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OAuth = data
 		}
 	}
 
@@ -52211,6 +52492,68 @@ func (ec *executionContext) unmarshalInputModelWhereInput(ctx context.Context, o
 				return it, err
 			}
 			it.RemarkContainsFold = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputOAuthCredentialsInput(ctx context.Context, obj any) (oauth.OAuthCredentials, error) {
+	var it oauth.OAuthCredentials
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"accessToken", "refreshToken", "clientID", "expiresAt", "tokenType", "scopes"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "accessToken":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accessToken"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AccessToken = data
+		case "refreshToken":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreshToken"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreshToken = data
+		case "clientID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientID"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClientID = data
+		case "expiresAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("expiresAt"))
+			data, err := ec.unmarshalOTime2timeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExpiresAt = data
+		case "tokenType":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tokenType"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TokenType = data
+		case "scopes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("scopes"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Scopes = data
 		}
 	}
 
@@ -65513,6 +65856,8 @@ func (ec *executionContext) _ChannelCredentials(ctx context.Context, sel ast.Sel
 			out.Values[i] = ec._ChannelCredentials_aws(ctx, field, obj)
 		case "gcp":
 			out.Values[i] = ec._ChannelCredentials_gcp(ctx, field, obj)
+		case "oauth":
+			out.Values[i] = ec._ChannelCredentials_oauth(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -69581,6 +69926,52 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var oAuthCredentialsImplementors = []string{"OAuthCredentials"}
+
+func (ec *executionContext) _OAuthCredentials(ctx context.Context, sel ast.SelectionSet, obj *oauth.OAuthCredentials) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, oAuthCredentialsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("OAuthCredentials")
+		case "accessToken":
+			out.Values[i] = ec._OAuthCredentials_accessToken(ctx, field, obj)
+		case "refreshToken":
+			out.Values[i] = ec._OAuthCredentials_refreshToken(ctx, field, obj)
+		case "clientID":
+			out.Values[i] = ec._OAuthCredentials_clientID(ctx, field, obj)
+		case "expiresAt":
+			out.Values[i] = ec._OAuthCredentials_expiresAt(ctx, field, obj)
+		case "tokenType":
+			out.Values[i] = ec._OAuthCredentials_tokenType(ctx, field, obj)
+		case "scopes":
+			out.Values[i] = ec._OAuthCredentials_scopes(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -84896,6 +85287,21 @@ func (ec *executionContext) marshalONode2githubᚗcomᚋloopljᚋaxonhubᚋinter
 	return ec._Node(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalOOAuthCredentials2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋllmᚋoauthᚐOAuthCredentials(ctx context.Context, sel ast.SelectionSet, v *oauth.OAuthCredentials) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._OAuthCredentials(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOOAuthCredentialsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋllmᚋoauthᚐOAuthCredentials(ctx context.Context, v any) (*oauth.OAuthCredentials, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputOAuthCredentialsInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalOOnboardingInfo2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐOnboardingInfo(ctx context.Context, sel ast.SelectionSet, v *OnboardingInfo) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -86598,6 +87004,18 @@ func (ec *executionContext) unmarshalOTieredPricingInput2ᚖgithubᚗcomᚋloopl
 	}
 	res, err := ec.unmarshalInputTieredPricingInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOTime2timeᚐTime(ctx context.Context, v any) (time.Time, error) {
+	res, err := graphql.UnmarshalTime(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOTime2timeᚐTime(ctx context.Context, sel ast.SelectionSet, v time.Time) graphql.Marshaler {
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalTime(v)
+	return res
 }
 
 func (ec *executionContext) unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx context.Context, v any) ([]time.Time, error) {

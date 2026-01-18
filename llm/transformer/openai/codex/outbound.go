@@ -11,6 +11,7 @@ import (
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/oauth"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
@@ -27,7 +28,7 @@ const codexAPIURL = "https://chatgpt.com/backend-api/codex/responses"
 //
 //nolint:containedctx // It is used as a transformer.
 type OutboundTransformer struct {
-	tokens *TokenProvider
+	tokens *oauth.TokenProvider
 
 	// reuse existing Responses outbound for payload building.
 	responsesOutbound *responses.OutboundTransformer
@@ -40,7 +41,12 @@ var (
 
 type Params struct {
 	CredentialsJSON string
-	HTTPClient      *httpclient.HttpClient
+
+	// HTTPClient should be pre-configured with proxy settings if needed.
+	HTTPClient *httpclient.HttpClient
+
+	// OnRefreshed will be invoked when the token refreshed.
+	OnRefreshed func(ctx context.Context, refreshed *oauth.OAuthCredentials) error
 }
 
 func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
@@ -49,10 +55,10 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 	}
 
 	if params.HTTPClient == nil {
-		params.HTTPClient = httpclient.NewHttpClient()
+		return nil, errors.New("http client is required")
 	}
 
-	creds, err := ParseCredentialsJSON(params.CredentialsJSON)
+	creds, err := oauth.ParseCredentialsJSON(params.CredentialsJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +71,11 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 	}
 
 	return &OutboundTransformer{
-		tokens:            NewTokenProvider(creds, params.HTTPClient),
+		tokens: NewTokenProvider(TokenProviderParams{
+			Credentials: creds,
+			HTTPClient:  params.HTTPClient,
+			OnRefreshed: params.OnRefreshed,
+		}),
 		responsesOutbound: ro,
 	}, nil
 }
@@ -78,24 +88,18 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 	return t.responsesOutbound.TransformError(ctx, rawErr)
 }
 
-func (t *OutboundTransformer) ensureFreshCredentials(ctx context.Context) (*OAuth2Credentials, error) {
-	accessToken, accountID, err := t.tokens.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return &OAuth2Credentials{AccessToken: accessToken, AccountID: accountID}, nil
-}
-
 func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
 	if llmReq == nil {
 		return nil, errors.New("request is nil")
 	}
 
-	creds, err := t.ensureFreshCredentials(ctx)
+	creds, err := t.tokens.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
+
+	// Parse account ID from access token JWT.
+	accountID := ExtractChatGPTAccountIDFromJWT(creds.AccessToken)
 
 	// Clone request so we do not mutate upstream pipeline state.
 	reqCopy := *llmReq
@@ -155,10 +159,10 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	hreq.Auth = &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: creds.AccessToken}
 
 	// Keep Codex-specific headers.
-	hreq.Headers.Set("User-Agent", UA)
+	hreq.Headers.Set("User-Agent", UserAgent)
 
-	if creds.AccountID != "" {
-		hreq.Headers.Set("Chatgpt-Account-Id", creds.AccountID)
+	if accountID != "" {
+		hreq.Headers.Set("Chatgpt-Account-Id", accountID)
 	}
 
 	return hreq, nil
@@ -168,7 +172,7 @@ func setCodexSystemInstruction(msgs []llm.Message) []llm.Message {
 	systemMsg := llm.Message{
 		Role: "system",
 		Content: llm.MessageContent{
-			Content: lo.ToPtr(CodexCLIInstructions),
+			Content: lo.ToPtr(CodexInstructions),
 		},
 	}
 
@@ -230,7 +234,7 @@ type codexExecutor struct {
 func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*httpclient.Response, error) {
 	// Ensure Codex-required headers are not overridden by inbound headers.
 	request.Headers.Set("Accept", "text/event-stream")
-	request.Headers.Set("User-Agent", UA)
+	request.Headers.Set("User-Agent", UserAgent)
 	request.Headers.Set("Connection", "Keep-Alive")
 	request.Headers.Set("Openai-Beta", "responses=experimental")
 	request.Headers.Set("Originator", "codex_cli_rs")
@@ -288,7 +292,7 @@ func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*h
 func (e *codexExecutor) DoStream(ctx context.Context, request *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
 	// Ensure Codex-required headers are not overridden by inbound headers.
 	request.Headers.Set("Accept", "text/event-stream")
-	request.Headers.Set("User-Agent", UA)
+	request.Headers.Set("User-Agent", UserAgent)
 	request.Headers.Set("Connection", "Keep-Alive")
 	request.Headers.Set("Openai-Beta", "responses=experimental")
 	request.Headers.Set("Originator", "codex_cli_rs")
