@@ -402,16 +402,31 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 			credsJSON = creds
 		}
 
+		creds, err := oauth.ParseCredentialsJSON(credsJSON)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse codex oauth credentials: %w", err)
+		}
+
+		tokens := codex.NewTokenProvider(codex.TokenProviderParams{
+			Credentials: creds,
+			HTTPClient:  httpClient,
+			OnRefreshed: svc.refreshOAuthTokenFunc(c),
+		})
+
 		transformer, err := codex.NewOutboundTransformer(codex.Params{
-			CredentialsJSON: credsJSON,
-			HTTPClient:      httpClient,
-			OnRefreshed:     svc.refreshOAuthTokenFunc(c),
+			TokenProvider: tokens,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create codex outbound transformer: %w", err)
 		}
 
-		return buildChannelWithTransformer(c, transformer, httpClient), nil
+		ch := buildChannelWithTransformer(c, transformer, httpClient)
+		ch.startTokenProvider = func() {
+			tokens.StartAutoRefresh(context.Background(), oauth.AutoRefreshOptions{})
+		}
+		ch.stopTokenProvider = tokens.StopAutoRefresh
+
+		return ch, nil
 	case channel.TypeOpenai, channel.TypeDeepinfra, channel.TypeMinimax,
 		channel.TypePpio, channel.TypeSiliconflow,
 		channel.TypeVercel, channel.TypeAihubmix, channel.TypeBurncloud, channel.TypeGithub:
