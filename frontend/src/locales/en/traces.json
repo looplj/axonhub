@@ -25,6 +25,7 @@
   "traces.detail.outputTokensLabel": "Output Tokens",
   "traces.detail.totalTokensLabel": "Total Tokens",
   "traces.detail.cachedTokensLabel": "Cached Tokens",
+  "traces.detail.cachedWriteTokensLabel": "Cached Write Tokens",
   "traces.detail.requestSpansHeader": "Request Spans ({{count}})",
   "traces.detail.responseSpansHeader": "Response Spans ({{count}})",
   "traces.detail.requestQuery": "Request",

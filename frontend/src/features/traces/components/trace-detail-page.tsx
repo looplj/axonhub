@@ -13,6 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
+import { useGeneralSettings } from '@/features/system/data/system';
 import { useTraceWithSegments } from '../data';
 import { Segment, Span, parseRawRootSegment } from '../data/schema';
 import { SpanSection } from './span-section';
@@ -30,6 +31,7 @@ export default function TraceDetailPage() {
   const { getSearchParams } = usePaginationSearch({ defaultPageSize: 20 });
 
   const { data: trace, isLoading, refetch } = useTraceWithSegments(traceId);
+  const { data: settings } = useGeneralSettings();
 
   // Parse rawRootSegment JSON once per trace
   // 仅解析 rawRootSegment（完整 JSON）
@@ -150,23 +152,66 @@ export default function TraceDetailPage() {
         </div>
       </Header>
 
-      <Main className='flex-1 overflow-hidden'>
+      <Main className='flex-1 overflow-hidden flex flex-col p-0'>
         {effectiveRootSegment ? (
-          <div className='flex h-full'>
-            {/* Left: Timeline */}
-            <div className='flex-1 overflow-auto p-6'>
-              <TraceFlatTimeline
-                trace={effectiveRootSegment}
-                onSelectSpan={(selectedTrace, span, type) => handleSpanSelect(selectedTrace, span, type)}
-                selectedSpanId={selectedSpan?.id}
-              />
+          <>
+            {/* Top: Usage Metadata */}
+            <div className='px-6 py-4 border-b bg-background'>
+              <div className='grid gap-4 md:grid-cols-6'>
+                <div>
+                  <p className='text-muted-foreground text-sm'>{t('traces.detail.totalTokensLabel')}</p>
+                  <p className='text-lg font-semibold'>{(trace.usageMetadata?.totalTokens ?? 0).toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className='text-muted-foreground text-sm'>{t('traces.detail.inputTokensLabel')}</p>
+                  <p className='text-lg font-semibold'>{(trace.usageMetadata?.totalInputTokens ?? 0).toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className='text-muted-foreground text-sm'>{t('traces.detail.outputTokensLabel')}</p>
+                  <p className='text-lg font-semibold'>{(trace.usageMetadata?.totalOutputTokens ?? 0).toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className='text-muted-foreground text-sm'>{t('traces.detail.cachedTokensLabel')}</p>
+                  <p className='text-lg font-semibold'>{(trace.usageMetadata?.totalCachedTokens ?? 0).toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className='text-muted-foreground text-sm'>{t('traces.detail.cachedWriteTokensLabel')}</p>
+                  <p className='text-lg font-semibold'>{(trace.usageMetadata?.totalCachedWriteTokens ?? 0).toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className='text-muted-foreground text-sm'>{t('usageLogs.columns.totalCost')}</p>
+                  {trace.usageMetadata?.totalCost ? (
+                    <p className='text-lg font-semibold'>
+                      {t('currencies.format', {
+                        val: trace.usageMetadata.totalCost,
+                        currency: settings?.currencyCode,
+                        locale: i18n.language === 'zh' ? 'zh-CN' : 'en-US',
+                        minimumFractionDigits: 6,
+                      })}
+                    </p>
+                  ) : (
+                    <p className='text-muted-foreground text-lg font-semibold'>-</p>
+                  )}
+                </div>
+              </div>
             </div>
 
-            {/* Right: Span Detail */}
-            <div className='border-border bg-background w-[500px] overflow-y-auto border-l'>
-              <SpanSection selectedTrace={selectedTrace} selectedSpan={selectedSpan} selectedSpanType={selectedSpanType} />
+            <div className='flex flex-1 overflow-hidden pt-2'>
+              {/* Left: Timeline */}
+              <div className='flex-1 overflow-auto p-6'>
+                <TraceFlatTimeline
+                  trace={effectiveRootSegment}
+                  onSelectSpan={(selectedTrace, span, type) => handleSpanSelect(selectedTrace, span, type)}
+                  selectedSpanId={selectedSpan?.id}
+                />
+              </div>
+
+              {/* Right: Span Detail */}
+              <div className='border-border bg-background w-[500px] overflow-y-auto border-l'>
+                <SpanSection selectedTrace={selectedTrace} selectedSpan={selectedSpan} selectedSpanType={selectedSpanType} />
+              </div>
             </div>
-          </div>
+          </>
         ) : (
           <div className='flex h-full items-center justify-center p-6'>
             <Card className='border-0 shadow-sm'>

@@ -416,13 +416,14 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 	p.state.CurrentCandidate = candidate
 	p.wrapped = candidate.Channel.Outbound
 
-	model := candidate.Models[0].ActualModel
-
-	log.Debug(ctx, "switching to next channel for retry",
-		log.String("channel", candidate.Channel.Name),
-		log.String("model", model),
-		log.Int("index", p.state.CurrentCandidateIndex),
-	)
+	if log.DebugEnabled(ctx) {
+		model := candidate.Models[0].ActualModel
+		log.Debug(ctx, "switching to next channel for retry",
+			log.String("channel", candidate.Channel.Name),
+			log.String("model", model),
+			log.Int("index", p.state.CurrentCandidateIndex),
+		)
+	}
 
 	return nil
 }

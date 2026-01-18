@@ -19641,6 +19641,8 @@ type UsageLogMutation struct {
 	id                                       *int
 	created_at                               *time.Time
 	updated_at                               *time.Time
+	api_key_id                               *int
+	addapi_key_id                            *int
 	model_id                                 *string
 	prompt_tokens                            *int64
 	addprompt_tokens                         *int64
@@ -19889,6 +19891,76 @@ func (m *UsageLogMutation) OldRequestID(ctx context.Context) (v int, err error) 
 // ResetRequestID resets all changes to the "request_id" field.
 func (m *UsageLogMutation) ResetRequestID() {
 	m.request = nil
+}
+
+// SetAPIKeyID sets the "api_key_id" field.
+func (m *UsageLogMutation) SetAPIKeyID(i int) {
+	m.api_key_id = &i
+	m.addapi_key_id = nil
+}
+
+// APIKeyID returns the value of the "api_key_id" field in the mutation.
+func (m *UsageLogMutation) APIKeyID() (r int, exists bool) {
+	v := m.api_key_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAPIKeyID returns the old "api_key_id" field's value of the UsageLog entity.
+// If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageLogMutation) OldAPIKeyID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAPIKeyID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAPIKeyID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAPIKeyID: %w", err)
+	}
+	return oldValue.APIKeyID, nil
+}
+
+// AddAPIKeyID adds i to the "api_key_id" field.
+func (m *UsageLogMutation) AddAPIKeyID(i int) {
+	if m.addapi_key_id != nil {
+		*m.addapi_key_id += i
+	} else {
+		m.addapi_key_id = &i
+	}
+}
+
+// AddedAPIKeyID returns the value that was added to the "api_key_id" field in this mutation.
+func (m *UsageLogMutation) AddedAPIKeyID() (r int, exists bool) {
+	v := m.addapi_key_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearAPIKeyID clears the value of the "api_key_id" field.
+func (m *UsageLogMutation) ClearAPIKeyID() {
+	m.api_key_id = nil
+	m.addapi_key_id = nil
+	m.clearedFields[usagelog.FieldAPIKeyID] = struct{}{}
+}
+
+// APIKeyIDCleared returns if the "api_key_id" field was cleared in this mutation.
+func (m *UsageLogMutation) APIKeyIDCleared() bool {
+	_, ok := m.clearedFields[usagelog.FieldAPIKeyID]
+	return ok
+}
+
+// ResetAPIKeyID resets all changes to the "api_key_id" field.
+func (m *UsageLogMutation) ResetAPIKeyID() {
+	m.api_key_id = nil
+	m.addapi_key_id = nil
+	delete(m.clearedFields, usagelog.FieldAPIKeyID)
 }
 
 // SetProjectID sets the "project_id" field.
@@ -21153,7 +21225,7 @@ func (m *UsageLogMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UsageLogMutation) Fields() []string {
-	fields := make([]string, 0, 23)
+	fields := make([]string, 0, 24)
 	if m.created_at != nil {
 		fields = append(fields, usagelog.FieldCreatedAt)
 	}
@@ -21162,6 +21234,9 @@ func (m *UsageLogMutation) Fields() []string {
 	}
 	if m.request != nil {
 		fields = append(fields, usagelog.FieldRequestID)
+	}
+	if m.api_key_id != nil {
+		fields = append(fields, usagelog.FieldAPIKeyID)
 	}
 	if m.project != nil {
 		fields = append(fields, usagelog.FieldProjectID)
@@ -21237,6 +21312,8 @@ func (m *UsageLogMutation) Field(name string) (ent.Value, bool) {
 		return m.UpdatedAt()
 	case usagelog.FieldRequestID:
 		return m.RequestID()
+	case usagelog.FieldAPIKeyID:
+		return m.APIKeyID()
 	case usagelog.FieldProjectID:
 		return m.ProjectID()
 	case usagelog.FieldChannelID:
@@ -21292,6 +21369,8 @@ func (m *UsageLogMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldUpdatedAt(ctx)
 	case usagelog.FieldRequestID:
 		return m.OldRequestID(ctx)
+	case usagelog.FieldAPIKeyID:
+		return m.OldAPIKeyID(ctx)
 	case usagelog.FieldProjectID:
 		return m.OldProjectID(ctx)
 	case usagelog.FieldChannelID:
@@ -21361,6 +21440,13 @@ func (m *UsageLogMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRequestID(v)
+		return nil
+	case usagelog.FieldAPIKeyID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAPIKeyID(v)
 		return nil
 	case usagelog.FieldProjectID:
 		v, ok := value.(int)
@@ -21510,6 +21596,9 @@ func (m *UsageLogMutation) SetField(name string, value ent.Value) error {
 // this mutation.
 func (m *UsageLogMutation) AddedFields() []string {
 	var fields []string
+	if m.addapi_key_id != nil {
+		fields = append(fields, usagelog.FieldAPIKeyID)
+	}
 	if m.addprompt_tokens != nil {
 		fields = append(fields, usagelog.FieldPromptTokens)
 	}
@@ -21557,6 +21646,8 @@ func (m *UsageLogMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *UsageLogMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
+	case usagelog.FieldAPIKeyID:
+		return m.AddedAPIKeyID()
 	case usagelog.FieldPromptTokens:
 		return m.AddedPromptTokens()
 	case usagelog.FieldCompletionTokens:
@@ -21592,6 +21683,13 @@ func (m *UsageLogMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *UsageLogMutation) AddField(name string, value ent.Value) error {
 	switch name {
+	case usagelog.FieldAPIKeyID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddAPIKeyID(v)
+		return nil
 	case usagelog.FieldPromptTokens:
 		v, ok := value.(int64)
 		if !ok {
@@ -21691,6 +21789,9 @@ func (m *UsageLogMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *UsageLogMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(usagelog.FieldAPIKeyID) {
+		fields = append(fields, usagelog.FieldAPIKeyID)
+	}
 	if m.FieldCleared(usagelog.FieldChannelID) {
 		fields = append(fields, usagelog.FieldChannelID)
 	}
@@ -21738,6 +21839,9 @@ func (m *UsageLogMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *UsageLogMutation) ClearField(name string) error {
 	switch name {
+	case usagelog.FieldAPIKeyID:
+		m.ClearAPIKeyID()
+		return nil
 	case usagelog.FieldChannelID:
 		m.ClearChannelID()
 		return nil
@@ -21787,6 +21891,9 @@ func (m *UsageLogMutation) ResetField(name string) error {
 		return nil
 	case usagelog.FieldRequestID:
 		m.ResetRequestID()
+		return nil
+	case usagelog.FieldAPIKeyID:
+		m.ResetAPIKeyID()
 		return nil
 	case usagelog.FieldProjectID:
 		m.ResetProjectID()

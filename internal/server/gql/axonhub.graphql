@@ -198,6 +198,7 @@ input APIKeyProfileInput {
   channelIDs: [Int!]
   channelTags: [String!]
   modelIDs: [String!]
+  quota: APIKeyQuotaInput
 }
 
 input UpdateAPIKeyScopesInput {
@@ -215,6 +216,67 @@ type APIKeyProfile {
   channelIDs: [Int!]
   channelTags: [String!]
   modelIDs: [String!]
+  quota: APIKeyQuota
+}
+
+input APIKeyQuotaInput {
+  requests: Int
+  totalTokens: Int
+  cost: DecimalInput
+  period: APIKeyQuotaPeriodInput!
+}
+
+input APIKeyQuotaPeriodInput {
+  type: APIKeyQuotaPeriodType!
+  pastDuration: APIKeyQuotaPastDurationInput
+  calendarDuration: APIKeyQuotaCalendarDurationInput
+}
+
+enum APIKeyQuotaPeriodType {
+  all_time
+  past_duration
+  calendar_duration
+}
+
+input APIKeyQuotaPastDurationInput {
+  value: Int!
+  unit: APIKeyQuotaPastDurationUnit!
+}
+
+enum APIKeyQuotaPastDurationUnit {
+  hour
+  day
+}
+
+input APIKeyQuotaCalendarDurationInput {
+  unit: APIKeyQuotaCalendarDurationUnit!
+}
+
+enum APIKeyQuotaCalendarDurationUnit {
+  day
+  month
+}
+
+type APIKeyQuota {
+  requests: Int
+  totalTokens: Int
+  cost: Decimal
+  period: APIKeyQuotaPeriod!
+}
+
+type APIKeyQuotaPeriod {
+  type: APIKeyQuotaPeriodType!
+  pastDuration: APIKeyQuotaPastDuration
+  calendarDuration: APIKeyQuotaCalendarDuration
+}
+
+type APIKeyQuotaPastDuration {
+  value: Int!
+  unit: APIKeyQuotaPastDurationUnit!
+}
+
+type APIKeyQuotaCalendarDuration {
+  unit: APIKeyQuotaCalendarDurationUnit!
 }
 
 input FetchModelsInput {
@@ -308,15 +370,26 @@ type GCS {
   bucketName: String!
 }
 
+type UsageMetadata {
+  totalInputTokens: Int! 
+  totalOutputTokens: Int! 
+  totalTokens: Int! 
+  totalCachedTokens: Int! 
+  totalCachedWriteTokens: Int! 
+  totalCost: Decimal! 
+}
+
 extend type Trace {
   rootSegment: Segment
   rawRootSegment: JSONRawMessage
   firstUserQuery: String @goField(forceResolver: true)
   firstText: String @goField(forceResolver: true)
+  usageMetadata: UsageMetadata @goField(forceResolver: true)
 }
 
 extend type Thread {
   firstUserQuery: String @goField(forceResolver: true)
+  usageMetadata: UsageMetadata @goField(forceResolver: true)
 }
 
 extend type Channel {

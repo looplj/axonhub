@@ -62,7 +62,7 @@ func TestMigrator_Run_WithInitializedSystem(t *testing.T) {
 
 	// Initialize system
 	systemService := biz.NewSystemService(biz.SystemServiceParams{})
-	err := systemService.Initialize(ctx, &biz.InitializeSystemArgs{
+	err := systemService.Initialize(ctx, &biz.InitializeSystemParams{
 		OwnerEmail:     "owner@example.com",
 		OwnerPassword:  "password123",
 		OwnerFirstName: "System",
@@ -137,7 +137,7 @@ func TestMigrator_Run_SkipNewerVersion(t *testing.T) {
 
 	// Initialize system
 	systemService := biz.NewSystemService(biz.SystemServiceParams{})
-	err := systemService.Initialize(ctx, &biz.InitializeSystemArgs{
+	err := systemService.Initialize(ctx, &biz.InitializeSystemParams{
 		OwnerEmail:     "owner@example.com",
 		OwnerPassword:  "password123",
 		OwnerFirstName: "System",
@@ -173,7 +173,7 @@ func TestMigrator_Run_SkipEqualVersion(t *testing.T) {
 
 	// Initialize system
 	systemService := biz.NewSystemService(biz.SystemServiceParams{})
-	err := systemService.Initialize(ctx, &biz.InitializeSystemArgs{
+	err := systemService.Initialize(ctx, &biz.InitializeSystemParams{
 		OwnerEmail:     "owner@example.com",
 		OwnerPassword:  "password123",
 		OwnerFirstName: "System",
@@ -209,7 +209,7 @@ func TestMigrator_Run_MultipleMigrations(t *testing.T) {
 
 	// Initialize system
 	systemService := biz.NewSystemService(biz.SystemServiceParams{})
-	err := systemService.Initialize(ctx, &biz.InitializeSystemArgs{
+	err := systemService.Initialize(ctx, &biz.InitializeSystemParams{
 		OwnerEmail:     "owner@example.com",
 		OwnerPassword:  "password123",
 		OwnerFirstName: "System",
@@ -249,7 +249,7 @@ func TestMigrator_Run_PartialMigrations(t *testing.T) {
 
 	// Initialize system
 	systemService := biz.NewSystemService(biz.SystemServiceParams{})
-	err := systemService.Initialize(ctx, &biz.InitializeSystemArgs{
+	err := systemService.Initialize(ctx, &biz.InitializeSystemParams{
 		OwnerEmail:     "owner@example.com",
 		OwnerPassword:  "password123",
 		OwnerFirstName: "System",
@@ -345,7 +345,7 @@ func TestMigrator_IntegrationTest(t *testing.T) {
 
 	// Initialize system
 	systemService := biz.NewSystemService(biz.SystemServiceParams{})
-	err := systemService.Initialize(ctx, &biz.InitializeSystemArgs{
+	err := systemService.Initialize(ctx, &biz.InitializeSystemParams{
 		OwnerEmail:     "owner@example.com",
 		OwnerPassword:  "password123",
 		OwnerFirstName: "System",

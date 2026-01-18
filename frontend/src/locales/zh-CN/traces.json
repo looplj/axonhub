@@ -26,6 +26,7 @@
   "traces.detail.outputTokensLabel": "输出令牌数",
   "traces.detail.totalTokensLabel": "总令牌数",
   "traces.detail.cachedTokensLabel": "缓存令牌数",
+  "traces.detail.cachedWriteTokensLabel": "缓存写入令牌数",
   "traces.detail.requestSpansHeader": "请求片段 ({{count}})",
   "traces.detail.responseSpansHeader": "响应片段 ({{count}})",
   "traces.detail.requestQuery": "请求内容",

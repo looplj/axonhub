@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/trace"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -162,6 +163,21 @@ func (s *TraceService) GetFirstText(ctx context.Context, traceID int) (*string, 
 	}
 
 	return segment.FirstText(), nil
+}
+
+func (s *TraceService) UsageMetadata(ctx context.Context, traceID int) (*UsageMetadata, error) {
+	client := s.entFromContext(ctx)
+	if client == nil {
+		return nil, fmt.Errorf("ent client not found in context")
+	}
+
+	q := client.UsageLog.Query().
+		Where(usagelog.HasRequestWith(
+			request.TraceIDEQ(traceID),
+			request.StatusEQ(request.StatusCompleted),
+		))
+
+	return aggregateUsageMetadata(ctx, q)
 }
 
 // Segment represents a segment in a trace.

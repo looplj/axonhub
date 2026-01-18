@@ -156,6 +156,20 @@ export const segmentSchema: z.ZodType<any> = z.lazy(() =>
 
 export type Segment = z.infer<typeof segmentSchema>;
 
+export const usageMetadataSchema = z
+  .object({
+    totalInputTokens: z.number(),
+    totalOutputTokens: z.number(),
+    totalTokens: z.number(),
+    totalCost: z.coerce.number(),
+    totalCachedTokens: z.number().nullable().optional(),
+    totalCachedWriteTokens: z.number().nullable().optional(),
+  })
+  .nullable()
+  .optional();
+
+export type UsageMetadata = z.infer<typeof usageMetadataSchema>;
+
 export const traceDetailSchema = z.object({
   id: z.string(),
   traceID: z.string(),
@@ -164,6 +178,7 @@ export const traceDetailSchema = z.object({
   thread: threadSchema,
   requests: traceRequestsSummarySchema,
   rawRootSegment: z.any().nullable().optional(),
+  usageMetadata: usageMetadataSchema,
 });
 
 export type TraceDetail = z.infer<typeof traceDetailSchema>;

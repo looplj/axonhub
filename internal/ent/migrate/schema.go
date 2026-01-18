@@ -671,6 +671,7 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "api_key_id", Type: field.TypeInt, Nullable: true},
 		{Name: "model_id", Type: field.TypeString},
 		{Name: "prompt_tokens", Type: field.TypeInt64, Default: 0},
 		{Name: "completion_tokens", Type: field.TypeInt64, Default: 0},
@@ -701,19 +702,19 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "usage_logs_channels_usage_logs",
-				Columns:    []*schema.Column{UsageLogsColumns[21]},
+				Columns:    []*schema.Column{UsageLogsColumns[22]},
 				RefColumns: []*schema.Column{ChannelsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "usage_logs_projects_usage_logs",
-				Columns:    []*schema.Column{UsageLogsColumns[22]},
+				Columns:    []*schema.Column{UsageLogsColumns[23]},
 				RefColumns: []*schema.Column{ProjectsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "usage_logs_requests_usage_logs",
-				Columns:    []*schema.Column{UsageLogsColumns[23]},
+				Columns:    []*schema.Column{UsageLogsColumns[24]},
 				RefColumns: []*schema.Column{RequestsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -722,17 +723,22 @@ var (
 			{
 				Name:    "usage_logs_by_request_id",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[23]},
+				Columns: []*schema.Column{UsageLogsColumns[24]},
+			},
+			{
+				Name:    "usage_logs_by_api_key_id",
+				Unique:  false,
+				Columns: []*schema.Column{UsageLogsColumns[3]},
 			},
 			{
 				Name:    "usage_logs_by_project_id",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[22]},
+				Columns: []*schema.Column{UsageLogsColumns[23]},
 			},
 			{
 				Name:    "usage_logs_by_channel_id",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[21]},
+				Columns: []*schema.Column{UsageLogsColumns[22]},
 			},
 			{
 				Name:    "usage_logs_by_created_at",
@@ -742,17 +748,22 @@ var (
 			{
 				Name:    "usage_logs_by_model_id",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[3]},
+				Columns: []*schema.Column{UsageLogsColumns[4]},
 			},
 			{
 				Name:    "usage_logs_by_project_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[22], UsageLogsColumns[1]},
+				Columns: []*schema.Column{UsageLogsColumns[23], UsageLogsColumns[1]},
 			},
 			{
 				Name:    "usage_logs_by_channel_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[21], UsageLogsColumns[1]},
+				Columns: []*schema.Column{UsageLogsColumns[22], UsageLogsColumns[1]},
+			},
+			{
+				Name:    "usage_logs_by_api_key_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{UsageLogsColumns[3], UsageLogsColumns[1]},
 			},
 		},
 	}

@@ -4709,6 +4709,11 @@ func (_q *UsageLogQuery) collectField(ctx context.Context, oneNode bool, opCtx *
 				selectedFields = append(selectedFields, usagelog.FieldRequestID)
 				fieldSeen[usagelog.FieldRequestID] = struct{}{}
 			}
+		case "apiKeyID":
+			if _, ok := fieldSeen[usagelog.FieldAPIKeyID]; !ok {
+				selectedFields = append(selectedFields, usagelog.FieldAPIKeyID)
+				fieldSeen[usagelog.FieldAPIKeyID] = struct{}{}
+			}
 		case "projectID":
 			if _, ok := fieldSeen[usagelog.FieldProjectID]; !ok {
 				selectedFields = append(selectedFields, usagelog.FieldProjectID)

@@ -2,9 +2,11 @@ package biz
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/samber/lo"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/log"
@@ -74,55 +76,64 @@ func NewUsageLogService(ent *ent.Client, systemService *SystemService, channelSe
 	}
 }
 
+// CreateUsageLogParams represents the parameters for creating a usage log.
+type CreateUsageLogParams struct {
+	RequestID     int
+	ProjectID     int
+	ChannelID     *int
+	ActualModelID string // The channel actual model ID, not the request model ID.
+	Usage         *llm.Usage
+	Source        usagelog.Source
+	Format        string
+	APIKeyID      *int
+}
+
 // CreateUsageLog creates a new usage log record from LLM response usage data.
-func (s *UsageLogService) CreateUsageLog(
-	ctx context.Context,
-	requestID int,
-	projectID int,
-	channelID *int,
-	modelID string,
-	usage *llm.Usage,
-	source usagelog.Source,
-	format string,
-) (*ent.UsageLog, error) {
-	if usage == nil {
+func (s *UsageLogService) CreateUsageLog(ctx context.Context, params CreateUsageLogParams) (*ent.UsageLog, error) {
+	if params.Usage == nil {
 		return nil, nil // No usage data to log
 	}
 
 	client := s.entFromContext(ctx)
 
 	mut := client.UsageLog.Create().
-		SetRequestID(requestID).
-		SetProjectID(projectID).
-		SetModelID(modelID).
-		SetPromptTokens(usage.PromptTokens).
-		SetCompletionTokens(usage.CompletionTokens).
-		SetTotalTokens(usage.TotalTokens).
-		SetSource(source).
-		SetFormat(format)
+		SetRequestID(params.RequestID).
+		SetProjectID(params.ProjectID).
+		SetModelID(params.ActualModelID).
+		SetPromptTokens(params.Usage.PromptTokens).
+		SetCompletionTokens(params.Usage.CompletionTokens).
+		SetTotalTokens(params.Usage.TotalTokens).
+		SetSource(params.Source).
+		SetFormat(params.Format)
+
+	if params.APIKeyID != nil {
+		mut = mut.SetAPIKeyID(*params.APIKeyID)
+	} else if ctxAPIKey, ok := contexts.GetAPIKey(ctx); ok && ctxAPIKey != nil {
+		mut = mut.SetAPIKeyID(ctxAPIKey.ID)
+	}
 
 	// Set channel ID if provided
-	if channelID != nil {
-		mut = mut.SetChannelID(*channelID)
+	if params.ChannelID != nil {
+		mut = mut.SetChannelID(*params.ChannelID)
 	}
 
 	// Set prompt tokens details if available
-	if usage.PromptTokensDetails != nil {
+	if params.Usage.PromptTokensDetails != nil {
 		mut = mut.
-			SetPromptAudioTokens(usage.PromptTokensDetails.AudioTokens).
-			SetPromptCachedTokens(usage.PromptTokensDetails.CachedTokens).
-			SetPromptWriteCachedTokens(usage.PromptTokensDetails.WriteCachedTokens).
-			SetPromptWriteCachedTokens5m(usage.PromptTokensDetails.WriteCached5MinTokens).
-			SetPromptWriteCachedTokens1h(usage.PromptTokensDetails.WriteCached1HourTokens)
+			SetPromptAudioTokens(params.Usage.PromptTokensDetails.AudioTokens).
+			SetPromptCachedTokens(params.Usage.PromptTokensDetails.CachedTokens).
+			SetPromptWriteCachedTokens(params.Usage.PromptTokensDetails.WriteCachedTokens).
+			SetPromptWriteCachedTokens5m(params.Usage.PromptTokensDetails.WriteCached5MinTokens).
+			SetPromptWriteCachedTokens1h(params.Usage.PromptTokensDetails.WriteCached1HourTokens)
 	}
 
 	// Set completion tokens details if available
-	if usage.CompletionTokensDetails != nil {
+	if params.Usage.CompletionTokensDetails != nil {
 		mut = mut.
-			SetCompletionAudioTokens(usage.CompletionTokensDetails.AudioTokens).
-			SetCompletionReasoningTokens(usage.CompletionTokensDetails.ReasoningTokens).
-			SetCompletionAcceptedPredictionTokens(usage.CompletionTokensDetails.AcceptedPredictionTokens).
-			SetCompletionRejectedPredictionTokens(usage.CompletionTokensDetails.RejectedPredictionTokens)
+			SetCompletionAudioTokens(params.Usage.CompletionTokensDetails.AudioTokens).
+			SetCompletionReasoningTokens(params.Usage.CompletionTokensDetails.ReasoningTokens).
+			SetCompletionAcceptedPredictionTokens(params.Usage.CompletionTokensDetails.AcceptedPredictionTokens).
+			SetCompletionRejectedPredictionTokens(params.Usage.CompletionTokensDetails.RejectedPredictionTokens)
 	}
 
 	// Calculate cost if price is configured
@@ -132,8 +143,8 @@ func (s *UsageLogService) CreateUsageLog(
 		priceReferenceID string
 	)
 
-	if channelID != nil {
-		costItems, totalCost, priceReferenceID = s.computeUsageCost(ctx, *channelID, modelID, usage)
+	if params.ChannelID != nil {
+		costItems, totalCost, priceReferenceID = s.computeUsageCost(ctx, *params.ChannelID, params.ActualModelID, params.Usage)
 	}
 
 	mut = mut.
@@ -146,16 +157,15 @@ func (s *UsageLogService) CreateUsageLog(
 
 	usageLog, err := mut.Save(ctx)
 	if err != nil {
-		log.Error(ctx, "Failed to create usage log", log.Cause(err))
-		return nil, err
+		return nil, fmt.Errorf("failed to create usage log: %w", err)
 	}
 
 	if log.DebugEnabled(ctx) {
 		log.Debug(ctx, "Created usage log",
 			log.Int("usage_log_id", usageLog.ID),
-			log.Int("request_id", requestID),
-			log.String("model_id", modelID),
-			log.Int64("total_tokens", usage.TotalTokens),
+			log.Int("request_id", params.RequestID),
+			log.String("model_id", params.ActualModelID),
+			log.Int64("total_tokens", params.Usage.TotalTokens),
 		)
 	}
 
@@ -183,14 +193,14 @@ func (s *UsageLogService) CreateUsageLogFromRequest(
 		channelID = &requestExec.ChannelID
 	}
 
-	return s.CreateUsageLog(
-		ctx,
-		request.ID,
-		request.ProjectID,
-		channelID,
-		request.ModelID,
-		usage,
-		usagelog.Source(request.Source),
-		request.Format,
-	)
+	return s.CreateUsageLog(ctx, CreateUsageLogParams{
+		RequestID:     request.ID,
+		ProjectID:     request.ProjectID,
+		ChannelID:     channelID,
+		ActualModelID: requestExec.ModelID,
+		Usage:         usage,
+		Source:        usagelog.Source(request.Source),
+		Format:        request.Format,
+		APIKeyID:      lo.ToPtr(request.APIKeyID),
+	})
 }

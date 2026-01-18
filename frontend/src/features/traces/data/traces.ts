@@ -54,6 +54,14 @@ function buildTraceDetailQuery() {
           traceID
           createdAt
           updatedAt
+          usageMetadata {
+            totalInputTokens
+            totalOutputTokens
+            totalTokens
+            totalCost
+            totalCachedTokens
+            totalCachedWriteTokens
+          }
           project {
             id
             name
@@ -80,6 +88,14 @@ function buildTraceWithRequestTracesQuery() {
           traceID
           createdAt
           updatedAt
+          usageMetadata {
+            totalInputTokens
+            totalOutputTokens
+            totalTokens
+            totalCost
+            totalCachedTokens
+            totalCachedWriteTokens
+          }
           project {
             id
             name

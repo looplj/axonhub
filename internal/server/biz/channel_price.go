@@ -107,9 +107,7 @@ func (svc *ChannelService) SaveChannelModelPrices(
 	db := svc.entFromContext(ctx)
 
 	prices, err := db.ChannelModelPrice.Query().
-		Where(
-			channelmodelprice.ChannelID(channelID),
-		).
+		Where(channelmodelprice.ChannelID(channelID)).
 		All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query existing channel model prices: %w", err)
@@ -117,9 +115,10 @@ func (svc *ChannelService) SaveChannelModelPrices(
 
 	actions := calculatePriceChanges(prices, inputs)
 
-	var results []*ent.ChannelModelPrice
-
-	now := time.Now()
+	var (
+		results []*ent.ChannelModelPrice
+		now     = time.Now()
+	)
 
 	err = svc.RunInTransaction(ctx, func(ctx context.Context) error {
 		db := svc.entFromContext(ctx)
@@ -213,7 +212,10 @@ func (svc *ChannelService) SaveChannelModelPrices(
 			results = append(results, entity)
 		}
 
-		return nil
+		// Force update channel updated_at to trigger reload cache.¬
+		return db.Channel.UpdateOneID(channelID).
+			SetUpdatedAt(now).
+			Exec(ctx)
 	})
 	if err != nil {
 		return nil, err
