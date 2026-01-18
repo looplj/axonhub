@@ -244,23 +244,10 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 					Description: tool.Function.Description,
 				}
 
-				// Handle both parameter formats
-				// Priority: if ParametersJsonSchema is present, use it; otherwise use Parameters
-				cleanSchema := func(schema json.RawMessage) json.RawMessage {
-					cleaned, err := xjson.CleanSchema(schema, "$schema", "additionalProperties")
-					if err != nil {
-						return schema // ignore error and use original
-					}
-
-					return cleaned
-				}
-
 				if tool.Function.ParametersJsonSchema != nil {
-					// New format: supports full JSON Schema including const, enum, etc.
-					fd.ParametersJsonSchema = cleanSchema(tool.Function.ParametersJsonSchema)
+					fd.ParametersJsonSchema = tool.Function.ParametersJsonSchema
 				} else if tool.Function.Parameters != nil {
-					// Old format: limited JSON Schema support
-					fd.Parameters = cleanSchema(tool.Function.Parameters)
+					fd.ParametersJsonSchema = tool.Function.Parameters
 				}
 
 				functionDeclarations = append(functionDeclarations, fd)
@@ -302,6 +289,17 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 	}
 
 	return req
+}
+
+// Handle both parameter formats
+// Priority: if ParametersJsonSchema is present, use it; otherwise use Parameters.
+func cleanSchema(schema json.RawMessage) json.RawMessage {
+	cleaned, err := xjson.CleanSchema(schema, "$schema", "additionalProperties", "")
+	if err != nil {
+		return schema // ignore error and use original
+	}
+
+	return cleaned
 }
 
 // convertLLMMessageToGeminiContent converts an LLM Message to Gemini Content.
