@@ -16,8 +16,10 @@ import { ModelsOnboardingFlow } from './components/models-onboarding-flow';
 import { ModelsTable } from './components/models-table';
 import ModelsProvider, { useModels } from './context/models-context';
 import { useQueryModels } from './data/models';
+import { useDevelopersData } from './data/providers';
 
 function ModelsContent() {
+  useDevelopersData();
   const { t } = useTranslation();
   const { modelPermissions } = usePermissions();
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
