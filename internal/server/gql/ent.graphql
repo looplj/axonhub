@@ -4,7 +4,6 @@ type APIKey implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   """
   The creator of the API key
   """
@@ -166,17 +165,6 @@ input APIKeyWhereInput {
   updatedAtLT: Time
   updatedAtLTE: Time
   """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
-  """
   user_id field predicates
   """
   userID: ID
@@ -256,7 +244,6 @@ type Channel implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   type: ChannelType!
   baseURL: String
   name: String!
@@ -406,7 +393,6 @@ type ChannelModelPrice implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   channelID: ID!
   modelID: String!
   """
@@ -723,17 +709,6 @@ input ChannelModelPriceWhereInput {
   updatedAtLT: Time
   updatedAtLTE: Time
   """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
-  """
   channel_id field predicates
   """
   channelID: ID
@@ -811,7 +786,6 @@ type ChannelOverrideTemplate implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   """
   Owner of this template
   """
@@ -930,17 +904,6 @@ input ChannelOverrideTemplateWhereInput {
   updatedAtLT: Time
   updatedAtLTE: Time
   """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
-  """
   user_id field predicates
   """
   userID: ID
@@ -1023,7 +986,6 @@ type ChannelPerformance implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   channelID: ID!
   successRate: Int!
   avgLatencyMs: Int!
@@ -1139,17 +1101,6 @@ input ChannelPerformanceWhereInput {
   updatedAtGTE: Time
   updatedAtLT: Time
   updatedAtLTE: Time
-  """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
   """
   channel_id field predicates
   """
@@ -1531,17 +1482,6 @@ input ChannelWhereInput {
   updatedAtGTE: Time
   updatedAtLT: Time
   updatedAtLTE: Time
-  """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
   """
   type field predicates
   """
@@ -2055,7 +1995,6 @@ type DataStorage implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   """
   data source name
   """
@@ -2251,17 +2190,6 @@ input DataStorageWhereInput {
   updatedAtLT: Time
   updatedAtLTE: Time
   """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
-  """
   name field predicates
   """
   name: String
@@ -2327,7 +2255,6 @@ type Model implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   """
   developer of the model, eg. deeepseek
   """
@@ -2468,17 +2395,6 @@ input ModelWhereInput {
   updatedAtGTE: Time
   updatedAtLT: Time
   updatedAtLTE: Time
-  """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
   """
   developer field predicates
   """
@@ -2641,7 +2557,6 @@ type Project implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   """
   project name
   """
@@ -3003,17 +2918,6 @@ input ProjectWhereInput {
   updatedAtLT: Time
   updatedAtLTE: Time
   """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
-  """
   name field predicates
   """
   name: String
@@ -3102,7 +3006,6 @@ type Prompt implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   """
   Project ID that this prompt belongs to
   """
@@ -3258,17 +3161,6 @@ input PromptWhereInput {
   updatedAtGTE: Time
   updatedAtLT: Time
   updatedAtLTE: Time
-  """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
   """
   project_id field predicates
   """
@@ -4508,7 +4400,6 @@ type Role implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   name: String!
   """
   Role level: system or project
@@ -4655,17 +4546,6 @@ input RoleWhereInput {
   updatedAtLT: Time
   updatedAtLTE: Time
   """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
-  """
   name field predicates
   """
   name: String
@@ -4717,7 +4597,6 @@ type System implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   key: String!
   value: String!
 }
@@ -4812,17 +4691,6 @@ input SystemWhereInput {
   updatedAtGTE: Time
   updatedAtLT: Time
   updatedAtLTE: Time
-  """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
   """
   key field predicates
   """
@@ -6039,7 +5907,6 @@ type User implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   email: String!
   status: UserStatus!
   """
@@ -6441,17 +6308,6 @@ input UserWhereInput {
   updatedAtGTE: Time
   updatedAtLT: Time
   updatedAtLTE: Time
-  """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
   """
   email field predicates
   """
