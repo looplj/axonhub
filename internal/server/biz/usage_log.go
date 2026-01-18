@@ -55,11 +55,11 @@ func (s *UsageLogService) computeUsageCost(ctx context.Context, channelID int, m
 				log.String("model_id", modelID),
 				log.Float64("total_cost", totalCost),
 				log.Int64("total_tokens", usage.TotalTokens),
-				log.String("price_reference_id", modelPrice.RefreanceID),
+				log.String("price_reference_id", modelPrice.ReferenceID),
 			)
 		}
 
-		return items, lo.ToPtr(totalCost), modelPrice.RefreanceID
+		return items, lo.ToPtr(totalCost), modelPrice.ReferenceID
 	}
 
 	return nil, nil, ""

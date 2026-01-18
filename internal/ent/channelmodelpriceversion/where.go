@@ -65,11 +65,6 @@ func UpdatedAt(v time.Time) predicate.ChannelModelPriceVersion {
 	return predicate.ChannelModelPriceVersion(sql.FieldEQ(FieldUpdatedAt, v))
 }
 
-// DeletedAt applies equality check predicate on the "deleted_at" field. It's identical to DeletedAtEQ.
-func DeletedAt(v int) predicate.ChannelModelPriceVersion {
-	return predicate.ChannelModelPriceVersion(sql.FieldEQ(FieldDeletedAt, v))
-}
-
 // ChannelID applies equality check predicate on the "channel_id" field. It's identical to ChannelIDEQ.
 func ChannelID(v int) predicate.ChannelModelPriceVersion {
 	return predicate.ChannelModelPriceVersion(sql.FieldEQ(FieldChannelID, v))
@@ -95,9 +90,9 @@ func EffectiveEndAt(v time.Time) predicate.ChannelModelPriceVersion {
 	return predicate.ChannelModelPriceVersion(sql.FieldEQ(FieldEffectiveEndAt, v))
 }
 
-// RefreanceID applies equality check predicate on the "refreance_id" field. It's identical to RefreanceIDEQ.
-func RefreanceID(v string) predicate.ChannelModelPriceVersion {
-	return predicate.ChannelModelPriceVersion(sql.FieldEQ(FieldRefreanceID, v))
+// ReferenceID applies equality check predicate on the "reference_id" field. It's identical to ReferenceIDEQ.
+func ReferenceID(v string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldEQ(FieldReferenceID, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
@@ -178,46 +173,6 @@ func UpdatedAtLT(v time.Time) predicate.ChannelModelPriceVersion {
 // UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
 func UpdatedAtLTE(v time.Time) predicate.ChannelModelPriceVersion {
 	return predicate.ChannelModelPriceVersion(sql.FieldLTE(FieldUpdatedAt, v))
-}
-
-// DeletedAtEQ applies the EQ predicate on the "deleted_at" field.
-func DeletedAtEQ(v int) predicate.ChannelModelPriceVersion {
-	return predicate.ChannelModelPriceVersion(sql.FieldEQ(FieldDeletedAt, v))
-}
-
-// DeletedAtNEQ applies the NEQ predicate on the "deleted_at" field.
-func DeletedAtNEQ(v int) predicate.ChannelModelPriceVersion {
-	return predicate.ChannelModelPriceVersion(sql.FieldNEQ(FieldDeletedAt, v))
-}
-
-// DeletedAtIn applies the In predicate on the "deleted_at" field.
-func DeletedAtIn(vs ...int) predicate.ChannelModelPriceVersion {
-	return predicate.ChannelModelPriceVersion(sql.FieldIn(FieldDeletedAt, vs...))
-}
-
-// DeletedAtNotIn applies the NotIn predicate on the "deleted_at" field.
-func DeletedAtNotIn(vs ...int) predicate.ChannelModelPriceVersion {
-	return predicate.ChannelModelPriceVersion(sql.FieldNotIn(FieldDeletedAt, vs...))
-}
-
-// DeletedAtGT applies the GT predicate on the "deleted_at" field.
-func DeletedAtGT(v int) predicate.ChannelModelPriceVersion {
-	return predicate.ChannelModelPriceVersion(sql.FieldGT(FieldDeletedAt, v))
-}
-
-// DeletedAtGTE applies the GTE predicate on the "deleted_at" field.
-func DeletedAtGTE(v int) predicate.ChannelModelPriceVersion {
-	return predicate.ChannelModelPriceVersion(sql.FieldGTE(FieldDeletedAt, v))
-}
-
-// DeletedAtLT applies the LT predicate on the "deleted_at" field.
-func DeletedAtLT(v int) predicate.ChannelModelPriceVersion {
-	return predicate.ChannelModelPriceVersion(sql.FieldLT(FieldDeletedAt, v))
-}
-
-// DeletedAtLTE applies the LTE predicate on the "deleted_at" field.
-func DeletedAtLTE(v int) predicate.ChannelModelPriceVersion {
-	return predicate.ChannelModelPriceVersion(sql.FieldLTE(FieldDeletedAt, v))
 }
 
 // ChannelIDEQ applies the EQ predicate on the "channel_id" field.
@@ -455,69 +410,69 @@ func EffectiveEndAtNotNil() predicate.ChannelModelPriceVersion {
 	return predicate.ChannelModelPriceVersion(sql.FieldNotNull(FieldEffectiveEndAt))
 }
 
-// RefreanceIDEQ applies the EQ predicate on the "refreance_id" field.
-func RefreanceIDEQ(v string) predicate.ChannelModelPriceVersion {
-	return predicate.ChannelModelPriceVersion(sql.FieldEQ(FieldRefreanceID, v))
+// ReferenceIDEQ applies the EQ predicate on the "reference_id" field.
+func ReferenceIDEQ(v string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldEQ(FieldReferenceID, v))
 }
 
-// RefreanceIDNEQ applies the NEQ predicate on the "refreance_id" field.
-func RefreanceIDNEQ(v string) predicate.ChannelModelPriceVersion {
-	return predicate.ChannelModelPriceVersion(sql.FieldNEQ(FieldRefreanceID, v))
+// ReferenceIDNEQ applies the NEQ predicate on the "reference_id" field.
+func ReferenceIDNEQ(v string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldNEQ(FieldReferenceID, v))
 }
 
-// RefreanceIDIn applies the In predicate on the "refreance_id" field.
-func RefreanceIDIn(vs ...string) predicate.ChannelModelPriceVersion {
-	return predicate.ChannelModelPriceVersion(sql.FieldIn(FieldRefreanceID, vs...))
+// ReferenceIDIn applies the In predicate on the "reference_id" field.
+func ReferenceIDIn(vs ...string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldIn(FieldReferenceID, vs...))
 }
 
-// RefreanceIDNotIn applies the NotIn predicate on the "refreance_id" field.
-func RefreanceIDNotIn(vs ...string) predicate.ChannelModelPriceVersion {
-	return predicate.ChannelModelPriceVersion(sql.FieldNotIn(FieldRefreanceID, vs...))
+// ReferenceIDNotIn applies the NotIn predicate on the "reference_id" field.
+func ReferenceIDNotIn(vs ...string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldNotIn(FieldReferenceID, vs...))
 }
 
-// RefreanceIDGT applies the GT predicate on the "refreance_id" field.
-func RefreanceIDGT(v string) predicate.ChannelModelPriceVersion {
-	return predicate.ChannelModelPriceVersion(sql.FieldGT(FieldRefreanceID, v))
+// ReferenceIDGT applies the GT predicate on the "reference_id" field.
+func ReferenceIDGT(v string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldGT(FieldReferenceID, v))
 }
 
-// RefreanceIDGTE applies the GTE predicate on the "refreance_id" field.
-func RefreanceIDGTE(v string) predicate.ChannelModelPriceVersion {
-	return predicate.ChannelModelPriceVersion(sql.FieldGTE(FieldRefreanceID, v))
+// ReferenceIDGTE applies the GTE predicate on the "reference_id" field.
+func ReferenceIDGTE(v string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldGTE(FieldReferenceID, v))
 }
 
-// RefreanceIDLT applies the LT predicate on the "refreance_id" field.
-func RefreanceIDLT(v string) predicate.ChannelModelPriceVersion {
-	return predicate.ChannelModelPriceVersion(sql.FieldLT(FieldRefreanceID, v))
+// ReferenceIDLT applies the LT predicate on the "reference_id" field.
+func ReferenceIDLT(v string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldLT(FieldReferenceID, v))
 }
 
-// RefreanceIDLTE applies the LTE predicate on the "refreance_id" field.
-func RefreanceIDLTE(v string) predicate.ChannelModelPriceVersion {
-	return predicate.ChannelModelPriceVersion(sql.FieldLTE(FieldRefreanceID, v))
+// ReferenceIDLTE applies the LTE predicate on the "reference_id" field.
+func ReferenceIDLTE(v string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldLTE(FieldReferenceID, v))
 }
 
-// RefreanceIDContains applies the Contains predicate on the "refreance_id" field.
-func RefreanceIDContains(v string) predicate.ChannelModelPriceVersion {
-	return predicate.ChannelModelPriceVersion(sql.FieldContains(FieldRefreanceID, v))
+// ReferenceIDContains applies the Contains predicate on the "reference_id" field.
+func ReferenceIDContains(v string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldContains(FieldReferenceID, v))
 }
 
-// RefreanceIDHasPrefix applies the HasPrefix predicate on the "refreance_id" field.
-func RefreanceIDHasPrefix(v string) predicate.ChannelModelPriceVersion {
-	return predicate.ChannelModelPriceVersion(sql.FieldHasPrefix(FieldRefreanceID, v))
+// ReferenceIDHasPrefix applies the HasPrefix predicate on the "reference_id" field.
+func ReferenceIDHasPrefix(v string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldHasPrefix(FieldReferenceID, v))
 }
 
-// RefreanceIDHasSuffix applies the HasSuffix predicate on the "refreance_id" field.
-func RefreanceIDHasSuffix(v string) predicate.ChannelModelPriceVersion {
-	return predicate.ChannelModelPriceVersion(sql.FieldHasSuffix(FieldRefreanceID, v))
+// ReferenceIDHasSuffix applies the HasSuffix predicate on the "reference_id" field.
+func ReferenceIDHasSuffix(v string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldHasSuffix(FieldReferenceID, v))
 }
 
-// RefreanceIDEqualFold applies the EqualFold predicate on the "refreance_id" field.
-func RefreanceIDEqualFold(v string) predicate.ChannelModelPriceVersion {
-	return predicate.ChannelModelPriceVersion(sql.FieldEqualFold(FieldRefreanceID, v))
+// ReferenceIDEqualFold applies the EqualFold predicate on the "reference_id" field.
+func ReferenceIDEqualFold(v string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldEqualFold(FieldReferenceID, v))
 }
 
-// RefreanceIDContainsFold applies the ContainsFold predicate on the "refreance_id" field.
-func RefreanceIDContainsFold(v string) predicate.ChannelModelPriceVersion {
-	return predicate.ChannelModelPriceVersion(sql.FieldContainsFold(FieldRefreanceID, v))
+// ReferenceIDContainsFold applies the ContainsFold predicate on the "reference_id" field.
+func ReferenceIDContainsFold(v string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldContainsFold(FieldReferenceID, v))
 }
 
 // HasChannelModelPrice applies the HasEdge predicate on the "channel_model_price" edge.

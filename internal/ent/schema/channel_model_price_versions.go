@@ -7,7 +7,6 @@ import (
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 
-	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/scopes"
 )
@@ -19,7 +18,6 @@ type ChannelModelPriceVersion struct {
 func (ChannelModelPriceVersion) Mixin() []ent.Mixin {
 	return []ent.Mixin{
 		TimeMixin{},
-		schematype.SoftDeleteMixin{},
 	}
 }
 
@@ -41,7 +39,7 @@ func (ChannelModelPriceVersion) Fields() []ent.Field {
 			Comment("The effective end time of the model price, null means it is effective until the next version.").
 			Optional().
 			Nillable(),
-		field.String("refreance_id").
+		field.String("reference_id").
 			Comment("The bill should reference this id.").
 			Unique().
 			Immutable(),

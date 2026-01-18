@@ -52,20 +52,6 @@ func (_c *ChannelModelPriceVersionCreate) SetNillableUpdatedAt(v *time.Time) *Ch
 	return _c
 }
 
-// SetDeletedAt sets the "deleted_at" field.
-func (_c *ChannelModelPriceVersionCreate) SetDeletedAt(v int) *ChannelModelPriceVersionCreate {
-	_c.mutation.SetDeletedAt(v)
-	return _c
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (_c *ChannelModelPriceVersionCreate) SetNillableDeletedAt(v *int) *ChannelModelPriceVersionCreate {
-	if v != nil {
-		_c.SetDeletedAt(*v)
-	}
-	return _c
-}
-
 // SetChannelID sets the "channel_id" field.
 func (_c *ChannelModelPriceVersionCreate) SetChannelID(v int) *ChannelModelPriceVersionCreate {
 	_c.mutation.SetChannelID(v)
@@ -116,9 +102,9 @@ func (_c *ChannelModelPriceVersionCreate) SetNillableEffectiveEndAt(v *time.Time
 	return _c
 }
 
-// SetRefreanceID sets the "refreance_id" field.
-func (_c *ChannelModelPriceVersionCreate) SetRefreanceID(v string) *ChannelModelPriceVersionCreate {
-	_c.mutation.SetRefreanceID(v)
+// SetReferenceID sets the "reference_id" field.
+func (_c *ChannelModelPriceVersionCreate) SetReferenceID(v string) *ChannelModelPriceVersionCreate {
+	_c.mutation.SetReferenceID(v)
 	return _c
 }
 
@@ -178,10 +164,6 @@ func (_c *ChannelModelPriceVersionCreate) defaults() error {
 		v := channelmodelpriceversion.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
 	}
-	if _, ok := _c.mutation.DeletedAt(); !ok {
-		v := channelmodelpriceversion.DefaultDeletedAt
-		_c.mutation.SetDeletedAt(v)
-	}
 	return nil
 }
 
@@ -192,9 +174,6 @@ func (_c *ChannelModelPriceVersionCreate) check() error {
 	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "ChannelModelPriceVersion.updated_at"`)}
-	}
-	if _, ok := _c.mutation.DeletedAt(); !ok {
-		return &ValidationError{Name: "deleted_at", err: errors.New(`ent: missing required field "ChannelModelPriceVersion.deleted_at"`)}
 	}
 	if _, ok := _c.mutation.ChannelID(); !ok {
 		return &ValidationError{Name: "channel_id", err: errors.New(`ent: missing required field "ChannelModelPriceVersion.channel_id"`)}
@@ -224,8 +203,8 @@ func (_c *ChannelModelPriceVersionCreate) check() error {
 	if _, ok := _c.mutation.EffectiveStartAt(); !ok {
 		return &ValidationError{Name: "effective_start_at", err: errors.New(`ent: missing required field "ChannelModelPriceVersion.effective_start_at"`)}
 	}
-	if _, ok := _c.mutation.RefreanceID(); !ok {
-		return &ValidationError{Name: "refreance_id", err: errors.New(`ent: missing required field "ChannelModelPriceVersion.refreance_id"`)}
+	if _, ok := _c.mutation.ReferenceID(); !ok {
+		return &ValidationError{Name: "reference_id", err: errors.New(`ent: missing required field "ChannelModelPriceVersion.reference_id"`)}
 	}
 	if len(_c.mutation.ChannelModelPriceIDs()) == 0 {
 		return &ValidationError{Name: "channel_model_price", err: errors.New(`ent: missing required edge "ChannelModelPriceVersion.channel_model_price"`)}
@@ -265,10 +244,6 @@ func (_c *ChannelModelPriceVersionCreate) createSpec() (*ChannelModelPriceVersio
 		_spec.SetField(channelmodelpriceversion.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
 	}
-	if value, ok := _c.mutation.DeletedAt(); ok {
-		_spec.SetField(channelmodelpriceversion.FieldDeletedAt, field.TypeInt, value)
-		_node.DeletedAt = value
-	}
 	if value, ok := _c.mutation.ChannelID(); ok {
 		_spec.SetField(channelmodelpriceversion.FieldChannelID, field.TypeInt, value)
 		_node.ChannelID = value
@@ -293,9 +268,9 @@ func (_c *ChannelModelPriceVersionCreate) createSpec() (*ChannelModelPriceVersio
 		_spec.SetField(channelmodelpriceversion.FieldEffectiveEndAt, field.TypeTime, value)
 		_node.EffectiveEndAt = &value
 	}
-	if value, ok := _c.mutation.RefreanceID(); ok {
-		_spec.SetField(channelmodelpriceversion.FieldRefreanceID, field.TypeString, value)
-		_node.RefreanceID = value
+	if value, ok := _c.mutation.ReferenceID(); ok {
+		_spec.SetField(channelmodelpriceversion.FieldReferenceID, field.TypeString, value)
+		_node.ReferenceID = value
 	}
 	if nodes := _c.mutation.ChannelModelPriceIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -378,24 +353,6 @@ func (u *ChannelModelPriceVersionUpsert) UpdateUpdatedAt() *ChannelModelPriceVer
 	return u
 }
 
-// SetDeletedAt sets the "deleted_at" field.
-func (u *ChannelModelPriceVersionUpsert) SetDeletedAt(v int) *ChannelModelPriceVersionUpsert {
-	u.Set(channelmodelpriceversion.FieldDeletedAt, v)
-	return u
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *ChannelModelPriceVersionUpsert) UpdateDeletedAt() *ChannelModelPriceVersionUpsert {
-	u.SetExcluded(channelmodelpriceversion.FieldDeletedAt)
-	return u
-}
-
-// AddDeletedAt adds v to the "deleted_at" field.
-func (u *ChannelModelPriceVersionUpsert) AddDeletedAt(v int) *ChannelModelPriceVersionUpsert {
-	u.Add(channelmodelpriceversion.FieldDeletedAt, v)
-	return u
-}
-
 // SetStatus sets the "status" field.
 func (u *ChannelModelPriceVersionUpsert) SetStatus(v channelmodelpriceversion.Status) *ChannelModelPriceVersionUpsert {
 	u.Set(channelmodelpriceversion.FieldStatus, v)
@@ -455,8 +412,8 @@ func (u *ChannelModelPriceVersionUpsertOne) UpdateNewValues() *ChannelModelPrice
 		if _, exists := u.create.mutation.EffectiveStartAt(); exists {
 			s.SetIgnore(channelmodelpriceversion.FieldEffectiveStartAt)
 		}
-		if _, exists := u.create.mutation.RefreanceID(); exists {
-			s.SetIgnore(channelmodelpriceversion.FieldRefreanceID)
+		if _, exists := u.create.mutation.ReferenceID(); exists {
+			s.SetIgnore(channelmodelpriceversion.FieldReferenceID)
 		}
 	}))
 	return u
@@ -500,27 +457,6 @@ func (u *ChannelModelPriceVersionUpsertOne) SetUpdatedAt(v time.Time) *ChannelMo
 func (u *ChannelModelPriceVersionUpsertOne) UpdateUpdatedAt() *ChannelModelPriceVersionUpsertOne {
 	return u.Update(func(s *ChannelModelPriceVersionUpsert) {
 		s.UpdateUpdatedAt()
-	})
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (u *ChannelModelPriceVersionUpsertOne) SetDeletedAt(v int) *ChannelModelPriceVersionUpsertOne {
-	return u.Update(func(s *ChannelModelPriceVersionUpsert) {
-		s.SetDeletedAt(v)
-	})
-}
-
-// AddDeletedAt adds v to the "deleted_at" field.
-func (u *ChannelModelPriceVersionUpsertOne) AddDeletedAt(v int) *ChannelModelPriceVersionUpsertOne {
-	return u.Update(func(s *ChannelModelPriceVersionUpsert) {
-		s.AddDeletedAt(v)
-	})
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *ChannelModelPriceVersionUpsertOne) UpdateDeletedAt() *ChannelModelPriceVersionUpsertOne {
-	return u.Update(func(s *ChannelModelPriceVersionUpsert) {
-		s.UpdateDeletedAt()
 	})
 }
 
@@ -753,8 +689,8 @@ func (u *ChannelModelPriceVersionUpsertBulk) UpdateNewValues() *ChannelModelPric
 			if _, exists := b.mutation.EffectiveStartAt(); exists {
 				s.SetIgnore(channelmodelpriceversion.FieldEffectiveStartAt)
 			}
-			if _, exists := b.mutation.RefreanceID(); exists {
-				s.SetIgnore(channelmodelpriceversion.FieldRefreanceID)
+			if _, exists := b.mutation.ReferenceID(); exists {
+				s.SetIgnore(channelmodelpriceversion.FieldReferenceID)
 			}
 		}
 	}))
@@ -799,27 +735,6 @@ func (u *ChannelModelPriceVersionUpsertBulk) SetUpdatedAt(v time.Time) *ChannelM
 func (u *ChannelModelPriceVersionUpsertBulk) UpdateUpdatedAt() *ChannelModelPriceVersionUpsertBulk {
 	return u.Update(func(s *ChannelModelPriceVersionUpsert) {
 		s.UpdateUpdatedAt()
-	})
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (u *ChannelModelPriceVersionUpsertBulk) SetDeletedAt(v int) *ChannelModelPriceVersionUpsertBulk {
-	return u.Update(func(s *ChannelModelPriceVersionUpsert) {
-		s.SetDeletedAt(v)
-	})
-}
-
-// AddDeletedAt adds v to the "deleted_at" field.
-func (u *ChannelModelPriceVersionUpsertBulk) AddDeletedAt(v int) *ChannelModelPriceVersionUpsertBulk {
-	return u.Update(func(s *ChannelModelPriceVersionUpsert) {
-		s.AddDeletedAt(v)
-	})
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *ChannelModelPriceVersionUpsertBulk) UpdateDeletedAt() *ChannelModelPriceVersionUpsertBulk {
-	return u.Update(func(s *ChannelModelPriceVersionUpsert) {
-		s.UpdateDeletedAt()
 	})
 }
 

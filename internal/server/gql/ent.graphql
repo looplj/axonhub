@@ -416,7 +416,7 @@ type ChannelModelPrice implements Node {
   """
   The bill should reference this id.
   """
-  refreanceID: String!
+  referenceID: String!
   channel: Channel!
   versions: [ChannelModelPriceVersion!]
 }
@@ -474,7 +474,6 @@ type ChannelModelPriceVersion implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   channelID: Int!
   modelID: String!
   channelModelPriceID: ID!
@@ -494,7 +493,7 @@ type ChannelModelPriceVersion implements Node {
   """
   The bill should reference this id.
   """
-  refreanceID: String!
+  referenceID: String!
   channelModelPrice: ChannelModelPrice!
 }
 """
@@ -596,17 +595,6 @@ input ChannelModelPriceVersionWhereInput {
   updatedAtLT: Time
   updatedAtLTE: Time
   """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
-  """
   channel_id field predicates
   """
   channelID: Int
@@ -672,21 +660,21 @@ input ChannelModelPriceVersionWhereInput {
   effectiveEndAtIsNil: Boolean
   effectiveEndAtNotNil: Boolean
   """
-  refreance_id field predicates
+  reference_id field predicates
   """
-  refreanceID: String
-  refreanceIDNEQ: String
-  refreanceIDIn: [String!]
-  refreanceIDNotIn: [String!]
-  refreanceIDGT: String
-  refreanceIDGTE: String
-  refreanceIDLT: String
-  refreanceIDLTE: String
-  refreanceIDContains: String
-  refreanceIDHasPrefix: String
-  refreanceIDHasSuffix: String
-  refreanceIDEqualFold: String
-  refreanceIDContainsFold: String
+  referenceID: String
+  referenceIDNEQ: String
+  referenceIDIn: [String!]
+  referenceIDNotIn: [String!]
+  referenceIDGT: String
+  referenceIDGTE: String
+  referenceIDLT: String
+  referenceIDLTE: String
+  referenceIDContains: String
+  referenceIDHasPrefix: String
+  referenceIDHasSuffix: String
+  referenceIDEqualFold: String
+  referenceIDContainsFold: String
   """
   channel_model_price edge predicates
   """
@@ -769,21 +757,21 @@ input ChannelModelPriceWhereInput {
   modelIDEqualFold: String
   modelIDContainsFold: String
   """
-  refreance_id field predicates
+  reference_id field predicates
   """
-  refreanceID: String
-  refreanceIDNEQ: String
-  refreanceIDIn: [String!]
-  refreanceIDNotIn: [String!]
-  refreanceIDGT: String
-  refreanceIDGTE: String
-  refreanceIDLT: String
-  refreanceIDLTE: String
-  refreanceIDContains: String
-  refreanceIDHasPrefix: String
-  refreanceIDHasSuffix: String
-  refreanceIDEqualFold: String
-  refreanceIDContainsFold: String
+  referenceID: String
+  referenceIDNEQ: String
+  referenceIDIn: [String!]
+  referenceIDNotIn: [String!]
+  referenceIDGT: String
+  referenceIDGTE: String
+  referenceIDLT: String
+  referenceIDLTE: String
+  referenceIDContains: String
+  referenceIDHasPrefix: String
+  referenceIDHasSuffix: String
+  referenceIDEqualFold: String
+  referenceIDContainsFold: String
   """
   channel edge predicates
   """

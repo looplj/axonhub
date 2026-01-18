@@ -37,7 +37,7 @@ func (ChannelModelPrice) Fields() []ent.Field {
 		field.Int("channel_id").Immutable(),
 		field.String("model_id").Immutable(),
 		field.JSON("price", objects.ModelPrice{}).Comment("The model price, if changed, it will genearte a new reference id."),
-		field.String("refreance_id").Comment("The bill should reference this id.").Unique(),
+		field.String("reference_id").Comment("The bill should reference this id.").Unique(),
 	}
 }
 

@@ -264,7 +264,7 @@ type ComplexityRoot struct {
 		ID          func(childComplexity int) int
 		ModelID     func(childComplexity int) int
 		Price       func(childComplexity int) int
-		RefreanceID func(childComplexity int) int
+		ReferenceID func(childComplexity int) int
 		UpdatedAt   func(childComplexity int) int
 		Versions    func(childComplexity int) int
 	}
@@ -285,13 +285,12 @@ type ComplexityRoot struct {
 		ChannelModelPrice   func(childComplexity int) int
 		ChannelModelPriceID func(childComplexity int) int
 		CreatedAt           func(childComplexity int) int
-		DeletedAt           func(childComplexity int) int
 		EffectiveEndAt      func(childComplexity int) int
 		EffectiveStartAt    func(childComplexity int) int
 		ID                  func(childComplexity int) int
 		ModelID             func(childComplexity int) int
 		Price               func(childComplexity int) int
-		RefreanceID         func(childComplexity int) int
+		ReferenceID         func(childComplexity int) int
 		Status              func(childComplexity int) int
 		UpdatedAt           func(childComplexity int) int
 	}
@@ -2372,12 +2371,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelModelPrice.Price(childComplexity), true
-	case "ChannelModelPrice.refreanceID":
-		if e.complexity.ChannelModelPrice.RefreanceID == nil {
+	case "ChannelModelPrice.referenceID":
+		if e.complexity.ChannelModelPrice.ReferenceID == nil {
 			break
 		}
 
-		return e.complexity.ChannelModelPrice.RefreanceID(childComplexity), true
+		return e.complexity.ChannelModelPrice.ReferenceID(childComplexity), true
 	case "ChannelModelPrice.updatedAt":
 		if e.complexity.ChannelModelPrice.UpdatedAt == nil {
 			break
@@ -2447,12 +2446,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelModelPriceVersion.CreatedAt(childComplexity), true
-	case "ChannelModelPriceVersion.deletedAt":
-		if e.complexity.ChannelModelPriceVersion.DeletedAt == nil {
-			break
-		}
-
-		return e.complexity.ChannelModelPriceVersion.DeletedAt(childComplexity), true
 	case "ChannelModelPriceVersion.effectiveEndAt":
 		if e.complexity.ChannelModelPriceVersion.EffectiveEndAt == nil {
 			break
@@ -2483,12 +2476,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelModelPriceVersion.Price(childComplexity), true
-	case "ChannelModelPriceVersion.refreanceID":
-		if e.complexity.ChannelModelPriceVersion.RefreanceID == nil {
+	case "ChannelModelPriceVersion.referenceID":
+		if e.complexity.ChannelModelPriceVersion.ReferenceID == nil {
 			break
 		}
 
-		return e.complexity.ChannelModelPriceVersion.RefreanceID(childComplexity), true
+		return e.complexity.ChannelModelPriceVersion.ReferenceID(childComplexity), true
 	case "ChannelModelPriceVersion.status":
 		if e.complexity.ChannelModelPriceVersion.Status == nil {
 			break
@@ -13042,8 +13035,8 @@ func (ec *executionContext) fieldContext_Channel_channelModelPrices(_ context.Co
 				return ec.fieldContext_ChannelModelPrice_modelID(ctx, field)
 			case "price":
 				return ec.fieldContext_ChannelModelPrice_price(ctx, field)
-			case "refreanceID":
-				return ec.fieldContext_ChannelModelPrice_refreanceID(ctx, field)
+			case "referenceID":
+				return ec.fieldContext_ChannelModelPrice_referenceID(ctx, field)
 			case "channel":
 				return ec.fieldContext_ChannelModelPrice_channel(ctx, field)
 			case "versions":
@@ -13795,14 +13788,14 @@ func (ec *executionContext) fieldContext_ChannelModelPrice_price(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _ChannelModelPrice_refreanceID(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPrice) (ret graphql.Marshaler) {
+func (ec *executionContext) _ChannelModelPrice_referenceID(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPrice) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_ChannelModelPrice_refreanceID,
+		ec.fieldContext_ChannelModelPrice_referenceID,
 		func(ctx context.Context) (any, error) {
-			return obj.RefreanceID, nil
+			return obj.ReferenceID, nil
 		},
 		nil,
 		ec.marshalNString2string,
@@ -13811,7 +13804,7 @@ func (ec *executionContext) _ChannelModelPrice_refreanceID(ctx context.Context, 
 	)
 }
 
-func (ec *executionContext) fieldContext_ChannelModelPrice_refreanceID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ChannelModelPrice_referenceID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ChannelModelPrice",
 		Field:      field,
@@ -13933,8 +13926,6 @@ func (ec *executionContext) fieldContext_ChannelModelPrice_versions(_ context.Co
 				return ec.fieldContext_ChannelModelPriceVersion_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_ChannelModelPriceVersion_updatedAt(ctx, field)
-			case "deletedAt":
-				return ec.fieldContext_ChannelModelPriceVersion_deletedAt(ctx, field)
 			case "channelID":
 				return ec.fieldContext_ChannelModelPriceVersion_channelID(ctx, field)
 			case "modelID":
@@ -13949,8 +13940,8 @@ func (ec *executionContext) fieldContext_ChannelModelPrice_versions(_ context.Co
 				return ec.fieldContext_ChannelModelPriceVersion_effectiveStartAt(ctx, field)
 			case "effectiveEndAt":
 				return ec.fieldContext_ChannelModelPriceVersion_effectiveEndAt(ctx, field)
-			case "refreanceID":
-				return ec.fieldContext_ChannelModelPriceVersion_refreanceID(ctx, field)
+			case "referenceID":
+				return ec.fieldContext_ChannelModelPriceVersion_referenceID(ctx, field)
 			case "channelModelPrice":
 				return ec.fieldContext_ChannelModelPriceVersion_channelModelPrice(ctx, field)
 			}
@@ -14101,8 +14092,8 @@ func (ec *executionContext) fieldContext_ChannelModelPriceEdge_node(_ context.Co
 				return ec.fieldContext_ChannelModelPrice_modelID(ctx, field)
 			case "price":
 				return ec.fieldContext_ChannelModelPrice_price(ctx, field)
-			case "refreanceID":
-				return ec.fieldContext_ChannelModelPrice_refreanceID(ctx, field)
+			case "referenceID":
+				return ec.fieldContext_ChannelModelPrice_referenceID(ctx, field)
 			case "channel":
 				return ec.fieldContext_ChannelModelPrice_channel(ctx, field)
 			case "versions":
@@ -14225,35 +14216,6 @@ func (ec *executionContext) fieldContext_ChannelModelPriceVersion_updatedAt(_ co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelModelPriceVersion_deletedAt(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceVersion) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ChannelModelPriceVersion_deletedAt,
-		func(ctx context.Context) (any, error) {
-			return obj.DeletedAt, nil
-		},
-		nil,
-		ec.marshalNInt2int,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_ChannelModelPriceVersion_deletedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ChannelModelPriceVersion",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -14466,14 +14428,14 @@ func (ec *executionContext) fieldContext_ChannelModelPriceVersion_effectiveEndAt
 	return fc, nil
 }
 
-func (ec *executionContext) _ChannelModelPriceVersion_refreanceID(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceVersion) (ret graphql.Marshaler) {
+func (ec *executionContext) _ChannelModelPriceVersion_referenceID(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceVersion) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_ChannelModelPriceVersion_refreanceID,
+		ec.fieldContext_ChannelModelPriceVersion_referenceID,
 		func(ctx context.Context) (any, error) {
-			return obj.RefreanceID, nil
+			return obj.ReferenceID, nil
 		},
 		nil,
 		ec.marshalNString2string,
@@ -14482,7 +14444,7 @@ func (ec *executionContext) _ChannelModelPriceVersion_refreanceID(ctx context.Co
 	)
 }
 
-func (ec *executionContext) fieldContext_ChannelModelPriceVersion_refreanceID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ChannelModelPriceVersion_referenceID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ChannelModelPriceVersion",
 		Field:      field,
@@ -14533,8 +14495,8 @@ func (ec *executionContext) fieldContext_ChannelModelPriceVersion_channelModelPr
 				return ec.fieldContext_ChannelModelPrice_modelID(ctx, field)
 			case "price":
 				return ec.fieldContext_ChannelModelPrice_price(ctx, field)
-			case "refreanceID":
-				return ec.fieldContext_ChannelModelPrice_refreanceID(ctx, field)
+			case "referenceID":
+				return ec.fieldContext_ChannelModelPrice_referenceID(ctx, field)
 			case "channel":
 				return ec.fieldContext_ChannelModelPrice_channel(ctx, field)
 			case "versions":
@@ -14679,8 +14641,6 @@ func (ec *executionContext) fieldContext_ChannelModelPriceVersionEdge_node(_ con
 				return ec.fieldContext_ChannelModelPriceVersion_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_ChannelModelPriceVersion_updatedAt(ctx, field)
-			case "deletedAt":
-				return ec.fieldContext_ChannelModelPriceVersion_deletedAt(ctx, field)
 			case "channelID":
 				return ec.fieldContext_ChannelModelPriceVersion_channelID(ctx, field)
 			case "modelID":
@@ -14695,8 +14655,8 @@ func (ec *executionContext) fieldContext_ChannelModelPriceVersionEdge_node(_ con
 				return ec.fieldContext_ChannelModelPriceVersion_effectiveStartAt(ctx, field)
 			case "effectiveEndAt":
 				return ec.fieldContext_ChannelModelPriceVersion_effectiveEndAt(ctx, field)
-			case "refreanceID":
-				return ec.fieldContext_ChannelModelPriceVersion_refreanceID(ctx, field)
+			case "referenceID":
+				return ec.fieldContext_ChannelModelPriceVersion_referenceID(ctx, field)
 			case "channelModelPrice":
 				return ec.fieldContext_ChannelModelPriceVersion_channelModelPrice(ctx, field)
 			}
@@ -24650,8 +24610,8 @@ func (ec *executionContext) fieldContext_Mutation_saveChannelModelPrices(ctx con
 				return ec.fieldContext_ChannelModelPrice_modelID(ctx, field)
 			case "price":
 				return ec.fieldContext_ChannelModelPrice_price(ctx, field)
-			case "refreanceID":
-				return ec.fieldContext_ChannelModelPrice_refreanceID(ctx, field)
+			case "referenceID":
+				return ec.fieldContext_ChannelModelPrice_referenceID(ctx, field)
 			case "channel":
 				return ec.fieldContext_ChannelModelPrice_channel(ctx, field)
 			case "versions":
@@ -43148,7 +43108,11 @@ func (ec *executionContext) unmarshalInputBackupOptionsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"includeChannels", "includeModels", "includeAPIKeys"}
+	if _, present := asMap["includeModelPrices"]; !present {
+		asMap["includeModelPrices"] = true
+	}
+
+	fieldsInOrder := [...]string{"includeChannels", "includeModelPrices", "includeModels", "includeAPIKeys"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -43162,6 +43126,13 @@ func (ec *executionContext) unmarshalInputBackupOptionsInput(ctx context.Context
 				return it, err
 			}
 			it.IncludeChannels = data
+		case "includeModelPrices":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeModelPrices"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IncludeModelPrices = data
 		case "includeModels":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeModels"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)
@@ -43532,7 +43503,7 @@ func (ec *executionContext) unmarshalInputChannelModelPriceVersionWhereInput(ctx
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDGT", "channelIDGTE", "channelIDLT", "channelIDLTE", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "channelModelPriceID", "channelModelPriceIDNEQ", "channelModelPriceIDIn", "channelModelPriceIDNotIn", "status", "statusNEQ", "statusIn", "statusNotIn", "effectiveStartAt", "effectiveStartAtNEQ", "effectiveStartAtIn", "effectiveStartAtNotIn", "effectiveStartAtGT", "effectiveStartAtGTE", "effectiveStartAtLT", "effectiveStartAtLTE", "effectiveEndAt", "effectiveEndAtNEQ", "effectiveEndAtIn", "effectiveEndAtNotIn", "effectiveEndAtGT", "effectiveEndAtGTE", "effectiveEndAtLT", "effectiveEndAtLTE", "effectiveEndAtIsNil", "effectiveEndAtNotNil", "refreanceID", "refreanceIDNEQ", "refreanceIDIn", "refreanceIDNotIn", "refreanceIDGT", "refreanceIDGTE", "refreanceIDLT", "refreanceIDLTE", "refreanceIDContains", "refreanceIDHasPrefix", "refreanceIDHasSuffix", "refreanceIDEqualFold", "refreanceIDContainsFold", "hasChannelModelPrice", "hasChannelModelPriceWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDGT", "channelIDGTE", "channelIDLT", "channelIDLTE", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "channelModelPriceID", "channelModelPriceIDNEQ", "channelModelPriceIDIn", "channelModelPriceIDNotIn", "status", "statusNEQ", "statusIn", "statusNotIn", "effectiveStartAt", "effectiveStartAtNEQ", "effectiveStartAtIn", "effectiveStartAtNotIn", "effectiveStartAtGT", "effectiveStartAtGTE", "effectiveStartAtLT", "effectiveStartAtLTE", "effectiveEndAt", "effectiveEndAtNEQ", "effectiveEndAtIn", "effectiveEndAtNotIn", "effectiveEndAtGT", "effectiveEndAtGTE", "effectiveEndAtLT", "effectiveEndAtLTE", "effectiveEndAtIsNil", "effectiveEndAtNotNil", "referenceID", "referenceIDNEQ", "referenceIDIn", "referenceIDNotIn", "referenceIDGT", "referenceIDGTE", "referenceIDLT", "referenceIDLTE", "referenceIDContains", "referenceIDHasPrefix", "referenceIDHasSuffix", "referenceIDEqualFold", "referenceIDContainsFold", "hasChannelModelPrice", "hasChannelModelPriceWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -43760,62 +43731,6 @@ func (ec *executionContext) unmarshalInputChannelModelPriceVersionWhereInput(ctx
 				return it, err
 			}
 			it.UpdatedAtLTE = data
-		case "deletedAt":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAt"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAt = data
-		case "deletedAtNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtNEQ"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtNEQ = data
-		case "deletedAtIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtIn = data
-		case "deletedAtNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtNotIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtNotIn = data
-		case "deletedAtGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtGT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtGT = data
-		case "deletedAtGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtGTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtGTE = data
-		case "deletedAtLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtLT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtLT = data
-		case "deletedAtLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtLTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtLTE = data
 		case "channelID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelID"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
@@ -44161,97 +44076,97 @@ func (ec *executionContext) unmarshalInputChannelModelPriceVersionWhereInput(ctx
 				return it, err
 			}
 			it.EffectiveEndAtNotNil = data
-		case "refreanceID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceID"))
+		case "referenceID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("referenceID"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RefreanceID = data
-		case "refreanceIDNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDNEQ"))
+			it.ReferenceID = data
+		case "referenceIDNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("referenceIDNEQ"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RefreanceIDNEQ = data
-		case "refreanceIDIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDIn"))
+			it.ReferenceIDNEQ = data
+		case "referenceIDIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("referenceIDIn"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RefreanceIDIn = data
-		case "refreanceIDNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDNotIn"))
+			it.ReferenceIDIn = data
+		case "referenceIDNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("referenceIDNotIn"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RefreanceIDNotIn = data
-		case "refreanceIDGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDGT"))
+			it.ReferenceIDNotIn = data
+		case "referenceIDGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("referenceIDGT"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RefreanceIDGT = data
-		case "refreanceIDGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDGTE"))
+			it.ReferenceIDGT = data
+		case "referenceIDGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("referenceIDGTE"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RefreanceIDGTE = data
-		case "refreanceIDLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDLT"))
+			it.ReferenceIDGTE = data
+		case "referenceIDLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("referenceIDLT"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RefreanceIDLT = data
-		case "refreanceIDLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDLTE"))
+			it.ReferenceIDLT = data
+		case "referenceIDLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("referenceIDLTE"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RefreanceIDLTE = data
-		case "refreanceIDContains":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDContains"))
+			it.ReferenceIDLTE = data
+		case "referenceIDContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("referenceIDContains"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RefreanceIDContains = data
-		case "refreanceIDHasPrefix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDHasPrefix"))
+			it.ReferenceIDContains = data
+		case "referenceIDHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("referenceIDHasPrefix"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RefreanceIDHasPrefix = data
-		case "refreanceIDHasSuffix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDHasSuffix"))
+			it.ReferenceIDHasPrefix = data
+		case "referenceIDHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("referenceIDHasSuffix"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RefreanceIDHasSuffix = data
-		case "refreanceIDEqualFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDEqualFold"))
+			it.ReferenceIDHasSuffix = data
+		case "referenceIDEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("referenceIDEqualFold"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RefreanceIDEqualFold = data
-		case "refreanceIDContainsFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDContainsFold"))
+			it.ReferenceIDEqualFold = data
+		case "referenceIDContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("referenceIDContainsFold"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RefreanceIDContainsFold = data
+			it.ReferenceIDContainsFold = data
 		case "hasChannelModelPrice":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasChannelModelPrice"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -44279,7 +44194,7 @@ func (ec *executionContext) unmarshalInputChannelModelPriceWhereInput(ctx contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "refreanceID", "refreanceIDNEQ", "refreanceIDIn", "refreanceIDNotIn", "refreanceIDGT", "refreanceIDGTE", "refreanceIDLT", "refreanceIDLTE", "refreanceIDContains", "refreanceIDHasPrefix", "refreanceIDHasSuffix", "refreanceIDEqualFold", "refreanceIDContainsFold", "hasChannel", "hasChannelWith", "hasVersions", "hasVersionsWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "referenceID", "referenceIDNEQ", "referenceIDIn", "referenceIDNotIn", "referenceIDGT", "referenceIDGTE", "referenceIDLT", "referenceIDLTE", "referenceIDContains", "referenceIDHasPrefix", "referenceIDHasSuffix", "referenceIDEqualFold", "referenceIDContainsFold", "hasChannel", "hasChannelWith", "hasVersions", "hasVersionsWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -44698,97 +44613,97 @@ func (ec *executionContext) unmarshalInputChannelModelPriceWhereInput(ctx contex
 				return it, err
 			}
 			it.ModelIDContainsFold = data
-		case "refreanceID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceID"))
+		case "referenceID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("referenceID"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RefreanceID = data
-		case "refreanceIDNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDNEQ"))
+			it.ReferenceID = data
+		case "referenceIDNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("referenceIDNEQ"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RefreanceIDNEQ = data
-		case "refreanceIDIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDIn"))
+			it.ReferenceIDNEQ = data
+		case "referenceIDIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("referenceIDIn"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RefreanceIDIn = data
-		case "refreanceIDNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDNotIn"))
+			it.ReferenceIDIn = data
+		case "referenceIDNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("referenceIDNotIn"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RefreanceIDNotIn = data
-		case "refreanceIDGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDGT"))
+			it.ReferenceIDNotIn = data
+		case "referenceIDGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("referenceIDGT"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RefreanceIDGT = data
-		case "refreanceIDGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDGTE"))
+			it.ReferenceIDGT = data
+		case "referenceIDGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("referenceIDGTE"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RefreanceIDGTE = data
-		case "refreanceIDLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDLT"))
+			it.ReferenceIDGTE = data
+		case "referenceIDLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("referenceIDLT"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RefreanceIDLT = data
-		case "refreanceIDLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDLTE"))
+			it.ReferenceIDLT = data
+		case "referenceIDLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("referenceIDLTE"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RefreanceIDLTE = data
-		case "refreanceIDContains":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDContains"))
+			it.ReferenceIDLTE = data
+		case "referenceIDContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("referenceIDContains"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RefreanceIDContains = data
-		case "refreanceIDHasPrefix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDHasPrefix"))
+			it.ReferenceIDContains = data
+		case "referenceIDHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("referenceIDHasPrefix"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RefreanceIDHasPrefix = data
-		case "refreanceIDHasSuffix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDHasSuffix"))
+			it.ReferenceIDHasPrefix = data
+		case "referenceIDHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("referenceIDHasSuffix"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RefreanceIDHasSuffix = data
-		case "refreanceIDEqualFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDEqualFold"))
+			it.ReferenceIDHasSuffix = data
+		case "referenceIDEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("referenceIDEqualFold"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RefreanceIDEqualFold = data
-		case "refreanceIDContainsFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refreanceIDContainsFold"))
+			it.ReferenceIDEqualFold = data
+		case "referenceIDContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("referenceIDContainsFold"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RefreanceIDContainsFold = data
+			it.ReferenceIDContainsFold = data
 		case "hasChannel":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasChannel"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -56669,7 +56584,11 @@ func (ec *executionContext) unmarshalInputRestoreOptionsInput(ctx context.Contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"includeChannels", "includeModels", "includeAPIKeys", "channelConflictStrategy", "modelConflictStrategy", "apiKeyConflictStrategy"}
+	if _, present := asMap["includeModelPrices"]; !present {
+		asMap["includeModelPrices"] = true
+	}
+
+	fieldsInOrder := [...]string{"includeChannels", "includeModelPrices", "includeModels", "includeAPIKeys", "channelConflictStrategy", "modelConflictStrategy", "apiKeyConflictStrategy"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -56683,6 +56602,13 @@ func (ec *executionContext) unmarshalInputRestoreOptionsInput(ctx context.Contex
 				return it, err
 			}
 			it.IncludeChannels = data
+		case "includeModelPrices":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeModelPrices"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IncludeModelPrices = data
 		case "includeModels":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeModels"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)
@@ -65852,8 +65778,8 @@ func (ec *executionContext) _ChannelModelPrice(ctx context.Context, sel ast.Sele
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "refreanceID":
-			out.Values[i] = ec._ChannelModelPrice_refreanceID(ctx, field, obj)
+		case "referenceID":
+			out.Values[i] = ec._ChannelModelPrice_referenceID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
@@ -66093,11 +66019,6 @@ func (ec *executionContext) _ChannelModelPriceVersion(ctx context.Context, sel a
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "deletedAt":
-			out.Values[i] = ec._ChannelModelPriceVersion_deletedAt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "channelID":
 			out.Values[i] = ec._ChannelModelPriceVersion_channelID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -66161,8 +66082,8 @@ func (ec *executionContext) _ChannelModelPriceVersion(ctx context.Context, sel a
 			}
 		case "effectiveEndAt":
 			out.Values[i] = ec._ChannelModelPriceVersion_effectiveEndAt(ctx, field, obj)
-		case "refreanceID":
-			out.Values[i] = ec._ChannelModelPriceVersion_refreanceID(ctx, field, obj)
+		case "referenceID":
+			out.Values[i] = ec._ChannelModelPriceVersion_referenceID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}

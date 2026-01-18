@@ -84,8 +84,8 @@ func TestChannelService_SaveChannelModelPrices(t *testing.T) {
 				Only(ctx)
 			require.NoError(t, err)
 			require.Equal(t, channelmodelpriceversion.StatusActive, version.Status)
-			require.Equal(t, res.RefreanceID, version.RefreanceID)
-			require.Len(t, res.RefreanceID, 8)
+			require.Equal(t, res.ReferenceID, version.ReferenceID)
+			require.Len(t, res.ReferenceID, 8)
 		}
 	})
 
@@ -109,7 +109,7 @@ func TestChannelService_SaveChannelModelPrices(t *testing.T) {
 			).Only(ctx)
 		require.NoError(t, err)
 
-		oldRefID := oldPrice.RefreanceID
+		oldRefID := oldPrice.ReferenceID
 
 		// Wait a bit to ensure time difference
 		time.Sleep(10 * time.Millisecond)
@@ -119,7 +119,7 @@ func TestChannelService_SaveChannelModelPrices(t *testing.T) {
 		require.Len(t, results, 1)
 
 		updatedPrice := results[0]
-		require.NotEqual(t, oldRefID, updatedPrice.RefreanceID)
+		require.NotEqual(t, oldRefID, updatedPrice.ReferenceID)
 		require.Equal(t, newPrice1, updatedPrice.Price)
 
 		// Check versions
@@ -133,12 +133,12 @@ func TestChannelService_SaveChannelModelPrices(t *testing.T) {
 		// Old version should be archived
 		require.Equal(t, channelmodelpriceversion.StatusArchived, versions[0].Status)
 		require.NotNil(t, versions[0].EffectiveEndAt)
-		require.Equal(t, oldRefID, versions[0].RefreanceID)
+		require.Equal(t, oldRefID, versions[0].ReferenceID)
 
 		// New version should be active
 		require.Equal(t, channelmodelpriceversion.StatusActive, versions[1].Status)
 		require.Nil(t, versions[1].EffectiveEndAt)
-		require.Equal(t, updatedPrice.RefreanceID, versions[1].RefreanceID)
+		require.Equal(t, updatedPrice.ReferenceID, versions[1].ReferenceID)
 	})
 
 	t.Run("delete missing models", func(t *testing.T) {

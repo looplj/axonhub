@@ -104,7 +104,7 @@ func TestUsageLogService_CreateUsageLog_WithPriceReferenceID(t *testing.T) {
 	_, err = client.ChannelModelPrice.Create().
 		SetChannelID(ch.ID).
 		SetModelID("gpt-4").
-		SetRefreanceID("test-ref-123").
+		SetReferenceID("test-ref-123").
 		SetPrice(objects.ModelPrice{
 			Items: []objects.ModelPriceItem{
 				{
@@ -152,7 +152,7 @@ func TestUsageLogService_CreateUsageLog_WithPriceReferenceID(t *testing.T) {
 
 	// Verify cache contains the model price
 	require.NotNil(t, enabledCh.cachedModelPrices["gpt-4"])
-	require.Equal(t, "test-ref-123", enabledCh.cachedModelPrices["gpt-4"].RefreanceID)
+	require.Equal(t, "test-ref-123", enabledCh.cachedModelPrices["gpt-4"].ReferenceID)
 
 	svc := NewUsageLogService(client, systemService, channelService)
 

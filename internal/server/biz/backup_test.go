@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 	"github.com/zhenzou/executors"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/privacy"
@@ -144,6 +146,31 @@ func createBackupTestProject(t *testing.T, client *ent.Client, ctx context.Conte
 	return proj
 }
 
+func createBackupTestChannelModelPrice(t *testing.T, client *ent.Client, ctx context.Context, channelID int, modelID string) *ent.ChannelModelPrice {
+	pricePerUnit := decimal.NewFromFloat(0.01)
+	price := objects.ModelPrice{
+		Items: []objects.ModelPriceItem{
+			{
+				ItemCode: objects.PriceItemCodeUsage,
+				Pricing: objects.Pricing{
+					Mode:         objects.PricingModeUsagePerUnit,
+					UsagePerUnit: &pricePerUnit,
+				},
+			},
+		},
+	}
+
+	cmp, err := client.ChannelModelPrice.Create().
+		SetChannelID(channelID).
+		SetModelID(modelID).
+		SetPrice(price).
+		SetReferenceID("ref-" + modelID).
+		Save(ctx)
+	require.NoError(t, err)
+
+	return cmp
+}
+
 func createBackupTestAPIKey(t *testing.T, client *ent.Client, ctx context.Context, user *ent.User, project *ent.Project, name, key string) *ent.APIKey {
 	profiles := &objects.APIKeyProfiles{
 		ActiveProfile: "default",
@@ -177,12 +204,15 @@ func TestBackupService_Backup(t *testing.T) {
 	ch1 := createBackupTestChannel(t, client, ctx, "Channel 1", channel.TypeOpenai)
 	ch2 := createBackupTestChannel(t, client, ctx, "Channel 2", channel.TypeAnthropic)
 
+	_ = createBackupTestChannelModelPrice(t, client, ctx, ch1.ID, "gpt-4")
+
 	m1 := createBackupTestModel(t, client, ctx, "openai", "gpt-4")
 	m2 := createBackupTestModel(t, client, ctx, "anthropic", "claude-3")
 
 	data, err := service.Backup(ctx, BackupOptions{
-		IncludeChannels: true,
-		IncludeModels:   true,
+		IncludeChannels:    true,
+		IncludeModels:      true,
+		IncludeModelPrices: true,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, data)
@@ -196,11 +226,65 @@ func TestBackupService_Backup(t *testing.T) {
 	require.Equal(t, BackupVersion, backupData.Version)
 	require.Len(t, backupData.Channels, 2)
 	require.Len(t, backupData.Models, 2)
+	require.Len(t, backupData.ChannelModelPrices, 1)
 
 	require.Equal(t, ch1.Name, backupData.Channels[0].Name)
 	require.Equal(t, ch2.Name, backupData.Channels[1].Name)
 	require.Equal(t, m1.Name, backupData.Models[0].Name)
 	require.Equal(t, m2.Name, backupData.Models[1].Name)
+
+	require.Equal(t, ch1.Name, backupData.ChannelModelPrices[0].ChannelName)
+	require.Equal(t, "gpt-4", backupData.ChannelModelPrices[0].ModelID)
+}
+
+func TestBackupService_Backup_ExcludeModelPrices(t *testing.T) {
+	client, service, ctx := setupBackupTest(t)
+	defer client.Close()
+
+	ch1 := createBackupTestChannel(t, client, ctx, "Channel 1", channel.TypeOpenai)
+	_ = createBackupTestChannelModelPrice(t, client, ctx, ch1.ID, "gpt-4")
+
+	data, err := service.Backup(ctx, BackupOptions{
+		IncludeChannels:    true,
+		IncludeModels:      false,
+		IncludeModelPrices: false,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, data)
+
+	var backupData BackupData
+
+	err = json.Unmarshal(data, &backupData)
+	require.NoError(t, err)
+
+	require.Len(t, backupData.Channels, 1)
+	require.Len(t, backupData.ChannelModelPrices, 0)
+}
+
+func TestBackupService_Backup_ModelPricesOnly(t *testing.T) {
+	client, service, ctx := setupBackupTest(t)
+	defer client.Close()
+
+	ch1 := createBackupTestChannel(t, client, ctx, "Channel 1", channel.TypeOpenai)
+	_ = createBackupTestChannelModelPrice(t, client, ctx, ch1.ID, "gpt-4")
+
+	data, err := service.Backup(ctx, BackupOptions{
+		IncludeChannels:    false,
+		IncludeModels:      false,
+		IncludeModelPrices: true,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, data)
+
+	var backupData BackupData
+
+	err = json.Unmarshal(data, &backupData)
+	require.NoError(t, err)
+
+	require.Len(t, backupData.Channels, 0)
+	require.Len(t, backupData.ChannelModelPrices, 1)
+	require.Equal(t, "Channel 1", backupData.ChannelModelPrices[0].ChannelName)
+	require.Equal(t, "gpt-4", backupData.ChannelModelPrices[0].ModelID)
 }
 
 func TestBackupService_Backup_Empty(t *testing.T) {
@@ -208,8 +292,9 @@ func TestBackupService_Backup_Empty(t *testing.T) {
 	defer client.Close()
 
 	data, err := service.Backup(ctx, BackupOptions{
-		IncludeChannels: true,
-		IncludeModels:   true,
+		IncludeChannels:    true,
+		IncludeModels:      true,
+		IncludeModelPrices: true,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, data)
@@ -229,11 +314,13 @@ func TestBackupService_Restore(t *testing.T) {
 	defer client.Close()
 
 	ch1 := createBackupTestChannel(t, client, ctx, "Channel 1", channel.TypeOpenai)
+	existingPrice := createBackupTestChannelModelPrice(t, client, ctx, ch1.ID, "gpt-4")
 	m1 := createBackupTestModel(t, client, ctx, "openai", "gpt-4")
 
 	data, err := service.Backup(ctx, BackupOptions{
-		IncludeChannels: true,
-		IncludeModels:   true,
+		IncludeChannels:    true,
+		IncludeModels:      true,
+		IncludeModelPrices: true,
 	})
 	require.NoError(t, err)
 
@@ -246,6 +333,7 @@ func TestBackupService_Restore(t *testing.T) {
 	err = service.Restore(ctx, data, RestoreOptions{
 		IncludeChannels:         true,
 		IncludeModels:           true,
+		IncludeModelPrices:      true,
 		ChannelConflictStrategy: ConflictStrategyOverwrite,
 		ModelConflictStrategy:   ConflictStrategyOverwrite,
 	})
@@ -273,6 +361,73 @@ func TestBackupService_Restore(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, m1.Name, restoredModel.Name)
 	require.Equal(t, m1.Developer, restoredModel.Developer)
+
+	restoredPrice, err := client.ChannelModelPrice.Query().
+		Where(
+			channelmodelprice.ChannelID(ch1.ID),
+			channelmodelprice.ModelID("gpt-4"),
+		).
+		First(ctx)
+	require.NoError(t, err)
+	require.Equal(t, existingPrice.ReferenceID, restoredPrice.ReferenceID)
+}
+
+func TestBackupService_Restore_ModelPricesOnly(t *testing.T) {
+	client, service, ctx := setupBackupTest(t)
+	defer client.Close()
+
+	ch1 := createBackupTestChannel(t, client, ctx, "Channel 1", channel.TypeOpenai)
+
+	backupData := BackupData{
+		Version:  BackupVersion,
+		Channels: []*BackupChannel{},
+		Models:   []*BackupModel{},
+		APIKeys:  []*BackupAPIKey{},
+		ChannelModelPrices: []*BackupChannelModelPrice{
+			{
+				ChannelName: ch1.Name,
+				ModelID:     "gpt-4",
+				Price: objects.ModelPrice{
+					Items: []objects.ModelPriceItem{
+						{
+							ItemCode: objects.PriceItemCodeUsage,
+							Pricing: objects.Pricing{
+								Mode: objects.PricingModeFlatFee,
+								FlatFee: func() *decimal.Decimal {
+									d := decimal.NewFromFloat(1)
+									return &d
+								}(),
+							},
+						},
+					},
+				},
+				ReferenceID: "ref-gpt-4",
+			},
+		},
+	}
+
+	data, err := json.MarshalIndent(backupData, "", "  ")
+	require.NoError(t, err)
+
+	err = service.Restore(ctx, data, RestoreOptions{
+		IncludeChannels:         false,
+		IncludeModels:           false,
+		IncludeAPIKeys:          false,
+		IncludeModelPrices:      true,
+		ChannelConflictStrategy: ConflictStrategyOverwrite,
+		ModelConflictStrategy:   ConflictStrategyOverwrite,
+		APIKeyConflictStrategy:  ConflictStrategyOverwrite,
+	})
+	require.NoError(t, err)
+
+	restoredPrice, err := client.ChannelModelPrice.Query().
+		Where(
+			channelmodelprice.ChannelID(ch1.ID),
+			channelmodelprice.ModelID("gpt-4"),
+		).
+		First(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "ref-gpt-4", restoredPrice.ReferenceID)
 }
 
 func TestBackupService_Restore_NewData(t *testing.T) {
@@ -315,6 +470,27 @@ func TestBackupService_Restore_NewData(t *testing.T) {
 				},
 			},
 		},
+		ChannelModelPrices: []*BackupChannelModelPrice{
+			{
+				ChannelName: "New Channel",
+				ModelID:     "new-model-1",
+				Price: objects.ModelPrice{
+					Items: []objects.ModelPriceItem{
+						{
+							ItemCode: objects.PriceItemCodeUsage,
+							Pricing: objects.Pricing{
+								Mode: objects.PricingModeFlatFee,
+								FlatFee: func() *decimal.Decimal {
+									d := decimal.NewFromFloat(1)
+									return &d
+								}(),
+							},
+						},
+					},
+				},
+				ReferenceID: "ref-new-model-1",
+			},
+		},
 	}
 
 	data, err := json.MarshalIndent(backupData, "", "  ")
@@ -323,6 +499,7 @@ func TestBackupService_Restore_NewData(t *testing.T) {
 	err = service.Restore(ctx, data, RestoreOptions{
 		IncludeChannels:         true,
 		IncludeModels:           true,
+		IncludeModelPrices:      true,
 		ChannelConflictStrategy: ConflictStrategyOverwrite,
 		ModelConflictStrategy:   ConflictStrategyOverwrite,
 	})
@@ -347,6 +524,10 @@ func TestBackupService_Restore_NewData(t *testing.T) {
 		First(ctx)
 	require.NoError(t, err)
 	require.Equal(t, "New Model", newModel.Name)
+
+	priceCount, err := client.ChannelModelPrice.Query().Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, priceCount)
 }
 
 func TestBackupService_Restore_UpdateExisting(t *testing.T) {
@@ -400,6 +581,7 @@ func TestBackupService_Restore_UpdateExisting(t *testing.T) {
 	err = service.Restore(ctx, data, RestoreOptions{
 		IncludeChannels:         true,
 		IncludeModels:           true,
+		IncludeModelPrices:      true,
 		ChannelConflictStrategy: ConflictStrategyOverwrite,
 		ModelConflictStrategy:   ConflictStrategyOverwrite,
 	})

@@ -101,7 +101,7 @@ var (
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "model_id", Type: field.TypeString},
 		{Name: "price", Type: field.TypeJSON},
-		{Name: "refreance_id", Type: field.TypeString, Unique: true},
+		{Name: "reference_id", Type: field.TypeString, Unique: true},
 		{Name: "channel_id", Type: field.TypeInt},
 	}
 	// ChannelModelPricesTable holds the schema information for the "channel_model_prices" table.
@@ -130,14 +130,13 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
-		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "channel_id", Type: field.TypeInt},
 		{Name: "model_id", Type: field.TypeString},
 		{Name: "price", Type: field.TypeJSON},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "archived"}},
 		{Name: "effective_start_at", Type: field.TypeTime},
 		{Name: "effective_end_at", Type: field.TypeTime, Nullable: true},
-		{Name: "refreance_id", Type: field.TypeString, Unique: true},
+		{Name: "reference_id", Type: field.TypeString, Unique: true},
 		{Name: "channel_model_price_id", Type: field.TypeInt},
 	}
 	// ChannelModelPriceVersionsTable holds the schema information for the "channel_model_price_versions" table.
@@ -148,7 +147,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "channel_model_price_versions_channel_model_prices_versions",
-				Columns:    []*schema.Column{ChannelModelPriceVersionsColumns[11]},
+				Columns:    []*schema.Column{ChannelModelPriceVersionsColumns[10]},
 				RefColumns: []*schema.Column{ChannelModelPricesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},

@@ -1086,8 +1086,7 @@ func (c *ChannelModelPriceVersionClient) Hooks() []Hook {
 
 // Interceptors returns the client interceptors.
 func (c *ChannelModelPriceVersionClient) Interceptors() []Interceptor {
-	inters := c.inters.ChannelModelPriceVersion
-	return append(inters[:len(inters):len(inters)], channelmodelpriceversion.Interceptors[:]...)
+	return c.inters.ChannelModelPriceVersion
 }
 
 func (c *ChannelModelPriceVersionClient) mutate(ctx context.Context, m *ChannelModelPriceVersionMutation) (Value, error) {

@@ -184,15 +184,8 @@ func init() {
 			return next.Mutate(ctx, m)
 		})
 	}
-	channelmodelpriceversionMixinHooks1 := channelmodelpriceversionMixin[1].Hooks()
-
-	channelmodelpriceversion.Hooks[1] = channelmodelpriceversionMixinHooks1[0]
-	channelmodelpriceversionMixinInters1 := channelmodelpriceversionMixin[1].Interceptors()
-	channelmodelpriceversion.Interceptors[0] = channelmodelpriceversionMixinInters1[0]
 	channelmodelpriceversionMixinFields0 := channelmodelpriceversionMixin[0].Fields()
 	_ = channelmodelpriceversionMixinFields0
-	channelmodelpriceversionMixinFields1 := channelmodelpriceversionMixin[1].Fields()
-	_ = channelmodelpriceversionMixinFields1
 	channelmodelpriceversionFields := schema.ChannelModelPriceVersion{}.Fields()
 	_ = channelmodelpriceversionFields
 	// channelmodelpriceversionDescCreatedAt is the schema descriptor for created_at field.
@@ -205,10 +198,6 @@ func init() {
 	channelmodelpriceversion.DefaultUpdatedAt = channelmodelpriceversionDescUpdatedAt.Default.(func() time.Time)
 	// channelmodelpriceversion.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	channelmodelpriceversion.UpdateDefaultUpdatedAt = channelmodelpriceversionDescUpdatedAt.UpdateDefault.(func() time.Time)
-	// channelmodelpriceversionDescDeletedAt is the schema descriptor for deleted_at field.
-	channelmodelpriceversionDescDeletedAt := channelmodelpriceversionMixinFields1[0].Descriptor()
-	// channelmodelpriceversion.DefaultDeletedAt holds the default value on creation for the deleted_at field.
-	channelmodelpriceversion.DefaultDeletedAt = channelmodelpriceversionDescDeletedAt.Default.(int)
 	channeloverridetemplateMixin := schema.ChannelOverrideTemplate{}.Mixin()
 	channeloverridetemplate.Policy = privacy.NewPolicies(schema.ChannelOverrideTemplate{})
 	channeloverridetemplate.Hooks[0] = func(next ent.Mutator) ent.Mutator {

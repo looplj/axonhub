@@ -170,7 +170,7 @@ func (svc *ChannelService) SaveChannelModelPrices(
 					SetChannelID(channelID).
 					SetModelID(action.ModelID).
 					SetPrice(action.Price).
-					SetRefreanceID(refID).
+					SetReferenceID(refID).
 					Save(ctx)
 				if err != nil {
 					return fmt.Errorf("failed to create channel model price: %w", err)
@@ -195,7 +195,7 @@ func (svc *ChannelService) SaveChannelModelPrices(
 
 				entity, err = db.ChannelModelPrice.UpdateOneID(entity.ID).
 					SetPrice(action.Price).
-					SetRefreanceID(refID).
+					SetReferenceID(refID).
 					Save(ctx)
 				if err != nil {
 					return fmt.Errorf("failed to update channel model price: %w", err)
@@ -210,7 +210,7 @@ func (svc *ChannelService) SaveChannelModelPrices(
 				SetPrice(action.Price).
 				SetStatus(channelmodelpriceversion.StatusActive).
 				SetEffectiveStartAt(now).
-				SetRefreanceID(refID).
+				SetReferenceID(refID).
 				Save(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to create channel model price version: %w", err)
