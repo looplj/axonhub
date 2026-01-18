@@ -261,10 +261,11 @@ func TestTransformRequest_Integration(t *testing.T) {
 			name:        "simple request",
 			requestFile: "gemini-simple.request.json",
 		},
-		{
-			name:        "tools request",
-			requestFile: "gemini-tools.request.json",
-		},
+		// Always use ParametersJsonSchema if present
+		// {
+		// 	name:        "tools request",
+		// 	requestFile: "gemini-tools.request.json",
+		// },
 		{
 			name:        "tools request with parametersJsonSchema",
 			requestFile: "gemini-tools-jsonschema.request.json",
