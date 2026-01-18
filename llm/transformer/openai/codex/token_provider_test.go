@@ -2,108 +2,81 @@ package codex
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/oauth"
 )
 
-func TestTokenProviderGet_SingleflightDedupesRefresh(t *testing.T) {
-	var calls atomic.Int64
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls.Add(1)
+func TestTokenProvider_RefreshInvokesCallback(t *testing.T) {
+	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"access_token":"new","expires_in":3600,"token_type":"bearer"}`))
+		_, _ = w.Write([]byte(`{"access_token":"new-access","refresh_token":"new-refresh","expires_in":3600,"token_type":"bearer","scope":"openid offline_access"}`))
 	}))
-	t.Cleanup(server.Close)
+	t.Cleanup(tokenServer.Close)
 
-	old := DefaultTokenURLs
-	DefaultTokenURLs = TokenURLs{Authorize: old.Authorize, Token: server.URL}
-
-	t.Cleanup(func() { DefaultTokenURLs = old })
-
-	hc := httpclient.NewHttpClientWithClient(server.Client())
-	p := NewTokenProvider(&OAuth2Credentials{
-		AccessToken:  "old",
-		RefreshToken: "r",
-		ExpiresAt:    time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
-	}, hc)
-
-	ctx := contexts.WithProjectID(context.Background(), 123)
-
-	start := make(chan struct{})
-	errs := make(chan error, 10)
-
-	var wg sync.WaitGroup
-	for range 10 {
-		wg.Go(func() {
-			<-start
-
-			tok, _, err := p.Get(ctx)
-			if err != nil {
-				errs <- err
-				return
-			}
-
-			if tok != "new" {
-				errs <- fmt.Errorf("unexpected token: %q", tok)
-				return
-			}
-		})
+	creds := &oauth.OAuthCredentials{
+		AccessToken:  "old-access",
+		RefreshToken: "old-refresh",
+		ClientID:     ClientID,
+		ExpiresAt:    time.Now().Add(-1 * time.Hour),
 	}
 
-	close(start)
+	var called int
 
-	wg.Wait()
-	close(errs)
+	p := oauth.NewTokenProvider(oauth.TokenProviderParams{
+		Credentials: creds,
+		HTTPClient:  httpclient.NewHttpClient(),
+		OAuthUrls: oauth.OAuthUrls{
+			AuthorizeUrl: AuthorizeURL,
+			TokenUrl:     tokenServer.URL,
+		},
+		OnRefreshed: func(ctx context.Context, refreshed *oauth.OAuthCredentials) error {
+			called++
 
-	for err := range errs {
-		require.NoError(t, err)
-	}
+			require.Equal(t, "new-access", refreshed.AccessToken)
+			require.Equal(t, "new-refresh", refreshed.RefreshToken)
+			require.NotZero(t, refreshed.ExpiresAt)
+			require.Equal(t, "bearer", refreshed.TokenType)
+			require.Contains(t, refreshed.Scopes, "openid")
 
-	require.Equal(t, int64(1), calls.Load())
+			return nil
+		},
+	})
+
+	got, err := p.Get(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, "new-access", got.AccessToken)
+	require.Equal(t, 1, called)
 }
 
-func TestTokenProviderGet_UsesInMemoryCredentialsAfterRefresh(t *testing.T) {
-	var calls atomic.Int64
+func TestTokenProvider_UnexpiredDoesNotInvokeCallback(t *testing.T) {
+	creds := &oauth.OAuthCredentials{
+		AccessToken:  "access",
+		RefreshToken: "refresh",
+		ClientID:     ClientID,
+		ExpiresAt:    time.Now().Add(1 * time.Hour),
+	}
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls.Add(1)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"access_token":"new","expires_in":3600,"token_type":"bearer"}`))
-	}))
-	t.Cleanup(server.Close)
+	var called int
 
-	old := DefaultTokenURLs
-	DefaultTokenURLs = TokenURLs{Authorize: old.Authorize, Token: server.URL}
+	p := oauth.NewTokenProvider(oauth.TokenProviderParams{
+		Credentials: creds,
+		HTTPClient:  httpclient.NewHttpClient(),
+		OAuthUrls:   DefaultTokenURLs,
+		OnRefreshed: func(ctx context.Context, refreshed *oauth.OAuthCredentials) error {
+			called++
+			return nil
+		},
+	})
 
-	t.Cleanup(func() { DefaultTokenURLs = old })
-
-	hc := httpclient.NewHttpClientWithClient(server.Client())
-	p := NewTokenProvider(&OAuth2Credentials{
-		AccessToken:  "old",
-		RefreshToken: "r",
-		ExpiresAt:    time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
-	}, hc)
-
-	ctx := contexts.WithProjectID(context.Background(), 123)
-
-	tok, _, err := p.Get(ctx)
+	got, err := p.Get(context.Background())
 	require.NoError(t, err)
-	require.Equal(t, "new", tok)
-	require.Equal(t, int64(1), calls.Load())
-
-	tok2, _, err := p.Get(ctx)
-	require.NoError(t, err)
-	require.Equal(t, "new", tok2)
-	require.Equal(t, int64(1), calls.Load())
+	require.Equal(t, "access", got.AccessToken)
+	require.Equal(t, 0, called)
 }

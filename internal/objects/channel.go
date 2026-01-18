@@ -1,6 +1,9 @@
 package objects
 
-import "github.com/looplj/axonhub/llm/httpclient"
+import (
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/oauth"
+)
 
 type (
 	ProxyType   = httpclient.ProxyType
@@ -79,6 +82,8 @@ type ChannelCredentials struct {
 	// APIKey is the API key for the channel.
 	APIKey string `json:"apiKey,omitempty"`
 
+	OAuth *OAuthCredentials `json:"oauth,omitempty"`
+
 	// Azure configuration for the channel.
 	Azure *AzureCredential `json:"azure,omitempty"`
 
@@ -88,6 +93,8 @@ type ChannelCredentials struct {
 	// GCP is the GCP credentials for the channel.
 	GCP *GCPCredential `json:"gcp,omitempty"`
 }
+
+type OAuthCredentials = oauth.OAuthCredentials
 
 type AzureCredential struct {
 	// APIVersion is a optional version for the channel.

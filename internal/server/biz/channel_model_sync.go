@@ -61,7 +61,6 @@ func (svc *ChannelService) syncChannelModels(ctx context.Context) {
 
 // syncChannelModelsForChannel syncs supported models for a single channel.
 func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *ent.Channel) error {
-	// Create a default HTTP client for model fetching
 	httpClient := httpclient.NewHttpClient()
 	modelFetcher := NewModelFetcher(httpClient, svc)
 

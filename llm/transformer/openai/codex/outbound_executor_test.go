@@ -39,7 +39,7 @@ func TestCodexExecutor_SetsConversationIDInDo(t *testing.T) {
 
 	require.Equal(t, req.Headers.Get("Session_id"), inner.seen.Get("Conversation_id"))
 	require.Equal(t, "text/event-stream", inner.seen.Get("Accept"))
-	require.Equal(t, UA, inner.seen.Get("User-Agent"))
+	require.Equal(t, UserAgent, inner.seen.Get("User-Agent"))
 	require.Equal(t, "responses=experimental", inner.seen.Get("Openai-Beta"))
 	require.Equal(t, "codex_cli_rs", inner.seen.Get("Originator"))
 	require.Equal(t, "0.21.0", inner.seen.Get("Version"))
