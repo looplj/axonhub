@@ -24,7 +24,7 @@ globs: frontend/**/*.ts, frontend/**/*.tsx
 
 2. MUST keep keys in code and JSON files identical.
 
-3. The amount must be format with currency symbol.
+3. The amount must be formatted with a currency symbol.
    e.g
    ```ts
    t('currencies.format', {

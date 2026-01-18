@@ -136,7 +136,6 @@ export type ChannelModelEntry = z.infer<typeof channelModelEntrySchema>;
 // Channel Credentials
 export const channelCredentialsSchema = z.object({
   apiKey: z.string().optional().nullable(),
-  platformType: z.string().optional().nullable(),
   aws: z
     .object({
       accessKeyID: z.string(),
@@ -255,7 +254,6 @@ export const createChannelInputSchema = z
     settings: channelSettingsSchema.optional(),
     credentials: z.object({
       apiKey: z.string().min(1, 'API Key is required'),
-      platformType: z.string().optional().nullable(),
       aws: z
         .object({
           accessKeyID: z.string().optional(),
@@ -277,13 +275,8 @@ export const createChannelInputSchema = z
       const issue = {
         code: 'custom' as const,
         message: 'channels.dialogs.fields.supportedModels.codexOAuthCredentialsRequired',
-        path: ['credentials', 'apiKey'] as const,
+        path: ['credentials', 'apiKey'],
       };
-
-      if (data.credentials?.platformType !== 'codex') {
-        ctx.addIssue(issue);
-        return;
-      }
 
       let json: unknown;
       try {
@@ -349,7 +342,6 @@ export const updateChannelInputSchema = z
     credentials: z
       .object({
         apiKey: z.string().optional(),
-        platformType: z.string().optional().nullable(),
         aws: z
           .object({
             accessKeyID: z.string().optional(),
@@ -373,20 +365,14 @@ export const updateChannelInputSchema = z
       const issue = {
         code: 'custom' as const,
         message: 'channels.dialogs.fields.supportedModels.codexOAuthCredentialsRequired',
-        path: ['credentials', 'apiKey'] as const,
+        path: ['credentials', 'apiKey'],
       };
 
       if (!data.credentials) return;
 
-      const platformType = data.credentials.platformType;
       const apiKey = data.credentials.apiKey;
 
-      if (platformType || apiKey) {
-        if (platformType !== 'codex' || !apiKey) {
-          ctx.addIssue(issue);
-          return;
-        }
-
+      if (apiKey) {
         let json: unknown;
         try {
           json = JSON.parse(apiKey);

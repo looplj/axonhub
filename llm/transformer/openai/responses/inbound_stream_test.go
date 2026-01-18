@@ -151,6 +151,7 @@ func TestReasoningItemSummaryFieldSerialization(t *testing.T) {
 
 	// Verify the JSON can be unmarshaled back
 	var unmarshaled Item
+
 	err = json.Unmarshal(data, &unmarshaled)
 	require.NoError(t, err)
 	require.NotNil(t, unmarshaled.Summary, "Summary should not be nil after unmarshal")

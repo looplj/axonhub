@@ -22,6 +22,7 @@ import {
   Jina,
   DeepInfra,
   Github,
+  Claude,
 } from '@lobehub/icons';
 import { BURNCLOUD_DEFAULT_MODELS } from './burncloud-models';
 import { ApiFormat, ChannelType } from './schema';
@@ -111,7 +112,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     baseURL: 'https://api.anthropic.com',
     defaultModels: ['claude-opus-4-5', 'claude-sonnet-4-5'],
     apiFormat: ANTHROPIC_MESSAGES,
-    color: 'bg-orange-100 text-orange-800 border-orange-200',
+    color: 'bg-gray-100 text-gray-800 border-gray-200',
     icon: Anthropic,
   },
   gemini_openai: {
@@ -202,7 +203,6 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-cyan-100 text-cyan-800 border-cyan-200',
     icon: ZAI,
   },
-
   doubao: {
     channelType: 'doubao',
     baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
@@ -472,8 +472,8 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     baseURL: 'https://api.anthropic.com/v1',
     defaultModels: ['claude-haiku-4-5', 'claude-sonnet-4-5', 'claude-opus-4-5'],
     apiFormat: ANTHROPIC_MESSAGES,
-    color: 'bg-purple-100 text-purple-800 border-purple-200',
-    icon: Anthropic,
+    color: 'bg-orange-100 text-orange-800 border-orange-200',
+    icon: Claude,
   },
 };
 
@@ -497,6 +497,7 @@ export const getDefaultModels = (channelType: ChannelType): string[] => {
 export type Provider =
   | 'openai'
   | 'anthropic'
+  | 'claudecode'
   | 'deepseek'
   | 'deepinfra'
   | 'gemini'
@@ -562,7 +563,7 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   jina: 'jina',
   github: 'github',
   codex: 'codex',
-  claudecode: 'anthropic',
+  claudecode: 'claudecode',
 };
 
 /**

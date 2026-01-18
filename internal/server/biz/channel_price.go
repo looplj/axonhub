@@ -41,16 +41,16 @@ func calculatePriceChanges(prices []*ent.ChannelModelPrice, inputs []SaveChannel
 		return p.ModelID
 	})
 
-	// Use a map for inputs to handle duplicates in the inputs slice
-	inputMap := lo.KeyBy(inputs, func(i SaveChannelModelPriceInput) string {
-		return i.ModelID
-	})
+	inputSet := make(map[string]struct{}, len(inputs))
 
 	var actions []PriceChangeAction
 
 	// 1. Identify updates and creates
-	// We iterate over the unique inputs from inputMap to avoid duplicate actions
-	for modelID, input := range inputMap {
+	// Iterate over inputs in order to keep deterministic action ordering.
+	for _, input := range inputs {
+		modelID := input.ModelID
+		inputSet[modelID] = struct{}{}
+
 		existing, ok := existingMap[modelID]
 		if !ok {
 			actions = append(actions, PriceChangeAction{
@@ -81,7 +81,7 @@ func calculatePriceChanges(prices []*ent.ChannelModelPrice, inputs []SaveChannel
 
 	// 2. Identify deletes: present in existing but not in inputs
 	for _, existing := range prices {
-		if _, ok := inputMap[existing.ModelID]; !ok {
+		if _, ok := inputSet[existing.ModelID]; !ok {
 			actions = append(actions, PriceChangeAction{
 				Type:          ActionTypeDelete,
 				ModelID:       existing.ModelID,
@@ -98,7 +98,14 @@ func (svc *ChannelService) SaveChannelModelPrices(
 	channelID int,
 	inputs []SaveChannelModelPriceInput,
 ) ([]*ent.ChannelModelPrice, error) {
+	seenModelIDs := make(map[string]struct{}, len(inputs))
 	for _, input := range inputs {
+		if _, ok := seenModelIDs[input.ModelID]; ok {
+			return nil, fmt.Errorf("duplicate model price input: model_id=%s", input.ModelID)
+		}
+
+		seenModelIDs[input.ModelID] = struct{}{}
+
 		if err := input.Price.Validate(); err != nil {
 			return nil, fmt.Errorf("invalid model price: model_id=%s: %w", input.ModelID, err)
 		}

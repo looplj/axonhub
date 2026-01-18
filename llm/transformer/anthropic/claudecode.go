@@ -2,6 +2,8 @@ package anthropic
 
 import (
 	"context"
+	"fmt"
+	"net/url"
 
 	"github.com/samber/lo"
 
@@ -12,7 +14,6 @@ import (
 
 const (
 	claudeCodeSystemMessage = "You are Claude Code, Anthropic's official CLI for Claude."
-	claudeCodeAPIURL        = "https://api.anthropic.com/v1/messages?beta=true"
 )
 
 // claudeCodeHeaders contains all headers to set for Claude Code requests.
@@ -28,6 +29,17 @@ var claudeCodeHeaders = [][]string{
 	{"X-Stainless-Runtime-Version", "v24.3.0"},
 	{"X-Stainless-Package-Version", "0.55.1"},
 	{"X-Stainless-Runtime", "node"},
+}
+
+func NewClaudeCodeTransformer(config *Config) (*ClaudeCodeTransformer, error) {
+	outbound, err := NewOutboundTransformerWithConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+	}
+
+	return &ClaudeCodeTransformer{
+		Outbound: outbound,
+	}, nil
 }
 
 // ClaudeCodeTransformer implements the transformer for Claude Code CLI.
@@ -73,8 +85,14 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 		return nil, err
 	}
 
-	// Override the URL to the fixed Claude Code endpoint
-	httpReq.URL = claudeCodeAPIURL
+	// Add beta=true query parameter if not present
+	if httpReq.Query == nil {
+		httpReq.Query = make(url.Values)
+	}
+
+	if httpReq.Query.Get("beta") == "" {
+		httpReq.Query.Set("beta", "true")
+	}
 
 	// Add/overwrite Claude Code specific headers
 	for _, header := range claudeCodeHeaders {
@@ -84,7 +102,7 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 	// Set authentication to Bearer token
 	httpReq.Auth = &httpclient.AuthConfig{
 		Type:   httpclient.AuthTypeBearer,
-		APIKey: httpReq.Auth.APIKey, // Preserve the API key from base transformer
+		APIKey: httpReq.Auth.APIKey,
 	}
 
 	return httpReq, nil

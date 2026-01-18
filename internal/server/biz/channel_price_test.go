@@ -185,6 +185,24 @@ func TestChannelService_SaveChannelModelPrices(t *testing.T) {
 			require.NotNil(t, v.EffectiveEndAt)
 		}
 	})
+
+	t.Run("duplicate model id should error", func(t *testing.T) {
+		inputs := []SaveChannelModelPriceInput{
+			{
+				ModelID: "gpt-4",
+				Price:   price1,
+			},
+			{
+				ModelID: "gpt-4",
+				Price:   price2,
+			},
+		}
+
+		_, err := svc.SaveChannelModelPrices(ctx, ch.ID, inputs)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "duplicate model price input")
+		require.Contains(t, err.Error(), "model_id=gpt-4")
+	})
 }
 
 func loToDecimalPtr(s string) *decimal.Decimal {

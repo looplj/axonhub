@@ -38,7 +38,7 @@ func TestCredentialsRefresh(t *testing.T) {
 	creds, err := ParseCredentialsJSON(`{"access_token":"a","refresh_token":"r"}`)
 	require.NoError(t, err)
 
-	updated, err := creds.Refresh(t.Context(), hc, nil, "")
+	updated, err := creds.Refresh(t.Context(), hc)
 	require.NoError(t, err)
 	require.Equal(t, "new", updated.AccessToken)
 }
