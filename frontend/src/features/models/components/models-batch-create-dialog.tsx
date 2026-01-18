@@ -12,8 +12,8 @@ import { AutoCompleteSelect } from '@/components/auto-complete-select';
 import { useModels } from '../context/models-context';
 import { DEVELOPER_IDS, DEVELOPER_ICONS } from '../data/constants';
 import { useBulkCreateModels } from '../data/models';
-import providersDataRaw from '../data/providers.json';
-import { providersDataSchema, type ProvidersData } from '../data/providers.schema';
+import { useDevelopersData } from '../data/providers';
+import { type Provider, type ProviderModel } from '../data/providers.schema';
 import { CreateModelInput, ModelCard } from '../data/schema';
 
 interface ModelRow {
@@ -49,25 +49,23 @@ export function ModelsBatchCreateDialog() {
   const { t } = useTranslation();
   const { open, setOpen } = useModels();
   const bulkCreateModels = useBulkCreateModels();
+  const { data: developersData } = useDevelopersData();
   const [rows, setRows] = useState<ModelRow[]>([]);
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null);
 
   const isOpen = open === 'batchCreate';
 
-  const providersData = useMemo((): ProvidersData => {
-    return providersDataSchema.parse(providersDataRaw);
-  }, []);
-
   const providers = useMemo(() => {
-    return Object.entries(providersData.providers)
+    if (!developersData) return [];
+    return Object.entries(developersData.providers)
       .filter(([key]) => isDeveloper(key))
-      .map(([key, provider]) => ({
+      .map(([key, provider]: [string, Provider]) => ({
         id: key,
         name: provider.display_name || provider.name,
         models: provider.models || [],
       }));
-  }, [providersData]);
+  }, [developersData]);
 
   const developerOptions = useMemo(() => {
     return DEVELOPER_IDS.map((id) => ({
@@ -144,7 +142,7 @@ export function ModelsBatchCreateDialog() {
             return { ...row, modelId, name: '', group: '', modelCard: null };
           }
 
-          const selectedModel = provider.models.find((m) => m.id === modelId);
+          const selectedModel = provider.models.find((m: ProviderModel) => m.id === modelId);
           if (selectedModel) {
             const modelCard: ModelCard = {
               reasoning: {
@@ -308,7 +306,7 @@ export function ModelsBatchCreateDialog() {
     (developer: string) => {
       const provider = providers.find((p) => p.id === developer);
       if (!provider) return [];
-      return provider.models.map((m) => ({
+      return provider.models.map((m: ProviderModel) => ({
         value: m.id,
         label: m.id,
       }));

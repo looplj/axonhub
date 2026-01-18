@@ -693,7 +693,7 @@ function ProfileCard({
           <div className='border-t pt-4'>
             <div className='flex items-center justify-between'>
               <h4 className='text-sm font-medium'>{t('apikeys.profiles.modelMappings')}</h4>
-              <Button type='button' variant='outline' size='sm' onClick={addMapping} className='flex items-center gap-2'>
+              <Button type='button' variant='outline' size='sm' onClick={addMapping} className='mb-3 flex items-center gap-2'>
                 <IconPlus className='h-4 w-4' />
                 {t('apikeys.profiles.addMapping')}
               </Button>

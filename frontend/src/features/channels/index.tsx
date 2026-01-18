@@ -13,11 +13,13 @@ import { ChannelsTable } from './components/channels-table';
 import { ChannelsTypeTabs } from './components/channels-type-tabs';
 import ChannelsProvider from './context/channels-context';
 import { useQueryChannels, useChannelTypes, useErrorChannelsCount, useChannelProbeData } from './data/channels';
+import { useProvidersData } from '@/features/models/data/providers';
 
 const ChannelsDialogs = lazy(() => import('./components/channels-dialogs').then((m) => ({ default: m.ChannelsDialogs })));
 
 function ChannelsContent() {
   const { t } = useTranslation();
+  useProvidersData();
   const { channelPermissions } = usePermissions();
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
     defaultPageSize: 20,
