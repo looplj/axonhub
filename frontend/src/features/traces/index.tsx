@@ -116,15 +116,16 @@ export default function TracesManagement() {
 
   return (
     <TracesProvider>
-      <Header fixed></Header>
-
-      <Main fixed>
-        <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
+      <Header fixed>
+        <div className='flex flex-1 items-center justify-between'>
           <div>
-            <h2 className='text-2xl font-bold tracking-tight'>{t('traces.title')}</h2>
-            <p className='text-muted-foreground'>{t('traces.description')}</p>
+            <h2 className='text-xl font-bold tracking-tight'>{t('traces.title')}</h2>
+            <p className='text-sm text-muted-foreground'>{t('traces.description')}</p>
           </div>
         </div>
+      </Header>
+
+      <Main fixed>
         <TracesContent />
       </Main>
     </TracesProvider>

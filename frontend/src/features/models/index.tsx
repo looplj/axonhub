@@ -48,10 +48,7 @@ function ModelsContent() {
   const whereClause = (() => {
     if (debouncedNameFilter) {
       return {
-        or: [
-          { nameContainsFold: debouncedNameFilter },
-          { modelIDContainsFold: debouncedNameFilter },
-        ],
+        or: [{ nameContainsFold: debouncedNameFilter }, { modelIDContainsFold: debouncedNameFilter }],
       };
     }
     return undefined;
@@ -213,16 +210,17 @@ export default function ModelsManagement() {
 
   return (
     <ModelsProvider>
-      <Header fixed />
-
-      <Main fixed>
-        <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
+      <Header fixed>
+        <div className='flex flex-1 items-center justify-between'>
           <div>
-            <h2 className='text-2xl font-bold tracking-tight'>{t('models.title')}</h2>
-            <p className='text-muted-foreground'>{t('models.description')}</p>
+            <h2 className='text-xl font-bold tracking-tight'>{t('models.title')}</h2>
+            <p className='text-muted-foreground text-sm'>{t('models.description')}</p>
           </div>
           <ActionButtons />
         </div>
+      </Header>
+
+      <Main fixed>
         <ModelsContent />
       </Main>
       <ModelsDialogs />

@@ -97,16 +97,17 @@ export default function RolesPage() {
 
   return (
     <RolesProvider>
-      <Header fixed>{/* <Search /> */}</Header>
-
-      <Main fixed>
-        <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
+      <Header fixed>
+        <div className='flex flex-1 items-center justify-between'>
           <div>
-            <h2 className='text-2xl font-bold tracking-tight'>{t('roles.title')}</h2>
-            <p className='text-muted-foreground'>{t('roles.description')}</p>
+            <h2 className='text-xl font-bold tracking-tight'>{t('roles.title')}</h2>
+            <p className='text-sm text-muted-foreground'>{t('roles.description')}</p>
           </div>
           <RolesPrimaryButtons />
         </div>
+      </Header>
+
+      <Main fixed>
         <RolesContent />
       </Main>
       <RolesDialogs />
