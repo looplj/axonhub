@@ -52,7 +52,7 @@ type Channel struct {
 	cachedModelEntries map[string]ChannelModelEntry
 
 	// cachedModelPrices caches model prices per request model id
-	// RequestModel -> ChannelModelPrice entity (contains Price and RefreanceID)
+	// RequestModel -> ChannelModelPrice entity (contains Price and ReferenceID)
 	cachedModelPrices map[string]*ent.ChannelModelPrice
 }
 

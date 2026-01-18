@@ -8,12 +8,14 @@ enum BackupConflictStrategy {
 
 input BackupOptionsInput {
   includeChannels: Boolean!
+  includeModelPrices: Boolean! = true
   includeModels: Boolean!
   includeAPIKeys: Boolean!
 }
 
 input RestoreOptionsInput {
   includeChannels: Boolean!
+  includeModelPrices: Boolean! = true
   includeModels: Boolean!
   includeAPIKeys: Boolean!
   channelConflictStrategy: BackupConflictStrategy!

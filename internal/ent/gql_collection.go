@@ -833,10 +833,10 @@ func (_q *ChannelModelPriceQuery) collectField(ctx context.Context, oneNode bool
 				selectedFields = append(selectedFields, channelmodelprice.FieldPrice)
 				fieldSeen[channelmodelprice.FieldPrice] = struct{}{}
 			}
-		case "refreanceID":
-			if _, ok := fieldSeen[channelmodelprice.FieldRefreanceID]; !ok {
-				selectedFields = append(selectedFields, channelmodelprice.FieldRefreanceID)
-				fieldSeen[channelmodelprice.FieldRefreanceID] = struct{}{}
+		case "referenceID":
+			if _, ok := fieldSeen[channelmodelprice.FieldReferenceID]; !ok {
+				selectedFields = append(selectedFields, channelmodelprice.FieldReferenceID)
+				fieldSeen[channelmodelprice.FieldReferenceID] = struct{}{}
 			}
 		case "id":
 		case "__typename":
@@ -947,11 +947,6 @@ func (_q *ChannelModelPriceVersionQuery) collectField(ctx context.Context, oneNo
 				selectedFields = append(selectedFields, channelmodelpriceversion.FieldUpdatedAt)
 				fieldSeen[channelmodelpriceversion.FieldUpdatedAt] = struct{}{}
 			}
-		case "deletedAt":
-			if _, ok := fieldSeen[channelmodelpriceversion.FieldDeletedAt]; !ok {
-				selectedFields = append(selectedFields, channelmodelpriceversion.FieldDeletedAt)
-				fieldSeen[channelmodelpriceversion.FieldDeletedAt] = struct{}{}
-			}
 		case "channelID":
 			if _, ok := fieldSeen[channelmodelpriceversion.FieldChannelID]; !ok {
 				selectedFields = append(selectedFields, channelmodelpriceversion.FieldChannelID)
@@ -987,10 +982,10 @@ func (_q *ChannelModelPriceVersionQuery) collectField(ctx context.Context, oneNo
 				selectedFields = append(selectedFields, channelmodelpriceversion.FieldEffectiveEndAt)
 				fieldSeen[channelmodelpriceversion.FieldEffectiveEndAt] = struct{}{}
 			}
-		case "refreanceID":
-			if _, ok := fieldSeen[channelmodelpriceversion.FieldRefreanceID]; !ok {
-				selectedFields = append(selectedFields, channelmodelpriceversion.FieldRefreanceID)
-				fieldSeen[channelmodelpriceversion.FieldRefreanceID] = struct{}{}
+		case "referenceID":
+			if _, ok := fieldSeen[channelmodelpriceversion.FieldReferenceID]; !ok {
+				selectedFields = append(selectedFields, channelmodelpriceversion.FieldReferenceID)
+				fieldSeen[channelmodelpriceversion.FieldReferenceID] = struct{}{}
 			}
 		case "id":
 		case "__typename":

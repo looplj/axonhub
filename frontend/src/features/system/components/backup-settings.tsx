@@ -17,12 +17,14 @@ export function BackupSettings() {
 
   const [backupOptions, setBackupOptions] = useState<BackupOptionsInput>({
     includeChannels: true,
+    includeModelPrices: true,
     includeModels: true,
     includeAPIKeys: false,
   });
 
   const [restoreOptions, setRestoreOptions] = useState<RestoreOptionsInput>({
     includeChannels: true,
+    includeModelPrices: true,
     includeModels: true,
     includeAPIKeys: false,
     channelConflictStrategy: 'SKIP',
@@ -66,6 +68,14 @@ export function BackupSettings() {
                 id="include-channels"
                 checked={backupOptions.includeChannels}
                 onCheckedChange={(checked) => setBackupOptions({ ...backupOptions, includeChannels: checked })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="include-model-prices">{t('system.backup.includeModelPrices')}</Label>
+              <Switch
+                id="include-model-prices"
+                checked={backupOptions.includeModelPrices}
+                onCheckedChange={(checked) => setBackupOptions({ ...backupOptions, includeModelPrices: checked })}
               />
             </div>
             <div className="flex items-center justify-between">
@@ -117,6 +127,14 @@ export function BackupSettings() {
                 id="restore-include-channels"
                 checked={restoreOptions.includeChannels}
                 onCheckedChange={(checked) => setRestoreOptions({ ...restoreOptions, includeChannels: checked })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="restore-include-model-prices">{t('system.backup.includeModelPrices')}</Label>
+              <Switch
+                id="restore-include-model-prices"
+                checked={restoreOptions.includeModelPrices}
+                onCheckedChange={(checked) => setRestoreOptions({ ...restoreOptions, includeModelPrices: checked })}
               />
             </div>
             <div className="flex items-center justify-between">

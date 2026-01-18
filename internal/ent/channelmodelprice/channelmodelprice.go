@@ -27,8 +27,8 @@ const (
 	FieldModelID = "model_id"
 	// FieldPrice holds the string denoting the price field in the database.
 	FieldPrice = "price"
-	// FieldRefreanceID holds the string denoting the refreance_id field in the database.
-	FieldRefreanceID = "refreance_id"
+	// FieldReferenceID holds the string denoting the reference_id field in the database.
+	FieldReferenceID = "reference_id"
 	// EdgeChannel holds the string denoting the channel edge name in mutations.
 	EdgeChannel = "channel"
 	// EdgeVersions holds the string denoting the versions edge name in mutations.
@@ -60,7 +60,7 @@ var Columns = []string{
 	FieldChannelID,
 	FieldModelID,
 	FieldPrice,
-	FieldRefreanceID,
+	FieldReferenceID,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -125,9 +125,9 @@ func ByModelID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldModelID, opts...).ToFunc()
 }
 
-// ByRefreanceID orders the results by the refreance_id field.
-func ByRefreanceID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldRefreanceID, opts...).ToFunc()
+// ByReferenceID orders the results by the reference_id field.
+func ByReferenceID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldReferenceID, opts...).ToFunc()
 }
 
 // ByChannelField orders the results by channel field.

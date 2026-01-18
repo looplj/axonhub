@@ -16,9 +16,10 @@ import (
 // Backup is the resolver for the backup field.
 func (r *mutationResolver) Backup(ctx context.Context, input BackupOptionsInput) (*BackupPayload, error) {
 	data, err := r.backupService.Backup(ctx, biz.BackupOptions{
-		IncludeChannels: input.IncludeChannels,
-		IncludeModels:   input.IncludeModels,
-		IncludeAPIKeys:  input.IncludeAPIKeys,
+		IncludeChannels:    input.IncludeChannels,
+		IncludeModels:      input.IncludeModels,
+		IncludeAPIKeys:     input.IncludeAPIKeys,
+		IncludeModelPrices: input.IncludeModelPrices,
 	})
 	if err != nil {
 		return nil, err
@@ -43,6 +44,7 @@ func (r *mutationResolver) Restore(ctx context.Context, file graphql.Upload, inp
 
 	err = r.backupService.Restore(ctx, fileContent, biz.RestoreOptions{
 		IncludeChannels:         input.IncludeChannels,
+		IncludeModelPrices:      input.IncludeModelPrices,
 		IncludeModels:           input.IncludeModels,
 		IncludeAPIKeys:          input.IncludeAPIKeys,
 		ChannelConflictStrategy: biz.ConflictStrategy(input.ChannelConflictStrategy),

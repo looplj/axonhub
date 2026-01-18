@@ -78,7 +78,7 @@ func TestUsageCost_PerUnitPromptAndCompletion(t *testing.T) {
 				},
 			},
 		}).
-		SetRefreanceID("ref-1").
+		SetReferenceID("ref-1").
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -152,7 +152,7 @@ func TestUsageCost_TieredPrompt(t *testing.T) {
 				},
 			},
 		}).
-		SetRefreanceID("ref-2").
+		SetReferenceID("ref-2").
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -282,7 +282,7 @@ func TestUsageCost_CacheVariant5Min(t *testing.T) {
 				},
 			},
 		}).
-		SetRefreanceID("ref-4").
+		SetReferenceID("ref-4").
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -369,7 +369,7 @@ func TestUsageCost_CacheVariant1Hour(t *testing.T) {
 				},
 			},
 		}).
-		SetRefreanceID("ref-5").
+		SetReferenceID("ref-5").
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -461,7 +461,7 @@ func TestUsageCost_CacheVariantBoth5MinAnd1Hour(t *testing.T) {
 				},
 			},
 		}).
-		SetRefreanceID("ref-6").
+		SetReferenceID("ref-6").
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -543,7 +543,7 @@ func TestUsageCost_CacheVariantFallbackToShared(t *testing.T) {
 				},
 			},
 		}).
-		SetRefreanceID("ref-7").
+		SetReferenceID("ref-7").
 		Save(ctx)
 	require.NoError(t, err)
 

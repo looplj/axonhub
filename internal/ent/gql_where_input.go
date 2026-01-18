@@ -1303,20 +1303,20 @@ type ChannelModelPriceWhereInput struct {
 	ModelIDEqualFold    *string  `json:"modelIDEqualFold,omitempty"`
 	ModelIDContainsFold *string  `json:"modelIDContainsFold,omitempty"`
 
-	// "refreance_id" field predicates.
-	RefreanceID             *string  `json:"refreanceID,omitempty"`
-	RefreanceIDNEQ          *string  `json:"refreanceIDNEQ,omitempty"`
-	RefreanceIDIn           []string `json:"refreanceIDIn,omitempty"`
-	RefreanceIDNotIn        []string `json:"refreanceIDNotIn,omitempty"`
-	RefreanceIDGT           *string  `json:"refreanceIDGT,omitempty"`
-	RefreanceIDGTE          *string  `json:"refreanceIDGTE,omitempty"`
-	RefreanceIDLT           *string  `json:"refreanceIDLT,omitempty"`
-	RefreanceIDLTE          *string  `json:"refreanceIDLTE,omitempty"`
-	RefreanceIDContains     *string  `json:"refreanceIDContains,omitempty"`
-	RefreanceIDHasPrefix    *string  `json:"refreanceIDHasPrefix,omitempty"`
-	RefreanceIDHasSuffix    *string  `json:"refreanceIDHasSuffix,omitempty"`
-	RefreanceIDEqualFold    *string  `json:"refreanceIDEqualFold,omitempty"`
-	RefreanceIDContainsFold *string  `json:"refreanceIDContainsFold,omitempty"`
+	// "reference_id" field predicates.
+	ReferenceID             *string  `json:"referenceID,omitempty"`
+	ReferenceIDNEQ          *string  `json:"referenceIDNEQ,omitempty"`
+	ReferenceIDIn           []string `json:"referenceIDIn,omitempty"`
+	ReferenceIDNotIn        []string `json:"referenceIDNotIn,omitempty"`
+	ReferenceIDGT           *string  `json:"referenceIDGT,omitempty"`
+	ReferenceIDGTE          *string  `json:"referenceIDGTE,omitempty"`
+	ReferenceIDLT           *string  `json:"referenceIDLT,omitempty"`
+	ReferenceIDLTE          *string  `json:"referenceIDLTE,omitempty"`
+	ReferenceIDContains     *string  `json:"referenceIDContains,omitempty"`
+	ReferenceIDHasPrefix    *string  `json:"referenceIDHasPrefix,omitempty"`
+	ReferenceIDHasSuffix    *string  `json:"referenceIDHasSuffix,omitempty"`
+	ReferenceIDEqualFold    *string  `json:"referenceIDEqualFold,omitempty"`
+	ReferenceIDContainsFold *string  `json:"referenceIDContainsFold,omitempty"`
 
 	// "channel" edge predicates.
 	HasChannel     *bool                `json:"hasChannel,omitempty"`
@@ -1545,44 +1545,44 @@ func (i *ChannelModelPriceWhereInput) P() (predicate.ChannelModelPrice, error) {
 	if i.ModelIDContainsFold != nil {
 		predicates = append(predicates, channelmodelprice.ModelIDContainsFold(*i.ModelIDContainsFold))
 	}
-	if i.RefreanceID != nil {
-		predicates = append(predicates, channelmodelprice.RefreanceIDEQ(*i.RefreanceID))
+	if i.ReferenceID != nil {
+		predicates = append(predicates, channelmodelprice.ReferenceIDEQ(*i.ReferenceID))
 	}
-	if i.RefreanceIDNEQ != nil {
-		predicates = append(predicates, channelmodelprice.RefreanceIDNEQ(*i.RefreanceIDNEQ))
+	if i.ReferenceIDNEQ != nil {
+		predicates = append(predicates, channelmodelprice.ReferenceIDNEQ(*i.ReferenceIDNEQ))
 	}
-	if len(i.RefreanceIDIn) > 0 {
-		predicates = append(predicates, channelmodelprice.RefreanceIDIn(i.RefreanceIDIn...))
+	if len(i.ReferenceIDIn) > 0 {
+		predicates = append(predicates, channelmodelprice.ReferenceIDIn(i.ReferenceIDIn...))
 	}
-	if len(i.RefreanceIDNotIn) > 0 {
-		predicates = append(predicates, channelmodelprice.RefreanceIDNotIn(i.RefreanceIDNotIn...))
+	if len(i.ReferenceIDNotIn) > 0 {
+		predicates = append(predicates, channelmodelprice.ReferenceIDNotIn(i.ReferenceIDNotIn...))
 	}
-	if i.RefreanceIDGT != nil {
-		predicates = append(predicates, channelmodelprice.RefreanceIDGT(*i.RefreanceIDGT))
+	if i.ReferenceIDGT != nil {
+		predicates = append(predicates, channelmodelprice.ReferenceIDGT(*i.ReferenceIDGT))
 	}
-	if i.RefreanceIDGTE != nil {
-		predicates = append(predicates, channelmodelprice.RefreanceIDGTE(*i.RefreanceIDGTE))
+	if i.ReferenceIDGTE != nil {
+		predicates = append(predicates, channelmodelprice.ReferenceIDGTE(*i.ReferenceIDGTE))
 	}
-	if i.RefreanceIDLT != nil {
-		predicates = append(predicates, channelmodelprice.RefreanceIDLT(*i.RefreanceIDLT))
+	if i.ReferenceIDLT != nil {
+		predicates = append(predicates, channelmodelprice.ReferenceIDLT(*i.ReferenceIDLT))
 	}
-	if i.RefreanceIDLTE != nil {
-		predicates = append(predicates, channelmodelprice.RefreanceIDLTE(*i.RefreanceIDLTE))
+	if i.ReferenceIDLTE != nil {
+		predicates = append(predicates, channelmodelprice.ReferenceIDLTE(*i.ReferenceIDLTE))
 	}
-	if i.RefreanceIDContains != nil {
-		predicates = append(predicates, channelmodelprice.RefreanceIDContains(*i.RefreanceIDContains))
+	if i.ReferenceIDContains != nil {
+		predicates = append(predicates, channelmodelprice.ReferenceIDContains(*i.ReferenceIDContains))
 	}
-	if i.RefreanceIDHasPrefix != nil {
-		predicates = append(predicates, channelmodelprice.RefreanceIDHasPrefix(*i.RefreanceIDHasPrefix))
+	if i.ReferenceIDHasPrefix != nil {
+		predicates = append(predicates, channelmodelprice.ReferenceIDHasPrefix(*i.ReferenceIDHasPrefix))
 	}
-	if i.RefreanceIDHasSuffix != nil {
-		predicates = append(predicates, channelmodelprice.RefreanceIDHasSuffix(*i.RefreanceIDHasSuffix))
+	if i.ReferenceIDHasSuffix != nil {
+		predicates = append(predicates, channelmodelprice.ReferenceIDHasSuffix(*i.ReferenceIDHasSuffix))
 	}
-	if i.RefreanceIDEqualFold != nil {
-		predicates = append(predicates, channelmodelprice.RefreanceIDEqualFold(*i.RefreanceIDEqualFold))
+	if i.ReferenceIDEqualFold != nil {
+		predicates = append(predicates, channelmodelprice.ReferenceIDEqualFold(*i.ReferenceIDEqualFold))
 	}
-	if i.RefreanceIDContainsFold != nil {
-		predicates = append(predicates, channelmodelprice.RefreanceIDContainsFold(*i.RefreanceIDContainsFold))
+	if i.ReferenceIDContainsFold != nil {
+		predicates = append(predicates, channelmodelprice.ReferenceIDContainsFold(*i.ReferenceIDContainsFold))
 	}
 
 	if i.HasChannel != nil {
@@ -1668,16 +1668,6 @@ type ChannelModelPriceVersionWhereInput struct {
 	UpdatedAtLT    *time.Time  `json:"updatedAtLT,omitempty"`
 	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
 
-	// "deleted_at" field predicates.
-	DeletedAt      *int  `json:"deletedAt,omitempty"`
-	DeletedAtNEQ   *int  `json:"deletedAtNEQ,omitempty"`
-	DeletedAtIn    []int `json:"deletedAtIn,omitempty"`
-	DeletedAtNotIn []int `json:"deletedAtNotIn,omitempty"`
-	DeletedAtGT    *int  `json:"deletedAtGT,omitempty"`
-	DeletedAtGTE   *int  `json:"deletedAtGTE,omitempty"`
-	DeletedAtLT    *int  `json:"deletedAtLT,omitempty"`
-	DeletedAtLTE   *int  `json:"deletedAtLTE,omitempty"`
-
 	// "channel_id" field predicates.
 	ChannelID      *int  `json:"channelID,omitempty"`
 	ChannelIDNEQ   *int  `json:"channelIDNEQ,omitempty"`
@@ -1737,20 +1727,20 @@ type ChannelModelPriceVersionWhereInput struct {
 	EffectiveEndAtIsNil  bool        `json:"effectiveEndAtIsNil,omitempty"`
 	EffectiveEndAtNotNil bool        `json:"effectiveEndAtNotNil,omitempty"`
 
-	// "refreance_id" field predicates.
-	RefreanceID             *string  `json:"refreanceID,omitempty"`
-	RefreanceIDNEQ          *string  `json:"refreanceIDNEQ,omitempty"`
-	RefreanceIDIn           []string `json:"refreanceIDIn,omitempty"`
-	RefreanceIDNotIn        []string `json:"refreanceIDNotIn,omitempty"`
-	RefreanceIDGT           *string  `json:"refreanceIDGT,omitempty"`
-	RefreanceIDGTE          *string  `json:"refreanceIDGTE,omitempty"`
-	RefreanceIDLT           *string  `json:"refreanceIDLT,omitempty"`
-	RefreanceIDLTE          *string  `json:"refreanceIDLTE,omitempty"`
-	RefreanceIDContains     *string  `json:"refreanceIDContains,omitempty"`
-	RefreanceIDHasPrefix    *string  `json:"refreanceIDHasPrefix,omitempty"`
-	RefreanceIDHasSuffix    *string  `json:"refreanceIDHasSuffix,omitempty"`
-	RefreanceIDEqualFold    *string  `json:"refreanceIDEqualFold,omitempty"`
-	RefreanceIDContainsFold *string  `json:"refreanceIDContainsFold,omitempty"`
+	// "reference_id" field predicates.
+	ReferenceID             *string  `json:"referenceID,omitempty"`
+	ReferenceIDNEQ          *string  `json:"referenceIDNEQ,omitempty"`
+	ReferenceIDIn           []string `json:"referenceIDIn,omitempty"`
+	ReferenceIDNotIn        []string `json:"referenceIDNotIn,omitempty"`
+	ReferenceIDGT           *string  `json:"referenceIDGT,omitempty"`
+	ReferenceIDGTE          *string  `json:"referenceIDGTE,omitempty"`
+	ReferenceIDLT           *string  `json:"referenceIDLT,omitempty"`
+	ReferenceIDLTE          *string  `json:"referenceIDLTE,omitempty"`
+	ReferenceIDContains     *string  `json:"referenceIDContains,omitempty"`
+	ReferenceIDHasPrefix    *string  `json:"referenceIDHasPrefix,omitempty"`
+	ReferenceIDHasSuffix    *string  `json:"referenceIDHasSuffix,omitempty"`
+	ReferenceIDEqualFold    *string  `json:"referenceIDEqualFold,omitempty"`
+	ReferenceIDContainsFold *string  `json:"referenceIDContainsFold,omitempty"`
 
 	// "channel_model_price" edge predicates.
 	HasChannelModelPrice     *bool                          `json:"hasChannelModelPrice,omitempty"`
@@ -1900,30 +1890,6 @@ func (i *ChannelModelPriceVersionWhereInput) P() (predicate.ChannelModelPriceVer
 	if i.UpdatedAtLTE != nil {
 		predicates = append(predicates, channelmodelpriceversion.UpdatedAtLTE(*i.UpdatedAtLTE))
 	}
-	if i.DeletedAt != nil {
-		predicates = append(predicates, channelmodelpriceversion.DeletedAtEQ(*i.DeletedAt))
-	}
-	if i.DeletedAtNEQ != nil {
-		predicates = append(predicates, channelmodelpriceversion.DeletedAtNEQ(*i.DeletedAtNEQ))
-	}
-	if len(i.DeletedAtIn) > 0 {
-		predicates = append(predicates, channelmodelpriceversion.DeletedAtIn(i.DeletedAtIn...))
-	}
-	if len(i.DeletedAtNotIn) > 0 {
-		predicates = append(predicates, channelmodelpriceversion.DeletedAtNotIn(i.DeletedAtNotIn...))
-	}
-	if i.DeletedAtGT != nil {
-		predicates = append(predicates, channelmodelpriceversion.DeletedAtGT(*i.DeletedAtGT))
-	}
-	if i.DeletedAtGTE != nil {
-		predicates = append(predicates, channelmodelpriceversion.DeletedAtGTE(*i.DeletedAtGTE))
-	}
-	if i.DeletedAtLT != nil {
-		predicates = append(predicates, channelmodelpriceversion.DeletedAtLT(*i.DeletedAtLT))
-	}
-	if i.DeletedAtLTE != nil {
-		predicates = append(predicates, channelmodelpriceversion.DeletedAtLTE(*i.DeletedAtLTE))
-	}
 	if i.ChannelID != nil {
 		predicates = append(predicates, channelmodelpriceversion.ChannelIDEQ(*i.ChannelID))
 	}
@@ -2065,44 +2031,44 @@ func (i *ChannelModelPriceVersionWhereInput) P() (predicate.ChannelModelPriceVer
 	if i.EffectiveEndAtNotNil {
 		predicates = append(predicates, channelmodelpriceversion.EffectiveEndAtNotNil())
 	}
-	if i.RefreanceID != nil {
-		predicates = append(predicates, channelmodelpriceversion.RefreanceIDEQ(*i.RefreanceID))
+	if i.ReferenceID != nil {
+		predicates = append(predicates, channelmodelpriceversion.ReferenceIDEQ(*i.ReferenceID))
 	}
-	if i.RefreanceIDNEQ != nil {
-		predicates = append(predicates, channelmodelpriceversion.RefreanceIDNEQ(*i.RefreanceIDNEQ))
+	if i.ReferenceIDNEQ != nil {
+		predicates = append(predicates, channelmodelpriceversion.ReferenceIDNEQ(*i.ReferenceIDNEQ))
 	}
-	if len(i.RefreanceIDIn) > 0 {
-		predicates = append(predicates, channelmodelpriceversion.RefreanceIDIn(i.RefreanceIDIn...))
+	if len(i.ReferenceIDIn) > 0 {
+		predicates = append(predicates, channelmodelpriceversion.ReferenceIDIn(i.ReferenceIDIn...))
 	}
-	if len(i.RefreanceIDNotIn) > 0 {
-		predicates = append(predicates, channelmodelpriceversion.RefreanceIDNotIn(i.RefreanceIDNotIn...))
+	if len(i.ReferenceIDNotIn) > 0 {
+		predicates = append(predicates, channelmodelpriceversion.ReferenceIDNotIn(i.ReferenceIDNotIn...))
 	}
-	if i.RefreanceIDGT != nil {
-		predicates = append(predicates, channelmodelpriceversion.RefreanceIDGT(*i.RefreanceIDGT))
+	if i.ReferenceIDGT != nil {
+		predicates = append(predicates, channelmodelpriceversion.ReferenceIDGT(*i.ReferenceIDGT))
 	}
-	if i.RefreanceIDGTE != nil {
-		predicates = append(predicates, channelmodelpriceversion.RefreanceIDGTE(*i.RefreanceIDGTE))
+	if i.ReferenceIDGTE != nil {
+		predicates = append(predicates, channelmodelpriceversion.ReferenceIDGTE(*i.ReferenceIDGTE))
 	}
-	if i.RefreanceIDLT != nil {
-		predicates = append(predicates, channelmodelpriceversion.RefreanceIDLT(*i.RefreanceIDLT))
+	if i.ReferenceIDLT != nil {
+		predicates = append(predicates, channelmodelpriceversion.ReferenceIDLT(*i.ReferenceIDLT))
 	}
-	if i.RefreanceIDLTE != nil {
-		predicates = append(predicates, channelmodelpriceversion.RefreanceIDLTE(*i.RefreanceIDLTE))
+	if i.ReferenceIDLTE != nil {
+		predicates = append(predicates, channelmodelpriceversion.ReferenceIDLTE(*i.ReferenceIDLTE))
 	}
-	if i.RefreanceIDContains != nil {
-		predicates = append(predicates, channelmodelpriceversion.RefreanceIDContains(*i.RefreanceIDContains))
+	if i.ReferenceIDContains != nil {
+		predicates = append(predicates, channelmodelpriceversion.ReferenceIDContains(*i.ReferenceIDContains))
 	}
-	if i.RefreanceIDHasPrefix != nil {
-		predicates = append(predicates, channelmodelpriceversion.RefreanceIDHasPrefix(*i.RefreanceIDHasPrefix))
+	if i.ReferenceIDHasPrefix != nil {
+		predicates = append(predicates, channelmodelpriceversion.ReferenceIDHasPrefix(*i.ReferenceIDHasPrefix))
 	}
-	if i.RefreanceIDHasSuffix != nil {
-		predicates = append(predicates, channelmodelpriceversion.RefreanceIDHasSuffix(*i.RefreanceIDHasSuffix))
+	if i.ReferenceIDHasSuffix != nil {
+		predicates = append(predicates, channelmodelpriceversion.ReferenceIDHasSuffix(*i.ReferenceIDHasSuffix))
 	}
-	if i.RefreanceIDEqualFold != nil {
-		predicates = append(predicates, channelmodelpriceversion.RefreanceIDEqualFold(*i.RefreanceIDEqualFold))
+	if i.ReferenceIDEqualFold != nil {
+		predicates = append(predicates, channelmodelpriceversion.ReferenceIDEqualFold(*i.ReferenceIDEqualFold))
 	}
-	if i.RefreanceIDContainsFold != nil {
-		predicates = append(predicates, channelmodelpriceversion.RefreanceIDContainsFold(*i.RefreanceIDContainsFold))
+	if i.ReferenceIDContainsFold != nil {
+		predicates = append(predicates, channelmodelpriceversion.ReferenceIDContainsFold(*i.ReferenceIDContainsFold))
 	}
 
 	if i.HasChannelModelPrice != nil {

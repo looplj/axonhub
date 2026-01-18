@@ -436,12 +436,12 @@ func (_m *ChannelModelPrice) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "price",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.RefreanceID); err != nil {
+	if buf, err = json.Marshal(_m.ReferenceID); err != nil {
 		return nil, err
 	}
 	node.Fields[6] = &Field{
 		Type:  "string",
-		Name:  "refreance_id",
+		Name:  "reference_id",
 		Value: string(buf),
 	}
 	node.Edges[0] = &Edge{
@@ -472,7 +472,7 @@ func (_m *ChannelModelPriceVersion) Node(ctx context.Context) (node *Node, err e
 	node = &Node{
 		ID:     _m.ID,
 		Type:   "ChannelModelPriceVersion",
-		Fields: make([]*Field, 11),
+		Fields: make([]*Field, 10),
 		Edges:  make([]*Edge, 1),
 	}
 	var buf []byte
@@ -492,18 +492,10 @@ func (_m *ChannelModelPriceVersion) Node(ctx context.Context) (node *Node, err e
 		Name:  "updated_at",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.DeletedAt); err != nil {
-		return nil, err
-	}
-	node.Fields[2] = &Field{
-		Type:  "int",
-		Name:  "deleted_at",
-		Value: string(buf),
-	}
 	if buf, err = json.Marshal(_m.ChannelID); err != nil {
 		return nil, err
 	}
-	node.Fields[3] = &Field{
+	node.Fields[2] = &Field{
 		Type:  "int",
 		Name:  "channel_id",
 		Value: string(buf),
@@ -511,7 +503,7 @@ func (_m *ChannelModelPriceVersion) Node(ctx context.Context) (node *Node, err e
 	if buf, err = json.Marshal(_m.ModelID); err != nil {
 		return nil, err
 	}
-	node.Fields[4] = &Field{
+	node.Fields[3] = &Field{
 		Type:  "string",
 		Name:  "model_id",
 		Value: string(buf),
@@ -519,7 +511,7 @@ func (_m *ChannelModelPriceVersion) Node(ctx context.Context) (node *Node, err e
 	if buf, err = json.Marshal(_m.ChannelModelPriceID); err != nil {
 		return nil, err
 	}
-	node.Fields[5] = &Field{
+	node.Fields[4] = &Field{
 		Type:  "int",
 		Name:  "channel_model_price_id",
 		Value: string(buf),
@@ -527,7 +519,7 @@ func (_m *ChannelModelPriceVersion) Node(ctx context.Context) (node *Node, err e
 	if buf, err = json.Marshal(_m.Price); err != nil {
 		return nil, err
 	}
-	node.Fields[6] = &Field{
+	node.Fields[5] = &Field{
 		Type:  "objects.ModelPrice",
 		Name:  "price",
 		Value: string(buf),
@@ -535,7 +527,7 @@ func (_m *ChannelModelPriceVersion) Node(ctx context.Context) (node *Node, err e
 	if buf, err = json.Marshal(_m.Status); err != nil {
 		return nil, err
 	}
-	node.Fields[7] = &Field{
+	node.Fields[6] = &Field{
 		Type:  "channelmodelpriceversion.Status",
 		Name:  "status",
 		Value: string(buf),
@@ -543,7 +535,7 @@ func (_m *ChannelModelPriceVersion) Node(ctx context.Context) (node *Node, err e
 	if buf, err = json.Marshal(_m.EffectiveStartAt); err != nil {
 		return nil, err
 	}
-	node.Fields[8] = &Field{
+	node.Fields[7] = &Field{
 		Type:  "time.Time",
 		Name:  "effective_start_at",
 		Value: string(buf),
@@ -551,17 +543,17 @@ func (_m *ChannelModelPriceVersion) Node(ctx context.Context) (node *Node, err e
 	if buf, err = json.Marshal(_m.EffectiveEndAt); err != nil {
 		return nil, err
 	}
-	node.Fields[9] = &Field{
+	node.Fields[8] = &Field{
 		Type:  "time.Time",
 		Name:  "effective_end_at",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.RefreanceID); err != nil {
+	if buf, err = json.Marshal(_m.ReferenceID); err != nil {
 		return nil, err
 	}
-	node.Fields[10] = &Field{
+	node.Fields[9] = &Field{
 		Type:  "string",
-		Name:  "refreance_id",
+		Name:  "reference_id",
 		Value: string(buf),
 	}
 	node.Edges[0] = &Edge{

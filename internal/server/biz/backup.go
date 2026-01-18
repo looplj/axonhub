@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/log"
@@ -45,11 +46,12 @@ type BackupService struct {
 }
 
 type BackupData struct {
-	Version   string           `json:"version"`
-	Timestamp time.Time        `json:"timestamp"`
-	Channels  []*BackupChannel `json:"channels"`
-	Models    []*BackupModel   `json:"models"`
-	APIKeys   []*BackupAPIKey  `json:"api_keys,omitempty"`
+	Version            string                     `json:"version"`
+	Timestamp          time.Time                  `json:"timestamp"`
+	Channels           []*BackupChannel           `json:"channels"`
+	Models             []*BackupModel             `json:"models"`
+	ChannelModelPrices []*BackupChannelModelPrice `json:"channel_model_prices,omitempty"`
+	APIKeys            []*BackupAPIKey            `json:"api_keys,omitempty"`
 }
 
 type BackupChannel struct {
@@ -68,12 +70,23 @@ type BackupAPIKey struct {
 	ProjectName string `json:"project_name"`
 }
 
-const BackupVersion = "1.0"
+type BackupChannelModelPrice struct {
+	ChannelName string             `json:"channel_name"`
+	ModelID     string             `json:"model_id"`
+	Price       objects.ModelPrice `json:"price"`
+	ReferenceID string             `json:"reference_id"`
+}
+
+const (
+	BackupVersion   = "1.1"
+	BackupVersionV1 = "1.0"
+)
 
 type BackupOptions struct {
-	IncludeChannels bool
-	IncludeModels   bool
-	IncludeAPIKeys  bool
+	IncludeChannels    bool
+	IncludeModels      bool
+	IncludeAPIKeys     bool
+	IncludeModelPrices bool
 }
 
 type ConflictStrategy string
@@ -88,6 +101,7 @@ type RestoreOptions struct {
 	IncludeChannels         bool
 	IncludeModels           bool
 	IncludeAPIKeys          bool
+	IncludeModelPrices      bool
 	ChannelConflictStrategy ConflictStrategy
 	ModelConflictStrategy   ConflictStrategy
 	APIKeyConflictStrategy  ConflictStrategy
@@ -103,7 +117,10 @@ func (svc *BackupService) Backup(ctx context.Context, opts BackupOptions) ([]byt
 		return nil, fmt.Errorf("only owners can perform backup operations")
 	}
 
-	var channelDataList []*BackupChannel
+	var (
+		channelDataList           []*BackupChannel
+		channelModelPriceDataList []*BackupChannelModelPrice
+	)
 
 	if opts.IncludeChannels {
 		channels, err := svc.entFromContext(ctx).Channel.Query().All(ctx)
@@ -116,6 +133,28 @@ func (svc *BackupService) Backup(ctx context.Context, opts BackupOptions) ([]byt
 				Channel:     *ch,
 				Credentials: ch.Credentials,
 			}
+		})
+	}
+
+	if opts.IncludeModelPrices {
+		prices, err := svc.entFromContext(ctx).ChannelModelPrice.Query().
+			WithChannel().
+			All(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		channelModelPriceDataList = lo.FilterMap(prices, func(p *ent.ChannelModelPrice, _ int) (*BackupChannelModelPrice, bool) {
+			if p.Edges.Channel == nil {
+				return nil, false
+			}
+
+			return &BackupChannelModelPrice{
+				ChannelName: p.Edges.Channel.Name,
+				ModelID:     p.ModelID,
+				Price:       p.Price,
+				ReferenceID: p.ReferenceID,
+			}, true
 		})
 	}
 
@@ -156,11 +195,12 @@ func (svc *BackupService) Backup(ctx context.Context, opts BackupOptions) ([]byt
 	}
 
 	backupData := &BackupData{
-		Version:   BackupVersion,
-		Timestamp: time.Now(),
-		Channels:  channelDataList,
-		Models:    modelDataList,
-		APIKeys:   apiKeyDataList,
+		Version:            BackupVersion,
+		Timestamp:          time.Now(),
+		Channels:           channelDataList,
+		Models:             modelDataList,
+		ChannelModelPrices: channelModelPriceDataList,
+		APIKeys:            apiKeyDataList,
 	}
 
 	return json.MarshalIndent(backupData, "", "  ")
@@ -181,7 +221,7 @@ func (svc *BackupService) Restore(ctx context.Context, data []byte, opts Restore
 		return err
 	}
 
-	if backupData.Version != BackupVersion {
+	if !lo.Contains([]string{BackupVersion, BackupVersionV1}, backupData.Version) {
 		log.Warn(ctx, "backup version mismatch",
 			log.String("expected", BackupVersion),
 			log.String("got", backupData.Version))
@@ -201,6 +241,12 @@ func (svc *BackupService) restore(ctx context.Context, backupData BackupData, op
 		}
 	}
 
+	if opts.IncludeModelPrices {
+		if err := svc.restoreChannelModelPrices(ctx, backupData.ChannelModelPrices, opts); err != nil {
+			return err
+		}
+	}
+
 	if opts.IncludeModels {
 		if err := svc.restoreModels(ctx, backupData.Models, opts); err != nil {
 			return err
@@ -214,6 +260,109 @@ func (svc *BackupService) restore(ctx context.Context, backupData BackupData, op
 	}
 
 	svc.channelService.asyncReloadChannels()
+
+	return nil
+}
+
+func (svc *BackupService) restoreChannelModelPrices(
+	ctx context.Context,
+	prices []*BackupChannelModelPrice,
+	opts RestoreOptions,
+) error {
+	if len(prices) == 0 {
+		return nil
+	}
+
+	db := svc.entFromContext(ctx)
+	channelCache := map[string]*ent.Channel{}
+
+	getChannel := func(name string) (*ent.Channel, error) {
+		if ch, ok := channelCache[name]; ok {
+			return ch, nil
+		}
+
+		ch, err := db.Channel.Query().
+			Where(channel.Name(name)).
+			First(ctx)
+		if err != nil {
+			if ent.IsNotFound(err) {
+				channelCache[name] = nil
+				return nil, nil
+			}
+
+			return nil, err
+		}
+
+		channelCache[name] = ch
+
+		return ch, nil
+	}
+
+	for _, pData := range prices {
+		if pData == nil {
+			continue
+		}
+
+		if err := pData.Price.Validate(); err != nil {
+			return fmt.Errorf("invalid channel model price: channel=%s model_id=%s: %w", pData.ChannelName, pData.ModelID, err)
+		}
+
+		ch, err := getChannel(pData.ChannelName)
+		if err != nil {
+			return err
+		}
+
+		if ch == nil {
+			log.Warn(ctx, "channel not found for restoring channel model price, skipping",
+				log.String("channel", pData.ChannelName),
+				log.String("model_id", pData.ModelID),
+			)
+
+			continue
+		}
+
+		existing, err := db.ChannelModelPrice.Query().
+			Where(
+				channelmodelprice.ChannelID(ch.ID),
+				channelmodelprice.ModelID(pData.ModelID),
+			).
+			First(ctx)
+		if err != nil && !ent.IsNotFound(err) {
+			return err
+		}
+
+		refID := pData.ReferenceID
+		if refID == "" {
+			refID = generateReferenceID()
+		}
+
+		if existing != nil {
+			switch opts.ChannelConflictStrategy {
+			case ConflictStrategySkip:
+				continue
+			case ConflictStrategyError:
+				return fmt.Errorf("channel model price already exists: channel=%s model_id=%s", pData.ChannelName, pData.ModelID)
+			case ConflictStrategyOverwrite:
+				if _, err := db.ChannelModelPrice.UpdateOneID(existing.ID).
+					SetPrice(pData.Price).
+					SetReferenceID(refID).
+					Save(ctx); err != nil {
+					return fmt.Errorf("failed to restore channel model price: channel=%s model_id=%s: %w", pData.ChannelName, pData.ModelID, err)
+				}
+			}
+
+			continue
+		}
+
+		if _, err := db.ChannelModelPrice.Create().
+			SetChannelID(ch.ID).
+			SetModelID(pData.ModelID).
+			SetPrice(pData.Price).
+			SetReferenceID(refID).
+			Save(ctx); err != nil {
+			return fmt.Errorf("failed to create channel model price: channel=%s model_id=%s: %w", pData.ChannelName, pData.ModelID, err)
+		}
+	}
 
 	return nil
 }

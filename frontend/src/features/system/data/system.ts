@@ -675,6 +675,7 @@ const RESTORE_MUTATION = `
 
 export interface BackupOptionsInput {
   includeChannels: boolean;
+  includeModelPrices: boolean;
   includeModels: boolean;
   includeAPIKeys: boolean;
 }
@@ -687,6 +688,7 @@ export interface BackupPayload {
 
 export interface RestoreOptionsInput {
   includeChannels: boolean;
+  includeModelPrices: boolean;
   includeModels: boolean;
   includeAPIKeys: boolean;
   channelConflictStrategy: 'SKIP' | 'OVERWRITE' | 'ERROR';

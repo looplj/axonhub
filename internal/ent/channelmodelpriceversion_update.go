@@ -35,27 +35,6 @@ func (_u *ChannelModelPriceVersionUpdate) SetUpdatedAt(v time.Time) *ChannelMode
 	return _u
 }
 
-// SetDeletedAt sets the "deleted_at" field.
-func (_u *ChannelModelPriceVersionUpdate) SetDeletedAt(v int) *ChannelModelPriceVersionUpdate {
-	_u.mutation.ResetDeletedAt()
-	_u.mutation.SetDeletedAt(v)
-	return _u
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (_u *ChannelModelPriceVersionUpdate) SetNillableDeletedAt(v *int) *ChannelModelPriceVersionUpdate {
-	if v != nil {
-		_u.SetDeletedAt(*v)
-	}
-	return _u
-}
-
-// AddDeletedAt adds value to the "deleted_at" field.
-func (_u *ChannelModelPriceVersionUpdate) AddDeletedAt(v int) *ChannelModelPriceVersionUpdate {
-	_u.mutation.AddDeletedAt(v)
-	return _u
-}
-
 // SetStatus sets the "status" field.
 func (_u *ChannelModelPriceVersionUpdate) SetStatus(v channelmodelpriceversion.Status) *ChannelModelPriceVersionUpdate {
 	_u.mutation.SetStatus(v)
@@ -171,12 +150,6 @@ func (_u *ChannelModelPriceVersionUpdate) sqlSave(ctx context.Context) (_node in
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(channelmodelpriceversion.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := _u.mutation.DeletedAt(); ok {
-		_spec.SetField(channelmodelpriceversion.FieldDeletedAt, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedDeletedAt(); ok {
-		_spec.AddField(channelmodelpriceversion.FieldDeletedAt, field.TypeInt, value)
-	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(channelmodelpriceversion.FieldStatus, field.TypeEnum, value)
 	}
@@ -211,27 +184,6 @@ type ChannelModelPriceVersionUpdateOne struct {
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *ChannelModelPriceVersionUpdateOne) SetUpdatedAt(v time.Time) *ChannelModelPriceVersionUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
-	return _u
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (_u *ChannelModelPriceVersionUpdateOne) SetDeletedAt(v int) *ChannelModelPriceVersionUpdateOne {
-	_u.mutation.ResetDeletedAt()
-	_u.mutation.SetDeletedAt(v)
-	return _u
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (_u *ChannelModelPriceVersionUpdateOne) SetNillableDeletedAt(v *int) *ChannelModelPriceVersionUpdateOne {
-	if v != nil {
-		_u.SetDeletedAt(*v)
-	}
-	return _u
-}
-
-// AddDeletedAt adds value to the "deleted_at" field.
-func (_u *ChannelModelPriceVersionUpdateOne) AddDeletedAt(v int) *ChannelModelPriceVersionUpdateOne {
-	_u.mutation.AddDeletedAt(v)
 	return _u
 }
 
@@ -379,12 +331,6 @@ func (_u *ChannelModelPriceVersionUpdateOne) sqlSave(ctx context.Context) (_node
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(channelmodelpriceversion.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if value, ok := _u.mutation.DeletedAt(); ok {
-		_spec.SetField(channelmodelpriceversion.FieldDeletedAt, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedDeletedAt(); ok {
-		_spec.AddField(channelmodelpriceversion.FieldDeletedAt, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(channelmodelpriceversion.FieldStatus, field.TypeEnum, value)
