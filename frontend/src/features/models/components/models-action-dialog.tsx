@@ -559,6 +559,7 @@ export function ModelsActionDialog() {
 
                   <div className='space-y-2'>
                     <FormLabel>{t('models.modelCard.cost')} ($/M tokens)</FormLabel>
+                    <p className='text-xs text-muted-foreground'>{t('models.modelCard.costHint')}</p>
                     <div className='grid grid-cols-2 gap-2'>
                       <FormField
                         control={form.control}

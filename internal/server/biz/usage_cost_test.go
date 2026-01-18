@@ -319,9 +319,12 @@ func TestUsageCost_CacheVariant5Min(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, ul)
 
-	// expected total: (100/1e6)*0.01 + (50/1e6)*0.03 = 0.0000025
+	// expected total: ((100-50)/1e6)*0.01 + (50/1e6)*0.03 = 0.000002
+	// Input tokens now exclude WriteCachedTokens: (50/1e6)*0.01 = 0.0000005
+	// Write cached 5min: (50/1e6)*0.03 = 0.0000015
+	// Total: 0.000002
 	require.NotNil(t, ul.TotalCost)
-	require.InDelta(t, 0.0000025, *ul.TotalCost, 1e-12)
+	require.InDelta(t, 0.000002, *ul.TotalCost, 1e-12)
 	require.Len(t, ul.CostItems, 2)
 	require.Equal(t, int64(50), ul.PromptWriteCachedTokens5m)
 }
@@ -406,9 +409,12 @@ func TestUsageCost_CacheVariant1Hour(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, ul)
 
-	// expected total: (100/1e6)*0.01 + (80/1e6)*0.02 = 0.0000026
+	// expected total: ((100-80)/1e6)*0.01 + (80/1e6)*0.02 = 0.0000018
+	// Input tokens now exclude WriteCachedTokens: (20/1e6)*0.01 = 0.0000002
+	// Write cached 1hour: (80/1e6)*0.02 = 0.0000016
+	// Total: 0.0000018
 	require.NotNil(t, ul.TotalCost)
-	require.InDelta(t, 0.0000026, *ul.TotalCost, 1e-12)
+	require.InDelta(t, 0.0000018, *ul.TotalCost, 1e-12)
 	require.Len(t, ul.CostItems, 2)
 	require.Equal(t, int64(80), ul.PromptWriteCachedTokens1h)
 }
@@ -498,9 +504,13 @@ func TestUsageCost_CacheVariantBoth5MinAnd1Hour(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, ul)
 
-	// expected total: (100/1e6)*0.01 + (40/1e6)*0.05 + (60/1e6)*0.03 = 0.0000048
+	// expected total: ((100-100)/1e6)*0.01 + (40/1e6)*0.05 + (60/1e6)*0.03 = 0.0000038
+	// Input tokens now exclude WriteCachedTokens: (0/1e6)*0.01 = 0
+	// Write cached 5min: (40/1e6)*0.05 = 0.000002
+	// Write cached 1hour: (60/1e6)*0.03 = 0.0000018
+	// Total: 0.0000038
 	require.NotNil(t, ul.TotalCost)
-	require.InDelta(t, 0.0000048, *ul.TotalCost, 1e-12)
+	require.InDelta(t, 0.0000038, *ul.TotalCost, 1e-12)
 	require.Len(t, ul.CostItems, 3)
 	require.Equal(t, int64(40), ul.PromptWriteCachedTokens5m)
 	require.Equal(t, int64(60), ul.PromptWriteCachedTokens1h)
@@ -580,9 +590,12 @@ func TestUsageCost_CacheVariantFallbackToShared(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, ul)
 
-	// expected total: (100/1e6)*0.01 + (70/1e6)*0.04 = 0.0000038
+	// expected total: ((100-70)/1e6)*0.01 + (70/1e6)*0.04 = 0.0000031
+	// Input tokens now exclude WriteCachedTokens: (30/1e6)*0.01 = 0.0000003
+	// Write cached (shared): (70/1e6)*0.04 = 0.0000028
+	// Total: 0.0000031
 	require.NotNil(t, ul.TotalCost)
-	require.InDelta(t, 0.0000038, *ul.TotalCost, 1e-12)
+	require.InDelta(t, 0.0000031, *ul.TotalCost, 1e-12)
 	require.Len(t, ul.CostItems, 2)
 	require.Equal(t, int64(70), ul.PromptWriteCachedTokens)
 }
