@@ -1123,7 +1123,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             <div className='col-span-6 space-y-1'>
                               <Input
                                 placeholder={baseURLPlaceholder}
-                                autoComplete='off'
+                                autoComplete='new-password'
+                                data-form-type='other'
                                 aria-invalid={!!fieldState.error}
                                 data-testid='channel-base-url-input'
                                 disabled={isCodexType}
@@ -1151,7 +1152,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                       type={showApiKey ? 'text' : 'password'}
                                       placeholder={t('channels.dialogs.fields.apiKey.editPlaceholder')}
                                       className='col-span-6 pr-20'
-                                      autoComplete='off'
+                                      autoComplete='new-password'
+                                      data-form-type='other'
                                       aria-invalid={!!fieldState.error}
                                       data-testid='channel-api-key-input'
                                       {...field}
@@ -1187,7 +1189,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                     <Textarea
                                       placeholder={t('channels.dialogs.fields.apiKey.placeholder')}
                                       className='col-span-6 min-h-[80px] resize-y font-mono text-sm'
-                                      autoComplete='off'
+                                      autoComplete='new-password'
+                                      data-form-type='other'
                                       aria-invalid={!!fieldState.error}
                                       data-testid='channel-api-key-input'
                                       {...field}

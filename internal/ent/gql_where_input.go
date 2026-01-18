@@ -68,16 +68,6 @@ type APIKeyWhereInput struct {
 	UpdatedAtLT    *time.Time  `json:"updatedAtLT,omitempty"`
 	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
 
-	// "deleted_at" field predicates.
-	DeletedAt      *int  `json:"deletedAt,omitempty"`
-	DeletedAtNEQ   *int  `json:"deletedAtNEQ,omitempty"`
-	DeletedAtIn    []int `json:"deletedAtIn,omitempty"`
-	DeletedAtNotIn []int `json:"deletedAtNotIn,omitempty"`
-	DeletedAtGT    *int  `json:"deletedAtGT,omitempty"`
-	DeletedAtGTE   *int  `json:"deletedAtGTE,omitempty"`
-	DeletedAtLT    *int  `json:"deletedAtLT,omitempty"`
-	DeletedAtLTE   *int  `json:"deletedAtLTE,omitempty"`
-
 	// "user_id" field predicates.
 	UserID      *int  `json:"userID,omitempty"`
 	UserIDNEQ   *int  `json:"userIDNEQ,omitempty"`
@@ -287,30 +277,6 @@ func (i *APIKeyWhereInput) P() (predicate.APIKey, error) {
 	}
 	if i.UpdatedAtLTE != nil {
 		predicates = append(predicates, apikey.UpdatedAtLTE(*i.UpdatedAtLTE))
-	}
-	if i.DeletedAt != nil {
-		predicates = append(predicates, apikey.DeletedAtEQ(*i.DeletedAt))
-	}
-	if i.DeletedAtNEQ != nil {
-		predicates = append(predicates, apikey.DeletedAtNEQ(*i.DeletedAtNEQ))
-	}
-	if len(i.DeletedAtIn) > 0 {
-		predicates = append(predicates, apikey.DeletedAtIn(i.DeletedAtIn...))
-	}
-	if len(i.DeletedAtNotIn) > 0 {
-		predicates = append(predicates, apikey.DeletedAtNotIn(i.DeletedAtNotIn...))
-	}
-	if i.DeletedAtGT != nil {
-		predicates = append(predicates, apikey.DeletedAtGT(*i.DeletedAtGT))
-	}
-	if i.DeletedAtGTE != nil {
-		predicates = append(predicates, apikey.DeletedAtGTE(*i.DeletedAtGTE))
-	}
-	if i.DeletedAtLT != nil {
-		predicates = append(predicates, apikey.DeletedAtLT(*i.DeletedAtLT))
-	}
-	if i.DeletedAtLTE != nil {
-		predicates = append(predicates, apikey.DeletedAtLTE(*i.DeletedAtLTE))
 	}
 	if i.UserID != nil {
 		predicates = append(predicates, apikey.UserIDEQ(*i.UserID))
@@ -539,16 +505,6 @@ type ChannelWhereInput struct {
 	UpdatedAtGTE   *time.Time  `json:"updatedAtGTE,omitempty"`
 	UpdatedAtLT    *time.Time  `json:"updatedAtLT,omitempty"`
 	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
-
-	// "deleted_at" field predicates.
-	DeletedAt      *int  `json:"deletedAt,omitempty"`
-	DeletedAtNEQ   *int  `json:"deletedAtNEQ,omitempty"`
-	DeletedAtIn    []int `json:"deletedAtIn,omitempty"`
-	DeletedAtNotIn []int `json:"deletedAtNotIn,omitempty"`
-	DeletedAtGT    *int  `json:"deletedAtGT,omitempty"`
-	DeletedAtGTE   *int  `json:"deletedAtGTE,omitempty"`
-	DeletedAtLT    *int  `json:"deletedAtLT,omitempty"`
-	DeletedAtLTE   *int  `json:"deletedAtLTE,omitempty"`
 
 	// "type" field predicates.
 	Type      *channel.Type  `json:"type,omitempty"`
@@ -824,30 +780,6 @@ func (i *ChannelWhereInput) P() (predicate.Channel, error) {
 	}
 	if i.UpdatedAtLTE != nil {
 		predicates = append(predicates, channel.UpdatedAtLTE(*i.UpdatedAtLTE))
-	}
-	if i.DeletedAt != nil {
-		predicates = append(predicates, channel.DeletedAtEQ(*i.DeletedAt))
-	}
-	if i.DeletedAtNEQ != nil {
-		predicates = append(predicates, channel.DeletedAtNEQ(*i.DeletedAtNEQ))
-	}
-	if len(i.DeletedAtIn) > 0 {
-		predicates = append(predicates, channel.DeletedAtIn(i.DeletedAtIn...))
-	}
-	if len(i.DeletedAtNotIn) > 0 {
-		predicates = append(predicates, channel.DeletedAtNotIn(i.DeletedAtNotIn...))
-	}
-	if i.DeletedAtGT != nil {
-		predicates = append(predicates, channel.DeletedAtGT(*i.DeletedAtGT))
-	}
-	if i.DeletedAtGTE != nil {
-		predicates = append(predicates, channel.DeletedAtGTE(*i.DeletedAtGTE))
-	}
-	if i.DeletedAtLT != nil {
-		predicates = append(predicates, channel.DeletedAtLT(*i.DeletedAtLT))
-	}
-	if i.DeletedAtLTE != nil {
-		predicates = append(predicates, channel.DeletedAtLTE(*i.DeletedAtLTE))
 	}
 	if i.Type != nil {
 		predicates = append(predicates, channel.TypeEQ(*i.Type))
@@ -1272,16 +1204,6 @@ type ChannelModelPriceWhereInput struct {
 	UpdatedAtLT    *time.Time  `json:"updatedAtLT,omitempty"`
 	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
 
-	// "deleted_at" field predicates.
-	DeletedAt      *int  `json:"deletedAt,omitempty"`
-	DeletedAtNEQ   *int  `json:"deletedAtNEQ,omitempty"`
-	DeletedAtIn    []int `json:"deletedAtIn,omitempty"`
-	DeletedAtNotIn []int `json:"deletedAtNotIn,omitempty"`
-	DeletedAtGT    *int  `json:"deletedAtGT,omitempty"`
-	DeletedAtGTE   *int  `json:"deletedAtGTE,omitempty"`
-	DeletedAtLT    *int  `json:"deletedAtLT,omitempty"`
-	DeletedAtLTE   *int  `json:"deletedAtLTE,omitempty"`
-
 	// "channel_id" field predicates.
 	ChannelID      *int  `json:"channelID,omitempty"`
 	ChannelIDNEQ   *int  `json:"channelIDNEQ,omitempty"`
@@ -1469,30 +1391,6 @@ func (i *ChannelModelPriceWhereInput) P() (predicate.ChannelModelPrice, error) {
 	}
 	if i.UpdatedAtLTE != nil {
 		predicates = append(predicates, channelmodelprice.UpdatedAtLTE(*i.UpdatedAtLTE))
-	}
-	if i.DeletedAt != nil {
-		predicates = append(predicates, channelmodelprice.DeletedAtEQ(*i.DeletedAt))
-	}
-	if i.DeletedAtNEQ != nil {
-		predicates = append(predicates, channelmodelprice.DeletedAtNEQ(*i.DeletedAtNEQ))
-	}
-	if len(i.DeletedAtIn) > 0 {
-		predicates = append(predicates, channelmodelprice.DeletedAtIn(i.DeletedAtIn...))
-	}
-	if len(i.DeletedAtNotIn) > 0 {
-		predicates = append(predicates, channelmodelprice.DeletedAtNotIn(i.DeletedAtNotIn...))
-	}
-	if i.DeletedAtGT != nil {
-		predicates = append(predicates, channelmodelprice.DeletedAtGT(*i.DeletedAtGT))
-	}
-	if i.DeletedAtGTE != nil {
-		predicates = append(predicates, channelmodelprice.DeletedAtGTE(*i.DeletedAtGTE))
-	}
-	if i.DeletedAtLT != nil {
-		predicates = append(predicates, channelmodelprice.DeletedAtLT(*i.DeletedAtLT))
-	}
-	if i.DeletedAtLTE != nil {
-		predicates = append(predicates, channelmodelprice.DeletedAtLTE(*i.DeletedAtLTE))
 	}
 	if i.ChannelID != nil {
 		predicates = append(predicates, channelmodelprice.ChannelIDEQ(*i.ChannelID))
@@ -2136,16 +2034,6 @@ type ChannelOverrideTemplateWhereInput struct {
 	UpdatedAtLT    *time.Time  `json:"updatedAtLT,omitempty"`
 	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
 
-	// "deleted_at" field predicates.
-	DeletedAt      *int  `json:"deletedAt,omitempty"`
-	DeletedAtNEQ   *int  `json:"deletedAtNEQ,omitempty"`
-	DeletedAtIn    []int `json:"deletedAtIn,omitempty"`
-	DeletedAtNotIn []int `json:"deletedAtNotIn,omitempty"`
-	DeletedAtGT    *int  `json:"deletedAtGT,omitempty"`
-	DeletedAtGTE   *int  `json:"deletedAtGTE,omitempty"`
-	DeletedAtLT    *int  `json:"deletedAtLT,omitempty"`
-	DeletedAtLTE   *int  `json:"deletedAtLTE,omitempty"`
-
 	// "user_id" field predicates.
 	UserID      *int  `json:"userID,omitempty"`
 	UserIDNEQ   *int  `json:"userIDNEQ,omitempty"`
@@ -2361,30 +2249,6 @@ func (i *ChannelOverrideTemplateWhereInput) P() (predicate.ChannelOverrideTempla
 	}
 	if i.UpdatedAtLTE != nil {
 		predicates = append(predicates, channeloverridetemplate.UpdatedAtLTE(*i.UpdatedAtLTE))
-	}
-	if i.DeletedAt != nil {
-		predicates = append(predicates, channeloverridetemplate.DeletedAtEQ(*i.DeletedAt))
-	}
-	if i.DeletedAtNEQ != nil {
-		predicates = append(predicates, channeloverridetemplate.DeletedAtNEQ(*i.DeletedAtNEQ))
-	}
-	if len(i.DeletedAtIn) > 0 {
-		predicates = append(predicates, channeloverridetemplate.DeletedAtIn(i.DeletedAtIn...))
-	}
-	if len(i.DeletedAtNotIn) > 0 {
-		predicates = append(predicates, channeloverridetemplate.DeletedAtNotIn(i.DeletedAtNotIn...))
-	}
-	if i.DeletedAtGT != nil {
-		predicates = append(predicates, channeloverridetemplate.DeletedAtGT(*i.DeletedAtGT))
-	}
-	if i.DeletedAtGTE != nil {
-		predicates = append(predicates, channeloverridetemplate.DeletedAtGTE(*i.DeletedAtGTE))
-	}
-	if i.DeletedAtLT != nil {
-		predicates = append(predicates, channeloverridetemplate.DeletedAtLT(*i.DeletedAtLT))
-	}
-	if i.DeletedAtLTE != nil {
-		predicates = append(predicates, channeloverridetemplate.DeletedAtLTE(*i.DeletedAtLTE))
 	}
 	if i.UserID != nil {
 		predicates = append(predicates, channeloverridetemplate.UserIDEQ(*i.UserID))
@@ -2625,16 +2489,6 @@ type ChannelPerformanceWhereInput struct {
 	UpdatedAtGTE   *time.Time  `json:"updatedAtGTE,omitempty"`
 	UpdatedAtLT    *time.Time  `json:"updatedAtLT,omitempty"`
 	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
-
-	// "deleted_at" field predicates.
-	DeletedAt      *int  `json:"deletedAt,omitempty"`
-	DeletedAtNEQ   *int  `json:"deletedAtNEQ,omitempty"`
-	DeletedAtIn    []int `json:"deletedAtIn,omitempty"`
-	DeletedAtNotIn []int `json:"deletedAtNotIn,omitempty"`
-	DeletedAtGT    *int  `json:"deletedAtGT,omitempty"`
-	DeletedAtGTE   *int  `json:"deletedAtGTE,omitempty"`
-	DeletedAtLT    *int  `json:"deletedAtLT,omitempty"`
-	DeletedAtLTE   *int  `json:"deletedAtLTE,omitempty"`
 
 	// "channel_id" field predicates.
 	ChannelID      *int  `json:"channelID,omitempty"`
@@ -2973,30 +2827,6 @@ func (i *ChannelPerformanceWhereInput) P() (predicate.ChannelPerformance, error)
 	}
 	if i.UpdatedAtLTE != nil {
 		predicates = append(predicates, channelperformance.UpdatedAtLTE(*i.UpdatedAtLTE))
-	}
-	if i.DeletedAt != nil {
-		predicates = append(predicates, channelperformance.DeletedAtEQ(*i.DeletedAt))
-	}
-	if i.DeletedAtNEQ != nil {
-		predicates = append(predicates, channelperformance.DeletedAtNEQ(*i.DeletedAtNEQ))
-	}
-	if len(i.DeletedAtIn) > 0 {
-		predicates = append(predicates, channelperformance.DeletedAtIn(i.DeletedAtIn...))
-	}
-	if len(i.DeletedAtNotIn) > 0 {
-		predicates = append(predicates, channelperformance.DeletedAtNotIn(i.DeletedAtNotIn...))
-	}
-	if i.DeletedAtGT != nil {
-		predicates = append(predicates, channelperformance.DeletedAtGT(*i.DeletedAtGT))
-	}
-	if i.DeletedAtGTE != nil {
-		predicates = append(predicates, channelperformance.DeletedAtGTE(*i.DeletedAtGTE))
-	}
-	if i.DeletedAtLT != nil {
-		predicates = append(predicates, channelperformance.DeletedAtLT(*i.DeletedAtLT))
-	}
-	if i.DeletedAtLTE != nil {
-		predicates = append(predicates, channelperformance.DeletedAtLTE(*i.DeletedAtLTE))
 	}
 	if i.ChannelID != nil {
 		predicates = append(predicates, channelperformance.ChannelIDEQ(*i.ChannelID))
@@ -3786,16 +3616,6 @@ type DataStorageWhereInput struct {
 	UpdatedAtLT    *time.Time  `json:"updatedAtLT,omitempty"`
 	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
 
-	// "deleted_at" field predicates.
-	DeletedAt      *int  `json:"deletedAt,omitempty"`
-	DeletedAtNEQ   *int  `json:"deletedAtNEQ,omitempty"`
-	DeletedAtIn    []int `json:"deletedAtIn,omitempty"`
-	DeletedAtNotIn []int `json:"deletedAtNotIn,omitempty"`
-	DeletedAtGT    *int  `json:"deletedAtGT,omitempty"`
-	DeletedAtGTE   *int  `json:"deletedAtGTE,omitempty"`
-	DeletedAtLT    *int  `json:"deletedAtLT,omitempty"`
-	DeletedAtLTE   *int  `json:"deletedAtLTE,omitempty"`
-
 	// "name" field predicates.
 	Name             *string  `json:"name,omitempty"`
 	NameNEQ          *string  `json:"nameNEQ,omitempty"`
@@ -3994,30 +3814,6 @@ func (i *DataStorageWhereInput) P() (predicate.DataStorage, error) {
 	if i.UpdatedAtLTE != nil {
 		predicates = append(predicates, datastorage.UpdatedAtLTE(*i.UpdatedAtLTE))
 	}
-	if i.DeletedAt != nil {
-		predicates = append(predicates, datastorage.DeletedAtEQ(*i.DeletedAt))
-	}
-	if i.DeletedAtNEQ != nil {
-		predicates = append(predicates, datastorage.DeletedAtNEQ(*i.DeletedAtNEQ))
-	}
-	if len(i.DeletedAtIn) > 0 {
-		predicates = append(predicates, datastorage.DeletedAtIn(i.DeletedAtIn...))
-	}
-	if len(i.DeletedAtNotIn) > 0 {
-		predicates = append(predicates, datastorage.DeletedAtNotIn(i.DeletedAtNotIn...))
-	}
-	if i.DeletedAtGT != nil {
-		predicates = append(predicates, datastorage.DeletedAtGT(*i.DeletedAtGT))
-	}
-	if i.DeletedAtGTE != nil {
-		predicates = append(predicates, datastorage.DeletedAtGTE(*i.DeletedAtGTE))
-	}
-	if i.DeletedAtLT != nil {
-		predicates = append(predicates, datastorage.DeletedAtLT(*i.DeletedAtLT))
-	}
-	if i.DeletedAtLTE != nil {
-		predicates = append(predicates, datastorage.DeletedAtLTE(*i.DeletedAtLTE))
-	}
 	if i.Name != nil {
 		predicates = append(predicates, datastorage.NameEQ(*i.Name))
 	}
@@ -4209,16 +4005,6 @@ type ModelWhereInput struct {
 	UpdatedAtGTE   *time.Time  `json:"updatedAtGTE,omitempty"`
 	UpdatedAtLT    *time.Time  `json:"updatedAtLT,omitempty"`
 	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
-
-	// "deleted_at" field predicates.
-	DeletedAt      *int  `json:"deletedAt,omitempty"`
-	DeletedAtNEQ   *int  `json:"deletedAtNEQ,omitempty"`
-	DeletedAtIn    []int `json:"deletedAtIn,omitempty"`
-	DeletedAtNotIn []int `json:"deletedAtNotIn,omitempty"`
-	DeletedAtGT    *int  `json:"deletedAtGT,omitempty"`
-	DeletedAtGTE   *int  `json:"deletedAtGTE,omitempty"`
-	DeletedAtLT    *int  `json:"deletedAtLT,omitempty"`
-	DeletedAtLTE   *int  `json:"deletedAtLTE,omitempty"`
 
 	// "developer" field predicates.
 	Developer             *string  `json:"developer,omitempty"`
@@ -4467,30 +4253,6 @@ func (i *ModelWhereInput) P() (predicate.Model, error) {
 	}
 	if i.UpdatedAtLTE != nil {
 		predicates = append(predicates, model.UpdatedAtLTE(*i.UpdatedAtLTE))
-	}
-	if i.DeletedAt != nil {
-		predicates = append(predicates, model.DeletedAtEQ(*i.DeletedAt))
-	}
-	if i.DeletedAtNEQ != nil {
-		predicates = append(predicates, model.DeletedAtNEQ(*i.DeletedAtNEQ))
-	}
-	if len(i.DeletedAtIn) > 0 {
-		predicates = append(predicates, model.DeletedAtIn(i.DeletedAtIn...))
-	}
-	if len(i.DeletedAtNotIn) > 0 {
-		predicates = append(predicates, model.DeletedAtNotIn(i.DeletedAtNotIn...))
-	}
-	if i.DeletedAtGT != nil {
-		predicates = append(predicates, model.DeletedAtGT(*i.DeletedAtGT))
-	}
-	if i.DeletedAtGTE != nil {
-		predicates = append(predicates, model.DeletedAtGTE(*i.DeletedAtGTE))
-	}
-	if i.DeletedAtLT != nil {
-		predicates = append(predicates, model.DeletedAtLT(*i.DeletedAtLT))
-	}
-	if i.DeletedAtLTE != nil {
-		predicates = append(predicates, model.DeletedAtLTE(*i.DeletedAtLTE))
 	}
 	if i.Developer != nil {
 		predicates = append(predicates, model.DeveloperEQ(*i.Developer))
@@ -4804,16 +4566,6 @@ type ProjectWhereInput struct {
 	UpdatedAtLT    *time.Time  `json:"updatedAtLT,omitempty"`
 	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
 
-	// "deleted_at" field predicates.
-	DeletedAt      *int  `json:"deletedAt,omitempty"`
-	DeletedAtNEQ   *int  `json:"deletedAtNEQ,omitempty"`
-	DeletedAtIn    []int `json:"deletedAtIn,omitempty"`
-	DeletedAtNotIn []int `json:"deletedAtNotIn,omitempty"`
-	DeletedAtGT    *int  `json:"deletedAtGT,omitempty"`
-	DeletedAtGTE   *int  `json:"deletedAtGTE,omitempty"`
-	DeletedAtLT    *int  `json:"deletedAtLT,omitempty"`
-	DeletedAtLTE   *int  `json:"deletedAtLTE,omitempty"`
-
 	// "name" field predicates.
 	Name             *string  `json:"name,omitempty"`
 	NameNEQ          *string  `json:"nameNEQ,omitempty"`
@@ -5029,30 +4781,6 @@ func (i *ProjectWhereInput) P() (predicate.Project, error) {
 	}
 	if i.UpdatedAtLTE != nil {
 		predicates = append(predicates, project.UpdatedAtLTE(*i.UpdatedAtLTE))
-	}
-	if i.DeletedAt != nil {
-		predicates = append(predicates, project.DeletedAtEQ(*i.DeletedAt))
-	}
-	if i.DeletedAtNEQ != nil {
-		predicates = append(predicates, project.DeletedAtNEQ(*i.DeletedAtNEQ))
-	}
-	if len(i.DeletedAtIn) > 0 {
-		predicates = append(predicates, project.DeletedAtIn(i.DeletedAtIn...))
-	}
-	if len(i.DeletedAtNotIn) > 0 {
-		predicates = append(predicates, project.DeletedAtNotIn(i.DeletedAtNotIn...))
-	}
-	if i.DeletedAtGT != nil {
-		predicates = append(predicates, project.DeletedAtGT(*i.DeletedAtGT))
-	}
-	if i.DeletedAtGTE != nil {
-		predicates = append(predicates, project.DeletedAtGTE(*i.DeletedAtGTE))
-	}
-	if i.DeletedAtLT != nil {
-		predicates = append(predicates, project.DeletedAtLT(*i.DeletedAtLT))
-	}
-	if i.DeletedAtLTE != nil {
-		predicates = append(predicates, project.DeletedAtLTE(*i.DeletedAtLTE))
 	}
 	if i.Name != nil {
 		predicates = append(predicates, project.NameEQ(*i.Name))
@@ -5354,16 +5082,6 @@ type PromptWhereInput struct {
 	UpdatedAtLT    *time.Time  `json:"updatedAtLT,omitempty"`
 	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
 
-	// "deleted_at" field predicates.
-	DeletedAt      *int  `json:"deletedAt,omitempty"`
-	DeletedAtNEQ   *int  `json:"deletedAtNEQ,omitempty"`
-	DeletedAtIn    []int `json:"deletedAtIn,omitempty"`
-	DeletedAtNotIn []int `json:"deletedAtNotIn,omitempty"`
-	DeletedAtGT    *int  `json:"deletedAtGT,omitempty"`
-	DeletedAtGTE   *int  `json:"deletedAtGTE,omitempty"`
-	DeletedAtLT    *int  `json:"deletedAtLT,omitempty"`
-	DeletedAtLTE   *int  `json:"deletedAtLTE,omitempty"`
-
 	// "project_id" field predicates.
 	ProjectID      *int  `json:"projectID,omitempty"`
 	ProjectIDNEQ   *int  `json:"projectIDNEQ,omitempty"`
@@ -5587,30 +5305,6 @@ func (i *PromptWhereInput) P() (predicate.Prompt, error) {
 	}
 	if i.UpdatedAtLTE != nil {
 		predicates = append(predicates, prompt.UpdatedAtLTE(*i.UpdatedAtLTE))
-	}
-	if i.DeletedAt != nil {
-		predicates = append(predicates, prompt.DeletedAtEQ(*i.DeletedAt))
-	}
-	if i.DeletedAtNEQ != nil {
-		predicates = append(predicates, prompt.DeletedAtNEQ(*i.DeletedAtNEQ))
-	}
-	if len(i.DeletedAtIn) > 0 {
-		predicates = append(predicates, prompt.DeletedAtIn(i.DeletedAtIn...))
-	}
-	if len(i.DeletedAtNotIn) > 0 {
-		predicates = append(predicates, prompt.DeletedAtNotIn(i.DeletedAtNotIn...))
-	}
-	if i.DeletedAtGT != nil {
-		predicates = append(predicates, prompt.DeletedAtGT(*i.DeletedAtGT))
-	}
-	if i.DeletedAtGTE != nil {
-		predicates = append(predicates, prompt.DeletedAtGTE(*i.DeletedAtGTE))
-	}
-	if i.DeletedAtLT != nil {
-		predicates = append(predicates, prompt.DeletedAtLT(*i.DeletedAtLT))
-	}
-	if i.DeletedAtLTE != nil {
-		predicates = append(predicates, prompt.DeletedAtLTE(*i.DeletedAtLTE))
 	}
 	if i.ProjectID != nil {
 		predicates = append(predicates, prompt.ProjectIDEQ(*i.ProjectID))
@@ -7398,16 +7092,6 @@ type RoleWhereInput struct {
 	UpdatedAtLT    *time.Time  `json:"updatedAtLT,omitempty"`
 	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
 
-	// "deleted_at" field predicates.
-	DeletedAt      *int  `json:"deletedAt,omitempty"`
-	DeletedAtNEQ   *int  `json:"deletedAtNEQ,omitempty"`
-	DeletedAtIn    []int `json:"deletedAtIn,omitempty"`
-	DeletedAtNotIn []int `json:"deletedAtNotIn,omitempty"`
-	DeletedAtGT    *int  `json:"deletedAtGT,omitempty"`
-	DeletedAtGTE   *int  `json:"deletedAtGTE,omitempty"`
-	DeletedAtLT    *int  `json:"deletedAtLT,omitempty"`
-	DeletedAtLTE   *int  `json:"deletedAtLTE,omitempty"`
-
 	// "name" field predicates.
 	Name             *string  `json:"name,omitempty"`
 	NameNEQ          *string  `json:"nameNEQ,omitempty"`
@@ -7593,30 +7277,6 @@ func (i *RoleWhereInput) P() (predicate.Role, error) {
 	if i.UpdatedAtLTE != nil {
 		predicates = append(predicates, role.UpdatedAtLTE(*i.UpdatedAtLTE))
 	}
-	if i.DeletedAt != nil {
-		predicates = append(predicates, role.DeletedAtEQ(*i.DeletedAt))
-	}
-	if i.DeletedAtNEQ != nil {
-		predicates = append(predicates, role.DeletedAtNEQ(*i.DeletedAtNEQ))
-	}
-	if len(i.DeletedAtIn) > 0 {
-		predicates = append(predicates, role.DeletedAtIn(i.DeletedAtIn...))
-	}
-	if len(i.DeletedAtNotIn) > 0 {
-		predicates = append(predicates, role.DeletedAtNotIn(i.DeletedAtNotIn...))
-	}
-	if i.DeletedAtGT != nil {
-		predicates = append(predicates, role.DeletedAtGT(*i.DeletedAtGT))
-	}
-	if i.DeletedAtGTE != nil {
-		predicates = append(predicates, role.DeletedAtGTE(*i.DeletedAtGTE))
-	}
-	if i.DeletedAtLT != nil {
-		predicates = append(predicates, role.DeletedAtLT(*i.DeletedAtLT))
-	}
-	if i.DeletedAtLTE != nil {
-		predicates = append(predicates, role.DeletedAtLTE(*i.DeletedAtLTE))
-	}
 	if i.Name != nil {
 		predicates = append(predicates, role.NameEQ(*i.Name))
 	}
@@ -7787,16 +7447,6 @@ type SystemWhereInput struct {
 	UpdatedAtGTE   *time.Time  `json:"updatedAtGTE,omitempty"`
 	UpdatedAtLT    *time.Time  `json:"updatedAtLT,omitempty"`
 	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
-
-	// "deleted_at" field predicates.
-	DeletedAt      *int  `json:"deletedAt,omitempty"`
-	DeletedAtNEQ   *int  `json:"deletedAtNEQ,omitempty"`
-	DeletedAtIn    []int `json:"deletedAtIn,omitempty"`
-	DeletedAtNotIn []int `json:"deletedAtNotIn,omitempty"`
-	DeletedAtGT    *int  `json:"deletedAtGT,omitempty"`
-	DeletedAtGTE   *int  `json:"deletedAtGTE,omitempty"`
-	DeletedAtLT    *int  `json:"deletedAtLT,omitempty"`
-	DeletedAtLTE   *int  `json:"deletedAtLTE,omitempty"`
 
 	// "key" field predicates.
 	Key             *string  `json:"key,omitempty"`
@@ -7971,30 +7621,6 @@ func (i *SystemWhereInput) P() (predicate.System, error) {
 	}
 	if i.UpdatedAtLTE != nil {
 		predicates = append(predicates, system.UpdatedAtLTE(*i.UpdatedAtLTE))
-	}
-	if i.DeletedAt != nil {
-		predicates = append(predicates, system.DeletedAtEQ(*i.DeletedAt))
-	}
-	if i.DeletedAtNEQ != nil {
-		predicates = append(predicates, system.DeletedAtNEQ(*i.DeletedAtNEQ))
-	}
-	if len(i.DeletedAtIn) > 0 {
-		predicates = append(predicates, system.DeletedAtIn(i.DeletedAtIn...))
-	}
-	if len(i.DeletedAtNotIn) > 0 {
-		predicates = append(predicates, system.DeletedAtNotIn(i.DeletedAtNotIn...))
-	}
-	if i.DeletedAtGT != nil {
-		predicates = append(predicates, system.DeletedAtGT(*i.DeletedAtGT))
-	}
-	if i.DeletedAtGTE != nil {
-		predicates = append(predicates, system.DeletedAtGTE(*i.DeletedAtGTE))
-	}
-	if i.DeletedAtLT != nil {
-		predicates = append(predicates, system.DeletedAtLT(*i.DeletedAtLT))
-	}
-	if i.DeletedAtLTE != nil {
-		predicates = append(predicates, system.DeletedAtLTE(*i.DeletedAtLTE))
 	}
 	if i.Key != nil {
 		predicates = append(predicates, system.KeyEQ(*i.Key))
@@ -9842,16 +9468,6 @@ type UserWhereInput struct {
 	UpdatedAtLT    *time.Time  `json:"updatedAtLT,omitempty"`
 	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
 
-	// "deleted_at" field predicates.
-	DeletedAt      *int  `json:"deletedAt,omitempty"`
-	DeletedAtNEQ   *int  `json:"deletedAtNEQ,omitempty"`
-	DeletedAtIn    []int `json:"deletedAtIn,omitempty"`
-	DeletedAtNotIn []int `json:"deletedAtNotIn,omitempty"`
-	DeletedAtGT    *int  `json:"deletedAtGT,omitempty"`
-	DeletedAtGTE   *int  `json:"deletedAtGTE,omitempty"`
-	DeletedAtLT    *int  `json:"deletedAtLT,omitempty"`
-	DeletedAtLTE   *int  `json:"deletedAtLTE,omitempty"`
-
 	// "email" field predicates.
 	Email             *string  `json:"email,omitempty"`
 	EmailNEQ          *string  `json:"emailNEQ,omitempty"`
@@ -10121,30 +9737,6 @@ func (i *UserWhereInput) P() (predicate.User, error) {
 	}
 	if i.UpdatedAtLTE != nil {
 		predicates = append(predicates, user.UpdatedAtLTE(*i.UpdatedAtLTE))
-	}
-	if i.DeletedAt != nil {
-		predicates = append(predicates, user.DeletedAtEQ(*i.DeletedAt))
-	}
-	if i.DeletedAtNEQ != nil {
-		predicates = append(predicates, user.DeletedAtNEQ(*i.DeletedAtNEQ))
-	}
-	if len(i.DeletedAtIn) > 0 {
-		predicates = append(predicates, user.DeletedAtIn(i.DeletedAtIn...))
-	}
-	if len(i.DeletedAtNotIn) > 0 {
-		predicates = append(predicates, user.DeletedAtNotIn(i.DeletedAtNotIn...))
-	}
-	if i.DeletedAtGT != nil {
-		predicates = append(predicates, user.DeletedAtGT(*i.DeletedAtGT))
-	}
-	if i.DeletedAtGTE != nil {
-		predicates = append(predicates, user.DeletedAtGTE(*i.DeletedAtGTE))
-	}
-	if i.DeletedAtLT != nil {
-		predicates = append(predicates, user.DeletedAtLT(*i.DeletedAtLT))
-	}
-	if i.DeletedAtLTE != nil {
-		predicates = append(predicates, user.DeletedAtLTE(*i.DeletedAtLTE))
 	}
 	if i.Email != nil {
 		predicates = append(predicates, user.EmailEQ(*i.Email))
