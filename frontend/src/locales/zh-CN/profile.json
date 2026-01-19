@@ -14,6 +14,7 @@
   "profile.form.fields.email.label": "邮箱",
   "profile.form.fields.email.placeholder": "输入您的邮箱地址",
   "profile.form.fields.email.description": "用于账户通知和登录的邮箱地址。",
+  "profile.form.fields.email.disabled_description": "邮箱地址不可更改。",
   "profile.form.fields.preferLanguage.label": "首选语言",
   "profile.form.fields.preferLanguage.placeholder": "选择您的首选语言",
   "profile.form.fields.preferLanguage.description": "选择界面的首选语言。",
