@@ -29,7 +29,6 @@ extend type Query {
 }
 
 input UpdateMeInput {
-  email: String
   firstName: String
   lastName: String
   preferLanguage: String

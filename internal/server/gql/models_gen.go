@@ -272,7 +272,6 @@ type UpdateDefaultDataStorageInput struct {
 }
 
 type UpdateMeInput struct {
-	Email          *string `json:"email,omitempty"`
 	FirstName      *string `json:"firstName,omitempty"`
 	LastName       *string `json:"lastName,omitempty"`
 	PreferLanguage *string `json:"preferLanguage,omitempty"`

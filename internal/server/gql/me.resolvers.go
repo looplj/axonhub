@@ -27,7 +27,6 @@ func (r *mutationResolver) UpdateMe(ctx context.Context, input UpdateMeInput) (*
 	}
 
 	return r.userService.UpdateUser(ctx, user.ID, ent.UpdateUserInput{
-		Email:          input.Email,
 		FirstName:      input.FirstName,
 		LastName:       input.LastName,
 		PreferLanguage: input.PreferLanguage,
