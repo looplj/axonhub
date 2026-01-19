@@ -8,38 +8,53 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 )
 
-// Middleware modifies chat completion requests before they are sent to the provider.
+// Middleware defines the interface for pipeline decorators.
+//
+// Execution concepts:
+// - Request: A single call to pipeline.Process(...) (e.g., one chat completion request from client).
+// - Attempt: A single outbound execution (request to provider). A request may contain multiple attempts due to retries or channel switching.
 type Middleware interface {
 	// Name returns the name of the middleware
 	Name() string
 
-	// OnInboundLlmRequest execute after inbound transform http request to llm request and before outbound transform llm request to http request.
+	// OnInboundLlmRequest executes after inbound transformation (Provider -> Unified) and before any outbound logic.
+	// Timing: Once per Request, before any attempts.
+	// Order: Forward (first registered executes first).
 	OnInboundLlmRequest(ctx context.Context, request *llm.Request) (*llm.Request, error)
 
-	// OnInboundRawResponse execute after inbound transform llm response to http response.
-	// Only execute if the request is not a stream.
+	// OnInboundRawResponse executes after the final unified response is transformed back to provider format (Unified -> Provider).
+	// Timing: Once per successful non-streaming Request.
+	// Order: Forward.
 	OnInboundRawResponse(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error)
 
-	// OnOutboundRawRequest execute after outbound transform llm request to http request and before send request to the provider.
+	// OnOutboundRawRequest executes after outbound transformation (Unified -> Provider) and before sending the request.
+	// Timing: Once per Attempt (will repeat on retries/switches).
+	// Order: Forward.
 	OnOutboundRawRequest(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error)
 
-	// OnOutboundRawError execute after send request to the provider and before outbound transform http response to llm response.
+	// OnOutboundRawError executes if the provider request fails (network error or status code >= 400).
+	// Timing: Once per failed Attempt.
+	// Order: Reverse (last registered executes first).
 	OnOutboundRawError(ctx context.Context, err error)
 
-	// OnOutboundRawResponse execute after send request to the provider and before outbound transform http response to llm response.
-	// Only execute if the request is not a stream.
+	// OnOutboundRawResponse executes after a successful provider response is received.
+	// Timing: Once per successful non-streaming Attempt.
+	// Order: Reverse.
 	OnOutboundRawResponse(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error)
 
-	// OnOutboundLlmResponse execute after outbound transform http response to llm response and before send response to the client.
-	// Only execute if the request is not a stream.
+	// OnOutboundLlmResponse executes after the provider response is transformed to unified format.
+	// Timing: Once per successful non-streaming Attempt.
+	// Order: Reverse.
 	OnOutboundLlmResponse(ctx context.Context, response *llm.Response) (*llm.Response, error)
 
-	// OnOutboundRawStream execute after send request to the provider and before outbound transform http stream to llm stream.
-	// Only execute if the request is a stream.
+	// OnOutboundRawStream executes after a successful provider stream is established.
+	// Timing: Once per successful streaming Attempt. The middleware can wrap the stream to process individual chunks.
+	// Order: Reverse.
 	OnOutboundRawStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error)
 
-	// OnOutboundLlmStream execute after outbound transform http stream to llm stream and before send stream to the client.
-	// Only execute if the request is a stream.
+	// OnOutboundLlmStream executes after the provider stream is transformed to unified format.
+	// Timing: Once per successful streaming Attempt.
+	// Order: Reverse.
 	OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error)
 }
 

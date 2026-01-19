@@ -28,7 +28,7 @@ const codexAPIURL = "https://chatgpt.com/backend-api/codex/responses"
 //
 //nolint:containedctx // It is used as a transformer.
 type OutboundTransformer struct {
-	tokens *oauth.TokenProvider
+	tokens oauth.TokenGetter
 
 	// reuse existing Responses outbound for payload building.
 	responsesOutbound *responses.OutboundTransformer
@@ -40,27 +40,12 @@ var (
 )
 
 type Params struct {
-	CredentialsJSON string
-
-	// HTTPClient should be pre-configured with proxy settings if needed.
-	HTTPClient *httpclient.HttpClient
-
-	// OnRefreshed will be invoked when the token refreshed.
-	OnRefreshed func(ctx context.Context, refreshed *oauth.OAuthCredentials) error
+	TokenProvider oauth.TokenGetter
 }
 
 func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
-	if params.CredentialsJSON == "" {
-		return nil, errors.New("credentials json is empty")
-	}
-
-	if params.HTTPClient == nil {
-		return nil, errors.New("http client is required")
-	}
-
-	creds, err := oauth.ParseCredentialsJSON(params.CredentialsJSON)
-	if err != nil {
-		return nil, err
+	if params.TokenProvider == nil {
+		return nil, errors.New("token provider is required")
 	}
 
 	// The underlying responses outbound requires baseURL/apiKey. We only need its request body logic.
@@ -71,11 +56,7 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 	}
 
 	return &OutboundTransformer{
-		tokens: NewTokenProvider(TokenProviderParams{
-			Credentials: creds,
-			HTTPClient:  params.HTTPClient,
-			OnRefreshed: params.OnRefreshed,
-		}),
+		tokens:            params.TokenProvider,
 		responsesOutbound: ro,
 	}, nil
 }
