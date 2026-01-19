@@ -252,6 +252,7 @@ type Channel implements Node {
   autoSyncSupportedModels: Boolean!
   tags: [String!]
   defaultTestModel: String!
+  policies: ChannelPolicies @goField(forceResolver: true)
   settings: ChannelSettings
   """
   Ordering weight for display sorting
@@ -1658,6 +1659,7 @@ input CreateChannelInput {
   autoSyncSupportedModels: Boolean
   tags: [String!]
   defaultTestModel: String!
+  policies: ChannelPoliciesInput
   settings: ChannelSettingsInput
   """
   Ordering weight for display sorting
@@ -5117,6 +5119,8 @@ input UpdateChannelInput {
   appendTags: [String!]
   clearTags: Boolean
   defaultTestModel: String
+  policies: ChannelPoliciesInput
+  clearPolicies: Boolean
   settings: ChannelSettingsInput
   clearSettings: Boolean
   """

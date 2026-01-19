@@ -101,6 +101,15 @@ models:
   ProxyConfigInput:
     model:
       - github.com/looplj/axonhub/internal/objects.ProxyConfig
+  CapabilityPolicy:
+    model:
+      - github.com/looplj/axonhub/internal/objects.CapabilityPolicy
+  ChannelPolicies:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelPolicies
+  ChannelPoliciesInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelPolicies
   ChannelSettings:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelSettings

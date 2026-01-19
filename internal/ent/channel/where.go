@@ -490,6 +490,16 @@ func DefaultTestModelContainsFold(v string) predicate.Channel {
 	return predicate.Channel(sql.FieldContainsFold(FieldDefaultTestModel, v))
 }
 
+// PoliciesIsNil applies the IsNil predicate on the "policies" field.
+func PoliciesIsNil() predicate.Channel {
+	return predicate.Channel(sql.FieldIsNull(FieldPolicies))
+}
+
+// PoliciesNotNil applies the NotNil predicate on the "policies" field.
+func PoliciesNotNil() predicate.Channel {
+	return predicate.Channel(sql.FieldNotNull(FieldPolicies))
+}
+
 // SettingsIsNil applies the IsNil predicate on the "settings" field.
 func SettingsIsNil() predicate.Channel {
 	return predicate.Channel(sql.FieldIsNull(FieldSettings))

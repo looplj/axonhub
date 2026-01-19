@@ -44,6 +44,8 @@ type Channel struct {
 	Tags []string `json:"tags,omitempty"`
 	// DefaultTestModel holds the value of the "default_test_model" field.
 	DefaultTestModel string `json:"default_test_model,omitempty"`
+	// Policies holds the value of the "policies" field.
+	Policies objects.ChannelPolicies `json:"policies,omitempty"`
 	// Settings holds the value of the "settings" field.
 	Settings *objects.ChannelSettings `json:"settings,omitempty"`
 	// Ordering weight for display sorting
@@ -146,7 +148,7 @@ func (*Channel) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case channel.FieldCredentials, channel.FieldSupportedModels, channel.FieldTags, channel.FieldSettings:
+		case channel.FieldCredentials, channel.FieldSupportedModels, channel.FieldTags, channel.FieldPolicies, channel.FieldSettings:
 			values[i] = new([]byte)
 		case channel.FieldAutoSyncSupportedModels:
 			values[i] = new(sql.NullBool)
@@ -254,6 +256,14 @@ func (_m *Channel) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field default_test_model", values[i])
 			} else if value.Valid {
 				_m.DefaultTestModel = value.String
+			}
+		case channel.FieldPolicies:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field policies", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.Policies); err != nil {
+					return fmt.Errorf("unmarshal field policies: %w", err)
+				}
 			}
 		case channel.FieldSettings:
 			if value, ok := values[i].(*[]byte); !ok {
@@ -383,6 +393,9 @@ func (_m *Channel) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("default_test_model=")
 	builder.WriteString(_m.DefaultTestModel)
+	builder.WriteString(", ")
+	builder.WriteString("policies=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Policies))
 	builder.WriteString(", ")
 	builder.WriteString("settings=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Settings))

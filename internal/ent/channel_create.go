@@ -149,6 +149,20 @@ func (_c *ChannelCreate) SetDefaultTestModel(v string) *ChannelCreate {
 	return _c
 }
 
+// SetPolicies sets the "policies" field.
+func (_c *ChannelCreate) SetPolicies(v objects.ChannelPolicies) *ChannelCreate {
+	_c.mutation.SetPolicies(v)
+	return _c
+}
+
+// SetNillablePolicies sets the "policies" field if the given value is not nil.
+func (_c *ChannelCreate) SetNillablePolicies(v *objects.ChannelPolicies) *ChannelCreate {
+	if v != nil {
+		_c.SetPolicies(*v)
+	}
+	return _c
+}
+
 // SetSettings sets the "settings" field.
 func (_c *ChannelCreate) SetSettings(v *objects.ChannelSettings) *ChannelCreate {
 	_c.mutation.SetSettings(v)
@@ -362,6 +376,10 @@ func (_c *ChannelCreate) defaults() error {
 		v := channel.DefaultTags
 		_c.mutation.SetTags(v)
 	}
+	if _, ok := _c.mutation.Policies(); !ok {
+		v := channel.DefaultPolicies
+		_c.mutation.SetPolicies(v)
+	}
 	if _, ok := _c.mutation.Settings(); !ok {
 		v := channel.DefaultSettings
 		_c.mutation.SetSettings(v)
@@ -492,6 +510,10 @@ func (_c *ChannelCreate) createSpec() (*Channel, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.DefaultTestModel(); ok {
 		_spec.SetField(channel.FieldDefaultTestModel, field.TypeString, value)
 		_node.DefaultTestModel = value
+	}
+	if value, ok := _c.mutation.Policies(); ok {
+		_spec.SetField(channel.FieldPolicies, field.TypeJSON, value)
+		_node.Policies = value
 	}
 	if value, ok := _c.mutation.Settings(); ok {
 		_spec.SetField(channel.FieldSettings, field.TypeJSON, value)
@@ -795,6 +817,24 @@ func (u *ChannelUpsert) UpdateDefaultTestModel() *ChannelUpsert {
 	return u
 }
 
+// SetPolicies sets the "policies" field.
+func (u *ChannelUpsert) SetPolicies(v objects.ChannelPolicies) *ChannelUpsert {
+	u.Set(channel.FieldPolicies, v)
+	return u
+}
+
+// UpdatePolicies sets the "policies" field to the value that was provided on create.
+func (u *ChannelUpsert) UpdatePolicies() *ChannelUpsert {
+	u.SetExcluded(channel.FieldPolicies)
+	return u
+}
+
+// ClearPolicies clears the value of the "policies" field.
+func (u *ChannelUpsert) ClearPolicies() *ChannelUpsert {
+	u.SetNull(channel.FieldPolicies)
+	return u
+}
+
 // SetSettings sets the "settings" field.
 func (u *ChannelUpsert) SetSettings(v *objects.ChannelSettings) *ChannelUpsert {
 	u.Set(channel.FieldSettings, v)
@@ -1073,6 +1113,27 @@ func (u *ChannelUpsertOne) SetDefaultTestModel(v string) *ChannelUpsertOne {
 func (u *ChannelUpsertOne) UpdateDefaultTestModel() *ChannelUpsertOne {
 	return u.Update(func(s *ChannelUpsert) {
 		s.UpdateDefaultTestModel()
+	})
+}
+
+// SetPolicies sets the "policies" field.
+func (u *ChannelUpsertOne) SetPolicies(v objects.ChannelPolicies) *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetPolicies(v)
+	})
+}
+
+// UpdatePolicies sets the "policies" field to the value that was provided on create.
+func (u *ChannelUpsertOne) UpdatePolicies() *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdatePolicies()
+	})
+}
+
+// ClearPolicies clears the value of the "policies" field.
+func (u *ChannelUpsertOne) ClearPolicies() *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.ClearPolicies()
 	})
 }
 
@@ -1532,6 +1593,27 @@ func (u *ChannelUpsertBulk) SetDefaultTestModel(v string) *ChannelUpsertBulk {
 func (u *ChannelUpsertBulk) UpdateDefaultTestModel() *ChannelUpsertBulk {
 	return u.Update(func(s *ChannelUpsert) {
 		s.UpdateDefaultTestModel()
+	})
+}
+
+// SetPolicies sets the "policies" field.
+func (u *ChannelUpsertBulk) SetPolicies(v objects.ChannelPolicies) *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetPolicies(v)
+	})
+}
+
+// UpdatePolicies sets the "policies" field to the value that was provided on create.
+func (u *ChannelUpsertBulk) UpdatePolicies() *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdatePolicies()
+	})
+}
+
+// ClearPolicies clears the value of the "policies" field.
+func (u *ChannelUpsertBulk) ClearPolicies() *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.ClearPolicies()
 	})
 }
 

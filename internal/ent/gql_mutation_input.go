@@ -88,6 +88,7 @@ type CreateChannelInput struct {
 	AutoSyncSupportedModels *bool
 	Tags                    []string
 	DefaultTestModel        string
+	Policies                *objects.ChannelPolicies
 	Settings                *objects.ChannelSettings
 	OrderingWeight          *int
 	Remark                  *string
@@ -113,6 +114,9 @@ func (i *CreateChannelInput) Mutate(m *ChannelMutation) {
 		m.SetTags(v)
 	}
 	m.SetDefaultTestModel(i.DefaultTestModel)
+	if v := i.Policies; v != nil {
+		m.SetPolicies(*v)
+	}
 	if v := i.Settings; v != nil {
 		m.SetSettings(v)
 	}
@@ -144,6 +148,8 @@ type UpdateChannelInput struct {
 	Tags                    []string
 	AppendTags              []string
 	DefaultTestModel        *string
+	ClearPolicies           bool
+	Policies                *objects.ChannelPolicies
 	ClearSettings           bool
 	Settings                *objects.ChannelSettings
 	OrderingWeight          *int
@@ -190,6 +196,12 @@ func (i *UpdateChannelInput) Mutate(m *ChannelMutation) {
 	}
 	if v := i.DefaultTestModel; v != nil {
 		m.SetDefaultTestModel(*v)
+	}
+	if i.ClearPolicies {
+		m.ClearPolicies()
+	}
+	if v := i.Policies; v != nil {
+		m.SetPolicies(*v)
 	}
 	if i.ClearSettings {
 		m.ClearSettings()

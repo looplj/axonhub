@@ -43,6 +43,8 @@ const (
 	FieldTags = "tags"
 	// FieldDefaultTestModel holds the string denoting the default_test_model field in the database.
 	FieldDefaultTestModel = "default_test_model"
+	// FieldPolicies holds the string denoting the policies field in the database.
+	FieldPolicies = "policies"
 	// FieldSettings holds the string denoting the settings field in the database.
 	FieldSettings = "settings"
 	// FieldOrderingWeight holds the string denoting the ordering_weight field in the database.
@@ -124,6 +126,7 @@ var Columns = []string{
 	FieldAutoSyncSupportedModels,
 	FieldTags,
 	FieldDefaultTestModel,
+	FieldPolicies,
 	FieldSettings,
 	FieldOrderingWeight,
 	FieldErrorMessage,
@@ -163,6 +166,8 @@ var (
 	DefaultAutoSyncSupportedModels bool
 	// DefaultTags holds the default value on creation for the "tags" field.
 	DefaultTags []string
+	// DefaultPolicies holds the default value on creation for the "policies" field.
+	DefaultPolicies objects.ChannelPolicies
 	// DefaultSettings holds the default value on creation for the "settings" field.
 	DefaultSettings *objects.ChannelSettings
 	// DefaultOrderingWeight holds the default value on creation for the "ordering_weight" field.

@@ -20,6 +20,7 @@ import {
   bulkUpdateChannelOrderingResultSchema,
   channelOrderingConnectionSchema,
   ChannelSettings,
+  ChannelPolicies,
   ChannelModelPrice,
   SaveChannelModelPriceInput,
   channelModelPriceSchema,
@@ -135,6 +136,9 @@ const CREATE_CHANNEL_MUTATION = `
       baseURL
       name
       status
+      policies {
+        stream
+      }
       supportedModels
       autoSyncSupportedModels
       tags
@@ -177,6 +181,9 @@ const BULK_CREATE_CHANNELS_MUTATION = `
       baseURL
       name
       status
+      policies {
+        stream
+      }
       supportedModels
       autoSyncSupportedModels
       tags
@@ -219,6 +226,9 @@ const UPDATE_CHANNEL_MUTATION = `
       baseURL
       name
       status
+      policies {
+        stream
+      }
       supportedModels
       autoSyncSupportedModels
       tags
@@ -476,6 +486,9 @@ const ALL_CHANNELS_QUERY = `
           name
           type
           status
+          policies {
+            stream
+          }
           baseURL
           orderingWeight
           tags
@@ -530,6 +543,9 @@ const QUERY_CHANNELS_QUERY = `
           baseURL
           name
           status
+          policies {
+            stream
+          }
           credentials {
             apiKey
             aws {
@@ -819,6 +835,7 @@ export interface BulkCreateChannelsInput {
   supportedModels: string[];
   defaultTestModel: string;
   settings?: ChannelSettings;
+  policies?: ChannelPolicies;
 }
 
 export function useBulkCreateChannels() {

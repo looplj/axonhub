@@ -456,6 +456,10 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		mut.SetSettings(input.Settings)
 	}
 
+	if input.Policies != nil {
+		mut.SetPolicies(*input.Policies)
+	}
+
 	if input.Credentials != nil {
 		mut.SetCredentials(input.Credentials)
 	}
