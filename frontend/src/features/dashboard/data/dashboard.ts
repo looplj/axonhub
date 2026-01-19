@@ -48,6 +48,8 @@ export const tokensByAPIKeySchema = z.object({
 export const dailyRequestStatsSchema = z.object({
   date: z.string(),
   count: z.number(),
+  tokens: z.number(),
+  cost: z.number(),
 });
 
 export const hourlyRequestStatsSchema = z.object({
@@ -163,6 +165,8 @@ const DAILY_REQUEST_STATS_QUERY = `
     dailyRequestStats {
       date
       count
+      tokens
+      cost
     }
   }
 `;

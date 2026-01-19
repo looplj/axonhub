@@ -97,8 +97,10 @@ type CountChannelsByTypeInput struct {
 }
 
 type DailyRequestStats struct {
-	Date  string `json:"date"`
-	Count int    `json:"count"`
+	Date   string  `json:"date"`
+	Count  int     `json:"count"`
+	Tokens int     `json:"tokens"`
+	Cost   float64 `json:"cost"`
 }
 
 type DashboardOverview struct {

@@ -441,8 +441,10 @@ type ComplexityRoot struct {
 	}
 
 	DailyRequestStats struct {
-		Count func(childComplexity int) int
-		Date  func(childComplexity int) int
+		Cost   func(childComplexity int) int
+		Count  func(childComplexity int) int
+		Date   func(childComplexity int) int
+		Tokens func(childComplexity int) int
 	}
 
 	DashboardOverview struct {
@@ -3042,6 +3044,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.CostItem.TierBreakdown(childComplexity), true
 
+	case "DailyRequestStats.cost":
+		if e.complexity.DailyRequestStats.Cost == nil {
+			break
+		}
+
+		return e.complexity.DailyRequestStats.Cost(childComplexity), true
 	case "DailyRequestStats.count":
 		if e.complexity.DailyRequestStats.Count == nil {
 			break
@@ -3054,6 +3062,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.DailyRequestStats.Date(childComplexity), true
+	case "DailyRequestStats.tokens":
+		if e.complexity.DailyRequestStats.Tokens == nil {
+			break
+		}
+
+		return e.complexity.DailyRequestStats.Tokens(childComplexity), true
 
 	case "DashboardOverview.averageResponseTime":
 		if e.complexity.DashboardOverview.AverageResponseTime == nil {
@@ -17355,6 +17369,64 @@ func (ec *executionContext) fieldContext_DailyRequestStats_count(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _DailyRequestStats_tokens(ctx context.Context, field graphql.CollectedField, obj *DailyRequestStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DailyRequestStats_tokens,
+		func(ctx context.Context) (any, error) {
+			return obj.Tokens, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_DailyRequestStats_tokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DailyRequestStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DailyRequestStats_cost(ctx context.Context, field graphql.CollectedField, obj *DailyRequestStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DailyRequestStats_cost,
+		func(ctx context.Context) (any, error) {
+			return obj.Cost, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_DailyRequestStats_cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DailyRequestStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _DashboardOverview_totalUsers(ctx context.Context, field graphql.CollectedField, obj *DashboardOverview) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -27995,6 +28067,10 @@ func (ec *executionContext) fieldContext_Query_dailyRequestStats(_ context.Conte
 				return ec.fieldContext_DailyRequestStats_date(ctx, field)
 			case "count":
 				return ec.fieldContext_DailyRequestStats_count(ctx, field)
+			case "tokens":
+				return ec.fieldContext_DailyRequestStats_tokens(ctx, field)
+			case "cost":
+				return ec.fieldContext_DailyRequestStats_cost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type DailyRequestStats", field.Name)
 		},
@@ -66781,6 +66857,16 @@ func (ec *executionContext) _DailyRequestStats(ctx context.Context, sel ast.Sele
 			}
 		case "count":
 			out.Values[i] = ec._DailyRequestStats_count(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "tokens":
+			out.Values[i] = ec._DailyRequestStats_tokens(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "cost":
+			out.Values[i] = ec._DailyRequestStats_cost(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
