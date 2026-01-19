@@ -11,54 +11,39 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/samber/lo"
 )
 
 // Backup is the resolver for the backup field.
-func (r *mutationResolver) Backup(ctx context.Context, input BackupOptionsInput) (*BackupPayload, error) {
-	data, err := r.backupService.Backup(ctx, biz.BackupOptions{
-		IncludeChannels:    input.IncludeChannels,
-		IncludeModels:      input.IncludeModels,
-		IncludeAPIKeys:     input.IncludeAPIKeys,
-		IncludeModelPrices: input.IncludeModelPrices,
-	})
+func (r *mutationResolver) Backup(ctx context.Context, input biz.BackupOptions) (*BackupPayload, error) {
+	data, err := r.backupService.Backup(ctx, input)
 	if err != nil {
 		return nil, err
 	}
 
 	dataStr := string(data)
-	msg := "Backup completed successfully"
 
 	return &BackupPayload{
 		Success: true,
 		Data:    &dataStr,
-		Message: &msg,
+		Message: lo.ToPtr("Backup completed successfully"),
 	}, nil
 }
 
 // Restore is the resolver for the restore field.
-func (r *mutationResolver) Restore(ctx context.Context, file graphql.Upload, input RestoreOptionsInput) (*RestorePayload, error) {
+func (r *mutationResolver) Restore(ctx context.Context, file graphql.Upload, input biz.RestoreOptions) (*RestorePayload, error) {
 	fileContent, err := io.ReadAll(file.File)
 	if err != nil {
 		return nil, err
 	}
 
-	err = r.backupService.Restore(ctx, fileContent, biz.RestoreOptions{
-		IncludeChannels:         input.IncludeChannels,
-		IncludeModelPrices:      input.IncludeModelPrices,
-		IncludeModels:           input.IncludeModels,
-		IncludeAPIKeys:          input.IncludeAPIKeys,
-		ChannelConflictStrategy: biz.ConflictStrategy(input.ChannelConflictStrategy),
-		ModelConflictStrategy:   biz.ConflictStrategy(input.ModelConflictStrategy),
-		APIKeyConflictStrategy:  biz.ConflictStrategy(input.APIKeyConflictStrategy),
-	})
+	err = r.backupService.Restore(ctx, fileContent, input)
 	if err != nil {
 		return nil, err
 	}
 
-	msg := "Restore completed successfully"
-
 	return &RestorePayload{
 		Success: true,
-		Message: &msg,
+		Message: lo.ToPtr("Restore completed successfully"),
 	}, nil
 }

@@ -8,8 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
 import { useSystemContext } from '../context/system-context';
-import { useGeneralSettings, useUpdateGeneralSettings } from '../data/system';
 import { currencyCodes } from '../data/currencies';
+import { useGeneralSettings, useUpdateGeneralSettings } from '../data/system';
+import { GMTTimeZoneOptions } from '../data/timezones';
 
 export function GeneralSettings() {
   const { t } = useTranslation();
@@ -18,6 +19,7 @@ export function GeneralSettings() {
   const { isLoading, setIsLoading } = useSystemContext();
 
   const [currencyCode, setCurrencyCode] = useState('USD');
+  const [timezone, setTimezone] = useState('UTC');
 
   const currencyItems = React.useMemo(
     () =>
@@ -28,10 +30,13 @@ export function GeneralSettings() {
     [t]
   );
 
+  const timezoneItems = React.useMemo(() => GMTTimeZoneOptions, []);
+
   // Update local state when settings are loaded
   React.useEffect(() => {
     if (settings) {
       setCurrencyCode(settings.currencyCode || 'USD');
+      setTimezone(settings.timezone || 'UTC');
     }
   }, [settings]);
 
@@ -40,13 +45,14 @@ export function GeneralSettings() {
     try {
       await updateSettings.mutateAsync({
         currencyCode: currencyCode.trim(),
+        timezone: timezone.trim(),
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const hasChanges = settings ? settings.currencyCode !== currencyCode : false;
+  const hasChanges = settings ? settings.currencyCode !== currencyCode || settings.timezone !== timezone : false;
 
   if (isLoadingSettings) {
     return (
@@ -76,9 +82,21 @@ export function GeneralSettings() {
                 isLoading={isLoadingSettings}
               />
             </div>
-            <div className='text-muted-foreground text-sm'>
-              {t('system.general.currencyCode.description')}
+            <div className='text-muted-foreground text-sm'>{t('system.general.currencyCode.description')}</div>
+          </div>
+
+          <div className='space-y-2'>
+            <Label htmlFor='timezone'>{t('system.general.timezone.label')}</Label>
+            <div className='max-w-md'>
+              <AutoCompleteSelect
+                selectedValue={timezone}
+                onSelectedValueChange={setTimezone}
+                items={timezoneItems}
+                placeholder={t('system.general.timezone.placeholder')}
+                isLoading={isLoadingSettings}
+              />
             </div>
+            <div className='text-muted-foreground text-sm'>{t('system.general.timezone.description')}</div>
           </div>
         </CardContent>
       </Card>

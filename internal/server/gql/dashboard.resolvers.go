@@ -23,6 +23,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/samber/lo"
 )
@@ -92,11 +93,13 @@ func (r *queryResolver) RequestStats(ctx context.Context) (*RequestStats, error)
 		RequestsThisMonth: 0,
 	}
 
-	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	weekAgo := today.AddDate(0, 0, -7)
-	twoWeeksAgo := today.AddDate(0, 0, -14)
-	monthAgo := today.AddDate(0, -1, 0)
+	loc := r.systemService.TimeLocation(ctx)
+	nowLocal := xtime.Now().In(loc)
+	todayLocal := time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc)
+	today := todayLocal.UTC()
+	weekAgo := todayLocal.AddDate(0, 0, -7).UTC()
+	twoWeeksAgo := todayLocal.AddDate(0, 0, -14).UTC()
+	monthAgo := todayLocal.AddDate(0, -1, 0).UTC()
 
 	if requestsToday, err := r.client.Request.Query().
 		Where(request.CreatedAtGTE(today)).
@@ -416,8 +419,12 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context) ([]*DailyRequestS
 
 	daysCount := 30
 
-	now := time.Now()
-	startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).AddDate(0, 0, -daysCount+1)
+	loc := r.systemService.TimeLocation(ctx)
+	nowLocal := xtime.Now().In(loc)
+	startDateLocal := time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, -daysCount+1)
+	startDateUTC := startDateLocal.UTC()
+	endDateUTC := startDateLocal.AddDate(0, 0, daysCount).UTC()
+	_, offsetSeconds := nowLocal.Zone()
 
 	// Use GROUP BY aggregation for efficient database-level computation
 	type dailyStats struct {
@@ -431,6 +438,10 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context) ([]*DailyRequestS
 
 	// Use raw SQL for complex GROUP BY with conditional counting
 	err := r.client.Request.Query().
+		Where(
+			request.CreatedAtGTE(startDateUTC),
+			request.CreatedAtLT(endDateUTC),
+		).
 		Modify(func(s *sql.Selector) {
 			// Build a dialect-specific date expression that returns a string 'YYYY-MM-DD'
 			var dateExpr string
@@ -439,13 +450,11 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context) ([]*DailyRequestS
 
 			switch s.Dialect() {
 			case dialect.SQLite:
-				// The stored format looks like: "YYYY-MM-DD HH:MM:SS.SSSSSS +0800 CST m=+..."
-				// SQLite cannot parse this with strftime; take the leading date directly.
-				dateExpr = fmt.Sprintf("substr(%s, 1, 10)", createdAtCol)
+				dateExpr = fmt.Sprintf("strftime('%%Y-%%m-%%d', datetime(substr(%s, 1, 19), '%+d seconds'))", createdAtCol, offsetSeconds)
 			case dialect.MySQL:
-				dateExpr = fmt.Sprintf("DATE_FORMAT(%s, '%%Y-%%m-%%d')", createdAtCol)
+				dateExpr = fmt.Sprintf("DATE_FORMAT(CONVERT_TZ(%s, '+00:00', '%s'), '%%Y-%%m-%%d')", createdAtCol, loc.String())
 			case dialect.Postgres:
-				dateExpr = fmt.Sprintf("to_char(%s, 'YYYY-MM-DD')", createdAtCol)
+				dateExpr = fmt.Sprintf("to_char(%s AT TIME ZONE '%s', 'YYYY-MM-DD')", createdAtCol, loc.String())
 			default:
 				// Fallback to ANSI-ish cast; many DBs accept this, but not guaranteed
 				dateExpr = fmt.Sprintf("DATE(%s)", createdAtCol)
@@ -481,7 +490,7 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context) ([]*DailyRequestS
 	response := make([]*DailyRequestStats, 0, daysCount)
 
 	for i := range daysCount {
-		date := startDate.AddDate(0, 0, i)
+		date := startDateLocal.AddDate(0, 0, i)
 		dateStr := date.Format("2006-01-02")
 
 		if stats, exists := statsMap[dateStr]; exists {
@@ -589,10 +598,12 @@ func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
 		TotalCachedTokensThisMonth: 0,
 	}
 
-	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	weekAgo := today.AddDate(0, 0, -7)
-	monthAgo := today.AddDate(0, -1, 0)
+	loc := r.systemService.TimeLocation(ctx)
+	nowLocal := xtime.Now().In(loc)
+	todayLocal := time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc)
+	today := todayLocal.UTC()
+	weekAgo := todayLocal.AddDate(0, 0, -7).UTC()
+	monthAgo := todayLocal.AddDate(0, -1, 0).UTC()
 
 	// Helper function to get token sums for a specific time period
 	getTokenSums := func(since time.Time) (input, output, cached int) {

@@ -1,9 +1,9 @@
 scalar Upload
 
 enum BackupConflictStrategy {
-  SKIP
-  OVERWRITE
-  ERROR
+  skip
+  overwrite
+  error
 }
 
 input BackupOptionsInput {

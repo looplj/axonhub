@@ -40,10 +40,19 @@ func (s *Simulator) Simulate(ctx context.Context, req *http.Request) (*http.Requ
 		return nil, fmt.Errorf("inbound transformation failed: %w", err)
 	}
 
+	llmReq.RawRequest = inboundHCReq
+
 	// 3. Outbound Transformation (Simulate Outbound Transformer)
 	outboundHCReq, err := s.Outbound.TransformRequest(ctx, llmReq)
 	if err != nil {
 		return nil, fmt.Errorf("outbound transformation failed: %w", err)
+	}
+
+	outboundHCReq = httpclient.MergeInboundRequest(outboundHCReq, inboundHCReq)
+
+	outboundHCReq, err = httpclient.FinalizeAuthHeaders(outboundHCReq)
+	if err != nil {
+		return nil, fmt.Errorf("finalize auth headers failed: %w", err)
 	}
 
 	// 4. Convert httpclient.Request to http.Request (Simulate HTTP Client building request)

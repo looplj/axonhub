@@ -8,6 +8,7 @@ import (
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
+	"github.com/looplj/axonhub/internal/pkg/xtime"
 )
 
 // UserRole holds the schema definition for the UserRole entity.
@@ -31,6 +32,10 @@ func (UserRole) Indexes() []ent.Index {
 
 // Fields of the UserRole.
 func (UserRole) Fields() []ent.Field {
+	nowUTC := func() time.Time {
+		return xtime.Now()
+	}
+
 	return []ent.Field{
 		field.Int("user_id").
 			Immutable(),
@@ -40,7 +45,7 @@ func (UserRole) Fields() []ent.Field {
 		field.Time("created_at").
 			Optional().
 			Nillable().
-			Default(time.Now).
+			Default(nowUTC).
 			Annotations(
 				entgql.OrderField("CREATED_AT"),
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
@@ -48,8 +53,8 @@ func (UserRole) Fields() []ent.Field {
 		field.Time("updated_at").
 			Optional().
 			Nillable().
-			Default(time.Now).
-			UpdateDefault(time.Now).
+			Default(nowUTC).
+			UpdateDefault(nowUTC).
 			Annotations(
 				entgql.OrderField("UPDATED_AT"),
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),

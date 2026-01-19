@@ -7,6 +7,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/mixin"
+	"github.com/looplj/axonhub/internal/pkg/xtime"
 )
 
 // TimeMixin implements the ent.Mixin for sharing
@@ -18,17 +19,21 @@ type TimeMixin struct {
 }
 
 func (TimeMixin) Fields() []ent.Field {
+	nowUTC := func() time.Time {
+		return xtime.Now()
+	}
+
 	return []ent.Field{
 		field.Time("created_at").
 			Immutable().
-			Default(time.Now).
+			Default(nowUTC).
 			Annotations(
 				entgql.OrderField("CREATED_AT"),
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 			),
 		field.Time("updated_at").
-			Default(time.Now).
-			UpdateDefault(time.Now).
+			Default(nowUTC).
+			UpdateDefault(nowUTC).
 			Annotations(
 				entgql.OrderField("UPDATED_AT"),
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
