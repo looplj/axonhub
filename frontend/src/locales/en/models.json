@@ -119,6 +119,7 @@
   "models.modelCard.input": "Input",
   "models.modelCard.output": "Output",
   "models.modelCard.cost": "Cost",
+  "models.modelCard.costHint": "These prices are for display purposes only. Actual billing uses the channel's model prices.",
   "models.modelCard.cacheRead": "Cache Read",
   "models.modelCard.cacheWrite": "Cache Write",
   "models.modelCard.limit": "Limits",

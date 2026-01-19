@@ -113,7 +113,20 @@ func ComputeUsageCost(usage *llm.Usage, price objects.ModelPrice) ([]objects.Cos
 
 		switch it.ItemCode {
 		case objects.PriceItemCodeUsage:
+			// Exclude cached tokens from input token cost calculation
+			// PromptTokens includes all tokens, so we subtract:
+			// - CachedTokens (read from cache)
+			// - WriteCachedTokens (write to cache)
+			// These are billed separately at different rates
 			quantity = usage.PromptTokens
+			if usage.PromptTokensDetails != nil {
+				quantity -= usage.PromptTokensDetails.CachedTokens
+				quantity -= usage.PromptTokensDetails.WriteCachedTokens
+			}
+			// Clamp to non-negative to handle provider bugs or partial data
+			if quantity < 0 {
+				quantity = 0
+			}
 		case objects.PriceItemCodeCompletion:
 			quantity = usage.CompletionTokens
 		case objects.PriceItemCodePromptCachedToken:
