@@ -219,15 +219,23 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
 
 ActionCell.displayName = 'ActionCell';
 
-const ExpandCell = memo(({ row }: { row: any }) => (
+const ExpandCell = ({ row }: { row: any }) => (
   <div className='flex justify-center'>
-    <Button variant='ghost' size='sm' className='h-6 w-6 p-0' onClick={() => row.toggleExpanded()}>
+    <Button
+      variant='ghost'
+      size='sm'
+      className='h-6 w-6 p-0'
+      onClick={(e) => {
+        e.stopPropagation();
+        row.toggleExpanded();
+      }}
+    >
       {row.getIsExpanded() ? <IconChevronDown className='h-4 w-4' /> : <IconChevronRight className='h-4 w-4' />}
     </Button>
   </div>
-));
+);
 
-ExpandCell.displayName = 'ExpandCell';
+// ExpandCell.displayName = 'ExpandCell'; // Removed since it's not memoized now, but can keep if desired
 
 // Memoized cell components to avoid recreating on every render
 const NameCell = memo(({ row }: { row: Row<Channel> }) => {
