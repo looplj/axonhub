@@ -46,6 +46,8 @@ func selectCandidates(inbound *PersistentInboundTransformer) pipeline.Middleware
 		// 都需要优先路由到支持 Anthropic 原生工具的渠道
 		selector = WithAnthropicNativeToolsSelector(selector)
 
+		selector = WithStreamPolicySelector(selector)
+
 		if inbound.state.LoadBalancer != nil {
 			selector = WithLoadBalancedSelector(selector, inbound.state.LoadBalancer, inbound.state.RetryPolicyProvider)
 		}

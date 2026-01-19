@@ -176,6 +176,26 @@ func (_u *ChannelUpdate) SetNillableDefaultTestModel(v *string) *ChannelUpdate {
 	return _u
 }
 
+// SetPolicies sets the "policies" field.
+func (_u *ChannelUpdate) SetPolicies(v objects.ChannelPolicies) *ChannelUpdate {
+	_u.mutation.SetPolicies(v)
+	return _u
+}
+
+// SetNillablePolicies sets the "policies" field if the given value is not nil.
+func (_u *ChannelUpdate) SetNillablePolicies(v *objects.ChannelPolicies) *ChannelUpdate {
+	if v != nil {
+		_u.SetPolicies(*v)
+	}
+	return _u
+}
+
+// ClearPolicies clears the value of the "policies" field.
+func (_u *ChannelUpdate) ClearPolicies() *ChannelUpdate {
+	_u.mutation.ClearPolicies()
+	return _u
+}
+
 // SetSettings sets the "settings" field.
 func (_u *ChannelUpdate) SetSettings(v *objects.ChannelSettings) *ChannelUpdate {
 	_u.mutation.SetSettings(v)
@@ -577,6 +597,12 @@ func (_u *ChannelUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.DefaultTestModel(); ok {
 		_spec.SetField(channel.FieldDefaultTestModel, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Policies(); ok {
+		_spec.SetField(channel.FieldPolicies, field.TypeJSON, value)
+	}
+	if _u.mutation.PoliciesCleared() {
+		_spec.ClearField(channel.FieldPolicies, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.Settings(); ok {
 		_spec.SetField(channel.FieldSettings, field.TypeJSON, value)
@@ -1017,6 +1043,26 @@ func (_u *ChannelUpdateOne) SetNillableDefaultTestModel(v *string) *ChannelUpdat
 	return _u
 }
 
+// SetPolicies sets the "policies" field.
+func (_u *ChannelUpdateOne) SetPolicies(v objects.ChannelPolicies) *ChannelUpdateOne {
+	_u.mutation.SetPolicies(v)
+	return _u
+}
+
+// SetNillablePolicies sets the "policies" field if the given value is not nil.
+func (_u *ChannelUpdateOne) SetNillablePolicies(v *objects.ChannelPolicies) *ChannelUpdateOne {
+	if v != nil {
+		_u.SetPolicies(*v)
+	}
+	return _u
+}
+
+// ClearPolicies clears the value of the "policies" field.
+func (_u *ChannelUpdateOne) ClearPolicies() *ChannelUpdateOne {
+	_u.mutation.ClearPolicies()
+	return _u
+}
+
 // SetSettings sets the "settings" field.
 func (_u *ChannelUpdateOne) SetSettings(v *objects.ChannelSettings) *ChannelUpdateOne {
 	_u.mutation.SetSettings(v)
@@ -1448,6 +1494,12 @@ func (_u *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err er
 	}
 	if value, ok := _u.mutation.DefaultTestModel(); ok {
 		_spec.SetField(channel.FieldDefaultTestModel, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Policies(); ok {
+		_spec.SetField(channel.FieldPolicies, field.TypeJSON, value)
+	}
+	if _u.mutation.PoliciesCleared() {
+		_spec.ClearField(channel.FieldPolicies, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.Settings(); ok {
 		_spec.SetField(channel.FieldSettings, field.TypeJSON, value)

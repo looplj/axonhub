@@ -246,6 +246,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             type: currentRow.type,
             baseURL: currentRow.baseURL,
             name: currentRow.name,
+            policies: currentRow.policies ?? { stream: 'unlimited' },
             supportedModels: currentRow.supportedModels,
             autoSyncSupportedModels: currentRow.autoSyncSupportedModels,
             defaultTestModel: currentRow.defaultTestModel,
@@ -270,6 +271,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               type: duplicateFromRow.type,
               baseURL: duplicateFromRow.baseURL,
               name: duplicateFromRow.name,
+              policies: duplicateFromRow.policies ?? { stream: 'unlimited' },
               supportedModels: duplicateFromRow.supportedModels,
               autoSyncSupportedModels: duplicateFromRow.autoSyncSupportedModels,
               defaultTestModel: duplicateFromRow.defaultTestModel,
@@ -294,6 +296,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               type: derivedChannelType,
               baseURL: getDefaultBaseURL(derivedChannelType),
               name: '',
+              policies: { stream: 'unlimited' },
               credentials: {
                 apiKey: '',
                 aws: {
@@ -635,6 +638,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           }
 
           const settings = values.settings ?? duplicateFromRow?.settings ?? undefined;
+          const policies = values.policies ?? duplicateFromRow?.policies ?? undefined;
           // Bulk create: use bulk mutation
           await bulkCreateChannels.mutateAsync({
             type: valuesForSubmit.type as string,
@@ -645,6 +649,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             supportedModels: supportedModels,
             defaultTestModel: valuesForSubmit.defaultTestModel as string,
             settings,
+            policies,
           });
         } else {
           // Single create: use existing mutation
@@ -1136,6 +1141,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         )}
                       />
 
+
                       {!isCodexType && selectedType !== 'anthropic_gcp' && (
                         <FormField
                           control={form.control}
@@ -1481,6 +1487,33 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 disabled={supportedModels.length === 0}
                                 isControlled={true}
                                 data-testid='default-test-model-select'
+                              />
+                              <FormMessage />
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name='policies.stream'
+                        render={({ field }) => (
+                          <FormItem className='grid grid-cols-8 items-start gap-x-6'>
+                            <FormLabel className='col-span-2 pt-2 text-right font-medium'>
+                              {t('channels.dialogs.fields.streamPolicy.label')}
+                            </FormLabel>
+                            <div className='col-span-6 space-y-1'>
+                              <SelectDropdown
+                                defaultValue={(field.value as string) || 'unlimited'}
+                                onValueChange={(value) => field.onChange(value)}
+                                placeholder={t('channels.dialogs.fields.streamPolicy.placeholder')}
+                                data-testid='channel-stream-policy-select'
+                                isControlled={true}
+                                items={[
+                                  { value: 'unlimited', label: t('channels.dialogs.fields.streamPolicy.options.unlimited') },
+                                  { value: 'require', label: t('channels.dialogs.fields.streamPolicy.options.require') },
+                                  { value: 'forbid', label: t('channels.dialogs.fields.streamPolicy.options.forbid') },
+                                ]}
                               />
                               <FormMessage />
                             </div>

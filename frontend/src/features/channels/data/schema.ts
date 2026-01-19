@@ -53,6 +53,14 @@ export type ChannelType = z.infer<typeof channelTypeSchema>;
 export const channelStatusSchema = z.enum(['enabled', 'disabled', 'archived']);
 export type ChannelStatus = z.infer<typeof channelStatusSchema>;
 
+export const capabilityPolicySchema = z.enum(['unlimited', 'require', 'forbid']);
+export type CapabilityPolicy = z.infer<typeof capabilityPolicySchema>;
+
+export const channelPoliciesSchema = z.object({
+  stream: capabilityPolicySchema.optional(),
+});
+export type ChannelPolicies = z.infer<typeof channelPoliciesSchema>;
+
 // Model Mapping
 export const modelMappingSchema = z.object({
   from: z.string(),
@@ -176,6 +184,7 @@ export const channelSchema = z.object({
   baseURL: z.string(),
   name: z.string(),
   status: channelStatusSchema,
+  policies: channelPoliciesSchema.optional().nullable(),
   credentials: channelCredentialsSchema.optional().nullable(),
   supportedModels: z.array(z.string()),
   autoSyncSupportedModels: z.boolean().default(false),
@@ -194,12 +203,7 @@ export type Channel = z.infer<typeof channelSchema>;
 export const pricingModeSchema = z.enum(['flat_fee', 'usage_per_unit', 'usage_tiered']);
 export type PricingMode = z.infer<typeof pricingModeSchema>;
 
-export const priceItemCodeSchema = z.enum([
-  'prompt_tokens',
-  'completion_tokens',
-  'prompt_cached_tokens',
-  'prompt_write_cached_tokens',
-]);
+export const priceItemCodeSchema = z.enum(['prompt_tokens', 'completion_tokens', 'prompt_cached_tokens', 'prompt_write_cached_tokens']);
 export type PriceItemCode = z.infer<typeof priceItemCodeSchema>;
 
 export const priceTierSchema = z.object({
@@ -258,6 +262,7 @@ export const createChannelInputSchema = z
     type: channelTypeSchema,
     baseURL: z.url('Please enter a valid URL'),
     name: z.string().min(1, 'Name is required'),
+    policies: channelPoliciesSchema.optional(),
     supportedModels: z.array(z.string()).min(0, 'At least one supported model is required'),
     autoSyncSupportedModels: z.boolean().optional().default(false),
     tags: z.array(z.string()).optional().default([]),
@@ -344,6 +349,7 @@ export const updateChannelInputSchema = z
     type: channelTypeSchema.optional(),
     baseURL: z.string().url('Please enter a valid URL').optional(),
     name: z.string().min(1, 'Name is required').optional(),
+    policies: channelPoliciesSchema.optional(),
     supportedModels: z.array(z.string()).min(1, 'At least one supported model is required').optional(),
     autoSyncSupportedModels: z.boolean().optional(),
     tags: z.array(z.string()).optional(),

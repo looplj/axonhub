@@ -62,6 +62,20 @@ type ChannelSettings {
   transformOptions: TransformOptions
 }
 
+enum CapabilityPolicy {
+  unlimited
+  require
+  forbid
+}
+
+type ChannelPolicies {
+  stream: CapabilityPolicy
+}
+
+input ChannelPoliciesInput {
+  stream: CapabilityPolicy
+}
+
 input ModelMappingInput {
   from: String!
   to: String!

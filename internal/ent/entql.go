@@ -82,6 +82,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			channel.FieldAutoSyncSupportedModels: {Type: field.TypeBool, Column: channel.FieldAutoSyncSupportedModels},
 			channel.FieldTags:                    {Type: field.TypeJSON, Column: channel.FieldTags},
 			channel.FieldDefaultTestModel:        {Type: field.TypeString, Column: channel.FieldDefaultTestModel},
+			channel.FieldPolicies:                {Type: field.TypeJSON, Column: channel.FieldPolicies},
 			channel.FieldSettings:                {Type: field.TypeJSON, Column: channel.FieldSettings},
 			channel.FieldOrderingWeight:          {Type: field.TypeInt, Column: channel.FieldOrderingWeight},
 			channel.FieldErrorMessage:            {Type: field.TypeString, Column: channel.FieldErrorMessage},
@@ -1470,6 +1471,11 @@ func (f *ChannelFilter) WhereTags(p entql.BytesP) {
 // WhereDefaultTestModel applies the entql string predicate on the default_test_model field.
 func (f *ChannelFilter) WhereDefaultTestModel(p entql.StringP) {
 	f.Where(p.Field(channel.FieldDefaultTestModel))
+}
+
+// WherePolicies applies the entql json.RawMessage predicate on the policies field.
+func (f *ChannelFilter) WherePolicies(p entql.BytesP) {
+	f.Where(p.Field(channel.FieldPolicies))
 }
 
 // WhereSettings applies the entql json.RawMessage predicate on the settings field.

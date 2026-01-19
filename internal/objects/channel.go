@@ -126,3 +126,15 @@ type GCPCredentialsJSON struct {
 	ClientX509CertURL       string `json:"clientX509CertURL" validate:"required"`
 	UniverseDomain          string `json:"universeDomain" validate:"required"`
 }
+
+type CapabilityPolicy string
+
+const (
+	CapabilityPolicyUnlimited CapabilityPolicy = "unlimited"
+	CapabilityPolicyRequire   CapabilityPolicy = "require"
+	CapabilityPolicyForbid    CapabilityPolicy = "forbid"
+)
+
+type ChannelPolicies struct {
+	Stream CapabilityPolicy `json:"stream,omitempty"`
+}
