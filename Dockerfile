@@ -42,12 +42,10 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 FROM alpine
 
-RUN apk add --no-cache ca-certificates tzdata && \
-    adduser -D -s /bin/sh axonhub
+RUN apk add --no-cache ca-certificates tzdata
 
 WORKDIR /app
 COPY --from=backend-builder /build/axonhub /app/axonhub
 
-USER axonhub
 EXPOSE 8090
 ENTRYPOINT ["/app/axonhub"]
