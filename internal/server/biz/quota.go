@@ -57,7 +57,7 @@ func (s *QuotaService) CheckAPIKeyQuota(ctx context.Context, apiKeyID int, quota
 
 	loc := s.system.TimeLocation(ctx)
 
-	window, err := quotaWindow(xtime.Now(), quota.Period, loc)
+	window, err := quotaWindow(xtime.UTCNow(), quota.Period, loc)
 	if err != nil {
 		return QuotaCheckResult{}, err
 	}
@@ -118,7 +118,7 @@ func (s *QuotaService) GetQuota(ctx context.Context, apiKeyID int, quota *object
 
 	loc := s.system.TimeLocation(ctx)
 
-	window, err := quotaWindow(xtime.Now(), quota.Period, loc)
+	window, err := quotaWindow(xtime.UTCNow(), quota.Period, loc)
 	if err != nil {
 		return QuotaResult{}, err
 	}
