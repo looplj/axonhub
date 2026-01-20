@@ -395,26 +395,13 @@ type Item struct {
 func (item Item) MarshalJSON() ([]byte, error) {
 	type itemAlias Item
 
-	raw, err := json.Marshal(itemAlias(item))
-	if err != nil {
-		return nil, err
+	if item.Type != "reasoning" {
+		item.Summary = nil
+	} else if item.Summary == nil {
+		item.Summary = []ReasoningSummary{}
 	}
 
-	var obj map[string]any
-	if err := json.Unmarshal(raw, &obj); err != nil {
-		return nil, err
-	}
-
-	if item.Type == "reasoning" {
-		if item.Summary == nil {
-			obj["summary"] = []any{}
-		}
-
-		return json.Marshal(obj)
-	}
-
-	delete(obj, "summary")
-	return json.Marshal(obj)
+	return json.Marshal(itemAlias(item))
 }
 
 // isOutputMessageContent checks if Content.Items contains output message content items.
