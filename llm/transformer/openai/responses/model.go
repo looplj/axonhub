@@ -391,6 +391,32 @@ type Item struct {
 	EncryptedContent *string `json:"encrypted_content,omitempty"`
 }
 
+// MarshalJSON omits summary for non-reasoning items and forces an empty array for reasoning items.
+func (item Item) MarshalJSON() ([]byte, error) {
+	type itemAlias Item
+
+	raw, err := json.Marshal(itemAlias(item))
+	if err != nil {
+		return nil, err
+	}
+
+	var obj map[string]any
+	if err := json.Unmarshal(raw, &obj); err != nil {
+		return nil, err
+	}
+
+	if item.Type == "reasoning" {
+		if item.Summary == nil {
+			obj["summary"] = []any{}
+		}
+
+		return json.Marshal(obj)
+	}
+
+	delete(obj, "summary")
+	return json.Marshal(obj)
+}
+
 // isOutputMessageContent checks if Content.Items contains output message content items.
 func (item Item) isOutputMessageContent() bool {
 	if item.Content == nil || len(item.Content.Items) == 0 {
