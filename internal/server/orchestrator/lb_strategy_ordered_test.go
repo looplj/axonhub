@@ -57,7 +57,7 @@ func TestOrderedStrategy_Score(t *testing.T) {
 
 			score := strategy.Score(ctx, channel)
 			// Score should be baseScore (1000000) + orderingWeight
-			expectedScore := 1000000.0 + float64(tt.orderingWeight)
+			expectedScore := 10000.0 + float64(tt.orderingWeight)
 			assert.Equal(t, expectedScore, score)
 		})
 	}
@@ -118,11 +118,29 @@ func TestOrderedStrategy_Score_NegativeWeight(t *testing.T) {
 
 			score := strategy.Score(ctx, channel)
 			// Score should be baseScore + orderingWeight
-			expectedScore := 1000000.0 + float64(tt.orderingWeight)
+			expectedScore := 10000.0 + float64(tt.orderingWeight)
 			assert.Equal(t, expectedScore, score)
 			assert.Greater(t, score, 0.0, "Score should still be positive even with negative weight")
 		})
 	}
+}
+
+func TestOrderedStrategy_Score_ClampingToZero(t *testing.T) {
+	ctx := context.Background()
+	strategy := NewOrderedStrategy()
+
+	// Test with extremely negative weight that should trigger clamping
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:             1,
+			Name:      "test",
+			OrderingWeight: -20000,
+		},
+	}
+
+	score := strategy.Score(ctx, channel)
+	// Score should be clamped to 0
+	assert.Equal(t, 0.0, score, "Score should be clamped to 0 for extremely negative weight")
 }
 
 func TestOrderedStrategy_Score_VeryHighWeight(t *testing.T) {
@@ -140,7 +158,7 @@ func TestOrderedStrategy_Score_VeryHighWeight(t *testing.T) {
 
 	score := strategy.Score(ctx, channel)
 	// Score should be baseScore + weight
-	expectedScore := 1000000.0 + 999999.0
+	expectedScore := 10000.0 + 999999.0
 	assert.Equal(t, expectedScore, score, "Score should handle very high weights")
 	assert.Greater(t, score, 0.0, "Score should be positive")
 }
