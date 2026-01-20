@@ -215,6 +215,15 @@ models:
   AWSCredentialInput:
     model:
       - github.com/looplj/axonhub/internal/objects.AWSCredential
+  BackupOptionsInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.BackupOptions
+  RestoreOptionsInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.RestoreOptions
+  BackupConflictStrategy:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ConflictStrategy
   GCPCredential:
     model:
       - github.com/looplj/axonhub/internal/objects.GCPCredential

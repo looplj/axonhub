@@ -27,9 +27,9 @@ export function BackupSettings() {
     includeModelPrices: true,
     includeModels: true,
     includeAPIKeys: false,
-    channelConflictStrategy: 'SKIP',
-    modelConflictStrategy: 'SKIP',
-    apiKeyConflictStrategy: 'SKIP',
+    channelConflictStrategy: 'skip',
+    modelConflictStrategy: 'skip',
+    apiKeyConflictStrategy: 'skip',
   });
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -157,7 +157,7 @@ export function BackupSettings() {
               <Label htmlFor="channel-conflict-strategy">{t('system.restore.channelConflictStrategy')}</Label>
               <Select
                 value={restoreOptions.channelConflictStrategy}
-                onValueChange={(value: 'SKIP' | 'OVERWRITE' | 'ERROR') =>
+                onValueChange={(value: 'skip' | 'overwrite' | 'error') =>
                   setRestoreOptions({ ...restoreOptions, channelConflictStrategy: value })
                 }
               >
@@ -165,9 +165,9 @@ export function BackupSettings() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="SKIP">{t('system.restore.strategies.skip')}</SelectItem>
-                  <SelectItem value="OVERWRITE">{t('system.restore.strategies.overwrite')}</SelectItem>
-                  <SelectItem value="ERROR">{t('system.restore.strategies.error')}</SelectItem>
+                  <SelectItem value="skip">{t('system.restore.strategies.skip')}</SelectItem>
+                  <SelectItem value="overwrite">{t('system.restore.strategies.overwrite')}</SelectItem>
+                  <SelectItem value="error">{t('system.restore.strategies.error')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -175,7 +175,7 @@ export function BackupSettings() {
               <Label htmlFor="model-conflict-strategy">{t('system.restore.modelConflictStrategy')}</Label>
               <Select
                 value={restoreOptions.modelConflictStrategy}
-                onValueChange={(value: 'SKIP' | 'OVERWRITE' | 'ERROR') =>
+                onValueChange={(value: 'skip' | 'overwrite' | 'error') =>
                   setRestoreOptions({ ...restoreOptions, modelConflictStrategy: value })
                 }
               >
@@ -183,9 +183,9 @@ export function BackupSettings() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="SKIP">{t('system.restore.strategies.skip')}</SelectItem>
-                  <SelectItem value="OVERWRITE">{t('system.restore.strategies.overwrite')}</SelectItem>
-                  <SelectItem value="ERROR">{t('system.restore.strategies.error')}</SelectItem>
+                  <SelectItem value="skip">{t('system.restore.strategies.skip')}</SelectItem>
+                  <SelectItem value="overwrite">{t('system.restore.strategies.overwrite')}</SelectItem>
+                  <SelectItem value="error">{t('system.restore.strategies.error')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -193,7 +193,7 @@ export function BackupSettings() {
               <Label htmlFor="apikey-conflict-strategy">{t('system.restore.apiKeyConflictStrategy')}</Label>
               <Select
                 value={restoreOptions.apiKeyConflictStrategy}
-                onValueChange={(value: 'SKIP' | 'OVERWRITE' | 'ERROR') =>
+                onValueChange={(value: 'skip' | 'overwrite' | 'error') =>
                   setRestoreOptions({ ...restoreOptions, apiKeyConflictStrategy: value })
                 }
               >
@@ -201,9 +201,9 @@ export function BackupSettings() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="SKIP">{t('system.restore.strategies.skip')}</SelectItem>
-                  <SelectItem value="OVERWRITE">{t('system.restore.strategies.overwrite')}</SelectItem>
-                  <SelectItem value="ERROR">{t('system.restore.strategies.error')}</SelectItem>
+                  <SelectItem value="skip">{t('system.restore.strategies.skip')}</SelectItem>
+                  <SelectItem value="overwrite">{t('system.restore.strategies.overwrite')}</SelectItem>
+                  <SelectItem value="error">{t('system.restore.strategies.error')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>

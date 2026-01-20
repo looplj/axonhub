@@ -641,7 +641,7 @@ type ComplexityRoot struct {
 	Mutation struct {
 		AddUserToProject                     func(childComplexity int, input AddUserToProjectInput) int
 		ApplyChannelOverrideTemplate         func(childComplexity int, input ApplyChannelOverrideTemplateInput) int
-		Backup                               func(childComplexity int, input BackupOptionsInput) int
+		Backup                               func(childComplexity int, input biz.BackupOptions) int
 		BulkArchiveAPIKeys                   func(childComplexity int, ids []*objects.GUID) int
 		BulkArchiveChannels                  func(childComplexity int, ids []*objects.GUID) int
 		BulkArchiveModels                    func(childComplexity int, ids []*objects.GUID) int
@@ -678,7 +678,7 @@ type ComplexityRoot struct {
 		DeletePrompt                         func(childComplexity int, id objects.GUID) int
 		DeleteRole                           func(childComplexity int, id objects.GUID) int
 		RemoveUserFromProject                func(childComplexity int, input RemoveUserFromProjectInput) int
-		Restore                              func(childComplexity int, file graphql.Upload, input RestoreOptionsInput) int
+		Restore                              func(childComplexity int, file graphql.Upload, input biz.RestoreOptions) int
 		SaveChannelModelPrices               func(childComplexity int, channelID objects.GUID, input []*biz.SaveChannelModelPriceInput) int
 		TestChannel                          func(childComplexity int, input TestChannelInput) int
 		UpdateAPIKey                         func(childComplexity int, id objects.GUID, input ent.UpdateAPIKeyInput) int
@@ -1154,6 +1154,7 @@ type ComplexityRoot struct {
 
 	SystemGeneralSettings struct {
 		CurrencyCode func(childComplexity int) int
+		Timezone     func(childComplexity int) int
 	}
 
 	SystemModelSettingOnboarding struct {
@@ -1526,8 +1527,8 @@ type MutationResolver interface {
 	BulkDisableModels(ctx context.Context, ids []*objects.GUID) (bool, error)
 	BulkEnableModels(ctx context.Context, ids []*objects.GUID) (bool, error)
 	BulkDeleteModels(ctx context.Context, ids []*objects.GUID) (bool, error)
-	Backup(ctx context.Context, input BackupOptionsInput) (*BackupPayload, error)
-	Restore(ctx context.Context, file graphql.Upload, input RestoreOptionsInput) (*RestorePayload, error)
+	Backup(ctx context.Context, input biz.BackupOptions) (*BackupPayload, error)
+	Restore(ctx context.Context, file graphql.Upload, input biz.RestoreOptions) (*RestorePayload, error)
 	CreatePrompt(ctx context.Context, input ent.CreatePromptInput) (*ent.Prompt, error)
 	UpdatePrompt(ctx context.Context, id objects.GUID, input ent.UpdatePromptInput) (*ent.Prompt, error)
 	DeletePrompt(ctx context.Context, id objects.GUID) (bool, error)
@@ -3764,7 +3765,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.Backup(childComplexity, args["input"].(BackupOptionsInput)), true
+		return e.complexity.Mutation.Backup(childComplexity, args["input"].(biz.BackupOptions)), true
 	case "Mutation.bulkArchiveAPIKeys":
 		if e.complexity.Mutation.BulkArchiveAPIKeys == nil {
 			break
@@ -4171,7 +4172,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.Restore(childComplexity, args["file"].(graphql.Upload), args["input"].(RestoreOptionsInput)), true
+		return e.complexity.Mutation.Restore(childComplexity, args["file"].(graphql.Upload), args["input"].(biz.RestoreOptions)), true
 	case "Mutation.saveChannelModelPrices":
 		if e.complexity.Mutation.SaveChannelModelPrices == nil {
 			break
@@ -6385,6 +6386,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SystemGeneralSettings.CurrencyCode(childComplexity), true
+	case "SystemGeneralSettings.timezone":
+		if e.complexity.SystemGeneralSettings.Timezone == nil {
+			break
+		}
+
+		return e.complexity.SystemGeneralSettings.Timezone(childComplexity), true
 
 	case "SystemModelSettingOnboarding.completedAt":
 		if e.complexity.SystemModelSettingOnboarding.CompletedAt == nil {
@@ -8004,7 +8011,7 @@ func (ec *executionContext) field_Mutation_applyChannelOverrideTemplate_args(ctx
 func (ec *executionContext) field_Mutation_backup_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNBackupOptionsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBackupOptionsInput)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNBackupOptionsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐBackupOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -8416,7 +8423,7 @@ func (ec *executionContext) field_Mutation_restore_args(ctx context.Context, raw
 		return nil, err
 	}
 	args["file"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNRestoreOptionsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRestoreOptionsInput)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNRestoreOptionsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐRestoreOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -24048,7 +24055,7 @@ func (ec *executionContext) _Mutation_backup(ctx context.Context, field graphql.
 		ec.fieldContext_Mutation_backup,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().Backup(ctx, fc.Args["input"].(BackupOptionsInput))
+			return ec.resolvers.Mutation().Backup(ctx, fc.Args["input"].(biz.BackupOptions))
 		},
 		nil,
 		ec.marshalNBackupPayload2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBackupPayload,
@@ -24097,7 +24104,7 @@ func (ec *executionContext) _Mutation_restore(ctx context.Context, field graphql
 		ec.fieldContext_Mutation_restore,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().Restore(ctx, fc.Args["file"].(graphql.Upload), fc.Args["input"].(RestoreOptionsInput))
+			return ec.resolvers.Mutation().Restore(ctx, fc.Args["file"].(graphql.Upload), fc.Args["input"].(biz.RestoreOptions))
 		},
 		nil,
 		ec.marshalNRestorePayload2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRestorePayload,
@@ -28766,6 +28773,8 @@ func (ec *executionContext) fieldContext_Query_systemGeneralSettings(_ context.C
 			switch field.Name {
 			case "currencyCode":
 				return ec.fieldContext_SystemGeneralSettings_currencyCode(ctx, field)
+			case "timezone":
+				return ec.fieldContext_SystemGeneralSettings_timezone(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SystemGeneralSettings", field.Name)
 		},
@@ -34580,6 +34589,35 @@ func (ec *executionContext) _SystemGeneralSettings_currencyCode(ctx context.Cont
 }
 
 func (ec *executionContext) fieldContext_SystemGeneralSettings_currencyCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SystemGeneralSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SystemGeneralSettings_timezone(ctx context.Context, field graphql.CollectedField, obj *biz.SystemGeneralSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SystemGeneralSettings_timezone,
+		func(ctx context.Context) (any, error) {
+			return obj.Timezone, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SystemGeneralSettings_timezone(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "SystemGeneralSettings",
 		Field:      field,
@@ -42938,8 +42976,8 @@ func (ec *executionContext) unmarshalInputAutoDisableChannelStatusInput(ctx cont
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputBackupOptionsInput(ctx context.Context, obj any) (BackupOptionsInput, error) {
-	var it BackupOptionsInput
+func (ec *executionContext) unmarshalInputBackupOptionsInput(ctx context.Context, obj any) (biz.BackupOptions, error) {
+	var it biz.BackupOptions
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -56069,8 +56107,8 @@ func (ec *executionContext) unmarshalInputRequestWhereInput(ctx context.Context,
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputRestoreOptionsInput(ctx context.Context, obj any) (RestoreOptionsInput, error) {
-	var it RestoreOptionsInput
+func (ec *executionContext) unmarshalInputRestoreOptionsInput(ctx context.Context, obj any) (biz.RestoreOptions, error) {
+	var it biz.RestoreOptions
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -56117,21 +56155,21 @@ func (ec *executionContext) unmarshalInputRestoreOptionsInput(ctx context.Contex
 			it.IncludeAPIKeys = data
 		case "channelConflictStrategy":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelConflictStrategy"))
-			data, err := ec.unmarshalNBackupConflictStrategy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBackupConflictStrategy(ctx, v)
+			data, err := ec.unmarshalNBackupConflictStrategy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐConflictStrategy(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.ChannelConflictStrategy = data
 		case "modelConflictStrategy":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelConflictStrategy"))
-			data, err := ec.unmarshalNBackupConflictStrategy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBackupConflictStrategy(ctx, v)
+			data, err := ec.unmarshalNBackupConflictStrategy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐConflictStrategy(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.ModelConflictStrategy = data
 		case "apiKeyConflictStrategy":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyConflictStrategy"))
-			data, err := ec.unmarshalNBackupConflictStrategy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBackupConflictStrategy(ctx, v)
+			data, err := ec.unmarshalNBackupConflictStrategy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐConflictStrategy(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -59554,7 +59592,7 @@ func (ec *executionContext) unmarshalInputUpdateSystemGeneralSettingsInput(ctx c
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"currencyCode"}
+	fieldsInOrder := [...]string{"currencyCode", "timezone"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -59568,6 +59606,13 @@ func (ec *executionContext) unmarshalInputUpdateSystemGeneralSettingsInput(ctx c
 				return it, err
 			}
 			it.CurrencyCode = data
+		case "timezone":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("timezone"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Timezone = data
 		}
 	}
 
@@ -74243,6 +74288,11 @@ func (ec *executionContext) _SystemGeneralSettings(ctx context.Context, sel ast.
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "timezone":
+			out.Values[i] = ec._SystemGeneralSettings_timezone(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -77845,17 +77895,24 @@ func (ec *executionContext) unmarshalNAutoDisableChannelStatusInput2githubᚗcom
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNBackupConflictStrategy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBackupConflictStrategy(ctx context.Context, v any) (BackupConflictStrategy, error) {
-	var res BackupConflictStrategy
-	err := res.UnmarshalGQL(v)
+func (ec *executionContext) unmarshalNBackupConflictStrategy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐConflictStrategy(ctx context.Context, v any) (biz.ConflictStrategy, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := biz.ConflictStrategy(tmp)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNBackupConflictStrategy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBackupConflictStrategy(ctx context.Context, sel ast.SelectionSet, v BackupConflictStrategy) graphql.Marshaler {
-	return v
+func (ec *executionContext) marshalNBackupConflictStrategy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐConflictStrategy(ctx context.Context, sel ast.SelectionSet, v biz.ConflictStrategy) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalString(string(v))
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
 
-func (ec *executionContext) unmarshalNBackupOptionsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBackupOptionsInput(ctx context.Context, v any) (BackupOptionsInput, error) {
+func (ec *executionContext) unmarshalNBackupOptionsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐBackupOptions(ctx context.Context, v any) (biz.BackupOptions, error) {
 	res, err := ec.unmarshalInputBackupOptionsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -80402,7 +80459,7 @@ func (ec *executionContext) unmarshalNRequestWhereInput2ᚖgithubᚗcomᚋlooplj
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNRestoreOptionsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRestoreOptionsInput(ctx context.Context, v any) (RestoreOptionsInput, error) {
+func (ec *executionContext) unmarshalNRestoreOptionsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐRestoreOptions(ctx context.Context, v any) (biz.RestoreOptions, error) {
 	res, err := ec.unmarshalInputRestoreOptionsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }

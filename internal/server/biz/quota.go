@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xtime"
 )
 
 type QuotaWindow struct {
@@ -39,11 +40,12 @@ type QuotaResult struct {
 }
 
 type QuotaService struct {
-	ent *ent.Client
+	ent    *ent.Client
+	system *SystemService
 }
 
-func NewQuotaService(entClient *ent.Client) *QuotaService {
-	return &QuotaService{ent: entClient}
+func NewQuotaService(entClient *ent.Client, systemService *SystemService) *QuotaService {
+	return &QuotaService{ent: entClient, system: systemService}
 }
 
 func (s *QuotaService) CheckAPIKeyQuota(ctx context.Context, apiKeyID int, quota *objects.APIKeyQuota) (QuotaCheckResult, error) {
@@ -53,7 +55,9 @@ func (s *QuotaService) CheckAPIKeyQuota(ctx context.Context, apiKeyID int, quota
 
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
-	window, err := quotaWindow(time.Now().UTC(), quota.Period)
+	loc := s.system.TimeLocation(ctx)
+
+	window, err := quotaWindow(xtime.Now(), quota.Period, loc)
 	if err != nil {
 		return QuotaCheckResult{}, err
 	}
@@ -112,7 +116,9 @@ func (s *QuotaService) GetQuota(ctx context.Context, apiKeyID int, quota *object
 		return QuotaResult{}, nil
 	}
 
-	window, err := quotaWindow(time.Now().UTC(), quota.Period)
+	loc := s.system.TimeLocation(ctx)
+
+	window, err := quotaWindow(xtime.Now(), quota.Period, loc)
 	if err != nil {
 		return QuotaResult{}, err
 	}
@@ -137,7 +143,11 @@ func (s *QuotaService) GetQuota(ctx context.Context, apiKeyID int, quota *object
 	}, nil
 }
 
-func quotaWindow(now time.Time, period objects.APIKeyQuotaPeriod) (QuotaWindow, error) {
+func quotaWindow(now time.Time, period objects.APIKeyQuotaPeriod, loc *time.Location) (QuotaWindow, error) {
+	if loc == nil {
+		loc = time.UTC
+	}
+
 	switch period.Type {
 	case objects.APIKeyQuotaPeriodTypeAllTime:
 		return QuotaWindow{}, nil
@@ -171,13 +181,19 @@ func quotaWindow(now time.Time, period objects.APIKeyQuotaPeriod) (QuotaWindow, 
 
 		switch period.CalendarDuration.Unit {
 		case objects.APIKeyQuotaCalendarDurationUnitDay:
-			start := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-			end := start.AddDate(0, 0, 1)
+			nowLocal := now.In(loc)
+			startLocal := time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc)
+			endLocal := startLocal.AddDate(0, 0, 1)
+			start := startLocal.UTC()
+			end := endLocal.UTC()
 
 			return QuotaWindow{Start: &start, End: &end}, nil
 		case objects.APIKeyQuotaCalendarDurationUnitMonth:
-			start := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
-			end := start.AddDate(0, 1, 0)
+			nowLocal := now.In(loc)
+			startLocal := time.Date(nowLocal.Year(), nowLocal.Month(), 1, 0, 0, 0, 0, loc)
+			endLocal := startLocal.AddDate(0, 1, 0)
+			start := startLocal.UTC()
+			end := endLocal.UTC()
 
 			return QuotaWindow{Start: &start, End: &end}, nil
 		default:

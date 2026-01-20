@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/samber/lo"
 
@@ -14,6 +15,7 @@ import (
 
 const (
 	claudeCodeSystemMessage = "You are Claude Code, Anthropic's official CLI for Claude."
+	claudeCodeUserAgent     = "claude-cli/1.0.83 (external, cli)"
 )
 
 // claudeCodeHeaders contains all headers to set for Claude Code requests.
@@ -22,7 +24,6 @@ var claudeCodeHeaders = [][]string{
 	{"Anthropic-Beta", "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14"},
 	{"Anthropic-Version", "2023-06-01"},
 	{"Anthropic-Dangerous-Direct-Browser-Access", "true"},
-	{"User-Agent", "claude-cli/1.0.83 (external, cli)"},
 	{"X-App", "cli"},
 	{"X-Stainless-Helper-Method", "stream"},
 	{"X-Stainless-Retry-Count", "0"},
@@ -53,6 +54,26 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 	ctx context.Context,
 	llmReq *llm.Request,
 ) (*httpclient.Request, error) {
+	if llmReq == nil {
+		return nil, fmt.Errorf("request is nil")
+	}
+
+	rawUA := ""
+	keepClientUA := false
+
+	if llmReq.RawRequest != nil && llmReq.RawRequest.Headers != nil {
+		rawUA = llmReq.RawRequest.Headers.Get("User-Agent")
+		keepClientUA = isClaudeCLIUserAgent(rawUA)
+
+		for _, header := range claudeCodeHeaders {
+			llmReq.RawRequest.Headers.Del(header[0])
+		}
+
+		if !keepClientUA {
+			llmReq.RawRequest.Headers.Del("User-Agent")
+		}
+	}
+
 	// Clone the request to avoid mutating the original
 	reqCopy := *llmReq
 
@@ -99,6 +120,12 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 		httpReq.Headers.Set(header[0], header[1])
 	}
 
+	if keepClientUA && rawUA != "" {
+		httpReq.Headers.Set("User-Agent", rawUA)
+	} else {
+		httpReq.Headers.Set("User-Agent", claudeCodeUserAgent)
+	}
+
 	// Set authentication to Bearer token
 	httpReq.Auth = &httpclient.AuthConfig{
 		Type:   httpclient.AuthTypeBearer,
@@ -106,4 +133,8 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 	}
 
 	return httpReq, nil
+}
+
+func isClaudeCLIUserAgent(value string) bool {
+	return strings.HasPrefix(value, "claude-cli/")
 }

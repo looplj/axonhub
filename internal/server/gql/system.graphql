@@ -153,10 +153,12 @@ input UpdateSystemChannelSettingsInput {
 
 type SystemGeneralSettings {
   currencyCode: String!
+  timezone: String!
 }
 
 input UpdateSystemGeneralSettingsInput {
   currencyCode: String
+  timezone: String
 }
 
 extend type Mutation {

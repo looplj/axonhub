@@ -57,7 +57,8 @@ func TestQuotaService_AllTime_RequestCountExceeded(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	svc := NewQuotaService(client)
+	systemService := NewSystemService(SystemServiceParams{Ent: client})
+	svc := NewQuotaService(client, systemService)
 
 	quota := &objects.APIKeyQuota{
 		Requests: lo.ToPtr(int64(2)),
@@ -141,7 +142,8 @@ func TestQuotaService_PastDuration_TotalTokensExceeded(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	svc := NewQuotaService(client)
+	systemService := NewSystemService(SystemServiceParams{Ent: client})
+	svc := NewQuotaService(client, systemService)
 	quota := &objects.APIKeyQuota{
 		TotalTokens: lo.ToPtr(int64(100)),
 		Period: objects.APIKeyQuotaPeriod{
@@ -157,6 +159,44 @@ func TestQuotaService_PastDuration_TotalTokensExceeded(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, res.Allowed)
 	require.Contains(t, res.Message, "total_tokens quota exceeded")
+}
+
+func TestQuotaWindow_CalendarDay_Timezone(t *testing.T) {
+	loc, err := time.LoadLocation("Asia/Shanghai")
+	require.NoError(t, err)
+
+	now := time.Date(2026, 1, 20, 1, 2, 3, 0, time.UTC)
+	window, err := quotaWindow(now, objects.APIKeyQuotaPeriod{
+		Type: objects.APIKeyQuotaPeriodTypeCalendarDuration,
+		CalendarDuration: &objects.APIKeyQuotaCalendarDuration{
+			Unit: objects.APIKeyQuotaCalendarDurationUnitDay,
+		},
+	}, loc)
+	require.NoError(t, err)
+	require.NotNil(t, window.Start)
+	require.NotNil(t, window.End)
+
+	require.Equal(t, time.Date(2026, 1, 19, 16, 0, 0, 0, time.UTC), *window.Start)
+	require.Equal(t, time.Date(2026, 1, 20, 16, 0, 0, 0, time.UTC), *window.End)
+}
+
+func TestQuotaWindow_CalendarMonth_Timezone(t *testing.T) {
+	loc, err := time.LoadLocation("Asia/Shanghai")
+	require.NoError(t, err)
+
+	now := time.Date(2026, 1, 20, 1, 2, 3, 0, time.UTC)
+	window, err := quotaWindow(now, objects.APIKeyQuotaPeriod{
+		Type: objects.APIKeyQuotaPeriodTypeCalendarDuration,
+		CalendarDuration: &objects.APIKeyQuotaCalendarDuration{
+			Unit: objects.APIKeyQuotaCalendarDurationUnitMonth,
+		},
+	}, loc)
+	require.NoError(t, err)
+	require.NotNil(t, window.Start)
+	require.NotNil(t, window.End)
+
+	require.Equal(t, time.Date(2025, 12, 31, 16, 0, 0, 0, time.UTC), *window.Start)
+	require.Equal(t, time.Date(2026, 1, 31, 16, 0, 0, 0, time.UTC), *window.End)
 }
 
 func TestQuotaService_CalendarDay_CostExceeded(t *testing.T) {
@@ -202,7 +242,8 @@ func TestQuotaService_CalendarDay_CostExceeded(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	svc := NewQuotaService(client)
+	systemService := NewSystemService(SystemServiceParams{Ent: client})
+	svc := NewQuotaService(client, systemService)
 	quota := &objects.APIKeyQuota{
 		Cost: lo.ToPtr(decimal.NewFromFloat(10.0)),
 		Period: objects.APIKeyQuotaPeriod{
