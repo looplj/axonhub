@@ -33,7 +33,7 @@ type ChannelModelPrice struct {
 	// The model price, if changed, it will genearte a new reference id.
 	Price objects.ModelPrice `json:"price,omitempty"`
 	// The bill should reference this id.
-	RefreanceID string `json:"refreance_id,omitempty"`
+	ReferenceID string `json:"reference_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ChannelModelPriceQuery when eager-loading is set.
 	Edges        ChannelModelPriceEdges `json:"edges"`
@@ -84,7 +84,7 @@ func (*ChannelModelPrice) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case channelmodelprice.FieldID, channelmodelprice.FieldDeletedAt, channelmodelprice.FieldChannelID:
 			values[i] = new(sql.NullInt64)
-		case channelmodelprice.FieldModelID, channelmodelprice.FieldRefreanceID:
+		case channelmodelprice.FieldModelID, channelmodelprice.FieldReferenceID:
 			values[i] = new(sql.NullString)
 		case channelmodelprice.FieldCreatedAt, channelmodelprice.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -147,11 +147,11 @@ func (_m *ChannelModelPrice) assignValues(columns []string, values []any) error 
 					return fmt.Errorf("unmarshal field price: %w", err)
 				}
 			}
-		case channelmodelprice.FieldRefreanceID:
+		case channelmodelprice.FieldReferenceID:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field refreance_id", values[i])
+				return fmt.Errorf("unexpected type %T for field reference_id", values[i])
 			} else if value.Valid {
-				_m.RefreanceID = value.String
+				_m.ReferenceID = value.String
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -217,8 +217,8 @@ func (_m *ChannelModelPrice) String() string {
 	builder.WriteString("price=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Price))
 	builder.WriteString(", ")
-	builder.WriteString("refreance_id=")
-	builder.WriteString(_m.RefreanceID)
+	builder.WriteString("reference_id=")
+	builder.WriteString(_m.ReferenceID)
 	builder.WriteByte(')')
 	return builder.String()
 }

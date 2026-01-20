@@ -137,10 +137,12 @@ export interface BrandSettings {
 
 export interface SystemGeneralSettings {
   currencyCode: string;
+  timezone: string;
 }
 
 export interface UpdateSystemGeneralSettingsInput {
   currencyCode?: string;
+  timezone?: string;
 }
 
 export interface StoragePolicy {
@@ -507,6 +509,7 @@ const SYSTEM_GENERAL_SETTINGS_QUERY = `
   query SystemGeneralSettings {
     systemGeneralSettings {
       currencyCode
+      timezone
     }
   }
 `;
@@ -675,6 +678,7 @@ const RESTORE_MUTATION = `
 
 export interface BackupOptionsInput {
   includeChannels: boolean;
+  includeModelPrices: boolean;
   includeModels: boolean;
   includeAPIKeys: boolean;
 }
@@ -687,11 +691,12 @@ export interface BackupPayload {
 
 export interface RestoreOptionsInput {
   includeChannels: boolean;
+  includeModelPrices: boolean;
   includeModels: boolean;
   includeAPIKeys: boolean;
-  channelConflictStrategy: 'SKIP' | 'OVERWRITE' | 'ERROR';
-  modelConflictStrategy: 'SKIP' | 'OVERWRITE' | 'ERROR';
-  apiKeyConflictStrategy: 'SKIP' | 'OVERWRITE' | 'ERROR';
+  channelConflictStrategy: 'skip' | 'overwrite' | 'error';
+  modelConflictStrategy: 'skip' | 'overwrite' | 'error';
+  apiKeyConflictStrategy: 'skip' | 'overwrite' | 'error';
 }
 
 export interface RestorePayload {

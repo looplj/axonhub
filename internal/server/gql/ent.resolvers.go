@@ -47,6 +47,16 @@ func (r *channelResolver) ID(ctx context.Context, obj *ent.Channel) (*objects.GU
 	}, nil
 }
 
+// Policies is the resolver for the policies field.
+// It is used to return the default value if the field is not set.
+func (r *channelResolver) Policies(ctx context.Context, obj *ent.Channel) (*objects.ChannelPolicies, error) {
+	if obj.Policies.Stream == "" {
+		obj.Policies.Stream = objects.CapabilityPolicyUnlimited
+	}
+
+	return &obj.Policies, nil
+}
+
 // ID is the resolver for the id field.
 func (r *channelModelPriceResolver) ID(ctx context.Context, obj *ent.ChannelModelPrice) (*objects.GUID, error) {
 	return &objects.GUID{

@@ -82,6 +82,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			channel.FieldAutoSyncSupportedModels: {Type: field.TypeBool, Column: channel.FieldAutoSyncSupportedModels},
 			channel.FieldTags:                    {Type: field.TypeJSON, Column: channel.FieldTags},
 			channel.FieldDefaultTestModel:        {Type: field.TypeString, Column: channel.FieldDefaultTestModel},
+			channel.FieldPolicies:                {Type: field.TypeJSON, Column: channel.FieldPolicies},
 			channel.FieldSettings:                {Type: field.TypeJSON, Column: channel.FieldSettings},
 			channel.FieldOrderingWeight:          {Type: field.TypeInt, Column: channel.FieldOrderingWeight},
 			channel.FieldErrorMessage:            {Type: field.TypeString, Column: channel.FieldErrorMessage},
@@ -105,7 +106,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			channelmodelprice.FieldChannelID:   {Type: field.TypeInt, Column: channelmodelprice.FieldChannelID},
 			channelmodelprice.FieldModelID:     {Type: field.TypeString, Column: channelmodelprice.FieldModelID},
 			channelmodelprice.FieldPrice:       {Type: field.TypeJSON, Column: channelmodelprice.FieldPrice},
-			channelmodelprice.FieldRefreanceID: {Type: field.TypeString, Column: channelmodelprice.FieldRefreanceID},
+			channelmodelprice.FieldReferenceID: {Type: field.TypeString, Column: channelmodelprice.FieldReferenceID},
 		},
 	}
 	graph.Nodes[3] = &sqlgraph.Node{
@@ -121,7 +122,6 @@ var schemaGraph = func() *sqlgraph.Schema {
 		Fields: map[string]*sqlgraph.FieldSpec{
 			channelmodelpriceversion.FieldCreatedAt:           {Type: field.TypeTime, Column: channelmodelpriceversion.FieldCreatedAt},
 			channelmodelpriceversion.FieldUpdatedAt:           {Type: field.TypeTime, Column: channelmodelpriceversion.FieldUpdatedAt},
-			channelmodelpriceversion.FieldDeletedAt:           {Type: field.TypeInt, Column: channelmodelpriceversion.FieldDeletedAt},
 			channelmodelpriceversion.FieldChannelID:           {Type: field.TypeInt, Column: channelmodelpriceversion.FieldChannelID},
 			channelmodelpriceversion.FieldModelID:             {Type: field.TypeString, Column: channelmodelpriceversion.FieldModelID},
 			channelmodelpriceversion.FieldChannelModelPriceID: {Type: field.TypeInt, Column: channelmodelpriceversion.FieldChannelModelPriceID},
@@ -129,7 +129,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			channelmodelpriceversion.FieldStatus:              {Type: field.TypeEnum, Column: channelmodelpriceversion.FieldStatus},
 			channelmodelpriceversion.FieldEffectiveStartAt:    {Type: field.TypeTime, Column: channelmodelpriceversion.FieldEffectiveStartAt},
 			channelmodelpriceversion.FieldEffectiveEndAt:      {Type: field.TypeTime, Column: channelmodelpriceversion.FieldEffectiveEndAt},
-			channelmodelpriceversion.FieldRefreanceID:         {Type: field.TypeString, Column: channelmodelpriceversion.FieldRefreanceID},
+			channelmodelpriceversion.FieldReferenceID:         {Type: field.TypeString, Column: channelmodelpriceversion.FieldReferenceID},
 		},
 	}
 	graph.Nodes[4] = &sqlgraph.Node{
@@ -447,6 +447,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			usagelog.FieldCreatedAt:                          {Type: field.TypeTime, Column: usagelog.FieldCreatedAt},
 			usagelog.FieldUpdatedAt:                          {Type: field.TypeTime, Column: usagelog.FieldUpdatedAt},
 			usagelog.FieldRequestID:                          {Type: field.TypeInt, Column: usagelog.FieldRequestID},
+			usagelog.FieldAPIKeyID:                           {Type: field.TypeInt, Column: usagelog.FieldAPIKeyID},
 			usagelog.FieldProjectID:                          {Type: field.TypeInt, Column: usagelog.FieldProjectID},
 			usagelog.FieldChannelID:                          {Type: field.TypeInt, Column: usagelog.FieldChannelID},
 			usagelog.FieldModelID:                            {Type: field.TypeString, Column: usagelog.FieldModelID},
@@ -1472,6 +1473,11 @@ func (f *ChannelFilter) WhereDefaultTestModel(p entql.StringP) {
 	f.Where(p.Field(channel.FieldDefaultTestModel))
 }
 
+// WherePolicies applies the entql json.RawMessage predicate on the policies field.
+func (f *ChannelFilter) WherePolicies(p entql.BytesP) {
+	f.Where(p.Field(channel.FieldPolicies))
+}
+
 // WhereSettings applies the entql json.RawMessage predicate on the settings field.
 func (f *ChannelFilter) WhereSettings(p entql.BytesP) {
 	f.Where(p.Field(channel.FieldSettings))
@@ -1646,9 +1652,9 @@ func (f *ChannelModelPriceFilter) WherePrice(p entql.BytesP) {
 	f.Where(p.Field(channelmodelprice.FieldPrice))
 }
 
-// WhereRefreanceID applies the entql string predicate on the refreance_id field.
-func (f *ChannelModelPriceFilter) WhereRefreanceID(p entql.StringP) {
-	f.Where(p.Field(channelmodelprice.FieldRefreanceID))
+// WhereReferenceID applies the entql string predicate on the reference_id field.
+func (f *ChannelModelPriceFilter) WhereReferenceID(p entql.StringP) {
+	f.Where(p.Field(channelmodelprice.FieldReferenceID))
 }
 
 // WhereHasChannel applies a predicate to check if query has an edge channel.
@@ -1729,11 +1735,6 @@ func (f *ChannelModelPriceVersionFilter) WhereUpdatedAt(p entql.TimeP) {
 	f.Where(p.Field(channelmodelpriceversion.FieldUpdatedAt))
 }
 
-// WhereDeletedAt applies the entql int predicate on the deleted_at field.
-func (f *ChannelModelPriceVersionFilter) WhereDeletedAt(p entql.IntP) {
-	f.Where(p.Field(channelmodelpriceversion.FieldDeletedAt))
-}
-
 // WhereChannelID applies the entql int predicate on the channel_id field.
 func (f *ChannelModelPriceVersionFilter) WhereChannelID(p entql.IntP) {
 	f.Where(p.Field(channelmodelpriceversion.FieldChannelID))
@@ -1769,9 +1770,9 @@ func (f *ChannelModelPriceVersionFilter) WhereEffectiveEndAt(p entql.TimeP) {
 	f.Where(p.Field(channelmodelpriceversion.FieldEffectiveEndAt))
 }
 
-// WhereRefreanceID applies the entql string predicate on the refreance_id field.
-func (f *ChannelModelPriceVersionFilter) WhereRefreanceID(p entql.StringP) {
-	f.Where(p.Field(channelmodelpriceversion.FieldRefreanceID))
+// WhereReferenceID applies the entql string predicate on the reference_id field.
+func (f *ChannelModelPriceVersionFilter) WhereReferenceID(p entql.StringP) {
+	f.Where(p.Field(channelmodelpriceversion.FieldReferenceID))
 }
 
 // WhereHasChannelModelPrice applies a predicate to check if query has an edge channel_model_price.
@@ -3483,6 +3484,11 @@ func (f *UsageLogFilter) WhereUpdatedAt(p entql.TimeP) {
 // WhereRequestID applies the entql int predicate on the request_id field.
 func (f *UsageLogFilter) WhereRequestID(p entql.IntP) {
 	f.Where(p.Field(usagelog.FieldRequestID))
+}
+
+// WhereAPIKeyID applies the entql int predicate on the api_key_id field.
+func (f *UsageLogFilter) WhereAPIKeyID(p entql.IntP) {
+	f.Where(p.Field(usagelog.FieldAPIKeyID))
 }
 
 // WhereProjectID applies the entql int predicate on the project_id field.

@@ -456,6 +456,11 @@ func (r *threadResolver) FirstUserQuery(ctx context.Context, obj *ent.Thread) (*
 	return r.threadService.FirstUserQuery(ctx, obj.ID)
 }
 
+// UsageMetadata is the resolver for the usageMetadata field.
+func (r *threadResolver) UsageMetadata(ctx context.Context, obj *ent.Thread) (*biz.UsageMetadata, error) {
+	return r.threadService.UsageMetadata(ctx, obj.ID)
+}
+
 // RootSegment is the resolver for the rootSegment field.
 func (r *traceResolver) RootSegment(ctx context.Context, obj *ent.Trace) (*biz.Segment, error) {
 	return r.traceService.GetRootSegment(ctx, obj.ID)
@@ -484,6 +489,11 @@ func (r *traceResolver) FirstUserQuery(ctx context.Context, obj *ent.Trace) (*st
 // FirstText is the resolver for the firstText field.
 func (r *traceResolver) FirstText(ctx context.Context, obj *ent.Trace) (*string, error) {
 	return r.traceService.FirstText(ctx, obj.ID)
+}
+
+// UsageMetadata is the resolver for the usageMetadata field.
+func (r *traceResolver) UsageMetadata(ctx context.Context, obj *ent.Trace) (*biz.UsageMetadata, error) {
+	return r.traceService.UsageMetadata(ctx, obj.ID)
 }
 
 // Mutation returns MutationResolver implementation.

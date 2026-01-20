@@ -85,9 +85,9 @@ func (_c *ChannelModelPriceCreate) SetPrice(v objects.ModelPrice) *ChannelModelP
 	return _c
 }
 
-// SetRefreanceID sets the "refreance_id" field.
-func (_c *ChannelModelPriceCreate) SetRefreanceID(v string) *ChannelModelPriceCreate {
-	_c.mutation.SetRefreanceID(v)
+// SetReferenceID sets the "reference_id" field.
+func (_c *ChannelModelPriceCreate) SetReferenceID(v string) *ChannelModelPriceCreate {
+	_c.mutation.SetReferenceID(v)
 	return _c
 }
 
@@ -194,8 +194,8 @@ func (_c *ChannelModelPriceCreate) check() error {
 			return &ValidationError{Name: "price", err: fmt.Errorf(`ent: validator failed for field "ChannelModelPrice.price": %w`, err)}
 		}
 	}
-	if _, ok := _c.mutation.RefreanceID(); !ok {
-		return &ValidationError{Name: "refreance_id", err: errors.New(`ent: missing required field "ChannelModelPrice.refreance_id"`)}
+	if _, ok := _c.mutation.ReferenceID(); !ok {
+		return &ValidationError{Name: "reference_id", err: errors.New(`ent: missing required field "ChannelModelPrice.reference_id"`)}
 	}
 	if len(_c.mutation.ChannelIDs()) == 0 {
 		return &ValidationError{Name: "channel", err: errors.New(`ent: missing required edge "ChannelModelPrice.channel"`)}
@@ -247,9 +247,9 @@ func (_c *ChannelModelPriceCreate) createSpec() (*ChannelModelPrice, *sqlgraph.C
 		_spec.SetField(channelmodelprice.FieldPrice, field.TypeJSON, value)
 		_node.Price = value
 	}
-	if value, ok := _c.mutation.RefreanceID(); ok {
-		_spec.SetField(channelmodelprice.FieldRefreanceID, field.TypeString, value)
-		_node.RefreanceID = value
+	if value, ok := _c.mutation.ReferenceID(); ok {
+		_spec.SetField(channelmodelprice.FieldReferenceID, field.TypeString, value)
+		_node.ReferenceID = value
 	}
 	if nodes := _c.mutation.ChannelIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -378,15 +378,15 @@ func (u *ChannelModelPriceUpsert) UpdatePrice() *ChannelModelPriceUpsert {
 	return u
 }
 
-// SetRefreanceID sets the "refreance_id" field.
-func (u *ChannelModelPriceUpsert) SetRefreanceID(v string) *ChannelModelPriceUpsert {
-	u.Set(channelmodelprice.FieldRefreanceID, v)
+// SetReferenceID sets the "reference_id" field.
+func (u *ChannelModelPriceUpsert) SetReferenceID(v string) *ChannelModelPriceUpsert {
+	u.Set(channelmodelprice.FieldReferenceID, v)
 	return u
 }
 
-// UpdateRefreanceID sets the "refreance_id" field to the value that was provided on create.
-func (u *ChannelModelPriceUpsert) UpdateRefreanceID() *ChannelModelPriceUpsert {
-	u.SetExcluded(channelmodelprice.FieldRefreanceID)
+// UpdateReferenceID sets the "reference_id" field to the value that was provided on create.
+func (u *ChannelModelPriceUpsert) UpdateReferenceID() *ChannelModelPriceUpsert {
+	u.SetExcluded(channelmodelprice.FieldReferenceID)
 	return u
 }
 
@@ -490,17 +490,17 @@ func (u *ChannelModelPriceUpsertOne) UpdatePrice() *ChannelModelPriceUpsertOne {
 	})
 }
 
-// SetRefreanceID sets the "refreance_id" field.
-func (u *ChannelModelPriceUpsertOne) SetRefreanceID(v string) *ChannelModelPriceUpsertOne {
+// SetReferenceID sets the "reference_id" field.
+func (u *ChannelModelPriceUpsertOne) SetReferenceID(v string) *ChannelModelPriceUpsertOne {
 	return u.Update(func(s *ChannelModelPriceUpsert) {
-		s.SetRefreanceID(v)
+		s.SetReferenceID(v)
 	})
 }
 
-// UpdateRefreanceID sets the "refreance_id" field to the value that was provided on create.
-func (u *ChannelModelPriceUpsertOne) UpdateRefreanceID() *ChannelModelPriceUpsertOne {
+// UpdateReferenceID sets the "reference_id" field to the value that was provided on create.
+func (u *ChannelModelPriceUpsertOne) UpdateReferenceID() *ChannelModelPriceUpsertOne {
 	return u.Update(func(s *ChannelModelPriceUpsert) {
-		s.UpdateRefreanceID()
+		s.UpdateReferenceID()
 	})
 }
 
@@ -770,17 +770,17 @@ func (u *ChannelModelPriceUpsertBulk) UpdatePrice() *ChannelModelPriceUpsertBulk
 	})
 }
 
-// SetRefreanceID sets the "refreance_id" field.
-func (u *ChannelModelPriceUpsertBulk) SetRefreanceID(v string) *ChannelModelPriceUpsertBulk {
+// SetReferenceID sets the "reference_id" field.
+func (u *ChannelModelPriceUpsertBulk) SetReferenceID(v string) *ChannelModelPriceUpsertBulk {
 	return u.Update(func(s *ChannelModelPriceUpsert) {
-		s.SetRefreanceID(v)
+		s.SetReferenceID(v)
 	})
 }
 
-// UpdateRefreanceID sets the "refreance_id" field to the value that was provided on create.
-func (u *ChannelModelPriceUpsertBulk) UpdateRefreanceID() *ChannelModelPriceUpsertBulk {
+// UpdateReferenceID sets the "reference_id" field to the value that was provided on create.
+func (u *ChannelModelPriceUpsertBulk) UpdateReferenceID() *ChannelModelPriceUpsertBulk {
 	return u.Update(func(s *ChannelModelPriceUpsert) {
-		s.UpdateRefreanceID()
+		s.UpdateReferenceID()
 	})
 }
 

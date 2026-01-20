@@ -1,6 +1,9 @@
 package objects
 
-import "github.com/looplj/axonhub/llm/httpclient"
+import (
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/oauth"
+)
 
 type (
 	ProxyType   = httpclient.ProxyType
@@ -79,9 +82,7 @@ type ChannelCredentials struct {
 	// APIKey is the API key for the channel.
 	APIKey string `json:"apiKey,omitempty"`
 
-	// PlatformType distinguishes different platform configurations (e.g., "openai", "azure").
-	// e.g., "openai", "azure", "anthropic", "vertex" etc.
-	PlatformType string `json:"platformType,omitempty"`
+	OAuth *OAuthCredentials `json:"oauth,omitempty"`
 
 	// Azure configuration for the channel.
 	Azure *AzureCredential `json:"azure,omitempty"`
@@ -92,6 +93,8 @@ type ChannelCredentials struct {
 	// GCP is the GCP credentials for the channel.
 	GCP *GCPCredential `json:"gcp,omitempty"`
 }
+
+type OAuthCredentials = oauth.OAuthCredentials
 
 type AzureCredential struct {
 	// APIVersion is a optional version for the channel.
@@ -122,4 +125,16 @@ type GCPCredentialsJSON struct {
 	AuthProviderX509CertURL string `json:"authProviderX509CertURL" validate:"required"`
 	ClientX509CertURL       string `json:"clientX509CertURL" validate:"required"`
 	UniverseDomain          string `json:"universeDomain" validate:"required"`
+}
+
+type CapabilityPolicy string
+
+const (
+	CapabilityPolicyUnlimited CapabilityPolicy = "unlimited"
+	CapabilityPolicyRequire   CapabilityPolicy = "require"
+	CapabilityPolicyForbid    CapabilityPolicy = "forbid"
+)
+
+type ChannelPolicies struct {
+	Stream CapabilityPolicy `json:"stream,omitempty"`
 }

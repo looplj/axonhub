@@ -135,16 +135,17 @@ export default function ApiKeysManagement() {
 
   return (
     <ApiKeysProvider>
-      <Header fixed></Header>
-
-      <Main fixed>
-        <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
+      <Header fixed>
+        <div className='flex flex-1 items-center justify-between'>
           <div>
-            <h2 className='text-2xl font-bold tracking-tight'>{t('apikeys.title')}</h2>
-            <p className='text-muted-foreground'>{t('apikeys.description')}</p>
+            <h2 className='text-xl font-bold tracking-tight'>{t('apikeys.title')}</h2>
+            <p className='text-sm text-muted-foreground'>{t('apikeys.description')}</p>
           </div>
           <ApiKeysPrimaryButtons />
         </div>
+      </Header>
+
+      <Main fixed>
         <ApiKeysContent />
       </Main>
       <ApiKeysDialogs />

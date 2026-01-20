@@ -49,6 +49,7 @@ type BulkCreateChannelsInput struct {
 	APIKeys          []string
 	SupportedModels  []string
 	DefaultTestModel string
+	Policies         *objects.ChannelPolicies
 	Settings         *objects.ChannelSettings
 }
 
@@ -108,6 +109,7 @@ func (svc *ChannelService) BulkCreateChannels(ctx context.Context, input BulkCre
 			SupportedModels:  input.SupportedModels,
 			Tags:             tagsToUse,
 			DefaultTestModel: input.DefaultTestModel,
+			Policies:         input.Policies,
 			Settings:         input.Settings,
 		}
 

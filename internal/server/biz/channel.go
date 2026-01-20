@@ -41,6 +41,9 @@ type Channel struct {
 	// HTTPClient is the custom HTTP client for this channel with proxy support
 	HTTPClient *httpclient.HttpClient
 
+	startTokenProvider func()
+	stopTokenProvider  func()
+
 	// cachedOverrideParams stores the parsed override parameters to avoid repeated JSON parsing
 	cachedOverrideParams map[string]any
 
@@ -52,7 +55,7 @@ type Channel struct {
 	cachedModelEntries map[string]ChannelModelEntry
 
 	// cachedModelPrices caches model prices per request model id
-	// RequestModel -> ChannelModelPrice entity (contains Price and RefreanceID)
+	// RequestModel -> ChannelModelPrice entity (contains Price and ReferenceID)
 	cachedModelPrices map[string]*ent.ChannelModelPrice
 }
 
@@ -207,7 +210,20 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 
 	log.Info(ctx, "loaded channels", log.Int("count", len(channels)))
 
+	for _, ch := range channels {
+		if ch != nil && ch.startTokenProvider != nil {
+			ch.startTokenProvider()
+		}
+	}
+
+	old := svc.enabledChannels
 	svc.enabledChannels = channels
+
+	for _, ch := range old {
+		if ch != nil && ch.stopTokenProvider != nil {
+			ch.stopTokenProvider()
+		}
+	}
 
 	return nil
 }
@@ -438,6 +454,10 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		}
 
 		mut.SetSettings(input.Settings)
+	}
+
+	if input.Policies != nil {
+		mut.SetPolicies(*input.Policies)
 	}
 
 	if input.Credentials != nil {

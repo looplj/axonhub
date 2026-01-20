@@ -1,19 +1,21 @@
 scalar Upload
 
 enum BackupConflictStrategy {
-  SKIP
-  OVERWRITE
-  ERROR
+  skip
+  overwrite
+  error
 }
 
 input BackupOptionsInput {
   includeChannels: Boolean!
+  includeModelPrices: Boolean! = true
   includeModels: Boolean!
   includeAPIKeys: Boolean!
 }
 
 input RestoreOptionsInput {
   includeChannels: Boolean!
+  includeModelPrices: Boolean! = true
   includeModels: Boolean!
   includeAPIKeys: Boolean!
   channelConflictStrategy: BackupConflictStrategy!

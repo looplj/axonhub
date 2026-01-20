@@ -25,7 +25,7 @@ func TestSystemService_Initialize(t *testing.T) {
 	service := biz.NewSystemService(biz.SystemServiceParams{})
 
 	// Test system initialization with auto-generated secret key
-	err = service.Initialize(ctx, &biz.InitializeSystemArgs{
+	err = service.Initialize(ctx, &biz.InitializeSystemParams{
 		OwnerEmail:     "owner@example.com",
 		OwnerPassword:  "password123",
 		OwnerFirstName: "System",
@@ -72,7 +72,7 @@ func TestSystemService_Initialize(t *testing.T) {
 	// Test idempotency - calling Initialize again should not error
 	// but should not change the existing secret key or create duplicate projects
 	originalKey := secretKey
-	err = service.Initialize(ctx, &biz.InitializeSystemArgs{
+	err = service.Initialize(ctx, &biz.InitializeSystemParams{
 		OwnerEmail:     "owner@example.com",
 		OwnerPassword:  "password123",
 		OwnerFirstName: "System",

@@ -179,6 +179,11 @@ func (s *APIKeyService) UpdateAPIKeyProfiles(ctx context.Context, id int, profil
 		return nil, err
 	}
 
+	// Validate quota configuration (if present)
+	if err := validateProfileQuota(profiles.Profiles); err != nil {
+		return nil, err
+	}
+
 	apiKey, err := client.APIKey.UpdateOneID(id).
 		SetProfiles(&profiles).
 		Save(ctx)
@@ -221,6 +226,63 @@ func validateActiveProfile(activeProfile string, profiles []objects.APIKeyProfil
 	}
 
 	return fmt.Errorf("active profile '%s' does not exist in the profiles list", activeProfile)
+}
+
+func validateProfileQuota(profiles []objects.APIKeyProfile) error {
+	for _, profile := range profiles {
+		if profile.Quota == nil {
+			continue
+		}
+
+		q := profile.Quota
+		if q.Requests == nil && q.TotalTokens == nil && q.Cost == nil {
+			return fmt.Errorf("profile '%s' quota must set at least one limit", profile.Name)
+		}
+
+		if q.Requests != nil && *q.Requests <= 0 {
+			return fmt.Errorf("profile '%s' quota.requests must be positive", profile.Name)
+		}
+
+		if q.TotalTokens != nil && *q.TotalTokens <= 0 {
+			return fmt.Errorf("profile '%s' quota.totalTokens must be positive", profile.Name)
+		}
+
+		if q.Cost != nil && q.Cost.IsNegative() {
+			return fmt.Errorf("profile '%s' quota.cost must be non-negative", profile.Name)
+		}
+
+		switch q.Period.Type {
+		case objects.APIKeyQuotaPeriodTypeAllTime:
+		case objects.APIKeyQuotaPeriodTypePastDuration:
+			if q.Period.PastDuration == nil {
+				return fmt.Errorf("profile '%s' quota.period.pastDuration is required", profile.Name)
+			}
+
+			if q.Period.PastDuration.Value <= 0 {
+				return fmt.Errorf("profile '%s' quota.period.pastDuration.value must be positive", profile.Name)
+			}
+
+			switch q.Period.PastDuration.Unit {
+			case objects.APIKeyQuotaPastDurationUnitHour, objects.APIKeyQuotaPastDurationUnitDay:
+			default:
+				return fmt.Errorf("profile '%s' quota.period.pastDuration.unit is invalid", profile.Name)
+			}
+		case objects.APIKeyQuotaPeriodTypeCalendarDuration:
+			if q.Period.CalendarDuration == nil {
+				return fmt.Errorf("profile '%s' quota.period.calendarDuration is required", profile.Name)
+			}
+
+			switch q.Period.CalendarDuration.Unit {
+			case objects.APIKeyQuotaCalendarDurationUnitDay, objects.APIKeyQuotaCalendarDurationUnitMonth:
+			default:
+				return fmt.Errorf("profile '%s' quota.period.calendarDuration.unit is invalid", profile.Name)
+			}
+		default:
+			return fmt.Errorf("profile '%s' quota.period.type is invalid", profile.Name)
+		}
+	}
+
+	return nil
 }
 
 func buildAPIKeyCacheKey(key string) string {

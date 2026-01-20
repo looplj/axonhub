@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: axonhub
+    runtime: docker
+    plan: free
+    envVars:
+      - key: AXONHUB_SERVER_PORT
+        value: 8090
+      - key: AXONHUB_DB_DIALECT
+        value: postgres
+      - key: AXONHUB_DB_DSN
+        fromDatabase:
+          name: axonhub-db
+          property: connectionString
+      - key: AXONHUB_LOG_LEVEL
+        value: info
+    healthCheckPath: /health
+    autoDeploy: true
+
+databases:
+  - name: axonhub-db
+    plan: free

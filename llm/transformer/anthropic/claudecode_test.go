@@ -3,6 +3,8 @@ package anthropic
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"net/url"
 	"testing"
 
 	"github.com/samber/lo"
@@ -10,6 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/streams"
+	llmtransformer "github.com/looplj/axonhub/llm/transformer"
 )
 
 func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
@@ -18,7 +23,7 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 	// Create a ClaudeCode transformer
 	config := &Config{
 		Type:    PlatformClaudeCode,
-		BaseURL: "https://example.com", // Should be ignored
+		BaseURL: "https://example.com",
 		APIKey:  "test-api-key",
 	}
 
@@ -44,8 +49,9 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, httpReq)
 
-		// Verify the URL is fixed
-		assert.Equal(t, claudeCodeAPIURL, httpReq.URL)
+		assert.Equal(t, "https://example.com/v1/messages", httpReq.URL)
+		require.NotNil(t, httpReq.Query)
+		assert.Equal(t, "true", httpReq.Query.Get("beta"))
 
 		// Verify Claude Code specific headers
 		assert.Equal(t, "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14", httpReq.Headers.Get("Anthropic-Beta"))
@@ -100,8 +106,9 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, httpReq)
 
-		// Verify the URL is still fixed
-		assert.Equal(t, claudeCodeAPIURL, httpReq.URL)
+		assert.Equal(t, "https://example.com/v1/messages", httpReq.URL)
+		require.NotNil(t, httpReq.Query)
+		assert.Equal(t, "true", httpReq.Query.Get("beta"))
 		assert.NotEmpty(t, httpReq.Body)
 	})
 
@@ -165,8 +172,9 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, httpReq)
 
-		// Verify the URL is still fixed (streaming doesn't change URL)
-		assert.Equal(t, claudeCodeAPIURL, httpReq.URL)
+		assert.Equal(t, "https://example.com/v1/messages", httpReq.URL)
+		require.NotNil(t, httpReq.Query)
+		assert.Equal(t, "true", httpReq.Query.Get("beta"))
 	})
 
 	t.Run("requires model", func(t *testing.T) {
@@ -185,6 +193,40 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "model is required")
 	})
+
+	t.Run("does not duplicate beta query", func(t *testing.T) {
+		t1 := &ClaudeCodeTransformer{
+			Outbound: &fakeOutbound{
+				req: &httpclient.Request{
+					Method:  http.MethodPost,
+					URL:     "https://example.com/v1/messages",
+					Query:   url.Values{"beta": []string{"true"}},
+					Headers: http.Header{},
+					Auth: &httpclient.AuthConfig{
+						Type:   httpclient.AuthTypeAPIKey,
+						APIKey: "test-api-key",
+					},
+				},
+			},
+		}
+
+		httpReq, err := t1.TransformRequest(ctx, &llm.Request{
+			Model: "claude-sonnet-4-5-20250514",
+			Messages: []llm.Message{
+				{
+					Role: "user",
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("Hello"),
+					},
+				},
+			},
+			MaxTokens: lo.ToPtr(int64(1024)),
+		})
+		require.NoError(t, err)
+		require.NotNil(t, httpReq.Query)
+		assert.Equal(t, "https://example.com/v1/messages", httpReq.URL)
+		assert.Equal(t, []string{"true"}, httpReq.Query["beta"])
+	})
 }
 
 func TestClaudeCodeTransformer_APIFormat(t *testing.T) {
@@ -198,3 +240,33 @@ func TestClaudeCodeTransformer_APIFormat(t *testing.T) {
 
 	assert.Equal(t, llm.APIFormatAnthropicMessage, transformer.APIFormat())
 }
+
+type fakeOutbound struct {
+	req *httpclient.Request
+}
+
+func (t *fakeOutbound) APIFormat() llm.APIFormat {
+	return llm.APIFormatAnthropicMessage
+}
+
+func (t *fakeOutbound) TransformRequest(_ context.Context, _ *llm.Request) (*httpclient.Request, error) {
+	return t.req, nil
+}
+
+func (t *fakeOutbound) TransformResponse(_ context.Context, _ *httpclient.Response) (*llm.Response, error) {
+	return nil, nil
+}
+
+func (t *fakeOutbound) TransformStream(_ context.Context, _ streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+	return nil, nil
+}
+
+func (t *fakeOutbound) TransformError(_ context.Context, _ *httpclient.Error) *llm.ResponseError {
+	return nil
+}
+
+func (t *fakeOutbound) AggregateStreamChunks(_ context.Context, _ []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+	return nil, llm.ResponseMeta{}, nil
+}
+
+var _ llmtransformer.Outbound = (*fakeOutbound)(nil)

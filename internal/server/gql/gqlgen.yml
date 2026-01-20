@@ -13,7 +13,6 @@ schema:
   - price.graphql
   - cost.graphql
 
-
 omit_gqlgen_version_in_file_notice: true
 
 #exec:
@@ -102,6 +101,15 @@ models:
   ProxyConfigInput:
     model:
       - github.com/looplj/axonhub/internal/objects.ProxyConfig
+  CapabilityPolicy:
+    model:
+      - github.com/looplj/axonhub/internal/objects.CapabilityPolicy
+  ChannelPolicies:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelPolicies
+  ChannelPoliciesInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelPolicies
   ChannelSettings:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelSettings
@@ -114,6 +122,12 @@ models:
   ChannelCredentialsInput:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelCredentials
+  OAuthCredentials:
+    model:
+      - github.com/looplj/axonhub/internal/objects.OAuthCredentials
+  OAuthCredentialsInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.OAuthCredentials
   BulkCreateChannelsInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.BulkCreateChannelsInput
@@ -158,16 +172,58 @@ models:
       - github.com/looplj/axonhub/internal/objects.APIKeyProfile
   APIKeyProfiles:
     model:
-      - github.com/looplj/axonhub/internal/objects.APIKeyProfiles    
+      - github.com/looplj/axonhub/internal/objects.APIKeyProfiles
   APIKeyProfile:
     model:
       - github.com/looplj/axonhub/internal/objects.APIKeyProfile
+  APIKeyQuotaInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyQuota
+  APIKeyQuota:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyQuota
+  APIKeyQuotaPeriodInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyQuotaPeriod
+  APIKeyQuotaPeriod:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyQuotaPeriod
+  APIKeyQuotaPeriodType:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyQuotaPeriodType
+  APIKeyQuotaPastDurationInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyQuotaPastDuration
+  APIKeyQuotaPastDuration:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyQuotaPastDuration
+  APIKeyQuotaPastDurationUnit:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyQuotaPastDurationUnit
+  APIKeyQuotaCalendarDurationInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyQuotaCalendarDuration
+  APIKeyQuotaCalendarDuration:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyQuotaCalendarDuration
+  APIKeyQuotaCalendarDurationUnit:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyQuotaCalendarDurationUnit
   AWSCredential:
     model:
       - github.com/looplj/axonhub/internal/objects.AWSCredential
-  AWSCredentialInput: 
+  AWSCredentialInput:
     model:
       - github.com/looplj/axonhub/internal/objects.AWSCredential
+  BackupOptionsInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.BackupOptions
+  RestoreOptionsInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.RestoreOptions
+  BackupConflictStrategy:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ConflictStrategy
   GCPCredential:
     model:
       - github.com/looplj/axonhub/internal/objects.GCPCredential
@@ -210,6 +266,9 @@ models:
   RequestMetadata:
     model:
       - github.com/looplj/axonhub/internal/server/biz.RequestMetadata
+  UsageMetadata:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.UsageMetadata
   Span:
     model:
       - github.com/looplj/axonhub/internal/server/biz.Span
@@ -363,7 +422,7 @@ models:
   ModelIDAssociation:
     model:
       - github.com/looplj/axonhub/internal/objects.ModelIDAssociation
-  ModelIDAssociationInput:    
+  ModelIDAssociationInput:
     model:
       - github.com/looplj/axonhub/internal/objects.ModelIDAssociation
   ExcludeAssociation:

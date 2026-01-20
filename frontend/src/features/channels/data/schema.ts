@@ -53,6 +53,14 @@ export type ChannelType = z.infer<typeof channelTypeSchema>;
 export const channelStatusSchema = z.enum(['enabled', 'disabled', 'archived']);
 export type ChannelStatus = z.infer<typeof channelStatusSchema>;
 
+export const capabilityPolicySchema = z.enum(['unlimited', 'require', 'forbid']);
+export type CapabilityPolicy = z.infer<typeof capabilityPolicySchema>;
+
+export const channelPoliciesSchema = z.object({
+  stream: capabilityPolicySchema.optional(),
+});
+export type ChannelPolicies = z.infer<typeof channelPoliciesSchema>;
+
 // Model Mapping
 export const modelMappingSchema = z.object({
   from: z.string(),
@@ -136,7 +144,18 @@ export type ChannelModelEntry = z.infer<typeof channelModelEntrySchema>;
 // Channel Credentials
 export const channelCredentialsSchema = z.object({
   apiKey: z.string().optional().nullable(),
-  platformType: z.string().optional().nullable(),
+  oauth: z
+    .object({
+      accessToken: z.string().optional().nullable(),
+      refreshToken: z.string().optional().nullable(),
+      clientID: z.string().optional().nullable(),
+      accountID: z.string().optional().nullable(),
+      expiresAt: z.string().optional().nullable(),
+      tokenType: z.string().optional().nullable(),
+      scopes: z.array(z.string()).optional().nullable(),
+    })
+    .optional()
+    .nullable(),
   aws: z
     .object({
       accessKeyID: z.string(),
@@ -165,6 +184,7 @@ export const channelSchema = z.object({
   baseURL: z.string(),
   name: z.string(),
   status: channelStatusSchema,
+  policies: channelPoliciesSchema.optional().nullable(),
   credentials: channelCredentialsSchema.optional().nullable(),
   supportedModels: z.array(z.string()),
   autoSyncSupportedModels: z.boolean().default(false),
@@ -183,12 +203,7 @@ export type Channel = z.infer<typeof channelSchema>;
 export const pricingModeSchema = z.enum(['flat_fee', 'usage_per_unit', 'usage_tiered']);
 export type PricingMode = z.infer<typeof pricingModeSchema>;
 
-export const priceItemCodeSchema = z.enum([
-  'prompt_tokens',
-  'completion_tokens',
-  'prompt_cached_tokens',
-  'prompt_write_cached_tokens',
-]);
+export const priceItemCodeSchema = z.enum(['prompt_tokens', 'completion_tokens', 'prompt_cached_tokens', 'prompt_write_cached_tokens']);
 export type PriceItemCode = z.infer<typeof priceItemCodeSchema>;
 
 export const priceTierSchema = z.object({
@@ -247,6 +262,7 @@ export const createChannelInputSchema = z
     type: channelTypeSchema,
     baseURL: z.url('Please enter a valid URL'),
     name: z.string().min(1, 'Name is required'),
+    policies: channelPoliciesSchema.optional(),
     supportedModels: z.array(z.string()).min(0, 'At least one supported model is required'),
     autoSyncSupportedModels: z.boolean().optional().default(false),
     tags: z.array(z.string()).optional().default([]),
@@ -255,7 +271,6 @@ export const createChannelInputSchema = z
     settings: channelSettingsSchema.optional(),
     credentials: z.object({
       apiKey: z.string().min(1, 'API Key is required'),
-      platformType: z.string().optional().nullable(),
       aws: z
         .object({
           accessKeyID: z.string().optional(),
@@ -277,13 +292,8 @@ export const createChannelInputSchema = z
       const issue = {
         code: 'custom' as const,
         message: 'channels.dialogs.fields.supportedModels.codexOAuthCredentialsRequired',
-        path: ['credentials', 'apiKey'] as const,
+        path: ['credentials', 'apiKey'],
       };
-
-      if (data.credentials?.platformType !== 'codex') {
-        ctx.addIssue(issue);
-        return;
-      }
 
       let json: unknown;
       try {
@@ -339,6 +349,7 @@ export const updateChannelInputSchema = z
     type: channelTypeSchema.optional(),
     baseURL: z.string().url('Please enter a valid URL').optional(),
     name: z.string().min(1, 'Name is required').optional(),
+    policies: channelPoliciesSchema.optional(),
     supportedModels: z.array(z.string()).min(1, 'At least one supported model is required').optional(),
     autoSyncSupportedModels: z.boolean().optional(),
     tags: z.array(z.string()).optional(),
@@ -349,7 +360,6 @@ export const updateChannelInputSchema = z
     credentials: z
       .object({
         apiKey: z.string().optional(),
-        platformType: z.string().optional().nullable(),
         aws: z
           .object({
             accessKeyID: z.string().optional(),
@@ -373,20 +383,14 @@ export const updateChannelInputSchema = z
       const issue = {
         code: 'custom' as const,
         message: 'channels.dialogs.fields.supportedModels.codexOAuthCredentialsRequired',
-        path: ['credentials', 'apiKey'] as const,
+        path: ['credentials', 'apiKey'],
       };
 
       if (!data.credentials) return;
 
-      const platformType = data.credentials.platformType;
       const apiKey = data.credentials.apiKey;
 
-      if (platformType || apiKey) {
-        if (platformType !== 'codex' || !apiKey) {
-          ctx.addIssue(issue);
-          return;
-        }
-
+      if (apiKey) {
         let json: unknown;
         try {
           json = JSON.parse(apiKey);

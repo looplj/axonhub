@@ -9,8 +9,9 @@ type TierCost struct {
 }
 
 type CostItem struct {
-	ItemCode      PriceItemCode   `json:"itemCode"`
-	Quantity      int64           `json:"quantity"`
-	TierBreakdown []TierCost      `json:"tierBreakdown,omitempty"`
-	Subtotal      decimal.Decimal `json:"subtotal"`
+	ItemCode                    PriceItemCode               `json:"itemCode"`
+	PromptWriteCacheVariantCode PromptWriteCacheVariantCode `json:"promptWriteCacheVariantCode,omitempty"`
+	Quantity                    int64                       `json:"quantity"`
+	TierBreakdown               []TierCost                  `json:"tierBreakdown,omitempty"`
+	Subtotal                    decimal.Decimal             `json:"subtotal"`
 }

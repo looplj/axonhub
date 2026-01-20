@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -15,22 +14,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 
-	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/oauth"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
-)
-
-const (
-	codexAuthorizeURL = "https://auth.openai.com/oauth/authorize"
-	//nolint:gosec // false alert.
-	codexTokenURL    = "https://auth.openai.com/oauth/token"
-	codexClientID    = "app_EMoamEEZ73f0CkXaXp7hrann"
-	codexRedirectURI = "http://localhost:1455/auth/callback"
-	codexScopes      = "openid profile email offline_access"
-
-	codexUserAgent = "codex_cli_rs/0.38.0 (Ubuntu 22.04.0; x86_64) WindowsTerminal"
 )
 
 type CodexHandlersParams struct {
@@ -87,20 +75,14 @@ func generateCodexState() (string, error) {
 	return base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(b), nil
 }
 
-func codexOAuthCacheKey(projectID int, sessionID string) string {
-	return fmt.Sprintf("codex:oauth:%d:%s", projectID, sessionID)
+func codexOAuthCacheKey(sessionID string) string {
+	return fmt.Sprintf("codex:oauth:%s", sessionID)
 }
 
 // StartOAuth creates a PKCE session and returns the authorize URL.
 // POST /admin/codex/oauth/start.
 func (h *CodexHandlers) StartOAuth(c *gin.Context) {
 	ctx := c.Request.Context()
-
-	projectID, ok := contexts.GetProjectID(ctx)
-	if !ok {
-		JSONError(c, http.StatusBadRequest, errors.New("project id not found; set X-Project-ID header"))
-		return
-	}
 
 	var req StartCodexOAuthRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -122,7 +104,7 @@ func (h *CodexHandlers) StartOAuth(c *gin.Context) {
 
 	codeChallenge := generateCodexCodeChallenge(codeVerifier)
 
-	cacheKey := codexOAuthCacheKey(projectID, state)
+	cacheKey := codexOAuthCacheKey(state)
 	if err := h.stateCache.Set(ctx, cacheKey, codexOAuthState{CodeVerifier: codeVerifier, CreatedAt: time.Now().Unix()}, xcache.WithExpiration(10*time.Minute)); err != nil {
 		JSONError(c, http.StatusInternalServerError, fmt.Errorf("failed to save oauth state: %w", err))
 		return
@@ -130,16 +112,16 @@ func (h *CodexHandlers) StartOAuth(c *gin.Context) {
 
 	params := url.Values{}
 	params.Set("response_type", "code")
-	params.Set("client_id", codexClientID)
-	params.Set("redirect_uri", codexRedirectURI)
-	params.Set("scope", codexScopes)
+	params.Set("client_id", codex.ClientID)
+	params.Set("redirect_uri", codex.RedirectURI)
+	params.Set("scope", codex.Scopes)
 	params.Set("code_challenge", codeChallenge)
 	params.Set("code_challenge_method", "S256")
 	params.Set("state", state)
 	params.Set("id_token_add_organizations", "true")
 	params.Set("codex_cli_simplified_flow", "true")
 
-	authURL := fmt.Sprintf("%s?%s", codexAuthorizeURL, params.Encode())
+	authURL := fmt.Sprintf("%s?%s", codex.AuthorizeURL, params.Encode())
 
 	c.JSON(http.StatusOK, StartCodexOAuthResponse{SessionID: state, AuthURL: authURL})
 }
@@ -151,25 +133,6 @@ type ExchangeCodexOAuthRequest struct {
 
 type ExchangeCodexOAuthResponse struct {
 	Credentials string `json:"credentials"`
-}
-
-type codexTokenResponse struct {
-	IDToken      string `json:"id_token,omitempty"`
-	AccessToken  string `json:"access_token"`
-	ExpiresIn    int    `json:"expires_in"`
-	RefreshToken string `json:"refresh_token"`
-	TokenType    string `json:"token_type"`
-	Scope        string `json:"scope,omitempty"`
-}
-
-type codexOAuth2Credentials struct {
-	AccessToken  string    `json:"access_token"`
-	RefreshToken string    `json:"refresh_token"`
-	ClientID     string    `json:"client_id,omitempty"`
-	AccountID    string    `json:"account_id,omitempty"`
-	ExpiresAt    time.Time `json:"expires_at"`
-	TokenType    string    `json:"token_type,omitempty"`
-	Scopes       []string  `json:"scopes,omitempty"`
 }
 
 func parseCodexCallbackURL(callbackURL string) (string, string, error) {
@@ -203,12 +166,6 @@ func parseCodexCallbackURL(callbackURL string) (string, string, error) {
 func (h *CodexHandlers) Exchange(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	projectID, ok := contexts.GetProjectID(ctx)
-	if !ok {
-		JSONError(c, http.StatusBadRequest, errors.New("project id not found; set X-Project-ID header"))
-		return
-	}
-
 	var req ExchangeCodexOAuthRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		JSONError(c, http.StatusBadRequest, errors.New("invalid request format"))
@@ -220,7 +177,7 @@ func (h *CodexHandlers) Exchange(c *gin.Context) {
 		return
 	}
 
-	cacheKey := codexOAuthCacheKey(projectID, req.SessionID)
+	cacheKey := codexOAuthCacheKey(req.SessionID)
 
 	state, err := h.stateCache.Get(ctx, cacheKey)
 	if err != nil {
@@ -229,7 +186,7 @@ func (h *CodexHandlers) Exchange(c *gin.Context) {
 	}
 
 	if err := h.stateCache.Delete(ctx, cacheKey); err != nil {
-		log.Warn(ctx, "failed to delete used oauth state from cache", log.Int("project_id", projectID), log.String("session_id", req.SessionID), log.Cause(err))
+		log.Warn(ctx, "failed to delete used oauth state from cache", log.String("session_id", req.SessionID), log.Cause(err))
 	}
 
 	code, callbackState, err := parseCodexCallbackURL(req.CallbackURL)
@@ -243,70 +200,26 @@ func (h *CodexHandlers) Exchange(c *gin.Context) {
 		return
 	}
 
-	form := url.Values{}
-	form.Set("grant_type", "authorization_code")
-	form.Set("client_id", codexClientID)
-	form.Set("code", code)
-	form.Set("redirect_uri", codexRedirectURI)
-	form.Set("code_verifier", state.CodeVerifier)
+	tokenProvider := codex.NewTokenProvider(codex.TokenProviderParams{
+		HTTPClient: h.httpClient,
+	})
 
-	hreq := &httpclient.Request{
-		Method: http.MethodPost,
-		URL:    codexTokenURL,
-		Headers: http.Header{
-			"Content-Type": []string{"application/x-www-form-urlencoded"},
-			"User-Agent":   []string{codexUserAgent},
-			"Accept":       []string{"application/json"},
-		},
-		Body: []byte(form.Encode()),
-	}
-
-	resp, err := h.httpClient.Do(ctx, hreq)
+	creds, err := tokenProvider.Exchange(ctx, oauth.ExchangeParams{
+		Code:         code,
+		CodeVerifier: state.CodeVerifier,
+		ClientID:     codex.ClientID,
+		RedirectURI:  codex.RedirectURI,
+	})
 	if err != nil {
 		JSONError(c, http.StatusBadGateway, fmt.Errorf("token exchange failed: %w", err))
 		return
 	}
 
-	var tokenResp codexTokenResponse
-	if err := json.Unmarshal(resp.Body, &tokenResp); err != nil {
-		JSONError(c, http.StatusBadGateway, fmt.Errorf("failed to decode token response: %w", err))
-		return
-	}
-
-	if tokenResp.AccessToken == "" || tokenResp.RefreshToken == "" {
-		JSONError(c, http.StatusBadGateway, errors.New("token response missing required fields"))
-		return
-	}
-
-	accountID := ""
-	if tokenResp.IDToken != "" {
-		accountID = codex.ExtractChatGPTAccountIDFromJWT(tokenResp.IDToken)
-	}
-
-	if accountID == "" {
-		accountID = codex.ExtractChatGPTAccountIDFromJWT(tokenResp.AccessToken)
-	}
-
-	expiresAt := time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
-
-	creds := codexOAuth2Credentials{
-		AccessToken:  tokenResp.AccessToken,
-		RefreshToken: tokenResp.RefreshToken,
-		ClientID:     codexClientID,
-		AccountID:    accountID,
-		ExpiresAt:    expiresAt,
-		TokenType:    tokenResp.TokenType,
-	}
-
-	if tokenResp.Scope != "" {
-		creds.Scopes = strings.Fields(tokenResp.Scope)
-	}
-
-	raw, err := json.Marshal(creds)
+	output, err := creds.ToJSON()
 	if err != nil {
 		JSONError(c, http.StatusInternalServerError, fmt.Errorf("failed to encode credentials: %w", err))
 		return
 	}
 
-	c.JSON(http.StatusOK, ExchangeCodexOAuthResponse{Credentials: string(raw)})
+	c.JSON(http.StatusOK, ExchangeCodexOAuthResponse{Credentials: output})
 }

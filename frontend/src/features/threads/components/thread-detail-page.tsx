@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
 import type { Trace } from '@/features/traces/data/schema';
+import { useGeneralSettings } from '@/features/system/data/system';
 import { useThreadDetail } from '../data/threads';
 import { TraceCard } from './trace-card';
 import { TraceDrawer } from './trace-drawer';
@@ -33,6 +34,8 @@ export default function ThreadDetailPage() {
   const locale = i18n.language === 'zh' ? zhCN : enUS;
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  const { data: settings } = useGeneralSettings();
 
   const { pageSize, setCursors, paginationArgs, getSearchParams } = usePaginationSearch({
     defaultPageSize: 20,
@@ -152,6 +155,46 @@ export default function ThreadDetailPage() {
 
       <Main className='flex-1 overflow-hidden'>
         <div className='flex h-full flex-col gap-4 overflow-y-auto p-6'>
+          <Card className='border-0 shadow-sm'>
+            <CardContent className='grid gap-4 p-6 md:grid-cols-6'>
+              <div>
+                <p className='text-muted-foreground text-sm'>{t('traces.detail.totalTokensLabel')}</p>
+                <p className='text-lg font-semibold'>{(thread.usageMetadata?.totalTokens ?? 0).toLocaleString()}</p>
+              </div>
+              <div>
+                <p className='text-muted-foreground text-sm'>{t('traces.detail.inputTokensLabel')}</p>
+                <p className='text-lg font-semibold'>{(thread.usageMetadata?.totalInputTokens ?? 0).toLocaleString()}</p>
+              </div>
+              <div>
+                <p className='text-muted-foreground text-sm'>{t('traces.detail.outputTokensLabel')}</p>
+                <p className='text-lg font-semibold'>{(thread.usageMetadata?.totalOutputTokens ?? 0).toLocaleString()}</p>
+              </div>
+              <div>
+                <p className='text-muted-foreground text-sm'>{t('traces.detail.cachedTokensLabel')}</p>
+                <p className='text-lg font-semibold'>{(thread.usageMetadata?.totalCachedTokens ?? 0).toLocaleString()}</p>
+              </div>
+              <div>
+                <p className='text-muted-foreground text-sm'>{t('traces.detail.cachedWriteTokensLabel')}</p>
+                <p className='text-lg font-semibold'>{(thread.usageMetadata?.totalCachedWriteTokens ?? 0).toLocaleString()}</p>
+              </div>
+              <div>
+                <p className='text-muted-foreground text-sm'>{t('usageLogs.columns.totalCost')}</p>
+                {thread.usageMetadata?.totalCost ? (
+                  <p className='text-lg font-semibold'>
+                    {t('currencies.format', {
+                      val: thread.usageMetadata.totalCost,
+                      currency: settings?.currencyCode,
+                      locale: i18n.language === 'zh' ? 'zh-CN' : 'en-US',
+                      minimumFractionDigits: 6,
+                    })}
+                  </p>
+                ) : (
+                  <p className='text-muted-foreground text-lg font-semibold'>-</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
           {/* <Card className='border-0 shadow-sm'>
             <CardContent className='grid gap-4 p-6 md:grid-cols-3'>
               <div>

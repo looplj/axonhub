@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -79,6 +80,7 @@ const (
 type SystemGeneralSettings struct {
 	// CurrencyCode is the code used for currency display (e.g., USD, RMB).
 	CurrencyCode string `json:"currency_code"`
+	Timezone     string `json:"timezone"`
 }
 
 // StoragePolicy represents the storage policy configuration.
@@ -298,6 +300,9 @@ type SystemService struct {
 
 	CacheConfig xcache.Config
 	Cache       xcache.Cache[ent.System]
+
+	mu           sync.RWMutex
+	timeLocation *time.Location
 }
 
 func (s *SystemService) IsInitialized(ctx context.Context) (bool, error) {
@@ -316,7 +321,7 @@ func (s *SystemService) IsInitialized(ctx context.Context) (bool, error) {
 	return strings.EqualFold(sys.Value, "true"), nil
 }
 
-type InitializeSystemArgs struct {
+type InitializeSystemParams struct {
 	OwnerEmail     string
 	OwnerPassword  string
 	OwnerFirstName string
@@ -325,7 +330,7 @@ type InitializeSystemArgs struct {
 }
 
 // Initialize initializes the system with a secret key and sets the initialized flag.
-func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemArgs) (err error) {
+func (s *SystemService) Initialize(ctx context.Context, params *InitializeSystemParams) (err error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	// Check if system is already initialized
 	isInitialized, err := s.IsInitialized(ctx)
@@ -358,17 +363,17 @@ func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemAr
 
 	ctx = ent.NewContext(ctx, tx.Client())
 
-	hashedPassword, err := HashPassword(args.OwnerPassword)
+	hashedPassword, err := HashPassword(params.OwnerPassword)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
 
 	// Create owner user.
 	user, err := tx.User.Create().
-		SetEmail(args.OwnerEmail).
+		SetEmail(params.OwnerEmail).
 		SetPassword(hashedPassword).
-		SetFirstName(args.OwnerFirstName).
-		SetLastName(args.OwnerLastName).
+		SetFirstName(params.OwnerFirstName).
+		SetLastName(params.OwnerLastName).
 		SetIsOwner(true).
 		SetScopes([]string{"*"}). // Give owner all scopes
 		Save(ctx)
@@ -401,7 +406,7 @@ func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemAr
 	}
 
 	// Set brand name.
-	err = s.setSystemValue(ctx, SystemKeyBrandName, args.BrandName)
+	err = s.setSystemValue(ctx, SystemKeyBrandName, params.BrandName)
 	if err != nil {
 		return fmt.Errorf("failed to set brand name: %w", err)
 	}
@@ -602,6 +607,7 @@ var defaultChannelSetting = SystemChannelSettings{
 
 var defaultGeneralSettings = SystemGeneralSettings{
 	CurrencyCode: "USD",
+	Timezone:     "UTC",
 }
 
 // StoragePolicy retrieves the storage policy configuration.
@@ -798,6 +804,53 @@ func (s *SystemService) SetChannelSetting(ctx context.Context, setting SystemCha
 	return s.setSystemValue(ctx, SystemKeyChannelSettings, string(jsonBytes))
 }
 
+func (s *SystemService) TimeLocation(ctx context.Context) *time.Location {
+	s.mu.RLock()
+
+	if s.timeLocation != nil {
+		defer s.mu.RUnlock()
+		return s.timeLocation
+	}
+
+	s.mu.RUnlock()
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Double check
+	if s.timeLocation != nil {
+		return s.timeLocation
+	}
+
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	settings, err := s.GeneralSettings(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			s.timeLocation = time.UTC
+			return time.UTC
+		}
+
+		log.Warn(ctx, "failed to get general settings", log.Cause(err))
+
+		return time.UTC
+	}
+
+	if settings.Timezone == "" {
+		s.timeLocation = time.UTC
+		return time.UTC
+	}
+
+	if l, err := time.LoadLocation(settings.Timezone); err == nil {
+		s.timeLocation = l
+		return l
+	}
+
+	s.timeLocation = time.UTC
+
+	return time.UTC
+}
+
 // GeneralSettings retrieves the general settings configuration.
 func (s *SystemService) GeneralSettings(ctx context.Context) (*SystemGeneralSettings, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
@@ -816,6 +869,14 @@ func (s *SystemService) GeneralSettings(ctx context.Context) (*SystemGeneralSett
 		return nil, fmt.Errorf("failed to unmarshal general settings: %w", err)
 	}
 
+	if settings.CurrencyCode == "" {
+		settings.CurrencyCode = defaultGeneralSettings.CurrencyCode
+	}
+
+	if settings.Timezone == "" {
+		settings.Timezone = defaultGeneralSettings.Timezone
+	}
+
 	return &settings, nil
 }
 
@@ -826,7 +887,16 @@ func (s *SystemService) SetGeneralSettings(ctx context.Context, settings SystemG
 		return fmt.Errorf("failed to marshal general settings: %w", err)
 	}
 
-	return s.setSystemValue(ctx, SystemKeyGeneralSettings, string(jsonBytes))
+	err = s.setSystemValue(ctx, SystemKeyGeneralSettings, string(jsonBytes))
+	if err != nil {
+		return fmt.Errorf("failed to set general settings: %w", err)
+	}
+
+	s.mu.Lock()
+	s.timeLocation = nil
+	s.mu.Unlock()
+
+	return nil
 }
 
 // DefaultDataStorageID retrieves the default data storage ID from system settings.

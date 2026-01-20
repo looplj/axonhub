@@ -25,6 +25,7 @@ type GeminiHandlersParams struct {
 	SystemService   *biz.SystemService
 	UsageLogService *biz.UsageLogService
 	PromptService   *biz.PromptService
+	QuotaService    *biz.QuotaService
 	HttpClient      *httpclient.HttpClient
 }
 
@@ -46,6 +47,7 @@ func NewGeminiHandlers(params GeminiHandlersParams) *GeminiHandlers {
 				params.SystemService,
 				params.UsageLogService,
 				params.PromptService,
+				params.QuotaService,
 			),
 		),
 		ChannelService: params.ChannelService,

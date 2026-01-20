@@ -80,9 +80,9 @@ func ModelID(v string) predicate.ChannelModelPrice {
 	return predicate.ChannelModelPrice(sql.FieldEQ(FieldModelID, v))
 }
 
-// RefreanceID applies equality check predicate on the "refreance_id" field. It's identical to RefreanceIDEQ.
-func RefreanceID(v string) predicate.ChannelModelPrice {
-	return predicate.ChannelModelPrice(sql.FieldEQ(FieldRefreanceID, v))
+// ReferenceID applies equality check predicate on the "reference_id" field. It's identical to ReferenceIDEQ.
+func ReferenceID(v string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldEQ(FieldReferenceID, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
@@ -290,69 +290,69 @@ func ModelIDContainsFold(v string) predicate.ChannelModelPrice {
 	return predicate.ChannelModelPrice(sql.FieldContainsFold(FieldModelID, v))
 }
 
-// RefreanceIDEQ applies the EQ predicate on the "refreance_id" field.
-func RefreanceIDEQ(v string) predicate.ChannelModelPrice {
-	return predicate.ChannelModelPrice(sql.FieldEQ(FieldRefreanceID, v))
+// ReferenceIDEQ applies the EQ predicate on the "reference_id" field.
+func ReferenceIDEQ(v string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldEQ(FieldReferenceID, v))
 }
 
-// RefreanceIDNEQ applies the NEQ predicate on the "refreance_id" field.
-func RefreanceIDNEQ(v string) predicate.ChannelModelPrice {
-	return predicate.ChannelModelPrice(sql.FieldNEQ(FieldRefreanceID, v))
+// ReferenceIDNEQ applies the NEQ predicate on the "reference_id" field.
+func ReferenceIDNEQ(v string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldNEQ(FieldReferenceID, v))
 }
 
-// RefreanceIDIn applies the In predicate on the "refreance_id" field.
-func RefreanceIDIn(vs ...string) predicate.ChannelModelPrice {
-	return predicate.ChannelModelPrice(sql.FieldIn(FieldRefreanceID, vs...))
+// ReferenceIDIn applies the In predicate on the "reference_id" field.
+func ReferenceIDIn(vs ...string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldIn(FieldReferenceID, vs...))
 }
 
-// RefreanceIDNotIn applies the NotIn predicate on the "refreance_id" field.
-func RefreanceIDNotIn(vs ...string) predicate.ChannelModelPrice {
-	return predicate.ChannelModelPrice(sql.FieldNotIn(FieldRefreanceID, vs...))
+// ReferenceIDNotIn applies the NotIn predicate on the "reference_id" field.
+func ReferenceIDNotIn(vs ...string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldNotIn(FieldReferenceID, vs...))
 }
 
-// RefreanceIDGT applies the GT predicate on the "refreance_id" field.
-func RefreanceIDGT(v string) predicate.ChannelModelPrice {
-	return predicate.ChannelModelPrice(sql.FieldGT(FieldRefreanceID, v))
+// ReferenceIDGT applies the GT predicate on the "reference_id" field.
+func ReferenceIDGT(v string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldGT(FieldReferenceID, v))
 }
 
-// RefreanceIDGTE applies the GTE predicate on the "refreance_id" field.
-func RefreanceIDGTE(v string) predicate.ChannelModelPrice {
-	return predicate.ChannelModelPrice(sql.FieldGTE(FieldRefreanceID, v))
+// ReferenceIDGTE applies the GTE predicate on the "reference_id" field.
+func ReferenceIDGTE(v string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldGTE(FieldReferenceID, v))
 }
 
-// RefreanceIDLT applies the LT predicate on the "refreance_id" field.
-func RefreanceIDLT(v string) predicate.ChannelModelPrice {
-	return predicate.ChannelModelPrice(sql.FieldLT(FieldRefreanceID, v))
+// ReferenceIDLT applies the LT predicate on the "reference_id" field.
+func ReferenceIDLT(v string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldLT(FieldReferenceID, v))
 }
 
-// RefreanceIDLTE applies the LTE predicate on the "refreance_id" field.
-func RefreanceIDLTE(v string) predicate.ChannelModelPrice {
-	return predicate.ChannelModelPrice(sql.FieldLTE(FieldRefreanceID, v))
+// ReferenceIDLTE applies the LTE predicate on the "reference_id" field.
+func ReferenceIDLTE(v string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldLTE(FieldReferenceID, v))
 }
 
-// RefreanceIDContains applies the Contains predicate on the "refreance_id" field.
-func RefreanceIDContains(v string) predicate.ChannelModelPrice {
-	return predicate.ChannelModelPrice(sql.FieldContains(FieldRefreanceID, v))
+// ReferenceIDContains applies the Contains predicate on the "reference_id" field.
+func ReferenceIDContains(v string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldContains(FieldReferenceID, v))
 }
 
-// RefreanceIDHasPrefix applies the HasPrefix predicate on the "refreance_id" field.
-func RefreanceIDHasPrefix(v string) predicate.ChannelModelPrice {
-	return predicate.ChannelModelPrice(sql.FieldHasPrefix(FieldRefreanceID, v))
+// ReferenceIDHasPrefix applies the HasPrefix predicate on the "reference_id" field.
+func ReferenceIDHasPrefix(v string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldHasPrefix(FieldReferenceID, v))
 }
 
-// RefreanceIDHasSuffix applies the HasSuffix predicate on the "refreance_id" field.
-func RefreanceIDHasSuffix(v string) predicate.ChannelModelPrice {
-	return predicate.ChannelModelPrice(sql.FieldHasSuffix(FieldRefreanceID, v))
+// ReferenceIDHasSuffix applies the HasSuffix predicate on the "reference_id" field.
+func ReferenceIDHasSuffix(v string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldHasSuffix(FieldReferenceID, v))
 }
 
-// RefreanceIDEqualFold applies the EqualFold predicate on the "refreance_id" field.
-func RefreanceIDEqualFold(v string) predicate.ChannelModelPrice {
-	return predicate.ChannelModelPrice(sql.FieldEqualFold(FieldRefreanceID, v))
+// ReferenceIDEqualFold applies the EqualFold predicate on the "reference_id" field.
+func ReferenceIDEqualFold(v string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldEqualFold(FieldReferenceID, v))
 }
 
-// RefreanceIDContainsFold applies the ContainsFold predicate on the "refreance_id" field.
-func RefreanceIDContainsFold(v string) predicate.ChannelModelPrice {
-	return predicate.ChannelModelPrice(sql.FieldContainsFold(FieldRefreanceID, v))
+// ReferenceIDContainsFold applies the ContainsFold predicate on the "reference_id" field.
+func ReferenceIDContainsFold(v string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldContainsFold(FieldReferenceID, v))
 }
 
 // HasChannel applies the HasEdge predicate on the "channel" edge.

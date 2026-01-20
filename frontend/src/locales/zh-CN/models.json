@@ -119,6 +119,7 @@
   "models.modelCard.input": "输入",
   "models.modelCard.output": "输出",
   "models.modelCard.cost": "成本",
+  "models.modelCard.costHint": "此价格仅用于展示，实际计费使用渠道的模型价格。",
   "models.modelCard.cacheRead": "缓存读取",
   "models.modelCard.cacheWrite": "缓存写入",
   "models.modelCard.limit": "限制",

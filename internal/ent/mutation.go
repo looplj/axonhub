@@ -1234,6 +1234,7 @@ type ChannelMutation struct {
 	tags                        *[]string
 	appendtags                  []string
 	default_test_model          *string
+	policies                    *objects.ChannelPolicies
 	settings                    **objects.ChannelSettings
 	ordering_weight             *int
 	addordering_weight          *int
@@ -1869,6 +1870,55 @@ func (m *ChannelMutation) ResetDefaultTestModel() {
 	m.default_test_model = nil
 }
 
+// SetPolicies sets the "policies" field.
+func (m *ChannelMutation) SetPolicies(op objects.ChannelPolicies) {
+	m.policies = &op
+}
+
+// Policies returns the value of the "policies" field in the mutation.
+func (m *ChannelMutation) Policies() (r objects.ChannelPolicies, exists bool) {
+	v := m.policies
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPolicies returns the old "policies" field's value of the Channel entity.
+// If the Channel object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelMutation) OldPolicies(ctx context.Context) (v objects.ChannelPolicies, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPolicies is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPolicies requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPolicies: %w", err)
+	}
+	return oldValue.Policies, nil
+}
+
+// ClearPolicies clears the value of the "policies" field.
+func (m *ChannelMutation) ClearPolicies() {
+	m.policies = nil
+	m.clearedFields[channel.FieldPolicies] = struct{}{}
+}
+
+// PoliciesCleared returns if the "policies" field was cleared in this mutation.
+func (m *ChannelMutation) PoliciesCleared() bool {
+	_, ok := m.clearedFields[channel.FieldPolicies]
+	return ok
+}
+
+// ResetPolicies resets all changes to the "policies" field.
+func (m *ChannelMutation) ResetPolicies() {
+	m.policies = nil
+	delete(m.clearedFields, channel.FieldPolicies)
+}
+
 // SetSettings sets the "settings" field.
 func (m *ChannelMutation) SetSettings(os *objects.ChannelSettings) {
 	m.settings = &os
@@ -2415,7 +2465,7 @@ func (m *ChannelMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ChannelMutation) Fields() []string {
-	fields := make([]string, 0, 16)
+	fields := make([]string, 0, 17)
 	if m.created_at != nil {
 		fields = append(fields, channel.FieldCreatedAt)
 	}
@@ -2451,6 +2501,9 @@ func (m *ChannelMutation) Fields() []string {
 	}
 	if m.default_test_model != nil {
 		fields = append(fields, channel.FieldDefaultTestModel)
+	}
+	if m.policies != nil {
+		fields = append(fields, channel.FieldPolicies)
 	}
 	if m.settings != nil {
 		fields = append(fields, channel.FieldSettings)
@@ -2496,6 +2549,8 @@ func (m *ChannelMutation) Field(name string) (ent.Value, bool) {
 		return m.Tags()
 	case channel.FieldDefaultTestModel:
 		return m.DefaultTestModel()
+	case channel.FieldPolicies:
+		return m.Policies()
 	case channel.FieldSettings:
 		return m.Settings()
 	case channel.FieldOrderingWeight:
@@ -2537,6 +2592,8 @@ func (m *ChannelMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldTags(ctx)
 	case channel.FieldDefaultTestModel:
 		return m.OldDefaultTestModel(ctx)
+	case channel.FieldPolicies:
+		return m.OldPolicies(ctx)
 	case channel.FieldSettings:
 		return m.OldSettings(ctx)
 	case channel.FieldOrderingWeight:
@@ -2638,6 +2695,13 @@ func (m *ChannelMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetDefaultTestModel(v)
 		return nil
+	case channel.FieldPolicies:
+		v, ok := value.(objects.ChannelPolicies)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPolicies(v)
+		return nil
 	case channel.FieldSettings:
 		v, ok := value.(*objects.ChannelSettings)
 		if !ok {
@@ -2729,6 +2793,9 @@ func (m *ChannelMutation) ClearedFields() []string {
 	if m.FieldCleared(channel.FieldTags) {
 		fields = append(fields, channel.FieldTags)
 	}
+	if m.FieldCleared(channel.FieldPolicies) {
+		fields = append(fields, channel.FieldPolicies)
+	}
 	if m.FieldCleared(channel.FieldSettings) {
 		fields = append(fields, channel.FieldSettings)
 	}
@@ -2757,6 +2824,9 @@ func (m *ChannelMutation) ClearField(name string) error {
 		return nil
 	case channel.FieldTags:
 		m.ClearTags()
+		return nil
+	case channel.FieldPolicies:
+		m.ClearPolicies()
 		return nil
 	case channel.FieldSettings:
 		m.ClearSettings()
@@ -2810,6 +2880,9 @@ func (m *ChannelMutation) ResetField(name string) error {
 		return nil
 	case channel.FieldDefaultTestModel:
 		m.ResetDefaultTestModel()
+		return nil
+	case channel.FieldPolicies:
+		m.ResetPolicies()
 		return nil
 	case channel.FieldSettings:
 		m.ResetSettings()
@@ -3045,7 +3118,7 @@ type ChannelModelPriceMutation struct {
 	adddeleted_at   *int
 	model_id        *string
 	price           *objects.ModelPrice
-	refreance_id    *string
+	reference_id    *string
 	clearedFields   map[string]struct{}
 	channel         *int
 	clearedchannel  bool
@@ -3391,40 +3464,40 @@ func (m *ChannelModelPriceMutation) ResetPrice() {
 	m.price = nil
 }
 
-// SetRefreanceID sets the "refreance_id" field.
-func (m *ChannelModelPriceMutation) SetRefreanceID(s string) {
-	m.refreance_id = &s
+// SetReferenceID sets the "reference_id" field.
+func (m *ChannelModelPriceMutation) SetReferenceID(s string) {
+	m.reference_id = &s
 }
 
-// RefreanceID returns the value of the "refreance_id" field in the mutation.
-func (m *ChannelModelPriceMutation) RefreanceID() (r string, exists bool) {
-	v := m.refreance_id
+// ReferenceID returns the value of the "reference_id" field in the mutation.
+func (m *ChannelModelPriceMutation) ReferenceID() (r string, exists bool) {
+	v := m.reference_id
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldRefreanceID returns the old "refreance_id" field's value of the ChannelModelPrice entity.
+// OldReferenceID returns the old "reference_id" field's value of the ChannelModelPrice entity.
 // If the ChannelModelPrice object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ChannelModelPriceMutation) OldRefreanceID(ctx context.Context) (v string, err error) {
+func (m *ChannelModelPriceMutation) OldReferenceID(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldRefreanceID is only allowed on UpdateOne operations")
+		return v, errors.New("OldReferenceID is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldRefreanceID requires an ID field in the mutation")
+		return v, errors.New("OldReferenceID requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldRefreanceID: %w", err)
+		return v, fmt.Errorf("querying old value for OldReferenceID: %w", err)
 	}
-	return oldValue.RefreanceID, nil
+	return oldValue.ReferenceID, nil
 }
 
-// ResetRefreanceID resets all changes to the "refreance_id" field.
-func (m *ChannelModelPriceMutation) ResetRefreanceID() {
-	m.refreance_id = nil
+// ResetReferenceID resets all changes to the "reference_id" field.
+func (m *ChannelModelPriceMutation) ResetReferenceID() {
+	m.reference_id = nil
 }
 
 // ClearChannel clears the "channel" edge to the Channel entity.
@@ -3561,8 +3634,8 @@ func (m *ChannelModelPriceMutation) Fields() []string {
 	if m.price != nil {
 		fields = append(fields, channelmodelprice.FieldPrice)
 	}
-	if m.refreance_id != nil {
-		fields = append(fields, channelmodelprice.FieldRefreanceID)
+	if m.reference_id != nil {
+		fields = append(fields, channelmodelprice.FieldReferenceID)
 	}
 	return fields
 }
@@ -3584,8 +3657,8 @@ func (m *ChannelModelPriceMutation) Field(name string) (ent.Value, bool) {
 		return m.ModelID()
 	case channelmodelprice.FieldPrice:
 		return m.Price()
-	case channelmodelprice.FieldRefreanceID:
-		return m.RefreanceID()
+	case channelmodelprice.FieldReferenceID:
+		return m.ReferenceID()
 	}
 	return nil, false
 }
@@ -3607,8 +3680,8 @@ func (m *ChannelModelPriceMutation) OldField(ctx context.Context, name string) (
 		return m.OldModelID(ctx)
 	case channelmodelprice.FieldPrice:
 		return m.OldPrice(ctx)
-	case channelmodelprice.FieldRefreanceID:
-		return m.OldRefreanceID(ctx)
+	case channelmodelprice.FieldReferenceID:
+		return m.OldReferenceID(ctx)
 	}
 	return nil, fmt.Errorf("unknown ChannelModelPrice field %s", name)
 }
@@ -3660,12 +3733,12 @@ func (m *ChannelModelPriceMutation) SetField(name string, value ent.Value) error
 		}
 		m.SetPrice(v)
 		return nil
-	case channelmodelprice.FieldRefreanceID:
+	case channelmodelprice.FieldReferenceID:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetRefreanceID(v)
+		m.SetReferenceID(v)
 		return nil
 	}
 	return fmt.Errorf("unknown ChannelModelPrice field %s", name)
@@ -3749,8 +3822,8 @@ func (m *ChannelModelPriceMutation) ResetField(name string) error {
 	case channelmodelprice.FieldPrice:
 		m.ResetPrice()
 		return nil
-	case channelmodelprice.FieldRefreanceID:
-		m.ResetRefreanceID()
+	case channelmodelprice.FieldReferenceID:
+		m.ResetReferenceID()
 		return nil
 	}
 	return fmt.Errorf("unknown ChannelModelPrice field %s", name)
@@ -3866,8 +3939,6 @@ type ChannelModelPriceVersionMutation struct {
 	id                         *int
 	created_at                 *time.Time
 	updated_at                 *time.Time
-	deleted_at                 *int
-	adddeleted_at              *int
 	channel_id                 *int
 	addchannel_id              *int
 	model_id                   *string
@@ -3875,7 +3946,7 @@ type ChannelModelPriceVersionMutation struct {
 	status                     *channelmodelpriceversion.Status
 	effective_start_at         *time.Time
 	effective_end_at           *time.Time
-	refreance_id               *string
+	reference_id               *string
 	clearedFields              map[string]struct{}
 	channel_model_price        *int
 	clearedchannel_model_price bool
@@ -4052,62 +4123,6 @@ func (m *ChannelModelPriceVersionMutation) OldUpdatedAt(ctx context.Context) (v 
 // ResetUpdatedAt resets all changes to the "updated_at" field.
 func (m *ChannelModelPriceVersionMutation) ResetUpdatedAt() {
 	m.updated_at = nil
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (m *ChannelModelPriceVersionMutation) SetDeletedAt(i int) {
-	m.deleted_at = &i
-	m.adddeleted_at = nil
-}
-
-// DeletedAt returns the value of the "deleted_at" field in the mutation.
-func (m *ChannelModelPriceVersionMutation) DeletedAt() (r int, exists bool) {
-	v := m.deleted_at
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldDeletedAt returns the old "deleted_at" field's value of the ChannelModelPriceVersion entity.
-// If the ChannelModelPriceVersion object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ChannelModelPriceVersionMutation) OldDeletedAt(ctx context.Context) (v int, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
-	}
-	return oldValue.DeletedAt, nil
-}
-
-// AddDeletedAt adds i to the "deleted_at" field.
-func (m *ChannelModelPriceVersionMutation) AddDeletedAt(i int) {
-	if m.adddeleted_at != nil {
-		*m.adddeleted_at += i
-	} else {
-		m.adddeleted_at = &i
-	}
-}
-
-// AddedDeletedAt returns the value that was added to the "deleted_at" field in this mutation.
-func (m *ChannelModelPriceVersionMutation) AddedDeletedAt() (r int, exists bool) {
-	v := m.adddeleted_at
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ResetDeletedAt resets all changes to the "deleted_at" field.
-func (m *ChannelModelPriceVersionMutation) ResetDeletedAt() {
-	m.deleted_at = nil
-	m.adddeleted_at = nil
 }
 
 // SetChannelID sets the "channel_id" field.
@@ -4395,40 +4410,40 @@ func (m *ChannelModelPriceVersionMutation) ResetEffectiveEndAt() {
 	delete(m.clearedFields, channelmodelpriceversion.FieldEffectiveEndAt)
 }
 
-// SetRefreanceID sets the "refreance_id" field.
-func (m *ChannelModelPriceVersionMutation) SetRefreanceID(s string) {
-	m.refreance_id = &s
+// SetReferenceID sets the "reference_id" field.
+func (m *ChannelModelPriceVersionMutation) SetReferenceID(s string) {
+	m.reference_id = &s
 }
 
-// RefreanceID returns the value of the "refreance_id" field in the mutation.
-func (m *ChannelModelPriceVersionMutation) RefreanceID() (r string, exists bool) {
-	v := m.refreance_id
+// ReferenceID returns the value of the "reference_id" field in the mutation.
+func (m *ChannelModelPriceVersionMutation) ReferenceID() (r string, exists bool) {
+	v := m.reference_id
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldRefreanceID returns the old "refreance_id" field's value of the ChannelModelPriceVersion entity.
+// OldReferenceID returns the old "reference_id" field's value of the ChannelModelPriceVersion entity.
 // If the ChannelModelPriceVersion object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ChannelModelPriceVersionMutation) OldRefreanceID(ctx context.Context) (v string, err error) {
+func (m *ChannelModelPriceVersionMutation) OldReferenceID(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldRefreanceID is only allowed on UpdateOne operations")
+		return v, errors.New("OldReferenceID is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldRefreanceID requires an ID field in the mutation")
+		return v, errors.New("OldReferenceID requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldRefreanceID: %w", err)
+		return v, fmt.Errorf("querying old value for OldReferenceID: %w", err)
 	}
-	return oldValue.RefreanceID, nil
+	return oldValue.ReferenceID, nil
 }
 
-// ResetRefreanceID resets all changes to the "refreance_id" field.
-func (m *ChannelModelPriceVersionMutation) ResetRefreanceID() {
-	m.refreance_id = nil
+// ResetReferenceID resets all changes to the "reference_id" field.
+func (m *ChannelModelPriceVersionMutation) ResetReferenceID() {
+	m.reference_id = nil
 }
 
 // ClearChannelModelPrice clears the "channel_model_price" edge to the ChannelModelPrice entity.
@@ -4492,15 +4507,12 @@ func (m *ChannelModelPriceVersionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ChannelModelPriceVersionMutation) Fields() []string {
-	fields := make([]string, 0, 11)
+	fields := make([]string, 0, 10)
 	if m.created_at != nil {
 		fields = append(fields, channelmodelpriceversion.FieldCreatedAt)
 	}
 	if m.updated_at != nil {
 		fields = append(fields, channelmodelpriceversion.FieldUpdatedAt)
-	}
-	if m.deleted_at != nil {
-		fields = append(fields, channelmodelpriceversion.FieldDeletedAt)
 	}
 	if m.channel_id != nil {
 		fields = append(fields, channelmodelpriceversion.FieldChannelID)
@@ -4523,8 +4535,8 @@ func (m *ChannelModelPriceVersionMutation) Fields() []string {
 	if m.effective_end_at != nil {
 		fields = append(fields, channelmodelpriceversion.FieldEffectiveEndAt)
 	}
-	if m.refreance_id != nil {
-		fields = append(fields, channelmodelpriceversion.FieldRefreanceID)
+	if m.reference_id != nil {
+		fields = append(fields, channelmodelpriceversion.FieldReferenceID)
 	}
 	return fields
 }
@@ -4538,8 +4550,6 @@ func (m *ChannelModelPriceVersionMutation) Field(name string) (ent.Value, bool) 
 		return m.CreatedAt()
 	case channelmodelpriceversion.FieldUpdatedAt:
 		return m.UpdatedAt()
-	case channelmodelpriceversion.FieldDeletedAt:
-		return m.DeletedAt()
 	case channelmodelpriceversion.FieldChannelID:
 		return m.ChannelID()
 	case channelmodelpriceversion.FieldModelID:
@@ -4554,8 +4564,8 @@ func (m *ChannelModelPriceVersionMutation) Field(name string) (ent.Value, bool) 
 		return m.EffectiveStartAt()
 	case channelmodelpriceversion.FieldEffectiveEndAt:
 		return m.EffectiveEndAt()
-	case channelmodelpriceversion.FieldRefreanceID:
-		return m.RefreanceID()
+	case channelmodelpriceversion.FieldReferenceID:
+		return m.ReferenceID()
 	}
 	return nil, false
 }
@@ -4569,8 +4579,6 @@ func (m *ChannelModelPriceVersionMutation) OldField(ctx context.Context, name st
 		return m.OldCreatedAt(ctx)
 	case channelmodelpriceversion.FieldUpdatedAt:
 		return m.OldUpdatedAt(ctx)
-	case channelmodelpriceversion.FieldDeletedAt:
-		return m.OldDeletedAt(ctx)
 	case channelmodelpriceversion.FieldChannelID:
 		return m.OldChannelID(ctx)
 	case channelmodelpriceversion.FieldModelID:
@@ -4585,8 +4593,8 @@ func (m *ChannelModelPriceVersionMutation) OldField(ctx context.Context, name st
 		return m.OldEffectiveStartAt(ctx)
 	case channelmodelpriceversion.FieldEffectiveEndAt:
 		return m.OldEffectiveEndAt(ctx)
-	case channelmodelpriceversion.FieldRefreanceID:
-		return m.OldRefreanceID(ctx)
+	case channelmodelpriceversion.FieldReferenceID:
+		return m.OldReferenceID(ctx)
 	}
 	return nil, fmt.Errorf("unknown ChannelModelPriceVersion field %s", name)
 }
@@ -4609,13 +4617,6 @@ func (m *ChannelModelPriceVersionMutation) SetField(name string, value ent.Value
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUpdatedAt(v)
-		return nil
-	case channelmodelpriceversion.FieldDeletedAt:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetDeletedAt(v)
 		return nil
 	case channelmodelpriceversion.FieldChannelID:
 		v, ok := value.(int)
@@ -4666,12 +4667,12 @@ func (m *ChannelModelPriceVersionMutation) SetField(name string, value ent.Value
 		}
 		m.SetEffectiveEndAt(v)
 		return nil
-	case channelmodelpriceversion.FieldRefreanceID:
+	case channelmodelpriceversion.FieldReferenceID:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetRefreanceID(v)
+		m.SetReferenceID(v)
 		return nil
 	}
 	return fmt.Errorf("unknown ChannelModelPriceVersion field %s", name)
@@ -4681,9 +4682,6 @@ func (m *ChannelModelPriceVersionMutation) SetField(name string, value ent.Value
 // this mutation.
 func (m *ChannelModelPriceVersionMutation) AddedFields() []string {
 	var fields []string
-	if m.adddeleted_at != nil {
-		fields = append(fields, channelmodelpriceversion.FieldDeletedAt)
-	}
 	if m.addchannel_id != nil {
 		fields = append(fields, channelmodelpriceversion.FieldChannelID)
 	}
@@ -4695,8 +4693,6 @@ func (m *ChannelModelPriceVersionMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *ChannelModelPriceVersionMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
-	case channelmodelpriceversion.FieldDeletedAt:
-		return m.AddedDeletedAt()
 	case channelmodelpriceversion.FieldChannelID:
 		return m.AddedChannelID()
 	}
@@ -4708,13 +4704,6 @@ func (m *ChannelModelPriceVersionMutation) AddedField(name string) (ent.Value, b
 // type.
 func (m *ChannelModelPriceVersionMutation) AddField(name string, value ent.Value) error {
 	switch name {
-	case channelmodelpriceversion.FieldDeletedAt:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddDeletedAt(v)
-		return nil
 	case channelmodelpriceversion.FieldChannelID:
 		v, ok := value.(int)
 		if !ok {
@@ -4764,9 +4753,6 @@ func (m *ChannelModelPriceVersionMutation) ResetField(name string) error {
 	case channelmodelpriceversion.FieldUpdatedAt:
 		m.ResetUpdatedAt()
 		return nil
-	case channelmodelpriceversion.FieldDeletedAt:
-		m.ResetDeletedAt()
-		return nil
 	case channelmodelpriceversion.FieldChannelID:
 		m.ResetChannelID()
 		return nil
@@ -4788,8 +4774,8 @@ func (m *ChannelModelPriceVersionMutation) ResetField(name string) error {
 	case channelmodelpriceversion.FieldEffectiveEndAt:
 		m.ResetEffectiveEndAt()
 		return nil
-	case channelmodelpriceversion.FieldRefreanceID:
-		m.ResetRefreanceID()
+	case channelmodelpriceversion.FieldReferenceID:
+		m.ResetReferenceID()
 		return nil
 	}
 	return fmt.Errorf("unknown ChannelModelPriceVersion field %s", name)
@@ -19641,6 +19627,8 @@ type UsageLogMutation struct {
 	id                                       *int
 	created_at                               *time.Time
 	updated_at                               *time.Time
+	api_key_id                               *int
+	addapi_key_id                            *int
 	model_id                                 *string
 	prompt_tokens                            *int64
 	addprompt_tokens                         *int64
@@ -19889,6 +19877,76 @@ func (m *UsageLogMutation) OldRequestID(ctx context.Context) (v int, err error) 
 // ResetRequestID resets all changes to the "request_id" field.
 func (m *UsageLogMutation) ResetRequestID() {
 	m.request = nil
+}
+
+// SetAPIKeyID sets the "api_key_id" field.
+func (m *UsageLogMutation) SetAPIKeyID(i int) {
+	m.api_key_id = &i
+	m.addapi_key_id = nil
+}
+
+// APIKeyID returns the value of the "api_key_id" field in the mutation.
+func (m *UsageLogMutation) APIKeyID() (r int, exists bool) {
+	v := m.api_key_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAPIKeyID returns the old "api_key_id" field's value of the UsageLog entity.
+// If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageLogMutation) OldAPIKeyID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAPIKeyID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAPIKeyID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAPIKeyID: %w", err)
+	}
+	return oldValue.APIKeyID, nil
+}
+
+// AddAPIKeyID adds i to the "api_key_id" field.
+func (m *UsageLogMutation) AddAPIKeyID(i int) {
+	if m.addapi_key_id != nil {
+		*m.addapi_key_id += i
+	} else {
+		m.addapi_key_id = &i
+	}
+}
+
+// AddedAPIKeyID returns the value that was added to the "api_key_id" field in this mutation.
+func (m *UsageLogMutation) AddedAPIKeyID() (r int, exists bool) {
+	v := m.addapi_key_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearAPIKeyID clears the value of the "api_key_id" field.
+func (m *UsageLogMutation) ClearAPIKeyID() {
+	m.api_key_id = nil
+	m.addapi_key_id = nil
+	m.clearedFields[usagelog.FieldAPIKeyID] = struct{}{}
+}
+
+// APIKeyIDCleared returns if the "api_key_id" field was cleared in this mutation.
+func (m *UsageLogMutation) APIKeyIDCleared() bool {
+	_, ok := m.clearedFields[usagelog.FieldAPIKeyID]
+	return ok
+}
+
+// ResetAPIKeyID resets all changes to the "api_key_id" field.
+func (m *UsageLogMutation) ResetAPIKeyID() {
+	m.api_key_id = nil
+	m.addapi_key_id = nil
+	delete(m.clearedFields, usagelog.FieldAPIKeyID)
 }
 
 // SetProjectID sets the "project_id" field.
@@ -20230,10 +20288,24 @@ func (m *UsageLogMutation) AddedPromptAudioTokens() (r int64, exists bool) {
 	return *v, true
 }
 
+// ClearPromptAudioTokens clears the value of the "prompt_audio_tokens" field.
+func (m *UsageLogMutation) ClearPromptAudioTokens() {
+	m.prompt_audio_tokens = nil
+	m.addprompt_audio_tokens = nil
+	m.clearedFields[usagelog.FieldPromptAudioTokens] = struct{}{}
+}
+
+// PromptAudioTokensCleared returns if the "prompt_audio_tokens" field was cleared in this mutation.
+func (m *UsageLogMutation) PromptAudioTokensCleared() bool {
+	_, ok := m.clearedFields[usagelog.FieldPromptAudioTokens]
+	return ok
+}
+
 // ResetPromptAudioTokens resets all changes to the "prompt_audio_tokens" field.
 func (m *UsageLogMutation) ResetPromptAudioTokens() {
 	m.prompt_audio_tokens = nil
 	m.addprompt_audio_tokens = nil
+	delete(m.clearedFields, usagelog.FieldPromptAudioTokens)
 }
 
 // SetPromptCachedTokens sets the "prompt_cached_tokens" field.
@@ -20286,10 +20358,24 @@ func (m *UsageLogMutation) AddedPromptCachedTokens() (r int64, exists bool) {
 	return *v, true
 }
 
+// ClearPromptCachedTokens clears the value of the "prompt_cached_tokens" field.
+func (m *UsageLogMutation) ClearPromptCachedTokens() {
+	m.prompt_cached_tokens = nil
+	m.addprompt_cached_tokens = nil
+	m.clearedFields[usagelog.FieldPromptCachedTokens] = struct{}{}
+}
+
+// PromptCachedTokensCleared returns if the "prompt_cached_tokens" field was cleared in this mutation.
+func (m *UsageLogMutation) PromptCachedTokensCleared() bool {
+	_, ok := m.clearedFields[usagelog.FieldPromptCachedTokens]
+	return ok
+}
+
 // ResetPromptCachedTokens resets all changes to the "prompt_cached_tokens" field.
 func (m *UsageLogMutation) ResetPromptCachedTokens() {
 	m.prompt_cached_tokens = nil
 	m.addprompt_cached_tokens = nil
+	delete(m.clearedFields, usagelog.FieldPromptCachedTokens)
 }
 
 // SetPromptWriteCachedTokens sets the "prompt_write_cached_tokens" field.
@@ -21153,7 +21239,7 @@ func (m *UsageLogMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UsageLogMutation) Fields() []string {
-	fields := make([]string, 0, 23)
+	fields := make([]string, 0, 24)
 	if m.created_at != nil {
 		fields = append(fields, usagelog.FieldCreatedAt)
 	}
@@ -21162,6 +21248,9 @@ func (m *UsageLogMutation) Fields() []string {
 	}
 	if m.request != nil {
 		fields = append(fields, usagelog.FieldRequestID)
+	}
+	if m.api_key_id != nil {
+		fields = append(fields, usagelog.FieldAPIKeyID)
 	}
 	if m.project != nil {
 		fields = append(fields, usagelog.FieldProjectID)
@@ -21237,6 +21326,8 @@ func (m *UsageLogMutation) Field(name string) (ent.Value, bool) {
 		return m.UpdatedAt()
 	case usagelog.FieldRequestID:
 		return m.RequestID()
+	case usagelog.FieldAPIKeyID:
+		return m.APIKeyID()
 	case usagelog.FieldProjectID:
 		return m.ProjectID()
 	case usagelog.FieldChannelID:
@@ -21292,6 +21383,8 @@ func (m *UsageLogMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldUpdatedAt(ctx)
 	case usagelog.FieldRequestID:
 		return m.OldRequestID(ctx)
+	case usagelog.FieldAPIKeyID:
+		return m.OldAPIKeyID(ctx)
 	case usagelog.FieldProjectID:
 		return m.OldProjectID(ctx)
 	case usagelog.FieldChannelID:
@@ -21361,6 +21454,13 @@ func (m *UsageLogMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRequestID(v)
+		return nil
+	case usagelog.FieldAPIKeyID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAPIKeyID(v)
 		return nil
 	case usagelog.FieldProjectID:
 		v, ok := value.(int)
@@ -21510,6 +21610,9 @@ func (m *UsageLogMutation) SetField(name string, value ent.Value) error {
 // this mutation.
 func (m *UsageLogMutation) AddedFields() []string {
 	var fields []string
+	if m.addapi_key_id != nil {
+		fields = append(fields, usagelog.FieldAPIKeyID)
+	}
 	if m.addprompt_tokens != nil {
 		fields = append(fields, usagelog.FieldPromptTokens)
 	}
@@ -21557,6 +21660,8 @@ func (m *UsageLogMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *UsageLogMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
+	case usagelog.FieldAPIKeyID:
+		return m.AddedAPIKeyID()
 	case usagelog.FieldPromptTokens:
 		return m.AddedPromptTokens()
 	case usagelog.FieldCompletionTokens:
@@ -21592,6 +21697,13 @@ func (m *UsageLogMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *UsageLogMutation) AddField(name string, value ent.Value) error {
 	switch name {
+	case usagelog.FieldAPIKeyID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddAPIKeyID(v)
+		return nil
 	case usagelog.FieldPromptTokens:
 		v, ok := value.(int64)
 		if !ok {
@@ -21691,8 +21803,17 @@ func (m *UsageLogMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *UsageLogMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(usagelog.FieldAPIKeyID) {
+		fields = append(fields, usagelog.FieldAPIKeyID)
+	}
 	if m.FieldCleared(usagelog.FieldChannelID) {
 		fields = append(fields, usagelog.FieldChannelID)
+	}
+	if m.FieldCleared(usagelog.FieldPromptAudioTokens) {
+		fields = append(fields, usagelog.FieldPromptAudioTokens)
+	}
+	if m.FieldCleared(usagelog.FieldPromptCachedTokens) {
+		fields = append(fields, usagelog.FieldPromptCachedTokens)
 	}
 	if m.FieldCleared(usagelog.FieldPromptWriteCachedTokens) {
 		fields = append(fields, usagelog.FieldPromptWriteCachedTokens)
@@ -21738,8 +21859,17 @@ func (m *UsageLogMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *UsageLogMutation) ClearField(name string) error {
 	switch name {
+	case usagelog.FieldAPIKeyID:
+		m.ClearAPIKeyID()
+		return nil
 	case usagelog.FieldChannelID:
 		m.ClearChannelID()
+		return nil
+	case usagelog.FieldPromptAudioTokens:
+		m.ClearPromptAudioTokens()
+		return nil
+	case usagelog.FieldPromptCachedTokens:
+		m.ClearPromptCachedTokens()
 		return nil
 	case usagelog.FieldPromptWriteCachedTokens:
 		m.ClearPromptWriteCachedTokens()
@@ -21787,6 +21917,9 @@ func (m *UsageLogMutation) ResetField(name string) error {
 		return nil
 	case usagelog.FieldRequestID:
 		m.ResetRequestID()
+		return nil
+	case usagelog.FieldAPIKeyID:
+		m.ResetAPIKeyID()
 		return nil
 	case usagelog.FieldProjectID:
 		m.ResetProjectID()

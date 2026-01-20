@@ -455,7 +455,7 @@ func TestHttpClientImpl_buildHttpRequest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := client.buildHttpRequest(t.Context(), tt.request)
+			result, err := client.BuildHttpRequest(t.Context(), tt.request)
 
 			if tt.wantErr {
 				require.ErrorContains(t, err, tt.errContains)

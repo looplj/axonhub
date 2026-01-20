@@ -109,7 +109,7 @@ func NewHttpClientWithClient(client *http.Client) *HttpClient {
 func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, error) {
 	log.Debug(ctx, "execute http request", log.Any("request", request), log.Any("proxy", hc.proxyConfig))
 
-	rawReq, err := hc.buildHttpRequest(ctx, request)
+	rawReq, err := hc.BuildHttpRequest(ctx, request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build HTTP request: %w", err)
 	}
@@ -177,7 +177,7 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.Stream[*StreamEvent], error) {
 	log.Debug(ctx, "execute stream request", log.Any("request", request))
 
-	rawReq, err := hc.buildHttpRequest(ctx, request)
+	rawReq, err := hc.BuildHttpRequest(ctx, request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build HTTP request: %w", err)
 	}
@@ -245,8 +245,8 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 	return stream, nil
 }
 
-// buildHttpRequest builds an HTTP request from Request.
-func (hc *HttpClient) buildHttpRequest(
+// BuildHttpRequest builds an HTTP request from Request.
+func BuildHttpRequest(
 	ctx context.Context,
 	request *Request,
 ) (*http.Request, error) {
@@ -289,6 +289,14 @@ func (hc *HttpClient) buildHttpRequest(
 	}
 
 	return httpReq, nil
+}
+
+// BuildHttpRequest builds an HTTP request from Request.
+func (hc *HttpClient) BuildHttpRequest(
+	ctx context.Context,
+	request *Request,
+) (*http.Request, error) {
+	return BuildHttpRequest(ctx, request)
 }
 
 // applyAuth applies authentication to the HTTP request.

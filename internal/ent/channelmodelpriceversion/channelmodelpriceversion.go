@@ -22,8 +22,6 @@ const (
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
-	// FieldDeletedAt holds the string denoting the deleted_at field in the database.
-	FieldDeletedAt = "deleted_at"
 	// FieldChannelID holds the string denoting the channel_id field in the database.
 	FieldChannelID = "channel_id"
 	// FieldModelID holds the string denoting the model_id field in the database.
@@ -38,8 +36,8 @@ const (
 	FieldEffectiveStartAt = "effective_start_at"
 	// FieldEffectiveEndAt holds the string denoting the effective_end_at field in the database.
 	FieldEffectiveEndAt = "effective_end_at"
-	// FieldRefreanceID holds the string denoting the refreance_id field in the database.
-	FieldRefreanceID = "refreance_id"
+	// FieldReferenceID holds the string denoting the reference_id field in the database.
+	FieldReferenceID = "reference_id"
 	// EdgeChannelModelPrice holds the string denoting the channel_model_price edge name in mutations.
 	EdgeChannelModelPrice = "channel_model_price"
 	// Table holds the table name of the channelmodelpriceversion in the database.
@@ -58,7 +56,6 @@ var Columns = []string{
 	FieldID,
 	FieldCreatedAt,
 	FieldUpdatedAt,
-	FieldDeletedAt,
 	FieldChannelID,
 	FieldModelID,
 	FieldChannelModelPriceID,
@@ -66,7 +63,7 @@ var Columns = []string{
 	FieldStatus,
 	FieldEffectiveStartAt,
 	FieldEffectiveEndAt,
-	FieldRefreanceID,
+	FieldReferenceID,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -85,17 +82,14 @@ func ValidColumn(column string) bool {
 //
 //	import _ "github.com/looplj/axonhub/internal/ent/runtime"
 var (
-	Hooks        [2]ent.Hook
-	Interceptors [1]ent.Interceptor
-	Policy       ent.Policy
+	Hooks  [1]ent.Hook
+	Policy ent.Policy
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
 	UpdateDefaultUpdatedAt func() time.Time
-	// DefaultDeletedAt holds the default value on creation for the "deleted_at" field.
-	DefaultDeletedAt int
 )
 
 // Status defines the type for the "status" enum field.
@@ -139,11 +133,6 @@ func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
 }
 
-// ByDeletedAt orders the results by the deleted_at field.
-func ByDeletedAt(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldDeletedAt, opts...).ToFunc()
-}
-
 // ByChannelID orders the results by the channel_id field.
 func ByChannelID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldChannelID, opts...).ToFunc()
@@ -174,9 +163,9 @@ func ByEffectiveEndAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldEffectiveEndAt, opts...).ToFunc()
 }
 
-// ByRefreanceID orders the results by the refreance_id field.
-func ByRefreanceID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldRefreanceID, opts...).ToFunc()
+// ByReferenceID orders the results by the reference_id field.
+func ByReferenceID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldReferenceID, opts...).ToFunc()
 }
 
 // ByChannelModelPriceField orders the results by channel_model_price field.

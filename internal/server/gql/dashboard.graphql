@@ -45,6 +45,8 @@ type TokenStatsByAPIKey {
 type DailyRequestStats {
   date: String!
   count: Int!
+  tokens: Int!
+  cost: Float!
 }
 
 type HourlyRequestStats {

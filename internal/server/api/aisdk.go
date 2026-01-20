@@ -21,6 +21,7 @@ type AiSdkHandlersParams struct {
 	SystemService   *biz.SystemService
 	UsageLogService *biz.UsageLogService
 	PromptService   *biz.PromptService
+	QuotaService    *biz.QuotaService
 	HttpClient      *httpclient.HttpClient
 }
 
@@ -40,6 +41,7 @@ func NewAiSDKHandlers(params AiSdkHandlersParams) *AiSDKHandlers {
 				params.SystemService,
 				params.UsageLogService,
 				params.PromptService,
+				params.QuotaService,
 			),
 			StreamWriter: WriteJSONStream,
 		},

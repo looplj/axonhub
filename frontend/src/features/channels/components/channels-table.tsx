@@ -309,7 +309,7 @@ export function ChannelsTable({
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody className='space-y-1 !bg-[var(--table-background)] p-2'>
+          <TableBody className='!bg-[var(--table-background)]'>
             {loading ? (
               <TableSkeleton rows={pageSize} columns={columns.length} />
             ) : table.getRowModel().rows?.length ? (
@@ -320,28 +320,35 @@ export function ChannelsTable({
                     <MotionTableRow
                       key={row.id}
                       data-state={row.getIsSelected() && 'selected'}
-                      className='group/row table-row-hover rounded-xl border-0 !bg-[var(--table-background)] transition-all duration-200 ease-in-out'
+                      className='group/row table-row-hover rounded-xl border-0 !bg-[var(--table-background)]'
                     >
                       {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id} className={`${cell.column.columnDef.meta?.className ?? ''} border-0 bg-inherit px-4 py-3`}>
+                        <TableCell key={cell.id} className={`${cell.column.columnDef.meta?.className ?? ''} border-0 bg-inherit px-4 py-3 transition-colors duration-200`}>
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </TableCell>
                       ))}
                     </MotionTableRow>
-                    <AnimatePresence>
+                    <AnimatePresence initial={false}>
                       {row.getIsExpanded() && (
-                        <TableRow key={`${row.id}-expanded`} className='border-0'>
+                        <MotionExpandedRow
+                          key={`${row.id}-expanded`}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className='border-0'
+                        >
                           <TableCell colSpan={columns.length} className='p-0 border-0'>
                             <motion.div
                               initial={{ height: 0, opacity: 0 }}
                               animate={{ height: 'auto', opacity: 1 }}
                               exit={{ height: 0, opacity: 0 }}
                               transition={{ duration: 0.2, ease: 'easeInOut' }}
+                              className='overflow-hidden'
                             >
                               <ChannelExpandedRow channel={channel} columnsLength={columns.length} getApiFormatLabel={getApiFormatLabel} />
                             </motion.div>
                           </TableCell>
-                        </TableRow>
+                        </MotionExpandedRow>
                       )}
                     </AnimatePresence>
                   </React.Fragment>

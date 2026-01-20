@@ -88,6 +88,7 @@ type CreateChannelInput struct {
 	AutoSyncSupportedModels *bool
 	Tags                    []string
 	DefaultTestModel        string
+	Policies                *objects.ChannelPolicies
 	Settings                *objects.ChannelSettings
 	OrderingWeight          *int
 	Remark                  *string
@@ -113,6 +114,9 @@ func (i *CreateChannelInput) Mutate(m *ChannelMutation) {
 		m.SetTags(v)
 	}
 	m.SetDefaultTestModel(i.DefaultTestModel)
+	if v := i.Policies; v != nil {
+		m.SetPolicies(*v)
+	}
 	if v := i.Settings; v != nil {
 		m.SetSettings(v)
 	}
@@ -144,6 +148,8 @@ type UpdateChannelInput struct {
 	Tags                    []string
 	AppendTags              []string
 	DefaultTestModel        *string
+	ClearPolicies           bool
+	Policies                *objects.ChannelPolicies
 	ClearSettings           bool
 	Settings                *objects.ChannelSettings
 	OrderingWeight          *int
@@ -190,6 +196,12 @@ func (i *UpdateChannelInput) Mutate(m *ChannelMutation) {
 	}
 	if v := i.DefaultTestModel; v != nil {
 		m.SetDefaultTestModel(*v)
+	}
+	if i.ClearPolicies {
+		m.ClearPolicies()
+	}
+	if v := i.Policies; v != nil {
+		m.SetPolicies(*v)
 	}
 	if i.ClearSettings {
 		m.ClearSettings()
@@ -1018,6 +1030,7 @@ func (c *TraceUpdateOne) SetInput(i UpdateTraceInput) *TraceUpdateOne {
 
 // CreateUsageLogInput represents a mutation input for creating usagelogs.
 type CreateUsageLogInput struct {
+	APIKeyID                           *int
 	ModelID                            string
 	PromptTokens                       *int64
 	CompletionTokens                   *int64
@@ -1043,6 +1056,9 @@ type CreateUsageLogInput struct {
 
 // Mutate applies the CreateUsageLogInput on the UsageLogMutation builder.
 func (i *CreateUsageLogInput) Mutate(m *UsageLogMutation) {
+	if v := i.APIKeyID; v != nil {
+		m.SetAPIKeyID(*v)
+	}
 	m.SetModelID(i.ModelID)
 	if v := i.PromptTokens; v != nil {
 		m.SetPromptTokens(*v)
@@ -1113,7 +1129,9 @@ type UpdateUsageLogInput struct {
 	PromptTokens                            *int64
 	CompletionTokens                        *int64
 	TotalTokens                             *int64
+	ClearPromptAudioTokens                  bool
 	PromptAudioTokens                       *int64
+	ClearPromptCachedTokens                 bool
 	PromptCachedTokens                      *int64
 	ClearPromptWriteCachedTokens            bool
 	PromptWriteCachedTokens                 *int64
@@ -1151,8 +1169,14 @@ func (i *UpdateUsageLogInput) Mutate(m *UsageLogMutation) {
 	if v := i.TotalTokens; v != nil {
 		m.SetTotalTokens(*v)
 	}
+	if i.ClearPromptAudioTokens {
+		m.ClearPromptAudioTokens()
+	}
 	if v := i.PromptAudioTokens; v != nil {
 		m.SetPromptAudioTokens(*v)
+	}
+	if i.ClearPromptCachedTokens {
+		m.ClearPromptCachedTokens()
 	}
 	if v := i.PromptCachedTokens; v != nil {
 		m.SetPromptCachedTokens(*v)

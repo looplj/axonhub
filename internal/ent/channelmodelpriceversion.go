@@ -24,8 +24,6 @@ type ChannelModelPriceVersion struct {
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
-	// DeletedAt holds the value of the "deleted_at" field.
-	DeletedAt int `json:"deleted_at,omitempty"`
 	// ChannelID holds the value of the "channel_id" field.
 	ChannelID int `json:"channel_id,omitempty"`
 	// ModelID holds the value of the "model_id" field.
@@ -41,7 +39,7 @@ type ChannelModelPriceVersion struct {
 	// The effective end time of the model price, null means it is effective until the next version.
 	EffectiveEndAt *time.Time `json:"effective_end_at,omitempty"`
 	// The bill should reference this id.
-	RefreanceID string `json:"refreance_id,omitempty"`
+	ReferenceID string `json:"reference_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ChannelModelPriceVersionQuery when eager-loading is set.
 	Edges        ChannelModelPriceVersionEdges `json:"edges"`
@@ -77,9 +75,9 @@ func (*ChannelModelPriceVersion) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case channelmodelpriceversion.FieldPrice:
 			values[i] = new([]byte)
-		case channelmodelpriceversion.FieldID, channelmodelpriceversion.FieldDeletedAt, channelmodelpriceversion.FieldChannelID, channelmodelpriceversion.FieldChannelModelPriceID:
+		case channelmodelpriceversion.FieldID, channelmodelpriceversion.FieldChannelID, channelmodelpriceversion.FieldChannelModelPriceID:
 			values[i] = new(sql.NullInt64)
-		case channelmodelpriceversion.FieldModelID, channelmodelpriceversion.FieldStatus, channelmodelpriceversion.FieldRefreanceID:
+		case channelmodelpriceversion.FieldModelID, channelmodelpriceversion.FieldStatus, channelmodelpriceversion.FieldReferenceID:
 			values[i] = new(sql.NullString)
 		case channelmodelpriceversion.FieldCreatedAt, channelmodelpriceversion.FieldUpdatedAt, channelmodelpriceversion.FieldEffectiveStartAt, channelmodelpriceversion.FieldEffectiveEndAt:
 			values[i] = new(sql.NullTime)
@@ -115,12 +113,6 @@ func (_m *ChannelModelPriceVersion) assignValues(columns []string, values []any)
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
 				_m.UpdatedAt = value.Time
-			}
-		case channelmodelpriceversion.FieldDeletedAt:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
-			} else if value.Valid {
-				_m.DeletedAt = int(value.Int64)
 			}
 		case channelmodelpriceversion.FieldChannelID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -167,11 +159,11 @@ func (_m *ChannelModelPriceVersion) assignValues(columns []string, values []any)
 				_m.EffectiveEndAt = new(time.Time)
 				*_m.EffectiveEndAt = value.Time
 			}
-		case channelmodelpriceversion.FieldRefreanceID:
+		case channelmodelpriceversion.FieldReferenceID:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field refreance_id", values[i])
+				return fmt.Errorf("unexpected type %T for field reference_id", values[i])
 			} else if value.Valid {
-				_m.RefreanceID = value.String
+				_m.ReferenceID = value.String
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -220,9 +212,6 @@ func (_m *ChannelModelPriceVersion) String() string {
 	builder.WriteString("updated_at=")
 	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
-	builder.WriteString("deleted_at=")
-	builder.WriteString(fmt.Sprintf("%v", _m.DeletedAt))
-	builder.WriteString(", ")
 	builder.WriteString("channel_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ChannelID))
 	builder.WriteString(", ")
@@ -246,8 +235,8 @@ func (_m *ChannelModelPriceVersion) String() string {
 		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteString(", ")
-	builder.WriteString("refreance_id=")
-	builder.WriteString(_m.RefreanceID)
+	builder.WriteString("reference_id=")
+	builder.WriteString(_m.ReferenceID)
 	builder.WriteByte(')')
 	return builder.String()
 }

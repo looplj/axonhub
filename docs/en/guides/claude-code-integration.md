@@ -101,7 +101,7 @@ To configure Claude Code as a provider channel, you need a long-lived authentica
 2. Create a new channel with the following configuration:
    - **Type**: `claude-code`
    - **Name**: A descriptive name (e.g., "Claude Code Provider")
-   - **Base URL**: This field will be overridden to the standard Claude Code base URL
+   - **Base URL**: Defaults to `https://api.anthropic.com/v1`. You can point this to a reverse proxy or compatible gateway; AxonHub will send requests to `{baseURL}/messages` (or `{baseURL}/v1/messages` depending on whether your base URL ends with `/v1`).
    - **API Key**: The token from `claude setup-token` (starts with `sk-ant`)
    - **Supported Models**: Add the Claude models you want to expose:
      - `claude-haiku-4-5`
@@ -123,9 +123,9 @@ To configure Claude Code as a provider channel, you need a long-lived authentica
 
 ### Troubleshooting
 
-- **Channel test fails**: Ensure Claude Code server is running and accessible at the configured base URL
+- **Channel test fails**: Verify the configured base URL is reachable and the endpoint is compatible with Anthropic Messages API
 - **Authentication errors**: Verify the token from `claude setup-token` is correct and hasn't expired
-- **Network issues**: If using a remote Claude Code instance, check firewall rules and network connectivity
+- **Network issues**: If using a remote gateway/proxy, check firewall rules and network connectivity
 - **Model not available**: Confirm the requested model is listed in the channel's `supported_models`
 
 ---

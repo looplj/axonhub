@@ -30,7 +30,7 @@ type SoftDeleteMixin struct {
 func (SoftDeleteMixin) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("deleted_at").Default(0).Annotations(
-			entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			entgql.Skip(entgql.SkipAll),
 		),
 	}
 }

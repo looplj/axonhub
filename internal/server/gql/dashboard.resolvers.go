@@ -23,6 +23,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/samber/lo"
 )
@@ -92,11 +93,13 @@ func (r *queryResolver) RequestStats(ctx context.Context) (*RequestStats, error)
 		RequestsThisMonth: 0,
 	}
 
-	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	weekAgo := today.AddDate(0, 0, -7)
-	twoWeeksAgo := today.AddDate(0, 0, -14)
-	monthAgo := today.AddDate(0, -1, 0)
+	loc := r.systemService.TimeLocation(ctx)
+	nowLocal := xtime.Now().In(loc)
+	todayLocal := time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc)
+	today := todayLocal.UTC()
+	weekAgo := todayLocal.AddDate(0, 0, -7).UTC()
+	twoWeeksAgo := todayLocal.AddDate(0, 0, -14).UTC()
+	monthAgo := todayLocal.AddDate(0, -1, 0).UTC()
 
 	if requestsToday, err := r.client.Request.Query().
 		Where(request.CreatedAtGTE(today)).
@@ -416,40 +419,59 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context) ([]*DailyRequestS
 
 	daysCount := 30
 
-	now := time.Now()
-	startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).AddDate(0, 0, -daysCount+1)
+	loc := r.systemService.TimeLocation(ctx)
+	nowLocal := xtime.Now().In(loc)
+	startDateLocal := time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, -daysCount+1)
+	startDateUTC := startDateLocal.UTC()
+	endDateUTC := startDateLocal.AddDate(0, 0, daysCount).UTC()
+	_, offsetSeconds := nowLocal.Zone()
 
 	// Use GROUP BY aggregation for efficient database-level computation
 	type dailyStats struct {
-		Date  string `json:"date"`
-		Count int    `json:"total_count"`
+		Date   string  `json:"date"`
+		Count  int     `json:"total_count"`
+		Tokens int     `json:"total_tokens"`
+		Cost   float64 `json:"total_cost"`
 	}
 
 	var results []dailyStats
 
 	// Use raw SQL for complex GROUP BY with conditional counting
 	err := r.client.Request.Query().
+		Where(
+			request.CreatedAtGTE(startDateUTC),
+			request.CreatedAtLT(endDateUTC),
+		).
 		Modify(func(s *sql.Selector) {
 			// Build a dialect-specific date expression that returns a string 'YYYY-MM-DD'
 			var dateExpr string
+			// Use qualified column name to avoid ambiguity when joining
+			createdAtCol := s.C(request.FieldCreatedAt)
 
 			switch s.Dialect() {
 			case dialect.SQLite:
-				// The stored format looks like: "YYYY-MM-DD HH:MM:SS.SSSSSS +0800 CST m=+..."
-				// SQLite cannot parse this with strftime; take the leading date directly.
-				dateExpr = "substr(created_at, 1, 10)"
+				dateExpr = fmt.Sprintf("strftime('%%Y-%%m-%%d', datetime(substr(%s, 1, 19), '%+d seconds'))", createdAtCol, offsetSeconds)
 			case dialect.MySQL:
-				dateExpr = "DATE_FORMAT(created_at, '%Y-%m-%d')"
+				dateExpr = fmt.Sprintf("DATE_FORMAT(CONVERT_TZ(%s, '+00:00', '%s'), '%%Y-%%m-%%d')", createdAtCol, loc.String())
 			case dialect.Postgres:
-				dateExpr = "to_char(created_at, 'YYYY-MM-DD')"
+				dateExpr = fmt.Sprintf("to_char(%s AT TIME ZONE '%s', 'YYYY-MM-DD')", createdAtCol, loc.String())
 			default:
 				// Fallback to ANSI-ish cast; many DBs accept this, but not guaranteed
-				dateExpr = "DATE(created_at)"
+				dateExpr = fmt.Sprintf("DATE(%s)", createdAtCol)
 			}
+
+			// Join with usage_logs to get tokens and cost
+			usageTable := sql.Table(usagelog.Table)
+			s.LeftJoin(usageTable).On(
+				s.C(request.FieldID),
+				usageTable.C(usagelog.FieldRequestID),
+			)
 
 			s.Select(
 				sql.As(dateExpr, "date"),
-				sql.As(sql.Count("*"), "total_count"),
+				sql.As(sql.Count(s.C(request.FieldID)), "total_count"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", usageTable.C(usagelog.FieldTotalTokens)), "total_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", usageTable.C(usagelog.FieldTotalCost)), "total_cost"),
 			).
 				GroupBy(dateExpr).
 				OrderBy("date")
@@ -468,20 +490,24 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context) ([]*DailyRequestS
 	response := make([]*DailyRequestStats, 0, daysCount)
 
 	for i := range daysCount {
-		date := startDate.AddDate(0, 0, i)
+		date := startDateLocal.AddDate(0, 0, i)
 		dateStr := date.Format("2006-01-02")
 
 		if stats, exists := statsMap[dateStr]; exists {
 			// Use aggregated data from database
 			response = append(response, &DailyRequestStats{
-				Date:  dateStr,
-				Count: stats.Count,
+				Date:   dateStr,
+				Count:  stats.Count,
+				Tokens: stats.Tokens,
+				Cost:   stats.Cost,
 			})
 		} else {
 			// Fill missing dates with zero values
 			response = append(response, &DailyRequestStats{
-				Date:  dateStr,
-				Count: 0,
+				Date:   dateStr,
+				Count:  0,
+				Tokens: 0,
+				Cost:   0,
 			})
 		}
 	}
@@ -572,10 +598,12 @@ func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
 		TotalCachedTokensThisMonth: 0,
 	}
 
-	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	weekAgo := today.AddDate(0, 0, -7)
-	monthAgo := today.AddDate(0, -1, 0)
+	loc := r.systemService.TimeLocation(ctx)
+	nowLocal := xtime.Now().In(loc)
+	todayLocal := time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc)
+	today := todayLocal.UTC()
+	weekAgo := todayLocal.AddDate(0, 0, -7).UTC()
+	monthAgo := todayLocal.AddDate(0, -1, 0).UTC()
 
 	// Helper function to get token sums for a specific time period
 	getTokenSums := func(since time.Time) (input, output, cached int) {

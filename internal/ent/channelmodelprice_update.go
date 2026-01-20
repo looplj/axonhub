@@ -72,16 +72,16 @@ func (_u *ChannelModelPriceUpdate) SetNillablePrice(v *objects.ModelPrice) *Chan
 	return _u
 }
 
-// SetRefreanceID sets the "refreance_id" field.
-func (_u *ChannelModelPriceUpdate) SetRefreanceID(v string) *ChannelModelPriceUpdate {
-	_u.mutation.SetRefreanceID(v)
+// SetReferenceID sets the "reference_id" field.
+func (_u *ChannelModelPriceUpdate) SetReferenceID(v string) *ChannelModelPriceUpdate {
+	_u.mutation.SetReferenceID(v)
 	return _u
 }
 
-// SetNillableRefreanceID sets the "refreance_id" field if the given value is not nil.
-func (_u *ChannelModelPriceUpdate) SetNillableRefreanceID(v *string) *ChannelModelPriceUpdate {
+// SetNillableReferenceID sets the "reference_id" field if the given value is not nil.
+func (_u *ChannelModelPriceUpdate) SetNillableReferenceID(v *string) *ChannelModelPriceUpdate {
 	if v != nil {
-		_u.SetRefreanceID(*v)
+		_u.SetReferenceID(*v)
 	}
 	return _u
 }
@@ -212,8 +212,8 @@ func (_u *ChannelModelPriceUpdate) sqlSave(ctx context.Context) (_node int, err 
 	if value, ok := _u.mutation.Price(); ok {
 		_spec.SetField(channelmodelprice.FieldPrice, field.TypeJSON, value)
 	}
-	if value, ok := _u.mutation.RefreanceID(); ok {
-		_spec.SetField(channelmodelprice.FieldRefreanceID, field.TypeString, value)
+	if value, ok := _u.mutation.ReferenceID(); ok {
+		_spec.SetField(channelmodelprice.FieldReferenceID, field.TypeString, value)
 	}
 	if _u.mutation.VersionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -323,16 +323,16 @@ func (_u *ChannelModelPriceUpdateOne) SetNillablePrice(v *objects.ModelPrice) *C
 	return _u
 }
 
-// SetRefreanceID sets the "refreance_id" field.
-func (_u *ChannelModelPriceUpdateOne) SetRefreanceID(v string) *ChannelModelPriceUpdateOne {
-	_u.mutation.SetRefreanceID(v)
+// SetReferenceID sets the "reference_id" field.
+func (_u *ChannelModelPriceUpdateOne) SetReferenceID(v string) *ChannelModelPriceUpdateOne {
+	_u.mutation.SetReferenceID(v)
 	return _u
 }
 
-// SetNillableRefreanceID sets the "refreance_id" field if the given value is not nil.
-func (_u *ChannelModelPriceUpdateOne) SetNillableRefreanceID(v *string) *ChannelModelPriceUpdateOne {
+// SetNillableReferenceID sets the "reference_id" field if the given value is not nil.
+func (_u *ChannelModelPriceUpdateOne) SetNillableReferenceID(v *string) *ChannelModelPriceUpdateOne {
 	if v != nil {
-		_u.SetRefreanceID(*v)
+		_u.SetReferenceID(*v)
 	}
 	return _u
 }
@@ -493,8 +493,8 @@ func (_u *ChannelModelPriceUpdateOne) sqlSave(ctx context.Context) (_node *Chann
 	if value, ok := _u.mutation.Price(); ok {
 		_spec.SetField(channelmodelprice.FieldPrice, field.TypeJSON, value)
 	}
-	if value, ok := _u.mutation.RefreanceID(); ok {
-		_spec.SetField(channelmodelprice.FieldRefreanceID, field.TypeString, value)
+	if value, ok := _u.mutation.ReferenceID(); ok {
+		_spec.SetField(channelmodelprice.FieldReferenceID, field.TypeString, value)
 	}
 	if _u.mutation.VersionsCleared() {
 		edge := &sqlgraph.EdgeSpec{

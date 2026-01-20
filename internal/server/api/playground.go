@@ -38,6 +38,7 @@ type PlaygroundHandlersParams struct {
 	SystemService   *biz.SystemService
 	UsageLogService *biz.UsageLogService
 	PromptService   *biz.PromptService
+	QuotaService    *biz.QuotaService
 	HttpClient      *httpclient.HttpClient
 }
 
@@ -58,6 +59,7 @@ func NewPlaygroundHandlers(params PlaygroundHandlersParams) *PlaygroundHandlers 
 			params.SystemService,
 			params.UsageLogService,
 			params.PromptService,
+			params.QuotaService,
 		),
 	}
 }

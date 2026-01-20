@@ -4,7 +4,6 @@ type APIKey implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   """
   The creator of the API key
   """
@@ -166,17 +165,6 @@ input APIKeyWhereInput {
   updatedAtLT: Time
   updatedAtLTE: Time
   """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
-  """
   user_id field predicates
   """
   userID: ID
@@ -256,7 +244,6 @@ type Channel implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   type: ChannelType!
   baseURL: String
   name: String!
@@ -265,6 +252,7 @@ type Channel implements Node {
   autoSyncSupportedModels: Boolean!
   tags: [String!]
   defaultTestModel: String!
+  policies: ChannelPolicies @goField(forceResolver: true)
   settings: ChannelSettings
   """
   Ordering weight for display sorting
@@ -406,7 +394,6 @@ type ChannelModelPrice implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   channelID: ID!
   modelID: String!
   """
@@ -416,7 +403,7 @@ type ChannelModelPrice implements Node {
   """
   The bill should reference this id.
   """
-  refreanceID: String!
+  referenceID: String!
   channel: Channel!
   versions: [ChannelModelPriceVersion!]
 }
@@ -474,7 +461,6 @@ type ChannelModelPriceVersion implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   channelID: Int!
   modelID: String!
   channelModelPriceID: ID!
@@ -494,7 +480,7 @@ type ChannelModelPriceVersion implements Node {
   """
   The bill should reference this id.
   """
-  refreanceID: String!
+  referenceID: String!
   channelModelPrice: ChannelModelPrice!
 }
 """
@@ -596,17 +582,6 @@ input ChannelModelPriceVersionWhereInput {
   updatedAtLT: Time
   updatedAtLTE: Time
   """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
-  """
   channel_id field predicates
   """
   channelID: Int
@@ -672,21 +647,21 @@ input ChannelModelPriceVersionWhereInput {
   effectiveEndAtIsNil: Boolean
   effectiveEndAtNotNil: Boolean
   """
-  refreance_id field predicates
+  reference_id field predicates
   """
-  refreanceID: String
-  refreanceIDNEQ: String
-  refreanceIDIn: [String!]
-  refreanceIDNotIn: [String!]
-  refreanceIDGT: String
-  refreanceIDGTE: String
-  refreanceIDLT: String
-  refreanceIDLTE: String
-  refreanceIDContains: String
-  refreanceIDHasPrefix: String
-  refreanceIDHasSuffix: String
-  refreanceIDEqualFold: String
-  refreanceIDContainsFold: String
+  referenceID: String
+  referenceIDNEQ: String
+  referenceIDIn: [String!]
+  referenceIDNotIn: [String!]
+  referenceIDGT: String
+  referenceIDGTE: String
+  referenceIDLT: String
+  referenceIDLTE: String
+  referenceIDContains: String
+  referenceIDHasPrefix: String
+  referenceIDHasSuffix: String
+  referenceIDEqualFold: String
+  referenceIDContainsFold: String
   """
   channel_model_price edge predicates
   """
@@ -735,17 +710,6 @@ input ChannelModelPriceWhereInput {
   updatedAtLT: Time
   updatedAtLTE: Time
   """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
-  """
   channel_id field predicates
   """
   channelID: ID
@@ -769,21 +733,21 @@ input ChannelModelPriceWhereInput {
   modelIDEqualFold: String
   modelIDContainsFold: String
   """
-  refreance_id field predicates
+  reference_id field predicates
   """
-  refreanceID: String
-  refreanceIDNEQ: String
-  refreanceIDIn: [String!]
-  refreanceIDNotIn: [String!]
-  refreanceIDGT: String
-  refreanceIDGTE: String
-  refreanceIDLT: String
-  refreanceIDLTE: String
-  refreanceIDContains: String
-  refreanceIDHasPrefix: String
-  refreanceIDHasSuffix: String
-  refreanceIDEqualFold: String
-  refreanceIDContainsFold: String
+  referenceID: String
+  referenceIDNEQ: String
+  referenceIDIn: [String!]
+  referenceIDNotIn: [String!]
+  referenceIDGT: String
+  referenceIDGTE: String
+  referenceIDLT: String
+  referenceIDLTE: String
+  referenceIDContains: String
+  referenceIDHasPrefix: String
+  referenceIDHasSuffix: String
+  referenceIDEqualFold: String
+  referenceIDContainsFold: String
   """
   channel edge predicates
   """
@@ -823,7 +787,6 @@ type ChannelOverrideTemplate implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   """
   Owner of this template
   """
@@ -942,17 +905,6 @@ input ChannelOverrideTemplateWhereInput {
   updatedAtLT: Time
   updatedAtLTE: Time
   """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
-  """
   user_id field predicates
   """
   userID: ID
@@ -1035,7 +987,6 @@ type ChannelPerformance implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   channelID: ID!
   successRate: Int!
   avgLatencyMs: Int!
@@ -1151,17 +1102,6 @@ input ChannelPerformanceWhereInput {
   updatedAtGTE: Time
   updatedAtLT: Time
   updatedAtLTE: Time
-  """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
   """
   channel_id field predicates
   """
@@ -1544,17 +1484,6 @@ input ChannelWhereInput {
   updatedAtLT: Time
   updatedAtLTE: Time
   """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
-  """
   type field predicates
   """
   type: ChannelType
@@ -1730,6 +1659,7 @@ input CreateChannelInput {
   autoSyncSupportedModels: Boolean
   tags: [String!]
   defaultTestModel: String!
+  policies: ChannelPoliciesInput
   settings: ChannelSettingsInput
   """
   Ordering weight for display sorting
@@ -1955,6 +1885,7 @@ CreateUsageLogInput is used for create UsageLog object.
 Input was generated by ent.
 """
 input CreateUsageLogInput {
+  apiKeyID: Int
   """
   Model identifier used for the request
   """
@@ -2066,7 +1997,6 @@ type DataStorage implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   """
   data source name
   """
@@ -2262,17 +2192,6 @@ input DataStorageWhereInput {
   updatedAtLT: Time
   updatedAtLTE: Time
   """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
-  """
   name field predicates
   """
   name: String
@@ -2338,7 +2257,6 @@ type Model implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   """
   developer of the model, eg. deeepseek
   """
@@ -2479,17 +2397,6 @@ input ModelWhereInput {
   updatedAtGTE: Time
   updatedAtLT: Time
   updatedAtLTE: Time
-  """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
   """
   developer field predicates
   """
@@ -2652,7 +2559,6 @@ type Project implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   """
   project name
   """
@@ -3014,17 +2920,6 @@ input ProjectWhereInput {
   updatedAtLT: Time
   updatedAtLTE: Time
   """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
-  """
   name field predicates
   """
   name: String
@@ -3113,7 +3008,6 @@ type Prompt implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   """
   Project ID that this prompt belongs to
   """
@@ -3269,17 +3163,6 @@ input PromptWhereInput {
   updatedAtGTE: Time
   updatedAtLT: Time
   updatedAtLTE: Time
-  """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
   """
   project_id field predicates
   """
@@ -4519,7 +4402,6 @@ type Role implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   name: String!
   """
   Role level: system or project
@@ -4666,17 +4548,6 @@ input RoleWhereInput {
   updatedAtLT: Time
   updatedAtLTE: Time
   """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
-  """
   name field predicates
   """
   name: String
@@ -4728,7 +4599,6 @@ type System implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   key: String!
   value: String!
 }
@@ -4823,17 +4693,6 @@ input SystemWhereInput {
   updatedAtGTE: Time
   updatedAtLT: Time
   updatedAtLTE: Time
-  """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
   """
   key field predicates
   """
@@ -5260,6 +5119,8 @@ input UpdateChannelInput {
   appendTags: [String!]
   clearTags: Boolean
   defaultTestModel: String
+  policies: ChannelPoliciesInput
+  clearPolicies: Boolean
   settings: ChannelSettingsInput
   clearSettings: Boolean
   """
@@ -5495,10 +5356,12 @@ input UpdateUsageLogInput {
   Number of audio tokens in the prompt
   """
   promptAudioTokens: Int
+  clearPromptAudioTokens: Boolean
   """
   Number of cached tokens in the prompt
   """
   promptCachedTokens: Int
+  clearPromptCachedTokens: Boolean
   """
   Number of total write cache tokens, if 5m or 1h ttl variant is present, the field is the sum of 5m and 1h
   """
@@ -5594,6 +5457,7 @@ type UsageLog implements Node {
   Related request ID
   """
   requestID: ID!
+  apiKeyID: Int
   """
   Project ID, default to 1 for backward compatibility
   """
@@ -5621,11 +5485,11 @@ type UsageLog implements Node {
   """
   Number of audio tokens in the prompt
   """
-  promptAudioTokens: Int!
+  promptAudioTokens: Int
   """
   Number of cached tokens in the prompt
   """
-  promptCachedTokens: Int!
+  promptCachedTokens: Int
   """
   Number of total write cache tokens, if 5m or 1h ttl variant is present, the field is the sum of 5m and 1h
   """
@@ -5785,6 +5649,19 @@ input UsageLogWhereInput {
   requestIDIn: [ID!]
   requestIDNotIn: [ID!]
   """
+  api_key_id field predicates
+  """
+  apiKeyID: Int
+  apiKeyIDNEQ: Int
+  apiKeyIDIn: [Int!]
+  apiKeyIDNotIn: [Int!]
+  apiKeyIDGT: Int
+  apiKeyIDGTE: Int
+  apiKeyIDLT: Int
+  apiKeyIDLTE: Int
+  apiKeyIDIsNil: Boolean
+  apiKeyIDNotNil: Boolean
+  """
   project_id field predicates
   """
   projectID: ID
@@ -5860,6 +5737,8 @@ input UsageLogWhereInput {
   promptAudioTokensGTE: Int
   promptAudioTokensLT: Int
   promptAudioTokensLTE: Int
+  promptAudioTokensIsNil: Boolean
+  promptAudioTokensNotNil: Boolean
   """
   prompt_cached_tokens field predicates
   """
@@ -5871,6 +5750,8 @@ input UsageLogWhereInput {
   promptCachedTokensGTE: Int
   promptCachedTokensLT: Int
   promptCachedTokensLTE: Int
+  promptCachedTokensIsNil: Boolean
+  promptCachedTokensNotNil: Boolean
   """
   prompt_write_cached_tokens field predicates
   """
@@ -6036,7 +5917,6 @@ type User implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   email: String!
   status: UserStatus!
   """
@@ -6438,17 +6318,6 @@ input UserWhereInput {
   updatedAtGTE: Time
   updatedAtLT: Time
   updatedAtLTE: Time
-  """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
   """
   email field predicates
   """
