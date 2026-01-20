@@ -53,7 +53,7 @@ export function DailyRequestStats() {
 
   return (
     <ResponsiveContainer width='100%' height={350}>
-      <AreaChart data={chartData} margin={{ top: 10, right: 60, left: 0, bottom: 0 }}>
+      <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id='colorRequests' x1='0' y1='0' x2='0' y2='1'>
             <stop offset='5%' stopColor='var(--primary)' stopOpacity={0.3} />
@@ -69,36 +69,38 @@ export function DailyRequestStats() {
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' vertical={false} />
-        <XAxis dataKey='name' stroke='var(--muted-foreground)' fontSize={12} tickLine={false} axisLine={false} />
+        <XAxis dataKey='name' stroke='var(--muted-foreground)' fontSize={12} tickLine={true} axisLine={true} />
         <YAxis
           yAxisId='left'
-          stroke='var(--muted-foreground)'
+          stroke='var(--chart-1)'
           fontSize={12}
-          tickLine={false}
-          axisLine={false}
+          tickLine={true}
+          axisLine={true}
           domain={[0, requestsMax]}
           tickFormatter={(value) => formatNumber(value)}
-        />
-        <YAxis
-          yAxisId='tokens'
-          orientation='right'
-          stroke='var(--muted-foreground)'
-          fontSize={12}
-          tickLine={false}
-          axisLine={false}
-          domain={[0, tokensMax]}
-          tickFormatter={(value) => formatNumber(value)}
+          width={35}
         />
         <YAxis
           yAxisId='cost'
           orientation='right'
-          stroke='var(--muted-foreground)'
+          stroke='var(--chart-3)'
           fontSize={12}
-          tickLine={false}
-          axisLine={false}
+          tickLine={true}
+          axisLine={true}
           domain={[0, costMax]}
           tickFormatter={(value) => value.toFixed(2)}
-          width={50}
+          width={40}
+        />
+        <YAxis
+          yAxisId='tokens'
+          orientation='right'
+          stroke='var(--chart-2)'
+          fontSize={12}
+          tickLine={true}
+          axisLine={true}
+          domain={[0, tokensMax]}
+          tickFormatter={(value) => formatNumber(value)}
+          width={45}
         />
         <Tooltip
           formatter={(value, name) => {
