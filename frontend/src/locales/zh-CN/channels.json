@@ -427,6 +427,7 @@
   "channels.expandedRow.tags": "标签",
   "channels.expandedRow.apiFormat": "API 格式",
   "channels.expandedRow.noPerformanceData": "暂无性能数据",
+  "channels.expandedRow.moreModels": "...以及另外 {{count}} 个模型，请在编辑对话框中查看",
   "channels.templates.section.title": "模板",
   "channels.templates.section.description": "加载已保存的覆盖配置或将当前设置保存为模板以供重复使用",
   "channels.templates.selectTemplate": "选择模板...",

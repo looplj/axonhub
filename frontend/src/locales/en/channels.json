@@ -424,6 +424,7 @@
   "channels.expandedRow.tags": "Tags",
   "channels.expandedRow.apiFormat": "API Format",
   "channels.expandedRow.noPerformanceData": "No performance data available",
+  "channels.expandedRow.moreModels": "...and {{count}} more models, please check in the edit dialog",
   "channels.templates.section.title": "Templates",
   "channels.templates.section.description": "Load saved override configurations or save current settings as a template for reuse",
   "channels.templates.selectTemplate": "Select template...",
