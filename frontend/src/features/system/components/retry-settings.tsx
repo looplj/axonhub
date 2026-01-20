@@ -144,8 +144,9 @@ export function RetrySettings() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value='adaptive'>{t('system.retry.loadBalancerStrategy.options.adaptive')}</SelectItem>
-                    <SelectItem value='weighted'>{t('system.retry.loadBalancerStrategy.options.weighted')}</SelectItem>
-                  </SelectContent>
+                   <SelectItem value='weighted'>{t('system.retry.loadBalancerStrategy.options.weighted')}</SelectItem>
+           <SelectItem value='ordered'>{t('system.retry.loadBalancerStrategy.options.ordered')}</SelectItem>
+                </SelectContent>
                 </Select>
 
                 {/* Strategy Documentation */}

@@ -87,6 +87,7 @@ func (processor *TestChannelOrchestrator) TestChannel(
 		selectedChannelIds:   []int{},
 		adaptiveLoadBalancer: nil,
 		weightedLoadBalancer: nil,
+		orderedLoadBalancer:  nil,
 		connectionTracker:    nil,
 	}
 

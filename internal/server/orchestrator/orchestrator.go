@@ -38,6 +38,7 @@ func NewChatCompletionOrchestrator(
 
 	adaptiveLoadBalancer := NewLoadBalancer(systemService, channelService, strategies...)
 	weightedLoadBalancer := NewLoadBalancer(systemService, channelService, NewWeightStrategy())
+	orderedLoadBalancer := NewLoadBalancer(systemService, channelService, NewErrorAwareStrategy(channelService), NewOrderedStrategy())
 
 	return &ChatCompletionOrchestrator{
 		Inbound:         inbound,
@@ -57,7 +58,8 @@ func NewChatCompletionOrchestrator(
 		connectionTracker:    connectionTracker,
 		adaptiveLoadBalancer: adaptiveLoadBalancer,
 		weightedLoadBalancer: weightedLoadBalancer,
-		proxy:                nil,
+		orderedLoadBalancer:  orderedLoadBalancer,
+		proxy:            nil,
 	}
 }
 
@@ -82,6 +84,7 @@ type ChatCompletionOrchestrator struct {
 	// The load balancer for channel load balancing.
 	adaptiveLoadBalancer *LoadBalancer
 	weightedLoadBalancer *LoadBalancer
+	orderedLoadBalancer  *LoadBalancer
 	// The connection tracker for connection aware load balancing.
 	connectionTracker ConnectionTracker
 
@@ -137,6 +140,8 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		loadBalancer = processor.adaptiveLoadBalancer
 	case "weighted":
 		loadBalancer = processor.weightedLoadBalancer
+	case "ordered":
+		loadBalancer = processor.orderedLoadBalancer
 	default:
 		// Default to adaptive load balancer
 	}
