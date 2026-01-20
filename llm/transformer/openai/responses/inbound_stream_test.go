@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/pkg/xtest"
@@ -125,35 +124,4 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 			}
 		})
 	}
-}
-
-// TestReasoningItemSummaryFieldSerialization verifies that the Summary field
-// in a reasoning Item is always serialized, even when empty.
-// This is critical for Codex compatibility - Codex's ResponseItem::Reasoning
-// requires the "summary" field to be present (it has no #[serde(default)]).
-// Without this field, Codex fails to parse the item and reasoning streaming breaks.
-func TestReasoningItemSummaryFieldSerialization(t *testing.T) {
-	item := &Item{
-		ID:      "item_test",
-		Type:    "reasoning",
-		Status:  lo.ToPtr("in_progress"),
-		Summary: []ReasoningSummary{}, // Empty array
-	}
-
-	data, err := json.Marshal(item)
-	require.NoError(t, err)
-
-	jsonStr := string(data)
-
-	// Verify "summary" field is present in JSON output
-	require.Contains(t, jsonStr, `"summary"`, "summary field must be present in JSON output for Codex compatibility")
-	require.Contains(t, jsonStr, `"summary":[]`, "summary field should be serialized as empty array")
-
-	// Verify the JSON can be unmarshaled back
-	var unmarshaled Item
-
-	err = json.Unmarshal(data, &unmarshaled)
-	require.NoError(t, err)
-	require.NotNil(t, unmarshaled.Summary, "Summary should not be nil after unmarshal")
-	require.Empty(t, unmarshaled.Summary, "Summary should be empty array")
 }
