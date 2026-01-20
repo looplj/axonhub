@@ -20288,10 +20288,24 @@ func (m *UsageLogMutation) AddedPromptAudioTokens() (r int64, exists bool) {
 	return *v, true
 }
 
+// ClearPromptAudioTokens clears the value of the "prompt_audio_tokens" field.
+func (m *UsageLogMutation) ClearPromptAudioTokens() {
+	m.prompt_audio_tokens = nil
+	m.addprompt_audio_tokens = nil
+	m.clearedFields[usagelog.FieldPromptAudioTokens] = struct{}{}
+}
+
+// PromptAudioTokensCleared returns if the "prompt_audio_tokens" field was cleared in this mutation.
+func (m *UsageLogMutation) PromptAudioTokensCleared() bool {
+	_, ok := m.clearedFields[usagelog.FieldPromptAudioTokens]
+	return ok
+}
+
 // ResetPromptAudioTokens resets all changes to the "prompt_audio_tokens" field.
 func (m *UsageLogMutation) ResetPromptAudioTokens() {
 	m.prompt_audio_tokens = nil
 	m.addprompt_audio_tokens = nil
+	delete(m.clearedFields, usagelog.FieldPromptAudioTokens)
 }
 
 // SetPromptCachedTokens sets the "prompt_cached_tokens" field.
@@ -20344,10 +20358,24 @@ func (m *UsageLogMutation) AddedPromptCachedTokens() (r int64, exists bool) {
 	return *v, true
 }
 
+// ClearPromptCachedTokens clears the value of the "prompt_cached_tokens" field.
+func (m *UsageLogMutation) ClearPromptCachedTokens() {
+	m.prompt_cached_tokens = nil
+	m.addprompt_cached_tokens = nil
+	m.clearedFields[usagelog.FieldPromptCachedTokens] = struct{}{}
+}
+
+// PromptCachedTokensCleared returns if the "prompt_cached_tokens" field was cleared in this mutation.
+func (m *UsageLogMutation) PromptCachedTokensCleared() bool {
+	_, ok := m.clearedFields[usagelog.FieldPromptCachedTokens]
+	return ok
+}
+
 // ResetPromptCachedTokens resets all changes to the "prompt_cached_tokens" field.
 func (m *UsageLogMutation) ResetPromptCachedTokens() {
 	m.prompt_cached_tokens = nil
 	m.addprompt_cached_tokens = nil
+	delete(m.clearedFields, usagelog.FieldPromptCachedTokens)
 }
 
 // SetPromptWriteCachedTokens sets the "prompt_write_cached_tokens" field.
@@ -21781,6 +21809,12 @@ func (m *UsageLogMutation) ClearedFields() []string {
 	if m.FieldCleared(usagelog.FieldChannelID) {
 		fields = append(fields, usagelog.FieldChannelID)
 	}
+	if m.FieldCleared(usagelog.FieldPromptAudioTokens) {
+		fields = append(fields, usagelog.FieldPromptAudioTokens)
+	}
+	if m.FieldCleared(usagelog.FieldPromptCachedTokens) {
+		fields = append(fields, usagelog.FieldPromptCachedTokens)
+	}
 	if m.FieldCleared(usagelog.FieldPromptWriteCachedTokens) {
 		fields = append(fields, usagelog.FieldPromptWriteCachedTokens)
 	}
@@ -21830,6 +21864,12 @@ func (m *UsageLogMutation) ClearField(name string) error {
 		return nil
 	case usagelog.FieldChannelID:
 		m.ClearChannelID()
+		return nil
+	case usagelog.FieldPromptAudioTokens:
+		m.ClearPromptAudioTokens()
+		return nil
+	case usagelog.FieldPromptCachedTokens:
+		m.ClearPromptCachedTokens()
 		return nil
 	case usagelog.FieldPromptWriteCachedTokens:
 		m.ClearPromptWriteCachedTokens()

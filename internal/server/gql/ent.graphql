@@ -5356,10 +5356,12 @@ input UpdateUsageLogInput {
   Number of audio tokens in the prompt
   """
   promptAudioTokens: Int
+  clearPromptAudioTokens: Boolean
   """
   Number of cached tokens in the prompt
   """
   promptCachedTokens: Int
+  clearPromptCachedTokens: Boolean
   """
   Number of total write cache tokens, if 5m or 1h ttl variant is present, the field is the sum of 5m and 1h
   """
@@ -5483,11 +5485,11 @@ type UsageLog implements Node {
   """
   Number of audio tokens in the prompt
   """
-  promptAudioTokens: Int!
+  promptAudioTokens: Int
   """
   Number of cached tokens in the prompt
   """
-  promptCachedTokens: Int!
+  promptCachedTokens: Int
   """
   Number of total write cache tokens, if 5m or 1h ttl variant is present, the field is the sum of 5m and 1h
   """
@@ -5735,6 +5737,8 @@ input UsageLogWhereInput {
   promptAudioTokensGTE: Int
   promptAudioTokensLT: Int
   promptAudioTokensLTE: Int
+  promptAudioTokensIsNil: Boolean
+  promptAudioTokensNotNil: Boolean
   """
   prompt_cached_tokens field predicates
   """
@@ -5746,6 +5750,8 @@ input UsageLogWhereInput {
   promptCachedTokensGTE: Int
   promptCachedTokensLT: Int
   promptCachedTokensLTE: Int
+  promptCachedTokensIsNil: Boolean
+  promptCachedTokensNotNil: Boolean
   """
   prompt_write_cached_tokens field predicates
   """

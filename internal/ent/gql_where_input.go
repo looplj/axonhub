@@ -8490,24 +8490,28 @@ type UsageLogWhereInput struct {
 	TotalTokensLTE   *int64  `json:"totalTokensLTE,omitempty"`
 
 	// "prompt_audio_tokens" field predicates.
-	PromptAudioTokens      *int64  `json:"promptAudioTokens,omitempty"`
-	PromptAudioTokensNEQ   *int64  `json:"promptAudioTokensNEQ,omitempty"`
-	PromptAudioTokensIn    []int64 `json:"promptAudioTokensIn,omitempty"`
-	PromptAudioTokensNotIn []int64 `json:"promptAudioTokensNotIn,omitempty"`
-	PromptAudioTokensGT    *int64  `json:"promptAudioTokensGT,omitempty"`
-	PromptAudioTokensGTE   *int64  `json:"promptAudioTokensGTE,omitempty"`
-	PromptAudioTokensLT    *int64  `json:"promptAudioTokensLT,omitempty"`
-	PromptAudioTokensLTE   *int64  `json:"promptAudioTokensLTE,omitempty"`
+	PromptAudioTokens       *int64  `json:"promptAudioTokens,omitempty"`
+	PromptAudioTokensNEQ    *int64  `json:"promptAudioTokensNEQ,omitempty"`
+	PromptAudioTokensIn     []int64 `json:"promptAudioTokensIn,omitempty"`
+	PromptAudioTokensNotIn  []int64 `json:"promptAudioTokensNotIn,omitempty"`
+	PromptAudioTokensGT     *int64  `json:"promptAudioTokensGT,omitempty"`
+	PromptAudioTokensGTE    *int64  `json:"promptAudioTokensGTE,omitempty"`
+	PromptAudioTokensLT     *int64  `json:"promptAudioTokensLT,omitempty"`
+	PromptAudioTokensLTE    *int64  `json:"promptAudioTokensLTE,omitempty"`
+	PromptAudioTokensIsNil  bool    `json:"promptAudioTokensIsNil,omitempty"`
+	PromptAudioTokensNotNil bool    `json:"promptAudioTokensNotNil,omitempty"`
 
 	// "prompt_cached_tokens" field predicates.
-	PromptCachedTokens      *int64  `json:"promptCachedTokens,omitempty"`
-	PromptCachedTokensNEQ   *int64  `json:"promptCachedTokensNEQ,omitempty"`
-	PromptCachedTokensIn    []int64 `json:"promptCachedTokensIn,omitempty"`
-	PromptCachedTokensNotIn []int64 `json:"promptCachedTokensNotIn,omitempty"`
-	PromptCachedTokensGT    *int64  `json:"promptCachedTokensGT,omitempty"`
-	PromptCachedTokensGTE   *int64  `json:"promptCachedTokensGTE,omitempty"`
-	PromptCachedTokensLT    *int64  `json:"promptCachedTokensLT,omitempty"`
-	PromptCachedTokensLTE   *int64  `json:"promptCachedTokensLTE,omitempty"`
+	PromptCachedTokens       *int64  `json:"promptCachedTokens,omitempty"`
+	PromptCachedTokensNEQ    *int64  `json:"promptCachedTokensNEQ,omitempty"`
+	PromptCachedTokensIn     []int64 `json:"promptCachedTokensIn,omitempty"`
+	PromptCachedTokensNotIn  []int64 `json:"promptCachedTokensNotIn,omitempty"`
+	PromptCachedTokensGT     *int64  `json:"promptCachedTokensGT,omitempty"`
+	PromptCachedTokensGTE    *int64  `json:"promptCachedTokensGTE,omitempty"`
+	PromptCachedTokensLT     *int64  `json:"promptCachedTokensLT,omitempty"`
+	PromptCachedTokensLTE    *int64  `json:"promptCachedTokensLTE,omitempty"`
+	PromptCachedTokensIsNil  bool    `json:"promptCachedTokensIsNil,omitempty"`
+	PromptCachedTokensNotNil bool    `json:"promptCachedTokensNotNil,omitempty"`
 
 	// "prompt_write_cached_tokens" field predicates.
 	PromptWriteCachedTokens       *int64  `json:"promptWriteCachedTokens,omitempty"`
@@ -9006,6 +9010,12 @@ func (i *UsageLogWhereInput) P() (predicate.UsageLog, error) {
 	if i.PromptAudioTokensLTE != nil {
 		predicates = append(predicates, usagelog.PromptAudioTokensLTE(*i.PromptAudioTokensLTE))
 	}
+	if i.PromptAudioTokensIsNil {
+		predicates = append(predicates, usagelog.PromptAudioTokensIsNil())
+	}
+	if i.PromptAudioTokensNotNil {
+		predicates = append(predicates, usagelog.PromptAudioTokensNotNil())
+	}
 	if i.PromptCachedTokens != nil {
 		predicates = append(predicates, usagelog.PromptCachedTokensEQ(*i.PromptCachedTokens))
 	}
@@ -9029,6 +9039,12 @@ func (i *UsageLogWhereInput) P() (predicate.UsageLog, error) {
 	}
 	if i.PromptCachedTokensLTE != nil {
 		predicates = append(predicates, usagelog.PromptCachedTokensLTE(*i.PromptCachedTokensLTE))
+	}
+	if i.PromptCachedTokensIsNil {
+		predicates = append(predicates, usagelog.PromptCachedTokensIsNil())
+	}
+	if i.PromptCachedTokensNotNil {
+		predicates = append(predicates, usagelog.PromptCachedTokensNotNil())
 	}
 	if i.PromptWriteCachedTokens != nil {
 		predicates = append(predicates, usagelog.PromptWriteCachedTokensEQ(*i.PromptWriteCachedTokens))

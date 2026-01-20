@@ -590,6 +590,16 @@ func PromptAudioTokensLTE(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldLTE(FieldPromptAudioTokens, v))
 }
 
+// PromptAudioTokensIsNil applies the IsNil predicate on the "prompt_audio_tokens" field.
+func PromptAudioTokensIsNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIsNull(FieldPromptAudioTokens))
+}
+
+// PromptAudioTokensNotNil applies the NotNil predicate on the "prompt_audio_tokens" field.
+func PromptAudioTokensNotNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotNull(FieldPromptAudioTokens))
+}
+
 // PromptCachedTokensEQ applies the EQ predicate on the "prompt_cached_tokens" field.
 func PromptCachedTokensEQ(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldPromptCachedTokens, v))
@@ -628,6 +638,16 @@ func PromptCachedTokensLT(v int64) predicate.UsageLog {
 // PromptCachedTokensLTE applies the LTE predicate on the "prompt_cached_tokens" field.
 func PromptCachedTokensLTE(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldLTE(FieldPromptCachedTokens, v))
+}
+
+// PromptCachedTokensIsNil applies the IsNil predicate on the "prompt_cached_tokens" field.
+func PromptCachedTokensIsNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIsNull(FieldPromptCachedTokens))
+}
+
+// PromptCachedTokensNotNil applies the NotNil predicate on the "prompt_cached_tokens" field.
+func PromptCachedTokensNotNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotNull(FieldPromptCachedTokens))
 }
 
 // PromptWriteCachedTokensEQ applies the EQ predicate on the "prompt_write_cached_tokens" field.

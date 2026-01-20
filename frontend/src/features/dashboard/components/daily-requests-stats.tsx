@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, Area, AreaChart, Legend } from 'recharts';
 import { formatNumber } from '@/utils/format-number';
@@ -13,6 +14,33 @@ export function DailyRequestStats() {
   const { data: generalSettings, isLoading: isSettingsLoading } = useGeneralSettings();
 
   const isLoading = isStatsLoading || isSettingsLoading;
+
+  const currencyCode = generalSettings?.currencyCode || 'USD';
+  const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
+
+  const formatCurrency = useCallback(
+    (val: number, fractionDigits: number) =>
+      t('currencies.format', {
+        val,
+        currency: currencyCode,
+        locale,
+        minimumFractionDigits: fractionDigits,
+        maximumFractionDigits: fractionDigits,
+      }),
+    [currencyCode, locale, t]
+  );
+
+  const formatCostTick = useCallback((value: number | string) => formatCurrency(Number(value), 0), [formatCurrency]);
+
+  const tooltipFormatter = useCallback(
+    (value: number | string, name: string) => {
+      if (name === t('dashboard.stats.totalCost')) {
+        return [formatCurrency(Number(value), 0), name];
+      }
+      return [formatNumber(Number(value)), name];
+    },
+    [formatCurrency, t]
+  );
 
   if (isLoading) {
     return (
@@ -69,7 +97,15 @@ export function DailyRequestStats() {
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' vertical={false} />
-        <XAxis dataKey='name' stroke='var(--muted-foreground)' fontSize={12} tickLine={true} axisLine={true} />
+        <XAxis
+          dataKey='name'
+          stroke='var(--muted-foreground)'
+          fontSize={12}
+          tickLine={true}
+          axisLine={true}
+          padding={{ right: 24 }}
+        // padding={{ left: 16, right: 16 }}
+        />
         <YAxis
           yAxisId='left'
           stroke='var(--chart-1)'
@@ -78,18 +114,8 @@ export function DailyRequestStats() {
           axisLine={true}
           domain={[0, requestsMax]}
           tickFormatter={(value) => formatNumber(value)}
-          width={35}
-        />
-        <YAxis
-          yAxisId='cost'
-          orientation='right'
-          stroke='var(--chart-3)'
-          fontSize={12}
-          tickLine={true}
-          axisLine={true}
-          domain={[0, costMax]}
-          tickFormatter={(value) => value.toFixed(2)}
           width={40}
+          tickMargin={8}
         />
         <YAxis
           yAxisId='tokens'
@@ -100,22 +126,23 @@ export function DailyRequestStats() {
           axisLine={true}
           domain={[0, tokensMax]}
           tickFormatter={(value) => formatNumber(value)}
-          width={45}
+          width={40}
+          tickMargin={8}
+        />
+        <YAxis
+          yAxisId='cost'
+          orientation='right'
+          stroke='var(--chart-3)'
+          fontSize={12}
+          tickLine={true}
+          axisLine={true}
+          domain={[0, costMax]}
+          tickFormatter={formatCostTick}
+          width={60}
+          tickMargin={8}
         />
         <Tooltip
-          formatter={(value, name) => {
-            if (name === t('dashboard.stats.totalCost')) {
-              return [
-                t('currencies.format', {
-                  val: Number(value),
-                  currency: generalSettings?.currencyCode || 'USD',
-                  locale: i18n.language === 'zh' ? 'zh-CN' : 'en-US',
-                }),
-                name,
-              ];
-            }
-            return [formatNumber(Number(value)), name];
-          }}
+          formatter={tooltipFormatter}
           contentStyle={{
             backgroundColor: 'var(--background)',
             borderColor: 'var(--border)',

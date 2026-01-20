@@ -26,23 +26,17 @@ func (UsageLog) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("request_id").
 			StorageKey("usage_logs_by_request_id"),
-		index.Fields("api_key_id").
-			StorageKey("usage_logs_by_api_key_id"),
-		index.Fields("project_id").
-			StorageKey("usage_logs_by_project_id"),
-		index.Fields("channel_id").
-			StorageKey("usage_logs_by_channel_id"),
 		// Performance indexes for analytics queries
 		index.Fields("created_at").
 			StorageKey("usage_logs_by_created_at"),
-		index.Fields("model_id").
-			StorageKey("usage_logs_by_model_id"),
+		index.Fields("model_id", "created_at").
+			StorageKey("usage_logs_by_model_id_created_at"),
 		index.Fields("project_id", "created_at").
-			StorageKey("usage_logs_by_project_created_at"),
+			StorageKey("usage_logs_by_project_id_created_at"),
 		index.Fields("channel_id", "created_at").
-			StorageKey("usage_logs_by_channel_created_at"),
+			StorageKey("usage_logs_by_channel_id_created_at"),
 		index.Fields("api_key_id", "created_at").
-			StorageKey("usage_logs_by_api_key_created_at"),
+			StorageKey("usage_logs_by_api_key_id_created_at"),
 	}
 }
 
@@ -60,8 +54,8 @@ func (UsageLog) Fields() []ent.Field {
 		field.Int64("total_tokens").Default(0).Comment("Total number of tokens used"),
 
 		// Prompt tokens details from llm.PromptTokensDetails
-		field.Int64("prompt_audio_tokens").Default(0).Comment("Number of audio tokens in the prompt"),
-		field.Int64("prompt_cached_tokens").Default(0).Comment("Number of cached tokens in the prompt"),
+		field.Int64("prompt_audio_tokens").Default(0).Optional().Comment("Number of audio tokens in the prompt"),
+		field.Int64("prompt_cached_tokens").Default(0).Optional().Comment("Number of cached tokens in the prompt"),
 		field.Int64("prompt_write_cached_tokens").Default(0).Optional().Comment("Number of total write cache tokens, if 5m or 1h ttl variant is present, the field is the sum of 5m and 1h"),
 		field.Int64("prompt_write_cached_tokens_5m").Default(0).Optional().Comment("Number of token write cache with 5m ttl"),
 		field.Int64("prompt_write_cached_tokens_1h").Default(0).Optional().Comment("Number of token write cache with 1h ttl"),
