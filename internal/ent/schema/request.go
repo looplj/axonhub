@@ -24,19 +24,17 @@ func (Request) Mixin() []ent.Mixin {
 
 func (Request) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("api_key_id").
-			StorageKey("requests_by_api_key_id"),
-		index.Fields("project_id").
-			StorageKey("requests_by_project_id"),
-		index.Fields("channel_id").
-			StorageKey("requests_by_channel_id"),
-		index.Fields("trace_id").
-			StorageKey("requests_by_trace_id"),
+		index.Fields("api_key_id", "created_at").
+			StorageKey("requests_by_api_key_id_created_at"),
+		index.Fields("project_id", "created_at").
+			StorageKey("requests_by_project_id_created_at"),
+		index.Fields("channel_id", "created_at").
+			StorageKey("requests_by_channel_id_created_at"),
+		index.Fields("trace_id", "created_at").
+			StorageKey("requests_by_trace_id_created_at"),
 		// Performance indexes for dashboard queries
 		index.Fields("created_at").
 			StorageKey("requests_by_created_at"),
-		index.Fields("status").
-			StorageKey("requests_by_status"),
 	}
 }
 

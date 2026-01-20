@@ -1129,7 +1129,9 @@ type UpdateUsageLogInput struct {
 	PromptTokens                            *int64
 	CompletionTokens                        *int64
 	TotalTokens                             *int64
+	ClearPromptAudioTokens                  bool
 	PromptAudioTokens                       *int64
+	ClearPromptCachedTokens                 bool
 	PromptCachedTokens                      *int64
 	ClearPromptWriteCachedTokens            bool
 	PromptWriteCachedTokens                 *int64
@@ -1167,8 +1169,14 @@ func (i *UpdateUsageLogInput) Mutate(m *UsageLogMutation) {
 	if v := i.TotalTokens; v != nil {
 		m.SetTotalTokens(*v)
 	}
+	if i.ClearPromptAudioTokens {
+		m.ClearPromptAudioTokens()
+	}
 	if v := i.PromptAudioTokens; v != nil {
 		m.SetPromptAudioTokens(*v)
+	}
+	if i.ClearPromptCachedTokens {
+		m.ClearPromptCachedTokens()
 	}
 	if v := i.PromptCachedTokens; v != nil {
 		m.SetPromptCachedTokens(*v)

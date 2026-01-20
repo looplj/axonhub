@@ -497,12 +497,6 @@ func (_c *UsageLogCreate) check() error {
 	if _, ok := _c.mutation.TotalTokens(); !ok {
 		return &ValidationError{Name: "total_tokens", err: errors.New(`ent: missing required field "UsageLog.total_tokens"`)}
 	}
-	if _, ok := _c.mutation.PromptAudioTokens(); !ok {
-		return &ValidationError{Name: "prompt_audio_tokens", err: errors.New(`ent: missing required field "UsageLog.prompt_audio_tokens"`)}
-	}
-	if _, ok := _c.mutation.PromptCachedTokens(); !ok {
-		return &ValidationError{Name: "prompt_cached_tokens", err: errors.New(`ent: missing required field "UsageLog.prompt_cached_tokens"`)}
-	}
 	if _, ok := _c.mutation.Source(); !ok {
 		return &ValidationError{Name: "source", err: errors.New(`ent: missing required field "UsageLog.source"`)}
 	}
@@ -836,6 +830,12 @@ func (u *UsageLogUpsert) AddPromptAudioTokens(v int64) *UsageLogUpsert {
 	return u
 }
 
+// ClearPromptAudioTokens clears the value of the "prompt_audio_tokens" field.
+func (u *UsageLogUpsert) ClearPromptAudioTokens() *UsageLogUpsert {
+	u.SetNull(usagelog.FieldPromptAudioTokens)
+	return u
+}
+
 // SetPromptCachedTokens sets the "prompt_cached_tokens" field.
 func (u *UsageLogUpsert) SetPromptCachedTokens(v int64) *UsageLogUpsert {
 	u.Set(usagelog.FieldPromptCachedTokens, v)
@@ -851,6 +851,12 @@ func (u *UsageLogUpsert) UpdatePromptCachedTokens() *UsageLogUpsert {
 // AddPromptCachedTokens adds v to the "prompt_cached_tokens" field.
 func (u *UsageLogUpsert) AddPromptCachedTokens(v int64) *UsageLogUpsert {
 	u.Add(usagelog.FieldPromptCachedTokens, v)
+	return u
+}
+
+// ClearPromptCachedTokens clears the value of the "prompt_cached_tokens" field.
+func (u *UsageLogUpsert) ClearPromptCachedTokens() *UsageLogUpsert {
+	u.SetNull(usagelog.FieldPromptCachedTokens)
 	return u
 }
 
@@ -1264,6 +1270,13 @@ func (u *UsageLogUpsertOne) UpdatePromptAudioTokens() *UsageLogUpsertOne {
 	})
 }
 
+// ClearPromptAudioTokens clears the value of the "prompt_audio_tokens" field.
+func (u *UsageLogUpsertOne) ClearPromptAudioTokens() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearPromptAudioTokens()
+	})
+}
+
 // SetPromptCachedTokens sets the "prompt_cached_tokens" field.
 func (u *UsageLogUpsertOne) SetPromptCachedTokens(v int64) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
@@ -1282,6 +1295,13 @@ func (u *UsageLogUpsertOne) AddPromptCachedTokens(v int64) *UsageLogUpsertOne {
 func (u *UsageLogUpsertOne) UpdatePromptCachedTokens() *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.UpdatePromptCachedTokens()
+	})
+}
+
+// ClearPromptCachedTokens clears the value of the "prompt_cached_tokens" field.
+func (u *UsageLogUpsertOne) ClearPromptCachedTokens() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearPromptCachedTokens()
 	})
 }
 
@@ -1899,6 +1919,13 @@ func (u *UsageLogUpsertBulk) UpdatePromptAudioTokens() *UsageLogUpsertBulk {
 	})
 }
 
+// ClearPromptAudioTokens clears the value of the "prompt_audio_tokens" field.
+func (u *UsageLogUpsertBulk) ClearPromptAudioTokens() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearPromptAudioTokens()
+	})
+}
+
 // SetPromptCachedTokens sets the "prompt_cached_tokens" field.
 func (u *UsageLogUpsertBulk) SetPromptCachedTokens(v int64) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
@@ -1917,6 +1944,13 @@ func (u *UsageLogUpsertBulk) AddPromptCachedTokens(v int64) *UsageLogUpsertBulk 
 func (u *UsageLogUpsertBulk) UpdatePromptCachedTokens() *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.UpdatePromptCachedTokens()
+	})
+}
+
+// ClearPromptCachedTokens clears the value of the "prompt_cached_tokens" field.
+func (u *UsageLogUpsertBulk) ClearPromptCachedTokens() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearPromptCachedTokens()
 	})
 }
 

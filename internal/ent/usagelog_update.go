@@ -142,6 +142,12 @@ func (_u *UsageLogUpdate) AddPromptAudioTokens(v int64) *UsageLogUpdate {
 	return _u
 }
 
+// ClearPromptAudioTokens clears the value of the "prompt_audio_tokens" field.
+func (_u *UsageLogUpdate) ClearPromptAudioTokens() *UsageLogUpdate {
+	_u.mutation.ClearPromptAudioTokens()
+	return _u
+}
+
 // SetPromptCachedTokens sets the "prompt_cached_tokens" field.
 func (_u *UsageLogUpdate) SetPromptCachedTokens(v int64) *UsageLogUpdate {
 	_u.mutation.ResetPromptCachedTokens()
@@ -160,6 +166,12 @@ func (_u *UsageLogUpdate) SetNillablePromptCachedTokens(v *int64) *UsageLogUpdat
 // AddPromptCachedTokens adds value to the "prompt_cached_tokens" field.
 func (_u *UsageLogUpdate) AddPromptCachedTokens(v int64) *UsageLogUpdate {
 	_u.mutation.AddPromptCachedTokens(v)
+	return _u
+}
+
+// ClearPromptCachedTokens clears the value of the "prompt_cached_tokens" field.
+func (_u *UsageLogUpdate) ClearPromptCachedTokens() *UsageLogUpdate {
+	_u.mutation.ClearPromptCachedTokens()
 	return _u
 }
 
@@ -534,11 +546,17 @@ func (_u *UsageLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.AddedPromptAudioTokens(); ok {
 		_spec.AddField(usagelog.FieldPromptAudioTokens, field.TypeInt64, value)
 	}
+	if _u.mutation.PromptAudioTokensCleared() {
+		_spec.ClearField(usagelog.FieldPromptAudioTokens, field.TypeInt64)
+	}
 	if value, ok := _u.mutation.PromptCachedTokens(); ok {
 		_spec.SetField(usagelog.FieldPromptCachedTokens, field.TypeInt64, value)
 	}
 	if value, ok := _u.mutation.AddedPromptCachedTokens(); ok {
 		_spec.AddField(usagelog.FieldPromptCachedTokens, field.TypeInt64, value)
+	}
+	if _u.mutation.PromptCachedTokensCleared() {
+		_spec.ClearField(usagelog.FieldPromptCachedTokens, field.TypeInt64)
 	}
 	if value, ok := _u.mutation.PromptWriteCachedTokens(); ok {
 		_spec.SetField(usagelog.FieldPromptWriteCachedTokens, field.TypeInt64, value)
@@ -790,6 +808,12 @@ func (_u *UsageLogUpdateOne) AddPromptAudioTokens(v int64) *UsageLogUpdateOne {
 	return _u
 }
 
+// ClearPromptAudioTokens clears the value of the "prompt_audio_tokens" field.
+func (_u *UsageLogUpdateOne) ClearPromptAudioTokens() *UsageLogUpdateOne {
+	_u.mutation.ClearPromptAudioTokens()
+	return _u
+}
+
 // SetPromptCachedTokens sets the "prompt_cached_tokens" field.
 func (_u *UsageLogUpdateOne) SetPromptCachedTokens(v int64) *UsageLogUpdateOne {
 	_u.mutation.ResetPromptCachedTokens()
@@ -808,6 +832,12 @@ func (_u *UsageLogUpdateOne) SetNillablePromptCachedTokens(v *int64) *UsageLogUp
 // AddPromptCachedTokens adds value to the "prompt_cached_tokens" field.
 func (_u *UsageLogUpdateOne) AddPromptCachedTokens(v int64) *UsageLogUpdateOne {
 	_u.mutation.AddPromptCachedTokens(v)
+	return _u
+}
+
+// ClearPromptCachedTokens clears the value of the "prompt_cached_tokens" field.
+func (_u *UsageLogUpdateOne) ClearPromptCachedTokens() *UsageLogUpdateOne {
+	_u.mutation.ClearPromptCachedTokens()
 	return _u
 }
 
@@ -1212,11 +1242,17 @@ func (_u *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, err 
 	if value, ok := _u.mutation.AddedPromptAudioTokens(); ok {
 		_spec.AddField(usagelog.FieldPromptAudioTokens, field.TypeInt64, value)
 	}
+	if _u.mutation.PromptAudioTokensCleared() {
+		_spec.ClearField(usagelog.FieldPromptAudioTokens, field.TypeInt64)
+	}
 	if value, ok := _u.mutation.PromptCachedTokens(); ok {
 		_spec.SetField(usagelog.FieldPromptCachedTokens, field.TypeInt64, value)
 	}
 	if value, ok := _u.mutation.AddedPromptCachedTokens(); ok {
 		_spec.AddField(usagelog.FieldPromptCachedTokens, field.TypeInt64, value)
+	}
+	if _u.mutation.PromptCachedTokensCleared() {
+		_spec.ClearField(usagelog.FieldPromptCachedTokens, field.TypeInt64)
 	}
 	if value, ok := _u.mutation.PromptWriteCachedTokens(); ok {
 		_spec.SetField(usagelog.FieldPromptWriteCachedTokens, field.TypeInt64, value)
