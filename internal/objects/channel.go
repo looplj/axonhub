@@ -76,6 +76,9 @@ type ChannelSettings struct {
 
 	// TransformOptions configures the transform options for the channel.
 	TransformOptions TransformOptions `json:"transformOptions"`
+
+	// TestStream controls whether channel test requests use streaming.
+	TestStream *bool `json:"testStream,omitempty"`
 }
 
 type ChannelCredentials struct {

@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/scopes"
+	"github.com/samber/lo"
 )
 
 type Channel struct {
@@ -108,6 +109,7 @@ func (Channel) Fields() []ent.Field {
 		field.JSON("settings", &objects.ChannelSettings{}).
 			Default(&objects.ChannelSettings{
 				ModelMappings: []objects.ModelMapping{},
+				TestStream:    lo.ToPtr(true),
 			}).Optional().Annotations(),
 		field.Int("ordering_weight").Default(0).Comment("Ordering weight for display sorting").
 			Annotations(

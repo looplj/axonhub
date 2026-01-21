@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
 import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -39,6 +40,7 @@ import {
   getChannelTypeForApiFormat,
 } from '../data/config_providers';
 import { Channel, ChannelType, ApiFormat, createChannelInputSchema, updateChannelInputSchema } from '../data/schema';
+import { mergeChannelSettingsForUpdate } from '../utils/merge';
 
 interface Props {
   currentRow?: Channel;
@@ -252,6 +254,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             defaultTestModel: currentRow.defaultTestModel,
             tags: currentRow.tags || [],
             remark: currentRow.remark || '',
+            settings: {
+              ...(currentRow.settings ?? {}),
+              testStream: currentRow.settings?.testStream ?? true,
+            },
             credentials: {
               apiKey: currentRow.credentials?.apiKey || '',
               aws: {
@@ -277,7 +283,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               defaultTestModel: duplicateFromRow.defaultTestModel,
               tags: duplicateFromRow.tags || [],
               remark: duplicateFromRow.remark || '',
-              settings: duplicateFromRow.settings ?? undefined,
+              settings: {
+                ...(duplicateFromRow.settings ?? {}),
+                testStream: duplicateFromRow.settings?.testStream ?? true,
+              },
               credentials: {
                 apiKey: duplicateFromRow.credentials?.apiKey || '',
                 aws: {
@@ -314,7 +323,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               defaultTestModel: '',
               tags: [],
               remark: '',
-              settings: undefined,
+              settings: {
+                testStream: true,
+              },
             },
   });
 
@@ -589,13 +600,15 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         }
       }
 
-      if (isEdit && currentRow) {
-        // For edit mode, only include credentials if user actually entered new values
-        const updateInput = {
-          ...dataWithModels,
-          // type 不能更新
-          type: undefined,
-        };
+        if (isEdit && currentRow) {
+          // For edit mode, only include credentials if user actually entered new values
+          const updateInput = {
+            ...dataWithModels,
+            // type 不能更新
+            type: undefined,
+          };
+
+          updateInput.settings = mergeChannelSettingsForUpdate(currentRow.settings, values.settings ?? {});
 
         // Check if any credential fields have actual values
         const hasApiKey = values.credentials?.apiKey && values.credentials.apiKey.trim() !== '';
@@ -648,14 +661,15 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             apiKeys: apiKeys,
             supportedModels: supportedModels,
             defaultTestModel: valuesForSubmit.defaultTestModel as string,
-            settings,
+            settings: settings ? { ...settings, testStream: settings.testStream ?? true } : settings,
             policies,
           });
         } else {
           // Single create: use existing mutation
+          const createSettings = values.settings ?? duplicateFromRow?.settings ?? undefined;
           await createChannel.mutateAsync({
             ...(dataWithModels as z.infer<typeof createChannelInputSchema>),
-            settings: values.settings ?? duplicateFromRow?.settings ?? undefined,
+            settings: createSettings ? { ...createSettings, testStream: createSettings.testStream ?? true } : createSettings,
           });
         }
       }
@@ -1488,6 +1502,36 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 isControlled={true}
                                 data-testid='default-test-model-select'
                               />
+                              <FormMessage />
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name='settings.testStream'
+                        render={({ field }) => (
+                          <FormItem className='grid grid-cols-8 items-start gap-x-6'>
+                            <FormLabel className='col-span-2 pt-2 text-right font-medium'>
+                              {t('channels.dialogs.fields.testStream.label')}
+                            </FormLabel>
+                            <div className='col-span-6 space-y-1'>
+                              <div className='flex items-start gap-3'>
+                                <Switch
+                                  checked={field.value ?? true}
+                                  onCheckedChange={(checked) => field.onChange(checked)}
+                                  data-testid='channel-test-stream-toggle'
+                                />
+                                <div className='space-y-0.5'>
+                                  <FormLabel className='cursor-pointer text-sm font-normal'>
+                                    {t('channels.dialogs.fields.testStream.toggle')}
+                                  </FormLabel>
+                                  <p className='text-muted-foreground text-xs'>
+                                    {t('channels.dialogs.fields.testStream.description')}
+                                  </p>
+                                </div>
+                              </div>
                               <FormMessage />
                             </div>
                           </FormItem>

@@ -62,6 +62,7 @@ export function mergeChannelSettingsForUpdate(
     overrideHeaders: pick('overrideHeaders', existing?.overrideHeaders ?? []),
     proxy: pick('proxy', existing?.proxy ?? null),
     transformOptions: pick('transformOptions', existing?.transformOptions ?? undefined),
+    testStream: pick('testStream', existing?.testStream ?? true),
   };
 }
 

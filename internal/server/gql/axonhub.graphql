@@ -60,6 +60,7 @@ type ChannelSettings {
   overrideHeaders: [HeaderEntry!]
   proxy: ProxyConfig
   transformOptions: TransformOptions
+  testStream: Boolean
 }
 
 enum CapabilityPolicy {
@@ -91,6 +92,7 @@ input ChannelSettingsInput {
   overrideHeaders: [HeaderEntryInput!]
   proxy: ProxyConfigInput
   transformOptions: TransformOptionsInput
+  testStream: Boolean
 }
 
 type ChannelCredentials {

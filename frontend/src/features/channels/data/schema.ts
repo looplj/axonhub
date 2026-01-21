@@ -130,6 +130,7 @@ export const channelSettingsSchema = z.object({
   overrideHeaders: z.array(headerEntrySchema).optional().nullable(),
   proxy: proxyConfigSchema.optional().nullable(),
   transformOptions: transformOptionsSchema.optional(),
+  testStream: z.boolean().nullable().optional(),
 });
 export type ChannelSettings = z.infer<typeof channelSettingsSchema>;
 

@@ -3,7 +3,6 @@ package orchestrator
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -91,18 +90,18 @@ func (processor *TestChannelOrchestrator) TestChannel(
 	}
 
 	// Create a simple test request
+	selectedChannel, err := processor.channelService.GetChannel(ctx, channelID.ID)
+	if err != nil {
+		return nil, err
+	}
 	testModel := lo.FromPtr(modelID)
 	if testModel == "" {
-		channels, err := chatProcessor.channelSelector.Select(ctx, &llm.Request{})
-		if err != nil {
-			return nil, err
-		}
+		testModel = selectedChannel.DefaultTestModel
+	}
 
-		if len(channels) == 0 {
-			return nil, fmt.Errorf("%w: no channels available", biz.ErrInvalidModel)
-		}
-
-		testModel = channels[0].Channel.DefaultTestModel
+	testStream := true
+	if selectedChannel.Settings != nil && selectedChannel.Settings.TestStream != nil {
+		testStream = *selectedChannel.Settings.TestStream
 	}
 
 	llmRequest := &llm.Request{
@@ -130,8 +129,8 @@ func (processor *TestChannelOrchestrator) TestChannel(
 				},
 			},
 		},
-		MaxCompletionTokens: lo.ToPtr(int64(256)),
-		Stream:              lo.ToPtr(false),
+		MaxCompletionTokens: lo.ToPtr(int64(1)),
+		Stream:              lo.ToPtr(testStream),
 	}
 
 	body, err := json.Marshal(llmRequest)
@@ -162,7 +161,54 @@ func (processor *TestChannelOrchestrator) TestChannel(
 		}, nil
 	}
 
-	response, err := xjson.To[llm.Response](rawResponse.ChatCompletion.Body)
+	var responseBody []byte
+	if rawResponse.ChatCompletion != nil {
+		responseBody = rawResponse.ChatCompletion.Body
+	} else if rawResponse.ChatCompletionStream != nil {
+		var chunks []*httpclient.StreamEvent
+		for rawResponse.ChatCompletionStream.Next() {
+			if event := rawResponse.ChatCompletionStream.Current(); event != nil {
+				chunks = append(chunks, event)
+			}
+		}
+		streamErr := rawResponse.ChatCompletionStream.Err()
+		closeErr := rawResponse.ChatCompletionStream.Close()
+		if streamErr != nil {
+			return &TestChannelResult{
+				Latency: latency,
+				Success: false,
+				Message: lo.ToPtr(""),
+				Error:   lo.ToPtr(streamErr.Error()),
+			}, nil
+		}
+		if closeErr != nil {
+			return &TestChannelResult{
+				Latency: latency,
+				Success: false,
+				Message: lo.ToPtr(""),
+				Error:   lo.ToPtr(closeErr.Error()),
+			}, nil
+		}
+		var aggErr error
+		responseBody, _, aggErr = inbound.AggregateStreamChunks(ctx, chunks)
+		if aggErr != nil {
+			return &TestChannelResult{
+				Latency: latency,
+				Success: false,
+				Message: lo.ToPtr(""),
+				Error:   lo.ToPtr(aggErr.Error()),
+			}, nil
+		}
+	} else {
+		return &TestChannelResult{
+			Latency: latency,
+			Success: false,
+			Message: lo.ToPtr(""),
+			Error:   lo.ToPtr("No response body"),
+		}, nil
+	}
+
+	response, err := xjson.To[llm.Response](responseBody)
 	if err != nil {
 		return &TestChannelResult{
 			Latency: latency,
