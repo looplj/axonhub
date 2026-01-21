@@ -1645,7 +1645,7 @@ func TestModelService_GetModelByModelIDOrAlias(t *testing.T) {
 	t.Run("non-existent model returns error", func(t *testing.T) {
 		_, err := svc.GetModelByModelIDOrAlias(ctx, "non-existent", model.StatusEnabled)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "model not found")
+		require.True(t, ent.IsNotFound(err), "expected NotFoundError")
 	})
 
 	t.Run("status filter respected", func(t *testing.T) {

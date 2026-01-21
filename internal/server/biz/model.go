@@ -142,6 +142,7 @@ func (svc *ModelService) validateAliasUniqueness(ctx context.Context, aliases []
 		if _, exists := seen[alias]; exists {
 			return fmt.Errorf("alias '%s' is duplicated in input", alias)
 		}
+
 		seen[alias] = struct{}{}
 	}
 
