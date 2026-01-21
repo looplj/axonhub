@@ -1863,6 +1863,11 @@ func (_q *ModelQuery) collectField(ctx context.Context, oneNode bool, opCtx *gra
 				selectedFields = append(selectedFields, model.FieldRemark)
 				fieldSeen[model.FieldRemark] = struct{}{}
 			}
+		case "aliases":
+			if _, ok := fieldSeen[model.FieldAliases]; !ok {
+				selectedFields = append(selectedFields, model.FieldAliases)
+				fieldSeen[model.FieldAliases] = struct{}{}
+			}
 		case "id":
 		case "__typename":
 		default:
@@ -3379,6 +3384,11 @@ func (_q *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 			if _, ok := fieldSeen[request.FieldModelID]; !ok {
 				selectedFields = append(selectedFields, request.FieldModelID)
 				fieldSeen[request.FieldModelID] = struct{}{}
+			}
+		case "requestedModel":
+			if _, ok := fieldSeen[request.FieldRequestedModel]; !ok {
+				selectedFields = append(selectedFields, request.FieldRequestedModel)
+				fieldSeen[request.FieldRequestedModel] = struct{}{}
 			}
 		case "format":
 			if _, ok := fieldSeen[request.FieldFormat]; !ok {

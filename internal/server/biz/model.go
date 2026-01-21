@@ -95,11 +95,144 @@ func (svc *ModelService) validateModelSettings(settings *objects.ModelSettings) 
 	return nil
 }
 
+const (
+	// MaxAliasLength is the maximum length allowed for a model alias
+	MaxAliasLength = 255
+	// MaxAliasesPerModel is the maximum number of aliases allowed per model
+	MaxAliasesPerModel = 50
+)
+
+// validateAlias validates a single alias for format and length.
+func (svc *ModelService) validateAlias(alias string) error {
+	if alias == "" {
+		return fmt.Errorf("alias '%s' must not be empty", alias)
+	}
+
+	if len(alias) > MaxAliasLength {
+		return fmt.Errorf("alias '%s' exceeds maximum length of %d characters", alias, MaxAliasLength)
+	}
+
+	// Validate that alias contains only valid characters (alphanumeric, hyphens, dots, underscores)
+	// This matches the same pattern used for model_id validation
+	for i, r := range alias {
+		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '.' || r == '_') {
+			return fmt.Errorf("alias '%s' contains invalid character '%c' at position %d (must contain only alphanumeric characters, hyphens, dots, and underscores)", alias, r, i)
+		}
+	}
+
+	return nil
+}
+
+// validateAliasUniqueness checks that aliases are globally unique across all models.
+// Performance note: This function fetches all models to check alias uniqueness, which is O(n)
+// where n is the total number of models. For large datasets (>10,000 models), consider adding
+// database indexes on JSON fields or creating a separate model_aliases table with proper indexing.
+func (svc *ModelService) validateAliasUniqueness(ctx context.Context, aliases []string, excludeModelID string) error {
+	if len(aliases) == 0 {
+		return nil
+	}
+
+	if len(aliases) > MaxAliasesPerModel {
+		return fmt.Errorf("model cannot have more than %d aliases", MaxAliasesPerModel)
+	}
+
+	// Validate each alias format
+	for _, alias := range aliases {
+		if err := svc.validateAlias(alias); err != nil {
+			return err
+		}
+	}
+
+	// Query all models except the one being updated
+	query := svc.entFromContext(ctx).Model.Query()
+	if excludeModelID != "" {
+		query = query.Where(model.Not(model.ModelIDEQ(excludeModelID)))
+	}
+
+	models, err := query.All(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to query models: %w", err)
+	}
+
+	// Build set of all existing identifiers (model_ids and aliases)
+	existingIdentifiers := make(map[string]string) // identifier -> owner model_id
+
+	for _, m := range models {
+		// model_id itself is reserved (also serves as check for alias conflicts with model_ids)
+		existingIdentifiers[m.ModelID] = m.ModelID
+
+		// All aliases are reserved
+		if m.Aliases != nil {
+			for _, existingAlias := range m.Aliases {
+				existingIdentifiers[existingAlias] = m.ModelID
+			}
+		}
+	}
+
+	// Check for conflicts (this covers both alias-to-alias and alias-to-model_id conflicts)
+	for _, alias := range aliases {
+		if ownerModelID, exists := existingIdentifiers[alias]; exists {
+			return fmt.Errorf("alias '%s' conflicts with existing model/alias in model '%s'", alias, ownerModelID)
+		}
+	}
+
+	return nil
+}
+
+// GetModelByModelIDOrAlias retrieves a model by its model_id or any of its aliases.
+// Performance note: This function first checks for direct model_id match (O(1) with index),
+// then falls back to scanning all models for alias match (O(n)). For large datasets,
+// this may cause performance issues. Consider caching or database-level alias indexing.
+func (svc *ModelService) GetModelByModelIDOrAlias(ctx context.Context, modelIDOrAlias string, status model.Status) (*ent.Model, error) {
+	// First try direct model_id match (fast path, indexed)
+	m, err := svc.entFromContext(ctx).Model.Query().
+		Where(
+			model.ModelIDEQ(modelIDOrAlias),
+			model.StatusEQ(status),
+		).
+		First(ctx)
+
+	if err == nil {
+		return m, nil
+	}
+
+	if !ent.IsNotFound(err) {
+		return nil, fmt.Errorf("failed to query model by model_id: %w", err)
+	}
+
+	// If not found by model_id, search in aliases (slow path - O(n) operation)
+	allModels, err := svc.entFromContext(ctx).Model.Query().
+		Where(model.StatusEQ(status)).
+		All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query models: %w", err)
+	}
+
+	for _, mdl := range allModels {
+		if mdl.Aliases != nil {
+			for _, alias := range mdl.Aliases {
+				if alias == modelIDOrAlias {
+					return mdl, nil
+				}
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("model not found with model_id or alias: %s", modelIDOrAlias)
+}
+
 // CreateModel creates a new model with the provided input.
 func (svc *ModelService) CreateModel(ctx context.Context, input ent.CreateModelInput) (*ent.Model, error) {
 	// Validate regex patterns in settings if provided
 	if input.Settings != nil {
 		if err := svc.validateModelSettings(input.Settings); err != nil {
+			return nil, err
+		}
+	}
+
+	// Validate alias uniqueness
+	if input.Aliases != nil && len(input.Aliases) > 0 {
+		if err := svc.validateAliasUniqueness(ctx, input.Aliases, ""); err != nil {
 			return nil, err
 		}
 	}
@@ -128,6 +261,10 @@ func (svc *ModelService) CreateModel(ctx context.Context, input ent.CreateModelI
 
 	if input.Remark != nil {
 		createBuilder.SetRemark(*input.Remark)
+	}
+
+	if input.Aliases != nil {
+		createBuilder.SetAliases(input.Aliases)
 	}
 
 	model, err := createBuilder.Save(ctx)
@@ -178,6 +315,36 @@ func (svc *ModelService) BulkCreateModels(ctx context.Context, inputs []*ent.Cre
 		return nil, fmt.Errorf("models already exist: %v", existingKeys)
 	}
 
+	// Validate all aliases across all inputs
+	allAliases := make([]string, 0)
+	aliasesInBatch := make(map[string]string) // alias -> model_id that owns it in this batch
+
+	for _, input := range inputs {
+		if input.Aliases != nil {
+			for _, alias := range input.Aliases {
+				// Check for duplicates within the same batch
+				if existingModelID, exists := aliasesInBatch[alias]; exists {
+					return nil, fmt.Errorf("duplicate alias '%s' in batch: used by both '%s' and '%s'", alias, existingModelID, input.ModelID)
+				}
+				aliasesInBatch[alias] = input.ModelID
+
+				// Also check that alias doesn't conflict with a model_id in the batch
+				for _, otherInput := range inputs {
+					if otherInput.ModelID == alias {
+						return nil, fmt.Errorf("alias '%s' in model '%s' conflicts with model_id '%s' in the same batch", alias, input.ModelID, otherInput.ModelID)
+					}
+				}
+			}
+			allAliases = append(allAliases, input.Aliases...)
+		}
+	}
+
+	if len(allAliases) > 0 {
+		if err := svc.validateAliasUniqueness(ctx, allAliases, ""); err != nil {
+			return nil, err
+		}
+	}
+
 	// Create all models in a transaction
 	bulk := make([]*ent.ModelCreate, len(inputs))
 	for i, input := range inputs {
@@ -195,6 +362,10 @@ func (svc *ModelService) BulkCreateModels(ctx context.Context, inputs []*ent.Cre
 			createBuilder.SetRemark(*input.Remark)
 		}
 
+		if input.Aliases != nil {
+			createBuilder.SetAliases(input.Aliases)
+		}
+
 		bulk[i] = createBuilder
 	}
 
@@ -208,9 +379,22 @@ func (svc *ModelService) BulkCreateModels(ctx context.Context, inputs []*ent.Cre
 
 // UpdateModel updates an existing model with the provided input.
 func (svc *ModelService) UpdateModel(ctx context.Context, id int, input *ent.UpdateModelInput) (*ent.Model, error) {
+	// Get the current model to extract model_id for alias validation
+	currentModel, err := svc.entFromContext(ctx).Model.Get(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get model: %w", err)
+	}
+
 	// Validate regex patterns in settings if provided
 	if input.Settings != nil {
 		if err := svc.validateModelSettings(input.Settings); err != nil {
+			return nil, err
+		}
+	}
+
+	// Validate alias uniqueness if aliases are being updated
+	if input.Aliases != nil {
+		if err := svc.validateAliasUniqueness(ctx, input.Aliases, currentModel.ModelID); err != nil {
 			return nil, err
 		}
 	}
@@ -235,6 +419,10 @@ func (svc *ModelService) UpdateModel(ctx context.Context, id int, input *ent.Upd
 
 	if input.ClearRemark {
 		mut.ClearRemark()
+	}
+
+	if input.Aliases != nil {
+		mut.SetAliases(input.Aliases)
 	}
 
 	model, err := mut.Save(ctx)

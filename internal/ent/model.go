@@ -44,7 +44,9 @@ type Model struct {
 	// Status holds the value of the "status" field.
 	Status model.Status `json:"status,omitempty"`
 	// User-defined remark or note for the Model
-	Remark       *string `json:"remark,omitempty"`
+	Remark *string `json:"remark,omitempty"`
+	// Alternative names/aliases for the model, each alias must be globally unique
+	Aliases      []string `json:"aliases,omitempty"`
 	selectValues sql.SelectValues
 }
 
@@ -53,7 +55,7 @@ func (*Model) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case model.FieldModelCard, model.FieldSettings:
+		case model.FieldModelCard, model.FieldSettings, model.FieldAliases:
 			values[i] = new([]byte)
 		case model.FieldID, model.FieldDeletedAt:
 			values[i] = new(sql.NullInt64)
@@ -165,6 +167,14 @@ func (_m *Model) assignValues(columns []string, values []any) error {
 				_m.Remark = new(string)
 				*_m.Remark = value.String
 			}
+		case model.FieldAliases:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field aliases", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.Aliases); err != nil {
+					return fmt.Errorf("unmarshal field aliases: %w", err)
+				}
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -241,6 +251,9 @@ func (_m *Model) String() string {
 		builder.WriteString("remark=")
 		builder.WriteString(*v)
 	}
+	builder.WriteString(", ")
+	builder.WriteString("aliases=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Aliases))
 	builder.WriteByte(')')
 	return builder.String()
 }

@@ -92,6 +92,7 @@ const MODELS_QUERY = `
           status
           remark
           associatedChannelCount
+          aliases
         }
         cursor
       }
@@ -177,6 +178,7 @@ const CREATE_MODEL_MUTATION = `
       status
       remark
       associatedChannelCount
+      aliases
     }
   }
 `;
@@ -252,6 +254,7 @@ const BULK_CREATE_MODELS_MUTATION = `
       status
       remark
       associatedChannelCount
+      aliases
     }
   }
 `;
@@ -327,6 +330,7 @@ const UPDATE_MODEL_MUTATION = `
       status
       remark
       associatedChannelCount
+      aliases
     }
   }
 `;

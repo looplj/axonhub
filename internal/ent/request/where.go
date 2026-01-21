@@ -90,6 +90,11 @@ func ModelID(v string) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldModelID, v))
 }
 
+// RequestedModel applies equality check predicate on the "requested_model" field. It's identical to RequestedModelEQ.
+func RequestedModel(v string) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldRequestedModel, v))
+}
+
 // Format applies equality check predicate on the "format" field. It's identical to FormatEQ.
 func Format(v string) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldFormat, v))
@@ -398,6 +403,81 @@ func ModelIDEqualFold(v string) predicate.Request {
 // ModelIDContainsFold applies the ContainsFold predicate on the "model_id" field.
 func ModelIDContainsFold(v string) predicate.Request {
 	return predicate.Request(sql.FieldContainsFold(FieldModelID, v))
+}
+
+// RequestedModelEQ applies the EQ predicate on the "requested_model" field.
+func RequestedModelEQ(v string) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldRequestedModel, v))
+}
+
+// RequestedModelNEQ applies the NEQ predicate on the "requested_model" field.
+func RequestedModelNEQ(v string) predicate.Request {
+	return predicate.Request(sql.FieldNEQ(FieldRequestedModel, v))
+}
+
+// RequestedModelIn applies the In predicate on the "requested_model" field.
+func RequestedModelIn(vs ...string) predicate.Request {
+	return predicate.Request(sql.FieldIn(FieldRequestedModel, vs...))
+}
+
+// RequestedModelNotIn applies the NotIn predicate on the "requested_model" field.
+func RequestedModelNotIn(vs ...string) predicate.Request {
+	return predicate.Request(sql.FieldNotIn(FieldRequestedModel, vs...))
+}
+
+// RequestedModelGT applies the GT predicate on the "requested_model" field.
+func RequestedModelGT(v string) predicate.Request {
+	return predicate.Request(sql.FieldGT(FieldRequestedModel, v))
+}
+
+// RequestedModelGTE applies the GTE predicate on the "requested_model" field.
+func RequestedModelGTE(v string) predicate.Request {
+	return predicate.Request(sql.FieldGTE(FieldRequestedModel, v))
+}
+
+// RequestedModelLT applies the LT predicate on the "requested_model" field.
+func RequestedModelLT(v string) predicate.Request {
+	return predicate.Request(sql.FieldLT(FieldRequestedModel, v))
+}
+
+// RequestedModelLTE applies the LTE predicate on the "requested_model" field.
+func RequestedModelLTE(v string) predicate.Request {
+	return predicate.Request(sql.FieldLTE(FieldRequestedModel, v))
+}
+
+// RequestedModelContains applies the Contains predicate on the "requested_model" field.
+func RequestedModelContains(v string) predicate.Request {
+	return predicate.Request(sql.FieldContains(FieldRequestedModel, v))
+}
+
+// RequestedModelHasPrefix applies the HasPrefix predicate on the "requested_model" field.
+func RequestedModelHasPrefix(v string) predicate.Request {
+	return predicate.Request(sql.FieldHasPrefix(FieldRequestedModel, v))
+}
+
+// RequestedModelHasSuffix applies the HasSuffix predicate on the "requested_model" field.
+func RequestedModelHasSuffix(v string) predicate.Request {
+	return predicate.Request(sql.FieldHasSuffix(FieldRequestedModel, v))
+}
+
+// RequestedModelIsNil applies the IsNil predicate on the "requested_model" field.
+func RequestedModelIsNil() predicate.Request {
+	return predicate.Request(sql.FieldIsNull(FieldRequestedModel))
+}
+
+// RequestedModelNotNil applies the NotNil predicate on the "requested_model" field.
+func RequestedModelNotNil() predicate.Request {
+	return predicate.Request(sql.FieldNotNull(FieldRequestedModel))
+}
+
+// RequestedModelEqualFold applies the EqualFold predicate on the "requested_model" field.
+func RequestedModelEqualFold(v string) predicate.Request {
+	return predicate.Request(sql.FieldEqualFold(FieldRequestedModel, v))
+}
+
+// RequestedModelContainsFold applies the ContainsFold predicate on the "requested_model" field.
+func RequestedModelContainsFold(v string) predicate.Request {
+	return predicate.Request(sql.FieldContainsFold(FieldRequestedModel, v))
 }
 
 // FormatEQ applies the EQ predicate on the "format" field.

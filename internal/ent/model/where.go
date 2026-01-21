@@ -659,6 +659,16 @@ func RemarkContainsFold(v string) predicate.Model {
 	return predicate.Model(sql.FieldContainsFold(FieldRemark, v))
 }
 
+// AliasesIsNil applies the IsNil predicate on the "aliases" field.
+func AliasesIsNil() predicate.Model {
+	return predicate.Model(sql.FieldIsNull(FieldAliases))
+}
+
+// AliasesNotNil applies the NotNil predicate on the "aliases" field.
+func AliasesNotNil() predicate.Model {
+	return predicate.Model(sql.FieldNotNull(FieldAliases))
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Model) predicate.Model {
 	return predicate.Model(sql.AndPredicates(predicates...))

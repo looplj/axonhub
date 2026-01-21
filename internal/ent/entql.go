@@ -252,6 +252,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			model.FieldSettings:  {Type: field.TypeJSON, Column: model.FieldSettings},
 			model.FieldStatus:    {Type: field.TypeEnum, Column: model.FieldStatus},
 			model.FieldRemark:    {Type: field.TypeString, Column: model.FieldRemark},
+			model.FieldAliases:   {Type: field.TypeJSON, Column: model.FieldAliases},
 		},
 	}
 	graph.Nodes[9] = &sqlgraph.Node{
@@ -315,6 +316,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			request.FieldDataStorageID:              {Type: field.TypeInt, Column: request.FieldDataStorageID},
 			request.FieldSource:                     {Type: field.TypeEnum, Column: request.FieldSource},
 			request.FieldModelID:                    {Type: field.TypeString, Column: request.FieldModelID},
+			request.FieldRequestedModel:             {Type: field.TypeString, Column: request.FieldRequestedModel},
 			request.FieldFormat:                     {Type: field.TypeString, Column: request.FieldFormat},
 			request.FieldRequestHeaders:             {Type: field.TypeJSON, Column: request.FieldRequestHeaders},
 			request.FieldRequestBody:                {Type: field.TypeJSON, Column: request.FieldRequestBody},
@@ -2344,6 +2346,11 @@ func (f *ModelFilter) WhereRemark(p entql.StringP) {
 	f.Where(p.Field(model.FieldRemark))
 }
 
+// WhereAliases applies the entql json.RawMessage predicate on the aliases field.
+func (f *ModelFilter) WhereAliases(p entql.BytesP) {
+	f.Where(p.Field(model.FieldAliases))
+}
+
 // addPredicate implements the predicateAdder interface.
 func (_q *ProjectQuery) addPredicate(pred func(s *sql.Selector)) {
 	_q.predicates = append(_q.predicates, pred)
@@ -2722,6 +2729,11 @@ func (f *RequestFilter) WhereSource(p entql.StringP) {
 // WhereModelID applies the entql string predicate on the model_id field.
 func (f *RequestFilter) WhereModelID(p entql.StringP) {
 	f.Where(p.Field(request.FieldModelID))
+}
+
+// WhereRequestedModel applies the entql string predicate on the requested_model field.
+func (f *RequestFilter) WhereRequestedModel(p entql.StringP) {
+	f.Where(p.Field(request.FieldRequestedModel))
 }
 
 // WhereFormat applies the entql string predicate on the format field.

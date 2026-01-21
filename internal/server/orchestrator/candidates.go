@@ -115,9 +115,19 @@ func (s *DefaultSelector) selectChannelCadidates(ctx context.Context, req *llm.R
 }
 
 func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
-	model, err := s.ModelService.GetModelByModelID(ctx, req.Model, model.StatusEnabled)
+	// Use new method that checks both model_id and aliases
+	model, err := s.ModelService.GetModelByModelIDOrAlias(ctx, req.Model, model.StatusEnabled)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query AxonHub Model: %w", err)
+	}
+
+	// Log whether an alias was used
+	if model.ModelID != req.Model {
+		if log.DebugEnabled(ctx) {
+			log.Debug(ctx, "resolved model alias to canonical model_id",
+				log.String("alias", req.Model),
+				log.String("model_id", model.ModelID))
+		}
 	}
 
 	if model.Settings == nil || len(model.Settings.Associations) == 0 {
@@ -135,7 +145,8 @@ func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Re
 
 	if log.DebugEnabled(ctx) {
 		log.Debug(ctx, "selected model candidates for model",
-			log.String("model", req.Model),
+			log.String("requested_model", req.Model),
+			log.String("canonical_model_id", model.ModelID),
 			log.Int("count", len(candidates)),
 			log.Any("candidates", candidates),
 		)

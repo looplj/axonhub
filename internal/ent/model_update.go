@@ -10,6 +10,7 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/predicate"
@@ -145,6 +146,24 @@ func (_u *ModelUpdate) ClearRemark() *ModelUpdate {
 	return _u
 }
 
+// SetAliases sets the "aliases" field.
+func (_u *ModelUpdate) SetAliases(v []string) *ModelUpdate {
+	_u.mutation.SetAliases(v)
+	return _u
+}
+
+// AppendAliases appends value to the "aliases" field.
+func (_u *ModelUpdate) AppendAliases(v []string) *ModelUpdate {
+	_u.mutation.AppendAliases(v)
+	return _u
+}
+
+// ClearAliases clears the value of the "aliases" field.
+func (_u *ModelUpdate) ClearAliases() *ModelUpdate {
+	_u.mutation.ClearAliases()
+	return _u
+}
+
 // Mutation returns the ModelMutation object of the builder.
 func (_u *ModelUpdate) Mutation() *ModelMutation {
 	return _u.mutation
@@ -252,6 +271,17 @@ func (_u *ModelUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.RemarkCleared() {
 		_spec.ClearField(model.FieldRemark, field.TypeString)
+	}
+	if value, ok := _u.mutation.Aliases(); ok {
+		_spec.SetField(model.FieldAliases, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedAliases(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, model.FieldAliases, value)
+		})
+	}
+	if _u.mutation.AliasesCleared() {
+		_spec.ClearField(model.FieldAliases, field.TypeJSON)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
@@ -387,6 +417,24 @@ func (_u *ModelUpdateOne) SetNillableRemark(v *string) *ModelUpdateOne {
 // ClearRemark clears the value of the "remark" field.
 func (_u *ModelUpdateOne) ClearRemark() *ModelUpdateOne {
 	_u.mutation.ClearRemark()
+	return _u
+}
+
+// SetAliases sets the "aliases" field.
+func (_u *ModelUpdateOne) SetAliases(v []string) *ModelUpdateOne {
+	_u.mutation.SetAliases(v)
+	return _u
+}
+
+// AppendAliases appends value to the "aliases" field.
+func (_u *ModelUpdateOne) AppendAliases(v []string) *ModelUpdateOne {
+	_u.mutation.AppendAliases(v)
+	return _u
+}
+
+// ClearAliases clears the value of the "aliases" field.
+func (_u *ModelUpdateOne) ClearAliases() *ModelUpdateOne {
+	_u.mutation.ClearAliases()
 	return _u
 }
 
@@ -527,6 +575,17 @@ func (_u *ModelUpdateOne) sqlSave(ctx context.Context) (_node *Model, err error)
 	}
 	if _u.mutation.RemarkCleared() {
 		_spec.ClearField(model.FieldRemark, field.TypeString)
+	}
+	if value, ok := _u.mutation.Aliases(); ok {
+		_spec.SetField(model.FieldAliases, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedAliases(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, model.FieldAliases, value)
+		})
+	}
+	if _u.mutation.AliasesCleared() {
+		_spec.ClearField(model.FieldAliases, field.TypeJSON)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &Model{config: _u.config}

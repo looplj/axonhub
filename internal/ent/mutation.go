@@ -9494,6 +9494,8 @@ type ModelMutation struct {
 	settings      **objects.ModelSettings
 	status        *model.Status
 	remark        *string
+	aliases       *[]string
+	appendaliases []string
 	clearedFields map[string]struct{}
 	done          bool
 	oldValue      func(context.Context) (*Model, error)
@@ -10099,6 +10101,71 @@ func (m *ModelMutation) ResetRemark() {
 	delete(m.clearedFields, model.FieldRemark)
 }
 
+// SetAliases sets the "aliases" field.
+func (m *ModelMutation) SetAliases(s []string) {
+	m.aliases = &s
+	m.appendaliases = nil
+}
+
+// Aliases returns the value of the "aliases" field in the mutation.
+func (m *ModelMutation) Aliases() (r []string, exists bool) {
+	v := m.aliases
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAliases returns the old "aliases" field's value of the Model entity.
+// If the Model object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelMutation) OldAliases(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAliases is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAliases requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAliases: %w", err)
+	}
+	return oldValue.Aliases, nil
+}
+
+// AppendAliases adds s to the "aliases" field.
+func (m *ModelMutation) AppendAliases(s []string) {
+	m.appendaliases = append(m.appendaliases, s...)
+}
+
+// AppendedAliases returns the list of values that were appended to the "aliases" field in this mutation.
+func (m *ModelMutation) AppendedAliases() ([]string, bool) {
+	if len(m.appendaliases) == 0 {
+		return nil, false
+	}
+	return m.appendaliases, true
+}
+
+// ClearAliases clears the value of the "aliases" field.
+func (m *ModelMutation) ClearAliases() {
+	m.aliases = nil
+	m.appendaliases = nil
+	m.clearedFields[model.FieldAliases] = struct{}{}
+}
+
+// AliasesCleared returns if the "aliases" field was cleared in this mutation.
+func (m *ModelMutation) AliasesCleared() bool {
+	_, ok := m.clearedFields[model.FieldAliases]
+	return ok
+}
+
+// ResetAliases resets all changes to the "aliases" field.
+func (m *ModelMutation) ResetAliases() {
+	m.aliases = nil
+	m.appendaliases = nil
+	delete(m.clearedFields, model.FieldAliases)
+}
+
 // Where appends a list predicates to the ModelMutation builder.
 func (m *ModelMutation) Where(ps ...predicate.Model) {
 	m.predicates = append(m.predicates, ps...)
@@ -10133,7 +10200,7 @@ func (m *ModelMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ModelMutation) Fields() []string {
-	fields := make([]string, 0, 13)
+	fields := make([]string, 0, 14)
 	if m.created_at != nil {
 		fields = append(fields, model.FieldCreatedAt)
 	}
@@ -10173,6 +10240,9 @@ func (m *ModelMutation) Fields() []string {
 	if m.remark != nil {
 		fields = append(fields, model.FieldRemark)
 	}
+	if m.aliases != nil {
+		fields = append(fields, model.FieldAliases)
+	}
 	return fields
 }
 
@@ -10207,6 +10277,8 @@ func (m *ModelMutation) Field(name string) (ent.Value, bool) {
 		return m.Status()
 	case model.FieldRemark:
 		return m.Remark()
+	case model.FieldAliases:
+		return m.Aliases()
 	}
 	return nil, false
 }
@@ -10242,6 +10314,8 @@ func (m *ModelMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldStatus(ctx)
 	case model.FieldRemark:
 		return m.OldRemark(ctx)
+	case model.FieldAliases:
+		return m.OldAliases(ctx)
 	}
 	return nil, fmt.Errorf("unknown Model field %s", name)
 }
@@ -10342,6 +10416,13 @@ func (m *ModelMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetRemark(v)
 		return nil
+	case model.FieldAliases:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAliases(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Model field %s", name)
 }
@@ -10390,6 +10471,9 @@ func (m *ModelMutation) ClearedFields() []string {
 	if m.FieldCleared(model.FieldRemark) {
 		fields = append(fields, model.FieldRemark)
 	}
+	if m.FieldCleared(model.FieldAliases) {
+		fields = append(fields, model.FieldAliases)
+	}
 	return fields
 }
 
@@ -10406,6 +10490,9 @@ func (m *ModelMutation) ClearField(name string) error {
 	switch name {
 	case model.FieldRemark:
 		m.ClearRemark()
+		return nil
+	case model.FieldAliases:
+		m.ClearAliases()
 		return nil
 	}
 	return fmt.Errorf("unknown Model nullable field %s", name)
@@ -10453,6 +10540,9 @@ func (m *ModelMutation) ResetField(name string) error {
 		return nil
 	case model.FieldRemark:
 		m.ResetRemark()
+		return nil
+	case model.FieldAliases:
+		m.ResetAliases()
 		return nil
 	}
 	return fmt.Errorf("unknown Model field %s", name)
@@ -12879,6 +12969,7 @@ type RequestMutation struct {
 	updated_at                        *time.Time
 	source                            *request.Source
 	model_id                          *string
+	requested_model                   *string
 	format                            *string
 	request_headers                   *objects.JSONRawMessage
 	appendrequest_headers             objects.JSONRawMessage
@@ -13341,6 +13432,55 @@ func (m *RequestMutation) OldModelID(ctx context.Context) (v string, err error) 
 // ResetModelID resets all changes to the "model_id" field.
 func (m *RequestMutation) ResetModelID() {
 	m.model_id = nil
+}
+
+// SetRequestedModel sets the "requested_model" field.
+func (m *RequestMutation) SetRequestedModel(s string) {
+	m.requested_model = &s
+}
+
+// RequestedModel returns the value of the "requested_model" field in the mutation.
+func (m *RequestMutation) RequestedModel() (r string, exists bool) {
+	v := m.requested_model
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRequestedModel returns the old "requested_model" field's value of the Request entity.
+// If the Request object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestMutation) OldRequestedModel(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRequestedModel is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRequestedModel requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRequestedModel: %w", err)
+	}
+	return oldValue.RequestedModel, nil
+}
+
+// ClearRequestedModel clears the value of the "requested_model" field.
+func (m *RequestMutation) ClearRequestedModel() {
+	m.requested_model = nil
+	m.clearedFields[request.FieldRequestedModel] = struct{}{}
+}
+
+// RequestedModelCleared returns if the "requested_model" field was cleared in this mutation.
+func (m *RequestMutation) RequestedModelCleared() bool {
+	_, ok := m.clearedFields[request.FieldRequestedModel]
+	return ok
+}
+
+// ResetRequestedModel resets all changes to the "requested_model" field.
+func (m *RequestMutation) ResetRequestedModel() {
+	m.requested_model = nil
+	delete(m.clearedFields, request.FieldRequestedModel)
 }
 
 // SetFormat sets the "format" field.
@@ -14248,7 +14388,7 @@ func (m *RequestMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestMutation) Fields() []string {
-	fields := make([]string, 0, 20)
+	fields := make([]string, 0, 21)
 	if m.created_at != nil {
 		fields = append(fields, request.FieldCreatedAt)
 	}
@@ -14272,6 +14412,9 @@ func (m *RequestMutation) Fields() []string {
 	}
 	if m.model_id != nil {
 		fields = append(fields, request.FieldModelID)
+	}
+	if m.requested_model != nil {
+		fields = append(fields, request.FieldRequestedModel)
 	}
 	if m.format != nil {
 		fields = append(fields, request.FieldFormat)
@@ -14333,6 +14476,8 @@ func (m *RequestMutation) Field(name string) (ent.Value, bool) {
 		return m.Source()
 	case request.FieldModelID:
 		return m.ModelID()
+	case request.FieldRequestedModel:
+		return m.RequestedModel()
 	case request.FieldFormat:
 		return m.Format()
 	case request.FieldRequestHeaders:
@@ -14382,6 +14527,8 @@ func (m *RequestMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldSource(ctx)
 	case request.FieldModelID:
 		return m.OldModelID(ctx)
+	case request.FieldRequestedModel:
+		return m.OldRequestedModel(ctx)
 	case request.FieldFormat:
 		return m.OldFormat(ctx)
 	case request.FieldRequestHeaders:
@@ -14470,6 +14617,13 @@ func (m *RequestMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetModelID(v)
+		return nil
+	case request.FieldRequestedModel:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRequestedModel(v)
 		return nil
 	case request.FieldFormat:
 		v, ok := value.(string)
@@ -14621,6 +14775,9 @@ func (m *RequestMutation) ClearedFields() []string {
 	if m.FieldCleared(request.FieldDataStorageID) {
 		fields = append(fields, request.FieldDataStorageID)
 	}
+	if m.FieldCleared(request.FieldRequestedModel) {
+		fields = append(fields, request.FieldRequestedModel)
+	}
 	if m.FieldCleared(request.FieldRequestHeaders) {
 		fields = append(fields, request.FieldRequestHeaders)
 	}
@@ -14664,6 +14821,9 @@ func (m *RequestMutation) ClearField(name string) error {
 		return nil
 	case request.FieldDataStorageID:
 		m.ClearDataStorageID()
+		return nil
+	case request.FieldRequestedModel:
+		m.ClearRequestedModel()
 		return nil
 	case request.FieldRequestHeaders:
 		m.ClearRequestHeaders()
@@ -14717,6 +14877,9 @@ func (m *RequestMutation) ResetField(name string) error {
 		return nil
 	case request.FieldModelID:
 		m.ResetModelID()
+		return nil
+	case request.FieldRequestedModel:
+		m.ResetRequestedModel()
 		return nil
 	case request.FieldFormat:
 		m.ResetFormat()

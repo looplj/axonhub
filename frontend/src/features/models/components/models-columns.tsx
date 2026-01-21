@@ -154,7 +154,36 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       accessorKey: 'modelID',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('models.columns.modelId')} />,
       cell: ({ row }) => {
-        return <span className='text-sm font-medium'>{row.getValue('modelID')}</span>;
+        const aliases = row.original.aliases || [];
+
+        if (aliases.length === 0) {
+          return <span className='text-sm font-medium'>{row.getValue('modelID')}</span>;
+        }
+
+        return (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className='flex items-center gap-2'>
+                <span className='text-sm font-medium'>{row.getValue('modelID')}</span>
+                <Badge variant='outline' className='text-xs'>
+                  +{aliases.length}
+                </Badge>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side='right' className='max-w-xs'>
+              <div className='space-y-1'>
+                <p className='text-xs font-semibold'>{t('models.columns.aliases')}</p>
+                <div className='flex flex-wrap gap-1'>
+                  {aliases.map((alias: string, idx: number) => (
+                    <Badge key={idx} variant='secondary' className='text-xs'>
+                      {alias}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        );
       },
       meta: {
         className: 'min-w-48',
@@ -301,37 +330,37 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
     },
 
     {
-          accessorKey: 'createdAt',
-          header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.createdAt')} />,
-          cell: ({ row }) => {
-            const raw = row.getValue('createdAt') as unknown;
-            const date = raw instanceof Date ? raw : new Date(raw as string);
+      accessorKey: 'createdAt',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.createdAt')} />,
+      cell: ({ row }) => {
+        const raw = row.getValue('createdAt') as unknown;
+        const date = raw instanceof Date ? raw : new Date(raw as string);
 
-            if (Number.isNaN(date.getTime())) {
-              return <span className='text-muted-foreground text-xs'>-</span>;
-            }
+        if (Number.isNaN(date.getTime())) {
+          return <span className='text-muted-foreground text-xs'>-</span>;
+        }
 
-            return (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className='text-muted-foreground cursor-help text-sm'>{format(date, 'yyyy-MM-dd')}</div>
-                </TooltipTrigger>
-                <TooltipContent>{format(date, 'yyyy-MM-dd HH:mm:ss')}</TooltipContent>
-              </Tooltip>
-            );
-          },
-          enableSorting: true,
-          enableHiding: false,
-        },
-        {
-          id: 'actions',
-          header: t('common.columns.actions'),
-          cell: DataTableRowActions,
-          meta: {
-            className: 'w-[56px] min-w-[56px] pr-3 pl-0',
-          },
-          enableSorting: false,
-          enableHiding: false,
-        },
+        return (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className='text-muted-foreground cursor-help text-sm'>{format(date, 'yyyy-MM-dd')}</div>
+            </TooltipTrigger>
+            <TooltipContent>{format(date, 'yyyy-MM-dd HH:mm:ss')}</TooltipContent>
+          </Tooltip>
+        );
+      },
+      enableSorting: true,
+      enableHiding: false,
+    },
+    {
+      id: 'actions',
+      header: t('common.columns.actions'),
+      cell: DataTableRowActions,
+      meta: {
+        className: 'w-[56px] min-w-[56px] pr-3 pl-0',
+      },
+      enableSorting: false,
+      enableHiding: false,
+    },
   ];
 };

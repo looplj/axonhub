@@ -43,6 +43,7 @@ func NewChatCompletionOrchestrator(
 		Inbound:         inbound,
 		RequestService:  requestService,
 		ChannelService:  channelService,
+		ModelService:    modelService,
 		SystemService:   systemService,
 		UsageLogService: usageLogService,
 		QuotaService:    quotaService,
@@ -65,6 +66,7 @@ type ChatCompletionOrchestrator struct {
 	Inbound         transformer.Inbound
 	RequestService  *biz.RequestService
 	ChannelService  *biz.ChannelService
+	ModelService    *biz.ModelService
 	SystemService   *biz.SystemService
 	UsageLogService *biz.UsageLogService
 	QuotaService    *biz.QuotaService
@@ -146,6 +148,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		RequestService:        processor.RequestService,
 		UsageLogService:       processor.UsageLogService,
 		ChannelService:        processor.ChannelService,
+		ModelService:          processor.ModelService,
 		PromptProvider:        processor.PromptProvider,
 		RetryPolicyProvider:   processor.SystemService,
 		CandidateSelector:     processor.channelSelector,

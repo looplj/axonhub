@@ -40,6 +40,8 @@ export function ModelsActionDialog() {
   const [modelIdInput, setModelIdInput] = useState<string>('');
   const [modelIdSearchValue, setModelIdSearchValue] = useState<string>('');
   const [_selectedModelCard, setSelectedModelCard] = useState<ModelCard>({});
+  const [aliases, setAliases] = useState<string[]>([]);
+  const [aliasInput, setAliasInput] = useState<string>('');
 
   // 用于解决 Dialog 内 Popover 无法滚动的问题
   const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null);
@@ -104,6 +106,7 @@ export function ModelsActionDialog() {
       modelCard: {},
       settings: { associations: [] },
       remark: '',
+      aliases: [],
     },
   });
 
@@ -119,12 +122,14 @@ export function ModelsActionDialog() {
         modelCard: currentRow.modelCard,
         settings: currentRow.settings,
         remark: currentRow.remark || '',
+        aliases: currentRow.aliases || [],
       });
       setSelectedProvider(currentRow.developer);
       setDeveloperSearchValue(currentRow.developer);
       setModelIdInput(currentRow.modelID);
       setModelIdSearchValue(currentRow.modelID);
       setSelectedModelCard(currentRow.modelCard || {});
+      setAliases(currentRow.aliases || []);
     } else if (!isEdit) {
       form.reset({
         developer: '',
@@ -136,12 +141,14 @@ export function ModelsActionDialog() {
         modelCard: {},
         settings: { associations: [] },
         remark: '',
+        aliases: [],
       });
       setSelectedProvider('');
       setDeveloperSearchValue('');
       setModelIdInput('');
       setModelIdSearchValue('');
       setSelectedModelCard({});
+      setAliases([]);
     }
   }, [isEdit, currentRow, form, isOpen]);
 
@@ -168,9 +175,9 @@ export function ModelsActionDialog() {
       setModelIdInput(modelId);
       setModelIdSearchValue(modelId);
       form.setValue('modelID', modelId);
-  
+
       const selectedModel = selectedProviderModels.find((m: ProviderModel) => m.id === modelId);
-  
+
       if (selectedModel) {
         form.setValue('name', selectedModel.display_name || selectedModel.name || '');
         form.setValue('group', selectedModel.family || selectedProvider);
@@ -220,6 +227,7 @@ export function ModelsActionDialog() {
           modelCard: data.modelCard,
           settings: data.settings,
           remark: data.remark,
+          aliases: data.aliases,
         };
         await updateModel.mutateAsync({ id: currentRow.id, input: updateData });
       } else {
@@ -405,6 +413,84 @@ export function ModelsActionDialog() {
                       </FormItem>
                     )}
                   />
+
+                  {/* Aliases Field */}
+                  <FormField
+                    control={form.control}
+                    name='aliases'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('models.fields.aliases.label')}</FormLabel>
+                        <FormControl>
+                          <div className='space-y-2'>
+                            {/* Display current aliases as badges */}
+                            {aliases.length > 0 && (
+                              <div className='flex flex-wrap gap-2'>
+                                {aliases.map((alias, index) => (
+                                  <div
+                                    key={index}
+                                    className='inline-flex items-center gap-1 rounded-md border px-2.5 py-0.5 text-xs font-semibold'
+                                  >
+                                    {alias}
+                                    <button
+                                      type='button'
+                                      onClick={() => {
+                                        const newAliases = aliases.filter((_, i) => i !== index);
+                                        setAliases(newAliases);
+                                        field.onChange(newAliases);
+                                      }}
+                                      className='hover:text-destructive ml-1'
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Input for adding new alias */}
+                            <div className='flex gap-2'>
+                              <Input
+                                placeholder={t('models.fields.aliases.placeholder')}
+                                value={aliasInput}
+                                onChange={(e) => setAliasInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    const trimmed = aliasInput.trim();
+                                    if (trimmed && !aliases.includes(trimmed)) {
+                                      const newAliases = [...aliases, trimmed];
+                                      setAliases(newAliases);
+                                      field.onChange(newAliases);
+                                      setAliasInput('');
+                                    }
+                                  }
+                                }}
+                              />
+                              <Button
+                                type='button'
+                                variant='outline'
+                                onClick={() => {
+                                  const trimmed = aliasInput.trim();
+                                  if (trimmed && !aliases.includes(trimmed)) {
+                                    const newAliases = [...aliases, trimmed];
+                                    setAliases(newAliases);
+                                    field.onChange(newAliases);
+                                    setAliasInput('');
+                                  }
+                                }}
+                              >
+                                {t('models.fields.aliases.add')}
+                              </Button>
+                            </div>
+
+                            <p className='text-muted-foreground text-sm'>{t('models.fields.aliases.description')}</p>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
               </div>
 
@@ -559,7 +645,7 @@ export function ModelsActionDialog() {
 
                   <div className='space-y-2'>
                     <FormLabel>{t('models.modelCard.cost')} ($/M tokens)</FormLabel>
-                    <p className='text-xs text-muted-foreground'>{t('models.modelCard.costHint')}</p>
+                    <p className='text-muted-foreground text-xs'>{t('models.modelCard.costHint')}</p>
                     <div className='grid grid-cols-2 gap-2'>
                       <FormField
                         control={form.control}

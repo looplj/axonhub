@@ -13,6 +13,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -115,6 +116,7 @@ func (s *RequestService) CreateRequest(
 	llmRequest *llm.Request,
 	httpRequest *httpclient.Request,
 	format llm.APIFormat,
+	modelService *ModelService,
 ) (*ent.Request, error) {
 	// Get project ID from context.
 	// If project ID is not found, use zero.
@@ -160,10 +162,21 @@ func (s *RequestService) CreateRequest(
 		log.Warn(ctx, "Failed to get default data storage, request will be created without data storage", log.Cause(err))
 	}
 
+	// Resolve model alias to canonical model_id if possible
+	// If resolution fails (model not found), we'll use the requested name for both fields
+	canonicalModelID := llmRequest.Model
+	if modelService != nil {
+		if resolvedModel, err := modelService.GetModelByModelIDOrAlias(ctx, llmRequest.Model, model.StatusEnabled); err == nil {
+			canonicalModelID = resolvedModel.ModelID
+		}
+		// If error, just use the original model name (it will fail later in candidate selection)
+	}
+
 	client := s.entFromContext(ctx)
 	mut := client.Request.Create().
 		SetProjectID(projectID).
-		SetModelID(llmRequest.Model).
+		SetModelID(canonicalModelID).         // Store canonical model_id after alias resolution
+		SetRequestedModel(llmRequest.Model).  // Store the original model name/alias from client
 		SetFormat(string(format)).
 		SetSource(contexts.GetSourceOrDefault(ctx, request.SourceAPI)).
 		SetStatus(request.StatusProcessing).
@@ -228,6 +241,7 @@ func (s *RequestService) CreateRequest(
 
 	return req, nil
 }
+
 
 // CreateRequestExecution creates a new request execution record.
 func (s *RequestService) CreateRequestExecution(

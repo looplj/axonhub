@@ -43,6 +43,8 @@ const (
 	FieldStatus = "status"
 	// FieldRemark holds the string denoting the remark field in the database.
 	FieldRemark = "remark"
+	// FieldAliases holds the string denoting the aliases field in the database.
+	FieldAliases = "aliases"
 	// Table holds the table name of the model in the database.
 	Table = "models"
 )
@@ -63,6 +65,7 @@ var Columns = []string{
 	FieldSettings,
 	FieldStatus,
 	FieldRemark,
+	FieldAliases,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -92,6 +95,8 @@ var (
 	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultDeletedAt holds the default value on creation for the "deleted_at" field.
 	DefaultDeletedAt int
+	// DefaultAliases holds the default value on creation for the "aliases" field.
+	DefaultAliases []string
 )
 
 // Type defines the type for the "type" enum field.

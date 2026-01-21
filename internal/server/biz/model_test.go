@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"entgo.io/ent/dialect"
@@ -1455,5 +1456,201 @@ func TestFindUnassociatedChannels(t *testing.T) {
 	t.Run("no channels", func(t *testing.T) {
 		result := findUnassociatedChannels([]*ent.Channel{}, []*objects.ModelAssociation{})
 		require.Empty(t, result)
+	})
+}
+
+func TestModelService_AliasValidation(t *testing.T) {
+	client := enttest.Open(t, dialect.SQLite, "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	svc := &ModelService{
+		AbstractService: &AbstractService{
+			db: client,
+		},
+	}
+
+	t.Run("create model with valid aliases", func(t *testing.T) {
+		model, err := svc.CreateModel(ctx, ent.CreateModelInput{
+			Developer: "openai",
+			ModelID:   "gpt-4-test",
+			Name:      "GPT-4 Test",
+			Icon:      "OpenAI",
+			Group:     "openai",
+			Type:      func() *model.Type { t := model.TypeChat; return &t }(),
+			ModelCard: &objects.ModelCard{},
+			Settings:  &objects.ModelSettings{},
+			Aliases:   []string{"gpt4", "gpt-4"},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, model)
+		require.Equal(t, []string{"gpt4", "gpt-4"}, model.Aliases)
+	})
+
+	t.Run("create model with duplicate alias fails", func(t *testing.T) {
+		// First model with alias
+		_, err := svc.CreateModel(ctx, ent.CreateModelInput{
+			Developer: "openai",
+			ModelID:   "gpt-4-alpha",
+			Name:      "GPT-4 Alpha",
+			Icon:      "OpenAI",
+			Group:     "openai",
+			Type:      func() *model.Type { t := model.TypeChat; return &t }(),
+			ModelCard: &objects.ModelCard{},
+			Settings:  &objects.ModelSettings{},
+			Aliases:   []string{"gpt-4-alias"},
+		})
+		require.NoError(t, err)
+
+		// Second model with same alias should fail
+		_, err = svc.CreateModel(ctx, ent.CreateModelInput{
+			Developer: "openai",
+			ModelID:   "gpt-4-beta",
+			Name:      "GPT-4 Beta",
+			Icon:      "OpenAI",
+			Group:     "openai",
+			Type:      func() *model.Type { t := model.TypeChat; return &t }(),
+			ModelCard: &objects.ModelCard{},
+			Settings:  &objects.ModelSettings{},
+			Aliases:   []string{"gpt-4-alias"},
+		})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "conflicts with existing model/alias")
+	})
+
+	t.Run("alias conflicts with existing model_id", func(t *testing.T) {
+		// Create a model
+		_, err := svc.CreateModel(ctx, ent.CreateModelInput{
+			Developer: "openai",
+			ModelID:   "existing-model",
+			Name:      "Existing Model",
+			Icon:      "OpenAI",
+		Group:     "openai",
+			Type:      func() *model.Type { t := model.TypeChat; return &t }(),
+			ModelCard: &objects.ModelCard{},
+			Settings:  &objects.ModelSettings{},
+		})
+		require.NoError(t, err)
+
+	// Try to create another model with alias matching first model's model_id
+		_, err = svc.CreateModel(ctx, ent.CreateModelInput{
+		Developer: "openai",
+			ModelID:   "another-model",
+			Name:      "Another Model",
+			Icon:      "OpenAI",
+			Group:     "openai",
+			Type:      func() *model.Type { t := model.TypeChat; return &t }(),
+			ModelCard: &objects.ModelCard{},
+			Settings:  &objects.ModelSettings{},
+			Aliases:   []string{"existing-model"},
+		})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "conflicts")
+	})
+
+	t.Run("update model with new aliases", func(t *testing.T) {
+	// Create model
+		m, err := svc.CreateModel(ctx, ent.CreateModelInput{
+			Developer: "anthropic",
+			ModelID:   "claude-test",
+			Name:      "Claude Test",
+			Icon:      "Anthropic",
+			Group:     "anthropic",
+			Type:      func() *model.Type { t := model.TypeChat; return &t }(),
+			ModelCard: &objects.ModelCard{},
+			Settings:  &objects.ModelSettings{},
+		})
+		require.NoError(t, err)
+
+		// Update with aliases
+		updated, err := svc.UpdateModel(ctx, m.ID, &ent.UpdateModelInput{
+			Aliases: []string{"claude", "claude-v1"},
+		})
+		require.NoError(t, err)
+		require.Equal(t, []string{"claude", "claude-v1"}, updated.Aliases)
+	})
+
+	t.Run("too many aliases rejected", func(t *testing.T) {
+		aliases := make([]string, 51) // Max is 50
+	for i := range aliases {
+			aliases[i] = fmt.Sprintf("alias-%d", i)
+		}
+
+	_, err := svc.CreateModel(ctx, ent.CreateModelInput{
+			Developer: "test",
+			ModelID:   "too-many-aliases",
+			Name:      "Too Many Aliases",
+			Icon:      "Test",
+			Group:     "test",
+			Type:      func() *model.Type { t := model.TypeChat; return &t }(),
+			ModelCard: &objects.ModelCard{},
+			Settings:  &objects.ModelSettings{},
+			Aliases:   aliases,
+		})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "cannot have more than")
+	})
+}
+
+func TestModelService_GetModelByModelIDOrAlias(t *testing.T) {
+	client := enttest.Open(t, dialect.SQLite, "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	svc := &ModelService{
+		AbstractService: &AbstractService{
+			db: client,
+		},
+	}
+
+	// Create a model with aliases
+	_, err := svc.CreateModel(ctx, ent.CreateModelInput{
+		Developer: "openai",
+		ModelID:   "gpt-4-turbo",
+	Name:      "GPT-4 Turbo",
+		Icon:      "OpenAI",
+		Group:     "openai",
+		Type:      func() *model.Type { t := model.TypeChat; return &t }(),
+		ModelCard: &objects.ModelCard{},
+		Settings:  &objects.ModelSettings{},
+		Aliases:   []string{"gpt4-turbo", "gpt-4-turbo-preview"},
+	})
+	require.NoError(t, err)
+
+	// Enable the model for testing
+	client.Model.Update().Where(model.ModelID("gpt-4-turbo")).SetStatus(model.StatusEnabled).SaveX(ctx)
+
+	t.Run("find by model_id", func(t *testing.T) {
+		m, err := svc.GetModelByModelIDOrAlias(ctx, "gpt-4-turbo", model.StatusEnabled)
+		require.NoError(t, err)
+		require.Equal(t, "gpt-4-turbo", m.ModelID)
+	})
+
+	t.Run("find by first alias", func(t *testing.T) {
+	m, err := svc.GetModelByModelIDOrAlias(ctx, "gpt4-turbo", model.StatusEnabled)
+		require.NoError(t, err)
+		require.Equal(t, "gpt-4-turbo", m.ModelID)
+	})
+
+	t.Run("find by second alias", func(t *testing.T) {
+		m, err := svc.GetModelByModelIDOrAlias(ctx, "gpt-4-turbo-preview", model.StatusEnabled)
+		require.NoError(t, err)
+		require.Equal(t, "gpt-4-turbo", m.ModelID)
+	})
+
+	t.Run("non-existent model returns error", func(t *testing.T) {
+		_, err := svc.GetModelByModelIDOrAlias(ctx, "non-existent", model.StatusEnabled)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "model not found")
+	})
+
+	t.Run("status filter respected", func(t *testing.T) {
+		// Try to find with wrong status
+		_, err := svc.GetModelByModelIDOrAlias(ctx, "gpt-4-turbo", model.StatusDisabled)
+		require.Error(t, err)
 	})
 }

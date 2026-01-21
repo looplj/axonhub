@@ -122,6 +122,7 @@ export const modelSchema = z.object({
   status: modelStatusSchema,
   remark: z.string().optional().nullable(),
   associatedChannelCount: z.number(),
+  aliases: z.array(z.string()).optional().default([]),
 });
 export type Model = z.infer<typeof modelSchema>;
 
@@ -136,6 +137,7 @@ export const createModelInputSchema = z.object({
   settings: modelSettingsSchema.optional(),
   status: modelStatusSchema.optional(),
   remark: z.string().optional(),
+  aliases: z.array(z.string()).optional(),
 });
 export type CreateModelInput = z.infer<typeof createModelInputSchema>;
 
@@ -147,6 +149,7 @@ export const updateModelInputSchema = z.object({
   settings: modelSettingsSchema.optional(),
   status: modelStatusSchema.optional(),
   remark: z.string().optional().nullable(),
+  aliases: z.array(z.string()).optional(),
 });
 export type UpdateModelInput = z.infer<typeof updateModelInputSchema>;
 

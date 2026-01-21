@@ -53,6 +53,10 @@ func (Model) Fields() []ent.Field {
 		field.String("remark").
 			Optional().Nillable().
 			Comment("User-defined remark or note for the Model"),
+		field.JSON("aliases", []string{}).
+			Optional().
+			Default([]string{}).
+			Comment("Alternative names/aliases for the model, each alias must be globally unique"),
 	}
 }
 

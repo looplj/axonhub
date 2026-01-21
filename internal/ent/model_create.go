@@ -149,6 +149,12 @@ func (_c *ModelCreate) SetNillableRemark(v *string) *ModelCreate {
 	return _c
 }
 
+// SetAliases sets the "aliases" field.
+func (_c *ModelCreate) SetAliases(v []string) *ModelCreate {
+	_c.mutation.SetAliases(v)
+	return _c
+}
+
 // Mutation returns the ModelMutation object of the builder.
 func (_c *ModelCreate) Mutation() *ModelMutation {
 	return _c.mutation
@@ -211,6 +217,10 @@ func (_c *ModelCreate) defaults() error {
 	if _, ok := _c.mutation.Status(); !ok {
 		v := model.DefaultStatus
 		_c.mutation.SetStatus(v)
+	}
+	if _, ok := _c.mutation.Aliases(); !ok {
+		v := model.DefaultAliases
+		_c.mutation.SetAliases(v)
 	}
 	return nil
 }
@@ -341,6 +351,10 @@ func (_c *ModelCreate) createSpec() (*Model, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Remark(); ok {
 		_spec.SetField(model.FieldRemark, field.TypeString, value)
 		_node.Remark = &value
+	}
+	if value, ok := _c.mutation.Aliases(); ok {
+		_spec.SetField(model.FieldAliases, field.TypeJSON, value)
+		_node.Aliases = value
 	}
 	return _node, _spec
 }
@@ -511,6 +525,24 @@ func (u *ModelUpsert) UpdateRemark() *ModelUpsert {
 // ClearRemark clears the value of the "remark" field.
 func (u *ModelUpsert) ClearRemark() *ModelUpsert {
 	u.SetNull(model.FieldRemark)
+	return u
+}
+
+// SetAliases sets the "aliases" field.
+func (u *ModelUpsert) SetAliases(v []string) *ModelUpsert {
+	u.Set(model.FieldAliases, v)
+	return u
+}
+
+// UpdateAliases sets the "aliases" field to the value that was provided on create.
+func (u *ModelUpsert) UpdateAliases() *ModelUpsert {
+	u.SetExcluded(model.FieldAliases)
+	return u
+}
+
+// ClearAliases clears the value of the "aliases" field.
+func (u *ModelUpsert) ClearAliases() *ModelUpsert {
+	u.SetNull(model.FieldAliases)
 	return u
 }
 
@@ -705,6 +737,27 @@ func (u *ModelUpsertOne) UpdateRemark() *ModelUpsertOne {
 func (u *ModelUpsertOne) ClearRemark() *ModelUpsertOne {
 	return u.Update(func(s *ModelUpsert) {
 		s.ClearRemark()
+	})
+}
+
+// SetAliases sets the "aliases" field.
+func (u *ModelUpsertOne) SetAliases(v []string) *ModelUpsertOne {
+	return u.Update(func(s *ModelUpsert) {
+		s.SetAliases(v)
+	})
+}
+
+// UpdateAliases sets the "aliases" field to the value that was provided on create.
+func (u *ModelUpsertOne) UpdateAliases() *ModelUpsertOne {
+	return u.Update(func(s *ModelUpsert) {
+		s.UpdateAliases()
+	})
+}
+
+// ClearAliases clears the value of the "aliases" field.
+func (u *ModelUpsertOne) ClearAliases() *ModelUpsertOne {
+	return u.Update(func(s *ModelUpsert) {
+		s.ClearAliases()
 	})
 }
 
@@ -1065,6 +1118,27 @@ func (u *ModelUpsertBulk) UpdateRemark() *ModelUpsertBulk {
 func (u *ModelUpsertBulk) ClearRemark() *ModelUpsertBulk {
 	return u.Update(func(s *ModelUpsert) {
 		s.ClearRemark()
+	})
+}
+
+// SetAliases sets the "aliases" field.
+func (u *ModelUpsertBulk) SetAliases(v []string) *ModelUpsertBulk {
+	return u.Update(func(s *ModelUpsert) {
+		s.SetAliases(v)
+	})
+}
+
+// UpdateAliases sets the "aliases" field to the value that was provided on create.
+func (u *ModelUpsertBulk) UpdateAliases() *ModelUpsertBulk {
+	return u.Update(func(s *ModelUpsert) {
+		s.UpdateAliases()
+	})
+}
+
+// ClearAliases clears the value of the "aliases" field.
+func (u *ModelUpsertBulk) ClearAliases() *ModelUpsertBulk {
+	return u.Update(func(s *ModelUpsert) {
+		s.ClearAliases()
 	})
 }
 

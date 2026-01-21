@@ -34,6 +34,8 @@ const (
 	FieldSource = "source"
 	// FieldModelID holds the string denoting the model_id field in the database.
 	FieldModelID = "model_id"
+	// FieldRequestedModel holds the string denoting the requested_model field in the database.
+	FieldRequestedModel = "requested_model"
 	// FieldFormat holds the string denoting the format field in the database.
 	FieldFormat = "format"
 	// FieldRequestHeaders holds the string denoting the request_headers field in the database.
@@ -136,6 +138,7 @@ var Columns = []string{
 	FieldDataStorageID,
 	FieldSource,
 	FieldModelID,
+	FieldRequestedModel,
 	FieldFormat,
 	FieldRequestHeaders,
 	FieldRequestBody,
@@ -283,6 +286,11 @@ func BySource(opts ...sql.OrderTermOption) OrderOption {
 // ByModelID orders the results by the model_id field.
 func ByModelID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldModelID, opts...).ToFunc()
+}
+
+// ByRequestedModel orders the results by the requested_model field.
+func ByRequestedModel(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRequestedModel, opts...).ToFunc()
 }
 
 // ByFormat orders the results by the format field.

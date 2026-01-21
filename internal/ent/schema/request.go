@@ -58,6 +58,10 @@ func (Request) Fields() []ent.Field {
 			Comment("Data Storage ID that this request belongs to"),
 		field.Enum("source").Values("api", "playground", "test").Default("api").Immutable(),
 		field.String("model_id").Immutable(),
+		field.String("requested_model").
+			Optional().
+			Immutable().
+			Comment("The model name/alias used by the client in the original request"),
 		// The format of the request, e.g: openai/chat_completions, claude/messages, openai/response.
 		field.String("format").Immutable().Default("openai/chat_completions"),
 		// Request headers

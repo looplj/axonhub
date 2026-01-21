@@ -134,6 +134,20 @@ func (_c *RequestCreate) SetModelID(v string) *RequestCreate {
 	return _c
 }
 
+// SetRequestedModel sets the "requested_model" field.
+func (_c *RequestCreate) SetRequestedModel(v string) *RequestCreate {
+	_c.mutation.SetRequestedModel(v)
+	return _c
+}
+
+// SetNillableRequestedModel sets the "requested_model" field if the given value is not nil.
+func (_c *RequestCreate) SetNillableRequestedModel(v *string) *RequestCreate {
+	if v != nil {
+		_c.SetRequestedModel(*v)
+	}
+	return _c
+}
+
 // SetFormat sets the "format" field.
 func (_c *RequestCreate) SetFormat(v string) *RequestCreate {
 	_c.mutation.SetFormat(v)
@@ -478,6 +492,10 @@ func (_c *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.ModelID(); ok {
 		_spec.SetField(request.FieldModelID, field.TypeString, value)
 		_node.ModelID = value
+	}
+	if value, ok := _c.mutation.RequestedModel(); ok {
+		_spec.SetField(request.FieldRequestedModel, field.TypeString, value)
+		_node.RequestedModel = value
 	}
 	if value, ok := _c.mutation.Format(); ok {
 		_spec.SetField(request.FieldFormat, field.TypeString, value)
@@ -885,6 +903,9 @@ func (u *RequestUpsertOne) UpdateNewValues() *RequestUpsertOne {
 		}
 		if _, exists := u.create.mutation.ModelID(); exists {
 			s.SetIgnore(request.FieldModelID)
+		}
+		if _, exists := u.create.mutation.RequestedModel(); exists {
+			s.SetIgnore(request.FieldRequestedModel)
 		}
 		if _, exists := u.create.mutation.Format(); exists {
 			s.SetIgnore(request.FieldFormat)
@@ -1314,6 +1335,9 @@ func (u *RequestUpsertBulk) UpdateNewValues() *RequestUpsertBulk {
 			}
 			if _, exists := b.mutation.ModelID(); exists {
 				s.SetIgnore(request.FieldModelID)
+			}
+			if _, exists := b.mutation.RequestedModel(); exists {
+				s.SetIgnore(request.FieldRequestedModel)
 			}
 			if _, exists := b.mutation.Format(); exists {
 				s.SetIgnore(request.FieldFormat)

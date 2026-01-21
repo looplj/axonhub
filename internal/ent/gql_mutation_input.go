@@ -391,6 +391,7 @@ type CreateModelInput struct {
 	ModelCard *objects.ModelCard
 	Settings  *objects.ModelSettings
 	Remark    *string
+	Aliases   []string
 }
 
 // Mutate applies the CreateModelInput on the ModelMutation builder.
@@ -412,6 +413,9 @@ func (i *CreateModelInput) Mutate(m *ModelMutation) {
 	if v := i.Remark; v != nil {
 		m.SetRemark(*v)
 	}
+	if v := i.Aliases; v != nil {
+		m.SetAliases(v)
+	}
 }
 
 // SetInput applies the change-set in the CreateModelInput on the ModelCreate builder.
@@ -422,14 +426,17 @@ func (c *ModelCreate) SetInput(i CreateModelInput) *ModelCreate {
 
 // UpdateModelInput represents a mutation input for updating models.
 type UpdateModelInput struct {
-	Name        *string
-	Icon        *string
-	Group       *string
-	ModelCard   *objects.ModelCard
-	Settings    *objects.ModelSettings
-	Status      *model.Status
-	ClearRemark bool
-	Remark      *string
+	Name          *string
+	Icon          *string
+	Group         *string
+	ModelCard     *objects.ModelCard
+	Settings      *objects.ModelSettings
+	Status        *model.Status
+	ClearRemark   bool
+	Remark        *string
+	ClearAliases  bool
+	Aliases       []string
+	AppendAliases []string
 }
 
 // Mutate applies the UpdateModelInput on the ModelMutation builder.
@@ -457,6 +464,15 @@ func (i *UpdateModelInput) Mutate(m *ModelMutation) {
 	}
 	if v := i.Remark; v != nil {
 		m.SetRemark(*v)
+	}
+	if i.ClearAliases {
+		m.ClearAliases()
+	}
+	if v := i.Aliases; v != nil {
+		m.SetAliases(v)
+	}
+	if i.AppendAliases != nil {
+		m.AppendAliases(i.Aliases)
 	}
 }
 
@@ -638,6 +654,7 @@ func (c *PromptUpdateOne) SetInput(i UpdatePromptInput) *PromptUpdateOne {
 type CreateRequestInput struct {
 	Source                     *request.Source
 	ModelID                    string
+	RequestedModel             *string
 	Format                     *string
 	RequestHeaders             objects.JSONRawMessage
 	RequestBody                objects.JSONRawMessage
@@ -662,6 +679,9 @@ func (i *CreateRequestInput) Mutate(m *RequestMutation) {
 		m.SetSource(*v)
 	}
 	m.SetModelID(i.ModelID)
+	if v := i.RequestedModel; v != nil {
+		m.SetRequestedModel(*v)
+	}
 	if v := i.Format; v != nil {
 		m.SetFormat(*v)
 	}

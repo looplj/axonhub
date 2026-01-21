@@ -5615,6 +5615,23 @@ type RequestWhereInput struct {
 	ModelIDEqualFold    *string  `json:"modelIDEqualFold,omitempty"`
 	ModelIDContainsFold *string  `json:"modelIDContainsFold,omitempty"`
 
+	// "requested_model" field predicates.
+	RequestedModel             *string  `json:"requestedModel,omitempty"`
+	RequestedModelNEQ          *string  `json:"requestedModelNEQ,omitempty"`
+	RequestedModelIn           []string `json:"requestedModelIn,omitempty"`
+	RequestedModelNotIn        []string `json:"requestedModelNotIn,omitempty"`
+	RequestedModelGT           *string  `json:"requestedModelGT,omitempty"`
+	RequestedModelGTE          *string  `json:"requestedModelGTE,omitempty"`
+	RequestedModelLT           *string  `json:"requestedModelLT,omitempty"`
+	RequestedModelLTE          *string  `json:"requestedModelLTE,omitempty"`
+	RequestedModelContains     *string  `json:"requestedModelContains,omitempty"`
+	RequestedModelHasPrefix    *string  `json:"requestedModelHasPrefix,omitempty"`
+	RequestedModelHasSuffix    *string  `json:"requestedModelHasSuffix,omitempty"`
+	RequestedModelIsNil        bool     `json:"requestedModelIsNil,omitempty"`
+	RequestedModelNotNil       bool     `json:"requestedModelNotNil,omitempty"`
+	RequestedModelEqualFold    *string  `json:"requestedModelEqualFold,omitempty"`
+	RequestedModelContainsFold *string  `json:"requestedModelContainsFold,omitempty"`
+
 	// "format" field predicates.
 	Format             *string  `json:"format,omitempty"`
 	FormatNEQ          *string  `json:"formatNEQ,omitempty"`
@@ -5992,6 +6009,51 @@ func (i *RequestWhereInput) P() (predicate.Request, error) {
 	}
 	if i.ModelIDContainsFold != nil {
 		predicates = append(predicates, request.ModelIDContainsFold(*i.ModelIDContainsFold))
+	}
+	if i.RequestedModel != nil {
+		predicates = append(predicates, request.RequestedModelEQ(*i.RequestedModel))
+	}
+	if i.RequestedModelNEQ != nil {
+		predicates = append(predicates, request.RequestedModelNEQ(*i.RequestedModelNEQ))
+	}
+	if len(i.RequestedModelIn) > 0 {
+		predicates = append(predicates, request.RequestedModelIn(i.RequestedModelIn...))
+	}
+	if len(i.RequestedModelNotIn) > 0 {
+		predicates = append(predicates, request.RequestedModelNotIn(i.RequestedModelNotIn...))
+	}
+	if i.RequestedModelGT != nil {
+		predicates = append(predicates, request.RequestedModelGT(*i.RequestedModelGT))
+	}
+	if i.RequestedModelGTE != nil {
+		predicates = append(predicates, request.RequestedModelGTE(*i.RequestedModelGTE))
+	}
+	if i.RequestedModelLT != nil {
+		predicates = append(predicates, request.RequestedModelLT(*i.RequestedModelLT))
+	}
+	if i.RequestedModelLTE != nil {
+		predicates = append(predicates, request.RequestedModelLTE(*i.RequestedModelLTE))
+	}
+	if i.RequestedModelContains != nil {
+		predicates = append(predicates, request.RequestedModelContains(*i.RequestedModelContains))
+	}
+	if i.RequestedModelHasPrefix != nil {
+		predicates = append(predicates, request.RequestedModelHasPrefix(*i.RequestedModelHasPrefix))
+	}
+	if i.RequestedModelHasSuffix != nil {
+		predicates = append(predicates, request.RequestedModelHasSuffix(*i.RequestedModelHasSuffix))
+	}
+	if i.RequestedModelIsNil {
+		predicates = append(predicates, request.RequestedModelIsNil())
+	}
+	if i.RequestedModelNotNil {
+		predicates = append(predicates, request.RequestedModelNotNil())
+	}
+	if i.RequestedModelEqualFold != nil {
+		predicates = append(predicates, request.RequestedModelEqualFold(*i.RequestedModelEqualFold))
+	}
+	if i.RequestedModelContainsFold != nil {
+		predicates = append(predicates, request.RequestedModelContainsFold(*i.RequestedModelContainsFold))
 	}
 	if i.Format != nil {
 		predicates = append(predicates, request.FormatEQ(*i.Format))
