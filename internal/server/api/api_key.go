@@ -61,7 +61,7 @@ func (h *APIKeyHandlers) CreateLLMAPIKey(c *gin.Context) {
 
 	var req CreateLLMAPIKeyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		JSONError(c, http.StatusBadRequest, errors.New("Invalid request format"))
+JSONError(c, http.StatusBadRequest, err)
 		return
 	}
 
