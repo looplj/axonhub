@@ -42,7 +42,7 @@ func NewChatCompletionOrchestrator(
 
 	adaptiveLoadBalancer := NewLoadBalancer(systemService, channelService, strategies...)
 	weightedLoadBalancer := NewLoadBalancer(systemService, channelService, NewWeightStrategy(), NewRandomStrategy())
-	healthAwareLoadBalancer := NewLoadBalancer(systemService, channelService, NewHealthAwareStrategy(modelHealthManager))
+	healthAwareLoadBalancer := NewLoadBalancer(systemService, channelService, NewCascadingFailoverStrategy(modelHealthManager), NewWeightStrategy(), NewRandomStrategy())
 
 	return &ChatCompletionOrchestrator{
 		Inbound:         inbound,

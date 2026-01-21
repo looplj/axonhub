@@ -14,29 +14,29 @@ type ModelHealthProvider interface {
 	GetModelHealth(ctx context.Context, channelID int, modelID string) *biz.ModelHealthStats
 }
 
-// HealthAwareStrategy implements a load balancing strategy that considers model health status.
+// CascadingFailoverStrategy implements a load balancing strategy that considers model health status.
 // It adjusts channel scores based on the health of the requested model on each channel.
-type HealthAwareStrategy struct {
+type CascadingFailoverStrategy struct {
 	healthProvider ModelHealthProvider
 	maxScore       float64
 }
 
-// NewHealthAwareStrategy creates a new health-aware load balancing strategy.
-func NewHealthAwareStrategy(healthProvider ModelHealthProvider) *HealthAwareStrategy {
-	return &HealthAwareStrategy{
+// NewCascadingFailoverStrategy creates a new cascading failover load balancing strategy.
+func NewCascadingFailoverStrategy(healthProvider ModelHealthProvider) *CascadingFailoverStrategy {
+	return &CascadingFailoverStrategy{
 		healthProvider: healthProvider,
 		maxScore:       200.0, // Higher than other strategies to prioritize health
 	}
 }
 
 // Name returns the strategy name.
-func (s *HealthAwareStrategy) Name() string {
-	return "HealthAware"
+func (s *CascadingFailoverStrategy) Name() string {
+	return "CascadingFailover"
 }
 
 // Score calculates the score based on model health status.
 // This is the production path with minimal overhead.
-func (s *HealthAwareStrategy) Score(ctx context.Context, channel *biz.Channel) float64 {
+func (s *CascadingFailoverStrategy) Score(ctx context.Context, channel *biz.Channel) float64 {
 	// Get the requested model from context
 	modelID := getRequestedModelFromContext(ctx)
 	if modelID == "" {
@@ -50,22 +50,15 @@ func (s *HealthAwareStrategy) Score(ctx context.Context, channel *biz.Channel) f
 	// Convert weight to score (0.0 to maxScore)
 	score := effectiveWeight * s.maxScore
 
-	// When multiple channels have the same health status, use channel weight as secondary factor
-	// This ensures that channel weights still matter for load distribution
+	// Add a small random factor (0-1) to ensure even distribution when health status is equal
+	// This prevents always selecting the same channel when all channels have the same health status
+	// Use time-based randomization to ensure different scores on each request
 	if effectiveWeight > 0 {
-		// Add channel weight as a factor (scaled to 0-10 range)
-		// This gives more weight to higher priority channels while still allowing distribution
-		weightFactor := float64(channel.OrderingWeight) / 100.0 // Scale to 0-10 range typically
-		score += weightFactor
-
-		// Add a small random factor (0-1) to ensure even distribution when health and weight are equal
-		// This prevents always selecting the same channel when all channels are healthy
-		// Use time-based randomization to ensure different scores on each request
 		now := time.Now()
 		// Use channel ID and current time to create a distributed but changing random factor
 		// This ensures that the same channel gets different scores on different requests
 		randomSeed := float64(channel.ID)*0.1 + float64(now.UnixNano()%1000000000)/1000000000.0
-		randomFactor := (randomSeed - float64(int(randomSeed))) // Get fractional part (0-1)
+		randomFactor := randomSeed - float64(int(randomSeed)) // Get fractional part (0-1)
 		score += randomFactor
 	}
 
@@ -73,7 +66,7 @@ func (s *HealthAwareStrategy) Score(ctx context.Context, channel *biz.Channel) f
 }
 
 // ScoreWithDebug calculates the score with detailed debug information.
-func (s *HealthAwareStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel) (float64, StrategyScore) {
+func (s *CascadingFailoverStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel) (float64, StrategyScore) {
 	startTime := time.Now()
 
 	// Get the requested model from context
