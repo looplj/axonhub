@@ -393,6 +393,11 @@ func (p *PersistentOutboundTransformer) GetCurrentChannel() *biz.Channel {
 	return p.state.CurrentCandidate.Channel
 }
 
+// GetRequestedModel returns the originally requested model ID.
+func (p *PersistentOutboundTransformer) GetRequestedModel() string {
+	return p.state.OriginalModel
+}
+
 // HasMoreChannels returns true if there are more candidates available for retry.
 // It implements the pipeline.Retryable interface.
 func (p *PersistentOutboundTransformer) HasMoreChannels() bool {

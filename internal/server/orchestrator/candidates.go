@@ -128,6 +128,14 @@ func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Re
 		return []*ChannelModelsCandidate{}, nil
 	}
 
+	if log.DebugEnabled(ctx) {
+		log.Debug(ctx, "model associations found",
+			log.String("model", req.Model),
+			log.Int("association_count", len(model.Settings.Associations)),
+			log.Any("associations", model.Settings.Associations),
+		)
+	}
+
 	candidates, err := s.resolveAssociations(ctx, model, model.Settings.Associations)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve associations: %w", err)
@@ -151,6 +159,14 @@ func (s *DefaultSelector) resolveAssociations(ctx context.Context, model *ent.Mo
 	channels := s.ChannelService.GetEnabledChannels()
 	if len(channels) == 0 {
 		return []*ChannelModelsCandidate{}, nil
+	}
+
+	if log.DebugEnabled(ctx) {
+		log.Debug(ctx, "resolving associations",
+			log.String("model", model.ModelID),
+			log.Int("enabled_channels", len(channels)),
+			log.Any("channel_names", lo.Map(channels, func(ch *biz.Channel, _ int) string { return ch.Name })),
+		)
 	}
 
 	// Use model ID as cache key
@@ -189,6 +205,27 @@ func (s *DefaultSelector) resolveAssociations(ctx context.Context, model *ent.Mo
 
 	// Cache miss or invalid, resolve associations
 	connections := biz.MatchAssociations(associations, channels)
+
+	if log.DebugEnabled(ctx) {
+		log.Debug(ctx, "association matching results",
+			log.String("model", model.ModelID),
+			log.Int("connections_found", len(connections)),
+			log.Any("connections", lo.Map(connections, func(conn *biz.ModelChannelConnection, _ int) map[string]any {
+				return map[string]any{
+					"channel_id":   conn.Channel.ID,
+					"channel_name": conn.Channel.Name,
+					"priority":     conn.Priority,
+					"model_count":  len(conn.Models),
+					"models": lo.Map(conn.Models, func(entry biz.ChannelModelEntry, _ int) map[string]any {
+						return map[string]any{
+							"request_model": entry.RequestModel,
+							"actual_model":  entry.ActualModel,
+						}
+					}),
+				}
+			})),
+		)
+	}
 
 	// Build channel lookup map for O(1) access
 	channelMap := make(map[int]*biz.Channel, len(channels))
@@ -235,6 +272,21 @@ func (s *DefaultSelector) resolveAssociations(ctx context.Context, model *ent.Mo
 			seenActualModels[entry.ActualModel] = struct{}{}
 			candidates[idx].Models = append(candidates[idx].Models, entry)
 		}
+	}
+
+	if log.DebugEnabled(ctx) {
+		log.Debug(ctx, "final candidates after processing",
+			log.String("model", model.ModelID),
+			log.Int("final_candidates", len(candidates)),
+			log.Any("final_candidates_detail", lo.Map(candidates, func(candidate *ChannelModelsCandidate, _ int) map[string]any {
+				return map[string]any{
+					"channel_id":   candidate.Channel.ID,
+					"channel_name": candidate.Channel.Name,
+					"priority":     candidate.Priority,
+					"model_count":  len(candidate.Models),
+				}
+			})),
+		)
 	}
 
 	// Update cache

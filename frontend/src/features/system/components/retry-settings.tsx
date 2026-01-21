@@ -145,6 +145,7 @@ export function RetrySettings() {
                   <SelectContent>
                     <SelectItem value='adaptive'>{t('system.retry.loadBalancerStrategy.options.adaptive')}</SelectItem>
                     <SelectItem value='weighted'>{t('system.retry.loadBalancerStrategy.options.weighted')}</SelectItem>
+                    <SelectItem value='health-aware'>{t('system.retry.loadBalancerStrategy.options.healthAware')}</SelectItem>
                   </SelectContent>
                 </Select>
 
