@@ -61,7 +61,6 @@ func TestAPIKeyService_GetAPIKey(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	// Create a test user
 	hashedPassword, err := HashPassword("test-password")
@@ -1009,6 +1008,8 @@ func TestAPIKeyService_CreateLLMAPIKey(t *testing.T) {
 		SetScopes([]string{string(scopes.ScopeWriteAPIKeys)}).
 		Save(ctx)
 	require.NoError(t, err)
+
+	ctx = contexts.WithAPIKey(ctx, ownerAPIKey)
 
 	t.Run("creates llm api key", func(t *testing.T) {
 		apiKey, err := apiKeyService.CreateLLMAPIKey(ctx, ownerAPIKey, "  LLM Key  ")

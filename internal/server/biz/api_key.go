@@ -80,7 +80,6 @@ func (s *APIKeyService) CreateLLMAPIKey(ctx context.Context, owner *ent.APIKey, 
 		return nil, ErrAPIKeyNameRequired
 	}
 
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	client := s.entFromContext(ctx)
 
 	generatedKey, err := GenerateAPIKey()
