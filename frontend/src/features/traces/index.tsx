@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
-import { DateRange } from 'react-day-picker';
 import { useTranslation } from 'react-i18next';
-import { buildDateRangeWhereClause } from '@/utils/date-range';
+import { buildDateRangeWhereClause, type DateTimeRangeValue } from '@/utils/date-range';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import useInterval from '@/hooks/useInterval';
@@ -16,7 +15,7 @@ function TracesContent() {
     defaultPageSize: 20,
     pageSizeStorageKey: 'traces-table-page-size',
   });
-  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [dateRange, setDateRange] = useState<DateTimeRangeValue | undefined>();
   const [traceIdFilter, setTraceIdFilter] = useState<string>('');
   const [autoRefresh, setAutoRefresh] = useState(false);
   const debouncedTraceIdFilter = useDebounce(traceIdFilter, 300);
@@ -72,7 +71,7 @@ function TracesContent() {
   };
 
   const handleDateRangeChange = useCallback(
-    (range: DateRange | undefined) => {
+    (range: DateTimeRangeValue | undefined) => {
       setDateRange(range);
       resetCursor();
     },

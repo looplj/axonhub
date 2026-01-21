@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { Cross2Icon } from '@radix-ui/react-icons';
 import { Table } from '@tanstack/react-table';
 import { RefreshCw, X } from 'lucide-react';
-import { DateRange } from 'react-day-picker';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,11 +12,12 @@ import { useUsageLogPermissions } from '../../../gql/useUsageLogPermissions';
 import { useQueryChannels } from '../../channels/data';
 import { UsageLogSource } from '../data/schema';
 import { DataTableViewOptions } from './data-table-view-options';
+import type { DateTimeRangeValue } from '@/utils/date-range';
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>;
-  dateRange?: DateRange;
-  onDateRangeChange?: (range: DateRange | undefined) => void;
+  dateRange?: DateTimeRangeValue;
+  onDateRangeChange?: (range: DateTimeRangeValue | undefined) => void;
   onRefresh?: () => void;
   showRefresh?: boolean;
   autoRefresh?: boolean;
@@ -37,7 +37,8 @@ export function DataTableToolbar<TData>({
   const permissions = useUsageLogPermissions();
   const { canViewChannels } = permissions;
 
-  const isFiltered = table.getState().columnFilters.length > 0 || !!dateRange;
+  const hasDateRange = !!dateRange?.from || !!dateRange?.to;
+  const isFiltered = table.getState().columnFilters.length > 0 || hasDateRange;
 
   // Fetch channels data if user has permission
   const { data: channelsData } = useQueryChannels(
@@ -94,7 +95,7 @@ export function DataTableToolbar<TData>({
           <DataTableFacetedFilter column={table.getColumn('channel')} title={t('usageLogs.filters.channel')} options={channelOptions} />
         )}
         <DateRangePicker value={dateRange} onChange={onDateRangeChange} />
-        {dateRange && (
+        {hasDateRange && (
           <Button variant='ghost' onClick={() => onDateRangeChange?.(undefined)} className='h-8 px-2' size='sm'>
             <X className='h-4 w-4' />
           </Button>
