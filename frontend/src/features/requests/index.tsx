@@ -75,12 +75,18 @@ function RequestsContent() {
     }
   };
 
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize);
+    resetCursor();
+  };
+
   const handleStatusFilterChange = useCallback(
     (filters: string[]) => {
       setStatusFilter(filters);
       resetCursor();
     },
-    [resetCursor]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
   const handleSourceFilterChange = useCallback(
@@ -88,7 +94,8 @@ function RequestsContent() {
       setSourceFilter(filters);
       resetCursor();
     },
-    [resetCursor]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
   const handleChannelFilterChange = useCallback(
@@ -96,7 +103,8 @@ function RequestsContent() {
       setChannelFilter(filters);
       resetCursor();
     },
-    [resetCursor]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
   const handleApiKeyFilterChange = useCallback(
@@ -104,7 +112,8 @@ function RequestsContent() {
       setApiKeyFilter(filters);
       resetCursor();
     },
-    [resetCursor]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
   const handleDateRangeChange = useCallback(
@@ -112,7 +121,8 @@ function RequestsContent() {
       setDateRange(range);
       resetCursor();
     },
-    [resetCursor]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
   return (
@@ -130,7 +140,7 @@ function RequestsContent() {
         dateRange={dateRange}
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
-        onPageSizeChange={setPageSize}
+        onPageSizeChange={handlePageSizeChange}
         onStatusFilterChange={handleStatusFilterChange}
         onSourceFilterChange={handleSourceFilterChange}
         onChannelFilterChange={handleChannelFilterChange}

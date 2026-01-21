@@ -95,7 +95,8 @@ function PromptsContent() {
       setNameFilter(filter);
       resetCursor();
     },
-    [resetCursor, setNameFilter]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [setNameFilter]
   );
 
   const canWrite = hasScope('write_prompts');

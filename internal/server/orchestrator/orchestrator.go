@@ -34,10 +34,11 @@ func NewChatCompletionOrchestrator(
 		NewErrorAwareStrategy(channelService),                         // Priority 2: Health and error rate
 		NewWeightRoundRobinStrategy(channelService),                   // Priority 3: Weight round robin
 		NewConnectionAwareStrategy(channelService, connectionTracker), // Priority 4: Connection count
+		NewRandomStrategy(),                                           // Priority 5: Random tie-breaker
 	}
 
 	adaptiveLoadBalancer := NewLoadBalancer(systemService, channelService, strategies...)
-	weightedLoadBalancer := NewLoadBalancer(systemService, channelService, NewWeightStrategy())
+	weightedLoadBalancer := NewLoadBalancer(systemService, channelService, NewWeightStrategy(), NewRandomStrategy())
 
 	return &ChatCompletionOrchestrator{
 		Inbound:         inbound,

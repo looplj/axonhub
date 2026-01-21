@@ -257,8 +257,8 @@ export function RequestsTable({
             )}
           </TableBody>
         </Table>
+        </div>
       </div>
-    </div>
       <div className='mt-4 flex-shrink-0'>
         <ServerSidePagination
           pageInfo={pageInfo}

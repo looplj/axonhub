@@ -18,6 +18,8 @@ globs: frontend/**/*.ts, frontend/**/*.tsx
 
 7. Use `extractNumberID` to extract int ID from the GUID.
 
+8. DO NOT RUN LINT AND BUILD COMMANDS.
+
 ## i18n Rules
 
 1. MUST add i18n keys in `locales/*.json` files if creating new keys in code.

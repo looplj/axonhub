@@ -54,7 +54,8 @@ function RolesContent() {
   // Reset cursor when filters change
   React.useEffect(() => {
     resetCursor();
-  }, [debouncedSearchFilter, resetCursor]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearchFilter]);
 
   const handleNextPage = () => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {

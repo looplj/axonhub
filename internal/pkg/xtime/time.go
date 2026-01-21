@@ -2,6 +2,6 @@ package xtime
 
 import "time"
 
-func Now() time.Time {
+func UTCNow() time.Time {
 	return time.Now().UTC()
 }

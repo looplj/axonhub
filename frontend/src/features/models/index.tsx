@@ -101,7 +101,8 @@ function ModelsContent() {
       setNameFilter(filter);
       resetCursor();
     },
-    [resetCursor, setNameFilter]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [setNameFilter]
   );
 
   const columns = useMemo(() => createColumns(t, modelPermissions.canWrite), [t, modelPermissions.canWrite]);

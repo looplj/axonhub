@@ -182,7 +182,8 @@ function ChannelsContent() {
       setNameFilter(filter);
       resetCursor();
     },
-    [resetCursor]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
   const handleTypeFilterChange = useCallback(
@@ -190,7 +191,8 @@ function ChannelsContent() {
       setTypeFilter(filters);
       resetCursor();
     },
-    [resetCursor]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
   const handleTabChange = useCallback(
@@ -199,7 +201,8 @@ function ChannelsContent() {
       setTypeFilter([]);
       resetCursor();
     },
-    [setSelectedTypeTab, setTypeFilter, resetCursor]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [setSelectedTypeTab, setTypeFilter]
   );
 
   const handleStatusFilterChange = useCallback(
@@ -207,7 +210,8 @@ function ChannelsContent() {
       setStatusFilter(filters);
       resetCursor();
     },
-    [resetCursor]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
   const handleTagFilterChange = useCallback(
@@ -215,7 +219,8 @@ function ChannelsContent() {
       setTagFilter(filter);
       resetCursor();
     },
-    [resetCursor]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
   const handleModelFilterChange = useCallback(
@@ -223,18 +228,21 @@ function ChannelsContent() {
       setModelFilter(filter);
       resetCursor();
     },
-    [resetCursor]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
   const handleFilterErrorChannels = useCallback(() => {
     setShowErrorOnly(true);
     resetCursor();
-  }, [resetCursor]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleExitErrorOnlyMode = useCallback(() => {
     setShowErrorOnly(false);
     resetCursor();
-  }, [resetCursor]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const columns = useMemo(() => createColumns(t, channelPermissions.canWrite), [t, channelPermissions.canWrite]);
 

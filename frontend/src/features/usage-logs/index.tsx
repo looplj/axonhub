@@ -76,7 +76,8 @@ function UsageLogsContent() {
       setSourceFilter(filters);
       resetCursor();
     },
-    [resetCursor]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
   const handleChannelFilterChange = useCallback(
@@ -84,7 +85,8 @@ function UsageLogsContent() {
       setChannelFilter(filters);
       resetCursor();
     },
-    [resetCursor]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
   const handleDateRangeChange = useCallback(
@@ -92,7 +94,8 @@ function UsageLogsContent() {
       setDateRange(range);
       resetCursor();
     },
-    [resetCursor]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
   if (error) {

@@ -1,15 +1,28 @@
-import { IconPlus, IconUpload, IconArrowsSort, IconSettings } from '@tabler/icons-react';
+import { IconPlus, IconUpload, IconArrowsSort, IconSettings, IconScale } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { PermissionGuard } from '@/components/permission-guard';
 import { useChannels } from '../context/channels-context';
 
 export function ChannelsPrimaryButtons() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { setOpen } = useChannels();
 
   return (
     <div className='flex gap-2'>
+      <PermissionGuard requiredScope='read_system'>
+        {/* Load Balancing Strategy - navigate to system retry configuration */}
+        <Button
+          variant='outline'
+          className='space-x-1'
+          onClick={() => navigate({ to: '/system', search: { tab: 'retry' } })}
+        >
+          <span>{t('channels.loadBalancingStrategy')}</span> <IconScale size={18} />
+        </Button>
+      </PermissionGuard>
+
       <PermissionGuard requiredScope='write_channels'>
         <>
           {/* Settings - requires write_channels permission */}
