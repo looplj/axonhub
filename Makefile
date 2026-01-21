@@ -9,6 +9,11 @@ generate:
 	cd internal/server/gql && go generate
 	@echo "Generation completed!"
 
+generate-openapi:
+	@echo "Generating GraphQL and Ent code..."
+	cd internal/server/gql/openapi && go generate
+	@echo "Generation completed!"
+
 # Build the backend application
 build-backend:
 	@echo "Building axonhub backend..."

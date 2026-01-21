@@ -666,7 +666,6 @@ type ComplexityRoot struct {
 		CreateChannel                        func(childComplexity int, input ent.CreateChannelInput) int
 		CreateChannelOverrideTemplate        func(childComplexity int, input ent.CreateChannelOverrideTemplateInput) int
 		CreateDataStorage                    func(childComplexity int, input ent.CreateDataStorageInput) int
-		CreateLLMAPIKey                      func(childComplexity int, name string) int
 		CreateModel                          func(childComplexity int, input ent.CreateModelInput) int
 		CreateProject                        func(childComplexity int, input ent.CreateProjectInput) int
 		CreatePrompt                         func(childComplexity int, input ent.CreatePromptInput) int
@@ -1482,7 +1481,6 @@ type MutationResolver interface {
 	BulkImportChannels(ctx context.Context, input BulkImportChannelsInput) (*biz.BulkImportChannelsResult, error)
 	BulkUpdateChannelOrdering(ctx context.Context, input BulkUpdateChannelOrderingInput) (*BulkUpdateChannelOrderingResult, error)
 	CreateAPIKey(ctx context.Context, input ent.CreateAPIKeyInput) (*ent.APIKey, error)
-	CreateLLMAPIKey(ctx context.Context, name string) (*ent.APIKey, error)
 	UpdateAPIKey(ctx context.Context, id objects.GUID, input ent.UpdateAPIKeyInput) (*ent.APIKey, error)
 	UpdateAPIKeyStatus(ctx context.Context, id objects.GUID, status apikey.Status) (*ent.APIKey, error)
 	UpdateAPIKeyProfiles(ctx context.Context, id objects.GUID, input objects.APIKeyProfiles) (*ent.APIKey, error)
@@ -4035,17 +4033,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.CreateDataStorage(childComplexity, args["input"].(ent.CreateDataStorageInput)), true
-	case "Mutation.createLLMAPIKey":
-		if e.complexity.Mutation.CreateLLMAPIKey == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_createLLMAPIKey_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.CreateLLMAPIKey(childComplexity, args["name"].(string)), true
 	case "Mutation.createModel":
 		if e.complexity.Mutation.CreateModel == nil {
 			break
@@ -8290,17 +8277,6 @@ func (ec *executionContext) field_Mutation_createDataStorage_args(ctx context.Co
 		return nil, err
 	}
 	args["input"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_createLLMAPIKey_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "name", ec.unmarshalNString2string)
-	if err != nil {
-		return nil, err
-	}
-	args["name"] = arg0
 	return args, nil
 }
 
@@ -21614,77 +21590,6 @@ func (ec *executionContext) fieldContext_Mutation_createAPIKey(ctx context.Conte
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_createAPIKey_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_createLLMAPIKey(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Mutation_createLLMAPIKey,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().CreateLLMAPIKey(ctx, fc.Args["name"].(string))
-		},
-		nil,
-		ec.marshalNAPIKey2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAPIKey,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Mutation_createLLMAPIKey(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_APIKey_id(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_APIKey_createdAt(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_APIKey_updatedAt(ctx, field)
-			case "userID":
-				return ec.fieldContext_APIKey_userID(ctx, field)
-			case "projectID":
-				return ec.fieldContext_APIKey_projectID(ctx, field)
-			case "key":
-				return ec.fieldContext_APIKey_key(ctx, field)
-			case "name":
-				return ec.fieldContext_APIKey_name(ctx, field)
-			case "type":
-				return ec.fieldContext_APIKey_type(ctx, field)
-			case "status":
-				return ec.fieldContext_APIKey_status(ctx, field)
-			case "scopes":
-				return ec.fieldContext_APIKey_scopes(ctx, field)
-			case "profiles":
-				return ec.fieldContext_APIKey_profiles(ctx, field)
-			case "user":
-				return ec.fieldContext_APIKey_user(ctx, field)
-			case "project":
-				return ec.fieldContext_APIKey_project(ctx, field)
-			case "requests":
-				return ec.fieldContext_APIKey_requests(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type APIKey", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_createLLMAPIKey_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -68631,13 +68536,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "createAPIKey":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createAPIKey(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "createLLMAPIKey":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_createLLMAPIKey(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
