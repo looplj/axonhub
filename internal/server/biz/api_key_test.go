@@ -61,6 +61,7 @@ func TestAPIKeyService_GetAPIKey(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	// Create a test user
 	hashedPassword, err := HashPassword("test-password")
