@@ -1,0 +1,7 @@
+mutation CreateAPIKey($name: String!) {
+  createLLMAPIKey(name: $name) {
+    key
+    name
+    scopes
+  }
+}

@@ -15,7 +15,7 @@ full_bin = "APP_USER=air ./tmp/axonhub"
 # Watch these filename extensions.
 include_ext = ["go","yml"]
 # Ignore these filename extensions or directories.
-exclude_dir = ["assets", "tmp", "vendor", "frontend", "integration_test", "website", "scripts", "openspec", "llm/tools","tools"]
+exclude_dir = ["assets", "tmp", "vendor", "frontend", "integration_test", "website", "scripts", "openspec", "llm/tools","tools" ,"examples"]
 # Watch these directories if you specified.
 include_dir = []
 # Exclude files.
