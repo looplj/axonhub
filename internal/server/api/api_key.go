@@ -67,7 +67,7 @@ JSONError(c, http.StatusBadRequest, err)
 
 	ownerKey, ok := contexts.GetAPIKey(ctx)
 	if !ok || ownerKey == nil {
-		JSONError(c, http.StatusUnauthorized, errors.New("Invalid API key"))
+JSONError(c, http.StatusUnauthorized, errors.New("API key not found or invalid"))
 		return
 	}
 
