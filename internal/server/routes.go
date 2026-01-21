@@ -25,6 +25,7 @@ type Handlers struct {
 	Playground *api.PlaygroundHandlers
 	System     *api.SystemHandlers
 	Auth       *api.AuthHandlers
+	APIKey     *api.APIKeyHandlers
 	Jina       *api.JinaHandlers
 	Codex      *api.CodexHandlers
 }
@@ -84,9 +85,6 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		adminGroup.GET("/playground", middleware.WithTimeout(server.Config.RequestTimeout), func(c *gin.Context) {
 			handlers.Graphql.Playground.ServeHTTP(c.Writer, c.Request)
 		})
-		adminGroup.POST("/graphql", middleware.WithTimeout(server.Config.RequestTimeout), func(c *gin.Context) {
-			handlers.Graphql.Graphql.ServeHTTP(c.Writer, c.Request)
-		})
 
 		adminGroup.POST("/codex/oauth/start", handlers.Codex.StartOAuth)
 		adminGroup.POST("/codex/oauth/exchange", handlers.Codex.Exchange)
@@ -98,6 +96,17 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 			middleware.WithSource(request.SourcePlayground),
 			handlers.Playground.ChatCompletion,
 		)
+	}
+
+	adminGraphqlGroup := server.Group(
+		"/admin",
+		middleware.WithTimeout(server.Config.RequestTimeout),
+		middleware.WithGraphQLAuthForLLMAPIKey(services.AuthService),
+	)
+	{
+		adminGraphqlGroup.POST("/graphql", func(c *gin.Context) {
+			handlers.Graphql.Graphql.ServeHTTP(c.Writer, c.Request)
+		})
 	}
 
 	apiGroup := server.Group("/",
