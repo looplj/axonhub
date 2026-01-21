@@ -60,7 +60,7 @@ func TestUsageLogService_CreateUsageLog_PromptWriteCachedTokens(t *testing.T) {
 	created, err := svc.CreateUsageLog(ctx, CreateUsageLogParams{
 		RequestID:     req.ID,
 		ProjectID:     p.ID,
-		ChannelID:     nil,
+		ChannelID:     0,
 		ActualModelID: "test-model",
 		Usage:         usage,
 		Source:        usagelog.SourceAPI,
@@ -167,7 +167,7 @@ func TestUsageLogService_CreateUsageLog_WithPriceReferenceID(t *testing.T) {
 	created, err := svc.CreateUsageLog(ctx, CreateUsageLogParams{
 		RequestID:     req.ID,
 		ProjectID:     p.ID,
-		ChannelID:     &channelID,
+		ChannelID:     channelID,
 		ActualModelID: "gpt-4",
 		Usage:         usage,
 		Source:        usagelog.SourceAPI,
@@ -297,7 +297,7 @@ func TestUsageLogService_CreateUsageLog_WithCachedTokens(t *testing.T) {
 	created, err := svc.CreateUsageLog(ctx, CreateUsageLogParams{
 		RequestID:     req.ID,
 		ProjectID:     p.ID,
-		ChannelID:     &channelID,
+		ChannelID:     channelID,
 		ActualModelID: "gpt-4",
 		Usage:         usage,
 		Source:        usagelog.SourceAPI,

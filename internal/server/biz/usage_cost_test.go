@@ -100,7 +100,7 @@ func TestUsageCost_PerUnitPromptAndCompletion(t *testing.T) {
 	ul, err := usageLogService.CreateUsageLog(ctx, CreateUsageLogParams{
 		RequestID:     1,
 		ProjectID:     1,
-		ChannelID:     &ch.ID,
+		ChannelID:     ch.ID,
 		ActualModelID: "m1",
 		Usage:         usage,
 		Source:        "api",
@@ -174,7 +174,7 @@ func TestUsageCost_TieredPrompt(t *testing.T) {
 	ul, err := usageLogService.CreateUsageLog(ctx, CreateUsageLogParams{
 		RequestID:     1,
 		ProjectID:     1,
-		ChannelID:     &ch.ID,
+		ChannelID:     ch.ID,
 		ActualModelID: "m2",
 		Usage:         usage,
 		Source:        "api",
@@ -226,7 +226,7 @@ func TestUsageCost_NoPriceConfigured(t *testing.T) {
 	ul, err := usageLogService.CreateUsageLog(ctx, CreateUsageLogParams{
 		RequestID:     1,
 		ProjectID:     1,
-		ChannelID:     &ch.ID,
+		ChannelID:     ch.ID,
 		ActualModelID: "m3",
 		Usage:         usage,
 		Source:        "api",
@@ -309,7 +309,7 @@ func TestUsageCost_CacheVariant5Min(t *testing.T) {
 	ul, err := usageLogService.CreateUsageLog(ctx, CreateUsageLogParams{
 		RequestID:     1,
 		ProjectID:     1,
-		ChannelID:     &ch.ID,
+		ChannelID:     ch.ID,
 		ActualModelID: "m4",
 		Usage:         usage,
 		Source:        "api",
@@ -399,7 +399,7 @@ func TestUsageCost_CacheVariant1Hour(t *testing.T) {
 	ul, err := usageLogService.CreateUsageLog(ctx, CreateUsageLogParams{
 		RequestID:     1,
 		ProjectID:     1,
-		ChannelID:     &ch.ID,
+		ChannelID:     ch.ID,
 		ActualModelID: "m5",
 		Usage:         usage,
 		Source:        "api",
@@ -494,7 +494,7 @@ func TestUsageCost_CacheVariantBoth5MinAnd1Hour(t *testing.T) {
 	ul, err := usageLogService.CreateUsageLog(ctx, CreateUsageLogParams{
 		RequestID:     1,
 		ProjectID:     1,
-		ChannelID:     &ch.ID,
+		ChannelID:     ch.ID,
 		ActualModelID: "m6",
 		Usage:         usage,
 		Source:        "api",
@@ -580,7 +580,7 @@ func TestUsageCost_CacheVariantFallbackToShared(t *testing.T) {
 	ul, err := usageLogService.CreateUsageLog(ctx, CreateUsageLogParams{
 		RequestID:     1,
 		ProjectID:     1,
-		ChannelID:     &ch.ID,
+		ChannelID:     ch.ID,
 		ActualModelID: "m7",
 		Usage:         usage,
 		Source:        "api",

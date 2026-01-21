@@ -539,7 +539,7 @@ func (_m *RequestExecution) Channel(ctx context.Context) (*Channel, error) {
 	if IsNotLoaded(err) {
 		result, err = _m.QueryChannel().Only(ctx)
 	}
-	return result, MaskNotFound(err)
+	return result, err
 }
 
 func (_m *RequestExecution) DataStorage(ctx context.Context) (*DataStorage, error) {
@@ -687,7 +687,7 @@ func (_m *UsageLog) Channel(ctx context.Context) (*Channel, error) {
 	if IsNotLoaded(err) {
 		result, err = _m.QueryChannel().Only(ctx)
 	}
-	return result, MaskNotFound(err)
+	return result, err
 }
 
 func (_m *User) Projects(

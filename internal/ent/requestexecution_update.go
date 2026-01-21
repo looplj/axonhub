@@ -250,6 +250,9 @@ func (_u *RequestExecutionUpdate) check() error {
 	if _u.mutation.RequestCleared() && len(_u.mutation.RequestIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "RequestExecution.request"`)
 	}
+	if _u.mutation.ChannelCleared() && len(_u.mutation.ChannelIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "RequestExecution.channel"`)
+	}
 	return nil
 }
 
@@ -593,6 +596,9 @@ func (_u *RequestExecutionUpdateOne) check() error {
 	}
 	if _u.mutation.RequestCleared() && len(_u.mutation.RequestIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "RequestExecution.request"`)
+	}
+	if _u.mutation.ChannelCleared() && len(_u.mutation.ChannelIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "RequestExecution.channel"`)
 	}
 	return nil
 }
