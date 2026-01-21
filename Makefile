@@ -6,13 +6,13 @@
 # Generate GraphQL and Ent code
 generate:
 	@echo "Generating GraphQL and Ent code..."
-	cd internal/server/gql && C:/Users/zhanghu/sdk/go1.25.4/bin/go.exe generate
+	cd internal/server/gql && go generate
 	@echo "Generation completed!"
 
 # Build the backend application
 build-backend:
 	@echo "Building axonhub backend..."
-	C:/Users/zhanghu/sdk/go1.25.4/bin/go.exe build -ldflags "-s -w" -tags=nomsgpack -o axonhub ./cmd/axonhub
+	go build -ldflags "-s -w" -tags=nomsgpack -o axonhub ./cmd/axonhub
 	@echo "Backend build completed!"
 
 # Build the frontend application
