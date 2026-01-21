@@ -25,6 +25,7 @@ type Handlers struct {
 	Playground *api.PlaygroundHandlers
 	System     *api.SystemHandlers
 	Auth       *api.AuthHandlers
+	APIKey     *api.APIKeyHandlers
 	Jina       *api.JinaHandlers
 	Codex      *api.CodexHandlers
 }
@@ -98,6 +99,11 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 			middleware.WithSource(request.SourcePlayground),
 			handlers.Playground.ChatCompletion,
 		)
+	}
+
+	llmKeyGroup := server.Group("/admin/llm", middleware.WithTimeout(server.Config.RequestTimeout), middleware.WithAPIKeyAuth(services.AuthService))
+	{
+		llmKeyGroup.POST("/api-keys", handlers.APIKey.CreateLLMAPIKey)
 	}
 
 	apiGroup := server.Group("/",
