@@ -384,13 +384,24 @@ type Item struct {
 
 	// Reasoning fields (for type="reasoning")
 	// Reasoning summary content - array of summary text items.
-	// Note: Do not use omitempty here - Codex requires the "summary" field to be present
-	// (even as empty array) for parsing ResponseItem::Reasoning correctly.
-	Summary []ReasoningSummary `json:"summary"`
+	Summary []ReasoningSummary `json:"summary,omitempty"`
 	// Reasoning text content - array of reasoning text items.
 	ReasoningContent []ReasoningContent `json:"reasoning_content,omitempty"`
 	// The encrypted content of the reasoning item.
 	EncryptedContent *string `json:"encrypted_content,omitempty"`
+}
+
+// MarshalJSON omits summary for non-reasoning items and forces an empty array for reasoning items.
+func (item Item) MarshalJSON() ([]byte, error) {
+	type itemAlias Item
+
+	if item.Type != "reasoning" {
+		item.Summary = nil
+	} else if item.Summary == nil {
+		item.Summary = []ReasoningSummary{}
+	}
+
+	return json.Marshal(itemAlias(item))
 }
 
 // isOutputMessageContent checks if Content.Items contains output message content items.

@@ -55,7 +55,7 @@
   "system.retry.loadBalancerStrategy.options.weighted": "权重",
   "system.retry.loadBalancerStrategy.options.healthAware": "健康感知",
   "system.retry.loadBalancerStrategy.documentation.adaptive": "基于权重、成功率、轮询和trace等策略综合考虑选择合适的渠道进行请求。智能平衡多个因素以优化渠道选择。",
-  "system.retry.loadBalancerStrategy.documentation.weighted": "每一次请求都按照渠道权重从高到低顺序请求，直到一次成功。权重更高的渠道在所有请求中都被顺序优先。",
+  "system.retry.loadBalancerStrategy.documentation.weighted": "按照渠道权重从高到低顺序请求，对于权重相同的渠道，会随机排序。",
   "system.retry.loadBalancerStrategy.documentation.health-aware": "智能的渠道-模型级健康管理，采用流量驱动设计。为每个渠道-模型组合独立跟踪健康状态并调整权重：健康(100%)、降级(30%)、熔断(0%，支持探测恢复)。提供最精细化的故障控制，单个渠道-模型组合故障不影响其他组合。",
   "system.retry.maxChannelRetries.label": "最大渠道重试次数",
   "system.retry.maxChannelRetries.description": "跨不同渠道的最大重试次数 (0-10)。当某个渠道失败时，系统将尝试其他可用渠道，最多不超过此限制。较高的值可提高可靠性，但可能会增加延迟。",

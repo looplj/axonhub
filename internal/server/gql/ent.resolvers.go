@@ -195,6 +195,10 @@ func (r *queryResolver) APIKeys(ctx context.Context, after *entgql.Cursor[int], 
 		return nil, err
 	}
 
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultAPIKeyOrder.Field
+	}
+
 	return r.client.APIKey.Query().Paginate(ctx, after, first, before, last,
 		ent.WithAPIKeyOrder(orderBy),
 		ent.WithAPIKeyFilter(where.Filter),
@@ -203,6 +207,10 @@ func (r *queryResolver) APIKeys(ctx context.Context, after *entgql.Cursor[int], 
 
 // Channels is the resolver for the channels field.
 func (r *queryResolver) Channels(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOrder, where *ent.ChannelWhereInput) (*ent.ChannelConnection, error) {
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultChannelOrder.Field
+	}
+
 	return r.client.Channel.Query().Paginate(ctx, after, first, before, last,
 		ent.WithChannelOrder(orderBy),
 		ent.WithChannelFilter(where.Filter),
@@ -220,6 +228,10 @@ func (r *queryResolver) DataStorages(ctx context.Context, after *entgql.Cursor[i
 		return nil, err
 	}
 
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultDataStorageOrder.Field
+	}
+
 	return r.client.DataStorage.Query().Paginate(ctx, after, first, before, last,
 		ent.WithDataStorageOrder(orderBy),
 		ent.WithDataStorageFilter(where.Filter),
@@ -228,6 +240,9 @@ func (r *queryResolver) DataStorages(ctx context.Context, after *entgql.Cursor[i
 
 // Models is the resolver for the models field.
 func (r *queryResolver) Models(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ModelOrder, where *ent.ModelWhereInput) (*ent.ModelConnection, error) {
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultModelOrder.Field
+	}
 	return r.client.Model.Query().Paginate(ctx, after, first, before, last,
 		ent.WithModelOrder(orderBy),
 		ent.WithModelFilter(where.Filter),
@@ -238,6 +253,10 @@ func (r *queryResolver) Models(ctx context.Context, after *entgql.Cursor[int], f
 func (r *queryResolver) Projects(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ProjectOrder, where *ent.ProjectWhereInput) (*ent.ProjectConnection, error) {
 	if err := validatePaginationArgs(first, last); err != nil {
 		return nil, err
+	}
+
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultProjectOrder.Field
 	}
 
 	return r.client.Project.Query().Paginate(ctx, after, first, before, last,
@@ -252,6 +271,10 @@ func (r *queryResolver) Prompts(ctx context.Context, after *entgql.Cursor[int], 
 		return nil, err
 	}
 
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultPromptOrder.Field
+	}
+
 	return r.client.Prompt.Query().Paginate(ctx, after, first, before, last,
 		ent.WithPromptOrder(orderBy),
 		ent.WithPromptFilter(where.Filter),
@@ -264,6 +287,10 @@ func (r *queryResolver) Requests(ctx context.Context, after *entgql.Cursor[int],
 		return nil, err
 	}
 
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultRequestOrder.Field
+	}
+
 	return r.client.Request.Query().Paginate(ctx, after, first, before, last,
 		ent.WithRequestOrder(orderBy),
 		ent.WithRequestFilter(where.Filter),
@@ -274,6 +301,10 @@ func (r *queryResolver) Requests(ctx context.Context, after *entgql.Cursor[int],
 func (r *queryResolver) Roles(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RoleOrder, where *ent.RoleWhereInput) (*ent.RoleConnection, error) {
 	if err := validatePaginationArgs(first, last); err != nil {
 		return nil, err
+	}
+
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultRoleOrder.Field
 	}
 
 	return r.client.Role.Query().Paginate(ctx, after, first, before, last,
@@ -300,6 +331,10 @@ func (r *queryResolver) Threads(ctx context.Context, after *entgql.Cursor[int], 
 		return nil, err
 	}
 
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultThreadOrder.Field
+	}
+
 	return r.client.Thread.Query().Paginate(ctx, after, first, before, last,
 		ent.WithThreadOrder(orderBy),
 		ent.WithThreadFilter(where.Filter),
@@ -310,6 +345,10 @@ func (r *queryResolver) Threads(ctx context.Context, after *entgql.Cursor[int], 
 func (r *queryResolver) Traces(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.TraceOrder, where *ent.TraceWhereInput) (*ent.TraceConnection, error) {
 	if err := validatePaginationArgs(first, last); err != nil {
 		return nil, err
+	}
+
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultTraceOrder.Field
 	}
 
 	return r.client.Trace.Query().Paginate(ctx, after, first, before, last,
@@ -324,6 +363,10 @@ func (r *queryResolver) UsageLogs(ctx context.Context, after *entgql.Cursor[int]
 		return nil, err
 	}
 
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultUsageLogOrder.Field
+	}
+
 	return r.client.UsageLog.Query().Paginate(ctx, after, first, before, last,
 		ent.WithUsageLogOrder(orderBy),
 		ent.WithUsageLogFilter(where.Filter),
@@ -334,6 +377,10 @@ func (r *queryResolver) UsageLogs(ctx context.Context, after *entgql.Cursor[int]
 func (r *queryResolver) Users(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UserOrder, where *ent.UserWhereInput) (*ent.UserConnection, error) {
 	if err := validatePaginationArgs(first, last); err != nil {
 		return nil, err
+	}
+
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultUserOrder.Field
 	}
 
 	return r.client.User.Query().Paginate(ctx, after, first, before, last,
