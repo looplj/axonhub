@@ -416,6 +416,9 @@ func (r *queryResolver) CountChannelsByType(ctx context.Context, input CountChan
 
 // QueryChannels is the resolver for the queryChannels field.
 func (r *queryResolver) QueryChannels(ctx context.Context, input biz.QueryChannelsInput) (*ent.ChannelConnection, error) {
+	if input.OrderBy != nil && input.OrderBy.Field.String() == "CREATED_AT" {
+		input.OrderBy.Field = ent.DefaultChannelOrder.Field
+	}
 	return r.channelService.QueryChannels(ctx, input)
 }
 

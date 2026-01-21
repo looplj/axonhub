@@ -75,7 +75,8 @@ function ThreadsContent() {
       setDateRange(range);
       resetCursor();
     },
-    [resetCursor]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
   const handleThreadIdFilterChange = useCallback(
@@ -83,7 +84,8 @@ function ThreadsContent() {
       setThreadIdFilter(threadId);
       resetCursor();
     },
-    [resetCursor]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
   return (

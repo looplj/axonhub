@@ -78859,13 +78859,19 @@ func (ec *executionContext) unmarshalNCreateUserInput2githubᚗcomᚋloopljᚋax
 }
 
 func (ec *executionContext) unmarshalNCursor2entgoᚗioᚋcontribᚋentgqlᚐCursor(ctx context.Context, v any) (entgql.Cursor[int], error) {
-	var res entgql.Cursor[int]
-	err := res.UnmarshalGQL(v)
+	res, err := UnmarshalCursor(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNCursor2entgoᚗioᚋcontribᚋentgqlᚐCursor(ctx context.Context, sel ast.SelectionSet, v entgql.Cursor[int]) graphql.Marshaler {
-	return v
+	_ = sel
+	res := MarshalCursor(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
 
 func (ec *executionContext) marshalNDailyRequestStats2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐDailyRequestStatsᚄ(ctx context.Context, sel ast.SelectionSet, v []*DailyRequestStats) graphql.Marshaler {
@@ -83222,16 +83228,18 @@ func (ec *executionContext) unmarshalOCursor2ᚖentgoᚗioᚋcontribᚋentgqlᚐ
 	if v == nil {
 		return nil, nil
 	}
-	var res = new(entgql.Cursor[int])
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
+	res, err := UnmarshalCursor(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOCursor2ᚖentgoᚗioᚋcontribᚋentgqlᚐCursor(ctx context.Context, sel ast.SelectionSet, v *entgql.Cursor[int]) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
-	return v
+	_ = sel
+	_ = ctx
+	res := MarshalCursor(*v)
+	return res
 }
 
 func (ec *executionContext) marshalODataStorage2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐDataStorage(ctx context.Context, sel ast.SelectionSet, v *ent.DataStorage) graphql.Marshaler {

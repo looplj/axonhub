@@ -76,7 +76,8 @@ function TracesContent() {
       setDateRange(range);
       resetCursor();
     },
-    [resetCursor]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
   const handleTraceIdFilterChange = useCallback(
@@ -84,7 +85,8 @@ function TracesContent() {
       setTraceIdFilter(traceId);
       resetCursor();
     },
-    [resetCursor]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
   return (

@@ -58,6 +58,7 @@ require (
 	github.com/tmaxmax/go-sse v0.11.0
 	github.com/vektah/gqlparser/v2 v2.5.31
 	github.com/viterin/partial v1.1.0
+	github.com/vmihailenco/msgpack/v5 v5.4.1
 	github.com/zhenzou/executors v0.2.0
 	go.opentelemetry.io/otel v1.38.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.38.0
@@ -185,7 +186,6 @@ require (
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.1 // indirect
-	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/yuin/gopher-lua v1.1.1 // indirect
 	github.com/zclconf/go-cty v1.17.0 // indirect

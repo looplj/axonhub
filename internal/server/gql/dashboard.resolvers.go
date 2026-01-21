@@ -94,7 +94,7 @@ func (r *queryResolver) RequestStats(ctx context.Context) (*RequestStats, error)
 	}
 
 	loc := r.systemService.TimeLocation(ctx)
-	nowLocal := xtime.Now().In(loc)
+	nowLocal := xtime.UTCNow().In(loc)
 	todayLocal := time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc)
 	today := todayLocal.UTC()
 	weekAgo := todayLocal.AddDate(0, 0, -7).UTC()
@@ -420,7 +420,7 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context) ([]*DailyRequestS
 	daysCount := 30
 
 	loc := r.systemService.TimeLocation(ctx)
-	nowLocal := xtime.Now().In(loc)
+	nowLocal := xtime.UTCNow().In(loc)
 	startDateLocal := time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, -daysCount+1)
 	startDateUTC := startDateLocal.UTC()
 	endDateUTC := startDateLocal.AddDate(0, 0, daysCount).UTC()
@@ -599,7 +599,7 @@ func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
 	}
 
 	loc := r.systemService.TimeLocation(ctx)
-	nowLocal := xtime.Now().In(loc)
+	nowLocal := xtime.UTCNow().In(loc)
 	todayLocal := time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc)
 	today := todayLocal.UTC()
 	weekAgo := todayLocal.AddDate(0, 0, -7).UTC()

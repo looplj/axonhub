@@ -63,7 +63,8 @@ function ApiKeysContent() {
   // Reset cursor when filters change
   React.useEffect(() => {
     resetCursor();
-  }, [debouncedNameFilter, activeTab, statusFilter, userFilter, resetCursor]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedNameFilter, activeTab, statusFilter, userFilter]);
 
   const handleNextPage = () => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
