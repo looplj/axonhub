@@ -113,7 +113,7 @@ type projectMemberMutationRule struct {
 func (r projectMemberMutationRule) EvalMutation(ctx context.Context, m ent.Mutation) error {
 	user, err := getUserFromContext(ctx)
 	if err != nil {
-		return err
+		return privacy.Skipf("User not found in context")
 	}
 
 	// For mutations, check project membership

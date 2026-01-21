@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/cespare/xxhash/v2"
@@ -18,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
+	"github.com/looplj/axonhub/internal/scopes"
 )
 
 type APIKeyServiceParams struct {
@@ -57,6 +59,51 @@ func GenerateAPIKey() (string, error) {
 
 	// Convert to hex and add ah- prefix
 	return "ah-" + hex.EncodeToString(bytes), nil
+}
+
+// CreateLLMAPIKey creates a new API key for LLM calls using a service account API key.
+func (s *APIKeyService) CreateLLMAPIKey(ctx context.Context, owner *ent.APIKey, name string) (*ent.APIKey, error) {
+	if owner == nil {
+		return nil, ErrAPIKeyOwnerRequired
+	}
+
+	if owner.Type != apikey.TypeServiceAccount {
+		return nil, ErrServiceAccountRequired
+	}
+
+	if !slices.Contains(owner.Scopes, string(scopes.ScopeWriteAPIKeys)) {
+		return nil, fmt.Errorf("%w: %s", ErrAPIKeyScopeRequired, scopes.ScopeWriteAPIKeys)
+	}
+
+	trimmedName := strings.TrimSpace(name)
+	if trimmedName == "" {
+		return nil, ErrAPIKeyNameRequired
+	}
+
+	client := s.entFromContext(ctx)
+
+	generatedKey, err := GenerateAPIKey()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate api key: %w", err)
+	}
+
+	create := client.APIKey.Create().
+		SetName(trimmedName).
+		SetKey(generatedKey).
+		SetUserID(owner.UserID).
+		SetProjectID(owner.ProjectID).
+		SetType(apikey.TypeUser).
+		SetScopes([]string{
+			string(scopes.ScopeReadChannels),
+			string(scopes.ScopeWriteRequests),
+		})
+
+	apiKey, err := create.Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create api key: %w", err)
+	}
+
+	return apiKey, nil
 }
 
 // CreateAPIKey creates a new API key for a user.
