@@ -174,8 +174,8 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
               <div className='space-y-1'>
                 <p className='text-xs font-semibold'>{t('models.columns.aliases')}</p>
                 <div className='flex flex-wrap gap-1'>
-                  {aliases.map((alias: string, idx: number) => (
-                    <Badge key={idx} variant='secondary' className='text-xs'>
+                  {aliases.map((alias: string) => (
+                    <Badge key={alias} variant='secondary' className='text-xs'>
                       {alias}
                     </Badge>
                   ))}

@@ -130,6 +130,7 @@ export function ModelsActionDialog() {
       setModelIdSearchValue(currentRow.modelID);
       setSelectedModelCard(currentRow.modelCard || {});
       setAliases(currentRow.aliases || []);
+      setAliasInput('');
     } else if (!isEdit) {
       form.reset({
         developer: '',
@@ -149,6 +150,7 @@ export function ModelsActionDialog() {
       setModelIdSearchValue('');
       setSelectedModelCard({});
       setAliases([]);
+      setAliasInput('');
     }
   }, [isEdit, currentRow, form, isOpen]);
 
@@ -216,6 +218,16 @@ export function ModelsActionDialog() {
     },
     [selectedProviderModels, selectedProvider, form]
   );
+
+  const handleAddAlias = useCallback(() => {
+    const trimmed = aliasInput.trim();
+    if (trimmed && !aliases.includes(trimmed)) {
+      const newAliases = [...aliases, trimmed];
+      setAliases(newAliases);
+      form.setValue('aliases', newAliases);
+      setAliasInput('');
+    }
+  }, [aliasInput, aliases, form]);
 
   const onSubmit = async (data: CreateModelInput) => {
     try {
@@ -426,16 +438,16 @@ export function ModelsActionDialog() {
                             {/* Display current aliases as badges */}
                             {aliases.length > 0 && (
                               <div className='flex flex-wrap gap-2'>
-                                {aliases.map((alias, index) => (
+                                {aliases.map((alias) => (
                                   <div
-                                    key={index}
+                                    key={alias}
                                     className='inline-flex items-center gap-1 rounded-md border px-2.5 py-0.5 text-xs font-semibold'
                                   >
                                     {alias}
                                     <button
                                       type='button'
                                       onClick={() => {
-                                        const newAliases = aliases.filter((_, i) => i !== index);
+                                        const newAliases = aliases.filter((a) => a !== alias);
                                         setAliases(newAliases);
                                         field.onChange(newAliases);
                                       }}
@@ -457,28 +469,14 @@ export function ModelsActionDialog() {
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') {
                                     e.preventDefault();
-                                    const trimmed = aliasInput.trim();
-                                    if (trimmed && !aliases.includes(trimmed)) {
-                                      const newAliases = [...aliases, trimmed];
-                                      setAliases(newAliases);
-                                      field.onChange(newAliases);
-                                      setAliasInput('');
-                                    }
+                                    handleAddAlias();
                                   }
                                 }}
                               />
                               <Button
                                 type='button'
                                 variant='outline'
-                                onClick={() => {
-                                  const trimmed = aliasInput.trim();
-                                  if (trimmed && !aliases.includes(trimmed)) {
-                                    const newAliases = [...aliases, trimmed];
-                                    setAliases(newAliases);
-                                    field.onChange(newAliases);
-                                    setAliasInput('');
-                                  }
-                                }}
+                                onClick={handleAddAlias}
                               >
                                 {t('models.fields.aliases.add')}
                               </Button>

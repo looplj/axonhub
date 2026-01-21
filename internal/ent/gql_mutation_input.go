@@ -472,7 +472,7 @@ func (i *UpdateModelInput) Mutate(m *ModelMutation) {
 		m.SetAliases(v)
 	}
 	if i.AppendAliases != nil {
-		m.AppendAliases(i.Aliases)
+		m.AppendAliases(i.AppendAliases)
 	}
 }
 

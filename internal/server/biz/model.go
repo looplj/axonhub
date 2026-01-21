@@ -136,6 +136,15 @@ func (svc *ModelService) validateAliasUniqueness(ctx context.Context, aliases []
 		return fmt.Errorf("model cannot have more than %d aliases", MaxAliasesPerModel)
 	}
 
+	// Check for duplicates within the input slice
+	seen := make(map[string]struct{}, len(aliases))
+	for _, alias := range aliases {
+		if _, exists := seen[alias]; exists {
+			return fmt.Errorf("alias '%s' is duplicated in input", alias)
+		}
+		seen[alias] = struct{}{}
+	}
+
 	// Validate each alias format
 	for _, alias := range aliases {
 		if err := svc.validateAlias(alias); err != nil {
@@ -218,7 +227,7 @@ func (svc *ModelService) GetModelByModelIDOrAlias(ctx context.Context, modelIDOr
 		}
 	}
 
-	return nil, fmt.Errorf("model not found with model_id or alias: %s", modelIDOrAlias)
+	return nil, &ent.NotFoundError{}
 }
 
 // CreateModel creates a new model with the provided input.
@@ -316,11 +325,15 @@ func (svc *ModelService) BulkCreateModels(ctx context.Context, inputs []*ent.Cre
 	}
 
 	// Validate all aliases across all inputs
-	allAliases := make([]string, 0)
 	aliasesInBatch := make(map[string]string) // alias -> model_id that owns it in this batch
 
 	for _, input := range inputs {
 		if input.Aliases != nil {
+			// Validate each model's aliases individually
+			if err := svc.validateAliasUniqueness(ctx, input.Aliases, ""); err != nil {
+				return nil, err
+			}
+
 			for _, alias := range input.Aliases {
 				// Check for duplicates within the same batch
 				if existingModelID, exists := aliasesInBatch[alias]; exists {
@@ -335,13 +348,6 @@ func (svc *ModelService) BulkCreateModels(ctx context.Context, inputs []*ent.Cre
 					}
 				}
 			}
-			allAliases = append(allAliases, input.Aliases...)
-		}
-	}
-
-	if len(allAliases) > 0 {
-		if err := svc.validateAliasUniqueness(ctx, allAliases, ""); err != nil {
-			return nil, err
 		}
 	}
 
