@@ -2,16 +2,14 @@ package biz
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"time"
 
-	"github.com/samber/lo"
+	"entgo.io/ent/dialect/sql"
 	"github.com/shopspring/decimal"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/privacy"
-	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
@@ -205,14 +203,14 @@ func quotaWindow(now time.Time, period objects.APIKeyQuotaPeriod, loc *time.Loca
 }
 
 func (s *QuotaService) requestCount(ctx context.Context, apiKeyID int, window QuotaWindow) (int64, error) {
-	q := s.ent.Request.Query().Where(request.APIKeyIDEQ(apiKeyID))
+	q := s.ent.UsageLog.Query().Where(usagelog.APIKeyIDEQ(apiKeyID))
 
 	if window.Start != nil {
-		q = q.Where(request.CreatedAtGTE(*window.Start))
+		q = q.Where(usagelog.CreatedAtGTE(*window.Start))
 	}
 
 	if window.End != nil {
-		q = q.Where(request.CreatedAtLT(*window.End))
+		q = q.Where(usagelog.CreatedAtLT(*window.End))
 	}
 
 	n, err := q.Count(ctx)
@@ -245,16 +243,18 @@ func (s *QuotaService) usageAgg(ctx context.Context, apiKeyID int, window QuotaW
 		switch {
 		case needTokens && needCost:
 			type row struct {
-				TotalTokens sql.NullInt64   `json:"total_tokens"`
-				TotalCost   sql.NullFloat64 `json:"total_cost"`
+				TotalTokens int64   `json:"total_tokens"`
+				TotalCost   float64 `json:"total_cost"`
 			}
 
 			var rows []row
 
-			err := q.Aggregate(
-				ent.As(ent.Sum(usagelog.FieldTotalTokens), "total_tokens"),
-				ent.As(ent.Sum(usagelog.FieldTotalCost), "total_cost"),
-			).Scan(ctx, &rows)
+			err := q.Modify(func(s *sql.Selector) {
+				s.Select(
+					sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens)), "total_tokens"),
+					sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
+				)
+			}).Scan(ctx, &rows)
 			if err != nil {
 				return usageAggResult{}, err
 			}
@@ -263,23 +263,22 @@ func (s *QuotaService) usageAgg(ctx context.Context, apiKeyID int, window QuotaW
 				return usageAggResult{TotalCost: decimal.Zero}, nil
 			}
 
-			tokens := lo.Ternary(rows[0].TotalTokens.Valid, rows[0].TotalTokens.Int64, int64(0))
-			costFloat := lo.Ternary(rows[0].TotalCost.Valid, rows[0].TotalCost.Float64, float64(0))
-
 			return usageAggResult{
-				TotalTokens: tokens,
-				TotalCost:   decimal.NewFromFloat(costFloat),
+				TotalTokens: rows[0].TotalTokens,
+				TotalCost:   decimal.NewFromFloat(rows[0].TotalCost),
 			}, nil
 		case needTokens:
 			type row struct {
-				TotalTokens sql.NullInt64 `json:"total_tokens"`
+				TotalTokens int64 `json:"total_tokens"`
 			}
 
 			var rows []row
 
-			err := q.Aggregate(
-				ent.As(ent.Sum(usagelog.FieldTotalTokens), "total_tokens"),
-			).Scan(ctx, &rows)
+			err := q.Modify(func(s *sql.Selector) {
+				s.Select(
+					sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens)), "total_tokens"),
+				)
+			}).Scan(ctx, &rows)
 			if err != nil {
 				return usageAggResult{}, err
 			}
@@ -288,19 +287,19 @@ func (s *QuotaService) usageAgg(ctx context.Context, apiKeyID int, window QuotaW
 				return usageAggResult{TotalCost: decimal.Zero}, nil
 			}
 
-			tokens := lo.Ternary(rows[0].TotalTokens.Valid, rows[0].TotalTokens.Int64, int64(0))
-
-			return usageAggResult{TotalTokens: tokens, TotalCost: decimal.Zero}, nil
+			return usageAggResult{TotalTokens: rows[0].TotalTokens, TotalCost: decimal.Zero}, nil
 		default:
 			type row struct {
-				TotalCost sql.NullFloat64 `json:"total_cost"`
+				TotalCost float64 `json:"total_cost"`
 			}
 
 			var rows []row
 
-			err := q.Aggregate(
-				ent.As(ent.Sum(usagelog.FieldTotalCost), "total_cost"),
-			).Scan(ctx, &rows)
+			err := q.Modify(func(s *sql.Selector) {
+				s.Select(
+					sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
+				)
+			}).Scan(ctx, &rows)
 			if err != nil {
 				return usageAggResult{}, err
 			}
@@ -309,9 +308,7 @@ func (s *QuotaService) usageAgg(ctx context.Context, apiKeyID int, window QuotaW
 				return usageAggResult{TotalCost: decimal.Zero}, nil
 			}
 
-			costFloat := lo.Ternary(rows[0].TotalCost.Valid, rows[0].TotalCost.Float64, float64(0))
-
-			return usageAggResult{TotalCost: decimal.NewFromFloat(costFloat)}, nil
+			return usageAggResult{TotalCost: decimal.NewFromFloat(rows[0].TotalCost)}, nil
 		}
 	}
 

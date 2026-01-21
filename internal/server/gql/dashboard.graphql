@@ -1,7 +1,6 @@
 # Dashboard statistics and analytics
 
 type DashboardOverview {
-  totalUsers: Int!
   totalRequests: Int!
   requestStats: RequestStats!
   failedRequests: Int!
@@ -17,7 +16,6 @@ type RequestStats {
 
 type RequestStatsByChannel {
   channelName: String!
-  channelType: String!
   count: Int!
 }
 

@@ -97,7 +97,6 @@ type DailyRequestStats struct {
 }
 
 type DashboardOverview struct {
-	TotalUsers          int           `json:"totalUsers"`
 	TotalRequests       int           `json:"totalRequests"`
 	RequestStats        *RequestStats `json:"requestStats"`
 	FailedRequests      int           `json:"failedRequests"`
@@ -162,7 +161,6 @@ type RequestStatsByAPIKey struct {
 
 type RequestStatsByChannel struct {
 	ChannelName string `json:"channelName"`
-	ChannelType string `json:"channelType"`
 	Count       int    `json:"count"`
 }
 

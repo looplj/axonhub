@@ -11,7 +11,6 @@ export const requestStatsSchema = z.object({
 });
 
 export const dashboardStatsSchema = z.object({
-  totalUsers: z.number(),
   totalRequests: z.number(),
   requestStats: requestStatsSchema,
   failedRequests: z.number(),
@@ -20,7 +19,6 @@ export const dashboardStatsSchema = z.object({
 
 export const requestsByChannelSchema = z.object({
   channelName: z.string(),
-  channelType: z.string(),
   count: z.number(),
 });
 
@@ -103,7 +101,6 @@ export type TokenStats = z.infer<typeof tokenStatsSchema>;
 const DASHBOARD_STATS_QUERY = `
   query GetDashboardStats {
     dashboardOverview {
-      totalUsers
       totalRequests
       requestStats {
         requestsToday
@@ -121,7 +118,6 @@ const REQUESTS_BY_CHANNEL_QUERY = `
   query GetRequestsByChannel {
     requestStatsByChannel {
       channelName
-      channelType
       count
     }
   }

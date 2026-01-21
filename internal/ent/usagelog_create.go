@@ -94,14 +94,6 @@ func (_c *UsageLogCreate) SetChannelID(v int) *UsageLogCreate {
 	return _c
 }
 
-// SetNillableChannelID sets the "channel_id" field if the given value is not nil.
-func (_c *UsageLogCreate) SetNillableChannelID(v *int) *UsageLogCreate {
-	if v != nil {
-		_c.SetChannelID(*v)
-	}
-	return _c
-}
-
 // SetModelID sets the "model_id" field.
 func (_c *UsageLogCreate) SetModelID(v string) *UsageLogCreate {
 	_c.mutation.SetModelID(v)
@@ -485,6 +477,9 @@ func (_c *UsageLogCreate) check() error {
 	if _, ok := _c.mutation.ProjectID(); !ok {
 		return &ValidationError{Name: "project_id", err: errors.New(`ent: missing required field "UsageLog.project_id"`)}
 	}
+	if _, ok := _c.mutation.ChannelID(); !ok {
+		return &ValidationError{Name: "channel_id", err: errors.New(`ent: missing required field "UsageLog.channel_id"`)}
+	}
 	if _, ok := _c.mutation.ModelID(); !ok {
 		return &ValidationError{Name: "model_id", err: errors.New(`ent: missing required field "UsageLog.model_id"`)}
 	}
@@ -513,6 +508,9 @@ func (_c *UsageLogCreate) check() error {
 	}
 	if len(_c.mutation.ProjectIDs()) == 0 {
 		return &ValidationError{Name: "project", err: errors.New(`ent: missing required edge "UsageLog.project"`)}
+	}
+	if len(_c.mutation.ChannelIDs()) == 0 {
+		return &ValidationError{Name: "channel", err: errors.New(`ent: missing required edge "UsageLog.channel"`)}
 	}
 	return nil
 }
@@ -737,24 +735,6 @@ func (u *UsageLogUpsert) SetUpdatedAt(v time.Time) *UsageLogUpsert {
 // UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
 func (u *UsageLogUpsert) UpdateUpdatedAt() *UsageLogUpsert {
 	u.SetExcluded(usagelog.FieldUpdatedAt)
-	return u
-}
-
-// SetChannelID sets the "channel_id" field.
-func (u *UsageLogUpsert) SetChannelID(v int) *UsageLogUpsert {
-	u.Set(usagelog.FieldChannelID, v)
-	return u
-}
-
-// UpdateChannelID sets the "channel_id" field to the value that was provided on create.
-func (u *UsageLogUpsert) UpdateChannelID() *UsageLogUpsert {
-	u.SetExcluded(usagelog.FieldChannelID)
-	return u
-}
-
-// ClearChannelID clears the value of the "channel_id" field.
-func (u *UsageLogUpsert) ClearChannelID() *UsageLogUpsert {
-	u.SetNull(usagelog.FieldChannelID)
 	return u
 }
 
@@ -1111,6 +1091,9 @@ func (u *UsageLogUpsertOne) UpdateNewValues() *UsageLogUpsertOne {
 		if _, exists := u.create.mutation.ProjectID(); exists {
 			s.SetIgnore(usagelog.FieldProjectID)
 		}
+		if _, exists := u.create.mutation.ChannelID(); exists {
+			s.SetIgnore(usagelog.FieldChannelID)
+		}
 		if _, exists := u.create.mutation.ModelID(); exists {
 			s.SetIgnore(usagelog.FieldModelID)
 		}
@@ -1162,27 +1145,6 @@ func (u *UsageLogUpsertOne) SetUpdatedAt(v time.Time) *UsageLogUpsertOne {
 func (u *UsageLogUpsertOne) UpdateUpdatedAt() *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.UpdateUpdatedAt()
-	})
-}
-
-// SetChannelID sets the "channel_id" field.
-func (u *UsageLogUpsertOne) SetChannelID(v int) *UsageLogUpsertOne {
-	return u.Update(func(s *UsageLogUpsert) {
-		s.SetChannelID(v)
-	})
-}
-
-// UpdateChannelID sets the "channel_id" field to the value that was provided on create.
-func (u *UsageLogUpsertOne) UpdateChannelID() *UsageLogUpsertOne {
-	return u.Update(func(s *UsageLogUpsert) {
-		s.UpdateChannelID()
-	})
-}
-
-// ClearChannelID clears the value of the "channel_id" field.
-func (u *UsageLogUpsertOne) ClearChannelID() *UsageLogUpsertOne {
-	return u.Update(func(s *UsageLogUpsert) {
-		s.ClearChannelID()
 	})
 }
 
@@ -1759,6 +1721,9 @@ func (u *UsageLogUpsertBulk) UpdateNewValues() *UsageLogUpsertBulk {
 			if _, exists := b.mutation.ProjectID(); exists {
 				s.SetIgnore(usagelog.FieldProjectID)
 			}
+			if _, exists := b.mutation.ChannelID(); exists {
+				s.SetIgnore(usagelog.FieldChannelID)
+			}
 			if _, exists := b.mutation.ModelID(); exists {
 				s.SetIgnore(usagelog.FieldModelID)
 			}
@@ -1811,27 +1776,6 @@ func (u *UsageLogUpsertBulk) SetUpdatedAt(v time.Time) *UsageLogUpsertBulk {
 func (u *UsageLogUpsertBulk) UpdateUpdatedAt() *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.UpdateUpdatedAt()
-	})
-}
-
-// SetChannelID sets the "channel_id" field.
-func (u *UsageLogUpsertBulk) SetChannelID(v int) *UsageLogUpsertBulk {
-	return u.Update(func(s *UsageLogUpsert) {
-		s.SetChannelID(v)
-	})
-}
-
-// UpdateChannelID sets the "channel_id" field to the value that was provided on create.
-func (u *UsageLogUpsertBulk) UpdateChannelID() *UsageLogUpsertBulk {
-	return u.Update(func(s *UsageLogUpsert) {
-		s.UpdateChannelID()
-	})
-}
-
-// ClearChannelID clears the value of the "channel_id" field.
-func (u *UsageLogUpsertBulk) ClearChannelID() *UsageLogUpsertBulk {
-	return u.Update(func(s *UsageLogUpsert) {
-		s.ClearChannelID()
 	})
 }
 

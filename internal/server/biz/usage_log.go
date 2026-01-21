@@ -80,7 +80,7 @@ func NewUsageLogService(ent *ent.Client, systemService *SystemService, channelSe
 type CreateUsageLogParams struct {
 	RequestID     int
 	ProjectID     int
-	ChannelID     *int
+	ChannelID     int
 	ActualModelID string // The channel actual model ID, not the request model ID.
 	Usage         *llm.Usage
 	Source        usagelog.Source
@@ -100,6 +100,7 @@ func (s *UsageLogService) CreateUsageLog(ctx context.Context, params CreateUsage
 		SetRequestID(params.RequestID).
 		SetProjectID(params.ProjectID).
 		SetModelID(params.ActualModelID).
+		SetChannelID(params.ChannelID).
 		SetPromptTokens(params.Usage.PromptTokens).
 		SetCompletionTokens(params.Usage.CompletionTokens).
 		SetTotalTokens(params.Usage.TotalTokens).
@@ -110,11 +111,6 @@ func (s *UsageLogService) CreateUsageLog(ctx context.Context, params CreateUsage
 		mut = mut.SetAPIKeyID(*params.APIKeyID)
 	} else if ctxAPIKey, ok := contexts.GetAPIKey(ctx); ok && ctxAPIKey != nil {
 		mut = mut.SetAPIKeyID(ctxAPIKey.ID)
-	}
-
-	// Set channel ID if provided
-	if params.ChannelID != nil {
-		mut = mut.SetChannelID(*params.ChannelID)
 	}
 
 	// Set prompt tokens details if available
@@ -143,9 +139,7 @@ func (s *UsageLogService) CreateUsageLog(ctx context.Context, params CreateUsage
 		priceReferenceID string
 	)
 
-	if params.ChannelID != nil {
-		costItems, totalCost, priceReferenceID = s.computeUsageCost(ctx, *params.ChannelID, params.ActualModelID, params.Usage)
-	}
+	costItems, totalCost, priceReferenceID = s.computeUsageCost(ctx, params.ChannelID, params.ActualModelID, params.Usage)
 
 	mut = mut.
 		SetNillableTotalCost(totalCost).
@@ -183,20 +177,10 @@ func (s *UsageLogService) CreateUsageLogFromRequest(
 		return nil, nil
 	}
 
-	// Get channel ID from request if available
-	var channelID *int
-	if request.ChannelID != 0 {
-		channelID = &request.ChannelID
-	}
-
-	if channelID == nil {
-		channelID = &requestExec.ChannelID
-	}
-
 	return s.CreateUsageLog(ctx, CreateUsageLogParams{
 		RequestID:     request.ID,
 		ProjectID:     request.ProjectID,
-		ChannelID:     channelID,
+		ChannelID:     requestExec.ChannelID,
 		ActualModelID: requestExec.ModelID,
 		Usage:         usage,
 		Source:        usagelog.Source(request.Source),

@@ -12,7 +12,6 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
-	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/objects"
@@ -35,26 +34,6 @@ func (_u *UsageLogUpdate) Where(ps ...predicate.UsageLog) *UsageLogUpdate {
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *UsageLogUpdate) SetUpdatedAt(v time.Time) *UsageLogUpdate {
 	_u.mutation.SetUpdatedAt(v)
-	return _u
-}
-
-// SetChannelID sets the "channel_id" field.
-func (_u *UsageLogUpdate) SetChannelID(v int) *UsageLogUpdate {
-	_u.mutation.SetChannelID(v)
-	return _u
-}
-
-// SetNillableChannelID sets the "channel_id" field if the given value is not nil.
-func (_u *UsageLogUpdate) SetNillableChannelID(v *int) *UsageLogUpdate {
-	if v != nil {
-		_u.SetChannelID(*v)
-	}
-	return _u
-}
-
-// ClearChannelID clears the value of the "channel_id" field.
-func (_u *UsageLogUpdate) ClearChannelID() *UsageLogUpdate {
-	_u.mutation.ClearChannelID()
 	return _u
 }
 
@@ -429,20 +408,9 @@ func (_u *UsageLogUpdate) ClearCostPriceReferenceID() *UsageLogUpdate {
 	return _u
 }
 
-// SetChannel sets the "channel" edge to the Channel entity.
-func (_u *UsageLogUpdate) SetChannel(v *Channel) *UsageLogUpdate {
-	return _u.SetChannelID(v.ID)
-}
-
 // Mutation returns the UsageLogMutation object of the builder.
 func (_u *UsageLogUpdate) Mutation() *UsageLogMutation {
 	return _u.mutation
-}
-
-// ClearChannel clears the "channel" edge to the Channel entity.
-func (_u *UsageLogUpdate) ClearChannel() *UsageLogUpdate {
-	_u.mutation.ClearChannel()
-	return _u
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -494,6 +462,9 @@ func (_u *UsageLogUpdate) check() error {
 	}
 	if _u.mutation.ProjectCleared() && len(_u.mutation.ProjectIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "UsageLog.project"`)
+	}
+	if _u.mutation.ChannelCleared() && len(_u.mutation.ChannelIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "UsageLog.channel"`)
 	}
 	return nil
 }
@@ -647,35 +618,6 @@ func (_u *UsageLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.CostPriceReferenceIDCleared() {
 		_spec.ClearField(usagelog.FieldCostPriceReferenceID, field.TypeString)
 	}
-	if _u.mutation.ChannelCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   usagelog.ChannelTable,
-			Columns: []string{usagelog.ChannelColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(channel.FieldID, field.TypeInt),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.ChannelIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   usagelog.ChannelTable,
-			Columns: []string{usagelog.ChannelColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(channel.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -701,26 +643,6 @@ type UsageLogUpdateOne struct {
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *UsageLogUpdateOne) SetUpdatedAt(v time.Time) *UsageLogUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
-	return _u
-}
-
-// SetChannelID sets the "channel_id" field.
-func (_u *UsageLogUpdateOne) SetChannelID(v int) *UsageLogUpdateOne {
-	_u.mutation.SetChannelID(v)
-	return _u
-}
-
-// SetNillableChannelID sets the "channel_id" field if the given value is not nil.
-func (_u *UsageLogUpdateOne) SetNillableChannelID(v *int) *UsageLogUpdateOne {
-	if v != nil {
-		_u.SetChannelID(*v)
-	}
-	return _u
-}
-
-// ClearChannelID clears the value of the "channel_id" field.
-func (_u *UsageLogUpdateOne) ClearChannelID() *UsageLogUpdateOne {
-	_u.mutation.ClearChannelID()
 	return _u
 }
 
@@ -1095,20 +1017,9 @@ func (_u *UsageLogUpdateOne) ClearCostPriceReferenceID() *UsageLogUpdateOne {
 	return _u
 }
 
-// SetChannel sets the "channel" edge to the Channel entity.
-func (_u *UsageLogUpdateOne) SetChannel(v *Channel) *UsageLogUpdateOne {
-	return _u.SetChannelID(v.ID)
-}
-
 // Mutation returns the UsageLogMutation object of the builder.
 func (_u *UsageLogUpdateOne) Mutation() *UsageLogMutation {
 	return _u.mutation
-}
-
-// ClearChannel clears the "channel" edge to the Channel entity.
-func (_u *UsageLogUpdateOne) ClearChannel() *UsageLogUpdateOne {
-	_u.mutation.ClearChannel()
-	return _u
 }
 
 // Where appends a list predicates to the UsageLogUpdate builder.
@@ -1173,6 +1084,9 @@ func (_u *UsageLogUpdateOne) check() error {
 	}
 	if _u.mutation.ProjectCleared() && len(_u.mutation.ProjectIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "UsageLog.project"`)
+	}
+	if _u.mutation.ChannelCleared() && len(_u.mutation.ChannelIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "UsageLog.channel"`)
 	}
 	return nil
 }
@@ -1342,35 +1256,6 @@ func (_u *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, err 
 	}
 	if _u.mutation.CostPriceReferenceIDCleared() {
 		_spec.ClearField(usagelog.FieldCostPriceReferenceID, field.TypeString)
-	}
-	if _u.mutation.ChannelCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   usagelog.ChannelTable,
-			Columns: []string{usagelog.ChannelColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(channel.FieldID, field.TypeInt),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.ChannelIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   usagelog.ChannelTable,
-			Columns: []string{usagelog.ChannelColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(channel.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &UsageLog{config: _u.config}
