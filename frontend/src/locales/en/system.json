@@ -54,7 +54,7 @@
   "system.retry.loadBalancerStrategy.options.adaptive": "Adaptive",
   "system.retry.loadBalancerStrategy.options.weighted": "Weighted",
   "system.retry.loadBalancerStrategy.documentation.adaptive": "Based on comprehensive consideration of weight, success rate, round-robin, and trace strategies to select appropriate channels for requests. Intelligently balances multiple factors to optimize channel selection.",
-  "system.retry.loadBalancerStrategy.documentation.weighted": "Each request follows channel weight order from high to low until one succeeds. Higher weight channels are prioritized sequentially for all requests.",
+  "system.retry.loadBalancerStrategy.documentation.weighted": "Requests are ordered by channel weight from high to low. Channels with the same weight are randomly sorted.",
   "system.retry.maxChannelRetries.label": "Max Channel Retries",
   "system.retry.maxChannelRetries.description": "Maximum number of times to retry across different channels (0-10). When a channel fails, the system will try other available channels up to this limit. Higher values increase reliability but may increase latency.",
   "system.retry.maxSingleChannelRetries.label": "Max Single Channel Retries",
