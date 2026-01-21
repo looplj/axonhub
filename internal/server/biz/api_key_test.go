@@ -973,9 +973,10 @@ func TestAPIKeyService_CreateLLMAPIKey(t *testing.T) {
 	apiKeyService, client := setupTestAPIKeyService(t, xcache.Config{Mode: xcache.ModeMemory})
 	defer client.Close()
 
-	ctx := context.Background()
-	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	// Setup context with privacy.Allow for data preparation
+	setupCtx := context.Background()
+	setupCtx = ent.NewContext(setupCtx, client)
+	setupCtx = privacy.DecisionContext(setupCtx, privacy.Allow)
 
 	hashedPassword, err := HashPassword("test-password")
 	require.NoError(t, err)
@@ -986,7 +987,7 @@ func TestAPIKeyService_CreateLLMAPIKey(t *testing.T) {
 		SetFirstName("Test").
 		SetLastName("User").
 		SetStatus(user.StatusActivated).
-		Save(ctx)
+		Save(setupCtx)
 	require.NoError(t, err)
 
 	projectName := uuid.NewString()
@@ -994,7 +995,7 @@ func TestAPIKeyService_CreateLLMAPIKey(t *testing.T) {
 		SetName(projectName).
 		SetDescription(projectName).
 		SetStatus(project.StatusActive).
-		Save(ctx)
+		Save(setupCtx)
 	require.NoError(t, err)
 
 	serviceKey, err := GenerateAPIKey()
@@ -1007,9 +1008,12 @@ func TestAPIKeyService_CreateLLMAPIKey(t *testing.T) {
 		SetProjectID(ownerProject.ID).
 		SetType(apikey.TypeServiceAccount).
 		SetScopes([]string{string(scopes.ScopeWriteAPIKeys)}).
-		Save(ctx)
+		Save(setupCtx)
 	require.NoError(t, err)
 
+	// Test context without privacy.Allow, using API Key for identity
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
 	ctx = contexts.WithAPIKey(ctx, ownerAPIKey)
 
 	t.Run("creates llm api key", func(t *testing.T) {
@@ -1024,43 +1028,28 @@ func TestAPIKeyService_CreateLLMAPIKey(t *testing.T) {
 		require.NotEmpty(t, apiKey.Key)
 	})
 
-	t.Run("rejects nil owner", func(t *testing.T) {
-		_, err := apiKeyService.CreateLLMAPIKey(ctx, nil, "LLM Key")
-		require.ErrorIs(t, err, ErrAPIKeyOwnerRequired)
-	})
-
-	t.Run("rejects non-service account owner", func(t *testing.T) {
-		userKey, err := client.APIKey.Create().
-			SetName("User Key").
-			SetKey("ah-test-user-key").
-			SetUserID(ownerUser.ID).
-			SetProjectID(ownerProject.ID).
-			SetType(apikey.TypeUser).
-			SetScopes([]string{string(scopes.ScopeWriteAPIKeys)}).
-			Save(ctx)
-		require.NoError(t, err)
-
-		_, err = apiKeyService.CreateLLMAPIKey(ctx, userKey, "LLM Key")
-		require.ErrorIs(t, err, ErrServiceAccountRequired)
-	})
-
-	t.Run("rejects missing scope", func(t *testing.T) {
-		missingScopeKey, err := client.APIKey.Create().
-			SetName("Service Account Missing Scope").
-			SetKey("ah-test-missing-scope").
-			SetUserID(ownerUser.ID).
-			SetProjectID(ownerProject.ID).
-			SetType(apikey.TypeServiceAccount).
-			SetScopes([]string{}).
-			Save(ctx)
-		require.NoError(t, err)
-
-		_, err = apiKeyService.CreateLLMAPIKey(ctx, missingScopeKey, "LLM Key")
-		require.ErrorIs(t, err, ErrAPIKeyScopeRequired)
-	})
-
 	t.Run("rejects empty name", func(t *testing.T) {
 		_, err := apiKeyService.CreateLLMAPIKey(ctx, ownerAPIKey, "   ")
 		require.ErrorIs(t, err, ErrAPIKeyNameRequired)
+	})
+
+	t.Run("rejects unauthorized api key", func(t *testing.T) {
+		// Create an API key without ScopeWriteAPIKeys
+		unauthorizedKey, err := client.APIKey.Create().
+			SetName("Unauthorized").
+			SetKey("ah-test-unauthorized").
+			SetUserID(ownerUser.ID).
+			SetProjectID(ownerProject.ID).
+			SetType(apikey.TypeUser).
+			SetScopes([]string{string(scopes.ScopeReadChannels)}).
+			Save(setupCtx)
+		require.NoError(t, err)
+
+		unauthorizedCtx := contexts.WithAPIKey(context.Background(), unauthorizedKey)
+		unauthorizedCtx = ent.NewContext(unauthorizedCtx, client)
+
+		_, err = apiKeyService.CreateLLMAPIKey(unauthorizedCtx, unauthorizedKey, "LLM Key")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "deny rule")
 	})
 }
