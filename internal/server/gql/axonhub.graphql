@@ -578,6 +578,7 @@ type Mutation {
   ): BulkUpdateChannelOrderingResult!
 
   createAPIKey(input: CreateAPIKeyInput!): APIKey!
+  createLLMAPIKey(name: String!): APIKey!
   updateAPIKey(id: ID!, input: UpdateAPIKeyInput!): APIKey!
   updateAPIKeyStatus(id: ID!, status: APIKeyStatus!): APIKey!
   updateAPIKeyProfiles(id: ID!, input: UpdateAPIKeyProfilesInput!): APIKey!
