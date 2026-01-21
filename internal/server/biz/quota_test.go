@@ -35,7 +35,7 @@ func TestQuotaService_AllTime_RequestCountExceeded(t *testing.T) {
 	now := time.Now().UTC()
 	apiKeyID := 1
 
-	_, err = client.Request.Create().
+	req1, err := client.Request.Create().
 		SetProjectID(p.ID).
 		SetAPIKeyID(apiKeyID).
 		SetModelID("m").
@@ -46,13 +46,33 @@ func TestQuotaService_AllTime_RequestCountExceeded(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	_, err = client.Request.Create().
+	_, err = client.UsageLog.Create().
+		SetRequestID(req1.ID).
+		SetAPIKeyID(apiKeyID).
+		SetProjectID(p.ID).
+		SetChannelID(1).
+		SetModelID("m").
+		SetCreatedAt(now.Add(-2 * time.Hour)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	req2, err := client.Request.Create().
 		SetProjectID(p.ID).
 		SetAPIKeyID(apiKeyID).
 		SetModelID("m").
 		SetFormat("openai/chat_completions").
 		SetStatus(request.StatusCompleted).
 		SetRequestBody(objects.JSONRawMessage([]byte(`{}`))).
+		SetCreatedAt(now.Add(-1 * time.Hour)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	_, err = client.UsageLog.Create().
+		SetRequestID(req2.ID).
+		SetAPIKeyID(apiKeyID).
+		SetProjectID(p.ID).
+		SetChannelID(1).
+		SetModelID("m").
 		SetCreatedAt(now.Add(-1 * time.Hour)).
 		Save(ctx)
 	require.NoError(t, err)
@@ -105,6 +125,7 @@ func TestQuotaService_PastDuration_TotalTokensExceeded(t *testing.T) {
 		SetRequestID(reqInWindow.ID).
 		SetAPIKeyID(apiKeyID).
 		SetProjectID(p.ID).
+		SetChannelID(1).
 		SetModelID("m").
 		SetSource(usagelog.SourceAPI).
 		SetFormat("openai/chat_completions").
@@ -131,6 +152,7 @@ func TestQuotaService_PastDuration_TotalTokensExceeded(t *testing.T) {
 		SetRequestID(reqOutWindow.ID).
 		SetAPIKeyID(apiKeyID).
 		SetProjectID(p.ID).
+		SetChannelID(1).
 		SetModelID("m").
 		SetSource(usagelog.SourceAPI).
 		SetFormat("openai/chat_completions").
@@ -231,6 +253,7 @@ func TestQuotaService_CalendarDay_CostExceeded(t *testing.T) {
 		SetRequestID(req.ID).
 		SetAPIKeyID(apiKeyID).
 		SetProjectID(p.ID).
+		SetChannelID(1).
 		SetModelID("m").
 		SetSource(usagelog.SourceAPI).
 		SetFormat("openai/chat_completions").

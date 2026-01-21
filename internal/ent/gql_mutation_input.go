@@ -1051,7 +1051,7 @@ type CreateUsageLogInput struct {
 	CostPriceReferenceID               *string
 	RequestID                          int
 	ProjectID                          int
-	ChannelID                          *int
+	ChannelID                          int
 }
 
 // Mutate applies the CreateUsageLogInput on the UsageLogMutation builder.
@@ -1113,9 +1113,7 @@ func (i *CreateUsageLogInput) Mutate(m *UsageLogMutation) {
 	}
 	m.SetRequestID(i.RequestID)
 	m.SetProjectID(i.ProjectID)
-	if v := i.ChannelID; v != nil {
-		m.SetChannelID(*v)
-	}
+	m.SetChannelID(i.ChannelID)
 }
 
 // SetInput applies the change-set in the CreateUsageLogInput on the UsageLogCreate builder.
@@ -1154,8 +1152,6 @@ type UpdateUsageLogInput struct {
 	AppendCostItems                         []objects.CostItem
 	ClearCostPriceReferenceID               bool
 	CostPriceReferenceID                    *string
-	ClearChannel                            bool
-	ChannelID                               *int
 }
 
 // Mutate applies the UpdateUsageLogInput on the UsageLogMutation builder.
@@ -1243,12 +1239,6 @@ func (i *UpdateUsageLogInput) Mutate(m *UsageLogMutation) {
 	}
 	if v := i.CostPriceReferenceID; v != nil {
 		m.SetCostPriceReferenceID(*v)
-	}
-	if i.ClearChannel {
-		m.ClearChannel()
-	}
-	if v := i.ChannelID; v != nil {
-		m.SetChannelID(*v)
 	}
 }
 

@@ -1960,7 +1960,7 @@ input CreateUsageLogInput {
   costPriceReferenceID: String
   requestID: ID!
   projectID: ID!
-  channelID: ID
+  channelID: ID!
 }
 """
 CreateUserInput is used for create User object.
@@ -3846,7 +3846,7 @@ type RequestExecution implements Node {
   updatedAt: Time!
   projectID: Int!
   requestID: ID!
-  channelID: ID
+  channelID: ID!
   """
   Data Storage ID that this request belongs to
   """
@@ -3867,7 +3867,7 @@ type RequestExecution implements Node {
   """
   requestHeaders: JSONRawMessage
   request: Request!
-  channel: Channel @goField(forceResolver: true)
+  channel: Channel! @goField(forceResolver: true)
   dataStorage: DataStorage
 }
 """
@@ -3996,8 +3996,6 @@ input RequestExecutionWhereInput {
   channelIDNEQ: ID
   channelIDIn: [ID!]
   channelIDNotIn: [ID!]
-  channelIDIsNil: Boolean
-  channelIDNotNil: Boolean
   """
   data_storage_id field predicates
   """
@@ -5413,8 +5411,6 @@ input UpdateUsageLogInput {
   """
   costPriceReferenceID: String
   clearCostPriceReferenceID: Boolean
-  channelID: ID
-  clearChannel: Boolean
 }
 """
 UpdateUserInput is used for update User object.
@@ -5465,7 +5461,7 @@ type UsageLog implements Node {
   """
   Channel ID used for the request
   """
-  channelID: ID
+  channelID: ID!
   """
   Model identifier used for the request
   """
@@ -5540,7 +5536,7 @@ type UsageLog implements Node {
   costPriceReferenceID: String
   request: Request!
   project: Project!
-  channel: Channel @goField(forceResolver: true)
+  channel: Channel! @goField(forceResolver: true)
 }
 """
 A connection to a list of items.
@@ -5675,8 +5671,6 @@ input UsageLogWhereInput {
   channelIDNEQ: ID
   channelIDIn: [ID!]
   channelIDNotIn: [ID!]
-  channelIDIsNil: Boolean
-  channelIDNotNil: Boolean
   """
   model_id field predicates
   """

@@ -6403,12 +6403,10 @@ type RequestExecutionWhereInput struct {
 	RequestIDNotIn []int `json:"requestIDNotIn,omitempty"`
 
 	// "channel_id" field predicates.
-	ChannelID       *int  `json:"channelID,omitempty"`
-	ChannelIDNEQ    *int  `json:"channelIDNEQ,omitempty"`
-	ChannelIDIn     []int `json:"channelIDIn,omitempty"`
-	ChannelIDNotIn  []int `json:"channelIDNotIn,omitempty"`
-	ChannelIDIsNil  bool  `json:"channelIDIsNil,omitempty"`
-	ChannelIDNotNil bool  `json:"channelIDNotNil,omitempty"`
+	ChannelID      *int  `json:"channelID,omitempty"`
+	ChannelIDNEQ   *int  `json:"channelIDNEQ,omitempty"`
+	ChannelIDIn    []int `json:"channelIDIn,omitempty"`
+	ChannelIDNotIn []int `json:"channelIDNotIn,omitempty"`
 
 	// "data_storage_id" field predicates.
 	DataStorageID       *int  `json:"dataStorageID,omitempty"`
@@ -6719,12 +6717,6 @@ func (i *RequestExecutionWhereInput) P() (predicate.RequestExecution, error) {
 	}
 	if len(i.ChannelIDNotIn) > 0 {
 		predicates = append(predicates, requestexecution.ChannelIDNotIn(i.ChannelIDNotIn...))
-	}
-	if i.ChannelIDIsNil {
-		predicates = append(predicates, requestexecution.ChannelIDIsNil())
-	}
-	if i.ChannelIDNotNil {
-		predicates = append(predicates, requestexecution.ChannelIDNotNil())
 	}
 	if i.DataStorageID != nil {
 		predicates = append(predicates, requestexecution.DataStorageIDEQ(*i.DataStorageID))
@@ -8437,12 +8429,10 @@ type UsageLogWhereInput struct {
 	ProjectIDNotIn []int `json:"projectIDNotIn,omitempty"`
 
 	// "channel_id" field predicates.
-	ChannelID       *int  `json:"channelID,omitempty"`
-	ChannelIDNEQ    *int  `json:"channelIDNEQ,omitempty"`
-	ChannelIDIn     []int `json:"channelIDIn,omitempty"`
-	ChannelIDNotIn  []int `json:"channelIDNotIn,omitempty"`
-	ChannelIDIsNil  bool  `json:"channelIDIsNil,omitempty"`
-	ChannelIDNotNil bool  `json:"channelIDNotNil,omitempty"`
+	ChannelID      *int  `json:"channelID,omitempty"`
+	ChannelIDNEQ   *int  `json:"channelIDNEQ,omitempty"`
+	ChannelIDIn    []int `json:"channelIDIn,omitempty"`
+	ChannelIDNotIn []int `json:"channelIDNotIn,omitempty"`
 
 	// "model_id" field predicates.
 	ModelID             *string  `json:"modelID,omitempty"`
@@ -8868,12 +8858,6 @@ func (i *UsageLogWhereInput) P() (predicate.UsageLog, error) {
 	}
 	if len(i.ChannelIDNotIn) > 0 {
 		predicates = append(predicates, usagelog.ChannelIDNotIn(i.ChannelIDNotIn...))
-	}
-	if i.ChannelIDIsNil {
-		predicates = append(predicates, usagelog.ChannelIDIsNil())
-	}
-	if i.ChannelIDNotNil {
-		predicates = append(predicates, usagelog.ChannelIDNotNil())
 	}
 	if i.ModelID != nil {
 		predicates = append(predicates, usagelog.ModelIDEQ(*i.ModelID))
