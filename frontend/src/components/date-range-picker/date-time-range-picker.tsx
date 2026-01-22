@@ -1,20 +1,20 @@
 import * as React from 'react'
-import { format } from 'date-fns'
-import { Calendar, ChevronLeft, ChevronRight, Clock } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
 import { DayPicker, type DateRange } from 'react-day-picker'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
+import { useClickOutside } from '@/hooks/use-click-outside'
 import type { DateTimeRangeValue } from '@/utils/date-range'
-import { DEFAULT_END_TIME, DEFAULT_START_TIME } from '@/utils/date-range'
-import { TimeDropdown } from './time-dropdown'
 import {
-  addMonthsSafe,
+  DEFAULT_END_TIME,
+  DEFAULT_START_TIME,
   defaultDateTimeRangeValue,
-  formatRange,
   isSameTime,
   normalizeDateTimeRangeValue,
-  timeToString,
-} from './utils'
+} from '@/utils/date-range'
+import { dayPickerClassNames, dayPickerComponents, dayPickerFormatters } from './day-picker-config'
+import { TimeField } from './time-field'
+import { addMonthsSafe, formatRange } from './utils'
 
 export interface DateTimeRangePickerProps {
   value?: DateTimeRangeValue
@@ -24,31 +24,17 @@ export interface DateTimeRangePickerProps {
   className?: string
 }
 
-const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
-
-function useClickOutside(ref: React.RefObject<HTMLElement>, onOutside: () => void) {
-  React.useEffect(() => {
-    function handler(event: MouseEvent) {
-      const target = event.target as Node
-      if (!ref.current) return
-      if (!ref.current.contains(target)) onOutside()
-    }
-
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [ref, onOutside])
-}
-
 export function DateTimeRangePicker(props: DateTimeRangePickerProps) {
   const { value, onChange, onCancel, onConfirm, className } = props
   const { t } = useTranslation()
   const isControlled = Object.prototype.hasOwnProperty.call(props, 'value')
-  const [internal, setInternal] = React.useState<DateTimeRangeValue>(() => normalizeDateTimeRangeValue(value))
+  const normalizedValue = React.useMemo(() => normalizeDateTimeRangeValue(value), [value])
+  const [internal, setInternal] = React.useState<DateTimeRangeValue>(() => normalizedValue)
 
   React.useEffect(() => {
     if (!isControlled) return
-    setInternal(normalizeDateTimeRangeValue(value))
-  }, [isControlled, value])
+    setInternal(normalizedValue)
+  }, [isControlled, normalizedValue])
 
   const emit = React.useCallback(
     (next: DateTimeRangeValue) => {
@@ -72,29 +58,21 @@ export function DateTimeRangePicker(props: DateTimeRangePickerProps) {
     if (internal.from) setMonth(internal.from)
   }, [internal.from])
 
-  const [startOpen, setStartOpen] = React.useState(false)
-  const [endOpen, setEndOpen] = React.useState(false)
+  const [openPanel, setOpenPanel] = React.useState<'start' | 'end' | null>(null)
+  const startOpen = openPanel === 'start'
+  const endOpen = openPanel === 'end'
   const startWrapRef = React.useRef<HTMLDivElement>(null)
   const endWrapRef = React.useRef<HTMLDivElement>(null)
-  const closeStart = React.useCallback(() => setStartOpen(false), [])
-  const closeEnd = React.useCallback(() => setEndOpen(false), [])
-  useClickOutside(startWrapRef, closeStart)
-  useClickOutside(endWrapRef, closeEnd)
+  const closePanel = React.useCallback(() => setOpenPanel(null), [])
+  useClickOutside(startWrapRef, closePanel, startOpen)
+  useClickOutside(endWrapRef, closePanel, endOpen)
 
   const toggleStart = React.useCallback(() => {
-    setStartOpen((open) => {
-      const next = !open
-      if (next) setEndOpen(false)
-      return next
-    })
+    setOpenPanel((current) => (current === 'start' ? null : 'start'))
   }, [])
 
   const toggleEnd = React.useCallback(() => {
-    setEndOpen((open) => {
-      const next = !open
-      if (next) setStartOpen(false)
-      return next
-    })
+    setOpenPanel((current) => (current === 'end' ? null : 'end'))
   }, [])
 
   const headerText = React.useMemo(
@@ -105,17 +83,6 @@ export function DateTimeRangePicker(props: DateTimeRangePickerProps) {
   const startActive = startOpen || !isSameTime(internal.startTime, DEFAULT_START_TIME)
   const endActive = endOpen || !isSameTime(internal.endTime, DEFAULT_END_TIME)
 
-  const timeInputClass = (active: boolean) =>
-    cn(
-      'w-full cursor-pointer border-none bg-transparent p-0 text-sm transition-colors focus:ring-0',
-      active
-        ? 'font-semibold text-gray-900 dark:text-gray-100'
-        : 'font-medium text-gray-500 dark:text-gray-600'
-    )
-
-  const timeIconClass = (active: boolean) =>
-    cn('ml-2 h-5 w-5 transition-colors', active ? 'text-gray-600 dark:text-gray-300' : 'text-gray-400 dark:text-gray-600')
-
   return (
     <div
       className={cn(
@@ -124,8 +91,8 @@ export function DateTimeRangePicker(props: DateTimeRangePickerProps) {
       )}
     >
       <div className='flex items-center justify-between border-b border-gray-100 bg-white p-5 dark:border-white/5 dark:bg-[#0a0a0b]/50'>
-        <div className='flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-300'>
-          <Calendar className='h-4 w-4 opacity-70' />
+        <div className='flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium text-gray-500 transition-all hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5'>
+          <Calendar className='h-4 w-4' />
           <span>{headerText}</span>
         </div>
 
@@ -165,123 +132,38 @@ export function DateTimeRangePicker(props: DateTimeRangePickerProps) {
             showOutsideDays
             fixedWeeks
             weekStartsOn={0}
-            classNames={{
-              nav: 'hidden',
-              months: 'flex gap-10',
-              month: 'w-full',
-              month_caption:
-                'mb-6 text-center text-sm font-semibold tracking-wide text-gray-900 dark:text-gray-100',
-              month_grid: 'w-full border-collapse',
-              weekdays: 'grid grid-cols-7 text-center',
-              weekday:
-                'pb-4 text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500',
-              week: 'grid grid-cols-7 text-center',
-              day: cn(
-                'p-0 text-center',
-                '[&.outside>button]:text-gray-300 dark:[&.outside>button]:text-gray-700',
-                '[&.disabled>button]:cursor-not-allowed [&.disabled>button]:opacity-30',
-                '[&.range_start>button]:bg-primary [&.range_start>button]:text-white',
-                '[&.range_end>button]:bg-primary [&.range_end>button]:text-white',
-                '[&.range_middle>button]:bg-primary/10 dark:[&.range_middle>button]:bg-primary/20',
-                '[&.range_middle>button]:text-gray-700 dark:[&.range_middle>button]:text-gray-200',
-                '[&.today>button]:ring-1 [&.today>button]:ring-primary/40'
-              ),
-              outside: 'outside',
-              disabled: 'disabled',
-              range_start: 'range_start',
-              range_end: 'range_end',
-              range_middle: 'range_middle',
-              today: 'today',
-              day_button: cn(
-                'inline-flex h-8 w-8 items-center justify-center rounded-full text-sm transition-colors',
-                'text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5'
-              ),
-            }}
-            formatters={{
-              formatWeekdayName: (date) => WEEKDAYS[date.getDay()],
-            }}
-            components={{
-              MonthCaption: ({ calendarMonth, className, displayIndex: _displayIndex, ...monthProps }) => (
-                <div className={className} {...monthProps}>
-                  {format(calendarMonth.date, 'MMMM yyyy')}
-                </div>
-              ),
-            }}
+            classNames={dayPickerClassNames}
+            formatters={dayPickerFormatters}
+            components={dayPickerComponents}
           />
         </div>
       </div>
 
       <div className='border-t border-gray-100 bg-gray-50 px-8 py-10 dark:border-white/5 dark:bg-[#0a0a0b]/80'>
         <div className='flex flex-col gap-10 md:flex-row'>
-          <div className='flex-1 space-y-3'>
-            <label className='block text-[11px] font-bold uppercase tracking-[0.2em] text-gray-500'>
-              {t('common.filters.startTime')}
-            </label>
+          <TimeField
+            label={t('common.filters.startTime')}
+            value={internal.startTime}
+            active={startActive}
+            open={startOpen}
+            onToggle={toggleStart}
+            onChange={(next) => emit({ ...internal, startTime: next })}
+            onClose={closePanel}
+            closeLabel={t('common.close')}
+            wrapperRef={startWrapRef}
+          />
 
-            <div className='relative' ref={startWrapRef}>
-              <button
-                type='button'
-                className={cn(
-                  'flex w-full items-center rounded-md border border-gray-200 bg-white px-4 py-3.5 transition-all hover:border-white/20',
-                  'dark:border-white/10 dark:bg-[#121214]/60',
-                  startOpen && 'active-glow'
-                )}
-                onClick={toggleStart}
-              >
-                <input
-                  readOnly
-                  className={timeInputClass(startActive)}
-                  value={timeToString(internal.startTime)}
-                  placeholder='HH:mm:ss'
-                />
-                <Clock className={timeIconClass(startActive)} />
-              </button>
-
-              {startOpen && (
-                <TimeDropdown
-                  value={internal.startTime}
-                  onChange={(next) => emit({ ...internal, startTime: next })}
-                  onClose={closeStart}
-                  closeLabel={t('common.close')}
-                />
-              )}
-            </div>
-          </div>
-
-          <div className='flex-1 space-y-3'>
-            <label className='block text-[11px] font-bold uppercase tracking-[0.2em] text-gray-500'>
-              {t('common.filters.endTime')}
-            </label>
-
-            <div className='relative' ref={endWrapRef}>
-              <button
-                type='button'
-                className={cn(
-                  'flex w-full items-center rounded-md border border-gray-200 bg-white px-4 py-3.5 transition-all hover:border-white/20',
-                  'dark:border-white/10 dark:bg-[#121214]/60',
-                  endOpen && 'active-glow'
-                )}
-                onClick={toggleEnd}
-              >
-                <input
-                  readOnly
-                  className={timeInputClass(endActive)}
-                  value={timeToString(internal.endTime)}
-                  placeholder='HH:mm:ss'
-                />
-                <Clock className={timeIconClass(endActive)} />
-              </button>
-
-              {endOpen && (
-                <TimeDropdown
-                  value={internal.endTime}
-                  onChange={(next) => emit({ ...internal, endTime: next })}
-                  onClose={closeEnd}
-                  closeLabel={t('common.close')}
-                />
-              )}
-            </div>
-          </div>
+          <TimeField
+            label={t('common.filters.endTime')}
+            value={internal.endTime}
+            active={endActive}
+            open={endOpen}
+            onToggle={toggleEnd}
+            onChange={(next) => emit({ ...internal, endTime: next })}
+            onClose={closePanel}
+            closeLabel={t('common.close')}
+            wrapperRef={endWrapRef}
+          />
         </div>
       </div>
 

@@ -1,12 +1,13 @@
-import * as React from 'react'
-import { Calendar } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import type { DateTimeRangeValue, TimeValue } from '@/utils/date-range'
-import { DateTimeRangePicker } from './date-time-range-picker'
-import { formatRange, normalizeDateTimeRangeValue } from './utils'
+import * as React from 'react';
+import { Calendar } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { cn } from '@/lib/utils';
+import { normalizeDateTimeRangeValue, type DateTimeRangeValue } from '@/utils/date-range';
+import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DateTimeRangePicker } from './date-time-range-picker';
+import { formatRange } from './utils';
+
 
 export type { DateTimeRangeValue, TimeValue } from '@/utils/date-range'
 export { DateTimeRangePicker } from './date-time-range-picker'
@@ -24,14 +25,18 @@ export function DateRangePicker(props: DateRangePickerProps) {
   const { t } = useTranslation()
   const isControlled = Object.prototype.hasOwnProperty.call(props, 'value')
   const [open, setOpen] = React.useState(false)
+  const normalizedValue = React.useMemo(
+    () => (value ? normalizeDateTimeRangeValue(value) : undefined),
+    [value]
+  )
   const [internalValue, setInternalValue] = React.useState<DateTimeRangeValue | undefined>(
-    value ? normalizeDateTimeRangeValue(value) : undefined
+    normalizedValue
   )
 
   React.useEffect(() => {
     if (!isControlled) return
-    setInternalValue(value ? normalizeDateTimeRangeValue(value) : undefined)
-  }, [isControlled, value])
+    setInternalValue(normalizedValue)
+  }, [isControlled, normalizedValue])
 
   const handleChange = React.useCallback(
     (next: DateTimeRangeValue | undefined) => {
@@ -42,7 +47,7 @@ export function DateRangePicker(props: DateRangePickerProps) {
     [isControlled, onChange]
   )
 
-  const currentValue = isControlled ? (value ? normalizeDateTimeRangeValue(value) : undefined) : internalValue
+  const currentValue = isControlled ? normalizedValue : internalValue
   const label = formatRange(currentValue?.from, currentValue?.to, t('common.filters.dateRange'))
 
   return (
