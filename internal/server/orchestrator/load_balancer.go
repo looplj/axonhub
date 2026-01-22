@@ -13,19 +13,6 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
-// contextKey is a type for context keys to avoid collisions.
-type contextKey string
-
-const (
-	// requestedModelKey is the context key for the requested model ID.
-	requestedModelKey contextKey = "requested_model"
-)
-
-// withRequestedModel adds the requested model ID to the context.
-func withRequestedModel(ctx context.Context, modelID string) context.Context {
-	return context.WithValue(ctx, requestedModelKey, modelID)
-}
-
 // ChannelMetricsProvider provides channel performance metrics.
 type ChannelMetricsProvider interface {
 	GetChannelMetrics(ctx context.Context, channelID int) (*biz.AggregatedMetrics, error)
@@ -96,6 +83,23 @@ type RetryPolicyProvider interface {
 	RetryPolicyOrDefault(ctx context.Context) *biz.RetryPolicy
 }
 
+// Save the requested model ID in the context, to let model aware strategy use it, e.g. circuit breaker.
+type modelContextKey struct{}
+
+// contextWithRequestedModel adds the requested model ID to the context.
+func contextWithRequestedModel(ctx context.Context, modelID string) context.Context {
+	return context.WithValue(ctx, modelContextKey{}, modelID)
+}
+
+// requestedModelFromContext extracts the requested model ID from the context.
+func requestedModelFromContext(ctx context.Context) string {
+	if model, ok := ctx.Value(modelContextKey{}).(string); ok {
+		return model
+	}
+
+	return ""
+}
+
 // LoadBalancer applies multiple strategies to sort channels by priority.
 type LoadBalancer struct {
 	strategies       []LoadBalanceStrategy
@@ -127,16 +131,12 @@ type candidateScore struct {
 // Returns a new slice with top k candidates sorted by descending priority.
 // The top k value is calculated internally based on the retry policy.
 func (lb *LoadBalancer) Sort(ctx context.Context, candidates []*ChannelModelsCandidate, model string) []*ChannelModelsCandidate {
-	if len(candidates) == 0 {
-		return candidates
-	}
-
-	if len(candidates) == 1 {
+	if len(candidates) <= 1 {
 		return candidates
 	}
 
 	// Add model information to context for circuit-breaker strategy
-	ctx = withRequestedModel(ctx, model)
+	ctx = contextWithRequestedModel(ctx, model)
 
 	// Calculate topK based on retry policy
 	topK := lb.calculateTopK(ctx, candidates)

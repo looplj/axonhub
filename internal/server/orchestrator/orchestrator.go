@@ -28,21 +28,22 @@ func NewChatCompletionOrchestrator(
 ) *ChatCompletionOrchestrator {
 	connectionTracker := NewDefaultConnectionTracker(256)
 
-	// Initialize model health manager
-	modelHealthManager := biz.NewModelHealthManager(systemService)
+	// Initialize model circuit breaker
+	modelCircuitBreaker := biz.NewModelCircuitBreaker()
 
-	// Build strategies
-	strategies := []LoadBalanceStrategy{
-		NewTraceAwareStrategy(requestService),                         // Priority 1: Last successful channel from trace
-		NewErrorAwareStrategy(channelService),                         // Priority 2: Health and error rate
-		NewWeightRoundRobinStrategy(channelService),                   // Priority 3: Weight round robin
-		NewConnectionAwareStrategy(channelService, connectionTracker), // Priority 4: Connection count
-		NewRandomStrategy(),                                           // Priority 5: Random tie-breaker
-	}
+	adaptiveLoadBalancer := NewLoadBalancer(systemService, channelService,
+		NewTraceAwareStrategy(requestService),
+		NewErrorAwareStrategy(channelService),
+		NewWeightRoundRobinStrategy(channelService),
+		NewConnectionAwareStrategy(channelService, connectionTracker),
+		NewRandomStrategy(),
+	)
 
-	adaptiveLoadBalancer := NewLoadBalancer(systemService, channelService, strategies...)
-	weightedLoadBalancer := NewLoadBalancer(systemService, channelService, NewWeightStrategy(), NewRandomStrategy())
-	circuitBreakerLoadBalancer := NewLoadBalancer(systemService, channelService, NewCircuitBreakerStrategy(modelHealthManager), NewWeightStrategy(), NewRandomStrategy())
+	weightedLoadBalancer := NewLoadBalancer(systemService, channelService,
+		NewWeightStrategy(), NewRandomStrategy())
+
+	circuitBreakerLoadBalancer := NewLoadBalancer(systemService, channelService,
+		NewWeightStrategy(), NewModelAwareCircuitBreakerStrategy(modelCircuitBreaker), NewRandomStrategy())
 
 	return &ChatCompletionOrchestrator{
 		Inbound:         inbound,
@@ -55,16 +56,16 @@ func NewChatCompletionOrchestrator(
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
-		PipelineFactory:         pipeline.NewFactory(httpClient),
-		ModelMapper:             NewModelMapper(),
-		channelSelector:         NewDefaultSelector(channelService, modelService, systemService),
-		selectedChannelIds:      []int{},
-		connectionTracker:       connectionTracker,
-		adaptiveLoadBalancer:    adaptiveLoadBalancer,
-		weightedLoadBalancer:    weightedLoadBalancer,
+		PipelineFactory:            pipeline.NewFactory(httpClient),
+		ModelMapper:                NewModelMapper(),
+		channelSelector:            NewDefaultSelector(channelService, modelService, systemService),
+		selectedChannelIds:         []int{},
+		connectionTracker:          connectionTracker,
+		adaptiveLoadBalancer:       adaptiveLoadBalancer,
+		failoverLoadBalancer:       weightedLoadBalancer,
 		circuitBreakerLoadBalancer: circuitBreakerLoadBalancer,
-		modelHealthManager:      modelHealthManager,
-		proxy:                   nil,
+		modelCircuitBreaker:        modelCircuitBreaker,
+		proxy:                      nil,
 	}
 }
 
@@ -87,13 +88,13 @@ type ChatCompletionOrchestrator struct {
 	// The runtime selected channel ids.
 	selectedChannelIds []int
 	// The load balancer for channel load balancing.
-	adaptiveLoadBalancer    *LoadBalancer
-	weightedLoadBalancer    *LoadBalancer
+	adaptiveLoadBalancer       *LoadBalancer
+	failoverLoadBalancer       *LoadBalancer
 	circuitBreakerLoadBalancer *LoadBalancer
 	// The connection tracker for connection aware load balancing.
 	connectionTracker ConnectionTracker
-	// The model health manager for circuit-breaker load balancing.
-	modelHealthManager *biz.ModelHealthManager
+	// The model circuit breaker for circuit-breaker load balancing.
+	modelCircuitBreaker *biz.ModelCircuitBreaker
 
 	// proxy is the proxy configuration for testing
 	// If set, it will override the channel's default proxy configuration
@@ -143,11 +144,11 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	loadBalancer := processor.adaptiveLoadBalancer
 
 	switch retryPolicy.LoadBalancerStrategy {
-	case "adaptive":
+	case biz.LoadBalancerStrategyAdaptive:
 		loadBalancer = processor.adaptiveLoadBalancer
-	case "weighted":
-		loadBalancer = processor.weightedLoadBalancer
-	case "circuit-breaker":
+	case biz.LoadBalancerStrategyFailover:
+		loadBalancer = processor.failoverLoadBalancer
+	case biz.LoadBalancerStrategyCircuitBreaker:
 		loadBalancer = processor.circuitBreakerLoadBalancer
 	default:
 		// Default to adaptive load balancer
@@ -163,7 +164,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		CandidateSelector:     processor.channelSelector,
 		LoadBalancer:          loadBalancer,
 		ModelMapper:           processor.ModelMapper,
-		ModelHealthManager:    processor.modelHealthManager,
+		ModelCircuitBreaker:   processor.modelCircuitBreaker,
 		Proxy:                 processor.proxy,
 		CurrentCandidateIndex: 0,
 	}
