@@ -330,11 +330,15 @@ func TestAdaptiveLoadBalancer_Simulation_ErrorMigrationAndRecovery(t *testing.T)
 
 	failingID := candidates[0].Channel.ID
 
+	// Record 3 failures
+	// Penalty: 40 (base) + 3 * 30 (consecutive) = 130
+	// ErrorAware Score: 200 - 130 = 70
 	for range 3 {
 		metrics.AdvanceMs(tickMs)
 		metrics.RecordFailure(failingID)
 	}
 
+	// Verify it's not picked immediately after failure
 	for range 200 {
 		metrics.AdvanceMs(tickMs)
 
@@ -344,11 +348,28 @@ func TestAdaptiveLoadBalancer_Simulation_ErrorMigrationAndRecovery(t *testing.T)
 		metrics.RecordSuccess(sorted[0].Channel.ID)
 	}
 
-	metrics.AdvanceMs(6 * 60 * 1000)
+	// Wait 2.5 minutes (half of 5 min cooldown)
+	// cooldownRatio = 0.5
+	// Penalty = 130 * 0.5 = 65
+	// ErrorAware Score: 200 - 65 = 135
+	// Healthy channels ErrorAware Score: 200
+	// Even though it's recovering, healthy channels still have higher score.
+	metrics.AdvanceMs(2*60*1000 + 30*1000)
+
+	// Still should not be picked if other channels are healthy enough
+	for range 50 {
+		metrics.AdvanceMs(tickMs)
+
+		sorted := lb.Sort(ctx, candidates, "gpt-4")
+		require.NotEqual(t, failingID, sorted[0].Channel.ID)
+		metrics.RecordSuccess(sorted[0].Channel.ID)
+	}
+
+	// Wait until 6 minutes passed (total > 5 min cooldown)
+	metrics.AdvanceMs(3*60*1000 + 30*1000)
 	metrics.RecordSuccess(failingID)
 
 	found := false
-
 	for range 2000 {
 		metrics.AdvanceMs(tickMs)
 
@@ -364,6 +385,66 @@ func TestAdaptiveLoadBalancer_Simulation_ErrorMigrationAndRecovery(t *testing.T)
 	}
 
 	require.True(t, found)
+}
+
+func TestAdaptiveLoadBalancer_Simulation_ErrorAware_DetailedDecay(t *testing.T) {
+	ctx := context.Background()
+	weights := []int{100, 100} // Equal weights for simplicity
+	candidates := buildSimulationCandidates(weights)
+
+	metrics := newFakeAdaptiveMetricsProvider(600)
+
+	strategies := []LoadBalanceStrategy{
+		NewErrorAwareStrategy(metrics),
+		NewWeightRoundRobinStrategy(metrics),
+	}
+
+	lb := NewLoadBalancer(&mockSystemService{retryPolicy: &biz.RetryPolicy{Enabled: false}}, nil, strategies...)
+
+	ch1 := candidates[0].Channel.ID
+	ch2 := candidates[1].Channel.ID
+
+	// 1. ch1 fails 2 times
+	// Penalty: 40 + 2 * 30 = 100
+	// ErrorAware Score: 200 - 100 = 100
+	// WRR Score: 150
+	// Total: 250
+	// ch2 Total: 200 + 150 = 350
+	for range 2 {
+		metrics.RecordFailure(ch1)
+	}
+
+	// ch2 should be picked
+	for range 10 {
+		sorted := lb.Sort(ctx, candidates, "gpt-4")
+		require.Equal(t, ch2, sorted[0].Channel.ID)
+		metrics.RecordSuccess(ch2)
+	}
+
+	// 2. Advance 4 minutes (80% of 5 min cooldown)
+	// cooldownRatio = 1.0 - (4/5) = 0.2
+	// Penalty = 100 * 0.2 = 20
+	// ErrorAware Score: 200 - 20 = 180
+	metrics.AdvanceMs(4 * 60 * 1000)
+
+	// ch2 has 10 requests.
+	// WRR Score for ch2: 150 * exp(-10/150) = 150 * 0.935 = 140
+	// ch2 Total: 200 + 140 = 340
+	// ch1 Total: 180 + 150 = 330
+	// ch2 should still be picked (barely)
+	sorted := lb.Sort(ctx, candidates, "gpt-4")
+	require.Equal(t, ch2, sorted[0].Channel.ID)
+
+	// 3. Advance 1 more minute (total 5 minutes)
+	// Penalty = 0
+	// ErrorAware Score: 200
+	metrics.AdvanceMs(1 * 60 * 1000)
+
+	// ch1 Total: 200 + 150 = 350
+	// ch2 Total: 200 + 140 = 340
+	// ch1 should be picked now
+	sorted = lb.Sort(ctx, candidates, "gpt-4")
+	require.Equal(t, ch1, sorted[0].Channel.ID)
 }
 
 func TestAdaptiveLoadBalancer_Simulation_InactivityDecayAllowsComeback(t *testing.T) {

@@ -50,6 +50,26 @@ func (m *mockMetricsProvider) GetChannelMetrics(ctx context.Context, channelID i
 	return &biz.AggregatedMetrics{}, nil
 }
 
+type mockRetryPolicyProvider struct {
+	policy *biz.RetryPolicy
+}
+
+func (m *mockRetryPolicyProvider) RetryPolicyOrDefault(ctx context.Context) *biz.RetryPolicy {
+	return m.policy
+}
+
+type mockSelectionTracker struct {
+	selections map[int]int
+}
+
+func (m *mockSelectionTracker) IncrementChannelSelection(channelID int) {
+	if m.selections == nil {
+		m.selections = make(map[int]int)
+	}
+
+	m.selections[channelID]++
+}
+
 // mockTraceProvider is a mock implementation of ChannelTraceProvider for testing.
 type mockTraceProvider struct {
 	lastSuccessChannel map[int]int // traceID -> channelID

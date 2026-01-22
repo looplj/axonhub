@@ -10,27 +10,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
-type mockRetryPolicyProvider struct {
-	policy *biz.RetryPolicy
-}
-
-func (m *mockRetryPolicyProvider) RetryPolicyOrDefault(ctx context.Context) *biz.RetryPolicy {
-	return m.policy
-}
-
-type mockSelectionTracker struct {
-	selections map[int]int
-}
-
-func (m *mockSelectionTracker) IncrementChannelSelection(channelID int) {
-	if m.selections == nil {
-		m.selections = make(map[int]int)
-	}
-
-	m.selections[channelID]++
-}
-
-func TestModelAwareCircuitBreakerStrategy_Simulation(t *testing.T) {
+func TestCircuitBreakerStrategy_Simulation(t *testing.T) {
 	ctx := context.Background()
 	modelID := "gpt-4"
 
