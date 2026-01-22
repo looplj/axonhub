@@ -38,7 +38,7 @@ func NewChatCompletionOrchestrator(
 		NewConnectionAwareStrategy(channelService, connectionTracker),
 	)
 
-	weightedLoadBalancer := NewLoadBalancer(systemService, channelService,
+	failoverLoadBalancer := NewLoadBalancer(systemService, channelService,
 		NewWeightStrategy(), NewRandomStrategy())
 
 	circuitBreakerLoadBalancer := NewLoadBalancer(systemService, channelService,
@@ -61,7 +61,7 @@ func NewChatCompletionOrchestrator(
 		selectedChannelIds:         []int{},
 		connectionTracker:          connectionTracker,
 		adaptiveLoadBalancer:       adaptiveLoadBalancer,
-		failoverLoadBalancer:       weightedLoadBalancer,
+		failoverLoadBalancer:       failoverLoadBalancer,
 		circuitBreakerLoadBalancer: circuitBreakerLoadBalancer,
 		modelCircuitBreaker:        modelCircuitBreaker,
 		proxy:                      nil,
