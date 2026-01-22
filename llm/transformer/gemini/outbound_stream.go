@@ -89,9 +89,8 @@ func (t *OutboundTransformer) transformStreamChunkWithState(
 
 	// This is a meaningful event - validate responseID requirements
 	if state.hasSeenMeaningfulEvent {
-		// Not the first event - must have a real responseID by now
-		// (either from a previous chunk or this chunk)
-		if resp.ResponseID == "" && (state.responseID == "" || state.responseID == defaultPendingResponseID) {
+		// Not the first event - error if current chunk has no ID and we're still using pending ID
+		if resp.ResponseID == "" && state.responseID == defaultPendingResponseID {
 			return nil, ErrMissingResponseID
 		}
 	}
