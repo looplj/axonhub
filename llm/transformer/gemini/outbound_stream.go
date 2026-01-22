@@ -11,6 +11,10 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 )
 
+// defaultPendingResponseID is used when a chunk has content but no responseID.
+// This provides a consistent ID across all chunks until a real responseID arrives.
+const defaultPendingResponseID = "pending-response"
+
 // streamState tracks state across streaming events.
 type streamState struct {
 	toolCallIndex int
@@ -67,21 +71,18 @@ func (t *OutboundTransformer) transformStreamChunkWithState(
 		state.responseID = resp.ResponseID
 	}
 
-	// Skip chunks with no meaningful content (empty candidates).
-	// This can happen with intermediate chunks during thinking mode streaming.
-	if len(resp.Candidates) == 0 {
+	// Skip chunks with no meaningful content.
+	// A chunk is meaningful if it has candidates OR usage metadata.
+	// Intermediate chunks during thinking mode may have neither and can be safely skipped.
+	if len(resp.Candidates) == 0 && resp.UsageMetadata == nil {
 		return nil, nil
 	}
 
-	// Use tracked responseID (real or temporary) if current chunk is missing it
-	if resp.ResponseID == "" && state.responseID != "" {
-		resp.ResponseID = state.responseID
-	}
-
-	// If we still have no responseId but have candidates, generate a temporary one
-	// and store it in state for consistency across the stream.
+	// Assign responseID if missing: use tracked ID or generate temporary
 	if resp.ResponseID == "" {
-		state.responseID = "pending-response"
+		if state.responseID == "" {
+			state.responseID = defaultPendingResponseID
+		}
 		resp.ResponseID = state.responseID
 	}
 
