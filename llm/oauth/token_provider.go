@@ -57,6 +57,7 @@ type ExchangeParams struct {
 	CodeVerifier string
 	ClientID     string
 	RedirectURI  string
+	State        string // Optional: for providers that require state in token exchange
 }
 
 type AutoRefreshOptions struct {

@@ -1,4 +1,4 @@
-package anthropic
+package claudecode
 
 import (
 	"context"
@@ -15,19 +15,20 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	llmtransformer "github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/anthropic"
 )
 
 func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a ClaudeCode transformer
-	config := &Config{
-		Type:    PlatformClaudeCode,
+	config := &anthropic.Config{
+		Type:    anthropic.anthropic.PlatformClaudeCode,
 		BaseURL: "https://example.com",
 		APIKey:  "test-api-key",
 	}
 
-	transformer, err := NewOutboundTransformerWithConfig(config)
+	transformer, err := NewClaudeCodeTransformer(config)
 	require.NoError(t, err)
 	require.NotNil(t, transformer)
 
@@ -230,12 +231,12 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 }
 
 func TestClaudeCodeTransformer_APIFormat(t *testing.T) {
-	config := &Config{
-		Type:   PlatformClaudeCode,
+	config := &anthropic.Config{
+		Type:   anthropic.PlatformClaudeCode,
 		APIKey: "test-api-key",
 	}
 
-	transformer, err := NewOutboundTransformerWithConfig(config)
+	transformer, err := NewClaudeCodeTransformer(config)
 	require.NoError(t, err)
 
 	assert.Equal(t, llm.APIFormatAnthropicMessage, transformer.APIFormat())

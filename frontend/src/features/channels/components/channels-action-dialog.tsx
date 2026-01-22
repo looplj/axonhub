@@ -31,7 +31,8 @@ import {
   useAllChannelTags,
 } from '../data/channels';
 import { codexOAuthExchange, codexOAuthStart } from '../data/codex';
-import { getDefaultBaseURL, getDefaultModels, CHANNEL_CONFIGS, OPENAI_CHAT_COMPLETIONS, OPENAI_RESPONSES } from '../data/config_channels';
+import { claudecodeOAuthExchange, claudecodeOAuthStart } from '../data/claudecode';
+import { getDefaultBaseURL, getDefaultModels, CHANNEL_CONFIGS, OPENAI_CHAT_COMPLETIONS, OPENAI_RESPONSES, ANTHROPIC_MESSAGES } from '../data/config_channels';
 import {
   PROVIDER_CONFIGS,
   getProviderFromChannelType,
@@ -110,6 +111,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [codexCallbackUrl, setCodexCallbackUrl] = useState('');
   const [isCodexStarting, setIsCodexStarting] = useState(false);
   const [isCodexExchanging, setIsCodexExchanging] = useState(false);
+
+  const [claudecodeSessionId, setClaudecodeSessionId] = useState<string | null>(null);
+  const [claudecodeAuthUrl, setClaudecodeAuthUrl] = useState<string | null>(null);
+  const [claudecodeCallbackUrl, setClaudecodeCallbackUrl] = useState('');
+  const [isClaudecodeStarting, setIsClaudecodeStarting] = useState(false);
+  const [isClaudecodeExchanging, setIsClaudecodeExchanging] = useState(false);
 
   // Provider-based selection state
   const [selectedProvider, setSelectedProvider] = useState<string>(() => {
@@ -547,6 +554,59 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     }
   }, [selectedProjectId, codexSessionId, codexCallbackUrl, form]);
 
+  const startClaudecodeOAuth = useCallback(async () => {
+    if (!selectedProjectId) {
+      toast.error(t('channels.dialogs.claudecode.errors.projectRequired'));
+      return;
+    }
+
+    setIsClaudecodeStarting(true);
+    try {
+      const result = await claudecodeOAuthStart({ 'X-Project-ID': selectedProjectId });
+      setClaudecodeSessionId(result.session_id);
+      setClaudecodeAuthUrl(result.auth_url);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsClaudecodeStarting(false);
+    }
+  }, [selectedProjectId]);
+
+  const exchangeClaudecodeOAuth = useCallback(async () => {
+    if (!selectedProjectId) {
+      toast.error(t('channels.dialogs.claudecode.errors.projectRequired'));
+      return;
+    }
+
+    if (!claudecodeSessionId) {
+      toast.error(t('channels.dialogs.claudecode.errors.sessionMissing'));
+      return;
+    }
+
+    if (!claudecodeCallbackUrl.trim()) {
+      toast.error(t('channels.dialogs.claudecode.errors.callbackUrlRequired'));
+      return;
+    }
+
+    setIsClaudecodeExchanging(true);
+    try {
+      const result = await claudecodeOAuthExchange(
+        {
+          session_id: claudecodeSessionId,
+          callback_url: claudecodeCallbackUrl.trim(),
+        },
+        { 'X-Project-ID': selectedProjectId }
+      );
+
+      form.setValue('credentials.apiKey', result.credentials);
+      toast.success(t('channels.dialogs.claudecode.messages.credentialsImported'));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsClaudecodeExchanging(false);
+    }
+  }, [selectedProjectId, claudecodeSessionId, claudecodeCallbackUrl, form]);
+
   useEffect(() => {
     if (isEdit) return;
     if (!isCodexType) {
@@ -561,6 +621,21 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       form.resetField('baseURL', { defaultValue: baseURL });
     }
   }, [isEdit, isCodexType, form]);
+
+  useEffect(() => {
+    if (isEdit) return;
+    if (selectedProvider !== 'claudecode') {
+      setClaudecodeSessionId(null);
+      setClaudecodeAuthUrl(null);
+      setClaudecodeCallbackUrl('');
+      return;
+    }
+
+    const baseURL = getDefaultBaseURL('claudecode');
+    if (baseURL) {
+      form.resetField('baseURL', { defaultValue: baseURL });
+    }
+  }, [isEdit, selectedProvider, form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     // Check if there are selected fetched models that haven't been confirmed
@@ -1088,6 +1163,72 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
                                 <p className='text-muted-foreground mt-2 text-xs'>
                                   {t('channels.dialogs.fields.apiFormat.codex.description')}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </FormItem>
+                      )}
+
+                      {selectedProvider === 'claudecode' && (
+                        <FormItem className='grid grid-cols-8 items-start gap-x-6'>
+                          <FormLabel className='col-span-2 pt-2 text-right font-medium'>
+                            {t('channels.dialogs.fields.apiFormat.label')}
+                          </FormLabel>
+                          <div className='col-span-6 space-y-1'>
+                            <div className='text-sm'>{getApiFormatLabel(ANTHROPIC_MESSAGES)}</div>
+                            <p className='text-muted-foreground mt-1 text-xs'>{t('channels.dialogs.fields.apiFormat.editDisabled')}</p>
+
+                            <div className='mt-3 space-y-2'>
+                              <div className='rounded-md border p-3'>
+                                <div className='flex flex-wrap items-center gap-2'>
+                                  <Button type='button' variant='secondary' onClick={startClaudecodeOAuth} disabled={isClaudecodeStarting}>
+                                    {isClaudecodeStarting
+                                      ? t('channels.dialogs.claudecode.buttons.starting')
+                                      : t('channels.dialogs.claudecode.buttons.startOAuth')}
+                                  </Button>
+                                  {claudecodeAuthUrl && (
+                                    <Button
+                                      type='button'
+                                      variant='ghost'
+                                      onClick={() => window.open(claudecodeAuthUrl, '_blank', 'noopener,noreferrer')}
+                                    >
+                                      {t('channels.dialogs.claudecode.buttons.openOAuthLink')}
+                                    </Button>
+                                  )}
+                                </div>
+
+                                {claudecodeAuthUrl && (
+                                  <div className='mt-3 space-y-2'>
+                                    <FormLabel className='text-sm font-medium'>
+                                      {t('channels.dialogs.claudecode.labels.authorizationUrl')}
+                                    </FormLabel>
+                                    <Textarea
+                                      value={claudecodeAuthUrl}
+                                      readOnly
+                                      className='min-h-[60px] resize-none font-mono text-xs'
+                                      placeholder={t('channels.dialogs.claudecode.placeholders.authorizationUrl')}
+                                    />
+                                  </div>
+                                )}
+
+                                <div className='mt-3 space-y-2'>
+                                  <FormLabel className='text-sm font-medium'>{t('channels.dialogs.claudecode.labels.callbackUrl')}</FormLabel>
+                                  <Textarea
+                                    value={claudecodeCallbackUrl}
+                                    onChange={(e) => setClaudecodeCallbackUrl(e.target.value)}
+                                    placeholder={t('channels.dialogs.claudecode.placeholders.callbackUrl')}
+                                    className='min-h-[80px] resize-y font-mono text-xs'
+                                  />
+                                  <Button type='button' onClick={exchangeClaudecodeOAuth} disabled={isClaudecodeExchanging || !claudecodeSessionId}>
+                                    {isClaudecodeExchanging
+                                      ? t('channels.dialogs.claudecode.buttons.exchanging')
+                                      : t('channels.dialogs.claudecode.buttons.exchangeAndFillApiKey')}
+                                  </Button>
+                                </div>
+
+                                <p className='text-muted-foreground mt-2 text-xs'>
+                                  {t('channels.dialogs.fields.apiFormat.claudecode.description')}
                                 </p>
                               </div>
                             </div>

@@ -1,4 +1,4 @@
-package anthropic
+package claudecode
 
 import (
 	"bytes"
@@ -20,8 +20,8 @@ func TestClaudeCodeTransformer_WithSimulator(t *testing.T) {
 	// 1. Setup Transformers
 	inbound := NewInboundTransformer()
 
-	config := &Config{
-		Type:    PlatformClaudeCode,
+	config := &anthropic.Config{
+		Type:    anthropic.PlatformClaudeCode,
 		BaseURL: "https://api.anthropic.com",
 		APIKey:  "test-api-key",
 	}
@@ -95,8 +95,8 @@ func TestClaudeCodeTransformer_WithSimulator_AlreadyHasBetaQuery(t *testing.T) {
 	// 1. Setup Transformers
 	inbound := NewInboundTransformer()
 
-	config := &Config{
-		Type:    PlatformClaudeCode,
+	config := &anthropic.Config{
+		Type:    anthropic.PlatformClaudeCode,
 		BaseURL: "https://api.anthropic.com/v1",
 		APIKey:  "test-api-key",
 	}
@@ -171,8 +171,8 @@ func TestClaudeCodeTransformer_WithSimulator_InboundHeadersCannotOverride(t *tes
 
 	inbound := NewInboundTransformer()
 
-	config := &Config{
-		Type:    PlatformClaudeCode,
+	config := &anthropic.Config{
+		Type:    anthropic.PlatformClaudeCode,
 		BaseURL: "https://api.anthropic.com/v1",
 		APIKey:  "test-api-key",
 	}

@@ -1,4 +1,4 @@
-package anthropic
+package claudecode
 
 import (
 	"context"
@@ -10,12 +10,13 @@ import (
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/oauth"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/anthropic"
 )
 
 const (
 	claudeCodeSystemMessage = "You are Claude Code, Anthropic's official CLI for Claude."
-	claudeCodeUserAgent     = "claude-cli/1.0.83 (external, cli)"
 )
 
 // claudeCodeHeaders contains all headers to set for Claude Code requests.
@@ -32,21 +33,53 @@ var claudeCodeHeaders = [][]string{
 	{"X-Stainless-Runtime", "node"},
 }
 
-func NewClaudeCodeTransformer(config *Config) (*ClaudeCodeTransformer, error) {
-	outbound, err := NewOutboundTransformerWithConfig(config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+// Params contains parameters for creating a ClaudeCodeTransformer.
+type Params struct {
+	TokenProvider oauth.TokenGetter // For OAuth channels
+	Config        *anthropic.Config // For API key channels (backward compat)
+}
+
+// NewOutboundTransformer creates a new ClaudeCodeTransformer.
+// It supports both OAuth and API key authentication modes.
+func NewOutboundTransformer(params Params) (*ClaudeCodeTransformer, error) {
+	var outbound transformer.Outbound
+	var err error
+
+	if params.Config != nil {
+		outbound, err = anthropic.NewOutboundTransformerWithConfig(params.Config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+	} else if params.TokenProvider != nil {
+		// For OAuth mode, create a minimal config
+		outbound, err = anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
+			Type:    anthropic.PlatformClaudeCode,
+			BaseURL: "https://api.anthropic.com/v1",
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+	} else {
+		return nil, fmt.Errorf("either TokenProvider or Config must be provided")
 	}
 
 	return &ClaudeCodeTransformer{
 		Outbound: outbound,
+		tokens:   params.TokenProvider,
 	}, nil
+}
+
+// NewClaudeCodeTransformer creates a new ClaudeCodeTransformer with API key authentication.
+// This is for backward compatibility.
+func NewClaudeCodeTransformer(config *anthropic.Config) (*ClaudeCodeTransformer, error) {
+	return NewOutboundTransformer(Params{Config: config})
 }
 
 // ClaudeCodeTransformer implements the transformer for Claude Code CLI.
 // It wraps an OutboundTransformer and adds Claude Code specific headers and system message.
 type ClaudeCodeTransformer struct {
 	transformer.Outbound
+	tokens oauth.TokenGetter
 }
 
 // TransformRequest overrides the base TransformRequest to add Claude Code specific modifications.
@@ -106,6 +139,20 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 		return nil, err
 	}
 
+	// Get API key (either from OAuth or from config)
+	apiKey := ""
+	if httpReq.Auth != nil {
+		apiKey = httpReq.Auth.APIKey
+	}
+
+	if t.tokens != nil {
+		creds, err := t.tokens.Get(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get oauth token: %w", err)
+		}
+		apiKey = creds.AccessToken
+	}
+
 	// Add beta=true query parameter if not present
 	if httpReq.Query == nil {
 		httpReq.Query = make(url.Values)
@@ -123,13 +170,13 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 	if keepClientUA && rawUA != "" {
 		httpReq.Headers.Set("User-Agent", rawUA)
 	} else {
-		httpReq.Headers.Set("User-Agent", claudeCodeUserAgent)
+		httpReq.Headers.Set("User-Agent", UserAgent)
 	}
 
 	// Set authentication to Bearer token
 	httpReq.Auth = &httpclient.AuthConfig{
 		Type:   httpclient.AuthTypeBearer,
-		APIKey: httpReq.Auth.APIKey,
+		APIKey: apiKey,
 	}
 
 	return httpReq, nil
