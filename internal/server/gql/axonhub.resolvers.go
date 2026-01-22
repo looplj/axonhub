@@ -499,14 +499,25 @@ func (r *traceResolver) UsageMetadata(ctx context.Context, obj *ent.Trace) (*biz
 	return r.traceService.UsageMetadata(ctx, obj.ID)
 }
 
+// AutoSyncSupportedModels is the resolver for the autoSyncSupportedModels field.
+func (r *bulkCreateChannelsInputResolver) AutoSyncSupportedModels(ctx context.Context, obj *biz.BulkCreateChannelsInput, data *bool) error {
+	panic(fmt.Errorf("not implemented: AutoSyncSupportedModels - autoSyncSupportedModels"))
+}
+
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
 // Segment returns SegmentResolver implementation.
 func (r *Resolver) Segment() SegmentResolver { return &segmentResolver{r} }
 
+// BulkCreateChannelsInput returns BulkCreateChannelsInputResolver implementation.
+func (r *Resolver) BulkCreateChannelsInput() BulkCreateChannelsInputResolver {
+	return &bulkCreateChannelsInputResolver{r}
+}
+
 type mutationResolver struct{ *Resolver }
 type segmentResolver struct{ *Resolver }
+type bulkCreateChannelsInputResolver struct{ *Resolver }
 
 // !!! WARNING !!!
 // The code below was going to be deleted when updating resolvers. It has been copied here so you have

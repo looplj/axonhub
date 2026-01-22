@@ -200,8 +200,10 @@ input BulkCreateChannelsInput {
   baseURL: String
   apiKeys: [String!]!
   supportedModels: [String!]!
+  autoSyncSupportedModels: Boolean
   defaultTestModel: String!
   settings: ChannelSettingsInput
+  policies: ChannelPoliciesInput
 }
 
 input ChannelOrderingItem {
