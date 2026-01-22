@@ -57,12 +57,13 @@ export function DateRangePicker(props: DateRangePickerProps) {
           <Button
             id='date'
             variant='outline'
+            size='sm'
             className={cn(
-              'h-8 justify-start text-left font-normal',
+              'h-8 border-solid',
               !currentValue?.from && !currentValue?.to && 'text-muted-foreground'
             )}
           >
-            <Calendar className='mr-2 h-4 w-4' />
+            <Calendar className='h-4 w-4' />
             <span>{label}</span>
           </Button>
         </PopoverTrigger>

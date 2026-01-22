@@ -4,6 +4,7 @@ import { DayPicker, type DateRange } from 'react-day-picker'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { useClickOutside } from '@/hooks/use-click-outside'
+import { buttonVariants } from '@/components/ui/button'
 import type { DateTimeRangeValue } from '@/utils/date-range'
 import {
   DEFAULT_END_TIME,
@@ -91,7 +92,12 @@ export function DateTimeRangePicker(props: DateTimeRangePickerProps) {
       )}
     >
       <div className='flex items-center justify-between border-b border-gray-100 bg-white p-5 dark:border-white/5 dark:bg-[#0a0a0b]/50'>
-        <div className='flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium text-gray-500 transition-all hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5'>
+        <div
+          className={cn(
+            buttonVariants({ variant: 'outline', size: 'sm' }),
+            'h-8 cursor-default border-solid'
+          )}
+        >
           <Calendar className='h-4 w-4' />
           <span>{headerText}</span>
         </div>
