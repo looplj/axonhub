@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -119,6 +120,10 @@ func (p *TokenProvider) Exchange(ctx context.Context, params ExchangeParams) (*O
 
 	creds, err := ParseTokenResponse(resp.Body, params.ClientID)
 	if err != nil {
+		// Wrap the error to indicate this was an exchange operation
+		if strings.Contains(err.Error(), "token request failed:") {
+			return nil, fmt.Errorf("token exchange failed: %s", strings.TrimPrefix(err.Error(), "token request failed: "))
+		}
 		return nil, err
 	}
 
