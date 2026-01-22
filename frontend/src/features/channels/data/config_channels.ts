@@ -23,6 +23,7 @@ import {
   DeepInfra,
   Github,
   Claude,
+  Cerebras,
 } from '@lobehub/icons';
 import { BURNCLOUD_DEFAULT_MODELS } from './burncloud-models';
 import { ApiFormat, ChannelType } from './schema';
@@ -475,6 +476,14 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-orange-100 text-orange-800 border-orange-200',
     icon: Claude,
   },
+  cerebras: {
+    channelType: 'cerebras',
+    baseURL: 'https://api.cerebras.ai/v1',
+    defaultModels: ['llama3.1-8b', 'llama3.1-70b', 'llama-3.3-70b'],
+    apiFormat: OPENAI_CHAT_COMPLETIONS,
+    color: 'bg-black text-white border-black',
+    icon: Cerebras,
+  },
 };
 
 /**
@@ -519,6 +528,7 @@ export type Provider =
   | 'bailian'
   | 'jina'
   | 'github'
+  | 'cerebras'
   | 'codex';
 
 /**
@@ -564,6 +574,7 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   github: 'github',
   codex: 'codex',
   claudecode: 'claudecode',
+  cerebras: 'cerebras',
 };
 
 /**
