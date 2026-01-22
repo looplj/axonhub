@@ -178,11 +178,6 @@ func (h *ClaudeCodeHandlers) Exchange(c *gin.Context) {
 		return
 	}
 
-	if req.SessionID == "" || req.CallbackURL == "" {
-		JSONError(c, http.StatusBadRequest, errors.New("session_id and callback_url are required"))
-		return
-	}
-
 	cacheKey := claudeCodeOAuthCacheKey(req.SessionID)
 
 	state, err := h.stateCache.Get(ctx, cacheKey)
@@ -206,7 +201,7 @@ func (h *ClaudeCodeHandlers) Exchange(c *gin.Context) {
 		return
 	}
 
-	tokenProvider := claudecode.NewTokenProvider(claudecode.TokenProviderParams{
+	tokenProvider := claudecode.NewTokenProvider(oauth.TokenProviderParams{
 		HTTPClient: h.httpClient,
 	})
 

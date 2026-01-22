@@ -185,27 +185,31 @@ func stripClaudeToolPrefixFromResponse(body []byte, prefix string) []byte {
 
 // mergeBetasIntoHeader merges beta features into the Anthropic-Beta header.
 func mergeBetasIntoHeader(baseBetas string, extraBetas []string) string {
-	if len(extraBetas) == 0 {
-		return baseBetas
-	}
-
+	var parts []string
 	existingSet := make(map[string]bool)
-	for b := range strings.SplitSeq(baseBetas, ",") {
-		existingSet[strings.TrimSpace(b)] = true
+
+	// Add existing betas if present
+	baseBetas = strings.TrimSpace(baseBetas)
+	if baseBetas != "" {
+		for _, b := range strings.Split(baseBetas, ",") {
+			b = strings.TrimSpace(b)
+			if b != "" {
+				parts = append(parts, b)
+				existingSet[b] = true
+			}
+		}
 	}
 
-	var result strings.Builder
-	result.WriteString(baseBetas)
-
+	// Add extra betas if not already present
 	for _, beta := range extraBetas {
 		beta = strings.TrimSpace(beta)
 		if beta != "" && !existingSet[beta] {
-			result.WriteString("," + beta)
+			parts = append(parts, beta)
 			existingSet[beta] = true
 		}
 	}
 
-	return result.String()
+	return strings.Join(parts, ",")
 }
 
 // injectClaudeCodeSystemMessage prepends the Claude Code system message to the request.

@@ -259,7 +259,7 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 				return nil, fmt.Errorf("failed to parse claudecode oauth credentials: %w", err)
 			}
 
-			tokens := claudecode.NewTokenProvider(claudecode.TokenProviderParams{
+			tokens := claudecode.NewTokenProvider(oauth.TokenProviderParams{
 				Credentials: creds,
 				HTTPClient:  httpClient,
 				OnRefreshed: svc.refreshOAuthTokenFunc(c),

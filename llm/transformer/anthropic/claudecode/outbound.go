@@ -215,7 +215,14 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 	// Determine authentication method based on endpoint
 	// Parse URL to check if it's api.anthropic.com
 	parsedURL, err := url.Parse(httpReq.URL)
-	if err == nil {
+	if err != nil {
+		// Fall back to Bearer auth if URL parsing fails
+		httpReq.Headers.Set("Authorization", "Bearer "+apiKey)
+		httpReq.Auth = &httpclient.AuthConfig{
+			Type:   httpclient.AuthTypeBearer,
+			APIKey: apiKey,
+		}
+	} else {
 		isAnthropicBase := strings.EqualFold(parsedURL.Scheme, "https") &&
 			strings.EqualFold(parsedURL.Host, "api.anthropic.com")
 
