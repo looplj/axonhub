@@ -9,12 +9,12 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
-	"github.com/looplj/axonhub/llm/transformer"
 )
 
 // streamState tracks state across streaming events.
 type streamState struct {
 	toolCallIndex int
+	responseID    string // Track responseID from first valid chunk
 }
 
 // TransformStream transforms the HTTP stream response to the unified response format.
@@ -62,10 +62,28 @@ func (t *OutboundTransformer) transformStreamChunkWithState(
 		return nil, err
 	}
 
+	// Track responseID from first chunk that has it
+	if resp.ResponseID != "" && state.responseID == "" {
+		state.responseID = resp.ResponseID
+	}
+
+	// Use tracked responseID if current chunk is missing it
+	if resp.ResponseID == "" && state.responseID != "" {
+		resp.ResponseID = state.responseID
+	}
+
 	// Check if the response is valid.
-	// Gemini response empty event for some time, we should return error instead of continue to process.
+	// Skip chunks that have no responseId AND no meaningful content.
+	// This can happen with intermediate chunks during thinking mode streaming.
+	if resp.ResponseID == "" && len(resp.Candidates) == 0 {
+		return nil, nil
+	}
+
+	// If we still have no responseId but have candidates, generate a temporary one
+	// to allow processing to continue. The final aggregated response will use
+	// the responseId from whichever chunk provides it.
 	if resp.ResponseID == "" {
-		return nil, transformer.ErrInvalidResponse
+		resp.ResponseID = "pending-" + string(event.Data[:min(8, len(event.Data))])
 	}
 
 	// Convert to unified response format (streaming) with tool call index tracking
