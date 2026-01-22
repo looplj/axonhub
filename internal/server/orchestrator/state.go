@@ -19,7 +19,6 @@ type PersistenceState struct {
 	RetryPolicyProvider RetryPolicyProvider
 	CandidateSelector   CandidateSelector
 	LoadBalancer        *LoadBalancer
-	ModelCircuitBreaker *biz.ModelCircuitBreaker
 
 	// Request state
 	ModelMapper *ModelMapper
