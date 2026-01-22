@@ -62,28 +62,27 @@ func (t *OutboundTransformer) transformStreamChunkWithState(
 		return nil, err
 	}
 
-	// Track responseID from first chunk that has it
-	if resp.ResponseID != "" && state.responseID == "" {
+	// Update state.responseID if chunk has a real responseID (prefer real over temporary)
+	if resp.ResponseID != "" {
 		state.responseID = resp.ResponseID
 	}
 
-	// Use tracked responseID if current chunk is missing it
+	// Skip chunks with no meaningful content (empty candidates).
+	// This can happen with intermediate chunks during thinking mode streaming.
+	if len(resp.Candidates) == 0 {
+		return nil, nil
+	}
+
+	// Use tracked responseID (real or temporary) if current chunk is missing it
 	if resp.ResponseID == "" && state.responseID != "" {
 		resp.ResponseID = state.responseID
 	}
 
-	// Check if the response is valid.
-	// Skip chunks that have no responseId AND no meaningful content.
-	// This can happen with intermediate chunks during thinking mode streaming.
-	if resp.ResponseID == "" && len(resp.Candidates) == 0 {
-		return nil, nil
-	}
-
 	// If we still have no responseId but have candidates, generate a temporary one
-	// to allow processing to continue. The final aggregated response will use
-	// the responseId from whichever chunk provides it.
+	// and store it in state for consistency across the stream.
 	if resp.ResponseID == "" {
-		resp.ResponseID = "pending-" + string(event.Data[:min(8, len(event.Data))])
+		state.responseID = "pending-response"
+		resp.ResponseID = state.responseID
 	}
 
 	// Convert to unified response format (streaming) with tool call index tracking
