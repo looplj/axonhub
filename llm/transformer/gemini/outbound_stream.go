@@ -3,6 +3,7 @@ package gemini
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/samber/lo"
 
@@ -11,14 +12,19 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 )
 
-// defaultPendingResponseID is used when a chunk has content but no responseID.
-// This provides a consistent ID across all chunks until a real responseID arrives.
+// ErrMissingResponseID is returned when a meaningful chunk has no responseID
+// and no real responseID has been received from previous chunks.
+var ErrMissingResponseID = errors.New("missing responseID in stream: expected responseID after first event")
+
+// defaultPendingResponseID is used when the first chunk has content but no responseID.
+// This provides a temporary ID until a real responseID arrives.
 const defaultPendingResponseID = "pending-response"
 
 // streamState tracks state across streaming events.
 type streamState struct {
-	toolCallIndex int
-	responseID    string // Track responseID from first valid chunk
+	toolCallIndex          int
+	responseID             string // Track responseID from chunks
+	hasSeenMeaningfulEvent bool   // Track if we've processed at least one meaningful event
 }
 
 // TransformStream transforms the HTTP stream response to the unified response format.
@@ -29,12 +35,15 @@ func (t *OutboundTransformer) TransformStream(
 ) (streams.Stream[*llm.Response], error) {
 	stream = streams.AppendStream(stream, lo.ToPtr(llm.DoneStreamEvent))
 
-	// Track tool call index across stream events
+	// Track state across stream events
 	state := &streamState{}
 
-	return streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
+	mapped := streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
 		return t.transformStreamChunkWithState(event, state)
-	}), nil
+	})
+
+	// Filter out nil responses to ensure stream only returns valid responses
+	return streams.NoNil(mapped), nil
 }
 
 // TransformStreamChunk transforms a single Gemini streaming chunk to unified Response.
@@ -66,7 +75,7 @@ func (t *OutboundTransformer) transformStreamChunkWithState(
 		return nil, err
 	}
 
-	// Update state.responseID if chunk has a real responseID (prefer real over temporary)
+	// Update state.responseID if chunk has a real responseID
 	if resp.ResponseID != "" {
 		state.responseID = resp.ResponseID
 	}
@@ -78,9 +87,20 @@ func (t *OutboundTransformer) transformStreamChunkWithState(
 		return nil, nil
 	}
 
-	// Assign responseID if missing: use tracked ID or generate temporary
+	// This is a meaningful event - validate responseID requirements
+	if state.hasSeenMeaningfulEvent {
+		// Not the first event - must have a real responseID by now
+		// (either from a previous chunk or this chunk)
+		if resp.ResponseID == "" && (state.responseID == "" || state.responseID == defaultPendingResponseID) {
+			return nil, ErrMissingResponseID
+		}
+	}
+	state.hasSeenMeaningfulEvent = true
+
+	// Assign responseID if missing from this chunk
 	if resp.ResponseID == "" {
 		if state.responseID == "" {
+			// First event without responseID - use pending
 			state.responseID = defaultPendingResponseID
 		}
 		resp.ResponseID = state.responseID

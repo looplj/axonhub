@@ -953,5 +953,262 @@ func mustMarshal(v any) []byte {
 	return data
 }
 
+func TestOutboundTransformer_TransformStream_FiltersNilResponses(t *testing.T) {
+	transformer := &OutboundTransformer{
+		config: Config{
+			BaseURL:    DefaultBaseURL,
+			APIVersion: DefaultAPIVersion,
+		},
+	}
+
+	// Create test stream with empty chunks (no candidates, no usage) that should return nil
+	events := []*httpclient.StreamEvent{
+		{
+			// Empty chunk - should be filtered out
+			Data: mustMarshal(&GenerateContentResponse{
+				ResponseID:   "resp-filter-1",
+				ModelVersion: "gemini-2.0-flash",
+			}),
+		},
+		{
+			// Valid chunk with content
+			Data: mustMarshal(&GenerateContentResponse{
+				ResponseID:   "resp-filter-1",
+				ModelVersion: "gemini-2.0-flash",
+				Candidates: []*Candidate{
+					{
+						Index: 0,
+						Content: &Content{
+							Role:  "model",
+							Parts: []*Part{{Text: "Hello"}},
+						},
+						FinishReason: "STOP",
+					},
+				},
+			}),
+		},
+		{
+			// Another empty chunk - should be filtered out
+			Data: mustMarshal(&GenerateContentResponse{
+				ResponseID:   "resp-filter-1",
+				ModelVersion: "gemini-2.0-flash",
+			}),
+		},
+	}
+
+	inputStream := streams.SliceStream(events)
+	outputStream, err := transformer.TransformStream(context.Background(), inputStream)
+	require.NoError(t, err)
+
+	// Collect results - nil responses should be filtered out
+	var results []*llm.Response
+	for outputStream.Next() {
+		results = append(results, outputStream.Current())
+	}
+	require.NoError(t, outputStream.Err())
+
+	// Should only have 2 responses: the valid chunk and [DONE]
+	require.Len(t, results, 2)
+	require.Equal(t, "Hello", *results[0].Choices[0].Delta.Content.Content)
+	require.Equal(t, "[DONE]", results[1].Object)
+}
+
+func TestOutboundTransformer_TransformStream_MissingResponseIDAfterFirstEvent(t *testing.T) {
+	transformer := &OutboundTransformer{
+		config: Config{
+			BaseURL:    DefaultBaseURL,
+			APIVersion: DefaultAPIVersion,
+		},
+	}
+
+	// Create test stream where first chunk has no responseID (uses pending),
+	// and second chunk also has no responseID - should error
+	events := []*httpclient.StreamEvent{
+		{
+			// First chunk without responseID - OK, uses pending
+			Data: mustMarshal(&GenerateContentResponse{
+				ModelVersion: "gemini-2.0-flash",
+				Candidates: []*Candidate{
+					{
+						Index: 0,
+						Content: &Content{
+							Role:  "model",
+							Parts: []*Part{{Text: "Hello"}},
+						},
+					},
+				},
+			}),
+		},
+		{
+			// Second chunk also without responseID - should error
+			Data: mustMarshal(&GenerateContentResponse{
+				ModelVersion: "gemini-2.0-flash",
+				Candidates: []*Candidate{
+					{
+						Index: 0,
+						Content: &Content{
+							Role:  "model",
+							Parts: []*Part{{Text: ", world!"}},
+						},
+						FinishReason: "STOP",
+					},
+				},
+			}),
+		},
+	}
+
+	inputStream := streams.SliceStream(events)
+	outputStream, err := transformer.TransformStream(context.Background(), inputStream)
+	require.NoError(t, err)
+
+	// First call should succeed (first chunk uses pending ID)
+	require.True(t, outputStream.Next())
+	require.NotNil(t, outputStream.Current())
+	require.Equal(t, defaultPendingResponseID, outputStream.Current().ID)
+
+	// Second call should fail with ErrMissingResponseID
+	require.False(t, outputStream.Next())
+	require.ErrorIs(t, outputStream.Err(), ErrMissingResponseID)
+}
+
+func TestOutboundTransformer_TransformStream_ResponseIDArrivesLater(t *testing.T) {
+	transformer := &OutboundTransformer{
+		config: Config{
+			BaseURL:    DefaultBaseURL,
+			APIVersion: DefaultAPIVersion,
+		},
+	}
+
+	// Create test stream where first chunk has no responseID,
+	// but second chunk has a real responseID - should succeed
+	events := []*httpclient.StreamEvent{
+		{
+			// First chunk without responseID - uses pending
+			Data: mustMarshal(&GenerateContentResponse{
+				ModelVersion: "gemini-2.0-flash",
+				Candidates: []*Candidate{
+					{
+						Index: 0,
+						Content: &Content{
+							Role:  "model",
+							Parts: []*Part{{Text: "Hello"}},
+						},
+					},
+				},
+			}),
+		},
+		{
+			// Second chunk WITH responseID - should succeed and use this ID
+			Data: mustMarshal(&GenerateContentResponse{
+				ResponseID:   "real-response-id",
+				ModelVersion: "gemini-2.0-flash",
+				Candidates: []*Candidate{
+					{
+						Index: 0,
+						Content: &Content{
+							Role:  "model",
+							Parts: []*Part{{Text: ", world!"}},
+						},
+						FinishReason: "STOP",
+					},
+				},
+			}),
+		},
+	}
+
+	inputStream := streams.SliceStream(events)
+	outputStream, err := transformer.TransformStream(context.Background(), inputStream)
+	require.NoError(t, err)
+
+	var results []*llm.Response
+	for outputStream.Next() {
+		results = append(results, outputStream.Current())
+	}
+	require.NoError(t, outputStream.Err())
+
+	// Should have 3 responses: 2 chunks + [DONE]
+	require.Len(t, results, 3)
+	require.Equal(t, defaultPendingResponseID, results[0].ID)
+	require.Equal(t, "real-response-id", results[1].ID)
+}
+
+func TestOutboundTransformer_TransformStream_EmptyChunksSkipped(t *testing.T) {
+	transformer := &OutboundTransformer{
+		config: Config{
+			BaseURL:    DefaultBaseURL,
+			APIVersion: DefaultAPIVersion,
+		},
+	}
+
+	// Simulate thinking mode where empty chunks appear between meaningful ones
+	events := []*httpclient.StreamEvent{
+		{
+			// Valid chunk with responseID
+			Data: mustMarshal(&GenerateContentResponse{
+				ResponseID:   "resp-empty-test",
+				ModelVersion: "gemini-2.0-flash-thinking",
+				Candidates: []*Candidate{
+					{
+						Index: 0,
+						Content: &Content{
+							Role:  "model",
+							Parts: []*Part{{Text: "Thinking...", Thought: true}},
+						},
+					},
+				},
+			}),
+		},
+		{
+			// Empty chunk during thinking - no candidates, no usage
+			Data: mustMarshal(&GenerateContentResponse{
+				ResponseID:   "resp-empty-test",
+				ModelVersion: "gemini-2.0-flash-thinking",
+			}),
+		},
+		{
+			// Another empty chunk
+			Data: mustMarshal(&GenerateContentResponse{
+				ModelVersion: "gemini-2.0-flash-thinking",
+			}),
+		},
+		{
+			// Final valid chunk
+			Data: mustMarshal(&GenerateContentResponse{
+				ResponseID:   "resp-empty-test",
+				ModelVersion: "gemini-2.0-flash-thinking",
+				Candidates: []*Candidate{
+					{
+						Index: 0,
+						Content: &Content{
+							Role:  "model",
+							Parts: []*Part{{Text: "The answer is 42."}},
+						},
+						FinishReason: "STOP",
+					},
+				},
+			}),
+		},
+	}
+
+	inputStream := streams.SliceStream(events)
+	outputStream, err := transformer.TransformStream(context.Background(), inputStream)
+	require.NoError(t, err)
+
+	var results []*llm.Response
+	for outputStream.Next() {
+		results = append(results, outputStream.Current())
+	}
+	require.NoError(t, outputStream.Err())
+
+	// Should only have 3 responses: 2 valid chunks + [DONE]
+	// Empty chunks should be filtered out
+	require.Len(t, results, 3)
+	require.NotNil(t, results[0].Choices[0].Delta.ReasoningContent)
+	require.Equal(t, "Thinking...", *results[0].Choices[0].Delta.ReasoningContent)
+	require.NotNil(t, results[1].Choices[0].Delta.Content.Content)
+	require.Equal(t, "The answer is 42.", *results[1].Choices[0].Delta.Content.Content)
+	require.Equal(t, "[DONE]", results[2].Object)
+}
+
 // Ensure lo is used to satisfy linter.
 var _ = lo.ToPtr[string]
