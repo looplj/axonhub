@@ -144,8 +144,8 @@ export function RetrySettings() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value='adaptive'>{t('system.retry.loadBalancerStrategy.options.adaptive')}</SelectItem>
-                    <SelectItem value='weighted'>{t('system.retry.loadBalancerStrategy.options.weighted')}</SelectItem>
-                    <SelectItem value='circuit-breaker'>{t('system.retry.loadBalancerStrategy.options.healthAware')}</SelectItem>
+                    <SelectItem value='failover'>{t('system.retry.loadBalancerStrategy.options.failover')}</SelectItem>
+                    <SelectItem value='circuit-breaker'>{t('system.retry.loadBalancerStrategy.options.circuitBreaker')}</SelectItem>
                   </SelectContent>
                 </Select>
 

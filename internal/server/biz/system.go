@@ -98,6 +98,17 @@ type CleanupOption struct {
 	CleanupDays  int    `json:"cleanup_days"`
 }
 
+const (
+	// LoadBalancerStrategyAdaptive is a dynamic load balancer strategy that adapts to the current load.
+	LoadBalancerStrategyAdaptive = "adaptive"
+
+	// LoadBalancerStrategyFailover is a deterministic load balancer strategy that fails over to the next available channel based on the weight of the channels.
+	LoadBalancerStrategyFailover = "failover"
+
+	// LoadBalancerStrategyCircuitBreaker is a dynamic load balancer strategy that monitors the health of channels and fails over to a backup channel when the primary channel is unhealthy.
+	LoadBalancerStrategyCircuitBreaker = "circuit-breaker"
+)
+
 // RetryPolicy represents the retry policy configuration.
 type RetryPolicy struct {
 	// Enabled controls whether retry policy is active
@@ -109,7 +120,7 @@ type RetryPolicy struct {
 	// RetryDelayMs defines the delay between retries in milliseconds
 	RetryDelayMs int `json:"retry_delay_ms"`
 	// LoadBalancerStrategy defines which channel load balancer strategy to use.
-	// Supported values: "adaptive", "weighted", "circuit-breaker".
+	// Supported values: "adaptive", "failover", "circuit-breaker".
 	LoadBalancerStrategy string `json:"load_balancer_strategy"`
 
 	// AutoDisableChannel controls whether to auto-disable a channel when it exceeds the maximum number of retries.
@@ -670,6 +681,10 @@ func (s *SystemService) RetryPolicy(ctx context.Context) (*RetryPolicy, error) {
 
 	if policy.LoadBalancerStrategy == "" {
 		policy.LoadBalancerStrategy = defaultRetryPolicy.LoadBalancerStrategy
+	}
+	// The weighted load balancer strategy is deprecated. Use the failover strategy instead.
+	if policy.LoadBalancerStrategy == "weighted" {
+		policy.LoadBalancerStrategy = LoadBalancerStrategyFailover
 	}
 
 	return &policy, nil

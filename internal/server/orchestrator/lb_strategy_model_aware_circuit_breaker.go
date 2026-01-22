@@ -8,50 +8,50 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
-// ModelHealthProvider provides model health information.
-type ModelHealthProvider interface {
+// ModelCircuitBreakerProvider provides model circuit breaker information.
+type ModelCircuitBreakerProvider interface {
 	GetEffectiveWeight(ctx context.Context, channelID int, modelID string, baseWeight float64) float64
-	GetModelHealth(ctx context.Context, channelID int, modelID string) *biz.ModelHealthStats
+	GetModelCircuitBreakerStats(ctx context.Context, channelID int, modelID string) *biz.ModelCircuitBreakerStats
 }
 
-// CircuitBreakerStrategy implements a load balancing strategy that considers model health status.
-// It adjusts channel scores based on the health of the requested model on each channel.
-type CircuitBreakerStrategy struct {
-	healthProvider ModelHealthProvider
-	maxScore       float64
+// ModelAwareCircuitBreakerStrategy implements a load balancing strategy that considers model circuit breaker status.
+// It adjusts channel scores based on the state of the requested model on each channel.
+type ModelAwareCircuitBreakerStrategy struct {
+	cbProvider ModelCircuitBreakerProvider
+	maxScore   float64
 }
 
-// NewCircuitBreakerStrategy creates a new circuit breaker load balancing strategy.
-func NewCircuitBreakerStrategy(healthProvider ModelHealthProvider) *CircuitBreakerStrategy {
-	return &CircuitBreakerStrategy{
-		healthProvider: healthProvider,
-		maxScore:       200.0, // Higher than other strategies to prioritize health
+// NewModelAwareCircuitBreakerStrategy creates a new circuit breaker load balancing strategy.
+func NewModelAwareCircuitBreakerStrategy(cbProvider ModelCircuitBreakerProvider) *ModelAwareCircuitBreakerStrategy {
+	return &ModelAwareCircuitBreakerStrategy{
+		cbProvider: cbProvider,
+		maxScore:   200.0, // Higher than other strategies to prioritize health
 	}
 }
 
 // Name returns the strategy name.
-func (s *CircuitBreakerStrategy) Name() string {
-	return "CircuitBreaker"
+func (s *ModelAwareCircuitBreakerStrategy) Name() string {
+	return "ModelAwareCircuitBreaker"
 }
 
-// Score calculates the score based on model health status.
+// Score calculates the score based on model circuit breaker status.
 // This is the production path with minimal overhead.
-func (s *CircuitBreakerStrategy) Score(ctx context.Context, channel *biz.Channel) float64 {
+func (s *ModelAwareCircuitBreakerStrategy) Score(ctx context.Context, channel *biz.Channel) float64 {
 	// Get the requested model from context
-	modelID := getRequestedModelFromContext(ctx)
+	modelID := requestedModelFromContext(ctx)
 	if modelID == "" {
 		// If no specific model is requested, return neutral score
 		return s.maxScore * 0.5
 	}
 
-	// Get effective weight based on model health
-	effectiveWeight := s.healthProvider.GetEffectiveWeight(ctx, channel.ID, modelID, 1.0)
+	// Get effective weight based on model circuit breaker state
+	effectiveWeight := s.cbProvider.GetEffectiveWeight(ctx, channel.ID, modelID, 1.0)
 
 	// Convert weight to score (0.0 to maxScore)
 	score := effectiveWeight * s.maxScore
 
-	// Add a small random factor (0-1) to ensure even distribution when health status is equal
-	// This prevents always selecting the same channel when all channels have the same health status
+	// Add a small random factor (0-1) to ensure even distribution when circuit breaker state is equal
+	// This prevents always selecting the same channel when all channels have the same status
 	// Use time-based randomization to ensure different scores on each request
 	if effectiveWeight > 0 {
 		now := time.Now()
@@ -66,11 +66,11 @@ func (s *CircuitBreakerStrategy) Score(ctx context.Context, channel *biz.Channel
 }
 
 // ScoreWithDebug calculates the score with detailed debug information.
-func (s *CircuitBreakerStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel) (float64, StrategyScore) {
+func (s *ModelAwareCircuitBreakerStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel) (float64, StrategyScore) {
 	startTime := time.Now()
 
 	// Get the requested model from context
-	modelID := getRequestedModelFromContext(ctx)
+	modelID := requestedModelFromContext(ctx)
 
 	details := map[string]any{
 		"channel_id": channel.ID,
@@ -78,25 +78,25 @@ func (s *CircuitBreakerStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 	}
 
 	var score float64
-	var healthStatus string
+	var cbState string
 
 	if modelID == "" {
 		// If no specific model is requested, return neutral score
 		score = s.maxScore * 0.5
-		healthStatus = "unknown"
+		cbState = "unknown"
 		details["reason"] = "no_model_specified"
 	} else {
-		// Get model health information
-		health := s.healthProvider.GetModelHealth(ctx, channel.ID, modelID)
-		healthStatus = string(health.Status)
+		// Get model circuit breaker information
+		stats := s.cbProvider.GetModelCircuitBreakerStats(ctx, channel.ID, modelID)
+		cbState = string(stats.State)
 
 		// Get effective weight based on model health
-		effectiveWeight := s.healthProvider.GetEffectiveWeight(ctx, channel.ID, modelID, 1.0)
+		effectiveWeight := s.cbProvider.GetEffectiveWeight(ctx, channel.ID, modelID, 1.0)
 
 		// Convert weight to score (0.0 to maxScore)
 		score = effectiveWeight * s.maxScore
 
-		// When multiple channels have the same health status, use channel weight as secondary factor
+		// When multiple channels have the same status, use channel weight as secondary factor
 		if effectiveWeight > 0 {
 			// Add channel weight as a factor (scaled to 0-10 range)
 			weightFactor := float64(channel.OrderingWeight) / 100.0
@@ -111,15 +111,15 @@ func (s *CircuitBreakerStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 			details["random_factor"] = randomFactor
 		}
 
-		details["health_status"] = healthStatus
-		details["consecutive_failures"] = health.ConsecutiveFailures
+		details["cb_state"] = cbState
+		details["consecutive_failures"] = stats.ConsecutiveFailures
 		details["effective_weight"] = effectiveWeight
-		details["last_success_at"] = health.LastSuccessAt
-		details["last_failure_at"] = health.LastFailureAt
+		details["last_success_at"] = stats.LastSuccessAt
+		details["last_failure_at"] = stats.LastFailureAt
 
-		if health.Status == biz.StatusDisabled && !health.NextProbeAt.IsZero() {
-			details["next_probe_at"] = health.NextProbeAt
-			details["can_probe"] = time.Now().After(health.NextProbeAt)
+		if stats.State == biz.StateOpen && !stats.NextProbeAt.IsZero() {
+			details["next_probe_at"] = stats.NextProbeAt
+			details["can_probe"] = time.Now().After(stats.NextProbeAt)
 		}
 	}
 
@@ -135,19 +135,11 @@ func (s *CircuitBreakerStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 			log.Int("channel_id", channel.ID),
 			log.String("channel_name", channel.Name),
 			log.String("model_id", modelID),
-			log.String("health_status", healthStatus),
+			log.String("cb_state", cbState),
 			log.Float64("score", score),
 			log.Int("ordering_weight", channel.OrderingWeight),
 		)
 	}
 
 	return score, strategyScore
-}
-
-// getRequestedModelFromContext extracts the requested model ID from the context.
-func getRequestedModelFromContext(ctx context.Context) string {
-	if model, ok := ctx.Value(requestedModelKey).(string); ok {
-		return model
-	}
-	return ""
 }
