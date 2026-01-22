@@ -1,7 +1,9 @@
+//nolint:gosec // Checked.
 package orchestrator
 
 import (
 	"context"
+	"math/rand/v2"
 	"time"
 
 	"github.com/looplj/axonhub/internal/log"
@@ -50,16 +52,10 @@ func (s *ModelAwareCircuitBreakerStrategy) Score(ctx context.Context, channel *b
 	// Convert weight to score (0.0 to maxScore)
 	score := effectiveWeight * s.maxScore
 
-	// Add a small random factor (0-1) to ensure even distribution when circuit breaker state is equal
+	// Add a small random factor (0-0.5) to ensure even distribution when circuit breaker state is equal
 	// This prevents always selecting the same channel when all channels have the same status
-	// Use time-based randomization to ensure different scores on each request
 	if effectiveWeight > 0 {
-		now := time.Now()
-		// Use channel ID and current time to create a distributed but changing random factor
-		// This ensures that the same channel gets different scores on different requests
-		randomSeed := float64(channel.ID)*0.1 + float64(now.UnixNano()%1000000000)/1000000000.0
-		randomFactor := randomSeed - float64(int(randomSeed)) // Get fractional part (0-1)
-		score += randomFactor
+		score += rand.Float64() * 0.5
 	}
 
 	return score
@@ -77,8 +73,10 @@ func (s *ModelAwareCircuitBreakerStrategy) ScoreWithDebug(ctx context.Context, c
 		"model_id":   modelID,
 	}
 
-	var score float64
-	var cbState string
+	var (
+		score   float64
+		cbState string
+	)
 
 	if modelID == "" {
 		// If no specific model is requested, return neutral score
@@ -96,17 +94,9 @@ func (s *ModelAwareCircuitBreakerStrategy) ScoreWithDebug(ctx context.Context, c
 		// Convert weight to score (0.0 to maxScore)
 		score = effectiveWeight * s.maxScore
 
-		// When multiple channels have the same status, use channel weight as secondary factor
+		// When multiple channels have the same status, use a small random factor to break ties
 		if effectiveWeight > 0 {
-			// Add channel weight as a factor (scaled to 0-10 range)
-			weightFactor := float64(channel.OrderingWeight) / 100.0
-			score += weightFactor
-			details["weight_factor"] = weightFactor
-
-			// Add a small random factor (0-1) to ensure even distribution
-			now := time.Now()
-			randomSeed := float64(channel.ID)*0.1 + float64(now.UnixNano()%1000000000)/1000000000.0
-			randomFactor := (randomSeed - float64(int(randomSeed)))
+			randomFactor := rand.Float64() * 0.5
 			score += randomFactor
 			details["random_factor"] = randomFactor
 		}

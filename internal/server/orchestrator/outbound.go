@@ -186,6 +186,8 @@ type PersistentOutboundTransformer struct {
 	state   *PersistenceState
 }
 
+var errSkipCandidateByCircuitBreaker = errors.New("skip candidate by circuit breaker")
+
 // APIFormat returns the API format of the transformer.
 func (p *PersistentOutboundTransformer) APIFormat() llm.APIFormat {
 	return p.wrapped.APIFormat()
@@ -438,6 +440,10 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 // pipeline will ensure the maxSameChannelRetries is not exceeded.
 func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 	if p.state.CurrentCandidate == nil {
+		return false
+	}
+
+	if errors.Is(err, errSkipCandidateByCircuitBreaker) {
 		return false
 	}
 

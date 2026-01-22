@@ -28,8 +28,6 @@ const (
 
 // ModelCircuitBreakerPolicy defines the policy for model circuit breaker management.
 type ModelCircuitBreakerPolicy struct {
-	Enabled bool `json:"enabled" yaml:"enabled"`
-
 	// [Thresholds]
 	// Number of consecutive failures to trigger Half-Open state (recommended: 3)
 	HalfOpenThreshold int `json:"half_open_threshold" yaml:"half_open_threshold"`
@@ -49,16 +47,17 @@ type ModelCircuitBreakerPolicy struct {
 	HalfOpenWeight float64 `json:"half_open_weight" yaml:"half_open_weight"`
 }
 
+var defaultModelCircuitBreakerPolicy = ModelCircuitBreakerPolicy{
+	HalfOpenThreshold: 3,
+	OpenThreshold:     5,
+	FailureStatsTTL:   30 * time.Minute,
+	ProbeInterval:     5 * time.Minute,
+	HalfOpenWeight:    0.3,
+}
+
 // DefaultModelCircuitBreakerPolicy returns the default model circuit breaker policy.
 func DefaultModelCircuitBreakerPolicy() *ModelCircuitBreakerPolicy {
-	return &ModelCircuitBreakerPolicy{
-		Enabled:           true,
-		HalfOpenThreshold: 3,
-		OpenThreshold:     5,
-		FailureStatsTTL:   30 * time.Minute,
-		ProbeInterval:     5 * time.Minute,
-		HalfOpenWeight:    0.3,
-	}
+	return &defaultModelCircuitBreakerPolicy
 }
 
 // Validate validates the model circuit breaker policy.
@@ -138,6 +137,7 @@ func (m *ModelCircuitBreaker) getStats(channelID int, modelID string) *ModelCirc
 	}
 
 	actual, _ := m.modelStats.LoadOrStore(key, stats)
+
 	return actual
 }
 
@@ -151,18 +151,12 @@ func (m *ModelCircuitBreaker) GetPolicy(ctx context.Context) *ModelCircuitBreake
 // RecordError records an error for the specified channel and model.
 func (m *ModelCircuitBreaker) RecordError(ctx context.Context, channelID int, modelID string) {
 	stats := m.getStats(channelID, modelID)
+
 	stats.Lock()
 	defer stats.Unlock()
 
-	// Ensure probing flag is reset when operation finishes
-	defer atomic.StoreInt32(&stats.probingInProgress, 0)
-
 	now := time.Now()
 	policy := m.GetPolicy(ctx)
-
-	if !policy.Enabled {
-		return
-	}
 
 	// 1. TTL Check: prevent zombie counts
 	if stats.ConsecutiveFailures > 0 {
@@ -188,7 +182,7 @@ func (m *ModelCircuitBreaker) RecordError(ctx context.Context, channelID int, mo
 			stats.NextProbeAt = now.Add(policy.ProbeInterval) // Set next probe time
 			stats.probeAttempts = 0                           // Reset probe count
 
-			log.Warn(ctx, "Model OPEN due to consecutive failures",
+			log.Warn(ctx, "model turn to break due to consecutive failures",
 				log.Int("channel_id", channelID),
 				log.String("model_id", modelID),
 				log.Int("failures", stats.ConsecutiveFailures),
@@ -204,7 +198,7 @@ func (m *ModelCircuitBreaker) RecordError(ctx context.Context, channelID int, mo
 			stats.NextProbeAt = now.Add(nextInterval)
 			stats.probeAttempts++
 
-			log.Debug(ctx, "Updated probe time for open model",
+			log.Debug(ctx, "updated probe time for open model",
 				log.Int("channel_id", channelID),
 				log.String("model_id", modelID),
 				log.Time("next_probe_at", stats.NextProbeAt),
@@ -215,7 +209,7 @@ func (m *ModelCircuitBreaker) RecordError(ctx context.Context, channelID int, mo
 		if stats.State != StateHalfOpen {
 			stats.State = StateHalfOpen
 
-			log.Warn(ctx, "Model HALF-OPEN due to consecutive failures",
+			log.Warn(ctx, "model turn to half-open due to consecutive failures",
 				log.Int("channel_id", channelID),
 				log.String("model_id", modelID),
 				log.Int("failures", stats.ConsecutiveFailures),
@@ -227,17 +221,15 @@ func (m *ModelCircuitBreaker) RecordError(ctx context.Context, channelID int, mo
 // RecordSuccess records a successful request for the specified channel and model.
 func (m *ModelCircuitBreaker) RecordSuccess(ctx context.Context, channelID int, modelID string) {
 	stats := m.getStats(channelID, modelID)
+
 	stats.Lock()
 	defer stats.Unlock()
-
-	// Ensure probing flag is reset when operation finishes
-	defer atomic.StoreInt32(&stats.probingInProgress, 0)
 
 	stats.LastSuccessAt = time.Now()
 
 	// Reset all negative status immediately upon a single success
 	if stats.State != StateClosed {
-		log.Info(ctx, "Model RECOVERED to Closed",
+		log.Info(ctx, "model recovered to closed state",
 			log.Int("channel_id", channelID),
 			log.String("model_id", modelID),
 			log.String("previous_state", string(stats.State)),
@@ -248,12 +240,14 @@ func (m *ModelCircuitBreaker) RecordSuccess(ctx context.Context, channelID int, 
 	stats.State = StateClosed
 	stats.ConsecutiveFailures = 0
 	stats.NextProbeAt = time.Time{} // Clear probe time
+	stats.probingInProgress = 0     // Reset probing flag
 	stats.probeAttempts = 0         // Reset probe count
 }
 
 // GetModelCircuitBreakerStats returns the current state and statistics of a model.
 func (m *ModelCircuitBreaker) GetModelCircuitBreakerStats(ctx context.Context, channelID int, modelID string) *ModelCircuitBreakerStats {
 	stats := m.getStats(channelID, modelID)
+
 	stats.RLock()
 	defer stats.RUnlock()
 
@@ -274,13 +268,11 @@ func (m *ModelCircuitBreaker) GetModelCircuitBreakerStats(ctx context.Context, c
 // GetEffectiveWeight calculates the effective weight for a model based on its circuit breaker state.
 func (m *ModelCircuitBreaker) GetEffectiveWeight(ctx context.Context, channelID int, modelID string, baseWeight float64) float64 {
 	stats := m.getStats(channelID, modelID)
+
 	stats.RLock()
 	defer stats.RUnlock()
 
 	policy := m.GetPolicy(ctx)
-	if !policy.Enabled {
-		return baseWeight
-	}
 
 	switch stats.State {
 	case StateClosed:
@@ -295,17 +287,38 @@ func (m *ModelCircuitBreaker) GetEffectiveWeight(ctx context.Context, channelID 
 		// [Key] Lazy Probe logic:
 		// If current time has passed NextProbeAt, allow only ONE request for probing
 		if time.Now().After(stats.NextProbeAt) {
-			// Atomic check to prevent concurrent penetration
-			if atomic.CompareAndSwapInt32(&stats.probingInProgress, 0, 1) {
-				// Return a very small non-zero weight to give it a chance to be selected
+			if atomic.LoadInt32(&stats.probingInProgress) == 0 {
 				return 0.01
 			}
 		}
+
 		return 0.0
 
 	default:
 		return baseWeight
 	}
+}
+
+func (m *ModelCircuitBreaker) TryBeginProbe(ctx context.Context, channelID int, modelID string) bool {
+	stats := m.getStats(channelID, modelID)
+
+	stats.Lock()
+	defer stats.Unlock()
+
+	if stats.State != StateOpen {
+		return false
+	}
+
+	if stats.NextProbeAt.IsZero() || time.Now().Before(stats.NextProbeAt) {
+		return false
+	}
+
+	return atomic.CompareAndSwapInt32(&stats.probingInProgress, 0, 1)
+}
+
+func (m *ModelCircuitBreaker) EndProbe(channelID int, modelID string) {
+	stats := m.getStats(channelID, modelID)
+	atomic.StoreInt32(&stats.probingInProgress, 0)
 }
 
 // GetAllNonClosedModels returns all models that are not in closed state.
@@ -314,6 +327,7 @@ func (m *ModelCircuitBreaker) GetAllNonClosedModels(ctx context.Context) []*Mode
 
 	m.modelStats.Range(func(_ ChannelModelKey, stats *ModelCircuitBreakerStats) bool {
 		stats.RLock()
+
 		if stats.State != StateClosed {
 			// Create a copy
 			nonClosed = append(nonClosed, &ModelCircuitBreakerStats{
@@ -328,7 +342,9 @@ func (m *ModelCircuitBreaker) GetAllNonClosedModels(ctx context.Context) []*Mode
 				probingInProgress:   atomic.LoadInt32(&stats.probingInProgress),
 			})
 		}
+
 		stats.RUnlock()
+
 		return true
 	})
 
@@ -341,6 +357,7 @@ func (m *ModelCircuitBreaker) GetChannelModelCircuitBreakerStats(ctx context.Con
 
 	m.modelStats.Range(func(_ ChannelModelKey, stats *ModelCircuitBreakerStats) bool {
 		stats.RLock()
+
 		if stats.ChannelID == channelID {
 			// Create a copy
 			channelModels = append(channelModels, &ModelCircuitBreakerStats{
@@ -355,7 +372,9 @@ func (m *ModelCircuitBreaker) GetChannelModelCircuitBreakerStats(ctx context.Con
 				probingInProgress:   atomic.LoadInt32(&stats.probingInProgress),
 			})
 		}
+
 		stats.RUnlock()
+
 		return true
 	})
 
@@ -366,6 +385,7 @@ func (m *ModelCircuitBreaker) GetChannelModelCircuitBreakerStats(ctx context.Con
 // This is useful for manual intervention by operators.
 func (m *ModelCircuitBreaker) ResetModelStatus(ctx context.Context, channelID int, modelID string) error {
 	stats := m.getStats(channelID, modelID)
+
 	stats.Lock()
 	defer stats.Unlock()
 

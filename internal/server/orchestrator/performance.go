@@ -85,15 +85,6 @@ func (m *performanceRecording) OnOutboundLlmResponse(ctx context.Context, respon
 	m.outbound.state.Perf.MarkSuccess(lo.FromPtr(response.Usage.GetCompletionTokens()))
 	m.outbound.state.ChannelService.AsyncRecordPerformance(ctx, m.outbound.state.Perf)
 
-	// Record success to model circuit breaker if available
-	if m.outbound.state.ModelCircuitBreaker != nil {
-		channel := m.outbound.GetCurrentChannel()
-		modelID := m.outbound.GetRequestedModel()
-		if channel != nil && modelID != "" {
-			m.outbound.state.ModelCircuitBreaker.RecordSuccess(ctx, channel.ID, modelID)
-		}
-	}
-
 	return response, nil
 }
 
@@ -121,15 +112,6 @@ func (m *performanceRecording) OnOutboundRawError(ctx context.Context, err error
 	} else {
 		errorCode := ExtractErrorCode(err)
 		perf.MarkFailed(errorCode)
-
-		// Record error to model circuit breaker if available
-		if m.outbound.state.ModelCircuitBreaker != nil {
-			channel := m.outbound.GetCurrentChannel()
-			modelID := m.outbound.GetRequestedModel()
-			if channel != nil && modelID != "" {
-				m.outbound.state.ModelCircuitBreaker.RecordError(ctx, channel.ID, modelID)
-			}
-		}
 	}
 
 	m.outbound.state.ChannelService.AsyncRecordPerformance(ctx, perf)
@@ -160,13 +142,6 @@ func (s *recordPerformanceStream) Current() *llm.Response {
 	if tokenCount := event.Usage.GetCompletionTokens(); tokenCount != nil && *tokenCount > 0 {
 		s.state.Perf.MarkSuccess(*tokenCount)
 		s.state.ChannelService.AsyncRecordPerformance(s.ctx, s.state.Perf)
-
-		// Record success to model circuit breaker if available (only once per stream)
-		if s.firstTokenSet && s.state.ModelCircuitBreaker != nil {
-			if s.state.Perf != nil && s.state.Perf.ChannelID > 0 && s.state.OriginalModel != "" {
-				s.state.ModelCircuitBreaker.RecordSuccess(s.ctx, s.state.Perf.ChannelID, s.state.OriginalModel)
-			}
-		}
 	}
 
 	return event
