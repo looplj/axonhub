@@ -12,13 +12,14 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm/simulator"
+	"github.com/looplj/axonhub/llm/transformer/anthropic"
 )
 
 func TestClaudeCodeTransformer_WithSimulator(t *testing.T) {
 	ctx := context.Background()
 
 	// 1. Setup Transformers
-	inbound := NewInboundTransformer()
+	inbound := anthropic.NewInboundTransformer()
 
 	config := &anthropic.Config{
 		Type:    anthropic.PlatformClaudeCode,
@@ -67,22 +68,25 @@ func TestClaudeCodeTransformer_WithSimulator(t *testing.T) {
 	assert.Equal(t, "claude-cli/1.0.83 (external, cli)", finalReq.Header.Get("User-Agent"))
 	assert.Equal(t, "cli", finalReq.Header.Get("X-App"))
 
-	// Verify Bearer authentication (Claude Code transformer sets this)
-	assert.Equal(t, "Bearer test-api-key", finalReq.Header.Get("Authorization"))
+	// Verify x-api-key authentication (Claude Code uses this for api.anthropic.com with API keys)
+	assert.Equal(t, "test-api-key", finalReq.Header.Get("X-Api-Key"))
+	assert.Empty(t, finalReq.Header.Get("Authorization"))
 
 	// Verify Body contains prepended system message
 	finalBodyBytes, err := io.ReadAll(finalReq.Body)
 	require.NoError(t, err)
 
-	var finalAnthropicReq MessageRequest
+	var finalAnthropicReq anthropic.MessageRequest
 
 	err = json.Unmarshal(finalBodyBytes, &finalAnthropicReq)
 	require.NoError(t, err)
 
 	// The outbound transformer moves the system message to the `system` field
 	require.NotNil(t, finalAnthropicReq.System)
-	require.NotNil(t, finalAnthropicReq.System.Prompt)
-	assert.Contains(t, *finalAnthropicReq.System.Prompt, claudeCodeSystemMessage)
+	require.NotEmpty(t, finalAnthropicReq.System.MultiplePrompts)
+	// Check that the first system prompt contains the Claude Code message
+	assert.Equal(t, "text", finalAnthropicReq.System.MultiplePrompts[0].Type)
+	assert.Contains(t, finalAnthropicReq.System.MultiplePrompts[0].Text, claudeCodeSystemMessage)
 
 	// Verify user message is still there
 	assert.Len(t, finalAnthropicReq.Messages, 1)
@@ -93,7 +97,7 @@ func TestClaudeCodeTransformer_WithSimulator_AlreadyHasBetaQuery(t *testing.T) {
 	ctx := context.Background()
 
 	// 1. Setup Transformers
-	inbound := NewInboundTransformer()
+	inbound := anthropic.NewInboundTransformer()
 
 	config := &anthropic.Config{
 		Type:    anthropic.PlatformClaudeCode,
@@ -144,22 +148,25 @@ func TestClaudeCodeTransformer_WithSimulator_AlreadyHasBetaQuery(t *testing.T) {
 	assert.Equal(t, "claude-cli/1.0.83 (external, cli)", finalReq.Header.Get("User-Agent"))
 	assert.Equal(t, "cli", finalReq.Header.Get("X-App"))
 
-	// Verify Bearer authentication (Claude Code transformer sets this)
-	assert.Equal(t, "Bearer test-api-key", finalReq.Header.Get("Authorization"))
+	// Verify x-api-key authentication (Claude Code uses this for api.anthropic.com with API keys)
+	assert.Equal(t, "test-api-key", finalReq.Header.Get("X-Api-Key"))
+	assert.Empty(t, finalReq.Header.Get("Authorization"))
 
 	// Verify Body contains prepended system message
 	finalBodyBytes, err := io.ReadAll(finalReq.Body)
 	require.NoError(t, err)
 
-	var finalAnthropicReq MessageRequest
+	var finalAnthropicReq anthropic.MessageRequest
 
 	err = json.Unmarshal(finalBodyBytes, &finalAnthropicReq)
 	require.NoError(t, err)
 
 	// The outbound transformer moves the system message to the `system` field
 	require.NotNil(t, finalAnthropicReq.System)
-	require.NotNil(t, finalAnthropicReq.System.Prompt)
-	assert.Contains(t, *finalAnthropicReq.System.Prompt, claudeCodeSystemMessage)
+	require.NotEmpty(t, finalAnthropicReq.System.MultiplePrompts)
+	// Check that the first system prompt contains the Claude Code message
+	assert.Equal(t, "text", finalAnthropicReq.System.MultiplePrompts[0].Type)
+	assert.Contains(t, finalAnthropicReq.System.MultiplePrompts[0].Text, claudeCodeSystemMessage)
 
 	// Verify user message is still there
 	assert.Len(t, finalAnthropicReq.Messages, 1)
@@ -169,7 +176,7 @@ func TestClaudeCodeTransformer_WithSimulator_AlreadyHasBetaQuery(t *testing.T) {
 func TestClaudeCodeTransformer_WithSimulator_InboundHeadersCannotOverride(t *testing.T) {
 	ctx := context.Background()
 
-	inbound := NewInboundTransformer()
+	inbound := anthropic.NewInboundTransformer()
 
 	config := &anthropic.Config{
 		Type:    anthropic.PlatformClaudeCode,
@@ -200,17 +207,17 @@ func TestClaudeCodeTransformer_WithSimulator_InboundHeadersCannotOverride(t *tes
 		wantFinalUA     string
 		wantFinalBeta   string
 		wantFinalXApp   string
-		wantFinalAuth   string
+		wantFinalAPIKey string
 		wantFinalVer    string
 		wantFinalDanger string
 	}{
 		{
 			name:            "non-claude UA is ignored",
 			inboundUA:       "axonhub-test/0.0.1",
-			wantFinalUA:     claudeCodeUserAgent,
+			wantFinalUA:     UserAgent,
 			wantFinalBeta:   "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14",
 			wantFinalXApp:   "cli",
-			wantFinalAuth:   "Bearer test-api-key",
+			wantFinalAPIKey: "test-api-key",
 			wantFinalVer:    "2023-06-01",
 			wantFinalDanger: "true",
 		},
@@ -220,7 +227,7 @@ func TestClaudeCodeTransformer_WithSimulator_InboundHeadersCannotOverride(t *tes
 			wantFinalUA:     "claude-cli/1.0.99 (external, cli)",
 			wantFinalBeta:   "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14",
 			wantFinalXApp:   "cli",
-			wantFinalAuth:   "Bearer test-api-key",
+			wantFinalAPIKey: "test-api-key",
 			wantFinalVer:    "2023-06-01",
 			wantFinalDanger: "true",
 		},
@@ -248,7 +255,8 @@ func TestClaudeCodeTransformer_WithSimulator_InboundHeadersCannotOverride(t *tes
 			assert.Equal(t, tt.wantFinalDanger, finalReq.Header.Get("Anthropic-Dangerous-Direct-Browser-Access"))
 			assert.Equal(t, tt.wantFinalUA, finalReq.Header.Get("User-Agent"))
 			assert.Equal(t, tt.wantFinalXApp, finalReq.Header.Get("X-App"))
-			assert.Equal(t, tt.wantFinalAuth, finalReq.Header.Get("Authorization"))
+			assert.Equal(t, tt.wantFinalAPIKey, finalReq.Header.Get("X-Api-Key"))
+			assert.Empty(t, finalReq.Header.Get("Authorization"))
 			assert.Equal(t, "0.55.1", finalReq.Header.Get("X-Stainless-Package-Version"))
 		})
 	}

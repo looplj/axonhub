@@ -4,12 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"net/url"
 	"testing"
 
-	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -21,212 +20,424 @@ import (
 func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 	ctx := context.Background()
 
-	// Create a ClaudeCode transformer
-	config := &anthropic.Config{
-		Type:    anthropic.anthropic.PlatformClaudeCode,
-		BaseURL: "https://example.com",
-		APIKey:  "test-api-key",
-	}
+	t.Run("api.anthropic.com uses x-api-key auth", func(t *testing.T) {
+		config := &anthropic.Config{
+			Type:    anthropic.PlatformClaudeCode,
+			BaseURL: "https://api.anthropic.com/v1",
+			APIKey:  "sk-ant-api-key",
+		}
 
-	transformer, err := NewClaudeCodeTransformer(config)
-	require.NoError(t, err)
-	require.NotNil(t, transformer)
+		transformer, err := NewClaudeCodeTransformer(config)
+		require.NoError(t, err)
 
-	t.Run("prepends system message", func(t *testing.T) {
 		req := &llm.Request{
-			Model: "claude-sonnet-4-5-20250514",
-			Messages: []llm.Message{
-				{
-					Role: "user",
-					Content: llm.MessageContent{
-						Content: lo.ToPtr("Hello"),
-					},
-				},
-			},
-			MaxTokens: lo.ToPtr(int64(1024)),
+			Model:     "claude-sonnet-4-5",
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
+			MaxTokens: int64Ptr(1024),
 		}
 
 		httpReq, err := transformer.TransformRequest(ctx, req)
 		require.NoError(t, err)
-		require.NotNil(t, httpReq)
 
-		assert.Equal(t, "https://example.com/v1/messages", httpReq.URL)
-		require.NotNil(t, httpReq.Query)
-		assert.Equal(t, "true", httpReq.Query.Get("beta"))
+		// Should use x-api-key for api.anthropic.com
+		assert.Equal(t, "sk-ant-api-key", httpReq.Headers.Get("X-Api-Key"))
+		assert.Empty(t, httpReq.Headers.Get("Authorization"))
+		assert.Equal(t, httpclient.AuthTypeAPIKey, httpReq.Auth.Type)
+	})
 
-		// Verify Claude Code specific headers
-		assert.Equal(t, "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14", httpReq.Headers.Get("Anthropic-Beta"))
+	t.Run("custom endpoint uses Bearer auth", func(t *testing.T) {
+		config := &anthropic.Config{
+			Type:    anthropic.PlatformClaudeCode,
+			BaseURL: "https://custom.example.com/v1",
+			APIKey:  "sk-ant-api-key",
+		}
+
+		transformer, err := NewClaudeCodeTransformer(config)
+		require.NoError(t, err)
+
+		req := &llm.Request{
+			Model:     "claude-sonnet-4-5",
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
+			MaxTokens: int64Ptr(1024),
+		}
+
+		httpReq, err := transformer.TransformRequest(ctx, req)
+		require.NoError(t, err)
+
+		// Should use Bearer for custom endpoints
+		assert.Equal(t, "Bearer sk-ant-api-key", httpReq.Headers.Get("Authorization"))
+		assert.Empty(t, httpReq.Headers.Get("X-Api-Key"))
+		assert.Equal(t, httpclient.AuthTypeBearer, httpReq.Auth.Type)
+	})
+
+	t.Run("OAuth token uses Bearer auth", func(t *testing.T) {
+		config := &anthropic.Config{
+			Type:    anthropic.PlatformClaudeCode,
+			BaseURL: "https://api.anthropic.com/v1",
+			APIKey:  "sk-ant-oat01-oauth-token",
+		}
+
+		transformer, err := NewClaudeCodeTransformer(config)
+		require.NoError(t, err)
+
+		req := &llm.Request{
+			Model:     "claude-sonnet-4-5",
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
+			MaxTokens: int64Ptr(1024),
+		}
+
+		httpReq, err := transformer.TransformRequest(ctx, req)
+		require.NoError(t, err)
+
+		// OAuth tokens always use Bearer
+		assert.Equal(t, "Bearer sk-ant-oat01-oauth-token", httpReq.Headers.Get("Authorization"))
+		assert.Empty(t, httpReq.Headers.Get("X-Api-Key"))
+		assert.Equal(t, httpclient.AuthTypeBearer, httpReq.Auth.Type)
+	})
+
+	t.Run("injects Claude Code system message with cache_control", func(t *testing.T) {
+		config := &anthropic.Config{
+			Type:    anthropic.PlatformClaudeCode,
+			BaseURL: "https://api.anthropic.com/v1",
+			APIKey:  "test-api-key",
+		}
+
+		transformer, err := NewClaudeCodeTransformer(config)
+		require.NoError(t, err)
+
+		req := &llm.Request{
+			Model:     "claude-sonnet-4-5",
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
+			MaxTokens: int64Ptr(1024),
+		}
+
+		httpReq, err := transformer.TransformRequest(ctx, req)
+		require.NoError(t, err)
+
+		// Check system message is injected with cache_control
+		system := gjson.GetBytes(httpReq.Body, "system")
+		require.True(t, system.Exists())
+		require.True(t, system.IsArray())
+
+		firstMsg := system.Array()[0]
+		assert.Equal(t, "text", firstMsg.Get("type").String())
+		assert.Equal(t, claudeCodeSystemMessage, firstMsg.Get("text").String())
+		assert.Equal(t, "ephemeral", firstMsg.Get("cache_control.type").String())
+	})
+
+	t.Run("sets all Claude Code headers", func(t *testing.T) {
+		config := &anthropic.Config{
+			Type:    anthropic.PlatformClaudeCode,
+			BaseURL: "https://api.anthropic.com/v1",
+			APIKey:  "test-api-key",
+		}
+
+		transformer, err := NewClaudeCodeTransformer(config)
+		require.NoError(t, err)
+
+		req := &llm.Request{
+			Model:     "claude-sonnet-4-5",
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
+			MaxTokens: int64Ptr(1024),
+		}
+
+		httpReq, err := transformer.TransformRequest(ctx, req)
+		require.NoError(t, err)
+
+		// Verify all Claude Code headers
+		assert.Contains(t, httpReq.Headers.Get("Anthropic-Beta"), "claude-code-20250219")
 		assert.Equal(t, "2023-06-01", httpReq.Headers.Get("Anthropic-Version"))
 		assert.Equal(t, "true", httpReq.Headers.Get("Anthropic-Dangerous-Direct-Browser-Access"))
-		assert.Equal(t, "claude-cli/1.0.83 (external, cli)", httpReq.Headers.Get("User-Agent"))
 		assert.Equal(t, "cli", httpReq.Headers.Get("X-App"))
 		assert.Equal(t, "stream", httpReq.Headers.Get("X-Stainless-Helper-Method"))
-		assert.Equal(t, "0", httpReq.Headers.Get("X-Stainless-Retry-Count"))
-		assert.Equal(t, "v24.3.0", httpReq.Headers.Get("X-Stainless-Runtime-Version"))
-		assert.Equal(t, "0.55.1", httpReq.Headers.Get("X-Stainless-Package-Version"))
-		assert.Equal(t, "node", httpReq.Headers.Get("X-Stainless-Runtime"))
-
-		// Verify Bearer authentication
-		require.NotNil(t, httpReq.Auth)
-		assert.Equal(t, "bearer", httpReq.Auth.Type)
-		assert.Equal(t, "test-api-key", httpReq.Auth.APIKey)
-
-		// Verify the prepended system message
-		var anthropicReq MessageRequest
-
-		err = json.Unmarshal(httpReq.Body, &anthropicReq)
-		require.NoError(t, err)
-
-		// The outbound transformer should move the system message to the dedicated `system` field.
-		require.NotNil(t, anthropicReq.System)
-		require.NotNil(t, anthropicReq.System.Prompt)
-		assert.Contains(t, *anthropicReq.System.Prompt, claudeCodeSystemMessage)
+		assert.Equal(t, UserAgent, httpReq.Headers.Get("User-Agent"))
 	})
 
-	t.Run("works with existing system message", func(t *testing.T) {
+	t.Run("adds beta=true query parameter", func(t *testing.T) {
+		config := &anthropic.Config{
+			Type:    anthropic.PlatformClaudeCode,
+			BaseURL: "https://api.anthropic.com/v1",
+			APIKey:  "test-api-key",
+		}
+
+		transformer, err := NewClaudeCodeTransformer(config)
+		require.NoError(t, err)
+
 		req := &llm.Request{
-			Model: "claude-sonnet-4-5-20250514",
-			Messages: []llm.Message{
-				{
-					Role: "system",
-					Content: llm.MessageContent{
-						Content: lo.ToPtr("You are a helpful assistant"),
-					},
-				},
-				{
-					Role: "user",
-					Content: llm.MessageContent{
-						Content: lo.ToPtr("Hello"),
-					},
-				},
-			},
-			MaxTokens: lo.ToPtr(int64(1024)),
+			Model:     "claude-sonnet-4-5",
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
+			MaxTokens: int64Ptr(1024),
 		}
 
 		httpReq, err := transformer.TransformRequest(ctx, req)
 		require.NoError(t, err)
-		require.NotNil(t, httpReq)
 
-		assert.Equal(t, "https://example.com/v1/messages", httpReq.URL)
-		require.NotNil(t, httpReq.Query)
-		assert.Equal(t, "true", httpReq.Query.Get("beta"))
-		assert.NotEmpty(t, httpReq.Body)
-	})
-
-	t.Run("does not duplicate Claude Code system message", func(t *testing.T) {
-		// Simulate a request that already has the Claude Code system message
-		// (as would come from the Claude Code CLI)
-		req := &llm.Request{
-			Model: "claude-sonnet-4-5-20250514",
-			Messages: []llm.Message{
-				{
-					Role: "system",
-					Content: llm.MessageContent{
-						Content: lo.ToPtr(claudeCodeSystemMessage),
-					},
-				},
-				{
-					Role: "user",
-					Content: llm.MessageContent{
-						Content: lo.ToPtr("Hello"),
-					},
-				},
-			},
-			MaxTokens: lo.ToPtr(int64(1024)),
-		}
-
-		httpReq, err := transformer.TransformRequest(ctx, req)
-		require.NoError(t, err)
-		require.NotNil(t, httpReq)
-
-		// Verify the system message is not duplicated
-		var anthropicReq MessageRequest
-
-		err = json.Unmarshal(httpReq.Body, &anthropicReq)
-		require.NoError(t, err)
-
-		// The outbound transformer should move the system message to the dedicated `system` field.
-		require.NotNil(t, anthropicReq.System)
-		require.NotNil(t, anthropicReq.System.Prompt)
-
-		// Verify it contains the Claude Code message exactly once (not duplicated)
-		systemContent := *anthropicReq.System.Prompt
-		assert.Equal(t, claudeCodeSystemMessage, systemContent, "System message should be exactly the Claude Code message, not duplicated")
-	})
-
-	t.Run("works with streaming", func(t *testing.T) {
-		req := &llm.Request{
-			Model: "claude-sonnet-4-5-20250514",
-			Messages: []llm.Message{
-				{
-					Role: "user",
-					Content: llm.MessageContent{
-						Content: lo.ToPtr("Hello"),
-					},
-				},
-			},
-			MaxTokens: lo.ToPtr(int64(1024)),
-			Stream:    lo.ToPtr(true),
-		}
-
-		httpReq, err := transformer.TransformRequest(ctx, req)
-		require.NoError(t, err)
-		require.NotNil(t, httpReq)
-
-		assert.Equal(t, "https://example.com/v1/messages", httpReq.URL)
-		require.NotNil(t, httpReq.Query)
 		assert.Equal(t, "true", httpReq.Query.Get("beta"))
 	})
 
-	t.Run("requires model", func(t *testing.T) {
+	t.Run("applies tool prefix for OAuth tokens from non-CLI clients", func(t *testing.T) {
+		config := &anthropic.Config{
+			Type:    anthropic.PlatformClaudeCode,
+			BaseURL: "https://api.anthropic.com/v1",
+			APIKey:  "sk-ant-oat01-oauth-token",
+		}
+
+		transformer, err := NewClaudeCodeTransformer(config)
+		require.NoError(t, err)
+
 		req := &llm.Request{
-			Messages: []llm.Message{
+			Model:     "claude-sonnet-4-5",
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
+			MaxTokens: int64Ptr(1024),
+			Tools: []llm.Tool{
 				{
-					Role: "user",
-					Content: llm.MessageContent{
-						Content: lo.ToPtr("Hello"),
-					},
+					Type:     "function",
+					Function: llm.Function{Name: "bash", Description: "Execute bash"},
 				},
 			},
 		}
 
-		_, err := transformer.TransformRequest(ctx, req)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "model is required")
+		httpReq, err := transformer.TransformRequest(ctx, req)
+		require.NoError(t, err)
+
+		// Tool name should have proxy_ prefix
+		toolName := gjson.GetBytes(httpReq.Body, "tools.0.name").String()
+		assert.Equal(t, "proxy_bash", toolName)
+
+		// Metadata should indicate prefix was applied
+		assert.Equal(t, "true", httpReq.Metadata["strip_tool_prefix"])
 	})
 
-	t.Run("does not duplicate beta query", func(t *testing.T) {
-		t1 := &ClaudeCodeTransformer{
-			Outbound: &fakeOutbound{
-				req: &httpclient.Request{
-					Method:  http.MethodPost,
-					URL:     "https://example.com/v1/messages",
-					Query:   url.Values{"beta": []string{"true"}},
-					Headers: http.Header{},
-					Auth: &httpclient.AuthConfig{
-						Type:   httpclient.AuthTypeAPIKey,
-						APIKey: "test-api-key",
-					},
+	t.Run("does not apply tool prefix for API keys", func(t *testing.T) {
+		config := &anthropic.Config{
+			Type:    anthropic.PlatformClaudeCode,
+			BaseURL: "https://api.anthropic.com/v1",
+			APIKey:  "sk-ant-api-key",
+		}
+
+		transformer, err := NewClaudeCodeTransformer(config)
+		require.NoError(t, err)
+
+		req := &llm.Request{
+			Model:     "claude-sonnet-4-5",
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
+			MaxTokens: int64Ptr(1024),
+			Tools: []llm.Tool{
+				{
+					Type:     "function",
+					Function: llm.Function{Name: "bash", Description: "Execute bash"},
 				},
 			},
 		}
 
-		httpReq, err := t1.TransformRequest(ctx, &llm.Request{
-			Model: "claude-sonnet-4-5-20250514",
-			Messages: []llm.Message{
+		httpReq, err := transformer.TransformRequest(ctx, req)
+		require.NoError(t, err)
+
+		// Tool name should NOT have proxy_ prefix
+		toolName := gjson.GetBytes(httpReq.Body, "tools.0.name").String()
+		assert.Equal(t, "bash", toolName)
+
+		// Metadata should not indicate prefix
+		assert.Empty(t, httpReq.Metadata["strip_tool_prefix"])
+	})
+
+	t.Run("does not apply tool prefix for Claude CLI clients", func(t *testing.T) {
+		config := &anthropic.Config{
+			Type:    anthropic.PlatformClaudeCode,
+			BaseURL: "https://api.anthropic.com/v1",
+			APIKey:  "sk-ant-oat01-oauth-token",
+		}
+
+		transformer, err := NewClaudeCodeTransformer(config)
+		require.NoError(t, err)
+
+		req := &llm.Request{
+			Model:     "claude-sonnet-4-5",
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
+			MaxTokens: int64Ptr(1024),
+			Tools: []llm.Tool{
 				{
-					Role: "user",
-					Content: llm.MessageContent{
-						Content: lo.ToPtr("Hello"),
-					},
+					Type:     "function",
+					Function: llm.Function{Name: "bash", Description: "Execute bash"},
 				},
 			},
-			MaxTokens: lo.ToPtr(int64(1024)),
+			RawRequest: &httpclient.Request{
+				Headers: http.Header{"User-Agent": []string{"claude-cli/1.0.83"}},
+			},
+		}
+
+		httpReq, err := transformer.TransformRequest(ctx, req)
+		require.NoError(t, err)
+
+		// Tool name should NOT have proxy_ prefix (Claude CLI client detected)
+		toolName := gjson.GetBytes(httpReq.Body, "tools.0.name").String()
+		assert.Equal(t, "bash", toolName)
+
+		// Metadata should not indicate prefix
+		assert.Empty(t, httpReq.Metadata["strip_tool_prefix"])
+	})
+
+	t.Run("injects fake user ID", func(t *testing.T) {
+		config := &anthropic.Config{
+			Type:    anthropic.PlatformClaudeCode,
+			BaseURL: "https://api.anthropic.com/v1",
+			APIKey:  "test-api-key",
+		}
+
+		transformer, err := NewClaudeCodeTransformer(config)
+		require.NoError(t, err)
+
+		req := &llm.Request{
+			Model:     "claude-sonnet-4-5",
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
+			MaxTokens: int64Ptr(1024),
+		}
+
+		httpReq, err := transformer.TransformRequest(ctx, req)
+		require.NoError(t, err)
+
+		// Should have generated user ID
+		userID := gjson.GetBytes(httpReq.Body, "metadata.user_id").String()
+		assert.NotEmpty(t, userID)
+		assert.True(t, isValidUserID(userID))
+	})
+
+	t.Run("disables thinking when tool_choice forces tool use", func(t *testing.T) {
+		config := &anthropic.Config{
+			Type:    anthropic.PlatformClaudeCode,
+			BaseURL: "https://api.anthropic.com/v1",
+			APIKey:  "test-api-key",
+		}
+
+		transformer, err := NewClaudeCodeTransformer(config)
+		require.NoError(t, err)
+
+		toolChoiceAny := "any"
+		req := &llm.Request{
+			Model:     "claude-sonnet-4-5",
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
+			MaxTokens: int64Ptr(1024),
+			Tools: []llm.Tool{
+				{
+					Type:     "function",
+					Function: llm.Function{Name: "bash", Description: "Execute bash"},
+				},
+			},
+			ToolChoice: &llm.ToolChoice{ToolChoice: &toolChoiceAny},
+			RawRequest: &httpclient.Request{
+				Body: mustMarshal(map[string]any{
+					"thinking": map[string]any{
+						"type":   "enabled",
+						"budget": 10000,
+					},
+				}),
+			},
+		}
+
+		httpReq, err := transformer.TransformRequest(ctx, req)
+		require.NoError(t, err)
+
+		// Thinking should be removed
+		thinking := gjson.GetBytes(httpReq.Body, "thinking")
+		assert.False(t, thinking.Exists())
+	})
+}
+
+func TestClaudeCodeTransformer_TransformResponse(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("strips tool prefix when it was applied", func(t *testing.T) {
+		config := &anthropic.Config{
+			Type:    anthropic.PlatformClaudeCode,
+			BaseURL: "https://api.anthropic.com/v1",
+			APIKey:  "sk-ant-oat01-oauth-token",
+		}
+
+		transformer, err := NewClaudeCodeTransformer(config)
+		require.NoError(t, err)
+
+		// Simulate response from Claude with prefixed tool name
+		responseBody := mustMarshal(map[string]any{
+			"id":    "msg_123",
+			"type":  "message",
+			"role":  "assistant",
+			"model": "claude-sonnet-4-5",
+			"content": []any{
+				map[string]any{
+					"type":  "tool_use",
+					"id":    "toolu_123",
+					"name":  "proxy_bash",
+					"input": map[string]any{"command": "ls"},
+				},
+			},
+			"stop_reason": "tool_use",
+			"usage": map[string]any{
+				"input_tokens":  100,
+				"output_tokens": 50,
+			},
 		})
+
+		httpResp := &httpclient.Response{
+			StatusCode: 200,
+			Body:       responseBody,
+			Request: &httpclient.Request{
+				Metadata: map[string]string{"strip_tool_prefix": "true"},
+			},
+		}
+
+		llmResp, err := transformer.TransformResponse(ctx, httpResp)
 		require.NoError(t, err)
-		require.NotNil(t, httpReq.Query)
-		assert.Equal(t, "https://example.com/v1/messages", httpReq.URL)
-		assert.Equal(t, []string{"true"}, httpReq.Query["beta"])
+
+		// Tool name should have prefix stripped
+		require.Len(t, llmResp.Choices, 1)
+		require.Len(t, llmResp.Choices[0].Message.ToolCalls, 1)
+		assert.Equal(t, "bash", llmResp.Choices[0].Message.ToolCalls[0].Function.Name)
+	})
+
+	t.Run("does not strip when prefix was not applied", func(t *testing.T) {
+		config := &anthropic.Config{
+			Type:    anthropic.PlatformClaudeCode,
+			BaseURL: "https://api.anthropic.com/v1",
+			APIKey:  "sk-ant-api-key",
+		}
+
+		transformer, err := NewClaudeCodeTransformer(config)
+		require.NoError(t, err)
+
+		// Simulate response from Claude
+		responseBody := mustMarshal(map[string]any{
+			"id":    "msg_123",
+			"type":  "message",
+			"role":  "assistant",
+			"model": "claude-sonnet-4-5",
+			"content": []any{
+				map[string]any{
+					"type":  "tool_use",
+					"id":    "toolu_123",
+					"name":  "bash",
+					"input": map[string]any{"command": "ls"},
+				},
+			},
+			"stop_reason": "tool_use",
+			"usage": map[string]any{
+				"input_tokens":  100,
+				"output_tokens": 50,
+			},
+		})
+
+		httpResp := &httpclient.Response{
+			StatusCode: 200,
+			Body:       responseBody,
+			Request:    &httpclient.Request{},
+		}
+
+		llmResp, err := transformer.TransformResponse(ctx, httpResp)
+		require.NoError(t, err)
+
+		// Tool name should remain unchanged
+		require.Len(t, llmResp.Choices, 1)
+		require.Len(t, llmResp.Choices[0].Message.ToolCalls, 1)
+		assert.Equal(t, "bash", llmResp.Choices[0].Message.ToolCalls[0].Function.Name)
 	})
 }
 
@@ -241,6 +452,27 @@ func TestClaudeCodeTransformer_APIFormat(t *testing.T) {
 
 	assert.Equal(t, llm.APIFormatAnthropicMessage, transformer.APIFormat())
 }
+
+// Helper functions
+
+func strPtr(s string) *string {
+	return &s
+}
+
+func int64Ptr(i int64) *int64 {
+	return &i
+}
+
+func mustMarshal(v any) []byte {
+	b, err := json.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+
+	return b
+}
+
+// Fake outbound transformer for testing
 
 type fakeOutbound struct {
 	req *httpclient.Request

@@ -3,6 +3,7 @@ package anthropic
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/samber/lo"
 
@@ -375,10 +376,13 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 						input = json.RawMessage("{}")
 					}
 
+					// Strip proxy_ prefix from tool name if present
+					toolName := strings.TrimPrefix(toolCall.Function.Name, "proxy_")
+
 					contentBlocks = append(contentBlocks, MessageContentBlock{
 						Type:  "tool_use",
 						ID:    toolCall.ID,
-						Name:  &toolCall.Function.Name,
+						Name:  &toolName,
 						Input: input,
 					})
 				}

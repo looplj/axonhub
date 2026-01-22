@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/samber/lo"
 
@@ -355,12 +356,16 @@ func (s *anthropicInboundStream) Next() bool {
 						s.contentIndex += 1
 					}
 
+					// Strip proxy_ prefix from tool name if present
+					toolName := deltaToolCall.Function.Name
+					toolName = strings.TrimPrefix(toolName, "proxy_")
+
 					s.toolCalls[toolCallIndex] = &llm.ToolCall{
 						Index: toolCallIndex,
 						ID:    deltaToolCall.ID,
 						Type:  deltaToolCall.Type,
 						Function: llm.FunctionCall{
-							Name:      deltaToolCall.Function.Name,
+							Name:      toolName,
 							Arguments: "",
 						},
 					}
@@ -371,7 +376,7 @@ func (s *anthropicInboundStream) Next() bool {
 						ContentBlock: &MessageContentBlock{
 							Type:  "tool_use",
 							ID:    deltaToolCall.ID,
-							Name:  &deltaToolCall.Function.Name,
+							Name:  &toolName,
 							Input: json.RawMessage("{}"),
 						},
 					}

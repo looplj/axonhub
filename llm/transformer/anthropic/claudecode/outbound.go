@@ -2,11 +2,10 @@ package claudecode
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
-
-	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -17,6 +16,7 @@ import (
 
 const (
 	claudeCodeSystemMessage = "You are Claude Code, Anthropic's official CLI for Claude."
+	toolPrefix              = "proxy_"
 )
 
 // claudeCodeHeaders contains all headers to set for Claude Code requests.
@@ -31,6 +31,12 @@ var claudeCodeHeaders = [][]string{
 	{"X-Stainless-Runtime-Version", "v24.3.0"},
 	{"X-Stainless-Package-Version", "0.55.1"},
 	{"X-Stainless-Runtime", "node"},
+	{"X-Stainless-Lang", "js"},
+	{"X-Stainless-Arch", "arm64"},
+	{"X-Stainless-Os", "MacOS"},
+	{"X-Stainless-Timeout", "60"},
+	{"Connection", "keep-alive"},
+	{"Accept-Encoding", "gzip, deflate, br, zstd"},
 }
 
 // Params contains parameters for creating a ClaudeCodeTransformer.
@@ -79,7 +85,8 @@ func NewClaudeCodeTransformer(config *anthropic.Config) (*ClaudeCodeTransformer,
 // It wraps an OutboundTransformer and adds Claude Code specific headers and system message.
 type ClaudeCodeTransformer struct {
 	transformer.Outbound
-	tokens oauth.TokenGetter
+	tokens  oauth.TokenGetter
+	baseURL string
 }
 
 // TransformRequest overrides the base TransformRequest to add Claude Code specific modifications.
@@ -110,30 +117,7 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 	// Clone the request to avoid mutating the original
 	reqCopy := *llmReq
 
-	// Check if Claude Code system message already exists
-	hasClaudeCodeMessage := false
-
-	for _, msg := range reqCopy.Messages {
-		if msg.Role == "system" && msg.Content.Content != nil &&
-			*msg.Content.Content == claudeCodeSystemMessage {
-			hasClaudeCodeMessage = true
-			break
-		}
-	}
-
-	// Only prepend the Claude Code system message if it doesn't already exist
-	if !hasClaudeCodeMessage {
-		systemMsg := llm.Message{
-			Role: "system",
-			Content: llm.MessageContent{
-				Content: lo.ToPtr(claudeCodeSystemMessage),
-			},
-		}
-		// Insert at the beginning of messages
-		reqCopy.Messages = append([]llm.Message{systemMsg}, llmReq.Messages...)
-	}
-
-	// Call the base transformer
+	// Call the base transformer first
 	httpReq, err := t.Outbound.TransformRequest(ctx, &reqCopy)
 	if err != nil {
 		return nil, err
@@ -153,6 +137,45 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 		apiKey = creds.AccessToken
 	}
 
+	// Modify the request body
+	if len(httpReq.Body) > 0 {
+		bodyBytes := httpReq.Body
+
+		// Extract and remove betas array from body
+		extraBetas, bodyBytes := extractAndRemoveBetas(bodyBytes)
+
+		// Inject Claude Code system message with cache_control
+		bodyBytes, err = injectClaudeCodeSystemMessage(bodyBytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to inject system message: %w", err)
+		}
+
+		// Inject fake user ID if needed
+		bodyBytes = injectFakeUserID(bodyBytes)
+
+		// Disable thinking if tool_choice forces tool use
+		bodyBytes = disableThinkingIfToolChoiceForced(bodyBytes)
+
+		// Apply tool prefix for OAuth tokens from non-Claude-CLI clients
+		// Skip if: not OAuth token OR is Claude CLI client
+		if isClaudeOAuthToken(apiKey) && !keepClientUA {
+			bodyBytes = applyClaudeToolPrefix(bodyBytes, toolPrefix)
+		}
+
+		// Replace the body
+		httpReq.Body = bodyBytes
+
+		// Merge extra betas into Anthropic-Beta header
+		if len(extraBetas) > 0 {
+			baseBetas := httpReq.Headers.Get("Anthropic-Beta")
+			if baseBetas == "" {
+				baseBetas = claudeCodeHeaders[0][1] // Use default
+			}
+
+			httpReq.Headers.Set("Anthropic-Beta", mergeBetasIntoHeader(baseBetas, extraBetas))
+		}
+	}
+
 	// Add beta=true query parameter if not present
 	if httpReq.Query == nil {
 		httpReq.Query = make(url.Values)
@@ -162,9 +185,25 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 		httpReq.Query.Set("beta", "true")
 	}
 
+	// Store whether we applied tool prefix (for response processing)
+	if httpReq.Metadata == nil {
+		httpReq.Metadata = make(map[string]string)
+	}
+
+	if isClaudeOAuthToken(apiKey) && !keepClientUA {
+		httpReq.Metadata["strip_tool_prefix"] = "true"
+	}
+
 	// Add/overwrite Claude Code specific headers
 	for _, header := range claudeCodeHeaders {
 		httpReq.Headers.Set(header[0], header[1])
+	}
+
+	// Set Accept header based on streaming
+	if llmReq.Stream != nil && *llmReq.Stream {
+		httpReq.Headers.Set("Accept", "text/event-stream")
+	} else {
+		httpReq.Headers.Set("Accept", "application/json")
 	}
 
 	if keepClientUA && rawUA != "" {
@@ -173,13 +212,108 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 		httpReq.Headers.Set("User-Agent", UserAgent)
 	}
 
-	// Set authentication to Bearer token
-	httpReq.Auth = &httpclient.AuthConfig{
-		Type:   httpclient.AuthTypeBearer,
-		APIKey: apiKey,
+	// Determine authentication method based on endpoint
+	// Parse URL to check if it's api.anthropic.com
+	parsedURL, err := url.Parse(httpReq.URL)
+	if err == nil {
+		isAnthropicBase := strings.EqualFold(parsedURL.Scheme, "https") &&
+			strings.EqualFold(parsedURL.Host, "api.anthropic.com")
+
+		// For api.anthropic.com with API key: use x-api-key header
+		// For custom endpoints or OAuth tokens: use Bearer token
+		if isAnthropicBase && !isClaudeOAuthToken(apiKey) {
+			httpReq.Headers.Del("Authorization")
+			httpReq.Headers.Set("X-Api-Key", apiKey)
+			httpReq.Auth = &httpclient.AuthConfig{
+				Type:      httpclient.AuthTypeAPIKey,
+				APIKey:    apiKey,
+				HeaderKey: "x-api-key",
+			}
+		} else {
+			httpReq.Headers.Set("Authorization", "Bearer "+apiKey)
+			httpReq.Auth = &httpclient.AuthConfig{
+				Type:   httpclient.AuthTypeBearer,
+				APIKey: apiKey,
+			}
+		}
 	}
 
 	return httpReq, nil
+}
+
+// TransformResponse overrides the base TransformResponse to strip tool prefixes from responses.
+func (t *ClaudeCodeTransformer) TransformResponse(
+	ctx context.Context,
+	httpResp *httpclient.Response,
+) (*llm.Response, error) {
+	// Check if we should strip tool prefix (only if we added it in the request)
+	shouldStripPrefix := false
+	if httpResp.Request != nil && httpResp.Request.Metadata != nil {
+		shouldStripPrefix = httpResp.Request.Metadata["strip_tool_prefix"] == "true"
+	}
+
+	if !shouldStripPrefix {
+		// Call the base transformer and return as-is
+		return t.Outbound.TransformResponse(ctx, httpResp)
+	}
+
+	// Strip the tool prefix from the response body
+	if len(httpResp.Body) > 0 {
+		httpResp.Body = stripClaudeToolPrefixFromResponse(httpResp.Body, toolPrefix)
+	}
+
+	// Call the base transformer with the modified response
+	return t.Outbound.TransformResponse(ctx, httpResp)
+}
+
+// AggregateStreamChunks overrides the base AggregateStreamChunks to strip tool prefixes from stream chunks.
+func (t *ClaudeCodeTransformer) AggregateStreamChunks(
+	ctx context.Context,
+	chunks []*httpclient.StreamEvent,
+) ([]byte, llm.ResponseMeta, error) {
+	// Note: We can't access request metadata here, so we blindly strip proxy_ prefix
+	// from all streaming responses. This is safe because:
+	// 1. We only add proxy_ prefix for OAuth tokens from non-CLI clients
+	// 2. Claude CLI clients don't send proxy_ prefixed tool names
+	// 3. If no prefix was added, stripping won't find anything to strip
+
+	// Strip prefix from each chunk's data
+	for i, chunk := range chunks {
+		if chunk != nil && len(chunk.Data) > 0 && strings.Contains(string(chunk.Data), `"type":"tool_use"`) {
+			chunks[i].Data = stripClaudeToolPrefixFromStreamLine(chunk.Data, toolPrefix)
+		}
+	}
+
+	// Call the base transformer
+	return t.Outbound.AggregateStreamChunks(ctx, chunks)
+}
+
+// stripClaudeToolPrefixFromStreamLine removes the prefix from tool names in streaming events.
+func stripClaudeToolPrefixFromStreamLine(line []byte, prefix string) []byte {
+	if prefix == "" {
+		return line
+	}
+
+	// Try to parse as JSON
+	var data map[string]any
+	if err := json.Unmarshal(line, &data); err != nil {
+		return line
+	}
+
+	// Check if this is a content_block event with tool_use
+	if contentBlock, ok := data["content_block"].(map[string]any); ok {
+		if contentBlock["type"] == "tool_use" {
+			if name, ok := contentBlock["name"].(string); ok && strings.HasPrefix(name, prefix) {
+				contentBlock["name"] = strings.TrimPrefix(name, prefix)
+
+				if modified, err := json.Marshal(data); err == nil {
+					return modified
+				}
+			}
+		}
+	}
+
+	return line
 }
 
 func isClaudeCLIUserAgent(value string) bool {
