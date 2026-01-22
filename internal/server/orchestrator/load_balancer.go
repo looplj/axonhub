@@ -13,6 +13,19 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
+// contextKey is a type for context keys to avoid collisions.
+type contextKey string
+
+const (
+	// requestedModelKey is the context key for the requested model ID.
+	requestedModelKey contextKey = "requested_model"
+)
+
+// withRequestedModel adds the requested model ID to the context.
+func withRequestedModel(ctx context.Context, modelID string) context.Context {
+	return context.WithValue(ctx, requestedModelKey, modelID)
+}
+
 // ChannelMetricsProvider provides channel performance metrics.
 type ChannelMetricsProvider interface {
 	GetChannelMetrics(ctx context.Context, channelID int) (*biz.AggregatedMetrics, error)
@@ -121,6 +134,9 @@ func (lb *LoadBalancer) Sort(ctx context.Context, candidates []*ChannelModelsCan
 	if len(candidates) == 1 {
 		return candidates
 	}
+
+	// Add model information to context for circuit-breaker strategy
+	ctx = withRequestedModel(ctx, model)
 
 	// Calculate topK based on retry policy
 	topK := lb.calculateTopK(ctx, candidates)

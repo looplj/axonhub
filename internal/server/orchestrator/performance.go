@@ -85,6 +85,15 @@ func (m *performanceRecording) OnOutboundLlmResponse(ctx context.Context, respon
 	m.outbound.state.Perf.MarkSuccess(lo.FromPtr(response.Usage.GetCompletionTokens()))
 	m.outbound.state.ChannelService.AsyncRecordPerformance(ctx, m.outbound.state.Perf)
 
+	// Record success to model health manager if available
+	if m.outbound.state.ModelHealthManager != nil {
+		channel := m.outbound.GetCurrentChannel()
+		modelID := m.outbound.GetRequestedModel()
+		if channel != nil && modelID != "" {
+			m.outbound.state.ModelHealthManager.RecordSuccess(ctx, channel.ID, modelID)
+		}
+	}
+
 	return response, nil
 }
 
@@ -112,6 +121,15 @@ func (m *performanceRecording) OnOutboundRawError(ctx context.Context, err error
 	} else {
 		errorCode := ExtractErrorCode(err)
 		perf.MarkFailed(errorCode)
+
+		// Record error to model health manager if available
+		if m.outbound.state.ModelHealthManager != nil {
+			channel := m.outbound.GetCurrentChannel()
+			modelID := m.outbound.GetRequestedModel()
+			if channel != nil && modelID != "" {
+				m.outbound.state.ModelHealthManager.RecordError(ctx, channel.ID, modelID)
+			}
+		}
 	}
 
 	m.outbound.state.ChannelService.AsyncRecordPerformance(ctx, perf)
@@ -142,6 +160,13 @@ func (s *recordPerformanceStream) Current() *llm.Response {
 	if tokenCount := event.Usage.GetCompletionTokens(); tokenCount != nil && *tokenCount > 0 {
 		s.state.Perf.MarkSuccess(*tokenCount)
 		s.state.ChannelService.AsyncRecordPerformance(s.ctx, s.state.Perf)
+
+		// Record success to model health manager if available (only once per stream)
+		if s.firstTokenSet && s.state.ModelHealthManager != nil {
+			if s.state.Perf != nil && s.state.Perf.ChannelID > 0 && s.state.OriginalModel != "" {
+				s.state.ModelHealthManager.RecordSuccess(s.ctx, s.state.Perf.ChannelID, s.state.OriginalModel)
+			}
+		}
 	}
 
 	return event
