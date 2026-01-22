@@ -169,8 +169,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     if (!open) {
       hasAutoSetDuplicateNameRef.current = false;
       codexOAuth.reset();
+      claudecodeOAuth.reset();
     }
-  }, [open]);
+  }, [open, codexOAuth, claudecodeOAuth]);
 
   useEffect(() => {
     if (!open) return;
