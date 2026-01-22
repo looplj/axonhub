@@ -14,29 +14,29 @@ type ModelHealthProvider interface {
 	GetModelHealth(ctx context.Context, channelID int, modelID string) *biz.ModelHealthStats
 }
 
-// CascadingFailoverStrategy implements a load balancing strategy that considers model health status.
+// CircuitBreakerStrategy implements a load balancing strategy that considers model health status.
 // It adjusts channel scores based on the health of the requested model on each channel.
-type CascadingFailoverStrategy struct {
+type CircuitBreakerStrategy struct {
 	healthProvider ModelHealthProvider
 	maxScore       float64
 }
 
-// NewCascadingFailoverStrategy creates a new cascading failover load balancing strategy.
-func NewCascadingFailoverStrategy(healthProvider ModelHealthProvider) *CascadingFailoverStrategy {
-	return &CascadingFailoverStrategy{
+// NewCircuitBreakerStrategy creates a new circuit breaker load balancing strategy.
+func NewCircuitBreakerStrategy(healthProvider ModelHealthProvider) *CircuitBreakerStrategy {
+	return &CircuitBreakerStrategy{
 		healthProvider: healthProvider,
 		maxScore:       200.0, // Higher than other strategies to prioritize health
 	}
 }
 
 // Name returns the strategy name.
-func (s *CascadingFailoverStrategy) Name() string {
-	return "CascadingFailover"
+func (s *CircuitBreakerStrategy) Name() string {
+	return "CircuitBreaker"
 }
 
 // Score calculates the score based on model health status.
 // This is the production path with minimal overhead.
-func (s *CascadingFailoverStrategy) Score(ctx context.Context, channel *biz.Channel) float64 {
+func (s *CircuitBreakerStrategy) Score(ctx context.Context, channel *biz.Channel) float64 {
 	// Get the requested model from context
 	modelID := getRequestedModelFromContext(ctx)
 	if modelID == "" {
@@ -66,7 +66,7 @@ func (s *CascadingFailoverStrategy) Score(ctx context.Context, channel *biz.Chan
 }
 
 // ScoreWithDebug calculates the score with detailed debug information.
-func (s *CascadingFailoverStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel) (float64, StrategyScore) {
+func (s *CircuitBreakerStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel) (float64, StrategyScore) {
 	startTime := time.Now()
 
 	// Get the requested model from context
@@ -131,7 +131,7 @@ func (s *CascadingFailoverStrategy) ScoreWithDebug(ctx context.Context, channel 
 	}
 
 	if log.DebugEnabled(ctx) {
-		log.Debug(ctx, "HealthAware strategy scoring",
+		log.Debug(ctx, "CircuitBreaker strategy scoring",
 			log.Int("channel_id", channel.ID),
 			log.String("channel_name", channel.Name),
 			log.String("model_id", modelID),

@@ -135,7 +135,7 @@ func (lb *LoadBalancer) Sort(ctx context.Context, candidates []*ChannelModelsCan
 		return candidates
 	}
 
-	// Add model information to context for health-aware strategy
+	// Add model information to context for circuit-breaker strategy
 	ctx = withRequestedModel(ctx, model)
 
 	// Calculate topK based on retry policy

@@ -42,7 +42,7 @@ func NewChatCompletionOrchestrator(
 
 	adaptiveLoadBalancer := NewLoadBalancer(systemService, channelService, strategies...)
 	weightedLoadBalancer := NewLoadBalancer(systemService, channelService, NewWeightStrategy(), NewRandomStrategy())
-	healthAwareLoadBalancer := NewLoadBalancer(systemService, channelService, NewCascadingFailoverStrategy(modelHealthManager), NewWeightStrategy(), NewRandomStrategy())
+	circuitBreakerLoadBalancer := NewLoadBalancer(systemService, channelService, NewCircuitBreakerStrategy(modelHealthManager), NewWeightStrategy(), NewRandomStrategy())
 
 	return &ChatCompletionOrchestrator{
 		Inbound:         inbound,
@@ -62,7 +62,7 @@ func NewChatCompletionOrchestrator(
 		connectionTracker:       connectionTracker,
 		adaptiveLoadBalancer:    adaptiveLoadBalancer,
 		weightedLoadBalancer:    weightedLoadBalancer,
-		healthAwareLoadBalancer: healthAwareLoadBalancer,
+		circuitBreakerLoadBalancer: circuitBreakerLoadBalancer,
 		modelHealthManager:      modelHealthManager,
 		proxy:                   nil,
 	}
@@ -89,10 +89,10 @@ type ChatCompletionOrchestrator struct {
 	// The load balancer for channel load balancing.
 	adaptiveLoadBalancer    *LoadBalancer
 	weightedLoadBalancer    *LoadBalancer
-	healthAwareLoadBalancer *LoadBalancer
+	circuitBreakerLoadBalancer *LoadBalancer
 	// The connection tracker for connection aware load balancing.
 	connectionTracker ConnectionTracker
-	// The model health manager for health-aware load balancing.
+	// The model health manager for circuit-breaker load balancing.
 	modelHealthManager *biz.ModelHealthManager
 
 	// proxy is the proxy configuration for testing
@@ -147,8 +147,8 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		loadBalancer = processor.adaptiveLoadBalancer
 	case "weighted":
 		loadBalancer = processor.weightedLoadBalancer
-	case "health-aware":
-		loadBalancer = processor.healthAwareLoadBalancer
+	case "circuit-breaker":
+		loadBalancer = processor.circuitBreakerLoadBalancer
 	default:
 		// Default to adaptive load balancer
 	}
