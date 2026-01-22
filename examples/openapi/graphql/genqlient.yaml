@@ -1,0 +1,9 @@
+schema: openapi.graphql 
+operations:
+- api_key.graphql
+generated: generated.go
+bindings:
+  DateTime:
+    type: time.Time
+optional: pointer_omitempty
+use_struct_references: true
