@@ -1051,7 +1051,7 @@ type CreateUsageLogInput struct {
 	CostPriceReferenceID               *string
 	RequestID                          int
 	ProjectID                          int
-	ChannelID                          int
+	ChannelID                          *int
 }
 
 // Mutate applies the CreateUsageLogInput on the UsageLogMutation builder.
@@ -1113,7 +1113,9 @@ func (i *CreateUsageLogInput) Mutate(m *UsageLogMutation) {
 	}
 	m.SetRequestID(i.RequestID)
 	m.SetProjectID(i.ProjectID)
-	m.SetChannelID(i.ChannelID)
+	if v := i.ChannelID; v != nil {
+		m.SetChannelID(*v)
+	}
 }
 
 // SetInput applies the change-set in the CreateUsageLogInput on the UsageLogCreate builder.

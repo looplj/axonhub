@@ -45,7 +45,7 @@ func (UsageLog) Fields() []ent.Field {
 		field.Int("request_id").Immutable().Comment("Related request ID"),
 		field.Int("api_key_id").Optional().Immutable(),
 		field.Int("project_id").Immutable().Default(1).Comment("Project ID, default to 1 for backward compatibility"),
-		field.Int("channel_id").Immutable().Comment("Channel ID used for the request"),
+		field.Int("channel_id").Immutable().Optional().Comment("Channel ID used for the request"), // Optional for deleted channel, this field is not null.
 		field.String("model_id").Immutable().Comment("Model identifier used for the request"),
 
 		// Core usage metrics from llm.Usage
@@ -102,7 +102,6 @@ func (UsageLog) Edges() []ent.Edge {
 		edge.From("channel", Channel.Type).
 			Ref("usage_logs").
 			Field("channel_id").
-			Required().
 			Immutable().
 			Annotations(
 				entgql.Directives(forceResolver()),

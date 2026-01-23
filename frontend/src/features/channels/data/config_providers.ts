@@ -194,7 +194,7 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
   cerebras: {
     provider: 'cerebras',
     icon: Cerebras,
-    color: 'bg-black text-white border-black',
+    color: 'bg-[#F15928] text-white border-[#F15928]',
     channelTypes: ['cerebras'],
   },
 };
