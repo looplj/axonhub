@@ -4,11 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
-	"strings"
 	"time"
-
-	"github.com/tidwall/sjson"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
@@ -195,128 +191,6 @@ func (p *PersistentOutboundTransformer) APIFormat() llm.APIFormat {
 
 func (p *PersistentOutboundTransformer) TransformError(ctx context.Context, rawErr *httpclient.Error) *llm.ResponseError {
 	return p.wrapped.TransformError(ctx, rawErr)
-}
-
-// applyOverrideRequestBody creates a middleware that applies channel override parameters.
-func applyOverrideRequestBody(outbound *PersistentOutboundTransformer) pipeline.Middleware {
-	return pipeline.OnRawRequest("override-request-body", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
-		channel := outbound.GetCurrentChannel()
-		if channel == nil {
-			return request, nil
-		}
-
-		overrideParams := channel.GetOverrideParameters()
-		if len(overrideParams) == 0 {
-			return request, nil
-		}
-
-		// Apply each override parameter using sjson
-		body := request.Body
-
-		for key, value := range overrideParams {
-			if strings.EqualFold(key, "stream") {
-				log.Warn(ctx, "stream override parameter ignored",
-					log.String("channel", channel.Name),
-					log.Int("channel_id", channel.ID),
-				)
-
-				continue
-			}
-
-			var (
-				overridedBody []byte
-				err           error
-			)
-
-			if value == "__AXONHUB_CLEAR__" {
-				overridedBody, err = sjson.DeleteBytes(body, key)
-			} else {
-				overridedBody, err = sjson.SetBytes(body, key, value)
-			}
-
-			if err != nil {
-				log.Warn(ctx, "failed to apply override parameter",
-					log.String("channel", channel.Name),
-					log.String("key", key),
-					log.Cause(err),
-				)
-
-				continue
-			}
-
-			body = overridedBody
-		}
-
-		if log.DebugEnabled(ctx) {
-			log.Debug(ctx, "applied override parameters",
-				log.String("channel", channel.Name),
-				log.Int("channel_id", channel.ID),
-				log.Any("override_params", overrideParams),
-				log.String("old_body", string(request.Body)),
-				log.String("new_body", string(body)),
-			)
-		}
-
-		request.Body = body
-
-		return request, nil
-	})
-}
-
-// applyOverrideRequestHeaders creates a middleware that applies channel override headers.
-func applyOverrideRequestHeaders(outbound *PersistentOutboundTransformer) pipeline.Middleware {
-	return pipeline.OnRawRequest("override-request-headers", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
-		channel := outbound.GetCurrentChannel()
-		if channel == nil {
-			return request, nil
-		}
-
-		overrideHeaders := channel.GetOverrideHeaders()
-		if len(overrideHeaders) == 0 {
-			return request, nil
-		}
-
-		// Apply each override header
-		if request.Headers == nil {
-			request.Headers = make(http.Header)
-		}
-
-		for _, entry := range overrideHeaders {
-			if entry.Key == "" {
-				log.Warn(ctx, "empty header key ignored",
-					log.String("channel", channel.Name),
-					log.Int("channel_id", channel.ID),
-				)
-
-				continue
-			}
-
-			// If value is __AXONHUB_CLEAR__, remove header.
-			if entry.Value == "__AXONHUB_CLEAR__" {
-				log.Debug(ctx, "cleared header",
-					log.String("channel", channel.Name),
-					log.Int("channel_id", channel.ID),
-					log.String("key", entry.Key),
-				)
-
-				request.Headers.Del(entry.Key)
-
-				continue
-			}
-
-			request.Headers.Set(entry.Key, entry.Value)
-
-			if log.DebugEnabled(ctx) {
-				log.Debug(ctx, "overrided header",
-					log.String("channel", channel.Name),
-					log.String("key", entry.Key),
-					log.String("value", entry.Value),
-				)
-			}
-		}
-
-		return request, nil
-	})
 }
 
 func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, llmRequest *llm.Request) (*httpclient.Request, error) {
