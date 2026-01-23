@@ -35,7 +35,7 @@ func (a *AbstractService) RunInTransaction(ctx context.Context, fn func(context.
 		// If the client is already transactional (e.g., from tx.Client()),
 		// just run the function with the existing transactional client.
 		if errors.Is(err, ent.ErrTxStarted) {
-			return fn(ctx)
+			return fn(ent.NewContext(ctx, db))
 		}
 
 		return err
