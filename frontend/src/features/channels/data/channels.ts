@@ -833,9 +833,12 @@ export interface BulkCreateChannelsInput {
   tags?: string[];
   apiKeys: string[];
   supportedModels: string[];
+  autoSyncSupportedModels?: boolean;
   defaultTestModel: string;
   settings?: ChannelSettings;
   policies?: ChannelPolicies;
+  orderingWeight?: number;
+  remark?: string;
 }
 
 export function useBulkCreateChannels() {
