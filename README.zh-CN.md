@@ -33,6 +33,7 @@ AxonHub 是一个 All-in-one AI 开发平台，提供统一的 API 网关、项�
 2. [**追踪 / 线程** Tracing / Threads](docs/zh/guides/tracing.md)：线程级追踪实时记录完整调用链路，提升可观测性与问题定位效率。
 3. [**细粒度权限** Fine-grained Permission](docs/zh/guides/permissions.md)：基于 RBAC 的权限策略，帮助团队精细管理访问控制、配额与数据隔离。
 4. [**自适应负载均衡** Adaptive Load Balancing](docs/zh/guides/load-balance.md): 智能多策略负载均衡，自动选择最优 AI 渠道，确保高可用性和最佳性能。
+5. **成本追踪 Cost Tracking**: 实时监控用量并精确计算每个请求的成本，支持多种 Token 类型（输入、输出、缓存等）。
 
 ---
 
@@ -81,14 +82,21 @@ AxonHub 是一个 All-in-one AI 开发平台，提供统一的 API 网关、项�
       渠道管理
     </td>
     <td align="center">
+      <a href="docs/screenshots/axonhub-model-price.png">
+        <img src="docs/screenshots/axonhub-model-price.png" alt="模型价格" width="250"/>
+      </a>
+      <br/>
+      模型价格
+    </td>
+  </tr>
+  <tr>
+   <td align="center">
       <a href="docs/screenshots/axonhub-models.png">
         <img src="docs/screenshots/axonhub-models.png" alt="模型" width="250"/>
       </a>
       <br/>
       模型
     </td>
-  </tr>
-  <tr>
     <td align="center">
       <a href="docs/screenshots/axonhub-trace.png">
         <img src="docs/screenshots/axonhub-trace.png" alt="追踪查看" width="250"/>
@@ -103,13 +111,7 @@ AxonHub 是一个 All-in-one AI 开发平台，提供统一的 API 网关、项�
       <br/>
       请求监控
     </td>
-    <td align="center">
-      <a href="docs/screenshots/axonhub-usage-logs.png">
-        <img src="docs/screenshots/axonhub-usage-logs.png" alt="用量日志" width="250"/>
-      </a>
-      <br/>
-      用量日志
-    </td>
+    
   </tr>
 </table>
 
@@ -146,6 +148,16 @@ AxonHub 可以在不改动现有 OpenAI 兼容客户端的前提下，为每一�
 - 捕获模型元数据、请求/响应片段以及耗时信息，便于快速定位问题
 
 了解更多工作原理与使用方式，请参阅 [Tracing Guide](docs/zh/guides/tracing.md)。
+
+### 💰 成本追踪 | Cost Tracking
+
+AxonHub 为每一次请求提供实时的成本计算和用量追踪：
+
+- **多维度追踪**：追踪输入（Prompt）、输出（Completion）、缓存（Read/Write）、推理（Reasoning）以及语音 Token。
+- **精确计算**：基于可配置的模型价格（每百万 Token 单价）进行实时成本计算。
+- **缓存折扣**：支持为缓存 Token 设置专门的价格，准确反映供应商提供的成本节省。
+- **明细 breakdown**：每个请求都包含详细的成本明细（例如：输入、输出和缓存分别花费了多少）。
+- **配额管理**：跨项目和 API 密钥聚合成本，以便执行用量限制和预算控制。
 
 ### 🔧 接口格式支持 | API Format Support
 
