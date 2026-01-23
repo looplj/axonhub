@@ -46,6 +46,7 @@ export const channelTypeSchema = z.enum([
   'jina',
   'github',
   'claudecode',
+  'cerebras',
 ]);
 export type ChannelType = z.infer<typeof channelTypeSchema>;
 

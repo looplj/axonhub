@@ -174,7 +174,7 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		}
 
 		return buildChannelWithTransformer(c, transformer, httpClient), nil
-	case channel.TypeOpenrouter:
+	case channel.TypeOpenrouter, channel.TypeCerebras:
 		transformer, err := openrouter.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)

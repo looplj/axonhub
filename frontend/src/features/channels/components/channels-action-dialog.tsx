@@ -104,6 +104,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const hasAutoSetDuplicateNameRef = useRef(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [showGcpJsonData, setShowGcpJsonData] = useState(false);
+  const dialogContentRef = useRef<HTMLDivElement>(null);
 
   const [codexSessionId, setCodexSessionId] = useState<string | null>(null);
   const [codexAuthUrl, setCodexAuthUrl] = useState<string | null>(null);
@@ -916,6 +917,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         }}
       >
         <DialogContent
+          ref={dialogContentRef}
           className={`flex max-h-[90vh] flex-col transition-all duration-300 ${showFetchedModelsPanel || showSupportedModelsPanel ? 'sm:max-w-6xl' : 'sm:max-w-4xl'}`}
         >
           <DialogHeader className='flex-shrink-0 text-left'>
@@ -927,16 +929,16 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           <div className='flex min-h-0 flex-1 gap-4 overflow-hidden'>
             {/* Main Form Section */}
             <div
-              className={`min-h-0 flex-1 overflow-y-auto py-1 pr-4 transition-all duration-300 ${showFetchedModelsPanel || showSupportedModelsPanel ? '-mr-2' : '-mr-4'}`}
+              className={`min-h-0 flex-1 flex flex-col overflow-hidden py-1 transition-all duration-300 ${showFetchedModelsPanel || showSupportedModelsPanel ? 'pr-2' : 'pr-0'}`}
             >
               <Form {...form}>
-                <form id='channel-form' onSubmit={form.handleSubmit(onSubmit)} className='space-y-6 p-0.5'>
+                <form id='channel-form' onSubmit={form.handleSubmit(onSubmit)} className='flex-1 flex flex-col min-h-0 space-y-6 p-0.5'>
                   {/* Provider Selection - Left Side */}
-                  <div className='flex gap-6'>
-                    <div className='w-60 flex-shrink-0'>
-                      <FormItem className='space-y-2'>
+                  <div className='flex flex-1 min-h-0 gap-6 overflow-hidden'>
+                    <div className='w-60 flex-shrink-0 flex flex-col min-h-0'>
+                      <FormItem className='flex-1 flex flex-col min-h-0 space-y-2'>
                         <FormLabel className='text-base font-semibold'>{t('channels.dialogs.fields.provider.label')}</FormLabel>
-                        <div ref={providerListRef} className={`max-h-[720px] overflow-y-auto pr-2 ${isEdit ? 'cursor-not-allowed opacity-60' : ''}`}>
+                        <div ref={providerListRef} className={`flex-1 overflow-y-auto pr-2 ${isEdit ? 'cursor-not-allowed opacity-60' : ''}`}>
                           <RadioGroup value={selectedProvider} onValueChange={handleProviderChange} disabled={isEdit} className='space-y-2'>
                             {availableProviders.map((provider) => {
                               const Icon = provider.icon;
@@ -976,7 +978,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                     </div>
 
                     {/* Right Side - Form Fields */}
-                    <div className='flex-1 space-y-6'>
+                    <div className='flex-1 overflow-y-auto space-y-6 pr-4'>
                       {selectedProvider !== 'jina' && selectedProvider !== 'codex' && (
                         <FormItem className='grid grid-cols-8 items-start gap-x-6'>
                           <FormLabel className='col-span-2 pt-2 text-right font-medium'>
@@ -1333,6 +1335,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 selectedValue={newModel}
                                 onSelectedValueChange={setNewModel}
                                 placeholder={t('channels.dialogs.fields.supportedModels.description')}
+                                portalContainer={dialogContentRef.current}
                               />
                             ) : (
                               <Input
