@@ -12,22 +12,18 @@ import (
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/oauth"
 	"github.com/looplj/axonhub/llm/streams"
 	llmtransformer "github.com/looplj/axonhub/llm/transformer"
-	"github.com/looplj/axonhub/llm/transformer/anthropic"
 )
 
 func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("api.anthropic.com uses x-api-key auth", func(t *testing.T) {
-		config := &anthropic.Config{
-			Type:    anthropic.PlatformClaudeCode,
-			BaseURL: "https://api.anthropic.com/v1",
-			APIKey:  "sk-ant-api-key",
-		}
-
-		transformer, err := NewClaudeCodeTransformer(config)
+	t.Run("Claude Code always uses Bearer auth", func(t *testing.T) {
+		transformer, err := NewOutboundTransformer(Params{
+			TokenProvider: newMockTokenProvider("sk-ant-oat01-oauth-token"),
+		})
 		require.NoError(t, err)
 
 		req := &llm.Request{
@@ -39,70 +35,14 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		httpReq, err := transformer.TransformRequest(ctx, req)
 		require.NoError(t, err)
 
-		// Should use x-api-key for api.anthropic.com
-		assert.Equal(t, "sk-ant-api-key", httpReq.Headers.Get("X-Api-Key"))
-		assert.Empty(t, httpReq.Headers.Get("Authorization"))
-		assert.Equal(t, httpclient.AuthTypeAPIKey, httpReq.Auth.Type)
-	})
-
-	t.Run("custom endpoint uses Bearer auth", func(t *testing.T) {
-		config := &anthropic.Config{
-			Type:    anthropic.PlatformClaudeCode,
-			BaseURL: "https://custom.example.com/v1",
-			APIKey:  "sk-ant-api-key",
-		}
-
-		transformer, err := NewClaudeCodeTransformer(config)
-		require.NoError(t, err)
-
-		req := &llm.Request{
-			Model:     "claude-sonnet-4-5",
-			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
-			MaxTokens: int64Ptr(1024),
-		}
-
-		httpReq, err := transformer.TransformRequest(ctx, req)
-		require.NoError(t, err)
-
-		// Should use Bearer for custom endpoints
-		assert.Equal(t, "Bearer sk-ant-api-key", httpReq.Headers.Get("Authorization"))
-		assert.Empty(t, httpReq.Headers.Get("X-Api-Key"))
+		// Claude Code OAuth always uses Bearer. HttpClient will set the Authorization header.
 		assert.Equal(t, httpclient.AuthTypeBearer, httpReq.Auth.Type)
-	})
-
-	t.Run("OAuth token uses Bearer auth", func(t *testing.T) {
-		config := &anthropic.Config{
-			Type:    anthropic.PlatformClaudeCode,
-			BaseURL: "https://api.anthropic.com/v1",
-			APIKey:  "sk-ant-oat01-oauth-token",
-		}
-
-		transformer, err := NewClaudeCodeTransformer(config)
-		require.NoError(t, err)
-
-		req := &llm.Request{
-			Model:     "claude-sonnet-4-5",
-			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
-			MaxTokens: int64Ptr(1024),
-		}
-
-		httpReq, err := transformer.TransformRequest(ctx, req)
-		require.NoError(t, err)
-
-		// OAuth tokens always use Bearer
-		assert.Equal(t, "Bearer sk-ant-oat01-oauth-token", httpReq.Headers.Get("Authorization"))
-		assert.Empty(t, httpReq.Headers.Get("X-Api-Key"))
-		assert.Equal(t, httpclient.AuthTypeBearer, httpReq.Auth.Type)
+		assert.Equal(t, "sk-ant-oat01-oauth-token", httpReq.Auth.APIKey)
 	})
 
 	t.Run("injects Claude Code system message with cache_control", func(t *testing.T) {
-		config := &anthropic.Config{
-			Type:    anthropic.PlatformClaudeCode,
-			BaseURL: "https://api.anthropic.com/v1",
-			APIKey:  "test-api-key",
-		}
 
-		transformer, err := NewClaudeCodeTransformer(config)
+		transformer, err := NewOutboundTransformer(Params{TokenProvider: newMockTokenProvider("test-api-key")})
 		require.NoError(t, err)
 
 		req := &llm.Request{
@@ -126,13 +66,8 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 	})
 
 	t.Run("sets all Claude Code headers", func(t *testing.T) {
-		config := &anthropic.Config{
-			Type:    anthropic.PlatformClaudeCode,
-			BaseURL: "https://api.anthropic.com/v1",
-			APIKey:  "test-api-key",
-		}
 
-		transformer, err := NewClaudeCodeTransformer(config)
+		transformer, err := NewOutboundTransformer(Params{TokenProvider: newMockTokenProvider("test-api-key")})
 		require.NoError(t, err)
 
 		req := &llm.Request{
@@ -154,13 +89,8 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 	})
 
 	t.Run("adds beta=true query parameter", func(t *testing.T) {
-		config := &anthropic.Config{
-			Type:    anthropic.PlatformClaudeCode,
-			BaseURL: "https://api.anthropic.com/v1",
-			APIKey:  "test-api-key",
-		}
 
-		transformer, err := NewClaudeCodeTransformer(config)
+		transformer, err := NewOutboundTransformer(Params{TokenProvider: newMockTokenProvider("test-api-key")})
 		require.NoError(t, err)
 
 		req := &llm.Request{
@@ -176,13 +106,8 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 	})
 
 	t.Run("applies tool prefix for OAuth tokens from non-CLI clients", func(t *testing.T) {
-		config := &anthropic.Config{
-			Type:    anthropic.PlatformClaudeCode,
-			BaseURL: "https://api.anthropic.com/v1",
-			APIKey:  "sk-ant-oat01-oauth-token",
-		}
 
-		transformer, err := NewClaudeCodeTransformer(config)
+		transformer, err := NewOutboundTransformer(Params{TokenProvider: newMockTokenProvider("sk-ant-oat01-test-oauth-token")})
 		require.NoError(t, err)
 
 		req := &llm.Request{
@@ -208,47 +133,9 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		assert.Equal(t, "true", httpReq.Metadata["strip_tool_prefix"])
 	})
 
-	t.Run("does not apply tool prefix for API keys", func(t *testing.T) {
-		config := &anthropic.Config{
-			Type:    anthropic.PlatformClaudeCode,
-			BaseURL: "https://api.anthropic.com/v1",
-			APIKey:  "sk-ant-api-key",
-		}
-
-		transformer, err := NewClaudeCodeTransformer(config)
-		require.NoError(t, err)
-
-		req := &llm.Request{
-			Model:     "claude-sonnet-4-5",
-			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
-			MaxTokens: int64Ptr(1024),
-			Tools: []llm.Tool{
-				{
-					Type:     "function",
-					Function: llm.Function{Name: "bash", Description: "Execute bash"},
-				},
-			},
-		}
-
-		httpReq, err := transformer.TransformRequest(ctx, req)
-		require.NoError(t, err)
-
-		// Tool name should NOT have proxy_ prefix
-		toolName := gjson.GetBytes(httpReq.Body, "tools.0.name").String()
-		assert.Equal(t, "bash", toolName)
-
-		// Metadata should not indicate prefix
-		assert.Empty(t, httpReq.Metadata["strip_tool_prefix"])
-	})
-
 	t.Run("does not apply tool prefix for Claude CLI clients", func(t *testing.T) {
-		config := &anthropic.Config{
-			Type:    anthropic.PlatformClaudeCode,
-			BaseURL: "https://api.anthropic.com/v1",
-			APIKey:  "sk-ant-oat01-oauth-token",
-		}
 
-		transformer, err := NewClaudeCodeTransformer(config)
+		transformer, err := NewOutboundTransformer(Params{TokenProvider: newMockTokenProvider("sk-ant-oat01-test-oauth-token")})
 		require.NoError(t, err)
 
 		req := &llm.Request{
@@ -278,13 +165,8 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 	})
 
 	t.Run("injects fake user ID", func(t *testing.T) {
-		config := &anthropic.Config{
-			Type:    anthropic.PlatformClaudeCode,
-			BaseURL: "https://api.anthropic.com/v1",
-			APIKey:  "test-api-key",
-		}
 
-		transformer, err := NewClaudeCodeTransformer(config)
+		transformer, err := NewOutboundTransformer(Params{TokenProvider: newMockTokenProvider("test-api-key")})
 		require.NoError(t, err)
 
 		req := &llm.Request{
@@ -303,13 +185,8 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 	})
 
 	t.Run("disables thinking when tool_choice forces tool use", func(t *testing.T) {
-		config := &anthropic.Config{
-			Type:    anthropic.PlatformClaudeCode,
-			BaseURL: "https://api.anthropic.com/v1",
-			APIKey:  "test-api-key",
-		}
 
-		transformer, err := NewClaudeCodeTransformer(config)
+		transformer, err := NewOutboundTransformer(Params{TokenProvider: newMockTokenProvider("test-api-key")})
 		require.NoError(t, err)
 
 		toolChoiceAny := "any"
@@ -347,13 +224,8 @@ func TestClaudeCodeTransformer_TransformResponse(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("strips tool prefix when it was applied", func(t *testing.T) {
-		config := &anthropic.Config{
-			Type:    anthropic.PlatformClaudeCode,
-			BaseURL: "https://api.anthropic.com/v1",
-			APIKey:  "sk-ant-oat01-oauth-token",
-		}
 
-		transformer, err := NewClaudeCodeTransformer(config)
+		transformer, err := NewOutboundTransformer(Params{TokenProvider: newMockTokenProvider("test-api-key")})
 		require.NoError(t, err)
 
 		// Simulate response from Claude with prefixed tool name
@@ -395,13 +267,8 @@ func TestClaudeCodeTransformer_TransformResponse(t *testing.T) {
 	})
 
 	t.Run("does not strip when prefix was not applied", func(t *testing.T) {
-		config := &anthropic.Config{
-			Type:    anthropic.PlatformClaudeCode,
-			BaseURL: "https://api.anthropic.com/v1",
-			APIKey:  "sk-ant-api-key",
-		}
 
-		transformer, err := NewClaudeCodeTransformer(config)
+		transformer, err := NewOutboundTransformer(Params{TokenProvider: newMockTokenProvider("test-api-key")})
 		require.NoError(t, err)
 
 		// Simulate response from Claude
@@ -442,12 +309,8 @@ func TestClaudeCodeTransformer_TransformResponse(t *testing.T) {
 }
 
 func TestClaudeCodeTransformer_APIFormat(t *testing.T) {
-	config := &anthropic.Config{
-		Type:   anthropic.PlatformClaudeCode,
-		APIKey: "test-api-key",
-	}
 
-	transformer, err := NewClaudeCodeTransformer(config)
+	transformer, err := NewOutboundTransformer(Params{TokenProvider: newMockTokenProvider("test-api-key")})
 	require.NoError(t, err)
 
 	assert.Equal(t, llm.APIFormatAnthropicMessage, transformer.APIFormat())
@@ -503,3 +366,21 @@ func (t *fakeOutbound) AggregateStreamChunks(_ context.Context, _ []*httpclient.
 }
 
 var _ llmtransformer.Outbound = (*fakeOutbound)(nil)
+
+// mockTokenProvider is a test implementation of oauth.TokenGetter
+type mockTokenProvider struct {
+	accessToken string
+}
+
+func (m *mockTokenProvider) Get(_ context.Context) (*oauth.OAuthCredentials, error) {
+	return &oauth.OAuthCredentials{
+		AccessToken:  m.accessToken,
+		RefreshToken: "mock-refresh-token",
+		TokenType:    "Bearer",
+	}, nil
+}
+
+func newMockTokenProvider(token string) *mockTokenProvider {
+	return &mockTokenProvider{accessToken: token}
+}
+

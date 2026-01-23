@@ -41,44 +41,28 @@ var claudeCodeHeaders = [][]string{
 
 // Params contains parameters for creating a ClaudeCodeTransformer.
 type Params struct {
-	TokenProvider oauth.TokenGetter // For OAuth channels
-	Config        *anthropic.Config // For API key channels (backward compat)
+	TokenProvider oauth.TokenGetter // OAuth token provider (required)
 }
 
-// NewOutboundTransformer creates a new ClaudeCodeTransformer.
-// It supports both OAuth and API key authentication modes.
+// NewOutboundTransformer creates a new ClaudeCodeTransformer with OAuth authentication.
 func NewOutboundTransformer(params Params) (*ClaudeCodeTransformer, error) {
-	var outbound transformer.Outbound
-	var err error
+	if params.TokenProvider == nil {
+		return nil, fmt.Errorf("TokenProvider is required")
+	}
 
-	if params.Config != nil {
-		outbound, err = anthropic.NewOutboundTransformerWithConfig(params.Config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
-		}
-	} else if params.TokenProvider != nil {
-		// For OAuth mode, create a minimal config
-		outbound, err = anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
-			Type:    anthropic.PlatformClaudeCode,
-			BaseURL: "https://api.anthropic.com/v1",
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
-		}
-	} else {
-		return nil, fmt.Errorf("either TokenProvider or Config must be provided")
+	// Create base transformer with minimal config
+	outbound, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
+		Type:    anthropic.PlatformClaudeCode,
+		BaseURL: "https://api.anthropic.com/v1",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
 	}
 
 	return &ClaudeCodeTransformer{
 		Outbound: outbound,
 		tokens:   params.TokenProvider,
 	}, nil
-}
-
-// NewClaudeCodeTransformer creates a new ClaudeCodeTransformer with API key authentication.
-// This is for backward compatibility.
-func NewClaudeCodeTransformer(config *anthropic.Config) (*ClaudeCodeTransformer, error) {
-	return NewOutboundTransformer(Params{Config: config})
 }
 
 // ClaudeCodeTransformer implements the transformer for Claude Code CLI.
@@ -123,19 +107,12 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 		return nil, err
 	}
 
-	// Get API key (either from OAuth or from config)
-	apiKey := ""
-	if httpReq.Auth != nil {
-		apiKey = httpReq.Auth.APIKey
+	// Get OAuth token
+	creds, err := t.tokens.Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get oauth token: %w", err)
 	}
-
-	if t.tokens != nil {
-		creds, err := t.tokens.Get(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get oauth token: %w", err)
-		}
-		apiKey = creds.AccessToken
-	}
+	apiKey := creds.AccessToken
 
 	// Modify the request body
 	if len(httpReq.Body) > 0 {
@@ -212,37 +189,12 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 		httpReq.Headers.Set("User-Agent", UserAgent)
 	}
 
-	// Determine authentication method based on endpoint
-	// Parse URL to check if it's api.anthropic.com
-	parsedURL, err := url.Parse(httpReq.URL)
-	if err != nil {
-		// Fall back to Bearer auth if URL parsing fails
-		httpReq.Headers.Set("Authorization", "Bearer "+apiKey)
-		httpReq.Auth = &httpclient.AuthConfig{
-			Type:   httpclient.AuthTypeBearer,
-			APIKey: apiKey,
-		}
-	} else {
-		isAnthropicBase := strings.EqualFold(parsedURL.Scheme, "https") &&
-			strings.EqualFold(parsedURL.Host, "api.anthropic.com")
-
-		// For api.anthropic.com with API key: use x-api-key header
-		// For custom endpoints or OAuth tokens: use Bearer token
-		if isAnthropicBase && !isClaudeOAuthToken(apiKey) {
-			httpReq.Headers.Del("Authorization")
-			httpReq.Headers.Set("X-Api-Key", apiKey)
-			httpReq.Auth = &httpclient.AuthConfig{
-				Type:      httpclient.AuthTypeAPIKey,
-				APIKey:    apiKey,
-				HeaderKey: "x-api-key",
-			}
-		} else {
-			httpReq.Headers.Set("Authorization", "Bearer "+apiKey)
-			httpReq.Auth = &httpclient.AuthConfig{
-				Type:   httpclient.AuthTypeBearer,
-				APIKey: apiKey,
-			}
-		}
+	// Claude Code OAuth always uses Bearer token authentication.
+	// Note: For API key authentication, use the standard Anthropic channel type instead.
+	// HttpClient will automatically set the Authorization header based on httpReq.Auth.
+	httpReq.Auth = &httpclient.AuthConfig{
+		Type:   httpclient.AuthTypeBearer,
+		APIKey: apiKey,
 	}
 
 	return httpReq, nil

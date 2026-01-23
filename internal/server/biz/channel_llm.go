@@ -252,7 +252,7 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 			credsJSON = creds
 		}
 
-		// Check if using OAuth or legacy API key
+		// Check if using OAuth credentials
 		if isOAuthJSON(credsJSON) {
 			creds, err := oauth.ParseCredentialsJSON(credsJSON)
 			if err != nil {
@@ -281,17 +281,8 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 			return ch, nil
 		}
 
-		// Legacy API key mode (backward compatibility)
-		transformer, err := claudecode.NewClaudeCodeTransformer(&anthropic.Config{
-			Type:    anthropic.PlatformClaudeCode,
-			BaseURL: c.BaseURL,
-			APIKey:  c.Credentials.APIKey,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
-		}
-
-		return buildChannelWithTransformer(c, transformer, httpClient), nil
+		// Claude Code requires OAuth authentication
+		return nil, fmt.Errorf("claudecode channel requires OAuth credentials")
 	case channel.TypeDeepseekAnthropic:
 		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
 			Type:    anthropic.PlatformDeepSeek,

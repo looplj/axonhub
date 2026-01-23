@@ -99,7 +99,7 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 	}
 
 	// Note: ClaudeCode transformer is now in a separate package to avoid import cycles
-	// It should be created directly using claudecode.NewOutboundTransformer() or claudecode.NewClaudeCodeTransformer()
+	// It should be created directly using claudecode.NewOutboundTransformer() with OAuth TokenProvider
 	// The channel builder handles this special case
 
 	if before, ok := strings.CutSuffix(config.BaseURL, "#"); ok {

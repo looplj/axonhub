@@ -21,12 +21,9 @@ func TestClaudeCodeTransformer_WithSimulator(t *testing.T) {
 	// 1. Setup Transformers
 	inbound := anthropic.NewInboundTransformer()
 
-	config := &anthropic.Config{
-		Type:    anthropic.PlatformClaudeCode,
-		BaseURL: "https://api.anthropic.com",
-		APIKey:  "test-api-key",
-	}
-	outbound, err := NewClaudeCodeTransformer(config)
+	outbound, err := NewOutboundTransformer(Params{
+		TokenProvider: newMockTokenProvider("test-api-key"),
+	})
 	require.NoError(t, err)
 
 	// 2. Create Simulator
@@ -68,9 +65,9 @@ func TestClaudeCodeTransformer_WithSimulator(t *testing.T) {
 	assert.Equal(t, "claude-cli/1.0.83 (external, cli)", finalReq.Header.Get("User-Agent"))
 	assert.Equal(t, "cli", finalReq.Header.Get("X-App"))
 
-	// Verify x-api-key authentication (Claude Code uses this for api.anthropic.com with API keys)
-	assert.Equal(t, "test-api-key", finalReq.Header.Get("X-Api-Key"))
-	assert.Empty(t, finalReq.Header.Get("Authorization"))
+	// Verify Bearer authentication (Claude Code OAuth always uses Bearer)
+	assert.Equal(t, "Bearer test-api-key", finalReq.Header.Get("Authorization"))
+	assert.Empty(t, finalReq.Header.Get("X-Api-Key"))
 
 	// Verify Body contains prepended system message
 	finalBodyBytes, err := io.ReadAll(finalReq.Body)
@@ -99,12 +96,9 @@ func TestClaudeCodeTransformer_WithSimulator_AlreadyHasBetaQuery(t *testing.T) {
 	// 1. Setup Transformers
 	inbound := anthropic.NewInboundTransformer()
 
-	config := &anthropic.Config{
-		Type:    anthropic.PlatformClaudeCode,
-		BaseURL: "https://api.anthropic.com/v1",
-		APIKey:  "test-api-key",
-	}
-	outbound, err := NewClaudeCodeTransformer(config)
+	outbound, err := NewOutboundTransformer(Params{
+		TokenProvider: newMockTokenProvider("test-api-key"),
+	})
 	require.NoError(t, err)
 
 	// 2. Create Simulator
@@ -148,9 +142,9 @@ func TestClaudeCodeTransformer_WithSimulator_AlreadyHasBetaQuery(t *testing.T) {
 	assert.Equal(t, "claude-cli/1.0.83 (external, cli)", finalReq.Header.Get("User-Agent"))
 	assert.Equal(t, "cli", finalReq.Header.Get("X-App"))
 
-	// Verify x-api-key authentication (Claude Code uses this for api.anthropic.com with API keys)
-	assert.Equal(t, "test-api-key", finalReq.Header.Get("X-Api-Key"))
-	assert.Empty(t, finalReq.Header.Get("Authorization"))
+	// Verify Bearer authentication (Claude Code OAuth always uses Bearer)
+	assert.Equal(t, "Bearer test-api-key", finalReq.Header.Get("Authorization"))
+	assert.Empty(t, finalReq.Header.Get("X-Api-Key"))
 
 	// Verify Body contains prepended system message
 	finalBodyBytes, err := io.ReadAll(finalReq.Body)
@@ -178,12 +172,9 @@ func TestClaudeCodeTransformer_WithSimulator_InboundHeadersCannotOverride(t *tes
 
 	inbound := anthropic.NewInboundTransformer()
 
-	config := &anthropic.Config{
-		Type:    anthropic.PlatformClaudeCode,
-		BaseURL: "https://api.anthropic.com/v1",
-		APIKey:  "test-api-key",
-	}
-	outbound, err := NewClaudeCodeTransformer(config)
+	outbound, err := NewOutboundTransformer(Params{
+		TokenProvider: newMockTokenProvider("test-api-key"),
+	})
 	require.NoError(t, err)
 
 	sim := simulator.NewSimulator(inbound, outbound)
@@ -207,7 +198,6 @@ func TestClaudeCodeTransformer_WithSimulator_InboundHeadersCannotOverride(t *tes
 		wantFinalUA     string
 		wantFinalBeta   string
 		wantFinalXApp   string
-		wantFinalAPIKey string
 		wantFinalVer    string
 		wantFinalDanger string
 	}{
@@ -217,7 +207,6 @@ func TestClaudeCodeTransformer_WithSimulator_InboundHeadersCannotOverride(t *tes
 			wantFinalUA:     UserAgent,
 			wantFinalBeta:   "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14",
 			wantFinalXApp:   "cli",
-			wantFinalAPIKey: "test-api-key",
 			wantFinalVer:    "2023-06-01",
 			wantFinalDanger: "true",
 		},
@@ -227,7 +216,6 @@ func TestClaudeCodeTransformer_WithSimulator_InboundHeadersCannotOverride(t *tes
 			wantFinalUA:     "claude-cli/1.0.99 (external, cli)",
 			wantFinalBeta:   "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14",
 			wantFinalXApp:   "cli",
-			wantFinalAPIKey: "test-api-key",
 			wantFinalVer:    "2023-06-01",
 			wantFinalDanger: "true",
 		},
@@ -255,8 +243,9 @@ func TestClaudeCodeTransformer_WithSimulator_InboundHeadersCannotOverride(t *tes
 			assert.Equal(t, tt.wantFinalDanger, finalReq.Header.Get("Anthropic-Dangerous-Direct-Browser-Access"))
 			assert.Equal(t, tt.wantFinalUA, finalReq.Header.Get("User-Agent"))
 			assert.Equal(t, tt.wantFinalXApp, finalReq.Header.Get("X-App"))
-			assert.Equal(t, tt.wantFinalAPIKey, finalReq.Header.Get("X-Api-Key"))
-			assert.Empty(t, finalReq.Header.Get("Authorization"))
+			// Claude Code OAuth always uses Bearer authentication
+			assert.Equal(t, "Bearer test-api-key", finalReq.Header.Get("Authorization"))
+			assert.Empty(t, finalReq.Header.Get("X-Api-Key"))
 			assert.Equal(t, "0.55.1", finalReq.Header.Get("X-Stainless-Package-Version"))
 		})
 	}
