@@ -269,6 +269,7 @@ export const createChannelInputSchema = z
     tags: z.array(z.string()).optional().default([]),
     defaultTestModel: z.string().min(1, 'Please select a default test model'),
     remark: z.string().optional(),
+    orderingWeight: z.number().int().optional(),
     settings: channelSettingsSchema.optional(),
     credentials: z.object({
       apiKey: z.string().min(1, 'API Key is required'),

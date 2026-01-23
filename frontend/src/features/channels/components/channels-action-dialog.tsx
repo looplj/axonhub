@@ -648,9 +648,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             tags: valuesForSubmit.tags,
             apiKeys: apiKeys,
             supportedModels: supportedModels,
+            autoSyncSupportedModels: valuesForSubmit.autoSyncSupportedModels,
             defaultTestModel: valuesForSubmit.defaultTestModel as string,
             settings,
             policies,
+            orderingWeight: valuesForSubmit.orderingWeight ?? undefined,
+            remark: valuesForSubmit.remark ?? undefined,
           });
         } else {
           // Single create: use existing mutation

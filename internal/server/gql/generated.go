@@ -42959,7 +42959,7 @@ func (ec *executionContext) unmarshalInputBulkCreateChannelsInput(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"type", "name", "tags", "baseURL", "apiKeys", "supportedModels", "defaultTestModel", "settings"}
+	fieldsInOrder := [...]string{"type", "name", "tags", "baseURL", "apiKeys", "supportedModels", "autoSyncSupportedModels", "defaultTestModel", "settings", "policies", "orderingWeight", "remark"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -42968,7 +42968,7 @@ func (ec *executionContext) unmarshalInputBulkCreateChannelsInput(ctx context.Co
 		switch k {
 		case "type":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
-			data, err := ec.unmarshalNString2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelᚐType(ctx, v)
+			data, err := ec.unmarshalNChannelType2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelᚐType(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -43008,6 +43008,13 @@ func (ec *executionContext) unmarshalInputBulkCreateChannelsInput(ctx context.Co
 				return it, err
 			}
 			it.SupportedModels = data
+		case "autoSyncSupportedModels":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoSyncSupportedModels"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AutoSyncSupportedModels = data
 		case "defaultTestModel":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("defaultTestModel"))
 			data, err := ec.unmarshalNString2string(ctx, v)
@@ -43022,6 +43029,27 @@ func (ec *executionContext) unmarshalInputBulkCreateChannelsInput(ctx context.Co
 				return it, err
 			}
 			it.Settings = data
+		case "policies":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("policies"))
+			data, err := ec.unmarshalOChannelPoliciesInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelPolicies(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Policies = data
+		case "orderingWeight":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("orderingWeight"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OrderingWeight = data
+		case "remark":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("remark"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Remark = data
 		}
 	}
 
@@ -80621,16 +80649,6 @@ func (ec *executionContext) marshalNStoragePolicy2ᚖgithubᚗcomᚋloopljᚋaxo
 		return graphql.Null
 	}
 	return ec._StoragePolicy(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalNString2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelᚐType(ctx context.Context, v any) (channel.Type, error) {
-	var res channel.Type
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNString2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelᚐType(ctx context.Context, sel ast.SelectionSet, v channel.Type) graphql.Marshaler {
-	return v
 }
 
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v any) (string, error) {

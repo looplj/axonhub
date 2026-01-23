@@ -194,14 +194,18 @@ type BulkImportChannelsResult {
 }
 
 input BulkCreateChannelsInput {
-  type: String!
+  type: ChannelType!
   name: String!
   tags: [String!]
   baseURL: String
   apiKeys: [String!]!
   supportedModels: [String!]!
+  autoSyncSupportedModels: Boolean
   defaultTestModel: String!
   settings: ChannelSettingsInput
+  policies: ChannelPoliciesInput
+  orderingWeight: Int
+  remark: String
 }
 
 input ChannelOrderingItem {
