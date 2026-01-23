@@ -481,7 +481,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     baseURL: 'https://api.cerebras.ai/v1',
     defaultModels: ['llama3.1-8b', 'llama3.1-70b', 'llama-3.3-70b'],
     apiFormat: OPENAI_CHAT_COMPLETIONS,
-    color: 'bg-black text-white border-black',
+    color: 'bg-[#F15928] text-white border-[#F15928]',
     icon: Cerebras,
   },
 };
