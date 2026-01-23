@@ -288,7 +288,7 @@ func (m *ModelCircuitBreaker) GetEffectiveWeight(ctx context.Context, channelID 
 		// If current time has passed NextProbeAt, allow only ONE request for probing
 		if time.Now().After(stats.NextProbeAt) {
 			if atomic.LoadInt32(&stats.probingInProgress) == 0 {
-				return 0.01
+				return baseWeight * policy.HalfOpenWeight
 			}
 		}
 
