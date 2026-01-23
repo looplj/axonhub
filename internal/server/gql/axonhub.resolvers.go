@@ -499,25 +499,14 @@ func (r *traceResolver) UsageMetadata(ctx context.Context, obj *ent.Trace) (*biz
 	return r.traceService.UsageMetadata(ctx, obj.ID)
 }
 
-// AutoSyncSupportedModels is the resolver for the autoSyncSupportedModels field.
-func (r *bulkCreateChannelsInputResolver) AutoSyncSupportedModels(ctx context.Context, obj *biz.BulkCreateChannelsInput, data *bool) error {
-	panic(fmt.Errorf("not implemented: AutoSyncSupportedModels - autoSyncSupportedModels"))
-}
-
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
 // Segment returns SegmentResolver implementation.
 func (r *Resolver) Segment() SegmentResolver { return &segmentResolver{r} }
 
-// BulkCreateChannelsInput returns BulkCreateChannelsInputResolver implementation.
-func (r *Resolver) BulkCreateChannelsInput() BulkCreateChannelsInputResolver {
-	return &bulkCreateChannelsInputResolver{r}
-}
-
 type mutationResolver struct{ *Resolver }
 type segmentResolver struct{ *Resolver }
-type bulkCreateChannelsInputResolver struct{ *Resolver }
 
 // !!! WARNING !!!
 // The code below was going to be deleted when updating resolvers. It has been copied here so you have
@@ -526,12 +515,11 @@ type bulkCreateChannelsInputResolver struct{ *Resolver }
 //    it when you're done.
 //  - You have helper methods in this file. Move them out to keep these resolver files clean.
 /*
-	func (r *mutationResolver) CreateLLMAPIKey(ctx context.Context, name string) (*ent.APIKey, error) {
-	ownerKey, ok := contexts.GetAPIKey(ctx)
-	if !ok || ownerKey == nil {
-		return nil, fmt.Errorf("api key not found in context")
-	}
-
-	return r.apiKeyService.CreateLLMAPIKey(ctx, ownerKey, name)
+	func (r *bulkCreateChannelsInputResolver) AutoSyncSupportedModels(ctx context.Context, obj *biz.BulkCreateChannelsInput, data *bool) error {
+	panic(fmt.Errorf("not implemented: AutoSyncSupportedModels - autoSyncSupportedModels"))
 }
+func (r *Resolver) BulkCreateChannelsInput() BulkCreateChannelsInputResolver {
+	return &bulkCreateChannelsInputResolver{r}
+}
+type bulkCreateChannelsInputResolver struct{ *Resolver }
 */

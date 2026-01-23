@@ -84,7 +84,6 @@ type ResolverRoot interface {
 	User() UserResolver
 	UserProject() UserProjectResolver
 	UserRole() UserRoleResolver
-	BulkCreateChannelsInput() BulkCreateChannelsInputResolver
 }
 
 type DirectiveRoot struct {
@@ -1685,10 +1684,6 @@ type UserRoleResolver interface {
 	ID(ctx context.Context, obj *ent.UserRole) (*objects.GUID, error)
 	UserID(ctx context.Context, obj *ent.UserRole) (*objects.GUID, error)
 	RoleID(ctx context.Context, obj *ent.UserRole) (*objects.GUID, error)
-}
-
-type BulkCreateChannelsInputResolver interface {
-	AutoSyncSupportedModels(ctx context.Context, obj *biz.BulkCreateChannelsInput, data *bool) error
 }
 
 type executableSchema struct {
@@ -42964,7 +42959,7 @@ func (ec *executionContext) unmarshalInputBulkCreateChannelsInput(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"type", "name", "tags", "baseURL", "apiKeys", "supportedModels", "autoSyncSupportedModels", "defaultTestModel", "settings"}
+	fieldsInOrder := [...]string{"type", "name", "tags", "baseURL", "apiKeys", "supportedModels", "autoSyncSupportedModels", "defaultTestModel", "settings", "policies"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -43019,9 +43014,7 @@ func (ec *executionContext) unmarshalInputBulkCreateChannelsInput(ctx context.Co
 			if err != nil {
 				return it, err
 			}
-			if err = ec.resolvers.BulkCreateChannelsInput().AutoSyncSupportedModels(ctx, &it, data); err != nil {
-				return it, err
-			}
+			it.AutoSyncSupportedModels = data
 		case "defaultTestModel":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("defaultTestModel"))
 			data, err := ec.unmarshalNString2string(ctx, v)
@@ -43036,6 +43029,13 @@ func (ec *executionContext) unmarshalInputBulkCreateChannelsInput(ctx context.Co
 				return it, err
 			}
 			it.Settings = data
+		case "policies":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("policies"))
+			data, err := ec.unmarshalOChannelPoliciesInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelPolicies(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Policies = data
 		}
 	}
 
