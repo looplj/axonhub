@@ -49,17 +49,14 @@ The load balancing system uses the Strategy pattern to make the prioritization l
 
 ### 2. ErrorAwareStrategy (Priority: 0-200 points)
 
-**Purpose**: Deprioritizes channels with recent errors and health issues.
+**Purpose**: Deprioritizes channels based on their recent error history.
 
 **Scoring Factors**:
-- **Consecutive Failures**: -50 points per consecutive failure
-- **Recent Failure (within 5 min)**: -100 points (decreases linearly over time)
-- **Recent Success (within 1 min)**: +20 points
-- **Low Success Rate (<50%)**: -50 points (requires 10+ requests)
-- **High Success Rate (>90%)**: +30 points (requires 10+ requests)
+- **Consecutive Failures**: -30 points per consecutive failure (decayed linearly over the cooldown period)
+- **Recent Failure**: A base penalty of -40 (decayed linearly over the cooldown period)
 - **Base Score**: 200 points (for healthy channels)
 
-**Use Case**: Avoids channels experiencing issues and promotes reliable channels.
+**Use Case**: Avoids channels experiencing issues and promotes reliable channels by penalizing failures without permanent stigmatization.
 
 **Implementation**:
 ```go
@@ -70,23 +67,17 @@ NewErrorAwareStrategy(channelService)
 
 **Purpose**: Respects admin-configured channel priorities.
 
-**Purpose**: Deprioritizes channels with recent errors.
-
 **Algorithm**:
-1. Loads aggregated channel metrics (failure streak, timestamps, success rate).
-2. Starts from `maxScore` (200) and subtracts `penaltyPerConsecutiveFailure` (50) per failure.
-3. Applies a time-decaying penalty (up to -100) when the latest failure is within a 5-minute cooldown.
-4. Adds a +20 boost for successes within the last minute.
-5. Applies +/-30 adjustments when success rate is >90% or <50% (with ≥10 samples).
-6. Clamps the result at a minimum of 0.
+1. Reads the `OrderingWeight` (typically 0-100) from the channel configuration.
+2. Normalizes the weight to the `maxScore` (default 100) range.
+3. If weight is negative, it is clamped to 0.
 
 **Pros**:
-- Reacts quickly to real production errors and keeps unhealthy channels away from the top of the list.
-- Time decay lets recovered channels regain priority without manual intervention.
+- Direct control over channel priority for administrators.
+- Simple and predictable.
 
 **Cons**:
-- Relies on timely, accurate metrics; stale metrics may punish healthy channels or vice versa.
-- Cooldown windows can delay ramp-up after transient issues.
+- Static; does not react to live performance or load unless weights are manually updated.
 
 ### 3. WeightRoundRobinStrategy (Priority: 10-200 points)
 
@@ -216,7 +207,7 @@ The load balancer provides comprehensive structured logging for debugging and mo
 
 **Strategy-Level Logging**:
 - **TraceAwareStrategy**: Logs when boosting channels based on trace history
-- **ErrorAwareStrategy**: Logs all penalties (consecutive failures, recent failures, low success rate) and boosts (recent success, high success rate)
+- ErrorAwareStrategy: Logs all penalties (consecutive failures, recent failures) and calculation details
 - **WeightStrategy**: Logs weight calculation with clamping warnings
 
 ### Debug Mode

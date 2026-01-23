@@ -83,35 +83,11 @@ settings:
 - 映射按顺序应用，使用第一个匹配的映射
 - 如果没有匹配的映射，则使用原始模型名称
 
-## 请求参数覆盖
+## 请求覆盖 (Request Override)
 
-请求参数覆盖允许为渠道强制设置默认参数，无论上游请求携带了什么内容。配置时提供一个 JSON 对象，系统会在转发请求前自动合并。
+请求覆盖允许您为渠道强制设置默认参数，或使用模板动态修改请求。您可以为请求体参数提供 JSON 对象，并配置自定义 HTTP 请求头。
 
-### 使用场景
-
-- 强制确定性响应（低温度）
-- 限制 token 使用量以控制成本
-- 强制特定的响应格式（JSON 等）
-- 应用渠道特定的默认值
-
-### 配置
-
-```yaml
-# 示例：强制输出确定性的 JSON 结构
-settings:
-  overrideParameters: |
-    {
-      "temperature": 0.3,
-      "max_tokens": 1024,
-      "response_format.type": "json_object"
-    }
-```
-
-### 支持的字段
-
-- **顶层字段**：`temperature`、`max_tokens`、`top_p`、`frequency_penalty`、`presence_penalty`
-- **嵌套字段**：使用点分写法表示嵌套字段（例如 `response_format.type`）
-- **无效 JSON**：系统会记录告警日志并保持原始请求不变
+有关如何使用模板、动态 JSON 和字段删除的详细信息，请参阅 [请求覆盖指南](request-override.md)。
 
 ## 渠道类型
 
@@ -190,6 +166,7 @@ credentials:
 
 ## 相关文档
 
+- [请求重写指南](request-override.md) - 使用模板进行高级请求修改
 - [模型管理指南](model-management.md) - 跨渠道管理模型
 - [负载均衡指南](load-balance.md) - 在多个渠道间分发请求
 - [API 密钥配置指南](api-key-profiles.md) - 组织 API 密钥和权限

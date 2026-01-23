@@ -33,6 +33,7 @@ AxonHub is an all-in-one AI development platform that provides unified API gatew
 2. [**Tracing / Threads**](docs/en/guides/tracing.md): Thread-aware tracing captures full request timelines for deep observability and faster debugging.
 3. [**Fine-grained Permission**](docs/en/guides/permissions.md): RBAC-based policies help teams govern access, usage, and data segregation precisely.
 4. [**Adaptive Load Balancing**](docs/en/guides/load-balance.md): Intelligent multi-strategy load balancing automatically selects optimal AI channels based on health, performance, and session consistency.
+5. **Cost Tracking**: Real-time usage monitoring and precise cost calculation for every request, supporting various token types (input, output, cache, etc.).
 
 ---
 
@@ -80,14 +81,21 @@ Here are some screenshots of AxonHub in action:
       Channel Management
     </td>
     <td align="center">
+      <a href="docs/screenshots/axonhub-model-price.png">
+        <img src="docs/screenshots/axonhub-model-price.png" alt="Model Price" width="250"/>
+      </a>
+      <br/>
+      Model Price
+    </td>
+  </tr>
+  <tr>
+  <td align="center">
       <a href="docs/screenshots/axonhub-models.png">
         <img src="docs/screenshots/axonhub-models.png" alt="Models" width="250"/>
       </a>
       <br/>
       Models
     </td>
-  </tr>
-  <tr>
     <td align="center">
       <a href="docs/screenshots/axonhub-trace.png">
         <img src="docs/screenshots/axonhub-trace.png" alt="Trace Viewer" width="250"/>
@@ -101,13 +109,6 @@ Here are some screenshots of AxonHub in action:
       </a>
       <br/>
       Request Monitoring
-    </td>
-    <td align="center">
-      <a href="docs/screenshots/axonhub-usage-logs.png">
-        <img src="docs/screenshots/axonhub-usage-logs.png" alt="Usage Logs" width="250"/>
-      </a>
-      <br/>
-      Usage Logs
     </td>
   </tr>
 </table>
@@ -145,6 +146,16 @@ AxonHub records every request as part of a thread-aware trace without requiring 
 - Capture model metadata, prompt / response spans, and timing information for fast root-cause analysis
 
 Learn more about how tracing works and how to integrate it in the [Tracing Guide](docs/en/guides/tracing.md).
+
+### 💰 Cost Tracking
+
+AxonHub provides real-time cost calculation and usage tracking for every request:
+
+- **Multi-dimensional Tracking**: Tracks input (prompt), output (completion), cached (read/write), reasoning, and audio tokens.
+- **Precise Calculation**: Real-time cost calculation based on configurable model pricing (price per 1M tokens).
+- **Cache Discounts**: Supports specialized pricing for cached tokens to accurately reflect provider cost savings.
+- **Detailed Breakdown**: Every request includes a granular cost breakdown (e.g., how much was spent on input vs. output vs. cache).
+- **Quota Management**: Aggregate costs across projects and API keys to enforce usage limits and budgets.
 
 ### 🔧 API Format Support
 

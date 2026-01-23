@@ -194,16 +194,17 @@ func TestChatCompletionOrchestrator_Process_WithModelMapping(t *testing.T) {
 	channelSelector := &staticChannelSelector{candidates: channelsToTestCandidates([]*biz.Channel{bizChannel}, "gpt-4")}
 
 	orchestrator := &ChatCompletionOrchestrator{
-		channelSelector:   channelSelector,
-		Inbound:           openai.NewInboundTransformer(),
-		RequestService:    requestService,
-		ChannelService:    channelService,
-		PromptProvider:    &stubPromptProvider{},
-		SystemService:     systemService,
-		UsageLogService:   usageLogService,
-		PipelineFactory:   pipeline.NewFactory(executor),
-		ModelMapper:       NewModelMapper(),
-		connectionTracker: NewDefaultConnectionTracker(1024),
+		channelSelector:     channelSelector,
+		Inbound:             openai.NewInboundTransformer(),
+		RequestService:      requestService,
+		ChannelService:      channelService,
+		PromptProvider:      &stubPromptProvider{},
+		SystemService:       systemService,
+		UsageLogService:     usageLogService,
+		PipelineFactory:     pipeline.NewFactory(executor),
+		ModelMapper:         NewModelMapper(),
+		modelCircuitBreaker: biz.NewModelCircuitBreaker(),
+		connectionTracker:   NewDefaultConnectionTracker(1024),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},

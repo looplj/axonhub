@@ -14,6 +14,9 @@ This architecture provides:
 - Auto failover and load balancing across channels
 - Real-time tracing and per-project usage logs
 - Support for multiple API formats (OpenAI, Anthropic, Gemini, and custom variants)
+- Model-aware circuit breaking and auto-failover
+- Dynamic request body and header overrides with template support
+- Quota enforcement and prompt injection
 - Model access control via API key profiles
 - Channel selection with tag-based filtering
 - Native tool support for Anthropic and Google APIs
@@ -31,6 +34,10 @@ This architecture provides:
 - **`retry.go`** - Retry logic and error handling utilities
 - **`state.go`** - Orchestrator state management (PersistenceState)
 - **`performance.go`** - Performance monitoring and metrics
+- **`prompt.go`** - Prompt injection logic for projects and models
+- **`quota.go`** - API key quota enforcement middleware
+- **`override.go`** - Request body and header override middleware with template support
+- **`model_circuit_breaker.go`** - Circuit breaker tracker for specific models on channels
 - **`tester.go`** - Testing utilities
 
 ### Load Balancing
@@ -42,12 +49,15 @@ This architecture provides:
 - **`lb_strategy_composite.go`** - Composite strategy combining multiple approaches with weights
 - **`lb_strategy_trace.go`** - Trace-aware strategy for prioritizing last successful channel
 - **`lb_strategy_weight.go`** - Weight-based strategy using channel ordering weight
+- **`lb_strategy_model_aware_circuit_breaker.go`** - Strategy that considers model health on specific channels
+- **`lb_strategy_random.go`** - Simple random strategy for tie-breaking
 
 ### Candidate Selection
 
 - **`candidates.go`** - Main candidate selection logic for channels/models with association cache
 - **`candidates_anthropic.go`** - Anthropic-specific candidate logic (native tools support)
 - **`candidates_google.go`** - Google/Gemini-specific candidate logic (native tools support)
+- **`candidates_stream_policy.go`** - Filters candidates based on request stream requirement and channel policy
 - **`select_candidates.go`** - Candidate selection middleware with API key profile filtering
 
 ### Connection Tracking
@@ -75,6 +85,8 @@ The orchestrator supports multiple load balancing strategies that can be combine
 3. **Round Robin** - Distributes requests evenly across channels using historical request count with inactivity decay
 4. **Connection Aware** - Considers active connection count per channel
 5. **Weight** - Uses channel ordering weight for prioritization
+6. **Model Aware Circuit Breaker** - Dynamically penalizes channels where the requested model is currently failing
+7. **Random** - Adds a small random factor to break ties between channels with identical scores
 
 The load balancer uses partial sorting for efficient top-k candidate selection based on retry policy configuration.
 
@@ -86,6 +98,8 @@ The load balancer uses partial sorting for efficient top-k candidate selection b
 - **`ChannelTraceProvider`** - Provides trace-related channel information
 - **`CandidateSelector`** - Interface for selecting channel model candidates
 - **`ConnectionTracker`** - Interface for tracking active connections per channel
+- **`PromptProvider`** - Supplies enabled prompts for injection
+- **`ModelCircuitBreakerProvider`** - Provides model-level circuit breaker statistics and weights
 
 ## Pipeline Architecture
 
@@ -93,13 +107,21 @@ The orchestrator uses a pipeline-based architecture with middleware support:
 
 1. **Inbound Pipeline**:
    - API key authentication
+   - Quota enforcement
    - Model access control
-   - Candidate selection (with API key profile filtering)
+   - Model mapping
+   - Candidate selection (with API key profile and stream policy filtering)
+   - Prompt injection
    - Request persistence
 
 2. **Outbound Pipeline**:
    - Channel selection
+   - Request body and header overrides
    - Transform options application
+   - Performance tracking
+   - Request execution persistence
+   - Connection tracking
+   - Model circuit breaking (optional)
    - Provider communication
    - Response transformation
    - Usage logging

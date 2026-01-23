@@ -29,9 +29,7 @@ type Dependencies struct {
 }
 
 func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
-	gqlSrv := handler.New(
-		NewSchema(deps.APIKeyService),
-	)
+	gqlSrv := handler.New(NewSchema(deps.APIKeyService))
 
 	gqlSrv.AddTransport(transport.Options{})
 	gqlSrv.AddTransport(transport.GET{})

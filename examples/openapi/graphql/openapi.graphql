@@ -1,0 +1,9 @@
+type APIKey {
+  key: String!
+  name: String!
+  scopes: [String!]
+}
+
+extend type Mutation {
+  createLLMAPIKey(name: String!): APIKey!
+}

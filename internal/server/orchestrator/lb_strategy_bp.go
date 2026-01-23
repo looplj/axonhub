@@ -8,22 +8,26 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
-// ErrorAwareStrategy deprioritizes channels with recent errors.
-// Uses channel performance metrics to calculate a health score.
+// ErrorAwareStrategy deprioritizes channels based on their recent error history.
+// It calculates a health score by applying time-decayed penalties for failures.
 //
-// This strategy only applies PENALTIES for errors, never boosts for success.
-// This ensures that the weighted round-robin distribution is not disrupted
-// by success-based boosts that would cause the "Matthew effect" (rich get richer).
+// This strategy only applies PENALTIES for errors and does not provide boosts for
+// successful requests. This design prevents the "Matthew effect" where high-performing
+// channels dominate the distribution at the expense of others.
+//
+// Historical success rate is intentionally excluded to allow channels to recover
+// quickly after a period of instability, as long as they are currently working.
 //
 // Penalties applied:
-//   - Consecutive failures: -50 per failure
-//   - Recent failure (within 5 min): up to -100, decreasing over time
-//   - Low success rate (<50%): -50
+//   - Consecutive failures: -30 per failure, decaying linearly over the cooldown period.
+//   - Recent failure: A base penalty of -40 that decays linearly over the cooldown period.
 type ErrorAwareStrategy struct {
 	metricsProvider ChannelMetricsProvider
 	// maxScore is the maximum score for a perfectly healthy channel (default: 200)
 	maxScore float64
-	// penaltyPerConsecutiveFailure is the score penalty per consecutive failure
+	// basePenalty is the base penalty for any recent failure (default: 40)
+	basePenalty float64
+	// penaltyPerConsecutiveFailure is the score penalty per consecutive failure (default: 30)
 	penaltyPerConsecutiveFailure float64
 	// errorCooldownMinutes is how long to remember errors (default: 5 minutes)
 	errorCooldownMinutes int
@@ -34,12 +38,13 @@ func NewErrorAwareStrategy(metricsProvider ChannelMetricsProvider) *ErrorAwareSt
 	return &ErrorAwareStrategy{
 		metricsProvider:              metricsProvider,
 		maxScore:                     200.0,
-		penaltyPerConsecutiveFailure: 50.0,
+		basePenalty:                  40.0,
+		penaltyPerConsecutiveFailure: 30.0,
 		errorCooldownMinutes:         5,
 	}
 }
 
-// Score returns a health score based on recent errors and success rate.
+// Score returns a health score based on recent errors.
 // Production path without debug logging.
 func (s *ErrorAwareStrategy) Score(ctx context.Context, channel *biz.Channel) float64 {
 	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID)
@@ -50,30 +55,30 @@ func (s *ErrorAwareStrategy) Score(ctx context.Context, channel *biz.Channel) fl
 
 	score := s.maxScore
 
-	// Penalize for consecutive failures
-	if metrics.ConsecutiveFailures > 0 {
-		penalty := float64(metrics.ConsecutiveFailures) * s.penaltyPerConsecutiveFailure
-		score -= penalty
-	}
-
-	// Check if there was a recent failure (within cooldown period)
+	// Calculate time-based decay factor if there was a recent failure
+	// This ensures penalties (including consecutive failures) eventually decay to zero,
+	// allowing the channel to recover and avoiding permanent deadlock.
+	cooldownRatio := 0.0
 	if metrics.LastFailureAt != nil {
 		timeSinceFailure := time.Since(*metrics.LastFailureAt)
 		if timeSinceFailure < time.Duration(s.errorCooldownMinutes)*time.Minute {
-			// Apply time-based penalty that decreases over time
-			cooldownRatio := 1.0 - (timeSinceFailure.Minutes() / float64(s.errorCooldownMinutes))
-			penalty := 100.0 * cooldownRatio
-			score -= penalty
+			cooldownRatio = 1.0 - (timeSinceFailure.Minutes() / float64(s.errorCooldownMinutes))
 		}
+	} else if metrics.ConsecutiveFailures > 0 {
+		// Fallback: if we have consecutive failures but no timestamp, assume it just happened
+		cooldownRatio = 1.0
 	}
 
-	// Only apply penalty for very low success rate (indicates a problematic channel)
-	if metrics.RequestCount >= 5 {
-		successRate := metrics.CalculateSuccessRate()
-		if successRate < 50 {
-			penalty := 50.0
-			score -= penalty
-		}
+	// Penalize for consecutive failures with time-based decay
+	if metrics.ConsecutiveFailures > 0 && cooldownRatio > 0 {
+		penalty := float64(metrics.ConsecutiveFailures) * s.penaltyPerConsecutiveFailure * cooldownRatio
+		score -= penalty
+	}
+
+	// Apply recent failure penalty (also time-based)
+	if cooldownRatio > 0 {
+		penalty := s.basePenalty * cooldownRatio
+		score -= penalty
 	}
 
 	// Ensure score doesn't go below 0
@@ -118,28 +123,44 @@ func (s *ErrorAwareStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Ch
 		"request_count":        metrics.RequestCount,
 	}
 
-	// Penalize for consecutive failures
-	if metrics.ConsecutiveFailures > 0 {
-		penalty := float64(metrics.ConsecutiveFailures) * s.penaltyPerConsecutiveFailure
+	// Calculate time-based decay factor if there was a recent failure
+	// This ensures penalties (including consecutive failures) eventually decay to zero,
+	// allowing the channel to recover and avoiding permanent deadlock.
+	cooldownRatio := 0.0
+
+	var timeSinceFailure time.Duration
+	if metrics.LastFailureAt != nil {
+		timeSinceFailure = time.Since(*metrics.LastFailureAt)
+		if timeSinceFailure < time.Duration(s.errorCooldownMinutes)*time.Minute {
+			cooldownRatio = 1.0 - (timeSinceFailure.Minutes() / float64(s.errorCooldownMinutes))
+		}
+	} else if metrics.ConsecutiveFailures > 0 {
+		// Fallback: if we have consecutive failures but no timestamp, assume it just happened
+		cooldownRatio = 1.0
+	}
+
+	// Penalize for consecutive failures with time-based decay
+	if metrics.ConsecutiveFailures > 0 && cooldownRatio > 0 {
+		penalty := float64(metrics.ConsecutiveFailures) * s.penaltyPerConsecutiveFailure * cooldownRatio
 		score -= penalty
 		details["consecutive_failures_penalty"] = penalty
-		log.Info(ctx, "ErrorAwareStrategy: applying consecutive failures penalty",
+		log.Info(ctx, "ErrorAwareStrategy: applying consecutive failures penalty (with decay)",
 			log.Int("channel_id", channel.ID),
 			log.String("channel_name", channel.Name),
 			log.Int64("consecutive_failures", metrics.ConsecutiveFailures),
 			log.Float64("penalty", penalty),
+			log.Float64("decay_ratio", cooldownRatio),
 		)
 	}
 
-	// Check if there was a recent failure (within cooldown period)
-	if metrics.LastFailureAt != nil {
-		timeSinceFailure := time.Since(*metrics.LastFailureAt)
-		if timeSinceFailure < time.Duration(s.errorCooldownMinutes)*time.Minute {
-			// Apply time-based penalty that decreases over time
-			cooldownRatio := 1.0 - (timeSinceFailure.Minutes() / float64(s.errorCooldownMinutes))
-			penalty := 100.0 * cooldownRatio
-			score -= penalty
-			details["recent_failure_penalty"] = penalty
+	// Apply recent failure penalty (also time-based)
+	if cooldownRatio > 0 {
+		penalty := s.basePenalty * cooldownRatio
+		score -= penalty
+		details["recent_failure_penalty"] = penalty
+
+		details["decay_ratio"] = cooldownRatio
+		if metrics.LastFailureAt != nil {
 			details["time_since_failure_minutes"] = timeSinceFailure.Minutes()
 			log.Info(ctx, "ErrorAwareStrategy: applying recent failure penalty",
 				log.Int("channel_id", channel.ID),
@@ -147,42 +168,12 @@ func (s *ErrorAwareStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Ch
 				log.Duration("time_since_failure", timeSinceFailure),
 				log.Float64("penalty", penalty),
 			)
-		} else {
-			log.Info(ctx, "ErrorAwareStrategy: failure outside cooldown period",
-				log.Int("channel_id", channel.ID),
-				log.String("channel_name", channel.Name),
-				log.Duration("time_since_failure", timeSinceFailure),
-			)
 		}
-	}
-
-	// Only apply penalty for very low success rate (indicates a problematic channel)
-	if metrics.RequestCount >= 5 {
-		successRate := metrics.CalculateSuccessRate()
-		details["success_rate"] = successRate
-
-		if successRate < 50 {
-			penalty := 50.0
-			score -= penalty
-			details["low_success_rate_penalty"] = penalty
-			log.Info(ctx, "ErrorAwareStrategy: applying low success rate penalty",
-				log.Int("channel_id", channel.ID),
-				log.String("channel_name", channel.Name),
-				log.Int64("success_rate", successRate),
-				log.Float64("penalty", penalty),
-			)
-		} else {
-			log.Info(ctx, "ErrorAwareStrategy: success rate acceptable, no penalty",
-				log.Int("channel_id", channel.ID),
-				log.String("channel_name", channel.Name),
-				log.Int64("success_rate", successRate),
-			)
-		}
-	} else {
-		log.Info(ctx, "ErrorAwareStrategy: insufficient request count for success rate check",
+	} else if metrics.LastFailureAt != nil {
+		log.Info(ctx, "ErrorAwareStrategy: failure outside cooldown period",
 			log.Int("channel_id", channel.ID),
 			log.String("channel_name", channel.Name),
-			log.Int64("request_count", metrics.RequestCount),
+			log.Duration("time_since_failure", timeSinceFailure),
 		)
 	}
 

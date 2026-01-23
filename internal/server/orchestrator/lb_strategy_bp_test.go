@@ -59,8 +59,8 @@ func TestErrorAwareStrategy_Score_WithMockConsecutiveFailures(t *testing.T) {
 	}
 
 	score := strategy.Score(ctx, channel)
-	// Base 200 - (3 * 50) = 50
-	assert.Equal(t, 50.0, score)
+	// Base 200 - 40 - (3 * 30) = 70
+	assert.Equal(t, 70.0, score)
 }
 
 func TestErrorAwareStrategy_Score_WithMockRecentSuccess(t *testing.T) {
@@ -127,7 +127,7 @@ func TestErrorAwareStrategy_Score_ConsecutiveFailures(t *testing.T) {
 	score := strategy.Score(ctx, channel)
 
 	// Should have significant penalty for 3 consecutive failures
-	// Base 200 - (3 * 50) = 50
+	// Base 200 - 40 - (3 * 30) = 70
 	assert.Less(t, score, 100.0, "Score should be penalized for consecutive failures")
 }
 
@@ -214,26 +214,6 @@ func TestErrorAwareStrategy_ScoreConsistency(t *testing.T) {
 			metrics: &biz.AggregatedMetrics{
 				LastSuccessAt: &recentSuccess,
 			},
-		},
-		{
-			name: "low success rate",
-			metrics: func() *biz.AggregatedMetrics {
-				m := &biz.AggregatedMetrics{}
-				m.RequestCount = 20
-				m.SuccessCount = 8 // 40% success rate
-
-				return m
-			}(),
-		},
-		{
-			name: "high success rate",
-			metrics: func() *biz.AggregatedMetrics {
-				m := &biz.AggregatedMetrics{}
-				m.RequestCount = 20
-				m.SuccessCount = 19 // 95% success rate
-
-				return m
-			}(),
 		},
 		{
 			name: "complex scenario",
@@ -521,75 +501,6 @@ func TestErrorAwareStrategy_OnlyPenaltiesNoBoosts(t *testing.T) {
 		// Base 200, no boosts applied
 		assert.Equal(t, 200.0, score)
 	})
-
-	// Test that low success rate DOES apply penalty
-	t.Run("low success rate penalty still applies", func(t *testing.T) {
-		metrics := &biz.AggregatedMetrics{}
-		metrics.RequestCount = 10
-		metrics.SuccessCount = 4 // 40% success rate
-
-		mockProvider := &mockMetricsProvider{
-			metrics: map[int]*biz.AggregatedMetrics{
-				1: metrics,
-			},
-		}
-		strategy := NewErrorAwareStrategy(mockProvider)
-
-		channel := &biz.Channel{
-			Channel: &ent.Channel{ID: 1, Name: "test"},
-		}
-
-		score := strategy.Score(ctx, channel)
-		// Base 200 - 50 (low success rate penalty) = 150
-		assert.Equal(t, 150.0, score)
-	})
-}
-
-// TestErrorAwareStrategy_LowSuccessRatePenalty tests that low success rate penalty is applied.
-func TestErrorAwareStrategy_LowSuccessRatePenalty(t *testing.T) {
-	ctx := context.Background()
-
-	testCases := []struct {
-		name                    string
-		requestCount            int64
-		successCount            int64
-		expectLowSuccessPenalty bool
-	}{
-		{"4 requests - no check (below threshold)", 4, 1, false},
-		{"5 requests - high rate, no penalty", 5, 5, false},
-		{"5 requests - low rate, penalty", 5, 2, true},
-		{"10 requests - high rate, no penalty", 10, 10, false},
-		{"10 requests - 50% rate, no penalty", 10, 5, false}, // 50% is not < 50%
-		{"10 requests - 40% rate, penalty", 10, 4, true},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			metrics := &biz.AggregatedMetrics{}
-			metrics.RequestCount = tc.requestCount
-			metrics.SuccessCount = tc.successCount
-
-			mockProvider := &mockMetricsProvider{
-				metrics: map[int]*biz.AggregatedMetrics{
-					1: metrics,
-				},
-			}
-			strategy := NewErrorAwareStrategy(mockProvider)
-
-			channel := &biz.Channel{
-				Channel: &ent.Channel{ID: 1, Name: "test"},
-			}
-
-			score := strategy.Score(ctx, channel)
-
-			expectedScore := 200.0
-			if tc.expectLowSuccessPenalty {
-				expectedScore -= 50.0
-			}
-
-			assert.Equal(t, expectedScore, score, "Score should match expected for %s", tc.name)
-		})
-	}
 }
 
 // TestErrorAwareStrategy_FairDistribution tests that the strategy promotes fair distribution

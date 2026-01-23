@@ -440,9 +440,15 @@ export function ModelsAssociationDialog() {
 
   const handleAddAssociation = useCallback(() => {
     if (fields.length >= 10) return;
+
+    // Get the priority of the last rule (highest priority)
+    const currentAssociations = form.getValues('associations') || [];
+    const lastPriority =
+      currentAssociations.length > 0 ? Math.max(...currentAssociations.map((a) => a.priority ?? 0)) : 0;
+
     append({
       type: 'channel_model',
-      priority: 0,
+      priority: lastPriority,
       channelId: undefined,
       channelTags: [],
       modelId: '',
@@ -451,7 +457,7 @@ export function ModelsAssociationDialog() {
       excludeChannelIds: [],
       excludeChannelTags: [],
     });
-  }, [append, fields.length]);
+  }, [append, fields.length, form]);
 
   // Filter connections by channel name
   const filteredConnections = useMemo(() => {

@@ -83,35 +83,11 @@ settings:
 - Mappings are applied in order; the first matching mapping is used
 - If no mapping matches, the original model name is used
 
-## Override Parameters
+## Request Override
 
-Override parameters let you enforce channel-specific defaults regardless of incoming request payloads. Provide a JSON object that will be merged into every outbound request.
+Request Override lets you enforce channel-specific defaults or dynamically modify requests using templates. You can provide a JSON object for body parameters and configure custom HTTP headers.
 
-### Use Cases
-
-- Enforce deterministic responses (low temperature)
-- Limit token usage for cost control
-- Force specific response formats (JSON, etc.)
-- Apply channel-specific defaults
-
-### Configuration
-
-```yaml
-# Example: enforce deterministic JSON responses
-settings:
-  overrideParameters: |
-    {
-      "temperature": 0.3,
-      "max_tokens": 1024,
-      "response_format.type": "json_object"
-    }
-```
-
-### Supported Fields
-
-- **Top-level settings**: `temperature`, `max_tokens`, `top_p`, `frequency_penalty`, `presence_penalty`
-- **Nested fields**: Use dot notation for nested fields (e.g., `response_format.type`)
-- **Invalid JSON**: Logs a warning and falls back to the original payload
+For detailed information on how to use templates, dynamic JSON, and field removal, see the [Request Override Guide](request-override.md).
 
 ## Channel Types
 
@@ -190,6 +166,7 @@ credentials:
 
 ## Related Documentation
 
+- [Request Override Guide](request-override.md) - Advanced request modification with templates
 - [Model Management Guide](model-management.md) - Managing models across channels
 - [Load Balancing Guide](load-balance.md) - Distributing requests across channels
 - [API Key Profiles Guide](api-key-profiles.md) - Organizing API keys and permissions
