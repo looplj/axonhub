@@ -308,6 +308,96 @@ func TestClaudeCodeTransformer_TransformResponse(t *testing.T) {
 	})
 }
 
+func TestClaudeCodeTransformer_TransformStream(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("strips tool prefix from streaming responses", func(t *testing.T) {
+		transformer, err := NewOutboundTransformer(Params{TokenProvider: newMockTokenProvider("test-api-key")})
+		require.NoError(t, err)
+
+		// Create mock stream events with prefixed tool names
+		events := []*httpclient.StreamEvent{
+			{
+				Type: "content_block_start",
+				Data: mustMarshal(map[string]any{
+					"type":  "content_block_start",
+					"index": 0,
+					"content_block": map[string]any{
+						"type": "tool_use",
+						"id":   "toolu_123",
+						"name": "proxy_bash",
+					},
+				}),
+			},
+		}
+
+		// Create a mock stream
+		mockStream := newMockHTTPStream(events)
+
+		// Transform the stream
+		llmStream, err := transformer.TransformStream(ctx, mockStream)
+		require.NoError(t, err)
+
+		// Read from the stream and verify prefix is stripped
+		responses := []*llm.Response{}
+		for llmStream.Next() {
+			resp := llmStream.Current()
+			if resp != nil {
+				responses = append(responses, resp)
+			}
+		}
+
+		require.NoError(t, llmStream.Err())
+
+		// Verify we got responses and tool names are stripped
+		require.NotEmpty(t, responses)
+		foundToolCall := false
+		for _, resp := range responses {
+			for _, choice := range resp.Choices {
+				if choice.Delta != nil && len(choice.Delta.ToolCalls) > 0 {
+					for _, toolCall := range choice.Delta.ToolCalls {
+						if toolCall.Function.Name != "" {
+							foundToolCall = true
+							assert.Equal(t, "bash", toolCall.Function.Name, "tool prefix should be stripped")
+							assert.NotContains(t, toolCall.Function.Name, "proxy_", "proxy_ prefix should be removed")
+						}
+					}
+				}
+			}
+		}
+		assert.True(t, foundToolCall, "should have found at least one tool call")
+	})
+
+	t.Run("handles streams without tool calls", func(t *testing.T) {
+		transformer, err := NewOutboundTransformer(Params{TokenProvider: newMockTokenProvider("test-api-key")})
+		require.NoError(t, err)
+
+		// Create mock stream events without tool calls
+		events := []*httpclient.StreamEvent{
+			{
+				Type: "message_start",
+				Data: mustMarshal(map[string]any{
+					"type": "message_start",
+					"message": map[string]any{
+						"id":    "msg_123",
+						"model": "claude-3-5-sonnet-20241022",
+					},
+				}),
+			},
+		}
+
+		mockStream := newMockHTTPStream(events)
+		llmStream, err := transformer.TransformStream(ctx, mockStream)
+		require.NoError(t, err)
+
+		// Should not error
+		for llmStream.Next() {
+			_ = llmStream.Current()
+		}
+		require.NoError(t, llmStream.Err())
+	})
+}
+
 func TestClaudeCodeTransformer_APIFormat(t *testing.T) {
 
 	transformer, err := NewOutboundTransformer(Params{TokenProvider: newMockTokenProvider("test-api-key")})
@@ -382,5 +472,40 @@ func (m *mockTokenProvider) Get(_ context.Context) (*oauth.OAuthCredentials, err
 
 func newMockTokenProvider(token string) *mockTokenProvider {
 	return &mockTokenProvider{accessToken: token}
+}
+
+// mockHTTPStream is a simple mock implementation of streams.Stream[*httpclient.StreamEvent]
+type mockHTTPStream struct {
+	events  []*httpclient.StreamEvent
+	index   int
+	current *httpclient.StreamEvent
+}
+
+func newMockHTTPStream(events []*httpclient.StreamEvent) *mockHTTPStream {
+	return &mockHTTPStream{
+		events: events,
+		index:  -1,
+	}
+}
+
+func (m *mockHTTPStream) Next() bool {
+	m.index++
+	if m.index >= len(m.events) {
+		return false
+	}
+	m.current = m.events[m.index]
+	return true
+}
+
+func (m *mockHTTPStream) Current() *httpclient.StreamEvent {
+	return m.current
+}
+
+func (m *mockHTTPStream) Err() error {
+	return nil
+}
+
+func (m *mockHTTPStream) Close() error {
+	return nil
 }
 

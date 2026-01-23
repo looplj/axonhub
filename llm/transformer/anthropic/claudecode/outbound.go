@@ -10,6 +10,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
+	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/anthropic"
 )
@@ -223,6 +224,75 @@ func (t *ClaudeCodeTransformer) TransformResponse(
 
 	// Call the base transformer with the modified response
 	return t.Outbound.TransformResponse(ctx, httpResp)
+}
+
+// TransformStream overrides the base TransformStream to strip tool prefixes from streaming responses.
+func (t *ClaudeCodeTransformer) TransformStream(
+	ctx context.Context,
+	stream streams.Stream[*httpclient.StreamEvent],
+) (streams.Stream[*llm.Response], error) {
+	// Call the base transformer to get the response stream
+	baseStream, err := t.Outbound.TransformStream(ctx, stream)
+	if err != nil {
+		return nil, err
+	}
+
+	// Wrap the stream to strip tool prefixes
+	// Note: We blindly strip proxy_ prefix from all streaming responses. This is safe because:
+	// 1. We only add proxy_ prefix for OAuth tokens from non-CLI clients
+	// 2. Claude CLI clients don't send proxy_ prefixed tool names
+	// 3. If no prefix was added, stripping won't find anything to strip
+	return &toolPrefixStripperStream{
+		base:   baseStream,
+		prefix: toolPrefix,
+	}, nil
+}
+
+// toolPrefixStripperStream wraps a stream and strips tool prefixes from responses.
+type toolPrefixStripperStream struct {
+	base    streams.Stream[*llm.Response]
+	prefix  string
+	current *llm.Response
+}
+
+func (s *toolPrefixStripperStream) Next() bool {
+	if !s.base.Next() {
+		return false
+	}
+
+	resp := s.base.Current()
+	if resp == nil {
+		s.current = resp
+		return true
+	}
+
+	// Strip prefix from tool calls in the response
+	for i := range resp.Choices {
+		choice := &resp.Choices[i]
+		if choice.Delta != nil && len(choice.Delta.ToolCalls) > 0 {
+			for j := range choice.Delta.ToolCalls {
+				toolCall := &choice.Delta.ToolCalls[j]
+				if toolCall.Function.Name != "" && strings.HasPrefix(toolCall.Function.Name, s.prefix) {
+					toolCall.Function.Name = strings.TrimPrefix(toolCall.Function.Name, s.prefix)
+				}
+			}
+		}
+	}
+
+	s.current = resp
+	return true
+}
+
+func (s *toolPrefixStripperStream) Current() *llm.Response {
+	return s.current
+}
+
+func (s *toolPrefixStripperStream) Err() error {
+	return s.base.Err()
+}
+
+func (s *toolPrefixStripperStream) Close() error {
+	return s.base.Close()
 }
 
 // AggregateStreamChunks overrides the base AggregateStreamChunks to strip tool prefixes from stream chunks.
