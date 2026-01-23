@@ -39,6 +39,10 @@ func (m *modelCircuitBreakerTracker) OnOutboundRawRequest(ctx context.Context, r
 		return request, nil
 	}
 
+	if m.modelCircuitBreaker == nil {
+		return request, nil
+	}
+
 	channel := m.outbound.GetCurrentChannel()
 
 	modelID := m.outbound.GetRequestedModel()

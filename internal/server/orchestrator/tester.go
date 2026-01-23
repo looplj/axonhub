@@ -23,11 +23,15 @@ import (
 // TestChannelOrchestrator handles channel testing functionality.
 // It is stateless and can be reused across multiple test requests.
 type TestChannelOrchestrator struct {
-	channelService  *biz.ChannelService
-	requestService  *biz.RequestService
-	systemService   *biz.SystemService
-	usageLogService *biz.UsageLogService
-	httpClient      *httpclient.HttpClient
+	channelService      *biz.ChannelService
+	requestService      *biz.RequestService
+	systemService       *biz.SystemService
+	usageLogService     *biz.UsageLogService
+	httpClient          *httpclient.HttpClient
+	modelCircuitBreaker *biz.ModelCircuitBreaker
+	modelMapper         *ModelMapper
+	loadBalancer        *LoadBalancer
+	connectionTracking  ConnectionTracker
 }
 
 // NewTestChannelOrchestrator creates a new TestChannelOrchestrator.
@@ -39,11 +43,15 @@ func NewTestChannelOrchestrator(
 	httpClient *httpclient.HttpClient,
 ) *TestChannelOrchestrator {
 	return &TestChannelOrchestrator{
-		channelService:  channelService,
-		requestService:  requestService,
-		systemService:   systemService,
-		usageLogService: usageLogService,
-		httpClient:      httpClient,
+		channelService:      channelService,
+		requestService:      requestService,
+		systemService:       systemService,
+		usageLogService:     usageLogService,
+		httpClient:          httpClient,
+		modelCircuitBreaker: biz.NewModelCircuitBreaker(),
+		modelMapper:         NewModelMapper(),
+		loadBalancer:        NewLoadBalancer(systemService, channelService, NewWeightStrategy()),
+		connectionTracking:  NewDefaultConnectionTracker(100),
 	}
 }
 
@@ -79,15 +87,17 @@ func (processor *TestChannelOrchestrator) TestChannel(
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
-		Inbound:              inbound,
-		SystemService:        processor.systemService,
-		UsageLogService:      processor.usageLogService,
-		proxy:                proxy,
-		ModelMapper:          nil,
-		selectedChannelIds:   []int{},
-		adaptiveLoadBalancer: nil,
-		failoverLoadBalancer: nil,
-		connectionTracker:    nil,
+		Inbound:                    inbound,
+		SystemService:              processor.systemService,
+		UsageLogService:            processor.usageLogService,
+		proxy:                      proxy,
+		ModelMapper:                processor.modelMapper,
+		selectedChannelIds:         []int{},
+		adaptiveLoadBalancer:       processor.loadBalancer,
+		failoverLoadBalancer:       processor.loadBalancer,
+		circuitBreakerLoadBalancer: processor.loadBalancer,
+		connectionTracker:          processor.connectionTracking,
+		modelCircuitBreaker:        processor.modelCircuitBreaker,
 	}
 
 	// Create a simple test request
