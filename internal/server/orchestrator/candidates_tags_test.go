@@ -103,6 +103,19 @@ func setupTagsTest(t *testing.T) (context.Context, *ent.Client, []*biz.Channel) 
 	return ctx, client, channels
 }
 
+// mockChannelSelector for testing.
+type mockChannelSelector struct {
+	selectFunc func(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error)
+}
+
+func (m *mockChannelSelector) Select(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
+	if m.selectFunc != nil {
+		return m.selectFunc(ctx, req)
+	}
+
+	return []*ChannelModelsCandidate{}, nil
+}
+
 // TestTagsFilterSelector_EmptyAllowedTags 测试当 allowedTags 为空时返回所有渠道.
 func TestTagsFilterSelector_EmptyAllowedTags(t *testing.T) {
 	ctx, _, channels := setupTagsTest(t)

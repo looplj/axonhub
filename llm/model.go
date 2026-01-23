@@ -157,7 +157,7 @@ type Request struct {
 	// Any of "text", "audio", "image".
 	Modalities []string `json:"modalities,omitempty"`
 
-	// Controls effort on reasoning for reasoning models. It can be set to "low", "medium", or "high".
+	// Controls effort on reasoning for reasoning models. It can be set to "none", "low", "medium", or "high".
 	ReasoningEffort string `json:"reasoning_effort,omitempty"`
 
 	// Reasoning budget for reasoning models.
