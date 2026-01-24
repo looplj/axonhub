@@ -4,13 +4,6 @@
 
 This guide covers deploying AxonHub using Docker and Docker Compose. Docker provides an isolated, reproducible environment that simplifies deployment and scaling.
 
-## Prerequisites
-
-- Docker Engine 20.10+
-- Docker Compose 2.0+
-- At least 2GB RAM available
-- 10GB free disk space
-
 ## Quick Start
 
 ### 1. Clone the Repository

@@ -88,7 +88,7 @@ server:
 
 ```yaml
 db:
-  dialect: "sqlite3"            # sqlite3, postgres, mysql
+  dialect: "sqlite3"            # sqlite3, postgres, mysql, tidb
   dsn: "file:axonhub.db?cache=shared&_fk=1"  # Connection string
   debug: false                  # Enable database debug logging
 ```
@@ -97,6 +97,7 @@ db:
 - **SQLite**: `sqlite3` (development)
 - **PostgreSQL**: `postgres` (production)
 - **MySQL**: `mysql` (production)
+- **TiDB**: `tidb` (production/cloud)
 
 **Environment Variables:**
 - `AXONHUB_DB_DIALECT`
@@ -261,13 +262,6 @@ log:
     max_size: 200
     max_age: 14
     max_backups: 7
-
-metrics:
-  enabled: true
-  exporter:
-    type: "prometheus"
-    endpoint: "localhost:9090"
-    insecure: false
 ```
 
 ## Database Connection Strings
@@ -287,7 +281,13 @@ postgres://username:password@host:5432/database?sslmode=disable
 ### MySQL
 
 ```
-username:password@tcp(host:3306)/database?parseTime=true
+username:password@tcp(host:3306)/database?parseTime=True&multiStatements=true&charset=utf8mb4
+```
+
+### Tidb 
+
+```
+<USER>.root:<PASSWORD>@tcp(gateway01.us-west-2.prod.aws.tidbcloud.com:4000)/axonhub?tls=true&parseTime=true&multiStatements=true&charset=utf8mb4
 ```
 
 ## Best Practices
