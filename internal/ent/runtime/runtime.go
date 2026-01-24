@@ -506,6 +506,10 @@ func init() {
 	providerquotastatus.DefaultUpdatedAt = providerquotastatusDescUpdatedAt.Default.(func() time.Time)
 	// providerquotastatus.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	providerquotastatus.UpdateDefaultUpdatedAt = providerquotastatusDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// providerquotastatusDescReady is the schema descriptor for ready field.
+	providerquotastatusDescReady := providerquotastatusFields[5].Descriptor()
+	// providerquotastatus.DefaultReady holds the default value on creation for the ready field.
+	providerquotastatus.DefaultReady = providerquotastatusDescReady.Default.(bool)
 	requestMixin := schema.Request{}.Mixin()
 	request.Policy = privacy.NewPolicies(schema.Request{})
 	request.Hooks[0] = func(next ent.Mutator) ent.Mutator {

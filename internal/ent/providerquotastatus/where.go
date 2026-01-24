@@ -70,9 +70,14 @@ func ChannelID(v int) predicate.ProviderQuotaStatus {
 	return predicate.ProviderQuotaStatus(sql.FieldEQ(FieldChannelID, v))
 }
 
-// Status applies equality check predicate on the "status" field. It's identical to StatusEQ.
-func Status(v string) predicate.ProviderQuotaStatus {
-	return predicate.ProviderQuotaStatus(sql.FieldEQ(FieldStatus, v))
+// NextResetAt applies equality check predicate on the "next_reset_at" field. It's identical to NextResetAtEQ.
+func NextResetAt(v time.Time) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldEQ(FieldNextResetAt, v))
+}
+
+// Ready applies equality check predicate on the "ready" field. It's identical to ReadyEQ.
+func Ready(v bool) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldEQ(FieldReady, v))
 }
 
 // NextCheckAt applies equality check predicate on the "next_check_at" field. It's identical to NextCheckAtEQ.
@@ -201,68 +206,83 @@ func ProviderTypeNotIn(vs ...ProviderType) predicate.ProviderQuotaStatus {
 }
 
 // StatusEQ applies the EQ predicate on the "status" field.
-func StatusEQ(v string) predicate.ProviderQuotaStatus {
+func StatusEQ(v Status) predicate.ProviderQuotaStatus {
 	return predicate.ProviderQuotaStatus(sql.FieldEQ(FieldStatus, v))
 }
 
 // StatusNEQ applies the NEQ predicate on the "status" field.
-func StatusNEQ(v string) predicate.ProviderQuotaStatus {
+func StatusNEQ(v Status) predicate.ProviderQuotaStatus {
 	return predicate.ProviderQuotaStatus(sql.FieldNEQ(FieldStatus, v))
 }
 
 // StatusIn applies the In predicate on the "status" field.
-func StatusIn(vs ...string) predicate.ProviderQuotaStatus {
+func StatusIn(vs ...Status) predicate.ProviderQuotaStatus {
 	return predicate.ProviderQuotaStatus(sql.FieldIn(FieldStatus, vs...))
 }
 
 // StatusNotIn applies the NotIn predicate on the "status" field.
-func StatusNotIn(vs ...string) predicate.ProviderQuotaStatus {
+func StatusNotIn(vs ...Status) predicate.ProviderQuotaStatus {
 	return predicate.ProviderQuotaStatus(sql.FieldNotIn(FieldStatus, vs...))
 }
 
-// StatusGT applies the GT predicate on the "status" field.
-func StatusGT(v string) predicate.ProviderQuotaStatus {
-	return predicate.ProviderQuotaStatus(sql.FieldGT(FieldStatus, v))
+// NextResetAtEQ applies the EQ predicate on the "next_reset_at" field.
+func NextResetAtEQ(v time.Time) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldEQ(FieldNextResetAt, v))
 }
 
-// StatusGTE applies the GTE predicate on the "status" field.
-func StatusGTE(v string) predicate.ProviderQuotaStatus {
-	return predicate.ProviderQuotaStatus(sql.FieldGTE(FieldStatus, v))
+// NextResetAtNEQ applies the NEQ predicate on the "next_reset_at" field.
+func NextResetAtNEQ(v time.Time) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldNEQ(FieldNextResetAt, v))
 }
 
-// StatusLT applies the LT predicate on the "status" field.
-func StatusLT(v string) predicate.ProviderQuotaStatus {
-	return predicate.ProviderQuotaStatus(sql.FieldLT(FieldStatus, v))
+// NextResetAtIn applies the In predicate on the "next_reset_at" field.
+func NextResetAtIn(vs ...time.Time) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldIn(FieldNextResetAt, vs...))
 }
 
-// StatusLTE applies the LTE predicate on the "status" field.
-func StatusLTE(v string) predicate.ProviderQuotaStatus {
-	return predicate.ProviderQuotaStatus(sql.FieldLTE(FieldStatus, v))
+// NextResetAtNotIn applies the NotIn predicate on the "next_reset_at" field.
+func NextResetAtNotIn(vs ...time.Time) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldNotIn(FieldNextResetAt, vs...))
 }
 
-// StatusContains applies the Contains predicate on the "status" field.
-func StatusContains(v string) predicate.ProviderQuotaStatus {
-	return predicate.ProviderQuotaStatus(sql.FieldContains(FieldStatus, v))
+// NextResetAtGT applies the GT predicate on the "next_reset_at" field.
+func NextResetAtGT(v time.Time) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldGT(FieldNextResetAt, v))
 }
 
-// StatusHasPrefix applies the HasPrefix predicate on the "status" field.
-func StatusHasPrefix(v string) predicate.ProviderQuotaStatus {
-	return predicate.ProviderQuotaStatus(sql.FieldHasPrefix(FieldStatus, v))
+// NextResetAtGTE applies the GTE predicate on the "next_reset_at" field.
+func NextResetAtGTE(v time.Time) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldGTE(FieldNextResetAt, v))
 }
 
-// StatusHasSuffix applies the HasSuffix predicate on the "status" field.
-func StatusHasSuffix(v string) predicate.ProviderQuotaStatus {
-	return predicate.ProviderQuotaStatus(sql.FieldHasSuffix(FieldStatus, v))
+// NextResetAtLT applies the LT predicate on the "next_reset_at" field.
+func NextResetAtLT(v time.Time) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldLT(FieldNextResetAt, v))
 }
 
-// StatusEqualFold applies the EqualFold predicate on the "status" field.
-func StatusEqualFold(v string) predicate.ProviderQuotaStatus {
-	return predicate.ProviderQuotaStatus(sql.FieldEqualFold(FieldStatus, v))
+// NextResetAtLTE applies the LTE predicate on the "next_reset_at" field.
+func NextResetAtLTE(v time.Time) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldLTE(FieldNextResetAt, v))
 }
 
-// StatusContainsFold applies the ContainsFold predicate on the "status" field.
-func StatusContainsFold(v string) predicate.ProviderQuotaStatus {
-	return predicate.ProviderQuotaStatus(sql.FieldContainsFold(FieldStatus, v))
+// NextResetAtIsNil applies the IsNil predicate on the "next_reset_at" field.
+func NextResetAtIsNil() predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldIsNull(FieldNextResetAt))
+}
+
+// NextResetAtNotNil applies the NotNil predicate on the "next_reset_at" field.
+func NextResetAtNotNil() predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldNotNull(FieldNextResetAt))
+}
+
+// ReadyEQ applies the EQ predicate on the "ready" field.
+func ReadyEQ(v bool) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldEQ(FieldReady, v))
+}
+
+// ReadyNEQ applies the NEQ predicate on the "ready" field.
+func ReadyNEQ(v bool) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldNEQ(FieldReady, v))
 }
 
 // NextCheckAtEQ applies the EQ predicate on the "next_check_at" field.

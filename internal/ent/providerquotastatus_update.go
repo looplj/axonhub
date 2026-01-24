@@ -36,13 +36,13 @@ func (_u *ProviderQuotaStatusUpdate) SetUpdatedAt(v time.Time) *ProviderQuotaSta
 }
 
 // SetStatus sets the "status" field.
-func (_u *ProviderQuotaStatusUpdate) SetStatus(v string) *ProviderQuotaStatusUpdate {
+func (_u *ProviderQuotaStatusUpdate) SetStatus(v providerquotastatus.Status) *ProviderQuotaStatusUpdate {
 	_u.mutation.SetStatus(v)
 	return _u
 }
 
 // SetNillableStatus sets the "status" field if the given value is not nil.
-func (_u *ProviderQuotaStatusUpdate) SetNillableStatus(v *string) *ProviderQuotaStatusUpdate {
+func (_u *ProviderQuotaStatusUpdate) SetNillableStatus(v *providerquotastatus.Status) *ProviderQuotaStatusUpdate {
 	if v != nil {
 		_u.SetStatus(*v)
 	}
@@ -52,6 +52,40 @@ func (_u *ProviderQuotaStatusUpdate) SetNillableStatus(v *string) *ProviderQuota
 // SetQuotaData sets the "quota_data" field.
 func (_u *ProviderQuotaStatusUpdate) SetQuotaData(v map[string]interface{}) *ProviderQuotaStatusUpdate {
 	_u.mutation.SetQuotaData(v)
+	return _u
+}
+
+// SetNextResetAt sets the "next_reset_at" field.
+func (_u *ProviderQuotaStatusUpdate) SetNextResetAt(v time.Time) *ProviderQuotaStatusUpdate {
+	_u.mutation.SetNextResetAt(v)
+	return _u
+}
+
+// SetNillableNextResetAt sets the "next_reset_at" field if the given value is not nil.
+func (_u *ProviderQuotaStatusUpdate) SetNillableNextResetAt(v *time.Time) *ProviderQuotaStatusUpdate {
+	if v != nil {
+		_u.SetNextResetAt(*v)
+	}
+	return _u
+}
+
+// ClearNextResetAt clears the value of the "next_reset_at" field.
+func (_u *ProviderQuotaStatusUpdate) ClearNextResetAt() *ProviderQuotaStatusUpdate {
+	_u.mutation.ClearNextResetAt()
+	return _u
+}
+
+// SetReady sets the "ready" field.
+func (_u *ProviderQuotaStatusUpdate) SetReady(v bool) *ProviderQuotaStatusUpdate {
+	_u.mutation.SetReady(v)
+	return _u
+}
+
+// SetNillableReady sets the "ready" field if the given value is not nil.
+func (_u *ProviderQuotaStatusUpdate) SetNillableReady(v *bool) *ProviderQuotaStatusUpdate {
+	if v != nil {
+		_u.SetReady(*v)
+	}
 	return _u
 }
 
@@ -112,6 +146,11 @@ func (_u *ProviderQuotaStatusUpdate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *ProviderQuotaStatusUpdate) check() error {
+	if v, ok := _u.mutation.Status(); ok {
+		if err := providerquotastatus.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "ProviderQuotaStatus.status": %w`, err)}
+		}
+	}
 	if _u.mutation.ChannelCleared() && len(_u.mutation.ChannelIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "ProviderQuotaStatus.channel"`)
 	}
@@ -140,10 +179,19 @@ func (_u *ProviderQuotaStatusUpdate) sqlSave(ctx context.Context) (_node int, er
 		_spec.SetField(providerquotastatus.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if value, ok := _u.mutation.Status(); ok {
-		_spec.SetField(providerquotastatus.FieldStatus, field.TypeString, value)
+		_spec.SetField(providerquotastatus.FieldStatus, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.QuotaData(); ok {
 		_spec.SetField(providerquotastatus.FieldQuotaData, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.NextResetAt(); ok {
+		_spec.SetField(providerquotastatus.FieldNextResetAt, field.TypeTime, value)
+	}
+	if _u.mutation.NextResetAtCleared() {
+		_spec.ClearField(providerquotastatus.FieldNextResetAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.Ready(); ok {
+		_spec.SetField(providerquotastatus.FieldReady, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.NextCheckAt(); ok {
 		_spec.SetField(providerquotastatus.FieldNextCheckAt, field.TypeTime, value)
@@ -177,13 +225,13 @@ func (_u *ProviderQuotaStatusUpdateOne) SetUpdatedAt(v time.Time) *ProviderQuota
 }
 
 // SetStatus sets the "status" field.
-func (_u *ProviderQuotaStatusUpdateOne) SetStatus(v string) *ProviderQuotaStatusUpdateOne {
+func (_u *ProviderQuotaStatusUpdateOne) SetStatus(v providerquotastatus.Status) *ProviderQuotaStatusUpdateOne {
 	_u.mutation.SetStatus(v)
 	return _u
 }
 
 // SetNillableStatus sets the "status" field if the given value is not nil.
-func (_u *ProviderQuotaStatusUpdateOne) SetNillableStatus(v *string) *ProviderQuotaStatusUpdateOne {
+func (_u *ProviderQuotaStatusUpdateOne) SetNillableStatus(v *providerquotastatus.Status) *ProviderQuotaStatusUpdateOne {
 	if v != nil {
 		_u.SetStatus(*v)
 	}
@@ -193,6 +241,40 @@ func (_u *ProviderQuotaStatusUpdateOne) SetNillableStatus(v *string) *ProviderQu
 // SetQuotaData sets the "quota_data" field.
 func (_u *ProviderQuotaStatusUpdateOne) SetQuotaData(v map[string]interface{}) *ProviderQuotaStatusUpdateOne {
 	_u.mutation.SetQuotaData(v)
+	return _u
+}
+
+// SetNextResetAt sets the "next_reset_at" field.
+func (_u *ProviderQuotaStatusUpdateOne) SetNextResetAt(v time.Time) *ProviderQuotaStatusUpdateOne {
+	_u.mutation.SetNextResetAt(v)
+	return _u
+}
+
+// SetNillableNextResetAt sets the "next_reset_at" field if the given value is not nil.
+func (_u *ProviderQuotaStatusUpdateOne) SetNillableNextResetAt(v *time.Time) *ProviderQuotaStatusUpdateOne {
+	if v != nil {
+		_u.SetNextResetAt(*v)
+	}
+	return _u
+}
+
+// ClearNextResetAt clears the value of the "next_reset_at" field.
+func (_u *ProviderQuotaStatusUpdateOne) ClearNextResetAt() *ProviderQuotaStatusUpdateOne {
+	_u.mutation.ClearNextResetAt()
+	return _u
+}
+
+// SetReady sets the "ready" field.
+func (_u *ProviderQuotaStatusUpdateOne) SetReady(v bool) *ProviderQuotaStatusUpdateOne {
+	_u.mutation.SetReady(v)
+	return _u
+}
+
+// SetNillableReady sets the "ready" field if the given value is not nil.
+func (_u *ProviderQuotaStatusUpdateOne) SetNillableReady(v *bool) *ProviderQuotaStatusUpdateOne {
+	if v != nil {
+		_u.SetReady(*v)
+	}
 	return _u
 }
 
@@ -266,6 +348,11 @@ func (_u *ProviderQuotaStatusUpdateOne) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *ProviderQuotaStatusUpdateOne) check() error {
+	if v, ok := _u.mutation.Status(); ok {
+		if err := providerquotastatus.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "ProviderQuotaStatus.status": %w`, err)}
+		}
+	}
 	if _u.mutation.ChannelCleared() && len(_u.mutation.ChannelIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "ProviderQuotaStatus.channel"`)
 	}
@@ -311,10 +398,19 @@ func (_u *ProviderQuotaStatusUpdateOne) sqlSave(ctx context.Context) (_node *Pro
 		_spec.SetField(providerquotastatus.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if value, ok := _u.mutation.Status(); ok {
-		_spec.SetField(providerquotastatus.FieldStatus, field.TypeString, value)
+		_spec.SetField(providerquotastatus.FieldStatus, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.QuotaData(); ok {
 		_spec.SetField(providerquotastatus.FieldQuotaData, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.NextResetAt(); ok {
+		_spec.SetField(providerquotastatus.FieldNextResetAt, field.TypeTime, value)
+	}
+	if _u.mutation.NextResetAtCleared() {
+		_spec.ClearField(providerquotastatus.FieldNextResetAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.Ready(); ok {
+		_spec.SetField(providerquotastatus.FieldReady, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.NextCheckAt(); ok {
 		_spec.SetField(providerquotastatus.FieldNextCheckAt, field.TypeTime, value)

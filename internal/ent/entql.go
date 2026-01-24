@@ -312,8 +312,10 @@ var schemaGraph = func() *sqlgraph.Schema {
 			providerquotastatus.FieldUpdatedAt:    {Type: field.TypeTime, Column: providerquotastatus.FieldUpdatedAt},
 			providerquotastatus.FieldChannelID:    {Type: field.TypeInt, Column: providerquotastatus.FieldChannelID},
 			providerquotastatus.FieldProviderType: {Type: field.TypeEnum, Column: providerquotastatus.FieldProviderType},
-			providerquotastatus.FieldStatus:       {Type: field.TypeString, Column: providerquotastatus.FieldStatus},
+			providerquotastatus.FieldStatus:       {Type: field.TypeEnum, Column: providerquotastatus.FieldStatus},
 			providerquotastatus.FieldQuotaData:    {Type: field.TypeJSON, Column: providerquotastatus.FieldQuotaData},
+			providerquotastatus.FieldNextResetAt:  {Type: field.TypeTime, Column: providerquotastatus.FieldNextResetAt},
+			providerquotastatus.FieldReady:        {Type: field.TypeBool, Column: providerquotastatus.FieldReady},
 			providerquotastatus.FieldNextCheckAt:  {Type: field.TypeTime, Column: providerquotastatus.FieldNextCheckAt},
 		},
 	}
@@ -2771,6 +2773,16 @@ func (f *ProviderQuotaStatusFilter) WhereStatus(p entql.StringP) {
 // WhereQuotaData applies the entql json.RawMessage predicate on the quota_data field.
 func (f *ProviderQuotaStatusFilter) WhereQuotaData(p entql.BytesP) {
 	f.Where(p.Field(providerquotastatus.FieldQuotaData))
+}
+
+// WhereNextResetAt applies the entql time.Time predicate on the next_reset_at field.
+func (f *ProviderQuotaStatusFilter) WhereNextResetAt(p entql.TimeP) {
+	f.Where(p.Field(providerquotastatus.FieldNextResetAt))
+}
+
+// WhereReady applies the entql bool predicate on the ready field.
+func (f *ProviderQuotaStatusFilter) WhereReady(p entql.BoolP) {
+	f.Where(p.Field(providerquotastatus.FieldReady))
 }
 
 // WhereNextCheckAt applies the entql time.Time predicate on the next_check_at field.

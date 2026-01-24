@@ -27,10 +27,14 @@ type ProviderQuotaStatus struct {
 	ChannelID int `json:"channel_id,omitempty"`
 	// ProviderType holds the value of the "provider_type" field.
 	ProviderType providerquotastatus.ProviderType `json:"provider_type,omitempty"`
-	// Overall status: ok, throttled, overage, error
-	Status string `json:"status,omitempty"`
+	// Overall status: available, warning, exhausted, unknown
+	Status providerquotastatus.Status `json:"status,omitempty"`
 	// Provider-specific quota data
 	QuotaData map[string]interface{} `json:"quota_data,omitempty"`
+	// Timestamp for next quota reset (primary window)
+	NextResetAt *time.Time `json:"next_reset_at,omitempty"`
+	// True if status is available or warning
+	Ready bool `json:"ready,omitempty"`
 	// Timestamp for next scheduled quota check
 	NextCheckAt time.Time `json:"next_check_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -68,11 +72,13 @@ func (*ProviderQuotaStatus) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case providerquotastatus.FieldQuotaData:
 			values[i] = new([]byte)
+		case providerquotastatus.FieldReady:
+			values[i] = new(sql.NullBool)
 		case providerquotastatus.FieldID, providerquotastatus.FieldChannelID:
 			values[i] = new(sql.NullInt64)
 		case providerquotastatus.FieldProviderType, providerquotastatus.FieldStatus:
 			values[i] = new(sql.NullString)
-		case providerquotastatus.FieldCreatedAt, providerquotastatus.FieldUpdatedAt, providerquotastatus.FieldNextCheckAt:
+		case providerquotastatus.FieldCreatedAt, providerquotastatus.FieldUpdatedAt, providerquotastatus.FieldNextResetAt, providerquotastatus.FieldNextCheckAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -123,7 +129,7 @@ func (_m *ProviderQuotaStatus) assignValues(columns []string, values []any) erro
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field status", values[i])
 			} else if value.Valid {
-				_m.Status = value.String
+				_m.Status = providerquotastatus.Status(value.String)
 			}
 		case providerquotastatus.FieldQuotaData:
 			if value, ok := values[i].(*[]byte); !ok {
@@ -132,6 +138,19 @@ func (_m *ProviderQuotaStatus) assignValues(columns []string, values []any) erro
 				if err := json.Unmarshal(*value, &_m.QuotaData); err != nil {
 					return fmt.Errorf("unmarshal field quota_data: %w", err)
 				}
+			}
+		case providerquotastatus.FieldNextResetAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field next_reset_at", values[i])
+			} else if value.Valid {
+				_m.NextResetAt = new(time.Time)
+				*_m.NextResetAt = value.Time
+			}
+		case providerquotastatus.FieldReady:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field ready", values[i])
+			} else if value.Valid {
+				_m.Ready = value.Bool
 			}
 		case providerquotastatus.FieldNextCheckAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -193,10 +212,18 @@ func (_m *ProviderQuotaStatus) String() string {
 	builder.WriteString(fmt.Sprintf("%v", _m.ProviderType))
 	builder.WriteString(", ")
 	builder.WriteString("status=")
-	builder.WriteString(_m.Status)
+	builder.WriteString(fmt.Sprintf("%v", _m.Status))
 	builder.WriteString(", ")
 	builder.WriteString("quota_data=")
 	builder.WriteString(fmt.Sprintf("%v", _m.QuotaData))
+	builder.WriteString(", ")
+	if v := _m.NextResetAt; v != nil {
+		builder.WriteString("next_reset_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	builder.WriteString(", ")
+	builder.WriteString("ready=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Ready))
 	builder.WriteString(", ")
 	builder.WriteString("next_check_at=")
 	builder.WriteString(_m.NextCheckAt.Format(time.ANSIC))

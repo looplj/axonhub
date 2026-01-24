@@ -3,6 +3,7 @@ package provider_quota
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/looplj/axonhub/internal/ent"
 )
@@ -27,7 +28,9 @@ type QuotaChecker interface {
 
 // QuotaData is the unified quota data structure
 type QuotaData struct {
-	Status       string                 `json:"status"`
+	Status       string                 `json:"status"` // available, warning, exhausted, unknown
 	ProviderType string                 `json:"provider_type"`
 	RawData      map[string]interface{} `json:"raw_data"`
+	NextResetAt  *time.Time             `json:"next_reset_at"` // Next quota reset timestamp
+	Ready        bool                   `json:"ready"`         // True if status is available or warning
 }

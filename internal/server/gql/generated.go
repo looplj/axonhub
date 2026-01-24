@@ -663,6 +663,7 @@ type ComplexityRoot struct {
 		BulkEnablePrompts                    func(childComplexity int, ids []*objects.GUID) int
 		BulkImportChannels                   func(childComplexity int, input BulkImportChannelsInput) int
 		BulkUpdateChannelOrdering            func(childComplexity int, input BulkUpdateChannelOrderingInput) int
+		CheckProviderQuotas                  func(childComplexity int) int
 		CompleteOnboarding                   func(childComplexity int, input CompleteOnboardingInput) int
 		CompleteSystemModelSettingOnboarding func(childComplexity int, input CompleteSystemModelSettingOnboardingInput) int
 		CreateAPIKey                         func(childComplexity int, input ent.CreateAPIKeyInput) int
@@ -829,8 +830,10 @@ type ComplexityRoot struct {
 		CreatedAt    func(childComplexity int) int
 		ID           func(childComplexity int) int
 		NextCheckAt  func(childComplexity int) int
+		NextResetAt  func(childComplexity int) int
 		ProviderType func(childComplexity int) int
 		QuotaData    func(childComplexity int) int
+		Ready        func(childComplexity int) int
 		Status       func(childComplexity int) int
 		UpdatedAt    func(childComplexity int) int
 	}
@@ -1531,6 +1534,7 @@ type MutationResolver interface {
 	CompleteSystemModelSettingOnboarding(ctx context.Context, input CompleteSystemModelSettingOnboardingInput) (bool, error)
 	UpdateSystemChannelSettings(ctx context.Context, input biz.SystemChannelSettings) (bool, error)
 	UpdateSystemGeneralSettings(ctx context.Context, input biz.SystemGeneralSettings) (bool, error)
+	CheckProviderQuotas(ctx context.Context) (bool, error)
 	CreateModel(ctx context.Context, input ent.CreateModelInput) (*ent.Model, error)
 	BulkCreateModels(ctx context.Context, inputs []*ent.CreateModelInput) ([]*ent.Model, error)
 	UpdateModel(ctx context.Context, id objects.GUID, input ent.UpdateModelInput) (*ent.Model, error)
@@ -3993,6 +3997,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.BulkUpdateChannelOrdering(childComplexity, args["input"].(BulkUpdateChannelOrderingInput)), true
+	case "Mutation.checkProviderQuotas":
+		if e.complexity.Mutation.CheckProviderQuotas == nil {
+			break
+		}
+
+		return e.complexity.Mutation.CheckProviderQuotas(childComplexity), true
 	case "Mutation.completeOnboarding":
 		if e.complexity.Mutation.CompleteOnboarding == nil {
 			break
@@ -4970,6 +4980,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ProviderQuotaStatus.NextCheckAt(childComplexity), true
+	case "ProviderQuotaStatus.nextResetAt":
+		if e.complexity.ProviderQuotaStatus.NextResetAt == nil {
+			break
+		}
+
+		return e.complexity.ProviderQuotaStatus.NextResetAt(childComplexity), true
 	case "ProviderQuotaStatus.providerType":
 		if e.complexity.ProviderQuotaStatus.ProviderType == nil {
 			break
@@ -4982,6 +4998,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ProviderQuotaStatus.QuotaData(childComplexity), true
+	case "ProviderQuotaStatus.ready":
+		if e.complexity.ProviderQuotaStatus.Ready == nil {
+			break
+		}
+
+		return e.complexity.ProviderQuotaStatus.Ready(childComplexity), true
 	case "ProviderQuotaStatus.status":
 		if e.complexity.ProviderQuotaStatus.Status == nil {
 			break
@@ -13139,6 +13161,10 @@ func (ec *executionContext) fieldContext_Channel_providerQuotaStatus(_ context.C
 				return ec.fieldContext_ProviderQuotaStatus_status(ctx, field)
 			case "quotaData":
 				return ec.fieldContext_ProviderQuotaStatus_quotaData(ctx, field)
+			case "nextResetAt":
+				return ec.fieldContext_ProviderQuotaStatus_nextResetAt(ctx, field)
+			case "ready":
+				return ec.fieldContext_ProviderQuotaStatus_ready(ctx, field)
 			case "nextCheckAt":
 				return ec.fieldContext_ProviderQuotaStatus_nextCheckAt(ctx, field)
 			case "channel":
@@ -23701,6 +23727,35 @@ func (ec *executionContext) fieldContext_Mutation_updateSystemGeneralSettings(ct
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_checkProviderQuotas(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_checkProviderQuotas,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Mutation().CheckProviderQuotas(ctx)
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_checkProviderQuotas(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_createModel(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -27022,7 +27077,7 @@ func (ec *executionContext) _ProviderQuotaStatus_status(ctx context.Context, fie
 			return obj.Status, nil
 		},
 		nil,
-		ec.marshalNString2string,
+		ec.marshalNProviderQuotaStatusStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋproviderquotastatusᚐStatus,
 		true,
 		true,
 	)
@@ -27035,7 +27090,7 @@ func (ec *executionContext) fieldContext_ProviderQuotaStatus_status(_ context.Co
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type ProviderQuotaStatusStatus does not have child fields")
 		},
 	}
 	return fc, nil
@@ -27065,6 +27120,64 @@ func (ec *executionContext) fieldContext_ProviderQuotaStatus_quotaData(_ context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Map does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProviderQuotaStatus_nextResetAt(ctx context.Context, field graphql.CollectedField, obj *ent.ProviderQuotaStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProviderQuotaStatus_nextResetAt,
+		func(ctx context.Context) (any, error) {
+			return obj.NextResetAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProviderQuotaStatus_nextResetAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProviderQuotaStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProviderQuotaStatus_ready(ctx context.Context, field graphql.CollectedField, obj *ent.ProviderQuotaStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProviderQuotaStatus_ready,
+		func(ctx context.Context) (any, error) {
+			return obj.Ready, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProviderQuotaStatus_ready(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProviderQuotaStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -53948,7 +54061,7 @@ func (ec *executionContext) unmarshalInputProviderQuotaStatusWhereInput(ctx cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "providerType", "providerTypeNEQ", "providerTypeIn", "providerTypeNotIn", "status", "statusNEQ", "statusIn", "statusNotIn", "statusGT", "statusGTE", "statusLT", "statusLTE", "statusContains", "statusHasPrefix", "statusHasSuffix", "statusEqualFold", "statusContainsFold", "nextCheckAt", "nextCheckAtNEQ", "nextCheckAtIn", "nextCheckAtNotIn", "nextCheckAtGT", "nextCheckAtGTE", "nextCheckAtLT", "nextCheckAtLTE", "hasChannel", "hasChannelWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "providerType", "providerTypeNEQ", "providerTypeIn", "providerTypeNotIn", "status", "statusNEQ", "statusIn", "statusNotIn", "nextResetAt", "nextResetAtNEQ", "nextResetAtIn", "nextResetAtNotIn", "nextResetAtGT", "nextResetAtGTE", "nextResetAtLT", "nextResetAtLTE", "nextResetAtIsNil", "nextResetAtNotNil", "ready", "readyNEQ", "nextCheckAt", "nextCheckAtNEQ", "nextCheckAtIn", "nextCheckAtNotIn", "nextCheckAtGT", "nextCheckAtGTE", "nextCheckAtLT", "nextCheckAtLTE", "hasChannel", "hasChannelWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -54250,95 +54363,116 @@ func (ec *executionContext) unmarshalInputProviderQuotaStatusWhereInput(ctx cont
 			it.ProviderTypeNotIn = data
 		case "status":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalOProviderQuotaStatusStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋproviderquotastatusᚐStatus(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Status = data
 		case "statusNEQ":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusNEQ"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalOProviderQuotaStatusStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋproviderquotastatusᚐStatus(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.StatusNEQ = data
 		case "statusIn":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			data, err := ec.unmarshalOProviderQuotaStatusStatus2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋproviderquotastatusᚐStatusᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.StatusIn = data
 		case "statusNotIn":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusNotIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			data, err := ec.unmarshalOProviderQuotaStatusStatus2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋproviderquotastatusᚐStatusᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.StatusNotIn = data
-		case "statusGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusGT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+		case "nextResetAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nextResetAt"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.StatusGT = data
-		case "statusGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusGTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			it.NextResetAt = data
+		case "nextResetAtNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nextResetAtNEQ"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.StatusGTE = data
-		case "statusLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusLT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			it.NextResetAtNEQ = data
+		case "nextResetAtIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nextResetAtIn"))
+			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.StatusLT = data
-		case "statusLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusLTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			it.NextResetAtIn = data
+		case "nextResetAtNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nextResetAtNotIn"))
+			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.StatusLTE = data
-		case "statusContains":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusContains"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			it.NextResetAtNotIn = data
+		case "nextResetAtGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nextResetAtGT"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.StatusContains = data
-		case "statusHasPrefix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusHasPrefix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			it.NextResetAtGT = data
+		case "nextResetAtGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nextResetAtGTE"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.StatusHasPrefix = data
-		case "statusHasSuffix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusHasSuffix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			it.NextResetAtGTE = data
+		case "nextResetAtLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nextResetAtLT"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.StatusHasSuffix = data
-		case "statusEqualFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusEqualFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			it.NextResetAtLT = data
+		case "nextResetAtLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nextResetAtLTE"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.StatusEqualFold = data
-		case "statusContainsFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusContainsFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			it.NextResetAtLTE = data
+		case "nextResetAtIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nextResetAtIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.StatusContainsFold = data
+			it.NextResetAtIsNil = data
+		case "nextResetAtNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nextResetAtNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NextResetAtNotNil = data
+		case "ready":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ready"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Ready = data
+		case "readyNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("readyNEQ"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReadyNEQ = data
 		case "nextCheckAt":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nextCheckAt"))
 			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
@@ -69882,6 +70016,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "checkProviderQuotas":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_checkProviderQuotas(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "createModel":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createModel(ctx, field)
@@ -71315,6 +71456,13 @@ func (ec *executionContext) _ProviderQuotaStatus(ctx context.Context, sel ast.Se
 			}
 		case "quotaData":
 			out.Values[i] = ec._ProviderQuotaStatus_quotaData(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "nextResetAt":
+			out.Values[i] = ec._ProviderQuotaStatus_nextResetAt(ctx, field, obj)
+		case "ready":
+			out.Values[i] = ec._ProviderQuotaStatus_ready(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
@@ -81367,6 +81515,16 @@ func (ec *executionContext) marshalNProviderQuotaStatusProviderType2githubᚗcom
 	return v
 }
 
+func (ec *executionContext) unmarshalNProviderQuotaStatusStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋproviderquotastatusᚐStatus(ctx context.Context, v any) (providerquotastatus.Status, error) {
+	var res providerquotastatus.Status
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNProviderQuotaStatusStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋproviderquotastatusᚐStatus(ctx context.Context, sel ast.SelectionSet, v providerquotastatus.Status) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) unmarshalNProviderQuotaStatusWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐProviderQuotaStatusWhereInput(ctx context.Context, v any) (*ent.ProviderQuotaStatusWhereInput, error) {
 	res, err := ec.unmarshalInputProviderQuotaStatusWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
@@ -86266,6 +86424,87 @@ func (ec *executionContext) unmarshalOProviderQuotaStatusProviderType2ᚖgithub�
 }
 
 func (ec *executionContext) marshalOProviderQuotaStatusProviderType2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋproviderquotastatusᚐProviderType(ctx context.Context, sel ast.SelectionSet, v *providerquotastatus.ProviderType) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
+func (ec *executionContext) unmarshalOProviderQuotaStatusStatus2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋproviderquotastatusᚐStatusᚄ(ctx context.Context, v any) ([]providerquotastatus.Status, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]providerquotastatus.Status, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNProviderQuotaStatusStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋproviderquotastatusᚐStatus(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOProviderQuotaStatusStatus2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋproviderquotastatusᚐStatusᚄ(ctx context.Context, sel ast.SelectionSet, v []providerquotastatus.Status) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNProviderQuotaStatusStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋproviderquotastatusᚐStatus(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOProviderQuotaStatusStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋproviderquotastatusᚐStatus(ctx context.Context, v any) (*providerquotastatus.Status, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(providerquotastatus.Status)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOProviderQuotaStatusStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋproviderquotastatusᚐStatus(ctx context.Context, sel ast.SelectionSet, v *providerquotastatus.Status) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}

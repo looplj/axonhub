@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/llm/oauth"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 )
 
@@ -26,24 +28,28 @@ func (c *CodexQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (ht
 	if ch.Credentials == nil {
 		return nil, nil, fmt.Errorf("channel has no credentials")
 	}
-	if ch.Credentials.OAuth == nil {
-		return nil, nil, fmt.Errorf("channel credentials missing OAuth")
+
+	// Parse OAuth credentials from apiKey JSON
+	var accessToken string
+	if ch.Credentials.OAuth != nil {
+		accessToken = ch.Credentials.OAuth.AccessToken
+	} else if strings.TrimSpace(ch.Credentials.APIKey) != "" {
+		creds, err := oauth.ParseCredentialsJSON(ch.Credentials.APIKey)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to parse OAuth credentials: %w", err)
+		}
+		accessToken = creds.AccessToken
 	}
 
-	oauth := ch.Credentials.OAuth
-
-	// Check for required OAuth fields
-	if oauth.AccessToken == "" {
+	if accessToken == "" {
 		return nil, nil, fmt.Errorf("OAuth missing access_token")
 	}
-	if oauth.IDToken == "" {
-		return nil, nil, fmt.Errorf("OAuth missing id_token")
-	}
 
-	// Extract chatgpt_account_id from id_token JWT
-	accountID := codex.ExtractChatGPTAccountIDFromJWT(oauth.IDToken)
+	// Extract chatgpt_account_id from access_token JWT
+	// The access_token contains the account ID in the https://api.openai.com/auth claim
+	accountID := codex.ExtractChatGPTAccountIDFromJWT(accessToken)
 	if accountID == "" {
-		return nil, nil, fmt.Errorf("failed to extract account ID from id_token (invalid JWT format or missing claim)")
+		return nil, nil, fmt.Errorf("failed to extract account ID from access_token (invalid JWT format or missing claim)")
 	}
 
 	// Build request
@@ -52,7 +58,7 @@ func (c *CodexQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (ht
 		return nil, nil, err
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", oauth.AccessToken))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "codex_cli_rs/0.76.0 (Debian 13.0.0; x86_64) WindowsTerminal")
 	req.Header.Set("Chatgpt-Account-Id", accountID)

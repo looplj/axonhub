@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/oauth"
 )
 
 type ClaudeCodeQuotaChecker struct{}
@@ -21,16 +23,35 @@ func (c *ClaudeCodeQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel
 	if ch.Credentials == nil {
 		return nil, nil, fmt.Errorf("channel has no credentials")
 	}
-	if ch.Credentials.APIKey == "" {
-		return nil, nil, fmt.Errorf("channel credentials missing API key")
+
+	// Parse OAuth credentials from apiKey JSON
+	var accessToken string
+	if ch.Credentials.OAuth != nil {
+		accessToken = ch.Credentials.OAuth.AccessToken
+	} else if strings.TrimSpace(ch.Credentials.APIKey) != "" {
+		creds, err := oauth.ParseCredentialsJSON(ch.Credentials.APIKey)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to parse OAuth credentials: %w", err)
+		}
+		accessToken = creds.AccessToken
 	}
 
-	// Build HTTP request directly
+	if accessToken == "" {
+		return nil, nil, fmt.Errorf("channel credentials missing access token")
+	}
+
+	// Build HTTP request using Bearer auth like ClaudeCode transformers
 	httpRequest := httpclient.NewRequestBuilder().
 		WithMethod("POST").
 		WithURL(getEndpointURL(ch.BaseURL)).
-		WithHeader("x-api-key", ch.Credentials.APIKey).
+		WithAuth(&httpclient.AuthConfig{
+			Type:   httpclient.AuthTypeBearer,
+			APIKey: accessToken,
+		}).
+		WithHeader("anthropic-beta", "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14").
 		WithHeader("anthropic-version", "2023-06-01").
+		WithHeader("anthropic-dangerous-direct-browser-access", "true").
+		WithHeader("x-app", "cli").
 		WithHeader("content-type", "application/json").
 		WithBody(map[string]interface{}{
 			"model": "claude-haiku-4-5",
@@ -69,7 +90,21 @@ func getEndpointURL(baseURL string) string {
 	if baseURL == "" {
 		return "https://api.anthropic.com/v1/messages"
 	}
-	// Ensure it ends with the messages endpoint
+	// If baseURL already ends with /v1 or /v1/, append /messages
+	isV1 := false
+	if len(baseURL) > 3 && baseURL[len(baseURL)-3:] == "/v1" {
+		isV1 = true
+	} else if len(baseURL) > 4 && baseURL[len(baseURL)-4:] == "/v1/" {
+		isV1 = true
+	}
+
+	if isV1 {
+		if baseURL[len(baseURL)-1] != '/' {
+			return baseURL + "/messages"
+		}
+		return baseURL + "messages"
+	}
+	// Otherwise append /v1/messages
 	if len(baseURL) > 0 && baseURL[len(baseURL)-1] != '/' {
 		return baseURL + "/v1/messages"
 	}

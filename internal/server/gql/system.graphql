@@ -171,6 +171,7 @@ extend type Mutation {
   completeSystemModelSettingOnboarding(input: CompleteSystemModelSettingOnboardingInput!): Boolean!
   updateSystemChannelSettings(input: UpdateSystemChannelSettingsInput!): Boolean!
   updateSystemGeneralSettings(input: UpdateSystemGeneralSettingsInput!): Boolean!
+  checkProviderQuotas: Boolean!
 }
 
 type SystemVersion {

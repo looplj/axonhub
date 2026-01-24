@@ -5600,19 +5600,26 @@ type ProviderQuotaStatusWhereInput struct {
 	ProviderTypeNotIn []providerquotastatus.ProviderType `json:"providerTypeNotIn,omitempty"`
 
 	// "status" field predicates.
-	Status             *string  `json:"status,omitempty"`
-	StatusNEQ          *string  `json:"statusNEQ,omitempty"`
-	StatusIn           []string `json:"statusIn,omitempty"`
-	StatusNotIn        []string `json:"statusNotIn,omitempty"`
-	StatusGT           *string  `json:"statusGT,omitempty"`
-	StatusGTE          *string  `json:"statusGTE,omitempty"`
-	StatusLT           *string  `json:"statusLT,omitempty"`
-	StatusLTE          *string  `json:"statusLTE,omitempty"`
-	StatusContains     *string  `json:"statusContains,omitempty"`
-	StatusHasPrefix    *string  `json:"statusHasPrefix,omitempty"`
-	StatusHasSuffix    *string  `json:"statusHasSuffix,omitempty"`
-	StatusEqualFold    *string  `json:"statusEqualFold,omitempty"`
-	StatusContainsFold *string  `json:"statusContainsFold,omitempty"`
+	Status      *providerquotastatus.Status  `json:"status,omitempty"`
+	StatusNEQ   *providerquotastatus.Status  `json:"statusNEQ,omitempty"`
+	StatusIn    []providerquotastatus.Status `json:"statusIn,omitempty"`
+	StatusNotIn []providerquotastatus.Status `json:"statusNotIn,omitempty"`
+
+	// "next_reset_at" field predicates.
+	NextResetAt       *time.Time  `json:"nextResetAt,omitempty"`
+	NextResetAtNEQ    *time.Time  `json:"nextResetAtNEQ,omitempty"`
+	NextResetAtIn     []time.Time `json:"nextResetAtIn,omitempty"`
+	NextResetAtNotIn  []time.Time `json:"nextResetAtNotIn,omitempty"`
+	NextResetAtGT     *time.Time  `json:"nextResetAtGT,omitempty"`
+	NextResetAtGTE    *time.Time  `json:"nextResetAtGTE,omitempty"`
+	NextResetAtLT     *time.Time  `json:"nextResetAtLT,omitempty"`
+	NextResetAtLTE    *time.Time  `json:"nextResetAtLTE,omitempty"`
+	NextResetAtIsNil  bool        `json:"nextResetAtIsNil,omitempty"`
+	NextResetAtNotNil bool        `json:"nextResetAtNotNil,omitempty"`
+
+	// "ready" field predicates.
+	Ready    *bool `json:"ready,omitempty"`
+	ReadyNEQ *bool `json:"readyNEQ,omitempty"`
 
 	// "next_check_at" field predicates.
 	NextCheckAt      *time.Time  `json:"nextCheckAt,omitempty"`
@@ -5808,32 +5815,41 @@ func (i *ProviderQuotaStatusWhereInput) P() (predicate.ProviderQuotaStatus, erro
 	if len(i.StatusNotIn) > 0 {
 		predicates = append(predicates, providerquotastatus.StatusNotIn(i.StatusNotIn...))
 	}
-	if i.StatusGT != nil {
-		predicates = append(predicates, providerquotastatus.StatusGT(*i.StatusGT))
+	if i.NextResetAt != nil {
+		predicates = append(predicates, providerquotastatus.NextResetAtEQ(*i.NextResetAt))
 	}
-	if i.StatusGTE != nil {
-		predicates = append(predicates, providerquotastatus.StatusGTE(*i.StatusGTE))
+	if i.NextResetAtNEQ != nil {
+		predicates = append(predicates, providerquotastatus.NextResetAtNEQ(*i.NextResetAtNEQ))
 	}
-	if i.StatusLT != nil {
-		predicates = append(predicates, providerquotastatus.StatusLT(*i.StatusLT))
+	if len(i.NextResetAtIn) > 0 {
+		predicates = append(predicates, providerquotastatus.NextResetAtIn(i.NextResetAtIn...))
 	}
-	if i.StatusLTE != nil {
-		predicates = append(predicates, providerquotastatus.StatusLTE(*i.StatusLTE))
+	if len(i.NextResetAtNotIn) > 0 {
+		predicates = append(predicates, providerquotastatus.NextResetAtNotIn(i.NextResetAtNotIn...))
 	}
-	if i.StatusContains != nil {
-		predicates = append(predicates, providerquotastatus.StatusContains(*i.StatusContains))
+	if i.NextResetAtGT != nil {
+		predicates = append(predicates, providerquotastatus.NextResetAtGT(*i.NextResetAtGT))
 	}
-	if i.StatusHasPrefix != nil {
-		predicates = append(predicates, providerquotastatus.StatusHasPrefix(*i.StatusHasPrefix))
+	if i.NextResetAtGTE != nil {
+		predicates = append(predicates, providerquotastatus.NextResetAtGTE(*i.NextResetAtGTE))
 	}
-	if i.StatusHasSuffix != nil {
-		predicates = append(predicates, providerquotastatus.StatusHasSuffix(*i.StatusHasSuffix))
+	if i.NextResetAtLT != nil {
+		predicates = append(predicates, providerquotastatus.NextResetAtLT(*i.NextResetAtLT))
 	}
-	if i.StatusEqualFold != nil {
-		predicates = append(predicates, providerquotastatus.StatusEqualFold(*i.StatusEqualFold))
+	if i.NextResetAtLTE != nil {
+		predicates = append(predicates, providerquotastatus.NextResetAtLTE(*i.NextResetAtLTE))
 	}
-	if i.StatusContainsFold != nil {
-		predicates = append(predicates, providerquotastatus.StatusContainsFold(*i.StatusContainsFold))
+	if i.NextResetAtIsNil {
+		predicates = append(predicates, providerquotastatus.NextResetAtIsNil())
+	}
+	if i.NextResetAtNotNil {
+		predicates = append(predicates, providerquotastatus.NextResetAtNotNil())
+	}
+	if i.Ready != nil {
+		predicates = append(predicates, providerquotastatus.ReadyEQ(*i.Ready))
+	}
+	if i.ReadyNEQ != nil {
+		predicates = append(predicates, providerquotastatus.ReadyNEQ(*i.ReadyNEQ))
 	}
 	if i.NextCheckAt != nil {
 		predicates = append(predicates, providerquotastatus.NextCheckAtEQ(*i.NextCheckAt))

@@ -64,7 +64,7 @@ func (_c *ProviderQuotaStatusCreate) SetProviderType(v providerquotastatus.Provi
 }
 
 // SetStatus sets the "status" field.
-func (_c *ProviderQuotaStatusCreate) SetStatus(v string) *ProviderQuotaStatusCreate {
+func (_c *ProviderQuotaStatusCreate) SetStatus(v providerquotastatus.Status) *ProviderQuotaStatusCreate {
 	_c.mutation.SetStatus(v)
 	return _c
 }
@@ -72,6 +72,34 @@ func (_c *ProviderQuotaStatusCreate) SetStatus(v string) *ProviderQuotaStatusCre
 // SetQuotaData sets the "quota_data" field.
 func (_c *ProviderQuotaStatusCreate) SetQuotaData(v map[string]interface{}) *ProviderQuotaStatusCreate {
 	_c.mutation.SetQuotaData(v)
+	return _c
+}
+
+// SetNextResetAt sets the "next_reset_at" field.
+func (_c *ProviderQuotaStatusCreate) SetNextResetAt(v time.Time) *ProviderQuotaStatusCreate {
+	_c.mutation.SetNextResetAt(v)
+	return _c
+}
+
+// SetNillableNextResetAt sets the "next_reset_at" field if the given value is not nil.
+func (_c *ProviderQuotaStatusCreate) SetNillableNextResetAt(v *time.Time) *ProviderQuotaStatusCreate {
+	if v != nil {
+		_c.SetNextResetAt(*v)
+	}
+	return _c
+}
+
+// SetReady sets the "ready" field.
+func (_c *ProviderQuotaStatusCreate) SetReady(v bool) *ProviderQuotaStatusCreate {
+	_c.mutation.SetReady(v)
+	return _c
+}
+
+// SetNillableReady sets the "ready" field if the given value is not nil.
+func (_c *ProviderQuotaStatusCreate) SetNillableReady(v *bool) *ProviderQuotaStatusCreate {
+	if v != nil {
+		_c.SetReady(*v)
+	}
 	return _c
 }
 
@@ -129,6 +157,10 @@ func (_c *ProviderQuotaStatusCreate) defaults() {
 		v := providerquotastatus.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
 	}
+	if _, ok := _c.mutation.Ready(); !ok {
+		v := providerquotastatus.DefaultReady
+		_c.mutation.SetReady(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -153,8 +185,16 @@ func (_c *ProviderQuotaStatusCreate) check() error {
 	if _, ok := _c.mutation.Status(); !ok {
 		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "ProviderQuotaStatus.status"`)}
 	}
+	if v, ok := _c.mutation.Status(); ok {
+		if err := providerquotastatus.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "ProviderQuotaStatus.status": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.QuotaData(); !ok {
 		return &ValidationError{Name: "quota_data", err: errors.New(`ent: missing required field "ProviderQuotaStatus.quota_data"`)}
+	}
+	if _, ok := _c.mutation.Ready(); !ok {
+		return &ValidationError{Name: "ready", err: errors.New(`ent: missing required field "ProviderQuotaStatus.ready"`)}
 	}
 	if _, ok := _c.mutation.NextCheckAt(); !ok {
 		return &ValidationError{Name: "next_check_at", err: errors.New(`ent: missing required field "ProviderQuotaStatus.next_check_at"`)}
@@ -202,12 +242,20 @@ func (_c *ProviderQuotaStatusCreate) createSpec() (*ProviderQuotaStatus, *sqlgra
 		_node.ProviderType = value
 	}
 	if value, ok := _c.mutation.Status(); ok {
-		_spec.SetField(providerquotastatus.FieldStatus, field.TypeString, value)
+		_spec.SetField(providerquotastatus.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
 	}
 	if value, ok := _c.mutation.QuotaData(); ok {
 		_spec.SetField(providerquotastatus.FieldQuotaData, field.TypeJSON, value)
 		_node.QuotaData = value
+	}
+	if value, ok := _c.mutation.NextResetAt(); ok {
+		_spec.SetField(providerquotastatus.FieldNextResetAt, field.TypeTime, value)
+		_node.NextResetAt = &value
+	}
+	if value, ok := _c.mutation.Ready(); ok {
+		_spec.SetField(providerquotastatus.FieldReady, field.TypeBool, value)
+		_node.Ready = value
 	}
 	if value, ok := _c.mutation.NextCheckAt(); ok {
 		_spec.SetField(providerquotastatus.FieldNextCheckAt, field.TypeTime, value)
@@ -295,7 +343,7 @@ func (u *ProviderQuotaStatusUpsert) UpdateUpdatedAt() *ProviderQuotaStatusUpsert
 }
 
 // SetStatus sets the "status" field.
-func (u *ProviderQuotaStatusUpsert) SetStatus(v string) *ProviderQuotaStatusUpsert {
+func (u *ProviderQuotaStatusUpsert) SetStatus(v providerquotastatus.Status) *ProviderQuotaStatusUpsert {
 	u.Set(providerquotastatus.FieldStatus, v)
 	return u
 }
@@ -315,6 +363,36 @@ func (u *ProviderQuotaStatusUpsert) SetQuotaData(v map[string]interface{}) *Prov
 // UpdateQuotaData sets the "quota_data" field to the value that was provided on create.
 func (u *ProviderQuotaStatusUpsert) UpdateQuotaData() *ProviderQuotaStatusUpsert {
 	u.SetExcluded(providerquotastatus.FieldQuotaData)
+	return u
+}
+
+// SetNextResetAt sets the "next_reset_at" field.
+func (u *ProviderQuotaStatusUpsert) SetNextResetAt(v time.Time) *ProviderQuotaStatusUpsert {
+	u.Set(providerquotastatus.FieldNextResetAt, v)
+	return u
+}
+
+// UpdateNextResetAt sets the "next_reset_at" field to the value that was provided on create.
+func (u *ProviderQuotaStatusUpsert) UpdateNextResetAt() *ProviderQuotaStatusUpsert {
+	u.SetExcluded(providerquotastatus.FieldNextResetAt)
+	return u
+}
+
+// ClearNextResetAt clears the value of the "next_reset_at" field.
+func (u *ProviderQuotaStatusUpsert) ClearNextResetAt() *ProviderQuotaStatusUpsert {
+	u.SetNull(providerquotastatus.FieldNextResetAt)
+	return u
+}
+
+// SetReady sets the "ready" field.
+func (u *ProviderQuotaStatusUpsert) SetReady(v bool) *ProviderQuotaStatusUpsert {
+	u.Set(providerquotastatus.FieldReady, v)
+	return u
+}
+
+// UpdateReady sets the "ready" field to the value that was provided on create.
+func (u *ProviderQuotaStatusUpsert) UpdateReady() *ProviderQuotaStatusUpsert {
+	u.SetExcluded(providerquotastatus.FieldReady)
 	return u
 }
 
@@ -396,7 +474,7 @@ func (u *ProviderQuotaStatusUpsertOne) UpdateUpdatedAt() *ProviderQuotaStatusUps
 }
 
 // SetStatus sets the "status" field.
-func (u *ProviderQuotaStatusUpsertOne) SetStatus(v string) *ProviderQuotaStatusUpsertOne {
+func (u *ProviderQuotaStatusUpsertOne) SetStatus(v providerquotastatus.Status) *ProviderQuotaStatusUpsertOne {
 	return u.Update(func(s *ProviderQuotaStatusUpsert) {
 		s.SetStatus(v)
 	})
@@ -420,6 +498,41 @@ func (u *ProviderQuotaStatusUpsertOne) SetQuotaData(v map[string]interface{}) *P
 func (u *ProviderQuotaStatusUpsertOne) UpdateQuotaData() *ProviderQuotaStatusUpsertOne {
 	return u.Update(func(s *ProviderQuotaStatusUpsert) {
 		s.UpdateQuotaData()
+	})
+}
+
+// SetNextResetAt sets the "next_reset_at" field.
+func (u *ProviderQuotaStatusUpsertOne) SetNextResetAt(v time.Time) *ProviderQuotaStatusUpsertOne {
+	return u.Update(func(s *ProviderQuotaStatusUpsert) {
+		s.SetNextResetAt(v)
+	})
+}
+
+// UpdateNextResetAt sets the "next_reset_at" field to the value that was provided on create.
+func (u *ProviderQuotaStatusUpsertOne) UpdateNextResetAt() *ProviderQuotaStatusUpsertOne {
+	return u.Update(func(s *ProviderQuotaStatusUpsert) {
+		s.UpdateNextResetAt()
+	})
+}
+
+// ClearNextResetAt clears the value of the "next_reset_at" field.
+func (u *ProviderQuotaStatusUpsertOne) ClearNextResetAt() *ProviderQuotaStatusUpsertOne {
+	return u.Update(func(s *ProviderQuotaStatusUpsert) {
+		s.ClearNextResetAt()
+	})
+}
+
+// SetReady sets the "ready" field.
+func (u *ProviderQuotaStatusUpsertOne) SetReady(v bool) *ProviderQuotaStatusUpsertOne {
+	return u.Update(func(s *ProviderQuotaStatusUpsert) {
+		s.SetReady(v)
+	})
+}
+
+// UpdateReady sets the "ready" field to the value that was provided on create.
+func (u *ProviderQuotaStatusUpsertOne) UpdateReady() *ProviderQuotaStatusUpsertOne {
+	return u.Update(func(s *ProviderQuotaStatusUpsert) {
+		s.UpdateReady()
 	})
 }
 
@@ -669,7 +782,7 @@ func (u *ProviderQuotaStatusUpsertBulk) UpdateUpdatedAt() *ProviderQuotaStatusUp
 }
 
 // SetStatus sets the "status" field.
-func (u *ProviderQuotaStatusUpsertBulk) SetStatus(v string) *ProviderQuotaStatusUpsertBulk {
+func (u *ProviderQuotaStatusUpsertBulk) SetStatus(v providerquotastatus.Status) *ProviderQuotaStatusUpsertBulk {
 	return u.Update(func(s *ProviderQuotaStatusUpsert) {
 		s.SetStatus(v)
 	})
@@ -693,6 +806,41 @@ func (u *ProviderQuotaStatusUpsertBulk) SetQuotaData(v map[string]interface{}) *
 func (u *ProviderQuotaStatusUpsertBulk) UpdateQuotaData() *ProviderQuotaStatusUpsertBulk {
 	return u.Update(func(s *ProviderQuotaStatusUpsert) {
 		s.UpdateQuotaData()
+	})
+}
+
+// SetNextResetAt sets the "next_reset_at" field.
+func (u *ProviderQuotaStatusUpsertBulk) SetNextResetAt(v time.Time) *ProviderQuotaStatusUpsertBulk {
+	return u.Update(func(s *ProviderQuotaStatusUpsert) {
+		s.SetNextResetAt(v)
+	})
+}
+
+// UpdateNextResetAt sets the "next_reset_at" field to the value that was provided on create.
+func (u *ProviderQuotaStatusUpsertBulk) UpdateNextResetAt() *ProviderQuotaStatusUpsertBulk {
+	return u.Update(func(s *ProviderQuotaStatusUpsert) {
+		s.UpdateNextResetAt()
+	})
+}
+
+// ClearNextResetAt clears the value of the "next_reset_at" field.
+func (u *ProviderQuotaStatusUpsertBulk) ClearNextResetAt() *ProviderQuotaStatusUpsertBulk {
+	return u.Update(func(s *ProviderQuotaStatusUpsert) {
+		s.ClearNextResetAt()
+	})
+}
+
+// SetReady sets the "ready" field.
+func (u *ProviderQuotaStatusUpsertBulk) SetReady(v bool) *ProviderQuotaStatusUpsertBulk {
+	return u.Update(func(s *ProviderQuotaStatusUpsert) {
+		s.SetReady(v)
+	})
+}
+
+// UpdateReady sets the "ready" field to the value that was provided on create.
+func (u *ProviderQuotaStatusUpsertBulk) UpdateReady() *ProviderQuotaStatusUpsertBulk {
+	return u.Update(func(s *ProviderQuotaStatusUpsert) {
+		s.UpdateReady()
 	})
 }
 

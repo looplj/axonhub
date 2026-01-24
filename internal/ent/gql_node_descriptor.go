@@ -1339,7 +1339,7 @@ func (_m *ProviderQuotaStatus) Node(ctx context.Context) (node *Node, err error)
 	node = &Node{
 		ID:     _m.ID,
 		Type:   "ProviderQuotaStatus",
-		Fields: make([]*Field, 7),
+		Fields: make([]*Field, 9),
 		Edges:  make([]*Edge, 1),
 	}
 	var buf []byte
@@ -1379,7 +1379,7 @@ func (_m *ProviderQuotaStatus) Node(ctx context.Context) (node *Node, err error)
 		return nil, err
 	}
 	node.Fields[4] = &Field{
-		Type:  "string",
+		Type:  "providerquotastatus.Status",
 		Name:  "status",
 		Value: string(buf),
 	}
@@ -1391,10 +1391,26 @@ func (_m *ProviderQuotaStatus) Node(ctx context.Context) (node *Node, err error)
 		Name:  "quota_data",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.NextCheckAt); err != nil {
+	if buf, err = json.Marshal(_m.NextResetAt); err != nil {
 		return nil, err
 	}
 	node.Fields[6] = &Field{
+		Type:  "time.Time",
+		Name:  "next_reset_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Ready); err != nil {
+		return nil, err
+	}
+	node.Fields[7] = &Field{
+		Type:  "bool",
+		Name:  "ready",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.NextCheckAt); err != nil {
+		return nil, err
+	}
+	node.Fields[8] = &Field{
 		Type:  "time.Time",
 		Name:  "next_check_at",
 		Value: string(buf),

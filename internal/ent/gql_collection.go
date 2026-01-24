@@ -3144,6 +3144,16 @@ func (_q *ProviderQuotaStatusQuery) collectField(ctx context.Context, oneNode bo
 				selectedFields = append(selectedFields, providerquotastatus.FieldQuotaData)
 				fieldSeen[providerquotastatus.FieldQuotaData] = struct{}{}
 			}
+		case "nextResetAt":
+			if _, ok := fieldSeen[providerquotastatus.FieldNextResetAt]; !ok {
+				selectedFields = append(selectedFields, providerquotastatus.FieldNextResetAt)
+				fieldSeen[providerquotastatus.FieldNextResetAt] = struct{}{}
+			}
+		case "ready":
+			if _, ok := fieldSeen[providerquotastatus.FieldReady]; !ok {
+				selectedFields = append(selectedFields, providerquotastatus.FieldReady)
+				fieldSeen[providerquotastatus.FieldReady] = struct{}{}
+			}
 		case "nextCheckAt":
 			if _, ok := fieldSeen[providerquotastatus.FieldNextCheckAt]; !ok {
 				selectedFields = append(selectedFields, providerquotastatus.FieldNextCheckAt)

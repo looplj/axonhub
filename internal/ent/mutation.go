@@ -12939,8 +12939,10 @@ type ProviderQuotaStatusMutation struct {
 	created_at     *time.Time
 	updated_at     *time.Time
 	provider_type  *providerquotastatus.ProviderType
-	status         *string
+	status         *providerquotastatus.Status
 	quota_data     *map[string]interface{}
+	next_reset_at  *time.Time
+	ready          *bool
 	next_check_at  *time.Time
 	clearedFields  map[string]struct{}
 	channel        *int
@@ -13193,12 +13195,12 @@ func (m *ProviderQuotaStatusMutation) ResetProviderType() {
 }
 
 // SetStatus sets the "status" field.
-func (m *ProviderQuotaStatusMutation) SetStatus(s string) {
-	m.status = &s
+func (m *ProviderQuotaStatusMutation) SetStatus(pr providerquotastatus.Status) {
+	m.status = &pr
 }
 
 // Status returns the value of the "status" field in the mutation.
-func (m *ProviderQuotaStatusMutation) Status() (r string, exists bool) {
+func (m *ProviderQuotaStatusMutation) Status() (r providerquotastatus.Status, exists bool) {
 	v := m.status
 	if v == nil {
 		return
@@ -13209,7 +13211,7 @@ func (m *ProviderQuotaStatusMutation) Status() (r string, exists bool) {
 // OldStatus returns the old "status" field's value of the ProviderQuotaStatus entity.
 // If the ProviderQuotaStatus object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ProviderQuotaStatusMutation) OldStatus(ctx context.Context) (v string, err error) {
+func (m *ProviderQuotaStatusMutation) OldStatus(ctx context.Context) (v providerquotastatus.Status, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
 	}
@@ -13262,6 +13264,91 @@ func (m *ProviderQuotaStatusMutation) OldQuotaData(ctx context.Context) (v map[s
 // ResetQuotaData resets all changes to the "quota_data" field.
 func (m *ProviderQuotaStatusMutation) ResetQuotaData() {
 	m.quota_data = nil
+}
+
+// SetNextResetAt sets the "next_reset_at" field.
+func (m *ProviderQuotaStatusMutation) SetNextResetAt(t time.Time) {
+	m.next_reset_at = &t
+}
+
+// NextResetAt returns the value of the "next_reset_at" field in the mutation.
+func (m *ProviderQuotaStatusMutation) NextResetAt() (r time.Time, exists bool) {
+	v := m.next_reset_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldNextResetAt returns the old "next_reset_at" field's value of the ProviderQuotaStatus entity.
+// If the ProviderQuotaStatus object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProviderQuotaStatusMutation) OldNextResetAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldNextResetAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldNextResetAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldNextResetAt: %w", err)
+	}
+	return oldValue.NextResetAt, nil
+}
+
+// ClearNextResetAt clears the value of the "next_reset_at" field.
+func (m *ProviderQuotaStatusMutation) ClearNextResetAt() {
+	m.next_reset_at = nil
+	m.clearedFields[providerquotastatus.FieldNextResetAt] = struct{}{}
+}
+
+// NextResetAtCleared returns if the "next_reset_at" field was cleared in this mutation.
+func (m *ProviderQuotaStatusMutation) NextResetAtCleared() bool {
+	_, ok := m.clearedFields[providerquotastatus.FieldNextResetAt]
+	return ok
+}
+
+// ResetNextResetAt resets all changes to the "next_reset_at" field.
+func (m *ProviderQuotaStatusMutation) ResetNextResetAt() {
+	m.next_reset_at = nil
+	delete(m.clearedFields, providerquotastatus.FieldNextResetAt)
+}
+
+// SetReady sets the "ready" field.
+func (m *ProviderQuotaStatusMutation) SetReady(b bool) {
+	m.ready = &b
+}
+
+// Ready returns the value of the "ready" field in the mutation.
+func (m *ProviderQuotaStatusMutation) Ready() (r bool, exists bool) {
+	v := m.ready
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldReady returns the old "ready" field's value of the ProviderQuotaStatus entity.
+// If the ProviderQuotaStatus object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProviderQuotaStatusMutation) OldReady(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldReady is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldReady requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldReady: %w", err)
+	}
+	return oldValue.Ready, nil
+}
+
+// ResetReady resets all changes to the "ready" field.
+func (m *ProviderQuotaStatusMutation) ResetReady() {
+	m.ready = nil
 }
 
 // SetNextCheckAt sets the "next_check_at" field.
@@ -13361,7 +13448,7 @@ func (m *ProviderQuotaStatusMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ProviderQuotaStatusMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 9)
 	if m.created_at != nil {
 		fields = append(fields, providerquotastatus.FieldCreatedAt)
 	}
@@ -13379,6 +13466,12 @@ func (m *ProviderQuotaStatusMutation) Fields() []string {
 	}
 	if m.quota_data != nil {
 		fields = append(fields, providerquotastatus.FieldQuotaData)
+	}
+	if m.next_reset_at != nil {
+		fields = append(fields, providerquotastatus.FieldNextResetAt)
+	}
+	if m.ready != nil {
+		fields = append(fields, providerquotastatus.FieldReady)
 	}
 	if m.next_check_at != nil {
 		fields = append(fields, providerquotastatus.FieldNextCheckAt)
@@ -13403,6 +13496,10 @@ func (m *ProviderQuotaStatusMutation) Field(name string) (ent.Value, bool) {
 		return m.Status()
 	case providerquotastatus.FieldQuotaData:
 		return m.QuotaData()
+	case providerquotastatus.FieldNextResetAt:
+		return m.NextResetAt()
+	case providerquotastatus.FieldReady:
+		return m.Ready()
 	case providerquotastatus.FieldNextCheckAt:
 		return m.NextCheckAt()
 	}
@@ -13426,6 +13523,10 @@ func (m *ProviderQuotaStatusMutation) OldField(ctx context.Context, name string)
 		return m.OldStatus(ctx)
 	case providerquotastatus.FieldQuotaData:
 		return m.OldQuotaData(ctx)
+	case providerquotastatus.FieldNextResetAt:
+		return m.OldNextResetAt(ctx)
+	case providerquotastatus.FieldReady:
+		return m.OldReady(ctx)
 	case providerquotastatus.FieldNextCheckAt:
 		return m.OldNextCheckAt(ctx)
 	}
@@ -13466,7 +13567,7 @@ func (m *ProviderQuotaStatusMutation) SetField(name string, value ent.Value) err
 		m.SetProviderType(v)
 		return nil
 	case providerquotastatus.FieldStatus:
-		v, ok := value.(string)
+		v, ok := value.(providerquotastatus.Status)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
@@ -13478,6 +13579,20 @@ func (m *ProviderQuotaStatusMutation) SetField(name string, value ent.Value) err
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetQuotaData(v)
+		return nil
+	case providerquotastatus.FieldNextResetAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetNextResetAt(v)
+		return nil
+	case providerquotastatus.FieldReady:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetReady(v)
 		return nil
 	case providerquotastatus.FieldNextCheckAt:
 		v, ok := value.(time.Time)
@@ -13518,7 +13633,11 @@ func (m *ProviderQuotaStatusMutation) AddField(name string, value ent.Value) err
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *ProviderQuotaStatusMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(providerquotastatus.FieldNextResetAt) {
+		fields = append(fields, providerquotastatus.FieldNextResetAt)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -13531,6 +13650,11 @@ func (m *ProviderQuotaStatusMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *ProviderQuotaStatusMutation) ClearField(name string) error {
+	switch name {
+	case providerquotastatus.FieldNextResetAt:
+		m.ClearNextResetAt()
+		return nil
+	}
 	return fmt.Errorf("unknown ProviderQuotaStatus nullable field %s", name)
 }
 
@@ -13555,6 +13679,12 @@ func (m *ProviderQuotaStatusMutation) ResetField(name string) error {
 		return nil
 	case providerquotastatus.FieldQuotaData:
 		m.ResetQuotaData()
+		return nil
+	case providerquotastatus.FieldNextResetAt:
+		m.ResetNextResetAt()
+		return nil
+	case providerquotastatus.FieldReady:
+		m.ResetReady()
 		return nil
 	case providerquotastatus.FieldNextCheckAt:
 		m.ResetNextCheckAt()

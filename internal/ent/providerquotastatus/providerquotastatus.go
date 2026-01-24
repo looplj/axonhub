@@ -29,6 +29,10 @@ const (
 	FieldStatus = "status"
 	// FieldQuotaData holds the string denoting the quota_data field in the database.
 	FieldQuotaData = "quota_data"
+	// FieldNextResetAt holds the string denoting the next_reset_at field in the database.
+	FieldNextResetAt = "next_reset_at"
+	// FieldReady holds the string denoting the ready field in the database.
+	FieldReady = "ready"
 	// FieldNextCheckAt holds the string denoting the next_check_at field in the database.
 	FieldNextCheckAt = "next_check_at"
 	// EdgeChannel holds the string denoting the channel edge name in mutations.
@@ -53,6 +57,8 @@ var Columns = []string{
 	FieldProviderType,
 	FieldStatus,
 	FieldQuotaData,
+	FieldNextResetAt,
+	FieldReady,
 	FieldNextCheckAt,
 }
 
@@ -73,6 +79,8 @@ var (
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
 	UpdateDefaultUpdatedAt func() time.Time
+	// DefaultReady holds the default value on creation for the "ready" field.
+	DefaultReady bool
 )
 
 // ProviderType defines the type for the "provider_type" enum field.
@@ -95,6 +103,31 @@ func ProviderTypeValidator(pt ProviderType) error {
 		return nil
 	default:
 		return fmt.Errorf("providerquotastatus: invalid enum value for provider_type field: %q", pt)
+	}
+}
+
+// Status defines the type for the "status" enum field.
+type Status string
+
+// Status values.
+const (
+	StatusAvailable Status = "available"
+	StatusWarning   Status = "warning"
+	StatusExhausted Status = "exhausted"
+	StatusUnknown   Status = "unknown"
+)
+
+func (s Status) String() string {
+	return string(s)
+}
+
+// StatusValidator is a validator for the "status" field enum values. It is called by the builders before save.
+func StatusValidator(s Status) error {
+	switch s {
+	case StatusAvailable, StatusWarning, StatusExhausted, StatusUnknown:
+		return nil
+	default:
+		return fmt.Errorf("providerquotastatus: invalid enum value for status field: %q", s)
 	}
 }
 
@@ -131,6 +164,16 @@ func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStatus, opts...).ToFunc()
 }
 
+// ByNextResetAt orders the results by the next_reset_at field.
+func ByNextResetAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldNextResetAt, opts...).ToFunc()
+}
+
+// ByReady orders the results by the ready field.
+func ByReady(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldReady, opts...).ToFunc()
+}
+
 // ByNextCheckAt orders the results by the next_check_at field.
 func ByNextCheckAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldNextCheckAt, opts...).ToFunc()
@@ -164,6 +207,24 @@ func (e *ProviderType) UnmarshalGQL(val interface{}) error {
 	*e = ProviderType(str)
 	if err := ProviderTypeValidator(*e); err != nil {
 		return fmt.Errorf("%s is not a valid ProviderType", str)
+	}
+	return nil
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (e Status) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(e.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (e *Status) UnmarshalGQL(val interface{}) error {
+	str, ok := val.(string)
+	if !ok {
+		return fmt.Errorf("enum %T must be a string", val)
+	}
+	*e = Status(str)
+	if err := StatusValidator(*e); err != nil {
+		return fmt.Errorf("%s is not a valid Status", str)
 	}
 	return nil
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 )
 
 type CodexQuotaParser struct{}
@@ -36,12 +37,33 @@ func (p *CodexQuotaParser) ParseResponse(headers http.Header, body []byte) (Quot
 		return QuotaData{}, fmt.Errorf("failed to parse codex usage response: %w", err)
 	}
 
-	// Determine overall status
-	status := "ok"
-	if response.RateLimit != nil && response.RateLimit.LimitReached != nil && *response.RateLimit.LimitReached {
-		status = "limit_reached"
-	} else if response.RateLimit != nil && response.RateLimit.Allowed != nil && !*response.RateLimit.Allowed {
-		status = "not_allowed"
+	// Normalize status
+	normalizedStatus := "unknown"
+	var nextResetAt *time.Time
+	var primaryWindowUsedPercent *float64
+
+	if response.RateLimit != nil {
+		if response.RateLimit.LimitReached != nil && *response.RateLimit.LimitReached {
+			normalizedStatus = "exhausted"
+		} else if response.RateLimit.Allowed != nil && !*response.RateLimit.Allowed {
+			normalizedStatus = "exhausted"
+		} else {
+			normalizedStatus = "available"
+
+			// Check for warning state (primary window utilization >= 80%)
+			if response.RateLimit.PrimaryWindow != nil && response.RateLimit.PrimaryWindow.UsedPercent != nil {
+				primaryWindowUsedPercent = response.RateLimit.PrimaryWindow.UsedPercent
+				if *primaryWindowUsedPercent >= 80.0 {
+					normalizedStatus = "warning"
+				}
+			}
+
+			// Extract next reset from primary window
+			if response.RateLimit.PrimaryWindow != nil && response.RateLimit.PrimaryWindow.ResetAt != nil && *response.RateLimit.PrimaryWindow.ResetAt > 0 {
+				t := time.Unix(*response.RateLimit.PrimaryWindow.ResetAt, 0)
+				nextResetAt = &t
+			}
+		}
 	}
 
 	// Convert to raw data map
@@ -58,9 +80,11 @@ func (p *CodexQuotaParser) ParseResponse(headers http.Header, body []byte) (Quot
 	}
 
 	return QuotaData{
-		Status:       status,
+		Status:       normalizedStatus,
 		ProviderType: "codex",
 		RawData:      rawData,
+		NextResetAt:  nextResetAt,
+		Ready:        normalizedStatus == "available" || normalizedStatus == "warning",
 	}, nil
 }
 

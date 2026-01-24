@@ -30,10 +30,18 @@ func (ProviderQuotaStatus) Fields() []ent.Field {
 		field.Enum("provider_type").
 			Values("claudecode", "codex").
 			Immutable(),
-		field.String("status").
-			Comment("Overall status: ok, throttled, overage, error"),
+		field.Enum("status").
+			Values("available", "warning", "exhausted", "unknown").
+			Comment("Overall status: available, warning, exhausted, unknown"),
 		field.JSON("quota_data", map[string]interface{}{}).
 			Comment("Provider-specific quota data"),
+		field.Time("next_reset_at").
+			Optional().
+			Nillable().
+			Comment("Timestamp for next quota reset (primary window)"),
+		field.Bool("ready").
+			Default(true).
+			Comment("True if status is available or warning"),
 		field.Time("next_check_at").
 			Comment("Timestamp for next scheduled quota check"),
 	}

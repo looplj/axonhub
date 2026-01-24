@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -17,11 +18,87 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
 )
 
+// HOW TO ADD A NEW PROVIDER QUOTA CHECKER
+// ========================================
+//
+// 1. Create the checker and parser in internal/server/biz/provider_quota/
+//
+//    Implement the QuotaChecker interface:
+//      - CheckQuota(ctx, ch) -> makes the actual API request to get quota info
+//      - Returns (headers, body, error)
+//
+//    Implement the QuotaParser interface:
+//      - ParseResponse(headers, body) -> parses the response into normalized QuotaData
+//      - Returns QuotaData with:
+//        * Status: "available", "warning", "exhausted", or "unknown"
+//        * ready: true for available/warning, false for exhausted/unknown
+//        * NextResetAt: optional timestamp of next quota reset
+//        * RawData: provider-specific data (will be stored in JSON format)
+//
+// 2. Add the provider type to the database schema
+//
+//    In internal/ent/schema/channel.go:
+//      - Add new value to the channel.Type enum (e.g., "myprovider")
+//
+//    In internal/ent/schema/provider_quota_status.go:
+//      - Add new value to the provider_type enum (e.g., "myprovider")
+//
+// 3. Register the provider in ProviderQuotaService
+//
+//    a. Create a registration function (e.g., registerMyProviderSupport())
+//    b. Add it to NewProviderQuotaService()
+//    c. Update getProviderType() to map channel.TypeMyprovider -> "myprovider"
+//    d. Update runQuotaCheck() to include channel.TypeMyprovider in TypeIn filter
+//
+//    Example:
+//
+//      func (svc *ProviderQuotaService) registerMyProviderSupport() {
+//        svc.parsers["myprovider"] = &provider_quota.MyProviderQuotaParser{}
+//        svc.checkers["myprovider"] = provider_quota.NewMyProviderQuotaChecker()
+//      }
+//
+// 4. regenerate Ent schema
+//
+//    make generate
+//
+// 5. Implement the frontend display (optional)
+//
+//    Add provider-specific display logic in frontend/src/components/quota-badges.tsx:
+//      - Update QuotaData type to include provider-specific fields
+//      - Add display logic for the provider type in QuotaRow component
+//
+// EXAMPLE: CLAUDE CODE PROVIDER
+// =============================
+//
+// Checker: internal/server/biz/provider_quota/claudecode_checker.go
+//   - Makes minimal request to Claude Code API
+//   - Extracts rate limit headers (anthropic-ratelimit-unified-status, etc.)
+//
+// Parser: internal/server/biz/provider_quota/claudecode_parser.go
+//   - Parses rate limit headers
+//   - Normalizes status (allowed -> available, throttled -> exhausted)
+//   - Detects warning state (utilization >= 80%)
+//   - Maps representative claim to reset time
+//
+// EXAMPLE: CODEX PROVIDER
+// ======================
+//
+// Checker: internal/server/biz/provider_quota/codex_checker.go
+//   - Makes request to ChatGPT usage endpoint (/backend-api/wham/usage)
+//   - Extracts JSON response with rate limit info
+//
+// Parser: internal/server/biz/provider_quota/codex_parser.go
+//   - Parses JSON response (plan_type, rate_limit)
+//   - Normalizes status based on limit_reached and allowed flags
+//   - Detects warning state (primary_window.used_percent >= 80)
+//
+
 type ProviderQuotaServiceParams struct {
 	fx.In
 
 	Ent           *ent.Client
 	SystemService *SystemService
+	CheckInterval time.Duration `name:"provider_quota_check_interval" optional:"true"`
 }
 
 type ProviderQuotaService struct {
@@ -29,6 +106,7 @@ type ProviderQuotaService struct {
 
 	SystemService *SystemService
 	Executor      executors.ScheduledExecutor
+	checkInterval time.Duration
 
 	// Registry
 	parsers  map[string]provider_quota.QuotaParser
@@ -46,13 +124,14 @@ func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaSe
 		Executor:        executors.NewPoolScheduleExecutor(executors.WithMaxConcurrent(1)),
 		parsers:         make(map[string]provider_quota.QuotaParser),
 		checkers:        make(map[string]provider_quota.QuotaChecker),
+		checkInterval:   params.CheckInterval,
 	}
 
 	// Register providers
 	svc.registerClaudeCodeSupport()
 	svc.registerCodexSupport()
 
-	log.Info(ctx, "Starting ProviderQuotaService with cron schedule: every 1 minute")
+	log.Info(ctx, "Starting ProviderQuotaService with check interval", log.Duration("interval", params.CheckInterval))
 
 	// Start polling
 	if err := svc.Start(ctx); err != nil {
@@ -76,16 +155,68 @@ func (svc *ProviderQuotaService) registerCodexSupport() {
 }
 
 func (svc *ProviderQuotaService) Start(ctx context.Context) error {
-	// Run every minute
+	// Convert check interval to cron expression
+	// For example, 20m -> */20 * * * *, 1h -> 0 * * * *, 30m -> */30 * * * *
+	cronExpr := svc.intervalToCronExpr(svc.getCheckInterval())
+
 	_, err := svc.Executor.ScheduleFuncAtCronRate(
 		svc.runQuotaCheck,
-		executors.CRONRule{Expr: "* * * * *"},
+		executors.CRONRule{Expr: cronExpr},
 	)
 	return err
 }
 
+func (svc *ProviderQuotaService) intervalToCronExpr(interval time.Duration) string {
+	minutes := int(interval.Minutes())
+	hours := int(interval.Hours())
+
+	// Hourly or longer intervals
+	if hours >= 1 && minutes%60 == 0 {
+		if hours == 1 {
+			return "0 * * * *" // Every hour
+		}
+		return fmt.Sprintf("0 */%d * * *", hours) // Every N hours
+	}
+
+	// Minute intervals that divide evenly into 60
+	if minutes > 0 && 60%minutes == 0 {
+		return fmt.Sprintf("*/%d * * * *", minutes)
+	}
+
+	// Round down to nearest supported interval (1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60)
+	supportedIntervals := []int{1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60}
+	var rounded int
+	for _, si := range supportedIntervals {
+		if minutes <= si {
+			rounded = si
+			break
+		}
+	}
+	if rounded == 0 {
+		rounded = 60
+	}
+
+	log.Warn(context.Background(), "Quota check interval does not divide evenly into 60 minutes, rounding to nearest supported interval",
+		log.Int("requested_minutes", minutes),
+		log.Int("rounded_minutes", rounded))
+
+	return fmt.Sprintf("*/%d * * * *", rounded)
+}
+
+func (svc *ProviderQuotaService) getCheckInterval() time.Duration {
+	if svc.checkInterval > 0 {
+		return svc.checkInterval
+	}
+	return 20 * time.Minute
+}
+
 func (svc *ProviderQuotaService) Stop(ctx context.Context) error {
 	return svc.Executor.Shutdown(ctx)
+}
+
+// ManualCheck forces an immediate quota check for all relevant channels
+func (svc *ProviderQuotaService) ManualCheck(ctx context.Context) {
+	svc.runQuotaCheck(ctx)
 }
 
 func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context) {
@@ -93,6 +224,41 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	now := time.Now()
+	log.Debug(ctx, "Checking for channels to poll",
+		log.Time("now", now),
+		log.String("now_formatted", now.Format(time.RFC3339)))
+
+	// Find all enabled channels of supported types first
+	allEnabledChannels, err := svc.db.Channel.Query().
+		Where(
+			channel.StatusEQ(channel.StatusEnabled),
+			channel.TypeIn(channel.TypeClaudecode, channel.TypeCodex),
+		).
+		WithProviderQuotaStatus().
+		All(ctx)
+
+	if err != nil {
+		log.Error(ctx, "Failed to query enabled channels", log.Cause(err))
+		return
+	}
+
+	log.Debug(ctx, "Found enabled channels",
+		log.Int("total", len(allEnabledChannels)))
+
+	for _, ch := range allEnabledChannels {
+		if ch.Edges.ProviderQuotaStatus != nil {
+			log.Debug(ctx, "Channel has quota status",
+				log.Int("channel_id", ch.ID),
+				log.String("channel_name", ch.Name),
+				log.Time("next_check_at", ch.Edges.ProviderQuotaStatus.NextCheckAt),
+				log.Bool("should_check", ch.Edges.ProviderQuotaStatus.NextCheckAt.Before(now) || ch.Edges.ProviderQuotaStatus.NextCheckAt.Equal(now)))
+		} else {
+			log.Debug(ctx, "Channel has no quota status",
+				log.Int("channel_id", ch.ID),
+				log.String("channel_name", ch.Name))
+		}
+	}
+
 	// Find channels needing quota check:
 	// 1. Enabled channels with supported types
 	// 2. No quota status OR next_check_at <= now
@@ -158,11 +324,14 @@ func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, ch *ent.
 			log.String("provider", providerType),
 			log.Cause(err))
 
-		// Store error status with error message in quota_data
-		errorData := map[string]interface{}{
-			"error": err.Error(),
-		}
-		svc.saveQuotaStatus(ctx, ch.ID, providerType, "error", errorData, now)
+		// Store error status
+		svc.saveQuotaStatus(ctx, ch.ID, providerType, provider_quota.QuotaData{
+			Status: "exhausted",
+			RawData: map[string]interface{}{
+				"error": err.Error(),
+			},
+			Ready: false,
+		}, now)
 		return
 	}
 
@@ -175,53 +344,52 @@ func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, ch *ent.
 			log.String("provider", providerType),
 			log.Cause(err))
 
-		errorData := map[string]interface{}{
-			"error": err.Error(),
-		}
-		svc.saveQuotaStatus(ctx, ch.ID, providerType, "parse_error", errorData, now)
-		return
-	}
-
-	// Validate parsed data - check if parser returned empty data
-	if quotaData.Status == "" && quotaData.RawData == nil {
-		log.Warn(ctx, "Parser returned empty quota data (no rate limit headers found)",
-			log.Int("channel_id", ch.ID),
-			log.String("channel_name", ch.Name),
-			log.String("provider", providerType))
-
-		// Store a more informative status
-		noDataMap := map[string]interface{}{
-			"message": "No rate limit headers found in response",
-		}
-		svc.saveQuotaStatus(ctx, ch.ID, providerType, "no_data", noDataMap, now)
+		svc.saveQuotaStatus(ctx, ch.ID, providerType, provider_quota.QuotaData{
+			Status: "unknown",
+			RawData: map[string]interface{}{
+				"error": err.Error(),
+			},
+			Ready: false,
+		}, now)
 		return
 	}
 
 	// Save quota status
-	svc.saveQuotaStatus(ctx, ch.ID, providerType, quotaData.Status, quotaData.RawData, now)
+	svc.saveQuotaStatus(ctx, ch.ID, providerType, quotaData, now)
 
 	log.Debug(ctx, "Updated quota status",
 		log.Int("channel_id", ch.ID),
 		log.String("provider", providerType),
-		log.String("status", quotaData.Status))
+		log.String("status", quotaData.Status),
+		log.Bool("ready", quotaData.Ready))
 }
 
 func (svc *ProviderQuotaService) saveQuotaStatus(
 	ctx context.Context,
 	channelID int,
 	providerType string,
-	status string,
-	quotaData map[string]interface{},
+	quotaData provider_quota.QuotaData,
 	now time.Time,
 ) {
-	nextCheck := now.Add(20 * time.Minute)
+	nextCheck := now.Add(svc.getCheckInterval())
+	pt := providerquotastatus.ProviderType(providerType)
 
-	err := svc.db.ProviderQuotaStatus.Create().
+	create := svc.db.ProviderQuotaStatus.Create().
 		SetChannelID(channelID).
-		SetProviderType(providerquotastatus.ProviderType(providerType)).
-		SetStatus(status).
-		SetQuotaData(quotaData).
-		SetNextCheckAt(nextCheck).
+		SetProviderType(pt).
+		SetStatus(providerquotastatus.Status(quotaData.Status)).
+		SetQuotaData(quotaData.RawData).
+		SetNextCheckAt(nextCheck)
+
+	// Only set next_reset_at if it exists (it's optional in schema)
+	if quotaData.NextResetAt != nil {
+		create.SetNextResetAt(*quotaData.NextResetAt)
+	}
+
+	// Set ready based on status
+	create.SetReady(quotaData.Ready)
+
+	err := create.
 		OnConflict(
 			sql.ConflictColumns("channel_id"),
 		).

@@ -3269,13 +3269,21 @@ type ProviderQuotaStatus implements Node {
   channelID: ID!
   providerType: ProviderQuotaStatusProviderType!
   """
-  Overall status: ok, throttled, overage, error
+  Overall status: available, warning, exhausted, unknown
   """
-  status: String!
+  status: ProviderQuotaStatusStatus!
   """
   Provider-specific quota data
   """
   quotaData: Map!
+  """
+  Timestamp for next quota reset (primary window)
+  """
+  nextResetAt: Time
+  """
+  True if status is available or warning
+  """
+  ready: Boolean!
   """
   Timestamp for next scheduled quota check
   """
@@ -3308,6 +3316,15 @@ ProviderQuotaStatusProviderType is enum for the field provider_type
 enum ProviderQuotaStatusProviderType @goModel(model: "github.com/looplj/axonhub/internal/ent/providerquotastatus.ProviderType") {
   claudecode
   codex
+}
+"""
+ProviderQuotaStatusStatus is enum for the field status
+"""
+enum ProviderQuotaStatusStatus @goModel(model: "github.com/looplj/axonhub/internal/ent/providerquotastatus.Status") {
+  available
+  warning
+  exhausted
+  unknown
 }
 """
 ProviderQuotaStatusWhereInput is used for filtering ProviderQuotaStatus objects.
@@ -3367,19 +3384,28 @@ input ProviderQuotaStatusWhereInput {
   """
   status field predicates
   """
-  status: String
-  statusNEQ: String
-  statusIn: [String!]
-  statusNotIn: [String!]
-  statusGT: String
-  statusGTE: String
-  statusLT: String
-  statusLTE: String
-  statusContains: String
-  statusHasPrefix: String
-  statusHasSuffix: String
-  statusEqualFold: String
-  statusContainsFold: String
+  status: ProviderQuotaStatusStatus
+  statusNEQ: ProviderQuotaStatusStatus
+  statusIn: [ProviderQuotaStatusStatus!]
+  statusNotIn: [ProviderQuotaStatusStatus!]
+  """
+  next_reset_at field predicates
+  """
+  nextResetAt: Time
+  nextResetAtNEQ: Time
+  nextResetAtIn: [Time!]
+  nextResetAtNotIn: [Time!]
+  nextResetAtGT: Time
+  nextResetAtGTE: Time
+  nextResetAtLT: Time
+  nextResetAtLTE: Time
+  nextResetAtIsNil: Boolean
+  nextResetAtNotNil: Boolean
+  """
+  ready field predicates
+  """
+  ready: Boolean
+  readyNEQ: Boolean
   """
   next_check_at field predicates
   """
