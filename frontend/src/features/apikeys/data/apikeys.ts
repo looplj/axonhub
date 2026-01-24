@@ -77,6 +77,7 @@ function buildApiKeyQuery(permissions: { canViewUsers: boolean }) {
             channelIDs
             channelTags
             modelIDs
+            loadBalanceStrategy
             quota {
               requests
               totalTokens
@@ -173,6 +174,7 @@ const UPDATE_APIKEY_PROFILES_MUTATION = `
           channelIDs
           channelTags
           modelIDs
+          loadBalanceStrategy
           quota {
             requests
             totalTokens
