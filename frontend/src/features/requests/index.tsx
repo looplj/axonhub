@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { useState, useCallback } from 'react';
 import { DateRange } from 'react-day-picker';
 import { useTranslation } from 'react-i18next';
@@ -24,6 +25,12 @@ function RequestsContent() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [autoRefresh, setAutoRefresh] = useState(false);
   const selectedProjectId = useSelectedProjectId();
+
+  console.log('[RequestsPage] State:', {
+    selectedProjectId,
+    selectedProjectIdType: typeof selectedProjectId,
+    autoRefresh,
+  });
 
   // Build where clause with filters
   const whereClause = (() => {
@@ -59,11 +66,22 @@ function RequestsContent() {
 
   const isFirstPage = !paginationArgs.after && cursorHistory.length === 0;
 
-  // Use SSE for real-time updates when enabled and on first page
-  const projectId = selectedProjectId ? parseInt(selectedProjectId, 10) : 0;
-  
+  // Parse project ID - handle both numeric IDs and GID format ("gid://axonhub/Project/{id}")
+  const validProjectId = (() => {
+    if (!selectedProjectId) return null
+    // Check if it's a GID format
+    const gidMatch = selectedProjectId.match(/gid:\/\/axonhub\/Project\/(\d+)/)
+    if (gidMatch) {
+      return parseInt(gidMatch[1], 10)
+    }
+    // Try to parse as numeric
+    const parsed = parseInt(selectedProjectId, 10)
+    return isNaN(parsed) ? null : parsed
+  })()
+  const projectId = validProjectId ?? 0
+
   const sseState = useRequestsSSE({
-    enabled: autoRefresh && isFirstPage && projectId > 0,
+    enabled: autoRefresh && isFirstPage && validProjectId !== null && validProjectId > 0,
     projectId,
   });
 

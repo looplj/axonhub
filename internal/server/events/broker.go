@@ -53,11 +53,6 @@ func (b *EventBroker) Subscribe(ctx context.Context, topic Topic, projectID *int
 	b.subscribers[subscriberID] = subscriber
 	b.mu.Unlock()
 
-	b.logger.Debug(ctx, "New subscriber",
-		log.String("id", subscriberID),
-		log.String("topic", string(topic)),
-		log.Any("project_id", projectID))
-
 	return subscriber
 }
 
@@ -71,18 +66,12 @@ func (b *EventBroker) Unsubscribe(subscriberID string) {
 		close(subscriber.Events)
 		delete(b.subscribers, subscriberID)
 
-		b.logger.Debug(context.Background(), "Subscriber removed",
-			log.String("id", subscriberID))
 	}
 }
 
 // Publish sends an event to all matching subscribers
 // Non-blocking: uses select with default to avoid slow subscriber blocking
 func (b *EventBroker) Publish(ctx context.Context, event *Event) {
-	if event == nil {
-		return
-	}
-
 	// Set timestamp if not already set
 	if event.Timestamp.IsZero() {
 		event.Timestamp = time.Now()
@@ -100,11 +89,8 @@ func (b *EventBroker) Publish(ctx context.Context, event *Event) {
 		}
 
 		// Filter by project ID if subscriber has project filter
-		if subscriber.ProjectID != nil {
-			// Extract project ID from payload (type assertion based on topic)
-			if !matchesProjectFilter(event, *subscriber.ProjectID) {
-				continue
-			}
+		if subscriber.ProjectID != nil && !matchesProjectFilter(event, *subscriber.ProjectID) {
+			continue
 		}
 
 		// Non-blocking send to avoid slow subscriber blocking others
@@ -114,17 +100,7 @@ func (b *EventBroker) Publish(ctx context.Context, event *Event) {
 		default:
 			// Channel full, drop event (subscriber too slow)
 			dropped++
-			b.logger.Warn(ctx, "Dropped event due to full subscriber buffer",
-				log.String("subscriber_id", subscriber.ID),
-				log.String("event_type", string(event.Type)))
 		}
-	}
-
-	if sent > 0 || dropped > 0 {
-		b.logger.Debug(ctx, "Event published",
-			log.String("type", string(event.Type)),
-			log.Int("sent", sent),
-			log.Int("dropped", dropped))
 	}
 }
 

@@ -11,7 +11,9 @@ import (
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
+	"github.com/looplj/axonhub/internal/server/events"
 )
 
 func setupTestThreadService(t *testing.T) (*ThreadService, *ent.Client) {
@@ -22,6 +24,14 @@ func setupTestThreadService(t *testing.T) (*ThreadService, *ent.Client) {
 		CacheConfig: xcache.Config{},
 		Ent:         client,
 	})
+	logger := log.New(log.Config{
+		Name:     "test",
+		Debug:    true,
+		Level:    log.DebugLevel,
+		Encoding: "console",
+		Output:   "stdio",
+	})
+	eventBroker := events.NewEventBroker(logger)
 	threadService := NewThreadService(
 		client,
 		NewTraceService(TraceServiceParams{
@@ -37,6 +47,7 @@ func setupTestThreadService(t *testing.T) (*ThreadService, *ent.Client) {
 						Client:        client,
 					},
 				),
+				eventBroker,
 			),
 			Ent: client,
 		}),

@@ -37,6 +37,17 @@ type RequestEventPayload struct {
 	Source    string `json:"source,omitempty"`
 	Stream    bool   `json:"stream"`
 
+	// Token usage data
+	PromptTokens     int `json:"prompt_tokens,omitempty"`
+	CompletionTokens int `json:"completion_tokens,omitempty"`
+	TotalTokens      int `json:"total_tokens,omitempty"`
+
+	// Cache tokens
+	PromptCachedTokens        int `json:"prompt_cached_tokens,omitempty"`
+	PromptWriteCachedTokens   int `json:"prompt_write_cached_tokens,omitempty"`
+	PromptWriteCachedTokens5m int `json:"prompt_write_cached_tokens_5m,omitempty"`
+	PromptWriteCachedTokens1h int `json:"prompt_write_cached_tokens_1h,omitempty"`
+
 	// Include enough data for UI to update without additional fetch
 	APIKeyID  *int      `json:"api_key_id,omitempty"`
 	ChannelID *int      `json:"channel_id,omitempty"`

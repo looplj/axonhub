@@ -8,7 +8,7 @@ import (
 	"github.com/gin-contrib/sse"
 	"github.com/gin-gonic/gin"
 
-	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/server/events"
 )
 
@@ -43,16 +43,16 @@ func (h *EventHandlers) StreamRequestEvents(c *gin.Context) {
 		return
 	}
 
-	// TODO: Verify user has access to this project
-	// This should use the same auth middleware as GraphQL
+	if ctxProjectID, ok := contexts.GetProjectID(ctx); ok && ctxProjectID != projectID {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "project access denied",
+		})
+		return
+	}
 
 	// Subscribe to request events for this project
 	subscriber := h.broker.Subscribe(ctx, events.TopicRequests, &projectID)
 	defer h.broker.Unsubscribe(subscriber.ID)
-
-	log.Info(ctx, "SSE client connected",
-		log.Int("project_id", projectID),
-		log.String("subscriber_id", subscriber.ID))
 
 	// Set SSE headers
 	c.Header("Content-Type", sse.ContentType)
@@ -74,8 +74,6 @@ func (h *EventHandlers) StreamRequestEvents(c *gin.Context) {
 		select {
 		case <-ctx.Done():
 			// Client disconnected
-			log.Info(ctx, "SSE client disconnected",
-				log.String("subscriber_id", subscriber.ID))
 			return
 
 		case <-heartbeatTicker.C:
@@ -88,8 +86,6 @@ func (h *EventHandlers) StreamRequestEvents(c *gin.Context) {
 		case event, ok := <-subscriber.Events:
 			if !ok {
 				// Channel closed (broker shutdown)
-				log.Warn(ctx, "Event channel closed",
-					log.String("subscriber_id", subscriber.ID))
 				return
 			}
 
@@ -97,9 +93,6 @@ func (h *EventHandlers) StreamRequestEvents(c *gin.Context) {
 			c.SSEvent(string(event.Type), event.Payload)
 			c.Writer.Flush()
 
-			log.Debug(ctx, "Event sent to client",
-				log.String("event_type", string(event.Type)),
-				log.String("subscriber_id", subscriber.ID))
 		}
 	}
 }

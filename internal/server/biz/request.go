@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
@@ -73,25 +74,86 @@ func (s *RequestService) emitRequestEvent(
 	req *ent.Request,
 ) {
 	if s.eventBroker == nil {
+		log.Debug(ctx, "EventBroker is nil, skipping event emission")
 		return
 	}
 
+	log.Info(ctx, "Emitting request event",
+		log.String("event_type", string(eventType)),
+		log.Int("request_id", req.ID),
+		log.Int("project_id", req.ProjectID),
+		log.String("status", string(req.Status)))
+
 	// Emit asynchronously to avoid blocking database operations
 	go func() {
+		payload := &events.RequestEventPayload{
+			RequestID: req.ID,
+			ProjectID: req.ProjectID,
+			Status:    string(req.Status),
+			ModelID:   req.ModelID,
+			Source:    string(req.Source),
+			Stream:    req.Stream,
+			APIKeyID:  ptrOrNil(req.APIKeyID),
+			ChannelID: ptrOrNil(req.ChannelID),
+			CreatedAt: req.CreatedAt,
+		}
+
+		// Fetch token data from UsageLog only for completed requests
+		// This avoids extra database queries for in-progress requests
+		if eventType == events.EventTypeRequestCompleted && req.Status == request.StatusCompleted {
+			log.Info(context.Background(), "Request completed, fetching usage log for token data",
+				log.Int("request_id", req.ID))
+
+			// Retry up to 3 times to handle race condition with UsageLog creation
+			var usageLog *ent.UsageLog
+			var err error
+
+			// Bypass privacy checks for this internal background query.
+			// This runs in a goroutine without user context, so we use Allow
+			// to read usage data that the system just created for the request.
+			// The data is already filtered by project_id, so authorization is maintained.
+			bypassCtx := privacy.DecisionContext(context.Background(), privacy.Allow)
+
+			for i := 0; i < 3; i++ {
+				usageLog, err = s.db.UsageLog.Query().
+					Where(usagelog.RequestID(req.ID)).
+					First(bypassCtx)
+
+				if err == nil {
+					break
+				}
+
+				if i < 2 {
+					// Wait 10ms before retry
+					time.Sleep(10 * time.Millisecond)
+				}
+			}
+
+			if err == nil && usageLog != nil {
+				payload.PromptTokens = int(usageLog.PromptTokens)
+				payload.CompletionTokens = int(usageLog.CompletionTokens)
+				payload.TotalTokens = int(usageLog.TotalTokens)
+				payload.PromptCachedTokens = int(usageLog.PromptCachedTokens)
+				payload.PromptWriteCachedTokens = int(usageLog.PromptWriteCachedTokens)
+				payload.PromptWriteCachedTokens5m = int(usageLog.PromptWriteCachedTokens5m)
+				payload.PromptWriteCachedTokens1h = int(usageLog.PromptWriteCachedTokens1h)
+				log.Info(context.Background(), "Included token data in event",
+					log.Int("request_id", req.ID),
+					log.Int("prompt_tokens", payload.PromptTokens),
+					log.Int("completion_tokens", payload.CompletionTokens),
+					log.Int("total_tokens", payload.TotalTokens),
+					log.Int("prompt_cached_tokens", payload.PromptCachedTokens))
+			} else {
+				log.Warn(context.Background(), "Failed to fetch usage log for token data after retries",
+					log.Int("request_id", req.ID),
+					log.Cause(err))
+			}
+		}
+
 		event := &events.Event{
-			Type:  eventType,
-			Topic: events.TopicRequests,
-			Payload: &events.RequestEventPayload{
-				RequestID: req.ID,
-				ProjectID: req.ProjectID,
-				Status:    string(req.Status),
-				ModelID:   req.ModelID,
-				Source:    string(req.Source),
-				Stream:    req.Stream,
-				APIKeyID:  ptrOrNil(req.APIKeyID),
-				ChannelID: ptrOrNil(req.ChannelID),
-				CreatedAt: req.CreatedAt,
-			},
+			Type:    eventType,
+			Topic:   events.TopicRequests,
+			Payload: payload,
 		}
 
 		s.eventBroker.Publish(context.Background(), event)

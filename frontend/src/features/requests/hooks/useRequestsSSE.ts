@@ -1,5 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useSSE } from '@/hooks/useSSE'
+import { useAuthStore, getTokenFromStorage } from '@/stores/authStore'
+import { EventSourceMessage } from '@microsoft/fetch-event-source'
 
 interface RequestEventPayload {
   request_id: number
@@ -8,6 +10,13 @@ interface RequestEventPayload {
   model_id?: string
   source?: string
   stream: boolean
+  prompt_tokens?: number
+  completion_tokens?: number
+  total_tokens?: number
+  prompt_cached_tokens?: number
+  prompt_write_cached_tokens?: number
+  prompt_write_cached_tokens_5m?: number
+  prompt_write_cached_tokens_1h?: number
   api_key_id?: number
   channel_id?: number
   created_at: string
@@ -24,37 +33,41 @@ interface UseRequestsSSEOptions {
 export function useRequestsSSE(options: UseRequestsSSEOptions) {
   const { enabled, projectId, onRequestCreated, onRequestUpdated, onRequestCompleted } = options
   const queryClient = useQueryClient()
+  const { accessToken } = useAuthStore((state) => state.auth)
 
-  const handleMessage = (event: MessageEvent) => {
+  // Always prefer localStorage token to avoid race conditions with zustand hydration
+  // zustand store might not be hydrated yet on initial render
+  const token = accessToken || getTokenFromStorage()
+
+  const handleMessage = (event: MessageEvent | EventSourceMessage) => {
+    const isSSE = 'event' in event && 'data' in event
+    const eventType = isSSE ? (event as EventSourceMessage).event : (event as MessageEvent).type
+    const eventData = isSSE ? (event as EventSourceMessage).data : (event as MessageEvent).data
+
     try {
-      const payload: RequestEventPayload = JSON.parse(event.data)
+      const payload: RequestEventPayload = JSON.parse(eventData)
 
       // Route to appropriate handler based on event type
-      if (event.type === 'request.created') {
+      if (eventType === 'request.created') {
         onRequestCreated?.(payload)
-
-        // Invalidate queries to refresh the list
         queryClient.invalidateQueries({ queryKey: ['requests'] })
-      } else if (event.type === 'request.updated') {
+      } else if (eventType === 'request.updated') {
         onRequestUpdated?.(payload)
-
-        // Update specific request in cache if we have it
-        // Otherwise invalidate to refresh
-      queryClient.invalidateQueries({ queryKey: ['requests'] })
-      } else if (event.type === 'request.completed') {
+        queryClient.invalidateQueries({ queryKey: ['requests'] })
+      } else if (eventType === 'request.completed') {
         onRequestCompleted?.(payload)
-
-        // Update the request in cache
         queryClient.invalidateQueries({ queryKey: ['requests'] })
       }
-    } catch (_error) {
-      // Silently ignore parse errors
+    } catch (error) {
     }
   }
 
   const sseState = useSSE({
     url: `/admin/events/requests?project_id=${projectId}`,
-    enabled,
+    enabled: enabled && !!token,
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
     onMessage: handleMessage,
   })
 
