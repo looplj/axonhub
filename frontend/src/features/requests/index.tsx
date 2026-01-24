@@ -9,6 +9,8 @@ import { Main } from '@/components/layout/main';
 import { RequestsTable } from './components';
 import { RequestsProvider } from './context';
 import { useRequests } from './data';
+import { useRequestsSSE } from './hooks/useRequestsSSE';
+import { useSelectedProjectId } from '@/stores/projectStore';
 
 function RequestsContent() {
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs, cursorHistory } = usePaginationSearch({
@@ -21,6 +23,7 @@ function RequestsContent() {
   const [apiKeyFilter, setApiKeyFilter] = useState<string[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const selectedProjectId = useSelectedProjectId();
 
   // Build where clause with filters
   const whereClause = (() => {
@@ -56,11 +59,23 @@ function RequestsContent() {
 
   const isFirstPage = !paginationArgs.after && cursorHistory.length === 0;
 
+  // Use SSE for real-time updates when enabled and on first page
+  const projectId = selectedProjectId ? parseInt(selectedProjectId, 10) : 0;
+  
+  const sseState = useRequestsSSE({
+    enabled: autoRefresh && isFirstPage && projectId > 0,
+    projectId,
+  });
+
+  // Fallback polling only if SSE is not connected
+  // This provides graceful degradation if SSE fails
+  const shouldPoll = autoRefresh && isFirstPage && !sseState.isConnected;
+  
   useInterval(
     () => {
       refetch();
     },
-    autoRefresh && isFirstPage ? 10000 : null
+    shouldPoll ? 10000 : null
   );
 
   const handleNextPage = () => {

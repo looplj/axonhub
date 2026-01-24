@@ -20,6 +20,7 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
+	"github.com/looplj/axonhub/internal/server/events"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
@@ -32,10 +33,11 @@ type RequestService struct {
 	UsageLogService    *UsageLogService
 	DataStorageService *DataStorageService
 	channelCache       xcache.Cache[int]
+	eventBroker        *events.EventBroker
 }
 
 // NewRequestService creates a new RequestService.
-func NewRequestService(ent *ent.Client, systemService *SystemService, usageLogService *UsageLogService, dataStorageService *DataStorageService) *RequestService {
+func NewRequestService(ent *ent.Client, systemService *SystemService, usageLogService *UsageLogService, dataStorageService *DataStorageService, eventBroker *events.EventBroker) *RequestService {
 	return &RequestService{
 		AbstractService: &AbstractService{
 			db: ent,
@@ -43,6 +45,7 @@ func NewRequestService(ent *ent.Client, systemService *SystemService, usageLogSe
 		SystemService:      systemService,
 		UsageLogService:    usageLogService,
 		DataStorageService: dataStorageService,
+		eventBroker:        eventBroker,
 		channelCache: xcache.NewFromConfig[int](xcache.Config{
 			Mode: xcache.ModeMemory,
 			Memory: xcache.MemoryConfig{
@@ -60,6 +63,47 @@ func (s *RequestService) shouldUseExternalStorage(_ context.Context, ds *ent.Dat
 	}
 
 	return !ds.Primary
+}
+
+// emitRequestEvent emits an event for a request operation.
+// Events are emitted asynchronously to avoid blocking database operations.
+func (s *RequestService) emitRequestEvent(
+	ctx context.Context,
+	eventType events.EventType,
+	req *ent.Request,
+) {
+	if s.eventBroker == nil {
+		return
+	}
+
+	// Emit asynchronously to avoid blocking database operations
+	go func() {
+		event := &events.Event{
+			Type:  eventType,
+			Topic: events.TopicRequests,
+			Payload: &events.RequestEventPayload{
+				RequestID: req.ID,
+				ProjectID: req.ProjectID,
+				Status:    string(req.Status),
+				ModelID:   req.ModelID,
+				Source:    string(req.Source),
+				Stream:    req.Stream,
+				APIKeyID:  ptrOrNil(req.APIKeyID),
+				ChannelID: ptrOrNil(req.ChannelID),
+				CreatedAt: req.CreatedAt,
+			},
+		}
+
+		s.eventBroker.Publish(context.Background(), event)
+	}()
+}
+
+// ptrOrNil returns a pointer to the value if it's non-zero, otherwise nil.
+func ptrOrNil(id int) *int {
+	if id == 0 {
+		return nil
+	}
+	return &id
 }
 
 // _InvalidRequestBodyJSON returns a JSON object indicating invalid text.
@@ -225,6 +269,9 @@ func (s *RequestService) CreateRequest(
 			// Continue anyway, don't fail the request creation
 		}
 	}
+
+	// Emit request created event
+	s.emitRequestEvent(ctx, events.EventTypeRequestCreated, req)
 
 	return req, nil
 }
@@ -424,6 +471,13 @@ func (s *RequestService) UpdateRequestCompleted(
 	if err != nil {
 		log.Error(ctx, "Failed to update request status to completed", log.Cause(err))
 		return err
+	}
+
+	// Emit request completed event
+	// Fetch the updated request to emit with latest data
+	req, err = client.Request.Get(ctx, requestID)
+	if err == nil && req != nil {
+		s.emitRequestEvent(ctx, events.EventTypeRequestCompleted, req)
 	}
 
 	return nil
@@ -770,6 +824,12 @@ func (s *RequestService) UpdateRequestStatus(ctx context.Context, requestID int,
 		Save(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to update request status: %w", err)
+	}
+
+	// Emit request updated event
+	req, err := client.Request.Get(ctx, requestID)
+	if err == nil && req != nil {
+		s.emitRequestEvent(ctx, events.EventTypeRequestUpdated, req)
 	}
 
 	return nil

@@ -1,0 +1,105 @@
+package api
+
+import (
+	"net/http"
+	"strconv"
+	"time"
+
+	"github.com/gin-contrib/sse"
+	"github.com/gin-gonic/gin"
+
+	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/server/events"
+)
+
+type EventHandlers struct {
+	broker *events.EventBroker
+}
+
+func NewEventHandlers(broker *events.EventBroker) *EventHandlers {
+	return &EventHandlers{
+		broker: broker,
+	}
+}
+
+// StreamRequestEvents handles SSE connections for request events
+func (h *EventHandlers) StreamRequestEvents(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	// Parse project ID from query params
+	projectIDStr := c.Query("project_id")
+	if projectIDStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "project_id query parameter required",
+		})
+		return
+	}
+
+	projectID, err := strconv.Atoi(projectIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid project_id",
+		})
+		return
+	}
+
+	// TODO: Verify user has access to this project
+	// This should use the same auth middleware as GraphQL
+
+	// Subscribe to request events for this project
+	subscriber := h.broker.Subscribe(ctx, events.TopicRequests, &projectID)
+	defer h.broker.Unsubscribe(subscriber.ID)
+
+	log.Info(ctx, "SSE client connected",
+		log.Int("project_id", projectID),
+		log.String("subscriber_id", subscriber.ID))
+
+	// Set SSE headers
+	c.Header("Content-Type", sse.ContentType)
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("X-Accel-Buffering", "no") // Disable nginx buffering
+
+	// Send initial connection confirmation
+	c.SSEvent("connected", gin.H{
+		"subscriber_id": subscriber.ID,
+		"timestamp":     time.Now().Unix(),
+	})
+	c.Writer.Flush()
+	// Heartbeat ticker to keep connection alive
+	heartbeatTicker := time.NewTicker(30 * time.Second)
+	defer heartbeatTicker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			// Client disconnected
+			log.Info(ctx, "SSE client disconnected",
+				log.String("subscriber_id", subscriber.ID))
+			return
+
+		case <-heartbeatTicker.C:
+			// Send heartbeat to keep connection alive
+			c.SSEvent("heartbeat", gin.H{
+				"timestamp": time.Now().Unix(),
+			})
+			c.Writer.Flush()
+
+		case event, ok := <-subscriber.Events:
+			if !ok {
+				// Channel closed (broker shutdown)
+				log.Warn(ctx, "Event channel closed",
+					log.String("subscriber_id", subscriber.ID))
+				return
+			}
+
+			// Send event to client
+			c.SSEvent(string(event.Type), event.Payload)
+			c.Writer.Flush()
+
+			log.Debug(ctx, "Event sent to client",
+				log.String("event_type", string(event.Type)),
+				log.String("subscriber_id", subscriber.ID))
+		}
+	}
+}

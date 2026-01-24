@@ -8,6 +8,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/db"
+	"github.com/looplj/axonhub/internal/server/events"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -16,6 +17,7 @@ var Module = fx.Module("dependencies",
 	fx.Provide(db.NewEntClient),
 	fx.Provide(httpclient.NewHttpClient),
 	fx.Provide(NewExecutors),
+	fx.Provide(events.NewEventBroker),
 	fx.Invoke(func(lc fx.Lifecycle, executor executors.ScheduledExecutor) {
 		lc.Append(fx.Hook{
 			OnStop: func(ctx context.Context) error {

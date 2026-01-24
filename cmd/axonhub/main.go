@@ -20,6 +20,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/metrics"
 	"github.com/looplj/axonhub/internal/server"
+	"github.com/looplj/axonhub/internal/server/events"
 )
 
 func main() {
@@ -59,7 +60,7 @@ func startServer() {
 		}),
 		fx.Provide(conf.Load),
 		fx.Provide(metrics.NewProvider),
-		fx.Invoke(func(lc fx.Lifecycle, server *server.Server, provider *sdk.MeterProvider, ent *ent.Client) {
+		fx.Invoke(func(lc fx.Lifecycle, server *server.Server, provider *sdk.MeterProvider, ent *ent.Client, eventBroker *events.EventBroker) {
 			lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
 					if provider != nil {
@@ -89,6 +90,11 @@ func startServer() {
 					return nil
 				},
 				OnStop: func(ctx context.Context) error {
+					// Shutdown event broker first
+					if eventBroker != nil {
+						eventBroker.Shutdown()
+					}
+
 					err := server.Shutdown(ctx)
 					if err != nil {
 						log.Error(context.Background(), "server shutdown error:", log.Cause(err))
@@ -98,7 +104,6 @@ func startServer() {
 					if err != nil {
 						log.Error(context.Background(), "ent close error:", log.Cause(err))
 					}
-
 					return nil
 				},
 			})

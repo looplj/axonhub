@@ -31,6 +31,7 @@ type Handlers struct {
 	Codex          *api.CodexHandlers
 	ClaudeCode     *api.ClaudeCodeHandlers
 	Antigravity    *api.AntigravityHandlers
+	Events         *api.EventHandlers
 }
 
 type Services struct {
@@ -100,6 +101,9 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 
 		adminGroup.POST("/antigravity/oauth/start", handlers.Antigravity.StartOAuth)
 		adminGroup.POST("/antigravity/oauth/exchange", handlers.Antigravity.Exchange)
+
+		// SSE endpoint for real-time request events
+		adminGroup.GET("/events/requests", handlers.Events.StreamRequestEvents)
 
 		// Playground API with channel specification support
 		adminGroup.POST(
