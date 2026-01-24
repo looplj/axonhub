@@ -11,6 +11,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
+
+	"github.com/looplj/axonhub/llm"
 )
 
 // userIDPattern matches Claude Code format: user_[64-hex]_account__session_[uuid-v4].
@@ -73,23 +75,41 @@ func extractAndRemoveBetas(body []byte) ([]string, []byte) {
 	return betas, body
 }
 
-// disableThinkingIfToolChoiceForced checks if tool_choice forces tool use and disables thinking.
-// Anthropic API does not allow thinking when tool_choice is set to "any" or a specific tool.
-// See: https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#important-considerations
-func disableThinkingIfToolChoiceForced(body []byte) []byte {
-	toolChoiceType := gjson.GetBytes(body, "tool_choice.type").String()
-	// "auto" is allowed with thinking, but "any" or "tool" (specific tool) are not
-	if toolChoiceType == "any" || toolChoiceType == "tool" {
-		// Remove thinking configuration entirely to avoid API error
-		body, _ = sjson.DeleteBytes(body, "thinking")
-	}
-
-	return body
-}
-
 // isClaudeOAuthToken checks if the API key is a Claude OAuth token.
 func isClaudeOAuthToken(apiKey string) bool {
 	return strings.Contains(apiKey, "sk-ant-oat")
+}
+
+// disableThinkingIfToolChoiceForcedStructured clears ReasoningEffort when tool_choice forces tool use.
+// Anthropic API does not allow thinking when tool_choice is "any" or a specific named tool.
+// See: https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#important-considerations
+// This operates on the structured llm.Request before it's serialized by the base transformer.
+func disableThinkingIfToolChoiceForcedStructured(llmReq *llm.Request) *llm.Request {
+	if llmReq.ToolChoice == nil {
+		return llmReq
+	}
+
+	forcesToolUse := false
+
+	if llmReq.ToolChoice.ToolChoice != nil {
+		if *llmReq.ToolChoice.ToolChoice == "any" {
+			forcesToolUse = true
+		}
+	} else if llmReq.ToolChoice.NamedToolChoice != nil {
+		if llmReq.ToolChoice.NamedToolChoice.Type == "tool" {
+			forcesToolUse = true
+		}
+	}
+
+	if forcesToolUse && llmReq.ReasoningEffort != "" {
+		reqCopy := *llmReq
+		reqCopy.ReasoningEffort = ""
+		reqCopy.ReasoningBudget = nil
+
+		return &reqCopy
+	}
+
+	return llmReq
 }
 
 // applyClaudeToolPrefix adds a prefix to all tool names in the request.
