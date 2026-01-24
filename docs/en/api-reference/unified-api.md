@@ -206,6 +206,8 @@ AxonHub provides native support for the Gemini API, enabling access to Gemini's 
 **Endpoints:**
 - `POST /gemini/v1beta/models/{model}:generateContent` - Text and multi-modal content generation
 - `POST /v1beta/models/{model}:generateContent` - Text and multi-modal content generation (alternative)
+- `GET /gemini/v1beta/models` - List available models
+- `GET /v1beta/models` - List available models (alternative)
 
 **Example Request:**
 ```go

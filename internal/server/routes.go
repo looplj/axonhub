@@ -147,6 +147,11 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 	}
 
 	{
+		registerGeminiRoutes := func(group *gin.RouterGroup) {
+			group.POST("/models/*action", handlers.Gemini.GenerateContent)
+			group.GET("/models", handlers.Gemini.ListModels)
+		}
+
 		geminiGroup := server.Group("/gemini/:gemini-api-version",
 			middleware.WithTimeout(server.Config.LLMRequestTimeout),
 			middleware.WithGeminiKeyAuth(services.AuthService),
@@ -155,11 +160,8 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 			middleware.WithTrace(server.Config.Trace, services.TraceService),
 		)
 
-		geminiGroup.POST("/models/*action", handlers.Gemini.GenerateContent)
-		geminiGroup.GET("/models", handlers.Gemini.ListModels)
-	}
+		registerGeminiRoutes(geminiGroup)
 
-	{
 		// Alias for Gemini API
 		geminiAliasGroup := server.Group("/v1beta",
 			middleware.WithTimeout(server.Config.LLMRequestTimeout),
@@ -169,7 +171,6 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 			middleware.WithTrace(server.Config.Trace, services.TraceService),
 		)
 
-		geminiAliasGroup.POST("/models/*action", handlers.Gemini.GenerateContent)
-		geminiAliasGroup.GET("/models", handlers.Gemini.ListModels)
+		registerGeminiRoutes(geminiAliasGroup)
 	}
 }
