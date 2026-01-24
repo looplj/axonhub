@@ -22,6 +22,7 @@ interface DataTableToolbarProps<TData> {
   showRefresh?: boolean;
   autoRefresh?: boolean;
   onAutoRefreshChange?: (value: boolean) => void;
+  isFetching?: boolean;
 }
 
 export function DataTableToolbar<TData>({
@@ -32,6 +33,7 @@ export function DataTableToolbar<TData>({
   showRefresh = false,
   autoRefresh = false,
   onAutoRefreshChange,
+  isFetching = false,
 }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation();
   const permissions = useUsageLogPermissions();
@@ -123,8 +125,8 @@ export function DataTableToolbar<TData>({
           </div>
         )}
         {showRefresh && onRefresh && (
-          <Button variant='outline' size='sm' onClick={onRefresh}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${autoRefresh ? 'animate-spin' : ''}`} />
+          <Button variant='outline' size='sm' onClick={onRefresh} disabled={isFetching}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
             {t('common.refresh')}
           </Button>
         )}

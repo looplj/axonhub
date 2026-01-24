@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import useInterval from './useInterval';
 
 const MAX_ITEMS = 50;
@@ -8,6 +8,12 @@ const ANIMATION_INTERVAL = !isNaN(parsedInterval) && parsedInterval > 0 ? parsed
 export function useAnimatedList<T extends { id: string; createdAt: Date | string }>(data: T[], autoRefresh: boolean) {
   const [displayedData, setDisplayedData] = useState<T[]>(data);
   const queueRef = useRef<T[]>([]);
+  
+  // Reset function to clear the queue and immediately show fresh data
+  const reset = useCallback(() => {
+    queueRef.current = [];
+    setDisplayedData(data);
+  }, [data]);
 
   const getTimestamp = (date: Date | string): number => {
     return date instanceof Date ? date.getTime() : new Date(date).getTime();
@@ -67,5 +73,5 @@ export function useAnimatedList<T extends { id: string; createdAt: Date | string
     autoRefresh ? ANIMATION_INTERVAL : null
   );
 
-  return displayedData;
+  return { displayedData, reset };
 }

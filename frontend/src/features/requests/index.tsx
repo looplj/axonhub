@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { buildDateRangeWhereClause } from '@/utils/date-range';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import useInterval from '@/hooks/useInterval';
+import { useMinimumLoadingTime } from '@/hooks/useMinimumLoadingTime';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
 import { RequestsTable } from './components';
@@ -52,7 +53,7 @@ function RequestsContent() {
     return Object.keys(where).length > 0 ? where : undefined;
   })();
 
-  const { data, isLoading, refetch } = useRequests({
+  const { data, isLoading, isFetching, refetch } = useRequests({
     ...paginationArgs,
     where: whereClause,
     orderBy: {
@@ -95,6 +96,9 @@ function RequestsContent() {
     },
     shouldPoll ? 10000 : null
   );
+
+  // Add minimum 500ms delay to isFetching for better UX
+  const delayedIsFetching = useMinimumLoadingTime(isFetching, 500);
 
   const handleNextPage = () => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
@@ -158,11 +162,17 @@ function RequestsContent() {
     []
   );
 
+  const handleRefresh = useCallback(() => {
+    // Force immediate data refresh bypassing animation queue
+    refetch();
+  }, [refetch]);
+
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
       <RequestsTable
         data={requests}
         loading={isLoading}
+        isFetching={delayedIsFetching}
         pageInfo={pageInfo}
         pageSize={pageSize}
         totalCount={data?.totalCount}
@@ -179,7 +189,7 @@ function RequestsContent() {
         onChannelFilterChange={handleChannelFilterChange}
         onApiKeyFilterChange={handleApiKeyFilterChange}
         onDateRangeChange={handleDateRangeChange}
-        onRefresh={refetch}
+        onRefresh={handleRefresh}
         showRefresh={isFirstPage}
         autoRefresh={autoRefresh}
         onAutoRefreshChange={setAutoRefresh}

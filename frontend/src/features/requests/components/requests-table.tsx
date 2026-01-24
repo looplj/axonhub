@@ -36,6 +36,7 @@ declare module '@tanstack/react-table' {
 interface RequestsTableProps {
   data: Request[];
   loading?: boolean;
+  isFetching?: boolean;
   pageInfo?: RequestConnection['pageInfo'];
   pageSize: number;
   totalCount?: number;
@@ -61,6 +62,7 @@ interface RequestsTableProps {
 export function RequestsTable({
   data,
   loading,
+  isFetching = false,
   pageInfo,
   totalCount,
   pageSize,
@@ -105,7 +107,13 @@ export function RequestsTable({
     localStorage.setItem('requests-table-column-visibility', JSON.stringify(columnVisibility));
   }, [columnVisibility]);
 
-  const displayedData = useAnimatedList(data, autoRefresh);
+  const { displayedData, reset: resetAnimatedList } = useAnimatedList(data, autoRefresh);
+  
+  // Wrap onRefresh to also reset the animated list queue
+  const handleRefresh = () => {
+    resetAnimatedList();
+    onRefresh();
+  };
 
   // Sync filters with the server state
   const handleColumnFiltersChange = (updater: any) => {
@@ -188,12 +196,13 @@ export function RequestsTable({
         table={table}
         dateRange={dateRange}
         onDateRangeChange={onDateRangeChange}
-        onRefresh={onRefresh}
+        onRefresh={handleRefresh}
         showRefresh={showRefresh}
         apiKeyFilter={apiKeyFilter}
         onApiKeyFilterChange={onApiKeyFilterChange}
         autoRefresh={autoRefresh}
         onAutoRefreshChange={onAutoRefreshChange}
+        isFetching={isFetching}
       />
       <div className='shadow-soft relative mt-4 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
         <div className='min-w-max'>

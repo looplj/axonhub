@@ -36,6 +36,7 @@ declare module '@tanstack/react-table' {
 interface TracesTableProps {
   data: Trace[];
   loading?: boolean;
+  isFetching?: boolean;
   pageInfo?: TraceConnection['pageInfo'];
   pageSize: number;
   totalCount?: number;
@@ -55,6 +56,7 @@ interface TracesTableProps {
 export function TracesTable({
   data,
   loading,
+  isFetching = false,
   pageInfo,
   totalCount,
   pageSize,
@@ -77,7 +79,13 @@ export function TracesTable({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
 
-  const displayedData = useAnimatedList(data, autoRefresh);
+  const { displayedData, reset: resetAnimatedList } = useAnimatedList(data, autoRefresh);
+  
+  // Wrap onRefresh to also reset the animated list queue
+  const handleRefresh = () => {
+    resetAnimatedList();
+    onRefresh();
+  };
 
   const table = useReactTable({
     data: displayedData,
@@ -111,10 +119,11 @@ export function TracesTable({
         onDateRangeChange={onDateRangeChange}
         traceIdFilter={traceIdFilter}
         onTraceIdFilterChange={onTraceIdFilterChange}
-        onRefresh={onRefresh}
+        onRefresh={handleRefresh}
         showRefresh={showRefresh}
         autoRefresh={autoRefresh}
         onAutoRefreshChange={onAutoRefreshChange}
+        isFetching={isFetching}
       />
       <div className='shadow-soft relative mt-4 flex-1 overflow-auto overflow-x-hidden rounded-2xl border border-[var(--table-border)]'>
         <Table data-testid='traces-table' className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>

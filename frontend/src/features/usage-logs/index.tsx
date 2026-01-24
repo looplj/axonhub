@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { buildDateRangeWhereClause } from '@/utils/date-range';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import useInterval from '@/hooks/useInterval';
+import { useMinimumLoadingTime } from '@/hooks/useMinimumLoadingTime';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
 import { UsageLogsTable, UsageDetailDialog } from './components';
@@ -38,7 +39,7 @@ function UsageLogsContent() {
     return Object.keys(where).length > 0 ? where : undefined;
   })();
 
-  const { data, isLoading, error, refetch } = useUsageLogs({
+  const { data, isLoading, isFetching, error, refetch } = useUsageLogs({
     ...paginationArgs,
     orderBy: { field: 'CREATED_AT', direction: 'DESC' },
     where: whereClause,
@@ -54,6 +55,9 @@ function UsageLogsContent() {
     },
     autoRefresh && isFirstPage ? 10000 : null
   );
+
+  // Add minimum 500ms delay to isFetching for better UX
+  const delayedIsFetching = useMinimumLoadingTime(isFetching, 500);
 
   const handleNextPage = () => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
@@ -113,6 +117,7 @@ function UsageLogsContent() {
       <UsageLogsTable
         data={usageLogs}
         loading={isLoading}
+        isFetching={delayedIsFetching}
         pageInfo={pageInfo}
         pageSize={pageSize}
         totalCount={data?.totalCount}

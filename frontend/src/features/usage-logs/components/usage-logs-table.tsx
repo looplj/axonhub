@@ -36,6 +36,7 @@ declare module '@tanstack/react-table' {
 interface UsageLogsTableProps {
   data: UsageLog[];
   loading?: boolean;
+  isFetching?: boolean;
   pageInfo?: UsageLogConnection['pageInfo'];
   pageSize: number;
   totalCount?: number;
@@ -57,6 +58,7 @@ interface UsageLogsTableProps {
 export function UsageLogsTable({
   data,
   loading,
+  isFetching = false,
   pageInfo,
   totalCount,
   pageSize,
@@ -81,7 +83,13 @@ export function UsageLogsTable({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
 
-  const displayedData = useAnimatedList(data, autoRefresh);
+  const { displayedData, reset: resetAnimatedList } = useAnimatedList(data, autoRefresh);
+  
+  // Wrap onRefresh to also reset the animated list queue
+  const handleRefresh = () => {
+    resetAnimatedList();
+    onRefresh();
+  };
 
   // Sync filters with the server state
   const handleColumnFiltersChange = (updater: any) => {
@@ -148,10 +156,11 @@ export function UsageLogsTable({
         table={table}
         dateRange={dateRange}
         onDateRangeChange={onDateRangeChange}
-        onRefresh={onRefresh}
+        onRefresh={handleRefresh}
         showRefresh={showRefresh}
         autoRefresh={autoRefresh}
         onAutoRefreshChange={onAutoRefreshChange}
+        isFetching={isFetching}
       />
       <div className='shadow-soft relative mt-4 flex-1 overflow-auto overflow-x-hidden rounded-2xl border border-[var(--table-border)]'>
         <Table data-testid='usage-logs-table' className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>

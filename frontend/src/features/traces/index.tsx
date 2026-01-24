@@ -5,6 +5,7 @@ import { buildDateRangeWhereClause } from '@/utils/date-range';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import useInterval from '@/hooks/useInterval';
+import { useMinimumLoadingTime } from '@/hooks/useMinimumLoadingTime';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
 import { TracesTable } from './components';
@@ -34,7 +35,7 @@ function TracesContent() {
     return Object.keys(where).length > 0 ? where : undefined;
   })();
 
-  const { data, isLoading, refetch } = useTraces({
+  const { data, isLoading, isFetching, refetch } = useTraces({
     ...paginationArgs,
     where: whereClause,
     orderBy: {
@@ -53,6 +54,9 @@ function TracesContent() {
     },
     autoRefresh && isFirstPage ? 30000 : null
   );
+
+  // Add minimum 500ms delay to isFetching for better UX
+  const delayedIsFetching = useMinimumLoadingTime(isFetching, 500);
 
   const handleNextPage = () => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
@@ -94,6 +98,7 @@ function TracesContent() {
       <TracesTable
         data={traces}
         loading={isLoading}
+        isFetching={delayedIsFetching}
         pageInfo={pageInfo}
         pageSize={pageSize}
         totalCount={data?.totalCount}
