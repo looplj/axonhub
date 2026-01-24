@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
@@ -490,6 +491,21 @@ func init() {
 	promptDescDescription := promptFields[2].Descriptor()
 	// prompt.DefaultDescription holds the default value on creation for the description field.
 	prompt.DefaultDescription = promptDescDescription.Default.(string)
+	providerquotastatusMixin := schema.ProviderQuotaStatus{}.Mixin()
+	providerquotastatusMixinFields0 := providerquotastatusMixin[0].Fields()
+	_ = providerquotastatusMixinFields0
+	providerquotastatusFields := schema.ProviderQuotaStatus{}.Fields()
+	_ = providerquotastatusFields
+	// providerquotastatusDescCreatedAt is the schema descriptor for created_at field.
+	providerquotastatusDescCreatedAt := providerquotastatusMixinFields0[0].Descriptor()
+	// providerquotastatus.DefaultCreatedAt holds the default value on creation for the created_at field.
+	providerquotastatus.DefaultCreatedAt = providerquotastatusDescCreatedAt.Default.(func() time.Time)
+	// providerquotastatusDescUpdatedAt is the schema descriptor for updated_at field.
+	providerquotastatusDescUpdatedAt := providerquotastatusMixinFields0[1].Descriptor()
+	// providerquotastatus.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	providerquotastatus.DefaultUpdatedAt = providerquotastatusDescUpdatedAt.Default.(func() time.Time)
+	// providerquotastatus.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	providerquotastatus.UpdateDefaultUpdatedAt = providerquotastatusDescUpdatedAt.UpdateDefault.(func() time.Time)
 	requestMixin := schema.Request{}.Mixin()
 	request.Policy = privacy.NewPolicies(schema.Request{})
 	request.Hooks[0] = func(next ent.Mutator) ent.Mutator {

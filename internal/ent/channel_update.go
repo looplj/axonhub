@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/predicate"
+	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
@@ -363,6 +364,25 @@ func (_u *ChannelUpdate) AddChannelModelPrices(v ...*ChannelModelPrice) *Channel
 	return _u.AddChannelModelPriceIDs(ids...)
 }
 
+// SetProviderQuotaStatusID sets the "provider_quota_status" edge to the ProviderQuotaStatus entity by ID.
+func (_u *ChannelUpdate) SetProviderQuotaStatusID(id int) *ChannelUpdate {
+	_u.mutation.SetProviderQuotaStatusID(id)
+	return _u
+}
+
+// SetNillableProviderQuotaStatusID sets the "provider_quota_status" edge to the ProviderQuotaStatus entity by ID if the given value is not nil.
+func (_u *ChannelUpdate) SetNillableProviderQuotaStatusID(id *int) *ChannelUpdate {
+	if id != nil {
+		_u = _u.SetProviderQuotaStatusID(*id)
+	}
+	return _u
+}
+
+// SetProviderQuotaStatus sets the "provider_quota_status" edge to the ProviderQuotaStatus entity.
+func (_u *ChannelUpdate) SetProviderQuotaStatus(v *ProviderQuotaStatus) *ChannelUpdate {
+	return _u.SetProviderQuotaStatusID(v.ID)
+}
+
 // Mutation returns the ChannelMutation object of the builder.
 func (_u *ChannelUpdate) Mutation() *ChannelMutation {
 	return _u.mutation
@@ -477,6 +497,12 @@ func (_u *ChannelUpdate) RemoveChannelModelPrices(v ...*ChannelModelPrice) *Chan
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveChannelModelPriceIDs(ids...)
+}
+
+// ClearProviderQuotaStatus clears the "provider_quota_status" edge to the ProviderQuotaStatus entity.
+func (_u *ChannelUpdate) ClearProviderQuotaStatus() *ChannelUpdate {
+	_u.mutation.ClearProviderQuotaStatus()
+	return _u
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -882,6 +908,35 @@ func (_u *ChannelUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.ProviderQuotaStatusCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   channel.ProviderQuotaStatusTable,
+			Columns: []string{channel.ProviderQuotaStatusColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(providerquotastatus.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ProviderQuotaStatusIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   channel.ProviderQuotaStatusTable,
+			Columns: []string{channel.ProviderQuotaStatusColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(providerquotastatus.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -1230,6 +1285,25 @@ func (_u *ChannelUpdateOne) AddChannelModelPrices(v ...*ChannelModelPrice) *Chan
 	return _u.AddChannelModelPriceIDs(ids...)
 }
 
+// SetProviderQuotaStatusID sets the "provider_quota_status" edge to the ProviderQuotaStatus entity by ID.
+func (_u *ChannelUpdateOne) SetProviderQuotaStatusID(id int) *ChannelUpdateOne {
+	_u.mutation.SetProviderQuotaStatusID(id)
+	return _u
+}
+
+// SetNillableProviderQuotaStatusID sets the "provider_quota_status" edge to the ProviderQuotaStatus entity by ID if the given value is not nil.
+func (_u *ChannelUpdateOne) SetNillableProviderQuotaStatusID(id *int) *ChannelUpdateOne {
+	if id != nil {
+		_u = _u.SetProviderQuotaStatusID(*id)
+	}
+	return _u
+}
+
+// SetProviderQuotaStatus sets the "provider_quota_status" edge to the ProviderQuotaStatus entity.
+func (_u *ChannelUpdateOne) SetProviderQuotaStatus(v *ProviderQuotaStatus) *ChannelUpdateOne {
+	return _u.SetProviderQuotaStatusID(v.ID)
+}
+
 // Mutation returns the ChannelMutation object of the builder.
 func (_u *ChannelUpdateOne) Mutation() *ChannelMutation {
 	return _u.mutation
@@ -1344,6 +1418,12 @@ func (_u *ChannelUpdateOne) RemoveChannelModelPrices(v ...*ChannelModelPrice) *C
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveChannelModelPriceIDs(ids...)
+}
+
+// ClearProviderQuotaStatus clears the "provider_quota_status" edge to the ProviderQuotaStatus entity.
+func (_u *ChannelUpdateOne) ClearProviderQuotaStatus() *ChannelUpdateOne {
+	_u.mutation.ClearProviderQuotaStatus()
+	return _u
 }
 
 // Where appends a list predicates to the ChannelUpdate builder.
@@ -1772,6 +1852,35 @@ func (_u *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err er
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(channelmodelprice.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ProviderQuotaStatusCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   channel.ProviderQuotaStatusTable,
+			Columns: []string{channel.ProviderQuotaStatusColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(providerquotastatus.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ProviderQuotaStatusIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   channel.ProviderQuotaStatusTable,
+			Columns: []string{channel.ProviderQuotaStatusColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(providerquotastatus.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

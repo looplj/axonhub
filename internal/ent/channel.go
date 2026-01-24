@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
+	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -74,11 +75,13 @@ type ChannelEdges struct {
 	ChannelProbes []*ChannelProbe `json:"channel_probes,omitempty"`
 	// ChannelModelPrices holds the value of the channel_model_prices edge.
 	ChannelModelPrices []*ChannelModelPrice `json:"channel_model_prices,omitempty"`
+	// ProviderQuotaStatus holds the value of the provider_quota_status edge.
+	ProviderQuotaStatus *ProviderQuotaStatus `json:"provider_quota_status,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [6]bool
+	loadedTypes [7]bool
 	// totalCount holds the count of the edges above.
-	totalCount [6]map[string]int
+	totalCount [7]map[string]int
 
 	namedRequests           map[string][]*Request
 	namedExecutions         map[string][]*RequestExecution
@@ -141,6 +144,17 @@ func (e ChannelEdges) ChannelModelPricesOrErr() ([]*ChannelModelPrice, error) {
 		return e.ChannelModelPrices, nil
 	}
 	return nil, &NotLoadedError{edge: "channel_model_prices"}
+}
+
+// ProviderQuotaStatusOrErr returns the ProviderQuotaStatus value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e ChannelEdges) ProviderQuotaStatusOrErr() (*ProviderQuotaStatus, error) {
+	if e.ProviderQuotaStatus != nil {
+		return e.ProviderQuotaStatus, nil
+	} else if e.loadedTypes[6] {
+		return nil, &NotFoundError{label: providerquotastatus.Label}
+	}
+	return nil, &NotLoadedError{edge: "provider_quota_status"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -334,6 +348,11 @@ func (_m *Channel) QueryChannelProbes() *ChannelProbeQuery {
 // QueryChannelModelPrices queries the "channel_model_prices" edge of the Channel entity.
 func (_m *Channel) QueryChannelModelPrices() *ChannelModelPriceQuery {
 	return NewChannelClient(_m.config).QueryChannelModelPrices(_m)
+}
+
+// QueryProviderQuotaStatus queries the "provider_quota_status" edge of the Channel entity.
+func (_m *Channel) QueryProviderQuotaStatus() *ProviderQuotaStatusQuery {
+	return NewChannelClient(_m.config).QueryProviderQuotaStatus(_m)
 }
 
 // Update returns a builder for updating this Channel.

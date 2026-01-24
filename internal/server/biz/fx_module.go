@@ -1,6 +1,8 @@
 package biz
 
 import (
+	"context"
+
 	"go.uber.org/fx"
 )
 
@@ -23,4 +25,12 @@ var Module = fx.Module("biz",
 	fx.Provide(NewChannelProbeService),
 	fx.Provide(NewPromptService),
 	fx.Provide(NewQuotaService),
+	fx.Provide(NewProviderQuotaService),
+	fx.Invoke(func(lc fx.Lifecycle, svc *ProviderQuotaService) {
+		lc.Append(fx.Hook{
+			OnStop: func(ctx context.Context) error {
+				return svc.Stop(ctx)
+			},
+		})
+	}),
 )

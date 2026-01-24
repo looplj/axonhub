@@ -174,6 +174,16 @@ func (r *promptResolver) ID(ctx context.Context, obj *ent.Prompt) (*objects.GUID
 	}, nil
 }
 
+// ID is the resolver for the id field.
+func (r *providerQuotaStatusResolver) ID(ctx context.Context, obj *ent.ProviderQuotaStatus) (*objects.GUID, error) {
+	panic(fmt.Errorf("not implemented: ID - id"))
+}
+
+// ChannelID is the resolver for the channelID field.
+func (r *providerQuotaStatusResolver) ChannelID(ctx context.Context, obj *ent.ProviderQuotaStatus) (*objects.GUID, error) {
+	panic(fmt.Errorf("not implemented: ChannelID - channelID"))
+}
+
 // Node is the resolver for the node field.
 func (r *queryResolver) Node(ctx context.Context, id objects.GUID) (ent.Noder, error) {
 	typ, ok := guidTypeToNodeType[id.Type]
@@ -788,6 +798,11 @@ func (r *Resolver) Project() ProjectResolver { return &projectResolver{r} }
 // Prompt returns PromptResolver implementation.
 func (r *Resolver) Prompt() PromptResolver { return &promptResolver{r} }
 
+// ProviderQuotaStatus returns ProviderQuotaStatusResolver implementation.
+func (r *Resolver) ProviderQuotaStatus() ProviderQuotaStatusResolver {
+	return &providerQuotaStatusResolver{r}
+}
+
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
@@ -832,6 +847,7 @@ type dataStorageResolver struct{ *Resolver }
 type modelResolver struct{ *Resolver }
 type projectResolver struct{ *Resolver }
 type promptResolver struct{ *Resolver }
+type providerQuotaStatusResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type requestResolver struct{ *Resolver }
 type requestExecutionResolver struct{ *Resolver }

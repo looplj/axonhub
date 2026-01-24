@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
+	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
@@ -303,6 +304,25 @@ func (_c *ChannelCreate) AddChannelModelPrices(v ...*ChannelModelPrice) *Channel
 		ids[i] = v[i].ID
 	}
 	return _c.AddChannelModelPriceIDs(ids...)
+}
+
+// SetProviderQuotaStatusID sets the "provider_quota_status" edge to the ProviderQuotaStatus entity by ID.
+func (_c *ChannelCreate) SetProviderQuotaStatusID(id int) *ChannelCreate {
+	_c.mutation.SetProviderQuotaStatusID(id)
+	return _c
+}
+
+// SetNillableProviderQuotaStatusID sets the "provider_quota_status" edge to the ProviderQuotaStatus entity by ID if the given value is not nil.
+func (_c *ChannelCreate) SetNillableProviderQuotaStatusID(id *int) *ChannelCreate {
+	if id != nil {
+		_c = _c.SetProviderQuotaStatusID(*id)
+	}
+	return _c
+}
+
+// SetProviderQuotaStatus sets the "provider_quota_status" edge to the ProviderQuotaStatus entity.
+func (_c *ChannelCreate) SetProviderQuotaStatus(v *ProviderQuotaStatus) *ChannelCreate {
+	return _c.SetProviderQuotaStatusID(v.ID)
 }
 
 // Mutation returns the ChannelMutation object of the builder.
@@ -620,6 +640,22 @@ func (_c *ChannelCreate) createSpec() (*Channel, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(channelmodelprice.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ProviderQuotaStatusIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   channel.ProviderQuotaStatusTable,
+			Columns: []string{channel.ProviderQuotaStatusColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(providerquotastatus.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

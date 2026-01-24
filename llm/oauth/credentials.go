@@ -11,6 +11,7 @@ type OAuthCredentials struct {
 	ClientID     string    `json:"client_id,omitempty"`
 	AccessToken  string    `json:"access_token"`
 	RefreshToken string    `json:"refresh_token"`
+	IDToken      string    `json:"id_token,omitempty"`
 	ExpiresAt    time.Time `json:"expires_at"`
 	TokenType    string    `json:"token_type,omitempty"`
 	Scopes       []string  `json:"scopes,omitempty"`
