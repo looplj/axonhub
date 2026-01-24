@@ -102,20 +102,37 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 	// Clone the request to avoid mutating the original
 	reqCopy := *llmReq
 
-	// Call the base transformer first
-	httpReq, err := t.Outbound.TransformRequest(ctx, &reqCopy)
-	if err != nil {
-		return nil, err
-	}
-
-	// Get OAuth token
+	// Get OAuth token early - needed for determining tool prefix logic
 	creds, err := t.tokens.Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get oauth token: %w", err)
 	}
 	apiKey := creds.AccessToken
 
-	// Modify the request body
+	// Structured pre-processing: Apply transformations that can work on unified model fields
+	// 1. Disable thinking if tool_choice forces tool use (ReasoningEffort)
+	//    This clears the structured ReasoningEffort field before serialization
+	reqCopy = *disableThinkingIfToolChoiceForcedStructured(&reqCopy)
+
+	// Call the base transformer (serializes to Anthropic format)
+	httpReq, err := t.Outbound.TransformRequest(ctx, &reqCopy)
+	if err != nil {
+		return nil, err
+	}
+
+	// Raw byte post-processing: Transformations that MUST operate on bytes after serialization.
+	// Why these can't move to structured pre-processing:
+	//
+	// - extractAndRemoveBetas: "betas" array is Anthropic-specific, not in unified llm.Request
+	// - injectClaudeCodeSystemMessage: Anthropic "system" field with cache_control has no
+	//   equivalent in the unified OpenAI-based request model. The unified model only has
+	//   system/developer messages (handled separately by base transformer), but Claude Code
+	//   needs to inject a custom system message with Anthropic-specific cache_control structure.
+	// - injectFakeUserID: "metadata.user_id" uses Claude Code specific structured format
+	//   not represented in llm.Request.Metadata
+	// - applyClaudeToolPrefix: Adding "proxy_" to tool names before base transformation
+	//   would pollute the shared unified request model, affecting other transformers and
+	//   client expectations. Tool names must stay unmodified at the unified model layer.
 	if len(httpReq.Body) > 0 {
 		bodyBytes := httpReq.Body
 
@@ -130,9 +147,6 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 
 		// Inject fake user ID if needed
 		bodyBytes = injectFakeUserID(bodyBytes)
-
-		// Disable thinking if tool_choice forces tool use
-		bodyBytes = disableThinkingIfToolChoiceForced(bodyBytes)
 
 		// Apply tool prefix for OAuth tokens from non-Claude-CLI clients
 		// Skip if: not OAuth token OR is Claude CLI client
