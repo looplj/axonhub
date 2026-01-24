@@ -3,7 +3,6 @@ package claudecode
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -34,20 +33,18 @@ func isValidUserID(userID string) bool {
 	return userIDPattern.MatchString(userID)
 }
 
-// injectFakeUserID generates and injects a fake user ID into the request metadata.
-func injectFakeUserID(payload []byte) []byte {
-	metadata := gjson.GetBytes(payload, "metadata")
-	if !metadata.Exists() {
-		payload, _ = sjson.SetBytes(payload, "metadata.user_id", generateFakeUserID())
-		return payload
+// injectFakeUserIDStructured generates and injects a fake user ID into the request metadata.
+func injectFakeUserIDStructured(llmReq *llm.Request) *llm.Request {
+	if llmReq.Metadata == nil {
+		llmReq.Metadata = make(map[string]string)
 	}
 
-	existingUserID := gjson.GetBytes(payload, "metadata.user_id").String()
+	existingUserID := llmReq.Metadata["user_id"]
 	if existingUserID == "" || !isValidUserID(existingUserID) {
-		payload, _ = sjson.SetBytes(payload, "metadata.user_id", generateFakeUserID())
+		llmReq.Metadata["user_id"] = generateFakeUserID()
 	}
 
-	return payload
+	return llmReq
 }
 
 // extractAndRemoveBetas extracts the "betas" array from the body and removes it.
@@ -112,65 +109,30 @@ func disableThinkingIfToolChoiceForcedStructured(llmReq *llm.Request) *llm.Reque
 	return llmReq
 }
 
-// applyClaudeToolPrefix adds a prefix to all tool names in the request.
-// This is used for OAuth tokens to add the "proxy_" prefix.
-func applyClaudeToolPrefix(body []byte, prefix string) []byte {
+// applyClaudeToolPrefixStructured adds a prefix to all tool names in the request.
+func applyClaudeToolPrefixStructured(llmReq *llm.Request, prefix string) *llm.Request {
 	if prefix == "" {
-		return body
+		return llmReq
 	}
 
 	// Prefix tool names in tools array
-	if tools := gjson.GetBytes(body, "tools"); tools.Exists() && tools.IsArray() {
-		tools.ForEach(func(index, tool gjson.Result) bool {
-			name := tool.Get("name").String()
-			if name == "" || strings.HasPrefix(name, prefix) {
-				return true
-			}
-
-			path := fmt.Sprintf("tools.%d.name", index.Int())
-			body, _ = sjson.SetBytes(body, path, prefix+name)
-
-			return true
-		})
-	}
-
-	// Prefix tool_choice.name if type is "tool"
-	if gjson.GetBytes(body, "tool_choice.type").String() == "tool" {
-		name := gjson.GetBytes(body, "tool_choice.name").String()
-		if name != "" && !strings.HasPrefix(name, prefix) {
-			body, _ = sjson.SetBytes(body, "tool_choice.name", prefix+name)
+	for i := range llmReq.Tools {
+		if !strings.HasPrefix(llmReq.Tools[i].Function.Name, prefix) {
+			llmReq.Tools[i].Function.Name = prefix + llmReq.Tools[i].Function.Name
 		}
 	}
 
-	// Prefix tool_use names in messages
-	if messages := gjson.GetBytes(body, "messages"); messages.Exists() && messages.IsArray() {
-		messages.ForEach(func(msgIndex, msg gjson.Result) bool {
-			content := msg.Get("content")
-			if !content.Exists() || !content.IsArray() {
-				return true
+	// Prefix tool_choice.name if type is "tool"
+	if llmReq.ToolChoice != nil && llmReq.ToolChoice.NamedToolChoice != nil {
+		if llmReq.ToolChoice.NamedToolChoice.Type == "tool" {
+			name := llmReq.ToolChoice.NamedToolChoice.Function.Name
+			if name != "" && !strings.HasPrefix(name, prefix) {
+				llmReq.ToolChoice.NamedToolChoice.Function.Name = prefix + name
 			}
-
-			content.ForEach(func(contentIndex, part gjson.Result) bool {
-				if part.Get("type").String() != "tool_use" {
-					return true
-				}
-
-				name := part.Get("name").String()
-				if name == "" || strings.HasPrefix(name, prefix) {
-					return true
-				}
-
-				path := fmt.Sprintf("messages.%d.content.%d.name", msgIndex.Int(), contentIndex.Int())
-				body, _ = sjson.SetBytes(body, path, prefix+name)
-
-				return true
-			})
-
-			return true
-		})
+		}
 	}
 
-	return body
+	return llmReq
 }
 
 // stripClaudeToolPrefixFromResponse removes the prefix from tool names in the response.
@@ -232,85 +194,32 @@ func mergeBetasIntoHeader(baseBetas string, extraBetas []string) string {
 	return strings.Join(parts, ",")
 }
 
-// injectClaudeCodeSystemMessage prepends the Claude Code system message to the request.
-// It adds cache_control to the injected message.
-func injectClaudeCodeSystemMessage(payload []byte) ([]byte, error) {
-	system := gjson.GetBytes(payload, "system")
-
-	// Create Claude Code instruction with cache_control
-	claudeCodeInstruction := map[string]any{
-		"type": "text",
-		"text": "You are Claude Code, Anthropic's official CLI for Claude.",
-		"cache_control": map[string]string{
-			"type": "ephemeral",
+// injectClaudeCodeSystemMessageStructured prepends the Claude Code system message with cache_control.
+func injectClaudeCodeSystemMessageStructured(llmReq *llm.Request) *llm.Request {
+	claudeCodeMsg := llm.Message{
+		Role: "system",
+		Content: llm.MessageContent{
+			Content: func() *string { s := claudeCodeSystemMessage; return &s }(),
+		},
+		CacheControl: &llm.CacheControl{
+			Type: "ephemeral",
 		},
 	}
 
-	// If system doesn't exist, create it with just the Claude Code instruction
-	if !system.Exists() {
-		instructions := []any{claudeCodeInstruction}
-
-		instructionsJSON, err := json.Marshal(instructions)
-		if err != nil {
-			return payload, err
+	if len(llmReq.Messages) > 0 && llmReq.Messages[0].Role == "system" {
+		if llmReq.Messages[0].Content.Content != nil &&
+			*llmReq.Messages[0].Content.Content == claudeCodeSystemMessage {
+			return llmReq
 		}
-
-		payload, _ = sjson.SetRawBytes(payload, "system", instructionsJSON)
-
-		return payload, nil
 	}
 
-	// If system is an array, check if Claude Code instruction is already first
-	if system.IsArray() {
-		firstText := gjson.GetBytes(payload, "system.0.text").String()
-		if firstText == "You are Claude Code, Anthropic's official CLI for Claude." {
-			// Already has the instruction, don't duplicate
-			return payload, nil
-		}
+	llmReq.Messages = append([]llm.Message{claudeCodeMsg}, llmReq.Messages...)
 
-		// Prepend Claude Code instruction to existing system messages
-		instructions := []any{claudeCodeInstruction}
-
-		system.ForEach(func(_, part gjson.Result) bool {
-			if part.Get("type").String() == "text" {
-				var partMap map[string]any
-				if err := json.Unmarshal([]byte(part.Raw), &partMap); err == nil {
-					instructions = append(instructions, partMap)
-				}
-			}
-
-			return true
-		})
-
-		instructionsJSON, err := json.Marshal(instructions)
-		if err != nil {
-			return payload, err
-		}
-
-		payload, _ = sjson.SetRawBytes(payload, "system", instructionsJSON)
-
-		return payload, nil
+	// Ensure array format for system prompts (required for cache_control)
+	if llmReq.TransformOptions.ArrayInstructions == nil {
+		arrayInstructions := true
+		llmReq.TransformOptions.ArrayInstructions = &arrayInstructions
 	}
 
-	// If system is a string, convert it to array format with Claude Code instruction first
-	if system.Type == gjson.String {
-		instructions := []any{
-			claudeCodeInstruction,
-			map[string]any{
-				"type": "text",
-				"text": system.String(),
-			},
-		}
-
-		instructionsJSON, err := json.Marshal(instructions)
-		if err != nil {
-			return payload, err
-		}
-
-		payload, _ = sjson.SetRawBytes(payload, "system", instructionsJSON)
-
-		return payload, nil
-	}
-
-	return payload, nil
+	return llmReq
 }
