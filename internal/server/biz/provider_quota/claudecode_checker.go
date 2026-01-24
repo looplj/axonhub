@@ -18,8 +18,11 @@ func NewClaudeCodeQuotaChecker() *ClaudeCodeQuotaChecker {
 
 func (c *ClaudeCodeQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (http.Header, []byte, error) {
 	// Verify credentials
-	if ch.Credentials == nil || ch.Credentials.APIKey == "" {
-		return nil, nil, fmt.Errorf("claudecode channel missing API key")
+	if ch.Credentials == nil {
+		return nil, nil, fmt.Errorf("channel has no credentials")
+	}
+	if ch.Credentials.APIKey == "" {
+		return nil, nil, fmt.Errorf("channel credentials missing API key")
 	}
 
 	// Build HTTP request directly
@@ -46,7 +49,12 @@ func (c *ClaudeCodeQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel
 
 	httpResponse, err := httpClient.Do(ctx, httpRequest)
 	if err != nil {
-		return nil, nil, fmt.Errorf("quota check request failed: %w", err)
+		return nil, nil, fmt.Errorf("HTTP request failed: %w", err)
+	}
+
+	// Check HTTP status
+	if httpResponse.StatusCode != http.StatusOK {
+		return nil, nil, fmt.Errorf("HTTP %d: %s", httpResponse.StatusCode, string(httpResponse.Body))
 	}
 
 	// Return raw headers and body

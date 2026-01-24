@@ -1,0 +1,95 @@
+# AxonHub Configuration Example
+# Copy this file to config.yml and modify as needed
+
+# Server configuration
+server:
+  port: 8090                    # Server port (env: AXONHUB_SERVER_PORT)
+  name: "Cowger"               # Server name (env: AXONHUB_SERVER_NAME)
+  base_path: ""                 # Base path for API routes (env: AXONHUB_SERVER_BASE_PATH)
+  request_timeout: "30s"        # Request timeout duration (env: AXONHUB_SERVER_REQUEST_TIMEOUT)
+  llm_request_timeout: "600s"   # LLM request timeout duration (env: AXONHUB_SERVER_LLM_REQUEST_TIMEOUT)
+  trace:
+    thread_header: "AH-Thread-Id" # Thread ID header name (env: AXONHUB_SERVER_TRACE_THREAD_HEADER)
+    trace_header: "AH-Trace-Id" # Trace ID header name (env: AXONHUB_SERVER_TRACE_TRACE_HEADER)
+    extra_trace_headers: [] # Extra trace headers (env: AXONHUB_SERVER_TRACE_EXTRA_TRACE_HEADERS)
+    extra_trace_body_fields: [] # Extra trace body fields (env: AXONHUB_SERVER_TRACE_EXTRA_TRACE_BODY_FIELDS)
+    claude_code_trace_enabled: true # Enable extracting trace IDs from Claude Code request metadata (env: AXONHUB_SERVER_TRACE_CLAUDE_CODE_TRACE_ENABLED)
+  debug: true                  # Enable debug mode (env: AXONHUB_SERVER_DEBUG)
+  cors:
+    enabled: true               # Enable CORS middleware (env: AXONHUB_SERVER_CORS_ENABLED)
+    debug: false                # Enable CORS debug logging (env: AXONHUB_SERVER_CORS_DEBUG)
+    allowed_origins:            # Allowed origins for CORS (env: AXONHUB_SERVER_CORS_ALLOWED_ORIGINS)
+      - "http://localhost:3000"
+      - "https://ai.home.cowger.us"
+      - "https://axonhub.home.cowger.us"
+      - "http://localhost:5173"
+# Database configuration
+db:
+  dialect: "postgres"            # Database dialect: sqlite3, postgres, mysql (env: AXONHUB_DB_DIALECT)
+  dsn: "postgres://axonhub:axonhub@localhost:5432/axdev?sslmode=disable"  # Database connection string (env: AXONHUB_DB_DSN)
+  debug: false                  # Enable database debug logging (env: AXONHUB_DB_DEBUG)
+
+# Cache configuration
+cache:
+  # One of: memory, redis, two-level (memory + redis)
+  mode: "memory"                # (env: AXONHUB_CACHE_MODE)
+
+  # Memory cache configuration
+  memory:
+    expiration: "5s"            # Memory cache TTL (env: AXONHUB_CACHE_MEMORY_EXPIRATION)
+    cleanup_interval: "10m"     # Memory cache cleanup interval (env: AXONHUB_CACHE_MEMORY_CLEANUP_INTERVAL)
+
+
+# Logging configuration
+log:
+  name: "axonhub"               # Logger name (env: AXONHUB_LOG_NAME)
+  debug: false                  # Enable debug logging (env: AXONHUB_LOG_DEBUG)
+  level: "info"                 # Log level: debug, info, warn, error, panic, fatal (env: AXONHUB_LOG_LEVEL)
+  level_key: "level"            # Key name for log level field (env: AXONHUB_LOG_LEVEL_KEY)
+  time_key: "time"              # Key name for timestamp field (env: AXONHUB_LOG_TIME_KEY)
+  caller_key: "label"           # Key name for caller info field (env: AXONHUB_LOG_CALLER_KEY)
+  function_key: ""              # Key name for function field (env: AXONHUB_LOG_FUNCTION_KEY)
+  name_key: "logger"            # Key name for logger name field (env: AXONHUB_LOG_NAME_KEY)
+  encoding: "console"              # Log encoding: json, console, console_json (env: AXONHUB_LOG_ENCODING)
+  includes: []                  # Logger names to include (env: AXONHUB_LOG_INCLUDES)
+  excludes: []                  # Logger names to exclude (env: AXONHUB_LOG_EXCLUDES)
+  output: "file"               # Output target: file or stdio (env: AXONHUB_LOG_OUTPUT)
+  file:                        # File-based logging configuration (env prefix: AXONHUB_LOG_FILE_*)
+    path: "logs/axonhub.log"   # Log file path (env: AXONHUB_LOG_FILE_PATH)
+    max_size: 100              # Max size in MB before rotation (env: AXONHUB_LOG_FILE_MAX_SIZE)
+    max_age: 30                # Max age in days to retain (env: AXONHUB_LOG_FILE_MAX_AGE)
+    max_backups: 10            # Max number of old log files to retain (env: AXONHUB_LOG_FILE_MAX_BACKUPS)
+    local_time: true           # Use local time for rotated files (env: AXONHUB_LOG_FILE_LOCAL_TIME)
+
+# Metrics configuration
+metrics:
+  enabled: false                 # Enable metrics collection (env: AXONHUB_METRICS_ENABLED)
+  exporter:
+    type: "oltphttp"          # Metrics exporter type: prometheus, console (env: AXONHUB_METRICS_EXPORTER_TYPE)
+    endpoint: "localhost:8080" # Metrics exporter endpoint (env: AXONHUB_METRICS_EXPORTER_ENDPOINT)
+    insecure: true             # Enable insecure connection (env: AXONHUB_METRICS_EXPORTER_INSECURE)
+
+
+# Garbage Collection configuration
+gc:
+  cron: "0 2 * * *"              # Cron expression for GC execution (env: AXONHUB_GC_CRON)
+                                 # This example runs daily at 2:00 AM
+                                 # Format: minute hour day month day_of_week
+                                 # Examples:
+                                 # "0 2 * * *"     - Daily at 2:00 AM
+                                 # "0 3 * * 0"     - Weekly on Sunday at 3:00 AM
+                                 # "0 4 1 * *"     - Monthly on 1st day at 4:00 AM
+
+# Environment Variable Examples:
+# export AXONHUB_SERVER_PORT=8080
+# export AXONHUB_DB_DSN="postgres://user:pass@localhost/axonhub?sslmode=disable"
+# export AXONHUB_LOG_LEVEL="debug"
+# export AXONHUB_LOG_ENCODING="console"
+# export AXONHUB_LOG_OUTPUT="stdio"  # or "file"
+# export AXONHUB_LOG_FILE_PATH="/var/log/axonhub/axonhub.log"
+# export AXONHUB_LOG_FILE_MAX_SIZE=200
+# export AXONHUB_LOG_FILE_MAX_AGE=14
+# export AXONHUB_LOG_FILE_MAX_BACKUPS=7
+# export AXONHUB_SERVER_TRACE_HEADER="X-Trace-ID"
+# export AXONHUB_METRICS_ENABLED=false
+# export AXONHUB_GC_CRON="0 3 * * 0"  # Run weekly on Sunday at 3:00 AM

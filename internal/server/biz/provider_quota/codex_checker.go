@@ -23,16 +23,27 @@ func NewCodexQuotaChecker() *CodexQuotaChecker {
 
 func (c *CodexQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (http.Header, []byte, error) {
 	// Extract OAuth credentials
-	if ch.Credentials == nil || ch.Credentials.OAuth == nil {
-		return nil, nil, fmt.Errorf("codex channel missing OAuth credentials")
+	if ch.Credentials == nil {
+		return nil, nil, fmt.Errorf("channel has no credentials")
+	}
+	if ch.Credentials.OAuth == nil {
+		return nil, nil, fmt.Errorf("channel credentials missing OAuth")
 	}
 
 	oauth := ch.Credentials.OAuth
 
+	// Check for required OAuth fields
+	if oauth.AccessToken == "" {
+		return nil, nil, fmt.Errorf("OAuth missing access_token")
+	}
+	if oauth.IDToken == "" {
+		return nil, nil, fmt.Errorf("OAuth missing id_token")
+	}
+
 	// Extract chatgpt_account_id from id_token JWT
 	accountID := codex.ExtractChatGPTAccountIDFromJWT(oauth.IDToken)
 	if accountID == "" {
-		return nil, nil, fmt.Errorf("failed to extract account ID from id_token")
+		return nil, nil, fmt.Errorf("failed to extract account ID from id_token (invalid JWT format or missing claim)")
 	}
 
 	// Build request

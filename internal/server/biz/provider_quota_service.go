@@ -38,6 +38,8 @@ type ProviderQuotaService struct {
 }
 
 func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaService {
+	ctx := context.Background()
+
 	svc := &ProviderQuotaService{
 		AbstractService: &AbstractService{db: params.Ent},
 		SystemService:   params.SystemService,
@@ -50,10 +52,15 @@ func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaSe
 	svc.registerClaudeCodeSupport()
 	svc.registerCodexSupport()
 
+	log.Info(ctx, "Starting ProviderQuotaService with cron schedule: every 1 minute")
+
 	// Start polling
-	if err := svc.Start(context.Background()); err != nil {
+	if err := svc.Start(ctx); err != nil {
+		log.Error(ctx, "Failed to start ProviderQuotaService", log.Cause(err))
 		panic(err)
 	}
+
+	log.Info(ctx, "ProviderQuotaService started successfully")
 
 	return svc
 }
@@ -86,7 +93,6 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	now := time.Now()
-
 	// Find channels needing quota check:
 	// 1. Enabled channels with supported types
 	// 2. No quota status OR next_check_at <= now
@@ -101,6 +107,7 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context) {
 				),
 			),
 		).
+		WithProviderQuotaStatus().
 		All(ctx)
 
 	if err != nil {
@@ -109,10 +116,11 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context) {
 	}
 
 	if len(channelsToCheck) == 0 {
+		log.Debug(ctx, "No channels need quota check at this time")
 		return
 	}
 
-	log.Debug(ctx, "Running quota check", log.Int("channels", len(channelsToCheck)))
+	log.Info(ctx, "Running quota check", log.Int("channels", len(channelsToCheck)))
 
 	for _, ch := range channelsToCheck {
 		svc.checkChannelQuota(ctx, ch, now)
@@ -146,11 +154,15 @@ func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, ch *ent.
 	if err != nil {
 		log.Error(ctx, "Quota check failed",
 			log.Int("channel_id", ch.ID),
+			log.String("channel_name", ch.Name),
 			log.String("provider", providerType),
 			log.Cause(err))
 
-		// Store error status
-		svc.saveQuotaStatus(ctx, ch.ID, providerType, "error", nil, now)
+		// Store error status with error message in quota_data
+		errorData := map[string]interface{}{
+			"error": err.Error(),
+		}
+		svc.saveQuotaStatus(ctx, ch.ID, providerType, "error", errorData, now)
 		return
 	}
 
@@ -159,12 +171,32 @@ func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, ch *ent.
 	if err != nil {
 		log.Error(ctx, "Failed to parse quota response",
 			log.Int("channel_id", ch.ID),
+			log.String("channel_name", ch.Name),
 			log.String("provider", providerType),
 			log.Cause(err))
 
-		svc.saveQuotaStatus(ctx, ch.ID, providerType, "parse_error", nil, now)
+		errorData := map[string]interface{}{
+			"error": err.Error(),
+		}
+		svc.saveQuotaStatus(ctx, ch.ID, providerType, "parse_error", errorData, now)
 		return
 	}
+
+	// Validate parsed data - check if parser returned empty data
+	if quotaData.Status == "" && quotaData.RawData == nil {
+		log.Warn(ctx, "Parser returned empty quota data (no rate limit headers found)",
+			log.Int("channel_id", ch.ID),
+			log.String("channel_name", ch.Name),
+			log.String("provider", providerType))
+
+		// Store a more informative status
+		noDataMap := map[string]interface{}{
+			"message": "No rate limit headers found in response",
+		}
+		svc.saveQuotaStatus(ctx, ch.ID, providerType, "no_data", noDataMap, now)
+		return
+	}
+
 	// Save quota status
 	svc.saveQuotaStatus(ctx, ch.ID, providerType, quotaData.Status, quotaData.RawData, now)
 
