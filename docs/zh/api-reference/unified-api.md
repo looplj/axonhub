@@ -151,6 +151,7 @@ AxonHub 还支持原生 Anthropic Messages API，适用于偏好 Anthropic 特�
 
 **端点：**
 - `POST /anthropic/v1/messages` - 文本生成
+- `POST /v1/messages` - 文本生成 (可选)
 - `GET /anthropic/v1/models` - 列出可用模型
 
 **示例请求：**
@@ -198,6 +199,7 @@ AxonHub 原生支持 Gemini API，可访问 Gemini 强大的多模态功能。
 
 **端点：**
 - `POST /gemini/v1beta/models/{model}:generateContent` - 文本和多模态内容生成
+- `POST /v1beta/models/{model}:generateContent` - 文本和多模态内容生成 (可选)
 - `GET /gemini/v1beta/models` - 列出可用模型
 
 **示例请求：**

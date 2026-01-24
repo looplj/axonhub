@@ -20,6 +20,8 @@ AxonHub can act as a drop-in replacement for Anthropic endpoints, letting Claude
    ```bash
    export ANTHROPIC_AUTH_TOKEN="<your-axonhub-api-key>"
    export ANTHROPIC_BASE_URL="http://localhost:8090/anthropic"
+   # Or using the root path:
+   # export ANTHROPIC_BASE_URL="http://localhost:8090"
    ```
 2. Launch Claude Code. It will read the environment variables and route all Anthropic requests through AxonHub.
 3. (Optional) Confirm the integration by triggering a chat completion and checking AxonHub traces.

@@ -135,7 +135,12 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 }
 
 func tryExtractTraceIDFromClaudeCodeRequest(c *gin.Context, config tracing.Config) (string, error) {
-	if c.Request.Method != http.MethodPost || !strings.HasSuffix(c.Request.URL.Path, "/anthropic/v1/messages") {
+	if c.Request.Method != http.MethodPost {
+		return "", nil
+	}
+
+	path := c.Request.URL.Path
+	if !strings.HasSuffix(path, "/anthropic/v1/messages") && !strings.HasSuffix(path, "/v1/messages") {
 		return "", nil
 	}
 
