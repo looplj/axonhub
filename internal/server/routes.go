@@ -30,6 +30,7 @@ type Handlers struct {
 	Jina           *api.JinaHandlers
 	Codex          *api.CodexHandlers
 	ClaudeCode     *api.ClaudeCodeHandlers
+	Antigravity    *api.AntigravityHandlers
 }
 
 type Services struct {
@@ -96,6 +97,9 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 
 		adminGroup.POST("/claudecode/oauth/start", handlers.ClaudeCode.StartOAuth)
 		adminGroup.POST("/claudecode/oauth/exchange", handlers.ClaudeCode.Exchange)
+
+		adminGroup.POST("/antigravity/oauth/start", handlers.Antigravity.StartOAuth)
+		adminGroup.POST("/antigravity/oauth/exchange", handlers.Antigravity.Exchange)
 
 		// Playground API with channel specification support
 		adminGroup.POST(
