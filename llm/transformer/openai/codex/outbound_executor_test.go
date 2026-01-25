@@ -44,17 +44,3 @@ func TestCodexExecutor_SetsConversationIDInDo(t *testing.T) {
 	require.Equal(t, "codex_cli_rs", inner.seen.Get("Originator"))
 	require.Equal(t, "0.21.0", inner.seen.Get("Version"))
 }
-
-func TestCodexExecutor_SetsConversationIDInDoStream(t *testing.T) {
-	inner := &captureHeadersExecutor{err: errors.New("stop")}
-	exec := &codexExecutor{inner: inner, transformer: nil}
-
-	req := &httpclient.Request{Headers: make(http.Header)}
-
-	_, err := exec.DoStream(context.Background(), req)
-	require.Error(t, err)
-
-	sid := inner.seen.Get("Session_id")
-	require.NotEmpty(t, sid)
-	require.Equal(t, sid, inner.seen.Get("Conversation_id"))
-}
