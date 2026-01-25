@@ -16,14 +16,13 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 const (
 	codexBaseURL = "https://chatgpt.com/backend-api/codex#"
 	codexAPIURL  = "https://chatgpt.com/backend-api/codex/responses"
 )
-
-const codexDefaultVersion = "0.21.0"
 
 var codexHeaders = [][]string{
 	{"Accept", "text/event-stream"},
@@ -161,11 +160,8 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	// Codex upstream validates the raw `instructions` string more strictly.
 	// If incoming request is not already a Codex CLI prompt, force the Codex CLI instructions.
-	instructions := responsesInstructionFromMessages(reqCopy.Messages)
-
-	isCodex := strings.HasPrefix(instructions, "You are a coding agent running in the Codex CLI") || strings.HasPrefix(instructions, "You are Codex")
-	if !isCodex {
-		reqCopy.Messages = setCodexSystemInstruction(reqCopy.Messages)
+	if !isCodexRequest(reqCopy.Messages) {
+		reqCopy.Messages = appendCodexSystemInstruction(reqCopy.Messages)
 	}
 
 	hreq, err := t.responsesOutbound.TransformRequest(ctx, &reqCopy)
@@ -197,7 +193,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	if rawSessionID != "" {
 		hreq.Headers.Set("Session_id", rawSessionID)
 	} else if hreq.Headers.Get("Session_id") == "" {
-		hreq.Headers.Set("Session_id", uuid.NewString())
+		if sessionID, ok := shared.GetSessionID(ctx); ok {
+			hreq.Headers.Set("Session_id", sessionID)
+		} else {
+			hreq.Headers.Set("Session_id", uuid.NewString())
+		}
 	}
 
 	if accountID != "" {
@@ -207,7 +207,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	return hreq, nil
 }
 
-func setCodexSystemInstruction(msgs []llm.Message) []llm.Message {
+func appendCodexSystemInstruction(msgs []llm.Message) []llm.Message {
 	systemMsg := llm.Message{
 		Role: "system",
 		Content: llm.MessageContent{
@@ -215,34 +215,30 @@ func setCodexSystemInstruction(msgs []llm.Message) []llm.Message {
 		},
 	}
 
-	// Drop existing system/developer instructions to keep Codex `instructions` clean.
-	var filtered []llm.Message
-
-	for _, msg := range msgs {
-		if msg.Role == "system" || msg.Role == "developer" {
-			continue
-		}
-
-		filtered = append(filtered, msg)
-	}
-
-	return append([]llm.Message{systemMsg}, filtered...)
+	return append([]llm.Message{systemMsg}, msgs...)
 }
 
-func responsesInstructionFromMessages(msgs []llm.Message) string {
-	var parts []string
-
+func isCodexRequest(msgs []llm.Message) bool {
 	for _, msg := range msgs {
 		if msg.Role != "system" && msg.Role != "developer" {
 			continue
 		}
 
 		if msg.Content.Content != nil {
-			parts = append(parts, *msg.Content.Content)
+			content := *msg.Content.Content
+			if strings.HasPrefix(content, CodexInstructionPrefix) || strings.HasPrefix(content, "You are Codex") {
+				return true
+			}
+		} else if len(msg.Content.MultipleContent) > 0 {
+			for _, item := range msg.Content.MultipleContent {
+				if item.Text != nil && (strings.HasPrefix(*item.Text, CodexInstructionPrefix) || strings.HasPrefix(*item.Text, "You are Codex")) {
+					return true
+				}
+			}
 		}
 	}
 
-	return strings.Join(parts, "\n")
+	return false
 }
 
 func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.Response, error) {
@@ -278,10 +274,6 @@ func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*h
 
 	if !isCodexCLIUserAgent(request.Headers.Get("User-Agent")) {
 		request.Headers.Set("User-Agent", UserAgent)
-	}
-
-	if request.Headers.Get("Session_id") == "" {
-		request.Headers.Set("Session_id", uuid.NewString())
 	}
 
 	if request.Headers.Get("Conversation_id") == "" {
@@ -342,10 +334,6 @@ func (e *codexExecutor) DoStream(ctx context.Context, request *httpclient.Reques
 		request.Headers.Set("User-Agent", UserAgent)
 	}
 
-	if request.Headers.Get("Session_id") == "" {
-		request.Headers.Set("Session_id", uuid.NewString())
-	}
-
 	if request.Headers.Get("Conversation_id") == "" {
 		request.Headers.Set("Conversation_id", request.Headers.Get("Session_id"))
 	}
@@ -359,41 +347,4 @@ func (e *codexExecutor) DoStream(ctx context.Context, request *httpclient.Reques
 
 func isCodexCLIUserAgent(value string) bool {
 	return strings.HasPrefix(value, "codex_cli_rs/")
-}
-
-func isCodexCLIVersion(value string) bool {
-	v := strings.TrimSpace(value)
-	if v == "" {
-		return false
-	}
-
-	dot := false
-
-	for i := range len(v) {
-		c := v[i]
-		if c == '.' {
-			dot = true
-			continue
-		}
-
-		if c >= '0' && c <= '9' {
-			continue
-		}
-
-		if c >= 'a' && c <= 'z' {
-			continue
-		}
-
-		if c >= 'A' && c <= 'Z' {
-			continue
-		}
-
-		if c == '-' || c == '+' || c == '_' {
-			continue
-		}
-
-		return false
-	}
-
-	return dot
 }
