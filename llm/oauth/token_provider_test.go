@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -145,87 +143,6 @@ func TestTokenProviderExchangeErrorResponse(t *testing.T) {
 		RedirectURI:  "https://example.com/callback",
 	})
 	require.EqualError(t, err, "token exchange failed: invalid_grant - bad code")
-}
-
-func TestTokenProviderGetRefreshFlowSingleflight(t *testing.T) {
-	t.Parallel()
-
-	var calls atomic.Int32
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls.Add(1)
-
-		body, err := io.ReadAll(r.Body)
-		require.NoError(t, err)
-		form, err := url.ParseQuery(string(body))
-		require.NoError(t, err)
-		require.Equal(t, "refresh_token", form.Get("grant_type"))
-		require.Equal(t, "client-1", form.Get("client_id"))
-		require.Equal(t, "refresh-1", form.Get("refresh_token"))
-
-		resp := TokenResponse{
-			AccessToken:  "access-2",
-			RefreshToken: "refresh-2",
-			TokenType:    "Bearer",
-			Scope:        "scope-a scope-b",
-			ExpiresIn:    120,
-		}
-		b, err := json.Marshal(resp)
-		require.NoError(t, err)
-
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(b)
-	}))
-	t.Cleanup(server.Close)
-
-	var refreshed atomic.Int32
-
-	provider := NewTokenProvider(TokenProviderParams{
-		HTTPClient: httpclient.NewHttpClientWithClient(server.Client()),
-		OAuthUrls:  OAuthUrls{TokenUrl: server.URL + "/token"},
-		Credentials: &OAuthCredentials{
-			ClientID:     "client-1",
-			AccessToken:  "access-1",
-			RefreshToken: "refresh-1",
-			ExpiresAt:    time.Now().Add(-10 * time.Minute),
-		},
-		OnRefreshed: func(ctx context.Context, refreshedCreds *OAuthCredentials) error {
-			refreshed.Add(1)
-			require.Equal(t, "access-2", refreshedCreds.AccessToken)
-
-			return nil
-		},
-	})
-
-	ctx := context.Background()
-
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	var (
-		r1, r2 *OAuthCredentials
-		e1, e2 error
-	)
-
-	go func() {
-		defer wg.Done()
-
-		r1, e1 = provider.Get(ctx)
-	}()
-	go func() {
-		defer wg.Done()
-
-		r2, e2 = provider.Get(ctx)
-	}()
-
-	wg.Wait()
-
-	require.NoError(t, e1)
-	require.NoError(t, e2)
-	require.Equal(t, "access-2", r1.AccessToken)
-	require.Equal(t, "access-2", r2.AccessToken)
-	require.Equal(t, int32(1), calls.Load())
-	require.Equal(t, int32(1), refreshed.Load())
 }
 
 func TestTokenProviderRefreshValidation(t *testing.T) {

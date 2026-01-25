@@ -20,11 +20,14 @@ const (
 	// UserAgent keep consistent with Claude CLI.
 	UserAgent = "claude-cli/1.0.83 (external, cli)"
 
-	// ClaudeCode headers
-	ClaudeCodeBetaHeader          = "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14"
-	ClaudeCodeVersionHeader       = "2023-06-01"
+	// ClaudeCodeBetaHeader contains the beta feature identifiers for Claude Code API.
+	ClaudeCodeBetaHeader = "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14"
+	// ClaudeCodeVersionHeader specifies the API version for Claude Code.
+	ClaudeCodeVersionHeader = "2023-06-01"
+	// ClaudeCodeBrowserAccessHeader enables browser access capabilities.
 	ClaudeCodeBrowserAccessHeader = "true"
-	ClaudeCodeAppHeader           = "cli"
+	// ClaudeCodeAppHeader identifies the client application type.
+	ClaudeCodeAppHeader = "cli"
 	// ClaudeCodeQuotaCheckModel is the model used for quota checking requests
 	ClaudeCodeQuotaCheckModel = "claude-haiku-4-5"
 )
