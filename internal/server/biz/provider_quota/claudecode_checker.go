@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -19,10 +21,10 @@ func NewClaudeCodeQuotaChecker() *ClaudeCodeQuotaChecker {
 	return &ClaudeCodeQuotaChecker{}
 }
 
-func (c *ClaudeCodeQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (http.Header, []byte, error) {
+func (c *ClaudeCodeQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (QuotaData, error) {
 	// Verify credentials
 	if ch.Credentials == nil {
-		return nil, nil, fmt.Errorf("channel has no credentials")
+		return QuotaData{}, fmt.Errorf("channel has no credentials")
 	}
 
 	// Parse OAuth credentials from apiKey JSON
@@ -32,13 +34,13 @@ func (c *ClaudeCodeQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel
 	} else if strings.TrimSpace(ch.Credentials.APIKey) != "" {
 		creds, err := oauth.ParseCredentialsJSON(ch.Credentials.APIKey)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to parse OAuth credentials: %w", err)
+			return QuotaData{}, fmt.Errorf("failed to parse OAuth credentials: %w", err)
 		}
 		accessToken = creds.AccessToken
 	}
 
 	if accessToken == "" {
-		return nil, nil, fmt.Errorf("channel credentials missing access token")
+		return QuotaData{}, fmt.Errorf("channel credentials missing access token")
 	}
 
 	// Build HTTP request using Bearer auth like ClaudeCode transformers
@@ -71,16 +73,99 @@ func (c *ClaudeCodeQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel
 
 	httpResponse, err := httpClient.Do(ctx, httpRequest)
 	if err != nil {
-		return nil, nil, fmt.Errorf("HTTP request failed: %w", err)
+		return QuotaData{}, fmt.Errorf("HTTP request failed: %w", err)
 	}
 
 	// Check HTTP status
 	if httpResponse.StatusCode != http.StatusOK {
-		return nil, nil, fmt.Errorf("HTTP %d: %s", httpResponse.StatusCode, string(httpResponse.Body))
+		return QuotaData{}, fmt.Errorf("HTTP %d: %s", httpResponse.StatusCode, string(httpResponse.Body))
 	}
 
-	// Return raw headers and body
-	return httpResponse.Headers, httpResponse.Body, nil
+	return c.parseResponse(httpResponse.Headers)
+}
+
+func (c *ClaudeCodeQuotaChecker) parseResponse(headers http.Header) (QuotaData, error) {
+	// Guard clause - early return if no quota headers
+	if headers.Get("anthropic-ratelimit-unified-status") == "" {
+		return QuotaData{}, nil
+	}
+
+	unifiedStatus := headers.Get("anthropic-ratelimit-unified-status")
+	representativeClaim := headers.Get("anthropic-ratelimit-unified-representative-claim")
+
+	// Parse window data
+	windows := map[string]interface{}{
+		"5h": map[string]interface{}{
+			"status":      headers.Get("anthropic-ratelimit-unified-5h-status"),
+			"reset":       parseUnixTimestamp(headers.Get("anthropic-ratelimit-unified-5h-reset")),
+			"utilization": parseFloat(headers.Get("anthropic-ratelimit-unified-5h-utilization")),
+		},
+		"7d": map[string]interface{}{
+			"status":      headers.Get("anthropic-ratelimit-unified-7d-status"),
+			"reset":       parseUnixTimestamp(headers.Get("anthropic-ratelimit-unified-7d-reset")),
+			"utilization": parseFloat(headers.Get("anthropic-ratelimit-unified-7d-utilization")),
+		},
+		"overage": map[string]interface{}{
+			"status":      headers.Get("anthropic-ratelimit-unified-overage-status"),
+			"reset":       parseUnixTimestamp(headers.Get("anthropic-ratelimit-unified-overage-reset")),
+			"utilization": parseFloat(headers.Get("anthropic-ratelimit-unified-overage-utilization")),
+		},
+	}
+
+	rawData := map[string]interface{}{
+		"unified_status":       unifiedStatus,
+		"windows":              windows,
+		"representative_claim": representativeClaim,
+		"fallback":             headers.Get("anthropic-ratelimit-unified-fallback"),
+		"fallback_percentage":  parseFloat(headers.Get("anthropic-ratelimit-unified-fallback-percentage")),
+		"reset":                parseUnixTimestamp(headers.Get("anthropic-ratelimit-unified-reset")),
+	}
+
+	// Normalize status: allowed -> available, throttled/rejected -> exhausted
+	var normalizedStatus string
+	switch unifiedStatus {
+	case "allowed":
+		normalizedStatus = "available"
+	case "throttled", "rejected":
+		normalizedStatus = "exhausted"
+	default:
+		normalizedStatus = "unknown"
+	}
+
+	// Check for warning state (utilization >= 80% on any window)
+	if normalizedStatus == "available" {
+		fiveHourUtilization := parseFloat(headers.Get("anthropic-ratelimit-unified-5h-utilization"))
+		sevenDayUtilization := parseFloat(headers.Get("anthropic-ratelimit-unified-7d-utilization"))
+		if fiveHourUtilization >= 0.8 || sevenDayUtilization >= 0.8 {
+			normalizedStatus = "warning"
+		}
+	}
+
+	// Extract next reset time based on representative claim
+	// Map representative claim to window key: "five_hour" -> "5h", "seven_day" -> "7d"
+	windowKey := representativeClaim
+	switch representativeClaim {
+	case "five_hour":
+		windowKey = "5h"
+	case "seven_day":
+		windowKey = "7d"
+	}
+
+	var nextResetAt *time.Time
+	if resetWindow, ok := windows[windowKey].(map[string]interface{}); ok {
+		if resetTs, exists := resetWindow["reset"].(int64); exists && resetTs > 0 {
+			t := time.Unix(resetTs, 0)
+			nextResetAt = &t
+		}
+	}
+
+	return QuotaData{
+		Status:       normalizedStatus,
+		ProviderType: "claudecode",
+		RawData:      rawData,
+		NextResetAt:  nextResetAt,
+		Ready:        normalizedStatus == "available" || normalizedStatus == "warning",
+	}, nil
 }
 
 func (c *ClaudeCodeQuotaChecker) SupportsChannel(ch *ent.Channel) bool {
@@ -99,4 +184,14 @@ func getEndpointURL(baseURL string) string {
 	}
 
 	return baseURL + "/v1/messages"
+}
+
+func parseUnixTimestamp(s string) int64 {
+	v, _ := strconv.ParseInt(s, 10, 64)
+	return v
+}
+
+func parseFloat(s string) float64 {
+	v, _ := strconv.ParseFloat(s, 64)
+	return v
 }

@@ -22,19 +22,15 @@ import (
 // HOW TO ADD A NEW PROVIDER QUOTA CHECKER
 // ========================================
 //
-// 1. Create the checker and parser in internal/server/biz/provider_quota/
+// 1. Create the checker in internal/server/biz/provider_quota/
 //
 //    Implement the QuotaChecker interface:
-//      - CheckQuota(ctx, ch) -> makes the actual API request to get quota info
-//      - Returns (headers, body, error)
-//
-//    Implement the QuotaParser interface:
-//      - ParseResponse(headers, body) -> parses the response into normalized QuotaData
-//      - Returns QuotaData with:
+//      - CheckQuota(ctx, ch) -> makes the API request and parses the response internally
+//      - Returns normalized QuotaData with:
 //        * Status: "available", "warning", "exhausted", or "unknown"
-//        * ready: true for available/warning, false for exhausted/unknown
+//        * Ready: true for available/warning, false for exhausted/unknown
 //        * NextResetAt: optional timestamp of next quota reset
-//        * RawData: provider-specific data (will be stored in JSON format)
+//        * RawData: provider-specific data (stored in JSON format)
 //
 // 2. Add the provider type to the database schema
 //
@@ -54,7 +50,6 @@ import (
 //    Example:
 //
 //      func (svc *ProviderQuotaService) registerMyProviderSupport() {
-//        svc.parsers["myprovider"] = &provider_quota.MyProviderQuotaParser{}
 //        svc.checkers["myprovider"] = provider_quota.NewMyProviderQuotaChecker()
 //      }
 //
@@ -73,10 +68,7 @@ import (
 //
 // Checker: internal/server/biz/provider_quota/claudecode_checker.go
 //   - Makes minimal request to Claude Code API
-//   - Extracts rate limit headers (anthropic-ratelimit-unified-status, etc.)
-//
-// Parser: internal/server/biz/provider_quota/claudecode_parser.go
-//   - Parses rate limit headers
+//   - Internally parses rate limit headers (anthropic-ratelimit-unified-status, etc.)
 //   - Normalizes status (allowed -> available, throttled -> exhausted)
 //   - Detects warning state (utilization >= 80%)
 //   - Maps representative claim to reset time
@@ -86,10 +78,7 @@ import (
 //
 // Checker: internal/server/biz/provider_quota/codex_checker.go
 //   - Makes request to ChatGPT usage endpoint (/backend-api/wham/usage)
-//   - Extracts JSON response with rate limit info
-//
-// Parser: internal/server/biz/provider_quota/codex_parser.go
-//   - Parses JSON response (plan_type, rate_limit)
+//   - Internally parses JSON response (plan_type, rate_limit)
 //   - Normalizes status based on limit_reached and allowed flags
 //   - Detects warning state (primary_window.used_percent >= 80)
 //
@@ -110,7 +99,6 @@ type ProviderQuotaService struct {
 	checkInterval time.Duration
 
 	// Registry
-	parsers  map[string]provider_quota.QuotaParser
 	checkers map[string]provider_quota.QuotaChecker
 
 	mu sync.Mutex
@@ -121,7 +109,6 @@ func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaSe
 		AbstractService: &AbstractService{db: params.Ent},
 		SystemService:   params.SystemService,
 		Executor:        executors.NewPoolScheduleExecutor(executors.WithMaxConcurrent(1)),
-		parsers:         make(map[string]provider_quota.QuotaParser),
 		checkers:        make(map[string]provider_quota.QuotaChecker),
 		checkInterval:   params.CheckInterval,
 	}
@@ -133,12 +120,10 @@ func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaSe
 }
 
 func (svc *ProviderQuotaService) registerClaudeCodeSupport() {
-	svc.parsers["claudecode"] = &provider_quota.ClaudeCodeQuotaParser{}
 	svc.checkers["claudecode"] = provider_quota.NewClaudeCodeQuotaChecker()
 }
 
 func (svc *ProviderQuotaService) registerCodexSupport() {
-	svc.parsers["codex"] = &provider_quota.CodexQuotaParser{}
 	svc.checkers["codex"] = provider_quota.NewCodexQuotaChecker()
 }
 
@@ -292,16 +277,8 @@ func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, ch *ent.
 		return
 	}
 
-	parser, ok := svc.parsers[providerType]
-	if !ok {
-		log.Error(ctx, "No parser for provider",
-			log.String("provider", providerType),
-			log.Int("channel_id", ch.ID))
-		return
-	}
-
 	// Make quota check request
-	headers, body, err := checker.CheckQuota(ctx, ch)
+	quotaData, err := checker.CheckQuota(ctx, ch)
 	if err != nil {
 		log.Error(ctx, "Quota check failed",
 			log.Int("channel_id", ch.ID),
@@ -312,25 +289,6 @@ func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, ch *ent.
 		// Store error status
 		svc.saveQuotaStatus(ctx, ch.ID, providerType, provider_quota.QuotaData{
 			Status: "exhausted",
-			RawData: map[string]interface{}{
-				"error": err.Error(),
-			},
-			Ready: false,
-		}, now)
-		return
-	}
-
-	// Parse quota data
-	quotaData, err := parser.ParseResponse(headers, body)
-	if err != nil {
-		log.Error(ctx, "Failed to parse quota response",
-			log.Int("channel_id", ch.ID),
-			log.String("channel_name", ch.Name),
-			log.String("provider", providerType),
-			log.Cause(err))
-
-		svc.saveQuotaStatus(ctx, ch.ID, providerType, provider_quota.QuotaData{
-			Status: "unknown",
 			RawData: map[string]interface{}{
 				"error": err.Error(),
 			},

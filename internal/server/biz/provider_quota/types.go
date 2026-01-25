@@ -2,25 +2,15 @@ package provider_quota
 
 import (
 	"context"
-	"net/http"
 	"time"
 
 	"github.com/looplj/axonhub/internal/ent"
 )
 
-// QuotaParser extracts quota data from provider responses
-type QuotaParser interface {
-	// ParseResponse extracts quota data from HTTP response
-	ParseResponse(headers http.Header, body []byte) (QuotaData, error)
-
-	// GetProviderType returns the provider type this parser handles
-	GetProviderType() string
-}
-
-// QuotaChecker makes API requests to check quota status
+// QuotaChecker checks quota status for a provider
 type QuotaChecker interface {
-	// CheckQuota makes a minimal API request to get quota information
-	CheckQuota(ctx context.Context, channel *ent.Channel) (http.Header, []byte, error)
+	// CheckQuota makes a minimal API request to get quota information and returns parsed quota data
+	CheckQuota(ctx context.Context, channel *ent.Channel) (QuotaData, error)
 
 	// SupportsChannel returns true if this checker supports the channel
 	SupportsChannel(channel *ent.Channel) bool
