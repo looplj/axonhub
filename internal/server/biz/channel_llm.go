@@ -267,6 +267,7 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 
 			transformer, err := claudecode.NewOutboundTransformer(claudecode.Params{
 				TokenProvider: tokens,
+				BaseURL:       c.BaseURL,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("failed to create claudecode outbound transformer: %w", err)
@@ -281,8 +282,20 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 			return ch, nil
 		}
 
-		// Claude Code requires OAuth authentication
-		return nil, fmt.Errorf("claudecode channel requires OAuth credentials")
+		// Third-party Claude Code with plain API key
+		tokens := oauth.NewStaticTokenProvider(&oauth.OAuthCredentials{
+			AccessToken: credsJSON,
+		})
+
+		transformer, err := claudecode.NewOutboundTransformer(claudecode.Params{
+			TokenProvider: tokens,
+			BaseURL:       c.BaseURL,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create claudecode outbound transformer: %w", err)
+		}
+
+		return buildChannelWithTransformer(c, transformer, httpClient), nil
 	case channel.TypeDeepseekAnthropic:
 		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
 			Type:    anthropic.PlatformDeepSeek,
@@ -442,31 +455,52 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 			credsJSON = creds
 		}
 
-		creds, err := oauth.ParseCredentialsJSON(credsJSON)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse codex oauth credentials: %w", err)
+		var tokens oauth.TokenGetter
+
+		if isOAuthJSON(credsJSON) {
+			creds, err := oauth.ParseCredentialsJSON(credsJSON)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse codex oauth credentials: %w", err)
+			}
+
+			p := codex.NewTokenProvider(codex.TokenProviderParams{
+				Credentials: creds,
+				HTTPClient:  httpClient,
+				OnRefreshed: svc.refreshOAuthTokenFunc(c),
+			})
+			tokens = p
+
+			transformer, err := codex.NewOutboundTransformer(codex.Params{
+				TokenProvider: tokens,
+				BaseURL:       c.BaseURL,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("failed to create codex outbound transformer: %w", err)
+			}
+
+			ch := buildChannelWithTransformer(c, transformer, httpClient)
+			ch.startTokenProvider = func() {
+				p.StartAutoRefresh(context.Background(), oauth.AutoRefreshOptions{})
+			}
+			ch.stopTokenProvider = p.StopAutoRefresh
+
+			return ch, nil
 		}
 
-		tokens := codex.NewTokenProvider(codex.TokenProviderParams{
-			Credentials: creds,
-			HTTPClient:  httpClient,
-			OnRefreshed: svc.refreshOAuthTokenFunc(c),
+		// Third-party Codex with plain API key
+		tokens = oauth.NewStaticTokenProvider(&oauth.OAuthCredentials{
+			AccessToken: credsJSON,
 		})
 
 		transformer, err := codex.NewOutboundTransformer(codex.Params{
 			TokenProvider: tokens,
+			BaseURL:       c.BaseURL,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create codex outbound transformer: %w", err)
 		}
 
-		ch := buildChannelWithTransformer(c, transformer, httpClient)
-		ch.startTokenProvider = func() {
-			tokens.StartAutoRefresh(context.Background(), oauth.AutoRefreshOptions{})
-		}
-		ch.stopTokenProvider = tokens.StopAutoRefresh
-
-		return ch, nil
+		return buildChannelWithTransformer(c, transformer, httpClient), nil
 	case channel.TypeOpenai, channel.TypeDeepinfra, channel.TypeMinimax,
 		channel.TypePpio, channel.TypeSiliconflow,
 		channel.TypeVercel, channel.TypeAihubmix, channel.TypeBurncloud, channel.TypeGithub:
