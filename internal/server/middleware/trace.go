@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/tracing"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // traceHeaderName returns the name of the header used for trace IDs.
@@ -132,6 +133,10 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 		}
 
 		ctx := contexts.WithTrace(c.Request.Context(), trace)
+
+		// Set session ID in context if available, to let the provider use it for cache if needed.
+		ctx = shared.WithSessionID(ctx, traceID)
+
 		c.Request = c.Request.WithContext(ctx)
 
 		c.Next()
