@@ -132,17 +132,20 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	// Get retry policy from system settings
 	retryPolicy := processor.SystemService.RetryPolicyOrDefault(ctx)
 
+	strategy := deriveLoadBalancerStrategy(retryPolicy, apiKey)
 	if log.DebugEnabled(ctx) {
 		log.Debug(ctx, "chat request received",
 			log.String("request_body", string(request.Body)),
 			log.Any("request_headers", request.Headers),
 			log.Any("retry_policy", retryPolicy),
+			log.String("system_load_balance_strategy", retryPolicy.LoadBalancerStrategy),
+			log.String("load_balance_strategy", strategy),
 		)
 	}
 
 	loadBalancer := processor.adaptiveLoadBalancer
 
-	switch retryPolicy.LoadBalancerStrategy {
+	switch strategy {
 	case biz.LoadBalancerStrategyAdaptive:
 		loadBalancer = processor.adaptiveLoadBalancer
 	case biz.LoadBalancerStrategyFailover:
@@ -203,6 +206,8 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		// Unified performance tracking middleware.
 		withPerformanceRecording(outbound),
 
+		withModelCircuitBreaker(outbound, processor.modelCircuitBreaker, strategy),
+
 		// The request execution middleware must be the final middleware
 		// to ensure that the request execution is created with the correct request bodys.
 		persistRequestExecution(outbound),
@@ -210,11 +215,6 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		// Connection tracking middleware for load balancing.
 		withConnectionTracking(outbound, processor.connectionTracker),
 	)
-
-	if retryPolicy.LoadBalancerStrategy == biz.LoadBalancerStrategyCircuitBreaker {
-		// Model circuit breaker middleware for circuit-breaker load balancing.
-		middlewares = append(middlewares, withModelCircuitBreaker(outbound, processor.modelCircuitBreaker))
-	}
 
 	pipelineOpts = append(pipelineOpts, pipeline.WithMiddlewares(middlewares...))
 

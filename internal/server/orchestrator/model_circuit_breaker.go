@@ -12,10 +12,11 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 )
 
-func withModelCircuitBreaker(outbound *PersistentOutboundTransformer, modelCircuitBreaker *biz.ModelCircuitBreaker) pipeline.Middleware {
+func withModelCircuitBreaker(outbound *PersistentOutboundTransformer, modelCircuitBreaker *biz.ModelCircuitBreaker, strategy string) pipeline.Middleware {
 	return &modelCircuitBreakerTracker{
 		outbound:            outbound,
 		modelCircuitBreaker: modelCircuitBreaker,
+		strategy:            strategy,
 	}
 }
 
@@ -25,6 +26,7 @@ type modelCircuitBreakerTracker struct {
 	outbound            *PersistentOutboundTransformer
 	modelCircuitBreaker *biz.ModelCircuitBreaker
 
+	strategy       string
 	probeActive    bool
 	probeChannelID int
 	probeModelID   string
@@ -35,16 +37,11 @@ func (m *modelCircuitBreakerTracker) Name() string {
 }
 
 func (m *modelCircuitBreakerTracker) OnOutboundRawRequest(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
-	if m.outbound == nil || m.outbound.state == nil {
-		return request, nil
-	}
-
-	if m.modelCircuitBreaker == nil {
+	if m.strategy != biz.LoadBalancerStrategyCircuitBreaker || m.modelCircuitBreaker == nil {
 		return request, nil
 	}
 
 	channel := m.outbound.GetCurrentChannel()
-
 	modelID := m.outbound.GetRequestedModel()
 	if channel == nil || modelID == "" {
 		return request, nil
@@ -72,30 +69,37 @@ func (m *modelCircuitBreakerTracker) OnOutboundRawRequest(ctx context.Context, r
 }
 
 func (m *modelCircuitBreakerTracker) OnOutboundLlmResponse(ctx context.Context, response *llm.Response) (*llm.Response, error) {
-	if m.outbound != nil {
-		m.releaseProbeLease()
-
-		channel := m.outbound.GetCurrentChannel()
-		modelID := m.outbound.GetRequestedModel()
-		m.modelCircuitBreaker.RecordSuccess(ctx, channel.ID, modelID)
+	if m.outbound == nil || m.outbound.state == nil || m.modelCircuitBreaker == nil {
+		return response, nil
 	}
+
+	m.releaseProbeLease()
+
+	channel := m.outbound.GetCurrentChannel()
+	modelID := m.outbound.GetRequestedModel()
+	m.modelCircuitBreaker.RecordSuccess(ctx, channel.ID, modelID)
 
 	return response, nil
 }
 
 func (m *modelCircuitBreakerTracker) OnOutboundRawError(ctx context.Context, err error) {
-	if m.outbound != nil {
-		m.releaseProbeLease()
+	if m.outbound == nil || m.outbound.state == nil || m.modelCircuitBreaker == nil {
+		return
+	}
 
-		if !errors.Is(err, context.Canceled) {
-			channel := m.outbound.GetCurrentChannel()
-			modelID := m.outbound.GetRequestedModel()
-			m.modelCircuitBreaker.RecordError(ctx, channel.ID, modelID)
-		}
+	m.releaseProbeLease()
+
+	if !errors.Is(err, context.Canceled) {
+		channel := m.outbound.GetCurrentChannel()
+		modelID := m.outbound.GetRequestedModel()
+		m.modelCircuitBreaker.RecordError(ctx, channel.ID, modelID)
 	}
 }
 
 func (m *modelCircuitBreakerTracker) OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error) {
+	if m.outbound == nil || m.outbound.state == nil || m.modelCircuitBreaker == nil {
+		return stream, nil
+	}
 	return &probeReleasingStream{
 		ctx:            ctx,
 		stream:         stream,
@@ -114,14 +118,16 @@ func (m *modelCircuitBreakerTracker) OnOutboundLlmStream(ctx context.Context, st
 }
 
 func (m *modelCircuitBreakerTracker) releaseProbeLease() {
-	if m.outbound == nil || m.outbound.state == nil || !m.probeActive {
+	if m.outbound == nil || m.outbound.state == nil || m.modelCircuitBreaker == nil {
+		return
+	}
+
+	if !m.probeActive {
 		return
 	}
 
 	m.modelCircuitBreaker.EndProbe(m.probeChannelID, m.probeModelID)
 	m.probeActive = false
-	m.probeChannelID = 0
-	m.probeModelID = ""
 }
 
 //nolint:containedctx // Checked.
@@ -145,6 +151,10 @@ func (s *probeReleasingStream) Next() bool {
 func (s *probeReleasingStream) Current() *llm.Response {
 	event := s.stream.Current()
 	if event == nil {
+		return nil
+	}
+
+	if s.modelCircuitBreaker == nil {
 		return nil
 	}
 

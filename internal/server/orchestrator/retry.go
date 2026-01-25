@@ -3,6 +3,8 @@ package orchestrator
 import (
 	"errors"
 
+	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
@@ -32,4 +34,24 @@ func ExtractStatusCodeFromError(err error) int {
 	}
 
 	return 0
+}
+
+func deriveLoadBalancerStrategy(retryPolicy *biz.RetryPolicy, apiKey *ent.APIKey) string {
+	strategy := retryPolicy.LoadBalancerStrategy
+	if apiKey == nil {
+		return strategy
+	}
+
+	activeProfile := apiKey.GetActiveProfile()
+	if activeProfile == nil {
+		return strategy
+	}
+
+	if activeProfile.LoadBalanceStrategy == nil ||
+		*activeProfile.LoadBalanceStrategy == "" ||
+		*activeProfile.LoadBalanceStrategy == "system_default" {
+		return strategy
+	}
+
+	return *activeProfile.LoadBalanceStrategy
 }
