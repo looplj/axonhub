@@ -68,7 +68,7 @@ func (c *CodexQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (ht
 	if err != nil {
 		return nil, nil, fmt.Errorf("quota request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Read body
 	body, err := io.ReadAll(resp.Body)

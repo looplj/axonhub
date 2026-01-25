@@ -391,7 +391,8 @@ func (svc *ProviderQuotaService) saveQuotaStatus(
 }
 
 func (svc *ProviderQuotaService) getProviderType(ch *ent.Channel) string {
-	switch ch.Type {
+	// Only claudecode and codex support quota checking; all others return empty
+	switch ch.Type { //nolint:exhaustive
 	case channel.TypeClaudecode:
 		return "claudecode"
 	case channel.TypeCodex:

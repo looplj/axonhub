@@ -46,7 +46,7 @@ func (p *ClaudeCodeQuotaParser) ParseResponse(headers http.Header, body []byte) 
 	}
 
 	// Normalize status: allowed -> available, throttled/rejected -> exhausted
-	normalizedStatus := "unknown"
+	var normalizedStatus string
 	switch unifiedStatus {
 	case "allowed":
 		normalizedStatus = "available"
