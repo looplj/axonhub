@@ -35,6 +35,27 @@ func (_u *ProviderQuotaStatusUpdate) SetUpdatedAt(v time.Time) *ProviderQuotaSta
 	return _u
 }
 
+// SetDeletedAt sets the "deleted_at" field.
+func (_u *ProviderQuotaStatusUpdate) SetDeletedAt(v int) *ProviderQuotaStatusUpdate {
+	_u.mutation.ResetDeletedAt()
+	_u.mutation.SetDeletedAt(v)
+	return _u
+}
+
+// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
+func (_u *ProviderQuotaStatusUpdate) SetNillableDeletedAt(v *int) *ProviderQuotaStatusUpdate {
+	if v != nil {
+		_u.SetDeletedAt(*v)
+	}
+	return _u
+}
+
+// AddDeletedAt adds value to the "deleted_at" field.
+func (_u *ProviderQuotaStatusUpdate) AddDeletedAt(v int) *ProviderQuotaStatusUpdate {
+	_u.mutation.AddDeletedAt(v)
+	return _u
+}
+
 // SetStatus sets the "status" field.
 func (_u *ProviderQuotaStatusUpdate) SetStatus(v providerquotastatus.Status) *ProviderQuotaStatusUpdate {
 	_u.mutation.SetStatus(v)
@@ -110,7 +131,9 @@ func (_u *ProviderQuotaStatusUpdate) Mutation() *ProviderQuotaStatusMutation {
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (_u *ProviderQuotaStatusUpdate) Save(ctx context.Context) (int, error) {
-	_u.defaults()
+	if err := _u.defaults(); err != nil {
+		return 0, err
+	}
 	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
@@ -137,11 +160,15 @@ func (_u *ProviderQuotaStatusUpdate) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (_u *ProviderQuotaStatusUpdate) defaults() {
+func (_u *ProviderQuotaStatusUpdate) defaults() error {
 	if _, ok := _u.mutation.UpdatedAt(); !ok {
+		if providerquotastatus.UpdateDefaultUpdatedAt == nil {
+			return fmt.Errorf("ent: uninitialized providerquotastatus.UpdateDefaultUpdatedAt (forgotten import ent/runtime?)")
+		}
 		v := providerquotastatus.UpdateDefaultUpdatedAt()
 		_u.mutation.SetUpdatedAt(v)
 	}
+	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -177,6 +204,12 @@ func (_u *ProviderQuotaStatusUpdate) sqlSave(ctx context.Context) (_node int, er
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(providerquotastatus.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.DeletedAt(); ok {
+		_spec.SetField(providerquotastatus.FieldDeletedAt, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedDeletedAt(); ok {
+		_spec.AddField(providerquotastatus.FieldDeletedAt, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(providerquotastatus.FieldStatus, field.TypeEnum, value)
@@ -221,6 +254,27 @@ type ProviderQuotaStatusUpdateOne struct {
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *ProviderQuotaStatusUpdateOne) SetUpdatedAt(v time.Time) *ProviderQuotaStatusUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
+	return _u
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (_u *ProviderQuotaStatusUpdateOne) SetDeletedAt(v int) *ProviderQuotaStatusUpdateOne {
+	_u.mutation.ResetDeletedAt()
+	_u.mutation.SetDeletedAt(v)
+	return _u
+}
+
+// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
+func (_u *ProviderQuotaStatusUpdateOne) SetNillableDeletedAt(v *int) *ProviderQuotaStatusUpdateOne {
+	if v != nil {
+		_u.SetDeletedAt(*v)
+	}
+	return _u
+}
+
+// AddDeletedAt adds value to the "deleted_at" field.
+func (_u *ProviderQuotaStatusUpdateOne) AddDeletedAt(v int) *ProviderQuotaStatusUpdateOne {
+	_u.mutation.AddDeletedAt(v)
 	return _u
 }
 
@@ -312,7 +366,9 @@ func (_u *ProviderQuotaStatusUpdateOne) Select(field string, fields ...string) *
 
 // Save executes the query and returns the updated ProviderQuotaStatus entity.
 func (_u *ProviderQuotaStatusUpdateOne) Save(ctx context.Context) (*ProviderQuotaStatus, error) {
-	_u.defaults()
+	if err := _u.defaults(); err != nil {
+		return nil, err
+	}
 	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
@@ -339,11 +395,15 @@ func (_u *ProviderQuotaStatusUpdateOne) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (_u *ProviderQuotaStatusUpdateOne) defaults() {
+func (_u *ProviderQuotaStatusUpdateOne) defaults() error {
 	if _, ok := _u.mutation.UpdatedAt(); !ok {
+		if providerquotastatus.UpdateDefaultUpdatedAt == nil {
+			return fmt.Errorf("ent: uninitialized providerquotastatus.UpdateDefaultUpdatedAt (forgotten import ent/runtime?)")
+		}
 		v := providerquotastatus.UpdateDefaultUpdatedAt()
 		_u.mutation.SetUpdatedAt(v)
 	}
+	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -396,6 +456,12 @@ func (_u *ProviderQuotaStatusUpdateOne) sqlSave(ctx context.Context) (_node *Pro
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(providerquotastatus.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.DeletedAt(); ok {
+		_spec.SetField(providerquotastatus.FieldDeletedAt, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedDeletedAt(); ok {
+		_spec.AddField(providerquotastatus.FieldDeletedAt, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(providerquotastatus.FieldStatus, field.TypeEnum, value)

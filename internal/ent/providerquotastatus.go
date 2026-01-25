@@ -23,6 +23,8 @@ type ProviderQuotaStatus struct {
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	// DeletedAt holds the value of the "deleted_at" field.
+	DeletedAt int `json:"deleted_at,omitempty"`
 	// ChannelID holds the value of the "channel_id" field.
 	ChannelID int `json:"channel_id,omitempty"`
 	// ProviderType holds the value of the "provider_type" field.
@@ -74,7 +76,7 @@ func (*ProviderQuotaStatus) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case providerquotastatus.FieldReady:
 			values[i] = new(sql.NullBool)
-		case providerquotastatus.FieldID, providerquotastatus.FieldChannelID:
+		case providerquotastatus.FieldID, providerquotastatus.FieldDeletedAt, providerquotastatus.FieldChannelID:
 			values[i] = new(sql.NullInt64)
 		case providerquotastatus.FieldProviderType, providerquotastatus.FieldStatus:
 			values[i] = new(sql.NullString)
@@ -112,6 +114,12 @@ func (_m *ProviderQuotaStatus) assignValues(columns []string, values []any) erro
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
 				_m.UpdatedAt = value.Time
+			}
+		case providerquotastatus.FieldDeletedAt:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
+			} else if value.Valid {
+				_m.DeletedAt = int(value.Int64)
 			}
 		case providerquotastatus.FieldChannelID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -204,6 +212,9 @@ func (_m *ProviderQuotaStatus) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
 	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("deleted_at=")
+	builder.WriteString(fmt.Sprintf("%v", _m.DeletedAt))
 	builder.WriteString(", ")
 	builder.WriteString("channel_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ChannelID))

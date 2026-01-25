@@ -65,6 +65,11 @@ func UpdatedAt(v time.Time) predicate.ProviderQuotaStatus {
 	return predicate.ProviderQuotaStatus(sql.FieldEQ(FieldUpdatedAt, v))
 }
 
+// DeletedAt applies equality check predicate on the "deleted_at" field. It's identical to DeletedAtEQ.
+func DeletedAt(v int) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldEQ(FieldDeletedAt, v))
+}
+
 // ChannelID applies equality check predicate on the "channel_id" field. It's identical to ChannelIDEQ.
 func ChannelID(v int) predicate.ProviderQuotaStatus {
 	return predicate.ProviderQuotaStatus(sql.FieldEQ(FieldChannelID, v))
@@ -163,6 +168,46 @@ func UpdatedAtLT(v time.Time) predicate.ProviderQuotaStatus {
 // UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
 func UpdatedAtLTE(v time.Time) predicate.ProviderQuotaStatus {
 	return predicate.ProviderQuotaStatus(sql.FieldLTE(FieldUpdatedAt, v))
+}
+
+// DeletedAtEQ applies the EQ predicate on the "deleted_at" field.
+func DeletedAtEQ(v int) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldEQ(FieldDeletedAt, v))
+}
+
+// DeletedAtNEQ applies the NEQ predicate on the "deleted_at" field.
+func DeletedAtNEQ(v int) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldNEQ(FieldDeletedAt, v))
+}
+
+// DeletedAtIn applies the In predicate on the "deleted_at" field.
+func DeletedAtIn(vs ...int) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldIn(FieldDeletedAt, vs...))
+}
+
+// DeletedAtNotIn applies the NotIn predicate on the "deleted_at" field.
+func DeletedAtNotIn(vs ...int) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldNotIn(FieldDeletedAt, vs...))
+}
+
+// DeletedAtGT applies the GT predicate on the "deleted_at" field.
+func DeletedAtGT(v int) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldGT(FieldDeletedAt, v))
+}
+
+// DeletedAtGTE applies the GTE predicate on the "deleted_at" field.
+func DeletedAtGTE(v int) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldGTE(FieldDeletedAt, v))
+}
+
+// DeletedAtLT applies the LT predicate on the "deleted_at" field.
+func DeletedAtLT(v int) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldLT(FieldDeletedAt, v))
+}
+
+// DeletedAtLTE applies the LTE predicate on the "deleted_at" field.
+func DeletedAtLTE(v int) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldLTE(FieldDeletedAt, v))
 }
 
 // ChannelIDEQ applies the EQ predicate on the "channel_id" field.

@@ -2439,12 +2439,14 @@ func (c *ProviderQuotaStatusClient) QueryChannel(_m *ProviderQuotaStatus) *Chann
 
 // Hooks returns the client hooks.
 func (c *ProviderQuotaStatusClient) Hooks() []Hook {
-	return c.hooks.ProviderQuotaStatus
+	hooks := c.hooks.ProviderQuotaStatus
+	return append(hooks[:len(hooks):len(hooks)], providerquotastatus.Hooks[:]...)
 }
 
 // Interceptors returns the client interceptors.
 func (c *ProviderQuotaStatusClient) Interceptors() []Interceptor {
-	return c.inters.ProviderQuotaStatus
+	inters := c.inters.ProviderQuotaStatus
+	return append(inters[:len(inters):len(inters)], providerquotastatus.Interceptors[:]...)
 }
 
 func (c *ProviderQuotaStatusClient) mutate(ctx context.Context, m *ProviderQuotaStatusMutation) (Value, error) {

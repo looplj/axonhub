@@ -51,6 +51,20 @@ func (_c *ProviderQuotaStatusCreate) SetNillableUpdatedAt(v *time.Time) *Provide
 	return _c
 }
 
+// SetDeletedAt sets the "deleted_at" field.
+func (_c *ProviderQuotaStatusCreate) SetDeletedAt(v int) *ProviderQuotaStatusCreate {
+	_c.mutation.SetDeletedAt(v)
+	return _c
+}
+
+// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
+func (_c *ProviderQuotaStatusCreate) SetNillableDeletedAt(v *int) *ProviderQuotaStatusCreate {
+	if v != nil {
+		_c.SetDeletedAt(*v)
+	}
+	return _c
+}
+
 // SetChannelID sets the "channel_id" field.
 func (_c *ProviderQuotaStatusCreate) SetChannelID(v int) *ProviderQuotaStatusCreate {
 	_c.mutation.SetChannelID(v)
@@ -121,7 +135,9 @@ func (_c *ProviderQuotaStatusCreate) Mutation() *ProviderQuotaStatusMutation {
 
 // Save creates the ProviderQuotaStatus in the database.
 func (_c *ProviderQuotaStatusCreate) Save(ctx context.Context) (*ProviderQuotaStatus, error) {
-	_c.defaults()
+	if err := _c.defaults(); err != nil {
+		return nil, err
+	}
 	return withHooks(ctx, _c.sqlSave, _c.mutation, _c.hooks)
 }
 
@@ -148,19 +164,30 @@ func (_c *ProviderQuotaStatusCreate) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (_c *ProviderQuotaStatusCreate) defaults() {
+func (_c *ProviderQuotaStatusCreate) defaults() error {
 	if _, ok := _c.mutation.CreatedAt(); !ok {
+		if providerquotastatus.DefaultCreatedAt == nil {
+			return fmt.Errorf("ent: uninitialized providerquotastatus.DefaultCreatedAt (forgotten import ent/runtime?)")
+		}
 		v := providerquotastatus.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
 	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
+		if providerquotastatus.DefaultUpdatedAt == nil {
+			return fmt.Errorf("ent: uninitialized providerquotastatus.DefaultUpdatedAt (forgotten import ent/runtime?)")
+		}
 		v := providerquotastatus.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
+	}
+	if _, ok := _c.mutation.DeletedAt(); !ok {
+		v := providerquotastatus.DefaultDeletedAt
+		_c.mutation.SetDeletedAt(v)
 	}
 	if _, ok := _c.mutation.Ready(); !ok {
 		v := providerquotastatus.DefaultReady
 		_c.mutation.SetReady(v)
 	}
+	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -170,6 +197,9 @@ func (_c *ProviderQuotaStatusCreate) check() error {
 	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "ProviderQuotaStatus.updated_at"`)}
+	}
+	if _, ok := _c.mutation.DeletedAt(); !ok {
+		return &ValidationError{Name: "deleted_at", err: errors.New(`ent: missing required field "ProviderQuotaStatus.deleted_at"`)}
 	}
 	if _, ok := _c.mutation.ChannelID(); !ok {
 		return &ValidationError{Name: "channel_id", err: errors.New(`ent: missing required field "ProviderQuotaStatus.channel_id"`)}
@@ -236,6 +266,10 @@ func (_c *ProviderQuotaStatusCreate) createSpec() (*ProviderQuotaStatus, *sqlgra
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(providerquotastatus.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
+	}
+	if value, ok := _c.mutation.DeletedAt(); ok {
+		_spec.SetField(providerquotastatus.FieldDeletedAt, field.TypeInt, value)
+		_node.DeletedAt = value
 	}
 	if value, ok := _c.mutation.ProviderType(); ok {
 		_spec.SetField(providerquotastatus.FieldProviderType, field.TypeEnum, value)
@@ -339,6 +373,24 @@ func (u *ProviderQuotaStatusUpsert) SetUpdatedAt(v time.Time) *ProviderQuotaStat
 // UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
 func (u *ProviderQuotaStatusUpsert) UpdateUpdatedAt() *ProviderQuotaStatusUpsert {
 	u.SetExcluded(providerquotastatus.FieldUpdatedAt)
+	return u
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (u *ProviderQuotaStatusUpsert) SetDeletedAt(v int) *ProviderQuotaStatusUpsert {
+	u.Set(providerquotastatus.FieldDeletedAt, v)
+	return u
+}
+
+// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
+func (u *ProviderQuotaStatusUpsert) UpdateDeletedAt() *ProviderQuotaStatusUpsert {
+	u.SetExcluded(providerquotastatus.FieldDeletedAt)
+	return u
+}
+
+// AddDeletedAt adds v to the "deleted_at" field.
+func (u *ProviderQuotaStatusUpsert) AddDeletedAt(v int) *ProviderQuotaStatusUpsert {
+	u.Add(providerquotastatus.FieldDeletedAt, v)
 	return u
 }
 
@@ -470,6 +522,27 @@ func (u *ProviderQuotaStatusUpsertOne) SetUpdatedAt(v time.Time) *ProviderQuotaS
 func (u *ProviderQuotaStatusUpsertOne) UpdateUpdatedAt() *ProviderQuotaStatusUpsertOne {
 	return u.Update(func(s *ProviderQuotaStatusUpsert) {
 		s.UpdateUpdatedAt()
+	})
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (u *ProviderQuotaStatusUpsertOne) SetDeletedAt(v int) *ProviderQuotaStatusUpsertOne {
+	return u.Update(func(s *ProviderQuotaStatusUpsert) {
+		s.SetDeletedAt(v)
+	})
+}
+
+// AddDeletedAt adds v to the "deleted_at" field.
+func (u *ProviderQuotaStatusUpsertOne) AddDeletedAt(v int) *ProviderQuotaStatusUpsertOne {
+	return u.Update(func(s *ProviderQuotaStatusUpsert) {
+		s.AddDeletedAt(v)
+	})
+}
+
+// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
+func (u *ProviderQuotaStatusUpsertOne) UpdateDeletedAt() *ProviderQuotaStatusUpsertOne {
+	return u.Update(func(s *ProviderQuotaStatusUpsert) {
+		s.UpdateDeletedAt()
 	})
 }
 
@@ -778,6 +851,27 @@ func (u *ProviderQuotaStatusUpsertBulk) SetUpdatedAt(v time.Time) *ProviderQuota
 func (u *ProviderQuotaStatusUpsertBulk) UpdateUpdatedAt() *ProviderQuotaStatusUpsertBulk {
 	return u.Update(func(s *ProviderQuotaStatusUpsert) {
 		s.UpdateUpdatedAt()
+	})
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (u *ProviderQuotaStatusUpsertBulk) SetDeletedAt(v int) *ProviderQuotaStatusUpsertBulk {
+	return u.Update(func(s *ProviderQuotaStatusUpsert) {
+		s.SetDeletedAt(v)
+	})
+}
+
+// AddDeletedAt adds v to the "deleted_at" field.
+func (u *ProviderQuotaStatusUpsertBulk) AddDeletedAt(v int) *ProviderQuotaStatusUpsertBulk {
+	return u.Update(func(s *ProviderQuotaStatusUpsert) {
+		s.AddDeletedAt(v)
+	})
+}
+
+// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
+func (u *ProviderQuotaStatusUpsertBulk) UpdateDeletedAt() *ProviderQuotaStatusUpsertBulk {
+	return u.Update(func(s *ProviderQuotaStatusUpsert) {
+		s.UpdateDeletedAt()
 	})
 }
 

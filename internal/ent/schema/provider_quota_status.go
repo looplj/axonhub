@@ -5,6 +5,8 @@ import (
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
+
+	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 )
 
 type ProviderQuotaStatus struct {
@@ -13,7 +15,8 @@ type ProviderQuotaStatus struct {
 
 func (ProviderQuotaStatus) Mixin() []ent.Mixin {
 	return []ent.Mixin{
-		TimeMixin{}, // Provides created_at, updated_at
+		TimeMixin{},                  // Provides created_at, updated_at
+		schematype.SoftDeleteMixin{}, // Provides deleted_at for soft delete
 	}
 }
 

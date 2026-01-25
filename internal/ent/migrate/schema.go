@@ -385,6 +385,7 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "provider_type", Type: field.TypeEnum, Enums: []string{"claudecode", "codex"}},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"available", "warning", "exhausted", "unknown"}},
 		{Name: "quota_data", Type: field.TypeJSON},
@@ -401,7 +402,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "provider_quota_status_channels_provider_quota_status",
-				Columns:    []*schema.Column{ProviderQuotaStatusColumns[9]},
+				Columns:    []*schema.Column{ProviderQuotaStatusColumns[10]},
 				RefColumns: []*schema.Column{ChannelsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -410,12 +411,12 @@ var (
 			{
 				Name:    "providerquotastatus_channel_id",
 				Unique:  true,
-				Columns: []*schema.Column{ProviderQuotaStatusColumns[9]},
+				Columns: []*schema.Column{ProviderQuotaStatusColumns[10]},
 			},
 			{
 				Name:    "providerquotastatus_next_check_at",
 				Unique:  false,
-				Columns: []*schema.Column{ProviderQuotaStatusColumns[8]},
+				Columns: []*schema.Column{ProviderQuotaStatusColumns[9]},
 			},
 		},
 	}

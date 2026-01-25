@@ -310,6 +310,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 		Fields: map[string]*sqlgraph.FieldSpec{
 			providerquotastatus.FieldCreatedAt:    {Type: field.TypeTime, Column: providerquotastatus.FieldCreatedAt},
 			providerquotastatus.FieldUpdatedAt:    {Type: field.TypeTime, Column: providerquotastatus.FieldUpdatedAt},
+			providerquotastatus.FieldDeletedAt:    {Type: field.TypeInt, Column: providerquotastatus.FieldDeletedAt},
 			providerquotastatus.FieldChannelID:    {Type: field.TypeInt, Column: providerquotastatus.FieldChannelID},
 			providerquotastatus.FieldProviderType: {Type: field.TypeEnum, Column: providerquotastatus.FieldProviderType},
 			providerquotastatus.FieldStatus:       {Type: field.TypeEnum, Column: providerquotastatus.FieldStatus},
@@ -2753,6 +2754,11 @@ func (f *ProviderQuotaStatusFilter) WhereCreatedAt(p entql.TimeP) {
 // WhereUpdatedAt applies the entql time.Time predicate on the updated_at field.
 func (f *ProviderQuotaStatusFilter) WhereUpdatedAt(p entql.TimeP) {
 	f.Where(p.Field(providerquotastatus.FieldUpdatedAt))
+}
+
+// WhereDeletedAt applies the entql int predicate on the deleted_at field.
+func (f *ProviderQuotaStatusFilter) WhereDeletedAt(p entql.IntP) {
+	f.Where(p.Field(providerquotastatus.FieldDeletedAt))
 }
 
 // WhereChannelID applies the entql int predicate on the channel_id field.

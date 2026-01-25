@@ -12938,6 +12938,8 @@ type ProviderQuotaStatusMutation struct {
 	id             *int
 	created_at     *time.Time
 	updated_at     *time.Time
+	deleted_at     *int
+	adddeleted_at  *int
 	provider_type  *providerquotastatus.ProviderType
 	status         *providerquotastatus.Status
 	quota_data     *map[string]interface{}
@@ -13120,6 +13122,62 @@ func (m *ProviderQuotaStatusMutation) OldUpdatedAt(ctx context.Context) (v time.
 // ResetUpdatedAt resets all changes to the "updated_at" field.
 func (m *ProviderQuotaStatusMutation) ResetUpdatedAt() {
 	m.updated_at = nil
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (m *ProviderQuotaStatusMutation) SetDeletedAt(i int) {
+	m.deleted_at = &i
+	m.adddeleted_at = nil
+}
+
+// DeletedAt returns the value of the "deleted_at" field in the mutation.
+func (m *ProviderQuotaStatusMutation) DeletedAt() (r int, exists bool) {
+	v := m.deleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeletedAt returns the old "deleted_at" field's value of the ProviderQuotaStatus entity.
+// If the ProviderQuotaStatus object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProviderQuotaStatusMutation) OldDeletedAt(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
+	}
+	return oldValue.DeletedAt, nil
+}
+
+// AddDeletedAt adds i to the "deleted_at" field.
+func (m *ProviderQuotaStatusMutation) AddDeletedAt(i int) {
+	if m.adddeleted_at != nil {
+		*m.adddeleted_at += i
+	} else {
+		m.adddeleted_at = &i
+	}
+}
+
+// AddedDeletedAt returns the value that was added to the "deleted_at" field in this mutation.
+func (m *ProviderQuotaStatusMutation) AddedDeletedAt() (r int, exists bool) {
+	v := m.adddeleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetDeletedAt resets all changes to the "deleted_at" field.
+func (m *ProviderQuotaStatusMutation) ResetDeletedAt() {
+	m.deleted_at = nil
+	m.adddeleted_at = nil
 }
 
 // SetChannelID sets the "channel_id" field.
@@ -13448,12 +13506,15 @@ func (m *ProviderQuotaStatusMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ProviderQuotaStatusMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 10)
 	if m.created_at != nil {
 		fields = append(fields, providerquotastatus.FieldCreatedAt)
 	}
 	if m.updated_at != nil {
 		fields = append(fields, providerquotastatus.FieldUpdatedAt)
+	}
+	if m.deleted_at != nil {
+		fields = append(fields, providerquotastatus.FieldDeletedAt)
 	}
 	if m.channel != nil {
 		fields = append(fields, providerquotastatus.FieldChannelID)
@@ -13488,6 +13549,8 @@ func (m *ProviderQuotaStatusMutation) Field(name string) (ent.Value, bool) {
 		return m.CreatedAt()
 	case providerquotastatus.FieldUpdatedAt:
 		return m.UpdatedAt()
+	case providerquotastatus.FieldDeletedAt:
+		return m.DeletedAt()
 	case providerquotastatus.FieldChannelID:
 		return m.ChannelID()
 	case providerquotastatus.FieldProviderType:
@@ -13515,6 +13578,8 @@ func (m *ProviderQuotaStatusMutation) OldField(ctx context.Context, name string)
 		return m.OldCreatedAt(ctx)
 	case providerquotastatus.FieldUpdatedAt:
 		return m.OldUpdatedAt(ctx)
+	case providerquotastatus.FieldDeletedAt:
+		return m.OldDeletedAt(ctx)
 	case providerquotastatus.FieldChannelID:
 		return m.OldChannelID(ctx)
 	case providerquotastatus.FieldProviderType:
@@ -13551,6 +13616,13 @@ func (m *ProviderQuotaStatusMutation) SetField(name string, value ent.Value) err
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUpdatedAt(v)
+		return nil
+	case providerquotastatus.FieldDeletedAt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeletedAt(v)
 		return nil
 	case providerquotastatus.FieldChannelID:
 		v, ok := value.(int)
@@ -13609,6 +13681,9 @@ func (m *ProviderQuotaStatusMutation) SetField(name string, value ent.Value) err
 // this mutation.
 func (m *ProviderQuotaStatusMutation) AddedFields() []string {
 	var fields []string
+	if m.adddeleted_at != nil {
+		fields = append(fields, providerquotastatus.FieldDeletedAt)
+	}
 	return fields
 }
 
@@ -13617,6 +13692,8 @@ func (m *ProviderQuotaStatusMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *ProviderQuotaStatusMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
+	case providerquotastatus.FieldDeletedAt:
+		return m.AddedDeletedAt()
 	}
 	return nil, false
 }
@@ -13626,6 +13703,13 @@ func (m *ProviderQuotaStatusMutation) AddedField(name string) (ent.Value, bool) 
 // type.
 func (m *ProviderQuotaStatusMutation) AddField(name string, value ent.Value) error {
 	switch name {
+	case providerquotastatus.FieldDeletedAt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddDeletedAt(v)
+		return nil
 	}
 	return fmt.Errorf("unknown ProviderQuotaStatus numeric field %s", name)
 }
@@ -13667,6 +13751,9 @@ func (m *ProviderQuotaStatusMutation) ResetField(name string) error {
 		return nil
 	case providerquotastatus.FieldUpdatedAt:
 		m.ResetUpdatedAt()
+		return nil
+	case providerquotastatus.FieldDeletedAt:
+		m.ResetDeletedAt()
 		return nil
 	case providerquotastatus.FieldChannelID:
 		m.ResetChannelID()

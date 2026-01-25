@@ -10,6 +10,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
+	"github.com/looplj/axonhub/llm/transformer/anthropic/claudecode"
 )
 
 type ClaudeCodeQuotaChecker struct{}
@@ -48,13 +49,13 @@ func (c *ClaudeCodeQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel
 			Type:   httpclient.AuthTypeBearer,
 			APIKey: accessToken,
 		}).
-		WithHeader("anthropic-beta", "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14").
-		WithHeader("anthropic-version", "2023-06-01").
-		WithHeader("anthropic-dangerous-direct-browser-access", "true").
-		WithHeader("x-app", "cli").
+		WithHeader("anthropic-beta", claudecode.ClaudeCodeBetaHeader).
+		WithHeader("anthropic-version", claudecode.ClaudeCodeVersionHeader).
+		WithHeader("anthropic-dangerous-direct-browser-access", claudecode.ClaudeCodeBrowserAccessHeader).
+		WithHeader("x-app", claudecode.ClaudeCodeAppHeader).
 		WithHeader("content-type", "application/json").
 		WithBody(map[string]interface{}{
-			"model": "claude-haiku-4-5",
+			"model": claudecode.ClaudeCodeQuotaCheckModel,
 			"messages": []map[string]interface{}{
 				{
 					"role":    "user",

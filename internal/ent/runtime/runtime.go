@@ -492,8 +492,14 @@ func init() {
 	// prompt.DefaultDescription holds the default value on creation for the description field.
 	prompt.DefaultDescription = promptDescDescription.Default.(string)
 	providerquotastatusMixin := schema.ProviderQuotaStatus{}.Mixin()
+	providerquotastatusMixinHooks1 := providerquotastatusMixin[1].Hooks()
+	providerquotastatus.Hooks[0] = providerquotastatusMixinHooks1[0]
+	providerquotastatusMixinInters1 := providerquotastatusMixin[1].Interceptors()
+	providerquotastatus.Interceptors[0] = providerquotastatusMixinInters1[0]
 	providerquotastatusMixinFields0 := providerquotastatusMixin[0].Fields()
 	_ = providerquotastatusMixinFields0
+	providerquotastatusMixinFields1 := providerquotastatusMixin[1].Fields()
+	_ = providerquotastatusMixinFields1
 	providerquotastatusFields := schema.ProviderQuotaStatus{}.Fields()
 	_ = providerquotastatusFields
 	// providerquotastatusDescCreatedAt is the schema descriptor for created_at field.
@@ -506,6 +512,10 @@ func init() {
 	providerquotastatus.DefaultUpdatedAt = providerquotastatusDescUpdatedAt.Default.(func() time.Time)
 	// providerquotastatus.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	providerquotastatus.UpdateDefaultUpdatedAt = providerquotastatusDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// providerquotastatusDescDeletedAt is the schema descriptor for deleted_at field.
+	providerquotastatusDescDeletedAt := providerquotastatusMixinFields1[0].Descriptor()
+	// providerquotastatus.DefaultDeletedAt holds the default value on creation for the deleted_at field.
+	providerquotastatus.DefaultDeletedAt = providerquotastatusDescDeletedAt.Default.(int)
 	// providerquotastatusDescReady is the schema descriptor for ready field.
 	providerquotastatusDescReady := providerquotastatusFields[5].Descriptor()
 	// providerquotastatus.DefaultReady holds the default value on creation for the ready field.

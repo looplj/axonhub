@@ -3,6 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useProviderQuotaStatuses, ProviderQuotaChannel, checkProviderQuotas } from '@/features/system/data/quotas';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 const STATUS_COLORS = {
   available: 'bg-green-500 hover:bg-green-600 text-white',
@@ -12,10 +13,10 @@ const STATUS_COLORS = {
 } as const;
 
 const STATUS_LABELS = {
-  available: 'Available',
-  warning: 'Warning',
-  exhausted: 'Exhausted',
-  unknown: 'Unknown',
+  available: 'quota.status.available',
+  warning: 'quota.status.warning',
+  exhausted: 'quota.status.exhausted',
+  unknown: 'quota.status.unknown',
 } as const;
 
 type QuotaData = {
@@ -51,7 +52,6 @@ function getBatteryIcon(level: BatteryLevel) {
 
 function getBatteryLevel(percentage: number, status: string): BatteryLevel {
   if (status === 'exhausted') return 'warning';
-  // percentage is USED percentage, so need to check remaining
   const remaining = 100 - percentage;
   if (remaining < 5) return 'empty';
   if (remaining < 20) return 'low';
@@ -72,12 +72,13 @@ function getChannelPercentage(channel: ProviderQuotaChannel, quotaData: QuotaDat
 }
 
 function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
+  const { t } = useTranslation();
   const quota = channel.quotaStatus;
   if (!quota) return null;
 
   const status = quota.status || 'unknown';
   const colorClass = STATUS_COLORS[status as keyof typeof STATUS_COLORS] || STATUS_COLORS.unknown;
-  const statusLabel = STATUS_LABELS[status as keyof typeof STATUS_LABELS] || 'Unknown';
+  const statusLabel = t(STATUS_LABELS[status as keyof typeof STATUS_LABELS]);
   const quotaData = quota.quotaData as QuotaData;
 
   const percentage = getChannelPercentage(channel, quotaData);
@@ -86,7 +87,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
   const displayPercentage = status === 'unknown' ? '?' : Math.round(percentage);
 
   const formatWindowDuration = (seconds?: number) => {
-    if (!seconds) return 'Unknown';
+    if (!seconds) return t('quota.unknown');
     const hours = Math.floor(seconds / 3600);
     const days = hours >= 24 ? Math.floor(hours / 24) : 0;
     if (days > 0) return `${days} day${days > 1 ? 's' : ''}`;
@@ -95,7 +96,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
   };
 
   const formatTimeToReset = (resetAt?: string | null) => {
-    if (!resetAt) return 'Unknown';
+    if (!resetAt) return t('quota.unknown');
     const now = Date.now();
     const reset = new Date(resetAt).getTime();
     const diffMs = reset - now;
@@ -120,25 +121,25 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
         <div className="ml-6 mt-2">
           <div className="space-y-1.5 text-xs">
             <div className="flex justify-between items-center text-muted-foreground">
-              <span>Used</span>
+              <span>{t('quota.label.used')}</span>
               <span className={`font-medium ${batteryLevel === 'warning' || batteryLevel === 'low' ? 'text-red-500' : 'text-foreground'}`}>{displayPercentage}%</span>
             </div>
             <div className="flex justify-between items-center text-muted-foreground">
-              <span>5h window</span>
+              <span>{t('quota.window.5h')}</span>
               <span className="font-medium">{Math.round((quotaData.windows?.['5h']?.utilization || 0) * 100)}%</span>
             </div>
             <div className="flex justify-between items-center text-muted-foreground">
-              <span>7d window</span>
+              <span>{t('quota.window.7d')}</span>
               <span className="font-medium">{Math.round((quotaData.windows?.['7d']?.utilization || 0) * 100)}%</span>
             </div>
             {quotaData.representative_claim && (
               <div className="flex justify-between items-center text-muted-foreground">
-                <span>Limiting bucket</span>
+                <span>{t('quota.label.limiting_bucket')}</span>
                 <span>{quotaData.representative_claim === 'five_hour' ? '5h' : '7d'}</span>
               </div>
             )}
             <div className="flex justify-between items-center text-muted-foreground">
-              <span>Reset in</span>
+              <span>{t('quota.label.reset_in')}</span>
               <span>{formatTimeToReset(quota.nextResetAt)}</span>
             </div>
           </div>
@@ -149,26 +150,26 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
         <div className="ml-6 mt-2">
           <div className="space-y-1.5 text-xs">
             <div className="flex justify-between items-center text-muted-foreground">
-              <span>Used</span>
+              <span>{t('quota.label.used')}</span>
               <span className={`font-medium ${batteryLevel === 'warning' || batteryLevel === 'low' ? 'text-red-500' : 'text-foreground'}`}>{displayPercentage}%</span>
             </div>
             <div className="flex justify-between items-center text-muted-foreground">
-              <span>Primary window</span>
+              <span>{t('quota.label.primary_window')}</span>
               <span className="font-medium">{Math.round(quotaData.rate_limit?.primary_window?.used_percent || 0)}%</span>
             </div>
             <div className="flex justify-between items-center text-muted-foreground">
-              <span>Primary duration</span>
+              <span>{t('quota.label.primary_duration')}</span>
               <span>{formatWindowDuration(quotaData.rate_limit?.primary_window?.limit_window_seconds)}</span>
             </div>
             {quotaData.rate_limit?.primary_window?.reset_at && (
               <div className="flex justify-between items-center text-muted-foreground">
-                <span>Resets at</span>
+                <span>{t('quota.label.resets_at')}</span>
                 <span>{new Date(quotaData.rate_limit.primary_window.reset_at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
             )}
             {quotaData.plan_type && (
               <div className="flex justify-between items-center text-muted-foreground">
-                <span>Plan</span>
+                <span>{t('quota.label.plan')}</span>
                 <span>{quotaData.plan_type}</span>
               </div>
             )}
@@ -194,7 +195,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
 }
 
 function QuotaBadgeTrigger({ channels }: { channels: ProviderQuotaChannel[] }) {
-  // Get worst used percentage (highest used)
+  const { t } = useTranslation();
   const highestUsed = Math.max(...channels.map(c => {
     const quota = c.quotaStatus;
     if (!quota) return 0;
@@ -220,6 +221,7 @@ function QuotaBadgeTrigger({ channels }: { channels: ProviderQuotaChannel[] }) {
 }
 
 export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean; onRefresh: () => void }) {
+  const { t } = useTranslation();
   const channels = useProviderQuotaStatuses();
 
   if (channels.length === 0) return null;
@@ -235,7 +237,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
         <div className="space-y-1">
           <div className="flex items-center justify-between mb-2">
             <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Provider Quotas
+              {t('system.providerQuota.title')}
             </div>
             <button
               onClick={onRefresh}

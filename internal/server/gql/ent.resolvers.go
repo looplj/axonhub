@@ -174,6 +174,7 @@ func (r *promptResolver) ID(ctx context.Context, obj *ent.Prompt) (*objects.GUID
 	}, nil
 }
 
+// ID is the resolver for the id field.
 func (r *providerQuotaStatusResolver) ID(ctx context.Context, obj *ent.ProviderQuotaStatus) (*objects.GUID, error) {
 	return &objects.GUID{
 		Type: ent.TypeProviderQuotaStatus,
@@ -181,6 +182,7 @@ func (r *providerQuotaStatusResolver) ID(ctx context.Context, obj *ent.ProviderQ
 	}, nil
 }
 
+// ChannelID is the resolver for the channelID field.
 func (r *providerQuotaStatusResolver) ChannelID(ctx context.Context, obj *ent.ProviderQuotaStatus) (*objects.GUID, error) {
 	return &objects.GUID{
 		Type: ent.TypeChannel,

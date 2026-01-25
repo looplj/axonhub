@@ -28,10 +28,10 @@ export function AppHeader() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['provider-quotas'] });
-      toast.success('Quota status refreshed');
+      toast.success(t('system.providerQuota.refresh.success'));
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to refresh quota status');
+      toast.error(error.message || t('system.providerQuota.refresh.failure'));
     },
   });
 
