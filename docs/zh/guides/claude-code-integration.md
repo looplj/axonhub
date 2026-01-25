@@ -20,6 +20,8 @@ AxonHub 可以作为 Anthropic 接口的直接替代方案，使 Claude Code 能
    ```bash
    export ANTHROPIC_AUTH_TOKEN="<your-axonhub-api-key>"
    export ANTHROPIC_BASE_URL="http://localhost:8090/anthropic"
+   # 或者使用根路径：
+   # export ANTHROPIC_BASE_URL="http://localhost:8090"
    ```
 2. 启动 Claude Code，程序会自动读取上述变量并将所有 Anthropic 请求代理到 AxonHub。
 3. （可选）触发一次对话并在 AxonHub 的 Traces 页面确认流量已成功记录。
