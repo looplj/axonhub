@@ -1,4 +1,4 @@
-import { useQueryClient } from '@tanstack/react-query'
+import { useCallback, useQueryClient } from '@tanstack/react-query'
 import { useSSE } from '@/hooks/useSSE'
 import { useAuthStore, getTokenFromStorage } from '@/stores/authStore'
 import { EventSourceMessage } from '@microsoft/fetch-event-source'
@@ -39,7 +39,7 @@ export function useRequestsSSE(options: UseRequestsSSEOptions) {
   // zustand store might not be hydrated yet on initial render
   const token = accessToken || getTokenFromStorage()
 
-  const handleMessage = (event: MessageEvent | EventSourceMessage) => {
+  const handleMessage = useCallback((event: MessageEvent | EventSourceMessage) => {
     const isSSE = 'event' in event && 'data' in event
     const eventType = isSSE ? (event as EventSourceMessage).event : (event as MessageEvent).type
     const eventData = isSSE ? (event as EventSourceMessage).data : (event as MessageEvent).data
@@ -59,8 +59,9 @@ export function useRequestsSSE(options: UseRequestsSSEOptions) {
         queryClient.invalidateQueries({ queryKey: ['requests'] })
       }
     } catch (error) {
+      console.warn('[useRequestsSSE] Failed to parse event payload:', error, { eventData, eventType })
     }
-  }
+  }, [onRequestCreated, onRequestUpdated, onRequestCompleted, queryClient])
 
   const sseState = useSSE({
     url: `/admin/events/requests?project_id=${projectId}`,

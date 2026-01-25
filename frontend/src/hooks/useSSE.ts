@@ -121,14 +121,13 @@ export function useSSE(options: UseSSEOptions): SSEState {
           return
         }
 
-        const messageEvent = event as unknown as MessageEvent
-        onMessage?.(messageEvent)
+        onMessage?.(event)
       },
 
       onerror: (err) => {
         if (!isMountedRef.current) {
           abortController.abort()
-          return
+          throw err
         }
 
         const currentState = stateRef.current
@@ -144,7 +143,7 @@ export function useSSE(options: UseSSEOptions): SSEState {
 
         if (currentState.reconnectAttempt >= maxReconnectAttempts) {
           abortController.abort()
-          return
+          throw error
         }
 
         const backoff = Math.min(
@@ -160,6 +159,8 @@ export function useSSE(options: UseSSEOptions): SSEState {
           }))
           connect()
         }, backoff)
+
+        throw error
       },
 
       onclose: () => {

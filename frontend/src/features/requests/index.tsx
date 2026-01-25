@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { useState, useCallback } from 'react';
 import { DateRange } from 'react-day-picker';
 import { useTranslation } from 'react-i18next';
@@ -26,12 +25,6 @@ function RequestsContent() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [autoRefresh, setAutoRefresh] = useState(false);
   const selectedProjectId = useSelectedProjectId();
-
-  console.log('[RequestsPage] State:', {
-    selectedProjectId,
-    selectedProjectIdType: typeof selectedProjectId,
-    autoRefresh,
-  });
 
   // Build where clause with filters
   const whereClause = (() => {

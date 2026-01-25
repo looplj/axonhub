@@ -43,7 +43,8 @@ func (h *EventHandlers) StreamRequestEvents(c *gin.Context) {
 		return
 	}
 
-	if ctxProjectID, ok := contexts.GetProjectID(ctx); ok && ctxProjectID != projectID {
+	ctxProjectID, ok := contexts.GetProjectID(ctx)
+	if !ok || ctxProjectID != projectID {
 		c.JSON(http.StatusForbidden, gin.H{
 			"error": "project access denied",
 		})
