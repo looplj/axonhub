@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/anthropic/claudecode"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 )
 
@@ -77,37 +78,33 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 			apiKey = ch.Credentials.APIKey
 		}
 
-		if ch.Type == channel.TypeCodex {
-			models := lo.Map(codex.DefaultModels(), func(id string, _ int) ModelIdentify {
-				return ModelIdentify{ID: id}
-			})
-
-			return &FetchModelsResult{
-				Models: models,
-				Error:  nil,
-			}, nil
-		}
-
 		if ch.Settings != nil {
 			proxyConfig = ch.Settings.Proxy
 		}
 	}
 
 	if apiKey == "" {
-		if channel.Type(input.ChannelType) == channel.TypeCodex {
-			models := lo.Map(codex.DefaultModels(), func(id string, _ int) ModelIdentify {
-				return ModelIdentify{ID: id}
-			})
-
-			return &FetchModelsResult{
-				Models: models,
-				Error:  nil,
-			}, nil
-		}
-
 		return &FetchModelsResult{
 			Models: []ModelIdentify{},
 			Error:  lo.ToPtr("API key is required"),
+		}, nil
+	}
+
+	if channel.Type(input.ChannelType) == channel.TypeCodex {
+		return &FetchModelsResult{
+			Models: lo.Map(codex.DefaultModels(), func(id string, _ int) ModelIdentify {
+				return ModelIdentify{ID: id}
+			}),
+			Error: nil,
+		}, nil
+	}
+
+	if channel.Type(input.ChannelType) == channel.TypeClaudecode {
+		return &FetchModelsResult{
+			Models: lo.Map(claudecode.DefaultModels(), func(id string, _ int) ModelIdentify {
+				return ModelIdentify{ID: id}
+			}),
+			Error: nil,
 		}, nil
 	}
 

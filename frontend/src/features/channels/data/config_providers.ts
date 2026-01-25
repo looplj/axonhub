@@ -24,6 +24,7 @@ import {
   Github,
   AiHubMix,
   Cerebras,
+  Claude,
 } from '@lobehub/icons';
 import { CHANNEL_CONFIGS } from './config_channels';
 import { ApiFormat, ChannelType } from './schema';
@@ -85,7 +86,7 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
   },
   claudecode: {
     provider: 'claudecode',
-    icon: Anthropic,
+    icon: Claude,
     color: 'bg-orange-100 text-orange-800 border-orange-200',
     channelTypes: ['claudecode'],
   },

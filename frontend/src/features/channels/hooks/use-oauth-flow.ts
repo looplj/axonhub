@@ -18,11 +18,6 @@ export interface OAuthExchangeResult {
 
 export interface OAuthFlowOptions {
   /**
-   * The provider name (used for i18n keys: e.g., 'codex', 'claudecode')
-   */
-  provider: string;
-
-  /**
    * Function to call the OAuth start endpoint
    */
   startFn: (headers?: Record<string, string>) => Promise<OAuthStartResult>;
@@ -65,7 +60,6 @@ export interface OAuthFlowActions {
  * @example
  * ```tsx
  * const codexOAuth = useOAuthFlow({
- *   provider: 'codex',
  *   startFn: codexOAuthStart,
  *   exchangeFn: codexOAuthExchange,
  *   projectId: selectedProjectId,
@@ -79,7 +73,7 @@ export interface OAuthFlowActions {
  * ```
  */
 export function useOAuthFlow(options: OAuthFlowOptions): OAuthFlowState & OAuthFlowActions {
-  const { provider, startFn, exchangeFn, projectId, onSuccess } = options;
+  const { startFn, exchangeFn, projectId, onSuccess } = options;
   const { t } = useTranslation();
 
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -90,7 +84,7 @@ export function useOAuthFlow(options: OAuthFlowOptions): OAuthFlowState & OAuthF
 
   const start = useCallback(async () => {
     if (!projectId) {
-      toast.error(t(`channels.dialogs.${provider}.errors.projectRequired`));
+      toast.error(t('channels.dialogs.oauth.errors.projectRequired'));
       return;
     }
 
@@ -104,21 +98,21 @@ export function useOAuthFlow(options: OAuthFlowOptions): OAuthFlowState & OAuthF
     } finally {
       setIsStarting(false);
     }
-  }, [projectId, provider, startFn, t]);
+  }, [projectId, startFn, t]);
 
   const exchange = useCallback(async () => {
     if (!projectId) {
-      toast.error(t(`channels.dialogs.${provider}.errors.projectRequired`));
+      toast.error(t('channels.dialogs.oauth.errors.projectRequired'));
       return;
     }
 
     if (!sessionId) {
-      toast.error(t(`channels.dialogs.${provider}.errors.sessionMissing`));
+      toast.error(t('channels.dialogs.oauth.errors.sessionMissing'));
       return;
     }
 
     if (!callbackUrl.trim()) {
-      toast.error(t(`channels.dialogs.${provider}.errors.callbackUrlRequired`));
+      toast.error(t('channels.dialogs.oauth.errors.callbackUrlRequired'));
       return;
     }
 
@@ -136,13 +130,13 @@ export function useOAuthFlow(options: OAuthFlowOptions): OAuthFlowState & OAuthF
         onSuccess(result.credentials);
       }
 
-      toast.success(t(`channels.dialogs.${provider}.messages.credentialsImported`));
+      toast.success(t('channels.dialogs.oauth.messages.credentialsImported'));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error));
     } finally {
       setIsExchanging(false);
     }
-  }, [projectId, sessionId, callbackUrl, provider, exchangeFn, onSuccess, t]);
+  }, [projectId, sessionId, callbackUrl, exchangeFn, onSuccess, t]);
 
   const reset = useCallback(() => {
     setSessionId(null);

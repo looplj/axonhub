@@ -417,6 +417,19 @@ func (p *TokenProvider) nextAutoRefreshDelay(refreshBefore time.Duration, fallba
 	return delay
 }
 
+// StaticTokenProvider provides a fixed set of credentials.
+type StaticTokenProvider struct {
+	creds *OAuthCredentials
+}
+
+func NewStaticTokenProvider(creds *OAuthCredentials) *StaticTokenProvider {
+	return &StaticTokenProvider{creds: creds}
+}
+
+func (p *StaticTokenProvider) Get(ctx context.Context) (*OAuthCredentials, error) {
+	return p.creds, nil
+}
+
 // refresh performs the OAuth2 token refresh flow.
 func (p *TokenProvider) refresh(ctx context.Context, creds *OAuthCredentials) (*OAuthCredentials, error) {
 	if creds == nil {
