@@ -174,14 +174,18 @@ func (r *promptResolver) ID(ctx context.Context, obj *ent.Prompt) (*objects.GUID
 	}, nil
 }
 
-// ID is the resolver for the id field.
 func (r *providerQuotaStatusResolver) ID(ctx context.Context, obj *ent.ProviderQuotaStatus) (*objects.GUID, error) {
-	panic(fmt.Errorf("not implemented: ID - id"))
+	return &objects.GUID{
+		Type: ent.TypeProviderQuotaStatus,
+		ID:   obj.ID,
+	}, nil
 }
 
-// ChannelID is the resolver for the channelID field.
 func (r *providerQuotaStatusResolver) ChannelID(ctx context.Context, obj *ent.ProviderQuotaStatus) (*objects.GUID, error) {
-	panic(fmt.Errorf("not implemented: ChannelID - channelID"))
+	return &objects.GUID{
+		Type: ent.TypeChannel,
+		ID:   obj.ChannelID,
+	}, nil
 }
 
 // Node is the resolver for the node field.

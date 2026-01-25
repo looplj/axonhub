@@ -116,8 +116,6 @@ type ProviderQuotaService struct {
 }
 
 func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaService {
-	ctx := context.Background()
-
 	svc := &ProviderQuotaService{
 		AbstractService: &AbstractService{db: params.Ent},
 		SystemService:   params.SystemService,
@@ -127,19 +125,8 @@ func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaSe
 		checkInterval:   params.CheckInterval,
 	}
 
-	// Register providers
 	svc.registerClaudeCodeSupport()
 	svc.registerCodexSupport()
-
-	log.Info(ctx, "Starting ProviderQuotaService with check interval", log.Duration("interval", params.CheckInterval))
-
-	// Start polling
-	if err := svc.Start(ctx); err != nil {
-		log.Error(ctx, "Failed to start ProviderQuotaService", log.Cause(err))
-		panic(err)
-	}
-
-	log.Info(ctx, "ProviderQuotaService started successfully")
 
 	return svc
 }

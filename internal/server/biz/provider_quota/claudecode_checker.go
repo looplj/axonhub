@@ -90,23 +90,12 @@ func getEndpointURL(baseURL string) string {
 	if baseURL == "" {
 		return "https://api.anthropic.com/v1/messages"
 	}
-	// If baseURL already ends with /v1 or /v1/, append /messages
-	isV1 := false
-	if len(baseURL) > 3 && baseURL[len(baseURL)-3:] == "/v1" {
-		isV1 = true
-	} else if len(baseURL) > 4 && baseURL[len(baseURL)-4:] == "/v1/" {
-		isV1 = true
+
+	baseURL = strings.TrimSuffix(baseURL, "/")
+
+	if strings.HasSuffix(baseURL, "/v1") {
+		return baseURL + "/messages"
 	}
 
-	if isV1 {
-		if baseURL[len(baseURL)-1] != '/' {
-			return baseURL + "/messages"
-		}
-		return baseURL + "messages"
-	}
-	// Otherwise append /v1/messages
-	if len(baseURL) > 0 && baseURL[len(baseURL)-1] != '/' {
-		return baseURL + "/v1/messages"
-	}
-	return baseURL + "v1/messages"
+	return baseURL + "/v1/messages"
 }

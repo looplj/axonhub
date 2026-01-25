@@ -13,14 +13,14 @@ func TestClaudeCodeQuotaParser_ParseResponse(t *testing.T) {
 
 	t.Run("successful parse with all headers", func(t *testing.T) {
 		headers := http.Header{
-			"Anthropic-Ratelimit-Unified-Status":               {"ok"},
-			"Anthropic-Ratelimit-Unified-5h-Status":            {"ok"},
+			"Anthropic-Ratelimit-Unified-Status":               {"allowed"},
+			"Anthropic-Ratelimit-Unified-5h-Status":            {"allowed"},
 			"Anthropic-Ratelimit-Unified-5h-Reset":             {"1737654000"},
 			"Anthropic-Ratelimit-Unified-5h-Utilization":       {"0.45"},
-			"Anthropic-Ratelimit-Unified-7d-Status":            {"ok"},
+			"Anthropic-Ratelimit-Unified-7d-Status":            {"allowed"},
 			"Anthropic-Ratelimit-Unified-7d-Reset":             {"1738258800"},
 			"Anthropic-Ratelimit-Unified-7d-Utilization":       {"0.23"},
-			"Anthropic-Ratelimit-Unified-Overage-Status":       {"ok"},
+			"Anthropic-Ratelimit-Unified-Overage-Status":       {"allowed"},
 			"Anthropic-Ratelimit-Unified-Overage-Reset":        {"0"},
 			"Anthropic-Ratelimit-Unified-Overage-Utilization":  {"0.0"},
 			"Anthropic-Ratelimit-Unified-Representative-Claim": {"5h"},
@@ -32,11 +32,11 @@ func TestClaudeCodeQuotaParser_ParseResponse(t *testing.T) {
 		quotaData, err := parser.ParseResponse(headers, nil)
 		require.NoError(t, err)
 
-		assert.Equal(t, "ok", quotaData.Status)
+		assert.Equal(t, "available", quotaData.Status)
 		assert.Equal(t, "claudecode", quotaData.ProviderType)
 
 		// Check raw data
-		assert.Equal(t, "ok", quotaData.RawData["unified_status"])
+		assert.Equal(t, "allowed", quotaData.RawData["unified_status"])
 		assert.Equal(t, "5h", quotaData.RawData["representative_claim"])
 		assert.Equal(t, "overage", quotaData.RawData["fallback"])
 		assert.Equal(t, 10.0, quotaData.RawData["fallback_percentage"])
@@ -49,21 +49,21 @@ func TestClaudeCodeQuotaParser_ParseResponse(t *testing.T) {
 		// Check 5h window
 		window5h, ok := windows["5h"].(map[string]interface{})
 		require.True(t, ok)
-		assert.Equal(t, "ok", window5h["status"])
+		assert.Equal(t, "allowed", window5h["status"])
 		assert.Equal(t, int64(1737654000), window5h["reset"])
 		assert.Equal(t, 0.45, window5h["utilization"])
 
 		// Check 7d window
 		window7d, ok := windows["7d"].(map[string]interface{})
 		require.True(t, ok)
-		assert.Equal(t, "ok", window7d["status"])
+		assert.Equal(t, "allowed", window7d["status"])
 		assert.Equal(t, int64(1738258800), window7d["reset"])
 		assert.Equal(t, 0.23, window7d["utilization"])
 
 		// Check overage window
 		windowOverage, ok := windows["overage"].(map[string]interface{})
 		require.True(t, ok)
-		assert.Equal(t, "ok", windowOverage["status"])
+		assert.Equal(t, "allowed", windowOverage["status"])
 		assert.Equal(t, int64(0), windowOverage["reset"])
 		assert.Equal(t, 0.0, windowOverage["utilization"])
 	})
@@ -90,7 +90,7 @@ func TestClaudeCodeQuotaParser_ParseResponse(t *testing.T) {
 		quotaData, err := parser.ParseResponse(headers, nil)
 		require.NoError(t, err)
 
-		assert.Equal(t, "throttled", quotaData.Status)
+		assert.Equal(t, "exhausted", quotaData.Status)
 		assert.Equal(t, "claudecode", quotaData.ProviderType)
 
 		// Invalid values should default to zero
@@ -115,7 +115,7 @@ func TestClaudeCodeQuotaParser_ParseResponse(t *testing.T) {
 		quotaData, err := parser.ParseResponse(headers, nil)
 		require.NoError(t, err)
 
-		assert.Equal(t, "throttled", quotaData.Status)
+		assert.Equal(t, "exhausted", quotaData.Status)
 	})
 }
 

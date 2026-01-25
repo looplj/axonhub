@@ -45,7 +45,7 @@ func TestCodexQuotaParser_ParseResponse(t *testing.T) {
 		quotaData, err := parser.ParseResponse(http.Header{}, body)
 		require.NoError(t, err)
 
-		assert.Equal(t, "ok", quotaData.Status)
+		assert.Equal(t, "available", quotaData.Status)
 		assert.Equal(t, "codex", quotaData.ProviderType)
 		assert.Equal(t, "plus", quotaData.RawData["plan_type"])
 
@@ -92,7 +92,7 @@ func TestCodexQuotaParser_ParseResponse(t *testing.T) {
 		quotaData, err := parser.ParseResponse(http.Header{}, body)
 		require.NoError(t, err)
 
-		assert.Equal(t, "limit_reached", quotaData.Status)
+		assert.Equal(t, "exhausted", quotaData.Status)
 		assert.Equal(t, "codex", quotaData.ProviderType)
 	})
 
@@ -108,7 +108,7 @@ func TestCodexQuotaParser_ParseResponse(t *testing.T) {
 		quotaData, err := parser.ParseResponse(http.Header{}, body)
 		require.NoError(t, err)
 
-		assert.Equal(t, "not_allowed", quotaData.Status)
+		assert.Equal(t, "exhausted", quotaData.Status)
 		assert.Equal(t, "codex", quotaData.ProviderType)
 	})
 
@@ -128,7 +128,7 @@ func TestCodexQuotaParser_ParseResponse(t *testing.T) {
 		quotaData, err := parser.ParseResponse(http.Header{}, body)
 		require.NoError(t, err)
 
-		assert.Equal(t, "ok", quotaData.Status)
+		assert.Equal(t, "unknown", quotaData.Status)
 		assert.Equal(t, "codex", quotaData.ProviderType)
 		assert.Equal(t, "basic", quotaData.RawData["plan_type"])
 	})
