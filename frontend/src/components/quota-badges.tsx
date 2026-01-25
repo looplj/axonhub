@@ -229,9 +229,9 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <div className="p-2 hover:bg-muted rounded-md transition-colors relative">
+        <button type="button" className="p-2 hover:bg-muted rounded-md transition-colors relative">
           <QuotaBadgeTrigger channels={channels} />
-        </div>
+        </button>
       </PopoverTrigger>
       <PopoverContent className="w-80" align="end">
         <div className="space-y-1">
