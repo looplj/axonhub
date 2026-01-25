@@ -8,12 +8,13 @@ type APIKeyProfiles struct {
 }
 
 type APIKeyProfile struct {
-	Name          string         `json:"name"`
-	ModelMappings []ModelMapping `json:"modelMappings"`
-	ChannelIDs    []int          `json:"channelIDs,omitempty"`
-	ChannelTags   []string       `json:"channelTags,omitempty"`
-	ModelIDs      []string       `json:"modelIDs,omitempty"`
-	Quota         *APIKeyQuota   `json:"quota,omitempty"`
+	Name                string         `json:"name"`
+	ModelMappings       []ModelMapping `json:"modelMappings"`
+	ChannelIDs          []int          `json:"channelIDs,omitempty"`
+	ChannelTags         []string       `json:"channelTags,omitempty"`
+	ModelIDs            []string       `json:"modelIDs,omitempty"`
+	Quota               *APIKeyQuota   `json:"quota,omitempty"`
+	LoadBalanceStrategy *string        `json:"loadBalanceStrategy,omitempty"`
 }
 
 type APIKeyQuota struct {

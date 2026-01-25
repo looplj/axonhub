@@ -131,6 +131,9 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		openaiGroup.GET("/models", handlers.OpenAI.ListModels)
 		openaiGroup.POST("/embeddings", handlers.OpenAI.CreateEmbedding)
 
+		// OpenAI-compatible Anthropic endpoint
+		openaiGroup.POST("/messages", handlers.Anthropic.CreateMessage)
+
 		// Compatible with OpenAI API
 		openaiGroup.POST("/rerank", handlers.Jina.Rerank)
 	}
@@ -148,6 +151,11 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 	}
 
 	{
+		registerGeminiRoutes := func(group *gin.RouterGroup) {
+			group.POST("/models/*action", handlers.Gemini.GenerateContent)
+			group.GET("/models", handlers.Gemini.ListModels)
+		}
+
 		geminiGroup := server.Group("/gemini/:gemini-api-version",
 			middleware.WithTimeout(server.Config.LLMRequestTimeout),
 			middleware.WithGeminiKeyAuth(services.AuthService),
@@ -156,7 +164,17 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 			middleware.WithTrace(server.Config.Trace, services.TraceService),
 		)
 
-		geminiGroup.POST("/models/*action", handlers.Gemini.GenerateContent)
-		geminiGroup.GET("/models", handlers.Gemini.ListModels)
+		registerGeminiRoutes(geminiGroup)
+
+		// Alias for Gemini API
+		geminiAliasGroup := server.Group("/v1beta",
+			middleware.WithTimeout(server.Config.LLMRequestTimeout),
+			middleware.WithGeminiKeyAuth(services.AuthService),
+			middleware.WithSource(request.SourceAPI),
+			middleware.WithThread(server.Config.Trace, services.ThreadService),
+			middleware.WithTrace(server.Config.Trace, services.TraceService),
+		)
+
+		registerGeminiRoutes(geminiAliasGroup)
 	}
 }

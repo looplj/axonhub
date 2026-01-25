@@ -146,7 +146,7 @@ func sendTracedMessage(ctx context.Context, apiKey string) (*anthropic.Message, 
 
 ### Claude Code Trace Support
 - Turn on Claude Code extraction with `server.trace.claude_code_trace_enabled: true` so AxonHub can pick up trace IDs automatically.
-- The `/anthropic/v1/messages` endpoint will reuse the Claude Code `metadata.user_id` as the trace ID while keeping your payload untouched for downstream usage.
+- The `/anthropic/v1/messages` (and `/v1/messages`) endpoint will reuse the Claude Code `metadata.user_id` as the trace ID while keeping your payload untouched for downstream usage.
 - If you already send a trace header, AxonHub keeps your value—manual instrumentation and auto-extraction work together.
 
 ### Codex Trace Support

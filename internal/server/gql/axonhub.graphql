@@ -235,6 +235,7 @@ input APIKeyProfileInput {
   channelTags: [String!]
   modelIDs: [String!]
   quota: APIKeyQuotaInput
+  loadBalanceStrategy: String
 }
 
 input UpdateAPIKeyScopesInput {
@@ -253,6 +254,7 @@ type APIKeyProfile {
   channelTags: [String!]
   modelIDs: [String!]
   quota: APIKeyQuota
+  loadBalanceStrategy: String
 }
 
 input APIKeyQuotaInput {

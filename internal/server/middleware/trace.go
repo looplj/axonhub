@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/internal/tracing"
 )
 
+// traceHeaderName returns the name of the header used for trace IDs.
 func traceHeaderName(config tracing.Config) string {
 	if config.TraceHeader != "" {
 		return config.TraceHeader
@@ -25,6 +26,7 @@ func traceHeaderName(config tracing.Config) string {
 	return "AH-Trace-Id"
 }
 
+// getTraceIDFromHeader extracts the trace ID from the request headers.
 func getTraceIDFromHeader(c *gin.Context, config tracing.Config) string {
 	traceID := c.GetHeader(traceHeaderName(config))
 	if traceID != "" {
@@ -41,6 +43,8 @@ func getTraceIDFromHeader(c *gin.Context, config tracing.Config) string {
 	return ""
 }
 
+// tryGetTraceIDFromBody attempts to extract a trace ID from the request body
+// based on the configured ExtraTraceBodyFields.
 func tryGetTraceIDFromBody(c *gin.Context, config tracing.Config) (string, error) {
 	if len(config.ExtraTraceBodyFields) == 0 {
 		return "", nil
@@ -134,13 +138,17 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 	}
 }
 
+// tryExtractTraceIDFromClaudeCodeRequest attempts to extract a trace ID from a Claude Code request.
+// It checks if the request is a POST to the Anthropic messages endpoint and extracts
+// the trace ID from the metadata.user_id field in the request body.
 func tryExtractTraceIDFromClaudeCodeRequest(c *gin.Context, config tracing.Config) (string, error) {
-	if c.Request.Method != http.MethodPost || !strings.HasSuffix(c.Request.URL.Path, "/anthropic/v1/messages") {
+	if c.Request.Method != http.MethodPost {
 		return "", nil
 	}
 
-	if traceID := getTraceIDFromHeader(c, config); traceID != "" {
-		return traceID, nil
+	path := c.Request.URL.Path
+	if path != "/anthropic/v1/messages" && path != "/v1/messages" {
+		return "", nil
 	}
 
 	bodyBytes, err := io.ReadAll(c.Request.Body)
@@ -172,6 +180,8 @@ var claudeUserIDPattern = regexp.MustCompile(`(?i)^user_[0-9a-f]{64}_account__se
 
 const codexTraceHeader = "Session_id"
 
+// extractClaudeTraceID parses the Claude Code user ID format to extract the session ID
+// which is used as the trace ID.
 func extractClaudeTraceID(userID string) string {
 	if !claudeUserIDPattern.MatchString(userID) {
 		return ""
@@ -189,6 +199,7 @@ func extractClaudeTraceID(userID string) string {
 	return strings.TrimSpace(traceID)
 }
 
+// tryExtractTraceIDFromCodexRequest extracts the trace ID from the Codex session header.
 func tryExtractTraceIDFromCodexRequest(c *gin.Context) string {
 	traceID := strings.TrimSpace(c.GetHeader(codexTraceHeader))
 	if traceID == "" {

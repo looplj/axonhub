@@ -146,7 +146,7 @@ func sendTracedMessage(ctx context.Context, apiKey string) (*anthropic.Message, 
 
 ### Claude Code 追踪支持
 - 将 `server.trace.claude_code_trace_enabled` 设为 `true`，AxonHub 会自动读取 Claude Code 产生的追踪 ID。
-- `/anthropic/v1/messages` 的 `metadata.user_id` 会作为追踪 ID 使用，同时不会影响请求体给后续逻辑的读取。
+- `/anthropic/v1/messages` (及 `/v1/messages`) 的 `metadata.user_id` 会作为追踪 ID 使用，同时不会影响请求体给后续逻辑的读取。
 - 如果请求已经带有追踪请求头，系统会优先使用该值，与自动提取机制兼容。
 
 ### Codex 追踪支持
