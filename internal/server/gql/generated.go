@@ -13168,7 +13168,11 @@ func (ec *executionContext) _Channel_providerQuotaStatus(ctx context.Context, fi
 		field,
 		ec.fieldContext_Channel_providerQuotaStatus,
 		func(ctx context.Context) (any, error) {
-			return obj.ProviderQuotaStatus(ctx)
+			pqs, err := obj.ProviderQuotaStatus(ctx)
+			if ent.IsNotFound(err) {
+				return nil, nil
+			}
+			return pqs, err
 		},
 		nil,
 		ec.marshalOProviderQuotaStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐProviderQuotaStatus,
