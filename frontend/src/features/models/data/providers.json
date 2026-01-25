@@ -10,7 +10,7 @@
         {
           "id": "kimi-k2-thinking-turbo",
           "name": "Kimi K2 Thinking Turbo",
-          "family": "kimi-k2",
+          "family": "kimi-thinking",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -45,7 +45,7 @@
         {
           "id": "kimi-k2-thinking",
           "name": "Kimi K2 Thinking",
-          "family": "kimi-k2",
+          "family": "kimi-thinking",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -80,7 +80,7 @@
         {
           "id": "kimi-k2-0905-preview",
           "name": "Kimi K2 0905",
-          "family": "kimi-k2",
+          "family": "kimi",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -114,7 +114,7 @@
         {
           "id": "kimi-k2-turbo-preview",
           "name": "Kimi K2 Turbo",
-          "family": "kimi-k2",
+          "family": "kimi",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -148,7 +148,7 @@
         {
           "id": "kimi-k2-0711-preview",
           "name": "Kimi K2 0711",
-          "family": "kimi-k2",
+          "family": "kimi",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -191,7 +191,7 @@
         {
           "id": "mimo-v2-flash",
           "name": "MiMo-V2-Flash",
-          "family": "mimo-v2-flash",
+          "family": "mimo",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -237,7 +237,7 @@
         {
           "id": "qwen3-vl-plus",
           "name": "Qwen3 VL Plus",
-          "family": "qwen3-vl",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -278,7 +278,7 @@
         {
           "id": "qwen3-max",
           "name": "Qwen3 Max",
-          "family": "qwen3",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -311,7 +311,7 @@
         {
           "id": "qwen3-livetranslate-flash-realtime",
           "name": "Qwen3-LiveTranslate Flash Realtime",
-          "family": "qwen3",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -350,7 +350,7 @@
         {
           "id": "qwen3-omni-flash",
           "name": "Qwen3-Omni Flash",
-          "family": "qwen3-omni",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -390,7 +390,7 @@
         {
           "id": "qwen3-omni-flash-realtime",
           "name": "Qwen3-Omni Flash Realtime",
-          "family": "qwen3-omni",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -429,7 +429,7 @@
         {
           "id": "qwen3-asr-flash",
           "name": "Qwen3-ASR Flash",
-          "family": "qwen3",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -462,7 +462,7 @@
         {
           "id": "qwen3-next-80b-a3b-instruct",
           "name": "Qwen3 Next 80B A3B Instruct",
-          "family": "qwen3",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -495,7 +495,7 @@
         {
           "id": "qwen3-next-80b-a3b-thinking",
           "name": "Qwen3 Next 80B A3B Thinking",
-          "family": "qwen3",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -534,7 +534,7 @@
         {
           "id": "qwen3-coder-flash",
           "name": "Qwen3 Coder Flash",
-          "family": "qwen3-coder",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -567,7 +567,7 @@
         {
           "id": "qwen-flash",
           "name": "Qwen Flash",
-          "family": "qwen-flash",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -612,7 +612,7 @@
         {
           "id": "qwen3-coder-plus",
           "name": "Qwen3 Coder Plus",
-          "family": "qwen3-coder",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -645,7 +645,7 @@
         {
           "id": "qwen-omni-turbo-realtime",
           "name": "Qwen-Omni Turbo Realtime",
-          "family": "qwen-omni",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -683,7 +683,7 @@
         {
           "id": "qwen3-vl-235b-a22b",
           "name": "Qwen3-VL 235B-A22B",
-          "family": "qwen3-vl",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -719,7 +719,7 @@
         {
           "id": "qwen3-vl-30b-a3b",
           "name": "Qwen3-VL 30B-A3B",
-          "family": "qwen3-vl",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -755,7 +755,7 @@
         {
           "id": "qwen3-14b",
           "name": "Qwen3 14B",
-          "family": "qwen3",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -795,7 +795,7 @@
         {
           "id": "qwen3-coder-30b-a3b-instruct",
           "name": "Qwen3-Coder 30B-A3B Instruct",
-          "family": "qwen3-coder",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -828,7 +828,7 @@
         {
           "id": "qwen3-8b",
           "name": "Qwen3 8B",
-          "family": "qwen3",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -868,7 +868,7 @@
         {
           "id": "qwen3-235b-a22b",
           "name": "Qwen3 235B A22B",
-          "family": "qwen3",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -908,7 +908,7 @@
         {
           "id": "qwen3-coder-480b-a35b-instruct",
           "name": "Qwen3-Coder 480B-A35B Instruct",
-          "family": "qwen3-coder",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -941,7 +941,7 @@
         {
           "id": "qwen3-32b",
           "name": "Qwen3 32B",
-          "family": "qwen3",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -981,7 +981,7 @@
         {
           "id": "qvq-max",
           "name": "QVQ Max",
-          "family": "qvq-max",
+          "family": "qvq",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -1016,7 +1016,7 @@
         {
           "id": "qwq-plus",
           "name": "QwQ Plus",
-          "family": "qwq",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -1061,7 +1061,7 @@
         {
           "id": "qwen-omni-turbo",
           "name": "Qwen-Omni Turbo",
-          "family": "qwen-omni",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -1100,7 +1100,7 @@
         {
           "id": "qwen-mt-turbo",
           "name": "Qwen Mt Turbo",
-          "family": "qwen-mt",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -1133,7 +1133,7 @@
         {
           "id": "qwen-mt-plus",
           "name": "Qwen Mt Plus",
-          "family": "qwen-mt",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -1166,7 +1166,7 @@
         {
           "id": "qwen2-5-omni-7b",
           "name": "Qwen2.5-Omni 7B",
-          "family": "qwen2.5-omni",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -1204,7 +1204,7 @@
         {
           "id": "qwen-turbo",
           "name": "Qwen Turbo",
-          "family": "qwen-turbo",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -1250,7 +1250,7 @@
         {
           "id": "qwen-vl-ocr",
           "name": "Qwen Vl Ocr",
-          "family": "qwen-vl",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -1284,7 +1284,7 @@
         {
           "id": "qwen2-5-14b-instruct",
           "name": "Qwen2.5 14B Instruct",
-          "family": "qwen2.5",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -1317,7 +1317,7 @@
         {
           "id": "qwen2-5-72b-instruct",
           "name": "Qwen2.5 72B Instruct",
-          "family": "qwen2.5",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -1350,7 +1350,7 @@
         {
           "id": "qwen2-5-vl-72b-instruct",
           "name": "Qwen2.5-VL 72B Instruct",
-          "family": "qwen2.5-vl",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -1384,7 +1384,7 @@
         {
           "id": "qwen2-5-32b-instruct",
           "name": "Qwen2.5 32B Instruct",
-          "family": "qwen2.5",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -1417,7 +1417,7 @@
         {
           "id": "qwen2-5-7b-instruct",
           "name": "Qwen2.5 7B Instruct",
-          "family": "qwen2.5",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -1450,7 +1450,7 @@
         {
           "id": "qwen2-5-vl-7b-instruct",
           "name": "Qwen2.5-VL 7B Instruct",
-          "family": "qwen2.5-vl",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -1484,7 +1484,7 @@
         {
           "id": "qwen-vl-max",
           "name": "Qwen-VL Max",
-          "family": "qwen-vl",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -1518,7 +1518,7 @@
         {
           "id": "qwen-max",
           "name": "Qwen Max",
-          "family": "qwen-max",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -1557,7 +1557,7 @@
         {
           "id": "qwen-plus",
           "name": "Qwen Plus",
-          "family": "qwen-plus",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -1603,7 +1603,7 @@
         {
           "id": "qwen-vl-plus",
           "name": "Qwen-VL Plus",
-          "family": "qwen-vl",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -1637,7 +1637,7 @@
         {
           "id": "qwen-plus-character-ja",
           "name": "Qwen Plus Character (Japanese)",
-          "family": "qwen-plus",
+          "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -2737,7 +2737,7 @@
         {
           "id": "grok-3-fast",
           "name": "Grok 3 Fast",
-          "family": "grok-3",
+          "family": "grok",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -2771,7 +2771,7 @@
         {
           "id": "grok-3-mini-fast-latest",
           "name": "Grok 3 Mini Fast Latest",
-          "family": "grok-3",
+          "family": "grok",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -2807,7 +2807,7 @@
         {
           "id": "grok-3",
           "name": "Grok 3",
-          "family": "grok-3",
+          "family": "grok",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -2841,7 +2841,7 @@
         {
           "id": "grok-3-fast-latest",
           "name": "Grok 3 Fast Latest",
-          "family": "grok-3",
+          "family": "grok",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -2875,7 +2875,7 @@
         {
           "id": "grok-3-latest",
           "name": "Grok 3 Latest",
-          "family": "grok-3",
+          "family": "grok",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -2909,7 +2909,7 @@
         {
           "id": "grok-3-mini",
           "name": "Grok 3 Mini",
-          "family": "grok-3",
+          "family": "grok",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -2945,7 +2945,7 @@
         {
           "id": "grok-3-mini-latest",
           "name": "Grok 3 Mini Latest",
-          "family": "grok-3",
+          "family": "grok",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -2981,7 +2981,7 @@
         {
           "id": "grok-3-mini-fast",
           "name": "Grok 3 Mini Fast",
-          "family": "grok-3",
+          "family": "grok",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -3017,7 +3017,7 @@
         {
           "id": "grok-2-1212",
           "name": "Grok 2 1212",
-          "family": "grok-2",
+          "family": "grok",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -3123,7 +3123,7 @@
         {
           "id": "grok-2-vision",
           "name": "Grok 2 Vision",
-          "family": "grok-2",
+          "family": "grok",
           "attachment": true,
           "reasoning": {
             "supported": false
@@ -3158,7 +3158,7 @@
         {
           "id": "grok-2",
           "name": "Grok 2",
-          "family": "grok-2",
+          "family": "grok",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -3192,7 +3192,7 @@
         {
           "id": "grok-2-vision-1212",
           "name": "Grok 2 Vision 1212",
-          "family": "grok-2",
+          "family": "grok",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -3230,7 +3230,7 @@
         {
           "id": "grok-2-latest",
           "name": "Grok 2 Latest",
-          "family": "grok-2",
+          "family": "grok",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -3264,7 +3264,7 @@
         {
           "id": "grok-2-vision-latest",
           "name": "Grok 2 Vision Latest",
-          "family": "grok-2",
+          "family": "grok",
           "attachment": true,
           "reasoning": {
             "supported": false
@@ -3447,7 +3447,7 @@
         {
           "id": "devstral-2512",
           "name": "Devstral 2",
-          "family": "devstral-medium",
+          "family": "devstral",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -3480,7 +3480,7 @@
         {
           "id": "labs-devstral-small-2512",
           "name": "Devstral Small 2",
-          "family": "devstral-small",
+          "family": "devstral",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -3514,7 +3514,7 @@
         {
           "id": "devstral-medium-latest",
           "name": "Devstral 2",
-          "family": "devstral-medium",
+          "family": "devstral",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -3581,7 +3581,7 @@
         {
           "id": "devstral-medium-2507",
           "name": "Devstral Medium",
-          "family": "devstral-medium",
+          "family": "devstral",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -3614,7 +3614,7 @@
         {
           "id": "devstral-small-2507",
           "name": "Devstral Small",
-          "family": "devstral-small",
+          "family": "devstral",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -3715,7 +3715,7 @@
         {
           "id": "devstral-small-2505",
           "name": "Devstral Small 2505",
-          "family": "devstral-small",
+          "family": "devstral",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -3884,7 +3884,7 @@
         {
           "id": "pixtral-large-latest",
           "name": "Pixtral Large",
-          "family": "pixtral-large",
+          "family": "pixtral",
           "attachment": true,
           "reasoning": {
             "supported": false
@@ -3985,7 +3985,7 @@
         {
           "id": "ministral-8b-latest",
           "name": "Ministral 8B",
-          "family": "ministral-8b",
+          "family": "ministral",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -4018,7 +4018,7 @@
         {
           "id": "ministral-3b-latest",
           "name": "Ministral 3B",
-          "family": "ministral-3b",
+          "family": "ministral",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -4185,7 +4185,7 @@
         {
           "id": "open-mixtral-8x22b",
           "name": "Mixtral 8x22B",
-          "family": "mixtral-8x22b",
+          "family": "mixtral",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -4250,7 +4250,7 @@
         {
           "id": "open-mixtral-8x7b",
           "name": "Mixtral 8x7B",
-          "family": "mixtral-8x7b",
+          "family": "mixtral",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -4283,7 +4283,7 @@
         {
           "id": "open-mistral-7b",
           "name": "Mistral 7B",
-          "family": "mistral-7b",
+          "family": "mistral",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -4325,7 +4325,7 @@
         {
           "id": "deepseek-reasoner",
           "name": "DeepSeek Reasoner",
-          "family": "deepseek",
+          "family": "deepseek-thinking",
           "attachment": true,
           "reasoning": {
             "supported": true,
@@ -4363,7 +4363,7 @@
         {
           "id": "deepseek-chat",
           "name": "DeepSeek Chat",
-          "family": "deepseek-chat",
+          "family": "deepseek",
           "attachment": true,
           "reasoning": {
             "supported": false
@@ -4399,9 +4399,9 @@
     "minimax": {
       "id": "minimax",
       "api": "https://api.minimax.io/anthropic/v1",
-      "name": "MiniMax",
+      "name": "MiniMax (minimax.io)",
       "doc": "https://platform.minimax.io/docs/guides/quickstart",
-      "display_name": "MiniMax",
+      "display_name": "MiniMax (minimax.io)",
       "models": [
         {
           "id": "MiniMax-M2.1",
@@ -4784,7 +4784,7 @@
         {
           "id": "gemini-2.5-flash-image",
           "name": "Gemini 2.5 Flash Image",
-          "family": "gemini-flash-image",
+          "family": "gemini-flash",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -4820,7 +4820,7 @@
         {
           "id": "gemini-2.5-flash-image-preview",
           "name": "Gemini 2.5 Flash Image Preview",
-          "family": "gemini-flash-image",
+          "family": "gemini-flash",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -5134,7 +5134,7 @@
         {
           "id": "gemini-2.5-flash-preview-tts",
           "name": "Gemini 2.5 Flash Preview TTS",
-          "family": "gemini-flash-tts",
+          "family": "gemini-flash",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -5167,7 +5167,7 @@
         {
           "id": "gemini-2.5-pro-preview-tts",
           "name": "Gemini 2.5 Pro Preview TTS",
-          "family": "gemini-flash-tts",
+          "family": "gemini-flash",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -5557,9 +5557,48 @@
       "display_name": "OpenAI",
       "models": [
         {
+          "id": "gpt-5.2-codex",
+          "name": "GPT-5.2 Codex",
+          "family": "gpt-codex",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": false,
+          "knowledge": "2025-08-31",
+          "release_date": "2025-12-11",
+          "last_updated": "2025-12-11",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 1.75,
+            "output": 14,
+            "cache_read": 0.175
+          },
+          "limit": {
+            "context": 400000,
+            "input": 272000,
+            "output": 128000
+          },
+          "display_name": "GPT-5.2 Codex",
+          "type": "chat"
+        },
+        {
           "id": "gpt-5.2-pro",
           "name": "GPT-5.2 Pro",
-          "family": "gpt-5-pro",
+          "family": "gpt-pro",
           "attachment": true,
           "reasoning": {
             "supported": true,
@@ -5587,6 +5626,7 @@
           },
           "limit": {
             "context": 400000,
+            "input": 272000,
             "output": 128000
           },
           "display_name": "GPT-5.2 Pro",
@@ -5595,7 +5635,7 @@
         {
           "id": "gpt-5.2-chat-latest",
           "name": "GPT-5.2 Chat",
-          "family": "gpt-5-chat",
+          "family": "gpt-codex",
           "attachment": true,
           "reasoning": {
             "supported": true,
@@ -5632,7 +5672,7 @@
         {
           "id": "gpt-5.2",
           "name": "GPT-5.2",
-          "family": "gpt-5",
+          "family": "gpt",
           "attachment": true,
           "reasoning": {
             "supported": true,
@@ -5660,6 +5700,7 @@
           },
           "limit": {
             "context": 400000,
+            "input": 272000,
             "output": 128000
           },
           "display_name": "GPT-5.2",
@@ -5668,7 +5709,7 @@
         {
           "id": "gpt-5.1-codex",
           "name": "GPT-5.1 Codex",
-          "family": "gpt-5-codex",
+          "family": "gpt-codex",
           "attachment": true,
           "reasoning": {
             "supported": true,
@@ -5697,6 +5738,7 @@
           },
           "limit": {
             "context": 400000,
+            "input": 272000,
             "output": 128000
           },
           "display_name": "GPT-5.1 Codex",
@@ -5705,7 +5747,7 @@
         {
           "id": "gpt-5.1-codex-mini",
           "name": "GPT-5.1 Codex mini",
-          "family": "gpt-5-codex-mini",
+          "family": "gpt-codex",
           "attachment": true,
           "reasoning": {
             "supported": true,
@@ -5734,6 +5776,7 @@
           },
           "limit": {
             "context": 400000,
+            "input": 272000,
             "output": 128000
           },
           "display_name": "GPT-5.1 Codex mini",
@@ -5742,7 +5785,7 @@
         {
           "id": "gpt-5.1",
           "name": "GPT-5.1",
-          "family": "gpt-5",
+          "family": "gpt",
           "attachment": true,
           "reasoning": {
             "supported": true,
@@ -5770,6 +5813,7 @@
           },
           "limit": {
             "context": 400000,
+            "input": 272000,
             "output": 128000
           },
           "display_name": "GPT-5.1",
@@ -5778,7 +5822,7 @@
         {
           "id": "gpt-5.1-codex-max",
           "name": "GPT-5.1 Codex Max",
-          "family": "gpt-5-codex",
+          "family": "gpt-codex",
           "attachment": true,
           "reasoning": {
             "supported": true,
@@ -5807,6 +5851,7 @@
           },
           "limit": {
             "context": 400000,
+            "input": 272000,
             "output": 128000
           },
           "display_name": "GPT-5.1 Codex Max",
@@ -5815,7 +5860,7 @@
         {
           "id": "gpt-5.1-chat-latest",
           "name": "GPT-5.1 Chat",
-          "family": "gpt-5-chat",
+          "family": "gpt-codex",
           "attachment": true,
           "reasoning": {
             "supported": true,
@@ -5852,7 +5897,7 @@
         {
           "id": "gpt-5-pro",
           "name": "GPT-5 Pro",
-          "family": "gpt-5-pro",
+          "family": "gpt-pro",
           "attachment": true,
           "reasoning": {
             "supported": true,
@@ -5880,6 +5925,7 @@
           },
           "limit": {
             "context": 400000,
+            "input": 272000,
             "output": 272000
           },
           "display_name": "GPT-5 Pro",
@@ -5888,7 +5934,7 @@
         {
           "id": "gpt-5-codex",
           "name": "GPT-5-Codex",
-          "family": "gpt-5-codex",
+          "family": "gpt-codex",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -5917,6 +5963,7 @@
           },
           "limit": {
             "context": 400000,
+            "input": 272000,
             "output": 128000
           },
           "display_name": "GPT-5-Codex",
@@ -5925,7 +5972,7 @@
         {
           "id": "gpt-5-nano",
           "name": "GPT-5 Nano",
-          "family": "gpt-5-nano",
+          "family": "gpt-nano",
           "attachment": true,
           "reasoning": {
             "supported": true,
@@ -5950,10 +5997,11 @@
           "cost": {
             "input": 0.05,
             "output": 0.4,
-            "cache_read": 0.01
+            "cache_read": 0.005
           },
           "limit": {
             "context": 400000,
+            "input": 272000,
             "output": 128000
           },
           "display_name": "GPT-5 Nano",
@@ -5962,7 +6010,7 @@
         {
           "id": "gpt-5-mini",
           "name": "GPT-5 Mini",
-          "family": "gpt-5-mini",
+          "family": "gpt-mini",
           "attachment": true,
           "reasoning": {
             "supported": true,
@@ -5987,10 +6035,11 @@
           "cost": {
             "input": 0.25,
             "output": 2,
-            "cache_read": 0.03
+            "cache_read": 0.025
           },
           "limit": {
             "context": 400000,
+            "input": 272000,
             "output": 128000
           },
           "display_name": "GPT-5 Mini",
@@ -5999,7 +6048,7 @@
         {
           "id": "gpt-5-chat-latest",
           "name": "GPT-5 Chat (latest)",
-          "family": "gpt-5-chat",
+          "family": "gpt-codex",
           "attachment": true,
           "reasoning": {
             "supported": true,
@@ -6027,6 +6076,7 @@
           },
           "limit": {
             "context": 400000,
+            "input": 272000,
             "output": 128000
           },
           "display_name": "GPT-5 Chat (latest)",
@@ -6035,7 +6085,7 @@
         {
           "id": "gpt-5",
           "name": "GPT-5",
-          "family": "gpt-5",
+          "family": "gpt",
           "attachment": true,
           "reasoning": {
             "supported": true,
@@ -6060,10 +6110,11 @@
           "cost": {
             "input": 1.25,
             "output": 10,
-            "cache_read": 0.13
+            "cache_read": 0.125
           },
           "limit": {
             "context": 400000,
+            "input": 272000,
             "output": 128000
           },
           "display_name": "GPT-5",
@@ -6126,7 +6177,7 @@
         {
           "id": "o3-pro",
           "name": "o3-pro",
-          "family": "o3-pro",
+          "family": "o-pro",
           "attachment": true,
           "reasoning": {
             "supported": true,
@@ -6162,7 +6213,7 @@
         {
           "id": "codex-mini-latest",
           "name": "Codex Mini",
-          "family": "codex",
+          "family": "gpt-codex-mini",
           "attachment": true,
           "reasoning": {
             "supported": true,
@@ -6197,7 +6248,7 @@
         {
           "id": "o4-mini",
           "name": "o4-mini",
-          "family": "o4-mini",
+          "family": "o-mini",
           "attachment": true,
           "reasoning": {
             "supported": true,
@@ -6234,7 +6285,7 @@
         {
           "id": "o3",
           "name": "o3",
-          "family": "o3",
+          "family": "o",
           "attachment": true,
           "reasoning": {
             "supported": true,
@@ -6271,7 +6322,7 @@
         {
           "id": "gpt-4.1-nano",
           "name": "GPT-4.1 nano",
-          "family": "gpt-4.1-nano",
+          "family": "gpt-nano",
           "attachment": true,
           "reasoning": {
             "supported": false
@@ -6307,7 +6358,7 @@
         {
           "id": "gpt-4.1-mini",
           "name": "GPT-4.1 mini",
-          "family": "gpt-4.1-mini",
+          "family": "gpt-mini",
           "attachment": true,
           "reasoning": {
             "supported": false
@@ -6343,7 +6394,7 @@
         {
           "id": "gpt-4.1",
           "name": "GPT-4.1",
-          "family": "gpt-4.1",
+          "family": "gpt",
           "attachment": true,
           "reasoning": {
             "supported": false
@@ -6379,7 +6430,7 @@
         {
           "id": "o1-pro",
           "name": "o1-pro",
-          "family": "o1-pro",
+          "family": "o-pro",
           "attachment": true,
           "reasoning": {
             "supported": true,
@@ -6415,7 +6466,7 @@
         {
           "id": "o3-mini",
           "name": "o3-mini",
-          "family": "o3-mini",
+          "family": "o-mini",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -6451,7 +6502,7 @@
         {
           "id": "o1",
           "name": "o1",
-          "family": "o1",
+          "family": "o",
           "attachment": true,
           "reasoning": {
             "supported": true,
@@ -6488,7 +6539,7 @@
         {
           "id": "gpt-4o-2024-11-20",
           "name": "GPT-4o (2024-11-20)",
-          "family": "gpt-4o",
+          "family": "gpt",
           "attachment": true,
           "reasoning": {
             "supported": false
@@ -6524,7 +6575,7 @@
         {
           "id": "o1-preview",
           "name": "o1-preview",
-          "family": "o1-preview",
+          "family": "o",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -6559,7 +6610,7 @@
         {
           "id": "o1-mini",
           "name": "o1-mini",
-          "family": "o1-mini",
+          "family": "o-mini",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -6595,7 +6646,7 @@
         {
           "id": "gpt-4o-2024-08-06",
           "name": "GPT-4o (2024-08-06)",
-          "family": "gpt-4o",
+          "family": "gpt",
           "attachment": true,
           "reasoning": {
             "supported": false
@@ -6631,7 +6682,7 @@
         {
           "id": "gpt-4o-mini",
           "name": "GPT-4o mini",
-          "family": "gpt-4o-mini",
+          "family": "gpt-mini",
           "attachment": true,
           "reasoning": {
             "supported": false
@@ -6667,7 +6718,7 @@
         {
           "id": "o3-deep-research",
           "name": "o3-deep-research",
-          "family": "o3",
+          "family": "o",
           "attachment": true,
           "reasoning": {
             "supported": true,
@@ -6703,7 +6754,7 @@
         {
           "id": "o4-mini-deep-research",
           "name": "o4-mini-deep-research",
-          "family": "o4-mini",
+          "family": "o-mini",
           "attachment": true,
           "reasoning": {
             "supported": true,
@@ -6739,7 +6790,7 @@
         {
           "id": "gpt-4o-2024-05-13",
           "name": "GPT-4o (2024-05-13)",
-          "family": "gpt-4o",
+          "family": "gpt",
           "attachment": true,
           "reasoning": {
             "supported": false
@@ -6774,7 +6825,7 @@
         {
           "id": "gpt-4o",
           "name": "GPT-4o",
-          "family": "gpt-4o",
+          "family": "gpt",
           "attachment": true,
           "reasoning": {
             "supported": false
@@ -6810,7 +6861,7 @@
         {
           "id": "text-embedding-3-small",
           "name": "text-embedding-3-small",
-          "family": "text-embedding-3-small",
+          "family": "text-embedding",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -6843,7 +6894,7 @@
         {
           "id": "text-embedding-3-large",
           "name": "text-embedding-3-large",
-          "family": "text-embedding-3-large",
+          "family": "text-embedding",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -6876,7 +6927,7 @@
         {
           "id": "gpt-4",
           "name": "GPT-4",
-          "family": "gpt-4",
+          "family": "gpt",
           "attachment": true,
           "reasoning": {
             "supported": false
@@ -6910,7 +6961,7 @@
         {
           "id": "gpt-4-turbo",
           "name": "GPT-4 Turbo",
-          "family": "gpt-4-turbo",
+          "family": "gpt",
           "attachment": true,
           "reasoning": {
             "supported": false
@@ -6945,7 +6996,7 @@
         {
           "id": "gpt-3.5-turbo",
           "name": "GPT-3.5-turbo",
-          "family": "gpt-3.5-turbo",
+          "family": "gpt",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -6980,7 +7031,7 @@
         {
           "id": "text-embedding-ada-002",
           "name": "text-embedding-ada-002",
-          "family": "text-embedding-ada",
+          "family": "text-embedding",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -7022,7 +7073,7 @@
         {
           "id": "glm-4.7",
           "name": "GLM-4.7",
-          "family": "glm-4.7",
+          "family": "glm",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -7061,7 +7112,7 @@
         {
           "id": "glm-4.6v",
           "name": "GLM-4.6V",
-          "family": "glm-4.6v",
+          "family": "glm",
           "attachment": true,
           "reasoning": {
             "supported": true,
@@ -7097,7 +7148,7 @@
         {
           "id": "glm-4.6",
           "name": "GLM-4.6",
-          "family": "glm-4.6",
+          "family": "glm",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -7133,7 +7184,7 @@
         {
           "id": "glm-4.5v",
           "name": "GLM-4.5V",
-          "family": "glm-4.5v",
+          "family": "glm",
           "attachment": true,
           "reasoning": {
             "supported": true,
@@ -7169,7 +7220,7 @@
         {
           "id": "glm-4.5-flash",
           "name": "GLM-4.5-Flash",
-          "family": "glm-4.5-flash",
+          "family": "glm-flash",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -7205,7 +7256,7 @@
         {
           "id": "glm-4.5",
           "name": "GLM-4.5",
-          "family": "glm-4.5",
+          "family": "glm",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -7241,7 +7292,7 @@
         {
           "id": "glm-4.5-air",
           "name": "GLM-4.5-Air",
-          "family": "glm-4.5-air",
+          "family": "glm-air",
           "attachment": false,
           "reasoning": {
             "supported": true,
