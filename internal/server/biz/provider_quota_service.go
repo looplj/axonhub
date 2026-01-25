@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"github.com/samber/lo"
 	"github.com/zhenzou/executors"
 	"go.uber.org/fx"
 
@@ -172,15 +173,12 @@ func (svc *ProviderQuotaService) intervalToCronExpr(interval time.Duration) stri
 
 	// Round down to nearest supported interval (1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60)
 	supportedIntervals := []int{1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60}
-	var rounded int
-	for _, si := range supportedIntervals {
-		if minutes <= si {
-			rounded = si
-			break
-		}
-	}
-	if rounded == 0 {
-		rounded = 60
+	filtered := lo.Filter(supportedIntervals, func(si int, _ int) bool {
+		return si <= minutes
+	})
+	rounded := 60
+	if len(filtered) > 0 {
+		rounded = lo.Max(filtered)
 	}
 
 	log.Warn(context.Background(), "Quota check interval does not divide evenly into 60 minutes, rounding to nearest supported interval",
