@@ -18,7 +18,10 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
-const codexAPIURL = "https://chatgpt.com/backend-api/codex/responses"
+const (
+	codexBaseURL = "https://chatgpt.com/backend-api/codex#"
+	codexAPIURL  = "https://chatgpt.com/backend-api/codex/responses"
+)
 
 const codexDefaultVersion = "0.21.0"
 
@@ -50,6 +53,7 @@ var (
 
 type Params struct {
 	TokenProvider oauth.TokenGetter
+	BaseURL       string
 }
 
 func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
@@ -57,9 +61,15 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 		return nil, errors.New("token provider is required")
 	}
 
+	baseURL := params.BaseURL
+	// Compatibility with old codex channel base url.
+	if baseURL == "" || baseURL == "https://api.openai.com/v1" {
+		baseURL = codexBaseURL
+	}
+
 	// The underlying responses outbound requires baseURL/apiKey. We only need its request body logic.
 	// Use a dummy config and then override URL/auth.
-	ro, err := responses.NewOutboundTransformer("https://api.openai.com/v1", "dummy")
+	ro, err := responses.NewOutboundTransformer(baseURL, "dummy")
 	if err != nil {
 		return nil, err
 	}
@@ -162,9 +172,6 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	if err != nil {
 		return nil, err
 	}
-
-	// Force Codex upstream (this is a ChatGPT backend endpoint, not api.openai.com).
-	hreq.URL = codexAPIURL
 
 	// Codex upstream expects SSE.
 	for _, header := range codexHeaders {

@@ -291,29 +291,33 @@ export const createChannelInputSchema = z
   })
   .superRefine((data, ctx) => {
     if (data.type === 'codex') {
-      const issue = {
-        code: 'custom' as const,
-        message: 'channels.dialogs.fields.supportedModels.codexOAuthCredentialsRequired',
-        path: ['credentials', 'apiKey'],
-      };
+      const apiKey = data.credentials.apiKey;
+      // Only enforce JSON validation if it looks like JSON (starts with '{')
+      if (apiKey && apiKey.trim().startsWith('{')) {
+        const issue = {
+          code: 'custom' as const,
+          message: 'channels.dialogs.fields.supportedModels.codexOAuthCredentialsRequired',
+          path: ['credentials', 'apiKey'],
+        };
 
-      let json: unknown;
-      try {
-        json = JSON.parse(data.credentials.apiKey);
-      } catch {
-        ctx.addIssue(issue);
-        return;
-      }
+        let json: unknown;
+        try {
+          json = JSON.parse(apiKey);
+        } catch {
+          ctx.addIssue(issue);
+          return;
+        }
 
-      const parsed = z
-        .object({
-          access_token: z.string().min(1),
-          refresh_token: z.string().min(1),
-        })
-        .safeParse(json);
+        const parsed = z
+          .object({
+            access_token: z.string().min(1),
+            refresh_token: z.string().min(1),
+          })
+          .safeParse(json);
 
-      if (!parsed.success) {
-        ctx.addIssue(issue);
+        if (!parsed.success) {
+          ctx.addIssue(issue);
+        }
       }
     }
 
@@ -382,17 +386,17 @@ export const updateChannelInputSchema = z
   })
   .superRefine((data, ctx) => {
     if (data.type === 'codex') {
-      const issue = {
-        code: 'custom' as const,
-        message: 'channels.dialogs.fields.supportedModels.codexOAuthCredentialsRequired',
-        path: ['credentials', 'apiKey'],
-      };
-
       if (!data.credentials) return;
 
       const apiKey = data.credentials.apiKey;
+      // Only enforce JSON validation if it looks like JSON (starts with '{')
+      if (apiKey && apiKey.trim().startsWith('{')) {
+        const issue = {
+          code: 'custom' as const,
+          message: 'channels.dialogs.fields.supportedModels.codexOAuthCredentialsRequired',
+          path: ['credentials', 'apiKey'],
+        };
 
-      if (apiKey) {
         let json: unknown;
         try {
           json = JSON.parse(apiKey);
