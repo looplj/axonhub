@@ -13,7 +13,7 @@ import (
 type EventBroker struct {
 	mu          sync.RWMutex
 	subscribers map[string]*Subscriber
-	logger      log.Logger
+	logger      *log.Logger
 }
 
 // Subscriber represents a client subscribed to events
@@ -27,7 +27,7 @@ type Subscriber struct {
 }
 
 // NewEventBroker creates a new event broker
-func NewEventBroker(logger log.Logger) *EventBroker {
+func NewEventBroker(logger *log.Logger) *EventBroker {
 	return &EventBroker{
 		subscribers: make(map[string]*Subscriber),
 		logger:      logger,
