@@ -25,6 +25,14 @@ type TokenResponse struct {
 	Scope        string `json:"scope,omitempty"`
 }
 
+// ExpiresAt calculates the expiration time based on ExpiresIn.
+func (t *TokenResponse) ExpiresAt() time.Time {
+	if t.ExpiresIn > 0 {
+		return time.Now().Add(time.Duration(t.ExpiresIn) * time.Second)
+	}
+	return time.Time{}
+}
+
 type TokenError struct {
 	Error            string `json:"error"`
 	ErrorDescription string `json:"error_description"`

@@ -31,7 +31,9 @@ import {
   useAllChannelTags,
 } from '../data/channels';
 import { codexOAuthExchange, codexOAuthStart } from '../data/codex';
-import { getDefaultBaseURL, getDefaultModels, CHANNEL_CONFIGS, OPENAI_CHAT_COMPLETIONS, OPENAI_RESPONSES } from '../data/config_channels';
+import { claudecodeOAuthExchange, claudecodeOAuthStart } from '../data/claudecode';
+import { useOAuthFlow } from '../hooks/use-oauth-flow';
+import { getDefaultBaseURL, getDefaultModels, CHANNEL_CONFIGS, OPENAI_CHAT_COMPLETIONS, OPENAI_RESPONSES, ANTHROPIC_MESSAGES } from '../data/config_channels';
 import {
   PROVIDER_CONFIGS,
   getProviderFromChannelType,
@@ -106,11 +108,26 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [showGcpJsonData, setShowGcpJsonData] = useState(false);
   const dialogContentRef = useRef<HTMLDivElement>(null);
 
-  const [codexSessionId, setCodexSessionId] = useState<string | null>(null);
-  const [codexAuthUrl, setCodexAuthUrl] = useState<string | null>(null);
-  const [codexCallbackUrl, setCodexCallbackUrl] = useState('');
-  const [isCodexStarting, setIsCodexStarting] = useState(false);
-  const [isCodexExchanging, setIsCodexExchanging] = useState(false);
+  // OAuth flows using the reusable hook
+  const codexOAuth = useOAuthFlow({
+    provider: 'codex',
+    startFn: codexOAuthStart,
+    exchangeFn: codexOAuthExchange,
+    projectId: selectedProjectId,
+    onSuccess: (credentials) => {
+      form.setValue('credentials.apiKey', credentials);
+    },
+  });
+
+  const claudecodeOAuth = useOAuthFlow({
+    provider: 'claudecode',
+    startFn: claudecodeOAuthStart,
+    exchangeFn: claudecodeOAuthExchange,
+    projectId: selectedProjectId,
+    onSuccess: (credentials) => {
+      form.setValue('credentials.apiKey', credentials);
+    },
+  });
 
   // Provider-based selection state
   const [selectedProvider, setSelectedProvider] = useState<string>(() => {
@@ -152,13 +169,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   useEffect(() => {
     if (!open) {
       hasAutoSetDuplicateNameRef.current = false;
-      setCodexSessionId(null);
-      setCodexAuthUrl(null);
-      setCodexCallbackUrl('');
-      setIsCodexStarting(false);
-      setIsCodexExchanging(false);
+      codexOAuth.reset();
+      claudecodeOAuth.reset();
     }
-  }, [open]);
+  }, [open, codexOAuth, claudecodeOAuth]);
 
   useEffect(() => {
     if (!open) return;
@@ -495,65 +509,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     [isEdit, selectedApiFormat, form]
   );
 
-  const startCodexOAuth = useCallback(async () => {
-    if (!selectedProjectId) {
-      toast.error(t('channels.dialogs.codex.errors.projectRequired'));
-      return;
-    }
-
-    setIsCodexStarting(true);
-    try {
-      const result = await codexOAuthStart({ 'X-Project-ID': selectedProjectId });
-      setCodexSessionId(result.session_id);
-      setCodexAuthUrl(result.auth_url);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setIsCodexStarting(false);
-    }
-  }, [selectedProjectId]);
-
-  const exchangeCodexOAuth = useCallback(async () => {
-    if (!selectedProjectId) {
-      toast.error(t('channels.dialogs.codex.errors.projectRequired'));
-      return;
-    }
-
-    if (!codexSessionId) {
-      toast.error(t('channels.dialogs.codex.errors.sessionMissing'));
-      return;
-    }
-
-    if (!codexCallbackUrl.trim()) {
-      toast.error(t('channels.dialogs.codex.errors.callbackUrlRequired'));
-      return;
-    }
-
-    setIsCodexExchanging(true);
-    try {
-      const result = await codexOAuthExchange(
-        {
-          session_id: codexSessionId,
-          callback_url: codexCallbackUrl.trim(),
-        },
-        { 'X-Project-ID': selectedProjectId }
-      );
-
-      form.setValue('credentials.apiKey', result.credentials);
-      toast.success(t('channels.dialogs.codex.messages.credentialsImported'));
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setIsCodexExchanging(false);
-    }
-  }, [selectedProjectId, codexSessionId, codexCallbackUrl, form]);
-
   useEffect(() => {
     if (isEdit) return;
     if (!isCodexType) {
-      setCodexSessionId(null);
-      setCodexAuthUrl(null);
-      setCodexCallbackUrl('');
+      codexOAuth.reset();
       return;
     }
 
@@ -562,6 +521,19 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       form.resetField('baseURL', { defaultValue: baseURL });
     }
   }, [isEdit, isCodexType, form]);
+
+  useEffect(() => {
+    if (isEdit) return;
+    if (selectedProvider !== 'claudecode') {
+      claudecodeOAuth.reset();
+      return;
+    }
+
+    const baseURL = getDefaultBaseURL('claudecode');
+    if (baseURL) {
+      form.resetField('baseURL', { defaultValue: baseURL });
+    }
+  }, [isEdit, selectedProvider, form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     // Check if there are selected fetched models that haven't been confirmed
@@ -705,7 +677,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     setSupportedModels(supportedModels.filter((m) => m !== model));
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       addModel();
@@ -1046,29 +1018,29 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             <div className='mt-3 space-y-2'>
                               <div className='rounded-md border p-3'>
                                 <div className='flex flex-wrap items-center gap-2'>
-                                  <Button type='button' variant='secondary' onClick={startCodexOAuth} disabled={isCodexStarting}>
-                                    {isCodexStarting
+                                  <Button type='button' variant='secondary' onClick={codexOAuth.start} disabled={codexOAuth.isStarting}>
+                                    {codexOAuth.isStarting
                                       ? t('channels.dialogs.codex.buttons.starting')
                                       : t('channels.dialogs.codex.buttons.startOAuth')}
                                   </Button>
-                                  {codexAuthUrl && (
+                                  {codexOAuth.authUrl && (
                                     <Button
                                       type='button'
                                       variant='ghost'
-                                      onClick={() => window.open(codexAuthUrl, '_blank', 'noopener,noreferrer')}
+                                      onClick={() => window.open(codexOAuth.authUrl || '', '_blank', 'noopener,noreferrer')}
                                     >
                                       {t('channels.dialogs.codex.buttons.openOAuthLink')}
                                     </Button>
                                   )}
                                 </div>
 
-                                {codexAuthUrl && (
+                                {codexOAuth.authUrl && (
                                   <div className='mt-3 space-y-2'>
                                     <FormLabel className='text-sm font-medium'>
                                       {t('channels.dialogs.codex.labels.authorizationUrl')}
                                     </FormLabel>
                                     <Textarea
-                                      value={codexAuthUrl}
+                                      value={codexOAuth.authUrl}
                                       readOnly
                                       className='min-h-[60px] resize-none font-mono text-xs'
                                       placeholder={t('channels.dialogs.codex.placeholders.authorizationUrl')}
@@ -1079,13 +1051,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 <div className='mt-3 space-y-2'>
                                   <FormLabel className='text-sm font-medium'>{t('channels.dialogs.codex.labels.callbackUrl')}</FormLabel>
                                   <Textarea
-                                    value={codexCallbackUrl}
-                                    onChange={(e) => setCodexCallbackUrl(e.target.value)}
+                                    value={codexOAuth.callbackUrl}
+                                    onChange={(e) => codexOAuth.setCallbackUrl(e.target.value)}
                                     placeholder={t('channels.dialogs.codex.placeholders.callbackUrl')}
                                     className='min-h-[80px] resize-y font-mono text-xs'
                                   />
-                                  <Button type='button' onClick={exchangeCodexOAuth} disabled={isCodexExchanging || !codexSessionId}>
-                                    {isCodexExchanging
+                                  <Button type='button' onClick={codexOAuth.exchange} disabled={codexOAuth.isExchanging || !codexOAuth.sessionId}>
+                                    {codexOAuth.isExchanging
                                       ? t('channels.dialogs.codex.buttons.exchanging')
                                       : t('channels.dialogs.codex.buttons.exchangeAndFillApiKey')}
                                   </Button>
@@ -1093,6 +1065,72 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
                                 <p className='text-muted-foreground mt-2 text-xs'>
                                   {t('channels.dialogs.fields.apiFormat.codex.description')}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </FormItem>
+                      )}
+
+                      {selectedProvider === 'claudecode' && (
+                        <FormItem className='grid grid-cols-8 items-start gap-x-6'>
+                          <FormLabel className='col-span-2 pt-2 text-right font-medium'>
+                            {t('channels.dialogs.fields.apiFormat.label')}
+                          </FormLabel>
+                          <div className='col-span-6 space-y-1'>
+                            <div className='text-sm'>{getApiFormatLabel(ANTHROPIC_MESSAGES)}</div>
+                            <p className='text-muted-foreground mt-1 text-xs'>{t('channels.dialogs.fields.apiFormat.editDisabled')}</p>
+
+                            <div className='mt-3 space-y-2'>
+                              <div className='rounded-md border p-3'>
+                                <div className='flex flex-wrap items-center gap-2'>
+                                  <Button type='button' variant='secondary' onClick={claudecodeOAuth.start} disabled={claudecodeOAuth.isStarting}>
+                                    {claudecodeOAuth.isStarting
+                                      ? t('channels.dialogs.claudecode.buttons.starting')
+                                      : t('channels.dialogs.claudecode.buttons.startOAuth')}
+                                  </Button>
+                                  {claudecodeOAuth.authUrl && (
+                                    <Button
+                                      type='button'
+                                      variant='ghost'
+                                      onClick={() => window.open(claudecodeOAuth.authUrl || '', '_blank', 'noopener,noreferrer')}
+                                    >
+                                      {t('channels.dialogs.claudecode.buttons.openOAuthLink')}
+                                    </Button>
+                                  )}
+                                </div>
+
+                                {claudecodeOAuth.authUrl && (
+                                  <div className='mt-3 space-y-2'>
+                                    <FormLabel className='text-sm font-medium'>
+                                      {t('channels.dialogs.claudecode.labels.authorizationUrl')}
+                                    </FormLabel>
+                                    <Textarea
+                                      value={claudecodeOAuth.authUrl}
+                                      readOnly
+                                      className='min-h-[60px] resize-none font-mono text-xs'
+                                      placeholder={t('channels.dialogs.claudecode.placeholders.authorizationUrl')}
+                                    />
+                                  </div>
+                                )}
+
+                                <div className='mt-3 space-y-2'>
+                                  <FormLabel className='text-sm font-medium'>{t('channels.dialogs.claudecode.labels.callbackUrl')}</FormLabel>
+                                  <Textarea
+                                    value={claudecodeOAuth.callbackUrl}
+                                    onChange={(e) => claudecodeOAuth.setCallbackUrl(e.target.value)}
+                                    placeholder={t('channels.dialogs.claudecode.placeholders.callbackUrl')}
+                                    className='min-h-[80px] resize-y font-mono text-xs'
+                                  />
+                                  <Button type='button' onClick={claudecodeOAuth.exchange} disabled={claudecodeOAuth.isExchanging || !claudecodeOAuth.sessionId}>
+                                    {claudecodeOAuth.isExchanging
+                                      ? t('channels.dialogs.claudecode.buttons.exchanging')
+                                      : t('channels.dialogs.claudecode.buttons.exchangeAndFillApiKey')}
+                                  </Button>
+                                </div>
+
+                                <p className='text-muted-foreground mt-2 text-xs'>
+                                  {t('channels.dialogs.fields.apiFormat.claudecode.description')}
                                 </p>
                               </div>
                             </div>
@@ -1345,7 +1383,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 placeholder={t('channels.dialogs.fields.supportedModels.description')}
                                 value={newModel}
                                 onChange={(e) => setNewModel(e.target.value)}
-                                onKeyPress={handleKeyPress}
+                                onKeyDown={handleKeyDown}
                                 className='flex-1'
                               />
                             )}

@@ -19,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/anthropic"
+	"github.com/looplj/axonhub/llm/transformer/anthropic/claudecode"
 	"github.com/looplj/axonhub/llm/transformer/bailian"
 	"github.com/looplj/axonhub/llm/transformer/deepseek"
 	"github.com/looplj/axonhub/llm/transformer/doubao"
@@ -233,16 +234,55 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 
 		return buildChannelWithTransformer(c, transformer, httpClient), nil
 	case channel.TypeClaudecode:
-		transformer, err := anthropic.NewClaudeCodeTransformer(&anthropic.Config{
-			Type:    anthropic.PlatformClaudeCode,
-			BaseURL: c.BaseURL,
-			APIKey:  c.Credentials.APIKey,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		// Parse OAuth credentials from JSON or structured field
+		credsJSON := strings.TrimSpace(c.Credentials.APIKey)
+		if c.Credentials != nil && c.Credentials.OAuth != nil {
+			o := c.Credentials.OAuth
+			creds, err := (&oauth.OAuthCredentials{
+				AccessToken:  o.AccessToken,
+				RefreshToken: o.RefreshToken,
+				ClientID:     o.ClientID,
+				ExpiresAt:    o.ExpiresAt,
+				TokenType:    o.TokenType,
+				Scopes:       o.Scopes,
+			}).ToJSON()
+			if err != nil {
+				return nil, fmt.Errorf("failed to encode claudecode oauth credentials: %w", err)
+			}
+			credsJSON = creds
 		}
 
-		return buildChannelWithTransformer(c, transformer, httpClient), nil
+		// Check if using OAuth credentials
+		if isOAuthJSON(credsJSON) {
+			creds, err := oauth.ParseCredentialsJSON(credsJSON)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse claudecode oauth credentials: %w", err)
+			}
+
+			tokens := claudecode.NewTokenProvider(oauth.TokenProviderParams{
+				Credentials: creds,
+				HTTPClient:  httpClient,
+				OnRefreshed: svc.refreshOAuthTokenFunc(c),
+			})
+
+			transformer, err := claudecode.NewOutboundTransformer(claudecode.Params{
+				TokenProvider: tokens,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("failed to create claudecode outbound transformer: %w", err)
+			}
+
+			ch := buildChannelWithTransformer(c, transformer, httpClient)
+			ch.startTokenProvider = func() {
+				tokens.StartAutoRefresh(context.Background(), oauth.AutoRefreshOptions{})
+			}
+			ch.stopTokenProvider = tokens.StopAutoRefresh
+
+			return ch, nil
+		}
+
+		// Claude Code requires OAuth authentication
+		return nil, fmt.Errorf("claudecode channel requires OAuth credentials")
 	case channel.TypeDeepseekAnthropic:
 		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
 			Type:    anthropic.PlatformDeepSeek,
@@ -481,6 +521,11 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 	default:
 		return nil, errors.New("unknown channel type")
 	}
+}
+
+func isOAuthJSON(s string) bool {
+	trimmed := strings.TrimSpace(s)
+	return strings.HasPrefix(trimmed, "{") && strings.Contains(s, "access_token")
 }
 
 func (svc *ChannelService) refreshOAuthTokenFunc(ch *ent.Channel) func(ctx context.Context, refreshed *oauth.OAuthCredentials) error {

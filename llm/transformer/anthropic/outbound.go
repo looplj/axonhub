@@ -98,11 +98,9 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		}
 	}
 
-	if config.Type == PlatformClaudeCode {
-		t = &ClaudeCodeTransformer{
-			Outbound: t,
-		}
-	}
+	// Note: ClaudeCode transformer is now in a separate package to avoid import cycles
+	// It should be created directly using claudecode.NewOutboundTransformer() with OAuth TokenProvider
+	// The channel builder handles this special case
 
 	if before, ok := strings.CutSuffix(config.BaseURL, "#"); ok {
 		config.BaseURL = before

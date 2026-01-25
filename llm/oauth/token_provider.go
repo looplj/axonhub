@@ -2,11 +2,8 @@ package oauth
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
-	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -32,6 +29,7 @@ type TokenGetter interface {
 type TokenProvider struct {
 	httpClient  *httpclient.HttpClient
 	oauthUrls   OAuthUrls
+	strategy    ExchangeStrategy
 	sf          singleflight.Group
 	mu          sync.RWMutex
 	creds       *OAuthCredentials
@@ -45,18 +43,22 @@ type TokenProvider struct {
 }
 
 type TokenProviderParams struct {
-	Credentials *OAuthCredentials
+	Credentials      *OAuthCredentials
 	// HTTPClient should be pre-configured with proxy settings if needed
-	HTTPClient  *httpclient.HttpClient
-	OAuthUrls   OAuthUrls
-	UserAgent   string
-	OnRefreshed func(ctx context.Context, refreshed *OAuthCredentials) error
+	HTTPClient       *httpclient.HttpClient
+	OAuthUrls        OAuthUrls
+	UserAgent        string
+	OnRefreshed      func(ctx context.Context, refreshed *OAuthCredentials) error
+	// ExchangeStrategy defines how to format token requests (form-encoded or JSON)
+	// If not provided, defaults to FormEncodedStrategy
+	ExchangeStrategy ExchangeStrategy
 }
 type ExchangeParams struct {
 	Code         string
 	CodeVerifier string
 	ClientID     string
 	RedirectURI  string
+	State        string // Optional: for providers that require state in token exchange
 }
 
 type AutoRefreshOptions struct {
@@ -65,9 +67,15 @@ type AutoRefreshOptions struct {
 }
 
 func NewTokenProvider(params TokenProviderParams) *TokenProvider {
+	strategy := params.ExchangeStrategy
+	if strategy == nil {
+		strategy = &FormEncodedStrategy{UserAgent: params.UserAgent}
+	}
+
 	return &TokenProvider{
 		httpClient:  params.HTTPClient,
 		oauthUrls:   params.OAuthUrls,
+		strategy:    strategy,
 		userAgent:   params.UserAgent,
 		creds:       params.Credentials,
 		onRefreshed: params.OnRefreshed,
@@ -100,26 +108,9 @@ func (p *TokenProvider) Exchange(ctx context.Context, params ExchangeParams) (*O
 		return nil, errors.New("redirect_uri is empty")
 	}
 
-	form := url.Values{}
-	form.Set("grant_type", "authorization_code")
-	form.Set("client_id", params.ClientID)
-	form.Set("code", params.Code)
-	form.Set("redirect_uri", params.RedirectURI)
-	form.Set("code_verifier", params.CodeVerifier)
-
-	header := http.Header{
-		"Content-Type": []string{"application/x-www-form-urlencoded"},
-		"Accept":       []string{"application/json"},
-	}
-	if p.userAgent != "" {
-		header.Set("User-Agent", p.userAgent)
-	}
-
-	req := &httpclient.Request{
-		Method:  http.MethodPost,
-		URL:     p.oauthUrls.TokenUrl,
-		Headers: header,
-		Body:    []byte(form.Encode()),
+	req, err := p.strategy.BuildExchangeRequest(params, p.oauthUrls.TokenUrl)
+	if err != nil {
+		return nil, fmt.Errorf("build exchange request: %w", err)
 	}
 
 	resp, err := p.httpClient.Do(ctx, req)
@@ -127,34 +118,13 @@ func (p *TokenProvider) Exchange(ctx context.Context, params ExchangeParams) (*O
 		return nil, err
 	}
 
-	var tokenResp TokenResponse
-	if err := json.Unmarshal(resp.Body, &tokenResp); err != nil {
-		return nil, fmt.Errorf("decode exchange response: %w", err)
-	}
-
-	if tokenResp.AccessToken == "" || tokenResp.RefreshToken == "" {
-		var tokenErr TokenError
-		if err := json.Unmarshal(resp.Body, &tokenErr); err == nil && tokenErr.Error != "" {
-			return nil, fmt.Errorf("token exchange failed: %s - %s", tokenErr.Error, tokenErr.ErrorDescription)
+	creds, err := ParseTokenResponse(resp.Body, params.ClientID)
+	if err != nil {
+		// Wrap the error to indicate this was an exchange operation
+		if strings.Contains(err.Error(), "token request failed:") {
+			return nil, fmt.Errorf("token exchange failed: %s", strings.TrimPrefix(err.Error(), "token request failed: "))
 		}
-
-		return nil, errors.New("token exchange response missing required fields")
-	}
-
-	now := time.Now()
-	creds := &OAuthCredentials{
-		AccessToken:  tokenResp.AccessToken,
-		RefreshToken: tokenResp.RefreshToken,
-		ClientID:     params.ClientID,
-		TokenType:    tokenResp.TokenType,
-	}
-
-	if tokenResp.Scope != "" {
-		creds.Scopes = strings.Fields(tokenResp.Scope)
-	}
-
-	if tokenResp.ExpiresIn > 0 {
-		creds.ExpiresAt = now.Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
+		return nil, err
 	}
 
 	p.mu.Lock()
@@ -461,24 +431,9 @@ func (p *TokenProvider) refresh(ctx context.Context, creds *OAuthCredentials) (*
 		return nil, errors.New("token URL is empty")
 	}
 
-	form := url.Values{}
-	form.Set("grant_type", "refresh_token")
-	form.Set("client_id", creds.ClientID)
-	form.Set("refresh_token", creds.RefreshToken)
-
-	header := http.Header{
-		"Content-Type": []string{"application/x-www-form-urlencoded"},
-		"Accept":       []string{"application/json"},
-	}
-	if p.userAgent != "" {
-		header.Set("User-Agent", p.userAgent)
-	}
-
-	req := &httpclient.Request{
-		Method:  http.MethodPost,
-		URL:     p.oauthUrls.TokenUrl,
-		Headers: header,
-		Body:    []byte(form.Encode()),
+	req, err := p.strategy.BuildRefreshRequest(creds, p.oauthUrls.TokenUrl)
+	if err != nil {
+		return nil, fmt.Errorf("build refresh request: %w", err)
 	}
 
 	resp, err := p.httpClient.Do(ctx, req)
@@ -486,39 +441,17 @@ func (p *TokenProvider) refresh(ctx context.Context, creds *OAuthCredentials) (*
 		return nil, err
 	}
 
-	var tokenResp TokenResponse
-	if err := json.Unmarshal(resp.Body, &tokenResp); err != nil {
-		return nil, fmt.Errorf("decode refresh response: %w", err)
+	refreshed, err := ParseTokenResponse(resp.Body, creds.ClientID)
+	if err != nil {
+		return nil, err
 	}
 
-	if tokenResp.AccessToken == "" {
-		var tokenErr TokenError
-		if err := json.Unmarshal(resp.Body, &tokenErr); err == nil && tokenErr.Error != "" {
-			return nil, fmt.Errorf("token refresh failed: %s - %s", tokenErr.Error, tokenErr.ErrorDescription)
-		}
-
-		return nil, errors.New("token refresh response missing access_token")
+	// Preserve refresh token if not returned in response
+	if refreshed.RefreshToken == "" {
+		refreshed.RefreshToken = creds.RefreshToken
 	}
 
-	now := time.Now()
+	log.Debug(ctx, "oauth token refreshed", log.String("expires_at", refreshed.ExpiresAt.Format(time.RFC3339)))
 
-	updated := *creds
-	updated.AccessToken = tokenResp.AccessToken
-	updated.TokenType = tokenResp.TokenType
-
-	if tokenResp.RefreshToken != "" {
-		updated.RefreshToken = tokenResp.RefreshToken
-	}
-
-	if tokenResp.Scope != "" {
-		updated.Scopes = strings.Fields(tokenResp.Scope)
-	}
-
-	if tokenResp.ExpiresIn > 0 {
-		updated.ExpiresAt = now.Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
-	}
-
-	log.Debug(ctx, "oauth token refreshed", log.String("expires_at", updated.ExpiresAt.Format(time.RFC3339)))
-
-	return &updated, nil
+	return refreshed, nil
 }
