@@ -91,8 +91,8 @@ func TestExecutor_DoWithEndpointFallback(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 200, resp.StatusCode)
 		assert.Equal(t, 1, mockClient.callCount)
-		// Should try production first for gemini-cli models
-		assert.Equal(t, EndpointProd, mockClient.endpoints[0])
+		// All models now start with Daily for better quota distribution
+		assert.Equal(t, EndpointDaily, mockClient.endpoints[0])
 	})
 
 	t.Run("succeeds on first endpoint for antigravity model", func(t *testing.T) {
@@ -369,11 +369,12 @@ func TestExecutor_ReplaceBaseURL(t *testing.T) {
 func TestExecutor_GetEndpointsInOrder(t *testing.T) {
 	executor := NewExecutor(nil)
 
-	t.Run("gemini-cli model starts with prod", func(t *testing.T) {
+	t.Run("gemini-cli model starts with daily", func(t *testing.T) {
+		// All models now start with Daily for better quota distribution (matches reference)
 		endpoints := executor.getEndpointsInOrder("gemini-2.5-pro")
 		require.Len(t, endpoints, 3)
-		assert.Equal(t, EndpointProd, endpoints[0])
-		assert.Contains(t, endpoints, EndpointDaily)
+		assert.Equal(t, EndpointDaily, endpoints[0])
+		assert.Contains(t, endpoints, EndpointProd)
 		assert.Contains(t, endpoints, EndpointAutopush)
 	})
 
@@ -385,8 +386,8 @@ func TestExecutor_GetEndpointsInOrder(t *testing.T) {
 		assert.Contains(t, endpoints, EndpointAutopush)
 	})
 
-	t.Run("explicit suffix overrides default", func(t *testing.T) {
-		// gemini-2.5-pro normally uses gemini-cli (prod), but :antigravity suffix forces antigravity (daily)
+	t.Run("explicit suffix works with model", func(t *testing.T) {
+		// All models start with Daily regardless of suffix (quota preference)
 		endpoints := executor.getEndpointsInOrder("gemini-2.5-pro:antigravity")
 		require.Len(t, endpoints, 3)
 		assert.Equal(t, EndpointDaily, endpoints[0])
@@ -537,13 +538,13 @@ func TestExecutor_DoWithCooldown_PerModelIsolation(t *testing.T) {
 	// Claude should have called Daily (failed) + Autopush (succeeded)
 	assert.Equal(t, 2, callsByModel["claude-sonnet-4-5"])
 
-	// Gemini request should still try Production (its preference, not Daily)
+	// Gemini request should try Daily (all models start with Daily)
 	// and Daily is a different model so isolation works
 	resp2, err2 := executor.Do(context.Background(), geminiRequest)
 	require.NoError(t, err2)
 	assert.Equal(t, 200, resp2.StatusCode)
 
-	// Verify that gemini called Prod endpoint (production is its preference)
+	// Verify that gemini called Daily endpoint (all models start with Daily)
 	assert.Equal(t, 1, callsByModel["gemini-2.5-pro"])
 }
 

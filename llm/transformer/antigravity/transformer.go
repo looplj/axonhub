@@ -175,16 +175,13 @@ func (t *Transformer) TransformRequest(ctx context.Context, llmReq *llm.Request)
 		return nil, err
 	}
 
-	// 4. Normalize the model name (strip suffix/prefix)
+	// 4. Transform model name for Antigravity API compatibility
+	// Antigravity API requires tier suffixes for gemini-3-pro (e.g., gemini-3-pro-low)
 	// Store the original model name in metadata for the executor to use for routing
-	normalizedModel := NormalizeModelName(llmReq.Model)
+	transformedModel := transformModelForAntigravity(llmReq.Model)
 
 	// 5. Wrap in Antigravity Envelope
-	envelope := AntigravityEnvelope{
-		Project: t.config.Project,
-		Model:   normalizedModel,
-		Request: geminiReq,
-	}
+	envelope := NewAntigravityEnvelope(t.config.Project, transformedModel, geminiReq)
 
 	body, err := json.Marshal(envelope)
 	if err != nil {
@@ -198,8 +195,8 @@ func (t *Transformer) TransformRequest(ctx context.Context, llmReq *llm.Request)
 	headers.Set("X-Goog-Api-Client", ApiClient)
 	headers.Set("Client-Metadata", ClientMetadata)
 	headers.Set("X-Opencode-Tools-Debug", "1")
-	// Empty API key header as seen in reference implementation
-	headers.Set("X-Goog-Api-Key", "")
+	// DO NOT set X-Goog-Api-Key header when using OAuth - it must be absent entirely
+	// Setting it to empty string triggers license error #3501
 
 	if llmReq.Stream != nil && *llmReq.Stream {
 		headers.Set("Accept", "text/event-stream")
@@ -261,35 +258,47 @@ func (t *Transformer) patchGeminiRequest(ctx context.Context, req *gemini.Genera
 		var schema map[string]any
 		if err := json.Unmarshal(req.GenerationConfig.ResponseSchema, &schema); err == nil {
 			sanitized := SanitizeJSONSchema(schema)
+			// CRITICAL: Uppercase all type values for Antigravity API
+			sanitized = UppercaseSchemaTypes(sanitized)
 			req.GenerationConfig.ResponseSchema = xjson.MustMarshal(sanitized)
 		} else {
 			log.Debug(ctx, "failed to unmarshal response schema", log.Cause(err))
 		}
 	}
 
-	// Sanitize tool schemas
+	// Sanitize tool schemas and convert to Antigravity format
 	hasTools := false
 	for _, tool := range req.Tools {
 		for _, fd := range tool.FunctionDeclarations {
 			hasTools = true
-			// Parameters (JSON RawMessage)
-			if len(fd.Parameters) > 0 {
+
+			// CRITICAL: Antigravity API expects "parameters" field, not "parametersJsonSchema"
+			// The Gemini transformer sets ParametersJsonSchema, but Antigravity uses strict
+			// protobuf validation and only accepts "parameters" (lowercase, no camelCase)
+
+			// Priority: ParametersJsonSchema first (set by Gemini transformer), then Parameters
+			var schemaData json.RawMessage
+			if len(fd.ParametersJsonSchema) > 0 {
+				schemaData = fd.ParametersJsonSchema
+			} else if len(fd.Parameters) > 0 {
+				schemaData = fd.Parameters
+			}
+
+			if len(schemaData) > 0 {
 				var schema map[string]any
-				if err := json.Unmarshal(fd.Parameters, &schema); err == nil {
+				if err := json.Unmarshal(schemaData, &schema); err == nil {
+					// Apply sanitization transformations
 					sanitized := SanitizeJSONSchema(schema)
+					// CRITICAL: Uppercase all type values (object -> OBJECT, string -> STRING)
+					// Antigravity API expects uppercase types per protobuf spec
+					// Reference: opencode-antigravity-auth/src/plugin/transform/gemini.ts toGeminiSchema()
+					sanitized = UppercaseSchemaTypes(sanitized)
+					// Set to Parameters field (what Antigravity expects)
 					fd.Parameters = xjson.MustMarshal(sanitized)
+					// Clear ParametersJsonSchema to avoid sending both
+					fd.ParametersJsonSchema = nil
 				} else {
 					log.Debug(ctx, "failed to unmarshal tool parameters", log.String("tool", fd.Name), log.Cause(err))
-				}
-			}
-			// ParametersJsonSchema
-			if len(fd.ParametersJsonSchema) > 0 {
-				var schema map[string]any
-				if err := json.Unmarshal(fd.ParametersJsonSchema, &schema); err == nil {
-					sanitized := SanitizeJSONSchema(schema)
-					fd.ParametersJsonSchema = xjson.MustMarshal(sanitized)
-				} else {
-					log.Debug(ctx, "failed to unmarshal tool parameters json schema", log.String("tool", fd.Name), log.Cause(err))
 				}
 			}
 		}

@@ -77,12 +77,12 @@ func DetermineQuotaPreference(modelName string) QuotaPreference {
 }
 
 // GetInitialEndpoint returns the initial endpoint based on quota preference.
+// Always starts with Daily sandbox to match reference implementation behavior.
+// Daily has the latest features and better quota availability.
 func GetInitialEndpoint(quotaPreference QuotaPreference) string {
-	if quotaPreference == QuotaGeminiCLI {
-		return EndpointProd // Production endpoint for Gemini CLI
-	}
-
-	return EndpointDaily // Daily sandbox for Antigravity quota
+	// Both Antigravity and Gemini CLI quota should start with Daily
+	// Reference implementation always tries Daily first for better quota distribution
+	return EndpointDaily
 }
 
 // GetFallbackEndpoints returns all endpoints to try in order.
@@ -129,4 +129,28 @@ func ShouldRetryWithDifferentEndpoint(statusCode int) bool {
 	// - 404 Not Found (model not available on this endpoint)
 	// - 5xx Server errors
 	return statusCode == 429 || statusCode == 403 || statusCode == 404 || (statusCode >= 500 && statusCode < 600)
+}
+
+// transformModelForAntigravity transforms model names to match Antigravity API requirements.
+// The Antigravity API requires tier suffixes for gemini-3-pro models (e.g., gemini-3-pro-low).
+// Reference: opencode-antigravity-auth/src/plugin/transform/model-resolver.ts lines 196-217
+func transformModelForAntigravity(modelName string) string {
+	// First normalize to remove any existing prefixes/suffixes
+	normalized := NormalizeModelName(modelName)
+	lowerModel := strings.ToLower(normalized)
+
+	// Check if this is gemini-3-pro without a tier suffix
+	if strings.HasPrefix(lowerModel, "gemini-3-pro") {
+		// Check if it already has a tier suffix
+		hasTierSuffix := strings.HasSuffix(lowerModel, "-low") ||
+			strings.HasSuffix(lowerModel, "-medium") ||
+			strings.HasSuffix(lowerModel, "-high")
+
+		if !hasTierSuffix {
+			// Append default tier (-low) as per reference implementation
+			return normalized + "-low"
+		}
+	}
+
+	return normalized
 }

@@ -229,4 +229,69 @@ func TestTransformRequest_Antigravity(t *testing.T) {
 		assert.Equal(t, "Hi", assistantContent.Parts[0].Text)
 		assert.False(t, assistantContent.Parts[0].Thought)
 	})
+
+	t.Run("tool parameters use 'parameters' field not 'parametersJsonSchema'", func(t *testing.T) {
+		// CRITICAL: Antigravity API expects "parameters" field, not "parametersJsonSchema"
+		// This test verifies the fix for the malformed tool call issue
+		req := &llm.Request{
+			Model: "gemini-3-pro",
+			Messages: []llm.Message{
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Help")}},
+			},
+			Tools: []llm.Tool{
+				{
+					Type: "function",
+					Function: llm.Function{
+						Name:        "test_tool",
+						Description: "A test tool",
+						Parameters:  json.RawMessage(`{"type":"object","properties":{"arg":{"type":"string"}},"required":["arg"]}`),
+					},
+				},
+			},
+		}
+
+		httpReq, err := transformer.TransformRequest(context.Background(), req)
+		require.NoError(t, err)
+
+		var envelope AntigravityEnvelope
+		err = json.Unmarshal(httpReq.Body, &envelope)
+		require.NoError(t, err)
+
+		// Unmarshal the inner request to check tool format
+		innerBytes, err := json.Marshal(envelope.Request)
+		require.NoError(t, err)
+
+		// Parse as raw JSON to check exact field names
+		var rawInner map[string]any
+		err = json.Unmarshal(innerBytes, &rawInner)
+		require.NoError(t, err)
+
+		// Navigate to tools
+		tools, ok := rawInner["tools"].([]any)
+		require.True(t, ok, "tools should be an array")
+		require.NotEmpty(t, tools, "tools should not be empty")
+
+		firstTool, ok := tools[0].(map[string]any)
+		require.True(t, ok, "first tool should be a map")
+
+		functionDeclarations, ok := firstTool["functionDeclarations"].([]any)
+		require.True(t, ok, "functionDeclarations should be an array")
+		require.NotEmpty(t, functionDeclarations, "functionDeclarations should not be empty")
+
+		firstDecl, ok := functionDeclarations[0].(map[string]any)
+		require.True(t, ok, "first declaration should be a map")
+
+		// CRITICAL: Must have "parameters" field, not "parametersJsonSchema"
+		_, hasParameters := firstDecl["parameters"]
+		_, hasParametersJsonSchema := firstDecl["parametersJsonSchema"]
+
+		assert.True(t, hasParameters, "tool declaration must have 'parameters' field")
+		assert.False(t, hasParametersJsonSchema, "tool declaration must NOT have 'parametersJsonSchema' field")
+
+		// Verify the parameters content is correct
+		parameters, ok := firstDecl["parameters"].(map[string]any)
+		require.True(t, ok, "parameters should be a map")
+		assert.Equal(t, "OBJECT", parameters["type"]) // UPPERCASE, as Antigravity API expects
+		assert.NotNil(t, parameters["properties"])
+	})
 }

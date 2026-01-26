@@ -167,9 +167,9 @@ func TestGetInitialEndpoint(t *testing.T) {
 			expected:   EndpointDaily,
 		},
 		{
-			name:       "gemini-cli quota uses production endpoint",
+			name:       "gemini-cli quota uses daily endpoint",
 			preference: QuotaGeminiCLI,
-			expected:   EndpointProd,
+			expected:   EndpointDaily, // All models now start with Daily
 		},
 	}
 

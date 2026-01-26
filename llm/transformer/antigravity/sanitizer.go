@@ -8,6 +8,45 @@ import (
 	"github.com/samber/lo"
 )
 
+// UppercaseSchemaTypes converts all "type" field values to UPPERCASE to match Gemini API requirements.
+// The Gemini/Antigravity API expects type values in uppercase (OBJECT, STRING, etc.) per protobuf spec.
+// Reference: opencode-antigravity-auth/src/plugin/transform/gemini.ts toGeminiSchema() line 76
+func UppercaseSchemaTypes(schema map[string]any) map[string]any {
+	if schema == nil {
+		return nil
+	}
+
+	result := make(map[string]any)
+
+	for key, value := range schema {
+		if key == "type" {
+			if typeStr, ok := value.(string); ok {
+				result[key] = strings.ToUpper(typeStr)
+			} else {
+				result[key] = value
+			}
+		} else if subSchema, ok := value.(map[string]any); ok {
+			// Recursively process nested schemas
+			result[key] = UppercaseSchemaTypes(subSchema)
+		} else if subArray, ok := value.([]any); ok {
+			// Process arrays (for anyOf, oneOf, allOf, items, etc.)
+			newArray := make([]any, len(subArray))
+			for i, item := range subArray {
+				if itemMap, ok := item.(map[string]any); ok {
+					newArray[i] = UppercaseSchemaTypes(itemMap)
+				} else {
+					newArray[i] = item
+				}
+			}
+			result[key] = newArray
+		} else {
+			result[key] = value
+		}
+	}
+
+	return result
+}
+
 // UNSUPPORTED_CONSTRAINTS that should be moved to description hints.
 var unsupportedConstraints = []string{
 	"minLength", "maxLength", "exclusiveMinimum", "exclusiveMaximum",
