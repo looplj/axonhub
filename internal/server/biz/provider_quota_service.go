@@ -136,6 +136,7 @@ func (svc *ProviderQuotaService) Start(ctx context.Context) error {
 		svc.runQuotaCheck,
 		executors.CRONRule{Expr: cronExpr},
 	)
+
 	return err
 }
 
@@ -148,6 +149,7 @@ func (svc *ProviderQuotaService) intervalToCronExpr(interval time.Duration) stri
 		if hours == 1 {
 			return "0 * * * *" // Every hour
 		}
+
 		return fmt.Sprintf("0 */%d * * *", hours) // Every N hours
 	}
 
@@ -161,6 +163,7 @@ func (svc *ProviderQuotaService) intervalToCronExpr(interval time.Duration) stri
 	filtered := lo.Filter(supportedIntervals, func(si int, _ int) bool {
 		return si <= minutes
 	})
+
 	rounded := 60
 	if len(filtered) > 0 {
 		rounded = lo.Max(filtered)
@@ -177,6 +180,7 @@ func (svc *ProviderQuotaService) getCheckInterval() time.Duration {
 	if svc.checkInterval > 0 {
 		return svc.checkInterval
 	}
+
 	return 20 * time.Minute
 }
 
@@ -184,7 +188,7 @@ func (svc *ProviderQuotaService) Stop(ctx context.Context) error {
 	return svc.Executor.Shutdown(ctx)
 }
 
-// ManualCheck forces an immediate quota check for all relevant channels
+// ManualCheck forces an immediate quota check for all relevant channels.
 func (svc *ProviderQuotaService) ManualCheck(ctx context.Context) {
 	svc.runQuotaCheck(ctx)
 }
@@ -206,7 +210,6 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context) {
 		).
 		WithProviderQuotaStatus().
 		All(ctx)
-
 	if err != nil {
 		log.Error(ctx, "Failed to query enabled channels", log.Cause(err))
 		return
@@ -245,7 +248,6 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context) {
 		).
 		WithProviderQuotaStatus().
 		All(ctx)
-
 	if err != nil {
 		log.Error(ctx, "Failed to query channels for quota check", log.Cause(err))
 		return
@@ -264,6 +266,11 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context) {
 }
 
 func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, ch *ent.Channel, now time.Time) {
+	if ch.Credentials == nil || ch.Credentials.OAuth == nil || !isOAuthJSON(ch.Credentials.APIKey) {
+		log.Debug(ctx, "Channel do not support check quota", log.Int("channel_id", ch.ID), log.String("channel_name", ch.Name))
+		return
+	}
+
 	providerType := svc.getProviderType(ch)
 	if providerType == "" {
 		return
@@ -274,6 +281,7 @@ func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, ch *ent.
 		log.Error(ctx, "No checker for provider",
 			log.String("provider", providerType),
 			log.Int("channel_id", ch.ID))
+
 		return
 	}
 
@@ -289,11 +297,12 @@ func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, ch *ent.
 		// Store error status
 		svc.saveQuotaStatus(ctx, ch.ID, providerType, provider_quota.QuotaData{
 			Status: "exhausted",
-			RawData: map[string]interface{}{
+			RawData: map[string]any{
 				"error": err.Error(),
 			},
 			Ready: false,
 		}, now)
+
 		return
 	}
 
@@ -338,7 +347,6 @@ func (svc *ProviderQuotaService) saveQuotaStatus(
 		).
 		UpdateNewValues().
 		Exec(ctx)
-
 	if err != nil {
 		log.Error(ctx, "Failed to save quota status",
 			log.Int("channel_id", channelID),
