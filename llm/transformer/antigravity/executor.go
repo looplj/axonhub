@@ -2,6 +2,7 @@ package antigravity
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"net/url"
@@ -125,11 +126,21 @@ func (e *Executor) Do(ctx context.Context, request *httpclient.Request) (*httpcl
 		lastResp = resp
 
 		// Check if we should try the next endpoint
-		if resp != nil && ShouldRetryWithDifferentEndpoint(resp.StatusCode) {
-			e.healthTracker.RecordFailure(modelName, endpoint, resp.StatusCode)
+		statusCode := 0
+		if resp != nil {
+			statusCode = resp.StatusCode
+		} else if err != nil {
+			var httpErr *httpclient.Error
+			if errors.As(err, &httpErr) {
+				statusCode = httpErr.StatusCode
+			}
+		}
+
+		if statusCode > 0 && ShouldRetryWithDifferentEndpoint(statusCode) {
+			e.healthTracker.RecordFailure(modelName, endpoint, statusCode)
 			log.Warn(ctx, "antigravity request failed, trying next endpoint",
 				log.String("current_endpoint", endpoint),
-				log.Int("status_code", resp.StatusCode),
+				log.Int("status_code", statusCode),
 				log.Int("attempt", i+1),
 			)
 
@@ -232,9 +243,42 @@ func (e *Executor) DoStream(ctx context.Context, request *httpclient.Request) (s
 
 		lastErr = err
 
-		// For streaming, we don't have HTTP status codes, so we record all failures
-		// and rely on the error type to determine if we should retry
-		e.healthTracker.RecordFailure(modelName, endpoint, 0) // 0 = unknown status for stream errors
+		// Check if we should try the next endpoint for streaming
+		// httpclient.DoStream returns nil stream and error for status >= 400
+		statusCode := 0
+		if err != nil {
+			var httpErr *httpclient.Error
+			if errors.As(err, &httpErr) {
+				statusCode = httpErr.StatusCode
+			}
+		}
+
+		// For streaming, we record failure if we have an error or bad status
+		// If we have a specific status code, check if it's retryable
+		// If we just have a generic error, we might want to retry (network errors)
+		// but for now let's stick to status codes if available, or just record failure
+		e.healthTracker.RecordFailure(modelName, endpoint, statusCode)
+
+		if statusCode > 0 && ShouldRetryWithDifferentEndpoint(statusCode) {
+			log.Warn(ctx, "antigravity stream request failed with retryable status, trying next endpoint",
+				log.String("current_endpoint", endpoint),
+				log.Int("status_code", statusCode),
+				log.Int("attempt", i+1),
+			)
+			continue
+		}
+
+		// For other errors (network errors without status code), existing logic just logs and continues?
+		// The original code was:
+		// e.healthTracker.RecordFailure(modelName, endpoint, 0)
+		// log.Warn(ctx, "antigravity stream request failed, trying next endpoint", ...)
+		// It ALWAYS retried on error for streaming.
+		// Let's preserve that aggressive retry for streaming unless we KNOW it's non-retryable (e.g. 400 Bad Request)
+
+		if statusCode > 0 && !ShouldRetryWithDifferentEndpoint(statusCode) {
+			// Non-retryable status code (e.g. 400), return error immediately
+			return nil, err
+		}
 
 		log.Warn(ctx, "antigravity stream request failed, trying next endpoint",
 			log.String("current_endpoint", endpoint),
