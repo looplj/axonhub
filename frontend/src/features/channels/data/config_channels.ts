@@ -90,8 +90,8 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     defaultModels: [
       'gemini-3-pro',
       'gemini-3-flash',
-      'gemini-2.5-pro',
       'gemini-2.5-flash',
+      'gemini-2.5-flash-lite',
       'claude-sonnet-4-5',
       'claude-sonnet-4-5-thinking',
       'claude-opus-4-5-thinking',
