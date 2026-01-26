@@ -115,6 +115,18 @@ func (r *mutationResolver) UpdateSystemGeneralSettings(ctx context.Context, inpu
 	return true, nil
 }
 
+// CheckProviderQuotas is the resolver for the checkProviderQuotas field.
+func (r *mutationResolver) CheckProviderQuotas(ctx context.Context) (bool, error) {
+	if r.providerQuotaService == nil {
+		return false, fmt.Errorf("provider quota service is not available")
+	}
+
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	r.providerQuotaService.ManualCheck(ctx)
+
+	return true, nil
+}
+
 // SystemStatus is the resolver for the systemStatus field.
 func (r *queryResolver) SystemStatus(ctx context.Context) (*SystemStatus, error) {
 	isInitialized, err := r.systemService.IsInitialized(ctx)

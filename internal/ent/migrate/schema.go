@@ -380,6 +380,46 @@ var (
 			},
 		},
 	}
+	// ProviderQuotaStatusColumns holds the columns for the "provider_quota_status" table.
+	ProviderQuotaStatusColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "provider_type", Type: field.TypeEnum, Enums: []string{"claudecode", "codex"}},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"available", "warning", "exhausted", "unknown"}},
+		{Name: "quota_data", Type: field.TypeJSON},
+		{Name: "next_reset_at", Type: field.TypeTime, Nullable: true},
+		{Name: "ready", Type: field.TypeBool, Default: true},
+		{Name: "next_check_at", Type: field.TypeTime},
+		{Name: "channel_id", Type: field.TypeInt, Unique: true},
+	}
+	// ProviderQuotaStatusTable holds the schema information for the "provider_quota_status" table.
+	ProviderQuotaStatusTable = &schema.Table{
+		Name:       "provider_quota_status",
+		Columns:    ProviderQuotaStatusColumns,
+		PrimaryKey: []*schema.Column{ProviderQuotaStatusColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "provider_quota_status_channels_provider_quota_status",
+				Columns:    []*schema.Column{ProviderQuotaStatusColumns[10]},
+				RefColumns: []*schema.Column{ChannelsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "providerquotastatus_channel_id",
+				Unique:  true,
+				Columns: []*schema.Column{ProviderQuotaStatusColumns[10]},
+			},
+			{
+				Name:    "providerquotastatus_next_check_at",
+				Unique:  false,
+				Columns: []*schema.Column{ProviderQuotaStatusColumns[9]},
+			},
+		},
+	}
 	// RequestsColumns holds the columns for the "requests" table.
 	RequestsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -889,6 +929,7 @@ var (
 		ModelsTable,
 		ProjectsTable,
 		PromptsTable,
+		ProviderQuotaStatusTable,
 		RequestsTable,
 		RequestExecutionsTable,
 		RolesTable,
@@ -911,6 +952,7 @@ func init() {
 	ChannelOverrideTemplatesTable.ForeignKeys[0].RefTable = UsersTable
 	ChannelPerformancesTable.ForeignKeys[0].RefTable = ChannelsTable
 	ChannelProbesTable.ForeignKeys[0].RefTable = ChannelsTable
+	ProviderQuotaStatusTable.ForeignKeys[0].RefTable = ChannelsTable
 	RequestsTable.ForeignKeys[0].RefTable = APIKeysTable
 	RequestsTable.ForeignKeys[1].RefTable = ChannelsTable
 	RequestsTable.ForeignKeys[2].RefTable = DataStoragesTable

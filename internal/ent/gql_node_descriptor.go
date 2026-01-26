@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
@@ -177,7 +178,7 @@ func (_m *Channel) Node(ctx context.Context) (node *Node, err error) {
 		ID:     _m.ID,
 		Type:   "Channel",
 		Fields: make([]*Field, 16),
-		Edges:  make([]*Edge, 6),
+		Edges:  make([]*Edge, 7),
 	}
 	var buf []byte
 	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
@@ -365,6 +366,16 @@ func (_m *Channel) Node(ctx context.Context) (node *Node, err error) {
 	err = _m.QueryChannelModelPrices().
 		Select(channelmodelprice.FieldID).
 		Scan(ctx, &node.Edges[5].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[6] = &Edge{
+		Type: "ProviderQuotaStatus",
+		Name: "provider_quota_status",
+	}
+	err = _m.QueryProviderQuotaStatus().
+		Select(providerquotastatus.FieldID).
+		Scan(ctx, &node.Edges[6].IDs)
 	if err != nil {
 		return nil, err
 	}
@@ -1316,6 +1327,100 @@ func (_m *Prompt) Node(ctx context.Context) (node *Node, err error) {
 	}
 	err = _m.QueryProjects().
 		Select(project.FieldID).
+		Scan(ctx, &node.Edges[0].IDs)
+	if err != nil {
+		return nil, err
+	}
+	return node, nil
+}
+
+// Node implements Noder interface
+func (_m *ProviderQuotaStatus) Node(ctx context.Context) (node *Node, err error) {
+	node = &Node{
+		ID:     _m.ID,
+		Type:   "ProviderQuotaStatus",
+		Fields: make([]*Field, 9),
+		Edges:  make([]*Edge, 1),
+	}
+	var buf []byte
+	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[0] = &Field{
+		Type:  "time.Time",
+		Name:  "created_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.UpdatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[1] = &Field{
+		Type:  "time.Time",
+		Name:  "updated_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ChannelID); err != nil {
+		return nil, err
+	}
+	node.Fields[2] = &Field{
+		Type:  "int",
+		Name:  "channel_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ProviderType); err != nil {
+		return nil, err
+	}
+	node.Fields[3] = &Field{
+		Type:  "providerquotastatus.ProviderType",
+		Name:  "provider_type",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Status); err != nil {
+		return nil, err
+	}
+	node.Fields[4] = &Field{
+		Type:  "providerquotastatus.Status",
+		Name:  "status",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.QuotaData); err != nil {
+		return nil, err
+	}
+	node.Fields[5] = &Field{
+		Type:  "map[string]interface {}",
+		Name:  "quota_data",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.NextResetAt); err != nil {
+		return nil, err
+	}
+	node.Fields[6] = &Field{
+		Type:  "time.Time",
+		Name:  "next_reset_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Ready); err != nil {
+		return nil, err
+	}
+	node.Fields[7] = &Field{
+		Type:  "bool",
+		Name:  "ready",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.NextCheckAt); err != nil {
+		return nil, err
+	}
+	node.Fields[8] = &Field{
+		Type:  "time.Time",
+		Name:  "next_check_at",
+		Value: string(buf),
+	}
+	node.Edges[0] = &Edge{
+		Type: "Channel",
+		Name: "channel",
+	}
+	err = _m.QueryChannel().
+		Select(channel.FieldID).
 		Scan(ctx, &node.Edges[0].IDs)
 	if err != nil {
 		return nil, err

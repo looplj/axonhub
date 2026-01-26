@@ -34,6 +34,8 @@ type Tx struct {
 	Project *ProjectClient
 	// Prompt is the client for interacting with the Prompt builders.
 	Prompt *PromptClient
+	// ProviderQuotaStatus is the client for interacting with the ProviderQuotaStatus builders.
+	ProviderQuotaStatus *ProviderQuotaStatusClient
 	// Request is the client for interacting with the Request builders.
 	Request *RequestClient
 	// RequestExecution is the client for interacting with the RequestExecution builders.
@@ -196,6 +198,7 @@ func (tx *Tx) init() {
 	tx.Model = NewModelClient(tx.config)
 	tx.Project = NewProjectClient(tx.config)
 	tx.Prompt = NewPromptClient(tx.config)
+	tx.ProviderQuotaStatus = NewProviderQuotaStatusClient(tx.config)
 	tx.Request = NewRequestClient(tx.config)
 	tx.RequestExecution = NewRequestExecutionClient(tx.config)
 	tx.Role = NewRoleClient(tx.config)

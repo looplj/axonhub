@@ -20,6 +20,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
@@ -385,6 +386,33 @@ func (f TraversePrompt) Traverse(ctx context.Context, q ent.Query) error {
 	return fmt.Errorf("unexpected query type %T. expect *ent.PromptQuery", q)
 }
 
+// The ProviderQuotaStatusFunc type is an adapter to allow the use of ordinary function as a Querier.
+type ProviderQuotaStatusFunc func(context.Context, *ent.ProviderQuotaStatusQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f ProviderQuotaStatusFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.ProviderQuotaStatusQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.ProviderQuotaStatusQuery", q)
+}
+
+// The TraverseProviderQuotaStatus type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseProviderQuotaStatus func(context.Context, *ent.ProviderQuotaStatusQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseProviderQuotaStatus) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseProviderQuotaStatus) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.ProviderQuotaStatusQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.ProviderQuotaStatusQuery", q)
+}
+
 // The RequestFunc type is an adapter to allow the use of ordinary function as a Querier.
 type RequestFunc func(context.Context, *ent.RequestQuery) (ent.Value, error)
 
@@ -680,6 +708,8 @@ func NewQuery(q ent.Query) (Query, error) {
 		return &query[*ent.ProjectQuery, predicate.Project, project.OrderOption]{typ: ent.TypeProject, tq: q}, nil
 	case *ent.PromptQuery:
 		return &query[*ent.PromptQuery, predicate.Prompt, prompt.OrderOption]{typ: ent.TypePrompt, tq: q}, nil
+	case *ent.ProviderQuotaStatusQuery:
+		return &query[*ent.ProviderQuotaStatusQuery, predicate.ProviderQuotaStatus, providerquotastatus.OrderOption]{typ: ent.TypeProviderQuotaStatus, tq: q}, nil
 	case *ent.RequestQuery:
 		return &query[*ent.RequestQuery, predicate.Request, request.OrderOption]{typ: ent.TypeRequest, tq: q}, nil
 	case *ent.RequestExecutionQuery:

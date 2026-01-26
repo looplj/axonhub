@@ -210,6 +210,40 @@ gc:
 **Environment Variables:**
 - `AXONHUB_GC_CRON`
 
+### Provider Quota Configuration
+
+```yaml
+provider_quota:
+  check_interval: "20m"          # Interval for checking provider quota status
+```
+
+**Description:**
+This setting controls how frequently AxonHub polls provider API endpoints to check quota status for supported providers (Claude Code, Codex). Quota data is stored in the database and displayed as battery icons in the UI.
+
+**Environment Variables:**
+- `AXONHUB_PROVIDER_QUOTA_CHECK_INTERVAL`
+
+**Supported Values:**
+- Minute intervals that divide evenly into 60: `1m`, `2m`, `3m`, `4m`, `5m`, `6m`, `10m`, `12m`, `15m`, `20m`, `30m`
+- Hourly intervals: `1h`, `2h`, `3h`, etc.
+
+**Default:** `20m`
+
+**Recommendations:**
+- **Development:** Use shorter intervals (e.g., `5m`) to see quota updates quickly
+- **Production:** Use `20m` or longer to reduce API calls while maintaining reasonable data freshness
+- Unsupported intervals will be rounded to the nearest supported value with a warning log message
+
+**Examples:**
+```yaml
+provider_quota:
+  check_interval: "10m"          # Check every 10 minutes
+```
+
+```bash
+export AXONHUB_PROVIDER_QUOTA_CHECK_INTERVAL="30m"
+```
+
 ## Configuration Examples
 
 ### Development Configuration

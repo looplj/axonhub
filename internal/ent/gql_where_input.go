@@ -19,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
@@ -636,6 +637,10 @@ type ChannelWhereInput struct {
 	// "channel_model_prices" edge predicates.
 	HasChannelModelPrices     *bool                          `json:"hasChannelModelPrices,omitempty"`
 	HasChannelModelPricesWith []*ChannelModelPriceWhereInput `json:"hasChannelModelPricesWith,omitempty"`
+
+	// "provider_quota_status" edge predicates.
+	HasProviderQuotaStatus     *bool                            `json:"hasProviderQuotaStatus,omitempty"`
+	HasProviderQuotaStatusWith []*ProviderQuotaStatusWhereInput `json:"hasProviderQuotaStatusWith,omitempty"`
 }
 
 // AddPredicates adds custom predicates to the where input to be used during the filtering phase.
@@ -1156,6 +1161,24 @@ func (i *ChannelWhereInput) P() (predicate.Channel, error) {
 			with = append(with, p)
 		}
 		predicates = append(predicates, channel.HasChannelModelPricesWith(with...))
+	}
+	if i.HasProviderQuotaStatus != nil {
+		p := channel.HasProviderQuotaStatus()
+		if !*i.HasProviderQuotaStatus {
+			p = channel.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasProviderQuotaStatusWith) > 0 {
+		with := make([]predicate.ProviderQuotaStatus, 0, len(i.HasProviderQuotaStatusWith))
+		for _, w := range i.HasProviderQuotaStatusWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasProviderQuotaStatusWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, channel.HasProviderQuotaStatusWith(with...))
 	}
 	switch len(predicates) {
 	case 0:
@@ -5524,6 +5547,360 @@ func (i *PromptWhereInput) P() (predicate.Prompt, error) {
 		return predicates[0], nil
 	default:
 		return prompt.And(predicates...), nil
+	}
+}
+
+// ProviderQuotaStatusWhereInput represents a where input for filtering ProviderQuotaStatus queries.
+type ProviderQuotaStatusWhereInput struct {
+	Predicates []predicate.ProviderQuotaStatus  `json:"-"`
+	Not        *ProviderQuotaStatusWhereInput   `json:"not,omitempty"`
+	Or         []*ProviderQuotaStatusWhereInput `json:"or,omitempty"`
+	And        []*ProviderQuotaStatusWhereInput `json:"and,omitempty"`
+
+	// "id" field predicates.
+	ID      *int  `json:"id,omitempty"`
+	IDNEQ   *int  `json:"idNEQ,omitempty"`
+	IDIn    []int `json:"idIn,omitempty"`
+	IDNotIn []int `json:"idNotIn,omitempty"`
+	IDGT    *int  `json:"idGT,omitempty"`
+	IDGTE   *int  `json:"idGTE,omitempty"`
+	IDLT    *int  `json:"idLT,omitempty"`
+	IDLTE   *int  `json:"idLTE,omitempty"`
+
+	// "created_at" field predicates.
+	CreatedAt      *time.Time  `json:"createdAt,omitempty"`
+	CreatedAtNEQ   *time.Time  `json:"createdAtNEQ,omitempty"`
+	CreatedAtIn    []time.Time `json:"createdAtIn,omitempty"`
+	CreatedAtNotIn []time.Time `json:"createdAtNotIn,omitempty"`
+	CreatedAtGT    *time.Time  `json:"createdAtGT,omitempty"`
+	CreatedAtGTE   *time.Time  `json:"createdAtGTE,omitempty"`
+	CreatedAtLT    *time.Time  `json:"createdAtLT,omitempty"`
+	CreatedAtLTE   *time.Time  `json:"createdAtLTE,omitempty"`
+
+	// "updated_at" field predicates.
+	UpdatedAt      *time.Time  `json:"updatedAt,omitempty"`
+	UpdatedAtNEQ   *time.Time  `json:"updatedAtNEQ,omitempty"`
+	UpdatedAtIn    []time.Time `json:"updatedAtIn,omitempty"`
+	UpdatedAtNotIn []time.Time `json:"updatedAtNotIn,omitempty"`
+	UpdatedAtGT    *time.Time  `json:"updatedAtGT,omitempty"`
+	UpdatedAtGTE   *time.Time  `json:"updatedAtGTE,omitempty"`
+	UpdatedAtLT    *time.Time  `json:"updatedAtLT,omitempty"`
+	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
+
+	// "channel_id" field predicates.
+	ChannelID      *int  `json:"channelID,omitempty"`
+	ChannelIDNEQ   *int  `json:"channelIDNEQ,omitempty"`
+	ChannelIDIn    []int `json:"channelIDIn,omitempty"`
+	ChannelIDNotIn []int `json:"channelIDNotIn,omitempty"`
+
+	// "provider_type" field predicates.
+	ProviderType      *providerquotastatus.ProviderType  `json:"providerType,omitempty"`
+	ProviderTypeNEQ   *providerquotastatus.ProviderType  `json:"providerTypeNEQ,omitempty"`
+	ProviderTypeIn    []providerquotastatus.ProviderType `json:"providerTypeIn,omitempty"`
+	ProviderTypeNotIn []providerquotastatus.ProviderType `json:"providerTypeNotIn,omitempty"`
+
+	// "status" field predicates.
+	Status      *providerquotastatus.Status  `json:"status,omitempty"`
+	StatusNEQ   *providerquotastatus.Status  `json:"statusNEQ,omitempty"`
+	StatusIn    []providerquotastatus.Status `json:"statusIn,omitempty"`
+	StatusNotIn []providerquotastatus.Status `json:"statusNotIn,omitempty"`
+
+	// "next_reset_at" field predicates.
+	NextResetAt       *time.Time  `json:"nextResetAt,omitempty"`
+	NextResetAtNEQ    *time.Time  `json:"nextResetAtNEQ,omitempty"`
+	NextResetAtIn     []time.Time `json:"nextResetAtIn,omitempty"`
+	NextResetAtNotIn  []time.Time `json:"nextResetAtNotIn,omitempty"`
+	NextResetAtGT     *time.Time  `json:"nextResetAtGT,omitempty"`
+	NextResetAtGTE    *time.Time  `json:"nextResetAtGTE,omitempty"`
+	NextResetAtLT     *time.Time  `json:"nextResetAtLT,omitempty"`
+	NextResetAtLTE    *time.Time  `json:"nextResetAtLTE,omitempty"`
+	NextResetAtIsNil  bool        `json:"nextResetAtIsNil,omitempty"`
+	NextResetAtNotNil bool        `json:"nextResetAtNotNil,omitempty"`
+
+	// "ready" field predicates.
+	Ready    *bool `json:"ready,omitempty"`
+	ReadyNEQ *bool `json:"readyNEQ,omitempty"`
+
+	// "next_check_at" field predicates.
+	NextCheckAt      *time.Time  `json:"nextCheckAt,omitempty"`
+	NextCheckAtNEQ   *time.Time  `json:"nextCheckAtNEQ,omitempty"`
+	NextCheckAtIn    []time.Time `json:"nextCheckAtIn,omitempty"`
+	NextCheckAtNotIn []time.Time `json:"nextCheckAtNotIn,omitempty"`
+	NextCheckAtGT    *time.Time  `json:"nextCheckAtGT,omitempty"`
+	NextCheckAtGTE   *time.Time  `json:"nextCheckAtGTE,omitempty"`
+	NextCheckAtLT    *time.Time  `json:"nextCheckAtLT,omitempty"`
+	NextCheckAtLTE   *time.Time  `json:"nextCheckAtLTE,omitempty"`
+
+	// "channel" edge predicates.
+	HasChannel     *bool                `json:"hasChannel,omitempty"`
+	HasChannelWith []*ChannelWhereInput `json:"hasChannelWith,omitempty"`
+}
+
+// AddPredicates adds custom predicates to the where input to be used during the filtering phase.
+func (i *ProviderQuotaStatusWhereInput) AddPredicates(predicates ...predicate.ProviderQuotaStatus) {
+	i.Predicates = append(i.Predicates, predicates...)
+}
+
+// Filter applies the ProviderQuotaStatusWhereInput filter on the ProviderQuotaStatusQuery builder.
+func (i *ProviderQuotaStatusWhereInput) Filter(q *ProviderQuotaStatusQuery) (*ProviderQuotaStatusQuery, error) {
+	if i == nil {
+		return q, nil
+	}
+	p, err := i.P()
+	if err != nil {
+		if err == ErrEmptyProviderQuotaStatusWhereInput {
+			return q, nil
+		}
+		return nil, err
+	}
+	return q.Where(p), nil
+}
+
+// ErrEmptyProviderQuotaStatusWhereInput is returned in case the ProviderQuotaStatusWhereInput is empty.
+var ErrEmptyProviderQuotaStatusWhereInput = errors.New("ent: empty predicate ProviderQuotaStatusWhereInput")
+
+// P returns a predicate for filtering providerquotastatusslice.
+// An error is returned if the input is empty or invalid.
+func (i *ProviderQuotaStatusWhereInput) P() (predicate.ProviderQuotaStatus, error) {
+	var predicates []predicate.ProviderQuotaStatus
+	if i.Not != nil {
+		p, err := i.Not.P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'not'", err)
+		}
+		predicates = append(predicates, providerquotastatus.Not(p))
+	}
+	switch n := len(i.Or); {
+	case n == 1:
+		p, err := i.Or[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'or'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		or := make([]predicate.ProviderQuotaStatus, 0, n)
+		for _, w := range i.Or {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'or'", err)
+			}
+			or = append(or, p)
+		}
+		predicates = append(predicates, providerquotastatus.Or(or...))
+	}
+	switch n := len(i.And); {
+	case n == 1:
+		p, err := i.And[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'and'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		and := make([]predicate.ProviderQuotaStatus, 0, n)
+		for _, w := range i.And {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'and'", err)
+			}
+			and = append(and, p)
+		}
+		predicates = append(predicates, providerquotastatus.And(and...))
+	}
+	predicates = append(predicates, i.Predicates...)
+	if i.ID != nil {
+		predicates = append(predicates, providerquotastatus.IDEQ(*i.ID))
+	}
+	if i.IDNEQ != nil {
+		predicates = append(predicates, providerquotastatus.IDNEQ(*i.IDNEQ))
+	}
+	if len(i.IDIn) > 0 {
+		predicates = append(predicates, providerquotastatus.IDIn(i.IDIn...))
+	}
+	if len(i.IDNotIn) > 0 {
+		predicates = append(predicates, providerquotastatus.IDNotIn(i.IDNotIn...))
+	}
+	if i.IDGT != nil {
+		predicates = append(predicates, providerquotastatus.IDGT(*i.IDGT))
+	}
+	if i.IDGTE != nil {
+		predicates = append(predicates, providerquotastatus.IDGTE(*i.IDGTE))
+	}
+	if i.IDLT != nil {
+		predicates = append(predicates, providerquotastatus.IDLT(*i.IDLT))
+	}
+	if i.IDLTE != nil {
+		predicates = append(predicates, providerquotastatus.IDLTE(*i.IDLTE))
+	}
+	if i.CreatedAt != nil {
+		predicates = append(predicates, providerquotastatus.CreatedAtEQ(*i.CreatedAt))
+	}
+	if i.CreatedAtNEQ != nil {
+		predicates = append(predicates, providerquotastatus.CreatedAtNEQ(*i.CreatedAtNEQ))
+	}
+	if len(i.CreatedAtIn) > 0 {
+		predicates = append(predicates, providerquotastatus.CreatedAtIn(i.CreatedAtIn...))
+	}
+	if len(i.CreatedAtNotIn) > 0 {
+		predicates = append(predicates, providerquotastatus.CreatedAtNotIn(i.CreatedAtNotIn...))
+	}
+	if i.CreatedAtGT != nil {
+		predicates = append(predicates, providerquotastatus.CreatedAtGT(*i.CreatedAtGT))
+	}
+	if i.CreatedAtGTE != nil {
+		predicates = append(predicates, providerquotastatus.CreatedAtGTE(*i.CreatedAtGTE))
+	}
+	if i.CreatedAtLT != nil {
+		predicates = append(predicates, providerquotastatus.CreatedAtLT(*i.CreatedAtLT))
+	}
+	if i.CreatedAtLTE != nil {
+		predicates = append(predicates, providerquotastatus.CreatedAtLTE(*i.CreatedAtLTE))
+	}
+	if i.UpdatedAt != nil {
+		predicates = append(predicates, providerquotastatus.UpdatedAtEQ(*i.UpdatedAt))
+	}
+	if i.UpdatedAtNEQ != nil {
+		predicates = append(predicates, providerquotastatus.UpdatedAtNEQ(*i.UpdatedAtNEQ))
+	}
+	if len(i.UpdatedAtIn) > 0 {
+		predicates = append(predicates, providerquotastatus.UpdatedAtIn(i.UpdatedAtIn...))
+	}
+	if len(i.UpdatedAtNotIn) > 0 {
+		predicates = append(predicates, providerquotastatus.UpdatedAtNotIn(i.UpdatedAtNotIn...))
+	}
+	if i.UpdatedAtGT != nil {
+		predicates = append(predicates, providerquotastatus.UpdatedAtGT(*i.UpdatedAtGT))
+	}
+	if i.UpdatedAtGTE != nil {
+		predicates = append(predicates, providerquotastatus.UpdatedAtGTE(*i.UpdatedAtGTE))
+	}
+	if i.UpdatedAtLT != nil {
+		predicates = append(predicates, providerquotastatus.UpdatedAtLT(*i.UpdatedAtLT))
+	}
+	if i.UpdatedAtLTE != nil {
+		predicates = append(predicates, providerquotastatus.UpdatedAtLTE(*i.UpdatedAtLTE))
+	}
+	if i.ChannelID != nil {
+		predicates = append(predicates, providerquotastatus.ChannelIDEQ(*i.ChannelID))
+	}
+	if i.ChannelIDNEQ != nil {
+		predicates = append(predicates, providerquotastatus.ChannelIDNEQ(*i.ChannelIDNEQ))
+	}
+	if len(i.ChannelIDIn) > 0 {
+		predicates = append(predicates, providerquotastatus.ChannelIDIn(i.ChannelIDIn...))
+	}
+	if len(i.ChannelIDNotIn) > 0 {
+		predicates = append(predicates, providerquotastatus.ChannelIDNotIn(i.ChannelIDNotIn...))
+	}
+	if i.ProviderType != nil {
+		predicates = append(predicates, providerquotastatus.ProviderTypeEQ(*i.ProviderType))
+	}
+	if i.ProviderTypeNEQ != nil {
+		predicates = append(predicates, providerquotastatus.ProviderTypeNEQ(*i.ProviderTypeNEQ))
+	}
+	if len(i.ProviderTypeIn) > 0 {
+		predicates = append(predicates, providerquotastatus.ProviderTypeIn(i.ProviderTypeIn...))
+	}
+	if len(i.ProviderTypeNotIn) > 0 {
+		predicates = append(predicates, providerquotastatus.ProviderTypeNotIn(i.ProviderTypeNotIn...))
+	}
+	if i.Status != nil {
+		predicates = append(predicates, providerquotastatus.StatusEQ(*i.Status))
+	}
+	if i.StatusNEQ != nil {
+		predicates = append(predicates, providerquotastatus.StatusNEQ(*i.StatusNEQ))
+	}
+	if len(i.StatusIn) > 0 {
+		predicates = append(predicates, providerquotastatus.StatusIn(i.StatusIn...))
+	}
+	if len(i.StatusNotIn) > 0 {
+		predicates = append(predicates, providerquotastatus.StatusNotIn(i.StatusNotIn...))
+	}
+	if i.NextResetAt != nil {
+		predicates = append(predicates, providerquotastatus.NextResetAtEQ(*i.NextResetAt))
+	}
+	if i.NextResetAtNEQ != nil {
+		predicates = append(predicates, providerquotastatus.NextResetAtNEQ(*i.NextResetAtNEQ))
+	}
+	if len(i.NextResetAtIn) > 0 {
+		predicates = append(predicates, providerquotastatus.NextResetAtIn(i.NextResetAtIn...))
+	}
+	if len(i.NextResetAtNotIn) > 0 {
+		predicates = append(predicates, providerquotastatus.NextResetAtNotIn(i.NextResetAtNotIn...))
+	}
+	if i.NextResetAtGT != nil {
+		predicates = append(predicates, providerquotastatus.NextResetAtGT(*i.NextResetAtGT))
+	}
+	if i.NextResetAtGTE != nil {
+		predicates = append(predicates, providerquotastatus.NextResetAtGTE(*i.NextResetAtGTE))
+	}
+	if i.NextResetAtLT != nil {
+		predicates = append(predicates, providerquotastatus.NextResetAtLT(*i.NextResetAtLT))
+	}
+	if i.NextResetAtLTE != nil {
+		predicates = append(predicates, providerquotastatus.NextResetAtLTE(*i.NextResetAtLTE))
+	}
+	if i.NextResetAtIsNil {
+		predicates = append(predicates, providerquotastatus.NextResetAtIsNil())
+	}
+	if i.NextResetAtNotNil {
+		predicates = append(predicates, providerquotastatus.NextResetAtNotNil())
+	}
+	if i.Ready != nil {
+		predicates = append(predicates, providerquotastatus.ReadyEQ(*i.Ready))
+	}
+	if i.ReadyNEQ != nil {
+		predicates = append(predicates, providerquotastatus.ReadyNEQ(*i.ReadyNEQ))
+	}
+	if i.NextCheckAt != nil {
+		predicates = append(predicates, providerquotastatus.NextCheckAtEQ(*i.NextCheckAt))
+	}
+	if i.NextCheckAtNEQ != nil {
+		predicates = append(predicates, providerquotastatus.NextCheckAtNEQ(*i.NextCheckAtNEQ))
+	}
+	if len(i.NextCheckAtIn) > 0 {
+		predicates = append(predicates, providerquotastatus.NextCheckAtIn(i.NextCheckAtIn...))
+	}
+	if len(i.NextCheckAtNotIn) > 0 {
+		predicates = append(predicates, providerquotastatus.NextCheckAtNotIn(i.NextCheckAtNotIn...))
+	}
+	if i.NextCheckAtGT != nil {
+		predicates = append(predicates, providerquotastatus.NextCheckAtGT(*i.NextCheckAtGT))
+	}
+	if i.NextCheckAtGTE != nil {
+		predicates = append(predicates, providerquotastatus.NextCheckAtGTE(*i.NextCheckAtGTE))
+	}
+	if i.NextCheckAtLT != nil {
+		predicates = append(predicates, providerquotastatus.NextCheckAtLT(*i.NextCheckAtLT))
+	}
+	if i.NextCheckAtLTE != nil {
+		predicates = append(predicates, providerquotastatus.NextCheckAtLTE(*i.NextCheckAtLTE))
+	}
+
+	if i.HasChannel != nil {
+		p := providerquotastatus.HasChannel()
+		if !*i.HasChannel {
+			p = providerquotastatus.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasChannelWith) > 0 {
+		with := make([]predicate.Channel, 0, len(i.HasChannelWith))
+		for _, w := range i.HasChannelWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasChannelWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, providerquotastatus.HasChannelWith(with...))
+	}
+	switch len(predicates) {
+	case 0:
+		return nil, ErrEmptyProviderQuotaStatusWhereInput
+	case 1:
+		return predicates[0], nil
+	default:
+		return providerquotastatus.And(predicates...), nil
 	}
 }
 

@@ -58,6 +58,7 @@ type Dependencies struct {
 	BackupService                  *biz.BackupService
 	ChannelProbeService            *biz.ChannelProbeService
 	PromptService                  *biz.PromptService
+	ProviderQuotaService           *biz.ProviderQuotaService
 }
 
 type GraphqlHandler struct {
@@ -86,6 +87,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 			deps.BackupService,
 			deps.ChannelProbeService,
 			deps.PromptService,
+			deps.ProviderQuotaService,
 		),
 	)
 

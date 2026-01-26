@@ -141,6 +141,18 @@ func (f PromptFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, erro
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PromptMutation", m)
 }
 
+// The ProviderQuotaStatusFunc type is an adapter to allow the use of ordinary
+// function as ProviderQuotaStatus mutator.
+type ProviderQuotaStatusFunc func(context.Context, *ent.ProviderQuotaStatusMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ProviderQuotaStatusFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ProviderQuotaStatusMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ProviderQuotaStatusMutation", m)
+}
+
 // The RequestFunc type is an adapter to allow the use of ordinary
 // function as Request mutator.
 type RequestFunc func(context.Context, *ent.RequestMutation) (ent.Value, error)
