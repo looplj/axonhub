@@ -1165,7 +1165,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             <div className='mt-3 space-y-2'>
                               <div className='rounded-md border p-3'>
                                 <div className='flex flex-wrap items-center gap-2'>
-                                  <Button type='button' variant='secondary' onClick={antigravityOAuth.start} disabled={antigravityOAuth.isStarting}>
+                                  <Button type='button' variant='secondary' onClick={() => antigravityOAuth.start()} disabled={antigravityOAuth.isStarting}>
                                     {antigravityOAuth.isStarting
                                       ? t('channels.dialogs.antigravity.buttons.starting')
                                       : t('channels.dialogs.antigravity.buttons.startOAuth')}
@@ -1203,7 +1203,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                     placeholder={t('channels.dialogs.antigravity.placeholders.callbackUrl')}
                                     className='min-h-[80px] resize-y font-mono text-xs'
                                   />
-                                  <Button type='button' onClick={antigravityOAuth.exchange} disabled={antigravityOAuth.isExchanging || !antigravityOAuth.sessionId}>
+                                  <Button type='button' onClick={() => antigravityOAuth.exchange()} disabled={antigravityOAuth.isExchanging || !antigravityOAuth.sessionId}>
                                     {antigravityOAuth.isExchanging
                                       ? t('channels.dialogs.antigravity.buttons.exchanging')
                                       : t('channels.dialogs.antigravity.buttons.exchangeAndFillApiKey')}
