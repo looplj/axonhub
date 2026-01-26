@@ -266,8 +266,8 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context) {
 }
 
 func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, ch *ent.Channel, now time.Time) {
-	if ch.Credentials == nil || ch.Credentials.OAuth == nil || !isOAuthJSON(ch.Credentials.APIKey) {
-		log.Debug(ctx, "Channel do not support check quota", log.Int("channel_id", ch.ID), log.String("channel_name", ch.Name))
+	if ch.Credentials == nil || (ch.Credentials.OAuth == nil && !isOAuthJSON(ch.Credentials.APIKey)) {
+		log.Debug(ctx, "channel does not support check quota", log.Int("channel_id", ch.ID), log.String("channel_name", ch.Name))
 		return
 	}
 
