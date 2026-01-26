@@ -319,6 +319,21 @@ func (t *Transformer) patchGeminiRequest(ctx context.Context, req *gemini.Genera
 		}
 	}
 
+	// Inject Antigravity System Instruction (required for CLIProxy compatibility)
+	// Sets role to "user" and prepends the instruction.
+	if req.SystemInstruction == nil {
+		req.SystemInstruction = &gemini.Content{
+			Parts: []*gemini.Part{{Text: ANTIGRAVITY_SYSTEM_INSTRUCTION}},
+		}
+	} else if len(req.SystemInstruction.Parts) > 0 {
+		firstPart := req.SystemInstruction.Parts[0]
+		firstPart.Text = ANTIGRAVITY_SYSTEM_INSTRUCTION + "\n\n" + firstPart.Text
+	} else {
+		req.SystemInstruction.Parts = append([]*gemini.Part{{Text: ANTIGRAVITY_SYSTEM_INSTRUCTION}}, req.SystemInstruction.Parts...)
+	}
+	// Crucial: Set role to "user" for system instruction
+	req.SystemInstruction.Role = "user"
+
 	// D. Thinking / Cross-Model Sanitization
 	isClaude := strings.Contains(strings.ToLower(llmReq.Model), "claude")
 	isGemini3 := strings.Contains(strings.ToLower(llmReq.Model), "gemini-3")

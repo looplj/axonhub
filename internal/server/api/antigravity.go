@@ -246,6 +246,7 @@ func (h *AntigravityHandlers) resolveProjectID(ctx context.Context, accessToken 
 
 	// Try each load endpoint
 	var lastErr error
+	var defaultTierID string = "FREE"
 
 	for _, baseEndpoint := range antigravity.LoadEndpoints {
 		url := fmt.Sprintf("%s/v1internal:loadCodeAssist", baseEndpoint)
@@ -288,26 +289,110 @@ func (h *AntigravityHandlers) resolveProjectID(ctx context.Context, accessToken 
 
 		var data struct {
 			CloudAICompanionProject any `json:"cloudaicompanionProject"`
+			AllowedTiers            []struct {
+				ID        string `json:"id"`
+				IsDefault bool   `json:"isDefault"`
+			} `json:"allowedTiers"`
 		}
 		if err := json.Unmarshal(resp.Body, &data); err != nil {
 			lastErr = err
 			continue
 		}
 
-		// Check if it's a string
+		// Check for project ID
+		var projectID string
 		if s, ok := data.CloudAICompanionProject.(string); ok && s != "" {
-			return s, nil
-		}
-
-		// Check if it's an object with id
-		if m, ok := data.CloudAICompanionProject.(map[string]any); ok {
+			projectID = s
+		} else if m, ok := data.CloudAICompanionProject.(map[string]any); ok {
 			if id, ok := m["id"].(string); ok && id != "" {
-				return id, nil
+				projectID = id
 			}
 		}
 
-		lastErr = fmt.Errorf("missing project id in response")
+		if projectID != "" {
+			return projectID, nil
+		}
+
+		// If no project ID, try to determine default tier for onboarding
+		if len(data.AllowedTiers) > 0 {
+			defaultTierID = data.AllowedTiers[0].ID
+			for _, tier := range data.AllowedTiers {
+				if tier.IsDefault {
+					defaultTierID = tier.ID
+					break
+				}
+			}
+		}
+
+		// Try onboarding since we didn't get a project ID
+		projectID, err = h.onboardUser(ctx, accessToken, defaultTierID)
+		if err == nil && projectID != "" {
+			return projectID, nil
+		}
+		if err != nil {
+			log.Warn(ctx, "failed to onboard user", log.Cause(err))
+			lastErr = err
+		}
 	}
 
 	return "", lastErr
+}
+
+func (h *AntigravityHandlers) onboardUser(ctx context.Context, accessToken, tierID string) (string, error) {
+	// Try endpoints for onboarding
+	for _, baseEndpoint := range antigravity.LoadEndpoints {
+		url := fmt.Sprintf("%s/v1internal:onboardUser", baseEndpoint)
+		reqBody := map[string]any{
+			"tierId": tierID,
+			"metadata": map[string]string{
+				"ideType":    "IDE_UNSPECIFIED",
+				"platform":   "PLATFORM_UNSPECIFIED",
+				"pluginType": "GEMINI",
+			},
+		}
+		bodyBytes, _ := json.Marshal(reqBody)
+
+		req := &httpclient.Request{
+			Method: http.MethodPost,
+			URL:    url,
+			Headers: http.Header{
+				"Authorization":     []string{fmt.Sprintf("Bearer %s", accessToken)},
+				"Content-Type":      []string{"application/json"},
+				"User-Agent":        []string{antigravity.UserAgent},
+				"X-Goog-Api-Client": []string{"google-cloud-sdk vscode_cloudshelleditor/0.1"},
+				"Client-Metadata":   []string{`{"ideType":"IDE_UNSPECIFIED","platform":"PLATFORM_UNSPECIFIED","pluginType":"GEMINI"}`},
+			},
+			Body: bodyBytes,
+		}
+
+		// Try up to 3 times with delay
+		for i := 0; i < 3; i++ {
+			resp, err := h.httpClient.Do(ctx, req)
+			if err != nil || resp.StatusCode != http.StatusOK {
+				time.Sleep(1 * time.Second)
+				continue
+			}
+
+			var data struct {
+				Done     bool `json:"done"`
+				Response struct {
+					CloudAICompanionProject struct {
+						ID string `json:"id"`
+					} `json:"cloudaicompanionProject"`
+				} `json:"response"`
+			}
+
+			if err := json.Unmarshal(resp.Body, &data); err != nil {
+				continue
+			}
+
+			if data.Done && data.Response.CloudAICompanionProject.ID != "" {
+				return data.Response.CloudAICompanionProject.ID, nil
+			}
+
+			time.Sleep(2 * time.Second)
+		}
+	}
+
+	return "", errors.New("failed to onboard user after retries")
 }
