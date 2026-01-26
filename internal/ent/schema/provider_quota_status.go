@@ -36,7 +36,7 @@ func (ProviderQuotaStatus) Fields() []ent.Field {
 		field.Enum("status").
 			Values("available", "warning", "exhausted", "unknown").
 			Comment("Overall status: available, warning, exhausted, unknown"),
-		field.JSON("quota_data", map[string]interface{}{}).
+		field.JSON("quota_data", map[string]any{}).
 			Comment("Provider-specific quota data"),
 		field.Time("next_reset_at").
 			Optional().

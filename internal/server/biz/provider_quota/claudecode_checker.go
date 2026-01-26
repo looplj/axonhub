@@ -36,6 +36,7 @@ func (c *ClaudeCodeQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel
 		if err != nil {
 			return QuotaData{}, fmt.Errorf("failed to parse OAuth credentials: %w", err)
 		}
+
 		accessToken = creds.AccessToken
 	}
 
@@ -56,9 +57,9 @@ func (c *ClaudeCodeQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel
 		WithHeader("anthropic-dangerous-direct-browser-access", claudecode.ClaudeCodeBrowserAccessHeader).
 		WithHeader("x-app", claudecode.ClaudeCodeAppHeader).
 		WithHeader("content-type", "application/json").
-		WithBody(map[string]interface{}{
+		WithBody(map[string]any{
 			"model": claudecode.ClaudeCodeQuotaCheckModel,
-			"messages": []map[string]interface{}{
+			"messages": []map[string]any{
 				{
 					"role":    "user",
 					"content": "limit",
@@ -86,43 +87,44 @@ func (c *ClaudeCodeQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel
 
 func (c *ClaudeCodeQuotaChecker) parseResponse(headers http.Header) (QuotaData, error) {
 	// Guard clause - early return if no quota headers
-	if headers.Get("anthropic-ratelimit-unified-status") == "" {
+	if headers.Get("Anthropic-Ratelimit-Unified-Status") == "" {
 		return QuotaData{}, nil
 	}
 
-	unifiedStatus := headers.Get("anthropic-ratelimit-unified-status")
-	representativeClaim := headers.Get("anthropic-ratelimit-unified-representative-claim")
+	unifiedStatus := headers.Get("Anthropic-Ratelimit-Unified-Status")
+	representativeClaim := headers.Get("Anthropic-Ratelimit-Unified-Representative-Claim")
 
 	// Parse window data
-	windows := map[string]interface{}{
-		"5h": map[string]interface{}{
-			"status":      headers.Get("anthropic-ratelimit-unified-5h-status"),
-			"reset":       parseUnixTimestamp(headers.Get("anthropic-ratelimit-unified-5h-reset")),
-			"utilization": parseFloat(headers.Get("anthropic-ratelimit-unified-5h-utilization")),
+	windows := map[string]any{
+		"5h": map[string]any{
+			"status":      headers.Get("Anthropic-Ratelimit-Unified-5h-Status"),
+			"reset":       parseUnixTimestamp(headers.Get("Anthropic-Ratelimit-Unified-5h-Reset")),
+			"utilization": parseFloat(headers.Get("Anthropic-Ratelimit-Unified-5h-Utilization")),
 		},
-		"7d": map[string]interface{}{
-			"status":      headers.Get("anthropic-ratelimit-unified-7d-status"),
-			"reset":       parseUnixTimestamp(headers.Get("anthropic-ratelimit-unified-7d-reset")),
-			"utilization": parseFloat(headers.Get("anthropic-ratelimit-unified-7d-utilization")),
+		"7d": map[string]any{
+			"status":      headers.Get("Anthropic-Ratelimit-Unified-7d-Status"),
+			"reset":       parseUnixTimestamp(headers.Get("Anthropic-Ratelimit-Unified-7d-Reset")),
+			"utilization": parseFloat(headers.Get("Anthropic-Ratelimit-Unified-7d-Utilization")),
 		},
-		"overage": map[string]interface{}{
-			"status":      headers.Get("anthropic-ratelimit-unified-overage-status"),
-			"reset":       parseUnixTimestamp(headers.Get("anthropic-ratelimit-unified-overage-reset")),
-			"utilization": parseFloat(headers.Get("anthropic-ratelimit-unified-overage-utilization")),
+		"overage": map[string]any{
+			"status":      headers.Get("Anthropic-Ratelimit-Unified-Overage-Status"),
+			"reset":       parseUnixTimestamp(headers.Get("Anthropic-Ratelimit-Unified-Overage-Reset")),
+			"utilization": parseFloat(headers.Get("Anthropic-Ratelimit-Unified-Overage-Utilization")),
 		},
 	}
 
-	rawData := map[string]interface{}{
+	rawData := map[string]any{
 		"unified_status":       unifiedStatus,
 		"windows":              windows,
 		"representative_claim": representativeClaim,
-		"fallback":             headers.Get("anthropic-ratelimit-unified-fallback"),
-		"fallback_percentage":  parseFloat(headers.Get("anthropic-ratelimit-unified-fallback-percentage")),
-		"reset":                parseUnixTimestamp(headers.Get("anthropic-ratelimit-unified-reset")),
+		"fallback":             headers.Get("Anthropic-Ratelimit-Unified-Fallback"),
+		"fallback_percentage":  parseFloat(headers.Get("Anthropic-Ratelimit-Unified-Fallback-Percentage")),
+		"reset":                parseUnixTimestamp(headers.Get("Anthropic-Ratelimit-Unified-Reset")),
 	}
 
 	// Normalize status: allowed -> available, throttled/rejected -> exhausted
 	var normalizedStatus string
+
 	switch unifiedStatus {
 	case "allowed":
 		normalizedStatus = "available"
@@ -134,8 +136,9 @@ func (c *ClaudeCodeQuotaChecker) parseResponse(headers http.Header) (QuotaData, 
 
 	// Check for warning state (utilization >= 80% on any window)
 	if normalizedStatus == "available" {
-		fiveHourUtilization := parseFloat(headers.Get("anthropic-ratelimit-unified-5h-utilization"))
-		sevenDayUtilization := parseFloat(headers.Get("anthropic-ratelimit-unified-7d-utilization"))
+		fiveHourUtilization := parseFloat(headers.Get("Anthropic-Ratelimit-Unified-5h-Utilization"))
+
+		sevenDayUtilization := parseFloat(headers.Get("Anthropic-Ratelimit-Unified-7d-Utilization"))
 		if fiveHourUtilization >= 0.8 || sevenDayUtilization >= 0.8 {
 			normalizedStatus = "warning"
 		}
@@ -152,7 +155,8 @@ func (c *ClaudeCodeQuotaChecker) parseResponse(headers http.Header) (QuotaData, 
 	}
 
 	var nextResetAt *time.Time
-	if resetWindow, ok := windows[windowKey].(map[string]interface{}); ok {
+
+	if resetWindow, ok := windows[windowKey].(map[string]any); ok {
 		if resetTs, exists := resetWindow["reset"].(int64); exists && resetTs > 0 {
 			t := time.Unix(resetTs, 0)
 			nextResetAt = &t

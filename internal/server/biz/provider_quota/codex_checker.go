@@ -15,7 +15,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 )
 
-// CodexUsageResponse matches ChatGPT backend API response
+// CodexUsageResponse matches ChatGPT backend API response.
 type CodexUsageResponse struct {
 	PlanType            string             `json:"plan_type,omitempty"`
 	RateLimit           *CodeRateLimitInfo `json:"rate_limit,omitempty"`
@@ -61,6 +61,7 @@ func (c *CodexQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (Qu
 		if err != nil {
 			return QuotaData{}, fmt.Errorf("failed to parse OAuth credentials: %w", err)
 		}
+
 		accessToken = creds.AccessToken
 	}
 
@@ -76,7 +77,7 @@ func (c *CodexQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (Qu
 	}
 
 	// Build request
-	req, err := http.NewRequestWithContext(ctx, "GET", "https://chatgpt.com/backend-api/wham/usage", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://chatgpt.com/backend-api/wham/usage", nil)
 	if err != nil {
 		return QuotaData{}, err
 	}
@@ -91,6 +92,7 @@ func (c *CodexQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (Qu
 	if err != nil {
 		return QuotaData{}, fmt.Errorf("quota request failed: %w", err)
 	}
+
 	defer func() { _ = resp.Body.Close() }()
 
 	// Read body
@@ -115,8 +117,11 @@ func (c *CodexQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 
 	// Normalize status
 	normalizedStatus := "unknown"
-	var nextResetAt *time.Time
-	var primaryWindowUsedPercent *float64
+
+	var (
+		nextResetAt              *time.Time
+		primaryWindowUsedPercent *float64
+	)
 
 	if response.RateLimit != nil {
 		if response.RateLimit.LimitReached != nil && *response.RateLimit.LimitReached {
@@ -143,7 +148,7 @@ func (c *CodexQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 	}
 
 	// Convert to raw data map
-	rawData := map[string]interface{}{
+	rawData := map[string]any{
 		"plan_type": response.PlanType,
 	}
 
@@ -168,18 +173,21 @@ func (c *CodexQuotaChecker) SupportsChannel(ch *ent.Channel) bool {
 	return ch.Type == channel.TypeCodex
 }
 
-func convertRateLimitToMap(rateLimit *CodeRateLimitInfo) map[string]interface{} {
-	result := make(map[string]interface{})
+func convertRateLimitToMap(rateLimit *CodeRateLimitInfo) map[string]any {
+	result := make(map[string]any)
 
 	if rateLimit.Allowed != nil {
 		result["allowed"] = *rateLimit.Allowed
 	}
+
 	if rateLimit.LimitReached != nil {
 		result["limit_reached"] = *rateLimit.LimitReached
 	}
+
 	if rateLimit.PrimaryWindow != nil {
 		result["primary_window"] = convertWindowToMap(rateLimit.PrimaryWindow)
 	}
+
 	if rateLimit.SecondaryWindow != nil {
 		result["secondary_window"] = convertWindowToMap(rateLimit.SecondaryWindow)
 	}
@@ -187,17 +195,20 @@ func convertRateLimitToMap(rateLimit *CodeRateLimitInfo) map[string]interface{} 
 	return result
 }
 
-func convertWindowToMap(window *CodeUsageWindow) map[string]interface{} {
-	result := make(map[string]interface{})
+func convertWindowToMap(window *CodeUsageWindow) map[string]any {
+	result := make(map[string]any)
 	if window.UsedPercent != nil {
 		result["used_percent"] = *window.UsedPercent
 	}
+
 	if window.ResetAt != nil {
 		result["reset_at"] = *window.ResetAt
 	}
+
 	if window.ResetAfterSeconds != nil {
 		result["reset_after_seconds"] = *window.ResetAfterSeconds
 	}
+
 	if window.LimitWindowSeconds != nil {
 		result["limit_window_seconds"] = *window.LimitWindowSeconds
 	}

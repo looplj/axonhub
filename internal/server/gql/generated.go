@@ -1448,6 +1448,7 @@ type ChannelResolver interface {
 
 	Policies(ctx context.Context, obj *ent.Channel) (*objects.ChannelPolicies, error)
 
+	ProviderQuotaStatus(ctx context.Context, obj *ent.Channel) (*ent.ProviderQuotaStatus, error)
 	AllModelEntries(ctx context.Context, obj *ent.Channel) ([]*biz.ChannelModelEntry, error)
 	Credentials(ctx context.Context, obj *ent.Channel) (*objects.ChannelCredentials, error)
 }
@@ -13168,11 +13169,7 @@ func (ec *executionContext) _Channel_providerQuotaStatus(ctx context.Context, fi
 		field,
 		ec.fieldContext_Channel_providerQuotaStatus,
 		func(ctx context.Context) (any, error) {
-			pqs, err := obj.ProviderQuotaStatus(ctx)
-			if ent.IsNotFound(err) {
-				return nil, nil
-			}
-			return pqs, err
+			return ec.resolvers.Channel().ProviderQuotaStatus(ctx, obj)
 		},
 		nil,
 		ec.marshalOProviderQuotaStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐProviderQuotaStatus,
@@ -13186,7 +13183,7 @@ func (ec *executionContext) fieldContext_Channel_providerQuotaStatus(_ context.C
 		Object:     "Channel",
 		Field:      field,
 		IsMethod:   true,
-		IsResolver: false,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":

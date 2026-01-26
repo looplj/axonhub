@@ -359,7 +359,7 @@ type Channel implements Node {
   channelPerformance: ChannelPerformance
   channelProbes: [ChannelProbe!]
   channelModelPrices: [ChannelModelPrice!]
-  providerQuotaStatus: ProviderQuotaStatus
+  providerQuotaStatus: ProviderQuotaStatus @goField(forceResolver: true)
 }
 """
 A connection to a list of items.

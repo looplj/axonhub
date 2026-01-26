@@ -358,6 +358,7 @@ formatters:
     paths:
       - ".resolvers.go"
       - "axonhub.resolvers.go"
+      - "ent.resolvers.go"
   
 
 issues:
