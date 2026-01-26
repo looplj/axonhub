@@ -460,8 +460,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         setUseFetchedModels(false);
         // Set default Base URL
         const baseURL = getDefaultBaseURL('antigravity');
+        // Only set default URL if we are creating a new channel (not duplicating)
         if (baseURL && !isDuplicate) {
-          form.resetField('baseURL', { defaultValue: baseURL });
+          form.setValue('baseURL', baseURL);
         }
         return;
       }
