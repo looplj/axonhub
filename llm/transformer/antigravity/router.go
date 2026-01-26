@@ -56,11 +56,6 @@ func DetermineQuotaPreference(modelName string) QuotaPreference {
 		return QuotaAntigravity
 	}
 
-	// Gemini 2.5 Flash Lite requires Antigravity quota
-	if lowerModelName == "gemini-2.5-flash-lite" {
-		return QuotaAntigravity
-	}
-
 	// Legacy Gemini 3 model names (backward compatibility)
 	// These are the old naming convention before -preview suffix was added
 	legacyGemini3Patterns := []string{
