@@ -458,10 +458,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         form.setValue('type', 'antigravity');
         setFetchedModels([]);
         setUseFetchedModels(false);
-        // Set default Base URL
+        // Set default Base URL only if empty
         const baseURL = getDefaultBaseURL('antigravity');
-        // Only set default URL if we are creating a new channel (not duplicating)
-        if (baseURL && !isDuplicate) {
+        const currentURL = form.getValues('baseURL');
+        if (baseURL && !isDuplicate && (!currentURL || currentURL === '')) {
           form.setValue('baseURL', baseURL);
         }
         return;
@@ -605,7 +605,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     if (channelTypeForURL) {
       const baseURL = getDefaultBaseURL(channelTypeForURL);
       if (baseURL) {
-        form.resetField('baseURL', { defaultValue: baseURL });
+        // Use setValue instead of resetField to avoid infinite loop
+        const currentURL = form.getValues('baseURL');
+        if (!currentURL || currentURL !== baseURL) {
+          form.setValue('baseURL', baseURL);
+        }
       }
     }
   }, [isEdit, isCodexType, selectedProvider, form, codexOAuth, claudecodeOAuth, antigravityOAuth]);
