@@ -10,6 +10,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/tidwall/gjson"
 
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -17,6 +18,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/pipeline/stream"
+	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
@@ -115,6 +117,10 @@ func (processor *TestChannelOrchestrator) TestChannel(
 		testModel = channels[0].Channel.DefaultTestModel
 	}
 
+	// Check if the channel requires streaming
+	channel := processor.channelService.GetEnabledChannel(channelID.ID)
+	useStream := channel != nil && channel.Policies.Stream == objects.CapabilityPolicyRequire
+
 	llmRequest := &llm.Request{
 		Model: testModel,
 		Messages: []llm.Message{
@@ -141,7 +147,7 @@ func (processor *TestChannelOrchestrator) TestChannel(
 			},
 		},
 		MaxCompletionTokens: lo.ToPtr(int64(256)),
-		Stream:              lo.ToPtr(false),
+		Stream:              lo.ToPtr(useStream),
 	}
 
 	body, err := json.Marshal(llmRequest)
@@ -158,20 +164,27 @@ func (processor *TestChannelOrchestrator) TestChannel(
 		Body: body,
 	})
 
-	latency := time.Since(startTime).Seconds()
 	rawErr := inbound.TransformError(ctx, err)
 	message := gjson.GetBytes(rawErr.Body, "error.message").String()
 
 	//nolint:nilerr // Checked.
 	if err != nil {
 		return &TestChannelResult{
-			Latency: latency,
+			Latency: time.Since(startTime).Seconds(),
 			Success: false,
 			Message: lo.ToPtr(""),
 			Error:   lo.ToPtr(message),
 		}, nil
 	}
 
+	// Handle streaming response
+	if rawResponse.ChatCompletionStream != nil {
+		return processor.handleStreamResponse(ctx, rawResponse.ChatCompletionStream, startTime)
+	}
+
+	latency := time.Since(startTime).Seconds()
+
+	// Handle non-streaming response
 	response, err := xjson.To[llm.Response](rawResponse.ChatCompletion.Body)
 	if err != nil {
 		return &TestChannelResult{
@@ -195,6 +208,92 @@ func (processor *TestChannelOrchestrator) TestChannel(
 		Latency: latency,
 		Success: true,
 		Message: response.Choices[0].Message.Content.Content,
+		Error:   nil,
+	}, nil
+}
+
+// handleStreamResponse processes a streaming response and accumulates the content.
+func (processor *TestChannelOrchestrator) handleStreamResponse(
+	ctx context.Context,
+	stream streams.Stream[*httpclient.StreamEvent],
+	startTime time.Time,
+) (*TestChannelResult, error) {
+	defer func() {
+		_ = stream.Close()
+	}()
+
+	// Accumulate stream chunks
+	var accumulatedContent string
+
+	for stream.Next() {
+		select {
+		case <-ctx.Done():
+			return &TestChannelResult{
+				Latency: time.Since(startTime).Seconds(),
+				Success: false,
+				Message: lo.ToPtr(accumulatedContent),
+				Error:   lo.ToPtr(ctx.Err().Error()),
+			}, nil
+		default:
+		}
+
+		event := stream.Current()
+		if event == nil {
+			continue
+		}
+
+		// The stream may end with a "[DONE]" message which is not valid JSON.
+		if string(event.Data) == "[DONE]" {
+			continue
+		}
+
+		// Parse the stream event data
+		var chunk llm.Response
+		if err := json.Unmarshal(event.Data, &chunk); err != nil {
+			log.Warn(ctx, "failed to unmarshal stream event data", log.Cause(err), log.ByteString("data", event.Data))
+			continue
+		}
+
+		// Accumulate content from the first choice
+		if len(chunk.Choices) > 0 && chunk.Choices[0].Delta != nil && chunk.Choices[0].Delta.Content.Content != nil {
+			accumulatedContent += *chunk.Choices[0].Delta.Content.Content
+		}
+	}
+
+	// Calculate latency after processing all stream events
+	latency := time.Since(startTime).Seconds()
+
+	if err := ctx.Err(); err != nil {
+		return &TestChannelResult{
+			Latency: latency,
+			Success: false,
+			Message: lo.ToPtr(accumulatedContent),
+			Error:   lo.ToPtr(err.Error()),
+		}, nil
+	}
+
+	if stream.Err() != nil {
+		return &TestChannelResult{
+			Latency: latency,
+			Success: false,
+			Message: lo.ToPtr(""),
+			Error:   lo.ToPtr(stream.Err().Error()),
+		}, nil
+	}
+
+	if accumulatedContent == "" {
+		return &TestChannelResult{
+			Latency: latency,
+			Success: false,
+			Message: lo.ToPtr(""),
+			Error:   lo.ToPtr("No content in stream response"),
+		}, nil
+	}
+
+	return &TestChannelResult{
+		Latency: latency,
+		Success: true,
+		Message: lo.ToPtr(accumulatedContent),
 		Error:   nil,
 	}, nil
 }
