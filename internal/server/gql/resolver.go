@@ -1,9 +1,12 @@
 package gql
 
 import (
+	"errors"
+
 	"github.com/99designs/gqlgen/graphql"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/server/backup"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -12,6 +15,9 @@ import (
 // This file will not be regenerated automatically.
 //
 // It serves as dependency injection for your app, add any dependencies you require here.
+
+// ErrNotOwner is returned when a non-owner user attempts an owner-only operation.
+var ErrNotOwner = errors.New("permission denied: owner access required")
 
 // Resolver is the resolver root.
 type Resolver struct {
@@ -29,13 +35,14 @@ type Resolver struct {
 	threadService                  *biz.ThreadService
 	channelOverrideTemplateService *biz.ChannelOverrideTemplateService
 	modelService                   *biz.ModelService
-	backupService                  *biz.BackupService
+	backupService                  *backup.BackupService
 	channelProbeService            *biz.ChannelProbeService
 	promptService                  *biz.PromptService
 	providerQuotaService           *biz.ProviderQuotaService
 	httpClient                     *httpclient.HttpClient
 	modelFetcher                   *biz.ModelFetcher
 	TestChannelOrchestrator        *orchestrator.TestChannelOrchestrator
+	backupWorker                   *backup.Worker
 }
 
 // NewSchema creates a graphql executable schema.
@@ -55,10 +62,11 @@ func NewSchema(
 	usageLogService *biz.UsageLogService,
 	channelOverrideTemplateService *biz.ChannelOverrideTemplateService,
 	modelService *biz.ModelService,
-	backupService *biz.BackupService,
+	backupService *backup.BackupService,
 	channelProbeService *biz.ChannelProbeService,
 	promptService *biz.PromptService,
 	providerQuotaService *biz.ProviderQuotaService,
+	backupWorker *backup.Worker,
 ) graphql.ExecutableSchema {
 	httpClient := httpclient.NewHttpClient()
 	modelFetcher := biz.NewModelFetcher(httpClient, channelService)
@@ -86,6 +94,7 @@ func NewSchema(
 			httpClient:                     httpClient,
 			modelFetcher:                   modelFetcher,
 			TestChannelOrchestrator:        orchestrator.NewTestChannelOrchestrator(channelService, requestService, systemService, usageLogService, httpClient),
+			backupWorker:                   backupWorker,
 		},
 	})
 }

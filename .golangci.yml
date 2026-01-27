@@ -193,7 +193,11 @@ linters:
       # Force newlines in end of case at this limit (0 = never).
       force-case-trailing-whitespace: 0
 
+  
   exclusions:
+    # Exclude all linters from running on ent files.
+    paths:
+      - ^ent/
     # Excluding configuration per-path, per-linter, per-text and per-source
     rules:
       # Exclude some linters from running on tools files.
@@ -359,6 +363,7 @@ formatters:
       - ".resolvers.go"
       - "axonhub.resolvers.go"
       - "ent.resolvers.go"
+      - "internal/ent"
   
 
 issues:

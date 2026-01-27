@@ -1,9 +1,11 @@
-package biz
+package backup
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math/rand/v2"
 	"time"
 
 	"github.com/samber/lo"
@@ -23,26 +25,76 @@ import (
 type BackupServiceParams struct {
 	fx.In
 
-	ChannelService *ChannelService
-	ModelService   *ModelService
-	Ent            *ent.Client
+	Ent *ent.Client
 }
 
 func NewBackupService(params BackupServiceParams) *BackupService {
 	return &BackupService{
-		AbstractService: &AbstractService{
-			db: params.Ent,
-		},
-		channelService: params.ChannelService,
-		modelService:   params.ModelService,
+		db: params.Ent,
 	}
 }
 
 type BackupService struct {
-	*AbstractService
+	db *ent.Client
+}
 
-	channelService *ChannelService
-	modelService   *ModelService
+func (svc *BackupService) entFromContext(ctx context.Context) *ent.Client {
+	db := ent.FromContext(ctx)
+	if db != nil {
+		return db
+	}
+
+	return svc.db
+}
+
+func (svc *BackupService) RunInTransaction(ctx context.Context, fn func(context.Context) error) (err error) {
+	if tx := ent.TxFromContext(ctx); tx != nil {
+		txClient := tx.Client()
+		txCtx := ent.NewContext(ctx, txClient)
+
+		return fn(txCtx)
+	}
+
+	db := svc.entFromContext(ctx)
+
+	tx, err := db.Tx(ctx)
+	if err != nil {
+		if errors.Is(err, ent.ErrTxStarted) {
+			return fn(ent.NewContext(ctx, db))
+		}
+
+		return err
+	}
+
+	committed := false
+
+	defer func() {
+		if r := recover(); r != nil {
+			_ = tx.Rollback()
+
+			panic(r)
+		}
+
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	txClient := tx.Client()
+	txCtx := ent.NewTxContext(ctx, tx)
+	txCtx = ent.NewContext(txCtx, txClient)
+
+	if err := fn(txCtx); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	committed = true
+
+	return nil
 }
 
 type BackupData struct {
@@ -98,13 +150,14 @@ const (
 )
 
 type RestoreOptions struct {
-	IncludeChannels         bool
-	IncludeModels           bool
-	IncludeAPIKeys          bool
-	IncludeModelPrices      bool
-	ChannelConflictStrategy ConflictStrategy
-	ModelConflictStrategy   ConflictStrategy
-	APIKeyConflictStrategy  ConflictStrategy
+	IncludeChannels            bool
+	IncludeModels              bool
+	IncludeAPIKeys             bool
+	IncludeModelPrices         bool
+	ChannelConflictStrategy    ConflictStrategy
+	ModelConflictStrategy      ConflictStrategy
+	ModelPriceConflictStrategy ConflictStrategy
+	APIKeyConflictStrategy     ConflictStrategy
 }
 
 func (svc *BackupService) Backup(ctx context.Context, opts BackupOptions) ([]byte, error) {
@@ -117,6 +170,16 @@ func (svc *BackupService) Backup(ctx context.Context, opts BackupOptions) ([]byt
 		return nil, fmt.Errorf("only owners can perform backup operations")
 	}
 
+	return svc.doBackup(ctx, opts)
+}
+
+// BackupWithoutAuth performs backup without user authentication check.
+// This is used by the auto-backup worker which runs in a privileged context.
+func (svc *BackupService) BackupWithoutAuth(ctx context.Context, opts BackupOptions) ([]byte, error) {
+	return svc.doBackup(ctx, opts)
+}
+
+func (svc *BackupService) doBackup(ctx context.Context, opts BackupOptions) ([]byte, error) {
 	var (
 		channelDataList           []*BackupChannel
 		channelModelPriceDataList []*BackupChannelModelPrice
@@ -229,9 +292,36 @@ func (svc *BackupService) Restore(ctx context.Context, data []byte, opts Restore
 		return fmt.Errorf("backup version mismatch: expected %s, got %s", BackupVersion, backupData.Version)
 	}
 
-	return svc.RunInTransaction(ctx, func(ctx context.Context) error {
-		return svc.restore(ctx, backupData, opts)
-	})
+	db := svc.entFromContext(ctx)
+
+	tx, err := db.Tx(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
+
+	committed := false
+
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	txClient := tx.Client()
+	txCtx := ent.NewTxContext(ctx, tx)
+	txCtx = ent.NewContext(txCtx, txClient)
+
+	if err := svc.restore(txCtx, backupData, opts); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	committed = true
+
+	return nil
 }
 
 func (svc *BackupService) restore(ctx context.Context, backupData BackupData, opts RestoreOptions) error {
@@ -259,9 +349,19 @@ func (svc *BackupService) restore(ctx context.Context, backupData BackupData, op
 		}
 	}
 
-	svc.channelService.asyncReloadChannels()
-
 	return nil
+}
+
+const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+func generateReferenceID() string {
+	b := make([]byte, 8)
+	for i := range b {
+		//nolint:gosec // not a security issue.
+		b[i] = letters[rand.IntN(len(letters))]
+	}
+
+	return string(b)
 }
 
 func (svc *BackupService) restoreChannelModelPrices(
@@ -337,7 +437,7 @@ func (svc *BackupService) restoreChannelModelPrices(
 		}
 
 		if existing != nil {
-			switch opts.ChannelConflictStrategy {
+			switch opts.ModelPriceConflictStrategy {
 			case ConflictStrategySkip:
 				continue
 			case ConflictStrategyError:
@@ -386,8 +486,6 @@ func (svc *BackupService) restoreChannels(ctx context.Context, channels []*Backu
 			baseURL = &chData.BaseURL
 		}
 
-		autoSync := &chData.AutoSyncSupportedModels
-
 		if existing != nil {
 			switch opts.ChannelConflictStrategy {
 			case ConflictStrategySkip:
@@ -404,7 +502,7 @@ func (svc *BackupService) restoreChannels(ctx context.Context, channels []*Backu
 					SetStatus(chData.Status).
 					SetCredentials(credentials).
 					SetSupportedModels(chData.SupportedModels).
-					SetNillableAutoSyncSupportedModels(autoSync).
+					SetNillableAutoSyncSupportedModels(lo.ToPtr(chData.AutoSyncSupportedModels)).
 					SetTags(chData.Tags).
 					SetDefaultTestModel(chData.DefaultTestModel).
 					SetSettings(chData.Settings).
@@ -432,7 +530,7 @@ func (svc *BackupService) restoreChannels(ctx context.Context, channels []*Backu
 				SetStatus(chData.Status).
 				SetCredentials(credentials).
 				SetSupportedModels(chData.SupportedModels).
-				SetNillableAutoSyncSupportedModels(autoSync).
+				SetNillableAutoSyncSupportedModels(lo.ToPtr(chData.AutoSyncSupportedModels)).
 				SetTags(chData.Tags).
 				SetDefaultTestModel(chData.DefaultTestModel).
 				SetSettings(chData.Settings).
