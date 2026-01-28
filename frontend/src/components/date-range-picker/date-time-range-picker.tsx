@@ -91,7 +91,7 @@ export function DateTimeRangePicker(props: DateTimeRangePickerProps) {
         className
       )}
     >
-      <div className='flex items-center justify-between border-b border-gray-100 bg-white p-5 dark:border-white/5 dark:bg-[#0a0a0b]/50'>
+      <div className='flex items-center justify-between border-b border-gray-100 bg-white p-4 dark:border-white/5 dark:bg-[#0a0a0b]/50'>
         <div
           className={cn(
             buttonVariants({ variant: 'outline', size: 'sm' }),
@@ -120,7 +120,7 @@ export function DateTimeRangePicker(props: DateTimeRangePickerProps) {
         </div>
       </div>
 
-      <div className='flex flex-col gap-10 bg-white p-8 dark:bg-[#0a0a0b] md:flex-row'>
+      <div className='flex flex-col gap-8 bg-white p-6 dark:bg-[#0a0a0b] md:flex-row'>
         <div className='flex-1'>
           <DayPicker
             mode='range'
@@ -145,8 +145,8 @@ export function DateTimeRangePicker(props: DateTimeRangePickerProps) {
         </div>
       </div>
 
-      <div className='border-t border-gray-100 bg-gray-50 px-8 py-10 dark:border-white/5 dark:bg-[#0a0a0b]/80'>
-        <div className='flex flex-col gap-10 md:flex-row'>
+      <div className='border-t border-gray-100 bg-gray-50 px-6 py-6 dark:border-white/5 dark:bg-[#0a0a0b]/80'>
+        <div className='flex flex-col gap-6 md:flex-row'>
           <TimeField
             label={t('common.filters.startTime')}
             value={internal.startTime}
@@ -173,7 +173,7 @@ export function DateTimeRangePicker(props: DateTimeRangePickerProps) {
         </div>
       </div>
 
-      <div className='flex items-center justify-between border-t border-gray-100 bg-white px-8 py-6 dark:border-white/5 dark:bg-[#0a0a0b]'>
+      <div className='flex items-center justify-between border-t border-gray-100 bg-white px-6 py-4 dark:border-white/5 dark:bg-[#0a0a0b]'>
         <button
           type='button'
           className='rounded-md text-[11px] font-semibold uppercase tracking-widest text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-gray-200'
@@ -185,14 +185,14 @@ export function DateTimeRangePicker(props: DateTimeRangePickerProps) {
         <div className='flex gap-4'>
           <button
             type='button'
-            className='rounded-md px-6 py-2.5 text-sm font-semibold text-gray-600 transition-all hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5'
+            className='h-10 min-w-24 rounded-md px-6 text-sm font-semibold text-gray-600 transition-all hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5'
             onClick={onCancel}
           >
             {t('common.buttons.cancel')}
           </button>
           <button
             type='button'
-            className='rounded-md bg-primary px-8 py-2.5 text-sm font-semibold text-white shadow-xl shadow-primary/20 transition-all active:scale-[0.98]'
+            className='h-10 min-w-24 rounded-md bg-primary px-6 text-sm font-semibold text-white shadow-xl shadow-primary/20 transition-all active:scale-[0.98]'
             onClick={() => onConfirm?.(internal)}
           >
             {t('common.buttons.confirm')}

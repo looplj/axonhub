@@ -32,20 +32,54 @@ export function DateRangePicker(props: DateRangePickerProps) {
   const [internalValue, setInternalValue] = React.useState<DateTimeRangeValue | undefined>(
     normalizedValue
   )
+  const [pendingValue, setPendingValue] = React.useState<DateTimeRangeValue | undefined>(
+    normalizedValue
+  )
 
   React.useEffect(() => {
     if (!isControlled) return
     setInternalValue(normalizedValue)
   }, [isControlled, normalizedValue])
 
-  const handleChange = React.useCallback(
+  React.useEffect(() => {
+    if (open) {
+      const currentValue = isControlled ? normalizedValue : internalValue
+      setPendingValue(currentValue)
+    }
+  }, [open, isControlled, normalizedValue, internalValue])
+
+  const handlePendingChange = React.useCallback(
     (next: DateTimeRangeValue | undefined) => {
       const nextValue = next ? normalizeDateTimeRangeValue(next) : undefined
+      setPendingValue(nextValue)
+    },
+    []
+  )
+
+  const handleConfirm = React.useCallback(
+    (next: DateTimeRangeValue) => {
+      const nextValue = normalizeDateTimeRangeValue(next)
+      const hasRange = !!nextValue.from || !!nextValue.to
+      if (!hasRange) {
+        if (!isControlled) setInternalValue(undefined)
+        onChange?.(undefined)
+        setOpen(false)
+        return
+      }
       if (!isControlled) setInternalValue(nextValue)
       onChange?.(nextValue)
+      onConfirm?.(nextValue)
+      setOpen(false)
     },
-    [isControlled, onChange]
+    [isControlled, onChange, onConfirm]
   )
+
+  const handleCancel = React.useCallback(() => {
+    const currentValue = isControlled ? normalizedValue : internalValue
+    setPendingValue(currentValue)
+    setOpen(false)
+    onCancel?.()
+  }, [isControlled, normalizedValue, internalValue, onCancel])
 
   const currentValue = isControlled ? normalizedValue : internalValue
   const label = formatRange(currentValue?.from, currentValue?.to, t('common.filters.dateRange'))
@@ -69,16 +103,10 @@ export function DateRangePicker(props: DateRangePickerProps) {
         </PopoverTrigger>
         <PopoverContent className='w-auto border-none bg-transparent p-0 shadow-none' align='start'>
           <DateTimeRangePicker
-            value={currentValue}
-            onChange={handleChange}
-            onCancel={() => {
-              setOpen(false)
-              onCancel?.()
-            }}
-            onConfirm={(next) => {
-              onConfirm?.(next)
-              setOpen(false)
-            }}
+            value={pendingValue}
+            onChange={handlePendingChange}
+            onCancel={handleCancel}
+            onConfirm={handleConfirm}
           />
         </PopoverContent>
       </Popover>

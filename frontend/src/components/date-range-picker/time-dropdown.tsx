@@ -91,9 +91,7 @@ function TimeColInner({
 }) {
   return (
     <>
-      <div className='sticky top-0 z-10 bg-white py-2 text-[10px] font-bold uppercase text-gray-400 dark:bg-[#121214] dark:text-gray-500'>
-        {label}
-      </div>
+      <span className='sr-only'>{label}</span>
       {items.map((v) => {
         const txt = pad2(v)
         const isActive = txt === active
