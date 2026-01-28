@@ -264,6 +264,12 @@ models:
   GCSInput:
     model:
       - github.com/looplj/axonhub/internal/objects.GCS
+  WebDAV:
+    model:
+      - github.com/looplj/axonhub/internal/objects.WebDAV
+  WebDAVInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.WebDAV
   Segment:
     model:
       - github.com/looplj/axonhub/internal/server/biz.Segment

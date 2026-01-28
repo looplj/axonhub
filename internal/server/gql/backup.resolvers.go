@@ -7,21 +7,14 @@ package gql
 
 import (
 	"context"
-	"fmt"
 	"io"
 
 	"github.com/99designs/gqlgen/graphql"
-	"github.com/samber/lo"
-
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/server/backup"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/samber/lo"
 )
-
-// TargetType is the resolver for the targetType field.
-func (r *autoBackupSettingsResolver) TargetType(ctx context.Context, obj *biz.AutoBackupSettings) (string, error) {
-	return string(obj.TargetType), nil
-}
 
 // Backup is the resolver for the backup field.
 func (r *mutationResolver) Backup(ctx context.Context, input backup.BackupOptions) (*BackupPayload, error) {
@@ -77,6 +70,10 @@ func (r *mutationResolver) UpdateAutoBackupSettings(ctx context.Context, input U
 		settings.Frequency = *input.Frequency
 	}
 
+	if input.DataStorageID != nil {
+		settings.DataStorageID = *input.DataStorageID
+	}
+
 	if input.IncludeChannels != nil {
 		settings.IncludeChannels = *input.IncludeChannels
 	}
@@ -97,62 +94,11 @@ func (r *mutationResolver) UpdateAutoBackupSettings(ctx context.Context, input U
 		settings.RetentionDays = *input.RetentionDays
 	}
 
-	if input.Webdav != nil {
-		if input.Webdav.Username == "" || input.Webdav.Password == "" {
-			return false, fmt.Errorf("WebDAV username and password are required")
-		}
-
-		settings.WebDAV = &biz.WebDAVConfig{
-			URL:             input.Webdav.URL,
-			Username:        input.Webdav.Username,
-			Password:        input.Webdav.Password,
-			InsecureSkipTLS: lo.FromPtrOr(input.Webdav.InsecureSkipTLS, false),
-			Path:            lo.FromPtrOr(input.Webdav.Path, "/"),
-		}
-	}
-
 	if err := r.systemService.SetAutoBackupSettings(ctx, *settings); err != nil {
 		return false, err
 	}
 
-	// Reschedule the backup worker
-	if r.backupWorker != nil {
-		if err := r.backupWorker.Reschedule(ctx); err != nil {
-			return false, err
-		}
-	}
-
 	return true, nil
-}
-
-// TestWebDAVConnection is the resolver for the testWebDAVConnection field.
-func (r *mutationResolver) TestWebDAVConnection(ctx context.Context, input WebDAVConfigInput) (*TestConnectionPayload, error) {
-	user, ok := contexts.GetUser(ctx)
-	if !ok || user == nil || !user.IsOwner {
-		return nil, ErrNotOwner
-	}
-
-	config := &biz.WebDAVConfig{
-		URL:             input.URL,
-		Username:        input.Username,
-		Password:        input.Password,
-		InsecureSkipTLS: lo.FromPtrOr(input.InsecureSkipTLS, false),
-		Path:            lo.FromPtrOr(input.Path, "/"),
-	}
-
-	if r.backupWorker != nil {
-		if err := r.backupWorker.TestConnection(ctx, config); err != nil {
-			return &TestConnectionPayload{
-				Success: false,
-				Message: lo.ToPtr(err.Error()),
-			}, nil
-		}
-	}
-
-	return &TestConnectionPayload{
-		Success: true,
-		Message: lo.ToPtr("Connection successful"),
-	}, nil
 }
 
 // TriggerAutoBackup is the resolver for the triggerAutoBackup field.
@@ -162,13 +108,11 @@ func (r *mutationResolver) TriggerAutoBackup(ctx context.Context) (*TriggerBacku
 		return nil, ErrNotOwner
 	}
 
-	if r.backupWorker != nil {
-		if err := r.backupWorker.RunBackupNow(ctx); err != nil {
-			return &TriggerBackupPayload{
-				Success: false,
-				Message: lo.ToPtr(err.Error()),
-			}, nil
-		}
+	if err := r.backupService.RunBackupNow(ctx); err != nil {
+		return &TriggerBackupPayload{
+			Success: false,
+			Message: lo.ToPtr(err.Error()),
+		}, nil
 	}
 
 	return &TriggerBackupPayload{
@@ -181,10 +125,3 @@ func (r *mutationResolver) TriggerAutoBackup(ctx context.Context) (*TriggerBacku
 func (r *queryResolver) AutoBackupSettings(ctx context.Context) (*biz.AutoBackupSettings, error) {
 	return r.systemService.AutoBackupSettings(ctx)
 }
-
-// AutoBackupSettings returns AutoBackupSettingsResolver implementation.
-func (r *Resolver) AutoBackupSettings() AutoBackupSettingsResolver {
-	return &autoBackupSettingsResolver{r}
-}
-
-type autoBackupSettingsResolver struct{ *Resolver }

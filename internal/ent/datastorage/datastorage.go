@@ -112,6 +112,7 @@ const (
 	TypeFs       Type = "fs"
 	TypeS3       Type = "s3"
 	TypeGcs      Type = "gcs"
+	TypeWebdav   Type = "webdav"
 )
 
 func (_type Type) String() string {
@@ -121,7 +122,7 @@ func (_type Type) String() string {
 // TypeValidator is a validator for the "type" field enum values. It is called by the builders before save.
 func TypeValidator(_type Type) error {
 	switch _type {
-	case TypeDatabase, TypeFs, TypeS3, TypeGcs:
+	case TypeDatabase, TypeFs, TypeS3, TypeGcs, TypeWebdav:
 		return nil
 	default:
 		return fmt.Errorf("datastorage: invalid enum value for type field: %q", _type)

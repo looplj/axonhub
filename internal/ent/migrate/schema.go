@@ -273,7 +273,7 @@ var (
 		{Name: "name", Type: field.TypeString},
 		{Name: "description", Type: field.TypeString},
 		{Name: "primary", Type: field.TypeBool, Default: false},
-		{Name: "type", Type: field.TypeEnum, Enums: []string{"database", "fs", "s3", "gcs"}},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"database", "fs", "s3", "gcs", "webdav"}},
 		{Name: "settings", Type: field.TypeJSON},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "archived"}, Default: "active"},
 	}

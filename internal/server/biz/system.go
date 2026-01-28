@@ -22,6 +22,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
+	"github.com/looplj/axonhub/internal/pkg/xtime"
 )
 
 const (
@@ -96,32 +97,14 @@ const (
 	BackupFrequencyMonthly BackupFrequency = "monthly"
 )
 
-// BackupTargetType represents the type of backup target.
-type BackupTargetType string
-
-const (
-	BackupTargetTypeWebDAV BackupTargetType = "webdav"
-)
-
-// WebDAVConfig represents WebDAV server configuration for backup.
-type WebDAVConfig struct {
-	URL             string `json:"url"`
-	Username        string `json:"username"`
-	Password        string `json:"password"`
-	InsecureSkipTLS bool   `json:"insecure_skip_tls"`
-	Path            string `json:"path"` // Remote path prefix, e.g., "/backups/axonhub"
-}
-
 // AutoBackupSettings represents automatic backup configuration.
 type AutoBackupSettings struct {
 	// Enabled controls whether automatic backup is active
 	Enabled bool `json:"enabled"`
 	// Frequency defines how often backups are created
 	Frequency BackupFrequency `json:"frequency"`
-	// TargetType is the type of backup target (currently only webdav)
-	TargetType BackupTargetType `json:"target_type"`
-	// WebDAV configuration (used when TargetType is webdav)
-	WebDAV *WebDAVConfig `json:"webdav,omitempty"`
+	// DataStorageID is the ID of the data storage to backup to
+	DataStorageID int `json:"data_storage_id"`
 	// BackupOptions defines what to include in the backup
 	IncludeChannels    bool `json:"include_channels"`
 	IncludeModels      bool `json:"include_models"`
@@ -676,7 +659,6 @@ var defaultGeneralSettings = SystemGeneralSettings{
 var defaultAutoBackupSettings = AutoBackupSettings{
 	Enabled:            false,
 	Frequency:          BackupFrequencyDaily,
-	TargetType:         BackupTargetTypeWebDAV,
 	IncludeChannels:    true,
 	IncludeModels:      true,
 	IncludeAPIKeys:     false,
@@ -1170,8 +1152,6 @@ func (s *SystemService) isNewerVersion(current, latest string) bool {
 
 // AutoBackupSettings retrieves the auto backup settings configuration.
 func (s *SystemService) AutoBackupSettings(ctx context.Context) (*AutoBackupSettings, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
 	value, err := s.getSystemValue(ctx, SystemKeyAutoBackupSettings)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -1205,13 +1185,13 @@ func (s *SystemService) SetAutoBackupSettings(ctx context.Context, settings Auto
 }
 
 // UpdateAutoBackupLastRun updates the last backup timestamp and error status.
-func (s *SystemService) UpdateAutoBackupLastRun(ctx context.Context, lastBackupAt time.Time, lastError string) error {
+func (s *SystemService) UpdateAutoBackupLastRun(ctx context.Context, lastError string) error {
 	settings, err := s.AutoBackupSettings(ctx)
 	if err != nil {
 		return err
 	}
 
-	settings.LastBackupAt = &lastBackupAt
+	settings.LastBackupAt = lo.ToPtr(xtime.UTCNow())
 	settings.LastBackupError = lastError
 
 	return s.SetAutoBackupSettings(ctx, *settings)

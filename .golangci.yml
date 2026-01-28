@@ -197,7 +197,7 @@ linters:
   exclusions:
     # Exclude all linters from running on ent files.
     paths:
-      - ^ent/
+      - internal/ent
     # Excluding configuration per-path, per-linter, per-text and per-source
     rules:
       # Exclude some linters from running on tools files.

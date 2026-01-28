@@ -2156,6 +2156,7 @@ enum DataStorageType @goModel(model: "github.com/looplj/axonhub/internal/ent/dat
   fs
   s3
   gcs
+  webdav
 }
 """
 DataStorageWhereInput is used for filtering DataStorage objects.

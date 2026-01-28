@@ -62,7 +62,6 @@ type Config struct {
 
 type ResolverRoot interface {
 	APIKey() APIKeyResolver
-	AutoBackupSettings() AutoBackupSettingsResolver
 	Channel() ChannelResolver
 	ChannelModelPrice() ChannelModelPriceResolver
 	ChannelModelPriceVersion() ChannelModelPriceVersionResolver
@@ -172,6 +171,7 @@ type ComplexityRoot struct {
 	}
 
 	AutoBackupSettings struct {
+		DataStorageID      func(childComplexity int) int
 		Enabled            func(childComplexity int) int
 		Frequency          func(childComplexity int) int
 		IncludeAPIKeys     func(childComplexity int) int
@@ -181,8 +181,6 @@ type ComplexityRoot struct {
 		LastBackupAt       func(childComplexity int) int
 		LastBackupError    func(childComplexity int) int
 		RetentionDays      func(childComplexity int) int
-		TargetType         func(childComplexity int) int
-		WebDAV             func(childComplexity int) int
 	}
 
 	AutoDisableChannel struct {
@@ -504,6 +502,7 @@ type ComplexityRoot struct {
 		Directory func(childComplexity int) int
 		GCS       func(childComplexity int) int
 		S3        func(childComplexity int) int
+		WebDAV    func(childComplexity int) int
 	}
 
 	ExcludeAssociation struct {
@@ -701,7 +700,6 @@ type ComplexityRoot struct {
 		Restore                              func(childComplexity int, file graphql.Upload, input backup.RestoreOptions) int
 		SaveChannelModelPrices               func(childComplexity int, channelID objects.GUID, input []*biz.SaveChannelModelPriceInput) int
 		TestChannel                          func(childComplexity int, input TestChannelInput) int
-		TestWebDAVConnection                 func(childComplexity int, input WebDAVConfigInput) int
 		TriggerAutoBackup                    func(childComplexity int) int
 		UpdateAPIKey                         func(childComplexity int, id objects.GUID, input ent.UpdateAPIKeyInput) int
 		UpdateAPIKeyProfiles                 func(childComplexity int, id objects.GUID, input objects.APIKeyProfiles) int
@@ -1224,11 +1222,6 @@ type ComplexityRoot struct {
 		Success func(childComplexity int) int
 	}
 
-	TestConnectionPayload struct {
-		Message func(childComplexity int) int
-		Success func(childComplexity int) int
-	}
-
 	Thread struct {
 		CreatedAt      func(childComplexity int) int
 		FirstUserQuery func(childComplexity int) int
@@ -1466,7 +1459,7 @@ type ComplexityRoot struct {
 		ReleaseURL     func(childComplexity int) int
 	}
 
-	WebDAVConfig struct {
+	WebDAV struct {
 		InsecureSkipTLS func(childComplexity int) int
 		Password        func(childComplexity int) int
 		Path            func(childComplexity int) int
@@ -1480,9 +1473,6 @@ type APIKeyResolver interface {
 
 	UserID(ctx context.Context, obj *ent.APIKey) (*objects.GUID, error)
 	ProjectID(ctx context.Context, obj *ent.APIKey) (*objects.GUID, error)
-}
-type AutoBackupSettingsResolver interface {
-	TargetType(ctx context.Context, obj *biz.AutoBackupSettings) (string, error)
 }
 type ChannelResolver interface {
 	ID(ctx context.Context, obj *ent.Channel) (*objects.GUID, error)
@@ -1590,7 +1580,6 @@ type MutationResolver interface {
 	Backup(ctx context.Context, input backup.BackupOptions) (*BackupPayload, error)
 	Restore(ctx context.Context, file graphql.Upload, input backup.RestoreOptions) (*RestorePayload, error)
 	UpdateAutoBackupSettings(ctx context.Context, input UpdateAutoBackupSettingsInput) (bool, error)
-	TestWebDAVConnection(ctx context.Context, input WebDAVConfigInput) (*TestConnectionPayload, error)
 	TriggerAutoBackup(ctx context.Context) (*TriggerBackupPayload, error)
 	CreatePrompt(ctx context.Context, input ent.CreatePromptInput) (*ent.Prompt, error)
 	UpdatePrompt(ctx context.Context, id objects.GUID, input ent.UpdatePromptInput) (*ent.Prompt, error)
@@ -2056,6 +2045,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ApplyChannelOverrideTemplatePayload.Updated(childComplexity), true
 
+	case "AutoBackupSettings.dataStorageID":
+		if e.complexity.AutoBackupSettings.DataStorageID == nil {
+			break
+		}
+
+		return e.complexity.AutoBackupSettings.DataStorageID(childComplexity), true
 	case "AutoBackupSettings.enabled":
 		if e.complexity.AutoBackupSettings.Enabled == nil {
 			break
@@ -2110,18 +2105,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AutoBackupSettings.RetentionDays(childComplexity), true
-	case "AutoBackupSettings.targetType":
-		if e.complexity.AutoBackupSettings.TargetType == nil {
-			break
-		}
-
-		return e.complexity.AutoBackupSettings.TargetType(childComplexity), true
-	case "AutoBackupSettings.webdav":
-		if e.complexity.AutoBackupSettings.WebDAV == nil {
-			break
-		}
-
-		return e.complexity.AutoBackupSettings.WebDAV(childComplexity), true
 
 	case "AutoDisableChannel.enabled":
 		if e.complexity.AutoDisableChannel.Enabled == nil {
@@ -3376,6 +3359,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.DataStorageSettings.S3(childComplexity), true
+	case "DataStorageSettings.webdav":
+		if e.complexity.DataStorageSettings.WebDAV == nil {
+			break
+		}
+
+		return e.complexity.DataStorageSettings.WebDAV(childComplexity), true
 
 	case "ExcludeAssociation.channelIds":
 		if e.complexity.ExcludeAssociation.ChannelIds == nil {
@@ -4343,17 +4332,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.TestChannel(childComplexity, args["input"].(TestChannelInput)), true
-	case "Mutation.testWebDAVConnection":
-		if e.complexity.Mutation.TestWebDAVConnection == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_testWebDAVConnection_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.TestWebDAVConnection(childComplexity, args["input"].(WebDAVConfigInput)), true
 	case "Mutation.triggerAutoBackup":
 		if e.complexity.Mutation.TriggerAutoBackup == nil {
 			break
@@ -6731,19 +6709,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.TestChannelPayload.Success(childComplexity), true
 
-	case "TestConnectionPayload.message":
-		if e.complexity.TestConnectionPayload.Message == nil {
-			break
-		}
-
-		return e.complexity.TestConnectionPayload.Message(childComplexity), true
-	case "TestConnectionPayload.success":
-		if e.complexity.TestConnectionPayload.Success == nil {
-			break
-		}
-
-		return e.complexity.TestConnectionPayload.Success(childComplexity), true
-
 	case "Thread.createdAt":
 		if e.complexity.Thread.CreatedAt == nil {
 			break
@@ -7754,36 +7719,36 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.VersionCheck.ReleaseURL(childComplexity), true
 
-	case "WebDAVConfig.insecureSkipTLS":
-		if e.complexity.WebDAVConfig.InsecureSkipTLS == nil {
+	case "WebDAV.insecure_skip_tls":
+		if e.complexity.WebDAV.InsecureSkipTLS == nil {
 			break
 		}
 
-		return e.complexity.WebDAVConfig.InsecureSkipTLS(childComplexity), true
-	case "WebDAVConfig.password":
-		if e.complexity.WebDAVConfig.Password == nil {
+		return e.complexity.WebDAV.InsecureSkipTLS(childComplexity), true
+	case "WebDAV.password":
+		if e.complexity.WebDAV.Password == nil {
 			break
 		}
 
-		return e.complexity.WebDAVConfig.Password(childComplexity), true
-	case "WebDAVConfig.path":
-		if e.complexity.WebDAVConfig.Path == nil {
+		return e.complexity.WebDAV.Password(childComplexity), true
+	case "WebDAV.path":
+		if e.complexity.WebDAV.Path == nil {
 			break
 		}
 
-		return e.complexity.WebDAVConfig.Path(childComplexity), true
-	case "WebDAVConfig.url":
-		if e.complexity.WebDAVConfig.URL == nil {
+		return e.complexity.WebDAV.Path(childComplexity), true
+	case "WebDAV.url":
+		if e.complexity.WebDAV.URL == nil {
 			break
 		}
 
-		return e.complexity.WebDAVConfig.URL(childComplexity), true
-	case "WebDAVConfig.username":
-		if e.complexity.WebDAVConfig.Username == nil {
+		return e.complexity.WebDAV.URL(childComplexity), true
+	case "WebDAV.username":
+		if e.complexity.WebDAV.Username == nil {
 			break
 		}
 
-		return e.complexity.WebDAVConfig.Username(childComplexity), true
+		return e.complexity.WebDAV.Username(childComplexity), true
 
 	}
 	return 0, false
@@ -7946,7 +7911,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputUserRoleOrder,
 		ec.unmarshalInputUserRoleWhereInput,
 		ec.unmarshalInputUserWhereInput,
-		ec.unmarshalInputWebDAVConfigInput,
+		ec.unmarshalInputWebDAVInput,
 	)
 	first := true
 
@@ -8755,17 +8720,6 @@ func (ec *executionContext) field_Mutation_testChannel_args(ctx context.Context,
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNTestChannelInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTestChannelInput)
-	if err != nil {
-		return nil, err
-	}
-	args["input"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_testWebDAVConnection_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNWebDAVConfigInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐWebDAVConfigInput)
 	if err != nil {
 		return nil, err
 	}
@@ -12040,71 +11994,30 @@ func (ec *executionContext) fieldContext_AutoBackupSettings_frequency(_ context.
 	return fc, nil
 }
 
-func (ec *executionContext) _AutoBackupSettings_targetType(ctx context.Context, field graphql.CollectedField, obj *biz.AutoBackupSettings) (ret graphql.Marshaler) {
+func (ec *executionContext) _AutoBackupSettings_dataStorageID(ctx context.Context, field graphql.CollectedField, obj *biz.AutoBackupSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_AutoBackupSettings_targetType,
+		ec.fieldContext_AutoBackupSettings_dataStorageID,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.AutoBackupSettings().TargetType(ctx, obj)
+			return obj.DataStorageID, nil
 		},
 		nil,
-		ec.marshalNString2string,
+		ec.marshalNInt2int,
 		true,
 		true,
 	)
 }
 
-func (ec *executionContext) fieldContext_AutoBackupSettings_targetType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AutoBackupSettings",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AutoBackupSettings_webdav(ctx context.Context, field graphql.CollectedField, obj *biz.AutoBackupSettings) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AutoBackupSettings_webdav,
-		func(ctx context.Context) (any, error) {
-			return obj.WebDAV, nil
-		},
-		nil,
-		ec.marshalOWebDAVConfig2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐWebDAVConfig,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_AutoBackupSettings_webdav(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_AutoBackupSettings_dataStorageID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "AutoBackupSettings",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "url":
-				return ec.fieldContext_WebDAVConfig_url(ctx, field)
-			case "username":
-				return ec.fieldContext_WebDAVConfig_username(ctx, field)
-			case "password":
-				return ec.fieldContext_WebDAVConfig_password(ctx, field)
-			case "insecureSkipTLS":
-				return ec.fieldContext_WebDAVConfig_insecureSkipTLS(ctx, field)
-			case "path":
-				return ec.fieldContext_WebDAVConfig_path(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type WebDAVConfig", field.Name)
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -18550,6 +18463,8 @@ func (ec *executionContext) fieldContext_DataStorage_settings(_ context.Context,
 				return ec.fieldContext_DataStorageSettings_s3(ctx, field)
 			case "gcs":
 				return ec.fieldContext_DataStorageSettings_gcs(ctx, field)
+			case "webdav":
+				return ec.fieldContext_DataStorageSettings_webdav(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type DataStorageSettings", field.Name)
 		},
@@ -18992,6 +18907,47 @@ func (ec *executionContext) fieldContext_DataStorageSettings_gcs(_ context.Conte
 				return ec.fieldContext_GCS_bucketName(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GCS", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DataStorageSettings_webdav(ctx context.Context, field graphql.CollectedField, obj *objects.DataStorageSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DataStorageSettings_webdav,
+		func(ctx context.Context) (any, error) {
+			return obj.WebDAV, nil
+		},
+		nil,
+		ec.marshalOWebDAV2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐWebDAV,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_DataStorageSettings_webdav(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DataStorageSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "url":
+				return ec.fieldContext_WebDAV_url(ctx, field)
+			case "username":
+				return ec.fieldContext_WebDAV_username(ctx, field)
+			case "password":
+				return ec.fieldContext_WebDAV_password(ctx, field)
+			case "insecure_skip_tls":
+				return ec.fieldContext_WebDAV_insecure_skip_tls(ctx, field)
+			case "path":
+				return ec.fieldContext_WebDAV_path(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WebDAV", field.Name)
 		},
 	}
 	return fc, nil
@@ -24949,53 +24905,6 @@ func (ec *executionContext) fieldContext_Mutation_updateAutoBackupSettings(ctx c
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_testWebDAVConnection(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Mutation_testWebDAVConnection,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().TestWebDAVConnection(ctx, fc.Args["input"].(WebDAVConfigInput))
-		},
-		nil,
-		ec.marshalNTestConnectionPayload2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTestConnectionPayload,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Mutation_testWebDAVConnection(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "success":
-				return ec.fieldContext_TestConnectionPayload_success(ctx, field)
-			case "message":
-				return ec.fieldContext_TestConnectionPayload_message(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type TestConnectionPayload", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_testWebDAVConnection_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Mutation_triggerAutoBackup(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -30243,10 +30152,8 @@ func (ec *executionContext) fieldContext_Query_autoBackupSettings(_ context.Cont
 				return ec.fieldContext_AutoBackupSettings_enabled(ctx, field)
 			case "frequency":
 				return ec.fieldContext_AutoBackupSettings_frequency(ctx, field)
-			case "targetType":
-				return ec.fieldContext_AutoBackupSettings_targetType(ctx, field)
-			case "webdav":
-				return ec.fieldContext_AutoBackupSettings_webdav(ctx, field)
+			case "dataStorageID":
+				return ec.fieldContext_AutoBackupSettings_dataStorageID(ctx, field)
 			case "includeChannels":
 				return ec.fieldContext_AutoBackupSettings_includeChannels(ctx, field)
 			case "includeModels":
@@ -36348,64 +36255,6 @@ func (ec *executionContext) fieldContext_TestChannelPayload_error(_ context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _TestConnectionPayload_success(ctx context.Context, field graphql.CollectedField, obj *TestConnectionPayload) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_TestConnectionPayload_success,
-		func(ctx context.Context) (any, error) {
-			return obj.Success, nil
-		},
-		nil,
-		ec.marshalNBoolean2bool,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_TestConnectionPayload_success(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "TestConnectionPayload",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _TestConnectionPayload_message(ctx context.Context, field graphql.CollectedField, obj *TestConnectionPayload) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_TestConnectionPayload_message,
-		func(ctx context.Context) (any, error) {
-			return obj.Message, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_TestConnectionPayload_message(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "TestConnectionPayload",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Thread_id(ctx context.Context, field graphql.CollectedField, obj *ent.Thread) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -41869,12 +41718,12 @@ func (ec *executionContext) fieldContext_VersionCheck_releaseUrl(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _WebDAVConfig_url(ctx context.Context, field graphql.CollectedField, obj *biz.WebDAVConfig) (ret graphql.Marshaler) {
+func (ec *executionContext) _WebDAV_url(ctx context.Context, field graphql.CollectedField, obj *objects.WebDAV) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_WebDAVConfig_url,
+		ec.fieldContext_WebDAV_url,
 		func(ctx context.Context) (any, error) {
 			return obj.URL, nil
 		},
@@ -41885,9 +41734,9 @@ func (ec *executionContext) _WebDAVConfig_url(ctx context.Context, field graphql
 	)
 }
 
-func (ec *executionContext) fieldContext_WebDAVConfig_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_WebDAV_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "WebDAVConfig",
+		Object:     "WebDAV",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -41898,25 +41747,25 @@ func (ec *executionContext) fieldContext_WebDAVConfig_url(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _WebDAVConfig_username(ctx context.Context, field graphql.CollectedField, obj *biz.WebDAVConfig) (ret graphql.Marshaler) {
+func (ec *executionContext) _WebDAV_username(ctx context.Context, field graphql.CollectedField, obj *objects.WebDAV) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_WebDAVConfig_username,
+		ec.fieldContext_WebDAV_username,
 		func(ctx context.Context) (any, error) {
 			return obj.Username, nil
 		},
 		nil,
-		ec.marshalNString2string,
+		ec.marshalOString2string,
 		true,
-		true,
+		false,
 	)
 }
 
-func (ec *executionContext) fieldContext_WebDAVConfig_username(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_WebDAV_username(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "WebDAVConfig",
+		Object:     "WebDAV",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -41927,25 +41776,25 @@ func (ec *executionContext) fieldContext_WebDAVConfig_username(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _WebDAVConfig_password(ctx context.Context, field graphql.CollectedField, obj *biz.WebDAVConfig) (ret graphql.Marshaler) {
+func (ec *executionContext) _WebDAV_password(ctx context.Context, field graphql.CollectedField, obj *objects.WebDAV) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_WebDAVConfig_password,
+		ec.fieldContext_WebDAV_password,
 		func(ctx context.Context) (any, error) {
 			return obj.Password, nil
 		},
 		nil,
-		ec.marshalNString2string,
+		ec.marshalOString2string,
 		true,
-		true,
+		false,
 	)
 }
 
-func (ec *executionContext) fieldContext_WebDAVConfig_password(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_WebDAV_password(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "WebDAVConfig",
+		Object:     "WebDAV",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -41956,25 +41805,25 @@ func (ec *executionContext) fieldContext_WebDAVConfig_password(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _WebDAVConfig_insecureSkipTLS(ctx context.Context, field graphql.CollectedField, obj *biz.WebDAVConfig) (ret graphql.Marshaler) {
+func (ec *executionContext) _WebDAV_insecure_skip_tls(ctx context.Context, field graphql.CollectedField, obj *objects.WebDAV) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_WebDAVConfig_insecureSkipTLS,
+		ec.fieldContext_WebDAV_insecure_skip_tls,
 		func(ctx context.Context) (any, error) {
 			return obj.InsecureSkipTLS, nil
 		},
 		nil,
-		ec.marshalNBoolean2bool,
+		ec.marshalOBoolean2bool,
 		true,
-		true,
+		false,
 	)
 }
 
-func (ec *executionContext) fieldContext_WebDAVConfig_insecureSkipTLS(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_WebDAV_insecure_skip_tls(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "WebDAVConfig",
+		Object:     "WebDAV",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -41985,25 +41834,25 @@ func (ec *executionContext) fieldContext_WebDAVConfig_insecureSkipTLS(_ context.
 	return fc, nil
 }
 
-func (ec *executionContext) _WebDAVConfig_path(ctx context.Context, field graphql.CollectedField, obj *biz.WebDAVConfig) (ret graphql.Marshaler) {
+func (ec *executionContext) _WebDAV_path(ctx context.Context, field graphql.CollectedField, obj *objects.WebDAV) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_WebDAVConfig_path,
+		ec.fieldContext_WebDAV_path,
 		func(ctx context.Context) (any, error) {
 			return obj.Path, nil
 		},
 		nil,
-		ec.marshalNString2string,
+		ec.marshalOString2string,
 		true,
-		true,
+		false,
 	)
 }
 
-func (ec *executionContext) fieldContext_WebDAVConfig_path(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_WebDAV_path(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "WebDAVConfig",
+		Object:     "WebDAV",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -51170,7 +51019,7 @@ func (ec *executionContext) unmarshalInputDataStorageSettingsInput(ctx context.C
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"dsn", "directory", "s3", "gcs"}
+	fieldsInOrder := [...]string{"dsn", "directory", "s3", "gcs", "webdav"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -51205,6 +51054,13 @@ func (ec *executionContext) unmarshalInputDataStorageSettingsInput(ctx context.C
 				return it, err
 			}
 			it.GCS = data
+		case "webdav":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("webdav"))
+			data, err := ec.unmarshalOWebDAVInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐWebDAV(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WebDAV = data
 		}
 	}
 
@@ -60621,7 +60477,7 @@ func (ec *executionContext) unmarshalInputUpdateAutoBackupSettingsInput(ctx cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"enabled", "frequency", "webdav", "includeChannels", "includeModels", "includeAPIKeys", "includeModelPrices", "retentionDays"}
+	fieldsInOrder := [...]string{"enabled", "frequency", "dataStorageID", "includeChannels", "includeModels", "includeAPIKeys", "includeModelPrices", "retentionDays"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -60642,13 +60498,13 @@ func (ec *executionContext) unmarshalInputUpdateAutoBackupSettingsInput(ctx cont
 				return it, err
 			}
 			it.Frequency = data
-		case "webdav":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("webdav"))
-			data, err := ec.unmarshalOWebDAVConfigInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐWebDAVConfigInput(ctx, v)
+		case "dataStorageID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dataStorageID"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Webdav = data
+			it.DataStorageID = data
 		case "includeChannels":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeChannels"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -65526,14 +65382,14 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputWebDAVConfigInput(ctx context.Context, obj any) (WebDAVConfigInput, error) {
-	var it WebDAVConfigInput
+func (ec *executionContext) unmarshalInputWebDAVInput(ctx context.Context, obj any) (objects.WebDAV, error) {
+	var it objects.WebDAV
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"url", "username", "password", "insecureSkipTLS", "path"}
+	fieldsInOrder := [...]string{"url", "username", "password", "insecure_skip_tls", "path"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -65549,28 +65405,28 @@ func (ec *executionContext) unmarshalInputWebDAVConfigInput(ctx context.Context,
 			it.URL = data
 		case "username":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("username"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+			data, err := ec.unmarshalOString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Username = data
 		case "password":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("password"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+			data, err := ec.unmarshalOString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Password = data
-		case "insecureSkipTLS":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("insecureSkipTLS"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+		case "insecure_skip_tls":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("insecure_skip_tls"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.InsecureSkipTLS = data
 		case "path":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("path"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalOString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -66454,75 +66310,42 @@ func (ec *executionContext) _AutoBackupSettings(ctx context.Context, sel ast.Sel
 		case "enabled":
 			out.Values[i] = ec._AutoBackupSettings_enabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "frequency":
 			out.Values[i] = ec._AutoBackupSettings_frequency(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
-		case "targetType":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._AutoBackupSettings_targetType(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
+		case "dataStorageID":
+			out.Values[i] = ec._AutoBackupSettings_dataStorageID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "webdav":
-			out.Values[i] = ec._AutoBackupSettings_webdav(ctx, field, obj)
 		case "includeChannels":
 			out.Values[i] = ec._AutoBackupSettings_includeChannels(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "includeModels":
 			out.Values[i] = ec._AutoBackupSettings_includeModels(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "includeAPIKeys":
 			out.Values[i] = ec._AutoBackupSettings_includeAPIKeys(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "includeModelPrices":
 			out.Values[i] = ec._AutoBackupSettings_includeModelPrices(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "retentionDays":
 			out.Values[i] = ec._AutoBackupSettings_retentionDays(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "lastBackupAt":
 			out.Values[i] = ec._AutoBackupSettings_lastBackupAt(ctx, field, obj)
@@ -69720,6 +69543,8 @@ func (ec *executionContext) _DataStorageSettings(ctx context.Context, sel ast.Se
 			out.Values[i] = ec._DataStorageSettings_s3(ctx, field, obj)
 		case "gcs":
 			out.Values[i] = ec._DataStorageSettings_gcs(ctx, field, obj)
+		case "webdav":
+			out.Values[i] = ec._DataStorageSettings_webdav(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -71395,13 +71220,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "updateAutoBackupSettings":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateAutoBackupSettings(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "testWebDAVConnection":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_testWebDAVConnection(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -77214,47 +77032,6 @@ func (ec *executionContext) _TestChannelPayload(ctx context.Context, sel ast.Sel
 	return out
 }
 
-var testConnectionPayloadImplementors = []string{"TestConnectionPayload"}
-
-func (ec *executionContext) _TestConnectionPayload(ctx context.Context, sel ast.SelectionSet, obj *TestConnectionPayload) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, testConnectionPayloadImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("TestConnectionPayload")
-		case "success":
-			out.Values[i] = ec._TestConnectionPayload_success(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "message":
-			out.Values[i] = ec._TestConnectionPayload_message(ctx, field, obj)
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
 var threadImplementors = []string{"Thread", "Node"}
 
 func (ec *executionContext) _Thread(ctx context.Context, sel ast.SelectionSet, obj *ent.Thread) graphql.Marshaler {
@@ -80079,42 +79856,30 @@ func (ec *executionContext) _VersionCheck(ctx context.Context, sel ast.Selection
 	return out
 }
 
-var webDAVConfigImplementors = []string{"WebDAVConfig"}
+var webDAVImplementors = []string{"WebDAV"}
 
-func (ec *executionContext) _WebDAVConfig(ctx context.Context, sel ast.SelectionSet, obj *biz.WebDAVConfig) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, webDAVConfigImplementors)
+func (ec *executionContext) _WebDAV(ctx context.Context, sel ast.SelectionSet, obj *objects.WebDAV) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, webDAVImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	deferred := make(map[string]*graphql.FieldSet)
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("WebDAVConfig")
+			out.Values[i] = graphql.MarshalString("WebDAV")
 		case "url":
-			out.Values[i] = ec._WebDAVConfig_url(ctx, field, obj)
+			out.Values[i] = ec._WebDAV_url(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "username":
-			out.Values[i] = ec._WebDAVConfig_username(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
+			out.Values[i] = ec._WebDAV_username(ctx, field, obj)
 		case "password":
-			out.Values[i] = ec._WebDAVConfig_password(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "insecureSkipTLS":
-			out.Values[i] = ec._WebDAVConfig_insecureSkipTLS(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
+			out.Values[i] = ec._WebDAV_password(ctx, field, obj)
+		case "insecure_skip_tls":
+			out.Values[i] = ec._WebDAV_insecure_skip_tls(ctx, field, obj)
 		case "path":
-			out.Values[i] = ec._WebDAVConfig_path(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
+			out.Values[i] = ec._WebDAV_path(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -83768,20 +83533,6 @@ func (ec *executionContext) marshalNTestChannelPayload2ᚖgithubᚗcomᚋlooplj�
 	return ec._TestChannelPayload(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNTestConnectionPayload2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTestConnectionPayload(ctx context.Context, sel ast.SelectionSet, v TestConnectionPayload) graphql.Marshaler {
-	return ec._TestConnectionPayload(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNTestConnectionPayload2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTestConnectionPayload(ctx context.Context, sel ast.SelectionSet, v *TestConnectionPayload) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._TestConnectionPayload(ctx, sel, v)
-}
-
 func (ec *executionContext) marshalNThreadConnection2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐThreadConnection(ctx context.Context, sel ast.SelectionSet, v ent.ThreadConnection) graphql.Marshaler {
 	return ec._ThreadConnection(ctx, sel, &v)
 }
@@ -84427,11 +84178,6 @@ func (ec *executionContext) marshalNVersionCheck2ᚖgithubᚗcomᚋloopljᚋaxon
 		return graphql.Null
 	}
 	return ec._VersionCheck(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalNWebDAVConfigInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐWebDAVConfigInput(ctx context.Context, v any) (WebDAVConfigInput, error) {
-	res, err := ec.unmarshalInputWebDAVConfigInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {
@@ -89901,18 +89647,18 @@ func (ec *executionContext) unmarshalOUserWhereInput2ᚖgithubᚗcomᚋloopljᚋ
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOWebDAVConfig2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐWebDAVConfig(ctx context.Context, sel ast.SelectionSet, v *biz.WebDAVConfig) graphql.Marshaler {
+func (ec *executionContext) marshalOWebDAV2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐWebDAV(ctx context.Context, sel ast.SelectionSet, v *objects.WebDAV) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
-	return ec._WebDAVConfig(ctx, sel, v)
+	return ec._WebDAV(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOWebDAVConfigInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐWebDAVConfigInput(ctx context.Context, v any) (*WebDAVConfigInput, error) {
+func (ec *executionContext) unmarshalOWebDAVInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐWebDAV(ctx context.Context, v any) (*objects.WebDAV, error) {
 	if v == nil {
 		return nil, nil
 	}
-	res, err := ec.unmarshalInputWebDAVConfigInput(ctx, v)
+	res, err := ec.unmarshalInputWebDAVInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 

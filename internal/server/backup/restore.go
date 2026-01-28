@@ -3,271 +3,21 @@ package backup
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"math/rand/v2"
 	"time"
 
 	"github.com/samber/lo"
-	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
+	"github.com/looplj/axonhub/internal/ent/channelmodelpriceversion"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/log"
-	"github.com/looplj/axonhub/internal/objects"
 )
-
-type BackupServiceParams struct {
-	fx.In
-
-	Ent *ent.Client
-}
-
-func NewBackupService(params BackupServiceParams) *BackupService {
-	return &BackupService{
-		db: params.Ent,
-	}
-}
-
-type BackupService struct {
-	db *ent.Client
-}
-
-func (svc *BackupService) entFromContext(ctx context.Context) *ent.Client {
-	db := ent.FromContext(ctx)
-	if db != nil {
-		return db
-	}
-
-	return svc.db
-}
-
-func (svc *BackupService) RunInTransaction(ctx context.Context, fn func(context.Context) error) (err error) {
-	if tx := ent.TxFromContext(ctx); tx != nil {
-		txClient := tx.Client()
-		txCtx := ent.NewContext(ctx, txClient)
-
-		return fn(txCtx)
-	}
-
-	db := svc.entFromContext(ctx)
-
-	tx, err := db.Tx(ctx)
-	if err != nil {
-		if errors.Is(err, ent.ErrTxStarted) {
-			return fn(ent.NewContext(ctx, db))
-		}
-
-		return err
-	}
-
-	committed := false
-
-	defer func() {
-		if r := recover(); r != nil {
-			_ = tx.Rollback()
-
-			panic(r)
-		}
-
-		if !committed {
-			_ = tx.Rollback()
-		}
-	}()
-
-	txClient := tx.Client()
-	txCtx := ent.NewTxContext(ctx, tx)
-	txCtx = ent.NewContext(txCtx, txClient)
-
-	if err := fn(txCtx); err != nil {
-		return err
-	}
-
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-
-	committed = true
-
-	return nil
-}
-
-type BackupData struct {
-	Version            string                     `json:"version"`
-	Timestamp          time.Time                  `json:"timestamp"`
-	Channels           []*BackupChannel           `json:"channels"`
-	Models             []*BackupModel             `json:"models"`
-	ChannelModelPrices []*BackupChannelModelPrice `json:"channel_model_prices,omitempty"`
-	APIKeys            []*BackupAPIKey            `json:"api_keys,omitempty"`
-}
-
-type BackupChannel struct {
-	ent.Channel
-
-	Credentials *objects.ChannelCredentials `json:"credentials,omitempty"`
-}
-
-type BackupModel struct {
-	ent.Model
-}
-
-type BackupAPIKey struct {
-	ent.APIKey
-
-	ProjectName string `json:"project_name"`
-}
-
-type BackupChannelModelPrice struct {
-	ChannelName string             `json:"channel_name"`
-	ModelID     string             `json:"model_id"`
-	Price       objects.ModelPrice `json:"price"`
-	ReferenceID string             `json:"reference_id"`
-}
-
-const (
-	BackupVersion   = "1.1"
-	BackupVersionV1 = "1.0"
-)
-
-type BackupOptions struct {
-	IncludeChannels    bool
-	IncludeModels      bool
-	IncludeAPIKeys     bool
-	IncludeModelPrices bool
-}
-
-type ConflictStrategy string
-
-const (
-	ConflictStrategySkip      ConflictStrategy = "skip"
-	ConflictStrategyOverwrite ConflictStrategy = "overwrite"
-	ConflictStrategyError     ConflictStrategy = "error"
-)
-
-type RestoreOptions struct {
-	IncludeChannels            bool
-	IncludeModels              bool
-	IncludeAPIKeys             bool
-	IncludeModelPrices         bool
-	ChannelConflictStrategy    ConflictStrategy
-	ModelConflictStrategy      ConflictStrategy
-	ModelPriceConflictStrategy ConflictStrategy
-	APIKeyConflictStrategy     ConflictStrategy
-}
-
-func (svc *BackupService) Backup(ctx context.Context, opts BackupOptions) ([]byte, error) {
-	user, ok := contexts.GetUser(ctx)
-	if !ok || user == nil {
-		return nil, fmt.Errorf("user not found in context")
-	}
-
-	if !user.IsOwner {
-		return nil, fmt.Errorf("only owners can perform backup operations")
-	}
-
-	return svc.doBackup(ctx, opts)
-}
-
-// BackupWithoutAuth performs backup without user authentication check.
-// This is used by the auto-backup worker which runs in a privileged context.
-func (svc *BackupService) BackupWithoutAuth(ctx context.Context, opts BackupOptions) ([]byte, error) {
-	return svc.doBackup(ctx, opts)
-}
-
-func (svc *BackupService) doBackup(ctx context.Context, opts BackupOptions) ([]byte, error) {
-	var (
-		channelDataList           []*BackupChannel
-		channelModelPriceDataList []*BackupChannelModelPrice
-	)
-
-	if opts.IncludeChannels {
-		channels, err := svc.entFromContext(ctx).Channel.Query().All(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		channelDataList = lo.Map(channels, func(ch *ent.Channel, _ int) *BackupChannel {
-			return &BackupChannel{
-				Channel:     *ch,
-				Credentials: ch.Credentials,
-			}
-		})
-	}
-
-	if opts.IncludeModelPrices {
-		prices, err := svc.entFromContext(ctx).ChannelModelPrice.Query().
-			WithChannel().
-			All(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		channelModelPriceDataList = lo.FilterMap(prices, func(p *ent.ChannelModelPrice, _ int) (*BackupChannelModelPrice, bool) {
-			if p.Edges.Channel == nil {
-				return nil, false
-			}
-
-			return &BackupChannelModelPrice{
-				ChannelName: p.Edges.Channel.Name,
-				ModelID:     p.ModelID,
-				Price:       p.Price,
-				ReferenceID: p.ReferenceID,
-			}, true
-		})
-	}
-
-	var modelDataList []*BackupModel
-
-	if opts.IncludeModels {
-		models, err := svc.entFromContext(ctx).Model.Query().All(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		modelDataList = lo.Map(models, func(m *ent.Model, _ int) *BackupModel {
-			return &BackupModel{
-				Model: *m,
-			}
-		})
-	}
-
-	var apiKeyDataList []*BackupAPIKey
-
-	if opts.IncludeAPIKeys {
-		apiKeys, err := svc.entFromContext(ctx).APIKey.Query().WithProject().All(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		apiKeyDataList = lo.Map(apiKeys, func(ak *ent.APIKey, _ int) *BackupAPIKey {
-			projectName := ""
-			if ak.Edges.Project != nil {
-				projectName = ak.Edges.Project.Name
-			}
-
-			return &BackupAPIKey{
-				APIKey:      *ak,
-				ProjectName: projectName,
-			}
-		})
-	}
-
-	backupData := &BackupData{
-		Version:            BackupVersion,
-		Timestamp:          time.Now(),
-		Channels:           channelDataList,
-		Models:             modelDataList,
-		ChannelModelPrices: channelModelPriceDataList,
-		APIKeys:            apiKeyDataList,
-	}
-
-	return json.MarshalIndent(backupData, "", "  ")
-}
 
 func (svc *BackupService) Restore(ctx context.Context, data []byte, opts RestoreOptions) error {
 	user, ok := contexts.GetUser(ctx)
@@ -292,9 +42,7 @@ func (svc *BackupService) Restore(ctx context.Context, data []byte, opts Restore
 		return fmt.Errorf("backup version mismatch: expected %s, got %s", BackupVersion, backupData.Version)
 	}
 
-	db := svc.entFromContext(ctx)
-
-	tx, err := db.Tx(ctx)
+	tx, err := svc.db.Tx(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to start transaction: %w", err)
 	}
@@ -308,10 +56,8 @@ func (svc *BackupService) Restore(ctx context.Context, data []byte, opts Restore
 	}()
 
 	txClient := tx.Client()
-	txCtx := ent.NewTxContext(ctx, tx)
-	txCtx = ent.NewContext(txCtx, txClient)
 
-	if err := svc.restore(txCtx, backupData, opts); err != nil {
+	if err := svc.restore(ctx, txClient, backupData, opts); err != nil {
 		return err
 	}
 
@@ -324,27 +70,27 @@ func (svc *BackupService) Restore(ctx context.Context, data []byte, opts Restore
 	return nil
 }
 
-func (svc *BackupService) restore(ctx context.Context, backupData BackupData, opts RestoreOptions) error {
+func (svc *BackupService) restore(ctx context.Context, db *ent.Client, backupData BackupData, opts RestoreOptions) error {
 	if opts.IncludeChannels {
-		if err := svc.restoreChannels(ctx, backupData.Channels, opts); err != nil {
+		if err := svc.restoreChannels(ctx, db, backupData.Channels, opts); err != nil {
 			return err
 		}
 	}
 
 	if opts.IncludeModelPrices {
-		if err := svc.restoreChannelModelPrices(ctx, backupData.ChannelModelPrices, opts); err != nil {
+		if err := svc.restoreChannelModelPrices(ctx, db, backupData.ChannelModelPrices, opts); err != nil {
 			return err
 		}
 	}
 
 	if opts.IncludeModels {
-		if err := svc.restoreModels(ctx, backupData.Models, opts); err != nil {
+		if err := svc.restoreModels(ctx, db, backupData.Models, opts); err != nil {
 			return err
 		}
 	}
 
 	if opts.IncludeAPIKeys {
-		if err := svc.restoreAPIKeys(ctx, backupData.APIKeys, opts); err != nil {
+		if err := svc.restoreAPIKeys(ctx, db, backupData.APIKeys, opts); err != nil {
 			return err
 		}
 	}
@@ -352,20 +98,9 @@ func (svc *BackupService) restore(ctx context.Context, backupData BackupData, op
 	return nil
 }
 
-const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-func generateReferenceID() string {
-	b := make([]byte, 8)
-	for i := range b {
-		//nolint:gosec // not a security issue.
-		b[i] = letters[rand.IntN(len(letters))]
-	}
-
-	return string(b)
-}
-
 func (svc *BackupService) restoreChannelModelPrices(
 	ctx context.Context,
+	db *ent.Client,
 	prices []*BackupChannelModelPrice,
 	opts RestoreOptions,
 ) error {
@@ -373,8 +108,9 @@ func (svc *BackupService) restoreChannelModelPrices(
 		return nil
 	}
 
-	db := svc.entFromContext(ctx)
+	now := time.Now()
 	channelCache := map[string]*ent.Channel{}
+	updatedChannels := map[int]struct{}{}
 
 	getChannel := func(name string) (*ent.Channel, error) {
 		if ch, ok := channelCache[name]; ok {
@@ -433,43 +169,102 @@ func (svc *BackupService) restoreChannelModelPrices(
 
 		refID := pData.ReferenceID
 		if refID == "" {
-			refID = generateReferenceID()
+			return fmt.Errorf("channel model price reference ID is empty: channel=%s model_id=%s", pData.ChannelName, pData.ModelID)
 		}
 
 		if existing != nil {
+			if existing.ReferenceID == refID && existing.Price.Equals(pData.Price) {
+				continue
+			}
+
 			switch opts.ModelPriceConflictStrategy {
 			case ConflictStrategySkip:
 				continue
 			case ConflictStrategyError:
 				return fmt.Errorf("channel model price already exists: channel=%s model_id=%s", pData.ChannelName, pData.ModelID)
 			case ConflictStrategyOverwrite:
+				// Archive old versions
+				_, err = db.ChannelModelPriceVersion.Update().
+					Where(
+						channelmodelpriceversion.ChannelModelPriceIDEQ(existing.ID),
+						channelmodelpriceversion.StatusEQ(channelmodelpriceversion.StatusActive),
+					).
+					SetStatus(channelmodelpriceversion.StatusArchived).
+					SetEffectiveEndAt(now).
+					Save(ctx)
+				if err != nil {
+					return fmt.Errorf("failed to archive old channel model price versions: %w", err)
+				}
+
 				if _, err := db.ChannelModelPrice.UpdateOneID(existing.ID).
 					SetPrice(pData.Price).
 					SetReferenceID(refID).
 					Save(ctx); err != nil {
 					return fmt.Errorf("failed to restore channel model price: channel=%s model_id=%s: %w", pData.ChannelName, pData.ModelID, err)
 				}
+
+				// Create new version
+				_, err = db.ChannelModelPriceVersion.Create().
+					SetChannelID(ch.ID).
+					SetModelID(pData.ModelID).
+					SetChannelModelPriceID(existing.ID).
+					SetPrice(pData.Price).
+					SetStatus(channelmodelpriceversion.StatusActive).
+					SetEffectiveStartAt(now).
+					SetReferenceID(refID).
+					Save(ctx)
+				if err != nil {
+					return fmt.Errorf("failed to create channel model price version: %w", err)
+				}
+
+				updatedChannels[ch.ID] = struct{}{}
 			}
 
 			continue
 		}
 
-		if _, err := db.ChannelModelPrice.Create().
+		entity, err := db.ChannelModelPrice.Create().
 			SetChannelID(ch.ID).
 			SetModelID(pData.ModelID).
 			SetPrice(pData.Price).
 			SetReferenceID(refID).
-			Save(ctx); err != nil {
+			Save(ctx)
+		if err != nil {
 			return fmt.Errorf("failed to create channel model price: channel=%s model_id=%s: %w", pData.ChannelName, pData.ModelID, err)
+		}
+
+		// Create new version
+		_, err = db.ChannelModelPriceVersion.Create().
+			SetChannelID(ch.ID).
+			SetModelID(pData.ModelID).
+			SetChannelModelPriceID(entity.ID).
+			SetPrice(pData.Price).
+			SetStatus(channelmodelpriceversion.StatusActive).
+			SetEffectiveStartAt(now).
+			SetReferenceID(refID).
+			Save(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to create channel model price version: %w", err)
+		}
+
+		updatedChannels[ch.ID] = struct{}{}
+	}
+
+	// Force update channel updated_at to trigger reload cache.
+	for chID := range updatedChannels {
+		if err := db.Channel.UpdateOneID(chID).
+			SetUpdatedAt(now).
+			Exec(ctx); err != nil {
+			return fmt.Errorf("failed to update channel updated_at: %w", err)
 		}
 	}
 
 	return nil
 }
 
-func (svc *BackupService) restoreChannels(ctx context.Context, channels []*BackupChannel, opts RestoreOptions) error {
+func (svc *BackupService) restoreChannels(ctx context.Context, db *ent.Client, channels []*BackupChannel, opts RestoreOptions) error {
 	for _, chData := range channels {
-		existing, err := svc.entFromContext(ctx).Channel.Query().
+		existing, err := db.Channel.Query().
 			Where(channel.Name(chData.Name)).
 			First(ctx)
 		if err != nil && !ent.IsNotFound(err) {
@@ -497,7 +292,7 @@ func (svc *BackupService) restoreChannels(ctx context.Context, channels []*Backu
 
 				return fmt.Errorf("channel %s already exists", chData.Name)
 			case ConflictStrategyOverwrite:
-				update := svc.entFromContext(ctx).Channel.UpdateOneID(existing.ID).
+				update := db.Channel.UpdateOneID(existing.ID).
 					SetNillableBaseURL(baseURL).
 					SetStatus(chData.Status).
 					SetCredentials(credentials).
@@ -523,7 +318,7 @@ func (svc *BackupService) restoreChannels(ctx context.Context, channels []*Backu
 				}
 			}
 		} else {
-			create := svc.entFromContext(ctx).Channel.Create().
+			create := db.Channel.Create().
 				SetName(chData.Name).
 				SetType(chData.Type).
 				SetNillableBaseURL(baseURL).
@@ -553,9 +348,9 @@ func (svc *BackupService) restoreChannels(ctx context.Context, channels []*Backu
 	return nil
 }
 
-func (svc *BackupService) restoreModels(ctx context.Context, models []*BackupModel, opts RestoreOptions) error {
+func (svc *BackupService) restoreModels(ctx context.Context, db *ent.Client, models []*BackupModel, opts RestoreOptions) error {
 	for _, modelData := range models {
-		existing, err := svc.entFromContext(ctx).Model.Query().
+		existing, err := db.Model.Query().
 			Where(
 				model.Developer(modelData.Developer),
 				model.ModelID(modelData.ModelID),
@@ -576,7 +371,7 @@ func (svc *BackupService) restoreModels(ctx context.Context, models []*BackupMod
 
 				return fmt.Errorf("model %s already exists", modelData.ModelID)
 			case ConflictStrategyOverwrite:
-				update := svc.entFromContext(ctx).Model.UpdateOneID(existing.ID).
+				update := db.Model.UpdateOneID(existing.ID).
 					SetName(modelData.Name).
 					SetIcon(modelData.Icon).
 					SetGroup(modelData.Group).
@@ -599,7 +394,7 @@ func (svc *BackupService) restoreModels(ctx context.Context, models []*BackupMod
 				}
 			}
 		} else {
-			create := svc.entFromContext(ctx).Model.Create().
+			create := db.Model.Create().
 				SetDeveloper(modelData.Developer).
 				SetModelID(modelData.ModelID).
 				SetType(modelData.Type).
@@ -627,14 +422,14 @@ func (svc *BackupService) restoreModels(ctx context.Context, models []*BackupMod
 	return nil
 }
 
-func (svc *BackupService) restoreAPIKeys(ctx context.Context, apiKeys []*BackupAPIKey, opts RestoreOptions) error {
+func (svc *BackupService) restoreAPIKeys(ctx context.Context, db *ent.Client, apiKeys []*BackupAPIKey, opts RestoreOptions) error {
 	user, ok := contexts.GetUser(ctx)
 	if !ok || user == nil {
 		return fmt.Errorf("user not found in context for restoring API keys")
 	}
 
 	for _, akData := range apiKeys {
-		existing, err := svc.entFromContext(ctx).APIKey.Query().
+		existing, err := db.APIKey.Query().
 			Where(apikey.Key(akData.Key)).
 			First(ctx)
 		if err != nil && !ent.IsNotFound(err) {
@@ -652,7 +447,7 @@ func (svc *BackupService) restoreAPIKeys(ctx context.Context, apiKeys []*BackupA
 
 				return fmt.Errorf("API key %s already exists", akData.Name)
 			case ConflictStrategyOverwrite:
-				update := svc.entFromContext(ctx).APIKey.UpdateOneID(existing.ID).
+				update := db.APIKey.UpdateOneID(existing.ID).
 					SetName(akData.Name).
 					SetType(akData.Type).
 					SetStatus(akData.Status).
@@ -673,7 +468,7 @@ func (svc *BackupService) restoreAPIKeys(ctx context.Context, apiKeys []*BackupA
 				projectName = "Default"
 			}
 
-			proj, err := svc.entFromContext(ctx).Project.Query().
+			proj, err := db.Project.Query().
 				Where(project.Name(projectName)).
 				First(ctx)
 			if err != nil {
@@ -688,7 +483,7 @@ func (svc *BackupService) restoreAPIKeys(ctx context.Context, apiKeys []*BackupA
 				return err
 			}
 
-			create := svc.entFromContext(ctx).APIKey.Create().
+			create := db.APIKey.Create().
 				SetKey(akData.Key).
 				SetName(akData.Name).
 				SetType(akData.Type).

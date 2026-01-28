@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Download, Upload, Loader2, AlertCircle, CheckCircle2, Clock, Play, Link2 } from 'lucide-react';
+import { Download, Upload, Loader2, AlertCircle, CheckCircle2, Clock, Play } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,12 +15,13 @@ import {
   useRestore,
   useAutoBackupSettings,
   useUpdateAutoBackupSettings,
-  useTestWebDAVConnection,
   useTriggerAutoBackup,
   BackupOptionsInput,
   RestoreOptionsInput,
   BackupFrequency,
 } from '../data/system';
+import { useDataStorages } from '@/features/data-storages/data/data-storages';
+import { extractNumberID } from '@/lib/utils';
 
 export function BackupSettings() {
   const { t } = useTranslation();
@@ -28,8 +29,11 @@ export function BackupSettings() {
   const restore = useRestore();
   const autoBackupSettings = useAutoBackupSettings();
   const updateAutoBackupSettings = useUpdateAutoBackupSettings();
-  const testConnection = useTestWebDAVConnection();
   const triggerBackup = useTriggerAutoBackup();
+  const dataStorages = useDataStorages({ first: 100 });
+  const availableStorages = dataStorages.data?.edges
+    ?.map(e => e.node)
+    ?.filter(s => s.status === 'active' && s.type !== 'database') ?? [];
 
   const [backupOptions, setBackupOptions] = useState<BackupOptionsInput>({
     includeChannels: true,
@@ -54,11 +58,7 @@ export function BackupSettings() {
   const [autoBackupForm, setAutoBackupForm] = useState({
     enabled: false,
     frequency: 'daily' as BackupFrequency,
-    webdavUrl: '',
-    webdavUsername: '',
-    webdavPassword: '',
-    webdavPath: '/backups/axonhub',
-    insecureSkipTLS: false,
+    dataStorageID: 0,
     includeChannels: true,
     includeModels: true,
     includeAPIKeys: false,
@@ -66,20 +66,27 @@ export function BackupSettings() {
     retentionDays: 0,
   });
 
-  const savedWebdavConfig = autoBackupSettings.data?.webdav;
-  const canTriggerBackup =
-    savedWebdavConfig?.url && savedWebdavConfig?.username && savedWebdavConfig?.password;
+  const isStorageSelected = autoBackupForm.dataStorageID > 0;
+   const isDirty = React.useMemo(() => {
+     if (!autoBackupSettings.data) return true;
+     return (
+       autoBackupForm.enabled !== autoBackupSettings.data.enabled ||
+       autoBackupForm.frequency !== autoBackupSettings.data.frequency ||
+       autoBackupForm.dataStorageID !== autoBackupSettings.data.dataStorageID ||
+       autoBackupForm.includeChannels !== autoBackupSettings.data.includeChannels ||
+       autoBackupForm.includeModels !== autoBackupSettings.data.includeModels ||
+       autoBackupForm.includeAPIKeys !== autoBackupSettings.data.includeAPIKeys ||
+       autoBackupForm.includeModelPrices !== autoBackupSettings.data.includeModelPrices ||
+       autoBackupForm.retentionDays !== autoBackupSettings.data.retentionDays
+     );
+   }, [autoBackupForm, autoBackupSettings.data]);
 
   useEffect(() => {
     if (autoBackupSettings.data) {
       setAutoBackupForm({
         enabled: autoBackupSettings.data.enabled,
         frequency: autoBackupSettings.data.frequency,
-        webdavUrl: autoBackupSettings.data.webdav?.url || '',
-        webdavUsername: autoBackupSettings.data.webdav?.username || '',
-        webdavPassword: autoBackupSettings.data.webdav?.password || '',
-        webdavPath: autoBackupSettings.data.webdav?.path || '/backups/axonhub',
-        insecureSkipTLS: autoBackupSettings.data.webdav?.insecureSkipTLS || false,
+        dataStorageID: autoBackupSettings.data.dataStorageID,
         includeChannels: autoBackupSettings.data.includeChannels,
         includeModels: autoBackupSettings.data.includeModels,
         includeAPIKeys: autoBackupSettings.data.includeAPIKeys,
@@ -109,28 +116,12 @@ export function BackupSettings() {
     updateAutoBackupSettings.mutate({
       enabled: autoBackupForm.enabled,
       frequency: autoBackupForm.frequency,
-      webdav: {
-        url: autoBackupForm.webdavUrl,
-        username: autoBackupForm.webdavUsername,
-        password: autoBackupForm.webdavPassword,
-        insecureSkipTLS: autoBackupForm.insecureSkipTLS,
-        path: autoBackupForm.webdavPath,
-      },
+      dataStorageID: autoBackupForm.dataStorageID,
       includeChannels: autoBackupForm.includeChannels,
       includeModels: autoBackupForm.includeModels,
       includeAPIKeys: autoBackupForm.includeAPIKeys,
       includeModelPrices: autoBackupForm.includeModelPrices,
       retentionDays: autoBackupForm.retentionDays,
-    });
-  };
-
-  const handleTestConnection = () => {
-    testConnection.mutate({
-      url: autoBackupForm.webdavUrl,
-      username: autoBackupForm.webdavUsername,
-      password: autoBackupForm.webdavPassword,
-      insecureSkipTLS: autoBackupForm.insecureSkipTLS,
-      path: autoBackupForm.webdavPath,
     });
   };
 
@@ -397,87 +388,24 @@ export function BackupSettings() {
             </Select>
           </div>
 
-          <div className="space-y-4 rounded-md border p-4">
-            <div className="flex items-center gap-2">
-              <Link2 className="h-4 w-4" />
-              <Label className="text-base font-medium">{t('system.autoBackup.webdav.title')}</Label>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="webdav-url">{t('system.autoBackup.webdav.url')}</Label>
-              <Input
-                id="webdav-url"
-                type="url"
-                placeholder={t('system.autoBackup.webdav.urlPlaceholder')}
-                value={autoBackupForm.webdavUrl}
-                onChange={(e) => setAutoBackupForm({ ...autoBackupForm, webdavUrl: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="webdav-username">{t('system.autoBackup.webdav.username')}</Label>
-              <Input
-                id="webdav-username"
-                type="text"
-                placeholder={t('system.autoBackup.webdav.usernamePlaceholder')}
-                value={autoBackupForm.webdavUsername}
-                onChange={(e) => setAutoBackupForm({ ...autoBackupForm, webdavUsername: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="webdav-password">{t('system.autoBackup.webdav.password')}</Label>
-              <Input
-                id="webdav-password"
-                type="password"
-                placeholder={t('system.autoBackup.webdav.passwordPlaceholder')}
-                value={autoBackupForm.webdavPassword}
-                onChange={(e) => setAutoBackupForm({ ...autoBackupForm, webdavPassword: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="webdav-path">{t('system.autoBackup.webdav.path')}</Label>
-              <Input
-                id="webdav-path"
-                type="text"
-                placeholder={t('system.autoBackup.webdav.pathPlaceholder')}
-                value={autoBackupForm.webdavPath}
-                onChange={(e) => setAutoBackupForm({ ...autoBackupForm, webdavPath: e.target.value })}
-              />
-              <p className="text-sm text-muted-foreground">{t('system.autoBackup.webdav.pathDescription')}</p>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="insecure-skip-tls">{t('system.autoBackup.webdav.insecureSkipTLS')}</Label>
-                <p className="text-sm text-muted-foreground">{t('system.autoBackup.webdav.insecureSkipTLSDescription')}</p>
-              </div>
-              <Switch
-                id="insecure-skip-tls"
-                checked={autoBackupForm.insecureSkipTLS}
-                onCheckedChange={(checked) => setAutoBackupForm({ ...autoBackupForm, insecureSkipTLS: checked })}
-              />
-            </div>
-
-            <Button
-              variant="outline"
-              onClick={handleTestConnection}
-              disabled={testConnection.isPending || !autoBackupForm.webdavUrl}
-              className="w-full"
+          <div className="space-y-2">
+            <Label htmlFor="data-storage">{t('system.autoBackup.dataStorage.label')}</Label>
+            <Select
+              value={autoBackupForm.dataStorageID ? String(autoBackupForm.dataStorageID) : ''}
+              onValueChange={(value) => setAutoBackupForm({ ...autoBackupForm, dataStorageID: parseInt(value) || 0 })}
             >
-              {testConnection.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t('system.autoBackup.testingConnection')}
-                </>
-              ) : (
-                <>
-                  <Link2 className="mr-2 h-4 w-4" />
-                  {t('system.autoBackup.testConnection')}
-                </>
-              )}
-            </Button>
+              <SelectTrigger id="data-storage">
+                <SelectValue placeholder={t('system.autoBackup.dataStorage.placeholder')} />
+              </SelectTrigger>
+              <SelectContent>
+                {availableStorages.map((storage) => (
+                  <SelectItem key={storage.id} value={extractNumberID(storage.id)}>
+                    {storage.name} ({storage.type})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground">{t('system.autoBackup.dataStorage.description')}</p>
           </div>
 
           <div className="space-y-4">
@@ -550,7 +478,7 @@ export function BackupSettings() {
           <div className="flex gap-2">
             <Button
               onClick={handleSaveAutoBackup}
-              disabled={updateAutoBackupSettings.isPending}
+              disabled={updateAutoBackupSettings.isPending || !isStorageSelected || !isDirty}
               className="flex-1"
             >
               {updateAutoBackupSettings.isPending ? (
@@ -568,7 +496,7 @@ export function BackupSettings() {
                   <Button
                     variant="outline"
                     onClick={handleTriggerBackup}
-                    disabled={triggerBackup.isPending || !canTriggerBackup}
+                    disabled={triggerBackup.isPending || !isStorageSelected || isDirty}
                   >
                     {triggerBackup.isPending ? (
                       <>
@@ -584,9 +512,13 @@ export function BackupSettings() {
                   </Button>
                 </span>
               </TooltipTrigger>
-              {!canTriggerBackup && (
+              {(!isStorageSelected || isDirty) && (
                 <TooltipContent>
-                  <p>{t('system.autoBackup.triggerNowTooltip')}</p>
+                  <p>
+                    {!isStorageSelected
+                      ? t('system.autoBackup.triggerNowTooltip')
+                      : t('system.autoBackup.saveFirstTooltip')}
+                  </p>
                 </TooltipContent>
               )}
             </Tooltip>

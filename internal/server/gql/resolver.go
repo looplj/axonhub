@@ -42,7 +42,6 @@ type Resolver struct {
 	httpClient                     *httpclient.HttpClient
 	modelFetcher                   *biz.ModelFetcher
 	TestChannelOrchestrator        *orchestrator.TestChannelOrchestrator
-	backupWorker                   *backup.Worker
 }
 
 // NewSchema creates a graphql executable schema.
@@ -66,7 +65,6 @@ func NewSchema(
 	channelProbeService *biz.ChannelProbeService,
 	promptService *biz.PromptService,
 	providerQuotaService *biz.ProviderQuotaService,
-	backupWorker *backup.Worker,
 ) graphql.ExecutableSchema {
 	httpClient := httpclient.NewHttpClient()
 	modelFetcher := biz.NewModelFetcher(httpClient, channelService)
@@ -94,7 +92,6 @@ func NewSchema(
 			httpClient:                     httpClient,
 			modelFetcher:                   modelFetcher,
 			TestChannelOrchestrator:        orchestrator.NewTestChannelOrchestrator(channelService, requestService, systemService, usageLogService, httpClient),
-			backupWorker:                   backupWorker,
 		},
 	})
 }
