@@ -53,6 +53,7 @@ require (
 	github.com/spf13/cast v1.10.0
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
+	github.com/studio-b12/gowebdav v0.12.0
 	github.com/tidwall/gjson v1.18.0
 	github.com/tidwall/sjson v1.2.5
 	github.com/tmaxmax/go-sse v0.11.0

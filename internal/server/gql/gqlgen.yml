@@ -221,13 +221,13 @@ models:
       - github.com/looplj/axonhub/internal/objects.AWSCredential
   BackupOptionsInput:
     model:
-      - github.com/looplj/axonhub/internal/server/biz.BackupOptions
+      - github.com/looplj/axonhub/internal/server/backup.BackupOptions
   RestoreOptionsInput:
     model:
-      - github.com/looplj/axonhub/internal/server/biz.RestoreOptions
+      - github.com/looplj/axonhub/internal/server/backup.RestoreOptions
   BackupConflictStrategy:
     model:
-      - github.com/looplj/axonhub/internal/server/biz.ConflictStrategy
+      - github.com/looplj/axonhub/internal/server/backup.ConflictStrategy
   GCPCredential:
     model:
       - github.com/looplj/axonhub/internal/objects.GCPCredential

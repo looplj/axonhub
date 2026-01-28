@@ -32,6 +32,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/server/backup"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
@@ -61,6 +62,7 @@ type Config struct {
 
 type ResolverRoot interface {
 	APIKey() APIKeyResolver
+	AutoBackupSettings() AutoBackupSettingsResolver
 	Channel() ChannelResolver
 	ChannelModelPrice() ChannelModelPriceResolver
 	ChannelModelPriceVersion() ChannelModelPriceVersionResolver
@@ -167,6 +169,20 @@ type ComplexityRoot struct {
 		Channels func(childComplexity int) int
 		Success  func(childComplexity int) int
 		Updated  func(childComplexity int) int
+	}
+
+	AutoBackupSettings struct {
+		Enabled            func(childComplexity int) int
+		Frequency          func(childComplexity int) int
+		IncludeAPIKeys     func(childComplexity int) int
+		IncludeChannels    func(childComplexity int) int
+		IncludeModelPrices func(childComplexity int) int
+		IncludeModels      func(childComplexity int) int
+		LastBackupAt       func(childComplexity int) int
+		LastBackupError    func(childComplexity int) int
+		RetentionDays      func(childComplexity int) int
+		TargetType         func(childComplexity int) int
+		WebDAV             func(childComplexity int) int
 	}
 
 	AutoDisableChannel struct {
@@ -644,7 +660,7 @@ type ComplexityRoot struct {
 	Mutation struct {
 		AddUserToProject                     func(childComplexity int, input AddUserToProjectInput) int
 		ApplyChannelOverrideTemplate         func(childComplexity int, input ApplyChannelOverrideTemplateInput) int
-		Backup                               func(childComplexity int, input biz.BackupOptions) int
+		Backup                               func(childComplexity int, input backup.BackupOptions) int
 		BulkArchiveAPIKeys                   func(childComplexity int, ids []*objects.GUID) int
 		BulkArchiveChannels                  func(childComplexity int, ids []*objects.GUID) int
 		BulkArchiveModels                    func(childComplexity int, ids []*objects.GUID) int
@@ -682,12 +698,15 @@ type ComplexityRoot struct {
 		DeletePrompt                         func(childComplexity int, id objects.GUID) int
 		DeleteRole                           func(childComplexity int, id objects.GUID) int
 		RemoveUserFromProject                func(childComplexity int, input RemoveUserFromProjectInput) int
-		Restore                              func(childComplexity int, file graphql.Upload, input biz.RestoreOptions) int
+		Restore                              func(childComplexity int, file graphql.Upload, input backup.RestoreOptions) int
 		SaveChannelModelPrices               func(childComplexity int, channelID objects.GUID, input []*biz.SaveChannelModelPriceInput) int
 		TestChannel                          func(childComplexity int, input TestChannelInput) int
+		TestWebDAVConnection                 func(childComplexity int, input WebDAVConfigInput) int
+		TriggerAutoBackup                    func(childComplexity int) int
 		UpdateAPIKey                         func(childComplexity int, id objects.GUID, input ent.UpdateAPIKeyInput) int
 		UpdateAPIKeyProfiles                 func(childComplexity int, id objects.GUID, input objects.APIKeyProfiles) int
 		UpdateAPIKeyStatus                   func(childComplexity int, id objects.GUID, status apikey.Status) int
+		UpdateAutoBackupSettings             func(childComplexity int, input UpdateAutoBackupSettingsInput) int
 		UpdateBrandSettings                  func(childComplexity int, input UpdateBrandSettingsInput) int
 		UpdateChannel                        func(childComplexity int, id objects.GUID, input ent.UpdateChannelInput) int
 		UpdateChannelOverrideTemplate        func(childComplexity int, id objects.GUID, input ent.UpdateChannelOverrideTemplateInput) int
@@ -850,6 +869,7 @@ type ComplexityRoot struct {
 		APIKeys                       func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.APIKeyOrder, where *ent.APIKeyWhereInput) int
 		AllChannelTags                func(childComplexity int) int
 		AllScopes                     func(childComplexity int, level *string) int
+		AutoBackupSettings            func(childComplexity int) int
 		BrandSettings                 func(childComplexity int) int
 		ChannelOverrideTemplates      func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOverrideTemplateOrder, where *ent.ChannelOverrideTemplateWhereInput) int
 		ChannelProbeData              func(childComplexity int, input biz.GetChannelProbeDataInput) int
@@ -1204,6 +1224,11 @@ type ComplexityRoot struct {
 		Success func(childComplexity int) int
 	}
 
+	TestConnectionPayload struct {
+		Message func(childComplexity int) int
+		Success func(childComplexity int) int
+	}
+
 	Thread struct {
 		CreatedAt      func(childComplexity int) int
 		FirstUserQuery func(childComplexity int) int
@@ -1298,6 +1323,11 @@ type ComplexityRoot struct {
 		ForceArrayInputs               func(childComplexity int) int
 		ForceArrayInstructions         func(childComplexity int) int
 		ReplaceDeveloperRoleWithSystem func(childComplexity int) int
+	}
+
+	TriggerBackupPayload struct {
+		Message func(childComplexity int) int
+		Success func(childComplexity int) int
 	}
 
 	UnassociatedChannel struct {
@@ -1435,6 +1465,14 @@ type ComplexityRoot struct {
 		LatestVersion  func(childComplexity int) int
 		ReleaseURL     func(childComplexity int) int
 	}
+
+	WebDAVConfig struct {
+		InsecureSkipTLS func(childComplexity int) int
+		Password        func(childComplexity int) int
+		Path            func(childComplexity int) int
+		URL             func(childComplexity int) int
+		Username        func(childComplexity int) int
+	}
 }
 
 type APIKeyResolver interface {
@@ -1442,6 +1480,9 @@ type APIKeyResolver interface {
 
 	UserID(ctx context.Context, obj *ent.APIKey) (*objects.GUID, error)
 	ProjectID(ctx context.Context, obj *ent.APIKey) (*objects.GUID, error)
+}
+type AutoBackupSettingsResolver interface {
+	TargetType(ctx context.Context, obj *biz.AutoBackupSettings) (string, error)
 }
 type ChannelResolver interface {
 	ID(ctx context.Context, obj *ent.Channel) (*objects.GUID, error)
@@ -1546,8 +1587,11 @@ type MutationResolver interface {
 	BulkDisableModels(ctx context.Context, ids []*objects.GUID) (bool, error)
 	BulkEnableModels(ctx context.Context, ids []*objects.GUID) (bool, error)
 	BulkDeleteModels(ctx context.Context, ids []*objects.GUID) (bool, error)
-	Backup(ctx context.Context, input biz.BackupOptions) (*BackupPayload, error)
-	Restore(ctx context.Context, file graphql.Upload, input biz.RestoreOptions) (*RestorePayload, error)
+	Backup(ctx context.Context, input backup.BackupOptions) (*BackupPayload, error)
+	Restore(ctx context.Context, file graphql.Upload, input backup.RestoreOptions) (*RestorePayload, error)
+	UpdateAutoBackupSettings(ctx context.Context, input UpdateAutoBackupSettingsInput) (bool, error)
+	TestWebDAVConnection(ctx context.Context, input WebDAVConfigInput) (*TestConnectionPayload, error)
+	TriggerAutoBackup(ctx context.Context) (*TriggerBackupPayload, error)
 	CreatePrompt(ctx context.Context, input ent.CreatePromptInput) (*ent.Prompt, error)
 	UpdatePrompt(ctx context.Context, id objects.GUID, input ent.UpdatePromptInput) (*ent.Prompt, error)
 	DeletePrompt(ctx context.Context, id objects.GUID) (bool, error)
@@ -1619,6 +1663,7 @@ type QueryResolver interface {
 	QueryModels(ctx context.Context, input QueryModelsInput) ([]*biz.ModelIdentityWithStatus, error)
 	QueryModelChannelConnections(ctx context.Context, associations []*objects.ModelAssociation) ([]*biz.ModelChannelConnection, error)
 	QueryUnassociatedChannels(ctx context.Context) ([]*biz.UnassociatedChannel, error)
+	AutoBackupSettings(ctx context.Context) (*biz.AutoBackupSettings, error)
 	ChannelProbeData(ctx context.Context, input biz.GetChannelProbeDataInput) ([]*biz.ChannelProbeData, error)
 }
 type RequestResolver interface {
@@ -2010,6 +2055,73 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ApplyChannelOverrideTemplatePayload.Updated(childComplexity), true
+
+	case "AutoBackupSettings.enabled":
+		if e.complexity.AutoBackupSettings.Enabled == nil {
+			break
+		}
+
+		return e.complexity.AutoBackupSettings.Enabled(childComplexity), true
+	case "AutoBackupSettings.frequency":
+		if e.complexity.AutoBackupSettings.Frequency == nil {
+			break
+		}
+
+		return e.complexity.AutoBackupSettings.Frequency(childComplexity), true
+	case "AutoBackupSettings.includeAPIKeys":
+		if e.complexity.AutoBackupSettings.IncludeAPIKeys == nil {
+			break
+		}
+
+		return e.complexity.AutoBackupSettings.IncludeAPIKeys(childComplexity), true
+	case "AutoBackupSettings.includeChannels":
+		if e.complexity.AutoBackupSettings.IncludeChannels == nil {
+			break
+		}
+
+		return e.complexity.AutoBackupSettings.IncludeChannels(childComplexity), true
+	case "AutoBackupSettings.includeModelPrices":
+		if e.complexity.AutoBackupSettings.IncludeModelPrices == nil {
+			break
+		}
+
+		return e.complexity.AutoBackupSettings.IncludeModelPrices(childComplexity), true
+	case "AutoBackupSettings.includeModels":
+		if e.complexity.AutoBackupSettings.IncludeModels == nil {
+			break
+		}
+
+		return e.complexity.AutoBackupSettings.IncludeModels(childComplexity), true
+	case "AutoBackupSettings.lastBackupAt":
+		if e.complexity.AutoBackupSettings.LastBackupAt == nil {
+			break
+		}
+
+		return e.complexity.AutoBackupSettings.LastBackupAt(childComplexity), true
+	case "AutoBackupSettings.lastBackupError":
+		if e.complexity.AutoBackupSettings.LastBackupError == nil {
+			break
+		}
+
+		return e.complexity.AutoBackupSettings.LastBackupError(childComplexity), true
+	case "AutoBackupSettings.retentionDays":
+		if e.complexity.AutoBackupSettings.RetentionDays == nil {
+			break
+		}
+
+		return e.complexity.AutoBackupSettings.RetentionDays(childComplexity), true
+	case "AutoBackupSettings.targetType":
+		if e.complexity.AutoBackupSettings.TargetType == nil {
+			break
+		}
+
+		return e.complexity.AutoBackupSettings.TargetType(childComplexity), true
+	case "AutoBackupSettings.webdav":
+		if e.complexity.AutoBackupSettings.WebDAV == nil {
+			break
+		}
+
+		return e.complexity.AutoBackupSettings.WebDAV(childComplexity), true
 
 	case "AutoDisableChannel.enabled":
 		if e.complexity.AutoDisableChannel.Enabled == nil {
@@ -3795,7 +3907,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.Backup(childComplexity, args["input"].(biz.BackupOptions)), true
+		return e.complexity.Mutation.Backup(childComplexity, args["input"].(backup.BackupOptions)), true
 	case "Mutation.bulkArchiveAPIKeys":
 		if e.complexity.Mutation.BulkArchiveAPIKeys == nil {
 			break
@@ -4208,7 +4320,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.Restore(childComplexity, args["file"].(graphql.Upload), args["input"].(biz.RestoreOptions)), true
+		return e.complexity.Mutation.Restore(childComplexity, args["file"].(graphql.Upload), args["input"].(backup.RestoreOptions)), true
 	case "Mutation.saveChannelModelPrices":
 		if e.complexity.Mutation.SaveChannelModelPrices == nil {
 			break
@@ -4231,6 +4343,23 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.TestChannel(childComplexity, args["input"].(TestChannelInput)), true
+	case "Mutation.testWebDAVConnection":
+		if e.complexity.Mutation.TestWebDAVConnection == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_testWebDAVConnection_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.TestWebDAVConnection(childComplexity, args["input"].(WebDAVConfigInput)), true
+	case "Mutation.triggerAutoBackup":
+		if e.complexity.Mutation.TriggerAutoBackup == nil {
+			break
+		}
+
+		return e.complexity.Mutation.TriggerAutoBackup(childComplexity), true
 	case "Mutation.updateAPIKey":
 		if e.complexity.Mutation.UpdateAPIKey == nil {
 			break
@@ -4264,6 +4393,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdateAPIKeyStatus(childComplexity, args["id"].(objects.GUID), args["status"].(apikey.Status)), true
+	case "Mutation.updateAutoBackupSettings":
+		if e.complexity.Mutation.UpdateAutoBackupSettings == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateAutoBackupSettings_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateAutoBackupSettings(childComplexity, args["input"].(UpdateAutoBackupSettingsInput)), true
 	case "Mutation.updateBrandSettings":
 		if e.complexity.Mutation.UpdateBrandSettings == nil {
 			break
@@ -5078,6 +5218,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.AllScopes(childComplexity, args["level"].(*string)), true
+	case "Query.autoBackupSettings":
+		if e.complexity.Query.AutoBackupSettings == nil {
+			break
+		}
+
+		return e.complexity.Query.AutoBackupSettings(childComplexity), true
 	case "Query.brandSettings":
 		if e.complexity.Query.BrandSettings == nil {
 			break
@@ -6585,6 +6731,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.TestChannelPayload.Success(childComplexity), true
 
+	case "TestConnectionPayload.message":
+		if e.complexity.TestConnectionPayload.Message == nil {
+			break
+		}
+
+		return e.complexity.TestConnectionPayload.Message(childComplexity), true
+	case "TestConnectionPayload.success":
+		if e.complexity.TestConnectionPayload.Success == nil {
+			break
+		}
+
+		return e.complexity.TestConnectionPayload.Success(childComplexity), true
+
 	case "Thread.createdAt":
 		if e.complexity.Thread.CreatedAt == nil {
 			break
@@ -6966,6 +7125,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TransformOptions.ReplaceDeveloperRoleWithSystem(childComplexity), true
+
+	case "TriggerBackupPayload.message":
+		if e.complexity.TriggerBackupPayload.Message == nil {
+			break
+		}
+
+		return e.complexity.TriggerBackupPayload.Message(childComplexity), true
+	case "TriggerBackupPayload.success":
+		if e.complexity.TriggerBackupPayload.Success == nil {
+			break
+		}
+
+		return e.complexity.TriggerBackupPayload.Success(childComplexity), true
 
 	case "UnassociatedChannel.channel":
 		if e.complexity.UnassociatedChannel.Channel == nil {
@@ -7582,6 +7754,37 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.VersionCheck.ReleaseURL(childComplexity), true
 
+	case "WebDAVConfig.insecureSkipTLS":
+		if e.complexity.WebDAVConfig.InsecureSkipTLS == nil {
+			break
+		}
+
+		return e.complexity.WebDAVConfig.InsecureSkipTLS(childComplexity), true
+	case "WebDAVConfig.password":
+		if e.complexity.WebDAVConfig.Password == nil {
+			break
+		}
+
+		return e.complexity.WebDAVConfig.Password(childComplexity), true
+	case "WebDAVConfig.path":
+		if e.complexity.WebDAVConfig.Path == nil {
+			break
+		}
+
+		return e.complexity.WebDAVConfig.Path(childComplexity), true
+	case "WebDAVConfig.url":
+		if e.complexity.WebDAVConfig.URL == nil {
+			break
+		}
+
+		return e.complexity.WebDAVConfig.URL(childComplexity), true
+	case "WebDAVConfig.username":
+		if e.complexity.WebDAVConfig.Username == nil {
+			break
+		}
+
+		return e.complexity.WebDAVConfig.Username(childComplexity), true
+
 	}
 	return 0, false
 }
@@ -7711,6 +7914,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputUpdateAPIKeyInput,
 		ec.unmarshalInputUpdateAPIKeyProfilesInput,
 		ec.unmarshalInputUpdateAPIKeyScopesInput,
+		ec.unmarshalInputUpdateAutoBackupSettingsInput,
 		ec.unmarshalInputUpdateBrandSettingsInput,
 		ec.unmarshalInputUpdateChannelInput,
 		ec.unmarshalInputUpdateChannelOverrideTemplateInput,
@@ -7742,6 +7946,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputUserRoleOrder,
 		ec.unmarshalInputUserRoleWhereInput,
 		ec.unmarshalInputUserWhereInput,
+		ec.unmarshalInputWebDAVConfigInput,
 	)
 	first := true
 
@@ -8110,7 +8315,7 @@ func (ec *executionContext) field_Mutation_applyChannelOverrideTemplate_args(ctx
 func (ec *executionContext) field_Mutation_backup_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNBackupOptionsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐBackupOptions)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNBackupOptionsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbackupᚐBackupOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -8522,7 +8727,7 @@ func (ec *executionContext) field_Mutation_restore_args(ctx context.Context, raw
 		return nil, err
 	}
 	args["file"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNRestoreOptionsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐRestoreOptions)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNRestoreOptionsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbackupᚐRestoreOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -8550,6 +8755,17 @@ func (ec *executionContext) field_Mutation_testChannel_args(ctx context.Context,
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNTestChannelInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTestChannelInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_testWebDAVConnection_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNWebDAVConfigInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐWebDAVConfigInput)
 	if err != nil {
 		return nil, err
 	}
@@ -8602,6 +8818,17 @@ func (ec *executionContext) field_Mutation_updateAPIKey_args(ctx context.Context
 		return nil, err
 	}
 	args["input"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateAutoBackupSettings_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateAutoBackupSettingsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUpdateAutoBackupSettingsInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -11750,6 +11977,337 @@ func (ec *executionContext) fieldContext_ApplyChannelOverrideTemplatePayload_cha
 				return ec.fieldContext_Channel_credentials(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AutoBackupSettings_enabled(ctx context.Context, field graphql.CollectedField, obj *biz.AutoBackupSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AutoBackupSettings_enabled,
+		func(ctx context.Context) (any, error) {
+			return obj.Enabled, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AutoBackupSettings_enabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AutoBackupSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AutoBackupSettings_frequency(ctx context.Context, field graphql.CollectedField, obj *biz.AutoBackupSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AutoBackupSettings_frequency,
+		func(ctx context.Context) (any, error) {
+			return obj.Frequency, nil
+		},
+		nil,
+		ec.marshalNBackupFrequency2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐBackupFrequency,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AutoBackupSettings_frequency(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AutoBackupSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type BackupFrequency does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AutoBackupSettings_targetType(ctx context.Context, field graphql.CollectedField, obj *biz.AutoBackupSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AutoBackupSettings_targetType,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.AutoBackupSettings().TargetType(ctx, obj)
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AutoBackupSettings_targetType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AutoBackupSettings",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AutoBackupSettings_webdav(ctx context.Context, field graphql.CollectedField, obj *biz.AutoBackupSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AutoBackupSettings_webdav,
+		func(ctx context.Context) (any, error) {
+			return obj.WebDAV, nil
+		},
+		nil,
+		ec.marshalOWebDAVConfig2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐWebDAVConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AutoBackupSettings_webdav(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AutoBackupSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "url":
+				return ec.fieldContext_WebDAVConfig_url(ctx, field)
+			case "username":
+				return ec.fieldContext_WebDAVConfig_username(ctx, field)
+			case "password":
+				return ec.fieldContext_WebDAVConfig_password(ctx, field)
+			case "insecureSkipTLS":
+				return ec.fieldContext_WebDAVConfig_insecureSkipTLS(ctx, field)
+			case "path":
+				return ec.fieldContext_WebDAVConfig_path(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WebDAVConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AutoBackupSettings_includeChannels(ctx context.Context, field graphql.CollectedField, obj *biz.AutoBackupSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AutoBackupSettings_includeChannels,
+		func(ctx context.Context) (any, error) {
+			return obj.IncludeChannels, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AutoBackupSettings_includeChannels(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AutoBackupSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AutoBackupSettings_includeModels(ctx context.Context, field graphql.CollectedField, obj *biz.AutoBackupSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AutoBackupSettings_includeModels,
+		func(ctx context.Context) (any, error) {
+			return obj.IncludeModels, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AutoBackupSettings_includeModels(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AutoBackupSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AutoBackupSettings_includeAPIKeys(ctx context.Context, field graphql.CollectedField, obj *biz.AutoBackupSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AutoBackupSettings_includeAPIKeys,
+		func(ctx context.Context) (any, error) {
+			return obj.IncludeAPIKeys, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AutoBackupSettings_includeAPIKeys(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AutoBackupSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AutoBackupSettings_includeModelPrices(ctx context.Context, field graphql.CollectedField, obj *biz.AutoBackupSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AutoBackupSettings_includeModelPrices,
+		func(ctx context.Context) (any, error) {
+			return obj.IncludeModelPrices, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AutoBackupSettings_includeModelPrices(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AutoBackupSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AutoBackupSettings_retentionDays(ctx context.Context, field graphql.CollectedField, obj *biz.AutoBackupSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AutoBackupSettings_retentionDays,
+		func(ctx context.Context) (any, error) {
+			return obj.RetentionDays, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AutoBackupSettings_retentionDays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AutoBackupSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AutoBackupSettings_lastBackupAt(ctx context.Context, field graphql.CollectedField, obj *biz.AutoBackupSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AutoBackupSettings_lastBackupAt,
+		func(ctx context.Context) (any, error) {
+			return obj.LastBackupAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AutoBackupSettings_lastBackupAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AutoBackupSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AutoBackupSettings_lastBackupError(ctx context.Context, field graphql.CollectedField, obj *biz.AutoBackupSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AutoBackupSettings_lastBackupError,
+		func(ctx context.Context) (any, error) {
+			return obj.LastBackupError, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AutoBackupSettings_lastBackupError(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AutoBackupSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -24262,7 +24820,7 @@ func (ec *executionContext) _Mutation_backup(ctx context.Context, field graphql.
 		ec.fieldContext_Mutation_backup,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().Backup(ctx, fc.Args["input"].(biz.BackupOptions))
+			return ec.resolvers.Mutation().Backup(ctx, fc.Args["input"].(backup.BackupOptions))
 		},
 		nil,
 		ec.marshalNBackupPayload2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBackupPayload,
@@ -24311,7 +24869,7 @@ func (ec *executionContext) _Mutation_restore(ctx context.Context, field graphql
 		ec.fieldContext_Mutation_restore,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().Restore(ctx, fc.Args["file"].(graphql.Upload), fc.Args["input"].(biz.RestoreOptions))
+			return ec.resolvers.Mutation().Restore(ctx, fc.Args["file"].(graphql.Upload), fc.Args["input"].(backup.RestoreOptions))
 		},
 		nil,
 		ec.marshalNRestorePayload2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRestorePayload,
@@ -24346,6 +24904,129 @@ func (ec *executionContext) fieldContext_Mutation_restore(ctx context.Context, f
 	if fc.Args, err = ec.field_Mutation_restore_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateAutoBackupSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_updateAutoBackupSettings,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().UpdateAutoBackupSettings(ctx, fc.Args["input"].(UpdateAutoBackupSettingsInput))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateAutoBackupSettings(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateAutoBackupSettings_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_testWebDAVConnection(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_testWebDAVConnection,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().TestWebDAVConnection(ctx, fc.Args["input"].(WebDAVConfigInput))
+		},
+		nil,
+		ec.marshalNTestConnectionPayload2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTestConnectionPayload,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_testWebDAVConnection(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "success":
+				return ec.fieldContext_TestConnectionPayload_success(ctx, field)
+			case "message":
+				return ec.fieldContext_TestConnectionPayload_message(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TestConnectionPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_testWebDAVConnection_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_triggerAutoBackup(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_triggerAutoBackup,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Mutation().TriggerAutoBackup(ctx)
+		},
+		nil,
+		ec.marshalNTriggerBackupPayload2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTriggerBackupPayload,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_triggerAutoBackup(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "success":
+				return ec.fieldContext_TriggerBackupPayload_success(ctx, field)
+			case "message":
+				return ec.fieldContext_TriggerBackupPayload_message(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TriggerBackupPayload", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -29529,6 +30210,59 @@ func (ec *executionContext) fieldContext_Query_queryUnassociatedChannels(_ conte
 				return ec.fieldContext_UnassociatedChannel_models(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type UnassociatedChannel", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_autoBackupSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_autoBackupSettings,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().AutoBackupSettings(ctx)
+		},
+		nil,
+		ec.marshalNAutoBackupSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐAutoBackupSettings,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_autoBackupSettings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "enabled":
+				return ec.fieldContext_AutoBackupSettings_enabled(ctx, field)
+			case "frequency":
+				return ec.fieldContext_AutoBackupSettings_frequency(ctx, field)
+			case "targetType":
+				return ec.fieldContext_AutoBackupSettings_targetType(ctx, field)
+			case "webdav":
+				return ec.fieldContext_AutoBackupSettings_webdav(ctx, field)
+			case "includeChannels":
+				return ec.fieldContext_AutoBackupSettings_includeChannels(ctx, field)
+			case "includeModels":
+				return ec.fieldContext_AutoBackupSettings_includeModels(ctx, field)
+			case "includeAPIKeys":
+				return ec.fieldContext_AutoBackupSettings_includeAPIKeys(ctx, field)
+			case "includeModelPrices":
+				return ec.fieldContext_AutoBackupSettings_includeModelPrices(ctx, field)
+			case "retentionDays":
+				return ec.fieldContext_AutoBackupSettings_retentionDays(ctx, field)
+			case "lastBackupAt":
+				return ec.fieldContext_AutoBackupSettings_lastBackupAt(ctx, field)
+			case "lastBackupError":
+				return ec.fieldContext_AutoBackupSettings_lastBackupError(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AutoBackupSettings", field.Name)
 		},
 	}
 	return fc, nil
@@ -35614,6 +36348,64 @@ func (ec *executionContext) fieldContext_TestChannelPayload_error(_ context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _TestConnectionPayload_success(ctx context.Context, field graphql.CollectedField, obj *TestConnectionPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TestConnectionPayload_success,
+		func(ctx context.Context) (any, error) {
+			return obj.Success, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TestConnectionPayload_success(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestConnectionPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TestConnectionPayload_message(ctx context.Context, field graphql.CollectedField, obj *TestConnectionPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TestConnectionPayload_message,
+		func(ctx context.Context) (any, error) {
+			return obj.Message, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TestConnectionPayload_message(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestConnectionPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Thread_id(ctx context.Context, field graphql.CollectedField, obj *ent.Thread) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -37611,6 +38403,64 @@ func (ec *executionContext) fieldContext_TransformOptions_replaceDeveloperRoleWi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TriggerBackupPayload_success(ctx context.Context, field graphql.CollectedField, obj *TriggerBackupPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TriggerBackupPayload_success,
+		func(ctx context.Context) (any, error) {
+			return obj.Success, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TriggerBackupPayload_success(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TriggerBackupPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TriggerBackupPayload_message(ctx context.Context, field graphql.CollectedField, obj *TriggerBackupPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TriggerBackupPayload_message,
+		func(ctx context.Context) (any, error) {
+			return obj.Message, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TriggerBackupPayload_message(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TriggerBackupPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -41019,6 +41869,151 @@ func (ec *executionContext) fieldContext_VersionCheck_releaseUrl(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _WebDAVConfig_url(ctx context.Context, field graphql.CollectedField, obj *biz.WebDAVConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WebDAVConfig_url,
+		func(ctx context.Context) (any, error) {
+			return obj.URL, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WebDAVConfig_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WebDAVConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WebDAVConfig_username(ctx context.Context, field graphql.CollectedField, obj *biz.WebDAVConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WebDAVConfig_username,
+		func(ctx context.Context) (any, error) {
+			return obj.Username, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WebDAVConfig_username(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WebDAVConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WebDAVConfig_password(ctx context.Context, field graphql.CollectedField, obj *biz.WebDAVConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WebDAVConfig_password,
+		func(ctx context.Context) (any, error) {
+			return obj.Password, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WebDAVConfig_password(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WebDAVConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WebDAVConfig_insecureSkipTLS(ctx context.Context, field graphql.CollectedField, obj *biz.WebDAVConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WebDAVConfig_insecureSkipTLS,
+		func(ctx context.Context) (any, error) {
+			return obj.InsecureSkipTLS, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WebDAVConfig_insecureSkipTLS(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WebDAVConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WebDAVConfig_path(ctx context.Context, field graphql.CollectedField, obj *biz.WebDAVConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WebDAVConfig_path,
+		func(ctx context.Context) (any, error) {
+			return obj.Path, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WebDAVConfig_path(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WebDAVConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) ___Directive_name(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -43536,8 +44531,8 @@ func (ec *executionContext) unmarshalInputAutoDisableChannelStatusInput(ctx cont
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputBackupOptionsInput(ctx context.Context, obj any) (biz.BackupOptions, error) {
-	var it biz.BackupOptions
+func (ec *executionContext) unmarshalInputBackupOptionsInput(ctx context.Context, obj any) (backup.BackupOptions, error) {
+	var it backup.BackupOptions
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -57242,8 +58237,8 @@ func (ec *executionContext) unmarshalInputRequestWhereInput(ctx context.Context,
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputRestoreOptionsInput(ctx context.Context, obj any) (biz.RestoreOptions, error) {
-	var it biz.RestoreOptions
+func (ec *executionContext) unmarshalInputRestoreOptionsInput(ctx context.Context, obj any) (backup.RestoreOptions, error) {
+	var it backup.RestoreOptions
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -57253,7 +58248,7 @@ func (ec *executionContext) unmarshalInputRestoreOptionsInput(ctx context.Contex
 		asMap["includeModelPrices"] = true
 	}
 
-	fieldsInOrder := [...]string{"includeChannels", "includeModelPrices", "includeModels", "includeAPIKeys", "channelConflictStrategy", "modelConflictStrategy", "apiKeyConflictStrategy"}
+	fieldsInOrder := [...]string{"includeChannels", "includeModelPrices", "includeModels", "includeAPIKeys", "channelConflictStrategy", "modelConflictStrategy", "modelPriceConflictStrategy", "apiKeyConflictStrategy"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -57290,21 +58285,28 @@ func (ec *executionContext) unmarshalInputRestoreOptionsInput(ctx context.Contex
 			it.IncludeAPIKeys = data
 		case "channelConflictStrategy":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelConflictStrategy"))
-			data, err := ec.unmarshalNBackupConflictStrategy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐConflictStrategy(ctx, v)
+			data, err := ec.unmarshalNBackupConflictStrategy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbackupᚐConflictStrategy(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.ChannelConflictStrategy = data
 		case "modelConflictStrategy":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelConflictStrategy"))
-			data, err := ec.unmarshalNBackupConflictStrategy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐConflictStrategy(ctx, v)
+			data, err := ec.unmarshalNBackupConflictStrategy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbackupᚐConflictStrategy(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.ModelConflictStrategy = data
+		case "modelPriceConflictStrategy":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelPriceConflictStrategy"))
+			data, err := ec.unmarshalNBackupConflictStrategy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbackupᚐConflictStrategy(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelPriceConflictStrategy = data
 		case "apiKeyConflictStrategy":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyConflictStrategy"))
-			data, err := ec.unmarshalNBackupConflictStrategy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐConflictStrategy(ctx, v)
+			data, err := ec.unmarshalNBackupConflictStrategy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbackupᚐConflictStrategy(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -59606,6 +60608,82 @@ func (ec *executionContext) unmarshalInputUpdateAPIKeyScopesInput(ctx context.Co
 				return it, err
 			}
 			it.Scopes = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpdateAutoBackupSettingsInput(ctx context.Context, obj any) (UpdateAutoBackupSettingsInput, error) {
+	var it UpdateAutoBackupSettingsInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"enabled", "frequency", "webdav", "includeChannels", "includeModels", "includeAPIKeys", "includeModelPrices", "retentionDays"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "enabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Enabled = data
+		case "frequency":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("frequency"))
+			data, err := ec.unmarshalOBackupFrequency2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐBackupFrequency(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Frequency = data
+		case "webdav":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("webdav"))
+			data, err := ec.unmarshalOWebDAVConfigInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐWebDAVConfigInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Webdav = data
+		case "includeChannels":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeChannels"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IncludeChannels = data
+		case "includeModels":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeModels"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IncludeModels = data
+		case "includeAPIKeys":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeAPIKeys"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IncludeAPIKeys = data
+		case "includeModelPrices":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeModelPrices"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IncludeModelPrices = data
+		case "retentionDays":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("retentionDays"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RetentionDays = data
 		}
 	}
 
@@ -64448,6 +65526,61 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputWebDAVConfigInput(ctx context.Context, obj any) (WebDAVConfigInput, error) {
+	var it WebDAVConfigInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"url", "username", "password", "insecureSkipTLS", "path"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "url":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("url"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.URL = data
+		case "username":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("username"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Username = data
+		case "password":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("password"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Password = data
+		case "insecureSkipTLS":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("insecureSkipTLS"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.InsecureSkipTLS = data
+		case "path":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("path"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Path = data
+		}
+	}
+
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -65284,6 +66417,117 @@ func (ec *executionContext) _ApplyChannelOverrideTemplatePayload(ctx context.Con
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var autoBackupSettingsImplementors = []string{"AutoBackupSettings"}
+
+func (ec *executionContext) _AutoBackupSettings(ctx context.Context, sel ast.SelectionSet, obj *biz.AutoBackupSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, autoBackupSettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AutoBackupSettings")
+		case "enabled":
+			out.Values[i] = ec._AutoBackupSettings_enabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "frequency":
+			out.Values[i] = ec._AutoBackupSettings_frequency(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "targetType":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._AutoBackupSettings_targetType(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "webdav":
+			out.Values[i] = ec._AutoBackupSettings_webdav(ctx, field, obj)
+		case "includeChannels":
+			out.Values[i] = ec._AutoBackupSettings_includeChannels(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "includeModels":
+			out.Values[i] = ec._AutoBackupSettings_includeModels(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "includeAPIKeys":
+			out.Values[i] = ec._AutoBackupSettings_includeAPIKeys(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "includeModelPrices":
+			out.Values[i] = ec._AutoBackupSettings_includeModelPrices(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "retentionDays":
+			out.Values[i] = ec._AutoBackupSettings_retentionDays(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "lastBackupAt":
+			out.Values[i] = ec._AutoBackupSettings_lastBackupAt(ctx, field, obj)
+		case "lastBackupError":
+			out.Values[i] = ec._AutoBackupSettings_lastBackupError(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -70148,6 +71392,27 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "updateAutoBackupSettings":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateAutoBackupSettings(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "testWebDAVConnection":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_testWebDAVConnection(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "triggerAutoBackup":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_triggerAutoBackup(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "createPrompt":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createPrompt(ctx, field)
@@ -72677,6 +73942,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_queryUnassociatedChannels(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "autoBackupSettings":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_autoBackupSettings(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -75927,6 +77214,47 @@ func (ec *executionContext) _TestChannelPayload(ctx context.Context, sel ast.Sel
 	return out
 }
 
+var testConnectionPayloadImplementors = []string{"TestConnectionPayload"}
+
+func (ec *executionContext) _TestConnectionPayload(ctx context.Context, sel ast.SelectionSet, obj *TestConnectionPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, testConnectionPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TestConnectionPayload")
+		case "success":
+			out.Values[i] = ec._TestConnectionPayload_success(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "message":
+			out.Values[i] = ec._TestConnectionPayload_message(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var threadImplementors = []string{"Thread", "Node"}
 
 func (ec *executionContext) _Thread(ctx context.Context, sel ast.SelectionSet, obj *ent.Thread) graphql.Marshaler {
@@ -77097,6 +78425,47 @@ func (ec *executionContext) _TransformOptions(ctx context.Context, sel ast.Selec
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var triggerBackupPayloadImplementors = []string{"TriggerBackupPayload"}
+
+func (ec *executionContext) _TriggerBackupPayload(ctx context.Context, sel ast.SelectionSet, obj *TriggerBackupPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, triggerBackupPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TriggerBackupPayload")
+		case "success":
+			out.Values[i] = ec._TriggerBackupPayload_success(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "message":
+			out.Values[i] = ec._TriggerBackupPayload_message(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -78710,6 +80079,65 @@ func (ec *executionContext) _VersionCheck(ctx context.Context, sel ast.Selection
 	return out
 }
 
+var webDAVConfigImplementors = []string{"WebDAVConfig"}
+
+func (ec *executionContext) _WebDAVConfig(ctx context.Context, sel ast.SelectionSet, obj *biz.WebDAVConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, webDAVConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("WebDAVConfig")
+		case "url":
+			out.Values[i] = ec._WebDAVConfig_url(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "username":
+			out.Values[i] = ec._WebDAVConfig_username(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "password":
+			out.Values[i] = ec._WebDAVConfig_password(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "insecureSkipTLS":
+			out.Values[i] = ec._WebDAVConfig_insecureSkipTLS(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "path":
+			out.Values[i] = ec._WebDAVConfig_path(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var __DirectiveImplementors = []string{"__Directive"}
 
 func (ec *executionContext) ___Directive(ctx context.Context, sel ast.SelectionSet, obj *introspection.Directive) graphql.Marshaler {
@@ -79207,6 +80635,20 @@ func (ec *executionContext) marshalNApplyChannelOverrideTemplatePayload2ᚖgithu
 	return ec._ApplyChannelOverrideTemplatePayload(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNAutoBackupSettings2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐAutoBackupSettings(ctx context.Context, sel ast.SelectionSet, v biz.AutoBackupSettings) graphql.Marshaler {
+	return ec._AutoBackupSettings(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAutoBackupSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐAutoBackupSettings(ctx context.Context, sel ast.SelectionSet, v *biz.AutoBackupSettings) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AutoBackupSettings(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNAutoDisableChannel2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐAutoDisableChannel(ctx context.Context, sel ast.SelectionSet, v biz.AutoDisableChannel) graphql.Marshaler {
 	return ec._AutoDisableChannel(ctx, sel, &v)
 }
@@ -79264,13 +80706,13 @@ func (ec *executionContext) unmarshalNAutoDisableChannelStatusInput2githubᚗcom
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNBackupConflictStrategy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐConflictStrategy(ctx context.Context, v any) (biz.ConflictStrategy, error) {
+func (ec *executionContext) unmarshalNBackupConflictStrategy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbackupᚐConflictStrategy(ctx context.Context, v any) (backup.ConflictStrategy, error) {
 	tmp, err := graphql.UnmarshalString(v)
-	res := biz.ConflictStrategy(tmp)
+	res := backup.ConflictStrategy(tmp)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNBackupConflictStrategy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐConflictStrategy(ctx context.Context, sel ast.SelectionSet, v biz.ConflictStrategy) graphql.Marshaler {
+func (ec *executionContext) marshalNBackupConflictStrategy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbackupᚐConflictStrategy(ctx context.Context, sel ast.SelectionSet, v backup.ConflictStrategy) graphql.Marshaler {
 	_ = sel
 	res := graphql.MarshalString(string(v))
 	if res == graphql.Null {
@@ -79281,7 +80723,24 @@ func (ec *executionContext) marshalNBackupConflictStrategy2githubᚗcomᚋlooplj
 	return res
 }
 
-func (ec *executionContext) unmarshalNBackupOptionsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐBackupOptions(ctx context.Context, v any) (biz.BackupOptions, error) {
+func (ec *executionContext) unmarshalNBackupFrequency2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐBackupFrequency(ctx context.Context, v any) (biz.BackupFrequency, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := biz.BackupFrequency(tmp)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNBackupFrequency2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐBackupFrequency(ctx context.Context, sel ast.SelectionSet, v biz.BackupFrequency) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalString(string(v))
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) unmarshalNBackupOptionsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbackupᚐBackupOptions(ctx context.Context, v any) (backup.BackupOptions, error) {
 	res, err := ec.unmarshalInputBackupOptionsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -81897,7 +83356,7 @@ func (ec *executionContext) unmarshalNRequestWhereInput2ᚖgithubᚗcomᚋlooplj
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNRestoreOptionsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐRestoreOptions(ctx context.Context, v any) (biz.RestoreOptions, error) {
+func (ec *executionContext) unmarshalNRestoreOptionsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbackupᚐRestoreOptions(ctx context.Context, v any) (backup.RestoreOptions, error) {
 	res, err := ec.unmarshalInputRestoreOptionsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -82309,6 +83768,20 @@ func (ec *executionContext) marshalNTestChannelPayload2ᚖgithubᚗcomᚋlooplj�
 	return ec._TestChannelPayload(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNTestConnectionPayload2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTestConnectionPayload(ctx context.Context, sel ast.SelectionSet, v TestConnectionPayload) graphql.Marshaler {
+	return ec._TestConnectionPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTestConnectionPayload2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTestConnectionPayload(ctx context.Context, sel ast.SelectionSet, v *TestConnectionPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TestConnectionPayload(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNThreadConnection2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐThreadConnection(ctx context.Context, sel ast.SelectionSet, v ent.ThreadConnection) graphql.Marshaler {
 	return ec._ThreadConnection(ctx, sel, &v)
 }
@@ -82526,6 +83999,20 @@ func (ec *executionContext) unmarshalNTraceWhereInput2ᚖgithubᚗcomᚋlooplj�
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNTriggerBackupPayload2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTriggerBackupPayload(ctx context.Context, sel ast.SelectionSet, v TriggerBackupPayload) graphql.Marshaler {
+	return ec._TriggerBackupPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTriggerBackupPayload2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTriggerBackupPayload(ctx context.Context, sel ast.SelectionSet, v *TriggerBackupPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TriggerBackupPayload(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNUnassociatedChannel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐUnassociatedChannelᚄ(ctx context.Context, sel ast.SelectionSet, v []*biz.UnassociatedChannel) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -82587,6 +84074,11 @@ func (ec *executionContext) unmarshalNUpdateAPIKeyInput2githubᚗcomᚋloopljᚋ
 
 func (ec *executionContext) unmarshalNUpdateAPIKeyProfilesInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyProfiles(ctx context.Context, v any) (objects.APIKeyProfiles, error) {
 	res, err := ec.unmarshalInputUpdateAPIKeyProfilesInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateAutoBackupSettingsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUpdateAutoBackupSettingsInput(ctx context.Context, v any) (UpdateAutoBackupSettingsInput, error) {
+	res, err := ec.unmarshalInputUpdateAutoBackupSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -82935,6 +84427,11 @@ func (ec *executionContext) marshalNVersionCheck2ᚖgithubᚗcomᚋloopljᚋaxon
 		return graphql.Null
 	}
 	return ec._VersionCheck(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNWebDAVConfigInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐWebDAVConfigInput(ctx context.Context, v any) (WebDAVConfigInput, error) {
+	res, err := ec.unmarshalInputWebDAVConfigInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {
@@ -83594,6 +85091,25 @@ func (ec *executionContext) unmarshalOAutoDisableChannelStatusInput2ᚕgithubᚗ
 		}
 	}
 	return res, nil
+}
+
+func (ec *executionContext) unmarshalOBackupFrequency2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐBackupFrequency(ctx context.Context, v any) (*biz.BackupFrequency, error) {
+	if v == nil {
+		return nil, nil
+	}
+	tmp, err := graphql.UnmarshalString(v)
+	res := biz.BackupFrequency(tmp)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOBackupFrequency2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐBackupFrequency(ctx context.Context, sel ast.SelectionSet, v *biz.BackupFrequency) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalString(string(*v))
+	return res
 }
 
 func (ec *executionContext) unmarshalOBoolean2bool(ctx context.Context, v any) (bool, error) {
@@ -88382,6 +89898,21 @@ func (ec *executionContext) unmarshalOUserWhereInput2ᚖgithubᚗcomᚋloopljᚋ
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputUserWhereInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOWebDAVConfig2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐWebDAVConfig(ctx context.Context, sel ast.SelectionSet, v *biz.WebDAVConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._WebDAVConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOWebDAVConfigInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐWebDAVConfigInput(ctx context.Context, v any) (*WebDAVConfigInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputWebDAVConfigInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 

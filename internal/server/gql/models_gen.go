@@ -212,6 +212,11 @@ type TestChannelPayload struct {
 	Error   *string `json:"error,omitempty"`
 }
 
+type TestConnectionPayload struct {
+	Success bool    `json:"success"`
+	Message *string `json:"message,omitempty"`
+}
+
 type TokenStats struct {
 	TotalInputTokensToday      int `json:"totalInputTokensToday"`
 	TotalOutputTokensToday     int `json:"totalOutputTokensToday"`
@@ -241,8 +246,24 @@ type TopRequestsProjects struct {
 	RequestCount       int          `json:"requestCount"`
 }
 
+type TriggerBackupPayload struct {
+	Success bool    `json:"success"`
+	Message *string `json:"message,omitempty"`
+}
+
 type UpdateAPIKeyScopesInput struct {
 	Scopes []string `json:"scopes"`
+}
+
+type UpdateAutoBackupSettingsInput struct {
+	Enabled            *bool                `json:"enabled,omitempty"`
+	Frequency          *biz.BackupFrequency `json:"frequency,omitempty"`
+	Webdav             *WebDAVConfigInput   `json:"webdav,omitempty"`
+	IncludeChannels    *bool                `json:"includeChannels,omitempty"`
+	IncludeModels      *bool                `json:"includeModels,omitempty"`
+	IncludeAPIKeys     *bool                `json:"includeAPIKeys,omitempty"`
+	IncludeModelPrices *bool                `json:"includeModelPrices,omitempty"`
+	RetentionDays      *int                 `json:"retentionDays,omitempty"`
 }
 
 type UpdateBrandSettingsInput struct {
@@ -275,6 +296,14 @@ type VersionCheck struct {
 	LatestVersion  string `json:"latestVersion"`
 	HasUpdate      bool   `json:"hasUpdate"`
 	ReleaseURL     string `json:"releaseUrl"`
+}
+
+type WebDAVConfigInput struct {
+	URL             string  `json:"url"`
+	Username        string  `json:"username"`
+	Password        string  `json:"password"`
+	InsecureSkipTLS *bool   `json:"insecureSkipTLS,omitempty"`
+	Path            *string `json:"path,omitempty"`
 }
 
 type OverrideApplyMode string

@@ -20,6 +20,7 @@ input RestoreOptionsInput {
   includeAPIKeys: Boolean!
   channelConflictStrategy: BackupConflictStrategy!
   modelConflictStrategy: BackupConflictStrategy!
+  modelPriceConflictStrategy: BackupConflictStrategy!
   apiKeyConflictStrategy: BackupConflictStrategy!
 }
 
@@ -37,4 +38,71 @@ type RestorePayload {
 extend type Mutation {
   backup(input: BackupOptionsInput!): BackupPayload!
   restore(file: Upload!, input: RestoreOptionsInput!): RestorePayload!
+}
+
+enum BackupFrequency {
+  daily
+  weekly
+  monthly
+}
+
+type WebDAVConfig {
+  url: String!
+  username: String!
+  password: String!
+  insecureSkipTLS: Boolean!
+  path: String!
+}
+
+type AutoBackupSettings {
+  enabled: Boolean!
+  frequency: BackupFrequency!
+  targetType: String!
+  webdav: WebDAVConfig
+  includeChannels: Boolean!
+  includeModels: Boolean!
+  includeAPIKeys: Boolean!
+  includeModelPrices: Boolean!
+  retentionDays: Int!
+  lastBackupAt: Time
+  lastBackupError: String
+}
+
+input WebDAVConfigInput {
+  url: String!
+  username: String!
+  password: String!
+  insecureSkipTLS: Boolean
+  path: String
+}
+
+input UpdateAutoBackupSettingsInput {
+  enabled: Boolean
+  frequency: BackupFrequency
+  webdav: WebDAVConfigInput
+  includeChannels: Boolean
+  includeModels: Boolean
+  includeAPIKeys: Boolean
+  includeModelPrices: Boolean
+  retentionDays: Int
+}
+
+type TestConnectionPayload {
+  success: Boolean!
+  message: String
+}
+
+type TriggerBackupPayload {
+  success: Boolean!
+  message: String
+}
+
+extend type Query {
+  autoBackupSettings: AutoBackupSettings!
+}
+
+extend type Mutation {
+  updateAutoBackupSettings(input: UpdateAutoBackupSettingsInput!): Boolean!
+  testWebDAVConnection(input: WebDAVConfigInput!): TestConnectionPayload!
+  triggerAutoBackup: TriggerBackupPayload!
 }

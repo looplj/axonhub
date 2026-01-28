@@ -1,4 +1,4 @@
-package biz
+package backup
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
-	"github.com/zhenzou/executors"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
@@ -18,39 +17,13 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/objects"
-	"github.com/looplj/axonhub/internal/pkg/xcache"
 )
 
 func setupBackupTest(t *testing.T) (*ent.Client, *BackupService, context.Context) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 
-	executor := executors.NewPoolScheduleExecutor(executors.WithMaxConcurrent(1))
-
-	t.Cleanup(func() {
-		_ = executor.Shutdown(context.Background())
-	})
-
-	systemService := NewSystemService(SystemServiceParams{
-		CacheConfig: xcache.Config{Mode: xcache.ModeMemory},
-		Ent:         client,
-	})
-
-	channelService := NewChannelService(ChannelServiceParams{
-		Executor:      executor,
-		Ent:           client,
-		SystemService: systemService,
-	})
-
-	modelService := NewModelService(ModelServiceParams{
-		ChannelService: channelService,
-		SystemService:  systemService,
-		Ent:            client,
-	})
-
 	service := NewBackupService(BackupServiceParams{
-		ChannelService: channelService,
-		ModelService:   modelService,
-		Ent:            client,
+		Ent: client,
 	})
 
 	ctx := context.Background()
@@ -653,4 +626,158 @@ func TestBackupService_Restore_InvalidVersion(t *testing.T) {
 		ModelConflictStrategy:   ConflictStrategyOverwrite,
 	})
 	require.Error(t, err)
+}
+
+func TestBackupService_Restore_ModelPriceConflictStrategy_Skip(t *testing.T) {
+	client, service, ctx := setupBackupTest(t)
+	defer client.Close()
+
+	ch1 := createBackupTestChannel(t, client, ctx, "Channel 1", channel.TypeOpenai)
+	existingPrice := createBackupTestChannelModelPrice(t, client, ctx, ch1.ID, "gpt-4")
+
+	newPricePerUnit := decimal.NewFromFloat(999.99)
+	backupData := BackupData{
+		Version:  BackupVersion,
+		Channels: []*BackupChannel{},
+		Models:   []*BackupModel{},
+		ChannelModelPrices: []*BackupChannelModelPrice{
+			{
+				ChannelName: ch1.Name,
+				ModelID:     "gpt-4",
+				Price: objects.ModelPrice{
+					Items: []objects.ModelPriceItem{
+						{
+							ItemCode: objects.PriceItemCodeUsage,
+							Pricing: objects.Pricing{
+								Mode:         objects.PricingModeUsagePerUnit,
+								UsagePerUnit: &newPricePerUnit,
+							},
+						},
+					},
+				},
+				ReferenceID: "new-ref-id",
+			},
+		},
+	}
+
+	data, err := json.MarshalIndent(backupData, "", "  ")
+	require.NoError(t, err)
+
+	err = service.Restore(ctx, data, RestoreOptions{
+		IncludeChannels:            false,
+		IncludeModels:              false,
+		IncludeAPIKeys:             false,
+		IncludeModelPrices:         true,
+		ModelPriceConflictStrategy: ConflictStrategySkip,
+	})
+	require.NoError(t, err)
+
+	restoredPrice, err := client.ChannelModelPrice.Query().
+		Where(
+			channelmodelprice.ChannelID(ch1.ID),
+			channelmodelprice.ModelID("gpt-4"),
+		).
+		First(ctx)
+	require.NoError(t, err)
+	require.Equal(t, existingPrice.ReferenceID, restoredPrice.ReferenceID)
+}
+
+func TestBackupService_Restore_ModelPriceConflictStrategy_Overwrite(t *testing.T) {
+	client, service, ctx := setupBackupTest(t)
+	defer client.Close()
+
+	ch1 := createBackupTestChannel(t, client, ctx, "Channel 1", channel.TypeOpenai)
+	_ = createBackupTestChannelModelPrice(t, client, ctx, ch1.ID, "gpt-4")
+
+	newPricePerUnit := decimal.NewFromFloat(999.99)
+	backupData := BackupData{
+		Version:  BackupVersion,
+		Channels: []*BackupChannel{},
+		Models:   []*BackupModel{},
+		ChannelModelPrices: []*BackupChannelModelPrice{
+			{
+				ChannelName: ch1.Name,
+				ModelID:     "gpt-4",
+				Price: objects.ModelPrice{
+					Items: []objects.ModelPriceItem{
+						{
+							ItemCode: objects.PriceItemCodeUsage,
+							Pricing: objects.Pricing{
+								Mode:         objects.PricingModeUsagePerUnit,
+								UsagePerUnit: &newPricePerUnit,
+							},
+						},
+					},
+				},
+				ReferenceID: "overwritten-ref-id",
+			},
+		},
+	}
+
+	data, err := json.MarshalIndent(backupData, "", "  ")
+	require.NoError(t, err)
+
+	err = service.Restore(ctx, data, RestoreOptions{
+		IncludeChannels:            false,
+		IncludeModels:              false,
+		IncludeAPIKeys:             false,
+		IncludeModelPrices:         true,
+		ModelPriceConflictStrategy: ConflictStrategyOverwrite,
+	})
+	require.NoError(t, err)
+
+	restoredPrice, err := client.ChannelModelPrice.Query().
+		Where(
+			channelmodelprice.ChannelID(ch1.ID),
+			channelmodelprice.ModelID("gpt-4"),
+		).
+		First(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "overwritten-ref-id", restoredPrice.ReferenceID)
+}
+
+func TestBackupService_Restore_ModelPriceConflictStrategy_Error(t *testing.T) {
+	client, service, ctx := setupBackupTest(t)
+	defer client.Close()
+
+	ch1 := createBackupTestChannel(t, client, ctx, "Channel 1", channel.TypeOpenai)
+	_ = createBackupTestChannelModelPrice(t, client, ctx, ch1.ID, "gpt-4")
+
+	newPricePerUnit := decimal.NewFromFloat(999.99)
+	backupData := BackupData{
+		Version:  BackupVersion,
+		Channels: []*BackupChannel{},
+		Models:   []*BackupModel{},
+		ChannelModelPrices: []*BackupChannelModelPrice{
+			{
+				ChannelName: ch1.Name,
+				ModelID:     "gpt-4",
+				Price: objects.ModelPrice{
+					Items: []objects.ModelPriceItem{
+						{
+							ItemCode: objects.PriceItemCodeUsage,
+							Pricing: objects.Pricing{
+								Mode:         objects.PricingModeUsagePerUnit,
+								UsagePerUnit: &newPricePerUnit,
+							},
+						},
+					},
+				},
+				ReferenceID: "new-ref-id",
+			},
+		},
+	}
+
+	data, err := json.MarshalIndent(backupData, "", "  ")
+	require.NoError(t, err)
+
+	err = service.Restore(ctx, data, RestoreOptions{
+		IncludeChannels:            false,
+		IncludeModels:              false,
+		IncludeAPIKeys:             false,
+		IncludeModelPrices:         true,
+		ModelPriceConflictStrategy: ConflictStrategyError,
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "channel model price already exists")
 }
