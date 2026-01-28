@@ -276,6 +276,9 @@ When introducing a new provider channel, keep backend and frontend changes align
   - `github.com/jackc/pgx/v5` - PostgreSQL driver
   - `github.com/go-sql-driver/mysql` - MySQL driver
 
+### Biz Service Rules
+- **REQUIRED**: Ensure the dependency service not be nil, the logic code should not check the service is nil.
+
 ### Error Handling
 - **REQUIRED**: Always handle errors using the unified error response format from `internal/pkg/errors`
 - Implement proper error wrapping with context

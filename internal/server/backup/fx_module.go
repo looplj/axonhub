@@ -8,14 +8,13 @@ import (
 
 var Module = fx.Module("backup",
 	fx.Provide(NewBackupService),
-	fx.Provide(NewWorker),
-	fx.Invoke(func(lc fx.Lifecycle, w *Worker) {
+	fx.Invoke(func(lc fx.Lifecycle, svc *BackupService) {
 		lc.Append(fx.Hook{
 			OnStart: func(ctx context.Context) error {
-				return w.Start(ctx)
+				return svc.Start(ctx)
 			},
 			OnStop: func(ctx context.Context) error {
-				return w.Stop(ctx)
+				return svc.Stop(ctx)
 			},
 		})
 	}),

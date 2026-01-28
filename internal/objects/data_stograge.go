@@ -12,6 +12,9 @@ type DataStorageSettings struct {
 
 	// GCS is the gcs data storage.
 	GCS *GCS `json:"gcs"`
+
+	// WebDAV is the webdav data storage.
+	WebDAV *WebDAV `json:"webdav"`
 }
 
 type S3 struct {
@@ -25,4 +28,12 @@ type S3 struct {
 type GCS struct {
 	BucketName string `json:"bucketName"`
 	Credential string `json:"credential"`
+}
+
+type WebDAV struct {
+	URL             string `json:"url"`
+	Username        string `json:"username"`
+	Password        string `json:"password"`
+	InsecureSkipTLS bool   `json:"insecure_skip_tls"`
+	Path            string `json:"path"`
 }

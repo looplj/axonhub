@@ -46,19 +46,10 @@ enum BackupFrequency {
   monthly
 }
 
-type WebDAVConfig {
-  url: String!
-  username: String!
-  password: String!
-  insecureSkipTLS: Boolean!
-  path: String!
-}
-
 type AutoBackupSettings {
   enabled: Boolean!
   frequency: BackupFrequency!
-  targetType: String!
-  webdav: WebDAVConfig
+  dataStorageID: Int!
   includeChannels: Boolean!
   includeModels: Boolean!
   includeAPIKeys: Boolean!
@@ -68,28 +59,15 @@ type AutoBackupSettings {
   lastBackupError: String
 }
 
-input WebDAVConfigInput {
-  url: String!
-  username: String!
-  password: String!
-  insecureSkipTLS: Boolean
-  path: String
-}
-
 input UpdateAutoBackupSettingsInput {
   enabled: Boolean
   frequency: BackupFrequency
-  webdav: WebDAVConfigInput
+  dataStorageID: Int
   includeChannels: Boolean
   includeModels: Boolean
   includeAPIKeys: Boolean
   includeModelPrices: Boolean
   retentionDays: Int
-}
-
-type TestConnectionPayload {
-  success: Boolean!
-  message: String
 }
 
 type TriggerBackupPayload {
@@ -103,6 +81,5 @@ extend type Query {
 
 extend type Mutation {
   updateAutoBackupSettings(input: UpdateAutoBackupSettingsInput!): Boolean!
-  testWebDAVConnection(input: WebDAVConfigInput!): TestConnectionPayload!
   triggerAutoBackup: TriggerBackupPayload!
 }

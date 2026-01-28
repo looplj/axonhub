@@ -782,14 +782,7 @@ const AUTO_BACKUP_SETTINGS_QUERY = `
     autoBackupSettings {
       enabled
       frequency
-      targetType
-      webdav {
-        url
-        username
-        password
-        insecureSkipTLS
-        path
-      }
+      dataStorageID
       includeChannels
       includeModels
       includeAPIKeys
@@ -807,15 +800,6 @@ const UPDATE_AUTO_BACKUP_SETTINGS_MUTATION = `
   }
 `;
 
-const TEST_WEBDAV_CONNECTION_MUTATION = `
-  mutation TestWebDAVConnection($input: WebDAVConfigInput!) {
-    testWebDAVConnection(input: $input) {
-      success
-      message
-    }
-  }
-`;
-
 const TRIGGER_AUTO_BACKUP_MUTATION = `
   mutation TriggerAutoBackup {
     triggerAutoBackup {
@@ -827,19 +811,10 @@ const TRIGGER_AUTO_BACKUP_MUTATION = `
 
 export type BackupFrequency = 'daily' | 'weekly' | 'monthly';
 
-export interface WebDAVConfig {
-  url: string;
-  username: string;
-  password: string;
-  insecureSkipTLS: boolean;
-  path: string;
-}
-
 export interface AutoBackupSettings {
   enabled: boolean;
   frequency: BackupFrequency;
-  targetType: string;
-  webdav?: WebDAVConfig;
+  dataStorageID: number;
   includeChannels: boolean;
   includeModels: boolean;
   includeAPIKeys: boolean;
@@ -852,13 +827,7 @@ export interface AutoBackupSettings {
 export interface UpdateAutoBackupSettingsInput {
   enabled?: boolean;
   frequency?: BackupFrequency;
-  webdav?: {
-    url: string;
-    username: string;
-    password: string;
-    insecureSkipTLS?: boolean;
-    path?: string;
-  };
+  dataStorageID?: number;
   includeChannels?: boolean;
   includeModels?: boolean;
   includeAPIKeys?: boolean;
@@ -897,28 +866,6 @@ export function useUpdateAutoBackupSettings() {
     },
     onError: () => {
       toast.error(i18n.t('common.errors.systemUpdateFailed'));
-    },
-  });
-}
-
-export function useTestWebDAVConnection() {
-  return useMutation({
-    mutationFn: async (input: { url: string; username: string; password: string; insecureSkipTLS?: boolean; path?: string }) => {
-      const data = await graphqlRequest<{ testWebDAVConnection: { success: boolean; message?: string } }>(
-        TEST_WEBDAV_CONNECTION_MUTATION,
-        { input }
-      );
-      return data.testWebDAVConnection;
-    },
-    onSuccess: (data) => {
-      if (data.success) {
-        toast.success(i18n.t('system.autoBackup.connectionSuccess'));
-      } else {
-        toast.error(data.message || i18n.t('system.autoBackup.connectionFailed'));
-      }
-    },
-    onError: () => {
-      toast.error(i18n.t('system.autoBackup.connectionFailed'));
     },
   });
 }

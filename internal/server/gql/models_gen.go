@@ -212,11 +212,6 @@ type TestChannelPayload struct {
 	Error   *string `json:"error,omitempty"`
 }
 
-type TestConnectionPayload struct {
-	Success bool    `json:"success"`
-	Message *string `json:"message,omitempty"`
-}
-
 type TokenStats struct {
 	TotalInputTokensToday      int `json:"totalInputTokensToday"`
 	TotalOutputTokensToday     int `json:"totalOutputTokensToday"`
@@ -258,7 +253,7 @@ type UpdateAPIKeyScopesInput struct {
 type UpdateAutoBackupSettingsInput struct {
 	Enabled            *bool                `json:"enabled,omitempty"`
 	Frequency          *biz.BackupFrequency `json:"frequency,omitempty"`
-	Webdav             *WebDAVConfigInput   `json:"webdav,omitempty"`
+	DataStorageID      *int                 `json:"dataStorageID,omitempty"`
 	IncludeChannels    *bool                `json:"includeChannels,omitempty"`
 	IncludeModels      *bool                `json:"includeModels,omitempty"`
 	IncludeAPIKeys     *bool                `json:"includeAPIKeys,omitempty"`
@@ -296,14 +291,6 @@ type VersionCheck struct {
 	LatestVersion  string `json:"latestVersion"`
 	HasUpdate      bool   `json:"hasUpdate"`
 	ReleaseURL     string `json:"releaseUrl"`
-}
-
-type WebDAVConfigInput struct {
-	URL             string  `json:"url"`
-	Username        string  `json:"username"`
-	Password        string  `json:"password"`
-	InsecureSkipTLS *bool   `json:"insecureSkipTLS,omitempty"`
-	Path            *string `json:"path,omitempty"`
 }
 
 type OverrideApplyMode string

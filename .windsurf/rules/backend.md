@@ -20,3 +20,7 @@ globs: *.go
 #  Golang rules
 
 1. USE github.com/samber/lo package to handle collection, slice, map, ptr, etc.
+
+# Biz Service Rules
+
+1. Ensure the dependency service not be nil, the logic code should not check the service is nil.

@@ -18,11 +18,22 @@ export const gcsSettingsSchema = z.object({
 });
 export type GCSSettings = z.infer<typeof gcsSettingsSchema>;
 
+// WebDAV Settings schema
+export const webdavSettingsSchema = z.object({
+  url: z.string(),
+  username: z.string().optional(),
+  password: z.string().optional(),
+  insecure_skip_tls: z.boolean().optional(),
+  path: z.string().optional(),
+});
+export type WebDAVSettings = z.infer<typeof webdavSettingsSchema>;
+
 // Data Storage Settings schema
 export const dataStorageSettingsSchema = z.object({
   directory: z.string().optional().nullable(),
   s3: s3SettingsSchema.optional().nullable(),
   gcs: gcsSettingsSchema.optional().nullable(),
+  webdav: webdavSettingsSchema.optional().nullable(),
 });
 export type DataStorageSettings = z.infer<typeof dataStorageSettingsSchema>;
 
@@ -31,7 +42,7 @@ export const dataStorageSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string(),
-  type: z.enum(['database', 'fs', 's3', 'gcs']),
+  type: z.enum(['database', 'fs', 's3', 'gcs', 'webdav']),
   primary: z.boolean(),
   status: z.enum(['active', 'archived']),
   settings: dataStorageSettingsSchema,
@@ -72,6 +83,7 @@ export const dataStorageSettingsWithCredentialsSchema = z.object({
   directory: z.string().optional().nullable(),
   s3: s3SettingsWithCredentialsSchema.optional().nullable(),
   gcs: gcsSettingsWithCredentialsSchema.optional().nullable(),
+  webdav: webdavSettingsSchema.optional().nullable(),
 });
 export type DataStorageSettingsWithCredentials = z.infer<typeof dataStorageSettingsWithCredentialsSchema>;
 
@@ -85,7 +97,7 @@ export type DataStorageWithCredentials = z.infer<typeof dataStorageWithCredentia
 export const createDataStorageInputSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   description: z.string().optional(),
-  type: z.enum(['database', 'fs', 's3', 'gcs']),
+  type: z.enum(['database', 'fs', 's3', 'gcs', 'webdav']),
   settings: dataStorageSettingsWithCredentialsSchema,
 });
 export type CreateDataStorageInput = z.infer<typeof createDataStorageInputSchema>;
