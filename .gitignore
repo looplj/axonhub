@@ -114,6 +114,7 @@ openspec
 .tanstack
 .trae/tasks
 .trae/summary
+.trae/documents
 playwright-report/
 test-results
 .claude

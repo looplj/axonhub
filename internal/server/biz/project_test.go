@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
+	"github.com/looplj/axonhub/internal/pkg/xredis"
 )
 
 func setupTestProjectService(t *testing.T, cacheConfig xcache.Config) (*ProjectService, *ent.Client) {
@@ -82,7 +83,7 @@ func TestProjectService_GetProjectByID_WithDifferentCaches(t *testing.T) {
 			name: "Redis Cache",
 			cacheConfig: xcache.Config{
 				Mode: xcache.ModeRedis,
-				Redis: xcache.RedisConfig{
+				Redis: xredis.Config{
 					Addr: miniredis.RunT(t).Addr(),
 				},
 			},
@@ -91,7 +92,7 @@ func TestProjectService_GetProjectByID_WithDifferentCaches(t *testing.T) {
 			name: "Two-Level Cache",
 			cacheConfig: xcache.Config{
 				Mode: xcache.ModeTwoLevel,
-				Redis: xcache.RedisConfig{
+				Redis: xredis.Config{
 					Addr: miniredis.RunT(t).Addr(),
 				},
 			},

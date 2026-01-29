@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
+	"github.com/looplj/axonhub/internal/pkg/xredis"
 )
 
 func TestSystemService_GetSecretKey_NotInitialized(t *testing.T) {
@@ -87,7 +88,7 @@ func TestSystemService_WithRedisCache(t *testing.T) {
 
 	cacheConfig := xcache.Config{
 		Mode: xcache.ModeRedis,
-		Redis: xcache.RedisConfig{
+		Redis: xredis.Config{
 			Addr: mr.Addr(),
 		},
 	}
@@ -124,7 +125,7 @@ func TestSystemService_WithTwoLevelCache(t *testing.T) {
 
 	cacheConfig := xcache.Config{
 		Mode: xcache.ModeTwoLevel,
-		Redis: xcache.RedisConfig{
+		Redis: xredis.Config{
 			Addr: mr.Addr(),
 		},
 	}
@@ -248,7 +249,7 @@ func TestSystemService_Initialize_WithCache(t *testing.T) {
 
 	cacheConfig := xcache.Config{
 		Mode: xcache.ModeRedis,
-		Redis: xcache.RedisConfig{
+		Redis: xredis.Config{
 			Addr: mr.Addr(),
 		},
 	}
@@ -304,7 +305,7 @@ func TestSystemService_CacheExpiration(t *testing.T) {
 
 	cacheConfig := xcache.Config{
 		Mode: xcache.ModeRedis,
-		Redis: xcache.RedisConfig{
+		Redis: xredis.Config{
 			Addr:       mr.Addr(),
 			Expiration: 100 * time.Millisecond, // Very short for testing
 		},
@@ -490,7 +491,7 @@ func TestSystemService_Version_WithCache(t *testing.T) {
 
 	cacheConfig := xcache.Config{
 		Mode: xcache.ModeRedis,
-		Redis: xcache.RedisConfig{
+		Redis: xredis.Config{
 			Addr: mr.Addr(),
 		},
 	}
