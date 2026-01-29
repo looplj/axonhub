@@ -137,4 +137,31 @@ func TestAbstractService_RunInTransaction(t *testing.T) {
 		count := client.User.Query().CountX(ctx)
 		require.Equal(t, 1, count)
 	})
+
+	t.Run("transactional client on service without context client", func(t *testing.T) {
+		client, _, ctx := newSvc(t)
+		defer client.Close()
+
+		tx, err := client.Tx(ctx)
+		require.NoError(t, err)
+
+		txClient := tx.Client()
+		svc := &AbstractService{db: txClient}
+
+		err = svc.RunInTransaction(ctx, func(fnCtx context.Context) error {
+			require.NotNil(t, ent.FromContext(fnCtx))
+			ent.FromContext(fnCtx).User.Create().
+				SetEmail("test@example.com").
+				SetPassword("password").
+				SaveX(fnCtx)
+
+			return nil
+		})
+		require.NoError(t, err)
+
+		require.NoError(t, tx.Commit())
+
+		count := client.User.Query().CountX(ctx)
+		require.Equal(t, 1, count)
+	})
 }

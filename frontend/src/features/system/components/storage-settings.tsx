@@ -251,10 +251,10 @@ export function StorageSettings() {
                     <Input
                       id={`cleanup-days-${index}`}
                       type='number'
-                      min='1'
+                      min='0'
                       max='365'
                       value={option.cleanupDays}
-                      onChange={(e) => handleCleanupOptionChange(index, 'cleanupDays', parseInt(e.target.value) || 1)}
+                      onChange={(e) => handleCleanupOptionChange(index, 'cleanupDays', parseInt(e.target.value) || 0)}
                       className='w-24'
                       disabled={isLoading}
                     />

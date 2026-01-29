@@ -42,15 +42,18 @@ func (svc *ChannelService) BulkUpdateChannelOrdering(ctx context.Context, items 
 
 // BulkCreateChannelsInput represents input for bulk creating channels.
 type BulkCreateChannelsInput struct {
-	Type             channel.Type
-	Name             string
-	Tags             []string
-	BaseURL          *string
-	APIKeys          []string
-	SupportedModels  []string
-	DefaultTestModel string
-	Policies         *objects.ChannelPolicies
-	Settings         *objects.ChannelSettings
+	Type                    channel.Type
+	Name                    string
+	Tags                    []string
+	BaseURL                 *string
+	APIKeys                 []string
+	SupportedModels         []string
+	AutoSyncSupportedModels *bool
+	DefaultTestModel        string
+	Policies                *objects.ChannelPolicies
+	Settings                *objects.ChannelSettings
+	OrderingWeight          *int
+	Remark                  *string
 }
 
 // BulkCreateChannels creates multiple channels with the same configuration but different API keys.
@@ -102,15 +105,18 @@ func (svc *ChannelService) BulkCreateChannels(ctx context.Context, input BulkCre
 
 		// Create channel input
 		createInput := ent.CreateChannelInput{
-			Type:             input.Type,
-			BaseURL:          input.BaseURL,
-			Name:             channelName,
-			Credentials:      &objects.ChannelCredentials{APIKey: apiKey},
-			SupportedModels:  input.SupportedModels,
-			Tags:             tagsToUse,
-			DefaultTestModel: input.DefaultTestModel,
-			Policies:         input.Policies,
-			Settings:         input.Settings,
+			Type:                    input.Type,
+			BaseURL:                 input.BaseURL,
+			Name:                    channelName,
+			Credentials:             &objects.ChannelCredentials{APIKey: apiKey},
+			SupportedModels:         input.SupportedModels,
+			AutoSyncSupportedModels: input.AutoSyncSupportedModels,
+			Tags:                    tagsToUse,
+			DefaultTestModel:        input.DefaultTestModel,
+			Policies:                input.Policies,
+			Settings:                input.Settings,
+			OrderingWeight:          input.OrderingWeight,
+			Remark:                  input.Remark,
 		}
 
 		// Create the channel without reload

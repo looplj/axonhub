@@ -57,6 +57,7 @@ This guide helps contributors navigate and work effectively in this repository.
 - Line length: 180 (soft limit per golangci-lint config)
 - Use `golangci-lint` with `.golangci.yml`; scrutinize concurrency-safety
 - Use Ent patterns for DB; tests use `testify`
+- **Biz Service Rules**: Ensure the dependency service not be nil, the logic code should not check the service is nil.
 
 ### TypeScript/React
 

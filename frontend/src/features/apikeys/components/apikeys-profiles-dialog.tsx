@@ -9,7 +9,7 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
@@ -181,6 +181,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
       channelIDs: [],
       channelTags: [],
       modelIDs: [],
+      loadBalanceStrategy: null,
     });
   }, [appendProfile, profileFields]);
 
@@ -690,7 +691,50 @@ function ProfileCard({
             )}
           </div>
 
-          <div className='border-t pt-4'>
+          {/* Load Balancer Strategy */}
+          <div className='border-t pt-6'>
+            <FormField
+              control={form.control}
+              name={`profiles.${profileIndex}.loadBalanceStrategy`}
+              render={({ field }) => (
+                <FormItem className='space-y-4'>
+                  <div className='flex items-center justify-between gap-3'>
+                    <div>
+                      <h4 className='text-sm font-medium'>{t('apikeys.profiles.loadBalancerStrategy')}</h4>
+                      <FormDescription className='mt-1 text-xs'>
+                        {field.value === 'adaptive'
+                          ? t('system.retry.loadBalancerStrategy.documentation.adaptive')
+                          : field.value === 'failover'
+                          ? t('system.retry.loadBalancerStrategy.documentation.failover')
+                          : field.value === 'circuit-breaker'
+                          ? t('system.retry.loadBalancerStrategy.documentation.circuit-breaker')
+                          : t('apikeys.profiles.loadBalancerStrategyDescription')}
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Select
+                        onValueChange={(val) => field.onChange(val === 'system_default' ? null : val)}
+                        value={field.value || 'system_default'}
+                      >
+                        <SelectTrigger className='w-[140px]'>
+                          <SelectValue placeholder={t('apikeys.profiles.loadBalancerStrategyPlaceholder')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value='system_default'>{t('apikeys.profiles.loadBalancerStrategyPlaceholder')}</SelectItem>
+                          <SelectItem value='adaptive'>{t('system.retry.loadBalancerStrategy.options.adaptive')}</SelectItem>
+                          <SelectItem value='failover'>{t('system.retry.loadBalancerStrategy.options.failover')}</SelectItem>
+                          <SelectItem value='circuit-breaker'>{t('system.retry.loadBalancerStrategy.options.circuitBreaker')}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className='border-t pt-6'>
             <div className='flex items-center justify-between'>
               <h4 className='text-sm font-medium'>{t('apikeys.profiles.modelMappings')}</h4>
               <Button type='button' variant='outline' size='sm' onClick={addMapping} className='mb-3 flex items-center gap-2'>
@@ -720,7 +764,7 @@ function ProfileCard({
           </div>
 
           {/* Model IDs Restrictions Section */}
-          <div className='border-t pt-4'>
+          <div className='border-t pt-6'>
             <h4 className='mb-3 text-sm font-medium'>{t('apikeys.profiles.allowedModels')}</h4>
             <p className='text-muted-foreground mb-3 text-xs'>{t('apikeys.profiles.allowedModelsDescription')}</p>
             <FormField
@@ -744,7 +788,7 @@ function ProfileCard({
           </div>
 
           {/* Channel Restrictions Section */}
-          <div className='border-t pt-4'>
+          <div className='border-t pt-6'>
             <h4 className='mb-3 text-sm font-medium'>{t('apikeys.profiles.allowedChannels')}</h4>
             <p className='text-muted-foreground mb-3 text-xs'>{t('apikeys.profiles.allowedChannelsDescription')}</p>
             <FormField
@@ -779,7 +823,7 @@ function ProfileCard({
           </div>
 
           {/* Channel Tags Restrictions Section */}
-          <div className='border-t pt-4'>
+          <div className='border-t pt-6'>
             <h4 className='mb-3 text-sm font-medium'>{t('apikeys.profiles.allowedChannelTags')}</h4>
             <p className='text-muted-foreground mb-3 text-xs'>{t('apikeys.profiles.allowedChannelTagsDescription')}</p>
             <FormField

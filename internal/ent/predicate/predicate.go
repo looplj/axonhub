@@ -39,6 +39,9 @@ type Project func(*sql.Selector)
 // Prompt is the predicate function for prompt builders.
 type Prompt func(*sql.Selector)
 
+// ProviderQuotaStatus is the predicate function for providerquotastatus builders.
+type ProviderQuotaStatus func(*sql.Selector)
+
 // Request is the predicate function for request builders.
 type Request func(*sql.Selector)
 

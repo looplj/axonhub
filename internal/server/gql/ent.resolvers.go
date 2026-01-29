@@ -57,6 +57,17 @@ func (r *channelResolver) Policies(ctx context.Context, obj *ent.Channel) (*obje
 	return &obj.Policies, nil
 }
 
+// ProviderQuotaStatus is the resolver for the providerQuotaStatus field.
+// It returns null (not an error) when no quota status exists for the channel.
+func (r *channelResolver) ProviderQuotaStatus(ctx context.Context, obj *ent.Channel) (*ent.ProviderQuotaStatus, error) {
+	pqs, err := obj.ProviderQuotaStatus(ctx)
+	if ent.IsNotFound(err) {
+		return nil, nil
+	}
+
+	return pqs, err
+}
+
 // ID is the resolver for the id field.
 func (r *channelModelPriceResolver) ID(ctx context.Context, obj *ent.ChannelModelPrice) (*objects.GUID, error) {
 	return &objects.GUID{
@@ -171,6 +182,22 @@ func (r *promptResolver) ID(ctx context.Context, obj *ent.Prompt) (*objects.GUID
 	return &objects.GUID{
 		Type: ent.TypePrompt,
 		ID:   obj.ID,
+	}, nil
+}
+
+// ID is the resolver for the id field.
+func (r *providerQuotaStatusResolver) ID(ctx context.Context, obj *ent.ProviderQuotaStatus) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeProviderQuotaStatus,
+		ID:   obj.ID,
+	}, nil
+}
+
+// ChannelID is the resolver for the channelID field.
+func (r *providerQuotaStatusResolver) ChannelID(ctx context.Context, obj *ent.ProviderQuotaStatus) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeChannel,
+		ID:   obj.ChannelID,
 	}, nil
 }
 
@@ -788,6 +815,11 @@ func (r *Resolver) Project() ProjectResolver { return &projectResolver{r} }
 // Prompt returns PromptResolver implementation.
 func (r *Resolver) Prompt() PromptResolver { return &promptResolver{r} }
 
+// ProviderQuotaStatus returns ProviderQuotaStatusResolver implementation.
+func (r *Resolver) ProviderQuotaStatus() ProviderQuotaStatusResolver {
+	return &providerQuotaStatusResolver{r}
+}
+
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
@@ -832,6 +864,7 @@ type dataStorageResolver struct{ *Resolver }
 type modelResolver struct{ *Resolver }
 type projectResolver struct{ *Resolver }
 type promptResolver struct{ *Resolver }
+type providerQuotaStatusResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type requestResolver struct{ *Resolver }
 type requestExecutionResolver struct{ *Resolver }

@@ -94,6 +94,14 @@ func (_c *UsageLogCreate) SetChannelID(v int) *UsageLogCreate {
 	return _c
 }
 
+// SetNillableChannelID sets the "channel_id" field if the given value is not nil.
+func (_c *UsageLogCreate) SetNillableChannelID(v *int) *UsageLogCreate {
+	if v != nil {
+		_c.SetChannelID(*v)
+	}
+	return _c
+}
+
 // SetModelID sets the "model_id" field.
 func (_c *UsageLogCreate) SetModelID(v string) *UsageLogCreate {
 	_c.mutation.SetModelID(v)
@@ -477,9 +485,6 @@ func (_c *UsageLogCreate) check() error {
 	if _, ok := _c.mutation.ProjectID(); !ok {
 		return &ValidationError{Name: "project_id", err: errors.New(`ent: missing required field "UsageLog.project_id"`)}
 	}
-	if _, ok := _c.mutation.ChannelID(); !ok {
-		return &ValidationError{Name: "channel_id", err: errors.New(`ent: missing required field "UsageLog.channel_id"`)}
-	}
 	if _, ok := _c.mutation.ModelID(); !ok {
 		return &ValidationError{Name: "model_id", err: errors.New(`ent: missing required field "UsageLog.model_id"`)}
 	}
@@ -508,9 +513,6 @@ func (_c *UsageLogCreate) check() error {
 	}
 	if len(_c.mutation.ProjectIDs()) == 0 {
 		return &ValidationError{Name: "project", err: errors.New(`ent: missing required edge "UsageLog.project"`)}
-	}
-	if len(_c.mutation.ChannelIDs()) == 0 {
-		return &ValidationError{Name: "channel", err: errors.New(`ent: missing required edge "UsageLog.channel"`)}
 	}
 	return nil
 }

@@ -25,6 +25,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
@@ -3592,6 +3593,320 @@ func (_m *Prompt) ToEdge(order *PromptOrder) *PromptEdge {
 		order = DefaultPromptOrder
 	}
 	return &PromptEdge{
+		Node:   _m,
+		Cursor: order.Field.toCursor(_m),
+	}
+}
+
+// ProviderQuotaStatusEdge is the edge representation of ProviderQuotaStatus.
+type ProviderQuotaStatusEdge struct {
+	Node   *ProviderQuotaStatus `json:"node"`
+	Cursor Cursor               `json:"cursor"`
+}
+
+// ProviderQuotaStatusConnection is the connection containing edges to ProviderQuotaStatus.
+type ProviderQuotaStatusConnection struct {
+	Edges      []*ProviderQuotaStatusEdge `json:"edges"`
+	PageInfo   PageInfo                   `json:"pageInfo"`
+	TotalCount int                        `json:"totalCount"`
+}
+
+func (c *ProviderQuotaStatusConnection) build(nodes []*ProviderQuotaStatus, pager *providerquotastatusPager, after *Cursor, first *int, before *Cursor, last *int) {
+	c.PageInfo.HasNextPage = before != nil
+	c.PageInfo.HasPreviousPage = after != nil
+	if first != nil && *first+1 == len(nodes) {
+		c.PageInfo.HasNextPage = true
+		nodes = nodes[:len(nodes)-1]
+	} else if last != nil && *last+1 == len(nodes) {
+		c.PageInfo.HasPreviousPage = true
+		nodes = nodes[:len(nodes)-1]
+	}
+	var nodeAt func(int) *ProviderQuotaStatus
+	if last != nil {
+		n := len(nodes) - 1
+		nodeAt = func(i int) *ProviderQuotaStatus {
+			return nodes[n-i]
+		}
+	} else {
+		nodeAt = func(i int) *ProviderQuotaStatus {
+			return nodes[i]
+		}
+	}
+	c.Edges = make([]*ProviderQuotaStatusEdge, len(nodes))
+	for i := range nodes {
+		node := nodeAt(i)
+		c.Edges[i] = &ProviderQuotaStatusEdge{
+			Node:   node,
+			Cursor: pager.toCursor(node),
+		}
+	}
+	if l := len(c.Edges); l > 0 {
+		c.PageInfo.StartCursor = &c.Edges[0].Cursor
+		c.PageInfo.EndCursor = &c.Edges[l-1].Cursor
+	}
+	if c.TotalCount == 0 {
+		c.TotalCount = len(nodes)
+	}
+}
+
+// ProviderQuotaStatusPaginateOption enables pagination customization.
+type ProviderQuotaStatusPaginateOption func(*providerquotastatusPager) error
+
+// WithProviderQuotaStatusOrder configures pagination ordering.
+func WithProviderQuotaStatusOrder(order *ProviderQuotaStatusOrder) ProviderQuotaStatusPaginateOption {
+	if order == nil {
+		order = DefaultProviderQuotaStatusOrder
+	}
+	o := *order
+	return func(pager *providerquotastatusPager) error {
+		if err := o.Direction.Validate(); err != nil {
+			return err
+		}
+		if o.Field == nil {
+			o.Field = DefaultProviderQuotaStatusOrder.Field
+		}
+		pager.order = &o
+		return nil
+	}
+}
+
+// WithProviderQuotaStatusFilter configures pagination filter.
+func WithProviderQuotaStatusFilter(filter func(*ProviderQuotaStatusQuery) (*ProviderQuotaStatusQuery, error)) ProviderQuotaStatusPaginateOption {
+	return func(pager *providerquotastatusPager) error {
+		if filter == nil {
+			return errors.New("ProviderQuotaStatusQuery filter cannot be nil")
+		}
+		pager.filter = filter
+		return nil
+	}
+}
+
+type providerquotastatusPager struct {
+	reverse bool
+	order   *ProviderQuotaStatusOrder
+	filter  func(*ProviderQuotaStatusQuery) (*ProviderQuotaStatusQuery, error)
+}
+
+func newProviderQuotaStatusPager(opts []ProviderQuotaStatusPaginateOption, reverse bool) (*providerquotastatusPager, error) {
+	pager := &providerquotastatusPager{reverse: reverse}
+	for _, opt := range opts {
+		if err := opt(pager); err != nil {
+			return nil, err
+		}
+	}
+	if pager.order == nil {
+		pager.order = DefaultProviderQuotaStatusOrder
+	}
+	return pager, nil
+}
+
+func (p *providerquotastatusPager) applyFilter(query *ProviderQuotaStatusQuery) (*ProviderQuotaStatusQuery, error) {
+	if p.filter != nil {
+		return p.filter(query)
+	}
+	return query, nil
+}
+
+func (p *providerquotastatusPager) toCursor(_m *ProviderQuotaStatus) Cursor {
+	return p.order.Field.toCursor(_m)
+}
+
+func (p *providerquotastatusPager) applyCursors(query *ProviderQuotaStatusQuery, after, before *Cursor) (*ProviderQuotaStatusQuery, error) {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	for _, predicate := range entgql.CursorsPredicate(after, before, DefaultProviderQuotaStatusOrder.Field.column, p.order.Field.column, direction) {
+		query = query.Where(predicate)
+	}
+	return query, nil
+}
+
+func (p *providerquotastatusPager) applyOrder(query *ProviderQuotaStatusQuery) *ProviderQuotaStatusQuery {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	query = query.Order(p.order.Field.toTerm(direction.OrderTermOption()))
+	if p.order.Field != DefaultProviderQuotaStatusOrder.Field {
+		query = query.Order(DefaultProviderQuotaStatusOrder.Field.toTerm(direction.OrderTermOption()))
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return query
+}
+
+func (p *providerquotastatusPager) orderExpr(query *ProviderQuotaStatusQuery) sql.Querier {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return sql.ExprFunc(func(b *sql.Builder) {
+		b.Ident(p.order.Field.column).Pad().WriteString(string(direction))
+		if p.order.Field != DefaultProviderQuotaStatusOrder.Field {
+			b.Comma().Ident(DefaultProviderQuotaStatusOrder.Field.column).Pad().WriteString(string(direction))
+		}
+	})
+}
+
+// Paginate executes the query and returns a relay based cursor connection to ProviderQuotaStatus.
+func (_m *ProviderQuotaStatusQuery) Paginate(
+	ctx context.Context, after *Cursor, first *int,
+	before *Cursor, last *int, opts ...ProviderQuotaStatusPaginateOption,
+) (*ProviderQuotaStatusConnection, error) {
+	if err := validateFirstLast(first, last); err != nil {
+		return nil, err
+	}
+	pager, err := newProviderQuotaStatusPager(opts, last != nil)
+	if err != nil {
+		return nil, err
+	}
+	if _m, err = pager.applyFilter(_m); err != nil {
+		return nil, err
+	}
+	conn := &ProviderQuotaStatusConnection{Edges: []*ProviderQuotaStatusEdge{}}
+	ignoredEdges := !hasCollectedField(ctx, edgesField)
+	if hasCollectedField(ctx, totalCountField) || hasCollectedField(ctx, pageInfoField) {
+		hasPagination := after != nil || first != nil || before != nil || last != nil
+		if hasPagination || ignoredEdges {
+			c := _m.Clone()
+			c.ctx.Fields = nil
+			if conn.TotalCount, err = c.Count(ctx); err != nil {
+				return nil, err
+			}
+			conn.PageInfo.HasNextPage = first != nil && conn.TotalCount > 0
+			conn.PageInfo.HasPreviousPage = last != nil && conn.TotalCount > 0
+		}
+	}
+	if ignoredEdges || (first != nil && *first == 0) || (last != nil && *last == 0) {
+		return conn, nil
+	}
+	if _m, err = pager.applyCursors(_m, after, before); err != nil {
+		return nil, err
+	}
+	limit := paginateLimit(first, last)
+	if limit != 0 {
+		_m.Limit(limit)
+	}
+	if field := collectedField(ctx, edgesField, nodeField); field != nil {
+		if err := _m.collectField(ctx, limit == 1, graphql.GetOperationContext(ctx), *field, []string{edgesField, nodeField}); err != nil {
+			return nil, err
+		}
+	}
+	_m = pager.applyOrder(_m)
+	nodes, err := _m.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn.build(nodes, pager, after, first, before, last)
+	return conn, nil
+}
+
+var (
+	// ProviderQuotaStatusOrderFieldCreatedAt orders ProviderQuotaStatus by created_at.
+	ProviderQuotaStatusOrderFieldCreatedAt = &ProviderQuotaStatusOrderField{
+		Value: func(_m *ProviderQuotaStatus) (ent.Value, error) {
+			return _m.CreatedAt, nil
+		},
+		column: providerquotastatus.FieldCreatedAt,
+		toTerm: providerquotastatus.ByCreatedAt,
+		toCursor: func(_m *ProviderQuotaStatus) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.CreatedAt,
+			}
+		},
+	}
+	// ProviderQuotaStatusOrderFieldUpdatedAt orders ProviderQuotaStatus by updated_at.
+	ProviderQuotaStatusOrderFieldUpdatedAt = &ProviderQuotaStatusOrderField{
+		Value: func(_m *ProviderQuotaStatus) (ent.Value, error) {
+			return _m.UpdatedAt, nil
+		},
+		column: providerquotastatus.FieldUpdatedAt,
+		toTerm: providerquotastatus.ByUpdatedAt,
+		toCursor: func(_m *ProviderQuotaStatus) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.UpdatedAt,
+			}
+		},
+	}
+)
+
+// String implement fmt.Stringer interface.
+func (f ProviderQuotaStatusOrderField) String() string {
+	var str string
+	switch f.column {
+	case ProviderQuotaStatusOrderFieldCreatedAt.column:
+		str = "CREATED_AT"
+	case ProviderQuotaStatusOrderFieldUpdatedAt.column:
+		str = "UPDATED_AT"
+	}
+	return str
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (f ProviderQuotaStatusOrderField) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(f.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (f *ProviderQuotaStatusOrderField) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("ProviderQuotaStatusOrderField %T must be a string", v)
+	}
+	switch str {
+	case "CREATED_AT":
+		*f = *ProviderQuotaStatusOrderFieldCreatedAt
+	case "UPDATED_AT":
+		*f = *ProviderQuotaStatusOrderFieldUpdatedAt
+	default:
+		return fmt.Errorf("%s is not a valid ProviderQuotaStatusOrderField", str)
+	}
+	return nil
+}
+
+// ProviderQuotaStatusOrderField defines the ordering field of ProviderQuotaStatus.
+type ProviderQuotaStatusOrderField struct {
+	// Value extracts the ordering value from the given ProviderQuotaStatus.
+	Value    func(*ProviderQuotaStatus) (ent.Value, error)
+	column   string // field or computed.
+	toTerm   func(...sql.OrderTermOption) providerquotastatus.OrderOption
+	toCursor func(*ProviderQuotaStatus) Cursor
+}
+
+// ProviderQuotaStatusOrder defines the ordering of ProviderQuotaStatus.
+type ProviderQuotaStatusOrder struct {
+	Direction OrderDirection                 `json:"direction"`
+	Field     *ProviderQuotaStatusOrderField `json:"field"`
+}
+
+// DefaultProviderQuotaStatusOrder is the default ordering of ProviderQuotaStatus.
+var DefaultProviderQuotaStatusOrder = &ProviderQuotaStatusOrder{
+	Direction: entgql.OrderDirectionAsc,
+	Field: &ProviderQuotaStatusOrderField{
+		Value: func(_m *ProviderQuotaStatus) (ent.Value, error) {
+			return _m.ID, nil
+		},
+		column: providerquotastatus.FieldID,
+		toTerm: providerquotastatus.ByID,
+		toCursor: func(_m *ProviderQuotaStatus) Cursor {
+			return Cursor{ID: _m.ID}
+		},
+	},
+}
+
+// ToEdge converts ProviderQuotaStatus into ProviderQuotaStatusEdge.
+func (_m *ProviderQuotaStatus) ToEdge(order *ProviderQuotaStatusOrder) *ProviderQuotaStatusEdge {
+	if order == nil {
+		order = DefaultProviderQuotaStatusOrder
+	}
+	return &ProviderQuotaStatusEdge{
 		Node:   _m,
 		Cursor: order.Field.toCursor(_m),
 	}

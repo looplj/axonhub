@@ -25,6 +25,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
@@ -98,6 +99,11 @@ var promptImplementors = []string{"Prompt", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
 func (*Prompt) IsNode() {}
+
+var providerquotastatusImplementors = []string{"ProviderQuotaStatus", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*ProviderQuotaStatus) IsNode() {}
 
 var requestImplementors = []string{"Request", "Node"}
 
@@ -302,6 +308,15 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 			Where(prompt.ID(id))
 		if fc := graphql.GetFieldContext(ctx); fc != nil {
 			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, promptImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case providerquotastatus.Table:
+		query := c.ProviderQuotaStatus.Query().
+			Where(providerquotastatus.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, providerquotastatusImplementors...); err != nil {
 				return nil, err
 			}
 		}
@@ -633,6 +648,22 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 		query := c.Prompt.Query().
 			Where(prompt.IDIn(ids...))
 		query, err := query.CollectFields(ctx, promptImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case providerquotastatus.Table:
+		query := c.ProviderQuotaStatus.Query().
+			Where(providerquotastatus.IDIn(ids...))
+		query, err := query.CollectFields(ctx, providerquotastatusImplementors...)
 		if err != nil {
 			return nil, err
 		}

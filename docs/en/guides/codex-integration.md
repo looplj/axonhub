@@ -84,6 +84,60 @@ AxonHub model profiles remap incoming model names to provider-specific equivalen
 - **Codex reports authentication errors**: ensure `AXONHUB_API_KEY` is exported in the same shell session that launches Codex.
 - **Unexpected model responses**: review active profile mappings in the AxonHub console; disable or adjust rules if necessary.
 
+---
+
+## Provider Quota Tracking
+
+AxonHub automatically tracks quota usage for Codex provider channels, displaying the current status with battery icons in the interface.
+
+### How It Works
+
+- **Automatic Polling**: AxonHub periodically polls your Codex account to check quota status
+- **Storage**: Quota data is stored in the database and updated based on the configured check interval
+- **Visual Indicators**: Battery icons show your remaining quota at a glance.
+
+### Quota Windows
+
+Codex uses multiple quota windows:
+- **Primary window**: Main usage limit with a configurable duration (e.g., 5 hours, 1 day)
+- **Secondary window**: Optional secondary usage limit with its own duration and reset schedule
+
+The system shows both window percentages including the primary window duration and reset time.
+
+### Configuration
+
+Adjust the quota check interval in `config.yml`:
+
+```yaml
+provider_quota:
+  check_interval: "20m"          # Check every 20 minutes (default)
+```
+
+Or via environment variable:
+
+```bash
+export AXONHUB_PROVIDER_QUOTA_CHECK_INTERVAL="30m"
+```
+
+Supported intervals: `1m`, `2m`, `3m`, `4m`, `5m`, `6m`, `10m`, `12m`, `15m`, `20m`, `30m`, `1h`, `2h`, etc.
+
+**Recommendations:**
+- **Development**: Use shorter intervals (e.g., `5m`) for quick feedback
+- **Production**: Use `20m` or longer to reduce API calls
+
+### Refreshing Quota Data
+
+You can manually trigger a quota refresh by clicking the refresh icon in the quota status popover.
+
+### Viewing Quota Status
+
+1. Look for the battery icon next to the settings gear in the header
+2. Click the battery icon to view detailed quota information including:
+   - Primary window usage percentage and duration
+   - Primary window reset time
+   - Plan type (if available)
+   - Secondary window usage (if configured)
+
 ### Related Documentation
 - [Tracing Guide](tracing.md)
 - [Chat Completions](../api-reference/unified-api.md#openai-chat-completions-api)

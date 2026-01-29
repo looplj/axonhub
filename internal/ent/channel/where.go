@@ -838,6 +838,29 @@ func HasChannelModelPricesWith(preds ...predicate.ChannelModelPrice) predicate.C
 	})
 }
 
+// HasProviderQuotaStatus applies the HasEdge predicate on the "provider_quota_status" edge.
+func HasProviderQuotaStatus() predicate.Channel {
+	return predicate.Channel(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, ProviderQuotaStatusTable, ProviderQuotaStatusColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasProviderQuotaStatusWith applies the HasEdge predicate on the "provider_quota_status" edge with a given conditions (other predicates).
+func HasProviderQuotaStatusWith(preds ...predicate.ProviderQuotaStatus) predicate.Channel {
+	return predicate.Channel(func(s *sql.Selector) {
+		step := newProviderQuotaStatusStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Channel) predicate.Channel {
 	return predicate.Channel(sql.AndPredicates(predicates...))

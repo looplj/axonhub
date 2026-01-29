@@ -23,6 +23,8 @@ import {
   DeepInfra,
   Github,
   AiHubMix,
+  Cerebras,
+  Claude,
 } from '@lobehub/icons';
 import { CHANNEL_CONFIGS } from './config_channels';
 import { ApiFormat, ChannelType } from './schema';
@@ -84,7 +86,7 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
   },
   claudecode: {
     provider: 'claudecode',
-    icon: Anthropic,
+    icon: Claude,
     color: 'bg-orange-100 text-orange-800 border-orange-200',
     channelTypes: ['claudecode'],
   },
@@ -189,6 +191,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     icon: DeepInfra,
     color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
     channelTypes: ['deepinfra'],
+  },
+  cerebras: {
+    provider: 'cerebras',
+    icon: Cerebras,
+    color: 'bg-[#F15928] text-white border-[#F15928]',
+    channelTypes: ['cerebras'],
   },
 };
 

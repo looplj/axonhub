@@ -80,6 +80,14 @@ func (_c *RequestExecutionCreate) SetChannelID(v int) *RequestExecutionCreate {
 	return _c
 }
 
+// SetNillableChannelID sets the "channel_id" field if the given value is not nil.
+func (_c *RequestExecutionCreate) SetNillableChannelID(v *int) *RequestExecutionCreate {
+	if v != nil {
+		_c.SetChannelID(*v)
+	}
+	return _c
+}
+
 // SetDataStorageID sets the "data_storage_id" field.
 func (_c *RequestExecutionCreate) SetDataStorageID(v int) *RequestExecutionCreate {
 	_c.mutation.SetDataStorageID(v)
@@ -300,9 +308,6 @@ func (_c *RequestExecutionCreate) check() error {
 	if _, ok := _c.mutation.RequestID(); !ok {
 		return &ValidationError{Name: "request_id", err: errors.New(`ent: missing required field "RequestExecution.request_id"`)}
 	}
-	if _, ok := _c.mutation.ChannelID(); !ok {
-		return &ValidationError{Name: "channel_id", err: errors.New(`ent: missing required field "RequestExecution.channel_id"`)}
-	}
 	if _, ok := _c.mutation.ModelID(); !ok {
 		return &ValidationError{Name: "model_id", err: errors.New(`ent: missing required field "RequestExecution.model_id"`)}
 	}
@@ -325,9 +330,6 @@ func (_c *RequestExecutionCreate) check() error {
 	}
 	if len(_c.mutation.RequestIDs()) == 0 {
 		return &ValidationError{Name: "request", err: errors.New(`ent: missing required edge "RequestExecution.request"`)}
-	}
-	if len(_c.mutation.ChannelIDs()) == 0 {
-		return &ValidationError{Name: "channel", err: errors.New(`ent: missing required edge "RequestExecution.channel"`)}
 	}
 	return nil
 }

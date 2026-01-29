@@ -65,6 +65,8 @@ const (
 	EdgeChannelProbes = "channel_probes"
 	// EdgeChannelModelPrices holds the string denoting the channel_model_prices edge name in mutations.
 	EdgeChannelModelPrices = "channel_model_prices"
+	// EdgeProviderQuotaStatus holds the string denoting the provider_quota_status edge name in mutations.
+	EdgeProviderQuotaStatus = "provider_quota_status"
 	// Table holds the table name of the channel in the database.
 	Table = "channels"
 	// RequestsTable is the table that holds the requests relation/edge.
@@ -109,6 +111,13 @@ const (
 	ChannelModelPricesInverseTable = "channel_model_prices"
 	// ChannelModelPricesColumn is the table column denoting the channel_model_prices relation/edge.
 	ChannelModelPricesColumn = "channel_id"
+	// ProviderQuotaStatusTable is the table that holds the provider_quota_status relation/edge.
+	ProviderQuotaStatusTable = "provider_quota_status"
+	// ProviderQuotaStatusInverseTable is the table name for the ProviderQuotaStatus entity.
+	// It exists in this package in order to avoid circular dependency with the "providerquotastatus" package.
+	ProviderQuotaStatusInverseTable = "provider_quota_status"
+	// ProviderQuotaStatusColumn is the table column denoting the provider_quota_status relation/edge.
+	ProviderQuotaStatusColumn = "channel_id"
 )
 
 // Columns holds all SQL columns for channel fields.
@@ -218,6 +227,7 @@ const (
 	TypeJina              Type = "jina"
 	TypeGithub            Type = "github"
 	TypeClaudecode        Type = "claudecode"
+	TypeCerebras          Type = "cerebras"
 )
 
 func (_type Type) String() string {
@@ -227,7 +237,7 @@ func (_type Type) String() string {
 // TypeValidator is a validator for the "type" field enum values. It is called by the builders before save.
 func TypeValidator(_type Type) error {
 	switch _type {
-	case TypeOpenai, TypeOpenaiResponses, TypeCodex, TypeVercel, TypeAnthropic, TypeAnthropicAWS, TypeAnthropicGcp, TypeGeminiOpenai, TypeGemini, TypeGeminiVertex, TypeDeepseek, TypeDeepseekAnthropic, TypeDeepinfra, TypeDoubao, TypeDoubaoAnthropic, TypeMoonshot, TypeMoonshotAnthropic, TypeZhipu, TypeZai, TypeZhipuAnthropic, TypeZaiAnthropic, TypeAnthropicFake, TypeOpenaiFake, TypeOpenrouter, TypeXai, TypePpio, TypeSiliconflow, TypeVolcengine, TypeLongcat, TypeLongcatAnthropic, TypeMinimax, TypeMinimaxAnthropic, TypeAihubmix, TypeBurncloud, TypeModelscope, TypeBailian, TypeJina, TypeGithub, TypeClaudecode:
+	case TypeOpenai, TypeOpenaiResponses, TypeCodex, TypeVercel, TypeAnthropic, TypeAnthropicAWS, TypeAnthropicGcp, TypeGeminiOpenai, TypeGemini, TypeGeminiVertex, TypeDeepseek, TypeDeepseekAnthropic, TypeDeepinfra, TypeDoubao, TypeDoubaoAnthropic, TypeMoonshot, TypeMoonshotAnthropic, TypeZhipu, TypeZai, TypeZhipuAnthropic, TypeZaiAnthropic, TypeAnthropicFake, TypeOpenaiFake, TypeOpenrouter, TypeXai, TypePpio, TypeSiliconflow, TypeVolcengine, TypeLongcat, TypeLongcatAnthropic, TypeMinimax, TypeMinimaxAnthropic, TypeAihubmix, TypeBurncloud, TypeModelscope, TypeBailian, TypeJina, TypeGithub, TypeClaudecode, TypeCerebras:
 		return nil
 	default:
 		return fmt.Errorf("channel: invalid enum value for type field: %q", _type)
@@ -405,6 +415,13 @@ func ByChannelModelPrices(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOptio
 		sqlgraph.OrderByNeighborTerms(s, newChannelModelPricesStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByProviderQuotaStatusField orders the results by provider_quota_status field.
+func ByProviderQuotaStatusField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newProviderQuotaStatusStep(), sql.OrderByField(field, opts...))
+	}
+}
 func newRequestsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -445,6 +462,13 @@ func newChannelModelPricesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ChannelModelPricesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, ChannelModelPricesTable, ChannelModelPricesColumn),
+	)
+}
+func newProviderQuotaStatusStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ProviderQuotaStatusInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2O, false, ProviderQuotaStatusTable, ProviderQuotaStatusColumn),
 	)
 }
 

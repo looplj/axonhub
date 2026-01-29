@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/cespare/xxhash/v2"
@@ -63,20 +62,8 @@ func GenerateAPIKey() (string, error) {
 
 // CreateLLMAPIKey creates a new API key for LLM calls using a service account API key.
 func (s *APIKeyService) CreateLLMAPIKey(ctx context.Context, owner *ent.APIKey, name string) (*ent.APIKey, error) {
-	if owner == nil {
-		return nil, ErrAPIKeyOwnerRequired
-	}
-
-	if owner.Type != apikey.TypeServiceAccount {
-		return nil, ErrServiceAccountRequired
-	}
-
-	if !slices.Contains(owner.Scopes, string(scopes.ScopeWriteAPIKeys)) {
-		return nil, fmt.Errorf("%w: %s", ErrAPIKeyScopeRequired, scopes.ScopeWriteAPIKeys)
-	}
-
-	trimmedName := strings.TrimSpace(name)
-	if trimmedName == "" {
+	name = strings.TrimSpace(name)
+	if name == "" {
 		return nil, ErrAPIKeyNameRequired
 	}
 
@@ -88,7 +75,7 @@ func (s *APIKeyService) CreateLLMAPIKey(ctx context.Context, owner *ent.APIKey, 
 	}
 
 	create := client.APIKey.Create().
-		SetName(trimmedName).
+		SetName(name).
 		SetKey(generatedKey).
 		SetUserID(owner.UserID).
 		SetProjectID(owner.ProjectID).

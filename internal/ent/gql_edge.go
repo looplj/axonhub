@@ -140,6 +140,14 @@ func (_m *Channel) ChannelModelPrices(ctx context.Context) (result []*ChannelMod
 	return result, err
 }
 
+func (_m *Channel) ProviderQuotaStatus(ctx context.Context) (*ProviderQuotaStatus, error) {
+	result, err := _m.Edges.ProviderQuotaStatusOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryProviderQuotaStatus().Only(ctx)
+	}
+	return result, MaskNotFound(err)
+}
+
 func (_m *ChannelModelPrice) Channel(ctx context.Context) (*Channel, error) {
 	result, err := _m.Edges.ChannelOrErr()
 	if IsNotLoaded(err) {
@@ -444,6 +452,14 @@ func (_m *Prompt) Projects(
 	return _m.QueryProjects().Paginate(ctx, after, first, before, last, opts...)
 }
 
+func (_m *ProviderQuotaStatus) Channel(ctx context.Context) (*Channel, error) {
+	result, err := _m.Edges.ChannelOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryChannel().Only(ctx)
+	}
+	return result, err
+}
+
 func (_m *Request) APIKey(ctx context.Context) (*APIKey, error) {
 	result, err := _m.Edges.APIKeyOrErr()
 	if IsNotLoaded(err) {
@@ -539,7 +555,7 @@ func (_m *RequestExecution) Channel(ctx context.Context) (*Channel, error) {
 	if IsNotLoaded(err) {
 		result, err = _m.QueryChannel().Only(ctx)
 	}
-	return result, err
+	return result, MaskNotFound(err)
 }
 
 func (_m *RequestExecution) DataStorage(ctx context.Context) (*DataStorage, error) {
@@ -687,7 +703,7 @@ func (_m *UsageLog) Channel(ctx context.Context) (*Channel, error) {
 	if IsNotLoaded(err) {
 		result, err = _m.QueryChannel().Only(ctx)
 	}
-	return result, err
+	return result, MaskNotFound(err)
 }
 
 func (_m *User) Projects(

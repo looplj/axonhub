@@ -11,6 +11,7 @@ type OAuthCredentials struct {
 	ClientID     string    `json:"client_id,omitempty"`
 	AccessToken  string    `json:"access_token"`
 	RefreshToken string    `json:"refresh_token"`
+	IDToken      string    `json:"id_token,omitempty"`
 	ExpiresAt    time.Time `json:"expires_at"`
 	TokenType    string    `json:"token_type,omitempty"`
 	Scopes       []string  `json:"scopes,omitempty"`
@@ -23,6 +24,14 @@ type TokenResponse struct {
 	RefreshToken string `json:"refresh_token,omitempty"`
 	TokenType    string `json:"token_type"`
 	Scope        string `json:"scope,omitempty"`
+}
+
+// ExpiresAt calculates the expiration time based on ExpiresIn.
+func (t *TokenResponse) ExpiresAt() time.Time {
+	if t.ExpiresIn > 0 {
+		return time.Now().Add(time.Duration(t.ExpiresIn) * time.Second)
+	}
+	return time.Time{}
 }
 
 type TokenError struct {

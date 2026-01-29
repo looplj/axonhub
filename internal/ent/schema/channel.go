@@ -75,6 +75,7 @@ func (Channel) Fields() []ent.Field {
 				"jina",
 				"github",
 				"claudecode",
+				"cerebras",
 			).
 			Immutable().
 			Annotations(
@@ -152,6 +153,12 @@ func (Channel) Edges() []ent.Edge {
 			),
 		edge.To("channel_model_prices", ChannelModelPrice.Type).
 			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			),
+		edge.To("provider_quota_status", ProviderQuotaStatus.Type).
+			Unique().
+			Annotations(
+				entgql.Directives(forceResolver()),
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 			),
 	}

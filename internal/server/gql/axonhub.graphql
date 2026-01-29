@@ -194,14 +194,18 @@ type BulkImportChannelsResult {
 }
 
 input BulkCreateChannelsInput {
-  type: String!
+  type: ChannelType!
   name: String!
   tags: [String!]
   baseURL: String
   apiKeys: [String!]!
   supportedModels: [String!]!
+  autoSyncSupportedModels: Boolean
   defaultTestModel: String!
   settings: ChannelSettingsInput
+  policies: ChannelPoliciesInput
+  orderingWeight: Int
+  remark: String
 }
 
 input ChannelOrderingItem {
@@ -231,6 +235,7 @@ input APIKeyProfileInput {
   channelTags: [String!]
   modelIDs: [String!]
   quota: APIKeyQuotaInput
+  loadBalanceStrategy: String
 }
 
 input UpdateAPIKeyScopesInput {
@@ -249,6 +254,7 @@ type APIKeyProfile {
   channelTags: [String!]
   modelIDs: [String!]
   quota: APIKeyQuota
+  loadBalanceStrategy: String
 }
 
 input APIKeyQuotaInput {
@@ -370,6 +376,15 @@ input DataStorageSettingsInput {
   directory: String
   s3: S3Input
   gcs: GCSInput
+  webdav: WebDAVInput
+}
+
+input WebDAVInput {
+  url: String!
+  username: String
+  password: String
+  insecure_skip_tls: Boolean
+  path: String
 }
 
 input S3Input {
@@ -390,6 +405,15 @@ type DataStorageSettings {
   directory: String
   s3: S3
   gcs: GCS
+  webdav: WebDAV
+}
+
+type WebDAV {
+  url: String!
+  username: String
+  password: String
+  insecure_skip_tls: Boolean
+  path: String
 }
 
 type S3 {
@@ -578,7 +602,6 @@ type Mutation {
   ): BulkUpdateChannelOrderingResult!
 
   createAPIKey(input: CreateAPIKeyInput!): APIKey!
-  createLLMAPIKey(name: String!): APIKey!
   updateAPIKey(id: ID!, input: UpdateAPIKeyInput!): APIKey!
   updateAPIKeyStatus(id: ID!, status: APIKeyStatus!): APIKey!
   updateAPIKeyProfiles(id: ID!, input: UpdateAPIKeyProfilesInput!): APIKey!

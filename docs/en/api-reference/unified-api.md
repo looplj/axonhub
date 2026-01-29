@@ -157,6 +157,7 @@ AxonHub also supports the native Anthropic Messages API for applications that pr
 
 **Endpoints:**
 - `POST /anthropic/v1/messages` - Text generation
+- `POST /v1/messages` - Text generation (alternative)
 - `GET /anthropic/v1/models` - List available models
 
 **Example Request:**
@@ -204,6 +205,9 @@ AxonHub provides native support for the Gemini API, enabling access to Gemini's 
 
 **Endpoints:**
 - `POST /gemini/v1beta/models/{model}:generateContent` - Text and multi-modal content generation
+- `POST /v1beta/models/{model}:generateContent` - Text and multi-modal content generation (alternative)
+- `GET /gemini/v1beta/models` - List available models
+- `GET /v1beta/models` - List available models (alternative)
 
 **Example Request:**
 ```go

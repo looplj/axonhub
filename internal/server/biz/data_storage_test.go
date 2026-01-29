@@ -581,6 +581,7 @@ func TestDataStorageService_GetFileSystem(t *testing.T) {
 	t.Run("storage types without settings", func(t *testing.T) {
 		s3DS := createTestDataStorage(t, client, ctx, "s3-storage", false, datastorage.TypeS3)
 		gcsDS := createTestDataStorage(t, client, ctx, "gcs-storage", false, datastorage.TypeGcs)
+		webdavDS := createTestDataStorage(t, client, ctx, "webdav-storage", false, datastorage.TypeWebdav)
 
 		_, err := service.GetFileSystem(ctx, s3DS)
 		require.Error(t, err)
@@ -589,6 +590,31 @@ func TestDataStorageService_GetFileSystem(t *testing.T) {
 		_, err = service.GetFileSystem(ctx, gcsDS)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "gcs settings not configured")
+
+		_, err = service.GetFileSystem(ctx, webdavDS)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "webdav settings not configured")
+	})
+
+	t.Run("webdav storage should return afero filesystem", func(t *testing.T) {
+		ctx := privacy.DecisionContext(ctx, privacy.Allow)
+		webdavDS, err := client.DataStorage.Create().
+			SetName("webdav-storage-with-settings").
+			SetDescription("WebDAV storage with settings").
+			SetPrimary(false).
+			SetType(datastorage.TypeWebdav).
+			SetSettings(&objects.DataStorageSettings{
+				WebDAV: &objects.WebDAV{
+					URL: "http://localhost:8080",
+				},
+			}).
+			SetStatus(datastorage.StatusActive).
+			Save(ctx)
+		require.NoError(t, err)
+
+		fs, err := service.GetFileSystem(ctx, webdavDS)
+		require.NoError(t, err)
+		require.NotNil(t, fs)
 	})
 }
 

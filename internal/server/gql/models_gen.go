@@ -241,8 +241,24 @@ type TopRequestsProjects struct {
 	RequestCount       int          `json:"requestCount"`
 }
 
+type TriggerBackupPayload struct {
+	Success bool    `json:"success"`
+	Message *string `json:"message,omitempty"`
+}
+
 type UpdateAPIKeyScopesInput struct {
 	Scopes []string `json:"scopes"`
+}
+
+type UpdateAutoBackupSettingsInput struct {
+	Enabled            *bool                `json:"enabled,omitempty"`
+	Frequency          *biz.BackupFrequency `json:"frequency,omitempty"`
+	DataStorageID      *int                 `json:"dataStorageID,omitempty"`
+	IncludeChannels    *bool                `json:"includeChannels,omitempty"`
+	IncludeModels      *bool                `json:"includeModels,omitempty"`
+	IncludeAPIKeys     *bool                `json:"includeAPIKeys,omitempty"`
+	IncludeModelPrices *bool                `json:"includeModelPrices,omitempty"`
+	RetentionDays      *int                 `json:"retentionDays,omitempty"`
 }
 
 type UpdateBrandSettingsInput struct {
