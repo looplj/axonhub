@@ -156,7 +156,7 @@
   "system.restore.failed": "Failed to restore backup",
   "system.restore.warning": "Warning: Restoring from a backup will overwrite existing data. This action cannot be undone.",
   "system.autoBackup.title": "Auto Backup",
-  "system.autoBackup.description": "Configure automatic backups to WebDAV storage",
+  "system.autoBackup.description": "Configure automatic backups to external storage",
   "system.autoBackup.enabled.label": "Enable Auto Backup",
   "system.autoBackup.enabled.description": "When enabled, the system will automatically create backups at the specified frequency",
   "system.autoBackup.frequency.label": "Backup Frequency",

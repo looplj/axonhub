@@ -156,7 +156,7 @@
   "system.restore.failed": "备份恢复失败",
   "system.restore.warning": "警告：从备份恢复将覆盖现有数据。此操作无法撤销。",
   "system.autoBackup.title": "自动备份",
-  "system.autoBackup.description": "配置自动备份到 WebDAV 存储",
+  "system.autoBackup.description": "配置自动备份到外部存储",
   "system.autoBackup.enabled.label": "启用自动备份",
   "system.autoBackup.enabled.description": "启用后，系统将按照指定的频率自动创建备份",
   "system.autoBackup.frequency.label": "备份频率",
