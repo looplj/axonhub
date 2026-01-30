@@ -422,24 +422,6 @@ func (r *queryResolver) QueryChannels(ctx context.Context, input biz.QueryChanne
 	return r.channelService.QueryChannels(ctx, input)
 }
 
-// QueryChannelOverrideTemplates is the resolver for the queryChannelOverrideTemplates field.
-func (r *queryResolver) QueryChannelOverrideTemplates(ctx context.Context, input biz.QueryChannelOverrideTemplatesInput) (*ent.ChannelOverrideTemplateConnection, error) {
-	if err := validatePaginationArgs(input.First, input.Last); err != nil {
-		return nil, err
-	}
-
-	bizInput := biz.QueryChannelOverrideTemplatesInput{
-		After:       input.After,
-		First:       input.First,
-		Before:      input.Before,
-		Last:        input.Last,
-		ChannelType: input.ChannelType,
-		Search:      input.Search,
-	}
-
-	return r.channelOverrideTemplateService.QueryTemplates(ctx, bizInput)
-}
-
 // ID is the resolver for the id field.
 func (r *segmentResolver) ID(ctx context.Context, obj *biz.Segment) (*objects.GUID, error) {
 	return &objects.GUID{Type: ent.TypeRequest, ID: obj.ID}, nil

@@ -864,56 +864,55 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		APIKeys                       func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.APIKeyOrder, where *ent.APIKeyWhereInput) int
-		AllChannelTags                func(childComplexity int) int
-		AllScopes                     func(childComplexity int, level *string) int
-		AutoBackupSettings            func(childComplexity int) int
-		BrandSettings                 func(childComplexity int) int
-		ChannelOverrideTemplates      func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOverrideTemplateOrder, where *ent.ChannelOverrideTemplateWhereInput) int
-		ChannelProbeData              func(childComplexity int, input biz.GetChannelProbeDataInput) int
-		ChannelSuccessRates           func(childComplexity int) int
-		Channels                      func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOrder, where *ent.ChannelWhereInput) int
-		CheckForUpdate                func(childComplexity int) int
-		CountChannelsByType           func(childComplexity int, input CountChannelsByTypeInput) int
-		DailyRequestStats             func(childComplexity int) int
-		DashboardOverview             func(childComplexity int) int
-		DataStorages                  func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.DataStorageOrder, where *ent.DataStorageWhereInput) int
-		DefaultDataStorageID          func(childComplexity int) int
-		FetchModels                   func(childComplexity int, input biz.FetchModelsInput) int
-		Me                            func(childComplexity int) int
-		Models                        func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ModelOrder, where *ent.ModelWhereInput) int
-		MyProjects                    func(childComplexity int) int
-		Node                          func(childComplexity int, id objects.GUID) int
-		Nodes                         func(childComplexity int, ids []*objects.GUID) int
-		OnboardingInfo                func(childComplexity int) int
-		Projects                      func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ProjectOrder, where *ent.ProjectWhereInput) int
-		Prompts                       func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.PromptOrder, where *ent.PromptWhereInput) int
-		QueryChannelOverrideTemplates func(childComplexity int, input biz.QueryChannelOverrideTemplatesInput) int
-		QueryChannels                 func(childComplexity int, input biz.QueryChannelsInput) int
-		QueryModelChannelConnections  func(childComplexity int, associations []*objects.ModelAssociation) int
-		QueryModels                   func(childComplexity int, input QueryModelsInput) int
-		QueryUnassociatedChannels     func(childComplexity int) int
-		RequestStats                  func(childComplexity int) int
-		RequestStatsByAPIKey          func(childComplexity int) int
-		RequestStatsByChannel         func(childComplexity int) int
-		RequestStatsByModel           func(childComplexity int) int
-		Requests                      func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestOrder, where *ent.RequestWhereInput) int
-		RetryPolicy                   func(childComplexity int) int
-		Roles                         func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RoleOrder, where *ent.RoleWhereInput) int
-		StoragePolicy                 func(childComplexity int) int
-		SystemChannelSettings         func(childComplexity int) int
-		SystemGeneralSettings         func(childComplexity int) int
-		SystemModelSettings           func(childComplexity int) int
-		SystemStatus                  func(childComplexity int) int
-		SystemVersion                 func(childComplexity int) int
-		Systems                       func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.SystemOrder, where *ent.SystemWhereInput) int
-		Threads                       func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ThreadOrder, where *ent.ThreadWhereInput) int
-		TokenStats                    func(childComplexity int) int
-		TokenStatsByAPIKey            func(childComplexity int) int
-		TopRequestsProjects           func(childComplexity int) int
-		Traces                        func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.TraceOrder, where *ent.TraceWhereInput) int
-		UsageLogs                     func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UsageLogOrder, where *ent.UsageLogWhereInput) int
-		Users                         func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UserOrder, where *ent.UserWhereInput) int
+		APIKeys                      func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.APIKeyOrder, where *ent.APIKeyWhereInput) int
+		AllChannelTags               func(childComplexity int) int
+		AllScopes                    func(childComplexity int, level *string) int
+		AutoBackupSettings           func(childComplexity int) int
+		BrandSettings                func(childComplexity int) int
+		ChannelOverrideTemplates     func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOverrideTemplateOrder, where *ent.ChannelOverrideTemplateWhereInput) int
+		ChannelProbeData             func(childComplexity int, input biz.GetChannelProbeDataInput) int
+		ChannelSuccessRates          func(childComplexity int) int
+		Channels                     func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOrder, where *ent.ChannelWhereInput) int
+		CheckForUpdate               func(childComplexity int) int
+		CountChannelsByType          func(childComplexity int, input CountChannelsByTypeInput) int
+		DailyRequestStats            func(childComplexity int) int
+		DashboardOverview            func(childComplexity int) int
+		DataStorages                 func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.DataStorageOrder, where *ent.DataStorageWhereInput) int
+		DefaultDataStorageID         func(childComplexity int) int
+		FetchModels                  func(childComplexity int, input biz.FetchModelsInput) int
+		Me                           func(childComplexity int) int
+		Models                       func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ModelOrder, where *ent.ModelWhereInput) int
+		MyProjects                   func(childComplexity int) int
+		Node                         func(childComplexity int, id objects.GUID) int
+		Nodes                        func(childComplexity int, ids []*objects.GUID) int
+		OnboardingInfo               func(childComplexity int) int
+		Projects                     func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ProjectOrder, where *ent.ProjectWhereInput) int
+		Prompts                      func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.PromptOrder, where *ent.PromptWhereInput) int
+		QueryChannels                func(childComplexity int, input biz.QueryChannelsInput) int
+		QueryModelChannelConnections func(childComplexity int, associations []*objects.ModelAssociation) int
+		QueryModels                  func(childComplexity int, input QueryModelsInput) int
+		QueryUnassociatedChannels    func(childComplexity int) int
+		RequestStats                 func(childComplexity int) int
+		RequestStatsByAPIKey         func(childComplexity int) int
+		RequestStatsByChannel        func(childComplexity int) int
+		RequestStatsByModel          func(childComplexity int) int
+		Requests                     func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestOrder, where *ent.RequestWhereInput) int
+		RetryPolicy                  func(childComplexity int) int
+		Roles                        func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RoleOrder, where *ent.RoleWhereInput) int
+		StoragePolicy                func(childComplexity int) int
+		SystemChannelSettings        func(childComplexity int) int
+		SystemGeneralSettings        func(childComplexity int) int
+		SystemModelSettings          func(childComplexity int) int
+		SystemStatus                 func(childComplexity int) int
+		SystemVersion                func(childComplexity int) int
+		Systems                      func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.SystemOrder, where *ent.SystemWhereInput) int
+		Threads                      func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ThreadOrder, where *ent.ThreadWhereInput) int
+		TokenStats                   func(childComplexity int) int
+		TokenStatsByAPIKey           func(childComplexity int) int
+		TopRequestsProjects          func(childComplexity int) int
+		Traces                       func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.TraceOrder, where *ent.TraceWhereInput) int
+		UsageLogs                    func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UsageLogOrder, where *ent.UsageLogWhereInput) int
+		Users                        func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UserOrder, where *ent.UserWhereInput) int
 	}
 
 	RegexAssociation struct {
@@ -1623,7 +1622,6 @@ type QueryResolver interface {
 	AllChannelTags(ctx context.Context) ([]string, error)
 	CountChannelsByType(ctx context.Context, input CountChannelsByTypeInput) ([]*ChannelTypeCount, error)
 	QueryChannels(ctx context.Context, input biz.QueryChannelsInput) (*ent.ChannelConnection, error)
-	QueryChannelOverrideTemplates(ctx context.Context, input biz.QueryChannelOverrideTemplatesInput) (*ent.ChannelOverrideTemplateConnection, error)
 	DashboardOverview(ctx context.Context) (*DashboardOverview, error)
 	RequestStats(ctx context.Context) (*RequestStats, error)
 	RequestStatsByChannel(ctx context.Context) ([]*RequestStatsByChannel, error)
@@ -5377,17 +5375,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Prompts(childComplexity, args["after"].(*entgql.Cursor[int]), args["first"].(*int), args["before"].(*entgql.Cursor[int]), args["last"].(*int), args["orderBy"].(*ent.PromptOrder), args["where"].(*ent.PromptWhereInput)), true
-	case "Query.queryChannelOverrideTemplates":
-		if e.complexity.Query.QueryChannelOverrideTemplates == nil {
-			break
-		}
-
-		args, err := ec.field_Query_queryChannelOverrideTemplates_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.QueryChannelOverrideTemplates(childComplexity, args["input"].(biz.QueryChannelOverrideTemplatesInput)), true
 	case "Query.queryChannels":
 		if e.complexity.Query.QueryChannels == nil {
 			break
@@ -7852,7 +7839,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputProviderQuotaStatusWhereInput,
 		ec.unmarshalInputProxyConfigInput,
 		ec.unmarshalInputQueryChannelInput,
-		ec.unmarshalInputQueryChannelOverrideTemplatesInput,
 		ec.unmarshalInputQueryModelsInput,
 		ec.unmarshalInputRegexAssociationInput,
 		ec.unmarshalInputRemoveUserFromProjectInput,
@@ -9743,17 +9729,6 @@ func (ec *executionContext) field_Query_prompts_args(ctx context.Context, rawArg
 		return nil, err
 	}
 	args["where"] = arg5
-	return args, nil
-}
-
-func (ec *executionContext) field_Query_queryChannelOverrideTemplates_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNQueryChannelOverrideTemplatesInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐQueryChannelOverrideTemplatesInput)
-	if err != nil {
-		return nil, err
-	}
-	args["input"] = arg0
 	return args, nil
 }
 
@@ -28925,55 +28900,6 @@ func (ec *executionContext) fieldContext_Query_queryChannels(ctx context.Context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_queryChannels_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_queryChannelOverrideTemplates(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Query_queryChannelOverrideTemplates,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().QueryChannelOverrideTemplates(ctx, fc.Args["input"].(biz.QueryChannelOverrideTemplatesInput))
-		},
-		nil,
-		ec.marshalNChannelOverrideTemplateConnection2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelOverrideTemplateConnection,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Query_queryChannelOverrideTemplates(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "edges":
-				return ec.fieldContext_ChannelOverrideTemplateConnection_edges(ctx, field)
-			case "pageInfo":
-				return ec.fieldContext_ChannelOverrideTemplateConnection_pageInfo(ctx, field)
-			case "totalCount":
-				return ec.fieldContext_ChannelOverrideTemplateConnection_totalCount(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ChannelOverrideTemplateConnection", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_queryChannelOverrideTemplates_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -55570,68 +55496,6 @@ func (ec *executionContext) unmarshalInputQueryChannelInput(ctx context.Context,
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputQueryChannelOverrideTemplatesInput(ctx context.Context, obj any) (biz.QueryChannelOverrideTemplatesInput, error) {
-	var it biz.QueryChannelOverrideTemplatesInput
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"after", "first", "before", "last", "channelType", "search"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "after":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("after"))
-			data, err := ec.unmarshalOCursor2ᚖentgoᚗioᚋcontribᚋentgqlᚐCursor(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.After = data
-		case "first":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("first"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.First = data
-		case "before":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("before"))
-			data, err := ec.unmarshalOCursor2ᚖentgoᚗioᚋcontribᚋentgqlᚐCursor(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Before = data
-		case "last":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("last"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Last = data
-		case "channelType":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelType"))
-			data, err := ec.unmarshalOChannelType2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelᚐType(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ChannelType = data
-		case "search":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("search"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Search = data
-		}
-	}
-
-	return it, nil
-}
-
 func (ec *executionContext) unmarshalInputQueryModelsInput(ctx context.Context, obj any) (QueryModelsInput, error) {
 	var it QueryModelsInput
 	asMap := map[string]any{}
@@ -73140,28 +73004,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "queryChannelOverrideTemplates":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_queryChannelOverrideTemplates(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "dashboardOverview":
 			field := field
 
@@ -82821,11 +82663,6 @@ func (ec *executionContext) marshalNProxyType2githubᚗcomᚋloopljᚋaxonhubᚋ
 
 func (ec *executionContext) unmarshalNQueryChannelInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐQueryChannelsInput(ctx context.Context, v any) (biz.QueryChannelsInput, error) {
 	res, err := ec.unmarshalInputQueryChannelInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) unmarshalNQueryChannelOverrideTemplatesInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐQueryChannelOverrideTemplatesInput(ctx context.Context, v any) (biz.QueryChannelOverrideTemplatesInput, error) {
-	res, err := ec.unmarshalInputQueryChannelOverrideTemplatesInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
