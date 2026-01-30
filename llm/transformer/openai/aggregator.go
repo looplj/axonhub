@@ -23,6 +23,19 @@ type choiceAggregator struct {
 	annotations      map[string]llm.Annotation // Map to track unique annotations by URL
 }
 
+// addAnnotations adds annotations from a message to the choice aggregator,
+// deduplicating by URL.
+func (ca *choiceAggregator) addAnnotations(msg *Message) {
+	if msg == nil || len(msg.Annotations) == 0 {
+		return
+	}
+	for _, annotation := range msg.Annotations {
+		if annotation.URLCitation != nil && annotation.URLCitation.URL != "" {
+			ca.annotations[annotation.URLCitation.URL] = annotation.ToLLMAnnotation()
+		}
+	}
+}
+
 type ChunkTransformFunc func(ctx context.Context, chunk *httpclient.StreamEvent) (*Response, error)
 
 func DefaultTransformChunk(ctx context.Context, chunk *httpclient.StreamEvent) (*Response, error) {
@@ -135,23 +148,9 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 				}
 			}
 
-			// Handle annotations from Delta (streaming)
-			if choice.Delta != nil && len(choice.Delta.Annotations) > 0 {
-				for _, annotation := range choice.Delta.Annotations {
-					if annotation.URLCitation != nil && annotation.URLCitation.URL != "" {
-						choiceAgg.annotations[annotation.URLCitation.URL] = annotation.ToLLMAnnotation()
-					}
-				}
-			}
-
-			// Handle annotations from Message (non-streaming chunks)
-			if choice.Message != nil && len(choice.Message.Annotations) > 0 {
-				for _, annotation := range choice.Message.Annotations {
-					if annotation.URLCitation != nil && annotation.URLCitation.URL != "" {
-						choiceAgg.annotations[annotation.URLCitation.URL] = annotation.ToLLMAnnotation()
-					}
-				}
-			}
+			// Handle annotations from Delta (streaming) and Message (non-streaming chunks)
+			choiceAgg.addAnnotations(choice.Delta)
+			choiceAgg.addAnnotations(choice.Message)
 
 			// Capture finish reason
 			if choice.FinishReason != nil {

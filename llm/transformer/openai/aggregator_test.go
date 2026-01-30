@@ -294,3 +294,28 @@ func TestAggregateStreamChunks_WithAnnotationsInMessage(t *testing.T) {
 	require.NotNil(t, got.Choices[0].Message.Annotations[0].URLCitation)
 	require.Equal(t, "https://example.com/source1", got.Choices[0].Message.Annotations[0].URLCitation.URL)
 }
+
+func TestAggregateStreamChunks_WithInvalidAnnotations(t *testing.T) {
+	// Test that annotations with nil URLCitation or empty URL are skipped
+	chunks := []*httpclient.StreamEvent{
+		{
+			Data: []byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"sonar-deep-research","choices":[{"index":0,"message":{"role":"assistant","content":"Test content","annotations":[{"type":"url_citation","url_citation":null},{"type":"url_citation","url_citation":{"url":"","title":"Empty URL"}},{"type":"url_citation","url_citation":{"url":"https://example.com/valid","title":"Valid Source"}}]}}]}`),
+		},
+	}
+
+	gotBytes, _, err := AggregateStreamChunks(context.Background(), chunks, DefaultTransformChunk)
+	require.NoError(t, err)
+
+	var got llm.Response
+	err = json.Unmarshal(gotBytes, &got)
+	require.NoError(t, err)
+
+	// Verify only the valid annotation is captured
+	require.Len(t, got.Choices, 1)
+	require.NotNil(t, got.Choices[0].Message)
+	require.Len(t, got.Choices[0].Message.Annotations, 1)
+	require.Equal(t, "url_citation", got.Choices[0].Message.Annotations[0].Type)
+	require.NotNil(t, got.Choices[0].Message.Annotations[0].URLCitation)
+	require.Equal(t, "https://example.com/valid", got.Choices[0].Message.Annotations[0].URLCitation.URL)
+	require.Equal(t, "Valid Source", got.Choices[0].Message.Annotations[0].URLCitation.Title)
+}

@@ -221,7 +221,7 @@ func ResponseFromLLM(r *llm.Response) *Response {
 
 	// Extract citations from TransformerMetadata if present
 	if r.TransformerMetadata != nil {
-		if citations, ok := r.TransformerMetadata[TransformerMetadataKeyCitations].([]string); ok {
+		if citations, ok := r.TransformerMetadata[TransformerMetadataKeyCitations].([]string); ok && len(citations) > 0 {
 			resp.Citations = citations
 		}
 	}
