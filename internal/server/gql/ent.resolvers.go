@@ -246,7 +246,18 @@ func (r *queryResolver) Channels(ctx context.Context, after *entgql.Cursor[int],
 
 // ChannelOverrideTemplates is the resolver for the channelOverrideTemplates field.
 func (r *queryResolver) ChannelOverrideTemplates(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOverrideTemplateOrder, where *ent.ChannelOverrideTemplateWhereInput) (*ent.ChannelOverrideTemplateConnection, error) {
-	panic(fmt.Errorf("not implemented: ChannelOverrideTemplates - channelOverrideTemplates"))
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultChannelOverrideTemplateOrder.Field
+	}
+
+	return r.client.ChannelOverrideTemplate.Query().Paginate(ctx, after, first, before, last,
+		ent.WithChannelOverrideTemplateOrder(orderBy),
+		ent.WithChannelOverrideTemplateFilter(where.Filter),
+	)
 }
 
 // DataStorages is the resolver for the dataStorages field.
