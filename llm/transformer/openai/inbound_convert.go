@@ -121,7 +121,30 @@ func (m Message) ToLLMMessage() llm.Message {
 		})
 	}
 
+	// Convert Annotations
+	if len(m.Annotations) > 0 {
+		msg.Annotations = lo.Map(m.Annotations, func(a Annotation, _ int) llm.Annotation {
+			return a.ToLLMAnnotation()
+		})
+	}
+
 	return msg
+}
+
+// ToLLMAnnotation converts OpenAI Annotation to unified llm.Annotation.
+func (a Annotation) ToLLMAnnotation() llm.Annotation {
+	annotation := llm.Annotation{
+		Type: a.Type,
+	}
+
+	if a.URLCitation != nil {
+		annotation.URLCitation = &llm.URLCitation{
+			URL:   a.URLCitation.URL,
+			Title: a.URLCitation.Title,
+		}
+	}
+
+	return annotation
 }
 
 // ToLLMContent converts OpenAI MessageContent to unified llm.MessageContent.

@@ -20,6 +20,7 @@ type choiceAggregator struct {
 	toolCalls        map[int]*llm.ToolCall // Map to track tool calls by their index within the choice
 	finishReason     *string
 	role             string
+	annotations      map[string]llm.Annotation // Map to track unique annotations by URL
 }
 
 type ChunkTransformFunc func(ctx context.Context, chunk *httpclient.StreamEvent) (*Response, error)
@@ -68,9 +69,10 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 			// Initialize choice aggregator if it doesn't exist
 			if _, ok := choicesAggs[choiceIndex]; !ok {
 				choicesAggs[choiceIndex] = &choiceAggregator{
-					index:     choiceIndex,
-					toolCalls: make(map[int]*llm.ToolCall),
-					role:      "assistant",
+					index:       choiceIndex,
+					toolCalls:   make(map[int]*llm.ToolCall),
+					annotations: make(map[string]llm.Annotation),
+					role:        "assistant",
 				}
 			}
 
@@ -129,6 +131,24 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 						if deltaToolCall.Type != "" {
 							choiceAgg.toolCalls[toolCallIndex].Type = deltaToolCall.Type
 						}
+					}
+				}
+			}
+
+			// Handle annotations from Delta (streaming)
+			if choice.Delta != nil && len(choice.Delta.Annotations) > 0 {
+				for _, annotation := range choice.Delta.Annotations {
+					if annotation.URLCitation != nil && annotation.URLCitation.URL != "" {
+						choiceAgg.annotations[annotation.URLCitation.URL] = annotation.ToLLMAnnotation()
+					}
+				}
+			}
+
+			// Handle annotations from Message (non-streaming chunks)
+			if choice.Message != nil && len(choice.Message.Annotations) > 0 {
+				for _, annotation := range choice.Message.Annotations {
+					if annotation.URLCitation != nil && annotation.URLCitation.URL != "" {
+						choiceAgg.annotations[annotation.URLCitation.URL] = annotation.ToLLMAnnotation()
 					}
 				}
 			}
@@ -197,6 +217,14 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		// Set tool calls if available (can coexist with content)
 		if len(finalToolCalls) > 0 {
 			message.ToolCalls = finalToolCalls
+		}
+
+		// Set annotations if available
+		if len(choiceAgg.annotations) > 0 {
+			message.Annotations = make([]llm.Annotation, 0, len(choiceAgg.annotations))
+			for _, annotation := range choiceAgg.annotations {
+				message.Annotations = append(message.Annotations, annotation)
+			}
 		}
 
 		// Determine finish reason

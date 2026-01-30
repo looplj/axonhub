@@ -155,6 +155,26 @@ type Message struct {
 
 	// ReasoningContent for deepseek-reasoner support.
 	ReasoningContent *string `json:"reasoning_content,omitempty"`
+
+	// Annotations contains citation information for the message.
+	// This is used by providers like Perplexity to provide source URLs.
+	Annotations []Annotation `json:"annotations,omitempty"`
+}
+
+// Annotation represents a citation or reference annotation in a message.
+type Annotation struct {
+	// Type is the type of annotation, e.g., "url_citation"
+	Type string `json:"type,omitempty"`
+	// URLCitation contains URL citation details when Type is "url_citation"
+	URLCitation *URLCitation `json:"url_citation,omitempty"`
+}
+
+// URLCitation represents a URL-based citation.
+type URLCitation struct {
+	// URL is the citation URL
+	URL string `json:"url,omitempty"`
+	// Title is the title of the cited source
+	Title string `json:"title,omitempty"`
 }
 
 // MessageContent represents message content (string or array of parts).

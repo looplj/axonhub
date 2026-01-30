@@ -170,6 +170,76 @@ func TestResponse_ToLLMResponse(t *testing.T) {
 	}
 }
 
+func TestMessage_ToLLMMessage_WithAnnotations(t *testing.T) {
+	tests := []struct {
+		name     string
+		oaiMsg   Message
+		validate func(*testing.T, llm.Message)
+	}{
+		{
+			name: "message with annotations",
+			oaiMsg: Message{
+				Role:    "assistant",
+				Content: MessageContent{Content: lo.ToPtr("The meaning of life...")},
+				Annotations: []Annotation{
+					{
+						Type: "url_citation",
+						URLCitation: &URLCitation{
+							URL:   "https://en.wikipedia.org/wiki/Meaning_of_life",
+							Title: "Meaning of life - Wikipedia",
+						},
+					},
+					{
+						Type: "url_citation",
+						URLCitation: &URLCitation{
+							URL:   "https://plato.stanford.edu/entries/life-meaning/",
+							Title: "The Meaning of Life - Stanford Encyclopedia",
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, msg llm.Message) {
+				require.Equal(t, "assistant", msg.Role)
+				require.Len(t, msg.Annotations, 2)
+				require.Equal(t, "url_citation", msg.Annotations[0].Type)
+				require.NotNil(t, msg.Annotations[0].URLCitation)
+				require.Equal(t, "https://en.wikipedia.org/wiki/Meaning_of_life", msg.Annotations[0].URLCitation.URL)
+				require.Equal(t, "Meaning of life - Wikipedia", msg.Annotations[0].URLCitation.Title)
+			},
+		},
+		{
+			name: "message without annotations",
+			oaiMsg: Message{
+				Role:    "assistant",
+				Content: MessageContent{Content: lo.ToPtr("Hello!")},
+			},
+			validate: func(t *testing.T, msg llm.Message) {
+				require.Equal(t, "assistant", msg.Role)
+				require.Nil(t, msg.Annotations)
+			},
+		},
+		{
+			name: "message with empty annotations",
+			oaiMsg: Message{
+				Role:        "assistant",
+				Content:     MessageContent{Content: lo.ToPtr("Hello!")},
+				Annotations: []Annotation{},
+			},
+			validate: func(t *testing.T, msg llm.Message) {
+				require.Equal(t, "assistant", msg.Role)
+				require.Nil(t, msg.Annotations)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.oaiMsg.ToLLMMessage()
+			tt.validate(t, result)
+		})
+	}
+}
+
 func TestResponse_ToLLMResponse_WithCitations(t *testing.T) {
 	tests := []struct {
 		name     string

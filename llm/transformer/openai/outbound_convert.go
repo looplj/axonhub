@@ -112,7 +112,30 @@ func MessageFromLLM(m llm.Message) Message {
 		})
 	}
 
+	// Convert Annotations
+	if len(m.Annotations) > 0 {
+		msg.Annotations = lo.Map(m.Annotations, func(a llm.Annotation, _ int) Annotation {
+			return AnnotationFromLLM(a)
+		})
+	}
+
 	return msg
+}
+
+// AnnotationFromLLM creates OpenAI Annotation from unified llm.Annotation.
+func AnnotationFromLLM(a llm.Annotation) Annotation {
+	annotation := Annotation{
+		Type: a.Type,
+	}
+
+	if a.URLCitation != nil {
+		annotation.URLCitation = &URLCitation{
+			URL:   a.URLCitation.URL,
+			Title: a.URLCitation.Title,
+		}
+	}
+
+	return annotation
 }
 
 // MessageContentFromLLM creates OpenAI MessageContent from unified llm.MessageContent.

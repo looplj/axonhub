@@ -599,6 +599,64 @@ func TestInboundTransformer_TransformError(t *testing.T) {
 	}
 }
 
+func TestMessageFromLLM_WithAnnotations(t *testing.T) {
+	tests := []struct {
+		name     string
+		llmMsg   llm.Message
+		validate func(*testing.T, Message)
+	}{
+		{
+			name: "message with annotations",
+			llmMsg: llm.Message{
+				Role:    "assistant",
+				Content: llm.MessageContent{Content: lo.ToPtr("The meaning of life...")},
+				Annotations: []llm.Annotation{
+					{
+						Type: "url_citation",
+						URLCitation: &llm.URLCitation{
+							URL:   "https://en.wikipedia.org/wiki/Meaning_of_life",
+							Title: "Meaning of life - Wikipedia",
+						},
+					},
+					{
+						Type: "url_citation",
+						URLCitation: &llm.URLCitation{
+							URL:   "https://plato.stanford.edu/entries/life-meaning/",
+							Title: "The Meaning of Life - Stanford Encyclopedia",
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, msg Message) {
+				require.Equal(t, "assistant", msg.Role)
+				require.Len(t, msg.Annotations, 2)
+				require.Equal(t, "url_citation", msg.Annotations[0].Type)
+				require.NotNil(t, msg.Annotations[0].URLCitation)
+				require.Equal(t, "https://en.wikipedia.org/wiki/Meaning_of_life", msg.Annotations[0].URLCitation.URL)
+				require.Equal(t, "Meaning of life - Wikipedia", msg.Annotations[0].URLCitation.Title)
+			},
+		},
+		{
+			name: "message without annotations",
+			llmMsg: llm.Message{
+				Role:    "assistant",
+				Content: llm.MessageContent{Content: lo.ToPtr("Hello!")},
+			},
+			validate: func(t *testing.T, msg Message) {
+				require.Equal(t, "assistant", msg.Role)
+				require.Nil(t, msg.Annotations)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := MessageFromLLM(tt.llmMsg)
+			tt.validate(t, result)
+		})
+	}
+}
+
 func TestInboundTransformer_TransformResponse_WithCitations(t *testing.T) {
 	transformer := NewInboundTransformer()
 
