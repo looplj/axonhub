@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
+	"github.com/looplj/axonhub/internal/pkg/xredis"
 )
 
 func setupDataStorageTest(t *testing.T) (*ent.Client, *DataStorageService, context.Context) {
@@ -62,7 +63,7 @@ func setupDataStorageTestWithRedis(t *testing.T) (*ent.Client, *DataStorageServi
 
 	cacheConfig := xcache.Config{
 		Mode: xcache.ModeRedis,
-		Redis: xcache.RedisConfig{
+		Redis: xredis.Config{
 			Addr:       mr.Addr(),
 			Expiration: 5 * time.Minute,
 		},

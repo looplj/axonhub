@@ -96,6 +96,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     color: 'bg-[#32746D] text-white border-[#32746D]',
     channelTypes: ['codex'],
   },
+  antigravity: {
+    provider: 'antigravity',
+    icon: Google,
+    color: 'bg-green-100 text-green-800 border-green-200',
+    channelTypes: ['antigravity'],
+  },
   zai: {
     provider: 'zai',
     icon: ZAI,

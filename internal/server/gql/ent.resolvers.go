@@ -58,14 +58,8 @@ func (r *channelResolver) Policies(ctx context.Context, obj *ent.Channel) (*obje
 }
 
 // ProviderQuotaStatus is the resolver for the providerQuotaStatus field.
-// It returns null (not an error) when no quota status exists for the channel.
 func (r *channelResolver) ProviderQuotaStatus(ctx context.Context, obj *ent.Channel) (*ent.ProviderQuotaStatus, error) {
-	pqs, err := obj.ProviderQuotaStatus(ctx)
-	if ent.IsNotFound(err) {
-		return nil, nil
-	}
-
-	return pqs, err
+	panic(fmt.Errorf("not implemented: ProviderQuotaStatus - providerQuotaStatus"))
 }
 
 // ID is the resolver for the id field.
