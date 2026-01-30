@@ -9,6 +9,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/pkg/xtest"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 func TestAggregateStreamChunks(t *testing.T) {
@@ -155,4 +156,75 @@ func TestAggregateStreamChunks_EmptyChunks(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, llm.Response{}, got)
+}
+
+func TestAggregateStreamChunks_WithCitations(t *testing.T) {
+	// Create chunks with citations spread across them
+	chunks := []*httpclient.StreamEvent{
+		{
+			Data: []byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"llama-3.1-sonar-small-128k-online","choices":[{"index":0,"delta":{"role":"assistant","content":"The meaning"}}],"citations":["https://example.com/source1" ]}`),
+		},
+		{
+			Data: []byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"llama-3.1-sonar-small-128k-online","choices":[{"index":0,"delta":{"content":" of life"}}],"citations":["https://example.com/source2" ]}`),
+		},
+		{
+			Data: []byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"llama-3.1-sonar-small-128k-online","choices":[{"index":0,"delta":{"content":" is..."},"finish_reason":"stop"}],"citations":["https://example.com/source1" ]}`),
+		},
+	}
+
+	gotBytes, _, err := AggregateStreamChunks(context.Background(), chunks, DefaultTransformChunk)
+	require.NoError(t, err)
+
+	var got llm.Response
+	err = json.Unmarshal(gotBytes, &got)
+	require.NoError(t, err)
+
+	// Verify the aggregated content
+	require.Equal(t, "chatcmpl-123", got.ID)
+	require.Equal(t, "chat.completion", got.Object)
+	require.Len(t, got.Choices, 1)
+	require.NotNil(t, got.Choices[0].Message)
+	require.Equal(t, "assistant", got.Choices[0].Message.Role)
+	require.NotNil(t, got.Choices[0].Message.Content.Content)
+	require.Equal(t, "The meaning of life is...", *got.Choices[0].Message.Content.Content)
+
+	// Verify citations are aggregated and deduplicated
+	require.NotNil(t, got.TransformerMetadata)
+	citationsRaw, ok := got.TransformerMetadata[TransformerMetadataKeyCitations]
+	require.True(t, ok)
+
+	// After JSON marshaling/unmarshaling, the citations will be []interface{}
+	citationsSlice, ok := citationsRaw.([]interface{})
+	require.True(t, ok)
+	require.Len(t, citationsSlice, 2)
+
+	// Convert to []string for easier assertion
+	citations := make([]string, len(citationsSlice))
+	for i, v := range citationsSlice {
+		citations[i] = v.(string)
+	}
+	require.Contains(t, citations, "https://example.com/source1")
+	require.Contains(t, citations, "https://example.com/source2")
+}
+
+func TestAggregateStreamChunks_WithoutCitations(t *testing.T) {
+	// Create chunks without citations
+	chunks := []*httpclient.StreamEvent{
+		{
+			Data: []byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-4","choices":[{"index":0,"delta":{"role":"assistant","content":"Hello"}}]}`),
+		},
+		{
+			Data: []byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-4","choices":[{"index":0,"delta":{"content":" world"},"finish_reason":"stop"}]}`),
+		},
+	}
+
+	gotBytes, _, err := AggregateStreamChunks(context.Background(), chunks, DefaultTransformChunk)
+	require.NoError(t, err)
+
+	var got llm.Response
+	err = json.Unmarshal(gotBytes, &got)
+	require.NoError(t, err)
+
+	// Verify no citations in metadata
+	require.Nil(t, got.TransformerMetadata)
 }

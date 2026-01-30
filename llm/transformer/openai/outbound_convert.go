@@ -213,6 +213,14 @@ func (r *Response) ToLLMResponse() *llm.Response {
 		}
 	}
 
+	// Store citations in TransformerMetadata if present
+	if len(r.Citations) > 0 {
+		if resp.TransformerMetadata == nil {
+			resp.TransformerMetadata = make(map[string]any)
+		}
+		resp.TransformerMetadata[TransformerMetadataKeyCitations] = r.Citations
+	}
+
 	return resp
 }
 

@@ -7,6 +7,9 @@ import (
 	"github.com/looplj/axonhub/llm"
 )
 
+// TransformerMetadataKeyCitations is the key used to store citations in TransformerMetadata.
+const TransformerMetadataKeyCitations = "citations"
+
 // Request represents an OpenAI chat completion request.
 // This is a clean OpenAI-specific model without helper fields.
 type Request struct {
@@ -236,6 +239,9 @@ type Response struct {
 
 	SystemFingerprint string `json:"system_fingerprint,omitempty"`
 	ServiceTier       string `json:"service_tier,omitempty"`
+
+	// Citations is a list of sources for the completion, present in some models like Perplexity.
+	Citations []string `json:"citations,omitempty"`
 
 	Error *OpenAIError `json:"error,omitempty"`
 }

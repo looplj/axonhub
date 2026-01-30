@@ -46,6 +46,8 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		systemFingerprint string
 		// Map to track choices by their index
 		choicesAggs = make(map[int]*choiceAggregator)
+		// Map to track unique citations
+		citationsMap = make(map[string]struct{})
 	)
 
 	for _, chunk := range chunks {
@@ -142,6 +144,11 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 			usage = chunk.Usage
 		}
 
+		// Collect citations from chunk
+		for _, citation := range chunk.Citations {
+			citationsMap[citation] = struct{}{}
+		}
+
 		// Keep the first non-empty system fingerprint
 		if systemFingerprint == "" && chunk.SystemFingerprint != "" {
 			systemFingerprint = chunk.SystemFingerprint
@@ -218,6 +225,17 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		SystemFingerprint: systemFingerprint,
 		Choices:           choices,
 		Usage:             usage.ToLLMUsage(),
+	}
+
+	// Add citations to response if any were collected
+	if len(citationsMap) > 0 {
+		citations := make([]string, 0, len(citationsMap))
+		for citation := range citationsMap {
+			citations = append(citations, citation)
+		}
+		response.TransformerMetadata = map[string]any{
+			TransformerMetadataKeyCitations: citations,
+		}
 	}
 
 	data, err := json.Marshal(response)
