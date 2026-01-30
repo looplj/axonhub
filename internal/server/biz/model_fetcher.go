@@ -272,9 +272,9 @@ func (f *ModelFetcher) fetchGeminiModels(ctx context.Context, httpClient *httpcl
 			return nil, err
 		}
 
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("%v", resp.StatusCode)
-		}
+                if resp.StatusCode != http.StatusOK {
+                        return nil, fmt.Errorf("unexpected status: %s", resp.RawResponse.Status)
+                }
 
 		var page geminiListModelsResponse
 		if err := json.Unmarshal(resp.Body, &page); err != nil {
