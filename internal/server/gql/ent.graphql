@@ -1323,6 +1323,8 @@ type ChannelProbe implements Node {
   channelID: ID!
   totalRequestCount: Int!
   successRequestCount: Int!
+  avgTokensPerSecond: Float
+  avgTimeToFirstTokenMs: Float
   timestamp: Int!
   channel: Channel!
 }
@@ -1374,6 +1376,32 @@ input ChannelProbeWhereInput {
   successRequestCountGTE: Int
   successRequestCountLT: Int
   successRequestCountLTE: Int
+  """
+  avg_tokens_per_second field predicates
+  """
+  avgTokensPerSecond: Float
+  avgTokensPerSecondNEQ: Float
+  avgTokensPerSecondIn: [Float!]
+  avgTokensPerSecondNotIn: [Float!]
+  avgTokensPerSecondGT: Float
+  avgTokensPerSecondGTE: Float
+  avgTokensPerSecondLT: Float
+  avgTokensPerSecondLTE: Float
+  avgTokensPerSecondIsNil: Boolean
+  avgTokensPerSecondNotNil: Boolean
+  """
+  avg_time_to_first_token_ms field predicates
+  """
+  avgTimeToFirstTokenMs: Float
+  avgTimeToFirstTokenMsNEQ: Float
+  avgTimeToFirstTokenMsIn: [Float!]
+  avgTimeToFirstTokenMsNotIn: [Float!]
+  avgTimeToFirstTokenMsGT: Float
+  avgTimeToFirstTokenMsGTE: Float
+  avgTimeToFirstTokenMsLT: Float
+  avgTimeToFirstTokenMsLTE: Float
+  avgTimeToFirstTokenMsIsNil: Boolean
+  avgTimeToFirstTokenMsNotNil: Boolean
   """
   timestamp field predicates
   """

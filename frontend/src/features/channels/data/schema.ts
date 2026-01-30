@@ -98,20 +98,13 @@ export const transformOptionsSchema = z.object({
 });
 export type TransformOptions = z.infer<typeof transformOptionsSchema>;
 
-// Channel Performance
-export const channelPerformanceSchema = z.object({
-  avgLatencyMs: z.number(),
-  avgTokenPerSecond: z.number(),
-  avgStreamFirstTokenLatencyMs: z.number(),
-  avgStreamTokenPerSecond: z.number(),
-});
-export type ChannelPerformance = z.infer<typeof channelPerformanceSchema>;
-
 // Channel Probe
 export const channelProbePointSchema = z.object({
   timestamp: z.number(),
   totalRequestCount: z.number(),
   successRequestCount: z.number(),
+  avgTokensPerSecond: z.number().optional().nullable(),
+  avgTimeToFirstTokenMs: z.number().optional().nullable(),
 });
 export type ChannelProbePoint = z.infer<typeof channelProbePointSchema>;
 
@@ -196,7 +189,6 @@ export const channelSchema = z.object({
   orderingWeight: z.number().optional().default(0),
   errorMessage: z.string().optional().nullable(),
   remark: z.string().optional().nullable(),
-  channelPerformance: channelPerformanceSchema.optional().nullable(),
   allModelEntries: z.array(channelModelEntrySchema).optional(),
 });
 export type Channel = z.infer<typeof channelSchema>;

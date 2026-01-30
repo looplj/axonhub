@@ -21,7 +21,6 @@ import {
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
-import { formatDuration } from '@/utils/format-duration';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -321,50 +320,6 @@ const TagsCell = memo(({ row }: { row: Row<Channel> }) => {
 
 TagsCell.displayName = 'TagsCell';
 
-const PerformanceCell = memo(({ row }: { row: Row<Channel> }) => {
-  const { t } = useTranslation();
-  const performance = row.getValue('channelPerformance') as any;
-  if (!performance) {
-    return (
-      <div className='flex justify-center'>
-        <span className='text-muted-foreground text-xs'>-</span>
-      </div>
-    );
-  }
-
-  const avgLatency = performance.avgStreamFirstTokenLatencyMs || performance.avgLatencyMs || 0;
-  const avgTokensPerSec = performance.avgStreamTokenPerSecond || performance.avgTokenPerSecond || 0;
-
-  return (
-    <div className='flex flex-col items-center space-y-1'>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className='cursor-help text-xs'>
-            <span className='text-muted-foreground'>{t('channels.columns.firstTokenLatency')}: </span>
-            <span className='font-medium'>{formatDuration(avgLatency)}</span>
-          </div>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>{t('channels.columns.firstTokenLatencyFull')}</p>
-        </TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className='cursor-help text-xs'>
-            <span className='text-muted-foreground'>{t('channels.columns.tokensPerSecond')}: </span>
-            <span className='font-medium'>{avgTokensPerSec.toFixed(1)}</span>
-          </div>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>{t('channels.columns.tokensPerSecondFull')}</p>
-        </TooltipContent>
-      </Tooltip>
-    </div>
-  );
-});
-
-PerformanceCell.displayName = 'PerformanceCell';
-
 const SupportedModelsCell = memo(({ row }: { row: Row<Channel> }) => {
   const { t } = useTranslation();
   const channel = row.original;
@@ -549,17 +504,6 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       enableHiding: true,
       enableColumnFilter: false,
       enableGlobalFilter: false,
-    },
-    {
-      accessorKey: 'channelPerformance',
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('channels.columns.channelPerformance')} className='justify-center' />
-      ),
-      cell: PerformanceCell,
-      meta: {
-        className: 'text-center',
-      },
-      enableSorting: false,
     },
     {
       accessorKey: 'supportedModels',

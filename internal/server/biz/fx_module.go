@@ -51,4 +51,14 @@ var Module = fx.Module("biz",
 			},
 		})
 	}),
+	fx.Invoke(func(lc fx.Lifecycle, svc *ChannelProbeService) {
+		lc.Append(fx.Hook{
+			OnStart: func(ctx context.Context) error {
+				return svc.Start(ctx)
+			},
+			OnStop: func(ctx context.Context) error {
+				return svc.Stop(ctx)
+			},
+		})
+	}),
 )

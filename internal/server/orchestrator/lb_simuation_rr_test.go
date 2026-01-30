@@ -39,7 +39,7 @@ func (f *fakeChannelMetricsProvider) IncrementRequestCount(channelID int) {
 
 	f.metrics[channelID].RequestCount++
 	now := time.Now()
-	f.metrics[channelID].LastSuccessAt = &now
+	f.metrics[channelID].LastSelectedAt = &now
 }
 
 func (f *fakeChannelMetricsProvider) GetRequestCount(channelID int) int64 {

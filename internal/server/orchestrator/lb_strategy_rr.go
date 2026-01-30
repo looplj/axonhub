@@ -20,8 +20,8 @@ func latestActivityAt(metrics *biz.AggregatedMetrics) *time.Time {
 	}
 
 	var latest *time.Time
-	if metrics.LastSuccessAt != nil {
-		latest = metrics.LastSuccessAt
+	if metrics.LastSelectedAt != nil {
+		latest = metrics.LastSelectedAt
 	}
 
 	if metrics.LastFailureAt != nil {

@@ -83,7 +83,6 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 		perfCh:             make(chan *PerformanceRecord, 1024),
 	}
 
-	xerrors.NoErr(svc.InitializeAllChannelPerformances(context.Background()))
 	// Load channel performance metrics after channels are loaded
 	if err := svc.LoadChannelPerformances(context.Background()); err != nil {
 		log.Error(context.Background(), "failed to load channel performances", log.Cause(err))

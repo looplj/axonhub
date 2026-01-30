@@ -18,6 +18,10 @@ const (
 	FieldTotalRequestCount = "total_request_count"
 	// FieldSuccessRequestCount holds the string denoting the success_request_count field in the database.
 	FieldSuccessRequestCount = "success_request_count"
+	// FieldAvgTokensPerSecond holds the string denoting the avg_tokens_per_second field in the database.
+	FieldAvgTokensPerSecond = "avg_tokens_per_second"
+	// FieldAvgTimeToFirstTokenMs holds the string denoting the avg_time_to_first_token_ms field in the database.
+	FieldAvgTimeToFirstTokenMs = "avg_time_to_first_token_ms"
 	// FieldTimestamp holds the string denoting the timestamp field in the database.
 	FieldTimestamp = "timestamp"
 	// EdgeChannel holds the string denoting the channel edge name in mutations.
@@ -39,6 +43,8 @@ var Columns = []string{
 	FieldChannelID,
 	FieldTotalRequestCount,
 	FieldSuccessRequestCount,
+	FieldAvgTokensPerSecond,
+	FieldAvgTimeToFirstTokenMs,
 	FieldTimestamp,
 }
 
@@ -73,6 +79,16 @@ func ByTotalRequestCount(opts ...sql.OrderTermOption) OrderOption {
 // BySuccessRequestCount orders the results by the success_request_count field.
 func BySuccessRequestCount(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldSuccessRequestCount, opts...).ToFunc()
+}
+
+// ByAvgTokensPerSecond orders the results by the avg_tokens_per_second field.
+func ByAvgTokensPerSecond(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAvgTokensPerSecond, opts...).ToFunc()
+}
+
+// ByAvgTimeToFirstTokenMs orders the results by the avg_time_to_first_token_ms field.
+func ByAvgTimeToFirstTokenMs(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAvgTimeToFirstTokenMs, opts...).ToFunc()
 }
 
 // ByTimestamp orders the results by the timestamp field.

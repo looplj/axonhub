@@ -5,310 +5,123 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/ent/privacy"
+	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/requestexecution"
+	"github.com/looplj/axonhub/internal/objects"
 )
 
-func TestShouldRunProbe(t *testing.T) {
-	tests := []struct {
-		name          string
-		frequency     ProbeFrequency
-		now           time.Time
-		lastExecution time.Time
-		expected      bool
-	}{
-		{
-			name:          "1 minute frequency - first execution (zero time)",
-			frequency:     ProbeFrequency1Min,
-			now:           time.Date(2024, time.January, 1, 12, 0, 0, 0, time.UTC),
-			lastExecution: time.Time{},
-			expected:      true,
-		},
-		{
-			name:          "1 minute frequency - same interval",
-			frequency:     ProbeFrequency1Min,
-			now:           time.Date(2024, time.January, 1, 12, 0, 30, 0, time.UTC),
-			lastExecution: time.Date(2024, time.January, 1, 12, 0, 0, 0, time.UTC),
-			expected:      false,
-		},
-		{
-			name:          "1 minute frequency - new interval",
-			frequency:     ProbeFrequency1Min,
-			now:           time.Date(2024, time.January, 1, 12, 1, 0, 0, time.UTC),
-			lastExecution: time.Date(2024, time.January, 1, 12, 0, 0, 0, time.UTC),
-			expected:      true,
-		},
-		{
-			name:          "5 minute frequency - same interval",
-			frequency:     ProbeFrequency5Min,
-			now:           time.Date(2024, time.January, 1, 12, 3, 30, 0, time.UTC),
-			lastExecution: time.Date(2024, time.January, 1, 12, 0, 0, 0, time.UTC),
-			expected:      false,
-		},
-		{
-			name:          "5 minute frequency - new interval",
-			frequency:     ProbeFrequency5Min,
-			now:           time.Date(2024, time.January, 1, 12, 5, 0, 0, time.UTC),
-			lastExecution: time.Date(2024, time.January, 1, 12, 0, 0, 0, time.UTC),
-			expected:      true,
-		},
-		{
-			name:          "30 minute frequency - same interval",
-			frequency:     ProbeFrequency30Min,
-			now:           time.Date(2024, time.January, 1, 12, 15, 0, 0, time.UTC),
-			lastExecution: time.Date(2024, time.January, 1, 12, 0, 0, 0, time.UTC),
-			expected:      false,
-		},
-		{
-			name:          "30 minute frequency - new interval",
-			frequency:     ProbeFrequency30Min,
-			now:           time.Date(2024, time.January, 1, 12, 30, 0, 0, time.UTC),
-			lastExecution: time.Date(2024, time.January, 1, 12, 0, 0, 0, time.UTC),
-			expected:      true,
-		},
-		{
-			name:          "1 hour frequency - same interval",
-			frequency:     ProbeFrequency1Hour,
-			now:           time.Date(2024, time.January, 1, 12, 30, 0, 0, time.UTC),
-			lastExecution: time.Date(2024, time.January, 1, 12, 0, 0, 0, time.UTC),
-			expected:      false,
-		},
-		{
-			name:          "1 hour frequency - new interval",
-			frequency:     ProbeFrequency1Hour,
-			now:           time.Date(2024, time.January, 1, 13, 0, 0, 0, time.UTC),
-			lastExecution: time.Date(2024, time.January, 1, 12, 0, 0, 0, time.UTC),
-			expected:      true,
-		},
-		{
-			name:          "1 minute frequency - exact boundary",
-			frequency:     ProbeFrequency1Min,
-			now:           time.Date(2024, time.January, 1, 12, 0, 0, 0, time.UTC),
-			lastExecution: time.Date(2024, time.January, 1, 12, 0, 0, 0, time.UTC),
-			expected:      false,
-		},
-		{
-			name:          "5 minute frequency - exact boundary",
-			frequency:     ProbeFrequency5Min,
-			now:           time.Date(2024, time.January, 1, 12, 5, 0, 0, time.UTC),
-			lastExecution: time.Date(2024, time.January, 1, 12, 5, 0, 0, time.UTC),
-			expected:      false,
-		},
-		{
-			name:          "1 minute frequency - within same minute",
-			frequency:     ProbeFrequency1Min,
-			now:           time.Date(2024, time.January, 1, 12, 0, 59, 999999999, time.UTC),
-			lastExecution: time.Date(2024, time.January, 1, 12, 0, 0, 0, time.UTC),
-			expected:      false,
-		},
-		{
-			name:          "1 minute frequency - just crossed boundary",
-			frequency:     ProbeFrequency1Min,
-			now:           time.Date(2024, time.January, 1, 12, 1, 0, 0, time.UTC),
-			lastExecution: time.Date(2024, time.January, 1, 12, 0, 59, 999999999, time.UTC),
-			expected:      true,
-		},
-		{
-			name:          "5 minute frequency - within same 5 minute window",
-			frequency:     ProbeFrequency5Min,
-			now:           time.Date(2024, time.January, 1, 12, 4, 59, 999999999, time.UTC),
-			lastExecution: time.Date(2024, time.January, 1, 12, 0, 0, 0, time.UTC),
-			expected:      false,
-		},
-		{
-			name:          "5 minute frequency - crossed 5 minute boundary",
-			frequency:     ProbeFrequency5Min,
-			now:           time.Date(2024, time.January, 1, 12, 5, 0, 0, time.UTC),
-			lastExecution: time.Date(2024, time.January, 1, 12, 4, 59, 999999999, time.UTC),
-			expected:      true,
-		},
-		{
-			name:          "30 minute frequency - within same 30 minute window",
-			frequency:     ProbeFrequency30Min,
-			now:           time.Date(2024, time.January, 1, 12, 29, 59, 999999999, time.UTC),
-			lastExecution: time.Date(2024, time.January, 1, 12, 0, 0, 0, time.UTC),
-			expected:      false,
-		},
-		{
-			name:          "30 minute frequency - crossed 30 minute boundary",
-			frequency:     ProbeFrequency30Min,
-			now:           time.Date(2024, time.January, 1, 12, 30, 0, 0, time.UTC),
-			lastExecution: time.Date(2024, time.January, 1, 12, 29, 59, 999999999, time.UTC),
-			expected:      true,
-		},
-		{
-			name:          "1 hour frequency - within same hour",
-			frequency:     ProbeFrequency1Hour,
-			now:           time.Date(2024, time.January, 1, 12, 59, 59, 999999999, time.UTC),
-			lastExecution: time.Date(2024, time.January, 1, 12, 0, 0, 0, time.UTC),
-			expected:      false,
-		},
-		{
-			name:          "1 hour frequency - crossed hour boundary",
-			frequency:     ProbeFrequency1Hour,
-			now:           time.Date(2024, time.January, 1, 13, 0, 0, 0, time.UTC),
-			lastExecution: time.Date(2024, time.January, 1, 12, 59, 59, 999999999, time.UTC),
-			expected:      true,
-		},
+func TestChannelProbeService_ComputeChannelProbeStats_UsageLogCreatedAfterWindow(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	defer client.Close()
+
+	ctx := ent.NewContext(t.Context(), client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenaiFake).
+		SetName("c1").
+		SetStatus(channel.StatusEnabled).
+		SetSupportedModels([]string{"gpt-4o-mini"}).
+		SetDefaultTestModel("gpt-4o-mini").
+		Save(ctx)
+	require.NoError(t, err)
+
+	endTime := time.Date(2026, 1, 1, 1, 0, 0, 0, time.UTC)
+	startTime := endTime.Add(-time.Minute)
+
+	// Create request (needed for usage_log relation)
+	req1, err := client.Request.Create().
+		SetModelID("gpt-4o-mini").
+		SetRequestBody(objects.JSONRawMessage(`{}`)).
+		SetStatus(request.StatusCompleted).
+		SetChannelID(ch.ID).
+		SetStream(true).
+		SetMetricsLatencyMs(2000).
+		SetMetricsFirstTokenLatencyMs(500).
+		SetCreatedAt(startTime.Add(10 * time.Second)).
+		SetUpdatedAt(endTime.Add(10 * time.Second)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create request_execution (used by probe stats)
+	_, err = client.RequestExecution.Create().
+		SetRequestID(req1.ID).
+		SetChannelID(ch.ID).
+		SetModelID("gpt-4o-mini").
+		SetRequestBody(objects.JSONRawMessage(`{}`)).
+		SetStatus(requestexecution.StatusCompleted).
+		SetStream(true).
+		SetMetricsLatencyMs(2000).
+		SetMetricsFirstTokenLatencyMs(500).
+		SetCreatedAt(startTime.Add(10 * time.Second)).
+		SetUpdatedAt(endTime.Add(10 * time.Second)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	_, err = client.UsageLog.Create().
+		SetRequestID(req1.ID).
+		SetChannelID(ch.ID).
+		SetModelID("gpt-4o-mini").
+		SetTotalTokens(300).
+		SetCreatedAt(startTime.Add(15 * time.Second)).
+		SetUpdatedAt(startTime.Add(15 * time.Second)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	req2, err := client.Request.Create().
+		SetModelID("gpt-4o-mini").
+		SetRequestBody(objects.JSONRawMessage(`{}`)).
+		SetStatus(request.StatusCompleted).
+		SetChannelID(ch.ID).
+		SetStream(false).
+		SetMetricsLatencyMs(1000).
+		SetCreatedAt(startTime.Add(20 * time.Second)).
+		SetUpdatedAt(endTime.Add(20 * time.Second)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create request_execution for req2
+	_, err = client.RequestExecution.Create().
+		SetRequestID(req2.ID).
+		SetChannelID(ch.ID).
+		SetModelID("gpt-4o-mini").
+		SetRequestBody(objects.JSONRawMessage(`{}`)).
+		SetStatus(requestexecution.StatusCompleted).
+		SetStream(false).
+		SetMetricsLatencyMs(1000).
+		SetCreatedAt(startTime.Add(20 * time.Second)).
+		SetUpdatedAt(endTime.Add(20 * time.Second)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	_, err = client.UsageLog.Create().
+		SetRequestID(req2.ID).
+		SetChannelID(ch.ID).
+		SetModelID("gpt-4o-mini").
+		SetTotalTokens(100).
+		SetCreatedAt(startTime.Add(25 * time.Second)).
+		SetUpdatedAt(startTime.Add(25 * time.Second)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	svc := &ChannelProbeService{
+		AbstractService: &AbstractService{db: client},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := shouldRunProbe(tt.frequency, tt.now, tt.lastExecution)
-			require.Equal(t, tt.expected, result)
-		})
-	}
-}
+	allStats, err := svc.computeAllChannelProbeStats(ctx, []int{ch.ID}, startTime, endTime)
+	require.NoError(t, err)
 
-func TestGetIntervalMinutesFromFrequency(t *testing.T) {
-	tests := []struct {
-		name      string
-		frequency ProbeFrequency
-		expected  int
-	}{
-		{
-			name:      "1 minute frequency",
-			frequency: ProbeFrequency1Min,
-			expected:  1,
-		},
-		{
-			name:      "5 minute frequency",
-			frequency: ProbeFrequency5Min,
-			expected:  5,
-		},
-		{
-			name:      "30 minute frequency",
-			frequency: ProbeFrequency30Min,
-			expected:  30,
-		},
-		{
-			name:      "1 hour frequency",
-			frequency: ProbeFrequency1Hour,
-			expected:  60,
-		},
-		{
-			name:      "unknown frequency - defaults to 1 minute",
-			frequency: ProbeFrequency("unknown"),
-			expected:  1,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := getIntervalMinutesFromFrequency(tt.frequency)
-			require.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestGenerateTimestamps(t *testing.T) {
-	tests := []struct {
-		name          string
-		setting       ChannelProbeSetting
-		currentTime   time.Time
-		expectedCount int
-		expectedFirst int64
-		expectedLast  int64
-		expectedStep  int64
-	}{
-		{
-			name: "1 minute frequency - 10 minute range",
-			setting: ChannelProbeSetting{
-				Enabled:   true,
-				Frequency: ProbeFrequency1Min,
-			},
-			currentTime:   time.Date(2024, time.January, 1, 12, 5, 30, 0, time.UTC),
-			expectedCount: 11,
-			expectedFirst: time.Date(2024, time.January, 1, 11, 55, 0, 0, time.UTC).Unix(),
-			expectedLast:  time.Date(2024, time.January, 1, 12, 5, 0, 0, time.UTC).Unix(),
-			expectedStep:  60,
-		},
-		{
-			name: "5 minute frequency - 60 minute range",
-			setting: ChannelProbeSetting{
-				Enabled:   true,
-				Frequency: ProbeFrequency5Min,
-			},
-			currentTime:   time.Date(2024, time.January, 1, 12, 15, 0, 0, time.UTC),
-			expectedCount: 13,
-			expectedFirst: time.Date(2024, time.January, 1, 11, 15, 0, 0, time.UTC).Unix(),
-			expectedLast:  time.Date(2024, time.January, 1, 12, 15, 0, 0, time.UTC).Unix(),
-			expectedStep:  300,
-		},
-		{
-			name: "30 minute frequency - 12 hour range",
-			setting: ChannelProbeSetting{
-				Enabled:   true,
-				Frequency: ProbeFrequency30Min,
-			},
-			currentTime:   time.Date(2024, time.January, 1, 12, 30, 0, 0, time.UTC),
-			expectedCount: 25,
-			expectedFirst: time.Date(2024, time.January, 1, 0, 30, 0, 0, time.UTC).Unix(),
-			expectedLast:  time.Date(2024, time.January, 1, 12, 30, 0, 0, time.UTC).Unix(),
-			expectedStep:  1800,
-		},
-		{
-			name: "1 hour frequency - 24 hour range",
-			setting: ChannelProbeSetting{
-				Enabled:   true,
-				Frequency: ProbeFrequency1Hour,
-			},
-			currentTime:   time.Date(2024, time.January, 1, 12, 0, 0, 0, time.UTC),
-			expectedCount: 25,
-			expectedFirst: time.Date(2023, time.December, 31, 12, 0, 0, 0, time.UTC).Unix(),
-			expectedLast:  time.Date(2024, time.January, 1, 12, 0, 0, 0, time.UTC).Unix(),
-			expectedStep:  3600,
-		},
-		{
-			name: "1 minute frequency - at exact minute boundary",
-			setting: ChannelProbeSetting{
-				Enabled:   true,
-				Frequency: ProbeFrequency1Min,
-			},
-			currentTime:   time.Date(2024, time.January, 1, 12, 0, 0, 0, time.UTC),
-			expectedCount: 11,
-			expectedFirst: time.Date(2024, time.January, 1, 11, 50, 0, 0, time.UTC).Unix(),
-			expectedLast:  time.Date(2024, time.January, 1, 12, 0, 0, 0, time.UTC).Unix(),
-			expectedStep:  60,
-		},
-		{
-			name: "unknown frequency - defaults to 1 minute",
-			setting: ChannelProbeSetting{
-				Enabled:   true,
-				Frequency: ProbeFrequency("unknown"),
-			},
-			currentTime:   time.Date(2024, time.January, 1, 12, 5, 30, 0, time.UTC),
-			expectedCount: 11,
-			expectedFirst: time.Date(2024, time.January, 1, 11, 55, 0, 0, time.UTC).Unix(),
-			expectedLast:  time.Date(2024, time.January, 1, 12, 5, 0, 0, time.UTC).Unix(),
-			expectedStep:  60,
-		},
-		{
-			name: "User example - 00:44 at 5 minute frequency",
-			setting: ChannelProbeSetting{
-				Enabled:   true,
-				Frequency: ProbeFrequency5Min,
-			},
-			currentTime:   time.Date(2024, time.January, 1, 0, 44, 0, 0, time.UTC),
-			expectedCount: 13,
-			expectedFirst: time.Date(2023, time.December, 31, 23, 40, 0, 0, time.UTC).Unix(),
-			expectedLast:  time.Date(2024, time.January, 1, 0, 40, 0, 0, time.UTC).Unix(),
-			expectedStep:  300,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := generateTimestamps(tt.setting, tt.currentTime)
-			require.Equal(t, tt.expectedCount, len(result))
-
-			if len(result) > 0 {
-				require.Equal(t, tt.expectedFirst, result[0])
-				require.Equal(t, tt.expectedLast, result[len(result)-1])
-			}
-
-			for i := 0; i < len(result)-1; i++ {
-				step := result[i+1] - result[i]
-				require.Equal(t, tt.expectedStep, step)
-			}
-		})
-	}
+	stats, ok := allStats[ch.ID]
+	require.True(t, ok)
+	require.Equal(t, 2, stats.total)
+	require.Equal(t, 2, stats.success)
+	require.NotNil(t, stats.avgTokensPerSecond)
+	require.InDelta(t, 133.333333, *stats.avgTokensPerSecond, 0.0001)
+	require.NotNil(t, stats.avgTimeToFirstTokenMs)
+	require.InDelta(t, 500.0, *stats.avgTimeToFirstTokenMs, 0.0001)
 }

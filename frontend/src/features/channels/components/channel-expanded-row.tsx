@@ -1,7 +1,6 @@
 import { memo } from 'react';
 import { format } from 'date-fns';
 import { useTranslation } from 'react-i18next';
-import { formatDuration } from '@/utils/format-duration';
 import { Badge } from '@/components/ui/badge';
 import { CHANNEL_CONFIGS } from '../data/config_channels';
 import { Channel } from '../data/schema';
@@ -15,7 +14,6 @@ interface ChannelExpandedRowProps {
 export const ChannelExpandedRow = memo(({ channel, columnsLength, getApiFormatLabel }: ChannelExpandedRowProps) => {
   const { t } = useTranslation();
   const config = CHANNEL_CONFIGS[channel.type];
-  const performance = channel.channelPerformance;
 
   return (
     <div className='bg-muted/30 p-6 hover:bg-muted/50'>
@@ -80,25 +78,6 @@ export const ChannelExpandedRow = memo(({ channel, columnsLength, getApiFormatLa
               </div>
             </div>
 
-            <div className='space-y-3'>
-              <h4 className='text-sm font-semibold'>{t('channels.expandedRow.performance')}</h4>
-              <div className='space-y-2 text-sm'>
-                {performance ? (
-                  <>
-                    <div className='flex justify-between'>
-                      <span className='text-muted-foreground'>{t('channels.columns.firstTokenLatencyFull')}:</span>
-                      <span>{formatDuration(performance.avgStreamFirstTokenLatencyMs || performance.avgLatencyMs || 0)}</span>
-                    </div>
-                    <div className='flex justify-between'>
-                      <span className='text-muted-foreground'>{t('channels.columns.tokensPerSecondFull')}:</span>
-                      <span>{(performance.avgStreamTokenPerSecond || performance.avgTokenPerSecond || 0).toFixed(1)}</span>
-                    </div>
-                  </>
-                ) : (
-                  <span className='text-muted-foreground'>{t('channels.expandedRow.noPerformanceData')}</span>
-                )}
-              </div>
-            </div>
           </div>
         </div>
 
