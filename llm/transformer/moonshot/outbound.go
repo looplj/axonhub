@@ -74,6 +74,19 @@ func (t *OutboundTransformer) TransformRequest(
 	// Convert llm.Request to openai.Request first
 	oaiReq := openai.RequestFromLLM(llmReq)
 
+	// Moonshot/Kimi thinking models require reasoning_content in assistant tool calls.
+	// Use a single space placeholder when missing to satisfy validation.
+	placeholderReasoning := " "
+	for i := range oaiReq.Messages {
+		msg := &oaiReq.Messages[i]
+		if msg.Role != "assistant" || len(msg.ToolCalls) == 0 {
+			continue
+		}
+		if msg.ReasoningContent == nil || *msg.ReasoningContent == "" {
+			msg.ReasoningContent = &placeholderReasoning
+		}
+	}
+
 	// Moonshot doesn't support json_schema, convert to json_object
 	if oaiReq.ResponseFormat != nil && oaiReq.ResponseFormat.Type == "json_schema" {
 		oaiReq.ResponseFormat.Type = "json_object"
