@@ -7,10 +7,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useTokensByAPIKey } from '../data/dashboard';
 
 const TOKEN_COLORS = {
-  input: 'hsl(160, 60%, 45%)',      // Teal/Green
-  output: 'hsl(260, 60%, 50%)',     // Blue/Purple
-  cached: 'hsl(320, 70%, 60%)',     // Bright Pink
-  reasoning: 'hsl(45, 90%, 55%)',   // Bright Yellow
+  input: 'var(--chart-1)',
+  output: 'var(--chart-2)',
+  cached: 'var(--chart-3)',
+  reasoning: 'var(--chart-4)',
 };
 
 export function TokensByAPIKeyChart() {
@@ -55,7 +55,18 @@ export function TokensByAPIKeyChart() {
 
   const totalAllKeys = tokenData.reduce((sum, item) => sum + item.totalTokens, 0);
 
-  type TokenTooltipProps = TooltipProps<number, string>;
+  type TokenTooltipProps = TooltipProps<number, string> & {
+    payload?: Array<{
+      payload: {
+        name: string;
+        inputTokens: number;
+        outputTokens: number;
+        cachedTokens: number;
+        reasoningTokens: number;
+        totalTokens: number;
+      };
+    }>;
+  };
 
   const tooltipContent = (props: TokenTooltipProps) => {
     if (!props.active || !props.payload?.length) return null;

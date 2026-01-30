@@ -21,11 +21,16 @@ export function useUsers(
   const { t } = useTranslation();
   const { handleError } = useErrorHandler();
 
+  const queryVariables = {
+    ...variables,
+    orderBy: variables?.orderBy || { field: 'CREATED_AT', direction: 'DESC' },
+  };
+
   return useQuery({
-    queryKey: ['users', variables],
+    queryKey: ['users', queryVariables],
     queryFn: async () => {
       try {
-        const data = await graphqlRequest<{ users: UserConnection }>(USERS_QUERY, variables);
+        const data = await graphqlRequest<{ users: UserConnection }>(USERS_QUERY, queryVariables);
         return userConnectionSchema.parse(data?.users);
       } catch (error) {
         handleError(error, t('users.messages.loadUsersError'));
