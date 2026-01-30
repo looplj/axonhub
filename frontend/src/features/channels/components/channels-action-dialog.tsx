@@ -32,7 +32,9 @@ import {
   useAllChannelTags,
 } from '../data/channels';
 import { claudecodeOAuthExchange, claudecodeOAuthStart } from '../data/claudecode';
+import { antigravityOAuthExchange, antigravityOAuthStart } from '../data/antigravity';
 import { codexOAuthExchange, codexOAuthStart } from '../data/codex';
+import { useOAuthFlow } from '../hooks/use-oauth-flow';
 import {
   getDefaultBaseURL,
   getDefaultModels,
@@ -40,6 +42,7 @@ import {
   OPENAI_CHAT_COMPLETIONS,
   OPENAI_RESPONSES,
   ANTHROPIC_MESSAGES,
+  GEMINI_CONTENTS,
 } from '../data/config_channels';
 import {
   PROVIDER_CONFIGS,
@@ -48,7 +51,6 @@ import {
   getChannelTypeForApiFormat,
 } from '../data/config_providers';
 import { Channel, ChannelType, ApiFormat, createChannelInputSchema, updateChannelInputSchema } from '../data/schema';
-import { useOAuthFlow } from '../hooks/use-oauth-flow';
 
 interface Props {
   currentRow?: Channel;
@@ -136,6 +138,16 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     },
   });
 
+  const antigravityOAuth = useOAuthFlow({
+    provider: 'antigravity',
+    startFn: antigravityOAuthStart,
+    exchangeFn: antigravityOAuthExchange,
+    projectId: selectedProjectId,
+    onSuccess: (credentials) => {
+      form.setValue('credentials.apiKey', credentials);
+    },
+  });
+
   // Provider-based selection state
   const [selectedProvider, setSelectedProvider] = useState<string>(() => {
     if (initialRow) {
@@ -202,8 +214,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       hasAutoSetDuplicateNameRef.current = false;
       codexOAuth.reset();
       claudecodeOAuth.reset();
+      antigravityOAuth.reset();
     }
-  }, [open, codexOAuth, claudecodeOAuth]);
+  }, [open, codexOAuth, claudecodeOAuth, antigravityOAuth]);
 
   useEffect(() => {
     if (!open) return;
@@ -382,6 +395,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const selectedType = form.watch('type') as ChannelType | undefined;
 
   const isCodexType = (selectedType || derivedChannelType) === 'codex';
+  const isAntigravityType = (selectedType || derivedChannelType) === 'antigravity';
   const isClaudeCodeType = (selectedType || derivedChannelType) === 'claudecode';
 
   useEffect(() => {
@@ -439,6 +453,20 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         return;
       }
 
+      if (provider === 'antigravity') {
+        setSelectedApiFormat(GEMINI_CONTENTS);
+        form.setValue('type', 'antigravity');
+        setFetchedModels([]);
+        setUseFetchedModels(false);
+        // Set default Base URL only if empty
+        const baseURL = getDefaultBaseURL('antigravity');
+        const currentURL = form.getValues('baseURL');
+        if (baseURL && !isDuplicate && (!currentURL || currentURL === '')) {
+          form.setValue('baseURL', baseURL);
+        }
+        return;
+      }
+
       const formats = getApiFormatsForProvider(provider);
       const currentFormat = selectedApiFormat;
       let newFormat = currentFormat;
@@ -472,7 +500,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const handleApiFormatChange = useCallback(
     (format: ApiFormat) => {
       if (isEdit) return;
-      if (selectedProvider === 'codex') return;
+      if (selectedProvider === 'codex' || selectedProvider === 'antigravity') return;
 
       setSelectedApiFormat(format);
 
@@ -551,29 +579,40 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
   useEffect(() => {
     if (isEdit) return;
+
     if (!isCodexType) {
       codexOAuth.reset();
-      return;
     }
-
-    const baseURL = getDefaultBaseURL('codex');
-    if (baseURL) {
-      form.resetField('baseURL', { defaultValue: baseURL });
-    }
-  }, [isEdit, isCodexType, form]);
-
-  useEffect(() => {
-    if (isEdit) return;
     if (selectedProvider !== 'claudecode') {
       claudecodeOAuth.reset();
-      return;
+    }
+    if (selectedProvider !== 'antigravity') {
+      antigravityOAuth.reset();
     }
 
-    const baseURL = getDefaultBaseURL('claudecode');
-    if (baseURL) {
-      form.resetField('baseURL', { defaultValue: baseURL });
+    const providerToChannelType: Partial<Record<string, ChannelType>> = {
+      claudecode: 'claudecode',
+      antigravity: 'antigravity',
+    };
+
+    let channelTypeForURL: ChannelType | undefined;
+    if (isCodexType) {
+      channelTypeForURL = 'codex';
+    } else {
+      channelTypeForURL = providerToChannelType[selectedProvider];
     }
-  }, [isEdit, selectedProvider, form]);
+
+    if (channelTypeForURL) {
+      const baseURL = getDefaultBaseURL(channelTypeForURL);
+      if (baseURL) {
+        // Use setValue instead of resetField to avoid infinite loop
+        const currentURL = form.getValues('baseURL');
+        if (!currentURL || currentURL !== baseURL) {
+          form.setValue('baseURL', baseURL);
+        }
+      }
+    }
+  }, [isEdit, isCodexType, selectedProvider, form, codexOAuth, claudecodeOAuth, antigravityOAuth]);
 
   const renderOAuthSection = useCallback(
     (oauth: ReturnType<typeof useOAuthFlow>, description: string) => (
@@ -710,12 +749,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             tags: valuesForSubmit.tags,
             apiKeys: apiKeys,
             supportedModels: supportedModels,
-            autoSyncSupportedModels: valuesForSubmit.autoSyncSupportedModels,
             defaultTestModel: valuesForSubmit.defaultTestModel as string,
             settings,
             policies,
-            orderingWeight: valuesForSubmit.orderingWeight ?? undefined,
-            remark: valuesForSubmit.remark ?? undefined,
           });
         } else {
           // Single create: use existing mutation
@@ -836,6 +872,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const canFetchModels = () => {
     const baseURL = form.watch('baseURL');
     const apiKey = form.watch('credentials.apiKey');
+
+    if (isCodexType || isAntigravityType) {
+      return !!baseURL;
+    }
 
     if (isEdit) {
       return !!baseURL;
@@ -978,7 +1018,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         }}
       >
         <DialogContent
-          ref={dialogContentRef}
           className={`flex max-h-[90vh] flex-col transition-all duration-300 ${showFetchedModelsPanel || showSupportedModelsPanel ? 'sm:max-w-6xl' : 'sm:max-w-4xl'}`}
         >
           <DialogHeader className='flex-shrink-0 text-left'>
@@ -1119,6 +1158,72 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         </FormItem>
                       )}
 
+                      {selectedProvider === 'antigravity' && (
+                        <FormItem className='grid grid-cols-8 items-start gap-x-6'>
+                          <FormLabel className='col-span-2 pt-2 text-right font-medium'>
+                            {t('channels.dialogs.fields.apiFormat.label')}
+                          </FormLabel>
+                          <div className='col-span-6 space-y-1'>
+                            <div className='text-sm'>{getApiFormatLabel(GEMINI_CONTENTS)}</div>
+                            <p className='text-muted-foreground mt-1 text-xs'>{t('channels.dialogs.fields.apiFormat.editDisabled')}</p>
+
+                            <div className='mt-3 space-y-2'>
+                              <div className='rounded-md border p-3'>
+                                <div className='flex flex-wrap items-center gap-2'>
+                                  <Button type='button' variant='secondary' onClick={() => antigravityOAuth.start()} disabled={antigravityOAuth.isStarting}>
+                                    {antigravityOAuth.isStarting
+                                      ? t('channels.dialogs.antigravity.buttons.starting')
+                                      : t('channels.dialogs.antigravity.buttons.startOAuth')}
+                                  </Button>
+                                  {antigravityOAuth.authUrl && (
+                                    <Button
+                                      type='button'
+                                      variant='ghost'
+                                      onClick={() => window.open(antigravityOAuth.authUrl || '', '_blank', 'noopener,noreferrer')}
+                                    >
+                                      {t('channels.dialogs.antigravity.buttons.openOAuthLink')}
+                                    </Button>
+                                  )}
+                                </div>
+
+                                {antigravityOAuth.authUrl && (
+                                  <div className='mt-3 space-y-2'>
+                                    <FormLabel className='text-sm font-medium'>
+                                      {t('channels.dialogs.antigravity.labels.authorizationUrl')}
+                                    </FormLabel>
+                                    <Textarea
+                                      value={antigravityOAuth.authUrl}
+                                      readOnly
+                                      className='min-h-[60px] resize-none font-mono text-xs'
+                                      placeholder={t('channels.dialogs.antigravity.placeholders.authorizationUrl')}
+                                    />
+                                  </div>
+                                )}
+
+                                <div className='mt-3 space-y-2'>
+                                  <FormLabel className='text-sm font-medium'>{t('channels.dialogs.antigravity.labels.callbackUrl')}</FormLabel>
+                                  <Textarea
+                                    value={antigravityOAuth.callbackUrl}
+                                    onChange={(e) => antigravityOAuth.setCallbackUrl(e.target.value)}
+                                    placeholder={t('channels.dialogs.antigravity.placeholders.callbackUrl')}
+                                    className='min-h-[80px] resize-y font-mono text-xs'
+                                  />
+                                  <Button type='button' onClick={() => antigravityOAuth.exchange()} disabled={antigravityOAuth.isExchanging || !antigravityOAuth.sessionId}>
+                                    {antigravityOAuth.isExchanging
+                                      ? t('channels.dialogs.antigravity.buttons.exchanging')
+                                      : t('channels.dialogs.antigravity.buttons.exchangeAndFillApiKey')}
+                                  </Button>
+                                </div>
+
+                                <p className='text-muted-foreground mt-2 text-xs'>
+                                  {t('channels.dialogs.fields.apiFormat.antigravity.description')}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </FormItem>
+                      )}
+
                       <FormField
                         control={form.control}
                         name='name'
@@ -1196,7 +1301,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 data-form-type='other'
                                 aria-invalid={!!fieldState.error}
                                 data-testid='channel-base-url-input'
-                                disabled={(isCodexType || isClaudeCodeType) && authMode === 'official'}
+                                disabled={((isCodexType || isClaudeCodeType) && authMode === 'official') || selectedProvider === 'antigravity'}
                                 {...field}
                               />
                               <FormMessage />
@@ -1205,7 +1310,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         )}
                       />
 
-                      {(!(isCodexType || isClaudeCodeType) || authMode === 'third-party') && selectedType !== 'anthropic_gcp' && (
+                      {(!(isCodexType || isClaudeCodeType) || authMode === 'third-party') &&
+                        selectedProvider !== 'antigravity' &&
+                        selectedType !== 'anthropic_gcp' && (
                         <FormField
                           control={form.control}
                           name='credentials.apiKey'
@@ -1428,7 +1535,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 selectedValue={newModel}
                                 onSelectedValueChange={setNewModel}
                                 placeholder={t('channels.dialogs.fields.supportedModels.description')}
-                                portalContainer={dialogContentRef.current}
                               />
                             ) : (
                               <Input

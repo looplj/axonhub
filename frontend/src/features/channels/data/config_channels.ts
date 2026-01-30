@@ -84,6 +84,24 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-[#32746D] text-white border-[#32746D]',
     icon: OpenAI,
   },
+  antigravity: {
+    channelType: 'antigravity',
+    baseURL: 'https://daily-cloudcode-pa.sandbox.googleapis.com',
+    defaultModels: [
+      'gemini-3-pro',
+      'gemini-3-flash',
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite',
+      'claude-sonnet-4-5',
+      'claude-sonnet-4-5-thinking',
+      'claude-opus-4-5-thinking',
+      'gemini-3-pro-image',
+      'gpt-oss-120b-medium',
+    ],
+    apiFormat: GEMINI_CONTENTS,
+    color: 'bg-green-100 text-green-800 border-green-200',
+    icon: Google,
+  },
   deepseek: {
     channelType: 'deepseek',
     baseURL: 'https://api.deepseek.com/v1',
@@ -575,6 +593,7 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   codex: 'codex',
   claudecode: 'claudecode',
   cerebras: 'cerebras',
+  antigravity: 'antigravity',
 };
 
 /**

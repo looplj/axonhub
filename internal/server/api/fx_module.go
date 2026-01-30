@@ -16,5 +16,6 @@ var Module = fx.Module("api",
 	fx.Provide(NewJinaHandlers),
 	fx.Provide(NewCodexHandlers),
 	fx.Provide(NewClaudeCodeHandlers),
+	fx.Provide(NewAntigravityHandlers),
 	fx.Invoke(initLogger),
 )

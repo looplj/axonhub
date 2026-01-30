@@ -20,6 +20,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/anthropic"
 	"github.com/looplj/axonhub/llm/transformer/anthropic/claudecode"
+	"github.com/looplj/axonhub/llm/transformer/antigravity"
 	"github.com/looplj/axonhub/llm/transformer/bailian"
 	"github.com/looplj/axonhub/llm/transformer/deepseek"
 	"github.com/looplj/axonhub/llm/transformer/doubao"
@@ -549,6 +550,27 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		transformer, err := jina.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		return buildChannelWithTransformer(c, transformer, httpClient), nil
+	case channel.TypeAntigravity:
+		transformer, err := antigravity.NewTransformer(
+			antigravity.Config{BaseURL: c.BaseURL, APIKey: c.Credentials.APIKey},
+			antigravity.WithHTTPClient(httpClient),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create antigravity outbound transformer: %w", err)
+		}
+
+		tokens := transformer.GetTokenProvider()
+		if tokens != nil {
+			ch := buildChannelWithTransformer(c, transformer, httpClient)
+			ch.startTokenProvider = func() {
+				tokens.StartAutoRefresh(context.Background(), oauth.AutoRefreshOptions{})
+			}
+			ch.stopTokenProvider = tokens.StopAutoRefresh
+
+			return ch, nil
 		}
 
 		return buildChannelWithTransformer(c, transformer, httpClient), nil
