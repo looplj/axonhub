@@ -278,6 +278,7 @@ When introducing a new provider channel, keep backend and frontend changes align
 
 ### Biz Service Rules
 - **REQUIRED**: Ensure the dependency service not be nil, the logic code should not check the service is nil.
+- **REQUIRED**: Dependency services are guaranteed initialized; business logic must not add nil checks.
 
 ### Error Handling
 - **REQUIRED**: Always handle errors using the unified error response format from `internal/pkg/errors`

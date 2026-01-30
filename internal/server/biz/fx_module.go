@@ -35,4 +35,20 @@ var Module = fx.Module("biz",
 			},
 		})
 	}),
+	fx.Invoke(func(lc fx.Lifecycle, svc *APIKeyService) {
+		lc.Append(fx.Hook{
+			OnStop: func(ctx context.Context) error {
+				svc.Stop()
+				return nil
+			},
+		})
+	}),
+	fx.Invoke(func(lc fx.Lifecycle, svc *ChannelService) {
+		lc.Append(fx.Hook{
+			OnStop: func(ctx context.Context) error {
+				svc.Stop()
+				return nil
+			},
+		})
+	}),
 )

@@ -87,7 +87,7 @@ func TestUsageCost_PerUnitPromptAndCompletion(t *testing.T) {
 	built, err := channelService.GetChannel(ctx, ch.ID)
 	require.NoError(t, err)
 	channelService.preloadModelPrices(ctx, built)
-	channelService.enabledChannels = []*Channel{built}
+	channelService.SetEnabledChannelsForTest([]*Channel{built})
 
 	usageLogService := NewUsageLogService(client, systemService, channelService)
 
@@ -161,7 +161,7 @@ func TestUsageCost_TieredPrompt(t *testing.T) {
 	built, err := channelService.GetChannel(ctx, ch.ID)
 	require.NoError(t, err)
 	channelService.preloadModelPrices(ctx, built)
-	channelService.enabledChannels = []*Channel{built}
+	channelService.SetEnabledChannelsForTest([]*Channel{built})
 
 	usageLogService := NewUsageLogService(client, systemService, channelService)
 
@@ -213,7 +213,7 @@ func TestUsageCost_NoPriceConfigured(t *testing.T) {
 	built, err := channelService.GetChannel(ctx, ch.ID)
 	require.NoError(t, err)
 	// preloadModelPrices not called -> no prices cached
-	channelService.enabledChannels = []*Channel{built}
+	channelService.SetEnabledChannelsForTest([]*Channel{built})
 
 	usageLogService := NewUsageLogService(client, systemService, channelService)
 
@@ -291,7 +291,7 @@ func TestUsageCost_CacheVariant5Min(t *testing.T) {
 	built, err := channelService.GetChannel(ctx, ch.ID)
 	require.NoError(t, err)
 	channelService.preloadModelPrices(ctx, built)
-	channelService.enabledChannels = []*Channel{built}
+	channelService.SetEnabledChannelsForTest([]*Channel{built})
 
 	usageLogService := NewUsageLogService(client, systemService, channelService)
 
@@ -381,7 +381,7 @@ func TestUsageCost_CacheVariant1Hour(t *testing.T) {
 	built, err := channelService.GetChannel(ctx, ch.ID)
 	require.NoError(t, err)
 	channelService.preloadModelPrices(ctx, built)
-	channelService.enabledChannels = []*Channel{built}
+	channelService.SetEnabledChannelsForTest([]*Channel{built})
 
 	usageLogService := NewUsageLogService(client, systemService, channelService)
 
@@ -476,7 +476,7 @@ func TestUsageCost_CacheVariantBoth5MinAnd1Hour(t *testing.T) {
 	built, err := channelService.GetChannel(ctx, ch.ID)
 	require.NoError(t, err)
 	channelService.preloadModelPrices(ctx, built)
-	channelService.enabledChannels = []*Channel{built}
+	channelService.SetEnabledChannelsForTest([]*Channel{built})
 
 	usageLogService := NewUsageLogService(client, systemService, channelService)
 
@@ -562,7 +562,7 @@ func TestUsageCost_CacheVariantFallbackToShared(t *testing.T) {
 	built, err := channelService.GetChannel(ctx, ch.ID)
 	require.NoError(t, err)
 	channelService.preloadModelPrices(ctx, built)
-	channelService.enabledChannels = []*Channel{built}
+	channelService.SetEnabledChannelsForTest([]*Channel{built})
 
 	usageLogService := NewUsageLogService(client, systemService, channelService)
 

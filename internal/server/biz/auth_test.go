@@ -73,7 +73,7 @@ func setupTestDB(t *testing.T) *ent.Client {
 	return client
 }
 
-func setupTestAuthService(t *testing.T, cacheConfig xcache.Config) (*AuthService, *ent.Client) {
+func setupTestAuthService(t *testing.T, cacheConfig xcache.Config) (*AuthService, *ent.Client, func()) {
 	t.Helper()
 	client := setupTestDB(t)
 
@@ -105,11 +105,11 @@ func setupTestAuthService(t *testing.T, cacheConfig xcache.Config) (*AuthService
 		ProjectCache: xcache.NewFromConfig[ent.Project](cacheConfig),
 	}
 
-	// Create APIKeyService with ProjectService
-	apiKeyService := &APIKeyService{
+	apiKeyService := NewAPIKeyService(APIKeyServiceParams{
+		CacheConfig:    cacheConfig,
+		Ent:            client,
 		ProjectService: projectService,
-		APIKeyCache:    xcache.NewFromConfig[ent.APIKey](cacheConfig),
-	}
+	})
 
 	authService := &AuthService{
 		SystemService: systemService,
@@ -117,14 +117,19 @@ func setupTestAuthService(t *testing.T, cacheConfig xcache.Config) (*AuthService
 		UserService:   userService,
 	}
 
-	return authService, client
+	cleanup := func() {
+		apiKeyService.Stop()
+	}
+
+	return authService, client, cleanup
 }
 
 func TestAuthService_GenerateJWTToken(t *testing.T) {
 	// Test with memory cache
 	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
 
-	authService, client := setupTestAuthService(t, cacheConfig)
+	authService, client, cleanup := setupTestAuthService(t, cacheConfig)
+	defer cleanup()
 	defer client.Close()
 
 	ctx := context.Background()
@@ -174,7 +179,6 @@ func TestAuthService_GenerateJWTToken(t *testing.T) {
 func TestAuthService_AuthenticateUser(t *testing.T) {
 	// Test with Redis cache using miniredis
 	mr := miniredis.RunT(t)
-	defer mr.Close()
 
 	cacheConfig := xcache.Config{
 		Mode: xcache.ModeRedis,
@@ -183,7 +187,9 @@ func TestAuthService_AuthenticateUser(t *testing.T) {
 		},
 	}
 
-	authService, client := setupTestAuthService(t, cacheConfig)
+	authService, client, cleanup := setupTestAuthService(t, cacheConfig)
+	defer cleanup()
+	defer mr.Close()
 	defer client.Close()
 
 	ctx := context.Background()
@@ -232,7 +238,6 @@ func TestAuthService_AuthenticateUser(t *testing.T) {
 func TestAuthService_AuthenticateJWTToken(t *testing.T) {
 	// Test with two-level cache
 	mr := miniredis.RunT(t)
-	defer mr.Close()
 
 	cacheConfig := xcache.Config{
 		Mode: xcache.ModeTwoLevel,
@@ -241,7 +246,9 @@ func TestAuthService_AuthenticateJWTToken(t *testing.T) {
 		},
 	}
 
-	authService, client := setupTestAuthService(t, cacheConfig)
+	authService, client, cleanup := setupTestAuthService(t, cacheConfig)
+	defer cleanup()
+	defer mr.Close()
 	defer client.Close()
 
 	ctx := context.Background()
@@ -315,7 +322,8 @@ func TestAuthService_AnthenticateAPIKey(t *testing.T) {
 	// Test with noop cache (no cache configured)
 	cacheConfig := xcache.Config{} // Empty config = noop cache
 
-	authService, client := setupTestAuthService(t, cacheConfig)
+	authService, client, cleanup := setupTestAuthService(t, cacheConfig)
+	defer cleanup()
 	defer client.Close()
 
 	ctx := context.Background()
@@ -384,6 +392,9 @@ func TestAuthService_AnthenticateAPIKey(t *testing.T) {
 	_, err = authService.APIKeyService.UpdateAPIKeyStatus(ctx, apiKey.ID, "disabled")
 	require.NoError(t, err)
 
+	// Synchronously invalidate the cache for testing (async notification may not complete in time)
+	authService.APIKeyService.APIKeyCache.Invalidate(buildAPIKeyCacheKey(apiKeyString))
+
 	_, err = authService.AnthenticateAPIKey(ctx, apiKeyString)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "api key not enabled")
@@ -392,6 +403,9 @@ func TestAuthService_AnthenticateAPIKey(t *testing.T) {
 	// First, re-enable the API key
 	_, err = authService.APIKeyService.UpdateAPIKeyStatus(ctx, apiKey.ID, "enabled")
 	require.NoError(t, err)
+
+	// Synchronously invalidate the cache for testing
+	authService.APIKeyService.APIKeyCache.Invalidate(buildAPIKeyCacheKey(apiKeyString))
 
 	// Then archive the project (making it inactive)
 	_, err = client.Project.UpdateOneID(testProject.ID).
@@ -406,40 +420,50 @@ func TestAuthService_AnthenticateAPIKey(t *testing.T) {
 
 func TestAuthService_WithDifferentCacheConfigs(t *testing.T) {
 	testCases := []struct {
-		name        string
-		cacheConfig xcache.Config
+		name         string
+		cacheMode    string
+		requireRedis bool
 	}{
 		{
-			name:        "Memory Cache",
-			cacheConfig: xcache.Config{Mode: xcache.ModeMemory},
+			name:         "Memory Cache",
+			cacheMode:    xcache.ModeMemory,
+			requireRedis: false,
 		},
 		{
-			name: "Redis Cache",
-			cacheConfig: xcache.Config{
-				Mode: xcache.ModeRedis,
-				Redis: xredis.Config{
-					Addr: miniredis.RunT(t).Addr(),
-				},
-			},
+			name:         "Redis Cache",
+			cacheMode:    xcache.ModeRedis,
+			requireRedis: true,
 		},
 		{
-			name: "Two-Level Cache",
-			cacheConfig: xcache.Config{
-				Mode: xcache.ModeTwoLevel,
-				Redis: xredis.Config{
-					Addr: miniredis.RunT(t).Addr(),
-				},
-			},
+			name:         "Two-Level Cache",
+			cacheMode:    xcache.ModeTwoLevel,
+			requireRedis: true,
 		},
 		{
-			name:        "Noop Cache",
-			cacheConfig: xcache.Config{}, // Empty = noop
+			name:         "Noop Cache",
+			cacheMode:    "",
+			requireRedis: false,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			authService, client := setupTestAuthService(t, tc.cacheConfig)
+			var cacheConfig xcache.Config
+
+			if tc.requireRedis {
+				mr := miniredis.RunT(t)
+				cacheConfig = xcache.Config{
+					Mode: tc.cacheMode,
+					Redis: xredis.Config{
+						Addr: mr.Addr(),
+					},
+				}
+			} else {
+				cacheConfig = xcache.Config{Mode: tc.cacheMode}
+			}
+
+			authService, client, cleanup := setupTestAuthService(t, cacheConfig)
+			defer cleanup()
 			defer client.Close()
 
 			ctx := context.Background()
@@ -477,7 +501,6 @@ func TestAuthService_WithDifferentCacheConfigs(t *testing.T) {
 
 func TestAuthService_CacheExpiration(t *testing.T) {
 	mr := miniredis.RunT(t)
-	defer mr.Close()
 
 	cacheConfig := xcache.Config{
 		Mode: xcache.ModeRedis,
@@ -487,7 +510,9 @@ func TestAuthService_CacheExpiration(t *testing.T) {
 		},
 	}
 
-	authService, client := setupTestAuthService(t, cacheConfig)
+	authService, client, cleanup := setupTestAuthService(t, cacheConfig)
+	defer cleanup()
+	defer mr.Close()
 	defer client.Close()
 
 	ctx := context.Background()
