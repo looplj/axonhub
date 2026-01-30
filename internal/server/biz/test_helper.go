@@ -1,12 +1,13 @@
 package biz
 
 import (
+	"github.com/zhenzou/executors"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 )
 
 func NewChannelServiceForTest(client *ent.Client) *ChannelService {
-	perfCh := make(chan *PerformanceRecord, 1024)
 	mockSysSvc := &SystemService{
 		AbstractService: &AbstractService{
 			db: client,
@@ -14,18 +15,14 @@ func NewChannelServiceForTest(client *ent.Client) *ChannelService {
 		Cache: xcache.NewFromConfig[ent.System](xcache.Config{Mode: xcache.ModeMemory}),
 	}
 
-	go func() {
-		for range perfCh {
-		}
-	}()
+	svc := NewChannelService(ChannelServiceParams{
+		CacheConfig:   xcache.Config{Mode: xcache.ModeMemory},
+		Executor:      executors.NewPoolScheduleExecutor(),
+		Ent:           client,
+		SystemService: mockSysSvc,
+	})
 
-	return &ChannelService{
-		AbstractService: &AbstractService{
-			db: client,
-		},
-		SystemService:      mockSysSvc,
-		channelPerfMetrics: make(map[int]*channelMetrics),
-		perfCh:             perfCh,
-		enabledChannels:    []*Channel{},
-	}
+	svc.SetEnabledChannelsForTest([]*Channel{})
+
+	return svc
 }

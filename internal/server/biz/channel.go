@@ -15,6 +15,9 @@ import (
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/watcher"
+	"github.com/looplj/axonhub/internal/pkg/xcache"
+	"github.com/looplj/axonhub/internal/pkg/xcache/live"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
@@ -62,6 +65,7 @@ type Channel struct {
 type ChannelServiceParams struct {
 	fx.In
 
+	CacheConfig   xcache.Config
 	Executor      executors.ScheduledExecutor
 	Ent           *ent.Client
 	SystemService *SystemService
@@ -72,9 +76,7 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 		AbstractService: &AbstractService{
 			db: params.Ent,
 		},
-		Executors: executors.NewPoolScheduleExecutor(
-			executors.WithMaxConcurrent(1),
-		),
+		Executors:          params.Executor,
 		SystemService:      params.SystemService,
 		channelPerfMetrics: make(map[int]*channelMetrics),
 		channelErrorCounts: make(map[int]map[int]int),
@@ -88,17 +90,41 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 		// Continue loading channels even if metrics loading fails
 	}
 
-	xerrors.NoErr(svc.loadChannels(context.Background()))
-	xerrors.NoErr2(
-		params.Executor.ScheduleFuncAtCronRate(
-			svc.loadChannelsPeriodic,
-			executors.CRONRule{Expr: "*/1 * * * *"},
-		),
-	)
+	watcherMode := params.CacheConfig.Mode
+	if watcherMode == "" {
+		watcherMode = xcache.ModeMemory
+	}
+
+	if watcherMode == xcache.ModeTwoLevel {
+		watcherMode = watcher.ModeRedis
+	}
+
+	notifier, err := watcher.NewWatcherFromConfig[live.CacheEvent[struct{}]](watcher.Config{
+		Mode:  watcherMode,
+		Redis: params.CacheConfig.Redis,
+	}, watcher.WatcherFromConfigOptions{
+		RedisChannel: "axonhub:cache:channels",
+		Buffer:       32,
+	})
+	if err != nil {
+		panic(fmt.Errorf("channel watcher init failed: %w", err))
+	}
+
+	svc.channelNotifier = notifier
+
+	svc.enabledChannelsCache = live.NewCache(live.Options[[]*Channel]{
+		Name:            "enabled_channels",
+		InitialValue:    []*Channel{},
+		RefreshInterval: time.Minute,
+		RefreshFunc:     svc.refreshEnabledChannels,
+		OnSwap:          svc.onEnabledChannelsSwap,
+		Watcher:         svc.channelNotifier,
+	})
+	xerrors.NoErr(svc.enabledChannelsCache.Load(context.Background(), true))
 
 	// Schedule model sync every hour
 	xerrors.NoErr2(
-		params.Executor.ScheduleFuncAtCronRate(
+		svc.Executors.ScheduleFuncAtCronRate(
 			svc.syncChannelModels,
 			executors.CRONRule{Expr: "11 * * * *"},
 		),
@@ -110,15 +136,18 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 	return svc
 }
 
+func (svc *ChannelService) Stop() {
+	svc.enabledChannelsCache.Stop()
+}
+
 type ChannelService struct {
 	*AbstractService
 
 	Executors     executors.ScheduledExecutor
 	SystemService *SystemService
 
-	enabledChannels []*Channel
-	// latestUpdate 记录最新的 channel 更新时间，用于优化定时加载
-	latestUpdateTime time.Time
+	enabledChannelsCache *live.Cache[[]*Channel]
+	channelNotifier      watcher.Notifier[live.CacheEvent[struct{}]]
 
 	// perfWindowSeconds is the configurable sliding window size for performance metrics (in seconds)
 	// If not set (0), uses defaultPerformanceWindowSize (600 seconds = 10 minutes)
@@ -138,36 +167,23 @@ type ChannelService struct {
 	perfCh chan *PerformanceRecord
 }
 
-func (svc *ChannelService) loadChannelsPeriodic(ctx context.Context) {
-	err := svc.loadChannels(ctx)
-	if err != nil {
-		log.Error(ctx, "failed to load channels", log.Cause(err))
-	}
-}
-
-func (svc *ChannelService) loadChannels(ctx context.Context) error {
+func (svc *ChannelService) refreshEnabledChannels(ctx context.Context, current []*Channel, lastUpdate time.Time) ([]*Channel, time.Time, bool, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
-	// 检查是否有 channels 被修改
 	latestUpdatedChannel, err := svc.entFromContext(ctx).Channel.Query().
 		Order(ent.Desc(channel.FieldUpdatedAt)).
 		First(ctx)
 	if err != nil && !ent.IsNotFound(err) {
-		return err
+		return current, lastUpdate, false, err
 	}
 
-	// 如果没有找到任何 channels，latestUpdate 会是 nil
-	if latestUpdatedChannel != nil {
-		// 如果最新的更新时间早于或等于我们记录的时间，说明没有新的修改
-		if !latestUpdatedChannel.UpdatedAt.After(svc.latestUpdateTime) {
-			log.Debug(ctx, "no new channels updated")
-			return nil
+	if latestUpdatedChannel == nil {
+		if lastUpdate.IsZero() && len(current) == 0 {
+			return current, time.Time{}, false, nil
 		}
-		// 更新最新的修改时间记录
-		svc.latestUpdateTime = latestUpdatedChannel.UpdatedAt
-	} else {
-		// 如果没有 channels，确保 latestUpdate 是零值时间
-		svc.latestUpdateTime = time.Time{}
+	} else if !latestUpdatedChannel.UpdatedAt.After(lastUpdate) {
+		log.Debug(ctx, "no new channels updated")
+		return current, lastUpdate, false, nil
 	}
 
 	entities, err := svc.entFromContext(ctx).Channel.Query().
@@ -175,7 +191,7 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 		Order(ent.Desc(channel.FieldOrderingWeight)).
 		All(ctx)
 	if err != nil {
-		return err
+		return current, lastUpdate, false, err
 	}
 
 	var channels []*Channel
@@ -210,22 +226,26 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 
 	log.Info(ctx, "loaded channels", log.Int("count", len(channels)))
 
-	for _, ch := range channels {
+	updateTime := time.Time{}
+	if latestUpdatedChannel != nil {
+		updateTime = latestUpdatedChannel.UpdatedAt
+	}
+
+	return channels, updateTime, true, nil
+}
+
+func (svc *ChannelService) onEnabledChannelsSwap(old, new []*Channel) {
+	for _, ch := range new {
 		if ch != nil && ch.startTokenProvider != nil {
 			ch.startTokenProvider()
 		}
 	}
-
-	old := svc.enabledChannels
-	svc.enabledChannels = channels
 
 	for _, ch := range old {
 		if ch != nil && ch.stopTokenProvider != nil {
 			ch.stopTokenProvider()
 		}
 	}
-
-	return nil
 }
 
 // GetEnabledChannels returns all enabled channels.
@@ -235,18 +255,31 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 // DO NOT modify the returned slice or any of its Channel elements.
 // Modifications will not persist and may cause data inconsistency.
 func (svc *ChannelService) GetEnabledChannels() []*Channel {
-	return svc.enabledChannels
+	return svc.enabledChannelsCache.GetData()
 }
 
 // GetEnabledChannel returns the enabled channel by id, or nil if not found.
 func (svc *ChannelService) GetEnabledChannel(id int) *Channel {
-	for _, ch := range svc.enabledChannels {
+	for _, ch := range svc.GetEnabledChannels() {
 		if ch.ID == id {
 			return ch
 		}
 	}
 
 	return nil
+}
+
+func (svc *ChannelService) SetEnabledChannelsForTest(channels []*Channel) {
+	svc.enabledChannelsCache.Stop()
+
+	svc.enabledChannelsCache = live.NewCache(live.Options[[]*Channel]{
+		Name:            "enabled_channels_test",
+		InitialValue:    channels,
+		RefreshInterval: 24 * time.Hour,
+		RefreshFunc: func(ctx context.Context, current []*Channel, lastUpdate time.Time) ([]*Channel, time.Time, bool, error) {
+			return current, lastUpdate, false, nil
+		},
+	})
 }
 
 // GetChannel retrieves a specific channel by ID for testing purposes,
@@ -518,10 +551,11 @@ func (svc *ChannelService) asyncReloadChannels() {
 		reloadCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		// Force reload by resetting latestUpdate timestamp
-		svc.latestUpdateTime = time.Time{}
+		if err := svc.channelNotifier.Notify(reloadCtx, live.NewForceRefreshEvent[struct{}]()); err != nil {
+			log.Warn(reloadCtx, "channel cache watcher notify failed", log.Cause(err))
+		}
 
-		if reloadErr := svc.loadChannels(reloadCtx); reloadErr != nil {
+		if reloadErr := svc.enabledChannelsCache.Load(reloadCtx, true); reloadErr != nil {
 			log.Error(reloadCtx, "failed to reload channels after bulk update", log.Cause(reloadErr))
 		}
 	}()

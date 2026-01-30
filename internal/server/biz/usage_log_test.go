@@ -148,7 +148,7 @@ func TestUsageLogService_CreateUsageLog_WithPriceReferenceID(t *testing.T) {
 	channelService.preloadModelPrices(ctx, enabledCh)
 
 	// Add to enabled channels list so it can be found by GetEnabledChannel
-	channelService.enabledChannels = []*Channel{enabledCh}
+	channelService.SetEnabledChannelsForTest([]*Channel{enabledCh})
 
 	// Verify cache contains the model price
 	require.NotNil(t, enabledCh.cachedModelPrices["gpt-4"])
@@ -271,7 +271,7 @@ func TestUsageLogService_CreateUsageLog_WithCachedTokens(t *testing.T) {
 	channelService.preloadModelPrices(ctx, enabledCh)
 
 	// Add to enabled channels list so it can be found by GetEnabledChannel
-	channelService.enabledChannels = []*Channel{enabledCh}
+	channelService.SetEnabledChannelsForTest([]*Channel{enabledCh})
 
 	// Verify cache contains the model price
 	require.NotNil(t, enabledCh.cachedModelPrices["gpt-4"])

@@ -74,6 +74,7 @@ linters:
     - thelper
     - dogsled
     - unqueryvet
+    - predeclared
     
 
   # all available settings of specific linters

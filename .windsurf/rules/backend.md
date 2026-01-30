@@ -24,3 +24,4 @@ globs: *.go
 # Biz Service Rules
 
 1. Ensure the dependency service not be nil, the logic code should not check the service is nil.
+2. Dependency services are guaranteed initialized; business logic must not add nil checks.
