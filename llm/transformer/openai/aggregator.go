@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"sort"
 	"strings"
 
 	"github.com/samber/lo"
@@ -260,9 +261,12 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		for citation := range citationsMap {
 			citations = append(citations, citation)
 		}
-		response.TransformerMetadata = map[string]any{
-			TransformerMetadataKeyCitations: citations,
+		sort.Strings(citations)
+
+		if response.TransformerMetadata == nil {
+			response.TransformerMetadata = make(map[string]any)
 		}
+		response.TransformerMetadata[TransformerMetadataKeyCitations] = citations
 	}
 
 	data, err := json.Marshal(response)
