@@ -57,6 +57,11 @@ func (r *channelResolver) Policies(ctx context.Context, obj *ent.Channel) (*obje
 	return &obj.Policies, nil
 }
 
+// ProviderQuotaStatus is the resolver for the providerQuotaStatus field.
+func (r *channelResolver) ProviderQuotaStatus(ctx context.Context, obj *ent.Channel) (*ent.ProviderQuotaStatus, error) {
+	panic(fmt.Errorf("not implemented: ProviderQuotaStatus - providerQuotaStatus"))
+}
+
 // ID is the resolver for the id field.
 func (r *channelModelPriceResolver) ID(ctx context.Context, obj *ent.ChannelModelPrice) (*objects.GUID, error) {
 	return &objects.GUID{
