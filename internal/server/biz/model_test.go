@@ -498,15 +498,21 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create channel service for testing
-	channelSvc := &ChannelService{
-		AbstractService: &AbstractService{
-			db: client,
-		},
+	channelSvc := NewChannelServiceForTest(client)
+	enabledEntities, err := client.Channel.Query().
+		Where(channel.StatusEQ(channel.StatusEnabled)).
+		All(ctx)
+	require.NoError(t, err)
+
+	enabledChannels := make([]*Channel, 0, len(enabledEntities))
+	for _, e := range enabledEntities {
+		built, buildErr := channelSvc.buildChannel(e)
+		require.NoError(t, buildErr)
+
+		enabledChannels = append(enabledChannels, built)
 	}
 
-	// Load enabled channels
-	err = channelSvc.loadChannels(ctx)
-	require.NoError(t, err)
+	channelSvc.SetEnabledChannelsForTest(enabledChannels)
 
 	// Create model service with channel service dependency
 	// SystemService with default settings (QueryAllChannelModels: true)
@@ -610,9 +616,20 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 			Save(ctx)
 		require.NoError(t, err)
 
-		// Reload channels
-		err = channelSvc.loadChannels(ctx)
+		enabledEntities, err := client.Channel.Query().
+			Where(channel.StatusEQ(channel.StatusEnabled)).
+			All(ctx)
 		require.NoError(t, err)
+
+		enabledChannels := make([]*Channel, 0, len(enabledEntities))
+		for _, e := range enabledEntities {
+			built, buildErr := channelSvc.buildChannel(e)
+			require.NoError(t, buildErr)
+
+			enabledChannels = append(enabledChannels, built)
+		}
+
+		channelSvc.SetEnabledChannelsForTest(enabledChannels)
 
 		result, err := modelSvc.ListEnabledModels(ctx)
 		require.NoError(t, err)
@@ -643,9 +660,20 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 			Save(ctx)
 		require.NoError(t, err)
 
-		// Reload channels
-		err = channelSvc.loadChannels(ctx)
+		enabledEntities, err := client.Channel.Query().
+			Where(channel.StatusEQ(channel.StatusEnabled)).
+			All(ctx)
 		require.NoError(t, err)
+
+		enabledChannels := make([]*Channel, 0, len(enabledEntities))
+		for _, e := range enabledEntities {
+			built, buildErr := channelSvc.buildChannel(e)
+			require.NoError(t, buildErr)
+
+			enabledChannels = append(enabledChannels, built)
+		}
+
+		channelSvc.SetEnabledChannelsForTest(enabledChannels)
 
 		result, err := modelSvc.ListEnabledModels(ctx)
 		require.NoError(t, err)
@@ -1121,9 +1149,20 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 			Save(ctx)
 		require.NoError(t, err)
 
-		// Reload channels
-		err = channelSvc.loadChannels(ctx)
+		enabledEntities, err := client.Channel.Query().
+			Where(channel.StatusEQ(channel.StatusEnabled)).
+			All(ctx)
 		require.NoError(t, err)
+
+		enabledChannels := make([]*Channel, 0, len(enabledEntities))
+		for _, e := range enabledEntities {
+			built, buildErr := channelSvc.buildChannel(e)
+			require.NoError(t, buildErr)
+
+			enabledChannels = append(enabledChannels, built)
+		}
+
+		channelSvc.SetEnabledChannelsForTest(enabledChannels)
 
 		// Create API key with profile that filters by channel tags
 		apiKey := &ent.APIKey{
@@ -1195,11 +1234,7 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 
 	t.Run("empty channels returns empty models", func(t *testing.T) {
 		// Create a new model service with empty channel service
-		emptyChannelSvc := &ChannelService{
-			AbstractService: &AbstractService{
-				db: client,
-			},
-		}
+		emptyChannelSvc := NewChannelServiceForTest(client)
 
 		emptyModelSvc := &ModelService{
 			AbstractService: &AbstractService{

@@ -4,20 +4,25 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/cespare/xxhash/v2"
+	"github.com/samber/lo"
 	"go.uber.org/fx"
-	"go.uber.org/zap"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/privacy"
+	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/watcher"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
+	"github.com/looplj/axonhub/internal/pkg/xcache/live"
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -33,17 +38,116 @@ type APIKeyService struct {
 	*AbstractService
 
 	ProjectService *ProjectService
-	APIKeyCache    xcache.Cache[ent.APIKey]
+	APIKeyCache    *live.IndexedCache[string, *ent.APIKey]
+	apiKeyNotifier watcher.Notifier[live.CacheEvent[string]]
 }
 
 func NewAPIKeyService(params APIKeyServiceParams) *APIKeyService {
-	return &APIKeyService{
+	svc := &APIKeyService{
 		AbstractService: &AbstractService{
 			db: params.Ent,
 		},
 		ProjectService: params.ProjectService,
-		APIKeyCache:    xcache.NewFromConfig[ent.APIKey](params.CacheConfig),
 	}
+
+	cacheMode := params.CacheConfig.Mode
+	if cacheMode == "" {
+		cacheMode = xcache.ModeMemory
+	}
+
+	watcherMode := cacheMode
+	if watcherMode == xcache.ModeTwoLevel {
+		watcherMode = watcher.ModeRedis
+	}
+
+	notifier, err := watcher.NewWatcherFromConfig[live.CacheEvent[string]](watcher.Config{
+		Mode:  watcherMode,
+		Redis: params.CacheConfig.Redis,
+	}, watcher.WatcherFromConfigOptions{
+		RedisChannel: "axonhub:cache:api_keys",
+		Buffer:       32,
+	})
+	if err != nil {
+		panic(fmt.Errorf("api key watcher init failed: %w", err))
+	}
+
+	ttl := params.CacheConfig.Memory.Expiration
+	if ttl == 0 {
+		ttl = 5 * time.Minute
+	}
+
+	svc.apiKeyNotifier = notifier
+	svc.APIKeyCache = live.NewIndexedCache(live.IndexedOptions[string, *ent.APIKey]{
+		Name:            "api_keys",
+		TTL:             ttl,
+		RefreshInterval: 30 * time.Second,
+		DebounceDelay:   500 * time.Millisecond,
+		KeyFunc:         func(v *ent.APIKey) string { return buildAPIKeyCacheKey(v.Key) },
+		DeletedFunc:     func(v *ent.APIKey) bool { return v.DeletedAt != 0 },
+		Watcher:         notifier,
+		LoadOneFunc:     svc.loadAPIKeyByKey,
+		LoadSinceFunc:   svc.loadAPIKeysSince,
+	})
+
+	if err := svc.APIKeyCache.Load(context.Background()); err != nil {
+		panic(fmt.Errorf("api key cache initial load failed: %w", err))
+	}
+
+	return svc
+}
+
+func (s *APIKeyService) Stop() {
+	s.APIKeyCache.Stop()
+}
+
+func (s *APIKeyService) loadAPIKeyByKey(ctx context.Context, cacheKey string) (*ent.APIKey, error) {
+	originalKey, ok := ctx.Value(apiKeyCtxKey{}).(string)
+	if !ok || originalKey == "" {
+		return nil, live.ErrKeyNotFound
+	}
+
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	client := s.entFromContext(ctx)
+
+	item, err := client.APIKey.Query().Where(apikey.KeyEQ(originalKey), apikey.DeletedAtEQ(0)).First(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, live.ErrKeyNotFound
+		}
+
+		return nil, err
+	}
+
+	if buildAPIKeyCacheKey(item.Key) != cacheKey {
+		return nil, live.ErrKeyNotFound
+	}
+
+	return item, nil
+}
+
+func (s *APIKeyService) loadAPIKeysSince(ctx context.Context, since time.Time) ([]*ent.APIKey, time.Time, error) {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = schematype.SkipSoftDelete(ctx)
+	client := s.entFromContext(ctx)
+
+	q := client.APIKey.Query()
+	if !since.IsZero() {
+		q = q.Where(apikey.UpdatedAtGT(since))
+	}
+
+	items, err := q.All(ctx)
+	if err != nil {
+		return nil, since, err
+	}
+
+	maxUpdated := since
+	if len(items) > 0 {
+		maxUpdated = lo.MaxBy(items, func(a, b *ent.APIKey) bool {
+			return a.UpdatedAt.After(b.UpdatedAt)
+		}).UpdatedAt
+	}
+
+	return items, maxUpdated, nil
 }
 
 // GenerateAPIKey generates a new API key with ah- prefix (similar to OpenAI format).
@@ -177,7 +281,7 @@ func (s *APIKeyService) UpdateAPIKey(ctx context.Context, id int, input ent.Upda
 		return nil, fmt.Errorf("failed to update API key: %w", err)
 	}
 
-	s.invalidateAPIKeyCache(ctx, apiKey.Key)
+	s.invalidateAPIKeyCaches(ctx, apiKey.Key)
 
 	return apiKey, nil
 }
@@ -194,7 +298,7 @@ func (s *APIKeyService) UpdateAPIKeyStatus(ctx context.Context, id int, status a
 	}
 
 	// Invalidate cache
-	s.invalidateAPIKeyCache(ctx, apiKey.Key)
+	s.invalidateAPIKeyCaches(ctx, apiKey.Key)
 
 	return apiKey, nil
 }
@@ -226,7 +330,7 @@ func (s *APIKeyService) UpdateAPIKeyProfiles(ctx context.Context, id int, profil
 	}
 
 	// Invalidate cache
-	s.invalidateAPIKeyCache(ctx, apiKey.Key)
+	s.invalidateAPIKeyCaches(ctx, apiKey.Key)
 
 	return apiKey, nil
 }
@@ -319,37 +423,39 @@ func validateProfileQuota(profiles []objects.APIKeyProfile) error {
 	return nil
 }
 
+type apiKeyCtxKey struct{}
+
 func buildAPIKeyCacheKey(key string) string {
 	hash := xxhash.Sum64String(key)
-	return "api_key:" + fmt.Sprintf("%d", hash)
+	return fmt.Sprintf("api_key:%d", hash)
+}
+
+func buildAPIKeyCacheKeys(keys []string) []string {
+	cacheKeys := make([]string, 0, len(keys))
+	for _, key := range keys {
+		cacheKeys = append(cacheKeys, buildAPIKeyCacheKey(key))
+	}
+
+	return cacheKeys
 }
 
 // GetAPIKey authenticates an API key and returns the API key entity.
 func (s *APIKeyService) GetAPIKey(ctx context.Context, key string) (*ent.APIKey, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
-	// Try cache first
+	ctx = context.WithValue(ctx, apiKeyCtxKey{}, key)
 	cacheKey := buildAPIKeyCacheKey(key)
 
-	apiKey, err := s.APIKeyCache.Get(ctx, cacheKey)
-	if err != nil || apiKey.Key != key {
-		client := s.entFromContext(ctx)
+	cached, err := s.APIKeyCache.Get(ctx, cacheKey)
 
-		dbApiKey, err := client.APIKey.Query().
-			Where(apikey.KeyEQ(key)).
-			First(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get api key: %w", err)
+	if err != nil {
+		if errors.Is(err, live.ErrKeyNotFound) {
+			return nil, fmt.Errorf("%w:failed to get api key: %w", ErrInvalidAPIKey, err)
 		}
 
-		// Cache API key using configured expiration
-		err = s.APIKeyCache.Set(ctx, cacheKey, *dbApiKey)
-		if err != nil {
-			log.Error(ctx, "failed to cache api key", zap.Error(err))
-		}
-
-		apiKey = *dbApiKey
+		return nil, fmt.Errorf("failed to get api key: %w", err)
 	}
+
+	apiKey := *cached
 
 	// DO NOT CACHE PROJECT
 	project, err := s.ProjectService.GetProjectByID(ctx, apiKey.ProjectID)
@@ -362,10 +468,15 @@ func (s *APIKeyService) GetAPIKey(ctx context.Context, key string) (*ent.APIKey,
 	return &apiKey, nil
 }
 
-// invalidateAPIKeyCache removes an API key from cache.
-func (s *APIKeyService) invalidateAPIKeyCache(ctx context.Context, key string) {
-	cacheKey := buildAPIKeyCacheKey(key)
-	_ = s.APIKeyCache.Delete(ctx, cacheKey)
+func (s *APIKeyService) invalidateAPIKeyCaches(ctx context.Context, keys ...string) {
+	if len(keys) == 0 {
+		return
+	}
+
+	cacheKeys := buildAPIKeyCacheKeys(keys)
+	if err := s.apiKeyNotifier.Notify(ctx, live.NewInvalidateKeysEvent(cacheKeys...)); err != nil {
+		log.Warn(ctx, "api key cache watcher notify failed", log.Cause(err))
+	}
 }
 
 func (s *APIKeyService) bulkUpdateAPIKeyStatus(ctx context.Context, ids []int, status apikey.Status, action string) error {
@@ -387,7 +498,6 @@ func (s *APIKeyService) bulkUpdateAPIKeyStatus(ctx context.Context, ids []int, s
 		return fmt.Errorf("expected to find %d API keys, but found %d", len(ids), count)
 	}
 
-	// Invalidate cache for all affected API keys
 	apiKeys, err := client.APIKey.Query().
 		Where(apikey.IDIn(ids...)).
 		All(ctx)
@@ -404,10 +514,7 @@ func (s *APIKeyService) bulkUpdateAPIKeyStatus(ctx context.Context, ids []int, s
 		return fmt.Errorf("failed to %s API keys: %w", action, err)
 	}
 
-	for _, apiKey := range apiKeys {
-		s.invalidateAPIKeyCache(ctx, apiKey.Key)
-	}
-
+	s.invalidateAPIKeyCaches(ctx, lo.Map(apiKeys, func(apiKey *ent.APIKey, _ int) string { return apiKey.Key })...)
 	return nil
 }
 

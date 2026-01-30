@@ -58,8 +58,14 @@ func (r *channelResolver) Policies(ctx context.Context, obj *ent.Channel) (*obje
 }
 
 // ProviderQuotaStatus is the resolver for the providerQuotaStatus field.
+// It returns null (not an error) when no quota status exists for the channel.
 func (r *channelResolver) ProviderQuotaStatus(ctx context.Context, obj *ent.Channel) (*ent.ProviderQuotaStatus, error) {
-	panic(fmt.Errorf("not implemented: ProviderQuotaStatus - providerQuotaStatus"))
+	pqs, err := obj.ProviderQuotaStatus(ctx)
+	if ent.IsNotFound(err) {
+		return nil, nil
+	}
+
+	return pqs, err
 }
 
 // ID is the resolver for the id field.
@@ -240,7 +246,18 @@ func (r *queryResolver) Channels(ctx context.Context, after *entgql.Cursor[int],
 
 // ChannelOverrideTemplates is the resolver for the channelOverrideTemplates field.
 func (r *queryResolver) ChannelOverrideTemplates(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOverrideTemplateOrder, where *ent.ChannelOverrideTemplateWhereInput) (*ent.ChannelOverrideTemplateConnection, error) {
-	panic(fmt.Errorf("not implemented: ChannelOverrideTemplates - channelOverrideTemplates"))
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultChannelOverrideTemplateOrder.Field
+	}
+
+	return r.client.ChannelOverrideTemplate.Query().Paginate(ctx, after, first, before, last,
+		ent.WithChannelOverrideTemplateOrder(orderBy),
+		ent.WithChannelOverrideTemplateFilter(where.Filter),
+	)
 }
 
 // DataStorages is the resolver for the dataStorages field.

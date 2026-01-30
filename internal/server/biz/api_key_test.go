@@ -45,19 +45,21 @@ func setupTestAPIKeyService(t *testing.T, cacheConfig xcache.Config) (*APIKeySer
 		ProjectCache: xcache.NewFromConfig[ent.Project](cacheConfig),
 	}
 
-	apiKeyService := &APIKeyService{
+	apiKeyService := NewAPIKeyService(APIKeyServiceParams{
+		CacheConfig:    cacheConfig,
+		Ent:            client,
 		ProjectService: projectService,
-		APIKeyCache:    xcache.NewFromConfig[ent.APIKey](cacheConfig),
-	}
+	})
 
 	return apiKeyService, client
 }
 
 func TestAPIKeyService_GetAPIKey(t *testing.T) {
-	// Test with noop cache (no cache configured)
-	cacheConfig := xcache.Config{} // Empty config = noop cache
+	// Test with memory cache
+	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
 
 	apiKeyService, client := setupTestAPIKeyService(t, cacheConfig)
+	defer apiKeyService.Stop()
 	defer client.Close()
 
 	ctx := context.Background()
@@ -130,40 +132,50 @@ func TestAPIKeyService_GetAPIKey(t *testing.T) {
 
 func TestAPIKeyService_GetAPIKey_WithDifferentCaches(t *testing.T) {
 	testCases := []struct {
-		name        string
-		cacheConfig xcache.Config
+		name         string
+		cacheMode    string
+		requireRedis bool
 	}{
 		{
-			name:        "Memory Cache",
-			cacheConfig: xcache.Config{Mode: xcache.ModeMemory},
+			name:         "Memory Cache",
+			cacheMode:    xcache.ModeMemory,
+			requireRedis: false,
 		},
 		{
-			name: "Redis Cache",
-			cacheConfig: xcache.Config{
-				Mode: xcache.ModeRedis,
-				Redis: xredis.Config{
-					Addr: miniredis.RunT(t).Addr(),
-				},
-			},
+			name:         "Redis Cache",
+			cacheMode:    xcache.ModeRedis,
+			requireRedis: true,
 		},
 		{
-			name: "Two-Level Cache",
-			cacheConfig: xcache.Config{
-				Mode: xcache.ModeTwoLevel,
-				Redis: xredis.Config{
-					Addr: miniredis.RunT(t).Addr(),
-				},
-			},
+			name:         "Two-Level Cache",
+			cacheMode:    xcache.ModeTwoLevel,
+			requireRedis: true,
 		},
 		{
-			name:        "Noop Cache",
-			cacheConfig: xcache.Config{},
+			name:         "Noop Cache",
+			cacheMode:    "",
+			requireRedis: false,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			apiKeyService, client := setupTestAPIKeyService(t, tc.cacheConfig)
+			var cacheConfig xcache.Config
+
+			if tc.requireRedis {
+				mr := miniredis.RunT(t)
+				cacheConfig = xcache.Config{
+					Mode: tc.cacheMode,
+					Redis: xredis.Config{
+						Addr: mr.Addr(),
+					},
+				}
+			} else {
+				cacheConfig = xcache.Config{Mode: tc.cacheMode}
+			}
+
+			apiKeyService, client := setupTestAPIKeyService(t, cacheConfig)
+			defer apiKeyService.Stop()
 			defer client.Close()
 
 			ctx := context.Background()
@@ -242,6 +254,7 @@ func stringPtr(s string) *string {
 
 func TestAPIKeyService_UpdateAPIKeyProfiles(t *testing.T) {
 	apiKeyService, client := setupTestAPIKeyService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer apiKeyService.Stop()
 	defer client.Close()
 
 	ctx := context.Background()
@@ -464,6 +477,7 @@ func TestAPIKeyService_UpdateAPIKeyProfiles(t *testing.T) {
 
 func TestAPIKeyService_BulkEnableAPIKeys(t *testing.T) {
 	apiKeyService, client := setupTestAPIKeyService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer apiKeyService.Stop()
 	defer client.Close()
 
 	ctx := context.Background()
@@ -582,6 +596,7 @@ func TestAPIKeyService_BulkEnableAPIKeys(t *testing.T) {
 
 func TestAPIKeyService_BulkDisableAPIKeys(t *testing.T) {
 	apiKeyService, client := setupTestAPIKeyService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer apiKeyService.Stop()
 	defer client.Close()
 
 	ctx := context.Background()
@@ -691,6 +706,7 @@ func TestAPIKeyService_BulkDisableAPIKeys(t *testing.T) {
 
 func TestAPIKeyService_BulkArchiveAPIKeys(t *testing.T) {
 	apiKeyService, client := setupTestAPIKeyService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer apiKeyService.Stop()
 	defer client.Close()
 
 	ctx := context.Background()
@@ -803,6 +819,7 @@ func TestAPIKeyService_BulkArchiveAPIKeys(t *testing.T) {
 
 func TestAPIKeyService_CreateAPIKey_Type(t *testing.T) {
 	apiKeyService, client := setupTestAPIKeyService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer apiKeyService.Stop()
 	defer client.Close()
 
 	ctx := context.Background()
@@ -972,6 +989,7 @@ func TestAPIKeyService_CreateAPIKey_Type(t *testing.T) {
 
 func TestAPIKeyService_CreateLLMAPIKey(t *testing.T) {
 	apiKeyService, client := setupTestAPIKeyService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer apiKeyService.Stop()
 	defer client.Close()
 
 	// Setup context with privacy.Allow for data preparation
