@@ -152,15 +152,16 @@ func (Channel) Edges() []ent.Edge {
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 			),
-	edge.To("channel_model_prices", ChannelModelPrice.Type).
-		Annotations(
-			entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
-		),
-	edge.To("provider_quota_status", ProviderQuotaStatus.Type).
-		Unique().
-		Annotations(
-			entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
-		),
+		edge.To("channel_model_prices", ChannelModelPrice.Type).
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			),
+		edge.To("provider_quota_status", ProviderQuotaStatus.Type).
+			Unique().
+			Annotations(
+				entgql.Directives(forceResolver()),
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			),
 	}
 }
 

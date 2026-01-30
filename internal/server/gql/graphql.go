@@ -34,6 +34,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
 	"github.com/looplj/axonhub/internal/ent/userrole"
+	"github.com/looplj/axonhub/internal/server/backup"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
@@ -55,7 +56,7 @@ type Dependencies struct {
 	UsageLogService                *biz.UsageLogService
 	ChannelOverrideTemplateService *biz.ChannelOverrideTemplateService
 	ModelService                   *biz.ModelService
-	BackupService                  *biz.BackupService
+	BackupService                  *backup.BackupService
 	ChannelProbeService            *biz.ChannelProbeService
 	PromptService                  *biz.PromptService
 	ProviderQuotaService           *biz.ProviderQuotaService

@@ -19,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
+	"github.com/looplj/axonhub/internal/pkg/xredis"
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -140,7 +141,7 @@ func TestAPIKeyService_GetAPIKey_WithDifferentCaches(t *testing.T) {
 			name: "Redis Cache",
 			cacheConfig: xcache.Config{
 				Mode: xcache.ModeRedis,
-				Redis: xcache.RedisConfig{
+				Redis: xredis.Config{
 					Addr: miniredis.RunT(t).Addr(),
 				},
 			},
@@ -149,7 +150,7 @@ func TestAPIKeyService_GetAPIKey_WithDifferentCaches(t *testing.T) {
 			name: "Two-Level Cache",
 			cacheConfig: xcache.Config{
 				Mode: xcache.ModeTwoLevel,
-				Redis: xcache.RedisConfig{
+				Redis: xredis.Config{
 					Addr: miniredis.RunT(t).Addr(),
 				},
 			},

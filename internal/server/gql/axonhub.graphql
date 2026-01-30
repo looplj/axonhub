@@ -376,6 +376,15 @@ input DataStorageSettingsInput {
   directory: String
   s3: S3Input
   gcs: GCSInput
+  webdav: WebDAVInput
+}
+
+input WebDAVInput {
+  url: String!
+  username: String
+  password: String
+  insecure_skip_tls: Boolean
+  path: String
 }
 
 input S3Input {
@@ -396,6 +405,15 @@ type DataStorageSettings {
   directory: String
   s3: S3
   gcs: GCS
+  webdav: WebDAV
+}
+
+type WebDAV {
+  url: String!
+  username: String
+  password: String
+  insecure_skip_tls: Boolean
+  path: String
 }
 
 type S3 {

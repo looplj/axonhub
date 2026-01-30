@@ -55,6 +55,7 @@ export const createColumns = (t: TFunction, defaultDataStorageID?: string | null
         fs: t('dataStorages.types.fs'),
         s3: t('dataStorages.types.s3'),
         gcs: t('dataStorages.types.gcs'),
+        webdav: t('dataStorages.types.webdav'),
       };
       return <Badge variant='outline'>{typeLabels[type] || type}</Badge>;
     },
@@ -76,6 +77,10 @@ export const createColumns = (t: TFunction, defaultDataStorageID?: string | null
 
       if (type === 'gcs' && settings.gcs?.bucketName) {
         return <span className='text-muted-foreground font-mono text-sm'>{settings.gcs.bucketName}</span>;
+      }
+
+      if (type === 'webdav' && settings.webdav?.url) {
+        return <span className='text-muted-foreground font-mono text-sm'>{settings.webdav.url}</span>;
       }
 
       return <span className='text-muted-foreground'>-</span>;

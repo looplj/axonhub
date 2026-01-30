@@ -10,12 +10,14 @@ import (
 	"io"
 
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/server/backup"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/samber/lo"
 )
 
 // Backup is the resolver for the backup field.
-func (r *mutationResolver) Backup(ctx context.Context, input biz.BackupOptions) (*BackupPayload, error) {
+func (r *mutationResolver) Backup(ctx context.Context, input backup.BackupOptions) (*BackupPayload, error) {
 	data, err := r.backupService.Backup(ctx, input)
 	if err != nil {
 		return nil, err
@@ -31,7 +33,7 @@ func (r *mutationResolver) Backup(ctx context.Context, input biz.BackupOptions) 
 }
 
 // Restore is the resolver for the restore field.
-func (r *mutationResolver) Restore(ctx context.Context, file graphql.Upload, input biz.RestoreOptions) (*RestorePayload, error) {
+func (r *mutationResolver) Restore(ctx context.Context, file graphql.Upload, input backup.RestoreOptions) (*RestorePayload, error) {
 	fileContent, err := io.ReadAll(file.File)
 	if err != nil {
 		return nil, err
@@ -46,4 +48,80 @@ func (r *mutationResolver) Restore(ctx context.Context, file graphql.Upload, inp
 		Success: true,
 		Message: lo.ToPtr("Restore completed successfully"),
 	}, nil
+}
+
+// UpdateAutoBackupSettings is the resolver for the updateAutoBackupSettings field.
+func (r *mutationResolver) UpdateAutoBackupSettings(ctx context.Context, input UpdateAutoBackupSettingsInput) (bool, error) {
+	user, ok := contexts.GetUser(ctx)
+	if !ok || user == nil || !user.IsOwner {
+		return false, ErrNotOwner
+	}
+
+	settings, err := r.systemService.AutoBackupSettings(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	if input.Enabled != nil {
+		settings.Enabled = *input.Enabled
+	}
+
+	if input.Frequency != nil {
+		settings.Frequency = *input.Frequency
+	}
+
+	if input.DataStorageID != nil {
+		settings.DataStorageID = *input.DataStorageID
+	}
+
+	if input.IncludeChannels != nil {
+		settings.IncludeChannels = *input.IncludeChannels
+	}
+
+	if input.IncludeModels != nil {
+		settings.IncludeModels = *input.IncludeModels
+	}
+
+	if input.IncludeAPIKeys != nil {
+		settings.IncludeAPIKeys = *input.IncludeAPIKeys
+	}
+
+	if input.IncludeModelPrices != nil {
+		settings.IncludeModelPrices = *input.IncludeModelPrices
+	}
+
+	if input.RetentionDays != nil {
+		settings.RetentionDays = *input.RetentionDays
+	}
+
+	if err := r.systemService.SetAutoBackupSettings(ctx, *settings); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// TriggerAutoBackup is the resolver for the triggerAutoBackup field.
+func (r *mutationResolver) TriggerAutoBackup(ctx context.Context) (*TriggerBackupPayload, error) {
+	user, ok := contexts.GetUser(ctx)
+	if !ok || user == nil || !user.IsOwner {
+		return nil, ErrNotOwner
+	}
+
+	if err := r.backupService.RunBackupNow(ctx); err != nil {
+		return &TriggerBackupPayload{
+			Success: false,
+			Message: lo.ToPtr(err.Error()),
+		}, nil
+	}
+
+	return &TriggerBackupPayload{
+		Success: true,
+		Message: lo.ToPtr("Backup triggered successfully"),
+	}, nil
+}
+
+// AutoBackupSettings is the resolver for the autoBackupSettings field.
+func (r *queryResolver) AutoBackupSettings(ctx context.Context) (*biz.AutoBackupSettings, error) {
+	return r.systemService.AutoBackupSettings(ctx)
 }

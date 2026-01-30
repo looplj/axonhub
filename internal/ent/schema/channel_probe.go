@@ -37,6 +37,7 @@ func (ChannelProbe) Edges() []ent.Edge {
 			Ref("channel_probes").
 			Field("channel_id").
 			Required().
-			Immutable().Unique(),
+			Immutable().
+			Unique(),
 	}
 }

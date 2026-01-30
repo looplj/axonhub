@@ -2,12 +2,8 @@ package xcache
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
-	"net/url"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/eko/gocache/lib/v4/store"
@@ -19,6 +15,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/log"
 	redis_store "github.com/looplj/axonhub/internal/pkg/xcache/redis"
+	"github.com/looplj/axonhub/internal/pkg/xredis"
 )
 
 // Cache is an alias to the gocache CacheInterface for convenience.
@@ -86,15 +83,9 @@ func NewFromConfig[T any](cfg Config) Cache[T] {
 	var rds SetterCache[T]
 
 	if (cfg.Redis.Addr != "" || cfg.Redis.URL != "") && cfg.Mode != ModeMemory {
-		opts, err := newRedisOptions(cfg.Redis)
+		client, err := xredis.NewClient(cfg.Redis)
 		if err != nil {
 			panic(fmt.Errorf("invalid redis config: %w", err))
-		}
-
-		client := redis.NewClient(opts)
-
-		if err := client.Ping(context.Background()).Err(); err != nil {
-			panic(fmt.Errorf("failed to ping redis: %w", err))
 		}
 
 		redisExpiration := defaultIfZero(cfg.Redis.Expiration, 30*time.Minute) // Default longer for Redis
@@ -162,98 +153,4 @@ func NewTwoLevelWithClients[T any](memClient *gocache.Cache, redisClient *redis.
 	rds := NewRedis[T](redisClient, redisOptions...)
 
 	return NewTwoLevel[T](mem, rds)
-}
-
-// newRedisOptions constructs redis.Options from RedisConfig.
-// Supports two modes:
-// 1. URL mode: Use cfg.URL for full redis:// or rediss:// URLs with credentials
-// 2. Simple mode: Use cfg.Addr for plain host:port format
-// Priority: URL > Addr.
-func newRedisOptions(cfg RedisConfig) (*redis.Options, error) {
-	opts := &redis.Options{}
-
-	// Priority 1: URL mode (redis:// or rediss://)
-	if cfg.URL != "" {
-		u, err := url.Parse(cfg.URL)
-		if err != nil {
-			return nil, fmt.Errorf("parse redis url: %w", err)
-		}
-
-		switch u.Scheme {
-		case "redis", "rediss":
-		default:
-			return nil, fmt.Errorf("unsupported redis scheme: %s (expected redis:// or rediss://)", u.Scheme)
-		}
-
-		if u.Host == "" {
-			return nil, errors.New("redis url missing host")
-		}
-
-		opts.Addr = u.Host
-
-		if u.User != nil {
-			opts.Username = u.User.Username()
-			if pwd, ok := u.User.Password(); ok {
-				opts.Password = pwd
-			}
-		}
-
-		if u.Path != "" && u.Path != "/" {
-			dbStr := strings.TrimPrefix(u.Path, "/")
-			if dbStr != "" {
-				db, err := strconv.Atoi(dbStr)
-				if err != nil {
-					return nil, fmt.Errorf("invalid redis db in url: %w", err)
-				}
-
-				opts.DB = db
-			}
-		}
-
-		if u.Scheme == "rediss" {
-			opts.TLSConfig = &tls.Config{
-				MinVersion:         tls.VersionTLS12,
-				InsecureSkipVerify: cfg.TLSInsecureSkipVerify, // #nosec G402 -- User explicitly controls this via config
-			}
-		}
-	} else if cfg.Addr != "" {
-		// Priority 2: Simple addr mode (host:port)
-		opts.Addr = strings.TrimSpace(cfg.Addr)
-		if opts.Addr == "" {
-			return nil, errors.New("redis addr or url is required")
-		}
-	} else {
-		return nil, errors.New("redis addr or url is required")
-	}
-
-	// Config fields override URL credentials/DB when explicitly set
-	if cfg.Username != "" {
-		opts.Username = cfg.Username
-	}
-
-	if cfg.Password != "" {
-		opts.Password = cfg.Password
-	}
-
-	if cfg.DB != nil {
-		opts.DB = *cfg.DB
-	}
-
-	// Explicit TLS flag
-	if cfg.TLS {
-		if opts.TLSConfig == nil {
-			opts.TLSConfig = &tls.Config{
-				MinVersion: tls.VersionTLS12, // #nosec G402 -- User can explicitly enable InsecureSkipVerify via config
-			}
-		}
-
-		opts.TLSConfig.InsecureSkipVerify = cfg.TLSInsecureSkipVerify // #nosec G402 -- User explicitly controls this via config
-	}
-
-	// Ensure TLSInsecureSkipVerify is not silently set without TLS
-	if opts.TLSConfig == nil && cfg.TLSInsecureSkipVerify {
-		return nil, errors.New("tls_insecure_skip_verify requires TLS to be enabled (tls=true or rediss://)")
-	}
-
-	return opts, nil
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
+	"github.com/looplj/axonhub/internal/pkg/xredis"
 )
 
 func TestHashPassword(t *testing.T) {
@@ -177,7 +178,7 @@ func TestAuthService_AuthenticateUser(t *testing.T) {
 
 	cacheConfig := xcache.Config{
 		Mode: xcache.ModeRedis,
-		Redis: xcache.RedisConfig{
+		Redis: xredis.Config{
 			Addr: mr.Addr(),
 		},
 	}
@@ -235,7 +236,7 @@ func TestAuthService_AuthenticateJWTToken(t *testing.T) {
 
 	cacheConfig := xcache.Config{
 		Mode: xcache.ModeTwoLevel,
-		Redis: xcache.RedisConfig{
+		Redis: xredis.Config{
 			Addr: mr.Addr(),
 		},
 	}
@@ -416,7 +417,7 @@ func TestAuthService_WithDifferentCacheConfigs(t *testing.T) {
 			name: "Redis Cache",
 			cacheConfig: xcache.Config{
 				Mode: xcache.ModeRedis,
-				Redis: xcache.RedisConfig{
+				Redis: xredis.Config{
 					Addr: miniredis.RunT(t).Addr(),
 				},
 			},
@@ -425,7 +426,7 @@ func TestAuthService_WithDifferentCacheConfigs(t *testing.T) {
 			name: "Two-Level Cache",
 			cacheConfig: xcache.Config{
 				Mode: xcache.ModeTwoLevel,
-				Redis: xcache.RedisConfig{
+				Redis: xredis.Config{
 					Addr: miniredis.RunT(t).Addr(),
 				},
 			},
@@ -480,7 +481,7 @@ func TestAuthService_CacheExpiration(t *testing.T) {
 
 	cacheConfig := xcache.Config{
 		Mode: xcache.ModeRedis,
-		Redis: xcache.RedisConfig{
+		Redis: xredis.Config{
 			Addr:       mr.Addr(),
 			Expiration: 100 * time.Millisecond, // Very short for testing
 		},

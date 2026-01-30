@@ -22,6 +22,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
+	"github.com/looplj/axonhub/internal/pkg/xtime"
 )
 
 const (
@@ -74,6 +75,10 @@ const (
 	// SystemKeyGeneralSettings is the key used to store general settings.
 	// The value is JSON-encoded SystemGeneralSettings struct.
 	SystemKeyGeneralSettings = "system_general_settings"
+
+	// SystemKeyAutoBackupSettings is the key used to store auto backup configuration.
+	// The value is JSON-encoded AutoBackupSettings struct.
+	SystemKeyAutoBackupSettings = "system_auto_backup_settings"
 )
 
 // SystemGeneralSettings represents general system configuration settings.
@@ -81,6 +86,36 @@ type SystemGeneralSettings struct {
 	// CurrencyCode is the code used for currency display (e.g., USD, RMB).
 	CurrencyCode string `json:"currency_code"`
 	Timezone     string `json:"timezone"`
+}
+
+// BackupFrequency represents how often automatic backups should run.
+type BackupFrequency string
+
+const (
+	BackupFrequencyDaily   BackupFrequency = "daily"
+	BackupFrequencyWeekly  BackupFrequency = "weekly"
+	BackupFrequencyMonthly BackupFrequency = "monthly"
+)
+
+// AutoBackupSettings represents automatic backup configuration.
+type AutoBackupSettings struct {
+	// Enabled controls whether automatic backup is active
+	Enabled bool `json:"enabled"`
+	// Frequency defines how often backups are created
+	Frequency BackupFrequency `json:"frequency"`
+	// DataStorageID is the ID of the data storage to backup to
+	DataStorageID int `json:"data_storage_id"`
+	// BackupOptions defines what to include in the backup
+	IncludeChannels    bool `json:"include_channels"`
+	IncludeModels      bool `json:"include_models"`
+	IncludeAPIKeys     bool `json:"include_api_keys"`
+	IncludeModelPrices bool `json:"include_model_prices"`
+	// RetentionDays defines how many days to keep backups (0 = keep all)
+	RetentionDays int `json:"retention_days"`
+	// LastBackupAt is the timestamp of the last successful backup
+	LastBackupAt *time.Time `json:"last_backup_at,omitempty"`
+	// LastBackupError is the error message from the last backup attempt (if any)
+	LastBackupError string `json:"last_backup_error,omitempty"`
 }
 
 // StoragePolicy represents the storage policy configuration.
@@ -621,6 +656,16 @@ var defaultGeneralSettings = SystemGeneralSettings{
 	Timezone:     "UTC",
 }
 
+var defaultAutoBackupSettings = AutoBackupSettings{
+	Enabled:            false,
+	Frequency:          BackupFrequencyDaily,
+	IncludeChannels:    true,
+	IncludeModels:      true,
+	IncludeAPIKeys:     false,
+	IncludeModelPrices: true,
+	RetentionDays:      30,
+}
+
 // StoragePolicy retrieves the storage policy configuration.
 func (s *SystemService) StoragePolicy(ctx context.Context) (*StoragePolicy, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
@@ -1103,4 +1148,51 @@ func (s *SystemService) fetchLatestGitHubRelease(ctx context.Context) (string, e
 // isNewerVersion compares two semantic versions and returns true if latest is newer than current.
 func (s *SystemService) isNewerVersion(current, latest string) bool {
 	return IsNewerVersion(current, latest)
+}
+
+// AutoBackupSettings retrieves the auto backup settings configuration.
+func (s *SystemService) AutoBackupSettings(ctx context.Context) (*AutoBackupSettings, error) {
+	value, err := s.getSystemValue(ctx, SystemKeyAutoBackupSettings)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return lo.ToPtr(defaultAutoBackupSettings), nil
+		}
+
+		return nil, fmt.Errorf("failed to get auto backup settings: %w", err)
+	}
+
+	var settings AutoBackupSettings
+	if err := json.Unmarshal([]byte(value), &settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal auto backup settings: %w", err)
+	}
+
+	return &settings, nil
+}
+
+// SetAutoBackupSettings sets the auto backup settings configuration.
+func (s *SystemService) SetAutoBackupSettings(ctx context.Context, settings AutoBackupSettings) error {
+	jsonBytes, err := json.Marshal(settings)
+	if err != nil {
+		return fmt.Errorf("failed to marshal auto backup settings: %w", err)
+	}
+
+	err = s.setSystemValue(ctx, SystemKeyAutoBackupSettings, string(jsonBytes))
+	if err != nil {
+		return fmt.Errorf("failed to set auto backup settings: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateAutoBackupLastRun updates the last backup timestamp and error status.
+func (s *SystemService) UpdateAutoBackupLastRun(ctx context.Context, lastError string) error {
+	settings, err := s.AutoBackupSettings(ctx)
+	if err != nil {
+		return err
+	}
+
+	settings.LastBackupAt = lo.ToPtr(xtime.UTCNow())
+	settings.LastBackupError = lastError
+
+	return s.SetAutoBackupSettings(ctx, *settings)
 }
