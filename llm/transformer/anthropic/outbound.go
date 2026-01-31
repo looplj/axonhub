@@ -102,9 +102,17 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 	// It should be created directly using claudecode.NewOutboundTransformer() with OAuth TokenProvider
 	// The channel builder handles this special case
 
-	if before, ok := strings.CutSuffix(config.BaseURL, "#"); ok {
-		config.BaseURL = before
+	if strings.HasSuffix(config.BaseURL, "#") {
 		config.RawURL = true
+	}
+
+	// For Vertex/Bedrock, don't normalize with version - they have special URL formats
+	//nolint:exhaustive // Checked.
+	switch config.Type {
+	case PlatformVertex, PlatformBedrock:
+		config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "")
+	default:
+		config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
 	}
 
 	return t, nil
@@ -225,8 +233,6 @@ func (t *OutboundTransformer) TransformRequest(
 
 // buildFullRequestURL constructs the appropriate URL based on the platform.
 func (t *OutboundTransformer) buildFullRequestURL(chatReq *llm.Request) (string, error) {
-	baseURL := strings.TrimSuffix(t.config.BaseURL, "/")
-
 	//nolint:exhaustive // Checked.
 	switch t.config.Type {
 	case PlatformBedrock:
@@ -238,7 +244,7 @@ func (t *OutboundTransformer) buildFullRequestURL(chatReq *llm.Request) (string,
 			endpoint = fmt.Sprintf("/model/%s/invoke", chatReq.Model)
 		}
 
-		return baseURL + endpoint, nil
+		return t.config.BaseURL + endpoint, nil
 
 	case PlatformVertex:
 		// Vertex AI URL format: /v1/projects/{project}/locations/{region}/publishers/anthropic/models/{model}:rawPredict
@@ -260,20 +266,11 @@ func (t *OutboundTransformer) buildFullRequestURL(chatReq *llm.Request) (string,
 		endpoint := fmt.Sprintf("/v1/projects/%s/locations/%s/publishers/anthropic/models/%s:%s",
 			t.config.ProjectID, t.config.Region, chatReq.Model, specifier)
 
-		return baseURL + endpoint, nil
+		return t.config.BaseURL + endpoint, nil
 
 	default:
-		// RawURL is true, use the base URL as is
-		if t.config.RawURL {
-			return baseURL + "/messages", nil
-		}
-
-		// Direct Anthropic API
-		if strings.HasSuffix(baseURL, "/v1") {
-			return baseURL + "/messages", nil
-		}
-
-		return baseURL + "/v1/messages", nil
+		// BaseURL is already normalized with version in NewOutboundTransformerWithConfig
+		return t.config.BaseURL + "/messages", nil
 	}
 }
 

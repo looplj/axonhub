@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -45,7 +44,7 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		return nil, fmt.Errorf("invalid DeepSeek transformer configuration: %w", err)
 	}
 
-	baseURL := strings.TrimSuffix(config.BaseURL, "/")
+	baseURL := transformer.NormalizeBaseURL(config.BaseURL, "v1")
 
 	return &OutboundTransformer{
 		BaseURL:  baseURL,
@@ -116,13 +115,7 @@ func (t *OutboundTransformer) TransformRequest(
 		APIKey: t.APIKey,
 	}
 
-	// TODO: find a better way to handle this.
-	var url string
-	if strings.HasSuffix(t.BaseURL, "/v1") {
-		url = t.BaseURL + "/chat/completions"
-	} else {
-		url = t.BaseURL + "/v1/chat/completions"
-	}
+	url := t.BaseURL + "/chat/completions"
 
 	return &httpclient.Request{
 		Method:  http.MethodPost,

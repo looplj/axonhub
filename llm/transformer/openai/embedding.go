@@ -128,21 +128,8 @@ func (t *OutboundTransformer) buildEmbeddingURL() string {
 		return fmt.Sprintf("%s/openai/v1/embeddings?api-version=%s",
 			t.config.BaseURL, t.config.APIVersion)
 	default:
-		// RawURL is true, use the base URL as is
-		if t.config.RawURL {
-			return t.config.BaseURL + "/embeddings"
-		}
-		// Standard OpenAI API
-		// Check if URL already contains /v1/ in the path (e.g., https://api.deepinfra.com/v1/openai)
-		if strings.Contains(t.config.BaseURL, "/v1/") {
-			return t.config.BaseURL + "/embeddings"
-		}
-
-		if strings.HasSuffix(t.config.BaseURL, "/v1") {
-			return t.config.BaseURL + "/embeddings"
-		}
-
-		return t.config.BaseURL + "/v1/embeddings"
+		// BaseURL is already normalized with version in NewOutboundTransformerWithConfig
+		return t.config.BaseURL + "/embeddings"
 	}
 }
 

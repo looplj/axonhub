@@ -48,12 +48,11 @@ func NewOutboundTransformerWithConfig(config *Config) (*OutboundTransformer, err
 		return nil, fmt.Errorf("config is nil")
 	}
 
-	if before, ok := strings.CutSuffix(config.BaseURL, "#"); ok {
-		config.BaseURL = before
+	if strings.HasSuffix(config.BaseURL, "#") {
 		config.RawURL = true
 	}
 
-	config.BaseURL = strings.TrimSuffix(config.BaseURL, "/")
+	config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
 
 	return &OutboundTransformer{
 		config: config,
@@ -205,22 +204,8 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 // buildFullRequestURL constructs the appropriate URL based on the platform.
 func (t *OutboundTransformer) buildFullRequestURL(_ *llm.Request) (string, error) {
-	// RawURL is true, use the base URL as is
-	if t.config.RawURL {
-		return t.config.BaseURL + "/responses", nil
-	}
-
-	// Standard OpenAI API
-	// Check if URL already contains /v1/ in the path (e.g., https://api.deepinfra.com/v1/openai)
-	if strings.Contains(t.config.BaseURL, "/v1/") {
-		return t.config.BaseURL + "/responses", nil
-	}
-
-	if strings.HasSuffix(t.config.BaseURL, "/v1") {
-		return t.config.BaseURL + "/responses", nil
-	}
-
-	return t.config.BaseURL + "/v1/responses", nil
+	// BaseURL is already normalized with version in NewOutboundTransformerWithConfig
+	return t.config.BaseURL + "/responses", nil
 }
 
 // TransformResponse converts an OpenAI Responses API HTTP response to unified llm.Response.

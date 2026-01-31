@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/samber/lo"
 
@@ -48,7 +47,7 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		return nil, fmt.Errorf("invalid Zai transformer configuration: %w", err)
 	}
 
-	baseURL := strings.TrimSuffix(config.BaseURL, "/")
+	baseURL := transformer.NormalizeBaseURL(config.BaseURL, "v4")
 
 	return &OutboundTransformer{
 		BaseURL:  baseURL,
@@ -160,13 +159,7 @@ func (t *OutboundTransformer) TransformRequest(
 		APIKey: t.APIKey,
 	}
 
-	// TODO: find a better way to handle this.
-	var url string
-	if strings.HasSuffix(t.BaseURL, "/v4") {
-		url = t.BaseURL + "/chat/completions"
-	} else {
-		url = t.BaseURL + "/v4/chat/completions"
-	}
+	url := t.BaseURL + "/chat/completions"
 
 	return &httpclient.Request{
 		Method:  http.MethodPost,

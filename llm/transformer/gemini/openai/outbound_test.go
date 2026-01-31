@@ -84,7 +84,7 @@ func TestNewOutboundTransformerWithConfig(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(t *OutboundTransformer) bool {
-				return t.BaseURL == "https://generativelanguage.googleapis.com" && t.APIKey == "test-api-key"
+				return t.BaseURL == "https://generativelanguage.googleapis.com/v1beta/openai" && t.APIKey == "test-api-key"
 			},
 		},
 		{
@@ -95,7 +95,7 @@ func TestNewOutboundTransformerWithConfig(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(t *OutboundTransformer) bool {
-				return t.BaseURL == "https://generativelanguage.googleapis.com" && t.APIKey == "test-api-key"
+				return t.BaseURL == "https://generativelanguage.googleapis.com/v1beta/openai" && t.APIKey == "test-api-key"
 			},
 		},
 		{

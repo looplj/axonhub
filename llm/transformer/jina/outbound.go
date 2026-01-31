@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -37,17 +36,11 @@ type OutboundTransformer struct {
 // NewOutboundTransformer creates a new RerankOutboundTransformer.
 func NewOutboundTransformer(baseURL, apiKey string) (*OutboundTransformer, error) {
 	config := &Config{
-		BaseURL: strings.TrimSuffix(baseURL, "/"),
+		BaseURL: baseURL,
 		APIKey:  apiKey,
 	}
 
-	if err := validateConfig(config); err != nil {
-		return nil, fmt.Errorf("invalid config: %w", err)
-	}
-
-	return &OutboundTransformer{
-		config: config,
-	}, nil
+	return NewOutboundTransformerWithConfig(config)
 }
 
 // NewOutboundTransformerWithConfig creates a transformer with the given config.
@@ -56,7 +49,7 @@ func NewOutboundTransformerWithConfig(config *Config) (*OutboundTransformer, err
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
-	config.BaseURL = strings.TrimSuffix(config.BaseURL, "/")
+	config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
 
 	return &OutboundTransformer{
 		config: config,
@@ -235,20 +228,12 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 
 // buildRerankURL constructs the rerank API URL.
 func (t *OutboundTransformer) buildRerankURL() string {
-	if strings.HasSuffix(t.config.BaseURL, "/v1") {
-		return t.config.BaseURL + "/rerank"
-	}
-
-	return t.config.BaseURL + "/v1/rerank"
+	return t.config.BaseURL + "/rerank"
 }
 
 // buildEmbeddingURL constructs the embedding API URL.
 func (t *OutboundTransformer) buildEmbeddingURL() string {
-	if strings.HasSuffix(t.config.BaseURL, "/v1") {
-		return t.config.BaseURL + "/embeddings"
-	}
-
-	return t.config.BaseURL + "/v1/embeddings"
+	return t.config.BaseURL + "/embeddings"
 }
 
 // TransformResponse transforms HTTP response to unified llm.Response (rerank or embedding).
