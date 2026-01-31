@@ -29,6 +29,8 @@ import (
 )
 
 // DashboardOverview is the resolver for the dashboardOverview field.
+// Note: This resolver provides high-level dashboard metrics.
+// For detailed request statistics, see RequestStats resolver documentation.
 func (r *queryResolver) DashboardOverview(ctx context.Context) (*DashboardOverview, error) {
 	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
 
@@ -79,6 +81,9 @@ func (r *queryResolver) DashboardOverview(ctx context.Context) (*DashboardOvervi
 }
 
 // RequestStats is the resolver for the requestStats field.
+// Note: For result-only statistics (e.g., successful request counts), use the usage_logs table.
+// For process tracking (e.g., failed requests), use request/request_execution tables.
+// For channel-level statistics, use request_execution table.
 func (r *queryResolver) RequestStats(ctx context.Context) (*RequestStats, error) {
 	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
 
@@ -91,15 +96,10 @@ func (r *queryResolver) RequestStats(ctx context.Context) (*RequestStats, error)
 	}
 
 	loc := r.systemService.TimeLocation(ctx)
-	nowLocal := xtime.UTCNow().In(loc)
-	todayLocal := time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc)
-	today := todayLocal.UTC()
-	weekAgo := todayLocal.AddDate(0, 0, -7).UTC()
-	twoWeeksAgo := todayLocal.AddDate(0, 0, -14).UTC()
-	monthAgo := todayLocal.AddDate(0, -1, 0).UTC()
+	period := xtime.GetCalendarPeriods(loc)
 
 	if requestsToday, err := r.client.UsageLog.Query().
-		Where(usagelog.CreatedAtGTE(today)).
+		Where(usagelog.CreatedAtGTE(period.Today.Start)).
 		Count(ctx); err != nil {
 		log.Warn(ctx, "failed to count today's requests", log.Cause(err))
 	} else {
@@ -107,7 +107,7 @@ func (r *queryResolver) RequestStats(ctx context.Context) (*RequestStats, error)
 	}
 
 	if requestsThisWeek, err := r.client.UsageLog.Query().
-		Where(usagelog.CreatedAtGTE(weekAgo)).
+		Where(usagelog.CreatedAtGTE(period.ThisWeek.Start)).
 		Count(ctx); err != nil {
 		log.Warn(ctx, "failed to count this week's requests", log.Cause(err))
 	} else {
@@ -115,7 +115,7 @@ func (r *queryResolver) RequestStats(ctx context.Context) (*RequestStats, error)
 	}
 
 	if requestsLastWeek, err := r.client.UsageLog.Query().
-		Where(usagelog.CreatedAtGTE(twoWeeksAgo), usagelog.CreatedAtLT(weekAgo)).
+		Where(usagelog.CreatedAtGTE(period.LastWeek.Start), usagelog.CreatedAtLT(period.LastWeek.End)).
 		Count(ctx); err != nil {
 		log.Warn(ctx, "failed to count last week's requests", log.Cause(err))
 	} else {
@@ -123,7 +123,7 @@ func (r *queryResolver) RequestStats(ctx context.Context) (*RequestStats, error)
 	}
 
 	if requestsThisMonth, err := r.client.UsageLog.Query().
-		Where(usagelog.CreatedAtGTE(monthAgo)).
+		Where(usagelog.CreatedAtGTE(period.ThisMonth.Start)).
 		Count(ctx); err != nil {
 		log.Warn(ctx, "failed to count this month's requests", log.Cause(err))
 	} else {
@@ -134,6 +134,8 @@ func (r *queryResolver) RequestStats(ctx context.Context) (*RequestStats, error)
 }
 
 // RequestStatsByChannel is the resolver for the requestStatsByChannel field.
+// Note: Uses usage_logs table for result-only statistics aggregated by channel.
+// For channel-level process tracking (e.g., success/failure rates), use request_execution table.
 func (r *queryResolver) RequestStatsByChannel(ctx context.Context) ([]*RequestStatsByChannel, error) {
 	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
 
@@ -185,6 +187,8 @@ func (r *queryResolver) RequestStatsByChannel(ctx context.Context) ([]*RequestSt
 }
 
 // RequestStatsByModel is the resolver for the requestStatsByModel field.
+// Note: Uses usage_logs table for result-only statistics aggregated by model.
+// This provides successful request counts per model.
 func (r *queryResolver) RequestStatsByModel(ctx context.Context) ([]*RequestStatsByModel, error) {
 	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
 
@@ -223,6 +227,8 @@ func (r *queryResolver) RequestStatsByModel(ctx context.Context) ([]*RequestStat
 }
 
 // RequestStatsByAPIKey is the resolver for the requestStatsByAPIKey field.
+// Note: Uses usage_logs table for result-only statistics aggregated by API key.
+// This provides successful request counts per API key.
 func (r *queryResolver) RequestStatsByAPIKey(ctx context.Context) ([]*RequestStatsByAPIKey, error) {
 	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
 
@@ -234,9 +240,9 @@ func (r *queryResolver) RequestStatsByAPIKey(ctx context.Context) ([]*RequestSta
 	var results []apiKeyStats
 
 	// Database-level aggregation
-	err := r.client.Request.Query().
-		Where(request.APIKeyIDNotNil()).
-		GroupBy(request.FieldAPIKeyID).
+	err := r.client.UsageLog.Query().
+		Where(usagelog.APIKeyIDNotNil()).
+		GroupBy(usagelog.FieldAPIKeyID).
 		Aggregate(ent.As(ent.Count(), "request_count")).
 		Scan(ctx, &results)
 	if err != nil {
@@ -291,6 +297,8 @@ func (r *queryResolver) RequestStatsByAPIKey(ctx context.Context) ([]*RequestSta
 }
 
 // TokenStatsByAPIKey is the resolver for the tokenStatsByAPIKey field.
+// Note: Uses usage_logs table for token consumption statistics aggregated by API key.
+// This provides actual token usage (input, output, cached, reasoning) per API key.
 func (r *queryResolver) TokenStatsByAPIKey(ctx context.Context) ([]*TokenStatsByAPIKey, error) {
 	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
 
@@ -394,6 +402,8 @@ func (r *queryResolver) TokenStatsByAPIKey(ctx context.Context) ([]*TokenStatsBy
 }
 
 // DailyRequestStats is the resolver for the dailyRequestStats field.
+// Note: Uses usage_logs table for daily aggregated statistics (count, tokens, cost).
+// Provides result-only daily metrics for the last 30 days.
 func (r *queryResolver) DailyRequestStats(ctx context.Context) ([]*DailyRequestStats, error) {
 	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
 
@@ -489,6 +499,8 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context) ([]*DailyRequestS
 }
 
 // TopRequestsProjects is the resolver for the topRequestsProjects field.
+// Note: Uses usage_logs table for project-level request statistics.
+// Provides result-only request counts per project.
 func (r *queryResolver) TopRequestsProjects(ctx context.Context) ([]*TopRequestsProjects, error) {
 	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
 
@@ -555,6 +567,8 @@ func (r *queryResolver) TopRequestsProjects(ctx context.Context) ([]*TopRequests
 }
 
 // TokenStats is the resolver for the tokenStats field.
+// Note: Uses usage_logs table for token consumption statistics (today, this week, this month).
+// Provides result-only token metrics aggregated by calendar periods.
 func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
 	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
 
@@ -572,11 +586,7 @@ func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
 	}
 
 	loc := r.systemService.TimeLocation(ctx)
-	nowLocal := xtime.UTCNow().In(loc)
-	todayLocal := time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc)
-	today := todayLocal.UTC()
-	weekAgo := todayLocal.AddDate(0, 0, -7).UTC()
-	monthAgo := todayLocal.AddDate(0, -1, 0).UTC()
+	period := xtime.GetCalendarPeriods(loc)
 
 	// Helper function to get token sums for a specific time period
 	getTokenSums := func(since time.Time) (input, output, cached int) {
@@ -619,19 +629,19 @@ func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
 	}
 
 	// Get token stats for today
-	input, output, cached := getTokenSums(today)
+	input, output, cached := getTokenSums(period.Today.Start)
 	stats.TotalInputTokensToday = input
 	stats.TotalOutputTokensToday = output
 	stats.TotalCachedTokensToday = cached
 
-	// Get token stats for this week
-	input, output, cached = getTokenSums(weekAgo)
+	// Get token stats for this week (calendar week from Monday)
+	input, output, cached = getTokenSums(period.ThisWeek.Start)
 	stats.TotalInputTokensThisWeek = input
 	stats.TotalOutputTokensThisWeek = output
 	stats.TotalCachedTokensThisWeek = cached
 
-	// Get token stats for this month
-	input, output, cached = getTokenSums(monthAgo)
+	// Get token stats for this month (calendar month from 1st)
+	input, output, cached = getTokenSums(period.ThisMonth.Start)
 	stats.TotalInputTokensThisMonth = input
 	stats.TotalOutputTokensThisMonth = output
 	stats.TotalCachedTokensThisMonth = cached
@@ -640,6 +650,9 @@ func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
 }
 
 // ChannelSuccessRates is the resolver for the channelSuccessRates field.
+// Note: Uses request_execution table for channel-level process tracking.
+// This provides success/failure rates per channel, suitable for monitoring channel health.
+// For result-only channel statistics, use RequestStatsByChannel instead.
 func (r *queryResolver) ChannelSuccessRates(ctx context.Context) ([]*ChannelSuccessRate, error) {
 	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
 
