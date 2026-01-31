@@ -101,7 +101,7 @@ func (s *RequestService) emitRequestEvent(
 		// Fetch token data from UsageLog only for completed requests
 		// This avoids extra database queries for in-progress requests
 		if eventType == events.EventTypeRequestCompleted && req.Status == request.StatusCompleted {
-			log.Info(context.Background(), "Request completed, fetching usage log for token data",
+			log.Info(ctx, "Request completed, fetching usage log for token data",
 				log.Int("request_id", req.ID))
 
 			// Retry up to 3 times to handle race condition with UsageLog creation
@@ -130,21 +130,21 @@ func (s *RequestService) emitRequestEvent(
 			}
 
 			if err == nil && usageLog != nil {
-				payload.PromptTokens = int(usageLog.PromptTokens)
-				payload.CompletionTokens = int(usageLog.CompletionTokens)
-				payload.TotalTokens = int(usageLog.TotalTokens)
-				payload.PromptCachedTokens = int(usageLog.PromptCachedTokens)
-				payload.PromptWriteCachedTokens = int(usageLog.PromptWriteCachedTokens)
-				payload.PromptWriteCachedTokens5m = int(usageLog.PromptWriteCachedTokens5m)
-				payload.PromptWriteCachedTokens1h = int(usageLog.PromptWriteCachedTokens1h)
-				log.Info(context.Background(), "Included token data in event",
+				payload.PromptTokens = usageLog.PromptTokens
+				payload.CompletionTokens = usageLog.CompletionTokens
+				payload.TotalTokens = usageLog.TotalTokens
+				payload.PromptCachedTokens = usageLog.PromptCachedTokens
+				payload.PromptWriteCachedTokens = usageLog.PromptWriteCachedTokens
+				payload.PromptWriteCachedTokens5m = usageLog.PromptWriteCachedTokens5m
+				payload.PromptWriteCachedTokens1h = usageLog.PromptWriteCachedTokens1h
+				log.Info(ctx, "Included token data in event",
 					log.Int("request_id", req.ID),
-					log.Int("prompt_tokens", payload.PromptTokens),
-					log.Int("completion_tokens", payload.CompletionTokens),
-					log.Int("total_tokens", payload.TotalTokens),
-					log.Int("prompt_cached_tokens", payload.PromptCachedTokens))
+					log.Int64("prompt_tokens", payload.PromptTokens),
+					log.Int64("completion_tokens", payload.CompletionTokens),
+					log.Int64("total_tokens", payload.TotalTokens),
+					log.Int64("prompt_cached_tokens", payload.PromptCachedTokens))
 			} else {
-				log.Warn(context.Background(), "Failed to fetch usage log for token data after retries",
+				log.Warn(ctx, "Failed to fetch usage log for token data after retries",
 					log.Int("request_id", req.ID),
 					log.Cause(err))
 			}
@@ -156,7 +156,7 @@ func (s *RequestService) emitRequestEvent(
 			Payload: payload,
 		}
 
-		s.eventBroker.Publish(context.Background(), event)
+		s.eventBroker.Publish(ctx, event)
 	}()
 }
 

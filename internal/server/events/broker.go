@@ -22,7 +22,6 @@ type Subscriber struct {
 	Topic     Topic
 	ProjectID *int        // nil = all projects
 	Events    chan *Event // buffered channel
-	ctx       context.Context
 	cancel    context.CancelFunc
 }
 
@@ -39,13 +38,12 @@ func NewEventBroker(logger *log.Logger) *EventBroker {
 func (b *EventBroker) Subscribe(ctx context.Context, topic Topic, projectID *int) *Subscriber {
 	subscriberID := uuid.New().String()
 
-	subCtx, cancel := context.WithCancel(ctx)
+	_, cancel := context.WithCancel(ctx)
 	subscriber := &Subscriber{
 		ID:        subscriberID,
 		Topic:     topic,
 		ProjectID: projectID,
 		Events:    make(chan *Event, 100), // buffer 100 events
-		ctx:       subCtx,
 		cancel:    cancel,
 	}
 

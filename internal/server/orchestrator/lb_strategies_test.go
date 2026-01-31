@@ -8,7 +8,14 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/events"
 )
+
+// newTestEventBroker creates a minimal event broker for testing.
+// It has no subscribers, so events are simply dropped.
+func newTestEventBroker() *events.EventBroker {
+	return events.NewEventBroker(nil)
+}
 
 // mockStrategy is a test strategy that returns a fixed score.
 type mockStrategy struct {
@@ -118,5 +125,5 @@ func newTestRequestService(client *ent.Client) *biz.RequestService {
 	channelService := biz.NewChannelServiceForTest(client)
 	usageLogService := biz.NewUsageLogService(client, systemService, channelService)
 
-	return biz.NewRequestService(client, systemService, usageLogService, dataStorageService, nil)
+	return biz.NewRequestService(client, systemService, usageLogService, dataStorageService, newTestEventBroker())
 }
