@@ -7,6 +7,9 @@ import (
 	"github.com/looplj/axonhub/llm"
 )
 
+// TransformerMetadataKeyCitations is the key used to store citations in TransformerMetadata.
+const TransformerMetadataKeyCitations = "citations"
+
 // Request represents an OpenAI chat completion request.
 // This is a clean OpenAI-specific model without helper fields.
 type Request struct {
@@ -152,6 +155,26 @@ type Message struct {
 
 	// ReasoningContent for deepseek-reasoner support.
 	ReasoningContent *string `json:"reasoning_content,omitempty"`
+
+	// Annotations contains citation information for the message.
+	// This is used by providers like Perplexity to provide source URLs.
+	Annotations []Annotation `json:"annotations,omitempty"`
+}
+
+// Annotation represents a citation or reference annotation in a message.
+type Annotation struct {
+	// Type is the type of annotation, e.g., "url_citation"
+	Type string `json:"type,omitempty"`
+	// URLCitation contains URL citation details when Type is "url_citation"
+	URLCitation *URLCitation `json:"url_citation,omitempty"`
+}
+
+// URLCitation represents a URL-based citation.
+type URLCitation struct {
+	// URL is the citation URL
+	URL string `json:"url,omitempty"`
+	// Title is the title of the cited source
+	Title string `json:"title,omitempty"`
 }
 
 // MessageContent represents message content (string or array of parts).
@@ -236,6 +259,9 @@ type Response struct {
 
 	SystemFingerprint string `json:"system_fingerprint,omitempty"`
 	ServiceTier       string `json:"service_tier,omitempty"`
+
+	// Citations is a list of sources for the completion, present in some models like Perplexity.
+	Citations []string `json:"citations,omitempty"`
 
 	Error *OpenAIError `json:"error,omitempty"`
 }

@@ -598,3 +598,167 @@ func TestInboundTransformer_TransformError(t *testing.T) {
 		})
 	}
 }
+
+func TestMessageFromLLM_WithAnnotations(t *testing.T) {
+	tests := []struct {
+		name     string
+		llmMsg   llm.Message
+		validate func(*testing.T, Message)
+	}{
+		{
+			name: "message with annotations",
+			llmMsg: llm.Message{
+				Role:    "assistant",
+				Content: llm.MessageContent{Content: lo.ToPtr("The meaning of life...")},
+				Annotations: []llm.Annotation{
+					{
+						Type: "url_citation",
+						URLCitation: &llm.URLCitation{
+							URL:   "https://en.wikipedia.org/wiki/Meaning_of_life",
+							Title: "Meaning of life - Wikipedia",
+						},
+					},
+					{
+						Type: "url_citation",
+						URLCitation: &llm.URLCitation{
+							URL:   "https://plato.stanford.edu/entries/life-meaning/",
+							Title: "The Meaning of Life - Stanford Encyclopedia",
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, msg Message) {
+				require.Equal(t, "assistant", msg.Role)
+				require.Len(t, msg.Annotations, 2)
+				require.Equal(t, "url_citation", msg.Annotations[0].Type)
+				require.NotNil(t, msg.Annotations[0].URLCitation)
+				require.Equal(t, "https://en.wikipedia.org/wiki/Meaning_of_life", msg.Annotations[0].URLCitation.URL)
+				require.Equal(t, "Meaning of life - Wikipedia", msg.Annotations[0].URLCitation.Title)
+			},
+		},
+		{
+			name: "message without annotations",
+			llmMsg: llm.Message{
+				Role:    "assistant",
+				Content: llm.MessageContent{Content: lo.ToPtr("Hello!")},
+			},
+			validate: func(t *testing.T, msg Message) {
+				require.Equal(t, "assistant", msg.Role)
+				require.Nil(t, msg.Annotations)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := MessageFromLLM(tt.llmMsg)
+			tt.validate(t, result)
+		})
+	}
+}
+
+func TestInboundTransformer_TransformResponse_WithCitations(t *testing.T) {
+	transformer := NewInboundTransformer()
+
+	tests := []struct {
+		name     string
+		response *llm.Response
+		validate func(*httpclient.Response) bool
+	}{
+		{
+			name: "response with citations in metadata",
+			response: &llm.Response{
+				ID:      "chatcmpl-123",
+				Object:  "chat.completion",
+				Created: 1677652288,
+				Model:   "llama-3.1-sonar-small-128k-online",
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								Content: lo.ToPtr("The meaning of life is..."),
+							},
+						},
+						FinishReason: lo.ToPtr("stop"),
+					},
+				},
+				TransformerMetadata: map[string]any{
+					TransformerMetadataKeyCitations: []string{
+						"https://www.theatlantic.com/family/archive/2021/10/meaning-life-macronutrients-purpose-search/620440/",
+						"https://en.wikipedia.org/wiki/Meaning_of_life",
+					},
+				},
+			},
+			validate: func(resp *httpclient.Response) bool {
+				if resp.StatusCode != http.StatusOK {
+					return false
+				}
+
+				// Parse the response body
+				var chatResp Response
+				err := json.Unmarshal(resp.Body, &chatResp)
+				if err != nil {
+					return false
+				}
+
+				// Verify citations are present
+				if len(chatResp.Citations) != 2 {
+					return false
+				}
+
+				return chatResp.Citations[0] == "https://www.theatlantic.com/family/archive/2021/10/meaning-life-macronutrients-purpose-search/620440/" &&
+					chatResp.Citations[1] == "https://en.wikipedia.org/wiki/Meaning_of_life"
+			},
+		},
+		{
+			name: "response without citations in metadata",
+			response: &llm.Response{
+				ID:      "chatcmpl-123",
+				Object:  "chat.completion",
+				Created: 1677652288,
+				Model:   "gpt-4",
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								Content: lo.ToPtr("Hello!"),
+							},
+						},
+						FinishReason: lo.ToPtr("stop"),
+					},
+				},
+			},
+			validate: func(resp *httpclient.Response) bool {
+				if resp.StatusCode != http.StatusOK {
+					return false
+				}
+
+				// Parse the response body
+				var chatResp Response
+				err := json.Unmarshal(resp.Body, &chatResp)
+				if err != nil {
+					return false
+				}
+
+				// Citations should be nil/empty when not present in metadata
+				return len(chatResp.Citations) == 0
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := transformer.TransformResponse(t.Context(), tt.response)
+			require.NoError(t, err)
+			require.NotNil(t, result)
+
+			if tt.validate != nil {
+				require.True(t, tt.validate(result), "Validation failed for result")
+			}
+		})
+	}
+}
