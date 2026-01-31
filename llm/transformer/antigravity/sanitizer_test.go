@@ -89,6 +89,28 @@ func TestSanitizeJSONSchema(t *testing.T) {
 			}`,
 		},
 		{
+			name: "Remove constraint keywords from nested properties",
+			input: `{
+				"type": "object",
+				"properties": {
+					"max_turns": {
+						"type": "integer",
+						"description": "Maximum number of agentic turns",
+						"exclusiveMinimum": 0
+					}
+				}
+			}`,
+			expected: `{
+				"type": "object",
+				"properties": {
+					"max_turns": {
+						"type": "integer",
+						"description": "Maximum number of agentic turns (exclusiveMinimum: 0)"
+					}
+				}
+			}`,
+		},
+		{
 			name: "Merge allOf",
 			input: `{
 				"allOf": [
