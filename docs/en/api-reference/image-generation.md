@@ -2,13 +2,13 @@
 
 ## Overview
 
-AxonHub supports image generation via the chat completions API, similar to [OpenRouter's multimodal capabilities](https://openrouter.ai/docs/features/multimodal/image-generation).
+AxonHub supports image generation via the OpenAI-compatible `/v1/images/generations` endpoint.
 
 **Note**: Streaming is not currently supported for image generation.
 
 ## API Usage
 
-To generate images, send a request to the `/api/v1/chat/completions` endpoint with the `modalities` parameter set to include both `"image"` and `"text"`.
+To generate images, send a request to the `/v1/images/generations` endpoint.
 
 ### Example
 
@@ -16,217 +16,153 @@ To generate images, send a request to the `/api/v1/chat/completions` endpoint wi
 import requests
 import json
 
-url = "https://your-axonhub-instance/v1/chat/completions"
+url = "https://your-axonhub-instance/v1/images/generations"
 headers = {
-    "Authorization": f"Bearer {API_KEY_REF}",
+    "Authorization": f"Bearer {API_KEY}",
     "Content-Type": "application/json"
 }
 
 payload = {
-    "model": "{{MODEL}}",
-    "messages": [
-        {
-            "role": "user",
-            "content": "Generate a beautiful sunset over mountains"
-        }
-    ],
-    "modalities": ["image", "text"]
+    "model": "gpt-image-1",
+    "prompt": "Generate a beautiful sunset over mountains",
+    "size": "1024x1024",
+    "quality": "high",
+    "n": 1
 }
 
 response = requests.post(url, headers=headers, json=payload)
 result = response.json()
 
-# The generated image will be in the assistant message
-if result.get("choices"):
-    message = result["choices"][0]["message"]
-
-    for content in message.get("content", []):
-        if content.type == "image_url":
-            image_url = content.image_url.url  # Base64 data URL
-            print(f"Generated image: {image_url[:50]}...")
+# Access generated images
+for image in result.get("data", []):
+    if "b64_json" in image:
+        print(f"Image (base64): {image['b64_json'][:50]}...")
+    if "url" in image:
+        print(f"Image URL: {image['url']}")
+    if "revised_prompt" in image:
+        print(f"Revised prompt: {image['revised_prompt']}")
 ```
 
 ```typescript
-const response = await fetch("https://your-axonhub-instance/v1/chat/completions", {
+const response = await fetch("https://your-axonhub-instance/v1/images/generations", {
   method: "POST",
   headers: {
-    Authorization: `Bearer ${API_KEY_REF}`,
+    Authorization: `Bearer ${API_KEY}`,
     "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    model: "{{MODEL}}",
-    messages: [
-      {
-        role: "user",
-        content: "Generate a beautiful sunset over mountains",
-      },
-    ],
-    modalities: ["image", "text"],
+    model: "gpt-image-1",
+    prompt: "Generate a beautiful sunset over mountains",
+    size: "1024x1024",
+    quality: "high",
+    n: 1,
   }),
 });
 
 const result = await response.json();
 
-// The generated image will be in the assistant message
-if (result.choices) {
-  const message = result.choices[0].message;
-  if (message.content) {
-    message.content.forEach((content, index) => {
-      if (content.type === "image_url") {
-        const imageUrl = content.image_url.url; // Base64 data URL
-        console.log(
-          `Generated image ${index + 1}: ${imageUrl.substring(0, 50)}...`
-        );
-      }
-    });
-  }
+// Access generated images
+if (result.data) {
+  result.data.forEach((image, index) => {
+    if (image.b64_json) {
+      console.log(`Image ${index + 1} (base64): ${image.b64_json.substring(0, 50)}...`);
+    }
+    if (image.url) {
+      console.log(`Image ${index + 1} URL: ${image.url}`);
+    }
+    if (image.revised_prompt) {
+      console.log(`Revised prompt: ${image.revised_prompt}`);
+    }
+  });
 }
 ```
 
 ## Response Format
 
-When generating images, the assistant message includes an `images` field containing the generated images:
-
 ```json
 {
-  "choices": [
+  "created": 1699000000,
+  "data": [
     {
-      "message": {
-        "role": "assistant",
-        "content": [
-          {
-            "type": "image_url",
-            "image_url": {
-              "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
-            }
-          }
-        ]
-      }
+      "b64_json": "iVBORw0KGgoAAAANSUhEUgAA...",
+      "url": "https://...",
+      "revised_prompt": "A beautiful sunset over mountains with orange and purple sky"
     }
   ]
 }
 ```
 
-## Using Custom Image Tools
-
-Alternatively, you can generate images by using the `image_generation` tool in your request. This approach provides more control over image generation parameters.
-
-### Tool-based Image Generation
-
-To use custom image tools, include an `image_generation` tool in the `tools` array of your request:
-
-### Example
-
-```python
-import requests
-import json
-
-url = "https://your-axonhub-instance/v1/chat/completions"
-headers = {
-    "Authorization": f"Bearer {API_KEY_REF}",
-    "Content-Type": "application/json"
-}
-
-payload = {
-    "model": "{{MODEL}}",
-    "messages": [
-        {
-            "role": "user",
-            "content": "Generate a beautiful sunset over mountains"
-        }
-    ],
-    "tools": [
-        {
-            "type": "image_generation",
-            "image_generation": {
-                "quality": "high",
-                "size": "1024x1024",
-                "output_format": "png",
-                "background": "opaque"
-            }
-        }
-    ]
-}
-
-response = requests.post(url, headers=headers, json=payload)
-result = response.json()
-
-# The generated image will be in the tool_calls
-if result.get("choices"):
-    message = result["choices"][0]["message"]
-    for tool_call in message.get("tool_calls", []):
-        if tool_call.get("type") == "image_generation":
-            print(f"Image generated with tool call ID: {tool_call.get('id')}")
-```
-
-```typescript
-const response = await fetch("https://your-axonhub-instance/v1/chat/completions", {
-  method: "POST",
-  headers: {
-    Authorization: `Bearer ${API_KEY_REF}`,
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    model: "{{MODEL}}",
-    messages: [
-      {
-        role: "user",
-        content: "Generate a beautiful sunset over mountains",
-      },
-    ],
-    tools: [
-      {
-        type: "image_generation",
-        image_generation: {
-          quality: "high",
-          size: "1024x1024",
-          output_format: "png",
-          background: "opaque",
-        },
-      },
-    ],
-  }),
-});
-
-const result = await response.json();
-
-// The generated image will be in the tool_calls
-if (result.choices) {
-  const message = result.choices[0].message;
-  if (message.tool_calls) {
-    message.tool_calls.forEach((toolCall) => {
-      if (toolCall.type === "image_generation") {
-        console.log(`Image generated with tool call ID: ${toolCall.id}`);
-      }
-    });
-  }
-}
-```
-
-### Custom Image Generation Parameters
-
-The `image_generation` tool supports the following parameters:
+## Request Parameters
 
 | Parameter | Type | Description | Default |
 |-----------|------|-------------|---------|
-| `background` | string | Background style: "opaque" or "transparent" | - |
-| `input_fidelity` | string | Input fidelity level | - |
-| `input_image_mask` | object | Image mask for inpainting | - |
-| `moderation` | string | Content moderation level: "low" or "auto" | - |
-| `output_compression` | number | Compression level (0-100%) | 100 |
-| `output_format` | string | Image format: "png", "webp", or "jpeg" | "png" |
-| `partial_images` | number | Number of images to generate | 1 |
-| `quality` | string | Image quality: "auto", "high", "medium", "low", "hd", "standard" | "auto" |
-| `size` | string | Image size: "256x256", "512x512", or "1024x1024" | "1024x1024" |
-| `watermark` | boolean | Whether to add watermark | depends on the model |
+| `prompt` | string | **Required.** A text description of the desired image(s). | - |
+| `model` | string | The model to use for image generation. | `dall-e-2` |
+| `n` | integer | The number of images to generate. | 1 |
+| `quality` | string | The quality of the image: `"standard"`, `"hd"`, `"high"`, `"medium"`, `"low"`, or `"auto"`. | `"auto"` |
+| `response_format` | string | The format in which to return the images: `"url"` or `"b64_json"`. | `"b64_json"` |
+| `size` | string | The size of the generated images: `"256x256"`, `"512x512"`, or `"1024x1024"`. | `"1024x1024"` |
+| `style` | string | The style of the generated images (DALL-E 3 only): `"vivid"` or `"natural"`. | - |
+| `user` | string | A unique identifier representing your end-user. | - |
+| `background` | string | Background style: `"opaque"` or `"transparent"`. | - |
+| `output_format` | string | Image format: `"png"`, `"webp"`, or `"jpeg"`. | `"png"` |
+| `output_compression` | number | Compression level (0-100%). | 100 |
+| `moderation` | string | Content moderation level: `"low"` or `"auto"`. | - |
+| `partial_images` | number | Number of partial images to generate. | 1 |
+
+## Image Edit (Inpainting)
+
+To edit an image, use the `/v1/images/edits` endpoint with multipart/form-data:
+
+```python
+import requests
+
+url = "https://your-axonhub-instance/v1/images/edits"
+headers = {
+    "Authorization": f"Bearer {API_KEY}"
+}
+
+with open("image.png", "rb") as image_file, open("mask.png", "rb") as mask_file:
+    files = {
+        "image": image_file,
+        "mask": mask_file
+    }
+    data = {
+        "model": "gpt-image-1",
+        "prompt": "Change the color to white",
+        "size": "1024x1024",
+        "n": 1
+    }
+    
+    response = requests.post(url, headers=headers, files=files, data=data)
+    result = response.json()
+```
+
+### Image Edit Parameters
+
+| Parameter | Type | Description | Default |
+|-----------|------|-------------|---------|
+| `image` | file | **Required.** The image to edit. | - |
+| `prompt` | string | **Required.** A text description of the desired edit. | - |
+| `mask` | file | An optional mask image. Transparent areas indicate where to edit. | - |
+| `model` | string | The model to use. | `dall-e-2` |
+| `n` | integer | The number of images to generate. | 1 |
+| `size` | string | The size of the generated images. | `"1024x1024"` |
+| `response_format` | string | The format: `"url"` or `"b64_json"`. | `"b64_json"` |
+| `user` | string | A unique identifier for your end-user. | - |
+| `background` | string | Background style: `"opaque"` or `"transparent"`. | - |
+| `output_format` | string | Image format: `"png"`, `"webp"`, or `"jpeg"`. | `"png"` |
+| `output_compression` | number | Compression level (0-100%). | 100 |
+| `input_fidelity` | string | Input fidelity level. | - |
+| `partial_images` | number | Number of partial images. | 1 |
 
 ## Supported Providers
 
 | Provider             | Status  | Supported Models                                              | Notes                 |
 | -------------------- | ------- | ------------------------------------------------------------- | --------------------- |
-| **OpenAI**           | ✅ Done | gpt-image-1, etc.                                             | No streaming support  |
+| **OpenAI**           | ✅ Done | gpt-image-1, dall-e-2, dall-e-3, etc.                         | No streaming support  |
 | **ByteDance Doubao** | ✅ Done | doubao-seed-dream-4-0, etc.                                   | No streaming support  |
-| **OpenRouter**       | ✅ Done | gpt-image-1,gemini-2.5-flash-image-preview(nana banana), etc. | No streaming support  |
+| **OpenRouter**       | ✅ Done | gpt-image-1, gemini-2.5-flash-image-preview, etc.             | No streaming support  |
 | **Gemini**           | 📝 Todo | -                                                             | Not implemented       |
 
 ## Related Resources

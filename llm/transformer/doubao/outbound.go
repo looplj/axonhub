@@ -2,10 +2,10 @@ package doubao
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/samber/lo"
@@ -52,7 +52,7 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		return nil, fmt.Errorf("API key is required for Doubao transformer")
 	}
 
-	baseURL := strings.TrimSuffix(config.BaseURL, "/")
+	baseURL := transformer.NormalizeBaseURL(config.BaseURL, "v3")
 
 	outbound, err := openai.NewOutboundTransformer(baseURL, config.APIKey)
 	if err != nil {
@@ -89,26 +89,23 @@ func (t *OutboundTransformer) TransformRequest(
 		return nil, fmt.Errorf("chat completion request is nil")
 	}
 
+	// Validate required fields
+	if llmReq.Model == "" {
+		return nil, fmt.Errorf("%w: model is required", transformer.ErrInvalidRequest)
+	}
+
 	//nolint:exhaustive // Checked.
 	switch llmReq.RequestType {
 	case llm.RequestTypeChat, "":
 		// continue
+	case llm.RequestTypeImage:
+		return t.buildImageGenerationAPIRequest(llmReq)
 	default:
 		return nil, fmt.Errorf("%w: %s is not supported", transformer.ErrInvalidRequest, llmReq.RequestType)
 	}
 
-	// Validate required fields
-	if llmReq.Model == "" {
-		return nil, fmt.Errorf("model is required")
-	}
-
 	if len(llmReq.Messages) == 0 {
 		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
-	}
-
-	// If this is an image generation request, use the Doubao Image Generation API
-	if llmReq.IsImageGenerationRequest() {
-		return t.buildImageGenerationAPIRequest(llmReq)
 	}
 
 	// Convert llm.Request to openai.Request first
@@ -150,8 +147,7 @@ func (t *OutboundTransformer) TransformRequest(
 		APIKey: t.APIKey,
 	}
 
-	baseURL := strings.TrimSuffix(t.BaseURL, "/")
-	url := baseURL + "/chat/completions"
+	url := t.BaseURL + "/chat/completions"
 
 	return &httpclient.Request{
 		Method:  http.MethodPost,
@@ -165,16 +161,23 @@ func (t *OutboundTransformer) TransformRequest(
 // buildImageGenerationAPIRequest builds the HTTP request to call the Doubao Image Generation API.
 // Doubao uses only /images/generations API for both generation and editing.
 func (t *OutboundTransformer) buildImageGenerationAPIRequest(llmReq *llm.Request) (*httpclient.Request, error) {
-	llmReq.Stream = lo.ToPtr(false)
-
-	// Extract prompt from messages
-	prompt, err := extractPromptFromMessages(llmReq.Messages)
-	if err != nil {
-		return nil, err
+	if llmReq.Image == nil {
+		return nil, fmt.Errorf("image request is required")
 	}
 
-	// Check if there are images in the messages (for editing)
-	hasImages := hasImagesInMessages(llmReq.Messages)
+	prompt := llmReq.Image.Prompt
+	if prompt == "" {
+		return nil, fmt.Errorf("prompt is required for image generation")
+	}
+
+	hasImages := len(llmReq.Image.Images) > 0
+
+	var images []string
+	if hasImages {
+		images = lo.Map(llmReq.Image.Images, func(b []byte, _ int) string {
+			return encodeImageBytesToDataURL(b)
+		})
+	}
 
 	// Build request body - Doubao uses /images/generations for both generation and editing
 	reqBody := map[string]any{
@@ -186,62 +189,43 @@ func (t *OutboundTransformer) buildImageGenerationAPIRequest(llmReq *llm.Request
 
 	// Add images if present (for editing)
 	if hasImages {
-		images, err := extractImages(llmReq)
-		if err != nil {
-			return nil, err
-		}
-
-		if len(images) > 0 {
-			if len(images) == 1 {
-				reqBody["image"] = images[0]
-			} else {
-				reqBody["image"] = images
-			}
+		if len(images) == 1 {
+			reqBody["image"] = images[0]
+		} else {
+			reqBody["image"] = images
 		}
 	}
 
-	// Extract image generation parameters from tools
-	for _, tool := range llmReq.Tools {
-		if tool.Type == "image_generation" && tool.ImageGeneration != nil {
-			// Map OpenAI parameters to Doubao parameters
-			if tool.ImageGeneration.Size != "" {
-				reqBody["size"] = tool.ImageGeneration.Size
-			}
-
-			// Map quality to guidance_scale
-			switch tool.ImageGeneration.Quality {
-			case "hd":
-				reqBody["guidance_scale"] = 7.5
-			case "standard":
-				reqBody["guidance_scale"] = 2.5
-			}
-
-			// Add watermark if specified
-			if tool.ImageGeneration.Watermark {
-				reqBody["watermark"] = true
-			}
-
-			break
-		}
+	if llmReq.Image.N != nil {
+		reqBody["n"] = *llmReq.Image.N
 	}
 
-	// Add user if specified
-	if llmReq.User != nil {
-		reqBody["user"] = *llmReq.User
+	if llmReq.Image.Size != "" {
+		reqBody["size"] = llmReq.Image.Size
 	}
 
-	var (
-		body    []byte
-		headers http.Header
-	)
+	switch llmReq.Image.Quality {
+	case "hd":
+		reqBody["guidance_scale"] = 7.5
+	case "standard":
+		reqBody["guidance_scale"] = 2.5
+	}
+
+	if llmReq.Image.ResponseFormat != "" {
+		reqBody["response_format"] = llmReq.Image.ResponseFormat
+	}
+
+	if llmReq.Image.User != "" {
+		reqBody["user"] = llmReq.Image.User
+	}
 
 	// Use JSON for generation only
-	body, err = json.Marshal(reqBody)
+	body, err := json.Marshal(reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request body: %w", err)
 	}
 
-	headers = make(http.Header)
+	headers := make(http.Header)
 	headers.Set("Content-Type", "application/json")
 	headers.Set("Accept", "application/json")
 
@@ -259,75 +243,23 @@ func (t *OutboundTransformer) buildImageGenerationAPIRequest(llmReq *llm.Request
 		Headers:     headers,
 		Body:        body,
 		Auth:        auth,
+		RequestType: string(llm.RequestTypeImage),
+		APIFormat:   string(llm.APIFormatOpenAIImageGeneration),
 	}
 
 	// Add TransformerMetadata for response transformation
 	if request.TransformerMetadata == nil {
 		request.TransformerMetadata = map[string]any{}
 	}
-
-	request.TransformerMetadata["outbound_format_type"] = llm.APIFormatOpenAIImageGeneration.String()
 	request.TransformerMetadata["model"] = llmReq.Model
 
 	return request, nil
 }
 
-// Helper functions adapted from openai/image.go
-
-// hasImagesInMessages checks if any message contains image content.
-func hasImagesInMessages(messages []llm.Message) bool {
-	for _, msg := range messages {
-		if len(msg.Content.MultipleContent) > 0 {
-			for _, part := range msg.Content.MultipleContent {
-				if part.Type == "image_url" {
-					return true
-				}
-			}
-		}
+func encodeImageBytesToDataURL(b []byte) string {
+	if len(b) == 0 {
+		return ""
 	}
 
-	return false
-}
-
-// extractPromptFromMessages extracts the text prompt from messages.
-func extractPromptFromMessages(messages []llm.Message) (string, error) {
-	for _, msg := range messages {
-		if msg.Content.Content != nil {
-			return *msg.Content.Content, nil
-		}
-
-		if len(msg.Content.MultipleContent) > 0 {
-			for _, part := range msg.Content.MultipleContent {
-				if part.Type == "text" && part.Text != nil {
-					return *part.Text, nil
-				}
-			}
-		}
-	}
-
-	return "", fmt.Errorf("prompt is required for image generation")
-}
-
-// extractImages extracts images from messages and returns them as base64 data URLs.
-func extractImages(chatReq *llm.Request) ([]string, error) {
-	var images []string
-
-	for _, msg := range chatReq.Messages {
-		if len(msg.Content.MultipleContent) > 0 {
-			for _, part := range msg.Content.MultipleContent {
-				if part.Type == "image_url" && part.ImageURL != nil {
-					// Convert to Doubao format if needed
-					if strings.HasPrefix(part.ImageURL.URL, "data:") {
-						// Already in data URL format, just validate and use as-is
-						images = append(images, part.ImageURL.URL)
-					} else {
-						// Regular URL - Doubao supports both URL and base64
-						images = append(images, part.ImageURL.URL)
-					}
-				}
-			}
-		}
-	}
-
-	return images, nil
+	return "data:image/png;base64," + base64.StdEncoding.EncodeToString(b)
 }

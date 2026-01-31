@@ -6,7 +6,12 @@ const (
 	RequestTypeChat      RequestType = "chat"
 	RequestTypeEmbedding RequestType = "embedding"
 	RequestTypeRerank    RequestType = "rerank"
+	RequestTypeImage     RequestType = "image"
 )
+
+func (r RequestType) String() string {
+	return string(r)
+}
 
 type APIFormat string
 
@@ -14,6 +19,8 @@ const (
 	APIFormatOpenAIChatCompletion  APIFormat = "openai/chat_completions"
 	APIFormatOpenAIResponse        APIFormat = "openai/responses"
 	APIFormatOpenAIImageGeneration APIFormat = "openai/image_generation"
+	APIFormatOpenAIImageEdit       APIFormat = "openai/image_edit"
+	APIFormatOpenAIImageVariation  APIFormat = "openai/image_variation"
 	APIFormatOpenAIEmbedding       APIFormat = "openai/embeddings"
 	APIFormatGeminiContents        APIFormat = "gemini/contents"
 	APIFormatAnthropicMessage      APIFormat = "anthropic/messages"

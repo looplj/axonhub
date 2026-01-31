@@ -154,14 +154,9 @@ func (t *OutboundTransformer) transformRerankRequest(
 			Type:   "bearer",
 			APIKey: t.config.APIKey,
 		},
+		RequestType: string(llm.RequestTypeRerank),
+		APIFormat:   string(llm.APIFormatJinaRerank),
 	}
-
-	// Set metadata for response routing
-	if httpReq.TransformerMetadata == nil {
-		httpReq.TransformerMetadata = make(map[string]any)
-	}
-
-	httpReq.TransformerMetadata["outbound_format_type"] = llm.APIFormatJinaRerank.String()
 
 	return httpReq, nil
 }
@@ -215,13 +210,9 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 			Type:   "bearer",
 			APIKey: t.config.APIKey,
 		},
+		RequestType: string(llm.RequestTypeEmbedding),
+		APIFormat:   string(llm.APIFormatJinaEmbedding),
 	}
-
-	if httpReq.TransformerMetadata == nil {
-		httpReq.TransformerMetadata = make(map[string]any)
-	}
-
-	httpReq.TransformerMetadata["outbound_format_type"] = llm.APIFormatJinaEmbedding.String()
 
 	return httpReq, nil
 }
@@ -258,20 +249,12 @@ func (t *OutboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("response body is empty")
 	}
 
-	// Determine response type from metadata
-	var apiFormat llm.APIFormat
-
-	if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
-		if formatStr, ok := httpResp.Request.TransformerMetadata["outbound_format_type"].(string); ok {
-			apiFormat = llm.APIFormat(formatStr)
-		}
-	}
-
+	// Route to specialized transformers based on request APIFormat
 	//nolint:exhaustive // Checked.
-	switch apiFormat {
-	case llm.APIFormatJinaEmbedding:
+	switch httpResp.Request.APIFormat {
+	case string(llm.APIFormatJinaEmbedding):
 		return t.transformEmbeddingResponse(ctx, httpResp)
-	case llm.APIFormatJinaRerank:
+	case string(llm.APIFormatJinaRerank):
 		fallthrough
 	default:
 		return t.transformRerankResponse(ctx, httpResp)

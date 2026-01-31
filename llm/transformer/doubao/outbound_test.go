@@ -284,28 +284,16 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			},
 		},
 		{
-			name:        "image generation request with modalities",
+			name:        "image generation request",
 			transformer: createTransformer("https://ark.cn-beijing.volces.com/api/v3", "test-api-key"),
 			request: &llm.Request{
-				Model: "doubao-image-pro",
-				Messages: []llm.Message{
-					{
-						Role: "user",
-						Content: llm.MessageContent{
-							Content: lo.ToPtr("Generate an image of a cat"),
-						},
-					},
-				},
-				Modalities: []string{"image"},
-				Tools: []llm.Tool{
-					{
-						Type: "image_generation",
-						ImageGeneration: &llm.ImageGeneration{
-							Size:      "1024x1024",
-							Quality:   "hd",
-							Watermark: true,
-						},
-					},
+				Model:       "doubao-image-pro",
+				RequestType: llm.RequestTypeImage,
+				APIFormat:   llm.APIFormatOpenAIImageGeneration,
+				Image: &llm.ImageRequest{
+					Prompt:  "Generate an image of a cat",
+					Size:    "1024x1024",
+					Quality: "hd",
 				},
 			},
 			wantErr: false,
@@ -315,7 +303,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 					req.Headers.Get("Content-Type") == "application/json" &&
 					req.Auth != nil &&
 					req.Auth.Type == "bearer" &&
-					req.TransformerMetadata["outbound_format_type"] == llm.APIFormatOpenAIImageGeneration.String()
+					req.APIFormat == string(llm.APIFormatOpenAIImageGeneration)
 			},
 		},
 		{
@@ -424,23 +412,13 @@ func TestOutboundTransformer_buildImageGenerationAPIRequest(t *testing.T) {
 		{
 			name: "basic image generation",
 			request: &llm.Request{
-				Model: "doubao-image-pro",
-				Messages: []llm.Message{
-					{
-						Role: "user",
-						Content: llm.MessageContent{
-							Content: lo.ToPtr("A beautiful sunset"),
-						},
-					},
-				},
-				Tools: []llm.Tool{
-					{
-						Type: "image_generation",
-						ImageGeneration: &llm.ImageGeneration{
-							Size:    "1024x1024",
-							Quality: "hd",
-						},
-					},
+				Model:       "doubao-image-pro",
+				RequestType: llm.RequestTypeImage,
+				APIFormat:   llm.APIFormatOpenAIImageGeneration,
+				Image: &llm.ImageRequest{
+					Prompt:  "A beautiful sunset",
+					Size:    "1024x1024",
+					Quality: "hd",
 				},
 			},
 			wantErr: false,
@@ -460,27 +438,15 @@ func TestOutboundTransformer_buildImageGenerationAPIRequest(t *testing.T) {
 			},
 		},
 		{
-			name: "image editing with image URLs",
+			name: "image editing with input image",
 			request: &llm.Request{
-				Model: "doubao-image-pro",
-				Messages: []llm.Message{
-					{
-						Role: "user",
-						Content: llm.MessageContent{
-							MultipleContent: []llm.MessageContentPart{
-								{
-									Type: "text",
-									Text: lo.ToPtr("Modify this image"),
-								},
-								{
-									Type: "image_url",
-									ImageURL: &llm.ImageURL{
-										URL: "https://example.com/image.jpg",
-									},
-								},
-							},
-						},
-					},
+				Model:       "doubao-image-pro",
+				RequestType: llm.RequestTypeImage,
+				APIFormat:   llm.APIFormatOpenAIImageEdit,
+				Image: &llm.ImageRequest{
+					Prompt:  "Modify this image",
+					Images:  [][]byte{[]byte("test-image-bytes")},
+					Quality: "standard",
 				},
 			},
 			wantErr: false,
@@ -489,32 +455,26 @@ func TestOutboundTransformer_buildImageGenerationAPIRequest(t *testing.T) {
 
 				err := json.Unmarshal(req.Body, &body)
 				if err != nil {
+					return false
+				}
+
+				imageVal, ok := body["image"].(string)
+				if !ok {
 					return false
 				}
 
 				return body["prompt"] == "Modify this image" &&
-					body["image"] == "https://example.com/image.jpg"
+					strings.HasPrefix(imageVal, "data:image/")
 			},
 		},
 		{
-			name: "image with watermark",
+			name: "watermark field not supported",
 			request: &llm.Request{
-				Model: "doubao-image-pro",
-				Messages: []llm.Message{
-					{
-						Role: "user",
-						Content: llm.MessageContent{
-							Content: lo.ToPtr("A logo"),
-						},
-					},
-				},
-				Tools: []llm.Tool{
-					{
-						Type: "image_generation",
-						ImageGeneration: &llm.ImageGeneration{
-							Watermark: true,
-						},
-					},
+				Model:       "doubao-image-pro",
+				RequestType: llm.RequestTypeImage,
+				APIFormat:   llm.APIFormatOpenAIImageGeneration,
+				Image: &llm.ImageRequest{
+					Prompt: "A logo",
 				},
 			},
 			wantErr: false,
@@ -526,28 +486,20 @@ func TestOutboundTransformer_buildImageGenerationAPIRequest(t *testing.T) {
 					return false
 				}
 
-				return body["watermark"] == true
+				_, ok := body["watermark"]
+
+				return !ok
 			},
 		},
 		{
 			name: "standard quality mapping",
 			request: &llm.Request{
-				Model: "doubao-image-pro",
-				Messages: []llm.Message{
-					{
-						Role: "user",
-						Content: llm.MessageContent{
-							Content: lo.ToPtr("Standard image"),
-						},
-					},
-				},
-				Tools: []llm.Tool{
-					{
-						Type: "image_generation",
-						ImageGeneration: &llm.ImageGeneration{
-							Quality: "standard",
-						},
-					},
+				Model:       "doubao-image-pro",
+				RequestType: llm.RequestTypeImage,
+				APIFormat:   llm.APIFormatOpenAIImageGeneration,
+				Image: &llm.ImageRequest{
+					Prompt:  "Standard image",
+					Quality: "standard",
 				},
 			},
 			wantErr: false,
@@ -565,16 +517,13 @@ func TestOutboundTransformer_buildImageGenerationAPIRequest(t *testing.T) {
 		{
 			name: "with user field",
 			request: &llm.Request{
-				Model: "doubao-image-pro",
-				Messages: []llm.Message{
-					{
-						Role: "user",
-						Content: llm.MessageContent{
-							Content: lo.ToPtr("User image"),
-						},
-					},
+				Model:       "doubao-image-pro",
+				RequestType: llm.RequestTypeImage,
+				APIFormat:   llm.APIFormatOpenAIImageGeneration,
+				Image: &llm.ImageRequest{
+					Prompt: "User image",
+					User:   "user123",
 				},
-				User: lo.ToPtr("user123"),
 			},
 			wantErr: false,
 			validate: func(req *httpclient.Request) bool {
@@ -620,286 +569,6 @@ func TestOutboundTransformer_buildImageGenerationAPIRequest(t *testing.T) {
 			if tt.validate != nil && !tt.validate(result) {
 				t.Errorf("buildImageGenerationAPIRequest() validation failed")
 			}
-		})
-	}
-}
-
-func TestHasImagesInMessages(t *testing.T) {
-	tests := []struct {
-		name     string
-		messages []llm.Message
-		expected bool
-	}{
-		{
-			name: "no images",
-			messages: []llm.Message{
-				{
-					Role: "user",
-					Content: llm.MessageContent{
-						Content: lo.ToPtr("Just text"),
-					},
-				},
-			},
-			expected: false,
-		},
-		{
-			name: "with image URL",
-			messages: []llm.Message{
-				{
-					Role: "user",
-					Content: llm.MessageContent{
-						MultipleContent: []llm.MessageContentPart{
-							{
-								Type: "text",
-								Text: lo.ToPtr("Text and image"),
-							},
-							{
-								Type: "image_url",
-								ImageURL: &llm.ImageURL{
-									URL: "https://example.com/image.jpg",
-								},
-							},
-						},
-					},
-				},
-			},
-			expected: true,
-		},
-		{
-			name: "multiple messages with image",
-			messages: []llm.Message{
-				{
-					Role: "user",
-					Content: llm.MessageContent{
-						Content: lo.ToPtr("First message"),
-					},
-				},
-				{
-					Role: "user",
-					Content: llm.MessageContent{
-						MultipleContent: []llm.MessageContentPart{
-							{
-								Type: "image_url",
-								ImageURL: &llm.ImageURL{
-									URL: "https://example.com/image2.jpg",
-								},
-							},
-						},
-					},
-				},
-			},
-			expected: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := hasImagesInMessages(tt.messages)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestExtractPromptFromMessages(t *testing.T) {
-	tests := []struct {
-		name     string
-		messages []llm.Message
-		expected string
-		wantErr  bool
-	}{
-		{
-			name: "extract from content",
-			messages: []llm.Message{
-				{
-					Role: "user",
-					Content: llm.MessageContent{
-						Content: lo.ToPtr("A beautiful sunset"),
-					},
-				},
-			},
-			expected: "A beautiful sunset",
-			wantErr:  false,
-		},
-		{
-			name: "extract from multiple content",
-			messages: []llm.Message{
-				{
-					Role: "user",
-					Content: llm.MessageContent{
-						MultipleContent: []llm.MessageContentPart{
-							{
-								Type: "image_url",
-								ImageURL: &llm.ImageURL{
-									URL: "https://example.com/image.jpg",
-								},
-							},
-							{
-								Type: "text",
-								Text: lo.ToPtr("A cat playing"),
-							},
-						},
-					},
-				},
-			},
-			expected: "A cat playing",
-			wantErr:  false,
-		},
-		{
-			name: "no text content",
-			messages: []llm.Message{
-				{
-					Role: "user",
-					Content: llm.MessageContent{
-						MultipleContent: []llm.MessageContentPart{
-							{
-								Type: "image_url",
-								ImageURL: &llm.ImageURL{
-									URL: "https://example.com/image.jpg",
-								},
-							},
-						},
-					},
-				},
-			},
-			expected: "",
-			wantErr:  true,
-		},
-		{
-			name:     "empty messages",
-			messages: []llm.Message{},
-			expected: "",
-			wantErr:  true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := extractPromptFromMessages(tt.messages)
-
-			if tt.wantErr {
-				assert.Error(t, err)
-				return
-			}
-
-			assert.NoError(t, err)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestExtractImages(t *testing.T) {
-	tests := []struct {
-		name     string
-		chatReq  *llm.Request
-		expected []string
-		wantErr  bool
-	}{
-		{
-			name: "extract single image URL",
-			chatReq: &llm.Request{
-				Messages: []llm.Message{
-					{
-						Role: "user",
-						Content: llm.MessageContent{
-							MultipleContent: []llm.MessageContentPart{
-								{
-									Type: "text",
-									Text: lo.ToPtr("Modify this"),
-								},
-								{
-									Type: "image_url",
-									ImageURL: &llm.ImageURL{
-										URL: "https://example.com/image.jpg",
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			expected: []string{"https://example.com/image.jpg"},
-			wantErr:  false,
-		},
-		{
-			name: "extract base64 image",
-			chatReq: &llm.Request{
-				Messages: []llm.Message{
-					{
-						Role: "user",
-						Content: llm.MessageContent{
-							MultipleContent: []llm.MessageContentPart{
-								{
-									Type: "image_url",
-									ImageURL: &llm.ImageURL{
-										URL: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k=",
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			expected: []string{
-				"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k=",
-			},
-			wantErr: false,
-		},
-		{
-			name: "extract multiple images",
-			chatReq: &llm.Request{
-				Messages: []llm.Message{
-					{
-						Role: "user",
-						Content: llm.MessageContent{
-							MultipleContent: []llm.MessageContentPart{
-								{
-									Type: "image_url",
-									ImageURL: &llm.ImageURL{
-										URL: "https://example.com/image1.jpg",
-									},
-								},
-								{
-									Type: "image_url",
-									ImageURL: &llm.ImageURL{
-										URL: "https://example.com/image2.jpg",
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			expected: []string{"https://example.com/image1.jpg", "https://example.com/image2.jpg"},
-			wantErr:  false,
-		},
-		{
-			name: "no images",
-			chatReq: &llm.Request{
-				Messages: []llm.Message{
-					{
-						Role: "user",
-						Content: llm.MessageContent{
-							Content: lo.ToPtr("Just text"),
-						},
-					},
-				},
-			},
-			expected: nil,
-			wantErr:  false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := extractImages(tt.chatReq)
-
-			if tt.wantErr {
-				assert.Error(t, err)
-				return
-			}
-
-			assert.NoError(t, err)
-			assert.Equal(t, tt.expected, result)
 		})
 	}
 }

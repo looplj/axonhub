@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"slices"
 	"strings"
 
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -209,6 +208,9 @@ type Request struct {
 	// Rerank is the rerank request, will be set if the request is rerank request.
 	Rerank *RerankRequest `json:"rerank,omitempty"`
 
+	// Image is the image request, will be set if the request is image request.
+	Image *ImageRequest `json:"image,omitempty"`
+
 	// RawRequest is the raw request from the client.
 	RawRequest *httpclient.Request `json:"raw_request,omitempty"`
 
@@ -235,10 +237,6 @@ type Request struct {
 	// - "truncation": *string - truncation strategy ("auto", "disabled")
 	// - "include_obfuscation": *bool - whether to enable stream obfuscation (Responses API specific)
 	TransformerMetadata map[string]any `json:"transformer_metadata,omitempty"`
-}
-
-func (r *Request) IsImageGenerationRequest() bool {
-	return len(r.Modalities) > 0 && slices.Contains(r.Modalities, "image")
 }
 
 type StreamOptions struct {
@@ -498,6 +496,9 @@ type Response struct {
 
 	// Rerank is the rerank response, will present if the request is rerank request.
 	Rerank *RerankResponse `json:"rerank,omitempty"`
+
+	// Image is the image response, will present if the request is image request.
+	Image *ImageResponse `json:"image,omitempty"`
 
 	// RequestType is the outbound request type from the llm service.
 	// e.g. the request from the chat/completions endpoint is in the chat type.

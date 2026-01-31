@@ -360,9 +360,7 @@ func TestEmbeddingOutboundTransformer_TransformResponse(t *testing.T) {
 			StatusCode: http.StatusOK,
 			Body:       respBody,
 			Request: &httpclient.Request{
-				TransformerMetadata: map[string]any{
-					"outbound_format_type": llm.APIFormatOpenAIEmbedding.String(),
-				},
+				APIFormat: string(llm.APIFormatOpenAIEmbedding),
 			},
 		}
 
@@ -396,9 +394,7 @@ func TestEmbeddingOutboundTransformer_TransformResponse(t *testing.T) {
 			StatusCode: http.StatusOK,
 			Body:       respBody,
 			Request: &httpclient.Request{
-				TransformerMetadata: map[string]any{
-					"outbound_format_type": llm.APIFormatOpenAIEmbedding.String(),
-				},
+				APIFormat: string(llm.APIFormatOpenAIEmbedding),
 			},
 		}
 
@@ -418,9 +414,7 @@ func TestEmbeddingOutboundTransformer_TransformResponse(t *testing.T) {
 			StatusCode: http.StatusBadRequest,
 			Body:       []byte(`{"error": {"message": "Invalid request"}}`),
 			Request: &httpclient.Request{
-				TransformerMetadata: map[string]any{
-					"outbound_format_type": llm.APIFormatOpenAIEmbedding.String(),
-				},
+				APIFormat: string(llm.APIFormatOpenAIEmbedding),
 			},
 		}
 
@@ -435,9 +429,7 @@ func TestEmbeddingOutboundTransformer_TransformResponse(t *testing.T) {
 			StatusCode: http.StatusInternalServerError,
 			Body:       []byte(`{"error": {"message": "Internal server error"}}`),
 			Request: &httpclient.Request{
-				TransformerMetadata: map[string]any{
-					"outbound_format_type": llm.APIFormatOpenAIEmbedding.String(),
-				},
+				APIFormat: string(llm.APIFormatOpenAIEmbedding),
 			},
 		}
 
@@ -452,9 +444,7 @@ func TestEmbeddingOutboundTransformer_TransformResponse(t *testing.T) {
 			StatusCode: http.StatusOK,
 			Body:       []byte{},
 			Request: &httpclient.Request{
-				TransformerMetadata: map[string]any{
-					"outbound_format_type": llm.APIFormatOpenAIEmbedding.String(),
-				},
+				APIFormat: string(llm.APIFormatOpenAIEmbedding),
 			},
 		}
 
@@ -468,9 +458,7 @@ func TestEmbeddingOutboundTransformer_TransformResponse(t *testing.T) {
 			StatusCode: http.StatusOK,
 			Body:       []byte("not valid json"),
 			Request: &httpclient.Request{
-				TransformerMetadata: map[string]any{
-					"outbound_format_type": llm.APIFormatOpenAIEmbedding.String(),
-				},
+				APIFormat: string(llm.APIFormatOpenAIEmbedding),
 			},
 		}
 
