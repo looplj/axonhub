@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/samber/lo"
@@ -185,6 +187,21 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		httpClient = f.httpClient
 	}
 
+	if channelType.IsGemini() {
+		models, err := f.fetchGeminiModels(ctx, httpClient, req)
+		if err != nil {
+			return &FetchModelsResult{
+				Models: []ModelIdentify{},
+				Error:  lo.ToPtr(fmt.Sprintf("failed to fetch models: %v", err)),
+			}, nil
+		}
+
+		return &FetchModelsResult{
+			Models: lo.Uniq(models),
+			Error:  nil,
+		}, nil
+	}
+
 	var (
 		resp *httpclient.Response
 		err  error
@@ -227,6 +244,87 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		Models: lo.Uniq(models),
 		Error:  nil,
 	}, nil
+}
+
+type geminiListModelsResponse struct {
+	Models        []GeminiModelResponse `json:"models"`
+	NextPageToken string                `json:"nextPageToken"`
+}
+
+func (f *ModelFetcher) fetchGeminiModels(ctx context.Context, httpClient *httpclient.HttpClient, req *httpclient.Request) ([]ModelIdentify, error) {
+	const maxPages = 50
+	const pageSize = 1000
+
+	allModels := make([]ModelIdentify, 0, 128)
+	pageToken := ""
+	seenTokens := make(map[string]struct{}, 8)
+
+	for i := 0; i < maxPages; i++ {
+		pageURL, err := withGeminiModelsPagination(req.URL, pageSize, pageToken)
+		if err != nil {
+			return nil, err
+		}
+
+		req.URL = pageURL
+
+		resp, err := httpClient.Do(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+
+                if resp.StatusCode != http.StatusOK {
+                        return nil, fmt.Errorf("unexpected status: %s", resp.RawResponse.Status)
+                }
+
+		var page geminiListModelsResponse
+                if err := json.Unmarshal(resp.Body, &page); err != nil {
+                        models, parseErr := f.parseModelsResponse(resp.Body)
+                        if parseErr != nil {
+                                return nil, fmt.Errorf("failed to parse models response: paginated unmarshal: %w; fallback parse: %w", err, parseErr)
+                        }
+                        allModels = append(allModels, models...)
+                        return allModels, nil
+                }
+
+		for _, model := range page.Models {
+			allModels = append(allModels, ModelIdentify{
+				ID: strings.TrimPrefix(model.Name, "models/"),
+			})
+		}
+
+		if page.NextPageToken == "" {
+			return allModels, nil
+		}
+
+		if _, ok := seenTokens[page.NextPageToken]; ok {
+			return allModels, nil
+		}
+
+		seenTokens[page.NextPageToken] = struct{}{}
+		pageToken = page.NextPageToken
+	}
+
+	return allModels, nil
+}
+
+func withGeminiModelsPagination(modelsURL string, pageSize int, pageToken string) (string, error) {
+	parsed, err := url.Parse(modelsURL)
+	if err != nil {
+		return "", err
+	}
+
+	query := parsed.Query()
+	if pageSize > 0 {
+		query.Set("pageSize", strconv.Itoa(pageSize))
+	}
+	if pageToken != "" {
+		query.Set("pageToken", pageToken)
+	} else {
+		query.Del("pageToken")
+	}
+
+	parsed.RawQuery = query.Encode()
+	return parsed.String(), nil
 }
 
 // prepareModelsEndpoint returns the models endpoint URL and auth headers for the given channel type.
