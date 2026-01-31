@@ -379,12 +379,14 @@ type ComplexityRoot struct {
 	}
 
 	ChannelProbe struct {
-		Channel             func(childComplexity int) int
-		ChannelID           func(childComplexity int) int
-		ID                  func(childComplexity int) int
-		SuccessRequestCount func(childComplexity int) int
-		Timestamp           func(childComplexity int) int
-		TotalRequestCount   func(childComplexity int) int
+		AvgTimeToFirstTokenMs func(childComplexity int) int
+		AvgTokensPerSecond    func(childComplexity int) int
+		Channel               func(childComplexity int) int
+		ChannelID             func(childComplexity int) int
+		ID                    func(childComplexity int) int
+		SuccessRequestCount   func(childComplexity int) int
+		Timestamp             func(childComplexity int) int
+		TotalRequestCount     func(childComplexity int) int
 	}
 
 	ChannelProbeData struct {
@@ -393,9 +395,11 @@ type ComplexityRoot struct {
 	}
 
 	ChannelProbePoint struct {
-		SuccessRequestCount func(childComplexity int) int
-		Timestamp           func(childComplexity int) int
-		TotalRequestCount   func(childComplexity int) int
+		AvgTimeToFirstTokenMs func(childComplexity int) int
+		AvgTokensPerSecond    func(childComplexity int) int
+		SuccessRequestCount   func(childComplexity int) int
+		Timestamp             func(childComplexity int) int
+		TotalRequestCount     func(childComplexity int) int
 	}
 
 	ChannelProbeSetting struct {
@@ -2898,6 +2902,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ChannelPolicies.Stream(childComplexity), true
 
+	case "ChannelProbe.avgTimeToFirstTokenMs":
+		if e.complexity.ChannelProbe.AvgTimeToFirstTokenMs == nil {
+			break
+		}
+
+		return e.complexity.ChannelProbe.AvgTimeToFirstTokenMs(childComplexity), true
+	case "ChannelProbe.avgTokensPerSecond":
+		if e.complexity.ChannelProbe.AvgTokensPerSecond == nil {
+			break
+		}
+
+		return e.complexity.ChannelProbe.AvgTokensPerSecond(childComplexity), true
 	case "ChannelProbe.channel":
 		if e.complexity.ChannelProbe.Channel == nil {
 			break
@@ -2948,6 +2964,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ChannelProbeData.Points(childComplexity), true
 
+	case "ChannelProbePoint.avgTimeToFirstTokenMs":
+		if e.complexity.ChannelProbePoint.AvgTimeToFirstTokenMs == nil {
+			break
+		}
+
+		return e.complexity.ChannelProbePoint.AvgTimeToFirstTokenMs(childComplexity), true
+	case "ChannelProbePoint.avgTokensPerSecond":
+		if e.complexity.ChannelProbePoint.AvgTokensPerSecond == nil {
+			break
+		}
+
+		return e.complexity.ChannelProbePoint.AvgTokensPerSecond(childComplexity), true
 	case "ChannelProbePoint.successRequestCount":
 		if e.complexity.ChannelProbePoint.SuccessRequestCount == nil {
 			break
@@ -13548,6 +13576,10 @@ func (ec *executionContext) fieldContext_Channel_channelProbes(_ context.Context
 				return ec.fieldContext_ChannelProbe_totalRequestCount(ctx, field)
 			case "successRequestCount":
 				return ec.fieldContext_ChannelProbe_successRequestCount(ctx, field)
+			case "avgTokensPerSecond":
+				return ec.fieldContext_ChannelProbe_avgTokensPerSecond(ctx, field)
+			case "avgTimeToFirstTokenMs":
+				return ec.fieldContext_ChannelProbe_avgTimeToFirstTokenMs(ctx, field)
 			case "timestamp":
 				return ec.fieldContext_ChannelProbe_timestamp(ctx, field)
 			case "channel":
@@ -16703,6 +16735,64 @@ func (ec *executionContext) fieldContext_ChannelProbe_successRequestCount(_ cont
 	return fc, nil
 }
 
+func (ec *executionContext) _ChannelProbe_avgTokensPerSecond(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelProbe) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelProbe_avgTokensPerSecond,
+		func(ctx context.Context) (any, error) {
+			return obj.AvgTokensPerSecond, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelProbe_avgTokensPerSecond(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelProbe",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelProbe_avgTimeToFirstTokenMs(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelProbe) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelProbe_avgTimeToFirstTokenMs,
+		func(ctx context.Context) (any, error) {
+			return obj.AvgTimeToFirstTokenMs, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelProbe_avgTimeToFirstTokenMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelProbe",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ChannelProbe_timestamp(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelProbe) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -16872,6 +16962,10 @@ func (ec *executionContext) fieldContext_ChannelProbeData_points(_ context.Conte
 				return ec.fieldContext_ChannelProbePoint_totalRequestCount(ctx, field)
 			case "successRequestCount":
 				return ec.fieldContext_ChannelProbePoint_successRequestCount(ctx, field)
+			case "avgTokensPerSecond":
+				return ec.fieldContext_ChannelProbePoint_avgTokensPerSecond(ctx, field)
+			case "avgTimeToFirstTokenMs":
+				return ec.fieldContext_ChannelProbePoint_avgTimeToFirstTokenMs(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelProbePoint", field.Name)
 		},
@@ -16961,6 +17055,64 @@ func (ec *executionContext) fieldContext_ChannelProbePoint_successRequestCount(_
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelProbePoint_avgTokensPerSecond(ctx context.Context, field graphql.CollectedField, obj *biz.ChannelProbePoint) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelProbePoint_avgTokensPerSecond,
+		func(ctx context.Context) (any, error) {
+			return obj.AvgTokensPerSecond, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelProbePoint_avgTokensPerSecond(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelProbePoint",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelProbePoint_avgTimeToFirstTokenMs(ctx context.Context, field graphql.CollectedField, obj *biz.ChannelProbePoint) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelProbePoint_avgTimeToFirstTokenMs,
+		func(ctx context.Context) (any, error) {
+			return obj.AvgTimeToFirstTokenMs, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelProbePoint_avgTimeToFirstTokenMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelProbePoint",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
 		},
 	}
 	return fc, nil
@@ -48120,7 +48272,7 @@ func (ec *executionContext) unmarshalInputChannelProbeWhereInput(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "totalRequestCount", "totalRequestCountNEQ", "totalRequestCountIn", "totalRequestCountNotIn", "totalRequestCountGT", "totalRequestCountGTE", "totalRequestCountLT", "totalRequestCountLTE", "successRequestCount", "successRequestCountNEQ", "successRequestCountIn", "successRequestCountNotIn", "successRequestCountGT", "successRequestCountGTE", "successRequestCountLT", "successRequestCountLTE", "timestamp", "timestampNEQ", "timestampIn", "timestampNotIn", "timestampGT", "timestampGTE", "timestampLT", "timestampLTE", "hasChannel", "hasChannelWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "totalRequestCount", "totalRequestCountNEQ", "totalRequestCountIn", "totalRequestCountNotIn", "totalRequestCountGT", "totalRequestCountGTE", "totalRequestCountLT", "totalRequestCountLTE", "successRequestCount", "successRequestCountNEQ", "successRequestCountIn", "successRequestCountNotIn", "successRequestCountGT", "successRequestCountGTE", "successRequestCountLT", "successRequestCountLTE", "avgTokensPerSecond", "avgTokensPerSecondNEQ", "avgTokensPerSecondIn", "avgTokensPerSecondNotIn", "avgTokensPerSecondGT", "avgTokensPerSecondGTE", "avgTokensPerSecondLT", "avgTokensPerSecondLTE", "avgTokensPerSecondIsNil", "avgTokensPerSecondNotNil", "avgTimeToFirstTokenMs", "avgTimeToFirstTokenMsNEQ", "avgTimeToFirstTokenMsIn", "avgTimeToFirstTokenMsNotIn", "avgTimeToFirstTokenMsGT", "avgTimeToFirstTokenMsGTE", "avgTimeToFirstTokenMsLT", "avgTimeToFirstTokenMsLTE", "avgTimeToFirstTokenMsIsNil", "avgTimeToFirstTokenMsNotNil", "timestamp", "timestampNEQ", "timestampIn", "timestampNotIn", "timestampGT", "timestampGTE", "timestampLT", "timestampLTE", "hasChannel", "hasChannelWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -48392,6 +48544,146 @@ func (ec *executionContext) unmarshalInputChannelProbeWhereInput(ctx context.Con
 				return it, err
 			}
 			it.SuccessRequestCountLTE = data
+		case "avgTokensPerSecond":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTokensPerSecond"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AvgTokensPerSecond = data
+		case "avgTokensPerSecondNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTokensPerSecondNEQ"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AvgTokensPerSecondNEQ = data
+		case "avgTokensPerSecondIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTokensPerSecondIn"))
+			data, err := ec.unmarshalOFloat2ᚕfloat64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AvgTokensPerSecondIn = data
+		case "avgTokensPerSecondNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTokensPerSecondNotIn"))
+			data, err := ec.unmarshalOFloat2ᚕfloat64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AvgTokensPerSecondNotIn = data
+		case "avgTokensPerSecondGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTokensPerSecondGT"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AvgTokensPerSecondGT = data
+		case "avgTokensPerSecondGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTokensPerSecondGTE"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AvgTokensPerSecondGTE = data
+		case "avgTokensPerSecondLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTokensPerSecondLT"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AvgTokensPerSecondLT = data
+		case "avgTokensPerSecondLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTokensPerSecondLTE"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AvgTokensPerSecondLTE = data
+		case "avgTokensPerSecondIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTokensPerSecondIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AvgTokensPerSecondIsNil = data
+		case "avgTokensPerSecondNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTokensPerSecondNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AvgTokensPerSecondNotNil = data
+		case "avgTimeToFirstTokenMs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTimeToFirstTokenMs"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AvgTimeToFirstTokenMs = data
+		case "avgTimeToFirstTokenMsNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTimeToFirstTokenMsNEQ"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AvgTimeToFirstTokenMsNEQ = data
+		case "avgTimeToFirstTokenMsIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTimeToFirstTokenMsIn"))
+			data, err := ec.unmarshalOFloat2ᚕfloat64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AvgTimeToFirstTokenMsIn = data
+		case "avgTimeToFirstTokenMsNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTimeToFirstTokenMsNotIn"))
+			data, err := ec.unmarshalOFloat2ᚕfloat64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AvgTimeToFirstTokenMsNotIn = data
+		case "avgTimeToFirstTokenMsGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTimeToFirstTokenMsGT"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AvgTimeToFirstTokenMsGT = data
+		case "avgTimeToFirstTokenMsGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTimeToFirstTokenMsGTE"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AvgTimeToFirstTokenMsGTE = data
+		case "avgTimeToFirstTokenMsLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTimeToFirstTokenMsLT"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AvgTimeToFirstTokenMsLT = data
+		case "avgTimeToFirstTokenMsLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTimeToFirstTokenMsLTE"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AvgTimeToFirstTokenMsLTE = data
+		case "avgTimeToFirstTokenMsIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTimeToFirstTokenMsIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AvgTimeToFirstTokenMsIsNil = data
+		case "avgTimeToFirstTokenMsNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTimeToFirstTokenMsNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AvgTimeToFirstTokenMsNotNil = data
 		case "timestamp":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("timestamp"))
 			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
@@ -68385,6 +68677,10 @@ func (ec *executionContext) _ChannelProbe(ctx context.Context, sel ast.Selection
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "avgTokensPerSecond":
+			out.Values[i] = ec._ChannelProbe_avgTokensPerSecond(ctx, field, obj)
+		case "avgTimeToFirstTokenMs":
+			out.Values[i] = ec._ChannelProbe_avgTimeToFirstTokenMs(ctx, field, obj)
 		case "timestamp":
 			out.Values[i] = ec._ChannelProbe_timestamp(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -68550,6 +68846,10 @@ func (ec *executionContext) _ChannelProbePoint(ctx context.Context, sel ast.Sele
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "avgTokensPerSecond":
+			out.Values[i] = ec._ChannelProbePoint_avgTokensPerSecond(ctx, field, obj)
+		case "avgTimeToFirstTokenMs":
+			out.Values[i] = ec._ChannelProbePoint_avgTimeToFirstTokenMs(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

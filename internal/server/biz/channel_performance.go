@@ -6,15 +6,17 @@ import (
 	"net/http"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
-	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/privacy"
+	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/ringbuffer"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
+	"github.com/looplj/axonhub/internal/pkg/xtime"
 )
 
 const (
@@ -36,160 +38,172 @@ type channelMetrics struct {
 	aggregatedMetrics *AggregatedMetrics
 }
 
-// InitializeAllChannelPerformances ensures every channel has a corresponding performance record.
+// InitializeAllChannelPerformances initializes in-memory performance metrics for all channels.
+// It loads historical data from request_execution table for the last 6 hours.
+// Note: Performance metrics are no longer persisted to database, only kept in memory.
 func (svc *ChannelService) InitializeAllChannelPerformances(ctx context.Context) error {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	client := svc.entFromContext(ctx)
+	// First, load historical data from request_execution table
+	if err := svc.LoadChannelPerformances(ctx); err != nil {
+		log.Error(ctx, "Failed to load channel performances from request executions", log.Cause(err))
+		// Continue to initialize empty metrics for all channels even if loading fails
+	}
 
-	channelIDs, err := client.Channel.Query().IDs(ctx)
+	// Then, ensure all channels have at least an empty metrics structure
+	channelIDs, err := svc.entFromContext(ctx).Channel.Query().IDs(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to query channels: %w", err)
-	}
-
-	if len(channelIDs) == 0 {
-		return nil
-	}
-
-	existingRecords, err := client.ChannelPerformance.Query().Select(channelperformance.FieldChannelID).All(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to query channel performances: %w", err)
-	}
-
-	existingSet := lo.SliceToMap(existingRecords, func(perf *ent.ChannelPerformance) (int, bool) {
-		return perf.ChannelID, true
-	})
-
-	var missingIDs []int
-
-	for _, id := range channelIDs {
-		if _, ok := existingSet[id]; !ok {
-			missingIDs = append(missingIDs, id)
-		}
-	}
-
-	if len(missingIDs) == 0 {
-		return nil
-	}
-
-	creates := make([]*ent.ChannelPerformanceCreate, len(missingIDs))
-	for i, id := range missingIDs {
-		creates[i] = client.ChannelPerformance.Create().
-			SetChannelID(id).
-			SetSuccessRate(0).
-			SetAvgLatencyMs(0).
-			SetAvgTokenPerSecond(0).
-			SetAvgStreamFirstTokenLatencyMs(0).
-			SetAvgStreamTokenPerSecond(0).
-			SetRequestCount(0).
-			SetSuccessCount(0).
-			SetFailureCount(0).
-			SetTotalTokenCount(0).
-			SetTotalRequestLatencyMs(0).
-			SetStreamSuccessCount(0).
-			SetStreamTotalRequestCount(0).
-			SetStreamTotalTokenCount(0).
-			SetStreamTotalRequestLatencyMs(0).
-			SetStreamTotalFirstTokenLatencyMs(0).
-			SetConsecutiveFailures(0)
-	}
-
-	if err := client.ChannelPerformance.CreateBulk(creates...).Exec(ctx); err != nil {
-		return fmt.Errorf("failed to bulk initialize performance for channels: %w", err)
-	}
-
-	log.Info(ctx, "Initialized channel performance records for missing channels",
-		log.Int("count", len(missingIDs)),
-	)
-
-	return nil
-}
-
-// LoadChannelPerformances loads all channel performance metrics from database into memory.
-// This is called after channels are loaded to restore historical metrics.
-func (svc *ChannelService) LoadChannelPerformances(ctx context.Context) error {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
-	// Query all channel performance records
-	performances, err := svc.entFromContext(ctx).ChannelPerformance.Query().All(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to query channel performances: %w", err)
 	}
 
 	svc.channelPerfMetricsLock.Lock()
 	defer svc.channelPerfMetricsLock.Unlock()
 
-	for _, perf := range performances {
-		// Initialize channel metrics for this channel
-		cm := newChannelMetrics(perf.ChannelID)
+	if svc.channelPerfMetrics == nil {
+		svc.channelPerfMetrics = make(map[int]*channelMetrics)
+	}
 
-		// Restore aggregated metrics counters from database
-		cm.aggregatedMetrics.RequestCount = perf.RequestCount % 150
-		cm.aggregatedMetrics.SuccessCount = perf.SuccessCount % 150
-		cm.aggregatedMetrics.FailureCount = perf.FailureCount % 150
-		cm.aggregatedMetrics.TotalTokenCount = perf.TotalTokenCount
-		cm.aggregatedMetrics.TotalRequestLatencyMs = perf.TotalRequestLatencyMs
-		cm.aggregatedMetrics.StreamSuccessCount = perf.StreamSuccessCount
-		cm.aggregatedMetrics.StreamTotalRequestCount = perf.StreamTotalRequestCount
-		cm.aggregatedMetrics.StreamTotalTokenCount = perf.StreamTotalTokenCount
-		cm.aggregatedMetrics.StreamTotalRequestLatencyMs = perf.StreamTotalRequestLatencyMs
-		cm.aggregatedMetrics.StreamTotalFirstTokenLatencyMs = perf.StreamTotalFirstTokenLatencyMs
-		cm.aggregatedMetrics.ConsecutiveFailures = perf.ConsecutiveFailures
-
-		// Restore last success/failure timestamps
-		cm.aggregatedMetrics.LastSuccessAt = perf.LastSuccessAt
-		cm.aggregatedMetrics.LastFailureAt = perf.LastFailureAt
-
-		// Store in memory map
-		svc.channelPerfMetrics[perf.ChannelID] = cm
-
-		if log.DebugEnabled(ctx) {
-			log.Debug(ctx, "loaded channel performance metrics",
-				log.Int("channel_id", perf.ChannelID),
-				log.Int("success_rate", perf.SuccessRate),
-				log.Int("avg_latency_ms", perf.AvgLatencyMs),
-				log.Float64("avg_token_per_second", float64(perf.AvgTokenPerSecond)),
-				log.Any("last_success_at", perf.LastSuccessAt),
-				log.Any("last_failure_at", perf.LastFailureAt),
-				log.Int64("request_count", perf.RequestCount),
-				log.Int64("success_count", perf.SuccessCount),
-			)
+	for _, id := range channelIDs {
+		if _, exists := svc.channelPerfMetrics[id]; !exists {
+			svc.channelPerfMetrics[id] = newChannelMetrics(id)
 		}
 	}
 
-	log.Info(ctx, "Loaded channel performance metrics from database",
-		log.Int("count", len(performances)),
+	log.Info(ctx, "Initialized in-memory channel performance metrics",
+		log.Int("count", len(channelIDs)),
 	)
 
 	return nil
 }
 
-// InitializeChannelPerformance initializes performance record for a newly created channel.
-func (svc *ChannelService) InitializeChannelPerformance(ctx context.Context, channelID int) error {
-	log.Info(ctx, "initializing channel performance record", log.Int("channel_id", channelID))
-
+// LoadChannelPerformances loads channel performance metrics from request_execution table.
+// It queries the last 6 hours of data to initialize in-memory metrics for load balancing.
+// Uses a single GROUP BY query to fetch all channel metrics at once for better performance.
+func (svc *ChannelService) LoadChannelPerformances(ctx context.Context) error {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	client := svc.entFromContext(ctx)
 
-	_, err := client.ChannelPerformance.Create().
-		SetChannelID(channelID).
-		SetSuccessRate(0).
-		SetAvgLatencyMs(0).
-		SetAvgTokenPerSecond(0).
-		SetAvgStreamFirstTokenLatencyMs(0).
-		SetAvgStreamTokenPerSecond(0).
-		SetRequestCount(0).
-		SetSuccessCount(0).
-		SetFailureCount(0).
-		SetTotalTokenCount(0).
-		SetTotalRequestLatencyMs(0).
-		SetStreamSuccessCount(0).
-		SetStreamTotalRequestCount(0).
-		SetStreamTotalTokenCount(0).
-		SetStreamTotalRequestLatencyMs(0).
-		SetStreamTotalFirstTokenLatencyMs(0).
-		SetConsecutiveFailures(0).
-		Save(ctx)
+	// Query last 6 hours of request execution data
+	since := xtime.UTCNow().Add(-6 * time.Hour)
 
-	return err
+	// Fetch all channel metrics in a single GROUP BY query
+	metrics, err := svc.loadAllChannelMetricsFromExecutions(ctx, client, since)
+	if err != nil {
+		return fmt.Errorf("failed to load channel metrics: %w", err)
+	}
+
+	if len(metrics) == 0 {
+		log.Info(ctx, "No request execution data found in the last 6 hours")
+		return nil
+	}
+
+	svc.channelPerfMetricsLock.Lock()
+	defer svc.channelPerfMetricsLock.Unlock()
+
+	if svc.channelPerfMetrics == nil {
+		svc.channelPerfMetrics = make(map[int]*channelMetrics)
+	}
+
+	for channelID, m := range metrics {
+		cm := newChannelMetrics(channelID)
+		svc.populateChannelMetrics(cm, m)
+		svc.channelPerfMetrics[channelID] = cm
+	}
+
+	log.Info(ctx, "Loaded channel performance metrics from request executions",
+		log.Int("count", len(metrics)),
+	)
+
+	return nil
+}
+
+// channelMetricsResult holds aggregated metrics for a single channel.
+// Only includes fields needed for load balancing.
+type channelMetricsResult struct {
+	ChannelID     int        `json:"channel_id"`
+	RequestCount  int64      `json:"request_count"`
+	LastFailureAt *time.Time `json:"last_failure_at"`
+}
+
+// loadAllChannelMetricsFromExecutions loads metrics for all channels using a single GROUP BY query.
+// Uses raw SQL via Modify to get request count and last failure time in one query.
+func (svc *ChannelService) loadAllChannelMetricsFromExecutions(ctx context.Context, client *ent.Client, since time.Time) (map[int]*channelMetricsResult, error) {
+	// Single query to get request count and last failure time for all channels
+	type queryResult struct {
+		ChannelID     int       `json:"channel_id"`
+		RequestCount  int64     `json:"request_count"`
+		LastFailureAt time.Time `json:"last_failure_at"`
+	}
+
+	var results []queryResult
+
+	err := client.RequestExecution.Query().
+		Where(
+			requestexecution.CreatedAtGTE(since),
+			requestexecution.ChannelIDNotNil(),
+			requestexecution.StatusNotIn(requestexecution.StatusPending, requestexecution.StatusProcessing),
+		).
+		Modify(func(s *sql.Selector) {
+			// Use a subquery or join to get last failure time per channel
+			// For simplicity, we use MAX(CASE WHEN status = 'failed' THEN created_at END) to get last failure
+			s.Select(
+				s.C(requestexecution.FieldChannelID),
+				sql.As(sql.Count("*"), "request_count"),
+				sql.As(fmt.Sprintf("MAX(CASE WHEN status = '%s' THEN %s END)", requestexecution.StatusFailed, s.C(requestexecution.FieldCreatedAt)), "last_failure_at"),
+			).
+				GroupBy(s.C(requestexecution.FieldChannelID))
+		}).
+		Scan(ctx, &results)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query channel metrics: %w", err)
+	}
+
+	metricsMap := make(map[int]*channelMetricsResult)
+
+	for _, r := range results {
+		m := &channelMetricsResult{
+			ChannelID:    r.ChannelID,
+			RequestCount: r.RequestCount,
+		}
+		if !r.LastFailureAt.IsZero() {
+			m.LastFailureAt = &r.LastFailureAt
+		}
+
+		metricsMap[r.ChannelID] = m
+	}
+
+	return metricsMap, nil
+}
+
+// populateChannelMetrics populates channelMetrics from the aggregated result.
+// Only populates fields needed for load balancing.
+func (svc *ChannelService) populateChannelMetrics(cm *channelMetrics, m *channelMetricsResult) {
+	// Populate aggregated metrics - only fields needed for load balancing
+	cm.aggregatedMetrics.RequestCount = m.RequestCount
+
+	if m.LastFailureAt != nil {
+		cm.aggregatedMetrics.LastFailureAt = m.LastFailureAt
+	}
+
+	// Note: ConsecutiveFailures is not loaded from historical data.
+	// It will be tracked in real-time as requests are processed.
+}
+
+// InitializeChannelPerformance initializes in-memory performance metrics for a newly created channel.
+// Note: Performance metrics are no longer persisted to database, only kept in memory.
+func (svc *ChannelService) InitializeChannelPerformance(ctx context.Context, channelID int) error {
+	log.Info(ctx, "initializing in-memory channel performance metrics", log.Int("channel_id", channelID))
+
+	svc.channelPerfMetricsLock.Lock()
+	defer svc.channelPerfMetricsLock.Unlock()
+
+	if svc.channelPerfMetrics == nil {
+		svc.channelPerfMetrics = make(map[int]*channelMetrics)
+	}
+
+	if _, exists := svc.channelPerfMetrics[channelID]; !exists {
+		svc.channelPerfMetrics[channelID] = newChannelMetrics(channelID)
+	}
+
+	return nil
 }
 
 // timeSlotMetrics holds metrics for a specific second.
@@ -267,15 +281,15 @@ func (m *metricsRecord) CalculateAvgStreamTokensPerSecond() float64 {
 type AggregatedMetrics struct {
 	metricsRecord
 
-	LastSuccessAt *time.Time
-	LastFailureAt *time.Time
+	LastSelectedAt *time.Time
+	LastFailureAt  *time.Time
 }
 
 func (m *AggregatedMetrics) Clone() *AggregatedMetrics {
 	return &AggregatedMetrics{
-		metricsRecord: m.metricsRecord,
-		LastSuccessAt: m.LastSuccessAt,
-		LastFailureAt: m.LastFailureAt,
+		metricsRecord:  m.metricsRecord,
+		LastSelectedAt: m.LastSelectedAt,
+		LastFailureAt:  m.LastFailureAt,
 	}
 }
 
@@ -296,7 +310,7 @@ func newChannelMetrics(channelID int) *channelMetrics {
 func (cm *channelMetrics) recordSuccess(slot *timeSlotMetrics, perf *PerformanceRecord, firstTokenLatencyMs, requestLatencyMs int64) {
 	slot.SuccessCount++
 	cm.aggregatedMetrics.SuccessCount++
-	cm.aggregatedMetrics.LastSuccessAt = &perf.EndTime
+	cm.aggregatedMetrics.LastSelectedAt = &perf.EndTime
 
 	// Reset consecutive failures on success
 	cm.aggregatedMetrics.ConsecutiveFailures = 0
@@ -350,77 +364,6 @@ func (cm *channelMetrics) getOrCreateTimeSlot(ts int64, endTime time.Time, windo
 	cm.window.Push(ts, slot)
 
 	return slot
-}
-
-// RecordMetrics records performance metrics for a channel.
-// This directly saves the period metrics to database.
-func (svc *ChannelService) RecordMetrics(ctx context.Context, channelID int, metrics *AggregatedMetrics) {
-	if metrics == nil {
-		return
-	}
-
-	defer func() {
-		if r := recover(); r != nil {
-			log.Error(ctx, "panic in flush performance metrics", log.Any("panic", r))
-		}
-	}()
-
-	now := time.Now()
-
-	// Calculate metrics using the new methods
-	successRate := metrics.CalculateSuccessRate()
-	avgLatencyMs := metrics.CalculateAvgLatencyMs()
-	avgTokensPerSecond := metrics.CalculateAvgTokensPerSecond()
-	avgFirstTokenLatencyMs := metrics.CalculateAvgFirstTokenLatencyMs()
-	avgStreamTokensPerSecond := metrics.CalculateAvgStreamTokensPerSecond()
-
-	// Ensure ChannelPerformance record exists
-	perf, err := svc.db.ChannelPerformance.Query().
-		Where(channelperformance.ChannelID(channelID)).
-		First(ctx)
-	if err != nil {
-		log.Error(ctx, "Failed to query channel performance", log.Cause(err))
-		return
-	}
-
-	// Update metrics with both calculated averages and raw counters
-	update := svc.db.ChannelPerformance.UpdateOneID(perf.ID).
-		SetSuccessRate(int(successRate)).
-		SetAvgLatencyMs(int(avgLatencyMs)).
-		SetAvgTokenPerSecond(int(avgTokensPerSecond)).
-		SetAvgStreamFirstTokenLatencyMs(int(avgFirstTokenLatencyMs)).
-		SetAvgStreamTokenPerSecond(avgStreamTokensPerSecond).
-		SetNillableLastSuccessAt(metrics.LastSuccessAt).
-		SetNillableLastFailureAt(metrics.LastFailureAt).
-		SetRequestCount(metrics.RequestCount).
-		SetSuccessCount(metrics.SuccessCount).
-		SetFailureCount(metrics.FailureCount).
-		SetTotalTokenCount(metrics.TotalTokenCount).
-		SetTotalRequestLatencyMs(metrics.TotalRequestLatencyMs).
-		SetStreamSuccessCount(metrics.StreamSuccessCount).
-		SetStreamTotalRequestCount(metrics.StreamTotalRequestCount).
-		SetStreamTotalTokenCount(metrics.StreamTotalTokenCount).
-		SetStreamTotalRequestLatencyMs(metrics.StreamTotalRequestLatencyMs).
-		SetStreamTotalFirstTokenLatencyMs(metrics.StreamTotalFirstTokenLatencyMs).
-		SetConsecutiveFailures(metrics.ConsecutiveFailures).
-		SetUpdatedAt(now)
-
-	_, err = update.Save(ctx)
-	if err != nil {
-		log.Error(ctx, "Failed to update channel performance", log.Cause(err))
-		return
-	}
-
-	if log.DebugEnabled(ctx) {
-		log.Debug(ctx, "Recorded channel performance metrics",
-			log.Int("channel_id", channelID),
-			log.Int("success_rate", int(successRate)),
-			log.Int("avg_latency_ms", int(avgLatencyMs)),
-			log.Int("avg_token_per_second", int(avgTokensPerSecond)),
-			log.Int("avg_stream_first_token_ms", int(avgFirstTokenLatencyMs)),
-			log.Float64("avg_stream_token_per_second", avgStreamTokensPerSecond),
-		)
-	}
 }
 
 func (svc *ChannelService) markChannelUnavailable(ctx context.Context, channelID int, errorStatusCode int) {
@@ -607,49 +550,8 @@ func (cm *channelMetrics) cleanupExpiredSlots(cutoff time.Time) {
 
 // startPerformanceProcess starts the background goroutine to flush metrics to database.
 func (svc *ChannelService) startPerformanceProcess() {
-	ticker := time.NewTicker(performanceFlushInterval * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case perf := <-svc.perfCh:
-			svc.RecordPerformance(context.Background(), perf)
-		case <-ticker.C:
-			err := svc.Executors.ExecuteFunc(func(ctx context.Context) {
-				svc.flushPerformanceMetrics(ctx)
-			})
-			if err != nil {
-				log.Error(context.Background(), "failed to execute flush performance metrics", log.Cause(err))
-			}
-		}
-	}
-}
-
-// flushPerformanceMetrics flushes accumulated metrics to database.
-func (svc *ChannelService) flushPerformanceMetrics(ctx context.Context) {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Error(ctx, "panic in flush performance metrics", log.Any("panic", r))
-		}
-	}()
-
-	svc.channelPerfMetricsLock.RLock()
-
-	metricsToFlush := map[int]*AggregatedMetrics{}
-	for _, cm := range svc.channelPerfMetrics {
-		metricsToFlush[cm.channelID] = cm.aggregatedMetrics.Clone()
-	}
-
-	svc.channelPerfMetricsLock.RUnlock()
-
-	for channelID, aggregatedMetrics := range metricsToFlush {
-		// Skip if no data in the sliding window (no requests in the last 10 minutes)
-		// This prevents overwriting database values with zeros when there's no recent activity
-		if aggregatedMetrics.RequestCount == 0 {
-			continue
-		}
-
-		svc.RecordMetrics(ctx, channelID, aggregatedMetrics)
+	for perf := range svc.perfCh {
+		svc.RecordPerformance(context.Background(), perf)
 	}
 }
 
@@ -666,9 +568,9 @@ func (svc *ChannelService) GetChannelMetrics(ctx context.Context, channelID int)
 
 	// Return a copy of the aggregated metrics to avoid concurrent modification
 	return &AggregatedMetrics{
-		metricsRecord: cm.aggregatedMetrics.metricsRecord,
-		LastSuccessAt: cm.aggregatedMetrics.LastSuccessAt,
-		LastFailureAt: cm.aggregatedMetrics.LastFailureAt,
+		metricsRecord:  cm.aggregatedMetrics.metricsRecord,
+		LastSelectedAt: cm.aggregatedMetrics.LastSelectedAt,
+		LastFailureAt:  cm.aggregatedMetrics.LastFailureAt,
 	}, nil
 }
 
@@ -693,8 +595,8 @@ func (svc *ChannelService) IncrementChannelSelection(channelID int) {
 
 	// Update last activity time to current time
 	now := time.Now()
-	if cm.aggregatedMetrics.LastSuccessAt == nil || cm.aggregatedMetrics.LastSuccessAt.Before(now) {
-		cm.aggregatedMetrics.LastSuccessAt = &now
+	if cm.aggregatedMetrics.LastSelectedAt == nil || cm.aggregatedMetrics.LastSelectedAt.Before(now) {
+		cm.aggregatedMetrics.LastSelectedAt = &now
 	}
 
 	// Log debug message if enabled

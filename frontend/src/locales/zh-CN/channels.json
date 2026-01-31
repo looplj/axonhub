@@ -12,6 +12,8 @@
   "channels.columns.health": "健康状态",
   "channels.columns.healthTooltip.probeTime": "探测时间",
   "channels.columns.healthTooltip.successRate": "成功率",
+  "channels.columns.healthTooltip.firstTokenLatency": "首字延迟",
+  "channels.columns.healthTooltip.tokensPerSecond": "吞吐速度",
   "channels.columns.tags": "标签",
   "channels.columns.baseURL": "Base URL",
   "channels.columns.supportedModels": "支持的模型",

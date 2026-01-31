@@ -288,108 +288,6 @@ func TestMetricsRecord_CalculateAvgStreamTokensPerSecond(t *testing.T) {
 	}
 }
 
-func TestChannelService_RecordMetrics(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
-	defer client.Close()
-
-	ctx := context.Background()
-	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
-	svc := &ChannelService{
-		AbstractService: &AbstractService{
-			db: client,
-		},
-		channelErrorCounts: make(map[int]map[int]int),
-	}
-
-	// Create a test channel
-	ch, err := client.Channel.Create().
-		SetName("test-channel").
-		SetType(channel.TypeOpenai).
-		SetBaseURL("https://api.openai.com").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key"}).
-		SetSupportedModels([]string{"gpt-4"}).
-		SetDefaultTestModel("gpt-4").
-		Save(ctx)
-	require.NoError(t, err)
-
-	// Initialize performance record
-	err = svc.InitializeChannelPerformance(ctx, ch.ID)
-	require.NoError(t, err)
-
-	tests := []struct {
-		name         string
-		metrics      *AggregatedMetrics
-		channelID    int
-		validateFunc func(t *testing.T)
-	}{
-		{
-			name: "record metrics with all fields",
-			metrics: &AggregatedMetrics{
-				metricsRecord: metricsRecord{
-					RequestCount:                   100,
-					SuccessCount:                   90,
-					FailureCount:                   10,
-					TotalTokenCount:                9000,
-					TotalRequestLatencyMs:          45000,
-					StreamTotalRequestCount:        50,
-					StreamTotalTokenCount:          5000,
-					StreamTotalRequestLatencyMs:    50000, // 50 seconds total for 100 tokens/sec
-					StreamTotalFirstTokenLatencyMs: 2500,
-					StreamSuccessCount:             50,
-				},
-				LastSuccessAt: func() *time.Time { t := time.Now(); return &t }(),
-				LastFailureAt: func() *time.Time { t := time.Now().Add(-1 * time.Hour); return &t }(),
-			},
-			channelID: ch.ID,
-			validateFunc: func(t *testing.T) {
-				perf, err := client.ChannelPerformance.Query().First(ctx)
-				require.NoError(t, err)
-				require.Equal(t, 90, perf.SuccessRate)
-				require.Equal(t, 500, perf.AvgLatencyMs)
-				require.Equal(t, 200, perf.AvgTokenPerSecond)
-				require.Equal(t, 50, perf.AvgStreamFirstTokenLatencyMs)
-				require.Equal(t, 100.0, perf.AvgStreamTokenPerSecond)
-			},
-		},
-		{
-			name: "record metrics with zero success",
-			metrics: &AggregatedMetrics{
-				metricsRecord: metricsRecord{
-					RequestCount:          10,
-					SuccessCount:          0,
-					FailureCount:          10,
-					TotalTokenCount:       0,
-					TotalRequestLatencyMs: 0,
-				},
-			},
-			channelID: ch.ID,
-			validateFunc: func(t *testing.T) {
-				perf, err := client.ChannelPerformance.Query().First(ctx)
-				require.NoError(t, err)
-				require.Equal(t, 0, perf.SuccessRate)
-				require.Equal(t, 0, perf.AvgLatencyMs)
-			},
-		},
-		{
-			name:      "nil metrics",
-			metrics:   nil,
-			channelID: ch.ID,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			svc.RecordMetrics(ctx, tt.channelID, tt.metrics)
-
-			if tt.validateFunc != nil {
-				tt.validateFunc(t)
-			}
-		})
-	}
-}
-
 func TestAggregatedMetrics_AllCalculations(t *testing.T) {
 	// Test all calculations together
 	metrics := &AggregatedMetrics{
@@ -405,8 +303,8 @@ func TestAggregatedMetrics_AllCalculations(t *testing.T) {
 			StreamTotalFirstTokenLatencyMs: 2000,
 			StreamSuccessCount:             40,
 		},
-		LastSuccessAt: lo.ToPtr(time.Now()),
-		LastFailureAt: lo.ToPtr(time.Now().Add(-1 * time.Hour)),
+		LastSelectedAt: lo.ToPtr(time.Now()),
+		LastFailureAt:  lo.ToPtr(time.Now().Add(-1 * time.Hour)),
 	}
 
 	// Test all calculations
@@ -483,7 +381,7 @@ func TestChannelMetrics_RecordSuccess(t *testing.T) {
 				require.Equal(t, int64(100), slot.TotalTokenCount)
 				require.Equal(t, int64(100), cm.aggregatedMetrics.TotalTokenCount)
 				require.Equal(t, int64(0), slot.StreamSuccessCount)
-				require.NotNil(t, cm.aggregatedMetrics.LastSuccessAt)
+				require.NotNil(t, cm.aggregatedMetrics.LastSelectedAt)
 			},
 		},
 		{

@@ -123,11 +123,11 @@ func TestRoundRobinStrategy_Score_InactivityDecay(t *testing.T) {
 
 	activeMetrics := &biz.AggregatedMetrics{}
 	activeMetrics.RequestCount = 500
-	activeMetrics.LastSuccessAt = &activeTime
+	activeMetrics.LastSelectedAt = &activeTime
 
 	idleMetrics := &biz.AggregatedMetrics{}
 	idleMetrics.RequestCount = 500
-	idleMetrics.LastSuccessAt = &idleTime
+	idleMetrics.LastSelectedAt = &idleTime
 
 	mockProvider := &mockMetricsProvider{
 		metrics: map[int]*biz.AggregatedMetrics{
@@ -636,11 +636,11 @@ func TestWeightRoundRobinStrategy_Score_InactivityDecay(t *testing.T) {
 
 	activeMetrics := &biz.AggregatedMetrics{}
 	activeMetrics.RequestCount = 400
-	activeMetrics.LastSuccessAt = &activeTime
+	activeMetrics.LastSelectedAt = &activeTime
 
 	idleMetrics := &biz.AggregatedMetrics{}
 	idleMetrics.RequestCount = 400
-	idleMetrics.LastSuccessAt = &idleTime
+	idleMetrics.LastSelectedAt = &idleTime
 
 	mockProvider := &mockMetricsProvider{
 		metrics: map[int]*biz.AggregatedMetrics{

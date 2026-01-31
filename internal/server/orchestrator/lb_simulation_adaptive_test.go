@@ -105,8 +105,8 @@ func (f *fakeAdaptiveMetricsProvider) GetChannelMetrics(_ context.Context, chann
 	}
 
 	m := &biz.AggregatedMetrics{
-		LastSuccessAt: lastSuccessAt,
-		LastFailureAt: lastFailureAt,
+		LastSelectedAt: lastSuccessAt,
+		LastFailureAt:  lastFailureAt,
 	}
 	m.RequestCount = ch.requestCount
 	m.SuccessCount = ch.successCount

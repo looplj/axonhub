@@ -73,12 +73,6 @@ const CHANNELS_QUERY = `
           orderingWeight
           errorMessage
           remark
-          channelPerformance {
-            avgLatencyMs
-            avgTokenPerSecond
-            avgStreamFirstTokenLatencyMs
-            avgStreamTokenPerSecond
-          }
         }
         cursor
       }
@@ -592,12 +586,6 @@ const QUERY_CHANNELS_QUERY = `
           orderingWeight
           errorMessage
           remark
-          channelPerformance {
-            avgLatencyMs
-            avgTokenPerSecond
-            avgStreamFirstTokenLatencyMs
-            avgStreamTokenPerSecond
-          }
         }
         cursor
       }
@@ -1265,6 +1253,8 @@ const CHANNEL_PROBE_DATA_QUERY = `
         timestamp
         totalRequestCount
         successRequestCount
+        avgTokensPerSecond
+        avgTimeToFirstTokenMs
       }
     }
   }
