@@ -710,9 +710,8 @@ func TestOutboundTransformer_RawURL_Embedding(t *testing.T) {
 			name: "raw URL enabled for embedding",
 			config: &Config{
 				PlatformType: PlatformOpenAI,
-				BaseURL:      "https://custom.api.com/v100",
+				BaseURL:      "https://custom.api.com/v100#",
 				APIKey:       "test-key",
-				RawURL:       true,
 			},
 			request: &llm.Request{
 				RequestType: llm.RequestTypeEmbedding,

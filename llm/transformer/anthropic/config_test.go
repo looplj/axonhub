@@ -13,17 +13,15 @@ import (
 func TestOutboundTransformer_PlatformConfigurations(t *testing.T) {
 	tests := []struct {
 		name           string
-		setupFunc      func(*OutboundTransformer)
+		baseURL        string
 		expectedURL    string
 		expectedHeader string
 		model          string
 		stream         bool
 	}{
 		{
-			name: "Direct Anthropic API",
-			setupFunc: func(transformer *OutboundTransformer) {
-				transformer.config.BaseURL = "https://api.anthropic.com"
-			},
+			name:           "Direct Anthropic API",
+			baseURL:        "https://api.anthropic.com",
 			expectedURL:    "https://api.anthropic.com/v1/messages",
 			expectedHeader: "2023-06-01",
 			model:          "claude-3-sonnet-20240229",
@@ -33,11 +31,8 @@ func TestOutboundTransformer_PlatformConfigurations(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create transformer
-			transformer, _ := NewOutboundTransformer("", "test-api-key")
-
-			// Apply platform-specific setup
-			tt.setupFunc(transformer.(*OutboundTransformer))
+			// Create transformer with proper baseURL
+			transformer, _ := NewOutboundTransformer(tt.baseURL, "test-api-key")
 
 			// Create test request
 			maxTokens := int64(1000)

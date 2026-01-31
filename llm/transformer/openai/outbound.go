@@ -76,12 +76,16 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		return nil, fmt.Errorf("invalid OpenAI transformer configuration: %w", err)
 	}
 
-	if before, ok := strings.CutSuffix(config.BaseURL, "#"); ok {
-		config.BaseURL = before
+	if strings.HasSuffix(config.BaseURL, "#") {
 		config.RawURL = true
 	}
 
-	config.BaseURL = strings.TrimSuffix(config.BaseURL, "/")
+	// For Azure, don't normalize with version - it has special URL format
+	if config.PlatformType == PlatformAzure {
+		config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "")
+	} else {
+		config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
+	}
 
 	rt, err := oairesp.NewOutboundTransformerWithConfig(&oairesp.Config{
 		BaseURL: config.BaseURL,
@@ -291,7 +295,7 @@ func (t *OutboundTransformer) TransformStreamChunk(
 
 // buildFullRequestURL constructs the appropriate URL based on the platform.
 func (t *OutboundTransformer) buildFullRequestURL(_ *llm.Request) (string, error) {
-	//nolint:exhaustive // Chcked.
+	//nolint:exhaustive // Checked.
 	switch t.config.PlatformType {
 	case PlatformAzure:
 		if strings.HasSuffix(t.config.BaseURL, "/openai/v1") {
@@ -309,22 +313,8 @@ func (t *OutboundTransformer) buildFullRequestURL(_ *llm.Request) (string, error
 		return fmt.Sprintf("%s/openai/v1/chat/completions?api-version=%s",
 			t.config.BaseURL, t.config.APIVersion), nil
 	default:
-		// RawURL is true, use the base URL as is
-		if t.config.RawURL {
-			return t.config.BaseURL + "/chat/completions", nil
-		}
-
-		// Standard OpenAI API
-		// Check if URL already contains /v1/ in the path (e.g., https://api.deepinfra.com/v1/openai)
-		if strings.Contains(t.config.BaseURL, "/v1/") {
-			return t.config.BaseURL + "/chat/completions", nil
-		}
-
-		if strings.HasSuffix(t.config.BaseURL, "/v1") {
-			return t.config.BaseURL + "/chat/completions", nil
-		}
-
-		return t.config.BaseURL + "/v1/chat/completions", nil
+		// BaseURL is already normalized with version in NewOutboundTransformerWithConfig
+		return t.config.BaseURL + "/chat/completions", nil
 	}
 }
 
@@ -359,32 +349,6 @@ func (t *OutboundTransformer) SetConfig(config *Config) {
 	}
 
 	t.config = config
-}
-
-// ConfigureForAzure configures the transformer for Azure OpenAI.
-func (t *OutboundTransformer) ConfigureForAzure(resourceName, apiVersion, apiKey string) error {
-	// Create new Azure configuration
-	newConfig := &Config{
-		PlatformType: PlatformAzure,
-		APIVersion:   apiVersion,
-		APIKey:       apiKey,
-	}
-
-	// Set base URL only if resource name is provided
-	if resourceName != "" {
-		newConfig.BaseURL = fmt.Sprintf("https://%s.openai.azure.com", resourceName)
-	}
-
-	// Validate the new configuration
-	err := validateConfig(newConfig)
-	if err != nil {
-		return fmt.Errorf("invalid Azure configuration: %w", err)
-	}
-
-	// Apply the validated configuration
-	t.config = newConfig
-
-	return nil
 }
 
 // GetConfig returns the current configuration.

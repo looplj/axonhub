@@ -58,13 +58,8 @@ func TestNewOutboundTransformer(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, transformer)
 				require.Equal(t, tt.apiKey, transformer.config.APIKey)
-				// Base URL should have trailing slash removed
-				expectedURL := tt.baseURL
-				if expectedURL == "https://api.openai.com/" {
-					expectedURL = "https://api.openai.com"
-				}
-
-				require.Equal(t, expectedURL, transformer.config.BaseURL)
+				// Base URL should be normalized with v1 version
+				require.Equal(t, "https://api.openai.com/v1", transformer.config.BaseURL)
 			}
 		})
 	}
@@ -103,7 +98,7 @@ func TestOutboundTransformer_buildFullRequestURL(t *testing.T) {
 		},
 		{
 			name:     "raw url with explicit config",
-			baseURL:  "https://api.openai.com/custom",
+			baseURL:  "https://api.openai.com/custom#",
 			rawURL:   true,
 			expected: "https://api.openai.com/custom/responses",
 		},

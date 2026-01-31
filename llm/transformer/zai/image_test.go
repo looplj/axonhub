@@ -15,7 +15,7 @@ import (
 
 func TestBuildImageGenerationAPIRequest(t *testing.T) {
 	config := &Config{
-		BaseURL: "https://api.example.com",
+		BaseURL: "https://api.example.com/v4",
 		APIKey:  "test-key",
 	}
 
@@ -43,7 +43,7 @@ func TestBuildImageGenerationAPIRequest(t *testing.T) {
 				Modalities: []string{"image"},
 			},
 			expectError: false,
-			expectURL:   "https://api.example.com/images/generations",
+			expectURL:   "https://api.example.com/v4/images/generations",
 		},
 		{
 			name: "image generation with quality and size",
@@ -69,7 +69,7 @@ func TestBuildImageGenerationAPIRequest(t *testing.T) {
 				},
 			},
 			expectError: false,
-			expectURL:   "https://api.example.com/images/generations",
+			expectURL:   "https://api.example.com/v4/images/generations",
 		},
 		{
 			name: "image generation with user_id from metadata",
@@ -89,7 +89,7 @@ func TestBuildImageGenerationAPIRequest(t *testing.T) {
 				},
 			},
 			expectError: false,
-			expectURL:   "https://api.example.com/images/generations",
+			expectURL:   "https://api.example.com/v4/images/generations",
 		},
 		{
 			name: "image generation with watermark disabled",
@@ -114,7 +114,7 @@ func TestBuildImageGenerationAPIRequest(t *testing.T) {
 				},
 			},
 			expectError: false,
-			expectURL:   "https://api.example.com/images/generations",
+			expectURL:   "https://api.example.com/v4/images/generations",
 		},
 		{
 			name: "invalid user_id length",

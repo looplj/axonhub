@@ -1305,9 +1305,8 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 			name: "raw URL with custom endpoint without version",
 			config: &Config{
 				Type:    PlatformDirect,
-				BaseURL: "https://custom-endpoint.com/api/llm",
+				BaseURL: "https://custom-endpoint.com/api/llm#",
 				APIKey:  "test-key",
-				RawURL:  true,
 			},
 			request: &llm.Request{
 				Model:     "claude-3-sonnet-20240229",
