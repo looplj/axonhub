@@ -201,6 +201,66 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			},
 		},
 		{
+			name: "request with reasoning and summary",
+			httpReq: &httpclient.Request{
+				Body: []byte(`{
+					"model": "o3",
+					"input": "Solve this problem",
+					"reasoning": {
+						"effort": "medium",
+						"summary": "detailed"
+					}
+				}`),
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *llm.Request) {
+				require.Equal(t, "medium", result.ReasoningEffort)
+				require.NotNil(t, result.ReasoningSummary)
+				require.Equal(t, "detailed", *result.ReasoningSummary)
+			},
+		},
+		{
+			name: "request with reasoning and generate_summary (deprecated)",
+			httpReq: &httpclient.Request{
+				Body: []byte(`{
+					"model": "o3",
+					"input": "Solve this problem",
+					"reasoning": {
+						"effort": "low",
+						"generate_summary": "concise"
+					}
+				}`),
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *llm.Request) {
+				require.Equal(t, "low", result.ReasoningEffort)
+				require.NotNil(t, result.ReasoningGenerateSummary)
+				require.Equal(t, "concise", *result.ReasoningGenerateSummary)
+			},
+		},
+		{
+			name: "request with reasoning both summary and generate_summary - summary takes priority",
+			httpReq: &httpclient.Request{
+				Body: []byte(`{
+					"model": "o3",
+					"input": "Solve this problem",
+					"reasoning": {
+						"effort": "high",
+						"summary": "auto",
+						"generate_summary": "detailed"
+					}
+				}`),
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *llm.Request) {
+				require.Equal(t, "high", result.ReasoningEffort)
+				require.NotNil(t, result.ReasoningSummary)
+				require.Equal(t, "auto", *result.ReasoningSummary)
+				// When both are present, summary takes priority
+				require.Nil(t, result.ReasoningGenerateSummary)
+			},
+		},
+		{
 			name: "request with auto tool choice mode",
 			httpReq: &httpclient.Request{
 				Body: []byte(`{

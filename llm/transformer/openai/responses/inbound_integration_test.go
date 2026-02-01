@@ -123,6 +123,8 @@ func TestInboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 
 			// Copy TransformerMetadata from result as it contains dynamic fields (include, prompt_cache_key, etc.)
 			expected.TransformerMetadata = result.TransformerMetadata
+			// Copy TransformOptions from result as it contains dynamic fields (array_inputs, etc.)
+			expected.TransformOptions = result.TransformOptions
 			if !xtest.Equal(expected, *result) {
 				t.Errorf("diff: %v", cmp.Diff(expected, *result))
 			}

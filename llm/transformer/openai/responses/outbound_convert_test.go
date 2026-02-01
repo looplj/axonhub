@@ -404,8 +404,10 @@ func TestConvertReasoning(t *testing.T) {
 		{
 			name: "nil reasoning fields",
 			req: &llm.Request{
-				ReasoningEffort: "",
-				ReasoningBudget: nil,
+				ReasoningEffort:          "",
+				ReasoningBudget:          nil,
+				ReasoningSummary:         nil,
+				ReasoningGenerateSummary: nil,
 			},
 			expected: nil,
 		},
@@ -440,6 +442,52 @@ func TestConvertReasoning(t *testing.T) {
 			expected: &Reasoning{
 				Effort:    "medium",
 				MaxTokens: nil, // Should be nil when effort is specified
+			},
+		},
+		{
+			name: "with summary specified",
+			req: &llm.Request{
+				ReasoningEffort:  "high",
+				ReasoningSummary: lo.ToPtr("detailed"),
+				ReasoningBudget:  lo.ToPtr(int64(5000)),
+			},
+			expected: &Reasoning{
+				Effort:    "high",
+				MaxTokens: nil, // effort takes priority
+				Summary:   "detailed",
+			},
+		},
+		{
+			name: "with generate_summary specified (deprecated)",
+			req: &llm.Request{
+				ReasoningEffort:          "medium",
+				ReasoningGenerateSummary: lo.ToPtr("concise"),
+			},
+			expected: &Reasoning{
+				Effort:          "medium",
+				MaxTokens:       nil,
+				GenerateSummary: "concise",
+			},
+		},
+		{
+			name: "with summary and generate_summary - summary takes priority",
+			req: &llm.Request{
+				ReasoningEffort:          "low",
+				ReasoningSummary:         lo.ToPtr("auto"),
+				ReasoningGenerateSummary: lo.ToPtr("detailed"),
+			},
+			expected: &Reasoning{
+				Effort:  "low",
+				Summary: "auto",
+			},
+		},
+		{
+			name: "with only summary specified (no effort or budget)",
+			req: &llm.Request{
+				ReasoningSummary: lo.ToPtr("concise"),
+			},
+			expected: &Reasoning{
+				Summary: "concise",
 			},
 		},
 	}
