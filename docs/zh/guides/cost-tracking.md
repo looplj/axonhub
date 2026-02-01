@@ -91,6 +91,9 @@ AxonHub 支持三种定价模式：
 
 1. 进入 **渠道** → **模型价格**
 2. 为每个模型设置定价项目：
+
+![模型定价](../../screenshots/axonhub-model-price.png)
+
    - 输入价格 (`prompt_tokens`)
    - 输出价格 (`completion_tokens`)
    - 缓存读取价格 (`prompt_cached_tokens`)

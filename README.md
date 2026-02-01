@@ -409,9 +409,10 @@ Create API keys to authenticate your applications with AxonHub. Each API key can
 
 For detailed information on API key profiles, including configuration examples, validation rules, and best practices, see the [API Key Profile Guide](docs/en/guides/api-key-profiles.md).
 
-### 5. Claude Code/Codex Integration
+### 5. AI Coding Tools Integration
 
 See the dedicated guides for detailed setup steps, troubleshooting, and tips on combining these tools with AxonHub model profiles:
+- [OpenCode Integration Guide](docs/en/guides/opencode-integration.md)
 - [Claude Code Integration Guide](docs/en/guides/claude-code-integration.md)
 - [Codex Integration Guide](docs/en/guides/codex-integration.md)
 

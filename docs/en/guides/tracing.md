@@ -5,6 +5,11 @@
 ### Overview
 AxonHub captures every inbound request in a thread-aware trace without forcing you to adopt a new SDK. If your client already speaks the OpenAI-compatible protocol, you can opt into observability simply by forwarding trace and thread headers—or rely on AxonHub to create them for you automatically.
 
+Key benefits of using tracing include:
+- **Observability**: Gain clear visibility into every user message and all associated agent requests.
+- **Performance Optimization**: AxonHub prioritizes routing requests within the same Trace to the same upstream channel. This significantly improves provider-side cache hit rates (e.g., Anthropic's Prompt Caching), reducing latency and lowering costs.
+- **Efficient Debugging**: Reconstruct the full conversation context using Thread IDs to quickly pinpoint issues in multi-turn interactions.
+
 ### Key Concepts
 - **Thread ID (`AH-Thread-Id`)** – Represents a complete user conversation session. Links multiple traces together so you can follow the entire user journey across multiple messages.
 - **Trace ID (`AH-Trace-Id`)** – Represents a single user message and all the agent requests it triggers. You must provide this header when you need multiple requests to be linked; omitting it causes AxonHub to record requests separately even though it can auto-generate IDs.
@@ -158,6 +163,18 @@ func sendTracedMessage(ctx context.Context, apiKey string) (*anthropic.Message, 
 2. Filter by project, model, or time range to locate the trace of interest.
 3. Expand a trace to inspect spans, prompt/response payloads, timing, and channel metadata.
 4. Jump to the linked thread to review the overall conversation timeline alongside trace details.
+
+<table>
+  <tr align="center">
+    <td align="center">
+      <a href="../../screenshots/axonhub-trace.png">
+        <img src="../../screenshots/axonhub-trace.png" alt="Trace Details" width="600"/>
+      </a>
+      <br/>
+      The Trace details page displays the request timeline, token usage, and cache hit status
+    </td>
+  </tr>
+</table>
 
 ### Troubleshooting
 - **No trace recorded** – Ensure the request is authenticated and the project ID is resolved (API Key must belong to a project).

@@ -380,9 +380,10 @@ AxonHub 提供灵活的模型管理系统，支持通过模型关联将抽象模
 
 关于 API 密钥配置文件的详细信息，包括配置示例、验证规则和最佳实践，请参阅 [API 密钥配置文件指南](docs/zh/guides/api-key-profiles.md)。
 
-### 5. Claude Code/Codex 使用 | Claude Code Integration
+### 5. AI 编程工具集成 | AI Coding Tools Integration
 
-关于如何在 Claude Code 与 Claude Codex 中配置与 AxonHub 的集成、排查常见问题以及结合模型配置文件工作流的最佳实践，请参阅专门的集成指南：
+关于如何在 OpenCode、Claude Code 与 Claude Codex 中配置与 AxonHub 的集成、排查常见问题以及结合模型配置文件工作流的最佳实践，请参阅专门的集成指南：
+- [OpenCode 集成指南](docs/zh/guides/opencode-integration.md)
 - [Claude Code 集成指南](docs/zh/guides/claude-code-integration.md)
 - [Codex 集成指南](docs/zh/guides/codex-integration.md)
 
