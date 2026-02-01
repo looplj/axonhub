@@ -79,26 +79,23 @@ func (t *OutboundTransformer) TransformRequest(
 		return nil, fmt.Errorf("chat completion request is nil")
 	}
 
+	// Validate required fields
+	if llmReq.Model == "" {
+		return nil, fmt.Errorf("%w: model is required", transformer.ErrInvalidRequest)
+	}
+
 	//nolint:exhaustive // Checked.
 	switch llmReq.RequestType {
 	case llm.RequestTypeChat, "":
 		// continue
+	case llm.RequestTypeImage:
+		return t.buildImageGenerationAPIRequest(llmReq)
 	default:
 		return nil, fmt.Errorf("%w: %s is not supported", transformer.ErrInvalidRequest, llmReq.RequestType)
 	}
 
-	// Validate required fields
-	if llmReq.Model == "" {
-		return nil, fmt.Errorf("model is required")
-	}
-
 	if len(llmReq.Messages) == 0 {
 		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
-	}
-
-	// If this is an image generation request, use the Image Generation API.
-	if llmReq.IsImageGenerationRequest() {
-		return t.buildImageGenerationAPIRequest(llmReq)
 	}
 
 	// Convert llm.Request to openai.Request first
@@ -186,10 +183,8 @@ func (t *OutboundTransformer) TransformResponse(
 	}
 
 	// If this looks like Image Generation API, use image generation response transformer
-	if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
-		if fmt, ok := httpResp.Request.TransformerMetadata["outbound_format_type"].(string); ok && fmt == string(llm.APIFormatOpenAIImageGeneration) {
-			return transformImageGenerationResponse(ctx, httpResp)
-		}
+	if httpResp.Request != nil && httpResp.Request.APIFormat == string(llm.APIFormatOpenAIImageGeneration) {
+		return transformImageGenerationResponse(ctx, httpResp)
 	}
 
 	// For regular chat completions, delegate to the wrapped OpenAI transformer

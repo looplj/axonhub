@@ -15,7 +15,6 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
-	oairesp "github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
 // PlatformType represents the platform type for OpenAI API.
@@ -50,7 +49,6 @@ type Config struct {
 // OutboundTransformer implements transformer.Outbound for OpenAI format.
 type OutboundTransformer struct {
 	config *Config
-	rt     *oairesp.OutboundTransformer
 }
 
 // NewOutboundTransformer creates a new OpenAI OutboundTransformer with legacy parameters.
@@ -87,18 +85,8 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
 	}
 
-	rt, err := oairesp.NewOutboundTransformerWithConfig(&oairesp.Config{
-		BaseURL: config.BaseURL,
-		APIKey:  config.APIKey,
-		RawURL:  config.RawURL,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create OpenAI outbound transformer: %w", err)
-	}
-
 	return &OutboundTransformer{
 		config: config,
-		rt:     rt,
 	}, nil
 }
 
@@ -141,27 +129,17 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, fmt.Errorf("chat completion request is nil")
 	}
 
-	//nolint:exhaustive // Checked.
-	switch llmReq.RequestType {
-	case llm.RequestTypeEmbedding:
-		return t.transformEmbeddingRequest(ctx, llmReq)
-	case llm.RequestTypeRerank:
-		return nil, fmt.Errorf("%w: rerank is not supported", transformer.ErrInvalidRequest)
-	}
-
 	// Validate required fields for chat requests
 	if llmReq.Model == "" {
 		return nil, fmt.Errorf("model is required")
 	}
 
-	if len(llmReq.Messages) == 0 {
-		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
-	}
-
-	// If this is an image generation request, use the Image Generation API.
-	if llmReq.IsImageGenerationRequest() {
-		// Platform routing: For now, only standard OpenAI Image Generation API is supported.
-		//nolint:exhaustive // Chcked.
+	//nolint:exhaustive // Checked.
+	switch llmReq.RequestType {
+	case llm.RequestTypeEmbedding:
+		return t.transformEmbeddingRequest(ctx, llmReq)
+	case llm.RequestTypeImage:
+		//nolint:exhaustive // Checked.
 		switch t.config.PlatformType {
 		case PlatformAzure:
 			return nil, fmt.Errorf("image generation via Image Generation API is not yet supported for Azure platform")
@@ -169,7 +147,13 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 			// ok
 		}
 
-		return t.buildImageGenerationAPIRequest(ctx, llmReq)
+		return t.buildImageGenerationAPIRequest(llmReq)
+	case llm.RequestTypeRerank:
+		return nil, fmt.Errorf("%w: rerank is not supported", transformer.ErrInvalidRequest)
+	}
+
+	if len(llmReq.Messages) == 0 {
+		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
 	}
 
 	// Convert to OpenAI Request format (this strips helper fields)
@@ -236,17 +220,15 @@ func (t *OutboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("response body is empty")
 	}
 
-	// Route to specialized transformers based on request metadata
-	if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
-		if fmtType, ok := httpResp.Request.TransformerMetadata["outbound_format_type"].(string); ok {
-			switch fmtType {
-			case llm.APIFormatOpenAIResponse.String():
-				return t.rt.TransformResponse(ctx, httpResp)
-			case llm.APIFormatOpenAIImageGeneration.String():
-				return transformImageGenerationResponse(httpResp)
-			case llm.APIFormatOpenAIEmbedding.String():
-				return t.transformEmbeddingResponse(ctx, httpResp)
-			}
+	// Route to specialized transformers based on request APIFormat
+	if httpResp.Request != nil && httpResp.Request.APIFormat != "" {
+		switch httpResp.Request.APIFormat {
+		case string(llm.APIFormatOpenAIImageGeneration),
+			string(llm.APIFormatOpenAIImageEdit),
+			string(llm.APIFormatOpenAIImageVariation):
+			return transformImageGenerationResponse(httpResp)
+		case string(llm.APIFormatOpenAIEmbedding):
+			return t.transformEmbeddingResponse(ctx, httpResp)
 		}
 	}
 

@@ -35,6 +35,9 @@ type OpenAIHandlers struct {
 	ChatCompletionHandlers     *ChatCompletionHandlers
 	ResponseCompletionHandlers *ChatCompletionHandlers
 	EmbeddingHandlers          *ChatCompletionHandlers
+	ImageGenerationHandlers    *ChatCompletionHandlers
+	ImageEditHandlers          *ChatCompletionHandlers
+	ImageVariationHandlers     *ChatCompletionHandlers
 }
 
 func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
@@ -78,6 +81,45 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 			),
 		},
+		ImageGenerationHandlers: &ChatCompletionHandlers{
+			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
+				params.ChannelService,
+				params.ModelService,
+				params.RequestService,
+				params.HttpClient,
+				openai.NewImageGenerationInboundTransformer(),
+				params.SystemService,
+				params.UsageLogService,
+				params.PromptService,
+				params.QuotaService,
+			),
+		},
+		ImageEditHandlers: &ChatCompletionHandlers{
+			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
+				params.ChannelService,
+				params.ModelService,
+				params.RequestService,
+				params.HttpClient,
+				openai.NewImageEditInboundTransformer(),
+				params.SystemService,
+				params.UsageLogService,
+				params.PromptService,
+				params.QuotaService,
+			),
+		},
+		ImageVariationHandlers: &ChatCompletionHandlers{
+			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
+				params.ChannelService,
+				params.ModelService,
+				params.RequestService,
+				params.HttpClient,
+				openai.NewImageVariationInboundTransformer(),
+				params.SystemService,
+				params.UsageLogService,
+				params.PromptService,
+				params.QuotaService,
+			),
+		},
 		ChannelService: params.ChannelService,
 		ModelService:   params.ModelService,
 		SystemService:  params.SystemService,
@@ -94,6 +136,18 @@ func (handlers *OpenAIHandlers) CreateResponse(c *gin.Context) {
 
 func (handlers *OpenAIHandlers) CreateEmbedding(c *gin.Context) {
 	handlers.EmbeddingHandlers.ChatCompletion(c)
+}
+
+func (handlers *OpenAIHandlers) CreateImage(c *gin.Context) {
+	handlers.ImageGenerationHandlers.ChatCompletion(c)
+}
+
+func (handlers *OpenAIHandlers) CreateImageEdit(c *gin.Context) {
+	handlers.ImageEditHandlers.ChatCompletion(c)
+}
+
+func (handlers *OpenAIHandlers) CreateImageVariation(c *gin.Context) {
+	handlers.ImageVariationHandlers.ChatCompletion(c)
 }
 
 type OpenAIModel struct {

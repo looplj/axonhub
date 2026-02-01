@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
-	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm"
@@ -19,11 +19,15 @@ import (
 
 // buildImageGenerationAPIRequest builds the HTTP request to call the ZAI Image Generation API.
 func (t *OutboundTransformer) buildImageGenerationAPIRequest(chatReq *llm.Request) (*httpclient.Request, error) {
-	chatReq.Stream = lo.ToPtr(false)
+	if chatReq.Image == nil {
+		return nil, fmt.Errorf("%w: image request is required", transformer.ErrInvalidRequest)
+	}
 
-	// Check if there are images in the messages - ZAI doesn't support image editing
-	hasImages := hasImagesInMessages(chatReq.Messages)
-	if hasImages {
+	if chatReq.APIFormat != "" && chatReq.APIFormat != llm.APIFormatOpenAIImageGeneration {
+		return nil, fmt.Errorf("%w: ZAI only supports image generation", transformer.ErrInvalidRequest)
+	}
+
+	if len(chatReq.Image.Images) > 0 || len(chatReq.Image.Mask) > 0 {
 		return nil, fmt.Errorf("%w: ZAI does not support image editing with input images", transformer.ErrInvalidRequest)
 	}
 
@@ -33,12 +37,12 @@ func (t *OutboundTransformer) buildImageGenerationAPIRequest(chatReq *llm.Reques
 		return nil, err
 	}
 
+	rawReq.RequestType = llm.RequestTypeImage.String()
+	rawReq.APIFormat = llm.APIFormatOpenAIImageGeneration.String()
+	// Save model to TransformerMetadata for response transformation
 	if rawReq.TransformerMetadata == nil {
 		rawReq.TransformerMetadata = map[string]any{}
 	}
-
-	rawReq.TransformerMetadata["outbound_format_type"] = string(llm.APIFormatOpenAIImageGeneration)
-	// Save model to TransformerMetadata for response transformation
 	rawReq.TransformerMetadata["model"] = chatReq.Model
 
 	return rawReq, nil
@@ -46,10 +50,9 @@ func (t *OutboundTransformer) buildImageGenerationAPIRequest(chatReq *llm.Reques
 
 // buildImageGenerateRequest builds request for ZAI Image Generation API.
 func (t *OutboundTransformer) buildImageGenerateRequest(chatReq *llm.Request) (*httpclient.Request, error) {
-	// Extract prompt from messages
-	prompt, err := extractPromptFromMessages(chatReq.Messages)
-	if err != nil {
-		return nil, err
+	prompt := chatReq.Image.Prompt
+	if prompt == "" {
+		return nil, fmt.Errorf("prompt is required for image generation")
 	}
 
 	// Build request body according to ZAI API documentation
@@ -58,57 +61,31 @@ func (t *OutboundTransformer) buildImageGenerateRequest(chatReq *llm.Request) (*
 		"prompt": prompt,
 	}
 
-	// Extract image generation parameters from tools
-	for _, tool := range chatReq.Tools {
-		if tool.Type == "image_generation" && tool.ImageGeneration != nil {
-			// Map quality parameter
-			if tool.ImageGeneration.Quality != "" {
-				// ZAI supports: hd, standard
-				quality := tool.ImageGeneration.Quality
-				switch quality {
-				case "high":
-					quality = "hd"
-				case "low", "":
-					quality = "standard"
-				}
-
-				reqBody["quality"] = quality
-			} else {
-				// Default to standard
-				reqBody["quality"] = "standard"
-			}
-
-			// Map size parameter
-			if tool.ImageGeneration.Size != "" {
-				reqBody["size"] = tool.ImageGeneration.Size
-			} else {
-				// Default to 1024x1024
-				reqBody["size"] = "1024x1024"
-			}
-
-			// Map watermark parameter (ZAI uses watermark_enabled, we use Watermark)
-			// ZAI default is true, our default is false, so we need to handle this
-			if tool.ImageGeneration.Watermark {
-				reqBody["watermark_enabled"] = true
-			} else {
-				// Only set to false if explicitly disabled
-				reqBody["watermark_enabled"] = false
-			}
-
-			break
-		}
+	quality := chatReq.Image.Quality
+	switch quality {
+	case "high":
+		quality = "hd"
+	case "low", "":
+		quality = "standard"
 	}
 
-	// User ID from metadata (following the pattern from TransformRequest)
-	if chatReq.Metadata != nil {
-		if userID, exists := chatReq.Metadata["user_id"]; exists && userID != "" {
-			userIDStr := userID
-			if len(userIDStr) < 6 || len(userIDStr) > 128 {
-				return nil, fmt.Errorf("user_id must be between 6 and 128 characters, got %d", len(userIDStr))
-			}
+	if quality == "" {
+		quality = "standard"
+	}
 
-			reqBody["user_id"] = userIDStr
-		}
+	reqBody["quality"] = quality
+
+	if chatReq.Image.Size != "" {
+		reqBody["size"] = chatReq.Image.Size
+	} else {
+		reqBody["size"] = "1024x1024"
+	}
+
+	reqBody["watermark_enabled"] = false
+
+	// User ID from metadata (following the pattern from TransformRequest)
+	if chatReq.Image.User != "" {
+		reqBody["user_id"] = chatReq.Image.User
 	}
 
 	body, err := json.Marshal(reqBody)
@@ -143,8 +120,8 @@ func (t *OutboundTransformer) buildImageGenerateRequest(chatReq *llm.Request) (*
 // to the unified llm.Response format.
 func transformImageGenerationResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.Response, error) {
 	// Parse the ZAI ImagesResponse
-	var imgResp ZAIImagesResponse
-	if err := json.Unmarshal(httpResp.Body, &imgResp); err != nil {
+	var zaiResp ZAIImagesResponse
+	if err := json.Unmarshal(httpResp.Body, &zaiResp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal images response: %w", err)
 	}
 
@@ -158,44 +135,42 @@ func transformImageGenerationResponse(ctx context.Context, httpResp *httpclient.
 	}
 
 	// Convert to llm.Response format
-	resp := &llm.Response{
-		ID:      fmt.Sprintf("zai-img-%s", uuid.NewString()),
-		Object:  "chat.completion",
-		Created: imgResp.Created,
-		Model:   model,
-		Choices: make([]llm.Choice, 0, len(imgResp.Data)),
+	llmResp := &llm.Response{
+		ID:          fmt.Sprintf("zai-img-%s", uuid.NewString()),
+		Object:      "chat.completion",
+		Created:     zaiResp.Created,
+		Model:       model,
+		RequestType: llm.RequestTypeImage,
+		APIFormat:   llm.APIFormatOpenAIImageGeneration,
 	}
 
-	// Convert each image to a choice with image_url content
-	for i, img := range imgResp.Data {
+	imageResp := &llm.ImageResponse{
+		Created: zaiResp.Created,
+		Data:    make([]llm.ImageData, 0, len(zaiResp.Data)),
+	}
+
+	// Convert each image to ImageData
+	for _, img := range zaiResp.Data {
 		// Download image and convert to base64 data URL
 		imageDataURL, err := downloadImageToDataURL(ctx, img.URL)
 		if err != nil {
 			return nil, fmt.Errorf("failed to download and convert image: %w", err)
 		}
 
-		choice := llm.Choice{
-			Index: i,
-			Message: &llm.Message{
-				Role: "assistant",
-				Content: llm.MessageContent{
-					MultipleContent: []llm.MessageContentPart{
-						{
-							Type: "image_url",
-							ImageURL: &llm.ImageURL{
-								URL: imageDataURL,
-							},
-						},
-					},
-				},
-			},
-			FinishReason: lo.ToPtr("stop"),
+		var b64 string
+		if _, after, ok := strings.Cut(imageDataURL, "base64,"); ok {
+			b64 = after
 		}
 
-		resp.Choices = append(resp.Choices, choice)
+		imageResp.Data = append(imageResp.Data, llm.ImageData{
+			B64JSON: b64,
+			URL:     img.URL,
+		})
 	}
 
-	return resp, nil
+	llmResp.Image = imageResp
+
+	return llmResp, nil
 }
 
 // downloadImageToDataURL downloads an image from a URL and converts it to a base64 data URL.
@@ -266,38 +241,4 @@ type ZAIImageData struct {
 type ZAIContentFilter struct {
 	Role  string `json:"role"`
 	Level int    `json:"level"`
-}
-
-// hasImagesInMessages checks if any message contains image content.
-func hasImagesInMessages(messages []llm.Message) bool {
-	for _, msg := range messages {
-		if len(msg.Content.MultipleContent) > 0 {
-			for _, part := range msg.Content.MultipleContent {
-				if part.Type == "image_url" {
-					return true
-				}
-			}
-		}
-	}
-
-	return false
-}
-
-// extractPromptFromMessages extracts the text prompt from messages.
-func extractPromptFromMessages(messages []llm.Message) (string, error) {
-	for _, msg := range messages {
-		if msg.Content.Content != nil {
-			return *msg.Content.Content, nil
-		}
-
-		if len(msg.Content.MultipleContent) > 0 {
-			for _, part := range msg.Content.MultipleContent {
-				if part.Type == "text" && part.Text != nil {
-					return *part.Text, nil
-				}
-			}
-		}
-	}
-
-	return "", fmt.Errorf("prompt is required for image generation")
 }

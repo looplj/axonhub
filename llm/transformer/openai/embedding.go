@@ -91,19 +91,14 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 	}
 
 	httpReq := &httpclient.Request{
-		Method:  http.MethodPost,
-		URL:     url,
-		Headers: headers,
-		Body:    body,
-		Auth:    auth,
+		Method:      http.MethodPost,
+		URL:         url,
+		Headers:     headers,
+		Body:        body,
+		Auth:        auth,
+		RequestType: string(llm.RequestTypeEmbedding),
+		APIFormat:   string(llm.APIFormatOpenAIEmbedding),
 	}
-
-	// Set metadata for response routing
-	if httpReq.TransformerMetadata == nil {
-		httpReq.TransformerMetadata = make(map[string]any)
-	}
-
-	httpReq.TransformerMetadata["outbound_format_type"] = llm.APIFormatOpenAIEmbedding.String()
 
 	return httpReq, nil
 }
