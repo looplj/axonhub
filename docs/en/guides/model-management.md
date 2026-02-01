@@ -408,5 +408,7 @@ A: Use the `exclude` field:
 
 - [Adaptive Load Balancing Guide](load-balance.md)
 - [API Key Profiles Guide](api-key-profiles.md)
-- [Unified API Documentation](../api-reference/unified-api.md)
+- [OpenAI API](../api-reference/openai-api.md)
+- [Anthropic API](../api-reference/anthropic-api.md)
+- [Gemini API](../api-reference/gemini-api.md)
 - [Tracing and Debugging](tracing.md)

@@ -1,10 +1,15 @@
 <div align="center">
 
 # AxonHub - All-in-one AI Development Platform
+### Use any SDK. Access any model. Zero code changes.
+
+<a href="https://trendshift.io/repositories/16225" target="_blank"><img src="https://trendshift.io/api/badge/repositories/16225" alt="looplj%2Faxonhub | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 
 </div>
 
 <div align="center">
+
+
 
 [![Test Status](https://github.com/looplj/axonhub/actions/workflows/test.yml/badge.svg)](https://github.com/looplj/axonhub/actions/workflows/test.yml)
 [![Lint Status](https://github.com/looplj/axonhub/actions/workflows/lint.yml/badge.svg)](https://github.com/looplj/axonhub/actions/workflows/lint.yml)
@@ -15,13 +20,23 @@
 
 </div>
 
+
+
 ---
 
 ## 📖 Project Introduction
 
 ### All-in-one AI Development Platform
 
-AxonHub is an all-in-one AI development platform that provides unified API gateway, project management, and comprehensive development tools. It offers OpenAI, Anthropic, and AI SDK compatible API layers, transforming requests to various AI providers through a transformer pipeline architecture. The platform features comprehensive tracing capabilities, project-based organization, and integrated playground for rapid prototyping, helping developers and enterprises better manage AI development workflows.
+**AxonHub is the AI gateway that lets you switch between model providers without changing a single line of code.**
+
+Whether you're using OpenAI SDK, Anthropic SDK, or any AI SDK, AxonHub transparently translates your requests to work with any supported model provider. No refactoring, no SDK swaps—just change a configuration and you're done.
+
+**What it solves:**
+- 🔒 **Vendor lock-in** - Switch from GPT-4 to Claude or Gemini instantly
+- 🔧 **Integration complexity** - One API format for 10+ providers
+- 📊 **Observability gap** - Complete request tracing out of the box
+- 💸 **Cost control** - Real-time usage tracking and budget management
 
 <div align="center">
   <img src="docs/axonhub-architecture-light.svg" alt="AxonHub Architecture" width="700"/>
@@ -29,11 +44,13 @@ AxonHub is an all-in-one AI development platform that provides unified API gatew
 
 ### Core Features
 
-1. [**Unified API**](docs/en/api-reference/unified-api.md): OpenAI- and Anthropic-compatible interface with automatic API translation lets you use one API format to access any supported model provider.
-2. [**Tracing / Threads**](docs/en/guides/tracing.md): Thread-aware tracing captures full request timelines for deep observability and faster debugging.
-3. [**Fine-grained Permission**](docs/en/guides/permissions.md): RBAC-based policies help teams govern access, usage, and data segregation precisely.
-4. [**Adaptive Load Balancing**](docs/en/guides/load-balance.md): Intelligent multi-strategy load balancing automatically selects optimal AI channels based on health, performance, and session consistency.
-5. **Cost Tracking**: Real-time usage monitoring and precise cost calculation for every request, supporting various token types (input, output, cache, etc.).
+| Feature | What You Get |
+|---------|-------------|
+| 🔄 [**Any SDK → Any Model**](docs/en/api-reference/openai-api.md) | Use OpenAI SDK to call Claude, or Anthropic SDK to call GPT. Zero code changes. |
+| 🔍 [**Full Request Tracing**](docs/en/guides/tracing.md) | Complete request timelines with thread-aware observability. Debug faster. |
+| 🔐 [**Enterprise RBAC**](docs/en/guides/permissions.md) | Fine-grained access control, usage quotas, and data isolation. |
+| ⚡ [**Smart Load Balancing**](docs/en/guides/load-balance.md) | Auto failover in <100ms. Always route to the healthiest channel. |
+| 💰 [**Real-time Cost Tracking**](docs/en/guides/cost-tracking.md) | Per-request cost breakdown. Input, output, cache tokens—all tracked. |
 
 ---
 
@@ -119,69 +136,71 @@ Here are some screenshots of AxonHub in action:
 
 | API Type             | Status     | Description                    | Document                                     |
 | -------------------- | ---------- | ------------------------------ | -------------------------------------------- |
-| **Text Generation**  | ✅ Done    | Conversational interface       | [Unified API](docs/en/api-reference/unified-api.md) |
-| **Image Generation** | ⚠️ Partial | Image generation               | [Image Generation](docs/en/api-reference/image-generation.md) |
-| **Rerank**           | ✅ Done    | Results ranking                | [Unified API](docs/en/api-reference/unified-api.md#rerank-api) |
-| **Embedding**        | ✅ Done    | Vector embedding generation    | [Unified API](docs/en/api-reference/unified-api.md#embedding-api) |
+| **Text Generation**  | ✅ Done    | Conversational interface       | [OpenAI API](docs/en/api-reference/openai-api.md), [Anthropic API](docs/en/api-reference/anthropic-api.md), [Gemini API](docs/en/api-reference/gemini-api.md) |
+| **Image Generation** | ✅ Done | Image generation               | [Image Generation](docs/en/api-reference/image-generation.md) |
+| **Rerank**           | ✅ Done    | Results ranking                | [Rerank API](docs/en/api-reference/rerank-api.md) |
+| **Embedding**        | ✅ Done    | Vector embedding generation    | [Embedding API](docs/en/api-reference/embedding-api.md) |
 | **Realtime**         | 📝 Todo    | Live conversation capabilities | -                                            |
 
 ---
 
-### 🌐 Multi-Provider AI Gateway
+### 🤖 Supported Providers
 
-| Feature                   | Technical Implementation                        | Business Value                              |
-| ------------------------- | ----------------------------------------------- | ------------------------------------------- |
-| **Unified API Interface** | OpenAI compatible standard, zero learning curve | Avoid vendor lock-in, reduce migration risk |
-| **Automatic Failover**    | Multi-channel retry + load balancing            | Service interruption time < 100ms           |
-| **Stream Processing**     | Native SSE support, real-time response          | 60% user experience improvement             |
-
----
-
-### 🧵 Threads & Tracing
-
-AxonHub records every request as part of a thread-aware trace without requiring you to adopt any vendor-specific SDK. Bring your existing OpenAI-compatible client, and AxonHub will:
-
-- Require incoming `AH-Trace-Id` headers to stitch multiple requests into the same trace. If the header is omitted, AxonHub will still record the request but cannot automatically link it to related activity.
-- Link traces to threads so you can follow the entire conversation journey end to end
-- Capture model metadata, prompt / response spans, and timing information for fast root-cause analysis
-
-Learn more about how tracing works and how to integrate it in the [Tracing Guide](docs/en/guides/tracing.md).
-
-### 💰 Cost Tracking
-
-AxonHub provides real-time cost calculation and usage tracking for every request:
-
-- **Multi-dimensional Tracking**: Tracks input (prompt), output (completion), cached (read/write), reasoning, and audio tokens.
-- **Precise Calculation**: Real-time cost calculation based on configurable model pricing (price per 1M tokens).
-- **Cache Discounts**: Supports specialized pricing for cached tokens to accurately reflect provider cost savings.
-- **Detailed Breakdown**: Every request includes a granular cost breakdown (e.g., how much was spent on input vs. output vs. cache).
-- **Quota Management**: Aggregate costs across projects and API keys to enforce usage limits and budgets.
-
-### 🔧 API Format Support
-
-| Format                      | Status     | Compatibility       | Modalities      |
-| --------------------------- | ---------- | ------------------- | --------------- |
-| **OpenAI Chat Completions** | ✅ Done    | Fully compatible    | Text, Image     |
-| **OpenAI Responses**        | ⚠️ Partial | No `previous_response_id` | Text, Image     |
-| **Anthropic Messages**      | ✅ Done    | Fully supported     | Text            |
-| **Gemini**                  | ✅ Done    | Fully supported     | Text, Image     |
-| **AI SDK**                  | ⚠️ Partial | Partially supported | Text            |
-
-**Key Feature**: Use OpenAI API to call Anthropic models, or Anthropic API to call OpenAI models - AxonHub handles automatic API translation!
-
----
-
-### 🏢 Permission Control
-
-| Security Feature                    | Implementation                     |
-| ----------------------------------- | ---------------------------------- |
-| **Fine-grained Permission Control** | Role-based access control (RBAC)   |
-| **Data Localization**               | Configurable data storage policies |
-| **API Key Management**              | JWT + scope control                |
+| Provider               | Status     | Supported Models             | Compatible APIs |
+| ---------------------- | ---------- | ---------------------------- | --------------- |
+| **OpenAI**             | ✅ Done    | GPT-4, GPT-4o, GPT-5, etc.   | OpenAI, Anthropic, Gemini, Embedding, Image Generation |
+| **Anthropic**          | ✅ Done    | Claude 3.5, Claude 3.0, etc. | OpenAI, Anthropic, Gemini |
+| **Zhipu AI**           | ✅ Done    | GLM-4.5, GLM-4.5-air, etc.   | OpenAI, Anthropic, Gemini |
+| **Moonshot AI (Kimi)** | ✅ Done    | kimi-k2, etc.                | OpenAI, Anthropic, Gemini |
+| **DeepSeek**           | ✅ Done    | DeepSeek-V3.1, etc.          | OpenAI, Anthropic, Gemini |
+| **ByteDance Doubao**   | ✅ Done    | doubao-1.6, etc.             | OpenAI, Anthropic, Gemini, Image Generation |
+| **Gemini**             | ✅ Done    | Gemini 2.5, etc.             | OpenAI, Anthropic, Gemini, Image Generation |
+| **Jina AI**            | ✅ Done    | Embeddings, Reranker, etc.   | Jina Embedding, Jina Rerank |
+| **OpenRouter**         | ✅ Done    | Various models               | OpenAI, Anthropic, Gemini, Image Generation |
+| **ZAI**                | ✅ Done    | -                            | Image Generation |
+| **AWS Bedrock**        | 🔄 Testing | Claude on AWS                | OpenAI, Anthropic, Gemini |
+| **Google Cloud**       | 🔄 Testing | Claude on GCP                | OpenAI, Anthropic, Gemini |
 
 ---
 
 ## 🚀 Quick Start
+
+### 30-Second Local Start
+
+```bash
+# Download and extract (macOS ARM64 example)
+curl -sSL https://github.com/looplj/axonhub/releases/latest/download/axonhub_darwin_arm64.tar.gz | tar xz
+cd axonhub_*
+
+# Run with SQLite (default)
+./axonhub
+
+# Open http://localhost:8090
+# Default login: admin@axonhub.com / admin
+```
+
+That's it! Now configure your first AI channel and start calling models through AxonHub.
+
+### Zero-Code Migration Example
+
+**Your existing code works without any changes.** Just point your SDK to AxonHub:
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://localhost:8090/v1",  # Point to AxonHub
+    api_key="your-axonhub-api-key"        # Use AxonHub API key
+)
+
+# Call Claude using OpenAI SDK!
+response = client.chat.completions.create(
+    model="claude-3-5-sonnet",  # Or gpt-4, gemini-pro, deepseek-chat...
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+```
+
+Switch models by changing one line: `model="gpt-4"` → `model="claude-3-5-sonnet"`. No SDK changes needed.
 
 ### 1-click Deploy to Render
 
@@ -400,7 +419,10 @@ See the dedicated guides for detailed setup steps, troubleshooting, and tips on 
 
 ### 6. SDK Usage
 
-For detailed SDK usage examples and code samples, please refer to the [Unified API documentation](docs/en/api-reference/unified-api.md).
+For detailed SDK usage examples and code samples, please refer to the API documentation:
+- [OpenAI API](docs/en/api-reference/openai-api.md)
+- [Anthropic API](docs/en/api-reference/anthropic-api.md)
+- [Gemini API](docs/en/api-reference/gemini-api.md)
 
 ## 🛠️ Development Guide
 

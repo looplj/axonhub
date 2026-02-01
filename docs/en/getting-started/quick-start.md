@@ -361,7 +361,9 @@ log:
 
 ### Integration Guides
 - [Claude Code Integration](../guides/claude-code-integration.md)
-- [API Reference](../api-reference/unified-api.md)
+- [OpenAI API](../api-reference/openai-api.md)
+- [Anthropic API](../api-reference/anthropic-api.md)
+- [Gemini API](../api-reference/gemini-api.md)
 - [Deployment Guide](../deployment/configuration.md)
 
 ## Troubleshooting

@@ -168,6 +168,7 @@ with open("image.png", "rb") as image_file, open("mask.png", "rb") as mask_file:
 
 ## 相关资源
 
-- [聊天补全 API](unified-api.md#openai-chat-completions-api)
-- [Anthropic 消息 API](unified-api.md#anthropic-messages-api)
+- [OpenAI API](openai-api.md)
+- [Anthropic API](anthropic-api.md)
+- [Gemini API](gemini-api.md)
 - [Claude Code 集成](../guides/claude-code-integration.md)

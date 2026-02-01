@@ -86,5 +86,5 @@ AxonHub 的模型配置文件支持将请求模型映射到具体提供商模型
 
 ### 相关文档
 - [追踪指南](tracing.md)
-- [Chat Completions 文档](../api-reference/unified-api.md#openai-chat-completions-api)
+- [OpenAI API 文档](../api-reference/openai-api.md)
 - README 中的 [使用指南](../../../README.zh-CN.md#使用指南--usage-guide)

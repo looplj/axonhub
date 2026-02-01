@@ -168,6 +168,7 @@ with open("image.png", "rb") as image_file, open("mask.png", "rb") as mask_file:
 
 ## Related Resources
 
-- [Chat Completions API](unified-api.md#openai-chat-completions-api)
-- [Anthropic Messages API](unified-api.md#anthropic-messages-api)
+- [OpenAI API](openai-api.md)
+- [Anthropic API](anthropic-api.md)
+- [Gemini API](gemini-api.md)
 - [Claude Code Integration](../guides/claude-code-integration.md)

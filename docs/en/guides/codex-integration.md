@@ -140,5 +140,5 @@ You can manually trigger a quota refresh by clicking the refresh icon in the quo
 
 ### Related Documentation
 - [Tracing Guide](tracing.md)
-- [Chat Completions](../api-reference/unified-api.md#openai-chat-completions-api)
+- [OpenAI API](../api-reference/openai-api.md)
 - README sections on [Usage Guide](../../../README.md#usage-guide)

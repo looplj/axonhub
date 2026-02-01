@@ -1,6 +1,9 @@
 <div align="center">
 
 # AxonHub - All-in-one AI 开发平台
+### 任意 SDK、任意模型、零代码改动
+
+<a href="https://trendshift.io/repositories/16225" target="_blank"><img src="https://trendshift.io/api/badge/repositories/16225" alt="looplj%2Faxonhub | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 
 </div>
 
@@ -21,7 +24,15 @@
 
 ### All-in-one AI 开发平台
 
-AxonHub 是一个 All-in-one AI 开发平台，提供统一的 API 网关、项目管理和全面的开发工具。平台提供 OpenAI、Anthropic 和 AI SDK 兼容的 API 层，通过转换器管道架构将请求转换到各种 AI 提供商。系统具备完整的追踪能力、基于项目的组织结构以及集成的 Playground 快速原型开发，帮助开发者和企业更好地管理 AI 开发工作流。
+**AxonHub 是 AI 网关，让你无需改动一行代码即可切换模型供应商。**
+
+无论你使用的是 OpenAI SDK、Anthropic SDK 还是任何 AI SDK，AxonHub 都会透明地将你的请求转换为与任何支持的模型供应商兼容的格式。无需重构，无需更换 SDK——只需更改配置即可。
+
+**它解决了什么问题：**
+- 🔒 **供应商锁定** - 从 GPT-4 瞬间切换到 Claude 或 Gemini
+- 🔧 **集成复杂性** - 一个 API 格式对接 10+ 供应商
+- 📊 **可观测性缺口** - 开箱即用的完整请求追踪
+- 💸 **成本控制** - 实时用量追踪和预算管理
 
 <div align="center">
   <img src="docs/axonhub-architecture-light.svg" alt="AxonHub Architecture" width="700"/>
@@ -29,11 +40,13 @@ AxonHub 是一个 All-in-one AI 开发平台，提供统一的 API 网关、项�
 
 ### 核心特性 Core Features
 
-1. [**统一 API** Unified API](docs/zh/api-reference/unified-api.md)：兼容 OpenAI 与 Anthropic 的接口，配合转换管线实现模型互换与映射，无需改动现有代码。
-2. [**追踪 / 线程** Tracing / Threads](docs/zh/guides/tracing.md)：线程级追踪实时记录完整调用链路，提升可观测性与问题定位效率。
-3. [**细粒度权限** Fine-grained Permission](docs/zh/guides/permissions.md)：基于 RBAC 的权限策略，帮助团队精细管理访问控制、配额与数据隔离。
-4. [**自适应负载均衡** Adaptive Load Balancing](docs/zh/guides/load-balance.md): 智能多策略负载均衡，自动选择最优 AI 渠道，确保高可用性和最佳性能。
-5. **成本追踪 Cost Tracking**: 实时监控用量并精确计算每个请求的成本，支持多种 Token 类型（输入、输出、缓存等）。
+| 特性 | 你能获得什么 |
+|------|-------------|
+| 🔄 [**任意 SDK → 任意模型**](docs/zh/api-reference/openai-api.md) | 用 OpenAI SDK 调用 Claude，或用 Anthropic SDK 调用 GPT。零代码改动。 |
+| 🔍 [**完整请求追踪**](docs/zh/guides/tracing.md) | 线程级可观测性的完整请求时间线。更快定位问题。 |
+| 🔐 [**企业级 RBAC**](docs/zh/guides/permissions.md) | 细粒度访问控制、用量配额和数据隔离。 |
+| ⚡ [**智能负载均衡**](docs/zh/guides/load-balance.md) | <100ms 自动故障转移。始终路由到最健康的渠道。 |
+| 💰 [**实时成本追踪**](docs/zh/guides/cost-tracking.md) | 每次请求的成本明细。输入、输出、缓存 Token——全部追踪。 |
 
 ---
 
@@ -121,66 +134,74 @@ AxonHub 是一个 All-in-one AI 开发平台，提供统一的 API 网关、项�
 
 | API 类型 | 状态 | 描述 | 文档 |
 |---------|--------|-------------|--------|
-| **文本生成（Text Generation）** | ✅ Done | 对话交互接口 | [Unified API](docs/zh/api-reference/unified-api.md) |
-| **图片生成（Image Generation）** | ⚠️ Partial | 图片生成 | [Image Generation](docs/zh/api-reference/image-generation.md) |
-| **重排序（Rerank）** | ✅ Done | 结果排序 | [Unified API](docs/zh/api-reference/unified-api.md#重排序-api) |
-| **嵌入（Embedding）** | ✅ Done | 向量嵌入生成 | [Unified API](docs/zh/api-reference/unified-api.md#嵌入-api) |
+| **文本生成（Text Generation）** | ✅ Done | 对话交互接口 | [OpenAI API](docs/zh/api-reference/openai-api.md)、[Anthropic API](docs/zh/api-reference/anthropic-api.md)、[Gemini API](docs/zh/api-reference/gemini-api.md) |
+| **图片生成（Image Generation）** | ✅ Done | 图片生成 | [Image Generation](docs/zh/api-reference/image-generation.md) |
+| **重排序（Rerank）** | ✅ Done | 结果排序 | [Rerank API](docs/zh/api-reference/rerank-api.md) |
+| **嵌入（Embedding）** | ✅ Done | 向量嵌入生成 | [Embedding API](docs/zh/api-reference/embedding-api.md) |
 | **实时对话（Realtime）** | 📝 Todo | 实时对话功能 | - |
 
 ---
 
-### 🌐 多提供商 AI 网关 | Multi-Provider AI Gateway
+### 🤖 支持的提供商 | Supported Providers
 
-| 特性 Feature | 技术实现 Implementation | 企业价值 Business Value |
-|-------------|----------------------|---------------------|
-| **统一 API 接口** | OpenAI 兼容标准，零学习成本 | 避免供应商锁定，降低迁移风险 |
-| **自动故障转移** | 多渠道级重试 + 负载均衡 | 服务中断时间 < 100ms |
-| **流式处理** | 原生 SSE 支持，实时响应 | 用户体验提升 60% |
-
----
-
-### 🧵 线程与追踪 | Threads & Tracing
-
-AxonHub 可以在不改动现有 OpenAI 兼容客户端的前提下，为每一次请求建立线程级追踪：
-
-- 需要显式传入 `AH-Trace-Id` 请求头才能将多次请求串联到同一追踪；若缺失该请求头，AxonHub 会记录单次调用但无法自动关联相关请求
-- 将追踪与线程关联，串联整段会话的上下文
-- 捕获模型元数据、请求/响应片段以及耗时信息，便于快速定位问题
-
-了解更多工作原理与使用方式，请参阅 [Tracing Guide](docs/zh/guides/tracing.md)。
-
-### 💰 成本追踪 | Cost Tracking
-
-AxonHub 为每一次请求提供实时的成本计算和用量追踪：
-
-- **多维度追踪**：追踪输入（Prompt）、输出（Completion）、缓存（Read/Write）、推理（Reasoning）以及语音 Token。
-- **精确计算**：基于可配置的模型价格（每百万 Token 单价）进行实时成本计算。
-- **缓存折扣**：支持为缓存 Token 设置专门的价格，准确反映供应商提供的成本节省。
-- **明细 breakdown**：每个请求都包含详细的成本明细（例如：输入、输出和缓存分别花费了多少）。
-- **配额管理**：跨项目和 API 密钥聚合成本，以便执行用量限制和预算控制。
-
-### 🔧 接口格式支持 | API Format Support
-
-| 格式 Format | 状态 Status | 兼容性 Compatibility | Modalities |
-|-------------|------------|---------------------|----------|
-| **OpenAI Chat Completions** | ✅ Done | 完全兼容 | Text, Image |
-| **OpenAI Responses** | ⚠️ Partial | 不支持 `previous_response_id` | Text, Image |
-| **Anthropic API** | ✅ Done | 完全支持 | Text |
-| **Gemini** | ✅ Done | 完全支持 | Text, Image |
-| **AI SDK** | ⚠️ Partial | 部分支持 | Text |
+| 提供商 Provider        | 状态 Status | 支持模型 Models              | 兼容 API |
+| ---------------------- | ---------- | ---------------------------- | --------------- |
+| **OpenAI**             | ✅ 已完成   | GPT-4, GPT-4o, GPT-5 等      | OpenAI, Anthropic, Gemini, Embedding, Image Generation |
+| **Anthropic**          | ✅ 已完成   | Claude 3.5, Claude 3.0 等    | OpenAI, Anthropic, Gemini |
+| **智谱 AI (Zhipu)**    | ✅ 已完成   | GLM-4.5, GLM-4.5-air 等      | OpenAI, Anthropic, Gemini |
+| **月之暗面 (Moonshot)** | ✅ 已完成   | kimi-k2 等                   | OpenAI, Anthropic, Gemini |
+| **DeepSeek**           | ✅ 已完成   | DeepSeek-V3.1 等             | OpenAI, Anthropic, Gemini |
+| **字节跳动豆包**        | ✅ 已完成   | doubao-1.6 等                | OpenAI, Anthropic, Gemini, Image Generation |
+| **Gemini**             | ✅ 已完成   | Gemini 2.5 等                | OpenAI, Anthropic, Gemini, Image Generation |
+| **Jina AI**            | ✅ 已完成   | Embeddings, Reranker 等      | Jina Embedding, Jina Rerank |
+| **OpenRouter**         | ✅ 已完成   | 多种模型                     | OpenAI, Anthropic, Gemini, Image Generation |
+| **ZAI**                | ✅ 已完成   | -                            | Image Generation |
+| **AWS Bedrock**        | 🔄 测试中  | Claude on AWS                | OpenAI, Anthropic, Gemini |
+| **Google Cloud**       | 🔄 测试中  | Claude on GCP                | OpenAI, Anthropic, Gemini |
 
 ---
 
-### 🏢 权限控制 | Permission Control
 
-| 安全特性 Security | 实现方式 Implementation |
-|-----------------|----------------------|
-| **细粒度权限控制** | 基于角色的访问控制 (RBAC) |
-| **数据本地化** | 可配置数据存储策略 |
-| **API 密钥管理** | JWT + 作用域控制 |
+## 🚀 快速开始 | Quick Start
+
+### 30 秒本地启动 | 30-Second Local Start
+
+```bash
+# 下载并解压（以 macOS ARM64 为例）
+curl -sSL https://github.com/looplj/axonhub/releases/latest/download/axonhub_darwin_arm64.tar.gz | tar xz
+cd axonhub_*
+
+# 使用 SQLite 运行（默认）
+./axonhub
+
+# 打开 http://localhost:8090
+# 默认登录：admin@axonhub.com / admin
+```
+
+就这样！现在配置你的第一个 AI 渠道，开始通过 AxonHub 调用模型。
+
+### 零代码迁移示例 | Zero-Code Migration Example
+
+**你的现有代码无需任何改动。** 只需将 SDK 指向 AxonHub：
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://localhost:8090/v1",  # 指向 AxonHub
+    api_key="your-axonhub-api-key"        # 使用 AxonHub API 密钥
+)
+
+# 用 OpenAI SDK 调用 Claude！
+response = client.chat.completions.create(
+    model="claude-3-5-sonnet",  # 或 gpt-4、gemini-pro、deepseek-chat...
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+```
+
+切换模型只需改一行：`model="gpt-4"` → `model="claude-3-5-sonnet"`。无需改动 SDK。
 
 ---
-
 
 ## 🚀 部署指南 | Deployment Guide
 
@@ -371,7 +392,10 @@ AxonHub 提供灵活的模型管理系统，支持通过模型关联将抽象模
 
 ### 6. 使用 SDK | SDK Usage
 
-详细的 SDK 使用示例和代码示例，请参阅 [Unified API 文档](docs/zh/api-reference/unified-api.md)。
+详细的 SDK 使用示例和代码示例，请参阅 API 文档：
+- [OpenAI API](docs/zh/api-reference/openai-api.md)
+- [Anthropic API](docs/zh/api-reference/anthropic-api.md)
+- [Gemini API](docs/zh/api-reference/gemini-api.md)
 
 
 ## 🛠️ 开发指南

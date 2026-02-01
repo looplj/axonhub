@@ -495,7 +495,9 @@ curl -X POST http://localhost:8090/v1/chat/completions \
 
 ## 相关文档
 
-- [统一 API 文档](../api-reference/unified-api.md)
+- [OpenAI API](../api-reference/openai-api.md)
+- [Anthropic API](../api-reference/anthropic-api.md)
+- [Gemini API](../api-reference/gemini-api.md)
 - [负载均衡指南](load-balance.md)
 - [细粒度权限](permissions.md)
 - [快速入门指南](../getting-started/quick-start.md)

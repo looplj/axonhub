@@ -369,4 +369,6 @@ username.root:password@tcp(host:4000)/database?tls=true&parseTime=true&multiStat
 
 - [Docker 部署](docker.md)
 - [快速入门](../getting-started/quick-start.md)
-- [API 参考](../api-reference/unified-api.md)
+- [OpenAI API](../api-reference/openai-api.md)
+- [Anthropic API](../api-reference/anthropic-api.md)
+- [Gemini API](../api-reference/gemini-api.md)

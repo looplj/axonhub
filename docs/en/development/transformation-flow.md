@@ -343,6 +343,8 @@ Failover handling implements circuit breakers to prevent cascading failures when
 ## Related Documentation
 
 - [Entity Relationship Diagram](erd.md)
-- [API Reference](../api-reference/unified-api.md)
+- [OpenAI API](../api-reference/openai-api.md)
+- [Anthropic API](../api-reference/anthropic-api.md)
+- [Gemini API](../api-reference/gemini-api.md)
 - [Deployment Guide](../deployment/configuration.md)
 - [Tracing Guide](../guides/tracing.md)
