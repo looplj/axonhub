@@ -403,4 +403,6 @@ This command will validate your configuration file and report any errors.
 
 - [Docker Deployment](docker.md)
 - [Quick Start Guide](../getting-started/quick-start.md)
-- [API Reference](../api-reference/unified-api.md)
+- [OpenAI API](../api-reference/openai-api.md)
+- [Anthropic API](../api-reference/anthropic-api.md)
+- [Gemini API](../api-reference/gemini-api.md)

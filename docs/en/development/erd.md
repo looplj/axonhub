@@ -938,4 +938,6 @@ This design provides AxonHub with flexible, secure, and efficient data managemen
 - [Transformation Flow Architecture](transformation-flow.md)
 - [Fine-grained Permission Guide](../guides/permissions.md)
 - [Tracing Guide](../guides/tracing.md)
-- [Chat Completions API](../api-reference/unified-api.md#openai-chat-completions-api)
+- [OpenAI API](../api-reference/openai-api.md)
+- [Anthropic API](../api-reference/anthropic-api.md)
+- [Gemini API](../api-reference/gemini-api.md)

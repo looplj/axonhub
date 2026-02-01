@@ -20,5 +20,7 @@ AxonHub 通过基于角色的访问控制（RBAC）为组织提供精细化的�
 - 启用审计日志，记录每一次后台管理操作，满足合规检查需求。
 
 ## 相关资源
-- [Chat Completions API](../api-reference/unified-api.md#openai-chat-completions-api)
+- [OpenAI API](../api-reference/openai-api.md)
+- [Anthropic API](../api-reference/anthropic-api.md)
+- [Gemini API](../api-reference/gemini-api.md)
 - [Claude Code / Codex 集成指南](claude-code-integration.md)

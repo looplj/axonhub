@@ -167,6 +167,8 @@ A: Enable debug mode and view channel scoring and sorting in logs.
 
 ## 🔗 Related Documentation
 
-- [Unified API Documentation](../api-reference/unified-api.md)
+- [OpenAI API](../api-reference/openai-api.md)
+- [Anthropic API](../api-reference/anthropic-api.md)
+- [Gemini API](../api-reference/gemini-api.md)
 - [Channel Management Guide](../getting-started/quick-start.md)
 - [Tracing and Debugging](tracing.md)

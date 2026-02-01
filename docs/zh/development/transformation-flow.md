@@ -343,6 +343,8 @@ graph TB
 ## 相关文档
 
 - [实体关系图](erd.md)
-- [API 参考](../api-reference/unified-api.md)
+- [OpenAI API](../api-reference/openai-api.md)
+- [Anthropic API](../api-reference/anthropic-api.md)
+- [Gemini API](../api-reference/gemini-api.md)
 - [部署指南](../deployment/configuration.md)
 - [追踪指南](../guides/tracing.md)
