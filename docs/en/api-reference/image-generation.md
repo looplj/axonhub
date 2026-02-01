@@ -163,7 +163,8 @@ with open("image.png", "rb") as image_file, open("mask.png", "rb") as mask_file:
 | **OpenAI**           | ✅ Done | gpt-image-1, dall-e-2, dall-e-3, etc.                         | No streaming support  |
 | **ByteDance Doubao** | ✅ Done | doubao-seed-dream-4-0, etc.                                   | No streaming support  |
 | **OpenRouter**       | ✅ Done | gpt-image-1, gemini-2.5-flash-image-preview, etc.             | No streaming support  |
-| **Gemini**           | 📝 Todo | -                                                             | Not implemented       |
+| **Gemini**           | ✅ Done | gemini-2.5-flash-image, gemini-2.0-flash-preview-image-generation, etc. | No streaming support  |
+| **ZAI**              | ✅ Done | -                                                             | Generation only, no edit support |
 
 ## Related Resources
 

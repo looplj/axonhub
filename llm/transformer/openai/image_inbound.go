@@ -35,6 +35,24 @@ var allowedImageTypes = []string{
 	"image/webp",
 }
 
+// ImageGenerationRequest represents the request structure for image generation API.
+type ImageGenerationRequest struct {
+	Prompt            string `json:"prompt"`
+	Model             string `json:"model"`
+	N                 *int64 `json:"n,omitempty"`
+	Quality           string `json:"quality,omitempty"`
+	ResponseFormat    string `json:"response_format,omitempty"`
+	Size              string `json:"size,omitempty"`
+	Style             string `json:"style,omitempty"`
+	User              string `json:"user,omitempty"`
+	Background        string `json:"background,omitempty"`
+	OutputFormat      string `json:"output_format,omitempty"`
+	OutputCompression *int64 `json:"output_compression,omitempty"`
+	Moderation        string `json:"moderation,omitempty"`
+	PartialImages     *int64 `json:"partial_images,omitempty"`
+	Stream            bool   `json:"stream,omitempty"`
+}
+
 type ImageInboundTransformer struct {
 	apiFormat llm.APIFormat
 }
@@ -161,24 +179,14 @@ func (t *ImageInboundTransformer) transformGenerationRequest(httpReq *httpclient
 		return nil, fmt.Errorf("%w: generations requires application/json", transformer.ErrInvalidRequest)
 	}
 
-	var genReq struct {
-		Prompt            string `json:"prompt"`
-		Model             string `json:"model"`
-		N                 *int64 `json:"n,omitempty"`
-		Quality           string `json:"quality,omitempty"`
-		ResponseFormat    string `json:"response_format,omitempty"`
-		Size              string `json:"size,omitempty"`
-		Style             string `json:"style,omitempty"`
-		User              string `json:"user,omitempty"`
-		Background        string `json:"background,omitempty"`
-		OutputFormat      string `json:"output_format,omitempty"`
-		OutputCompression *int64 `json:"output_compression,omitempty"`
-		Moderation        string `json:"moderation,omitempty"`
-		PartialImages     *int64 `json:"partial_images,omitempty"`
-	}
+	var genReq ImageGenerationRequest
 
 	if err := json.Unmarshal(httpReq.Body, &genReq); err != nil {
 		return nil, fmt.Errorf("%w: failed to decode generation request: %w", transformer.ErrInvalidRequest, err)
+	}
+
+	if genReq.Stream {
+		return nil, fmt.Errorf("%w: image generation does not support streaming", transformer.ErrInvalidRequest)
 	}
 
 	model := genReq.Model
@@ -222,6 +230,10 @@ func (t *ImageInboundTransformer) transformEditRequest(httpReq *httpclient.Reque
 	formData, err := parseMultipartRequest(httpReq)
 	if err != nil {
 		return nil, err
+	}
+
+	if strings.EqualFold(strings.TrimSpace(formData.Fields["stream"]), "true") {
+		return nil, fmt.Errorf("%w: image edit does not support streaming", transformer.ErrInvalidRequest)
 	}
 
 	prompt := strings.TrimSpace(formData.Fields["prompt"])
@@ -284,6 +296,10 @@ func (t *ImageInboundTransformer) transformVariationRequest(ctx context.Context,
 	formData, err := parseMultipartRequest(httpReq)
 	if err != nil {
 		return nil, err
+	}
+
+	if strings.EqualFold(strings.TrimSpace(formData.Fields["stream"]), "true") {
+		return nil, fmt.Errorf("%w: image variation does not support streaming", transformer.ErrInvalidRequest)
 	}
 
 	if strings.TrimSpace(formData.Fields["prompt"]) != "" {
