@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
-import { DateRange } from 'react-day-picker';
 import { useTranslation } from 'react-i18next';
-import { buildDateRangeWhereClause } from '@/utils/date-range';
+import { buildDateRangeWhereClause, type DateTimeRangeValue } from '@/utils/date-range';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import useInterval from '@/hooks/useInterval';
@@ -16,7 +15,7 @@ function ThreadsContent() {
     defaultPageSize: 20,
     pageSizeStorageKey: 'threads-table-page-size',
   });
-  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [dateRange, setDateRange] = useState<DateTimeRangeValue | undefined>();
   const [threadIdFilter, setThreadIdFilter] = useState<string>('');
   const [autoRefresh, setAutoRefresh] = useState(false);
   const debouncedThreadIdFilter = useDebounce(threadIdFilter, 300);
@@ -71,7 +70,7 @@ function ThreadsContent() {
   };
 
   const handleDateRangeChange = useCallback(
-    (range: DateRange | undefined) => {
+    (range: DateTimeRangeValue | undefined) => {
       setDateRange(range);
       resetCursor();
     },

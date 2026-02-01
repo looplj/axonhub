@@ -1427,3 +1427,66 @@
 .dark [data-slot='sidebar-group-label'] {
   color: var(--muted-foreground);
 }
+
+@layer utilities {
+  .glass-highlight {
+    background: rgba(99, 102, 241, 0.15);
+    background: color-mix(in srgb, var(--primary) 15%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .active-glow {
+    box-shadow: 0 0 15px -3px rgba(99, 102, 241, 0.3);
+    border-color: var(--primary) !important;
+  }
+}
+
+/* ===== DATE RANGE PICKER STYLES ===== */
+
+/* Range middle date - cell background */
+.rdp-custom-day.rdp-custom-range-middle {
+  @apply bg-primary/10 dark:bg-primary/20;
+}
+
+/* Range start date - cell background and rounded corners */
+.rdp-custom-day.rdp-custom-range-start {
+  @apply bg-primary/10 rounded-l-full dark:bg-primary/20;
+}
+
+/* Range end date - cell background and rounded corners */
+.rdp-custom-day.rdp-custom-range-end {
+  @apply bg-primary/10 rounded-r-full dark:bg-primary/20;
+}
+
+/* Range start and end on the same day */
+.rdp-custom-day.rdp-custom-range-start.rdp-custom-range-end {
+  @apply rounded-full;
+}
+
+/* Range start/end date - button styles */
+.rdp-custom-day.rdp-custom-range-start > .rdp-custom-day-button,
+.rdp-custom-day.rdp-custom-range-end > .rdp-custom-day-button {
+  @apply bg-primary text-white hover:bg-primary;
+}
+
+/* Today's date style */
+.rdp-custom-day.rdp-custom-today > .rdp-custom-day-button {
+  @apply ring-1 ring-inset ring-primary/40;
+}
+
+/* Outside dates (prev/next month) */
+.rdp-custom-day.rdp-custom-outside > .rdp-custom-day-button {
+  @apply text-gray-300 dark:text-gray-700;
+}
+
+/* Outside dates within range */
+.rdp-custom-day.rdp-custom-outside.rdp-custom-range-middle,
+.rdp-custom-day.rdp-custom-outside.rdp-custom-range-start,
+.rdp-custom-day.rdp-custom-outside.rdp-custom-range-end {
+  @apply bg-primary/5;
+}
+
+/* Disabled dates */
+.rdp-custom-day.rdp-custom-disabled > .rdp-custom-day-button {
+  @apply cursor-not-allowed opacity-30;
+}

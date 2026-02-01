@@ -13,12 +13,12 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { motion, AnimatePresence } from 'framer-motion';
-import { DateRange } from 'react-day-picker';
 import { useTranslation } from 'react-i18next';
 import { useAnimatedList } from '@/hooks/useAnimatedList';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { ServerSidePagination } from '@/components/server-side-pagination';
+import type { DateTimeRangeValue } from '@/utils/date-range';
 import { Request, RequestConnection } from '../data/schema';
 import { DataTableToolbar } from './data-table-toolbar';
 import { useRequestsColumns } from './requests-columns';
@@ -43,7 +43,7 @@ interface RequestsTableProps {
   sourceFilter: string[];
   channelFilter: string[];
   apiKeyFilter: string[];
-  dateRange?: DateRange;
+  dateRange?: DateTimeRangeValue;
   onNextPage: () => void;
   onPreviousPage: () => void;
   onPageSizeChange: (pageSize: number) => void;
@@ -51,7 +51,7 @@ interface RequestsTableProps {
   onSourceFilterChange: (filters: string[]) => void;
   onChannelFilterChange: (filters: string[]) => void;
   onApiKeyFilterChange: (filters: string[]) => void;
-  onDateRangeChange: (range: DateRange | undefined) => void;
+  onDateRangeChange: (range: DateTimeRangeValue | undefined) => void;
   onRefresh: () => void;
   showRefresh: boolean;
   autoRefresh?: boolean;

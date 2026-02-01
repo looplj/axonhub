@@ -130,6 +130,8 @@
   "common.columns.selectRow": "Select row",
   "common.filters.reset": "Reset",
   "common.filters.dateRange": "Pick date range",
+  "common.filters.startTime": "Start Time",
+  "common.filters.endTime": "End Time",
   "common.routeGuard.accessDenied": "Access Denied",
   "common.routeGuard.noPermission": "You do not have permission to access this page. Please contact the administrator to obtain the necessary access permissions.",
   "common.routeGuard.goBack": "Go Back",
