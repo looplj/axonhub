@@ -73,6 +73,10 @@ type Request struct {
 	// ReasoningBudget is the budget for reasoning tokens.
 	ReasoningBudget *int64 `json:"reasoning_budget,omitempty"`
 
+	// ReasoningSummary is the summary type for reasoning models ("auto", "concise", "detailed").
+	// Extension field, not part of official OpenAI Chat Completions API.
+	ReasoningSummary *string `json:"reasoning_summary,omitempty"`
+
 	// ServiceTier specifies the processing type.
 	ServiceTier *string `json:"service_tier,omitempty"`
 

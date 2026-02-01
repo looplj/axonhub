@@ -404,8 +404,9 @@ func TestConvertReasoning(t *testing.T) {
 		{
 			name: "nil reasoning fields",
 			req: &llm.Request{
-				ReasoningEffort: "",
-				ReasoningBudget: nil,
+				ReasoningEffort:  "",
+				ReasoningBudget:  nil,
+				ReasoningSummary: nil,
 			},
 			expected: nil,
 		},
@@ -440,6 +441,28 @@ func TestConvertReasoning(t *testing.T) {
 			expected: &Reasoning{
 				Effort:    "medium",
 				MaxTokens: nil, // Should be nil when effort is specified
+			},
+		},
+		{
+			name: "with summary specified",
+			req: &llm.Request{
+				ReasoningEffort:  "high",
+				ReasoningSummary: lo.ToPtr("detailed"),
+				ReasoningBudget:  lo.ToPtr(int64(5000)),
+			},
+			expected: &Reasoning{
+				Effort:    "high",
+				MaxTokens: nil, // effort takes priority
+				Summary:   "detailed",
+			},
+		},
+		{
+			name: "with only summary specified (no effort or budget)",
+			req: &llm.Request{
+				ReasoningSummary: lo.ToPtr("concise"),
+			},
+			expected: &Reasoning{
+				Summary: "concise",
 			},
 		},
 	}

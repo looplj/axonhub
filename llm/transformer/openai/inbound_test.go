@@ -206,6 +206,36 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 					*req.ReasoningBudget == 16384
 			},
 		},
+		{
+			name: "request with reasoning summary",
+			request: &httpclient.Request{
+				Method: http.MethodPost,
+				URL:    "/v1/chat/completions",
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
+				},
+				Body: mustMarshal(Request{
+					Model: "o3",
+					Messages: []Message{
+						{
+							Role: "user",
+							Content: MessageContent{
+								Content: lo.ToPtr("Test with reasoning summary"),
+							},
+						},
+					},
+					ReasoningEffort:  "medium",
+					ReasoningSummary: lo.ToPtr("detailed"),
+				}),
+			},
+			wantErr: false,
+			validate: func(req *llm.Request) bool {
+				return req != nil &&
+					req.ReasoningEffort == "medium" &&
+					req.ReasoningSummary != nil &&
+					*req.ReasoningSummary == "detailed"
+			},
+		},
 	}
 
 	for _, tt := range tests {
