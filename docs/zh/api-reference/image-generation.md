@@ -163,7 +163,8 @@ with open("image.png", "rb") as image_file, open("mask.png", "rb") as mask_file:
 | **OpenAI** | ✅ 完成 | gpt-image-1、dall-e-2、dall-e-3 等 | 不支持流式传输 |
 | **字节跳动豆包** | ✅ 完成 | doubao-seed-dream-4-0 等 | 不支持流式传输 |
 | **OpenRouter** | ✅ 完成 | gpt-image-1、gemini-2.5-flash-image-preview 等 | 不支持流式传输 |
-| **Gemini** | 📝 待办 | - | 未实现 |
+| **Gemini** | ✅ 完成 | gemini-2.5-flash-image、gemini-2.0-flash-preview-image-generation 等 | 不支持流式传输 |
+| **ZAI** | ✅ 完成 | - | 仅支持生成，不支持编辑 |
 
 ## 相关资源
 

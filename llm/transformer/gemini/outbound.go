@@ -102,6 +102,8 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	//nolint:exhaustive // Checked.
 	switch llmReq.RequestType {
+	case llm.RequestTypeImage:
+		return t.buildImageGenerationRequest(llmReq)
 	case llm.RequestTypeChat, "":
 		// continue
 	default:
@@ -199,6 +201,11 @@ func (t *OutboundTransformer) buildFullRequestURL(llmReq *llm.Request) string {
 func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.Response, error) {
 	if httpResp == nil {
 		return nil, fmt.Errorf("http response is nil")
+	}
+
+	// Check if this is an image generation request
+	if httpResp.Request != nil && httpResp.Request.RequestType == llm.RequestTypeImage.String() {
+		return transformImageGenerationResponse(httpResp)
 	}
 
 	// Check for HTTP error status
