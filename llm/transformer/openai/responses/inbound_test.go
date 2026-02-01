@@ -220,7 +220,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			},
 		},
 		{
-			name: "request with reasoning and generate_summary (deprecated)",
+			name: "request with reasoning and generate_summary (merged to summary)",
 			httpReq: &httpclient.Request{
 				Body: []byte(`{
 					"model": "o3",
@@ -234,8 +234,9 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			expectError: false,
 			validate: func(t *testing.T, result *llm.Request) {
 				require.Equal(t, "low", result.ReasoningEffort)
-				require.NotNil(t, result.ReasoningGenerateSummary)
-				require.Equal(t, "concise", *result.ReasoningGenerateSummary)
+				// generate_summary is merged into ReasoningSummary at inbound level
+				require.NotNil(t, result.ReasoningSummary)
+				require.Equal(t, "concise", *result.ReasoningSummary)
 			},
 		},
 		{
@@ -254,10 +255,9 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			expectError: false,
 			validate: func(t *testing.T, result *llm.Request) {
 				require.Equal(t, "high", result.ReasoningEffort)
+				// summary takes priority over generate_summary
 				require.NotNil(t, result.ReasoningSummary)
 				require.Equal(t, "auto", *result.ReasoningSummary)
-				// When both are present, summary takes priority
-				require.Nil(t, result.ReasoningGenerateSummary)
 			},
 		},
 		{

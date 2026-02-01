@@ -301,13 +301,11 @@ func convertStreamOptions(src *llm.StreamOptions, metadata map[string]any) *Stre
 // convertReasoning converts llm.Request reasoning fields to Responses API Reasoning.
 // Only one of "reasoning.effort" and "reasoning.max_tokens" can be specified.
 // Priority is given to effort when both are present.
-// Also handles reasoning.summary and reasoning.generate_summary fields.
 func convertReasoning(req *llm.Request) *Reasoning {
 	// Check if any reasoning-related fields are present
 	hasReasoningFields := req.ReasoningEffort != "" ||
 		req.ReasoningBudget != nil ||
-		req.ReasoningSummary != nil ||
-		req.ReasoningGenerateSummary != nil
+		req.ReasoningSummary != nil
 	if !hasReasoningFields {
 		return nil
 	}
@@ -317,12 +315,9 @@ func convertReasoning(req *llm.Request) *Reasoning {
 		MaxTokens: req.ReasoningBudget,
 	}
 
-	// Handle summary and generate_summary fields
-	// generate_summary is deprecated, use summary instead
+	// Handle summary field (generate_summary is already merged at inbound)
 	if req.ReasoningSummary != nil {
 		reasoning.Summary = *req.ReasoningSummary
-	} else if req.ReasoningGenerateSummary != nil {
-		reasoning.GenerateSummary = *req.ReasoningGenerateSummary
 	}
 
 	// If both effort and budget are specified, prioritize effort as per requirement

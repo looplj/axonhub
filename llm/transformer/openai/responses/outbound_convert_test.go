@@ -404,10 +404,9 @@ func TestConvertReasoning(t *testing.T) {
 		{
 			name: "nil reasoning fields",
 			req: &llm.Request{
-				ReasoningEffort:          "",
-				ReasoningBudget:          nil,
-				ReasoningSummary:         nil,
-				ReasoningGenerateSummary: nil,
+				ReasoningEffort:  "",
+				ReasoningBudget:  nil,
+				ReasoningSummary: nil,
 			},
 			expected: nil,
 		},
@@ -455,30 +454,6 @@ func TestConvertReasoning(t *testing.T) {
 				Effort:    "high",
 				MaxTokens: nil, // effort takes priority
 				Summary:   "detailed",
-			},
-		},
-		{
-			name: "with generate_summary specified (deprecated)",
-			req: &llm.Request{
-				ReasoningEffort:          "medium",
-				ReasoningGenerateSummary: lo.ToPtr("concise"),
-			},
-			expected: &Reasoning{
-				Effort:          "medium",
-				MaxTokens:       nil,
-				GenerateSummary: "concise",
-			},
-		},
-		{
-			name: "with summary and generate_summary - summary takes priority",
-			req: &llm.Request{
-				ReasoningEffort:          "low",
-				ReasoningSummary:         lo.ToPtr("auto"),
-				ReasoningGenerateSummary: lo.ToPtr("detailed"),
-			},
-			expected: &Reasoning{
-				Effort:  "low",
-				Summary: "auto",
 			},
 		},
 		{

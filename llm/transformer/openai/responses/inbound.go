@@ -213,12 +213,11 @@ func convertToLLMRequest(req *Request) (*llm.Request, error) {
 			chatReq.ReasoningBudget = req.Reasoning.MaxTokens
 		}
 
-		// Handle summary and generate_summary fields
-		// generate_summary is deprecated, use summary if available
+		// Priority: summary > generate_summary
 		if req.Reasoning.Summary != "" {
 			chatReq.ReasoningSummary = lo.ToPtr(req.Reasoning.Summary)
 		} else if req.Reasoning.GenerateSummary != "" {
-			chatReq.ReasoningGenerateSummary = lo.ToPtr(req.Reasoning.GenerateSummary)
+			chatReq.ReasoningSummary = lo.ToPtr(req.Reasoning.GenerateSummary)
 		}
 	}
 

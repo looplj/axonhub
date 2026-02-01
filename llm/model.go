@@ -163,13 +163,9 @@ type Request struct {
 	// Help fields， will not be sent to the llm service.
 	ReasoningBudget *int64 `json:"reasoning_budget,omitempty"`
 
-	// Summary type for reasoning models. Any of "auto", "concise", "detailed".
+	// Summary type for reasoning models ("auto", "concise", "detailed").
 	// Help fields, will not be sent to the llm service.
 	ReasoningSummary *string `json:"reasoning_summary,omitempty"`
-
-	// Generate summary for reasoning models. Deprecated: use ReasoningSummary instead.
-	// Help fields, will not be sent to the llm service.
-	ReasoningGenerateSummary *string `json:"reasoning_generate_summary,omitempty"`
 
 	// Specifies the processing type used for serving the request.
 	ServiceTier *string `json:"service_tier,omitempty"`

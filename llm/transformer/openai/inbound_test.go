@@ -236,36 +236,6 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 					*req.ReasoningSummary == "detailed"
 			},
 		},
-		{
-			name: "request with reasoning generate_summary (deprecated)",
-			request: &httpclient.Request{
-				Method: http.MethodPost,
-				URL:    "/v1/chat/completions",
-				Headers: http.Header{
-					"Content-Type": []string{"application/json"},
-				},
-				Body: mustMarshal(Request{
-					Model: "o3",
-					Messages: []Message{
-						{
-							Role: "user",
-							Content: MessageContent{
-								Content: lo.ToPtr("Test with deprecated generate_summary"),
-							},
-						},
-					},
-					ReasoningEffort:          "low",
-					ReasoningGenerateSummary: lo.ToPtr("concise"),
-				}),
-			},
-			wantErr: false,
-			validate: func(req *llm.Request) bool {
-				return req != nil &&
-					req.ReasoningEffort == "low" &&
-					req.ReasoningGenerateSummary != nil &&
-					*req.ReasoningGenerateSummary == "concise"
-			},
-		},
 	}
 
 	for _, tt := range tests {

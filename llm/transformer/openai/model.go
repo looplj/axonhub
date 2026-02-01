@@ -77,10 +77,6 @@ type Request struct {
 	// Extension field, not part of official OpenAI Chat Completions API.
 	ReasoningSummary *string `json:"reasoning_summary,omitempty"`
 
-	// ReasoningGenerateSummary is deprecated, use ReasoningSummary instead.
-	// Extension field, not part of official OpenAI Chat Completions API.
-	ReasoningGenerateSummary *string `json:"reasoning_generate_summary,omitempty"`
-
 	// ServiceTier specifies the processing type.
 	ServiceTier *string `json:"service_tier,omitempty"`
 
