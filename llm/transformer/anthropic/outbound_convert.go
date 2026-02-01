@@ -43,7 +43,7 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 		req.Metadata = &AnthropicMetadata{UserID: chatReq.Metadata["user_id"]}
 	}
 
-	if chatReq.ReasoningEffort != "" {
+	if chatReq.ReasoningEffort != "" || chatReq.ReasoningBudget != nil {
 		req.Thinking = buildThinking(chatReq, config)
 	}
 
