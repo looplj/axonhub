@@ -91,6 +91,9 @@ Configure pricing for each channel and model in the admin dashboard:
 
 1. Go to **Channels** → **Model Prices**
 2. Set pricing items for each model:
+
+![Model Pricing](../../screenshots/axonhub-model-price.png)
+
    - Input price (`prompt_tokens`)
    - Output price (`completion_tokens`)
    - Cache read price (`prompt_cached_tokens`)
