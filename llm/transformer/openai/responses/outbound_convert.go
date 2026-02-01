@@ -303,8 +303,12 @@ func convertStreamOptions(src *llm.StreamOptions, metadata map[string]any) *Stre
 // Priority is given to effort when both are present.
 // Also handles reasoning.summary and reasoning.generate_summary fields.
 func convertReasoning(req *llm.Request) *Reasoning {
-	if req.ReasoningEffort == "" && req.ReasoningBudget == nil &&
-		req.ReasoningSummary == nil && req.ReasoningGenerateSummary == nil {
+	// Check if any reasoning-related fields are present
+	hasReasoningFields := req.ReasoningEffort != "" ||
+		req.ReasoningBudget != nil ||
+		req.ReasoningSummary != nil ||
+		req.ReasoningGenerateSummary != nil
+	if !hasReasoningFields {
 		return nil
 	}
 
