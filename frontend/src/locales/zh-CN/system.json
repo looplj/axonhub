@@ -194,7 +194,7 @@
     "system.autoBackup.triggerNowTooltip": "请先选择数据存储",
     "system.autoBackup.saveFirstTooltip": "请先保存更改，然后再触发备份",
     "system.autoBackup.triggeringBackup": "备份中...",
-  "system.autoBackup.triggerSuccess": "备份任务已触发",
+  "system.autoBackup.triggerSuccess": "已备份",
   "system.autoBackup.triggerFailed": "触发备份失败",
   "system.autoBackup.saveSettings": "保存自动备份设置",
   "system.autoBackup.savingSettings": "保存中...",
