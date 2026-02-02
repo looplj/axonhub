@@ -14,7 +14,26 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/shopspring/decimal"
 )
+
+type APIKeyProfileQuotaUsage struct {
+	ProfileName string               `json:"profileName"`
+	Quota       *objects.APIKeyQuota `json:"quota"`
+	Window      *APIKeyQuotaWindow   `json:"window"`
+	Usage       *APIKeyQuotaUsage    `json:"usage"`
+}
+
+type APIKeyQuotaUsage struct {
+	RequestCount int             `json:"requestCount"`
+	TotalTokens  int             `json:"totalTokens"`
+	TotalCost    decimal.Decimal `json:"totalCost"`
+}
+
+type APIKeyQuotaWindow struct {
+	Start *time.Time `json:"start,omitempty"`
+	End   *time.Time `json:"end,omitempty"`
+}
 
 type AddUserToProjectInput struct {
 	ProjectID objects.GUID    `json:"projectId"`

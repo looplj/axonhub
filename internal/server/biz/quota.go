@@ -114,6 +114,8 @@ func (s *QuotaService) GetQuota(ctx context.Context, apiKeyID int, quota *object
 		return QuotaResult{}, nil
 	}
 
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
 	loc := s.system.TimeLocation(ctx)
 
 	window, err := quotaWindow(xtime.UTCNow(), quota.Period, loc)
@@ -161,6 +163,8 @@ func quotaWindow(now time.Time, period objects.APIKeyQuotaPeriod, loc *time.Loca
 		var d time.Duration
 
 		switch period.PastDuration.Unit {
+		case objects.APIKeyQuotaPastDurationUnitMinute:
+			d = time.Duration(period.PastDuration.Value) * time.Minute
 		case objects.APIKeyQuotaPastDurationUnitHour:
 			d = time.Duration(period.PastDuration.Value) * time.Hour
 		case objects.APIKeyQuotaPastDurationUnitDay:

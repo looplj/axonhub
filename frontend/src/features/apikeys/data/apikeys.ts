@@ -5,8 +5,8 @@ import { toast } from 'sonner';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import { useErrorHandler } from '@/hooks/use-error-handler';
 import { useRequestPermissions } from '../../../hooks/useRequestPermissions';
-import type { ApiKey, ApiKeyConnection, CreateApiKeyInput, UpdateApiKeyInput, UpdateApiKeyProfilesInput } from './schema';
-import { apiKeyConnectionSchema, apiKeySchema } from './schema';
+import type { ApiKey, ApiKeyConnection, ApiKeyProfileQuotaUsage, CreateApiKeyInput, UpdateApiKeyInput, UpdateApiKeyProfilesInput } from './schema';
+import { apiKeyConnectionSchema, apiKeyProfileQuotaUsageSchema, apiKeySchema } from './schema';
 
 // Dynamic GraphQL query builders
 function buildApiKeysQuery(permissions: { canViewUsers: boolean }) {
@@ -209,6 +209,26 @@ const BULK_ARCHIVE_APIKEYS_MUTATION = `
   }
 `;
 
+const APIKEY_QUOTA_USAGES_QUERY = `
+  query APIKeyQuotaUsages($apiKeyId: ID!) {
+    apiKeyQuotaUsages(apiKeyId: $apiKeyId) {
+      profileName
+      quota {
+        requests
+        totalTokens
+        cost
+        period {
+          type
+          pastDuration { value unit }
+          calendarDuration { unit }
+        }
+      }
+      window { start end }
+      usage { requestCount totalTokens totalCost }
+    }
+  }
+`;
+
 // React Query hooks
 export function useApiKeys(
   variables?: {
@@ -269,6 +289,38 @@ export function useApiKey(id: string) {
       }
     },
     enabled: !!id,
+  });
+}
+
+export function useApiKeyQuotaUsages(
+  apiKeyId: string,
+  options?: {
+    enabled?: boolean;
+    refetchInterval?: number;
+  }
+) {
+  const { t } = useTranslation();
+  const { handleError } = useErrorHandler();
+  const selectedProjectId = useSelectedProjectId();
+
+  return useQuery({
+    queryKey: ['apiKeyQuotaUsages', apiKeyId, selectedProjectId],
+    queryFn: async () => {
+      try {
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+        const data = await graphqlRequest<{ apiKeyQuotaUsages: ApiKeyProfileQuotaUsage[] }>(
+          APIKEY_QUOTA_USAGES_QUERY,
+          { apiKeyId },
+          headers
+        );
+        return apiKeyProfileQuotaUsageSchema.array().parse(data.apiKeyQuotaUsages);
+      } catch (error) {
+        handleError(error, t('apikeys.errors.fetchDetails'));
+        throw error;
+      }
+    },
+    enabled: !!apiKeyId && (options?.enabled ?? true),
+    refetchInterval: options?.refetchInterval,
   });
 }
 

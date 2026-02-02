@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { IconPlus, IconTrash, IconSettings, IconChevronDown, IconChevronUp } from '@tabler/icons-react';
+import { format, type Locale } from 'date-fns';
+import { zhCN, enUS } from 'date-fns/locale';
 import { useQueryModels } from '@/gql/models';
 import { useTranslation } from 'react-i18next';
 import { extractNumberID } from '@/lib/utils';
@@ -17,7 +19,8 @@ import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
 import { AutoComplete } from '@/components/auto-complete';
 import { useAllChannelsForOrdering } from '@/features/channels/data/channels';
 import { useApiKeysContext } from '../context/apikeys-context';
-import { updateApiKeyProfilesInputSchemaFactory, type UpdateApiKeyProfilesInput, type ApiKeyProfile } from '../data/schema';
+import { useApiKeyQuotaUsages } from '../data/apikeys';
+import { updateApiKeyProfilesInputSchemaFactory, type ApiKeyProfile, type ApiKeyProfileQuotaUsage, type UpdateApiKeyProfilesInput } from '../data/schema';
 
 interface ApiKeyProfilesDialogProps {
   open: boolean;
@@ -31,11 +34,24 @@ interface ApiKeyProfilesDialogProps {
 }
 
 export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = false, initialData }: ApiKeyProfilesDialogProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { selectedApiKey } = useApiKeysContext();
   const { data: availableModels, mutateAsync: fetchModels } = useQueryModels();
   // 用于解决 Dialog 内 Popover 无法滚动的问题
   const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null);
+  const locale = i18n.language === 'zh' ? zhCN : enUS;
+  const apiKeyId = selectedApiKey?.id ?? '';
+  const quotaUsagesQuery = useApiKeyQuotaUsages(apiKeyId, {
+    enabled: open && !!apiKeyId,
+    refetchInterval: open ? 10000 : undefined,
+  });
+  const quotaUsageByProfileName = useMemo(() => {
+    const map = new Map<string, ApiKeyProfileQuotaUsage>();
+    quotaUsagesQuery.data?.forEach((u) => {
+      map.set(u.profileName, u);
+    });
+    return map;
+  }, [quotaUsagesQuery.data]);
 
   useEffect(() => {
     if (open) {
@@ -260,6 +276,8 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
                               canRemove={profileFields.length > 1}
                               availableModels={availableModels?.map((model) => model.id) || []}
                               t={t}
+                              locale={locale}
+                              quotaUsageByProfileName={quotaUsageByProfileName}
                               defaultExpanded={isActive}
                               portalContainer={dialogContent}
                             />
@@ -339,6 +357,8 @@ interface ProfileCardProps {
   canRemove: boolean;
   availableModels: string[];
   t: (key: string) => string;
+  locale: Locale;
+  quotaUsageByProfileName: Map<string, ApiKeyProfileQuotaUsage>;
   defaultExpanded?: boolean;
   /** Popover Portal 容器元素，解决 Dialog 内无法滚动的问题 */
   portalContainer?: HTMLElement | null;
@@ -351,6 +371,8 @@ function ProfileCard({
   canRemove,
   availableModels,
   t,
+  locale,
+  quotaUsageByProfileName,
   defaultExpanded = false,
   portalContainer,
 }: ProfileCardProps) {
@@ -382,6 +404,9 @@ function ProfileCard({
 
   // Watch all profiles to check for duplicates
   const allProfiles = form.watch('profiles') || [];
+  const profileName = form.watch(`profiles.${profileIndex}.name`);
+  const quotaUsage = profileName ? quotaUsageByProfileName.get(profileName) : undefined;
+  const currentQuota = form.watch(`profiles.${profileIndex}.quota`);
 
   // Initialize local state from form value
   useEffect(() => {
@@ -651,6 +676,7 @@ function ProfileCard({
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
+                                  <SelectItem value='minute'>{t('apikeys.profiles.quotaUnitMinute')}</SelectItem>
                                   <SelectItem value='hour'>{t('apikeys.profiles.quotaUnitHour')}</SelectItem>
                                   <SelectItem value='day'>{t('apikeys.profiles.quotaUnitDay')}</SelectItem>
                                 </SelectContent>
@@ -687,6 +713,42 @@ function ProfileCard({
                     />
                   )}
                 </div>
+
+                {quotaUsage && (
+                  <div className='space-y-2 rounded-md border p-3'>
+                    <div className='text-xs font-medium'>{t('apikeys.profiles.quotaUsageTitle')}</div>
+                    <div className='grid gap-3 md:grid-cols-3'>
+                      <div>
+                        <div className='text-muted-foreground text-xs'>{t('apikeys.profiles.quotaRequests')}</div>
+                        <div className='text-sm'>
+                          {quotaUsage.usage.requestCount}/{currentQuota?.requests ?? '∞'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className='text-muted-foreground text-xs'>{t('apikeys.profiles.quotaTotalTokens')}</div>
+                        <div className='text-sm'>
+                          {quotaUsage.usage.totalTokens}/{currentQuota?.totalTokens ?? '∞'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className='text-muted-foreground text-xs'>{t('apikeys.profiles.quotaCost')}</div>
+                        <div className='text-sm'>
+                          {(quotaUsage.usage.totalCost ?? 0).toLocaleString(undefined, { maximumFractionDigits: 6 })}/{currentQuota?.cost ?? '∞'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className='text-muted-foreground grid gap-2 text-xs md:grid-cols-2'>
+                      <div>
+                        {t('common.filters.startTime')}{' '}
+                        {quotaUsage.window.start ? format(quotaUsage.window.start, 'PPpp', { locale }) : '-'}
+                      </div>
+                      <div>
+                        {t('common.filters.endTime')}{' '}
+                        {quotaUsage.window.end ? format(quotaUsage.window.end, 'PPpp', { locale }) : '-'}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
