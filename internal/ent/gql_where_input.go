@@ -3379,6 +3379,30 @@ type ChannelProbeWhereInput struct {
 	SuccessRequestCountLT    *int  `json:"successRequestCountLT,omitempty"`
 	SuccessRequestCountLTE   *int  `json:"successRequestCountLTE,omitempty"`
 
+	// "avg_tokens_per_second" field predicates.
+	AvgTokensPerSecond       *float64  `json:"avgTokensPerSecond,omitempty"`
+	AvgTokensPerSecondNEQ    *float64  `json:"avgTokensPerSecondNEQ,omitempty"`
+	AvgTokensPerSecondIn     []float64 `json:"avgTokensPerSecondIn,omitempty"`
+	AvgTokensPerSecondNotIn  []float64 `json:"avgTokensPerSecondNotIn,omitempty"`
+	AvgTokensPerSecondGT     *float64  `json:"avgTokensPerSecondGT,omitempty"`
+	AvgTokensPerSecondGTE    *float64  `json:"avgTokensPerSecondGTE,omitempty"`
+	AvgTokensPerSecondLT     *float64  `json:"avgTokensPerSecondLT,omitempty"`
+	AvgTokensPerSecondLTE    *float64  `json:"avgTokensPerSecondLTE,omitempty"`
+	AvgTokensPerSecondIsNil  bool      `json:"avgTokensPerSecondIsNil,omitempty"`
+	AvgTokensPerSecondNotNil bool      `json:"avgTokensPerSecondNotNil,omitempty"`
+
+	// "avg_time_to_first_token_ms" field predicates.
+	AvgTimeToFirstTokenMs       *float64  `json:"avgTimeToFirstTokenMs,omitempty"`
+	AvgTimeToFirstTokenMsNEQ    *float64  `json:"avgTimeToFirstTokenMsNEQ,omitempty"`
+	AvgTimeToFirstTokenMsIn     []float64 `json:"avgTimeToFirstTokenMsIn,omitempty"`
+	AvgTimeToFirstTokenMsNotIn  []float64 `json:"avgTimeToFirstTokenMsNotIn,omitempty"`
+	AvgTimeToFirstTokenMsGT     *float64  `json:"avgTimeToFirstTokenMsGT,omitempty"`
+	AvgTimeToFirstTokenMsGTE    *float64  `json:"avgTimeToFirstTokenMsGTE,omitempty"`
+	AvgTimeToFirstTokenMsLT     *float64  `json:"avgTimeToFirstTokenMsLT,omitempty"`
+	AvgTimeToFirstTokenMsLTE    *float64  `json:"avgTimeToFirstTokenMsLTE,omitempty"`
+	AvgTimeToFirstTokenMsIsNil  bool      `json:"avgTimeToFirstTokenMsIsNil,omitempty"`
+	AvgTimeToFirstTokenMsNotNil bool      `json:"avgTimeToFirstTokenMsNotNil,omitempty"`
+
 	// "timestamp" field predicates.
 	Timestamp      *int64  `json:"timestamp,omitempty"`
 	TimestampNEQ   *int64  `json:"timestampNEQ,omitempty"`
@@ -3548,6 +3572,66 @@ func (i *ChannelProbeWhereInput) P() (predicate.ChannelProbe, error) {
 	}
 	if i.SuccessRequestCountLTE != nil {
 		predicates = append(predicates, channelprobe.SuccessRequestCountLTE(*i.SuccessRequestCountLTE))
+	}
+	if i.AvgTokensPerSecond != nil {
+		predicates = append(predicates, channelprobe.AvgTokensPerSecondEQ(*i.AvgTokensPerSecond))
+	}
+	if i.AvgTokensPerSecondNEQ != nil {
+		predicates = append(predicates, channelprobe.AvgTokensPerSecondNEQ(*i.AvgTokensPerSecondNEQ))
+	}
+	if len(i.AvgTokensPerSecondIn) > 0 {
+		predicates = append(predicates, channelprobe.AvgTokensPerSecondIn(i.AvgTokensPerSecondIn...))
+	}
+	if len(i.AvgTokensPerSecondNotIn) > 0 {
+		predicates = append(predicates, channelprobe.AvgTokensPerSecondNotIn(i.AvgTokensPerSecondNotIn...))
+	}
+	if i.AvgTokensPerSecondGT != nil {
+		predicates = append(predicates, channelprobe.AvgTokensPerSecondGT(*i.AvgTokensPerSecondGT))
+	}
+	if i.AvgTokensPerSecondGTE != nil {
+		predicates = append(predicates, channelprobe.AvgTokensPerSecondGTE(*i.AvgTokensPerSecondGTE))
+	}
+	if i.AvgTokensPerSecondLT != nil {
+		predicates = append(predicates, channelprobe.AvgTokensPerSecondLT(*i.AvgTokensPerSecondLT))
+	}
+	if i.AvgTokensPerSecondLTE != nil {
+		predicates = append(predicates, channelprobe.AvgTokensPerSecondLTE(*i.AvgTokensPerSecondLTE))
+	}
+	if i.AvgTokensPerSecondIsNil {
+		predicates = append(predicates, channelprobe.AvgTokensPerSecondIsNil())
+	}
+	if i.AvgTokensPerSecondNotNil {
+		predicates = append(predicates, channelprobe.AvgTokensPerSecondNotNil())
+	}
+	if i.AvgTimeToFirstTokenMs != nil {
+		predicates = append(predicates, channelprobe.AvgTimeToFirstTokenMsEQ(*i.AvgTimeToFirstTokenMs))
+	}
+	if i.AvgTimeToFirstTokenMsNEQ != nil {
+		predicates = append(predicates, channelprobe.AvgTimeToFirstTokenMsNEQ(*i.AvgTimeToFirstTokenMsNEQ))
+	}
+	if len(i.AvgTimeToFirstTokenMsIn) > 0 {
+		predicates = append(predicates, channelprobe.AvgTimeToFirstTokenMsIn(i.AvgTimeToFirstTokenMsIn...))
+	}
+	if len(i.AvgTimeToFirstTokenMsNotIn) > 0 {
+		predicates = append(predicates, channelprobe.AvgTimeToFirstTokenMsNotIn(i.AvgTimeToFirstTokenMsNotIn...))
+	}
+	if i.AvgTimeToFirstTokenMsGT != nil {
+		predicates = append(predicates, channelprobe.AvgTimeToFirstTokenMsGT(*i.AvgTimeToFirstTokenMsGT))
+	}
+	if i.AvgTimeToFirstTokenMsGTE != nil {
+		predicates = append(predicates, channelprobe.AvgTimeToFirstTokenMsGTE(*i.AvgTimeToFirstTokenMsGTE))
+	}
+	if i.AvgTimeToFirstTokenMsLT != nil {
+		predicates = append(predicates, channelprobe.AvgTimeToFirstTokenMsLT(*i.AvgTimeToFirstTokenMsLT))
+	}
+	if i.AvgTimeToFirstTokenMsLTE != nil {
+		predicates = append(predicates, channelprobe.AvgTimeToFirstTokenMsLTE(*i.AvgTimeToFirstTokenMsLTE))
+	}
+	if i.AvgTimeToFirstTokenMsIsNil {
+		predicates = append(predicates, channelprobe.AvgTimeToFirstTokenMsIsNil())
+	}
+	if i.AvgTimeToFirstTokenMsNotNil {
+		predicates = append(predicates, channelprobe.AvgTimeToFirstTokenMsNotNil())
 	}
 	if i.Timestamp != nil {
 		predicates = append(predicates, channelprobe.TimestampEQ(*i.Timestamp))

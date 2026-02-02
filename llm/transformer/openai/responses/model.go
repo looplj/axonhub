@@ -401,6 +401,18 @@ func (item Item) MarshalJSON() ([]byte, error) {
 		item.Summary = []ReasoningSummary{}
 	}
 
+	if item.Type == "function_call" {
+		type functionCallItem struct {
+			itemAlias
+			Arguments string `json:"arguments"`
+		}
+
+		return json.Marshal(functionCallItem{
+			itemAlias: itemAlias(item),
+			Arguments: item.Arguments,
+		})
+	}
+
 	return json.Marshal(itemAlias(item))
 }
 

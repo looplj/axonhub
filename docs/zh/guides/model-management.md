@@ -408,5 +408,7 @@ A: 使用 `exclude` 字段：
 
 - [自适应负载均衡指南](load-balance.md)
 - [API Key Profiles 指南](api-key-profiles.md)
-- [统一 API 文档](../api-reference/unified-api.md)
+- [OpenAI API](../api-reference/openai-api.md)
+- [Anthropic API](../api-reference/anthropic-api.md)
+- [Gemini API](../api-reference/gemini-api.md)
 - [追踪和调试](tracing.md)

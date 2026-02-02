@@ -34,6 +34,14 @@ type Request struct {
 	RequestID string `json:"request_id"`
 	ClientIP  string `json:"client_ip"`
 
+	// RequestType is the type of the request, ref to llm.RequestType.
+	// For example, "chat", "image", "embedding", etc.
+	// If empty, will use the "chat" request type.
+	RequestType string `json:"request_type"`
+
+	// APIFormat is the format of the API response,ref to llm.APIFormat.
+	APIFormat string `json:"api_format"`
+
 	// Raw HTTP request for advanced use cases
 	RawRequest *http.Request `json:"-"`
 

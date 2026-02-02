@@ -134,7 +134,7 @@ AxonHub 还可以将您的 Claude Code 订阅作为后端提供商，允许非 C
 
 ### 相关文档
 - [追踪指南](tracing.md)
-- [Chat Completions 文档](../api-reference/unified-api.md#openai-chat-completions-api)
+- [OpenAI API 文档](../api-reference/openai-api.md)
 - [Codex 集成指南](codex-integration.md)
 - [渠道管理指南](channel-management.md)
 - README 中的 [使用指南](../../../README.zh-CN.md#使用指南--usage-guide)

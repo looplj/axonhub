@@ -495,7 +495,9 @@ Switch to `"anthropic"` profile when ready to complete migration.
 
 ## Related Documentation
 
-- [Unified API Documentation](../api-reference/unified-api.md)
+- [OpenAI API](../api-reference/openai-api.md)
+- [Anthropic API](../api-reference/anthropic-api.md)
+- [Gemini API](../api-reference/gemini-api.md)
 - [Load Balancing Guide](load-balance.md)
 - [Fine-grained Permissions](permissions.md)
 - [Quick Start Guide](../getting-started/quick-start.md)

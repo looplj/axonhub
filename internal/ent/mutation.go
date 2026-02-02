@@ -7924,21 +7924,25 @@ func (m *ChannelPerformanceMutation) ResetEdge(name string) error {
 // ChannelProbeMutation represents an operation that mutates the ChannelProbe nodes in the graph.
 type ChannelProbeMutation struct {
 	config
-	op                       Op
-	typ                      string
-	id                       *int
-	total_request_count      *int
-	addtotal_request_count   *int
-	success_request_count    *int
-	addsuccess_request_count *int
-	timestamp                *int64
-	addtimestamp             *int64
-	clearedFields            map[string]struct{}
-	channel                  *int
-	clearedchannel           bool
-	done                     bool
-	oldValue                 func(context.Context) (*ChannelProbe, error)
-	predicates               []predicate.ChannelProbe
+	op                            Op
+	typ                           string
+	id                            *int
+	total_request_count           *int
+	addtotal_request_count        *int
+	success_request_count         *int
+	addsuccess_request_count      *int
+	avg_tokens_per_second         *float64
+	addavg_tokens_per_second      *float64
+	avg_time_to_first_token_ms    *float64
+	addavg_time_to_first_token_ms *float64
+	timestamp                     *int64
+	addtimestamp                  *int64
+	clearedFields                 map[string]struct{}
+	channel                       *int
+	clearedchannel                bool
+	done                          bool
+	oldValue                      func(context.Context) (*ChannelProbe, error)
+	predicates                    []predicate.ChannelProbe
 }
 
 var _ ent.Mutation = (*ChannelProbeMutation)(nil)
@@ -8187,6 +8191,146 @@ func (m *ChannelProbeMutation) ResetSuccessRequestCount() {
 	m.addsuccess_request_count = nil
 }
 
+// SetAvgTokensPerSecond sets the "avg_tokens_per_second" field.
+func (m *ChannelProbeMutation) SetAvgTokensPerSecond(f float64) {
+	m.avg_tokens_per_second = &f
+	m.addavg_tokens_per_second = nil
+}
+
+// AvgTokensPerSecond returns the value of the "avg_tokens_per_second" field in the mutation.
+func (m *ChannelProbeMutation) AvgTokensPerSecond() (r float64, exists bool) {
+	v := m.avg_tokens_per_second
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAvgTokensPerSecond returns the old "avg_tokens_per_second" field's value of the ChannelProbe entity.
+// If the ChannelProbe object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelProbeMutation) OldAvgTokensPerSecond(ctx context.Context) (v *float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAvgTokensPerSecond is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAvgTokensPerSecond requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAvgTokensPerSecond: %w", err)
+	}
+	return oldValue.AvgTokensPerSecond, nil
+}
+
+// AddAvgTokensPerSecond adds f to the "avg_tokens_per_second" field.
+func (m *ChannelProbeMutation) AddAvgTokensPerSecond(f float64) {
+	if m.addavg_tokens_per_second != nil {
+		*m.addavg_tokens_per_second += f
+	} else {
+		m.addavg_tokens_per_second = &f
+	}
+}
+
+// AddedAvgTokensPerSecond returns the value that was added to the "avg_tokens_per_second" field in this mutation.
+func (m *ChannelProbeMutation) AddedAvgTokensPerSecond() (r float64, exists bool) {
+	v := m.addavg_tokens_per_second
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearAvgTokensPerSecond clears the value of the "avg_tokens_per_second" field.
+func (m *ChannelProbeMutation) ClearAvgTokensPerSecond() {
+	m.avg_tokens_per_second = nil
+	m.addavg_tokens_per_second = nil
+	m.clearedFields[channelprobe.FieldAvgTokensPerSecond] = struct{}{}
+}
+
+// AvgTokensPerSecondCleared returns if the "avg_tokens_per_second" field was cleared in this mutation.
+func (m *ChannelProbeMutation) AvgTokensPerSecondCleared() bool {
+	_, ok := m.clearedFields[channelprobe.FieldAvgTokensPerSecond]
+	return ok
+}
+
+// ResetAvgTokensPerSecond resets all changes to the "avg_tokens_per_second" field.
+func (m *ChannelProbeMutation) ResetAvgTokensPerSecond() {
+	m.avg_tokens_per_second = nil
+	m.addavg_tokens_per_second = nil
+	delete(m.clearedFields, channelprobe.FieldAvgTokensPerSecond)
+}
+
+// SetAvgTimeToFirstTokenMs sets the "avg_time_to_first_token_ms" field.
+func (m *ChannelProbeMutation) SetAvgTimeToFirstTokenMs(f float64) {
+	m.avg_time_to_first_token_ms = &f
+	m.addavg_time_to_first_token_ms = nil
+}
+
+// AvgTimeToFirstTokenMs returns the value of the "avg_time_to_first_token_ms" field in the mutation.
+func (m *ChannelProbeMutation) AvgTimeToFirstTokenMs() (r float64, exists bool) {
+	v := m.avg_time_to_first_token_ms
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAvgTimeToFirstTokenMs returns the old "avg_time_to_first_token_ms" field's value of the ChannelProbe entity.
+// If the ChannelProbe object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelProbeMutation) OldAvgTimeToFirstTokenMs(ctx context.Context) (v *float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAvgTimeToFirstTokenMs is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAvgTimeToFirstTokenMs requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAvgTimeToFirstTokenMs: %w", err)
+	}
+	return oldValue.AvgTimeToFirstTokenMs, nil
+}
+
+// AddAvgTimeToFirstTokenMs adds f to the "avg_time_to_first_token_ms" field.
+func (m *ChannelProbeMutation) AddAvgTimeToFirstTokenMs(f float64) {
+	if m.addavg_time_to_first_token_ms != nil {
+		*m.addavg_time_to_first_token_ms += f
+	} else {
+		m.addavg_time_to_first_token_ms = &f
+	}
+}
+
+// AddedAvgTimeToFirstTokenMs returns the value that was added to the "avg_time_to_first_token_ms" field in this mutation.
+func (m *ChannelProbeMutation) AddedAvgTimeToFirstTokenMs() (r float64, exists bool) {
+	v := m.addavg_time_to_first_token_ms
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearAvgTimeToFirstTokenMs clears the value of the "avg_time_to_first_token_ms" field.
+func (m *ChannelProbeMutation) ClearAvgTimeToFirstTokenMs() {
+	m.avg_time_to_first_token_ms = nil
+	m.addavg_time_to_first_token_ms = nil
+	m.clearedFields[channelprobe.FieldAvgTimeToFirstTokenMs] = struct{}{}
+}
+
+// AvgTimeToFirstTokenMsCleared returns if the "avg_time_to_first_token_ms" field was cleared in this mutation.
+func (m *ChannelProbeMutation) AvgTimeToFirstTokenMsCleared() bool {
+	_, ok := m.clearedFields[channelprobe.FieldAvgTimeToFirstTokenMs]
+	return ok
+}
+
+// ResetAvgTimeToFirstTokenMs resets all changes to the "avg_time_to_first_token_ms" field.
+func (m *ChannelProbeMutation) ResetAvgTimeToFirstTokenMs() {
+	m.avg_time_to_first_token_ms = nil
+	m.addavg_time_to_first_token_ms = nil
+	delete(m.clearedFields, channelprobe.FieldAvgTimeToFirstTokenMs)
+}
+
 // SetTimestamp sets the "timestamp" field.
 func (m *ChannelProbeMutation) SetTimestamp(i int64) {
 	m.timestamp = &i
@@ -8304,7 +8448,7 @@ func (m *ChannelProbeMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ChannelProbeMutation) Fields() []string {
-	fields := make([]string, 0, 4)
+	fields := make([]string, 0, 6)
 	if m.channel != nil {
 		fields = append(fields, channelprobe.FieldChannelID)
 	}
@@ -8313,6 +8457,12 @@ func (m *ChannelProbeMutation) Fields() []string {
 	}
 	if m.success_request_count != nil {
 		fields = append(fields, channelprobe.FieldSuccessRequestCount)
+	}
+	if m.avg_tokens_per_second != nil {
+		fields = append(fields, channelprobe.FieldAvgTokensPerSecond)
+	}
+	if m.avg_time_to_first_token_ms != nil {
+		fields = append(fields, channelprobe.FieldAvgTimeToFirstTokenMs)
 	}
 	if m.timestamp != nil {
 		fields = append(fields, channelprobe.FieldTimestamp)
@@ -8331,6 +8481,10 @@ func (m *ChannelProbeMutation) Field(name string) (ent.Value, bool) {
 		return m.TotalRequestCount()
 	case channelprobe.FieldSuccessRequestCount:
 		return m.SuccessRequestCount()
+	case channelprobe.FieldAvgTokensPerSecond:
+		return m.AvgTokensPerSecond()
+	case channelprobe.FieldAvgTimeToFirstTokenMs:
+		return m.AvgTimeToFirstTokenMs()
 	case channelprobe.FieldTimestamp:
 		return m.Timestamp()
 	}
@@ -8348,6 +8502,10 @@ func (m *ChannelProbeMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldTotalRequestCount(ctx)
 	case channelprobe.FieldSuccessRequestCount:
 		return m.OldSuccessRequestCount(ctx)
+	case channelprobe.FieldAvgTokensPerSecond:
+		return m.OldAvgTokensPerSecond(ctx)
+	case channelprobe.FieldAvgTimeToFirstTokenMs:
+		return m.OldAvgTimeToFirstTokenMs(ctx)
 	case channelprobe.FieldTimestamp:
 		return m.OldTimestamp(ctx)
 	}
@@ -8380,6 +8538,20 @@ func (m *ChannelProbeMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetSuccessRequestCount(v)
 		return nil
+	case channelprobe.FieldAvgTokensPerSecond:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAvgTokensPerSecond(v)
+		return nil
+	case channelprobe.FieldAvgTimeToFirstTokenMs:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAvgTimeToFirstTokenMs(v)
+		return nil
 	case channelprobe.FieldTimestamp:
 		v, ok := value.(int64)
 		if !ok {
@@ -8401,6 +8573,12 @@ func (m *ChannelProbeMutation) AddedFields() []string {
 	if m.addsuccess_request_count != nil {
 		fields = append(fields, channelprobe.FieldSuccessRequestCount)
 	}
+	if m.addavg_tokens_per_second != nil {
+		fields = append(fields, channelprobe.FieldAvgTokensPerSecond)
+	}
+	if m.addavg_time_to_first_token_ms != nil {
+		fields = append(fields, channelprobe.FieldAvgTimeToFirstTokenMs)
+	}
 	if m.addtimestamp != nil {
 		fields = append(fields, channelprobe.FieldTimestamp)
 	}
@@ -8416,6 +8594,10 @@ func (m *ChannelProbeMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedTotalRequestCount()
 	case channelprobe.FieldSuccessRequestCount:
 		return m.AddedSuccessRequestCount()
+	case channelprobe.FieldAvgTokensPerSecond:
+		return m.AddedAvgTokensPerSecond()
+	case channelprobe.FieldAvgTimeToFirstTokenMs:
+		return m.AddedAvgTimeToFirstTokenMs()
 	case channelprobe.FieldTimestamp:
 		return m.AddedTimestamp()
 	}
@@ -8441,6 +8623,20 @@ func (m *ChannelProbeMutation) AddField(name string, value ent.Value) error {
 		}
 		m.AddSuccessRequestCount(v)
 		return nil
+	case channelprobe.FieldAvgTokensPerSecond:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddAvgTokensPerSecond(v)
+		return nil
+	case channelprobe.FieldAvgTimeToFirstTokenMs:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddAvgTimeToFirstTokenMs(v)
+		return nil
 	case channelprobe.FieldTimestamp:
 		v, ok := value.(int64)
 		if !ok {
@@ -8455,7 +8651,14 @@ func (m *ChannelProbeMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *ChannelProbeMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(channelprobe.FieldAvgTokensPerSecond) {
+		fields = append(fields, channelprobe.FieldAvgTokensPerSecond)
+	}
+	if m.FieldCleared(channelprobe.FieldAvgTimeToFirstTokenMs) {
+		fields = append(fields, channelprobe.FieldAvgTimeToFirstTokenMs)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -8468,6 +8671,14 @@ func (m *ChannelProbeMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *ChannelProbeMutation) ClearField(name string) error {
+	switch name {
+	case channelprobe.FieldAvgTokensPerSecond:
+		m.ClearAvgTokensPerSecond()
+		return nil
+	case channelprobe.FieldAvgTimeToFirstTokenMs:
+		m.ClearAvgTimeToFirstTokenMs()
+		return nil
+	}
 	return fmt.Errorf("unknown ChannelProbe nullable field %s", name)
 }
 
@@ -8483,6 +8694,12 @@ func (m *ChannelProbeMutation) ResetField(name string) error {
 		return nil
 	case channelprobe.FieldSuccessRequestCount:
 		m.ResetSuccessRequestCount()
+		return nil
+	case channelprobe.FieldAvgTokensPerSecond:
+		m.ResetAvgTokensPerSecond()
+		return nil
+	case channelprobe.FieldAvgTimeToFirstTokenMs:
+		m.ResetAvgTimeToFirstTokenMs()
 		return nil
 	case channelprobe.FieldTimestamp:
 		m.ResetTimestamp()

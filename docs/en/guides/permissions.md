@@ -20,5 +20,7 @@ AxonHub provides role-based access control (RBAC) so that organizations can tail
 - Enable auditing to capture every administrative change for compliance investigations.
 
 ## Related Resources
-- [Chat Completions API](../api-reference/unified-api.md#openai-chat-completions-api)
+- [OpenAI API](../api-reference/openai-api.md)
+- [Anthropic API](../api-reference/anthropic-api.md)
+- [Gemini API](../api-reference/gemini-api.md)
 - [Claude Code & Codex Integration](claude-code-integration.md)

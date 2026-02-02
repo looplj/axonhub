@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { DashboardIcon } from '@radix-ui/react-icons';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { zhCN, enUS } from 'date-fns/locale';
-import { Copy, Clock, Key, Database, ArrowLeft, FileText, Layers, Download } from 'lucide-react';
+import { Copy, Clock, Key, Database, ArrowLeft, FileText, Layers, Download, Terminal } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { extractNumberID } from '@/lib/utils';
@@ -20,7 +20,9 @@ import { useGeneralSettings } from '@/features/system/data/system';
 import { useUsageLogs } from '../../usage-logs/data/usage-logs';
 import { useRequest, useRequestExecutions } from '../data';
 import { ChunksDialog } from './chunks-dialog';
+import { CurlPreviewDialog } from './curl-preview-dialog';
 import { getStatusColor } from './help';
+import { generateRequestCurl, generateExecutionCurl } from '../utils/curl-generator';
 
 export default function RequestDetailPage() {
   const { t, i18n } = useTranslation();
@@ -33,6 +35,8 @@ export default function RequestDetailPage() {
   const [showExecutionChunks, setShowExecutionChunks] = useState(false);
   const [selectedResponseChunks, setSelectedResponseChunks] = useState<any[]>([]);
   const [selectedExecutionChunks, setSelectedExecutionChunks] = useState<any[]>([]);
+  const [showCurlPreview, setShowCurlPreview] = useState(false);
+  const [curlCommand, setCurlCommand] = useState('');
 
   const { data: settings } = useGeneralSettings();
   const { data: request, isLoading } = useRequest(requestId);
@@ -86,6 +90,18 @@ export default function RequestDetailPage() {
       return String(data);
     }
   };
+
+  const showRequestCurlPreview = useCallback((headers: any, body: any) => {
+    const curl = generateRequestCurl(headers, body);
+    setCurlCommand(curl);
+    setShowCurlPreview(true);
+  }, []);
+
+  const showExecutionCurlPreview = useCallback((headers: any, body: any, channel?: { baseURL?: string; type?: string }) => {
+    const curl = generateExecutionCurl(headers, body, channel as any);
+    setCurlCommand(curl);
+    setShowCurlPreview(true);
+  }, []);
 
   const calculateLatency = (createdAt: string | Date, updatedAt: string | Date) => {
     if (!createdAt || !updatedAt) return null;
@@ -350,6 +366,17 @@ export default function RequestDetailPage() {
                 </div>
 
                 <TabsContent value='request' className='space-y-6 p-6'>
+                  <div className='flex justify-end'>
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      onClick={() => showRequestCurlPreview(request.requestHeaders, request.requestBody)}
+                      className='hover:bg-primary hover:text-primary-foreground'
+                    >
+                      <Terminal className='mr-2 h-4 w-4' />
+                      {t('requests.actions.copyCurl')}
+                    </Button>
+                  </div>
                   {request.requestHeaders && (
                     <div className='space-y-4'>
                       <div className='flex items-center justify-between'>
@@ -560,6 +587,20 @@ export default function RequestDetailPage() {
                                 </div>
                               )}
 
+                              {(execution.requestHeaders || execution.requestBody) && (
+                                <div className='flex justify-end'>
+                                  <Button
+                                    variant='outline'
+                                    size='sm'
+                                    onClick={() => showExecutionCurlPreview(execution.requestHeaders, execution.requestBody, execution.channel)}
+                                    className='hover:bg-primary hover:text-primary-foreground'
+                                  >
+                                    <Terminal className='mr-2 h-4 w-4' />
+                                    {t('requests.actions.copyCurl')}
+                                  </Button>
+                                </div>
+                              )}
+
                               {execution.requestHeaders && (
                                 <div className='space-y-3'>
                                   <div className='flex items-center justify-between'>
@@ -706,6 +747,13 @@ export default function RequestDetailPage() {
         onOpenChange={setShowExecutionChunks}
         chunks={selectedExecutionChunks}
         title={t('requests.dialogs.jsonViewer.responseChunks')}
+      />
+
+      {/* cURL Preview Modal */}
+      <CurlPreviewDialog
+        open={showCurlPreview}
+        onOpenChange={setShowCurlPreview}
+        curlCommand={curlCommand}
       />
     </div>
   );

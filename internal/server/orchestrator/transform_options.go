@@ -1,6 +1,8 @@
 package orchestrator
 
 import (
+	"strings"
+
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/objects"
@@ -16,7 +18,9 @@ func applyTransformOptions(req *llm.Request, channelSettings *objects.ChannelSet
 
 	transformOptions := channelSettings.TransformOptions
 
-	if !transformOptions.ForceArrayInstructions && !transformOptions.ForceArrayInputs {
+	if !transformOptions.ForceArrayInstructions &&
+		!transformOptions.ForceArrayInputs &&
+		!transformOptions.ReplaceDeveloperRoleWithSystem {
 		return req
 	}
 
@@ -30,5 +34,34 @@ func applyTransformOptions(req *llm.Request, channelSettings *objects.ChannelSet
 		newReq.TransformOptions.ArrayInputs = lo.ToPtr(true)
 	}
 
+	if transformOptions.ReplaceDeveloperRoleWithSystem {
+		newReq.Messages = replaceDeveloperRoleWithSystem(newReq.Messages)
+	}
+
 	return &newReq
+}
+
+// replaceDeveloperRoleWithSystem replaces developer role with system in messages.
+func replaceDeveloperRoleWithSystem(messages []llm.Message) []llm.Message {
+	if len(messages) == 0 {
+		return messages
+	}
+
+	replaced := false
+
+	result := make([]llm.Message, len(messages))
+	for i, msg := range messages {
+		if strings.EqualFold(msg.Role, "developer") {
+			msg.Role = "system"
+			replaced = true
+		}
+
+		result[i] = msg
+	}
+
+	if !replaced {
+		return messages
+	}
+
+	return result
 }

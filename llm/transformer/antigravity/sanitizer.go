@@ -56,6 +56,11 @@ var unsupportedConstraints = []string{
 
 // UNSUPPORTED_KEYWORDS that should be removed after hint extraction.
 var unsupportedKeywords = []string{
+	// Include all constraints that were moved to description
+	"minLength", "maxLength", "exclusiveMinimum", "exclusiveMaximum",
+	"pattern", "minItems", "maxItems", "format",
+	"default", "examples",
+	// Other unsupported keywords
 	"$schema", "$defs", "definitions", "const", "$ref", "additionalProperties",
 	"propertyNames", "title", "$id", "$comment",
 }

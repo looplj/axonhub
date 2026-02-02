@@ -23,6 +23,10 @@ type ChannelProbe struct {
 	TotalRequestCount int `json:"total_request_count,omitempty"`
 	// SuccessRequestCount holds the value of the "success_request_count" field.
 	SuccessRequestCount int `json:"success_request_count,omitempty"`
+	// AvgTokensPerSecond holds the value of the "avg_tokens_per_second" field.
+	AvgTokensPerSecond *float64 `json:"avg_tokens_per_second,omitempty"`
+	// AvgTimeToFirstTokenMs holds the value of the "avg_time_to_first_token_ms" field.
+	AvgTimeToFirstTokenMs *float64 `json:"avg_time_to_first_token_ms,omitempty"`
 	// Timestamp holds the value of the "timestamp" field.
 	Timestamp int64 `json:"timestamp,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -58,6 +62,8 @@ func (*ChannelProbe) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case channelprobe.FieldAvgTokensPerSecond, channelprobe.FieldAvgTimeToFirstTokenMs:
+			values[i] = new(sql.NullFloat64)
 		case channelprobe.FieldID, channelprobe.FieldChannelID, channelprobe.FieldTotalRequestCount, channelprobe.FieldSuccessRequestCount, channelprobe.FieldTimestamp:
 			values[i] = new(sql.NullInt64)
 		default:
@@ -98,6 +104,20 @@ func (_m *ChannelProbe) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field success_request_count", values[i])
 			} else if value.Valid {
 				_m.SuccessRequestCount = int(value.Int64)
+			}
+		case channelprobe.FieldAvgTokensPerSecond:
+			if value, ok := values[i].(*sql.NullFloat64); !ok {
+				return fmt.Errorf("unexpected type %T for field avg_tokens_per_second", values[i])
+			} else if value.Valid {
+				_m.AvgTokensPerSecond = new(float64)
+				*_m.AvgTokensPerSecond = value.Float64
+			}
+		case channelprobe.FieldAvgTimeToFirstTokenMs:
+			if value, ok := values[i].(*sql.NullFloat64); !ok {
+				return fmt.Errorf("unexpected type %T for field avg_time_to_first_token_ms", values[i])
+			} else if value.Valid {
+				_m.AvgTimeToFirstTokenMs = new(float64)
+				*_m.AvgTimeToFirstTokenMs = value.Float64
 			}
 		case channelprobe.FieldTimestamp:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -154,6 +174,16 @@ func (_m *ChannelProbe) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("success_request_count=")
 	builder.WriteString(fmt.Sprintf("%v", _m.SuccessRequestCount))
+	builder.WriteString(", ")
+	if v := _m.AvgTokensPerSecond; v != nil {
+		builder.WriteString("avg_tokens_per_second=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	if v := _m.AvgTimeToFirstTokenMs; v != nil {
+		builder.WriteString("avg_time_to_first_token_ms=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteString(", ")
 	builder.WriteString("timestamp=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Timestamp))

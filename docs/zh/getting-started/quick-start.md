@@ -361,7 +361,9 @@ log:
 
 ### 集成指南
 - [Claude Code 集成](../guides/claude-code-integration.md)
-- [API 参考](../api-reference/unified-api.md)
+- [OpenAI API](../api-reference/openai-api.md)
+- [Anthropic API](../api-reference/anthropic-api.md)
+- [Gemini API](../api-reference/gemini-api.md)
 - [部署指南](../deployment/configuration.md)
 
 ## 故障排除

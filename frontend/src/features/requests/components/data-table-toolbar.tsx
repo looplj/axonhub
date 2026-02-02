@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { Cross2Icon } from '@radix-ui/react-icons';
 import { Table } from '@tanstack/react-table';
 import { RefreshCw, X } from 'lucide-react';
-import { DateRange } from 'react-day-picker';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/button';
@@ -15,12 +14,13 @@ import { useApiKeys } from '@/features/apikeys/data';
 import { useMe } from '@/features/auth/data/auth';
 import { useQueryChannels } from '@/features/channels/data/channels';
 import { RequestStatus } from '../data/schema';
+import type { DateTimeRangeValue } from '@/utils/date-range';
 
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>;
-  dateRange?: DateRange;
-  onDateRangeChange?: (range: DateRange | undefined) => void;
+  dateRange?: DateTimeRangeValue;
+  onDateRangeChange?: (range: DateTimeRangeValue | undefined) => void;
   onRefresh?: () => void;
   showRefresh?: boolean;
   apiKeyFilter?: string[];
@@ -41,7 +41,8 @@ export function DataTableToolbar<TData>({
   onAutoRefreshChange,
 }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation();
-  const isFiltered = table.getState().columnFilters.length > 0 || !!dateRange;
+  const hasDateRange = !!dateRange?.from || !!dateRange?.to;
+  const isFiltered = table.getState().columnFilters.length > 0 || hasDateRange;
 
   const { user: authUser } = useAuthStore((state) => state.auth);
   const { data: meData } = useMe();
@@ -150,7 +151,7 @@ export function DataTableToolbar<TData>({
           <DataTableFacetedFilter column={table.getColumn('apiKey')} title={t('requests.filters.apiKey')} options={apiKeyOptions} />
         )}
         <DateRangePicker value={dateRange} onChange={onDateRangeChange} />
-        {dateRange && (
+        {hasDateRange && (
           <Button variant='ghost' onClick={() => onDateRangeChange?.(undefined)} className='h-8 px-2' size='sm'>
             <X className='h-4 w-4' />
           </Button>

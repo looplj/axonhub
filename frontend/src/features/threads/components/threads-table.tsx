@@ -13,12 +13,12 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { motion, AnimatePresence } from 'framer-motion';
-import { DateRange } from 'react-day-picker';
 import { useTranslation } from 'react-i18next';
 import { useAnimatedList } from '@/hooks/useAnimatedList';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { ServerSidePagination } from '@/components/server-side-pagination';
+import type { DateTimeRangeValue } from '@/utils/date-range';
 import { Thread, ThreadConnection } from '../data/schema';
 import { ThreadsTableToolbar } from './data-table-toolbar';
 import { useThreadsColumns } from './threads-columns';
@@ -38,12 +38,12 @@ interface ThreadsTableProps {
   pageInfo?: ThreadConnection['pageInfo'];
   pageSize: number;
   totalCount?: number;
-  dateRange?: DateRange;
+  dateRange?: DateTimeRangeValue;
   threadIdFilter: string;
   onNextPage: () => void;
   onPreviousPage: () => void;
   onPageSizeChange: (pageSize: number) => void;
-  onDateRangeChange: (range: DateRange | undefined) => void;
+  onDateRangeChange: (range: DateTimeRangeValue | undefined) => void;
   onThreadIdFilterChange: (threadId: string) => void;
   onRefresh: () => void;
   showRefresh: boolean;

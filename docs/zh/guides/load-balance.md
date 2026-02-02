@@ -167,6 +167,8 @@ A: 启用调试模式，查看日志中的渠道评分和排序。
 
 ## 🔗 相关文档
 
-- [统一 API 文档](../api-reference/unified-api.md)
+- [OpenAI API](../api-reference/openai-api.md)
+- [Anthropic API](../api-reference/anthropic-api.md)
+- [Gemini API](../api-reference/gemini-api.md)
 - [渠道管理指南](../getting-started/quick-start.md)
 - [追踪和调试](tracing.md)

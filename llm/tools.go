@@ -24,19 +24,6 @@ type Tool struct {
 	CacheControl *CacheControl `json:"cache_control,omitempty"`
 }
 
-type toolJSONMarshaller Tool
-
-func (t Tool) MarshalJSON() ([]byte, error) {
-	// TODO: find a better way to save the image generation tool to the request body.
-	m := toolJSONMarshaller(t)
-	// ImageGeneration is not a valid field for chat completion, so we should remove it from the request.
-	m.ImageGeneration = nil
-	// Google tools are provider-specific and handled by transformers.
-	m.Google = nil
-
-	return json.Marshal(m)
-}
-
 // Function represents a function definition.
 type Function struct {
 	Name        string          `json:"name"`
@@ -141,7 +128,9 @@ type ImageGeneration struct {
 	// One of png, webp, or jpeg. Default: png.
 	OutputFormat string `json:"output_format,omitempty"`
 	// The number of images to generate. Default: 1.
-	PartialImages *int64 `json:"partial_images,omitempty"`
+	PartialImages  *int64 `json:"partial_images,omitempty"`
+	N              *int64 `json:"n,omitempty"`
+	ResponseFormat string `json:"response_format,omitempty"`
 	// The quality of the image that will be generated.
 	// auto (default value) will automatically select the best quality for the given model.
 	// high, medium and low are supported for gpt-image-1.
@@ -149,7 +138,8 @@ type ImageGeneration struct {
 	// standard is the only option for dall-e-2.
 	Quality string `json:"quality,omitempty"`
 	// One of 256x256, 512x512, or 1024x1024. Default: 1024x1024.
-	Size string `json:"size,omitempty"`
+	Size  string `json:"size,omitempty"`
+	Style string `json:"style,omitempty"`
 
 	// Whether to add a watermark to the generated image. Default: false.
 	// It only works for the models support watermark, it will be ignored otherwise.

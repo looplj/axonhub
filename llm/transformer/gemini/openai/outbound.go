@@ -125,7 +125,7 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		return nil, fmt.Errorf("API key is required for Gemini OpenAI transformer")
 	}
 
-	baseURL := strings.TrimSuffix(config.BaseURL, "/")
+	baseURL := transformer.NormalizeBaseURL(config.BaseURL, "v1beta/openai")
 
 	outbound, err := openai.NewOutboundTransformer(baseURL, config.APIKey)
 	if err != nil {
@@ -335,14 +335,7 @@ func (t *OutboundTransformer) TransformRequest(
 		APIKey: t.APIKey,
 	}
 
-	baseURL := strings.TrimSuffix(t.BaseURL, "/")
-
-	var url string
-	if strings.HasSuffix(baseURL, "/v1beta/openai") {
-		url = baseURL + "/chat/completions"
-	} else {
-		url = baseURL + "/v1beta/openai/chat/completions"
-	}
+	url := t.BaseURL + "/chat/completions"
 
 	return &httpclient.Request{
 		Method:  http.MethodPost,

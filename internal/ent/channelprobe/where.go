@@ -68,6 +68,16 @@ func SuccessRequestCount(v int) predicate.ChannelProbe {
 	return predicate.ChannelProbe(sql.FieldEQ(FieldSuccessRequestCount, v))
 }
 
+// AvgTokensPerSecond applies equality check predicate on the "avg_tokens_per_second" field. It's identical to AvgTokensPerSecondEQ.
+func AvgTokensPerSecond(v float64) predicate.ChannelProbe {
+	return predicate.ChannelProbe(sql.FieldEQ(FieldAvgTokensPerSecond, v))
+}
+
+// AvgTimeToFirstTokenMs applies equality check predicate on the "avg_time_to_first_token_ms" field. It's identical to AvgTimeToFirstTokenMsEQ.
+func AvgTimeToFirstTokenMs(v float64) predicate.ChannelProbe {
+	return predicate.ChannelProbe(sql.FieldEQ(FieldAvgTimeToFirstTokenMs, v))
+}
+
 // Timestamp applies equality check predicate on the "timestamp" field. It's identical to TimestampEQ.
 func Timestamp(v int64) predicate.ChannelProbe {
 	return predicate.ChannelProbe(sql.FieldEQ(FieldTimestamp, v))
@@ -171,6 +181,106 @@ func SuccessRequestCountLT(v int) predicate.ChannelProbe {
 // SuccessRequestCountLTE applies the LTE predicate on the "success_request_count" field.
 func SuccessRequestCountLTE(v int) predicate.ChannelProbe {
 	return predicate.ChannelProbe(sql.FieldLTE(FieldSuccessRequestCount, v))
+}
+
+// AvgTokensPerSecondEQ applies the EQ predicate on the "avg_tokens_per_second" field.
+func AvgTokensPerSecondEQ(v float64) predicate.ChannelProbe {
+	return predicate.ChannelProbe(sql.FieldEQ(FieldAvgTokensPerSecond, v))
+}
+
+// AvgTokensPerSecondNEQ applies the NEQ predicate on the "avg_tokens_per_second" field.
+func AvgTokensPerSecondNEQ(v float64) predicate.ChannelProbe {
+	return predicate.ChannelProbe(sql.FieldNEQ(FieldAvgTokensPerSecond, v))
+}
+
+// AvgTokensPerSecondIn applies the In predicate on the "avg_tokens_per_second" field.
+func AvgTokensPerSecondIn(vs ...float64) predicate.ChannelProbe {
+	return predicate.ChannelProbe(sql.FieldIn(FieldAvgTokensPerSecond, vs...))
+}
+
+// AvgTokensPerSecondNotIn applies the NotIn predicate on the "avg_tokens_per_second" field.
+func AvgTokensPerSecondNotIn(vs ...float64) predicate.ChannelProbe {
+	return predicate.ChannelProbe(sql.FieldNotIn(FieldAvgTokensPerSecond, vs...))
+}
+
+// AvgTokensPerSecondGT applies the GT predicate on the "avg_tokens_per_second" field.
+func AvgTokensPerSecondGT(v float64) predicate.ChannelProbe {
+	return predicate.ChannelProbe(sql.FieldGT(FieldAvgTokensPerSecond, v))
+}
+
+// AvgTokensPerSecondGTE applies the GTE predicate on the "avg_tokens_per_second" field.
+func AvgTokensPerSecondGTE(v float64) predicate.ChannelProbe {
+	return predicate.ChannelProbe(sql.FieldGTE(FieldAvgTokensPerSecond, v))
+}
+
+// AvgTokensPerSecondLT applies the LT predicate on the "avg_tokens_per_second" field.
+func AvgTokensPerSecondLT(v float64) predicate.ChannelProbe {
+	return predicate.ChannelProbe(sql.FieldLT(FieldAvgTokensPerSecond, v))
+}
+
+// AvgTokensPerSecondLTE applies the LTE predicate on the "avg_tokens_per_second" field.
+func AvgTokensPerSecondLTE(v float64) predicate.ChannelProbe {
+	return predicate.ChannelProbe(sql.FieldLTE(FieldAvgTokensPerSecond, v))
+}
+
+// AvgTokensPerSecondIsNil applies the IsNil predicate on the "avg_tokens_per_second" field.
+func AvgTokensPerSecondIsNil() predicate.ChannelProbe {
+	return predicate.ChannelProbe(sql.FieldIsNull(FieldAvgTokensPerSecond))
+}
+
+// AvgTokensPerSecondNotNil applies the NotNil predicate on the "avg_tokens_per_second" field.
+func AvgTokensPerSecondNotNil() predicate.ChannelProbe {
+	return predicate.ChannelProbe(sql.FieldNotNull(FieldAvgTokensPerSecond))
+}
+
+// AvgTimeToFirstTokenMsEQ applies the EQ predicate on the "avg_time_to_first_token_ms" field.
+func AvgTimeToFirstTokenMsEQ(v float64) predicate.ChannelProbe {
+	return predicate.ChannelProbe(sql.FieldEQ(FieldAvgTimeToFirstTokenMs, v))
+}
+
+// AvgTimeToFirstTokenMsNEQ applies the NEQ predicate on the "avg_time_to_first_token_ms" field.
+func AvgTimeToFirstTokenMsNEQ(v float64) predicate.ChannelProbe {
+	return predicate.ChannelProbe(sql.FieldNEQ(FieldAvgTimeToFirstTokenMs, v))
+}
+
+// AvgTimeToFirstTokenMsIn applies the In predicate on the "avg_time_to_first_token_ms" field.
+func AvgTimeToFirstTokenMsIn(vs ...float64) predicate.ChannelProbe {
+	return predicate.ChannelProbe(sql.FieldIn(FieldAvgTimeToFirstTokenMs, vs...))
+}
+
+// AvgTimeToFirstTokenMsNotIn applies the NotIn predicate on the "avg_time_to_first_token_ms" field.
+func AvgTimeToFirstTokenMsNotIn(vs ...float64) predicate.ChannelProbe {
+	return predicate.ChannelProbe(sql.FieldNotIn(FieldAvgTimeToFirstTokenMs, vs...))
+}
+
+// AvgTimeToFirstTokenMsGT applies the GT predicate on the "avg_time_to_first_token_ms" field.
+func AvgTimeToFirstTokenMsGT(v float64) predicate.ChannelProbe {
+	return predicate.ChannelProbe(sql.FieldGT(FieldAvgTimeToFirstTokenMs, v))
+}
+
+// AvgTimeToFirstTokenMsGTE applies the GTE predicate on the "avg_time_to_first_token_ms" field.
+func AvgTimeToFirstTokenMsGTE(v float64) predicate.ChannelProbe {
+	return predicate.ChannelProbe(sql.FieldGTE(FieldAvgTimeToFirstTokenMs, v))
+}
+
+// AvgTimeToFirstTokenMsLT applies the LT predicate on the "avg_time_to_first_token_ms" field.
+func AvgTimeToFirstTokenMsLT(v float64) predicate.ChannelProbe {
+	return predicate.ChannelProbe(sql.FieldLT(FieldAvgTimeToFirstTokenMs, v))
+}
+
+// AvgTimeToFirstTokenMsLTE applies the LTE predicate on the "avg_time_to_first_token_ms" field.
+func AvgTimeToFirstTokenMsLTE(v float64) predicate.ChannelProbe {
+	return predicate.ChannelProbe(sql.FieldLTE(FieldAvgTimeToFirstTokenMs, v))
+}
+
+// AvgTimeToFirstTokenMsIsNil applies the IsNil predicate on the "avg_time_to_first_token_ms" field.
+func AvgTimeToFirstTokenMsIsNil() predicate.ChannelProbe {
+	return predicate.ChannelProbe(sql.FieldIsNull(FieldAvgTimeToFirstTokenMs))
+}
+
+// AvgTimeToFirstTokenMsNotNil applies the NotNil predicate on the "avg_time_to_first_token_ms" field.
+func AvgTimeToFirstTokenMsNotNil() predicate.ChannelProbe {
+	return predicate.ChannelProbe(sql.FieldNotNull(FieldAvgTimeToFirstTokenMs))
 }
 
 // TimestampEQ applies the EQ predicate on the "timestamp" field.

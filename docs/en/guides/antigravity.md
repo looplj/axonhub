@@ -324,7 +324,9 @@ No background cleanup is performed; entries are removed when accessed after TTL 
 - [Channel Management Guide](channel-management.md)
 - [Model Profiles](../../../README.md#model-profiles)
 - [Tracing Guide](tracing.md)
-- [API Reference](../api-reference/unified-api.md)
+- [OpenAI API](../api-reference/openai-api.md)
+- [Anthropic API](../api-reference/anthropic-api.md)
+- [Gemini API](../api-reference/gemini-api.md)
 
 ---
 

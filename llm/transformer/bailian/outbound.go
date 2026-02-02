@@ -16,9 +16,6 @@ import (
 type Config struct {
 	BaseURL string `json:"base_url,omitempty"`
 	APIKey  string `json:"api_key,omitempty"`
-
-	// ReplaceDeveloperRoleWithSystem replaces developer role with system in messages.
-	ReplaceDeveloperRoleWithSystem bool `json:"replaceDeveloperRoleWithSystem,omitempty"`
 }
 
 // OutboundTransformer implements transformer.Outbound for Bailian (OpenAI-compatible) format.
@@ -55,40 +52,9 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 
 // TransformRequest applies Bailian-specific request normalization before delegating to OpenAI-compatible transformer.
 func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
-	if t.config != nil && t.config.ReplaceDeveloperRoleWithSystem {
-		llmReq = replaceDeveloperRole(llmReq)
-	}
-
 	llmReq = mergeConsecutiveToolCallMessages(llmReq)
 
 	return t.Outbound.TransformRequest(ctx, llmReq)
-}
-
-func replaceDeveloperRole(req *llm.Request) *llm.Request {
-	if req == nil || len(req.Messages) == 0 {
-		return req
-	}
-
-	replaced := false
-
-	messages := make([]llm.Message, len(req.Messages))
-	for i, msg := range req.Messages {
-		if strings.EqualFold(msg.Role, "developer") {
-			msg.Role = "system"
-			replaced = true
-		}
-
-		messages[i] = msg
-	}
-
-	if !replaced {
-		return req
-	}
-
-	updated := *req
-	updated.Messages = messages
-
-	return &updated
 }
 
 func mergeConsecutiveToolCallMessages(req *llm.Request) *llm.Request {

@@ -11,6 +11,8 @@
   "channels.columns.health": "Health",
   "channels.columns.healthTooltip.probeTime": "Probe Time",
   "channels.columns.healthTooltip.successRate": "Success Rate",
+  "channels.columns.healthTooltip.firstTokenLatency": "TTFT",
+  "channels.columns.healthTooltip.tokensPerSecond": "Tokens/s",
   "channels.columns.tags": "Tags",
   "channels.columns.baseURL": "Base URL",
   "channels.columns.supportedModels": "Models",

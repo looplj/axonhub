@@ -161,6 +161,8 @@ function buildRequestExecutionsQuery(permissions: { canViewChannels: boolean }) 
               channel {
                   id
                   name
+                  type
+                  baseURL
               }`
     : '';
 

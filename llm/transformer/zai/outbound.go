@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/samber/lo"
 
@@ -48,7 +47,7 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		return nil, fmt.Errorf("invalid Zai transformer configuration: %w", err)
 	}
 
-	baseURL := strings.TrimSuffix(config.BaseURL, "/")
+	baseURL := transformer.NormalizeBaseURL(config.BaseURL, "v4")
 
 	return &OutboundTransformer{
 		BaseURL:  baseURL,
@@ -80,26 +79,23 @@ func (t *OutboundTransformer) TransformRequest(
 		return nil, fmt.Errorf("chat completion request is nil")
 	}
 
+	// Validate required fields
+	if llmReq.Model == "" {
+		return nil, fmt.Errorf("%w: model is required", transformer.ErrInvalidRequest)
+	}
+
 	//nolint:exhaustive // Checked.
 	switch llmReq.RequestType {
 	case llm.RequestTypeChat, "":
 		// continue
+	case llm.RequestTypeImage:
+		return t.buildImageGenerationAPIRequest(llmReq)
 	default:
 		return nil, fmt.Errorf("%w: %s is not supported", transformer.ErrInvalidRequest, llmReq.RequestType)
 	}
 
-	// Validate required fields
-	if llmReq.Model == "" {
-		return nil, fmt.Errorf("model is required")
-	}
-
 	if len(llmReq.Messages) == 0 {
 		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
-	}
-
-	// If this is an image generation request, use the Image Generation API.
-	if llmReq.IsImageGenerationRequest() {
-		return t.buildImageGenerationAPIRequest(llmReq)
 	}
 
 	// Convert llm.Request to openai.Request first
@@ -160,13 +156,7 @@ func (t *OutboundTransformer) TransformRequest(
 		APIKey: t.APIKey,
 	}
 
-	// TODO: find a better way to handle this.
-	var url string
-	if strings.HasSuffix(t.BaseURL, "/v4") {
-		url = t.BaseURL + "/chat/completions"
-	} else {
-		url = t.BaseURL + "/v4/chat/completions"
-	}
+	url := t.BaseURL + "/chat/completions"
 
 	return &httpclient.Request{
 		Method:  http.MethodPost,
@@ -193,10 +183,8 @@ func (t *OutboundTransformer) TransformResponse(
 	}
 
 	// If this looks like Image Generation API, use image generation response transformer
-	if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
-		if fmt, ok := httpResp.Request.TransformerMetadata["outbound_format_type"].(string); ok && fmt == string(llm.APIFormatOpenAIImageGeneration) {
-			return transformImageGenerationResponse(ctx, httpResp)
-		}
+	if httpResp.Request != nil && httpResp.Request.APIFormat == string(llm.APIFormatOpenAIImageGeneration) {
+		return transformImageGenerationResponse(ctx, httpResp)
 	}
 
 	// For regular chat completions, delegate to the wrapped OpenAI transformer

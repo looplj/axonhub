@@ -8,22 +8,28 @@
       "display_name": "Moonshot AI (China)",
       "models": [
         {
-          "id": "kimi-k2-thinking-turbo",
-          "name": "Kimi K2 Thinking Turbo",
-          "family": "kimi-thinking",
+          "id": "kimi-k2.5",
+          "name": "Kimi K2.5",
+          "family": "kimi",
           "attachment": false,
           "reasoning": {
             "supported": true,
             "default": true
           },
           "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-08",
-          "release_date": "2025-11-06",
-          "last_updated": "2025-11-06",
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "structured_output": true,
+          "temperature": false,
+          "knowledge": "2025-01",
+          "release_date": "2026-01",
+          "last_updated": "2026-01",
           "modalities": {
             "input": [
-              "text"
+              "text",
+              "image",
+              "video"
             ],
             "output": [
               "text"
@@ -31,15 +37,15 @@
           },
           "open_weights": true,
           "cost": {
-            "input": 1.15,
-            "output": 8,
-            "cache_read": 0.15
+            "input": 0.6,
+            "output": 3,
+            "cache_read": 0.1
           },
           "limit": {
             "context": 262144,
             "output": 262144
           },
-          "display_name": "Kimi K2 Thinking Turbo",
+          "display_name": "Kimi K2.5",
           "type": "chat"
         },
         {
@@ -52,6 +58,9 @@
             "default": true
           },
           "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
           "temperature": true,
           "knowledge": "2024-08",
           "release_date": "2025-11-06",
@@ -75,6 +84,44 @@
             "output": 262144
           },
           "display_name": "Kimi K2 Thinking",
+          "type": "chat"
+        },
+        {
+          "id": "kimi-k2-thinking-turbo",
+          "name": "Kimi K2 Thinking Turbo",
+          "family": "kimi-thinking",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "temperature": true,
+          "knowledge": "2024-08",
+          "release_date": "2025-11-06",
+          "last_updated": "2025-11-06",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 1.15,
+            "output": 8,
+            "cache_read": 0.15
+          },
+          "limit": {
+            "context": 262144,
+            "output": 262144
+          },
+          "display_name": "Kimi K2 Thinking Turbo",
           "type": "chat"
         },
         {
@@ -3467,8 +3514,8 @@
           },
           "open_weights": true,
           "cost": {
-            "input": 0,
-            "output": 0
+            "input": 0.4,
+            "output": 2
           },
           "limit": {
             "context": 262144,
@@ -7070,6 +7117,42 @@
       "doc": "https://docs.z.ai/guides/overview/pricing",
       "display_name": "Z.AI",
       "models": [
+        {
+          "id": "glm-4.7-flash",
+          "name": "GLM-4.7-Flash",
+          "family": "glm-flash",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-04",
+          "release_date": "2026-01-19",
+          "last_updated": "2026-01-19",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cache_read": 0,
+            "cache_write": 0
+          },
+          "limit": {
+            "context": 200000,
+            "output": 131072
+          },
+          "display_name": "GLM-4.7-Flash",
+          "type": "chat"
+        },
         {
           "id": "glm-4.7",
           "name": "GLM-4.7",

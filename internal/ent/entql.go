@@ -201,10 +201,12 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 		Type: "ChannelProbe",
 		Fields: map[string]*sqlgraph.FieldSpec{
-			channelprobe.FieldChannelID:           {Type: field.TypeInt, Column: channelprobe.FieldChannelID},
-			channelprobe.FieldTotalRequestCount:   {Type: field.TypeInt, Column: channelprobe.FieldTotalRequestCount},
-			channelprobe.FieldSuccessRequestCount: {Type: field.TypeInt, Column: channelprobe.FieldSuccessRequestCount},
-			channelprobe.FieldTimestamp:           {Type: field.TypeInt64, Column: channelprobe.FieldTimestamp},
+			channelprobe.FieldChannelID:             {Type: field.TypeInt, Column: channelprobe.FieldChannelID},
+			channelprobe.FieldTotalRequestCount:     {Type: field.TypeInt, Column: channelprobe.FieldTotalRequestCount},
+			channelprobe.FieldSuccessRequestCount:   {Type: field.TypeInt, Column: channelprobe.FieldSuccessRequestCount},
+			channelprobe.FieldAvgTokensPerSecond:    {Type: field.TypeFloat64, Column: channelprobe.FieldAvgTokensPerSecond},
+			channelprobe.FieldAvgTimeToFirstTokenMs: {Type: field.TypeFloat64, Column: channelprobe.FieldAvgTimeToFirstTokenMs},
+			channelprobe.FieldTimestamp:             {Type: field.TypeInt64, Column: channelprobe.FieldTimestamp},
 		},
 	}
 	graph.Nodes[7] = &sqlgraph.Node{
@@ -2167,6 +2169,16 @@ func (f *ChannelProbeFilter) WhereTotalRequestCount(p entql.IntP) {
 // WhereSuccessRequestCount applies the entql int predicate on the success_request_count field.
 func (f *ChannelProbeFilter) WhereSuccessRequestCount(p entql.IntP) {
 	f.Where(p.Field(channelprobe.FieldSuccessRequestCount))
+}
+
+// WhereAvgTokensPerSecond applies the entql float64 predicate on the avg_tokens_per_second field.
+func (f *ChannelProbeFilter) WhereAvgTokensPerSecond(p entql.Float64P) {
+	f.Where(p.Field(channelprobe.FieldAvgTokensPerSecond))
+}
+
+// WhereAvgTimeToFirstTokenMs applies the entql float64 predicate on the avg_time_to_first_token_ms field.
+func (f *ChannelProbeFilter) WhereAvgTimeToFirstTokenMs(p entql.Float64P) {
+	f.Where(p.Field(channelprobe.FieldAvgTimeToFirstTokenMs))
 }
 
 // WhereTimestamp applies the entql int64 predicate on the timestamp field.
