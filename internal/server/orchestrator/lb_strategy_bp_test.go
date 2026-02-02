@@ -155,7 +155,6 @@ func TestErrorAwareStrategy_Score_RecentSuccess(t *testing.T) {
 		EndTime:          time.Now(),
 		Success:          true,
 		RequestCompleted: true,
-		TokenCount:       100,
 	}
 	channelService.RecordPerformance(ctx, perf)
 

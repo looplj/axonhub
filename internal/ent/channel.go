@@ -11,7 +11,6 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/ent/channel"
-	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/objects"
 )
@@ -69,8 +68,6 @@ type ChannelEdges struct {
 	Executions []*RequestExecution `json:"executions,omitempty"`
 	// UsageLogs holds the value of the usage_logs edge.
 	UsageLogs []*UsageLog `json:"usage_logs,omitempty"`
-	// ChannelPerformance holds the value of the channel_performance edge.
-	ChannelPerformance *ChannelPerformance `json:"channel_performance,omitempty"`
 	// ChannelProbes holds the value of the channel_probes edge.
 	ChannelProbes []*ChannelProbe `json:"channel_probes,omitempty"`
 	// ChannelModelPrices holds the value of the channel_model_prices edge.
@@ -79,9 +76,9 @@ type ChannelEdges struct {
 	ProviderQuotaStatus *ProviderQuotaStatus `json:"provider_quota_status,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [7]bool
+	loadedTypes [6]bool
 	// totalCount holds the count of the edges above.
-	totalCount [7]map[string]int
+	totalCount [6]map[string]int
 
 	namedRequests           map[string][]*Request
 	namedExecutions         map[string][]*RequestExecution
@@ -117,21 +114,10 @@ func (e ChannelEdges) UsageLogsOrErr() ([]*UsageLog, error) {
 	return nil, &NotLoadedError{edge: "usage_logs"}
 }
 
-// ChannelPerformanceOrErr returns the ChannelPerformance value or an error if the edge
-// was not loaded in eager-loading, or loaded but was not found.
-func (e ChannelEdges) ChannelPerformanceOrErr() (*ChannelPerformance, error) {
-	if e.ChannelPerformance != nil {
-		return e.ChannelPerformance, nil
-	} else if e.loadedTypes[3] {
-		return nil, &NotFoundError{label: channelperformance.Label}
-	}
-	return nil, &NotLoadedError{edge: "channel_performance"}
-}
-
 // ChannelProbesOrErr returns the ChannelProbes value or an error if the edge
 // was not loaded in eager-loading.
 func (e ChannelEdges) ChannelProbesOrErr() ([]*ChannelProbe, error) {
-	if e.loadedTypes[4] {
+	if e.loadedTypes[3] {
 		return e.ChannelProbes, nil
 	}
 	return nil, &NotLoadedError{edge: "channel_probes"}
@@ -140,7 +126,7 @@ func (e ChannelEdges) ChannelProbesOrErr() ([]*ChannelProbe, error) {
 // ChannelModelPricesOrErr returns the ChannelModelPrices value or an error if the edge
 // was not loaded in eager-loading.
 func (e ChannelEdges) ChannelModelPricesOrErr() ([]*ChannelModelPrice, error) {
-	if e.loadedTypes[5] {
+	if e.loadedTypes[4] {
 		return e.ChannelModelPrices, nil
 	}
 	return nil, &NotLoadedError{edge: "channel_model_prices"}
@@ -151,7 +137,7 @@ func (e ChannelEdges) ChannelModelPricesOrErr() ([]*ChannelModelPrice, error) {
 func (e ChannelEdges) ProviderQuotaStatusOrErr() (*ProviderQuotaStatus, error) {
 	if e.ProviderQuotaStatus != nil {
 		return e.ProviderQuotaStatus, nil
-	} else if e.loadedTypes[6] {
+	} else if e.loadedTypes[5] {
 		return nil, &NotFoundError{label: providerquotastatus.Label}
 	}
 	return nil, &NotLoadedError{edge: "provider_quota_status"}
@@ -333,11 +319,6 @@ func (_m *Channel) QueryExecutions() *RequestExecutionQuery {
 // QueryUsageLogs queries the "usage_logs" edge of the Channel entity.
 func (_m *Channel) QueryUsageLogs() *UsageLogQuery {
 	return NewChannelClient(_m.config).QueryUsageLogs(_m)
-}
-
-// QueryChannelPerformance queries the "channel_performance" edge of the Channel entity.
-func (_m *Channel) QueryChannelPerformance() *ChannelPerformanceQuery {
-	return NewChannelClient(_m.config).QueryChannelPerformance(_m)
 }
 
 // QueryChannelProbes queries the "channel_probes" edge of the Channel entity.
