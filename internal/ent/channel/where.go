@@ -769,29 +769,6 @@ func HasUsageLogsWith(preds ...predicate.UsageLog) predicate.Channel {
 	})
 }
 
-// HasChannelPerformance applies the HasEdge predicate on the "channel_performance" edge.
-func HasChannelPerformance() predicate.Channel {
-	return predicate.Channel(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.O2O, false, ChannelPerformanceTable, ChannelPerformanceColumn),
-		)
-		sqlgraph.HasNeighbors(s, step)
-	})
-}
-
-// HasChannelPerformanceWith applies the HasEdge predicate on the "channel_performance" edge with a given conditions (other predicates).
-func HasChannelPerformanceWith(preds ...predicate.ChannelPerformance) predicate.Channel {
-	return predicate.Channel(func(s *sql.Selector) {
-		step := newChannelPerformanceStep()
-		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
-			for _, p := range preds {
-				p(s)
-			}
-		})
-	})
-}
-
 // HasChannelProbes applies the HasEdge predicate on the "channel_probes" edge.
 func HasChannelProbes() predicate.Channel {
 	return predicate.Channel(func(s *sql.Selector) {
