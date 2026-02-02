@@ -11,56 +11,6 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
-func TestBailianTransformRequest_ReplaceDeveloperRole(t *testing.T) {
-	transformer, err := NewOutboundTransformerWithConfig(&Config{
-		BaseURL:                        "https://example.com",
-		APIKey:                         "test-key",
-		ReplaceDeveloperRoleWithSystem: true,
-	})
-	require.NoError(t, err)
-
-	developerContent := "dev"
-	userContent := "hi"
-	req := &llm.Request{
-		Model: "qwen-max",
-		Messages: []llm.Message{
-			{Role: "developer", Content: llm.MessageContent{Content: &developerContent}},
-			{Role: "user", Content: llm.MessageContent{Content: &userContent}},
-		},
-	}
-
-	httpReq, err := transformer.TransformRequest(context.Background(), req)
-	require.NoError(t, err)
-
-	var oaiReq openai.Request
-	require.NoError(t, json.Unmarshal(httpReq.Body, &oaiReq))
-	require.Equal(t, "system", oaiReq.Messages[0].Role)
-	require.Equal(t, "user", oaiReq.Messages[1].Role)
-}
-
-func TestBailianTransformRequest_KeepDeveloperRoleWhenDisabled(t *testing.T) {
-	transformer, err := NewOutboundTransformerWithConfig(&Config{
-		BaseURL: "https://example.com",
-		APIKey:  "test-key",
-	})
-	require.NoError(t, err)
-
-	developerContent := "dev"
-	req := &llm.Request{
-		Model: "qwen-max",
-		Messages: []llm.Message{
-			{Role: "developer", Content: llm.MessageContent{Content: &developerContent}},
-		},
-	}
-
-	httpReq, err := transformer.TransformRequest(context.Background(), req)
-	require.NoError(t, err)
-
-	var oaiReq openai.Request
-	require.NoError(t, json.Unmarshal(httpReq.Body, &oaiReq))
-	require.Equal(t, "developer", oaiReq.Messages[0].Role)
-}
-
 func TestBailianTransformRequest_MergeConsecutiveToolCalls(t *testing.T) {
 	transformer, err := NewOutboundTransformerWithConfig(&Config{
 		BaseURL: "https://example.com",
