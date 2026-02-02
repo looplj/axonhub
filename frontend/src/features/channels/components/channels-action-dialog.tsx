@@ -139,7 +139,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   });
 
   const antigravityOAuth = useOAuthFlow({
-    provider: 'antigravity',
     startFn: antigravityOAuthStart,
     exchangeFn: antigravityOAuthExchange,
     projectId: selectedProjectId,
@@ -1954,6 +1953,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             </div>
           </div>
           <DialogFooter className='flex-shrink-0'>
+            <Button
+              type='button'
+              variant='outline'
+              onClick={() => onOpenChange(false)}
+            >
+              {t('common.buttons.cancel')}
+            </Button>
             <Button
               type='submit'
               form='channel-form'
