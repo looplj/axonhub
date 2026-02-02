@@ -47,6 +47,7 @@
   "dataStorages.fields.s3Region": "Region",
   "dataStorages.fields.s3AccessKey": "Access Key",
   "dataStorages.fields.s3SecretKey": "Secret Key",
+  "dataStorages.fields.s3PathStyle": "使用 Path Style 访问",
   "dataStorages.fields.gcsBucketName": "Bucket 名称",
   "dataStorages.fields.gcsCredential": "Service Account JSON",
   "dataStorages.fields.webdavURL": "WebDAV URL",

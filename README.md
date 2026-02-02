@@ -9,8 +9,6 @@
 
 <div align="center">
 
-
-
 [![Test Status](https://github.com/looplj/axonhub/actions/workflows/test.yml/badge.svg)](https://github.com/looplj/axonhub/actions/workflows/test.yml)
 [![Lint Status](https://github.com/looplj/axonhub/actions/workflows/lint.yml/badge.svg)](https://github.com/looplj/axonhub/actions/workflows/lint.yml)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/looplj/axonhub?logo=go&logoColor=white)](https://golang.org/)
@@ -19,8 +17,6 @@
 [English](README.md) | [中文](README.zh-CN.md)
 
 </div>
-
-
 
 ---
 
