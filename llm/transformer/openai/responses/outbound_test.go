@@ -12,6 +12,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/pkg/xtest"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -57,7 +58,7 @@ func TestNewOutboundTransformer(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, transformer)
-				require.Equal(t, tt.apiKey, transformer.config.APIKey)
+				require.Equal(t, tt.apiKey, transformer.config.APIKeyProvider.Get(context.Background()))
 				// Base URL should be normalized with v1 version
 				require.Equal(t, "https://api.openai.com/v1", transformer.config.BaseURL)
 			}
@@ -115,9 +116,9 @@ func TestOutboundTransformer_buildFullRequestURL(t *testing.T) {
 				transformer, err = NewOutboundTransformer(tt.baseURL, "test-key")
 			} else {
 				transformer, err = NewOutboundTransformerWithConfig(&Config{
-					BaseURL: tt.baseURL,
-					APIKey:  "test-key",
-					RawURL:  tt.rawURL,
+					BaseURL:        tt.baseURL,
+					APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+					RawURL:         tt.rawURL,
 				})
 			}
 

@@ -39,7 +39,7 @@ type EmbeddingUsage struct {
 
 // transformEmbeddingRequest transforms unified llm.Request to HTTP embedding request.
 func (t *OutboundTransformer) transformEmbeddingRequest(
-	_ context.Context,
+	ctx context.Context,
 	llmReq *llm.Request,
 ) (*httpclient.Request, error) {
 	if llmReq == nil {
@@ -72,6 +72,9 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 	// Build URL, reuse same logic as chat
 	url := t.buildEmbeddingURL()
 
+	// Get API key from provider
+	apiKey := t.config.APIKeyProvider.Get(ctx)
+
 	// Build auth config
 	var auth *httpclient.AuthConfig
 
@@ -80,13 +83,13 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 	case PlatformAzure:
 		auth = &httpclient.AuthConfig{
 			Type:      "api_key",
-			APIKey:    t.config.APIKey,
+			APIKey:    apiKey,
 			HeaderKey: "Api-Key",
 		}
 	default:
 		auth = &httpclient.AuthConfig{
 			Type:   "bearer",
-			APIKey: t.config.APIKey,
+			APIKey: apiKey,
 		}
 	}
 

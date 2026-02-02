@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -268,7 +269,7 @@ func TestEmbeddingOutboundTransformer_TransformRequest(t *testing.T) {
 		config := &Config{
 			PlatformType: PlatformOpenAI,
 			BaseURL:      "https://api.openai.com/v1",
-			APIKey:       "test-key",
+			APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 		}
 		transformer, err := NewOutboundTransformerWithConfig(config)
 		require.NoError(t, err)
@@ -297,7 +298,7 @@ func TestEmbeddingOutboundTransformer_TransformRequest(t *testing.T) {
 		config := &Config{
 			PlatformType: PlatformOpenAI,
 			BaseURL:      "https://api.openai.com/v1",
-			APIKey:       "test-key",
+			APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 		}
 		transformer, err := NewOutboundTransformerWithConfig(config)
 		require.NoError(t, err)
@@ -311,7 +312,7 @@ func TestEmbeddingOutboundTransformer_TransformRequest(t *testing.T) {
 		config := &Config{
 			PlatformType: PlatformOpenAI,
 			BaseURL:      "https://api.openai.com/v1",
-			APIKey:       "test-key",
+			APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 		}
 		transformer, err := NewOutboundTransformerWithConfig(config)
 		require.NoError(t, err)
@@ -331,7 +332,7 @@ func TestEmbeddingOutboundTransformer_TransformResponse(t *testing.T) {
 	config := &Config{
 		PlatformType: PlatformOpenAI,
 		BaseURL:      "https://api.openai.com/v1",
-		APIKey:       "test-key",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 	}
 	transformer, err := NewOutboundTransformerWithConfig(config)
 	require.NoError(t, err)
@@ -567,7 +568,7 @@ func TestEmbeddingTransformers_APIFormat(t *testing.T) {
 	config := &Config{
 		PlatformType: PlatformOpenAI,
 		BaseURL:      "https://api.openai.com/v1",
-		APIKey:       "test-key",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 	}
 	outbound, err := NewOutboundTransformerWithConfig(config)
 	require.NoError(t, err)
@@ -578,7 +579,7 @@ func TestEmbeddingOutboundTransformer_TransformError(t *testing.T) {
 	config := &Config{
 		PlatformType: PlatformOpenAI,
 		BaseURL:      "https://api.openai.com/v1",
-		APIKey:       "test-key",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 	}
 	transformer, err := NewOutboundTransformerWithConfig(config)
 	require.NoError(t, err)
@@ -667,7 +668,7 @@ func TestEmbeddingOutboundTransformer_URLBuilding(t *testing.T) {
 			config := &Config{
 				PlatformType: PlatformOpenAI,
 				BaseURL:      tc.baseURL,
-				APIKey:       "test-key",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			}
 			transformer, err := NewOutboundTransformerWithConfig(config)
 			require.NoError(t, err)
@@ -699,7 +700,7 @@ func TestOutboundTransformer_RawURL_Embedding(t *testing.T) {
 			config: &Config{
 				PlatformType: PlatformOpenAI,
 				BaseURL:      "https://custom.api.com/v100#",
-				APIKey:       "test-key",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			},
 			request: &llm.Request{
 				RequestType: llm.RequestTypeEmbedding,
@@ -717,7 +718,7 @@ func TestOutboundTransformer_RawURL_Embedding(t *testing.T) {
 			config: &Config{
 				PlatformType: PlatformOpenAI,
 				BaseURL:      "https://custom.api.com/v20#",
-				APIKey:       "test-key",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			},
 			request: &llm.Request{
 				RequestType: llm.RequestTypeEmbedding,
@@ -735,7 +736,7 @@ func TestOutboundTransformer_RawURL_Embedding(t *testing.T) {
 			config: &Config{
 				PlatformType: PlatformOpenAI,
 				BaseURL:      "https://api.openai.com",
-				APIKey:       "test-key",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 				RawURL:       false,
 			},
 			request: &llm.Request{

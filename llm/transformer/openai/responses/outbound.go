@@ -11,6 +11,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/pkg/xmap"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
 )
@@ -26,8 +27,8 @@ type Config struct {
 	// If true, the base URL will be used as is, without appending the version.
 	RawURL bool `json:"raw_url,omitempty"`
 
-	// APIKey is the API key for authentication, required.
-	APIKey string `json:"api_key,omitempty"`
+	// APIKeyProvider provides API keys for authentication, required.
+	APIKeyProvider auth.APIKeyProvider `json:"-"`
 }
 
 func NewOutboundTransformer(baseURL, apiKey string) (*OutboundTransformer, error) {
@@ -36,8 +37,8 @@ func NewOutboundTransformer(baseURL, apiKey string) (*OutboundTransformer, error
 	}
 
 	config := &Config{
-		BaseURL: baseURL,
-		APIKey:  apiKey,
+		BaseURL:        baseURL,
+		APIKeyProvider: auth.NewStaticKeyProvider(apiKey),
 	}
 
 	return NewOutboundTransformerWithConfig(config)
@@ -46,6 +47,10 @@ func NewOutboundTransformer(baseURL, apiKey string) (*OutboundTransformer, error
 func NewOutboundTransformerWithConfig(config *Config) (*OutboundTransformer, error) {
 	if config == nil {
 		return nil, fmt.Errorf("config is nil")
+	}
+
+	if config.APIKeyProvider == nil {
+		return nil, fmt.Errorf("API key provider is required")
 	}
 
 	if strings.HasSuffix(config.BaseURL, "#") {
@@ -196,7 +201,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		Body:    body,
 		Auth: &httpclient.AuthConfig{
 			Type:   "bearer",
-			APIKey: t.config.APIKey,
+			APIKey: t.config.APIKeyProvider.Get(ctx),
 		},
 		TransformerMetadata: llmReq.TransformerMetadata,
 	}, nil

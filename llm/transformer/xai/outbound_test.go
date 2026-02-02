@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/streams"
 )
 
@@ -440,8 +441,8 @@ func TestOutboundTransformer_TransformStream_FilterEmptyEvents(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a mock transformer
 			config := &Config{
-				BaseURL: DefaultBaseURL,
-				APIKey:  "test-key",
+				BaseURL:        DefaultBaseURL,
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			}
 			transformer, err := NewOutboundTransformerWithConfig(config)
 			require.NoError(t, err)
@@ -498,8 +499,8 @@ func TestOutboundTransformer_TransformStream_RealXAIEmptyEvent(t *testing.T) {
 
 	// Create transformer
 	config := &Config{
-		BaseURL: DefaultBaseURL,
-		APIKey:  "test-key",
+		BaseURL:        DefaultBaseURL,
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 	}
 	transformer, err := NewOutboundTransformerWithConfig(config)
 	require.NoError(t, err)

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
 )
@@ -28,8 +29,8 @@ type Config struct {
 	// BaseURL is the base URL for the Gemini API.
 	BaseURL string `json:"base_url,omitempty"`
 
-	// APIKey is the API key for authentication.
-	APIKey string `json:"api_key,omitempty"`
+	// APIKeyProvider provides API keys for authentication.
+	APIKeyProvider auth.APIKeyProvider `json:"-"`
 
 	// APIVersion is the API version to use.
 	APIVersion string `json:"api_version,omitempty"`
@@ -49,8 +50,8 @@ type OutboundTransformer struct {
 // NewOutboundTransformer creates a new Gemini OutboundTransformer with legacy parameters.
 func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error) {
 	config := Config{
-		BaseURL: baseURL,
-		APIKey:  apiKey,
+		BaseURL:        baseURL,
+		APIKeyProvider: auth.NewStaticKeyProvider(apiKey),
 	}
 
 	return NewOutboundTransformerWithConfig(config)
@@ -103,7 +104,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	//nolint:exhaustive // Checked.
 	switch llmReq.RequestType {
 	case llm.RequestTypeImage:
-		return t.buildImageGenerationRequest(llmReq)
+		return t.buildImageGenerationRequest(ctx, llmReq)
 	case llm.RequestTypeChat, "":
 		// continue
 	default:
@@ -132,12 +133,16 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	headers.Set("Accept", "application/json")
 
 	// Prepare authentication
-	var auth *httpclient.AuthConfig
-	if t.config.APIKey != "" {
-		auth = &httpclient.AuthConfig{
-			Type:      "api_key",
-			APIKey:    t.config.APIKey,
-			HeaderKey: "x-goog-api-key",
+	var authConfig *httpclient.AuthConfig
+
+	if t.config.APIKeyProvider != nil {
+		apiKey := t.config.APIKeyProvider.Get(ctx)
+		if apiKey != "" {
+			authConfig = &httpclient.AuthConfig{
+				Type:      "api_key",
+				APIKey:    apiKey,
+				HeaderKey: "x-goog-api-key",
+			}
 		}
 	}
 
@@ -154,7 +159,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		URL:     url,
 		Headers: headers,
 		Body:    body,
-		Auth:    auth,
+		Auth:    authConfig,
 	}, nil
 }
 
@@ -262,7 +267,7 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 
 // SetAPIKey updates the API key.
 func (t *OutboundTransformer) SetAPIKey(apiKey string) {
-	t.config.APIKey = apiKey
+	t.config.APIKeyProvider = auth.NewStaticKeyProvider(apiKey)
 }
 
 // SetBaseURL updates the base URL.

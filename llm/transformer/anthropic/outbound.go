@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/vertex"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	_ "github.com/looplj/axonhub/llm/bedrock"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
@@ -55,8 +56,8 @@ type Config struct {
 	// If true, the base URL will be used as is, without appending the version.
 	RawURL bool `json:"raw_url,omitempty"`
 
-	// APIKey is the API key for authentication, required.
-	APIKey string `json:"api_key,omitempty"`
+	// APIKeyProvider provides API keys for authentication, required.
+	APIKeyProvider auth.APIKeyProvider `json:"-"`
 
 	// Thinking configuration
 	// Maps ReasoningEffort values to Anthropic thinking budget tokens
@@ -72,9 +73,9 @@ type OutboundTransformer struct {
 // Deprecated: Use NewOutboundTransformerWithConfig instead.
 func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error) {
 	config := &Config{
-		Type:    PlatformDirect,
-		BaseURL: baseURL,
-		APIKey:  apiKey,
+		Type:           PlatformDirect,
+		BaseURL:        baseURL,
+		APIKeyProvider: auth.NewStaticKeyProvider(apiKey),
 	}
 
 	return NewOutboundTransformerWithConfig(config)
@@ -130,6 +131,12 @@ func (t *OutboundTransformer) TransformRequest(
 ) (*httpclient.Request, error) {
 	if llmReq == nil {
 		return nil, fmt.Errorf("chat completion request is nil")
+	}
+
+	// Get API key from provider
+	var apiKey string
+	if t.config.APIKeyProvider != nil && t.config.Type != PlatformVertex {
+		apiKey = t.config.APIKeyProvider.Get(ctx)
 	}
 
 	//nolint:exhaustive // Checked.
@@ -204,19 +211,19 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	// Prepare authentication
-	var auth *httpclient.AuthConfig
+	var authConfig *httpclient.AuthConfig
 
-	if t.config.APIKey != "" && t.config.Type != PlatformVertex {
+	if apiKey != "" {
 		// LongCat uses Bearer token authentication instead of X-API-Key
 		if t.config.Type == PlatformLongCat || t.config.Type == PlatformBedrock {
-			auth = &httpclient.AuthConfig{
+			authConfig = &httpclient.AuthConfig{
 				Type:   httpclient.AuthTypeBearer,
-				APIKey: t.config.APIKey,
+				APIKey: apiKey,
 			}
 		} else {
-			auth = &httpclient.AuthConfig{
+			authConfig = &httpclient.AuthConfig{
 				Type:      httpclient.AuthTypeAPIKey,
-				APIKey:    t.config.APIKey,
+				APIKey:    apiKey,
 				HeaderKey: "X-API-Key",
 			}
 		}
@@ -227,7 +234,7 @@ func (t *OutboundTransformer) TransformRequest(
 		URL:     url,
 		Headers: headers,
 		Body:    body,
-		Auth:    auth,
+		Auth:    authConfig,
 	}, nil
 }
 
@@ -316,7 +323,7 @@ func (t *OutboundTransformer) AggregateStreamChunks(
 
 // SetAPIKey updates the API key.
 func (t *OutboundTransformer) SetAPIKey(apiKey string) {
-	t.config.APIKey = apiKey
+	t.config.APIKeyProvider = auth.NewStaticKeyProvider(apiKey)
 }
 
 // SetBaseURL updates the base URL.

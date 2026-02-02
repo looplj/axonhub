@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
@@ -24,8 +25,8 @@ func (e *RerankError) Error() string {
 
 // Config holds configuration for Jina transformer.
 type Config struct {
-	BaseURL string `json:"base_url,omitempty"`
-	APIKey  string `json:"api_key,omitempty"`
+	BaseURL        string              `json:"base_url,omitempty"`
+	APIKeyProvider auth.APIKeyProvider `json:"-"`
 }
 
 // OutboundTransformer implements the outbound transformer for Jina APIs (Rerank and Embedding).
@@ -36,8 +37,8 @@ type OutboundTransformer struct {
 // NewOutboundTransformer creates a new RerankOutboundTransformer.
 func NewOutboundTransformer(baseURL, apiKey string) (*OutboundTransformer, error) {
 	config := &Config{
-		BaseURL: baseURL,
-		APIKey:  apiKey,
+		BaseURL:        baseURL,
+		APIKeyProvider: auth.NewStaticKeyProvider(apiKey),
 	}
 
 	return NewOutboundTransformerWithConfig(config)
@@ -61,8 +62,8 @@ func validateConfig(config *Config) error {
 		return fmt.Errorf("config cannot be nil")
 	}
 
-	if config.APIKey == "" {
-		return fmt.Errorf("API key is required")
+	if config.APIKeyProvider == nil {
+		return fmt.Errorf("API key provider is required")
 	}
 
 	if config.BaseURL == "" {
@@ -136,11 +137,13 @@ func (t *OutboundTransformer) transformRerankRequest(
 		return nil, fmt.Errorf("failed to marshal rerank request: %w", err)
 	}
 
+	// Get API key from provider
+	apiKey := t.config.APIKeyProvider.Get(ctx)
+
 	// Prepare headers
 	headers := make(http.Header)
 	headers.Set("Content-Type", "application/json")
 	headers.Set("Accept", "application/json")
-	headers.Set("Authorization", "Bearer "+t.config.APIKey)
 
 	// Build URL
 	url := t.buildRerankURL()
@@ -152,7 +155,7 @@ func (t *OutboundTransformer) transformRerankRequest(
 		Body:    body,
 		Auth: &httpclient.AuthConfig{
 			Type:   "bearer",
-			APIKey: t.config.APIKey,
+			APIKey: apiKey,
 		},
 		RequestType: string(llm.RequestTypeRerank),
 		APIFormat:   string(llm.APIFormatJinaRerank),
@@ -194,10 +197,12 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 		return nil, fmt.Errorf("failed to marshal embedding request: %w", err)
 	}
 
+	// Get API key from provider
+	apiKey := t.config.APIKeyProvider.Get(ctx)
+
 	headers := make(http.Header)
 	headers.Set("Content-Type", "application/json")
 	headers.Set("Accept", "application/json")
-	headers.Set("Authorization", "Bearer "+t.config.APIKey)
 
 	url := t.buildEmbeddingURL()
 
@@ -208,7 +213,7 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 		Body:    body,
 		Auth: &httpclient.AuthConfig{
 			Type:   "bearer",
-			APIKey: t.config.APIKey,
+			APIKey: apiKey,
 		},
 		RequestType: string(llm.RequestTypeEmbedding),
 		APIFormat:   string(llm.APIFormatJinaEmbedding),

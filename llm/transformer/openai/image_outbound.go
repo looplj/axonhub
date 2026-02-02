@@ -2,6 +2,7 @@ package openai
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -20,12 +21,15 @@ import (
 
 // buildImageGenerationAPIRequest builds the HTTP request to call the OpenAI Image Generation API.
 // based on whether images are present in the request.
-func (t *OutboundTransformer) buildImageGenerationAPIRequest(chatReq *llm.Request) (*httpclient.Request, error) {
+func (t *OutboundTransformer) buildImageGenerationAPIRequest(ctx context.Context, chatReq *llm.Request) (*httpclient.Request, error) {
 	chatReq.Stream = lo.ToPtr(false)
 
 	if chatReq.Image == nil {
 		return nil, fmt.Errorf("image request is required")
 	}
+
+	// Get API key from provider
+	apiKey := t.config.APIKeyProvider.Get(ctx)
 
 	var (
 		rawReq  *httpclient.Request
@@ -36,13 +40,13 @@ func (t *OutboundTransformer) buildImageGenerationAPIRequest(chatReq *llm.Reques
 	//nolint:exhaustive // Only image-related API formats are handled here
 	switch chatReq.APIFormat {
 	case llm.APIFormatOpenAIImageVariation:
-		rawReq, err = t.buildImageVariationRequest(chatReq)
+		rawReq, err = t.buildImageVariationRequest(chatReq, apiKey)
 		fmtType = llm.APIFormatOpenAIImageVariation
 	case llm.APIFormatOpenAIImageEdit:
-		rawReq, err = t.buildImageEditRequest(chatReq)
+		rawReq, err = t.buildImageEditRequest(chatReq, apiKey)
 		fmtType = llm.APIFormatOpenAIImageEdit
 	default:
-		rawReq, err = t.buildImageGenerateRequest(chatReq)
+		rawReq, err = t.buildImageGenerateRequest(chatReq, apiKey)
 		fmtType = llm.APIFormatOpenAIImageGeneration
 	}
 
@@ -67,7 +71,7 @@ func isModelSupportResponseFormat(model string) bool {
 }
 
 // buildImageGenerateRequest builds request for Image Generation API (images/generations).
-func (t *OutboundTransformer) buildImageGenerateRequest(chatReq *llm.Request) (*httpclient.Request, error) {
+func (t *OutboundTransformer) buildImageGenerateRequest(chatReq *llm.Request, apiKey string) (*httpclient.Request, error) {
 	model := chatReq.Model
 
 	prompt := chatReq.Image.Prompt
@@ -149,13 +153,13 @@ func (t *OutboundTransformer) buildImageGenerateRequest(chatReq *llm.Request) (*
 	case PlatformAzure:
 		auth = &httpclient.AuthConfig{
 			Type:      "api_key",
-			APIKey:    t.config.APIKey,
+			APIKey:    apiKey,
 			HeaderKey: "Api-Key",
 		}
 	case PlatformOpenAI:
 		auth = &httpclient.AuthConfig{
 			Type:   "bearer",
-			APIKey: t.config.APIKey,
+			APIKey: apiKey,
 		}
 	}
 
@@ -171,7 +175,7 @@ func (t *OutboundTransformer) buildImageGenerateRequest(chatReq *llm.Request) (*
 // buildImageEditRequest builds request for Image Edit API (images/edits).
 //
 //nolint:maintidx // Complex function for building multipart form data
-func (t *OutboundTransformer) buildImageEditRequest(chatReq *llm.Request) (*httpclient.Request, error) {
+func (t *OutboundTransformer) buildImageEditRequest(chatReq *llm.Request, apiKey string) (*httpclient.Request, error) {
 	model := chatReq.Model
 
 	prompt := chatReq.Image.Prompt
@@ -376,13 +380,13 @@ func (t *OutboundTransformer) buildImageEditRequest(chatReq *llm.Request) (*http
 	case PlatformAzure:
 		auth = &httpclient.AuthConfig{
 			Type:      "api_key",
-			APIKey:    t.config.APIKey,
+			APIKey:    apiKey,
 			HeaderKey: "Api-Key",
 		}
 	case PlatformOpenAI:
 		auth = &httpclient.AuthConfig{
 			Type:   "bearer",
-			APIKey: t.config.APIKey,
+			APIKey: apiKey,
 		}
 	}
 
@@ -403,7 +407,7 @@ func (t *OutboundTransformer) buildImageEditRequest(chatReq *llm.Request) (*http
 	}, nil
 }
 
-func (t *OutboundTransformer) buildImageVariationRequest(chatReq *llm.Request) (*httpclient.Request, error) {
+func (t *OutboundTransformer) buildImageVariationRequest(chatReq *llm.Request, apiKey string) (*httpclient.Request, error) {
 	model := chatReq.Model
 
 	var formFiles []FormFile
@@ -507,13 +511,13 @@ func (t *OutboundTransformer) buildImageVariationRequest(chatReq *llm.Request) (
 	case PlatformAzure:
 		auth = &httpclient.AuthConfig{
 			Type:      "api_key",
-			APIKey:    t.config.APIKey,
+			APIKey:    apiKey,
 			HeaderKey: "Api-Key",
 		}
 	case PlatformOpenAI:
 		auth = &httpclient.AuthConfig{
 			Type:   "bearer",
-			APIKey: t.config.APIKey,
+			APIKey: apiKey,
 		}
 	}
 

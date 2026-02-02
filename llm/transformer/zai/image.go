@@ -18,7 +18,7 @@ import (
 )
 
 // buildImageGenerationAPIRequest builds the HTTP request to call the ZAI Image Generation API.
-func (t *OutboundTransformer) buildImageGenerationAPIRequest(chatReq *llm.Request) (*httpclient.Request, error) {
+func (t *OutboundTransformer) buildImageGenerationAPIRequest(ctx context.Context, chatReq *llm.Request) (*httpclient.Request, error) {
 	if chatReq.Image == nil {
 		return nil, fmt.Errorf("%w: image request is required", transformer.ErrInvalidRequest)
 	}
@@ -32,7 +32,7 @@ func (t *OutboundTransformer) buildImageGenerationAPIRequest(chatReq *llm.Reques
 	}
 
 	// Use Image Generation API only
-	rawReq, err := t.buildImageGenerateRequest(chatReq)
+	rawReq, err := t.buildImageGenerateRequest(ctx, chatReq)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func (t *OutboundTransformer) buildImageGenerationAPIRequest(chatReq *llm.Reques
 }
 
 // buildImageGenerateRequest builds request for ZAI Image Generation API.
-func (t *OutboundTransformer) buildImageGenerateRequest(chatReq *llm.Request) (*httpclient.Request, error) {
+func (t *OutboundTransformer) buildImageGenerateRequest(ctx context.Context, chatReq *llm.Request) (*httpclient.Request, error) {
 	prompt := chatReq.Image.Prompt
 	if prompt == "" {
 		return nil, fmt.Errorf("prompt is required for image generation")
@@ -101,10 +101,13 @@ func (t *OutboundTransformer) buildImageGenerateRequest(chatReq *llm.Request) (*
 	// Build URL
 	url := t.BaseURL + "/images/generations"
 
+	// Get API key from provider
+	apiKey := t.APIKeyProvider.Get(ctx)
+
 	// Build auth config
 	auth := &httpclient.AuthConfig{
 		Type:   "bearer",
-		APIKey: t.APIKey,
+		APIKey: apiKey,
 	}
 
 	return &httpclient.Request{
