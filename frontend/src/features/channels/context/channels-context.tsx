@@ -23,7 +23,6 @@ type ChannelsDialogType =
   | 'bulkDelete'
   | 'bulkApplyTemplate'
   | 'errorResolved'
-  | 'weight'
   | 'viewModels'
   | 'price'
   | 'transformOptions';
