@@ -393,6 +393,7 @@ input S3Input {
   region: String
   accessKey: String
   secretKey: String
+  pathStyle: Boolean
 }
 
 input GCSInput {
@@ -420,6 +421,7 @@ type S3 {
   bucketName: String!
   endpoint: String!
   region: String!
+  pathStyle: Boolean!
 }
 
 type GCS {

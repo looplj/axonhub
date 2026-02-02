@@ -393,6 +393,8 @@ func (s *DataStorageService) createS3Fs(ctx context.Context, s3Config *objects.S
 		if s3Config.Endpoint != "" {
 			o.BaseEndpoint = lo.ToPtr(s3Config.Endpoint)
 		}
+		// Enable Path Style access for S3 compatible storage services (e.g., MinIO, Ceph RGW)
+		o.UsePathStyle = s3Config.PathStyle
 	})
 
 	baseFs := s3fs.NewFsFromClient(s3Config.BucketName, client)
@@ -654,6 +656,7 @@ func (s *DataStorageService) mergeSettings(existing, input *objects.DataStorageS
 			BucketName: input.S3.BucketName,
 			Endpoint:   input.S3.Endpoint,
 			Region:     input.S3.Region,
+			PathStyle:  input.S3.PathStyle,
 		}
 
 		// Only update sensitive fields if they are non-empty

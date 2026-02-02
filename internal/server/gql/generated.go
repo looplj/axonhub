@@ -1078,6 +1078,7 @@ type ComplexityRoot struct {
 	S3 struct {
 		BucketName func(childComplexity int) int
 		Endpoint   func(childComplexity int) int
+		PathStyle  func(childComplexity int) int
 		Region     func(childComplexity int) int
 	}
 
@@ -6261,6 +6262,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.S3.Endpoint(childComplexity), true
+	case "S3.pathStyle":
+		if e.complexity.S3.PathStyle == nil {
+			break
+		}
+
+		return e.complexity.S3.PathStyle(childComplexity), true
 	case "S3.region":
 		if e.complexity.S3.Region == nil {
 			break
@@ -18999,6 +19006,8 @@ func (ec *executionContext) fieldContext_DataStorageSettings_s3(_ context.Contex
 				return ec.fieldContext_S3_endpoint(ctx, field)
 			case "region":
 				return ec.fieldContext_S3_region(ctx, field)
+			case "pathStyle":
+				return ec.fieldContext_S3_pathStyle(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type S3", field.Name)
 		},
@@ -34046,6 +34055,35 @@ func (ec *executionContext) fieldContext_S3_region(_ context.Context, field grap
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _S3_pathStyle(ctx context.Context, field graphql.CollectedField, obj *objects.S3) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_S3_pathStyle,
+		func(ctx context.Context) (any, error) {
+			return obj.PathStyle, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_S3_pathStyle(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "S3",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -58834,7 +58872,7 @@ func (ec *executionContext) unmarshalInputS3Input(ctx context.Context, obj any) 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"bucketName", "endpoint", "region", "accessKey", "secretKey"}
+	fieldsInOrder := [...]string{"bucketName", "endpoint", "region", "accessKey", "secretKey", "pathStyle"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -58876,6 +58914,13 @@ func (ec *executionContext) unmarshalInputS3Input(ctx context.Context, obj any) 
 				return it, err
 			}
 			it.SecretKey = data
+		case "pathStyle":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("pathStyle"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PathStyle = data
 		}
 	}
 
@@ -75969,6 +76014,11 @@ func (ec *executionContext) _S3(ctx context.Context, sel ast.SelectionSet, obj *
 			}
 		case "region":
 			out.Values[i] = ec._S3_region(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "pathStyle":
+			out.Values[i] = ec._S3_pathStyle(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

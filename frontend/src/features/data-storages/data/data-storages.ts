@@ -45,6 +45,7 @@ const DATA_STORAGES_QUERY = `
               bucketName
               endpoint
               region
+              pathStyle
             }
             gcs {
               bucketName

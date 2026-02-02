@@ -23,6 +23,9 @@ type S3 struct {
 	Region     string `json:"region"`
 	AccessKey  string `json:"accessKey"`
 	SecretKey  string `json:"secretKey"`
+	// PathStyle enables Path Style access for S3 compatible storage services (e.g., MinIO, Ceph RGW).
+	// When enabled, uses https://s3.amazonaws.com/<bucket-name>/object format instead of Virtual Hosted Style.
+	PathStyle bool `json:"pathStyle"`
 }
 
 type GCS struct {

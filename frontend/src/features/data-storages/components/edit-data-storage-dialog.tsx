@@ -47,6 +47,7 @@ export function EditDataStorageDialog() {
       s3Region: '',
       s3AccessKey: '',
       s3SecretKey: '',
+      s3PathStyle: false,
       gcsBucketName: '',
       gcsCredential: '',
       webdavURL: '',
@@ -62,7 +63,7 @@ export function EditDataStorageDialog() {
   // Clear errors for fields that are not relevant to the current type
   useEffect(() => {
     if (selectedType === 'fs') {
-      clearErrors(['s3BucketName', 's3Endpoint', 's3AccessKey', 's3SecretKey']);
+      clearErrors(['s3BucketName', 's3Endpoint', 's3AccessKey', 's3SecretKey', 's3PathStyle']);
       clearErrors(['gcsBucketName', 'gcsCredential']);
       clearErrors(['webdavURL', 'webdavUsername', 'webdavPassword', 'webdavPath']);
     } else if (selectedType === 's3') {
@@ -71,11 +72,11 @@ export function EditDataStorageDialog() {
       clearErrors(['webdavURL', 'webdavUsername', 'webdavPassword', 'webdavPath']);
     } else if (selectedType === 'gcs') {
       clearErrors(['directory']);
-      clearErrors(['s3BucketName', 's3Endpoint', 's3AccessKey', 's3SecretKey']);
+      clearErrors(['s3BucketName', 's3Endpoint', 's3AccessKey', 's3SecretKey', 's3PathStyle']);
       clearErrors(['webdavURL', 'webdavUsername', 'webdavPassword', 'webdavPath']);
     } else if (selectedType === 'webdav') {
       clearErrors(['directory']);
-      clearErrors(['s3BucketName', 's3Endpoint', 's3AccessKey', 's3SecretKey']);
+      clearErrors(['s3BucketName', 's3Endpoint', 's3AccessKey', 's3SecretKey', 's3PathStyle']);
       clearErrors(['gcsBucketName', 'gcsCredential']);
     }
   }, [selectedType, clearErrors]);
@@ -93,6 +94,7 @@ export function EditDataStorageDialog() {
         s3Region: editingDataStorage.settings.s3?.region || '',
         s3AccessKey: editingDataStorage.settings.s3?.accessKey || '',
         s3SecretKey: editingDataStorage.settings.s3?.secretKey || '',
+        s3PathStyle: editingDataStorage.settings.s3?.pathStyle || false,
         gcsBucketName: editingDataStorage.settings.gcs?.bucketName || '',
         gcsCredential: editingDataStorage.settings.gcs?.credential || '',
         webdavURL: editingDataStorage.settings.webdav?.url || '',
@@ -120,6 +122,7 @@ export function EditDataStorageDialog() {
       if (data.s3Region) s3Data.region = data.s3Region;
       if (data.s3AccessKey) s3Data.accessKey = data.s3AccessKey;
       if (data.s3SecretKey) s3Data.secretKey = data.s3SecretKey;
+      s3Data.pathStyle = data.s3PathStyle;
 
       if (Object.keys(s3Data).length > 0) {
         settings.s3 = s3Data;
@@ -284,6 +287,17 @@ export function EditDataStorageDialog() {
                   {errors.s3SecretKey && (
                     <span className='text-sm text-red-500'>{errors.s3SecretKey.message}</span>
                   )}
+                </div>
+                <div className='flex items-center space-x-2'>
+                  <input
+                    type='checkbox'
+                    id='edit-s3-path-style'
+                    {...register('s3PathStyle')}
+                    className='h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600'
+                  />
+                  <Label htmlFor='edit-s3-path-style'>
+                    {t('dataStorages.fields.s3PathStyle')}
+                  </Label>
                 </div>
               </>
             )}
