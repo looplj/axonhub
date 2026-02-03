@@ -23,7 +23,7 @@ func TestConvertModelToOpenAIExtended_NilModelCard(t *testing.T) {
 		ModelCard: nil,
 	}
 
-	result := convertModelToOpenAIExtended(m)
+	result := convertModelToOpenAIExtended(m, nil)
 
 	assert.Equal(t, "gpt-4", result.ID)
 	assert.Equal(t, "GPT-4", result.Name)
@@ -55,7 +55,7 @@ func TestConvertModelToOpenAIExtended_CompleteData(t *testing.T) {
 		},
 	}
 
-	result := convertModelToOpenAIExtended(m)
+	result := convertModelToOpenAIExtended(m, nil)
 
 	assert.Equal(t, "gpt-4", result.ID)
 	assert.Equal(t, "GPT-4", result.Name)
@@ -87,7 +87,7 @@ func TestConvertModelToOpenAIExtended_NilRemark(t *testing.T) {
 		ModelCard: nil,
 	}
 
-	result := convertModelToOpenAIExtended(m)
+	result := convertModelToOpenAIExtended(m, nil)
 	assert.Equal(t, "", result.Description)
 	assert.Nil(t, result.Capabilities)
 	assert.Nil(t, result.Pricing)
