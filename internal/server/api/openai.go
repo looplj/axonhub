@@ -150,33 +150,34 @@ func (handlers *OpenAIHandlers) CreateImageVariation(c *gin.Context) {
 	handlers.ImageVariationHandlers.ChatCompletion(c)
 }
 
+type Capabilities struct {
+	Vision    bool `json:"vision"`
+	ToolCall  bool `json:"tool_call"`
+	Reasoning bool `json:"reasoning"`
+}
+
+type Pricing struct {
+	Input      float64 `json:"input"`
+	Output     float64 `json:"output"`
+	CacheRead  float64 `json:"cache_read"`
+	CacheWrite float64 `json:"cache_write"`
+	Unit       string  `json:"unit"`
+	Currency   string  `json:"currency"`
+}
+
 type OpenAIModel struct {
-	ID      string `json:"id"`
-	Object  string `json:"object"`
-	Created int64  `json:"created"`
-	OwnedBy string `json:"owned_by"`
-
-	Name          string `json:"name,omitempty"`
-	Description   string `json:"description,omitempty"`
-	ContextLength int    `json:"context_length,omitempty"`
-	MaxOutputTokens int  `json:"max_output_tokens,omitempty"`
-	Icon          string `json:"icon,omitempty"`
-	Type          string `json:"type,omitempty"`
-
-	Capabilities struct {
-		Vision    bool `json:"vision,omitempty"`
-		ToolCall  bool `json:"tool_call,omitempty"`
-		Reasoning bool `json:"reasoning,omitempty"`
-	} `json:"capabilities,omitempty"`
-
-	Pricing struct {
-		Input      float64 `json:"input,omitempty"`
-		Output     float64 `json:"output,omitempty"`
-		CacheRead  float64 `json:"cache_read,omitempty"`
-		CacheWrite float64 `json:"cache_write,omitempty"`
-		Unit       string  `json:"unit,omitempty"`
-		Currency   string  `json:"currency,omitempty"`
-	} `json:"pricing,omitempty"`
+	ID              string       `json:"id"`
+	Object          string       `json:"object"`
+	Created         int64        `json:"created"`
+	OwnedBy         string       `json:"owned_by"`
+	Name            string       `json:"name,omitempty"`
+	Description     string       `json:"description,omitempty"`
+	ContextLength   int          `json:"context_length,omitempty"`
+	MaxOutputTokens int          `json:"max_output_tokens,omitempty"`
+	Capabilities    Capabilities `json:"capabilities,omitempty"`
+	Pricing         Pricing      `json:"pricing,omitempty"`
+	Icon            string       `json:"icon,omitempty"`
+	Type            string       `json:"type,omitempty"`
 }
 
 // ListModels returns all available models.
