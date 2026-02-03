@@ -28,6 +28,7 @@ func TestChannelProbeService_ComputeChannelProbeStats_UsageLogCreatedAfterWindow
 		SetStatus(channel.StatusEnabled).
 		SetSupportedModels([]string{"gpt-4o-mini"}).
 		SetDefaultTestModel("gpt-4o-mini").
+		SetCredentials(objects.ChannelCredentials{}).
 		Save(ctx)
 	require.NoError(t, err)
 

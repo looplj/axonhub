@@ -157,12 +157,6 @@ type ComplexityRoot struct {
 		Type             func(childComplexity int) int
 	}
 
-	AWSCredential struct {
-		AccessKeyID     func(childComplexity int) int
-		Region          func(childComplexity int) int
-		SecretAccessKey func(childComplexity int) int
-	}
-
 	ApplyChannelOverrideTemplatePayload struct {
 		Channels func(childComplexity int) int
 		Success  func(childComplexity int) int
@@ -253,7 +247,6 @@ type ComplexityRoot struct {
 	ChannelCredentials struct {
 		APIKey  func(childComplexity int) int
 		APIKeys func(childComplexity int) int
-		AWS     func(childComplexity int) int
 		GCP     func(childComplexity int) int
 		OAuth   func(childComplexity int) int
 	}
@@ -1978,25 +1971,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.APIKeyQuotaPeriod.Type(childComplexity), true
 
-	case "AWSCredential.accessKeyID":
-		if e.complexity.AWSCredential.AccessKeyID == nil {
-			break
-		}
-
-		return e.complexity.AWSCredential.AccessKeyID(childComplexity), true
-	case "AWSCredential.region":
-		if e.complexity.AWSCredential.Region == nil {
-			break
-		}
-
-		return e.complexity.AWSCredential.Region(childComplexity), true
-	case "AWSCredential.secretAccessKey":
-		if e.complexity.AWSCredential.SecretAccessKey == nil {
-			break
-		}
-
-		return e.complexity.AWSCredential.SecretAccessKey(childComplexity), true
-
 	case "ApplyChannelOverrideTemplatePayload.channels":
 		if e.complexity.ApplyChannelOverrideTemplatePayload.Channels == nil {
 			break
@@ -2376,12 +2350,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelCredentials.APIKeys(childComplexity), true
-	case "ChannelCredentials.aws":
-		if e.complexity.ChannelCredentials.AWS == nil {
-			break
-		}
-
-		return e.complexity.ChannelCredentials.AWS(childComplexity), true
 	case "ChannelCredentials.gcp":
 		if e.complexity.ChannelCredentials.GCP == nil {
 			break
@@ -7616,7 +7584,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputAPIKeyQuotaPastDurationInput,
 		ec.unmarshalInputAPIKeyQuotaPeriodInput,
 		ec.unmarshalInputAPIKeyWhereInput,
-		ec.unmarshalInputAWSCredentialInput,
 		ec.unmarshalInputAddUserToProjectInput,
 		ec.unmarshalInputApplyChannelOverrideTemplateInput,
 		ec.unmarshalInputAutoDisableChannelInput,
@@ -11547,93 +11514,6 @@ func (ec *executionContext) fieldContext_APIKeyQuotaPeriod_calendarDuration(_ co
 	return fc, nil
 }
 
-func (ec *executionContext) _AWSCredential_accessKeyID(ctx context.Context, field graphql.CollectedField, obj *objects.AWSCredential) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AWSCredential_accessKeyID,
-		func(ctx context.Context) (any, error) {
-			return obj.AccessKeyID, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AWSCredential_accessKeyID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AWSCredential",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AWSCredential_secretAccessKey(ctx context.Context, field graphql.CollectedField, obj *objects.AWSCredential) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AWSCredential_secretAccessKey,
-		func(ctx context.Context) (any, error) {
-			return obj.SecretAccessKey, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AWSCredential_secretAccessKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AWSCredential",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AWSCredential_region(ctx context.Context, field graphql.CollectedField, obj *objects.AWSCredential) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AWSCredential_region,
-		func(ctx context.Context) (any, error) {
-			return obj.Region, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AWSCredential_region(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AWSCredential",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _ApplyChannelOverrideTemplatePayload_success(ctx context.Context, field graphql.CollectedField, obj *ApplyChannelOverrideTemplatePayload) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -13509,8 +13389,6 @@ func (ec *executionContext) fieldContext_Channel_credentials(_ context.Context, 
 				return ec.fieldContext_ChannelCredentials_apiKey(ctx, field)
 			case "apiKeys":
 				return ec.fieldContext_ChannelCredentials_apiKeys(ctx, field)
-			case "aws":
-				return ec.fieldContext_ChannelCredentials_aws(ctx, field)
 			case "gcp":
 				return ec.fieldContext_ChannelCredentials_gcp(ctx, field)
 			case "oauth":
@@ -13678,43 +13556,6 @@ func (ec *executionContext) fieldContext_ChannelCredentials_apiKeys(_ context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelCredentials_aws(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelCredentials) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ChannelCredentials_aws,
-		func(ctx context.Context) (any, error) {
-			return obj.AWS, nil
-		},
-		nil,
-		ec.marshalOAWSCredential2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAWSCredential,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ChannelCredentials_aws(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ChannelCredentials",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "accessKeyID":
-				return ec.fieldContext_AWSCredential_accessKeyID(ctx, field)
-			case "secretAccessKey":
-				return ec.fieldContext_AWSCredential_secretAccessKey(ctx, field)
-			case "region":
-				return ec.fieldContext_AWSCredential_region(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type AWSCredential", field.Name)
 		},
 	}
 	return fc, nil
@@ -43321,47 +43162,6 @@ func (ec *executionContext) unmarshalInputAPIKeyWhereInput(ctx context.Context, 
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputAWSCredentialInput(ctx context.Context, obj any) (objects.AWSCredential, error) {
-	var it objects.AWSCredential
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"accessKeyID", "secretAccessKey", "region"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "accessKeyID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accessKeyID"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.AccessKeyID = data
-		case "secretAccessKey":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("secretAccessKey"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SecretAccessKey = data
-		case "region":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("region"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Region = data
-		}
-	}
-
-	return it, nil
-}
-
 func (ec *executionContext) unmarshalInputAddUserToProjectInput(ctx context.Context, obj any) (AddUserToProjectInput, error) {
 	var it AddUserToProjectInput
 	asMap := map[string]any{}
@@ -43805,7 +43605,7 @@ func (ec *executionContext) unmarshalInputChannelCredentialsInput(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"apiKey", "apiKeys", "aws", "gcp", "oauth"}
+	fieldsInOrder := [...]string{"apiKey", "apiKeys", "gcp", "oauth"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -43826,13 +43626,6 @@ func (ec *executionContext) unmarshalInputChannelCredentialsInput(ctx context.Co
 				return it, err
 			}
 			it.APIKeys = data
-		case "aws":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("aws"))
-			data, err := ec.unmarshalOAWSCredentialInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAWSCredential(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.AWS = data
 		case "gcp":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("gcp"))
 			data, err := ec.unmarshalOGCPCredentialInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx, v)
@@ -47854,7 +47647,7 @@ func (ec *executionContext) unmarshalInputCreateChannelInput(ctx context.Context
 			it.Name = data
 		case "credentials":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("credentials"))
-			data, err := ec.unmarshalOChannelCredentialsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelCredentials(ctx, v)
+			data, err := ec.unmarshalNChannelCredentialsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelCredentials(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -64044,55 +63837,6 @@ func (ec *executionContext) _APIKeyQuotaPeriod(ctx context.Context, sel ast.Sele
 	return out
 }
 
-var aWSCredentialImplementors = []string{"AWSCredential"}
-
-func (ec *executionContext) _AWSCredential(ctx context.Context, sel ast.SelectionSet, obj *objects.AWSCredential) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, aWSCredentialImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("AWSCredential")
-		case "accessKeyID":
-			out.Values[i] = ec._AWSCredential_accessKeyID(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "secretAccessKey":
-			out.Values[i] = ec._AWSCredential_secretAccessKey(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "region":
-			out.Values[i] = ec._AWSCredential_region(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
 var applyChannelOverrideTemplatePayloadImplementors = []string{"ApplyChannelOverrideTemplatePayload"}
 
 func (ec *executionContext) _ApplyChannelOverrideTemplatePayload(ctx context.Context, sel ast.SelectionSet, obj *ApplyChannelOverrideTemplatePayload) graphql.Marshaler {
@@ -64989,8 +64733,6 @@ func (ec *executionContext) _ChannelCredentials(ctx context.Context, sel ast.Sel
 			out.Values[i] = ec._ChannelCredentials_apiKey(ctx, field, obj)
 		case "apiKeys":
 			out.Values[i] = ec._ChannelCredentials_apiKeys(ctx, field, obj)
-		case "aws":
-			out.Values[i] = ec._ChannelCredentials_aws(ctx, field, obj)
 		case "gcp":
 			out.Values[i] = ec._ChannelCredentials_gcp(ctx, field, obj)
 		case "oauth":
@@ -78259,6 +78001,11 @@ func (ec *executionContext) marshalNChannelConnection2ᚖgithubᚗcomᚋlooplj�
 	return ec._ChannelConnection(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNChannelCredentialsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelCredentials(ctx context.Context, v any) (objects.ChannelCredentials, error) {
+	res, err := ec.unmarshalInputChannelCredentialsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNChannelModelEntry2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐChannelModelEntry(ctx context.Context, sel ast.SelectionSet, v biz.ChannelModelEntry) graphql.Marshaler {
 	return ec._ChannelModelEntry(ctx, sel, &v)
 }
@@ -82342,21 +82089,6 @@ func (ec *executionContext) unmarshalOAPIKeyWhereInput2ᚖgithubᚗcomᚋlooplj�
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputAPIKeyWhereInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOAWSCredential2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAWSCredential(ctx context.Context, sel ast.SelectionSet, v *objects.AWSCredential) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._AWSCredential(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalOAWSCredentialInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAWSCredential(ctx context.Context, v any) (*objects.AWSCredential, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputAWSCredentialInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 

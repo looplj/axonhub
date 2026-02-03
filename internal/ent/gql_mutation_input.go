@@ -83,7 +83,7 @@ type CreateChannelInput struct {
 	Type                    channel.Type
 	BaseURL                 *string
 	Name                    string
-	Credentials             *objects.ChannelCredentials
+	Credentials             objects.ChannelCredentials
 	SupportedModels         []string
 	AutoSyncSupportedModels *bool
 	Tags                    []string
@@ -101,9 +101,7 @@ func (i *CreateChannelInput) Mutate(m *ChannelMutation) {
 		m.SetBaseURL(*v)
 	}
 	m.SetName(i.Name)
-	if v := i.Credentials; v != nil {
-		m.SetCredentials(*v)
-	}
+	m.SetCredentials(i.Credentials)
 	if v := i.SupportedModels; v != nil {
 		m.SetSupportedModels(v)
 	}

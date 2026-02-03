@@ -57,6 +57,7 @@ func TestUsageCost_PerUnitPromptAndCompletion(t *testing.T) {
 		SetSupportedModels([]string{"m1"}).
 		SetDefaultTestModel("m1").
 		SetStatus(channel.StatusEnabled).
+		SetCredentials(objects.ChannelCredentials{}).
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -130,6 +131,7 @@ func TestUsageCost_TieredPrompt(t *testing.T) {
 		SetSupportedModels([]string{"m2"}).
 		SetDefaultTestModel("m2").
 		SetStatus(channel.StatusEnabled).
+		SetCredentials(objects.ChannelCredentials{}).
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -205,6 +207,7 @@ func TestUsageCost_NoPriceConfigured(t *testing.T) {
 		SetSupportedModels([]string{"m3"}).
 		SetDefaultTestModel("m3").
 		SetStatus(channel.StatusEnabled).
+		SetCredentials(objects.ChannelCredentials{}).
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -253,6 +256,7 @@ func TestUsageCost_CacheVariant5Min(t *testing.T) {
 		SetSupportedModels([]string{"m4"}).
 		SetDefaultTestModel("m4").
 		SetStatus(channel.StatusEnabled).
+		SetCredentials(objects.ChannelCredentials{}).
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -343,6 +347,7 @@ func TestUsageCost_CacheVariant1Hour(t *testing.T) {
 		SetSupportedModels([]string{"m5"}).
 		SetDefaultTestModel("m5").
 		SetStatus(channel.StatusEnabled).
+		SetCredentials(objects.ChannelCredentials{}).
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -433,6 +438,7 @@ func TestUsageCost_CacheVariantBoth5MinAnd1Hour(t *testing.T) {
 		SetSupportedModels([]string{"m6"}).
 		SetDefaultTestModel("m6").
 		SetStatus(channel.StatusEnabled).
+		SetCredentials(objects.ChannelCredentials{}).
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -530,6 +536,7 @@ func TestUsageCost_CacheVariantFallbackToShared(t *testing.T) {
 		SetSupportedModels([]string{"m7"}).
 		SetDefaultTestModel("m7").
 		SetStatus(channel.StatusEnabled).
+		SetCredentials(objects.ChannelCredentials{}).
 		Save(ctx)
 	require.NoError(t, err)
 

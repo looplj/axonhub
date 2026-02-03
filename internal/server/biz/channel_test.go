@@ -237,8 +237,8 @@ func TestChannelService_CreateChannel(t *testing.T) {
 				Type:    channel.TypeOpenai,
 				Name:    "Test OpenAI Channel",
 				BaseURL: lo.ToPtr("https://api.openai.com/v1"),
-				Credentials: &objects.ChannelCredentials{
-					APIKey: "test-api-key",
+				Credentials: objects.ChannelCredentials{
+					APIKeys: []string{"test-api-key"},
 				},
 				SupportedModels:  []string{"gpt-4", "gpt-3.5-turbo"},
 				DefaultTestModel: "gpt-3.5-turbo",
@@ -251,7 +251,7 @@ func TestChannelService_CreateChannel(t *testing.T) {
 				Type:    channel.TypeAnthropic,
 				Name:    "Test Anthropic Channel",
 				BaseURL: lo.ToPtr("https://api.anthropic.com"),
-				Credentials: &objects.ChannelCredentials{
+				Credentials: objects.ChannelCredentials{
 					APIKey: "test-api-key",
 				},
 				SupportedModels:  []string{"claude-3-opus-20240229"},
@@ -270,7 +270,7 @@ func TestChannelService_CreateChannel(t *testing.T) {
 				Type:    channel.TypeOpenai,
 				Name:    "Duplicate Channel Name",
 				BaseURL: lo.ToPtr("https://api.openai.com/v1"),
-				Credentials: &objects.ChannelCredentials{
+				Credentials: objects.ChannelCredentials{
 					APIKey: "test-api-key",
 				},
 				SupportedModels:  []string{"gpt-4"},

@@ -119,10 +119,6 @@ func init() {
 	channelDescDeletedAt := channelMixinFields1[0].Descriptor()
 	// channel.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	channel.DefaultDeletedAt = channelDescDeletedAt.Default.(int)
-	// channelDescCredentials is the schema descriptor for credentials field.
-	channelDescCredentials := channelFields[4].Descriptor()
-	// channel.DefaultCredentials holds the default value on creation for the credentials field.
-	channel.DefaultCredentials = channelDescCredentials.Default.(objects.ChannelCredentials)
 	// channelDescAutoSyncSupportedModels is the schema descriptor for auto_sync_supported_models field.
 	channelDescAutoSyncSupportedModels := channelFields[6].Descriptor()
 	// channel.DefaultAutoSyncSupportedModels holds the default value on creation for the auto_sync_supported_models field.

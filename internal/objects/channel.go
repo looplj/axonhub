@@ -95,9 +95,6 @@ type ChannelCredentials struct {
 	// Azure configuration for the channel.
 	Azure *AzureCredential `json:"azure,omitempty"`
 
-	// AWS is the AWS credentials for the channel.
-	AWS *AWSCredential `json:"aws,omitempty"`
-
 	// GCP is the GCP credentials for the channel.
 	GCP *GCPCredential `json:"gcp,omitempty"`
 }
@@ -117,9 +114,7 @@ func (c *ChannelCredentials) GetAllAPIKeys() []string {
 	}
 
 	// Add new APIKeys
-	for _, key := range c.APIKeys {
-		keys = append(keys, key)
-	}
+	keys = append(keys, c.APIKeys...)
 
 	return keys
 }
@@ -169,12 +164,6 @@ type OAuthCredentials = oauth.OAuthCredentials
 type AzureCredential struct {
 	// APIVersion is a optional version for the channel.
 	APIVersion string `json:"apiVersion"`
-}
-
-type AWSCredential struct {
-	Region          string `json:"region"`
-	AccessKeyID     string `json:"accessKeyID"`
-	SecretAccessKey string `json:"secretAccessKey"`
 }
 
 type GCPCredential struct {
