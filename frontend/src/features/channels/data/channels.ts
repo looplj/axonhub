@@ -543,11 +543,6 @@ const QUERY_CHANNELS_QUERY = `
           credentials {
             apiKey
             apiKeys
-            aws {
-              accessKeyID
-              secretAccessKey
-              region
-            }
             gcp {
               region
               projectID

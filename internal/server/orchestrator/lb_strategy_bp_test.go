@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/privacy"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
@@ -103,6 +104,7 @@ func TestErrorAwareStrategy_Score_ConsecutiveFailures(t *testing.T) {
 		SetType("openai").
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
+		SetCredentials(objects.ChannelCredentials{APIKeys: []string{"test-key"}}).
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -143,6 +145,7 @@ func TestErrorAwareStrategy_Score_RecentSuccess(t *testing.T) {
 		SetType("openai").
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
+		SetCredentials(objects.ChannelCredentials{APIKeys: []string{"test-key"}}).
 		Save(ctx)
 	require.NoError(t, err)
 

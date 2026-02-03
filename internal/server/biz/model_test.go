@@ -35,6 +35,7 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 		SetType("openai").
 		SetName("OpenAI Channel").
 		SetStatus("enabled").
+		SetCredentials(objects.ChannelCredentials{APIKeys: []string{"test-key-1"}}).
 		SetSupportedModels([]string{"gpt-4", "gpt-3.5-turbo", "gpt-4-turbo"}).
 		SetDefaultTestModel("gpt-4").
 		Save(ctx)
@@ -44,6 +45,7 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 		SetType("anthropic").
 		SetName("Anthropic Channel").
 		SetStatus("enabled").
+		SetCredentials(objects.ChannelCredentials{APIKeys: []string{"test-key-2"}}).
 		SetSupportedModels([]string{"claude-3-opus", "claude-3-sonnet", "claude-3-haiku"}).
 		SetDefaultTestModel("claude-3-opus").
 		Save(ctx)
@@ -53,6 +55,7 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 		SetType("gemini").
 		SetName("Gemini Channel").
 		SetStatus("enabled").
+		SetCredentials(objects.ChannelCredentials{APIKeys: []string{"test-key-3"}}).
 		SetSupportedModels([]string{"gemini-pro", "gemini-1.5-pro", "gemini-1.5-flash"}).
 		SetDefaultTestModel("gemini-pro").
 		Save(ctx)
@@ -231,6 +234,7 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 		disabledChannel, err := client.Channel.Create().
 			SetType("openai").
 			SetName("Disabled Channel").
+			SetCredentials(objects.ChannelCredentials{APIKey: "test-key-disabled"}).
 			SetSupportedModels([]string{"gpt-4-disabled"}).
 			SetDefaultTestModel("gpt-4-disabled").
 			SetStatus("disabled").

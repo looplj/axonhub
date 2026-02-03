@@ -389,7 +389,7 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 		SetNillableBaseURL(input.BaseURL).
 		SetNillableRemark(input.Remark).
 		SetName(input.Name).
-		SetCredentials(*input.Credentials).
+		SetCredentials(input.Credentials).
 		SetSupportedModels(input.SupportedModels).
 		SetDefaultTestModel(input.DefaultTestModel).
 		SetNillableAutoSyncSupportedModels(input.AutoSyncSupportedModels).

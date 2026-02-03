@@ -1350,7 +1350,7 @@ input CreateChannelInput {
   type: ChannelType!
   baseURL: String
   name: String!
-  credentials: ChannelCredentialsInput
+  credentials: ChannelCredentialsInput!
   supportedModels: [String!]!
   autoSyncSupportedModels: Boolean
   tags: [String!]

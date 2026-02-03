@@ -313,11 +313,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             remark: currentRow.remark || '',
             credentials: {
               apiKeys: currentRow.credentials?.apiKeys || (currentRow.credentials?.apiKey ? [currentRow.credentials.apiKey] : []),
-              aws: {
-                accessKeyID: currentRow.credentials?.aws?.accessKeyID || '',
-                secretAccessKey: currentRow.credentials?.aws?.secretAccessKey || '',
-                region: currentRow.credentials?.aws?.region || '',
-              },
               gcp: {
                 region: currentRow.credentials?.gcp?.region || '',
                 projectID: currentRow.credentials?.gcp?.projectID || '',
@@ -339,11 +334,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               settings: duplicateFromRow.settings ?? undefined,
               credentials: {
                 apiKeys: duplicateFromRow.credentials?.apiKeys || (duplicateFromRow.credentials?.apiKey ? [duplicateFromRow.credentials.apiKey] : []),
-                aws: {
-                  accessKeyID: duplicateFromRow.credentials?.aws?.accessKeyID || '',
-                  secretAccessKey: duplicateFromRow.credentials?.aws?.secretAccessKey || '',
-                  region: duplicateFromRow.credentials?.aws?.region || '',
-                },
                 gcp: {
                   region: duplicateFromRow.credentials?.gcp?.region || '',
                   projectID: duplicateFromRow.credentials?.gcp?.projectID || '',
@@ -358,11 +348,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               policies: { stream: 'unlimited' },
               credentials: {
                 apiKeys: [],
-                aws: {
-                  accessKeyID: '',
-                  secretAccessKey: '',
-                  region: '',
-                },
                 gcp: {
                   region: '',
                   projectID: '',
@@ -698,13 +683,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         // Check if any credential fields have actual values
         const apiKeys = values.credentials?.apiKeys || [];
         const hasApiKeys = apiKeys.length > 0 && apiKeys.some((k) => k.trim() !== '');
-        const hasAwsCredentials =
-          values.credentials?.aws?.accessKeyID &&
-          values.credentials.aws.accessKeyID.trim() !== '' &&
-          values.credentials?.aws?.secretAccessKey &&
-          values.credentials.aws.secretAccessKey.trim() !== '' &&
-          values.credentials?.aws?.region &&
-          values.credentials.aws.region.trim() !== '';
         const hasGcpCredentials =
           values.credentials?.gcp?.region &&
           values.credentials.gcp.region.trim() !== '' &&
@@ -714,7 +692,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           values.credentials.gcp.jsonData.trim() !== '';
 
         // Only include credentials if user provided new values
-        if (!hasApiKeys && !hasAwsCredentials && !hasGcpCredentials) {
+        if (!hasApiKeys && !hasGcpCredentials) {
           delete updateInput.credentials;
         }
 

@@ -152,14 +152,6 @@ export const channelCredentialsSchema = z.object({
     })
     .optional()
     .nullable(),
-  aws: z
-    .object({
-      accessKeyID: z.string(),
-      secretAccessKey: z.string(),
-      region: z.string(),
-    })
-    .optional()
-    .nullable(),
   gcp: z
     .object({
       region: z.string(),
@@ -270,13 +262,6 @@ export const createChannelInputSchema = z
       apiKey: z.string().optional(),
       // apiKeys is used for regular API keys (multiple keys for load balancing)
       apiKeys: z.array(z.string()).optional().default([]),
-      aws: z
-        .object({
-          accessKeyID: z.string().optional(),
-          secretAccessKey: z.string().optional(),
-          region: z.string().optional(),
-        })
-        .optional(),
       gcp: z
         .object({
           region: z.string().optional(),
@@ -376,13 +361,6 @@ export const updateChannelInputSchema = z
     credentials: z
       .object({
         apiKeys: z.array(z.string()).optional(),
-        aws: z
-          .object({
-            accessKeyID: z.string().optional(),
-            secretAccessKey: z.string().optional(),
-            region: z.string().optional(),
-          })
-          .optional(),
         gcp: z
           .object({
             region: z.string().optional(),
