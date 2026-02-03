@@ -590,16 +590,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     }
 
     const providerToChannelType: Partial<Record<string, ChannelType>> = {
-      claudecode: 'claudecode',
+      claudecode: authMode === 'official' ? 'claudecode' : undefined,
+      codex: authMode === 'official' ? 'codex' : undefined,
       antigravity: 'antigravity',
     };
 
     let channelTypeForURL: ChannelType | undefined;
-    if (isCodexType) {
-      channelTypeForURL = 'codex';
-    } else {
-      channelTypeForURL = providerToChannelType[selectedProvider];
-    }
+    channelTypeForURL = providerToChannelType[selectedProvider];
 
     if (channelTypeForURL) {
       const baseURL = getDefaultBaseURL(channelTypeForURL);
@@ -611,7 +608,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         }
       }
     }
-  }, [isEdit, isCodexType, selectedProvider, form, codexOAuth, claudecodeOAuth, antigravityOAuth]);
+  }, [isEdit, isCodexType, selectedProvider, authMode, form, codexOAuth, claudecodeOAuth, antigravityOAuth]);
 
   const renderOAuthSection = useCallback(
     (oauth: ReturnType<typeof useOAuthFlow>, description: string) => (

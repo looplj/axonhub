@@ -303,7 +303,6 @@ func TestLoadBalancer_ErrorAware_ChannelWithErrorsRankedLower(t *testing.T) {
 			EndTime:          time.Now(),
 			Success:          true,
 			RequestCompleted: true,
-			TokenCount:       100,
 		}
 		channelService.RecordPerformance(ctx, perf)
 	}
@@ -379,7 +378,6 @@ func TestLoadBalancer_ErrorAware_ShortTermErrorPenalty(t *testing.T) {
 		EndTime:          time.Now(),
 		Success:          true,
 		RequestCompleted: true,
-		TokenCount:       100,
 	}
 	channelService.RecordPerformance(ctx, perf2)
 

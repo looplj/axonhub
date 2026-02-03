@@ -19,7 +19,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
 	"github.com/looplj/axonhub/internal/ent/channelmodelpriceversion"
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
-	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/model"
@@ -69,11 +68,6 @@ var channeloverridetemplateImplementors = []string{"ChannelOverrideTemplate", "N
 
 // IsNode implements the Node interface check for GQLGen.
 func (*ChannelOverrideTemplate) IsNode() {}
-
-var channelperformanceImplementors = []string{"ChannelPerformance", "Node"}
-
-// IsNode implements the Node interface check for GQLGen.
-func (*ChannelPerformance) IsNode() {}
 
 var channelprobeImplementors = []string{"ChannelProbe", "Node"}
 
@@ -254,15 +248,6 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 			Where(channeloverridetemplate.ID(id))
 		if fc := graphql.GetFieldContext(ctx); fc != nil {
 			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, channeloverridetemplateImplementors...); err != nil {
-				return nil, err
-			}
-		}
-		return query.Only(ctx)
-	case channelperformance.Table:
-		query := c.ChannelPerformance.Query().
-			Where(channelperformance.ID(id))
-		if fc := graphql.GetFieldContext(ctx); fc != nil {
-			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, channelperformanceImplementors...); err != nil {
 				return nil, err
 			}
 		}
@@ -552,22 +537,6 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 		query := c.ChannelOverrideTemplate.Query().
 			Where(channeloverridetemplate.IDIn(ids...))
 		query, err := query.CollectFields(ctx, channeloverridetemplateImplementors...)
-		if err != nil {
-			return nil, err
-		}
-		nodes, err := query.All(ctx)
-		if err != nil {
-			return nil, err
-		}
-		for _, node := range nodes {
-			for _, noder := range idmap[node.ID] {
-				*noder = node
-			}
-		}
-	case channelperformance.Table:
-		query := c.ChannelPerformance.Query().
-			Where(channelperformance.IDIn(ids...))
-		query, err := query.CollectFields(ctx, channelperformanceImplementors...)
 		if err != nil {
 			return nil, err
 		}

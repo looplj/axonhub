@@ -11,7 +11,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
 	"github.com/looplj/axonhub/internal/ent/channelmodelpriceversion"
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
-	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
@@ -250,95 +249,6 @@ func init() {
 	channeloverridetemplateDescOverrideHeaders := channeloverridetemplateFields[5].Descriptor()
 	// channeloverridetemplate.DefaultOverrideHeaders holds the default value on creation for the override_headers field.
 	channeloverridetemplate.DefaultOverrideHeaders = channeloverridetemplateDescOverrideHeaders.Default.([]objects.HeaderEntry)
-	channelperformanceMixin := schema.ChannelPerformance{}.Mixin()
-	channelperformanceMixinHooks1 := channelperformanceMixin[1].Hooks()
-	channelperformance.Hooks[0] = channelperformanceMixinHooks1[0]
-	channelperformanceMixinInters1 := channelperformanceMixin[1].Interceptors()
-	channelperformance.Interceptors[0] = channelperformanceMixinInters1[0]
-	channelperformanceMixinFields0 := channelperformanceMixin[0].Fields()
-	_ = channelperformanceMixinFields0
-	channelperformanceMixinFields1 := channelperformanceMixin[1].Fields()
-	_ = channelperformanceMixinFields1
-	channelperformanceFields := schema.ChannelPerformance{}.Fields()
-	_ = channelperformanceFields
-	// channelperformanceDescCreatedAt is the schema descriptor for created_at field.
-	channelperformanceDescCreatedAt := channelperformanceMixinFields0[0].Descriptor()
-	// channelperformance.DefaultCreatedAt holds the default value on creation for the created_at field.
-	channelperformance.DefaultCreatedAt = channelperformanceDescCreatedAt.Default.(func() time.Time)
-	// channelperformanceDescUpdatedAt is the schema descriptor for updated_at field.
-	channelperformanceDescUpdatedAt := channelperformanceMixinFields0[1].Descriptor()
-	// channelperformance.DefaultUpdatedAt holds the default value on creation for the updated_at field.
-	channelperformance.DefaultUpdatedAt = channelperformanceDescUpdatedAt.Default.(func() time.Time)
-	// channelperformance.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
-	channelperformance.UpdateDefaultUpdatedAt = channelperformanceDescUpdatedAt.UpdateDefault.(func() time.Time)
-	// channelperformanceDescDeletedAt is the schema descriptor for deleted_at field.
-	channelperformanceDescDeletedAt := channelperformanceMixinFields1[0].Descriptor()
-	// channelperformance.DefaultDeletedAt holds the default value on creation for the deleted_at field.
-	channelperformance.DefaultDeletedAt = channelperformanceDescDeletedAt.Default.(int)
-	// channelperformanceDescSuccessRate is the schema descriptor for success_rate field.
-	channelperformanceDescSuccessRate := channelperformanceFields[1].Descriptor()
-	// channelperformance.DefaultSuccessRate holds the default value on creation for the success_rate field.
-	channelperformance.DefaultSuccessRate = channelperformanceDescSuccessRate.Default.(int)
-	// channelperformanceDescAvgLatencyMs is the schema descriptor for avg_latency_ms field.
-	channelperformanceDescAvgLatencyMs := channelperformanceFields[2].Descriptor()
-	// channelperformance.DefaultAvgLatencyMs holds the default value on creation for the avg_latency_ms field.
-	channelperformance.DefaultAvgLatencyMs = channelperformanceDescAvgLatencyMs.Default.(int)
-	// channelperformanceDescAvgTokenPerSecond is the schema descriptor for avg_token_per_second field.
-	channelperformanceDescAvgTokenPerSecond := channelperformanceFields[3].Descriptor()
-	// channelperformance.DefaultAvgTokenPerSecond holds the default value on creation for the avg_token_per_second field.
-	channelperformance.DefaultAvgTokenPerSecond = channelperformanceDescAvgTokenPerSecond.Default.(int)
-	// channelperformanceDescAvgStreamFirstTokenLatencyMs is the schema descriptor for avg_stream_first_token_latency_ms field.
-	channelperformanceDescAvgStreamFirstTokenLatencyMs := channelperformanceFields[4].Descriptor()
-	// channelperformance.DefaultAvgStreamFirstTokenLatencyMs holds the default value on creation for the avg_stream_first_token_latency_ms field.
-	channelperformance.DefaultAvgStreamFirstTokenLatencyMs = channelperformanceDescAvgStreamFirstTokenLatencyMs.Default.(int)
-	// channelperformanceDescAvgStreamTokenPerSecond is the schema descriptor for avg_stream_token_per_second field.
-	channelperformanceDescAvgStreamTokenPerSecond := channelperformanceFields[5].Descriptor()
-	// channelperformance.DefaultAvgStreamTokenPerSecond holds the default value on creation for the avg_stream_token_per_second field.
-	channelperformance.DefaultAvgStreamTokenPerSecond = channelperformanceDescAvgStreamTokenPerSecond.Default.(float64)
-	// channelperformanceDescRequestCount is the schema descriptor for request_count field.
-	channelperformanceDescRequestCount := channelperformanceFields[8].Descriptor()
-	// channelperformance.DefaultRequestCount holds the default value on creation for the request_count field.
-	channelperformance.DefaultRequestCount = channelperformanceDescRequestCount.Default.(int64)
-	// channelperformanceDescSuccessCount is the schema descriptor for success_count field.
-	channelperformanceDescSuccessCount := channelperformanceFields[9].Descriptor()
-	// channelperformance.DefaultSuccessCount holds the default value on creation for the success_count field.
-	channelperformance.DefaultSuccessCount = channelperformanceDescSuccessCount.Default.(int64)
-	// channelperformanceDescFailureCount is the schema descriptor for failure_count field.
-	channelperformanceDescFailureCount := channelperformanceFields[10].Descriptor()
-	// channelperformance.DefaultFailureCount holds the default value on creation for the failure_count field.
-	channelperformance.DefaultFailureCount = channelperformanceDescFailureCount.Default.(int64)
-	// channelperformanceDescTotalTokenCount is the schema descriptor for total_token_count field.
-	channelperformanceDescTotalTokenCount := channelperformanceFields[11].Descriptor()
-	// channelperformance.DefaultTotalTokenCount holds the default value on creation for the total_token_count field.
-	channelperformance.DefaultTotalTokenCount = channelperformanceDescTotalTokenCount.Default.(int64)
-	// channelperformanceDescTotalRequestLatencyMs is the schema descriptor for total_request_latency_ms field.
-	channelperformanceDescTotalRequestLatencyMs := channelperformanceFields[12].Descriptor()
-	// channelperformance.DefaultTotalRequestLatencyMs holds the default value on creation for the total_request_latency_ms field.
-	channelperformance.DefaultTotalRequestLatencyMs = channelperformanceDescTotalRequestLatencyMs.Default.(int64)
-	// channelperformanceDescStreamSuccessCount is the schema descriptor for stream_success_count field.
-	channelperformanceDescStreamSuccessCount := channelperformanceFields[13].Descriptor()
-	// channelperformance.DefaultStreamSuccessCount holds the default value on creation for the stream_success_count field.
-	channelperformance.DefaultStreamSuccessCount = channelperformanceDescStreamSuccessCount.Default.(int64)
-	// channelperformanceDescStreamTotalRequestCount is the schema descriptor for stream_total_request_count field.
-	channelperformanceDescStreamTotalRequestCount := channelperformanceFields[14].Descriptor()
-	// channelperformance.DefaultStreamTotalRequestCount holds the default value on creation for the stream_total_request_count field.
-	channelperformance.DefaultStreamTotalRequestCount = channelperformanceDescStreamTotalRequestCount.Default.(int64)
-	// channelperformanceDescStreamTotalTokenCount is the schema descriptor for stream_total_token_count field.
-	channelperformanceDescStreamTotalTokenCount := channelperformanceFields[15].Descriptor()
-	// channelperformance.DefaultStreamTotalTokenCount holds the default value on creation for the stream_total_token_count field.
-	channelperformance.DefaultStreamTotalTokenCount = channelperformanceDescStreamTotalTokenCount.Default.(int64)
-	// channelperformanceDescStreamTotalRequestLatencyMs is the schema descriptor for stream_total_request_latency_ms field.
-	channelperformanceDescStreamTotalRequestLatencyMs := channelperformanceFields[16].Descriptor()
-	// channelperformance.DefaultStreamTotalRequestLatencyMs holds the default value on creation for the stream_total_request_latency_ms field.
-	channelperformance.DefaultStreamTotalRequestLatencyMs = channelperformanceDescStreamTotalRequestLatencyMs.Default.(int64)
-	// channelperformanceDescStreamTotalFirstTokenLatencyMs is the schema descriptor for stream_total_first_token_latency_ms field.
-	channelperformanceDescStreamTotalFirstTokenLatencyMs := channelperformanceFields[17].Descriptor()
-	// channelperformance.DefaultStreamTotalFirstTokenLatencyMs holds the default value on creation for the stream_total_first_token_latency_ms field.
-	channelperformance.DefaultStreamTotalFirstTokenLatencyMs = channelperformanceDescStreamTotalFirstTokenLatencyMs.Default.(int64)
-	// channelperformanceDescConsecutiveFailures is the schema descriptor for consecutive_failures field.
-	channelperformanceDescConsecutiveFailures := channelperformanceFields[18].Descriptor()
-	// channelperformance.DefaultConsecutiveFailures holds the default value on creation for the consecutive_failures field.
-	channelperformance.DefaultConsecutiveFailures = channelperformanceDescConsecutiveFailures.Default.(int64)
 	datastorageMixin := schema.DataStorage{}.Mixin()
 	datastorage.Policy = privacy.NewPolicies(schema.DataStorage{})
 	datastorage.Hooks[0] = func(next ent.Mutator) ent.Mutator {
