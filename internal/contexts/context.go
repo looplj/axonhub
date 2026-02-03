@@ -107,6 +107,24 @@ func GetRequestID(ctx context.Context) (string, bool) {
 	return "", false
 }
 
+// WithChannelAPIKey stores the channel API key in the context.
+func WithChannelAPIKey(ctx context.Context, apiKey string) context.Context {
+	container := getContainer(ctx)
+	container.ChannelAPIKey = &apiKey
+
+	return withContainer(ctx, container)
+}
+
+// GetChannelAPIKey retrieves the channel API key from the context.
+func GetChannelAPIKey(ctx context.Context) (string, bool) {
+	container := getContainer(ctx)
+	if container.ChannelAPIKey != nil {
+		return *container.ChannelAPIKey, true
+	}
+
+	return "", false
+}
+
 // WithProjectID stores the project ID in the context.
 func WithProjectID(ctx context.Context, projectID int) context.Context {
 	container := getContainer(ctx)

@@ -143,7 +143,7 @@ func TestUsageLogService_CreateUsageLog_WithPriceReferenceID(t *testing.T) {
 	channelService := NewChannelServiceForTest(client)
 
 	// Preload the channel with model prices
-	enabledCh, err := channelService.buildChannel(ch)
+	enabledCh, err := channelService.buildChannelWithTransformer(ch)
 	require.NoError(t, err)
 	channelService.preloadModelPrices(ctx, enabledCh)
 
@@ -266,7 +266,7 @@ func TestUsageLogService_CreateUsageLog_WithCachedTokens(t *testing.T) {
 	channelService := NewChannelServiceForTest(client)
 
 	// Preload the channel with model prices
-	enabledCh, err := channelService.buildChannel(ch)
+	enabledCh, err := channelService.buildChannelWithTransformer(ch)
 	require.NoError(t, err)
 	channelService.preloadModelPrices(ctx, enabledCh)
 

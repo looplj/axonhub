@@ -2,6 +2,7 @@ package objects
 
 import (
 	"strings"
+	"time"
 
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
@@ -80,6 +81,15 @@ type ChannelSettings struct {
 	TransformOptions TransformOptions `json:"transformOptions"`
 }
 
+// DisabledAPIKey 记录被禁用的 API key 信息（敏感，按 credentials 同级保护）
+// 注意：禁用判断以 Key 明文为主键。
+type DisabledAPIKey struct {
+	Key        string    `json:"key"`
+	DisabledAt time.Time `json:"disabledAt"`
+	ErrorCode  int       `json:"errorCode"`
+	Reason     string    `json:"reason,omitempty"`
+}
+
 type ChannelCredentials struct {
 	// APIKey is the API key for the channel, for the single key channel, e.g. Codex, Claude code, Antigravity.
 	// It is kept for backward compatibility with existing data, recommend to use OAuth instead.
@@ -119,22 +129,32 @@ func (c *ChannelCredentials) GetAllAPIKeys() []string {
 	return keys
 }
 
-// HasMultipleAPIKeys returns true if the channel has more than one API key.
-func (c *ChannelCredentials) HasMultipleAPIKeys() bool {
-	keys := c.GetAllAPIKeys()
-	return len(keys) > 1
-}
-
-// GetSingleAPIKey returns the single API key for the channel.
-// If multiple keys are configured, returns the first one.
-// Returns empty string if no keys are configured.
-func (c *ChannelCredentials) GetSingleAPIKey() string {
-	keys := c.GetAllAPIKeys()
-	if len(keys) > 0 {
-		return keys[0]
+// GetEnabledAPIKeys returns API keys that are not disabled.
+func (c *ChannelCredentials) GetEnabledAPIKeys(disabledKeys []DisabledAPIKey) []string {
+	allKeys := c.GetAllAPIKeys()
+	if len(disabledKeys) == 0 {
+		return allKeys
 	}
 
-	return ""
+	disabledSet := make(map[string]struct{}, len(disabledKeys))
+	for _, dk := range disabledKeys {
+		if dk.Key == "" {
+			continue
+		}
+
+		disabledSet[dk.Key] = struct{}{}
+	}
+
+	enabled := make([]string, 0, len(allKeys))
+	for _, key := range allKeys {
+		if _, ok := disabledSet[key]; ok {
+			continue
+		}
+
+		enabled = append(enabled, key)
+	}
+
+	return enabled
 }
 
 // IsOAuth returns true if OAuth credentials are configured and valid.

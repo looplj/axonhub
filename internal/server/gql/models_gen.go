@@ -36,6 +36,16 @@ type ApplyChannelOverrideTemplatePayload struct {
 	Channels []*ent.Channel `json:"channels"`
 }
 
+type AutoDisableAPIKey struct {
+	Enabled  bool                       `json:"enabled"`
+	Statuses []*AutoDisableAPIKeyStatus `json:"statuses"`
+}
+
+type AutoDisableAPIKeyStatus struct {
+	Status int `json:"status"`
+	Times  int `json:"times"`
+}
+
 type BackupPayload struct {
 	Success bool    `json:"success"`
 	Data    *string `json:"data,omitempty"`

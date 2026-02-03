@@ -56,7 +56,7 @@ func TestCodexRefreshPersistsChannelCredentials(t *testing.T) {
 
 	svc := &ChannelService{AbstractService: &AbstractService{db: db}}
 
-	ch, err := svc.buildChannel(created)
+	ch, err := svc.buildChannelWithTransformer(created)
 	require.NoError(t, err)
 
 	req := &llm.Request{

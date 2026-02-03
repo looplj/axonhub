@@ -405,6 +405,16 @@ func StatusNotIn(vs ...Status) predicate.Channel {
 	return predicate.Channel(sql.FieldNotIn(FieldStatus, vs...))
 }
 
+// DisabledAPIKeysIsNil applies the IsNil predicate on the "disabled_api_keys" field.
+func DisabledAPIKeysIsNil() predicate.Channel {
+	return predicate.Channel(sql.FieldIsNull(FieldDisabledAPIKeys))
+}
+
+// DisabledAPIKeysNotNil applies the NotNil predicate on the "disabled_api_keys" field.
+func DisabledAPIKeysNotNil() predicate.Channel {
+	return predicate.Channel(sql.FieldNotNull(FieldDisabledAPIKeys))
+}
+
 // AutoSyncSupportedModelsEQ applies the EQ predicate on the "auto_sync_supported_models" field.
 func AutoSyncSupportedModelsEQ(v bool) predicate.Channel {
 	return predicate.Channel(sql.FieldEQ(FieldAutoSyncSupportedModels, v))

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
@@ -53,15 +54,19 @@ func (m *performanceRecording) OnOutboundRawRequest(ctx context.Context, request
 		return request, nil
 	}
 
-	if m.outbound.state.Perf == nil {
-		m.outbound.state.Perf = &biz.PerformanceRecord{}
-	}
-
-	perf := m.outbound.state.Perf
+	// Create a new PerformanceRecord instance for each request.
+	perf := biz.PerformanceRecord{}
 	perf.StartTime = time.Now()
 	perf.ChannelID = channel.ID
 	perf.Success = false
 	perf.RequestCompleted = false
+
+	// Get the API key used for this request from context (set by TraceStickyKeyProvider)
+	if apiKey, ok := contexts.GetChannelAPIKey(ctx); ok {
+		perf.APIKey = apiKey
+	}
+
+	m.outbound.state.Perf = &perf
 
 	log.Debug(ctx, "Started performance tracking",
 		log.Int("channel_id", channel.ID),

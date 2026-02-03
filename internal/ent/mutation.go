@@ -1228,6 +1228,8 @@ type ChannelMutation struct {
 	name                         *string
 	status                       *channel.Status
 	credentials                  *objects.ChannelCredentials
+	disabled_api_keys            *[]objects.DisabledAPIKey
+	appenddisabled_api_keys      []objects.DisabledAPIKey
 	supported_models             *[]string
 	appendsupported_models       []string
 	auto_sync_supported_models   *bool
@@ -1680,6 +1682,71 @@ func (m *ChannelMutation) OldCredentials(ctx context.Context) (v objects.Channel
 // ResetCredentials resets all changes to the "credentials" field.
 func (m *ChannelMutation) ResetCredentials() {
 	m.credentials = nil
+}
+
+// SetDisabledAPIKeys sets the "disabled_api_keys" field.
+func (m *ChannelMutation) SetDisabledAPIKeys(oak []objects.DisabledAPIKey) {
+	m.disabled_api_keys = &oak
+	m.appenddisabled_api_keys = nil
+}
+
+// DisabledAPIKeys returns the value of the "disabled_api_keys" field in the mutation.
+func (m *ChannelMutation) DisabledAPIKeys() (r []objects.DisabledAPIKey, exists bool) {
+	v := m.disabled_api_keys
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDisabledAPIKeys returns the old "disabled_api_keys" field's value of the Channel entity.
+// If the Channel object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelMutation) OldDisabledAPIKeys(ctx context.Context) (v []objects.DisabledAPIKey, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDisabledAPIKeys is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDisabledAPIKeys requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDisabledAPIKeys: %w", err)
+	}
+	return oldValue.DisabledAPIKeys, nil
+}
+
+// AppendDisabledAPIKeys adds oak to the "disabled_api_keys" field.
+func (m *ChannelMutation) AppendDisabledAPIKeys(oak []objects.DisabledAPIKey) {
+	m.appenddisabled_api_keys = append(m.appenddisabled_api_keys, oak...)
+}
+
+// AppendedDisabledAPIKeys returns the list of values that were appended to the "disabled_api_keys" field in this mutation.
+func (m *ChannelMutation) AppendedDisabledAPIKeys() ([]objects.DisabledAPIKey, bool) {
+	if len(m.appenddisabled_api_keys) == 0 {
+		return nil, false
+	}
+	return m.appenddisabled_api_keys, true
+}
+
+// ClearDisabledAPIKeys clears the value of the "disabled_api_keys" field.
+func (m *ChannelMutation) ClearDisabledAPIKeys() {
+	m.disabled_api_keys = nil
+	m.appenddisabled_api_keys = nil
+	m.clearedFields[channel.FieldDisabledAPIKeys] = struct{}{}
+}
+
+// DisabledAPIKeysCleared returns if the "disabled_api_keys" field was cleared in this mutation.
+func (m *ChannelMutation) DisabledAPIKeysCleared() bool {
+	_, ok := m.clearedFields[channel.FieldDisabledAPIKeys]
+	return ok
+}
+
+// ResetDisabledAPIKeys resets all changes to the "disabled_api_keys" field.
+func (m *ChannelMutation) ResetDisabledAPIKeys() {
+	m.disabled_api_keys = nil
+	m.appenddisabled_api_keys = nil
+	delete(m.clearedFields, channel.FieldDisabledAPIKeys)
 }
 
 // SetSupportedModels sets the "supported_models" field.
@@ -2465,7 +2532,7 @@ func (m *ChannelMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ChannelMutation) Fields() []string {
-	fields := make([]string, 0, 17)
+	fields := make([]string, 0, 18)
 	if m.created_at != nil {
 		fields = append(fields, channel.FieldCreatedAt)
 	}
@@ -2489,6 +2556,9 @@ func (m *ChannelMutation) Fields() []string {
 	}
 	if m.credentials != nil {
 		fields = append(fields, channel.FieldCredentials)
+	}
+	if m.disabled_api_keys != nil {
+		fields = append(fields, channel.FieldDisabledAPIKeys)
 	}
 	if m.supported_models != nil {
 		fields = append(fields, channel.FieldSupportedModels)
@@ -2541,6 +2611,8 @@ func (m *ChannelMutation) Field(name string) (ent.Value, bool) {
 		return m.Status()
 	case channel.FieldCredentials:
 		return m.Credentials()
+	case channel.FieldDisabledAPIKeys:
+		return m.DisabledAPIKeys()
 	case channel.FieldSupportedModels:
 		return m.SupportedModels()
 	case channel.FieldAutoSyncSupportedModels:
@@ -2584,6 +2656,8 @@ func (m *ChannelMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldStatus(ctx)
 	case channel.FieldCredentials:
 		return m.OldCredentials(ctx)
+	case channel.FieldDisabledAPIKeys:
+		return m.OldDisabledAPIKeys(ctx)
 	case channel.FieldSupportedModels:
 		return m.OldSupportedModels(ctx)
 	case channel.FieldAutoSyncSupportedModels:
@@ -2666,6 +2740,13 @@ func (m *ChannelMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetCredentials(v)
+		return nil
+	case channel.FieldDisabledAPIKeys:
+		v, ok := value.([]objects.DisabledAPIKey)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDisabledAPIKeys(v)
 		return nil
 	case channel.FieldSupportedModels:
 		v, ok := value.([]string)
@@ -2790,6 +2871,9 @@ func (m *ChannelMutation) ClearedFields() []string {
 	if m.FieldCleared(channel.FieldBaseURL) {
 		fields = append(fields, channel.FieldBaseURL)
 	}
+	if m.FieldCleared(channel.FieldDisabledAPIKeys) {
+		fields = append(fields, channel.FieldDisabledAPIKeys)
+	}
 	if m.FieldCleared(channel.FieldTags) {
 		fields = append(fields, channel.FieldTags)
 	}
@@ -2821,6 +2905,9 @@ func (m *ChannelMutation) ClearField(name string) error {
 	switch name {
 	case channel.FieldBaseURL:
 		m.ClearBaseURL()
+		return nil
+	case channel.FieldDisabledAPIKeys:
+		m.ClearDisabledAPIKeys()
 		return nil
 	case channel.FieldTags:
 		m.ClearTags()
@@ -2868,6 +2955,9 @@ func (m *ChannelMutation) ResetField(name string) error {
 		return nil
 	case channel.FieldCredentials:
 		m.ResetCredentials()
+		return nil
+	case channel.FieldDisabledAPIKeys:
+		m.ResetDisabledAPIKeys()
 		return nil
 	case channel.FieldSupportedModels:
 		m.ResetSupportedModels()

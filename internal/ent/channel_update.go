@@ -126,6 +126,24 @@ func (_u *ChannelUpdate) SetNillableCredentials(v *objects.ChannelCredentials) *
 	return _u
 }
 
+// SetDisabledAPIKeys sets the "disabled_api_keys" field.
+func (_u *ChannelUpdate) SetDisabledAPIKeys(v []objects.DisabledAPIKey) *ChannelUpdate {
+	_u.mutation.SetDisabledAPIKeys(v)
+	return _u
+}
+
+// AppendDisabledAPIKeys appends value to the "disabled_api_keys" field.
+func (_u *ChannelUpdate) AppendDisabledAPIKeys(v []objects.DisabledAPIKey) *ChannelUpdate {
+	_u.mutation.AppendDisabledAPIKeys(v)
+	return _u
+}
+
+// ClearDisabledAPIKeys clears the value of the "disabled_api_keys" field.
+func (_u *ChannelUpdate) ClearDisabledAPIKeys() *ChannelUpdate {
+	_u.mutation.ClearDisabledAPIKeys()
+	return _u
+}
+
 // SetSupportedModels sets the "supported_models" field.
 func (_u *ChannelUpdate) SetSupportedModels(v []string) *ChannelUpdate {
 	_u.mutation.SetSupportedModels(v)
@@ -581,6 +599,17 @@ func (_u *ChannelUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Credentials(); ok {
 		_spec.SetField(channel.FieldCredentials, field.TypeJSON, value)
 	}
+	if value, ok := _u.mutation.DisabledAPIKeys(); ok {
+		_spec.SetField(channel.FieldDisabledAPIKeys, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedDisabledAPIKeys(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, channel.FieldDisabledAPIKeys, value)
+		})
+	}
+	if _u.mutation.DisabledAPIKeysCleared() {
+		_spec.ClearField(channel.FieldDisabledAPIKeys, field.TypeJSON)
+	}
 	if value, ok := _u.mutation.SupportedModels(); ok {
 		_spec.SetField(channel.FieldSupportedModels, field.TypeJSON, value)
 	}
@@ -998,6 +1027,24 @@ func (_u *ChannelUpdateOne) SetNillableCredentials(v *objects.ChannelCredentials
 	if v != nil {
 		_u.SetCredentials(*v)
 	}
+	return _u
+}
+
+// SetDisabledAPIKeys sets the "disabled_api_keys" field.
+func (_u *ChannelUpdateOne) SetDisabledAPIKeys(v []objects.DisabledAPIKey) *ChannelUpdateOne {
+	_u.mutation.SetDisabledAPIKeys(v)
+	return _u
+}
+
+// AppendDisabledAPIKeys appends value to the "disabled_api_keys" field.
+func (_u *ChannelUpdateOne) AppendDisabledAPIKeys(v []objects.DisabledAPIKey) *ChannelUpdateOne {
+	_u.mutation.AppendDisabledAPIKeys(v)
+	return _u
+}
+
+// ClearDisabledAPIKeys clears the value of the "disabled_api_keys" field.
+func (_u *ChannelUpdateOne) ClearDisabledAPIKeys() *ChannelUpdateOne {
+	_u.mutation.ClearDisabledAPIKeys()
 	return _u
 }
 
@@ -1485,6 +1532,17 @@ func (_u *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err er
 	}
 	if value, ok := _u.mutation.Credentials(); ok {
 		_spec.SetField(channel.FieldCredentials, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.DisabledAPIKeys(); ok {
+		_spec.SetField(channel.FieldDisabledAPIKeys, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedDisabledAPIKeys(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, channel.FieldDisabledAPIKeys, value)
+		})
+	}
+	if _u.mutation.DisabledAPIKeysCleared() {
+		_spec.ClearField(channel.FieldDisabledAPIKeys, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.SupportedModels(); ok {
 		_spec.SetField(channel.FieldSupportedModels, field.TypeJSON, value)

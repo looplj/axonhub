@@ -510,7 +510,7 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 
 	enabledChannels := make([]*Channel, 0, len(enabledEntities))
 	for _, e := range enabledEntities {
-		built, buildErr := channelSvc.buildChannel(e)
+		built, buildErr := channelSvc.buildChannelWithTransformer(e)
 		require.NoError(t, buildErr)
 
 		enabledChannels = append(enabledChannels, built)
@@ -627,7 +627,7 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 
 		enabledChannels := make([]*Channel, 0, len(enabledEntities))
 		for _, e := range enabledEntities {
-			built, buildErr := channelSvc.buildChannel(e)
+			built, buildErr := channelSvc.buildChannelWithTransformer(e)
 			require.NoError(t, buildErr)
 
 			enabledChannels = append(enabledChannels, built)
@@ -671,7 +671,7 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 
 		enabledChannels := make([]*Channel, 0, len(enabledEntities))
 		for _, e := range enabledEntities {
-			built, buildErr := channelSvc.buildChannel(e)
+			built, buildErr := channelSvc.buildChannelWithTransformer(e)
 			require.NoError(t, buildErr)
 
 			enabledChannels = append(enabledChannels, built)
@@ -1160,7 +1160,7 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 
 		enabledChannels := make([]*Channel, 0, len(enabledEntities))
 		for _, e := range enabledEntities {
-			built, buildErr := channelSvc.buildChannel(e)
+			built, buildErr := channelSvc.buildChannelWithTransformer(e)
 			require.NoError(t, buildErr)
 
 			enabledChannels = append(enabledChannels, built)

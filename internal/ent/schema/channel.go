@@ -93,6 +93,14 @@ func (Channel) Fields() []ent.Field {
 				entgql.OrderField("STATUS"),
 			),
 		field.JSON("credentials", objects.ChannelCredentials{}).Sensitive(),
+		field.JSON("disabled_api_keys", []objects.DisabledAPIKey{}).
+			Default([]objects.DisabledAPIKey{}).
+			Optional().
+			Sensitive().
+			Comment("Disabled API keys with metadata (sensitive; requires channel write permission)").
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			),
 		field.Strings("supported_models"),
 		field.Bool("auto_sync_supported_models").Default(false),
 		field.Strings("tags").Optional().Default([]string{}),
