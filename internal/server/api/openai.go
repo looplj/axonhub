@@ -8,6 +8,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm"
@@ -27,6 +28,7 @@ type OpenAIHandlersParams struct {
 	PromptService   *biz.PromptService
 	QuotaService    *biz.QuotaService
 	HttpClient      *httpclient.HttpClient
+	Client          *ent.Client
 }
 
 type OpenAIHandlers struct {
@@ -39,6 +41,7 @@ type OpenAIHandlers struct {
 	ImageGenerationHandlers    *ChatCompletionHandlers
 	ImageEditHandlers          *ChatCompletionHandlers
 	ImageVariationHandlers     *ChatCompletionHandlers
+	EntClient                  *ent.Client
 }
 
 func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
@@ -121,6 +124,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 			),
 		},
+		EntClient:      params.Client,
 		ChannelService: params.ChannelService,
 		ModelService:   params.ModelService,
 		SystemService:  params.SystemService,
@@ -233,6 +237,40 @@ func (handlers *OpenAIHandlers) ListModels(c *gin.Context) {
 
 	requestID, _ := contexts.GetRequestID(ctx)
 
+	// Check for extended query parameter
+	extended := c.Query("extended") == "true"
+
+	if extended {
+		// Query full model data from database with extended metadata
+		models, err := handlers.EntClient.Model.Query().
+			Where(model.StatusEQ(model.StatusEnabled)).
+			All(ctx)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, openai.OpenAIError{
+				StatusCode: http.StatusInternalServerError,
+				Detail: llm.ErrorDetail{
+					Code:      "internal_server_error",
+					Message:   err.Error(),
+					Type:      "server_error",
+					RequestID: requestID,
+				},
+			})
+			return
+		}
+
+		openaiModels := make([]OpenAIModel, 0, len(models))
+		for _, m := range models {
+			openaiModels = append(openaiModels, convertModelToOpenAIExtended(m))
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"object": "list",
+			"data":   openaiModels,
+		})
+		return
+	}
+
+	// Original behavior for backward compatibility
 	models, err := handlers.ModelService.ListEnabledModels(ctx)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, openai.OpenAIError{
@@ -244,7 +282,6 @@ func (handlers *OpenAIHandlers) ListModels(c *gin.Context) {
 				RequestID: requestID,
 			},
 		})
-
 		return
 	}
 
