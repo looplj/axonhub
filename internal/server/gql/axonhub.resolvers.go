@@ -36,11 +36,24 @@ func (r *channelResolver) AllModelEntries(ctx context.Context, obj *ent.Channel)
 // Credentials is the resolver for the credentials field.
 func (r *channelResolver) Credentials(ctx context.Context, obj *ent.Channel) (*objects.ChannelCredentials, error) {
 	hasScope := scopes.UserHasScope(ctx, scopes.ScopeWriteChannels)
-	if hasScope {
-		return obj.Credentials, nil
+	if !hasScope {
+		return nil, nil
 	}
 
-	return nil, nil
+	creds := obj.Credentials
+
+	if obj.Type == channel.TypeAntigravity || creds.IsOAuth() {
+		// For OAuth channels (e.g., antigravity, claudecode, codex), only return single API key.
+		// Clear APIKeys as OAuth only supports single credential.
+		creds.APIKeys = nil
+		return &creds, nil
+	}
+
+	// For non-OAuth channel types, use api keys array.
+	creds.APIKeys = creds.GetAllAPIKeys()
+	creds.APIKey = ""
+
+	return &creds, nil
 }
 
 // CreateChannel is the resolver for the createChannel field.
@@ -420,24 +433,6 @@ func (r *queryResolver) QueryChannels(ctx context.Context, input biz.QueryChanne
 		input.OrderBy.Field = ent.DefaultChannelOrder.Field
 	}
 	return r.channelService.QueryChannels(ctx, input)
-}
-
-// QueryChannelOverrideTemplates is the resolver for the queryChannelOverrideTemplates field.
-func (r *queryResolver) QueryChannelOverrideTemplates(ctx context.Context, input biz.QueryChannelOverrideTemplatesInput) (*ent.ChannelOverrideTemplateConnection, error) {
-	if err := validatePaginationArgs(input.First, input.Last); err != nil {
-		return nil, err
-	}
-
-	bizInput := biz.QueryChannelOverrideTemplatesInput{
-		After:       input.After,
-		First:       input.First,
-		Before:      input.Before,
-		Last:        input.Last,
-		ChannelType: input.ChannelType,
-		Search:      input.Search,
-	}
-
-	return r.channelOverrideTemplateService.QueryTemplates(ctx, bizInput)
 }
 
 // ID is the resolver for the id field.

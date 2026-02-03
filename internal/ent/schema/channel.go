@@ -92,9 +92,7 @@ func (Channel) Fields() []ent.Field {
 				entgql.Skip(entgql.SkipMutationCreateInput),
 				entgql.OrderField("STATUS"),
 			),
-		field.JSON("credentials", &objects.ChannelCredentials{}).
-			Sensitive().
-			Default(&objects.ChannelCredentials{}),
+		field.JSON("credentials", objects.ChannelCredentials{}).Sensitive(),
 		field.Strings("supported_models"),
 		field.Bool("auto_sync_supported_models").Default(false),
 		field.Strings("tags").Optional().Default([]string{}),
@@ -142,11 +140,6 @@ func (Channel) Edges() []ent.Edge {
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 				entgql.RelayConnection(),
-			),
-		edge.To("channel_performance", ChannelPerformance.Type).
-			Unique().
-			Annotations(
-				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 			),
 		edge.To("channel_probes", ChannelProbe.Type).
 			Annotations(

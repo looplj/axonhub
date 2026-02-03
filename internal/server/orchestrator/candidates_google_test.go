@@ -23,7 +23,7 @@ func createGeminiTestChannels(t *testing.T, ctx context.Context, client *ent.Cli
 		SetType(channel.TypeGemini).
 		SetName("Gemini Native").
 		SetBaseURL("https://generativelanguage.googleapis.com").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key-1"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key-1"}).
 		SetSupportedModels([]string{"gemini-2.0-flash", "gemini-2.5-pro"}).
 		SetDefaultTestModel("gemini-2.0-flash").
 		SetStatus(channel.StatusEnabled).
@@ -37,7 +37,7 @@ func createGeminiTestChannels(t *testing.T, ctx context.Context, client *ent.Cli
 		SetType(channel.TypeGeminiOpenai).
 		SetName("Gemini OpenAI").
 		SetBaseURL("https://generativelanguage.googleapis.com").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key-2"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key-2"}).
 		SetSupportedModels([]string{"gemini-2.0-flash", "gemini-2.5-pro"}).
 		SetDefaultTestModel("gemini-2.0-flash").
 		SetStatus(channel.StatusEnabled).
@@ -51,7 +51,7 @@ func createGeminiTestChannels(t *testing.T, ctx context.Context, client *ent.Cli
 		SetType(channel.TypeGeminiVertex).
 		SetName("Gemini Vertex").
 		SetBaseURL("https://us-central1-aiplatform.googleapis.com").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key-3"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key-3"}).
 		SetSupportedModels([]string{"gemini-2.0-flash", "gemini-2.5-pro"}).
 		SetDefaultTestModel("gemini-2.0-flash").
 		SetStatus(channel.StatusEnabled).
@@ -146,7 +146,7 @@ func TestGoogleNativeToolsSelector_Select_NoCompatibleChannels(t *testing.T) {
 		SetType(channel.TypeGeminiOpenai).
 		SetName("Gemini OpenAI Only").
 		SetBaseURL("https://generativelanguage.googleapis.com").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
 		SetSupportedModels([]string{"gemini-2.0-flash"}).
 		SetDefaultTestModel("gemini-2.0-flash").
 		SetStatus(channel.StatusEnabled).

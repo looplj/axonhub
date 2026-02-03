@@ -8,8 +8,8 @@ import { Project, ProjectConnection, CreateProjectInput, UpdateProjectInput, pro
 
 // GraphQL queries and mutations
 const PROJECTS_QUERY = `
-  query GetProjects($first: Int, $after: Cursor, $where: ProjectWhereInput) {
-    projects(first: $first, after: $after, where: $where) {
+  query GetProjects($first: Int, $after: Cursor, $orderBy: ProjectOrder, $where: ProjectWhereInput) {
+    projects(first: $first, after: $after, orderBy: $orderBy, where: $where) {
       edges {
         node {
           id
@@ -89,17 +89,23 @@ export function useProjects(
   variables: {
     first?: number;
     after?: string;
+    orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' };
     where?: any;
   } = {}
 ) {
   const { handleError } = useErrorHandler();
   const { t } = useTranslation();
 
+  const queryVariables = {
+    ...variables,
+    orderBy: variables.orderBy || { field: 'CREATED_AT', direction: 'DESC' },
+  };
+
   return useQuery({
-    queryKey: ['projects', variables],
+    queryKey: ['projects', queryVariables],
     queryFn: async () => {
       try {
-        const data = await graphqlRequest<{ projects: ProjectConnection }>(PROJECTS_QUERY, variables);
+        const data = await graphqlRequest<{ projects: ProjectConnection }>(PROJECTS_QUERY, queryVariables);
         return projectConnectionSchema.parse(data?.projects);
       } catch (error) {
         handleError(error, t('projects.errors.loadProjectsFailed'));

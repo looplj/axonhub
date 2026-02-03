@@ -17,7 +17,6 @@ import { ChannelsProxyDialog } from './channels-proxy-dialog';
 import { ChannelsStatusDialog } from './channels-status-dialog';
 import { ChannelsTestDialog } from './channels-test-dialog';
 import { ChannelsTransformOptionsDialog } from './channels-transform-options-dialog';
-import { ChannelsWeightDialog } from './channels-weight-dialog';
 import { ChannelsSystemSettingsDialog } from './channels-system-settings-dialog';
 
 export function ChannelsDialogs() {
@@ -222,21 +221,6 @@ export function ChannelsDialogs() {
             open={open === 'errorResolved'}
             onOpenChange={(isOpen) => {
               if (!isOpen) {
-                setOpen(null);
-                setTimeout(() => {
-                  setCurrentRow(null);
-                }, 500);
-              }
-            }}
-          />
-
-          <ChannelsWeightDialog
-            key={`channel-weight-${currentRow.id}`}
-            open={open === 'weight'}
-            onOpenChange={(isOpen) => {
-              if (isOpen) {
-                setOpen('weight');
-              } else {
                 setOpen(null);
                 setTimeout(() => {
                   setCurrentRow(null);

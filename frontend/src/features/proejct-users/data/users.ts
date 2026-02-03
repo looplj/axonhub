@@ -165,6 +165,9 @@ export function useUsers(
           };
         });
 
+        // Sort by createdAt DESC (newest first)
+        transformedUsers.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
         // Return in UserConnection format for compatibility
         return {
           edges: transformedUsers.map((user) => ({ node: user })),

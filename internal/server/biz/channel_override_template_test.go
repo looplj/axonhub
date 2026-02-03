@@ -232,7 +232,7 @@ func TestChannelOverrideTemplateService_ApplyTemplate(t *testing.T) {
 			SetName("Channel 1").
 			SetType(channel.TypeOpenai).
 			SetBaseURL("https://api.openai.com/v1").
-			SetCredentials(&objects.ChannelCredentials{APIKey: "key1"}).
+			SetCredentials(objects.ChannelCredentials{APIKey: "key1"}).
 			SetSupportedModels([]string{"gpt-4"}).
 			SetDefaultTestModel("gpt-4").
 			SetSettings(&objects.ChannelSettings{
@@ -247,7 +247,7 @@ func TestChannelOverrideTemplateService_ApplyTemplate(t *testing.T) {
 			SetName("Channel 2").
 			SetType(channel.TypeOpenai).
 			SetBaseURL("https://api.openai.com/v1").
-			SetCredentials(&objects.ChannelCredentials{APIKey: "key2"}).
+			SetCredentials(objects.ChannelCredentials{APIKey: "key2"}).
 			SetSupportedModels([]string{"gpt-4"}).
 			SetDefaultTestModel("gpt-4").
 			SetSettings(&objects.ChannelSettings{
@@ -277,7 +277,7 @@ func TestChannelOverrideTemplateService_ApplyTemplate(t *testing.T) {
 			SetName("Anthropic Channel").
 			SetType(channel.TypeAnthropic).
 			SetBaseURL("https://api.anthropic.com").
-			SetCredentials(&objects.ChannelCredentials{APIKey: "key"}).
+			SetCredentials(objects.ChannelCredentials{APIKey: "key"}).
 			SetSupportedModels([]string{"claude-3-opus-20240229"}).
 			SetDefaultTestModel("claude-3-opus-20240229").
 			SaveX(ctx)
@@ -301,7 +301,7 @@ func TestChannelOverrideTemplateService_ApplyTemplate(t *testing.T) {
 			SetName("Valid Channel").
 			SetType(channel.TypeOpenai).
 			SetBaseURL("https://api.openai.com/v1").
-			SetCredentials(&objects.ChannelCredentials{APIKey: "key"}).
+			SetCredentials(objects.ChannelCredentials{APIKey: "key"}).
 			SetSupportedModels([]string{"gpt-4"}).
 			SetDefaultTestModel("gpt-4").
 			SaveX(ctx)

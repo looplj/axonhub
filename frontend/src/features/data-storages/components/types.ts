@@ -9,6 +9,7 @@ export interface DataStorageFormData {
   s3Region: string;
   s3AccessKey: string;
   s3SecretKey: string;
+  s3PathStyle: boolean;
   // GCS fields
   gcsBucketName: string;
   gcsCredential: string;

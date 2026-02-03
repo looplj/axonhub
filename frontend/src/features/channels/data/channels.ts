@@ -73,12 +73,6 @@ const CHANNELS_QUERY = `
           orderingWeight
           errorMessage
           remark
-          channelPerformance {
-            avgLatencyMs
-            avgTokenPerSecond
-            avgStreamFirstTokenLatencyMs
-            avgStreamTokenPerSecond
-          }
         }
         cursor
       }
@@ -548,11 +542,7 @@ const QUERY_CHANNELS_QUERY = `
           }
           credentials {
             apiKey
-            aws {
-              accessKeyID
-              secretAccessKey
-              region
-            }
+            apiKeys
             gcp {
               region
               projectID
@@ -592,12 +582,6 @@ const QUERY_CHANNELS_QUERY = `
           orderingWeight
           errorMessage
           remark
-          channelPerformance {
-            avgLatencyMs
-            avgTokenPerSecond
-            avgStreamFirstTokenLatencyMs
-            avgStreamTokenPerSecond
-          }
         }
         cursor
       }
@@ -1265,6 +1249,8 @@ const CHANNEL_PROBE_DATA_QUERY = `
         timestamp
         totalRequestCount
         successRequestCount
+        avgTokensPerSecond
+        avgTimeToFirstTokenMs
       }
     }
   }

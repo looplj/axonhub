@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"slices"
 	"strings"
 
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -164,6 +163,10 @@ type Request struct {
 	// Help fields， will not be sent to the llm service.
 	ReasoningBudget *int64 `json:"reasoning_budget,omitempty"`
 
+	// Summary type for reasoning models ("auto", "concise", "detailed").
+	// Help fields, will not be sent to the llm service.
+	ReasoningSummary *string `json:"reasoning_summary,omitempty"`
+
 	// Specifies the processing type used for serving the request.
 	ServiceTier *string `json:"service_tier,omitempty"`
 
@@ -209,6 +212,9 @@ type Request struct {
 	// Rerank is the rerank request, will be set if the request is rerank request.
 	Rerank *RerankRequest `json:"rerank,omitempty"`
 
+	// Image is the image request, will be set if the request is image request.
+	Image *ImageRequest `json:"image,omitempty"`
+
 	// RawRequest is the raw request from the client.
 	RawRequest *httpclient.Request `json:"raw_request,omitempty"`
 
@@ -235,10 +241,6 @@ type Request struct {
 	// - "truncation": *string - truncation strategy ("auto", "disabled")
 	// - "include_obfuscation": *bool - whether to enable stream obfuscation (Responses API specific)
 	TransformerMetadata map[string]any `json:"transformer_metadata,omitempty"`
-}
-
-func (r *Request) IsImageGenerationRequest() bool {
-	return len(r.Modalities) > 0 && slices.Contains(r.Modalities, "image")
 }
 
 type StreamOptions struct {
@@ -328,6 +330,26 @@ type Message struct {
 	// CacheControl is used for provider-specific cache control (e.g., Anthropic).
 	// This field is not serialized in JSON.
 	CacheControl *CacheControl `json:"cache_control,omitempty"`
+
+	// Annotations contains citation information for the message.
+	// This is used by providers like Perplexity to provide source URLs.
+	Annotations []Annotation `json:"annotations,omitempty"`
+}
+
+// Annotation represents a citation or reference annotation in a message.
+type Annotation struct {
+	// Type is the type of annotation, e.g., "url_citation"
+	Type string `json:"type,omitempty"`
+	// URLCitation contains URL citation details when Type is "url_citation"
+	URLCitation *URLCitation `json:"url_citation,omitempty"`
+}
+
+// URLCitation represents a URL-based citation.
+type URLCitation struct {
+	// URL is the citation URL
+	URL string `json:"url,omitempty"`
+	// Title is the title of the cited source
+	Title string `json:"title,omitempty"`
 }
 
 type MessageContent struct {
@@ -478,6 +500,9 @@ type Response struct {
 
 	// Rerank is the rerank response, will present if the request is rerank request.
 	Rerank *RerankResponse `json:"rerank,omitempty"`
+
+	// Image is the image response, will present if the request is image request.
+	Image *ImageResponse `json:"image,omitempty"`
 
 	// RequestType is the outbound request type from the llm service.
 	// e.g. the request from the chat/completions endpoint is in the chat type.

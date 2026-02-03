@@ -1,4 +1,4 @@
-import { useCallback, useState, memo } from 'react';
+import { useCallback, useState, memo, useRef, useEffect } from 'react';
 import { format } from 'date-fns';
 import { DotsHorizontalIcon } from '@radix-ui/react-icons';
 import { ColumnDef, Row, Table } from '@tanstack/react-table';
@@ -18,14 +18,15 @@ import {
   IconRoute,
   IconCopy,
   IconCoin,
+  IconLoader2,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
-import { formatDuration } from '@/utils/format-duration';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,11 +38,18 @@ import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DataTableColumnHeader } from '@/components/data-table-column-header';
 import { useChannels } from '../context/channels-context';
-import { useTestChannel } from '../data/channels';
+import { useTestChannel, useUpdateChannel } from '../data/channels';
 import { CHANNEL_CONFIGS, getProvider } from '../data/config_channels';
 import { Channel } from '../data/schema';
 import { ChannelHealthCell } from './channel-health-cell';
 import { ChannelsStatusDialog } from './channels-status-dialog';
+
+const WEIGHT_PRECISION = 4;
+const MIN_WEIGHT = 0;
+const MAX_WEIGHT = 100;
+
+const formatWeight = (value: number) => Number(value.toFixed(WEIGHT_PRECISION));
+const clampWeight = (value: number) => formatWeight(Math.min(MAX_WEIGHT, Math.max(MIN_WEIGHT, value)));
 
 // Status Switch Cell Component to handle status toggle with confirmation dialog
 const StatusSwitchCell = memo(({ row }: { row: Row<Channel> }) => {
@@ -170,15 +178,6 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
           >
             <IconTransform size={16} className='mr-2' />
             {t('channels.dialogs.transformOptions.action')}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => {
-              setCurrentRow(channel);
-              setOpen('weight');
-            }}
-          >
-            <IconWeight size={16} className='mr-2' />
-            {t('channels.dialogs.weight.action')}
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => {
@@ -321,50 +320,6 @@ const TagsCell = memo(({ row }: { row: Row<Channel> }) => {
 
 TagsCell.displayName = 'TagsCell';
 
-const PerformanceCell = memo(({ row }: { row: Row<Channel> }) => {
-  const { t } = useTranslation();
-  const performance = row.getValue('channelPerformance') as any;
-  if (!performance) {
-    return (
-      <div className='flex justify-center'>
-        <span className='text-muted-foreground text-xs'>-</span>
-      </div>
-    );
-  }
-
-  const avgLatency = performance.avgStreamFirstTokenLatencyMs || performance.avgLatencyMs || 0;
-  const avgTokensPerSec = performance.avgStreamTokenPerSecond || performance.avgTokenPerSecond || 0;
-
-  return (
-    <div className='flex flex-col items-center space-y-1'>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className='cursor-help text-xs'>
-            <span className='text-muted-foreground'>{t('channels.columns.firstTokenLatency')}: </span>
-            <span className='font-medium'>{formatDuration(avgLatency)}</span>
-          </div>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>{t('channels.columns.firstTokenLatencyFull')}</p>
-        </TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className='cursor-help text-xs'>
-            <span className='text-muted-foreground'>{t('channels.columns.tokensPerSecond')}: </span>
-            <span className='font-medium'>{avgTokensPerSec.toFixed(1)}</span>
-          </div>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>{t('channels.columns.tokensPerSecondFull')}</p>
-        </TooltipContent>
-      </Tooltip>
-    </div>
-  );
-});
-
-PerformanceCell.displayName = 'PerformanceCell';
-
 const SupportedModelsCell = memo(({ row }: { row: Row<Channel> }) => {
   const { t } = useTranslation();
   const channel = row.original;
@@ -402,17 +357,82 @@ const SupportedModelsCell = memo(({ row }: { row: Row<Channel> }) => {
 SupportedModelsCell.displayName = 'SupportedModelsCell';
 
 const OrderingWeightCell = memo(({ row }: { row: Row<Channel> }) => {
-  const weight = row.getValue('orderingWeight') as number | null;
-  if (weight == null) {
+  const channel = row.original;
+  const initialWeight = row.getValue('orderingWeight') as number | null;
+  const [isEditing, setIsEditing] = useState(false);
+  const [weight, setWeight] = useState<string>(initialWeight?.toString() || '1');
+  const updateChannel = useUpdateChannel();
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
+  const handleDoubleClick = useCallback(() => {
+    setIsEditing(true);
+    setWeight(initialWeight?.toString() || '1');
+  }, [initialWeight]);
+
+  const handleSave = useCallback(async () => {
+    const weightValue = clampWeight(Number(weight));
+    if (weightValue === initialWeight) {
+      setIsEditing(false);
+      return;
+    }
+
+    try {
+      await updateChannel.mutateAsync({
+        id: channel.id,
+        input: { orderingWeight: weightValue },
+      });
+      setIsEditing(false);
+    } catch (_error) {
+      // Error handled by mutation hook
+    }
+  }, [channel.id, weight, initialWeight, updateChannel]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        handleSave();
+      } else if (e.key === 'Escape') {
+        setIsEditing(false);
+        setWeight(initialWeight?.toString() || '1');
+      }
+    },
+    [handleSave, initialWeight]
+  );
+
+  if (isEditing) {
     return (
-      <div className='flex justify-center'>
-        <span className='text-muted-foreground text-xs'>-</span>
+      <div className='flex justify-center px-2'>
+        <Input
+          ref={inputRef}
+          type='number'
+          inputMode='decimal'
+          step='any'
+          min={MIN_WEIGHT}
+          max={MAX_WEIGHT}
+          value={weight}
+          onChange={(e) => setWeight(e.target.value)}
+          onBlur={handleSave}
+          onKeyDown={handleKeyDown}
+          className='h-7 w-20 text-center font-mono text-sm'
+          disabled={updateChannel.isPending}
+        />
       </div>
     );
   }
+
   return (
-    <div className='flex justify-center'>
-      <span className='font-mono text-sm'>{weight}</span>
+    <div className='flex items-center justify-center gap-2 group cursor-pointer' onDoubleClick={handleDoubleClick}>
+      <span className={cn('font-mono text-sm', initialWeight == null && 'text-muted-foreground')}>
+        {initialWeight ?? '-'}
+      </span>
+      {updateChannel.isPending && <IconLoader2 className='h-3 w-3 animate-spin text-muted-foreground' />}
     </div>
   );
 });
@@ -549,17 +569,6 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       enableHiding: true,
       enableColumnFilter: false,
       enableGlobalFilter: false,
-    },
-    {
-      accessorKey: 'channelPerformance',
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('channels.columns.channelPerformance')} className='justify-center' />
-      ),
-      cell: PerformanceCell,
-      meta: {
-        className: 'text-center',
-      },
-      enableSorting: false,
     },
     {
       accessorKey: 'supportedModels',

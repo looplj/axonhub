@@ -8,7 +8,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
 	"github.com/looplj/axonhub/internal/ent/channelmodelpriceversion"
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
-	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/model"
@@ -35,7 +34,7 @@ import (
 
 // schemaGraph holds a representation of ent/schema at runtime.
 var schemaGraph = func() *sqlgraph.Schema {
-	graph := &sqlgraph.Schema{Nodes: make([]*sqlgraph.Node, 22)}
+	graph := &sqlgraph.Schema{Nodes: make([]*sqlgraph.Node, 21)}
 	graph.Nodes[0] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   apikey.Table,
@@ -157,41 +156,6 @@ var schemaGraph = func() *sqlgraph.Schema {
 	}
 	graph.Nodes[5] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
-			Table:   channelperformance.Table,
-			Columns: channelperformance.Columns,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
-				Column: channelperformance.FieldID,
-			},
-		},
-		Type: "ChannelPerformance",
-		Fields: map[string]*sqlgraph.FieldSpec{
-			channelperformance.FieldCreatedAt:                      {Type: field.TypeTime, Column: channelperformance.FieldCreatedAt},
-			channelperformance.FieldUpdatedAt:                      {Type: field.TypeTime, Column: channelperformance.FieldUpdatedAt},
-			channelperformance.FieldDeletedAt:                      {Type: field.TypeInt, Column: channelperformance.FieldDeletedAt},
-			channelperformance.FieldChannelID:                      {Type: field.TypeInt, Column: channelperformance.FieldChannelID},
-			channelperformance.FieldSuccessRate:                    {Type: field.TypeInt, Column: channelperformance.FieldSuccessRate},
-			channelperformance.FieldAvgLatencyMs:                   {Type: field.TypeInt, Column: channelperformance.FieldAvgLatencyMs},
-			channelperformance.FieldAvgTokenPerSecond:              {Type: field.TypeInt, Column: channelperformance.FieldAvgTokenPerSecond},
-			channelperformance.FieldAvgStreamFirstTokenLatencyMs:   {Type: field.TypeInt, Column: channelperformance.FieldAvgStreamFirstTokenLatencyMs},
-			channelperformance.FieldAvgStreamTokenPerSecond:        {Type: field.TypeFloat64, Column: channelperformance.FieldAvgStreamTokenPerSecond},
-			channelperformance.FieldLastSuccessAt:                  {Type: field.TypeTime, Column: channelperformance.FieldLastSuccessAt},
-			channelperformance.FieldLastFailureAt:                  {Type: field.TypeTime, Column: channelperformance.FieldLastFailureAt},
-			channelperformance.FieldRequestCount:                   {Type: field.TypeInt64, Column: channelperformance.FieldRequestCount},
-			channelperformance.FieldSuccessCount:                   {Type: field.TypeInt64, Column: channelperformance.FieldSuccessCount},
-			channelperformance.FieldFailureCount:                   {Type: field.TypeInt64, Column: channelperformance.FieldFailureCount},
-			channelperformance.FieldTotalTokenCount:                {Type: field.TypeInt64, Column: channelperformance.FieldTotalTokenCount},
-			channelperformance.FieldTotalRequestLatencyMs:          {Type: field.TypeInt64, Column: channelperformance.FieldTotalRequestLatencyMs},
-			channelperformance.FieldStreamSuccessCount:             {Type: field.TypeInt64, Column: channelperformance.FieldStreamSuccessCount},
-			channelperformance.FieldStreamTotalRequestCount:        {Type: field.TypeInt64, Column: channelperformance.FieldStreamTotalRequestCount},
-			channelperformance.FieldStreamTotalTokenCount:          {Type: field.TypeInt64, Column: channelperformance.FieldStreamTotalTokenCount},
-			channelperformance.FieldStreamTotalRequestLatencyMs:    {Type: field.TypeInt64, Column: channelperformance.FieldStreamTotalRequestLatencyMs},
-			channelperformance.FieldStreamTotalFirstTokenLatencyMs: {Type: field.TypeInt64, Column: channelperformance.FieldStreamTotalFirstTokenLatencyMs},
-			channelperformance.FieldConsecutiveFailures:            {Type: field.TypeInt64, Column: channelperformance.FieldConsecutiveFailures},
-		},
-	}
-	graph.Nodes[6] = &sqlgraph.Node{
-		NodeSpec: sqlgraph.NodeSpec{
 			Table:   channelprobe.Table,
 			Columns: channelprobe.Columns,
 			ID: &sqlgraph.FieldSpec{
@@ -201,13 +165,15 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 		Type: "ChannelProbe",
 		Fields: map[string]*sqlgraph.FieldSpec{
-			channelprobe.FieldChannelID:           {Type: field.TypeInt, Column: channelprobe.FieldChannelID},
-			channelprobe.FieldTotalRequestCount:   {Type: field.TypeInt, Column: channelprobe.FieldTotalRequestCount},
-			channelprobe.FieldSuccessRequestCount: {Type: field.TypeInt, Column: channelprobe.FieldSuccessRequestCount},
-			channelprobe.FieldTimestamp:           {Type: field.TypeInt64, Column: channelprobe.FieldTimestamp},
+			channelprobe.FieldChannelID:             {Type: field.TypeInt, Column: channelprobe.FieldChannelID},
+			channelprobe.FieldTotalRequestCount:     {Type: field.TypeInt, Column: channelprobe.FieldTotalRequestCount},
+			channelprobe.FieldSuccessRequestCount:   {Type: field.TypeInt, Column: channelprobe.FieldSuccessRequestCount},
+			channelprobe.FieldAvgTokensPerSecond:    {Type: field.TypeFloat64, Column: channelprobe.FieldAvgTokensPerSecond},
+			channelprobe.FieldAvgTimeToFirstTokenMs: {Type: field.TypeFloat64, Column: channelprobe.FieldAvgTimeToFirstTokenMs},
+			channelprobe.FieldTimestamp:             {Type: field.TypeInt64, Column: channelprobe.FieldTimestamp},
 		},
 	}
-	graph.Nodes[7] = &sqlgraph.Node{
+	graph.Nodes[6] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   datastorage.Table,
 			Columns: datastorage.Columns,
@@ -229,7 +195,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			datastorage.FieldStatus:      {Type: field.TypeEnum, Column: datastorage.FieldStatus},
 		},
 	}
-	graph.Nodes[8] = &sqlgraph.Node{
+	graph.Nodes[7] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   model.Table,
 			Columns: model.Columns,
@@ -255,7 +221,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			model.FieldRemark:    {Type: field.TypeString, Column: model.FieldRemark},
 		},
 	}
-	graph.Nodes[9] = &sqlgraph.Node{
+	graph.Nodes[8] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   project.Table,
 			Columns: project.Columns,
@@ -274,7 +240,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			project.FieldStatus:      {Type: field.TypeEnum, Column: project.FieldStatus},
 		},
 	}
-	graph.Nodes[10] = &sqlgraph.Node{
+	graph.Nodes[9] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   prompt.Table,
 			Columns: prompt.Columns,
@@ -297,7 +263,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			prompt.FieldSettings:    {Type: field.TypeJSON, Column: prompt.FieldSettings},
 		},
 	}
-	graph.Nodes[11] = &sqlgraph.Node{
+	graph.Nodes[10] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   providerquotastatus.Table,
 			Columns: providerquotastatus.Columns,
@@ -320,7 +286,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			providerquotastatus.FieldNextCheckAt:  {Type: field.TypeTime, Column: providerquotastatus.FieldNextCheckAt},
 		},
 	}
-	graph.Nodes[12] = &sqlgraph.Node{
+	graph.Nodes[11] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   request.Table,
 			Columns: request.Columns,
@@ -353,7 +319,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			request.FieldMetricsFirstTokenLatencyMs: {Type: field.TypeInt64, Column: request.FieldMetricsFirstTokenLatencyMs},
 		},
 	}
-	graph.Nodes[13] = &sqlgraph.Node{
+	graph.Nodes[12] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   requestexecution.Table,
 			Columns: requestexecution.Columns,
@@ -384,7 +350,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			requestexecution.FieldRequestHeaders:             {Type: field.TypeJSON, Column: requestexecution.FieldRequestHeaders},
 		},
 	}
-	graph.Nodes[14] = &sqlgraph.Node{
+	graph.Nodes[13] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   role.Table,
 			Columns: role.Columns,
@@ -404,7 +370,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			role.FieldScopes:    {Type: field.TypeJSON, Column: role.FieldScopes},
 		},
 	}
-	graph.Nodes[15] = &sqlgraph.Node{
+	graph.Nodes[14] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   system.Table,
 			Columns: system.Columns,
@@ -422,7 +388,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			system.FieldValue:     {Type: field.TypeString, Column: system.FieldValue},
 		},
 	}
-	graph.Nodes[16] = &sqlgraph.Node{
+	graph.Nodes[15] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   thread.Table,
 			Columns: thread.Columns,
@@ -439,7 +405,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			thread.FieldThreadID:  {Type: field.TypeString, Column: thread.FieldThreadID},
 		},
 	}
-	graph.Nodes[17] = &sqlgraph.Node{
+	graph.Nodes[16] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   trace.Table,
 			Columns: trace.Columns,
@@ -457,7 +423,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			trace.FieldThreadID:  {Type: field.TypeInt, Column: trace.FieldThreadID},
 		},
 	}
-	graph.Nodes[18] = &sqlgraph.Node{
+	graph.Nodes[17] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   usagelog.Table,
 			Columns: usagelog.Columns,
@@ -494,7 +460,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			usagelog.FieldCostPriceReferenceID:               {Type: field.TypeString, Column: usagelog.FieldCostPriceReferenceID},
 		},
 	}
-	graph.Nodes[19] = &sqlgraph.Node{
+	graph.Nodes[18] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   user.Table,
 			Columns: user.Columns,
@@ -519,7 +485,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			user.FieldScopes:         {Type: field.TypeJSON, Column: user.FieldScopes},
 		},
 	}
-	graph.Nodes[20] = &sqlgraph.Node{
+	graph.Nodes[19] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   userproject.Table,
 			Columns: userproject.Columns,
@@ -538,7 +504,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			userproject.FieldScopes:    {Type: field.TypeJSON, Column: userproject.FieldScopes},
 		},
 	}
-	graph.Nodes[21] = &sqlgraph.Node{
+	graph.Nodes[20] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   userrole.Table,
 			Columns: userrole.Columns,
@@ -628,18 +594,6 @@ var schemaGraph = func() *sqlgraph.Schema {
 		"UsageLog",
 	)
 	graph.MustAddE(
-		"channel_performance",
-		&sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2O,
-			Inverse: false,
-			Table:   channel.ChannelPerformanceTable,
-			Columns: []string{channel.ChannelPerformanceColumn},
-			Bidi:    false,
-		},
-		"Channel",
-		"ChannelPerformance",
-	)
-	graph.MustAddE(
 		"channel_probes",
 		&sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -722,18 +676,6 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 		"ChannelOverrideTemplate",
 		"User",
-	)
-	graph.MustAddE(
-		"channel",
-		&sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2O,
-			Inverse: true,
-			Table:   channelperformance.ChannelTable,
-			Columns: []string{channelperformance.ChannelColumn},
-			Bidi:    false,
-		},
-		"ChannelPerformance",
-		"Channel",
 	)
 	graph.MustAddE(
 		"channel",
@@ -1588,20 +1530,6 @@ func (f *ChannelFilter) WhereHasUsageLogsWith(preds ...predicate.UsageLog) {
 	})))
 }
 
-// WhereHasChannelPerformance applies a predicate to check if query has an edge channel_performance.
-func (f *ChannelFilter) WhereHasChannelPerformance() {
-	f.Where(entql.HasEdge("channel_performance"))
-}
-
-// WhereHasChannelPerformanceWith applies a predicate to check if query has an edge channel_performance with a given conditions (other predicates).
-func (f *ChannelFilter) WhereHasChannelPerformanceWith(preds ...predicate.ChannelPerformance) {
-	f.Where(entql.HasEdgeWith("channel_performance", sqlgraph.WrapFunc(func(s *sql.Selector) {
-		for _, p := range preds {
-			p(s)
-		}
-	})))
-}
-
 // WhereHasChannelProbes applies a predicate to check if query has an edge channel_probes.
 func (f *ChannelFilter) WhereHasChannelProbes() {
 	f.Where(entql.HasEdge("channel_probes"))
@@ -1951,170 +1879,6 @@ func (f *ChannelOverrideTemplateFilter) WhereHasUserWith(preds ...predicate.User
 }
 
 // addPredicate implements the predicateAdder interface.
-func (_q *ChannelPerformanceQuery) addPredicate(pred func(s *sql.Selector)) {
-	_q.predicates = append(_q.predicates, pred)
-}
-
-// Filter returns a Filter implementation to apply filters on the ChannelPerformanceQuery builder.
-func (_q *ChannelPerformanceQuery) Filter() *ChannelPerformanceFilter {
-	return &ChannelPerformanceFilter{config: _q.config, predicateAdder: _q}
-}
-
-// addPredicate implements the predicateAdder interface.
-func (m *ChannelPerformanceMutation) addPredicate(pred func(s *sql.Selector)) {
-	m.predicates = append(m.predicates, pred)
-}
-
-// Filter returns an entql.Where implementation to apply filters on the ChannelPerformanceMutation builder.
-func (m *ChannelPerformanceMutation) Filter() *ChannelPerformanceFilter {
-	return &ChannelPerformanceFilter{config: m.config, predicateAdder: m}
-}
-
-// ChannelPerformanceFilter provides a generic filtering capability at runtime for ChannelPerformanceQuery.
-type ChannelPerformanceFilter struct {
-	predicateAdder
-	config
-}
-
-// Where applies the entql predicate on the query filter.
-func (f *ChannelPerformanceFilter) Where(p entql.P) {
-	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[5].Type, p, s); err != nil {
-			s.AddError(err)
-		}
-	})
-}
-
-// WhereID applies the entql int predicate on the id field.
-func (f *ChannelPerformanceFilter) WhereID(p entql.IntP) {
-	f.Where(p.Field(channelperformance.FieldID))
-}
-
-// WhereCreatedAt applies the entql time.Time predicate on the created_at field.
-func (f *ChannelPerformanceFilter) WhereCreatedAt(p entql.TimeP) {
-	f.Where(p.Field(channelperformance.FieldCreatedAt))
-}
-
-// WhereUpdatedAt applies the entql time.Time predicate on the updated_at field.
-func (f *ChannelPerformanceFilter) WhereUpdatedAt(p entql.TimeP) {
-	f.Where(p.Field(channelperformance.FieldUpdatedAt))
-}
-
-// WhereDeletedAt applies the entql int predicate on the deleted_at field.
-func (f *ChannelPerformanceFilter) WhereDeletedAt(p entql.IntP) {
-	f.Where(p.Field(channelperformance.FieldDeletedAt))
-}
-
-// WhereChannelID applies the entql int predicate on the channel_id field.
-func (f *ChannelPerformanceFilter) WhereChannelID(p entql.IntP) {
-	f.Where(p.Field(channelperformance.FieldChannelID))
-}
-
-// WhereSuccessRate applies the entql int predicate on the success_rate field.
-func (f *ChannelPerformanceFilter) WhereSuccessRate(p entql.IntP) {
-	f.Where(p.Field(channelperformance.FieldSuccessRate))
-}
-
-// WhereAvgLatencyMs applies the entql int predicate on the avg_latency_ms field.
-func (f *ChannelPerformanceFilter) WhereAvgLatencyMs(p entql.IntP) {
-	f.Where(p.Field(channelperformance.FieldAvgLatencyMs))
-}
-
-// WhereAvgTokenPerSecond applies the entql int predicate on the avg_token_per_second field.
-func (f *ChannelPerformanceFilter) WhereAvgTokenPerSecond(p entql.IntP) {
-	f.Where(p.Field(channelperformance.FieldAvgTokenPerSecond))
-}
-
-// WhereAvgStreamFirstTokenLatencyMs applies the entql int predicate on the avg_stream_first_token_latency_ms field.
-func (f *ChannelPerformanceFilter) WhereAvgStreamFirstTokenLatencyMs(p entql.IntP) {
-	f.Where(p.Field(channelperformance.FieldAvgStreamFirstTokenLatencyMs))
-}
-
-// WhereAvgStreamTokenPerSecond applies the entql float64 predicate on the avg_stream_token_per_second field.
-func (f *ChannelPerformanceFilter) WhereAvgStreamTokenPerSecond(p entql.Float64P) {
-	f.Where(p.Field(channelperformance.FieldAvgStreamTokenPerSecond))
-}
-
-// WhereLastSuccessAt applies the entql time.Time predicate on the last_success_at field.
-func (f *ChannelPerformanceFilter) WhereLastSuccessAt(p entql.TimeP) {
-	f.Where(p.Field(channelperformance.FieldLastSuccessAt))
-}
-
-// WhereLastFailureAt applies the entql time.Time predicate on the last_failure_at field.
-func (f *ChannelPerformanceFilter) WhereLastFailureAt(p entql.TimeP) {
-	f.Where(p.Field(channelperformance.FieldLastFailureAt))
-}
-
-// WhereRequestCount applies the entql int64 predicate on the request_count field.
-func (f *ChannelPerformanceFilter) WhereRequestCount(p entql.Int64P) {
-	f.Where(p.Field(channelperformance.FieldRequestCount))
-}
-
-// WhereSuccessCount applies the entql int64 predicate on the success_count field.
-func (f *ChannelPerformanceFilter) WhereSuccessCount(p entql.Int64P) {
-	f.Where(p.Field(channelperformance.FieldSuccessCount))
-}
-
-// WhereFailureCount applies the entql int64 predicate on the failure_count field.
-func (f *ChannelPerformanceFilter) WhereFailureCount(p entql.Int64P) {
-	f.Where(p.Field(channelperformance.FieldFailureCount))
-}
-
-// WhereTotalTokenCount applies the entql int64 predicate on the total_token_count field.
-func (f *ChannelPerformanceFilter) WhereTotalTokenCount(p entql.Int64P) {
-	f.Where(p.Field(channelperformance.FieldTotalTokenCount))
-}
-
-// WhereTotalRequestLatencyMs applies the entql int64 predicate on the total_request_latency_ms field.
-func (f *ChannelPerformanceFilter) WhereTotalRequestLatencyMs(p entql.Int64P) {
-	f.Where(p.Field(channelperformance.FieldTotalRequestLatencyMs))
-}
-
-// WhereStreamSuccessCount applies the entql int64 predicate on the stream_success_count field.
-func (f *ChannelPerformanceFilter) WhereStreamSuccessCount(p entql.Int64P) {
-	f.Where(p.Field(channelperformance.FieldStreamSuccessCount))
-}
-
-// WhereStreamTotalRequestCount applies the entql int64 predicate on the stream_total_request_count field.
-func (f *ChannelPerformanceFilter) WhereStreamTotalRequestCount(p entql.Int64P) {
-	f.Where(p.Field(channelperformance.FieldStreamTotalRequestCount))
-}
-
-// WhereStreamTotalTokenCount applies the entql int64 predicate on the stream_total_token_count field.
-func (f *ChannelPerformanceFilter) WhereStreamTotalTokenCount(p entql.Int64P) {
-	f.Where(p.Field(channelperformance.FieldStreamTotalTokenCount))
-}
-
-// WhereStreamTotalRequestLatencyMs applies the entql int64 predicate on the stream_total_request_latency_ms field.
-func (f *ChannelPerformanceFilter) WhereStreamTotalRequestLatencyMs(p entql.Int64P) {
-	f.Where(p.Field(channelperformance.FieldStreamTotalRequestLatencyMs))
-}
-
-// WhereStreamTotalFirstTokenLatencyMs applies the entql int64 predicate on the stream_total_first_token_latency_ms field.
-func (f *ChannelPerformanceFilter) WhereStreamTotalFirstTokenLatencyMs(p entql.Int64P) {
-	f.Where(p.Field(channelperformance.FieldStreamTotalFirstTokenLatencyMs))
-}
-
-// WhereConsecutiveFailures applies the entql int64 predicate on the consecutive_failures field.
-func (f *ChannelPerformanceFilter) WhereConsecutiveFailures(p entql.Int64P) {
-	f.Where(p.Field(channelperformance.FieldConsecutiveFailures))
-}
-
-// WhereHasChannel applies a predicate to check if query has an edge channel.
-func (f *ChannelPerformanceFilter) WhereHasChannel() {
-	f.Where(entql.HasEdge("channel"))
-}
-
-// WhereHasChannelWith applies a predicate to check if query has an edge channel with a given conditions (other predicates).
-func (f *ChannelPerformanceFilter) WhereHasChannelWith(preds ...predicate.Channel) {
-	f.Where(entql.HasEdgeWith("channel", sqlgraph.WrapFunc(func(s *sql.Selector) {
-		for _, p := range preds {
-			p(s)
-		}
-	})))
-}
-
-// addPredicate implements the predicateAdder interface.
 func (_q *ChannelProbeQuery) addPredicate(pred func(s *sql.Selector)) {
 	_q.predicates = append(_q.predicates, pred)
 }
@@ -2143,7 +1907,7 @@ type ChannelProbeFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *ChannelProbeFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[6].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[5].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -2167,6 +1931,16 @@ func (f *ChannelProbeFilter) WhereTotalRequestCount(p entql.IntP) {
 // WhereSuccessRequestCount applies the entql int predicate on the success_request_count field.
 func (f *ChannelProbeFilter) WhereSuccessRequestCount(p entql.IntP) {
 	f.Where(p.Field(channelprobe.FieldSuccessRequestCount))
+}
+
+// WhereAvgTokensPerSecond applies the entql float64 predicate on the avg_tokens_per_second field.
+func (f *ChannelProbeFilter) WhereAvgTokensPerSecond(p entql.Float64P) {
+	f.Where(p.Field(channelprobe.FieldAvgTokensPerSecond))
+}
+
+// WhereAvgTimeToFirstTokenMs applies the entql float64 predicate on the avg_time_to_first_token_ms field.
+func (f *ChannelProbeFilter) WhereAvgTimeToFirstTokenMs(p entql.Float64P) {
+	f.Where(p.Field(channelprobe.FieldAvgTimeToFirstTokenMs))
 }
 
 // WhereTimestamp applies the entql int64 predicate on the timestamp field.
@@ -2217,7 +1991,7 @@ type DataStorageFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *DataStorageFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[7].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[6].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -2330,7 +2104,7 @@ type ModelFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *ModelFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[8].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[7].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -2435,7 +2209,7 @@ type ProjectFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *ProjectFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[9].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[8].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -2631,7 +2405,7 @@ type PromptFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *PromptFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[10].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[9].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -2735,7 +2509,7 @@ type ProviderQuotaStatusFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *ProviderQuotaStatusFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[11].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[10].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -2839,7 +2613,7 @@ type RequestFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *RequestFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[12].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[11].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -3077,7 +2851,7 @@ type RequestExecutionFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *RequestExecutionFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[13].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[12].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -3249,7 +3023,7 @@ type RoleFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *RoleFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[14].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[13].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -3366,7 +3140,7 @@ type SystemFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *SystemFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[15].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[14].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -3431,7 +3205,7 @@ type ThreadFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *ThreadFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[16].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[15].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -3519,7 +3293,7 @@ type TraceFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *TraceFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[17].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[16].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -3626,7 +3400,7 @@ type UsageLogFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *UsageLogFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[18].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[17].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -3828,7 +3602,7 @@ type UserFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *UserFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[19].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[18].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -4012,7 +3786,7 @@ type UserProjectFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *UserProjectFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[20].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[19].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -4110,7 +3884,7 @@ type UserRoleFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *UserRoleFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[21].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[20].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})

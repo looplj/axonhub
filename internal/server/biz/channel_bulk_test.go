@@ -25,7 +25,7 @@ func TestChannelService_BulkEnableChannels(t *testing.T) {
 		SetType(channel.TypeOpenai).
 		SetName("Channel 1").
 		SetBaseURL("https://api.openai.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "key1"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "key1"}).
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		SetStatus(channel.StatusDisabled).
@@ -36,7 +36,7 @@ func TestChannelService_BulkEnableChannels(t *testing.T) {
 		SetType(channel.TypeAnthropic).
 		SetName("Channel 2").
 		SetBaseURL("https://api.anthropic.com").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "key2"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "key2"}).
 		SetSupportedModels([]string{"claude-3-opus-20240229"}).
 		SetDefaultTestModel("claude-3-opus-20240229").
 		SetStatus(channel.StatusDisabled).
@@ -47,7 +47,7 @@ func TestChannelService_BulkEnableChannels(t *testing.T) {
 		SetType(channel.TypeOpenai).
 		SetName("Channel 3").
 		SetBaseURL("https://api.openai.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "key3"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "key3"}).
 		SetSupportedModels([]string{"gpt-3.5-turbo"}).
 		SetDefaultTestModel("gpt-3.5-turbo").
 		SetStatus(channel.StatusDisabled).
@@ -122,7 +122,7 @@ func TestChannelService_BulkDisableChannels(t *testing.T) {
 		SetType(channel.TypeOpenai).
 		SetName("Channel 1").
 		SetBaseURL("https://api.openai.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "key1"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "key1"}).
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		SetStatus(channel.StatusEnabled).
@@ -133,7 +133,7 @@ func TestChannelService_BulkDisableChannels(t *testing.T) {
 		SetType(channel.TypeAnthropic).
 		SetName("Channel 2").
 		SetBaseURL("https://api.anthropic.com").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "key2"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "key2"}).
 		SetSupportedModels([]string{"claude-3-opus-20240229"}).
 		SetDefaultTestModel("claude-3-opus-20240229").
 		SetStatus(channel.StatusEnabled).
@@ -144,7 +144,7 @@ func TestChannelService_BulkDisableChannels(t *testing.T) {
 		SetType(channel.TypeOpenai).
 		SetName("Channel 3").
 		SetBaseURL("https://api.openai.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "key3"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "key3"}).
 		SetSupportedModels([]string{"gpt-3.5-turbo"}).
 		SetDefaultTestModel("gpt-3.5-turbo").
 		SetStatus(channel.StatusEnabled).
@@ -218,7 +218,7 @@ func TestChannelService_BulkArchiveChannels(t *testing.T) {
 		SetType(channel.TypeOpenai).
 		SetName("Channel 1").
 		SetBaseURL("https://api.openai.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "key1"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "key1"}).
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		SetStatus(channel.StatusEnabled).
@@ -229,7 +229,7 @@ func TestChannelService_BulkArchiveChannels(t *testing.T) {
 		SetType(channel.TypeAnthropic).
 		SetName("Channel 2").
 		SetBaseURL("https://api.anthropic.com").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "key2"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "key2"}).
 		SetSupportedModels([]string{"claude-3-opus-20240229"}).
 		SetDefaultTestModel("claude-3-opus-20240229").
 		SetStatus(channel.StatusEnabled).
@@ -240,7 +240,7 @@ func TestChannelService_BulkArchiveChannels(t *testing.T) {
 		SetType(channel.TypeOpenai).
 		SetName("Channel 3").
 		SetBaseURL("https://api.openai.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "key3"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "key3"}).
 		SetSupportedModels([]string{"gpt-3.5-turbo"}).
 		SetDefaultTestModel("gpt-3.5-turbo").
 		SetStatus(channel.StatusDisabled).

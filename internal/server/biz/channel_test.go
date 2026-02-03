@@ -27,7 +27,7 @@ func TestChannelService_ListModels(t *testing.T) {
 		SetType(channel.TypeOpenai).
 		SetName("Enabled Channel").
 		SetBaseURL("https://api.openai.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "key1"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "key1"}).
 		SetSupportedModels([]string{"gpt-4", "gpt-3.5-turbo"}).
 		SetDefaultTestModel("gpt-4").
 		SetStatus(channel.StatusEnabled).
@@ -38,7 +38,7 @@ func TestChannelService_ListModels(t *testing.T) {
 		SetType(channel.TypeAnthropic).
 		SetName("Disabled Channel").
 		SetBaseURL("https://api.anthropic.com").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "key2"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "key2"}).
 		SetSupportedModels([]string{"claude-3-opus-20240229"}).
 		SetDefaultTestModel("claude-3-opus-20240229").
 		SetStatus(channel.StatusDisabled).
@@ -54,7 +54,7 @@ func TestChannelService_ListModels(t *testing.T) {
 		SetType(channel.TypeOpenai).
 		SetName("Archived Channel").
 		SetBaseURL("https://api.openai.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "key3"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "key3"}).
 		SetSupportedModels([]string{"gpt-4-turbo"}).
 		SetDefaultTestModel("gpt-4-turbo").
 		SetStatus(channel.StatusArchived).
@@ -65,7 +65,7 @@ func TestChannelService_ListModels(t *testing.T) {
 		SetType(channel.TypeOpenai).
 		SetName("Prefix Channel").
 		SetBaseURL("https://api.deepseek.com").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "key4"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "key4"}).
 		SetSupportedModels([]string{"deepseek-chat", "deepseek-reasoner"}).
 		SetDefaultTestModel("deepseek-chat").
 		SetStatus(channel.StatusEnabled).
@@ -213,11 +213,7 @@ func setupTestChannelService(t *testing.T) (*ChannelService, *ent.Client) {
 
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 
-	svc := &ChannelService{
-		AbstractService: &AbstractService{
-			db: client,
-		},
-	}
+	svc := NewChannelServiceForTest(client)
 
 	return svc, client
 }
@@ -241,8 +237,8 @@ func TestChannelService_CreateChannel(t *testing.T) {
 				Type:    channel.TypeOpenai,
 				Name:    "Test OpenAI Channel",
 				BaseURL: lo.ToPtr("https://api.openai.com/v1"),
-				Credentials: &objects.ChannelCredentials{
-					APIKey: "test-api-key",
+				Credentials: objects.ChannelCredentials{
+					APIKeys: []string{"test-api-key"},
 				},
 				SupportedModels:  []string{"gpt-4", "gpt-3.5-turbo"},
 				DefaultTestModel: "gpt-3.5-turbo",
@@ -255,7 +251,7 @@ func TestChannelService_CreateChannel(t *testing.T) {
 				Type:    channel.TypeAnthropic,
 				Name:    "Test Anthropic Channel",
 				BaseURL: lo.ToPtr("https://api.anthropic.com"),
-				Credentials: &objects.ChannelCredentials{
+				Credentials: objects.ChannelCredentials{
 					APIKey: "test-api-key",
 				},
 				SupportedModels:  []string{"claude-3-opus-20240229"},
@@ -274,7 +270,7 @@ func TestChannelService_CreateChannel(t *testing.T) {
 				Type:    channel.TypeOpenai,
 				Name:    "Duplicate Channel Name",
 				BaseURL: lo.ToPtr("https://api.openai.com/v1"),
-				Credentials: &objects.ChannelCredentials{
+				Credentials: objects.ChannelCredentials{
 					APIKey: "test-api-key",
 				},
 				SupportedModels:  []string{"gpt-4"},
@@ -289,7 +285,7 @@ func TestChannelService_CreateChannel(t *testing.T) {
 		SetType(channel.TypeOpenai).
 		SetName("Duplicate Channel Name").
 		SetBaseURL("https://api.openai.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "existing-key"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "existing-key"}).
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		Save(ctx)
@@ -328,7 +324,7 @@ func TestChannelService_UpdateChannel(t *testing.T) {
 		SetType(channel.TypeOpenai).
 		SetName("Original Name").
 		SetBaseURL("https://api.openai.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "original-key"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "original-key"}).
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		Save(ctx)
@@ -339,7 +335,7 @@ func TestChannelService_UpdateChannel(t *testing.T) {
 		SetType(channel.TypeAnthropic).
 		SetName("Second Channel").
 		SetBaseURL("https://api.anthropic.com").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "second-key"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "second-key"}).
 		SetSupportedModels([]string{"claude-3-opus-20240229"}).
 		SetDefaultTestModel("claude-3-opus-20240229").
 		Save(ctx)
@@ -452,7 +448,7 @@ func TestChannelService_UpdateChannelStatus(t *testing.T) {
 		SetType(channel.TypeOpenai).
 		SetName("Test Channel").
 		SetBaseURL("https://api.openai.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		SetStatus(channel.StatusEnabled).
@@ -650,7 +646,7 @@ func TestChannelService_BulkUpdateChannelOrdering(t *testing.T) {
 		SetType(channel.TypeOpenai).
 		SetName("Channel 1").
 		SetBaseURL("https://api.openai.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "key1"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "key1"}).
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		SetOrderingWeight(1).
@@ -661,7 +657,7 @@ func TestChannelService_BulkUpdateChannelOrdering(t *testing.T) {
 		SetType(channel.TypeAnthropic).
 		SetName("Channel 2").
 		SetBaseURL("https://api.anthropic.com").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "key2"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "key2"}).
 		SetSupportedModels([]string{"claude-3-opus-20240229"}).
 		SetDefaultTestModel("claude-3-opus-20240229").
 		SetOrderingWeight(2).
@@ -767,7 +763,7 @@ func TestChannelService_BulkCreateChannels(t *testing.T) {
 					Type:             channel.TypeOpenai,
 					Name:             "Existing Channel",
 					BaseURL:          baseURL,
-					Credentials:      &objects.ChannelCredentials{APIKey: "existing-key"},
+					Credentials:      objects.ChannelCredentials{APIKey: "existing-key"},
 					SupportedModels:  []string{"gpt-4"},
 					DefaultTestModel: "gpt-4",
 				},
@@ -790,7 +786,7 @@ func TestChannelService_BulkCreateChannels(t *testing.T) {
 					Type:             channel.TypeOpenai,
 					Name:             "Test",
 					BaseURL:          baseURL,
-					Credentials:      &objects.ChannelCredentials{APIKey: "key0"},
+					Credentials:      objects.ChannelCredentials{APIKey: "key0"},
 					SupportedModels:  []string{"gpt-4"},
 					DefaultTestModel: "gpt-4",
 				},
@@ -798,7 +794,7 @@ func TestChannelService_BulkCreateChannels(t *testing.T) {
 					Type:             channel.TypeOpenai,
 					Name:             "Test - (1)",
 					BaseURL:          baseURL,
-					Credentials:      &objects.ChannelCredentials{APIKey: "key1"},
+					Credentials:      objects.ChannelCredentials{APIKey: "key1"},
 					SupportedModels:  []string{"gpt-4"},
 					DefaultTestModel: "gpt-4",
 				},
@@ -856,7 +852,7 @@ func TestChannelService_BulkCreateChannels(t *testing.T) {
 					Type:             channel.TypeOpenai,
 					Name:             "Conflict - (1)",
 					BaseURL:          baseURL,
-					Credentials:      &objects.ChannelCredentials{APIKey: "existing-key"},
+					Credentials:      objects.ChannelCredentials{APIKey: "existing-key"},
 					SupportedModels:  []string{"gpt-4"},
 					DefaultTestModel: "gpt-4",
 				},
@@ -879,7 +875,7 @@ func TestChannelService_BulkCreateChannels(t *testing.T) {
 					Type:             channel.TypeOpenai,
 					Name:             "Gap Test",
 					BaseURL:          baseURL,
-					Credentials:      &objects.ChannelCredentials{APIKey: "key0"},
+					Credentials:      objects.ChannelCredentials{APIKey: "key0"},
 					SupportedModels:  []string{"gpt-4"},
 					DefaultTestModel: "gpt-4",
 				},
@@ -887,7 +883,7 @@ func TestChannelService_BulkCreateChannels(t *testing.T) {
 					Type:             channel.TypeOpenai,
 					Name:             "Gap Test - (2)",
 					BaseURL:          baseURL,
-					Credentials:      &objects.ChannelCredentials{APIKey: "key2"},
+					Credentials:      objects.ChannelCredentials{APIKey: "key2"},
 					SupportedModels:  []string{"gpt-4"},
 					DefaultTestModel: "gpt-4",
 				},

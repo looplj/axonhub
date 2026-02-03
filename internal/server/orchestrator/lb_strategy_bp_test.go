@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/privacy"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
@@ -71,7 +72,7 @@ func TestErrorAwareStrategy_Score_WithMockRecentSuccess(t *testing.T) {
 
 	// Create metrics with recent success - but no boost should be applied
 	metrics := &biz.AggregatedMetrics{
-		LastSuccessAt: &recentSuccess,
+		LastSelectedAt: &recentSuccess,
 	}
 
 	mockProvider := &mockMetricsProvider{
@@ -103,6 +104,7 @@ func TestErrorAwareStrategy_Score_ConsecutiveFailures(t *testing.T) {
 		SetType("openai").
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
+		SetCredentials(objects.ChannelCredentials{APIKeys: []string{"test-key"}}).
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -143,6 +145,7 @@ func TestErrorAwareStrategy_Score_RecentSuccess(t *testing.T) {
 		SetType("openai").
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
+		SetCredentials(objects.ChannelCredentials{APIKeys: []string{"test-key"}}).
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -155,7 +158,6 @@ func TestErrorAwareStrategy_Score_RecentSuccess(t *testing.T) {
 		EndTime:          time.Now(),
 		Success:          true,
 		RequestCompleted: true,
-		TokenCount:       100,
 	}
 	channelService.RecordPerformance(ctx, perf)
 
@@ -212,7 +214,7 @@ func TestErrorAwareStrategy_ScoreConsistency(t *testing.T) {
 		{
 			name: "recent success",
 			metrics: &biz.AggregatedMetrics{
-				LastSuccessAt: &recentSuccess,
+				LastSelectedAt: &recentSuccess,
 			},
 		},
 		{
@@ -221,7 +223,7 @@ func TestErrorAwareStrategy_ScoreConsistency(t *testing.T) {
 				m := &biz.AggregatedMetrics{}
 				m.ConsecutiveFailures = 2
 				m.LastFailureAt = &recentFailure
-				m.LastSuccessAt = &recentSuccess
+				m.LastSelectedAt = &recentSuccess
 				m.RequestCount = 15
 				m.SuccessCount = 10
 
@@ -459,7 +461,7 @@ func TestErrorAwareStrategy_OnlyPenaltiesNoBoosts(t *testing.T) {
 	// Test that recent success does NOT give a boost
 	t.Run("no recent success boost", func(t *testing.T) {
 		metrics := &biz.AggregatedMetrics{
-			LastSuccessAt: &recentSuccess,
+			LastSelectedAt: &recentSuccess,
 		}
 		metrics.RequestCount = 10
 		metrics.SuccessCount = 10 // 100% success rate
@@ -520,14 +522,14 @@ func TestErrorAwareStrategy_FairDistribution(t *testing.T) {
 
 	channelMetrics := map[int]*biz.AggregatedMetrics{
 		8: func() *biz.AggregatedMetrics {
-			m := &biz.AggregatedMetrics{LastSuccessAt: &recentSuccess}
+			m := &biz.AggregatedMetrics{LastSelectedAt: &recentSuccess}
 			m.RequestCount = 23
 			m.SuccessCount = 23
 
 			return m
 		}(),
 		6: func() *biz.AggregatedMetrics {
-			m := &biz.AggregatedMetrics{LastSuccessAt: &oldSuccess}
+			m := &biz.AggregatedMetrics{LastSelectedAt: &oldSuccess}
 			m.RequestCount = 5
 			m.SuccessCount = 5
 
@@ -541,7 +543,7 @@ func TestErrorAwareStrategy_FairDistribution(t *testing.T) {
 			return m
 		}(),
 		7: func() *biz.AggregatedMetrics {
-			m := &biz.AggregatedMetrics{LastSuccessAt: &oldSuccess}
+			m := &biz.AggregatedMetrics{LastSelectedAt: &oldSuccess}
 			m.RequestCount = 1
 			m.SuccessCount = 1
 

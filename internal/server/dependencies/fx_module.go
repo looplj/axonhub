@@ -1,6 +1,9 @@
 package dependencies
 
 import (
+	"context"
+
+	"github.com/zhenzou/executors"
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/log"
@@ -13,4 +16,11 @@ var Module = fx.Module("dependencies",
 	fx.Provide(db.NewEntClient),
 	fx.Provide(httpclient.NewHttpClient),
 	fx.Provide(NewExecutors),
+	fx.Invoke(func(lc fx.Lifecycle, executor executors.ScheduledExecutor) {
+		lc.Append(fx.Hook{
+			OnStop: func(ctx context.Context) error {
+				return executor.Shutdown(ctx)
+			},
+		})
+	}),
 )

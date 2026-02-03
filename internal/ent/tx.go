@@ -22,8 +22,6 @@ type Tx struct {
 	ChannelModelPriceVersion *ChannelModelPriceVersionClient
 	// ChannelOverrideTemplate is the client for interacting with the ChannelOverrideTemplate builders.
 	ChannelOverrideTemplate *ChannelOverrideTemplateClient
-	// ChannelPerformance is the client for interacting with the ChannelPerformance builders.
-	ChannelPerformance *ChannelPerformanceClient
 	// ChannelProbe is the client for interacting with the ChannelProbe builders.
 	ChannelProbe *ChannelProbeClient
 	// DataStorage is the client for interacting with the DataStorage builders.
@@ -192,7 +190,6 @@ func (tx *Tx) init() {
 	tx.ChannelModelPrice = NewChannelModelPriceClient(tx.config)
 	tx.ChannelModelPriceVersion = NewChannelModelPriceVersionClient(tx.config)
 	tx.ChannelOverrideTemplate = NewChannelOverrideTemplateClient(tx.config)
-	tx.ChannelPerformance = NewChannelPerformanceClient(tx.config)
 	tx.ChannelProbe = NewChannelProbeClient(tx.config)
 	tx.DataStorage = NewDataStorageClient(tx.config)
 	tx.Model = NewModelClient(tx.config)

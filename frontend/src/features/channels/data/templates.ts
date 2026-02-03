@@ -106,8 +106,20 @@ const TEMPLATE_FRAGMENT = `
 // GraphQL Queries
 const QUERY_CHANNEL_OVERRIDE_TEMPLATES = `
   ${TEMPLATE_FRAGMENT}
-  query QueryChannelOverrideTemplates($input: QueryChannelOverrideTemplatesInput!) {
-    queryChannelOverrideTemplates(input: $input) {
+  query ChannelOverrideTemplates(
+    $after: Cursor
+    $first: Int
+    $before: Cursor
+    $last: Int
+    $where: ChannelOverrideTemplateWhereInput
+  ) {
+    channelOverrideTemplates(
+      after: $after
+      first: $first
+      before: $before
+      last: $last
+      where: $where
+    ) {
       edges {
         node {
           ...TemplateFields
@@ -183,11 +195,22 @@ export function useChannelOverrideTemplates(
     queryKey: ['channelOverrideTemplates', variables?.channelType, variables?.search, variables?.after],
     queryFn: async () => {
       try {
-        const data = await graphqlRequest<{ queryChannelOverrideTemplates: ChannelOverrideTemplateConnection }>(
+        const where: Record<string, unknown> = {};
+        if (variables?.channelType) {
+          where.channelType = variables.channelType;
+        }
+        if (variables?.search) {
+          where.nameContainsFold = variables.search;
+        }
+        const data = await graphqlRequest<{ channelOverrideTemplates: ChannelOverrideTemplateConnection }>(
           QUERY_CHANNEL_OVERRIDE_TEMPLATES,
-          { input: variables }
+          {
+            first: variables?.first,
+            after: variables?.after,
+            where: Object.keys(where).length > 0 ? where : undefined,
+          }
         );
-        return channelOverrideTemplateConnectionSchema.parse(data?.queryChannelOverrideTemplates);
+        return channelOverrideTemplateConnectionSchema.parse(data?.channelOverrideTemplates);
       } catch (error) {
         handleError(error, t('channels.templates.errors.fetchList'));
         throw error;

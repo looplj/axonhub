@@ -547,7 +547,8 @@ export type Provider =
   | 'jina'
   | 'github'
   | 'cerebras'
-  | 'codex';
+  | 'codex'
+  | 'antigravity';
 
 /**
  * Map channel type to provider

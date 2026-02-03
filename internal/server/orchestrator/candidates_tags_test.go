@@ -33,7 +33,7 @@ func setupTagsTest(t *testing.T) (context.Context, *ent.Client, []*biz.Channel) 
 		SetType(channel.TypeOpenai).
 		SetName("Channel with tag1 and tag2").
 		SetBaseURL("https://api.example.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key-1"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key-1"}).
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		SetStatus(channel.StatusEnabled).
@@ -46,7 +46,7 @@ func setupTagsTest(t *testing.T) (context.Context, *ent.Client, []*biz.Channel) 
 		SetType(channel.TypeOpenai).
 		SetName("Channel with tag2 only").
 		SetBaseURL("https://api.example.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key-2"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key-2"}).
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		SetStatus(channel.StatusEnabled).
@@ -59,7 +59,7 @@ func setupTagsTest(t *testing.T) (context.Context, *ent.Client, []*biz.Channel) 
 		SetType(channel.TypeOpenai).
 		SetName("Channel with tag3 only").
 		SetBaseURL("https://api.example.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key-3"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key-3"}).
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		SetStatus(channel.StatusEnabled).
@@ -72,7 +72,7 @@ func setupTagsTest(t *testing.T) (context.Context, *ent.Client, []*biz.Channel) 
 		SetType(channel.TypeOpenai).
 		SetName("Channel without tags").
 		SetBaseURL("https://api.example.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key-4"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key-4"}).
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		SetStatus(channel.StatusEnabled).
@@ -85,7 +85,7 @@ func setupTagsTest(t *testing.T) (context.Context, *ent.Client, []*biz.Channel) 
 		SetType(channel.TypeOpenai).
 		SetName("Channel with nil tags").
 		SetBaseURL("https://api.example.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key-5"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key-5"}).
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		SetStatus(channel.StatusEnabled).
@@ -392,7 +392,7 @@ func TestTagsFilterSelector_CaseSensitive(t *testing.T) {
 		SetType(channel.TypeOpenai).
 		SetName("Channel with TAG1").
 		SetBaseURL("https://api.example.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		SetStatus(channel.StatusEnabled).

@@ -40,6 +40,34 @@ func (_c *ChannelProbeCreate) SetSuccessRequestCount(v int) *ChannelProbeCreate 
 	return _c
 }
 
+// SetAvgTokensPerSecond sets the "avg_tokens_per_second" field.
+func (_c *ChannelProbeCreate) SetAvgTokensPerSecond(v float64) *ChannelProbeCreate {
+	_c.mutation.SetAvgTokensPerSecond(v)
+	return _c
+}
+
+// SetNillableAvgTokensPerSecond sets the "avg_tokens_per_second" field if the given value is not nil.
+func (_c *ChannelProbeCreate) SetNillableAvgTokensPerSecond(v *float64) *ChannelProbeCreate {
+	if v != nil {
+		_c.SetAvgTokensPerSecond(*v)
+	}
+	return _c
+}
+
+// SetAvgTimeToFirstTokenMs sets the "avg_time_to_first_token_ms" field.
+func (_c *ChannelProbeCreate) SetAvgTimeToFirstTokenMs(v float64) *ChannelProbeCreate {
+	_c.mutation.SetAvgTimeToFirstTokenMs(v)
+	return _c
+}
+
+// SetNillableAvgTimeToFirstTokenMs sets the "avg_time_to_first_token_ms" field if the given value is not nil.
+func (_c *ChannelProbeCreate) SetNillableAvgTimeToFirstTokenMs(v *float64) *ChannelProbeCreate {
+	if v != nil {
+		_c.SetAvgTimeToFirstTokenMs(*v)
+	}
+	return _c
+}
+
 // SetTimestamp sets the "timestamp" field.
 func (_c *ChannelProbeCreate) SetTimestamp(v int64) *ChannelProbeCreate {
 	_c.mutation.SetTimestamp(v)
@@ -135,6 +163,14 @@ func (_c *ChannelProbeCreate) createSpec() (*ChannelProbe, *sqlgraph.CreateSpec)
 		_spec.SetField(channelprobe.FieldSuccessRequestCount, field.TypeInt, value)
 		_node.SuccessRequestCount = value
 	}
+	if value, ok := _c.mutation.AvgTokensPerSecond(); ok {
+		_spec.SetField(channelprobe.FieldAvgTokensPerSecond, field.TypeFloat64, value)
+		_node.AvgTokensPerSecond = &value
+	}
+	if value, ok := _c.mutation.AvgTimeToFirstTokenMs(); ok {
+		_spec.SetField(channelprobe.FieldAvgTimeToFirstTokenMs, field.TypeFloat64, value)
+		_node.AvgTimeToFirstTokenMs = &value
+	}
 	if value, ok := _c.mutation.Timestamp(); ok {
 		_spec.SetField(channelprobe.FieldTimestamp, field.TypeInt64, value)
 		_node.Timestamp = value
@@ -227,6 +263,12 @@ func (u *ChannelProbeUpsertOne) UpdateNewValues() *ChannelProbeUpsertOne {
 		}
 		if _, exists := u.create.mutation.SuccessRequestCount(); exists {
 			s.SetIgnore(channelprobe.FieldSuccessRequestCount)
+		}
+		if _, exists := u.create.mutation.AvgTokensPerSecond(); exists {
+			s.SetIgnore(channelprobe.FieldAvgTokensPerSecond)
+		}
+		if _, exists := u.create.mutation.AvgTimeToFirstTokenMs(); exists {
+			s.SetIgnore(channelprobe.FieldAvgTimeToFirstTokenMs)
 		}
 		if _, exists := u.create.mutation.Timestamp(); exists {
 			s.SetIgnore(channelprobe.FieldTimestamp)
@@ -445,6 +487,12 @@ func (u *ChannelProbeUpsertBulk) UpdateNewValues() *ChannelProbeUpsertBulk {
 			}
 			if _, exists := b.mutation.SuccessRequestCount(); exists {
 				s.SetIgnore(channelprobe.FieldSuccessRequestCount)
+			}
+			if _, exists := b.mutation.AvgTokensPerSecond(); exists {
+				s.SetIgnore(channelprobe.FieldAvgTokensPerSecond)
+			}
+			if _, exists := b.mutation.AvgTimeToFirstTokenMs(); exists {
+				s.SetIgnore(channelprobe.FieldAvgTimeToFirstTokenMs)
 			}
 			if _, exists := b.mutation.Timestamp(); exists {
 				s.SetIgnore(channelprobe.FieldTimestamp)

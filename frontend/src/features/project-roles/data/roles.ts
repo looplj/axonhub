@@ -9,10 +9,10 @@ import { Role, RoleConnection, CreateRoleInput, UpdateRoleInput, roleConnectionS
 
 // GraphQL queries and mutations
 const PROJECT_ROLES_QUERY = `
-  query GetProjectRoles($projectId: ID!, $first: Int, $after: Cursor, $where: RoleWhereInput) {
+  query GetProjectRoles($projectId: ID!, $first: Int, $after: Cursor, $orderBy: RoleOrder, $where: RoleWhereInput) {
     node(id: $projectId) {
       ... on Project {
-        roles(first: $first, after: $after, where: $where) {
+        roles(first: $first, after: $after, orderBy: $orderBy, where: $where) {
           edges {
             node {
               id
@@ -71,6 +71,7 @@ export function useRoles(
   variables: {
     first?: number;
     after?: string;
+    orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' };
     where?: any;
   } = {}
 ) {
@@ -78,8 +79,13 @@ export function useRoles(
   const { t } = useTranslation();
   const selectedProjectId = useSelectedProjectId();
 
+  const queryVariables = {
+    ...variables,
+    orderBy: variables.orderBy || { field: 'CREATED_AT', direction: 'DESC' },
+  };
+
   return useQuery({
-    queryKey: ['project-roles', variables, selectedProjectId],
+    queryKey: ['project-roles', queryVariables, selectedProjectId],
     queryFn: async () => {
       try {
         if (!selectedProjectId) {
@@ -87,7 +93,7 @@ export function useRoles(
         }
         const data = await graphqlRequest<{ node: { roles: RoleConnection } }>(PROJECT_ROLES_QUERY, {
           projectId: selectedProjectId,
-          ...variables,
+          ...queryVariables,
         });
         return roleConnectionSchema.parse(data?.node?.roles);
       } catch (error) {

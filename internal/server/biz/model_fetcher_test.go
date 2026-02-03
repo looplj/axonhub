@@ -1,9 +1,14 @@
 package biz
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 func TestExtractJSONArray(t *testing.T) {
@@ -407,4 +412,72 @@ func TestPrepareModelsEndpointHeaders(t *testing.T) {
 			t.Errorf("Expected no Anthropic-Version header for Anthropic-like channels, got %q", headers.Get("Anthropic-Version"))
 		}
 	})
+}
+
+func TestFetchModelsGeminiPagination(t *testing.T) {
+	var callCount atomic.Int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount.Add(1)
+
+		if r.Method != http.MethodGet {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+
+		if r.URL.Path != "/v1beta/models" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		if got := r.URL.Query().Get("pageSize"); got != "1000" {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"missing or invalid pageSize"}`))
+			return
+		}
+
+		switch r.URL.Query().Get("pageToken") {
+		case "":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"models":[{"name":"models/m1"},{"name":"models/m2"}],"nextPageToken":"t1"}`))
+		case "t1":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"models":[{"name":"models/m3"}]}`))
+		default:
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"unexpected pageToken"}`))
+		}
+	}))
+	defer server.Close()
+
+	fetcher := NewModelFetcher(httpclient.NewHttpClientWithClient(server.Client()), nil)
+	apiKey := "test-key"
+
+	result, err := fetcher.FetchModels(context.Background(), FetchModelsInput{
+		ChannelType: channel.TypeGemini.String(),
+		BaseURL:     server.URL,
+		APIKey:      &apiKey,
+	})
+
+	if err != nil {
+		t.Fatalf("FetchModels() unexpected error: %v", err)
+	}
+	if result.Error != nil {
+		t.Fatalf("FetchModels() expected nil result.Error, got: %v", *result.Error)
+	}
+
+	if got := int(callCount.Load()); got != 2 {
+		t.Fatalf("expected 2 requests, got %d", got)
+	}
+
+	ids := make(map[string]struct{}, len(result.Models))
+	for _, m := range result.Models {
+		ids[m.ID] = struct{}{}
+	}
+
+	for _, want := range []string{"m1", "m2", "m3"} {
+		if _, ok := ids[want]; !ok {
+			t.Fatalf("missing model id %q in result: %#v", want, result.Models)
+		}
+	}
 }

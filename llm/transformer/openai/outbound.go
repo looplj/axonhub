@@ -12,10 +12,10 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
-	oairesp "github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
 // PlatformType represents the platform type for OpenAI API.
@@ -40,8 +40,8 @@ type Config struct {
 	// If true, the base URL will be used as is, without appending the version.
 	RawURL bool `json:"raw_url,omitempty"`
 
-	// APIKey is the API key for authentication, required.
-	APIKey string `json:"api_key,omitempty"`
+	// APIKeyProvider provides API keys for authentication, required.
+	APIKeyProvider auth.APIKeyProvider `json:"-"`
 
 	// APIVersion is the API version for Azure platform, required for Azure.
 	APIVersion string `json:"api_version,omitempty"`
@@ -50,15 +50,14 @@ type Config struct {
 // OutboundTransformer implements transformer.Outbound for OpenAI format.
 type OutboundTransformer struct {
 	config *Config
-	rt     *oairesp.OutboundTransformer
 }
 
 // NewOutboundTransformer creates a new OpenAI OutboundTransformer with legacy parameters.
 func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error) {
 	config := &Config{
-		PlatformType: PlatformOpenAI,
-		BaseURL:      baseURL,
-		APIKey:       apiKey,
+		PlatformType:   PlatformOpenAI,
+		BaseURL:        baseURL,
+		APIKeyProvider: auth.NewStaticKeyProvider(apiKey),
 	}
 
 	err := validateConfig(config)
@@ -76,25 +75,19 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		return nil, fmt.Errorf("invalid OpenAI transformer configuration: %w", err)
 	}
 
-	if before, ok := strings.CutSuffix(config.BaseURL, "#"); ok {
-		config.BaseURL = before
+	if strings.HasSuffix(config.BaseURL, "#") {
 		config.RawURL = true
 	}
 
-	config.BaseURL = strings.TrimSuffix(config.BaseURL, "/")
-
-	rt, err := oairesp.NewOutboundTransformerWithConfig(&oairesp.Config{
-		BaseURL: config.BaseURL,
-		APIKey:  config.APIKey,
-		RawURL:  config.RawURL,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create OpenAI outbound transformer: %w", err)
+	// For Azure, don't normalize with version - it has special URL format
+	if config.PlatformType == PlatformAzure {
+		config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "")
+	} else {
+		config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
 	}
 
 	return &OutboundTransformer{
 		config: config,
-		rt:     rt,
 	}, nil
 }
 
@@ -105,8 +98,8 @@ func validateConfig(config *Config) error {
 	}
 
 	// Standard OpenAI validation
-	if config.APIKey == "" {
-		return errors.New("API key is required")
+	if config.APIKeyProvider == nil {
+		return errors.New("API key provider is required")
 	}
 
 	if config.BaseURL == "" {
@@ -137,27 +130,17 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, fmt.Errorf("chat completion request is nil")
 	}
 
-	//nolint:exhaustive // Checked.
-	switch llmReq.RequestType {
-	case llm.RequestTypeEmbedding:
-		return t.transformEmbeddingRequest(ctx, llmReq)
-	case llm.RequestTypeRerank:
-		return nil, fmt.Errorf("%w: rerank is not supported", transformer.ErrInvalidRequest)
-	}
-
 	// Validate required fields for chat requests
 	if llmReq.Model == "" {
 		return nil, fmt.Errorf("model is required")
 	}
 
-	if len(llmReq.Messages) == 0 {
-		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
-	}
-
-	// If this is an image generation request, use the Image Generation API.
-	if llmReq.IsImageGenerationRequest() {
-		// Platform routing: For now, only standard OpenAI Image Generation API is supported.
-		//nolint:exhaustive // Chcked.
+	//nolint:exhaustive // Checked.
+	switch llmReq.RequestType {
+	case llm.RequestTypeEmbedding:
+		return t.transformEmbeddingRequest(ctx, llmReq)
+	case llm.RequestTypeImage:
+		//nolint:exhaustive // Checked.
 		switch t.config.PlatformType {
 		case PlatformAzure:
 			return nil, fmt.Errorf("image generation via Image Generation API is not yet supported for Azure platform")
@@ -166,6 +149,12 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		}
 
 		return t.buildImageGenerationAPIRequest(ctx, llmReq)
+	case llm.RequestTypeRerank:
+		return nil, fmt.Errorf("%w: rerank is not supported", transformer.ErrInvalidRequest)
+	}
+
+	if len(llmReq.Messages) == 0 {
+		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
 	}
 
 	// Convert to OpenAI Request format (this strips helper fields)
@@ -176,25 +165,28 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, fmt.Errorf("failed to transform request: %w", err)
 	}
 
+	// Get API key from provider
+	apiKey := t.config.APIKeyProvider.Get(ctx)
+
 	// Prepare headers
 	headers := make(http.Header)
 	headers.Set("Content-Type", "application/json")
 	headers.Set("Accept", "application/json")
 
-	var auth *httpclient.AuthConfig
+	var authConfig *httpclient.AuthConfig
 
 	//nolint:exhaustive // Chcked.
 	switch t.config.PlatformType {
 	case PlatformAzure:
-		auth = &httpclient.AuthConfig{
+		authConfig = &httpclient.AuthConfig{
 			Type:      "api_key",
-			APIKey:    t.config.APIKey,
+			APIKey:    apiKey,
 			HeaderKey: "Api-Key",
 		}
 	default:
-		auth = &httpclient.AuthConfig{
+		authConfig = &httpclient.AuthConfig{
 			Type:   "bearer",
-			APIKey: t.config.APIKey,
+			APIKey: apiKey,
 		}
 	}
 
@@ -209,7 +201,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		URL:     url,
 		Headers: headers,
 		Body:    body,
-		Auth:    auth,
+		Auth:    authConfig,
 	}, nil
 }
 
@@ -232,17 +224,15 @@ func (t *OutboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("response body is empty")
 	}
 
-	// Route to specialized transformers based on request metadata
-	if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
-		if fmtType, ok := httpResp.Request.TransformerMetadata["outbound_format_type"].(string); ok {
-			switch fmtType {
-			case llm.APIFormatOpenAIResponse.String():
-				return t.rt.TransformResponse(ctx, httpResp)
-			case llm.APIFormatOpenAIImageGeneration.String():
-				return transformImageGenerationResponse(httpResp)
-			case llm.APIFormatOpenAIEmbedding.String():
-				return t.transformEmbeddingResponse(ctx, httpResp)
-			}
+	// Route to specialized transformers based on request APIFormat
+	if httpResp.Request != nil && httpResp.Request.APIFormat != "" {
+		switch httpResp.Request.APIFormat {
+		case string(llm.APIFormatOpenAIImageGeneration),
+			string(llm.APIFormatOpenAIImageEdit),
+			string(llm.APIFormatOpenAIImageVariation):
+			return transformImageGenerationResponse(httpResp)
+		case string(llm.APIFormatOpenAIEmbedding):
+			return t.transformEmbeddingResponse(ctx, httpResp)
 		}
 	}
 
@@ -291,7 +281,7 @@ func (t *OutboundTransformer) TransformStreamChunk(
 
 // buildFullRequestURL constructs the appropriate URL based on the platform.
 func (t *OutboundTransformer) buildFullRequestURL(_ *llm.Request) (string, error) {
-	//nolint:exhaustive // Chcked.
+	//nolint:exhaustive // Checked.
 	switch t.config.PlatformType {
 	case PlatformAzure:
 		if strings.HasSuffix(t.config.BaseURL, "/openai/v1") {
@@ -309,34 +299,14 @@ func (t *OutboundTransformer) buildFullRequestURL(_ *llm.Request) (string, error
 		return fmt.Sprintf("%s/openai/v1/chat/completions?api-version=%s",
 			t.config.BaseURL, t.config.APIVersion), nil
 	default:
-		// RawURL is true, use the base URL as is
-		if t.config.RawURL {
-			return t.config.BaseURL + "/chat/completions", nil
-		}
-
-		// Standard OpenAI API
-		// Check if URL already contains /v1/ in the path (e.g., https://api.deepinfra.com/v1/openai)
-		if strings.Contains(t.config.BaseURL, "/v1/") {
-			return t.config.BaseURL + "/chat/completions", nil
-		}
-
-		if strings.HasSuffix(t.config.BaseURL, "/v1") {
-			return t.config.BaseURL + "/chat/completions", nil
-		}
-
-		return t.config.BaseURL + "/v1/chat/completions", nil
+		// BaseURL is already normalized with version in NewOutboundTransformerWithConfig
+		return t.config.BaseURL + "/chat/completions", nil
 	}
 }
 
 // SetAPIKey updates the API key.
 func (t *OutboundTransformer) SetAPIKey(apiKey string) {
-	t.config.APIKey = apiKey
-
-	// Validate configuration after updating API key
-	err := validateConfig(t.config)
-	if err != nil {
-		panic(fmt.Sprintf("invalid OpenAI transformer configuration after setting API key: %v", err))
-	}
+	t.config.APIKeyProvider = auth.NewStaticKeyProvider(apiKey)
 }
 
 // SetBaseURL updates the base URL.
@@ -359,32 +329,6 @@ func (t *OutboundTransformer) SetConfig(config *Config) {
 	}
 
 	t.config = config
-}
-
-// ConfigureForAzure configures the transformer for Azure OpenAI.
-func (t *OutboundTransformer) ConfigureForAzure(resourceName, apiVersion, apiKey string) error {
-	// Create new Azure configuration
-	newConfig := &Config{
-		PlatformType: PlatformAzure,
-		APIVersion:   apiVersion,
-		APIKey:       apiKey,
-	}
-
-	// Set base URL only if resource name is provided
-	if resourceName != "" {
-		newConfig.BaseURL = fmt.Sprintf("https://%s.openai.azure.com", resourceName)
-	}
-
-	// Validate the new configuration
-	err := validateConfig(newConfig)
-	if err != nil {
-		return fmt.Errorf("invalid Azure configuration: %w", err)
-	}
-
-	// Apply the validated configuration
-	t.config = newConfig
-
-	return nil
 }
 
 // GetConfig returns the current configuration.

@@ -13,7 +13,6 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
-	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/ent/request"
@@ -113,7 +112,7 @@ func (_c *ChannelCreate) SetNillableStatus(v *channel.Status) *ChannelCreate {
 }
 
 // SetCredentials sets the "credentials" field.
-func (_c *ChannelCreate) SetCredentials(v *objects.ChannelCredentials) *ChannelCreate {
+func (_c *ChannelCreate) SetCredentials(v objects.ChannelCredentials) *ChannelCreate {
 	_c.mutation.SetCredentials(v)
 	return _c
 }
@@ -257,25 +256,6 @@ func (_c *ChannelCreate) AddUsageLogs(v ...*UsageLog) *ChannelCreate {
 	return _c.AddUsageLogIDs(ids...)
 }
 
-// SetChannelPerformanceID sets the "channel_performance" edge to the ChannelPerformance entity by ID.
-func (_c *ChannelCreate) SetChannelPerformanceID(id int) *ChannelCreate {
-	_c.mutation.SetChannelPerformanceID(id)
-	return _c
-}
-
-// SetNillableChannelPerformanceID sets the "channel_performance" edge to the ChannelPerformance entity by ID if the given value is not nil.
-func (_c *ChannelCreate) SetNillableChannelPerformanceID(id *int) *ChannelCreate {
-	if id != nil {
-		_c = _c.SetChannelPerformanceID(*id)
-	}
-	return _c
-}
-
-// SetChannelPerformance sets the "channel_performance" edge to the ChannelPerformance entity.
-func (_c *ChannelCreate) SetChannelPerformance(v *ChannelPerformance) *ChannelCreate {
-	return _c.SetChannelPerformanceID(v.ID)
-}
-
 // AddChannelProbeIDs adds the "channel_probes" edge to the ChannelProbe entity by IDs.
 func (_c *ChannelCreate) AddChannelProbeIDs(ids ...int) *ChannelCreate {
 	_c.mutation.AddChannelProbeIDs(ids...)
@@ -383,10 +363,6 @@ func (_c *ChannelCreate) defaults() error {
 	if _, ok := _c.mutation.Status(); !ok {
 		v := channel.DefaultStatus
 		_c.mutation.SetStatus(v)
-	}
-	if _, ok := _c.mutation.Credentials(); !ok {
-		v := channel.DefaultCredentials
-		_c.mutation.SetCredentials(v)
 	}
 	if _, ok := _c.mutation.AutoSyncSupportedModels(); !ok {
 		v := channel.DefaultAutoSyncSupportedModels
@@ -599,22 +575,6 @@ func (_c *ChannelCreate) createSpec() (*Channel, *sqlgraph.CreateSpec) {
 		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	if nodes := _c.mutation.ChannelPerformanceIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2O,
-			Inverse: false,
-			Table:   channel.ChannelPerformanceTable,
-			Columns: []string{channel.ChannelPerformanceColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(channelperformance.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges = append(_spec.Edges, edge)
-	}
 	if nodes := _c.mutation.ChannelProbesIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -788,7 +748,7 @@ func (u *ChannelUpsert) UpdateStatus() *ChannelUpsert {
 }
 
 // SetCredentials sets the "credentials" field.
-func (u *ChannelUpsert) SetCredentials(v *objects.ChannelCredentials) *ChannelUpsert {
+func (u *ChannelUpsert) SetCredentials(v objects.ChannelCredentials) *ChannelUpsert {
 	u.Set(channel.FieldCredentials, v)
 	return u
 }
@@ -1076,7 +1036,7 @@ func (u *ChannelUpsertOne) UpdateStatus() *ChannelUpsertOne {
 }
 
 // SetCredentials sets the "credentials" field.
-func (u *ChannelUpsertOne) SetCredentials(v *objects.ChannelCredentials) *ChannelUpsertOne {
+func (u *ChannelUpsertOne) SetCredentials(v objects.ChannelCredentials) *ChannelUpsertOne {
 	return u.Update(func(s *ChannelUpsert) {
 		s.SetCredentials(v)
 	})
@@ -1556,7 +1516,7 @@ func (u *ChannelUpsertBulk) UpdateStatus() *ChannelUpsertBulk {
 }
 
 // SetCredentials sets the "credentials" field.
-func (u *ChannelUpsertBulk) SetCredentials(v *objects.ChannelCredentials) *ChannelUpsertBulk {
+func (u *ChannelUpsertBulk) SetCredentials(v objects.ChannelCredentials) *ChannelUpsertBulk {
 	return u.Update(func(s *ChannelUpsert) {
 		s.SetCredentials(v)
 	})

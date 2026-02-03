@@ -18,7 +18,7 @@ func TestDefaultSelector_Select_Deduplication(t *testing.T) {
 		SetType(channel.TypeOpenai).
 		SetName("Deduplication Channel").
 		SetBaseURL("https://api.openai.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		SetSettings(&objects.ChannelSettings{
@@ -84,7 +84,7 @@ func TestDefaultSelector_Select_AggregateSameChannelSamePriority(t *testing.T) {
 		SetType(channel.TypeOpenai).
 		SetName("Aggregation Channel").
 		SetBaseURL("https://api.openai.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
 		SetSupportedModels([]string{"gpt-4", "gpt-3.5-turbo"}).
 		SetDefaultTestModel("gpt-4").
 		SetStatus(channel.StatusEnabled).

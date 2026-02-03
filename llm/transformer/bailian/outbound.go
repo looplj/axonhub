@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
@@ -14,11 +15,8 @@ import (
 
 // Config holds all configuration for the Bailian outbound transformer.
 type Config struct {
-	BaseURL string `json:"base_url,omitempty"`
-	APIKey  string `json:"api_key,omitempty"`
-
-	// ReplaceDeveloperRoleWithSystem replaces developer role with system in messages.
-	ReplaceDeveloperRoleWithSystem bool `json:"replaceDeveloperRoleWithSystem,omitempty"`
+	BaseURL        string              `json:"base_url,omitempty"`
+	APIKeyProvider auth.APIKeyProvider `json:"-"`
 }
 
 // OutboundTransformer implements transformer.Outbound for Bailian (OpenAI-compatible) format.
@@ -32,8 +30,8 @@ type OutboundTransformer struct {
 // Deprecated: Use NewOutboundTransformerWithConfig instead.
 func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error) {
 	config := &Config{
-		BaseURL: baseURL,
-		APIKey:  apiKey,
+		BaseURL:        baseURL,
+		APIKeyProvider: auth.NewStaticKeyProvider(apiKey),
 	}
 
 	return NewOutboundTransformerWithConfig(config)
@@ -45,7 +43,13 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		return nil, fmt.Errorf("invalid Bailian transformer configuration: config is nil")
 	}
 
-	base, err := openai.NewOutboundTransformer(config.BaseURL, config.APIKey)
+	oaiConfig := &openai.Config{
+		PlatformType:   openai.PlatformOpenAI,
+		BaseURL:        config.BaseURL,
+		APIKeyProvider: config.APIKeyProvider,
+	}
+
+	base, err := openai.NewOutboundTransformerWithConfig(oaiConfig)
 	if err != nil {
 		return nil, fmt.Errorf("invalid Bailian transformer configuration: %w", err)
 	}
@@ -55,40 +59,9 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 
 // TransformRequest applies Bailian-specific request normalization before delegating to OpenAI-compatible transformer.
 func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
-	if t.config != nil && t.config.ReplaceDeveloperRoleWithSystem {
-		llmReq = replaceDeveloperRole(llmReq)
-	}
-
 	llmReq = mergeConsecutiveToolCallMessages(llmReq)
 
 	return t.Outbound.TransformRequest(ctx, llmReq)
-}
-
-func replaceDeveloperRole(req *llm.Request) *llm.Request {
-	if req == nil || len(req.Messages) == 0 {
-		return req
-	}
-
-	replaced := false
-
-	messages := make([]llm.Message, len(req.Messages))
-	for i, msg := range req.Messages {
-		if strings.EqualFold(msg.Role, "developer") {
-			msg.Role = "system"
-			replaced = true
-		}
-
-		messages[i] = msg
-	}
-
-	if !replaced {
-		return req
-	}
-
-	updated := *req
-	updated.Messages = messages
-
-	return &updated
 }
 
 func mergeConsecutiveToolCallMessages(req *llm.Request) *llm.Request {

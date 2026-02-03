@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/privacy"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
@@ -123,11 +124,11 @@ func TestRoundRobinStrategy_Score_InactivityDecay(t *testing.T) {
 
 	activeMetrics := &biz.AggregatedMetrics{}
 	activeMetrics.RequestCount = 500
-	activeMetrics.LastSuccessAt = &activeTime
+	activeMetrics.LastSelectedAt = &activeTime
 
 	idleMetrics := &biz.AggregatedMetrics{}
 	idleMetrics.RequestCount = 500
-	idleMetrics.LastSuccessAt = &idleTime
+	idleMetrics.LastSelectedAt = &idleTime
 
 	mockProvider := &mockMetricsProvider{
 		metrics: map[int]*biz.AggregatedMetrics{
@@ -329,6 +330,7 @@ func TestRoundRobinStrategy_WithRealDatabase(t *testing.T) {
 			SetType("openai").
 			SetSupportedModels([]string{"gpt-4"}).
 			SetDefaultTestModel("gpt-4").
+			SetCredentials(objects.ChannelCredentials{APIKeys: []string{fmt.Sprintf("test-key-%d", i)}}).
 			Save(ctx)
 		require.NoError(t, err)
 
@@ -353,7 +355,6 @@ func TestRoundRobinStrategy_WithRealDatabase(t *testing.T) {
 				EndTime:          time.Now(),
 				Success:          true,
 				RequestCompleted: true,
-				TokenCount:       100,
 			}
 			channelService.RecordPerformance(ctx, perf)
 		}
@@ -636,11 +637,11 @@ func TestWeightRoundRobinStrategy_Score_InactivityDecay(t *testing.T) {
 
 	activeMetrics := &biz.AggregatedMetrics{}
 	activeMetrics.RequestCount = 400
-	activeMetrics.LastSuccessAt = &activeTime
+	activeMetrics.LastSelectedAt = &activeTime
 
 	idleMetrics := &biz.AggregatedMetrics{}
 	idleMetrics.RequestCount = 400
-	idleMetrics.LastSuccessAt = &idleTime
+	idleMetrics.LastSelectedAt = &idleTime
 
 	mockProvider := &mockMetricsProvider{
 		metrics: map[int]*biz.AggregatedMetrics{

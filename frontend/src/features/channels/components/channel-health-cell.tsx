@@ -2,6 +2,7 @@ import { memo } from 'react';
 import { format } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
+import { formatDuration } from '@/utils/format-duration';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ChannelProbePoint } from '../data/schema';
 
@@ -51,6 +52,8 @@ export const ChannelHealthCell = memo(({ points }: ChannelHealthCellProps) => {
               <div className='space-y-1 text-xs'>
                 <div>{t('channels.columns.healthTooltip.probeTime')}: {probeTime}</div>
                 <div>{t('channels.columns.healthTooltip.successRate')}: {point.successRequestCount}/{point.totalRequestCount}</div>
+                <div>{t('channels.columns.healthTooltip.firstTokenLatency')}: {point.avgTimeToFirstTokenMs != null ? formatDuration(point.avgTimeToFirstTokenMs) : '-'}</div>
+                <div>{t('channels.columns.healthTooltip.tokensPerSecond')}: {point.avgTokensPerSecond != null ? point.avgTokensPerSecond.toFixed(1) : '-'}</div>
               </div>
             </TooltipContent>
           </Tooltip>

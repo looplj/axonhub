@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/anthropic"
@@ -723,32 +724,26 @@ func getOutboundTransformer(format llm.APIFormat) (transformer.Outbound, error) 
 	switch format {
 	case llm.APIFormatOpenAIChatCompletion:
 		config := &openai.Config{
-			PlatformType: openai.PlatformOpenAI,
-			BaseURL:      "https://api.openai.com/v1",
-			APIKey:       "dummy",
+			PlatformType:   openai.PlatformOpenAI,
+			BaseURL:        "https://api.openai.com/v1",
+			APIKeyProvider: auth.NewStaticKeyProvider("dummy"),
 		}
 
 		return openai.NewOutboundTransformerWithConfig(config)
 	case llm.APIFormatOpenAIResponse:
-		config := &openai.Config{
-			PlatformType: openai.PlatformOpenAI,
-			BaseURL:      "https://api.openai.com/v1",
-			APIKey:       "dummy",
-		}
-
-		return responses.NewOutboundTransformer(config.BaseURL, config.APIKey)
+		return responses.NewOutboundTransformer("https://api.openai.com/v1", "dummy")
 	case llm.APIFormatAnthropicMessage:
 		config := &anthropic.Config{
-			Type:    anthropic.PlatformDirect,
-			BaseURL: "https://api.anthropic.com",
-			APIKey:  "dummy",
+			Type:           anthropic.PlatformDirect,
+			BaseURL:        "https://api.anthropic.com",
+			APIKeyProvider: auth.NewStaticKeyProvider("dummy"),
 		}
 
 		return anthropic.NewOutboundTransformerWithConfig(config)
 	case llm.APIFormatGeminiContents:
 		config := gemini.Config{
-			BaseURL: "https://generativelanguage.googleapis.com",
-			APIKey:  "dummy",
+			BaseURL:        "https://generativelanguage.googleapis.com",
+			APIKeyProvider: auth.NewStaticKeyProvider("dummy"),
 		}
 
 		return gemini.NewOutboundTransformerWithConfig(config)

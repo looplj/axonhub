@@ -39,7 +39,7 @@ type EmbeddingUsage struct {
 
 // transformEmbeddingRequest transforms unified llm.Request to HTTP embedding request.
 func (t *OutboundTransformer) transformEmbeddingRequest(
-	_ context.Context,
+	ctx context.Context,
 	llmReq *llm.Request,
 ) (*httpclient.Request, error) {
 	if llmReq == nil {
@@ -72,6 +72,9 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 	// Build URL, reuse same logic as chat
 	url := t.buildEmbeddingURL()
 
+	// Get API key from provider
+	apiKey := t.config.APIKeyProvider.Get(ctx)
+
 	// Build auth config
 	var auth *httpclient.AuthConfig
 
@@ -80,30 +83,25 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 	case PlatformAzure:
 		auth = &httpclient.AuthConfig{
 			Type:      "api_key",
-			APIKey:    t.config.APIKey,
+			APIKey:    apiKey,
 			HeaderKey: "Api-Key",
 		}
 	default:
 		auth = &httpclient.AuthConfig{
 			Type:   "bearer",
-			APIKey: t.config.APIKey,
+			APIKey: apiKey,
 		}
 	}
 
 	httpReq := &httpclient.Request{
-		Method:  http.MethodPost,
-		URL:     url,
-		Headers: headers,
-		Body:    body,
-		Auth:    auth,
+		Method:      http.MethodPost,
+		URL:         url,
+		Headers:     headers,
+		Body:        body,
+		Auth:        auth,
+		RequestType: string(llm.RequestTypeEmbedding),
+		APIFormat:   string(llm.APIFormatOpenAIEmbedding),
 	}
-
-	// Set metadata for response routing
-	if httpReq.TransformerMetadata == nil {
-		httpReq.TransformerMetadata = make(map[string]any)
-	}
-
-	httpReq.TransformerMetadata["outbound_format_type"] = llm.APIFormatOpenAIEmbedding.String()
 
 	return httpReq, nil
 }
@@ -128,21 +126,8 @@ func (t *OutboundTransformer) buildEmbeddingURL() string {
 		return fmt.Sprintf("%s/openai/v1/embeddings?api-version=%s",
 			t.config.BaseURL, t.config.APIVersion)
 	default:
-		// RawURL is true, use the base URL as is
-		if t.config.RawURL {
-			return t.config.BaseURL + "/embeddings"
-		}
-		// Standard OpenAI API
-		// Check if URL already contains /v1/ in the path (e.g., https://api.deepinfra.com/v1/openai)
-		if strings.Contains(t.config.BaseURL, "/v1/") {
-			return t.config.BaseURL + "/embeddings"
-		}
-
-		if strings.HasSuffix(t.config.BaseURL, "/v1") {
-			return t.config.BaseURL + "/embeddings"
-		}
-
-		return t.config.BaseURL + "/v1/embeddings"
+		// BaseURL is already normalized with version in NewOutboundTransformerWithConfig
+		return t.config.BaseURL + "/embeddings"
 	}
 }
 

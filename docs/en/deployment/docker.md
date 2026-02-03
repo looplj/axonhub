@@ -340,5 +340,7 @@ axonhub:
 ## Next Steps
 
 - [Configuration Guide](configuration.md)
-- [API Reference](../api-reference/unified-api.md)
+- [OpenAI API](../api-reference/openai-api.md)
+- [Anthropic API](../api-reference/anthropic-api.md)
+- [Gemini API](../api-reference/gemini-api.md)
 - [Architecture Documentation](../architecture/erd.md)

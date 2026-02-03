@@ -4,9 +4,11 @@ import (
 	"strings"
 )
 
-// NormalizeBaseURL normalizes the base URL for the Anthropic API.
-// It ensures that the URL ends with a slash and does not contain the version in the path.
-// TODO: use this func to unify the base URL for all transformers.
+// NormalizeBaseURL normalizes the base URL for API endpoints.
+// It ensures that the URL ends with the specified version and handles special cases:
+// - URLs ending with "#" are treated as raw URLs (version not appended)
+// - Trailing slashes are removed
+// - Version is appended only if not already present.
 func NormalizeBaseURL(url, version string) string {
 	if url == "" {
 		return ""

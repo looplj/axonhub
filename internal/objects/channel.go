@@ -1,6 +1,8 @@
 package objects
 
 import (
+	"strings"
+
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
 )
@@ -79,19 +81,82 @@ type ChannelSettings struct {
 }
 
 type ChannelCredentials struct {
-	// APIKey is the API key for the channel.
+	// APIKey is the API key for the channel, for the single key channel, e.g. Codex, Claude code, Antigravity.
+	// It is kept for backward compatibility with existing data, recommend to use OAuth instead.
 	APIKey string `json:"apiKey,omitempty"`
 
+	// OAuth is the OAuth credentials for the channel, for the OAuth channel, e.g. Codex, Claude code, Antigravity.
 	OAuth *OAuthCredentials `json:"oauth,omitempty"`
+
+	// APIKeys is a list of API keys for the channel.
+	// When multiple keys are provided, they will be used in a round-robin fashion.
+	APIKeys []string `json:"apiKeys,omitempty"`
 
 	// Azure configuration for the channel.
 	Azure *AzureCredential `json:"azure,omitempty"`
 
-	// AWS is the AWS credentials for the channel.
-	AWS *AWSCredential `json:"aws,omitempty"`
-
 	// GCP is the GCP credentials for the channel.
 	GCP *GCPCredential `json:"gcp,omitempty"`
+}
+
+// GetAllAPIKeys returns all API keys for the channel, combining APIKey and APIKeys fields.
+// This ensures backward compatibility with old data that only has APIKey set.
+func (c *ChannelCredentials) GetAllAPIKeys() []string {
+	if c == nil {
+		return nil
+	}
+
+	var keys []string
+
+	// Add legacy APIKey if present (only if not OAuth credential)
+	if c.APIKey != "" && !c.IsOAuth() {
+		keys = append(keys, c.APIKey)
+	}
+
+	// Add new APIKeys
+	keys = append(keys, c.APIKeys...)
+
+	return keys
+}
+
+// HasMultipleAPIKeys returns true if the channel has more than one API key.
+func (c *ChannelCredentials) HasMultipleAPIKeys() bool {
+	keys := c.GetAllAPIKeys()
+	return len(keys) > 1
+}
+
+// GetSingleAPIKey returns the single API key for the channel.
+// If multiple keys are configured, returns the first one.
+// Returns empty string if no keys are configured.
+func (c *ChannelCredentials) GetSingleAPIKey() string {
+	keys := c.GetAllAPIKeys()
+	if len(keys) > 0 {
+		return keys[0]
+	}
+
+	return ""
+}
+
+// IsOAuth returns true if OAuth credentials are configured and valid.
+// It checks both the new OAuth field and legacy APIKey field for backward compatibility.
+func (c *ChannelCredentials) IsOAuth() bool {
+	if c == nil {
+		return false
+	}
+
+	// Check new OAuth field first
+	if c.OAuth != nil && c.OAuth.AccessToken != "" {
+		return true
+	}
+
+	// Backward compatibility: check if APIKey contains OAuth JSON
+	return isOAuthJSON(c.APIKey)
+}
+
+// isOAuthJSON checks if a string is an OAuth JSON credential.
+func isOAuthJSON(s string) bool {
+	s = strings.TrimSpace(s)
+	return strings.HasPrefix(s, "{") && strings.Contains(s, "access_token")
 }
 
 type OAuthCredentials = oauth.OAuthCredentials
@@ -99,12 +164,6 @@ type OAuthCredentials = oauth.OAuthCredentials
 type AzureCredential struct {
 	// APIVersion is a optional version for the channel.
 	APIVersion string `json:"apiVersion"`
-}
-
-type AWSCredential struct {
-	Region          string `json:"region"`
-	AccessKeyID     string `json:"accessKeyID"`
-	SecretAccessKey string `json:"secretAccessKey"`
 }
 
 type GCPCredential struct {

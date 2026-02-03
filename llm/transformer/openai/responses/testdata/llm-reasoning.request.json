@@ -34,5 +34,6 @@
   "store": false,
   "parallel_tool_calls": false,
   "tool_choice": "auto",
-  "prompt_cache_key": "019b2852-ee5a-7d73-bd4b-08b1fa61b97e"
+  "prompt_cache_key": "019b2852-ee5a-7d73-bd4b-08b1fa61b97e",
+  "reasoning_summary": "auto"
 }

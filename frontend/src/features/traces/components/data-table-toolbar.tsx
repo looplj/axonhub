@@ -1,18 +1,18 @@
 import { Cross2Icon } from '@radix-ui/react-icons';
 import { Table } from '@tanstack/react-table';
 import { RefreshCw, X } from 'lucide-react';
-import { DateRange } from 'react-day-picker';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { DataTableViewOptions } from './data-table-view-options';
+import type { DateTimeRangeValue } from '@/utils/date-range';
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>;
-  dateRange?: DateRange;
-  onDateRangeChange?: (range: DateRange | undefined) => void;
+  dateRange?: DateTimeRangeValue;
+  onDateRangeChange?: (range: DateTimeRangeValue | undefined) => void;
   traceIdFilter: string;
   onTraceIdFilterChange: (traceId: string) => void;
   onRefresh?: () => void;
@@ -33,7 +33,8 @@ export function DataTableToolbar<TData>({
   onAutoRefreshChange,
 }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation();
-  const isFiltered = table.getState().columnFilters.length > 0 || !!dateRange || !!traceIdFilter.trim();
+  const hasDateRange = !!dateRange?.from || !!dateRange?.to;
+  const isFiltered = table.getState().columnFilters.length > 0 || hasDateRange || !!traceIdFilter.trim();
 
   return (
     <div className='flex items-center justify-between'>
@@ -45,7 +46,7 @@ export function DataTableToolbar<TData>({
           className='h-8 w-[150px] lg:w-[250px]'
         />
         <DateRangePicker value={dateRange} onChange={onDateRangeChange} />
-        {dateRange && (
+        {hasDateRange && (
           <Button variant='ghost' onClick={() => onDateRangeChange?.(undefined)} className='h-8 px-2' size='sm'>
             <X className='h-4 w-4' />
           </Button>

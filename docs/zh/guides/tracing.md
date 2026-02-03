@@ -5,6 +5,11 @@
 ### 概览
 AxonHub 可以在不引入额外 SDK 的情况下，为每一次请求构建线程感知的追踪。只要客户端已经兼容 OpenAI 协议，您就可以通过传递追踪与线程请求头，或直接让 AxonHub 自动生成，实现低侵入的可观测能力。
 
+使用追踪的主要优势包括：
+- **可观测性**：清晰地查看每一条用户消息及其触发的所有 agent 请求。
+- **性能优化**：AxonHub 会将同一个 Trace 的请求优先转发到同一个上游渠道，从而大幅提高提供商端的缓存命中率（例如 Anthropic 的 Prompt Caching），降低响应延迟并减少成本。
+- **调试便捷**：结合线程 ID 还原完整的会话上下文，快速定位多轮对话中的问题。
+
 ### 关键概念
 - **Thread ID（`AH-Thread-Id`）** – 代表用户的一个完整对话会话，将多条追踪关联起来，帮助重现完整的用户旅程。
 - **Trace ID（`AH-Trace-Id`）** – 代表用户发出的一条消息以及该消息触发的所有 agent 请求。需要在需要串联多次调用时显式提供；未携带该请求头时，AxonHub 会为单次调用生成 ID 但无法自动关联其他请求。
@@ -158,6 +163,18 @@ func sendTracedMessage(ctx context.Context, apiKey string) (*anthropic.Message, 
 2. 按项目、模型或时间范围筛选目标追踪。
 3. 展开追踪查看 span、提示/回复内容、耗时及渠道元数据。
 4. 跳转关联的线程，结合追踪细节还原完整会话。
+
+<table>
+  <tr align="center">
+    <td align="center">
+      <a href="../../screenshots/axonhub-trace.png">
+        <img src="../../screenshots/axonhub-trace.png" alt="Trace Details" width="600"/>
+      </a>
+      <br/>
+      Trace 详情页面展示了请求的时间线、Token 使用量及缓存命中情况
+    </td>
+  </tr>
+</table>
 
 ### 故障排查
 - **未生成追踪** – 确认请求已通过认证且项目 ID 正确解析（API Key 必须隶属于某个项目）。

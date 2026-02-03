@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/privacy"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
@@ -259,6 +260,7 @@ func TestLoadBalancer_ErrorAware_ChannelWithErrorsRankedLower(t *testing.T) {
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		SetOrderingWeight(50).
+		SetCredentials(objects.ChannelCredentials{APIKeys: []string{"test-key-1"}}).
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -268,6 +270,7 @@ func TestLoadBalancer_ErrorAware_ChannelWithErrorsRankedLower(t *testing.T) {
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		SetOrderingWeight(50).
+		SetCredentials(objects.ChannelCredentials{APIKeys: []string{"test-key-2"}}).
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -277,6 +280,7 @@ func TestLoadBalancer_ErrorAware_ChannelWithErrorsRankedLower(t *testing.T) {
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		SetOrderingWeight(50).
+		SetCredentials(objects.ChannelCredentials{APIKeys: []string{"test-key-3"}}).
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -303,7 +307,6 @@ func TestLoadBalancer_ErrorAware_ChannelWithErrorsRankedLower(t *testing.T) {
 			EndTime:          time.Now(),
 			Success:          true,
 			RequestCompleted: true,
-			TokenCount:       100,
 		}
 		channelService.RecordPerformance(ctx, perf)
 	}
@@ -347,6 +350,7 @@ func TestLoadBalancer_ErrorAware_ShortTermErrorPenalty(t *testing.T) {
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		SetOrderingWeight(50).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key-1"}).
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -356,6 +360,7 @@ func TestLoadBalancer_ErrorAware_ShortTermErrorPenalty(t *testing.T) {
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		SetOrderingWeight(50).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key-2"}).
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -379,7 +384,6 @@ func TestLoadBalancer_ErrorAware_ShortTermErrorPenalty(t *testing.T) {
 		EndTime:          time.Now(),
 		Success:          true,
 		RequestCompleted: true,
-		TokenCount:       100,
 	}
 	channelService.RecordPerformance(ctx, perf2)
 
@@ -422,6 +426,7 @@ func TestLoadBalancer_TraceAware_SameChannelPrioritized(t *testing.T) {
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		SetOrderingWeight(50).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key-1"}).
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -431,6 +436,7 @@ func TestLoadBalancer_TraceAware_SameChannelPrioritized(t *testing.T) {
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		SetOrderingWeight(50).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key-2"}).
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -440,6 +446,7 @@ func TestLoadBalancer_TraceAware_SameChannelPrioritized(t *testing.T) {
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		SetOrderingWeight(50).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key-3"}).
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -507,6 +514,7 @@ func TestLoadBalancer_Combined_ErrorAndTrace(t *testing.T) {
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		SetOrderingWeight(50).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key-1"}).
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -516,6 +524,7 @@ func TestLoadBalancer_Combined_ErrorAndTrace(t *testing.T) {
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		SetOrderingWeight(50).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key-2"}).
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -525,6 +534,7 @@ func TestLoadBalancer_Combined_ErrorAndTrace(t *testing.T) {
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		SetOrderingWeight(50).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key-3"}).
 		Save(ctx)
 	require.NoError(t, err)
 

@@ -194,7 +194,7 @@
     "system.autoBackup.triggerNowTooltip": "Please select a data storage first",
     "system.autoBackup.saveFirstTooltip": "Please save the changes first before triggering backup",
     "system.autoBackup.triggeringBackup": "Backing up...",
-  "system.autoBackup.triggerSuccess": "Backup triggered successfully",
+  "system.autoBackup.triggerSuccess": "Backup completed",
   "system.autoBackup.triggerFailed": "Failed to trigger backup",
   "system.autoBackup.saveSettings": "Save Auto Backup Settings",
   "system.autoBackup.savingSettings": "Saving...",

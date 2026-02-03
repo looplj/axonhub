@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
@@ -12,8 +13,8 @@ import (
 
 // Config holds all configuration for the ModelScope outbound transformer.
 type Config struct {
-	BaseURL string `json:"base_url,omitempty"` // Custom base URL (optional)
-	APIKey  string `json:"api_key,omitempty"`  // API key
+	BaseURL        string              `json:"base_url,omitempty"` // Custom base URL (optional)
+	APIKeyProvider auth.APIKeyProvider `json:"-"`                  // API key provider
 }
 
 // OutboundTransformer implements transformer.Outbound for ModelScope format.
@@ -25,8 +26,8 @@ type OutboundTransformer struct {
 // Deprecated: Use NewOutboundTransformerWithConfig instead.
 func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error) {
 	config := &Config{
-		BaseURL: baseURL,
-		APIKey:  apiKey,
+		BaseURL:        baseURL,
+		APIKeyProvider: auth.NewStaticKeyProvider(apiKey),
 	}
 
 	return NewOutboundTransformerWithConfig(config)
@@ -34,7 +35,13 @@ func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error
 
 // NewOutboundTransformerWithConfig creates a new ModelScope OutboundTransformer with unified configuration.
 func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, error) {
-	t, err := openai.NewOutboundTransformer(config.BaseURL, config.APIKey)
+	oaiConfig := &openai.Config{
+		PlatformType:   openai.PlatformOpenAI,
+		BaseURL:        config.BaseURL,
+		APIKeyProvider: config.APIKeyProvider,
+	}
+
+	t, err := openai.NewOutboundTransformerWithConfig(oaiConfig)
 	if err != nil {
 		return nil, fmt.Errorf("invalid ModelScope transformer configuration: %w", err)
 	}

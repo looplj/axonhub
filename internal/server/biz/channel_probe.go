@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"github.com/samber/lo"
 	"github.com/zhenzou/executors"
 	"go.uber.org/fx"
@@ -14,14 +15,18 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/pkg/xtime"
 )
 
 // ChannelProbePoint represents a single probe data point for a channel.
 type ChannelProbePoint struct {
-	Timestamp           int64 `json:"timestamp"`
-	TotalRequestCount   int   `json:"total_request_count"`
-	SuccessRequestCount int   `json:"success_request_count"`
+	Timestamp             int64    `json:"timestamp"`
+	TotalRequestCount     int      `json:"total_request_count"`
+	SuccessRequestCount   int      `json:"success_request_count"`
+	AvgTokensPerSecond    *float64 `json:"avg_tokens_per_second,omitempty"`
+	AvgTimeToFirstTokenMs *float64 `json:"avg_time_to_first_token_ms,omitempty"`
 }
 
 // ChannelProbeData represents probe data for a single channel.
@@ -57,11 +62,6 @@ func NewChannelProbeService(params ChannelProbeServiceParams) *ChannelProbeServi
 		SystemService:     params.SystemService,
 		Executor:          executors.NewPoolScheduleExecutor(executors.WithMaxConcurrent(1)),
 		lastExecutionTime: time.Time{},
-	}
-
-	err := svc.Start(context.Background())
-	if err != nil {
-		panic(err)
 	}
 
 	return svc
@@ -108,6 +108,152 @@ func getIntervalMinutesFromFrequency(frequency ProbeFrequency) int {
 	}
 }
 
+type channelProbeStats struct {
+	total                 int
+	success               int
+	avgTokensPerSecond    *float64
+	avgTimeToFirstTokenMs *float64
+}
+
+// computeAllChannelProbeStats computes probe stats for all channels in a single batch query.
+// This uses request_execution table for more accurate per-channel execution metrics,
+// including retry attempts. This aligns with channel_performance data source.
+func (svc *ChannelProbeService) computeAllChannelProbeStats(
+	ctx context.Context,
+	channelIDs []int,
+	startTime time.Time,
+	endTime time.Time,
+) (map[int]*channelProbeStats, error) {
+	if len(channelIDs) == 0 {
+		return nil, nil
+	}
+
+	// Query 1: Get total and success counts per channel from request_execution
+	type countResult struct {
+		ChannelID    int `json:"channel_id"`
+		TotalCount   int `json:"total_count"`
+		SuccessCount int `json:"success_count"`
+	}
+
+	var countRes []countResult
+
+	err := svc.db.RequestExecution.Query().
+		Where(
+			requestexecution.ChannelIDIn(channelIDs...),
+			requestexecution.CreatedAtGTE(startTime),
+			requestexecution.CreatedAtLT(endTime),
+			requestexecution.StatusNotIn(requestexecution.StatusPending, requestexecution.StatusProcessing),
+		).
+		Modify(func(s *sql.Selector) {
+			s.Select(
+				s.C(requestexecution.FieldChannelID),
+				sql.As(sql.Count("*"), "total_count"),
+				sql.As("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END)", "success_count"),
+			).GroupBy(s.C(requestexecution.FieldChannelID))
+		}).
+		Scan(ctx, &countRes)
+	if err != nil {
+		return nil, err
+	}
+
+	// Initialize result map
+	result := make(map[int]*channelProbeStats)
+	for _, r := range countRes {
+		result[r.ChannelID] = &channelProbeStats{
+			total:   r.TotalCount,
+			success: r.SuccessCount,
+		}
+	}
+
+	// Query 2: Get latency and first token latency per channel from request_execution
+	type latencyResult struct {
+		ChannelID                int   `json:"channel_id"`
+		TotalLatencyMs           int64 `json:"total_latency_ms"`
+		TotalFirstTokenLatencyMs int64 `json:"total_first_token_latency_ms"`
+		StreamingCount           int   `json:"streaming_count"`
+	}
+
+	var latencyRes []latencyResult
+
+	err = svc.db.RequestExecution.Query().
+		Where(
+			requestexecution.ChannelIDIn(channelIDs...),
+			requestexecution.CreatedAtGTE(startTime),
+			requestexecution.CreatedAtLT(endTime),
+			requestexecution.StatusEQ(requestexecution.StatusCompleted),
+		).
+		Modify(func(s *sql.Selector) {
+			s.Select(
+				s.C(requestexecution.FieldChannelID),
+				sql.As(sql.Sum(s.C(requestexecution.FieldMetricsLatencyMs)), "total_latency_ms"),
+				sql.As(sql.Sum(s.C(requestexecution.FieldMetricsFirstTokenLatencyMs)), "total_first_token_latency_ms"),
+				sql.As("SUM(CASE WHEN metrics_first_token_latency_ms IS NOT NULL THEN 1 ELSE 0 END)", "streaming_count"),
+			).GroupBy(s.C(requestexecution.FieldChannelID))
+		}).
+		Scan(ctx, &latencyRes)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build latency map for later use
+	latencyMap := make(map[int]*latencyResult)
+	for i := range latencyRes {
+		latencyMap[latencyRes[i].ChannelID] = &latencyRes[i]
+	}
+
+	// Query 3: Get total tokens per channel from usage_log
+	// Note: usage_log is linked to request, not request_execution, so we filter by channel_id and time range
+	type tokenResult struct {
+		ChannelID   int   `json:"channel_id"`
+		TotalTokens int64 `json:"total_tokens"`
+	}
+
+	var tokenRes []tokenResult
+
+	err = svc.db.UsageLog.Query().
+		Where(
+			usagelog.ChannelIDIn(channelIDs...),
+			usagelog.CreatedAtGTE(startTime),
+			usagelog.CreatedAtLT(endTime),
+		).
+		Modify(func(s *sql.Selector) {
+			s.Select(
+				s.C(usagelog.FieldChannelID),
+				sql.As(sql.Sum(s.C(usagelog.FieldTotalTokens)), "total_tokens"),
+			).GroupBy(s.C(usagelog.FieldChannelID))
+		}).
+		Scan(ctx, &tokenRes)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build token map
+	tokenMap := make(map[int]int64)
+	for _, r := range tokenRes {
+		tokenMap[r.ChannelID] = r.TotalTokens
+	}
+
+	// Compute derived metrics
+	for channelID, stats := range result {
+		latency := latencyMap[channelID]
+		totalTokens := tokenMap[channelID]
+
+		// Calculate avg tokens per second
+		if latency != nil && latency.TotalLatencyMs > 0 && totalTokens > 0 {
+			tps := float64(totalTokens) / (float64(latency.TotalLatencyMs) / 1000.0)
+			stats.avgTokensPerSecond = &tps
+		}
+
+		// Calculate avg time to first token
+		if latency != nil && latency.StreamingCount > 0 {
+			avgTTFT := float64(latency.TotalFirstTokenLatencyMs) / float64(latency.StreamingCount)
+			stats.avgTimeToFirstTokenMs = &avgTTFT
+		}
+	}
+
+	return result, nil
+}
+
 // runProbe executes the probe task.
 func (svc *ChannelProbeService) runProbe(ctx context.Context) {
 	// Check if probe is enabled
@@ -118,7 +264,7 @@ func (svc *ChannelProbeService) runProbe(ctx context.Context) {
 	}
 
 	intervalMinutes := setting.Probe.GetIntervalMinutes()
-	now := time.Now()
+	now := xtime.UTCNow()
 	// Align current time to interval boundary
 	alignedTime := now.Truncate(time.Duration(intervalMinutes) * time.Minute)
 	timestamp := alignedTime.Unix()
@@ -166,54 +312,34 @@ func (svc *ChannelProbeService) runProbe(ctx context.Context) {
 	// Calculate time range based on frequency
 	startTime := alignedTime.Add(-time.Duration(intervalMinutes) * time.Minute)
 
+	// Extract channel IDs for batch query
+	channelIDs := make([]int, len(channels))
+	for i, ch := range channels {
+		channelIDs[i] = ch.ID
+	}
+
+	// Batch compute all channel stats in 3 queries instead of N*4 queries
+	allStats, err := svc.computeAllChannelProbeStats(ctx, channelIDs, startTime, alignedTime)
+	if err != nil {
+		log.Error(ctx, "Failed to compute channel probe stats", log.Cause(err))
+		return
+	}
+
 	// Collect probe data for each channel
 	var probes []*ent.ChannelProbeCreate
 
 	for _, ch := range channels {
-		// Count total and success requests in the time range (excluding pending/processing requests)
-		total, err := svc.db.RequestExecution.Query().
-			Where(
-				requestexecution.ChannelIDEQ(ch.ID),
-				requestexecution.CreatedAtGTE(startTime),
-				requestexecution.CreatedAtLT(alignedTime),
-				requestexecution.StatusNotIn(requestexecution.StatusPending, requestexecution.StatusProcessing),
-			).
-			Count(ctx)
-		if err != nil {
-			log.Error(ctx, "Failed to count total requests",
-				log.Int("channel_id", ch.ID),
-				log.Cause(err),
-			)
-
-			continue
-		}
-
-		// Skip if total is 0 (optimization: don't store zero data)
-		if total == 0 {
-			continue
-		}
-
-		success, err := svc.db.RequestExecution.Query().
-			Where(
-				requestexecution.ChannelIDEQ(ch.ID),
-				requestexecution.CreatedAtGTE(startTime),
-				requestexecution.CreatedAtLT(alignedTime),
-				requestexecution.StatusEQ(requestexecution.StatusCompleted),
-			).
-			Count(ctx)
-		if err != nil {
-			log.Error(ctx, "Failed to count success requests",
-				log.Int("channel_id", ch.ID),
-				log.Cause(err),
-			)
-
+		stats, ok := allStats[ch.ID]
+		if !ok || stats.total == 0 {
 			continue
 		}
 
 		probes = append(probes, svc.db.ChannelProbe.Create().
 			SetChannelID(ch.ID).
-			SetTotalRequestCount(total).
-			SetSuccessRequestCount(success).
+			SetTotalRequestCount(stats.total).
+			SetSuccessRequestCount(stats.success).
+			SetNillableAvgTokensPerSecond(stats.avgTokensPerSecond).
+			SetNillableAvgTimeToFirstTokenMs(stats.avgTimeToFirstTokenMs).
 			SetTimestamp(timestamp),
 		)
 	}
@@ -258,8 +384,7 @@ func (svc *ChannelProbeService) QueryChannelProbes(ctx context.Context, channelI
 	setting := svc.SystemService.ChannelSettingOrDefault(ctx)
 	rangeMinutes := setting.Probe.GetQueryRangeMinutes()
 	intervalMinutes := setting.Probe.GetIntervalMinutes()
-
-	now := time.Now()
+	now := xtime.UTCNow()
 	// Align end time to interval boundary
 	endTime := now.Truncate(time.Duration(intervalMinutes) * time.Minute)
 	startTime := endTime.Add(-time.Duration(rangeMinutes) * time.Minute)
@@ -299,9 +424,11 @@ func (svc *ChannelProbeService) QueryChannelProbes(ctx context.Context, channelI
 		for _, ts := range timestamps {
 			if p, ok := channelProbes[ts]; ok {
 				points = append(points, &ChannelProbePoint{
-					Timestamp:           ts,
-					TotalRequestCount:   p.TotalRequestCount,
-					SuccessRequestCount: p.SuccessRequestCount,
+					Timestamp:             ts,
+					TotalRequestCount:     p.TotalRequestCount,
+					SuccessRequestCount:   p.SuccessRequestCount,
+					AvgTokensPerSecond:    p.AvgTokensPerSecond,
+					AvgTimeToFirstTokenMs: p.AvgTimeToFirstTokenMs,
 				})
 			} else {
 				// Fill missing point with 0

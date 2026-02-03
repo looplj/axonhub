@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xjson"
 	"github.com/looplj/axonhub/internal/pkg/xtest"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -1193,7 +1194,7 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 			config: &Config{
 				Type:    PlatformDirect,
 				BaseURL: "https://custom.api.com/v1",
-				APIKey:  "test-key",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 				RawURL:  true,
 			},
 			request: &llm.Request{
@@ -1216,7 +1217,7 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 			config: &Config{
 				Type:    PlatformDirect,
 				BaseURL: "https://custom.api.com/v100#",
-				APIKey:  "test-key",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			},
 			request: &llm.Request{
 				Model:     "claude-3-sonnet-20240229",
@@ -1238,7 +1239,7 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 			config: &Config{
 				Type:    PlatformDirect,
 				BaseURL: "https://custom.api.com/v1/messages#",
-				APIKey:  "test-key",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			},
 			request: &llm.Request{
 				Model:     "claude-3-sonnet-20240229",
@@ -1260,7 +1261,7 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 			config: &Config{
 				Type:    PlatformDirect,
 				BaseURL: "https://api.anthropic.com",
-				APIKey:  "test-key",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 				RawURL:  false,
 			},
 			request: &llm.Request{
@@ -1283,7 +1284,7 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 			config: &Config{
 				Type:    PlatformDirect,
 				BaseURL: "https://api.anthropic.com/v1",
-				APIKey:  "test-key",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 				RawURL:  false,
 			},
 			request: &llm.Request{
@@ -1305,9 +1306,8 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 			name: "raw URL with custom endpoint without version",
 			config: &Config{
 				Type:    PlatformDirect,
-				BaseURL: "https://custom-endpoint.com/api/llm",
-				APIKey:  "test-key",
-				RawURL:  true,
+				BaseURL: "https://custom-endpoint.com/api/llm#",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			},
 			request: &llm.Request{
 				Model:     "claude-3-sonnet-20240229",
@@ -1329,7 +1329,7 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 			config: &Config{
 				Type:    PlatformDirect,
 				BaseURL: "https://custom.api.com/v1#",
-				APIKey:  "test-key",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			},
 			request: &llm.Request{
 				Model:     "claude-3-sonnet-20240229",
@@ -1352,7 +1352,7 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 			config: &Config{
 				Type:    PlatformDeepSeek,
 				BaseURL: "https://api.deepseek.com/v1#",
-				APIKey:  "test-key",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			},
 			request: &llm.Request{
 				Model:     "deepseek-chat",
@@ -1374,7 +1374,7 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 			config: &Config{
 				Type:    PlatformDoubao,
 				BaseURL: "https://ark.cn-beijing.volces.com/v20#",
-				APIKey:  "test-key",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			},
 			request: &llm.Request{
 				Model:     "doubao-pro-4k",

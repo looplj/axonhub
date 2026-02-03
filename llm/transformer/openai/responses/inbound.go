@@ -212,6 +212,13 @@ func convertToLLMRequest(req *Request) (*llm.Request, error) {
 		if req.Reasoning.MaxTokens != nil {
 			chatReq.ReasoningBudget = req.Reasoning.MaxTokens
 		}
+
+		// Priority: summary > generate_summary
+		if req.Reasoning.Summary != "" {
+			chatReq.ReasoningSummary = lo.ToPtr(req.Reasoning.Summary)
+		} else if req.Reasoning.GenerateSummary != "" {
+			chatReq.ReasoningSummary = lo.ToPtr(req.Reasoning.GenerateSummary)
+		}
 	}
 
 	// Convert tool choice

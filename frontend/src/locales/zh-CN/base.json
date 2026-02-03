@@ -175,6 +175,8 @@
   "common.columns.selectRow": "选择行",
   "common.filters.reset": "重置",
   "common.filters.dateRange": "选择日期范围",
+  "common.filters.startTime": "开始时间",
+  "common.filters.endTime": "结束时间",
   "common.routeGuard.accessDenied": "访问被拒绝",
   "common.routeGuard.noPermission": "您没有访问此页面的权限。请联系管理员获取相应的访问权限。",
   "common.routeGuard.goBack": "返回",

@@ -213,12 +213,6 @@ models:
   APIKeyQuotaCalendarDurationUnit:
     model:
       - github.com/looplj/axonhub/internal/objects.APIKeyQuotaCalendarDurationUnit
-  AWSCredential:
-    model:
-      - github.com/looplj/axonhub/internal/objects.AWSCredential
-  AWSCredentialInput:
-    model:
-      - github.com/looplj/axonhub/internal/objects.AWSCredential
   BackupOptionsInput:
     model:
       - github.com/looplj/axonhub/internal/server/backup.BackupOptions

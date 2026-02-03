@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
@@ -25,8 +25,8 @@ func (e *RerankError) Error() string {
 
 // Config holds configuration for Jina transformer.
 type Config struct {
-	BaseURL string `json:"base_url,omitempty"`
-	APIKey  string `json:"api_key,omitempty"`
+	BaseURL        string              `json:"base_url,omitempty"`
+	APIKeyProvider auth.APIKeyProvider `json:"-"`
 }
 
 // OutboundTransformer implements the outbound transformer for Jina APIs (Rerank and Embedding).
@@ -37,17 +37,11 @@ type OutboundTransformer struct {
 // NewOutboundTransformer creates a new RerankOutboundTransformer.
 func NewOutboundTransformer(baseURL, apiKey string) (*OutboundTransformer, error) {
 	config := &Config{
-		BaseURL: strings.TrimSuffix(baseURL, "/"),
-		APIKey:  apiKey,
+		BaseURL:        baseURL,
+		APIKeyProvider: auth.NewStaticKeyProvider(apiKey),
 	}
 
-	if err := validateConfig(config); err != nil {
-		return nil, fmt.Errorf("invalid config: %w", err)
-	}
-
-	return &OutboundTransformer{
-		config: config,
-	}, nil
+	return NewOutboundTransformerWithConfig(config)
 }
 
 // NewOutboundTransformerWithConfig creates a transformer with the given config.
@@ -56,7 +50,7 @@ func NewOutboundTransformerWithConfig(config *Config) (*OutboundTransformer, err
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
-	config.BaseURL = strings.TrimSuffix(config.BaseURL, "/")
+	config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
 
 	return &OutboundTransformer{
 		config: config,
@@ -68,8 +62,8 @@ func validateConfig(config *Config) error {
 		return fmt.Errorf("config cannot be nil")
 	}
 
-	if config.APIKey == "" {
-		return fmt.Errorf("API key is required")
+	if config.APIKeyProvider == nil {
+		return fmt.Errorf("API key provider is required")
 	}
 
 	if config.BaseURL == "" {
@@ -143,11 +137,13 @@ func (t *OutboundTransformer) transformRerankRequest(
 		return nil, fmt.Errorf("failed to marshal rerank request: %w", err)
 	}
 
+	// Get API key from provider
+	apiKey := t.config.APIKeyProvider.Get(ctx)
+
 	// Prepare headers
 	headers := make(http.Header)
 	headers.Set("Content-Type", "application/json")
 	headers.Set("Accept", "application/json")
-	headers.Set("Authorization", "Bearer "+t.config.APIKey)
 
 	// Build URL
 	url := t.buildRerankURL()
@@ -159,16 +155,11 @@ func (t *OutboundTransformer) transformRerankRequest(
 		Body:    body,
 		Auth: &httpclient.AuthConfig{
 			Type:   "bearer",
-			APIKey: t.config.APIKey,
+			APIKey: apiKey,
 		},
+		RequestType: string(llm.RequestTypeRerank),
+		APIFormat:   string(llm.APIFormatJinaRerank),
 	}
-
-	// Set metadata for response routing
-	if httpReq.TransformerMetadata == nil {
-		httpReq.TransformerMetadata = make(map[string]any)
-	}
-
-	httpReq.TransformerMetadata["outbound_format_type"] = llm.APIFormatJinaRerank.String()
 
 	return httpReq, nil
 }
@@ -206,10 +197,12 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 		return nil, fmt.Errorf("failed to marshal embedding request: %w", err)
 	}
 
+	// Get API key from provider
+	apiKey := t.config.APIKeyProvider.Get(ctx)
+
 	headers := make(http.Header)
 	headers.Set("Content-Type", "application/json")
 	headers.Set("Accept", "application/json")
-	headers.Set("Authorization", "Bearer "+t.config.APIKey)
 
 	url := t.buildEmbeddingURL()
 
@@ -220,35 +213,23 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 		Body:    body,
 		Auth: &httpclient.AuthConfig{
 			Type:   "bearer",
-			APIKey: t.config.APIKey,
+			APIKey: apiKey,
 		},
+		RequestType: string(llm.RequestTypeEmbedding),
+		APIFormat:   string(llm.APIFormatJinaEmbedding),
 	}
-
-	if httpReq.TransformerMetadata == nil {
-		httpReq.TransformerMetadata = make(map[string]any)
-	}
-
-	httpReq.TransformerMetadata["outbound_format_type"] = llm.APIFormatJinaEmbedding.String()
 
 	return httpReq, nil
 }
 
 // buildRerankURL constructs the rerank API URL.
 func (t *OutboundTransformer) buildRerankURL() string {
-	if strings.HasSuffix(t.config.BaseURL, "/v1") {
-		return t.config.BaseURL + "/rerank"
-	}
-
-	return t.config.BaseURL + "/v1/rerank"
+	return t.config.BaseURL + "/rerank"
 }
 
 // buildEmbeddingURL constructs the embedding API URL.
 func (t *OutboundTransformer) buildEmbeddingURL() string {
-	if strings.HasSuffix(t.config.BaseURL, "/v1") {
-		return t.config.BaseURL + "/embeddings"
-	}
-
-	return t.config.BaseURL + "/v1/embeddings"
+	return t.config.BaseURL + "/embeddings"
 }
 
 // TransformResponse transforms HTTP response to unified llm.Response (rerank or embedding).
@@ -273,20 +254,12 @@ func (t *OutboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("response body is empty")
 	}
 
-	// Determine response type from metadata
-	var apiFormat llm.APIFormat
-
-	if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
-		if formatStr, ok := httpResp.Request.TransformerMetadata["outbound_format_type"].(string); ok {
-			apiFormat = llm.APIFormat(formatStr)
-		}
-	}
-
+	// Route to specialized transformers based on request APIFormat
 	//nolint:exhaustive // Checked.
-	switch apiFormat {
-	case llm.APIFormatJinaEmbedding:
+	switch httpResp.Request.APIFormat {
+	case string(llm.APIFormatJinaEmbedding):
 		return t.transformEmbeddingResponse(ctx, httpResp)
-	case llm.APIFormatJinaRerank:
+	case string(llm.APIFormatJinaRerank):
 		fallthrough
 	default:
 		return t.transformRerankResponse(ctx, httpResp)

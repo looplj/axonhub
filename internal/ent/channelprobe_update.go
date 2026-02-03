@@ -86,6 +86,12 @@ func (_u *ChannelProbeUpdate) sqlSave(ctx context.Context) (_node int, err error
 			}
 		}
 	}
+	if _u.mutation.AvgTokensPerSecondCleared() {
+		_spec.ClearField(channelprobe.FieldAvgTokensPerSecond, field.TypeFloat64)
+	}
+	if _u.mutation.AvgTimeToFirstTokenMsCleared() {
+		_spec.ClearField(channelprobe.FieldAvgTimeToFirstTokenMs, field.TypeFloat64)
+	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -195,6 +201,12 @@ func (_u *ChannelProbeUpdateOne) sqlSave(ctx context.Context) (_node *ChannelPro
 				ps[i](selector)
 			}
 		}
+	}
+	if _u.mutation.AvgTokensPerSecondCleared() {
+		_spec.ClearField(channelprobe.FieldAvgTokensPerSecond, field.TypeFloat64)
+	}
+	if _u.mutation.AvgTimeToFirstTokenMsCleared() {
+		_spec.ClearField(channelprobe.FieldAvgTimeToFirstTokenMs, field.TypeFloat64)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &ChannelProbe{config: _u.config}

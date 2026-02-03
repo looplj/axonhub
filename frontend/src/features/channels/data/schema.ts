@@ -98,20 +98,13 @@ export const transformOptionsSchema = z.object({
 });
 export type TransformOptions = z.infer<typeof transformOptionsSchema>;
 
-// Channel Performance
-export const channelPerformanceSchema = z.object({
-  avgLatencyMs: z.number(),
-  avgTokenPerSecond: z.number(),
-  avgStreamFirstTokenLatencyMs: z.number(),
-  avgStreamTokenPerSecond: z.number(),
-});
-export type ChannelPerformance = z.infer<typeof channelPerformanceSchema>;
-
 // Channel Probe
 export const channelProbePointSchema = z.object({
   timestamp: z.number(),
   totalRequestCount: z.number(),
   successRequestCount: z.number(),
+  avgTokensPerSecond: z.number().optional().nullable(),
+  avgTimeToFirstTokenMs: z.number().optional().nullable(),
 });
 export type ChannelProbePoint = z.infer<typeof channelProbePointSchema>;
 
@@ -146,6 +139,7 @@ export type ChannelModelEntry = z.infer<typeof channelModelEntrySchema>;
 // Channel Credentials
 export const channelCredentialsSchema = z.object({
   apiKey: z.string().optional().nullable(),
+  apiKeys: z.array(z.string()).optional().nullable(),
   oauth: z
     .object({
       accessToken: z.string().optional().nullable(),
@@ -155,14 +149,6 @@ export const channelCredentialsSchema = z.object({
       expiresAt: z.string().optional().nullable(),
       tokenType: z.string().optional().nullable(),
       scopes: z.array(z.string()).optional().nullable(),
-    })
-    .optional()
-    .nullable(),
-  aws: z
-    .object({
-      accessKeyID: z.string(),
-      secretAccessKey: z.string(),
-      region: z.string(),
     })
     .optional()
     .nullable(),
@@ -196,7 +182,6 @@ export const channelSchema = z.object({
   orderingWeight: z.number().optional().default(0),
   errorMessage: z.string().optional().nullable(),
   remark: z.string().optional().nullable(),
-  channelPerformance: channelPerformanceSchema.optional().nullable(),
   allModelEntries: z.array(channelModelEntrySchema).optional(),
 });
 export type Channel = z.infer<typeof channelSchema>;
@@ -273,14 +258,10 @@ export const createChannelInputSchema = z
     orderingWeight: z.number().int().optional(),
     settings: channelSettingsSchema.optional(),
     credentials: z.object({
-      apiKey: z.string().min(1, 'API Key is required'),
-      aws: z
-        .object({
-          accessKeyID: z.string().optional(),
-          secretAccessKey: z.string().optional(),
-          region: z.string().optional(),
-        })
-        .optional(),
+      // apiKey is used for OAuth credentials (JSON string with access_token, refresh_token)
+      apiKey: z.string().optional(),
+      // apiKeys is used for regular API keys (multiple keys for load balancing)
+      apiKeys: z.array(z.string()).optional().default([]),
       gcp: z
         .object({
           region: z.string().optional(),
@@ -291,10 +272,23 @@ export const createChannelInputSchema = z
     }),
   })
   .superRefine((data, ctx) => {
-    if (data.type === 'codex') {
-      const apiKey = data.credentials.apiKey;
-      // Only enforce JSON validation if it looks like JSON (starts with '{')
-      if (apiKey && apiKey.trim().startsWith('{')) {
+    const isOAuthType = data.type === 'codex' || data.type === 'claudecode' || data.type === 'antigravity';
+    const hasApiKey = data.credentials.apiKey && data.credentials.apiKey.trim().length > 0;
+    const hasApiKeys = data.credentials.apiKeys && data.credentials.apiKeys.some((k) => k.trim().length > 0);
+
+    // Validate that at least one credential type is provided
+    if (!hasApiKey && !hasApiKeys && data.type !== 'anthropic_aws' && data.type !== 'anthropic_gcp') {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: 'At least one API Key is required',
+        path: ['credentials', 'apiKeys'],
+      });
+    }
+
+    // For OAuth types, validate the OAuth JSON format if apiKey is provided
+    if (isOAuthType && hasApiKey) {
+      const apiKey = data.credentials.apiKey!;
+      if (apiKey.trim().startsWith('{')) {
         const issue = {
           code: 'custom' as const,
           message: 'channels.dialogs.fields.supportedModels.codexOAuthCredentialsRequired',
@@ -366,14 +360,7 @@ export const updateChannelInputSchema = z
     remark: z.string().optional().nullable(),
     credentials: z
       .object({
-        apiKey: z.string().optional(),
-        aws: z
-          .object({
-            accessKeyID: z.string().optional(),
-            secretAccessKey: z.string().optional(),
-            region: z.string().optional(),
-          })
-          .optional(),
+        apiKeys: z.array(z.string()).optional(),
         gcp: z
           .object({
             region: z.string().optional(),
@@ -389,13 +376,13 @@ export const updateChannelInputSchema = z
     if (data.type === 'codex') {
       if (!data.credentials) return;
 
-      const apiKey = data.credentials.apiKey;
+      const apiKey = data.credentials.apiKeys?.[0];
       // Only enforce JSON validation if it looks like JSON (starts with '{')
       if (apiKey && apiKey.trim().startsWith('{')) {
         const issue = {
           code: 'custom' as const,
           message: 'channels.dialogs.fields.supportedModels.codexOAuthCredentialsRequired',
-          path: ['credentials', 'apiKey'],
+          path: ['credentials', 'apiKeys'],
         };
 
         let json: unknown;

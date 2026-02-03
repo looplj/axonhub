@@ -11,13 +11,14 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
 func TestOutboundTransformer_TransformRequest_ResponseFormat(t *testing.T) {
 	config := &Config{
-		BaseURL: "https://api.deepseek.com/v1",
-		APIKey:  "test-api-key",
+		BaseURL:        "https://api.deepseek.com/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
 	}
 
 	transformer, err := NewOutboundTransformerWithConfig(config)
@@ -115,8 +116,8 @@ func TestOutboundTransformer_TransformRequest_ResponseFormat(t *testing.T) {
 
 func TestOutboundTransformer_TransformRequest_Thinking(t *testing.T) {
 	config := &Config{
-		BaseURL: "https://api.deepseek.com/v1",
-		APIKey:  "test-api-key",
+		BaseURL:        "https://api.deepseek.com/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
 	}
 
 	transformer, err := NewOutboundTransformerWithConfig(config)
@@ -206,8 +207,8 @@ func TestOutboundTransformer_TransformRequest_URL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			config := &Config{
-				BaseURL: tt.baseURL,
-				APIKey:  "test-api-key",
+				BaseURL:        tt.baseURL,
+				APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
 			}
 
 			transformer, err := NewOutboundTransformerWithConfig(config)

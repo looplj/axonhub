@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"sort"
 	"strings"
 
 	"github.com/samber/lo"
@@ -20,6 +21,20 @@ type choiceAggregator struct {
 	toolCalls        map[int]*llm.ToolCall // Map to track tool calls by their index within the choice
 	finishReason     *string
 	role             string
+	annotations      map[string]llm.Annotation // Map to track unique annotations by URL
+}
+
+// addAnnotations adds annotations from a message to the choice aggregator,
+// deduplicating by URL.
+func (ca *choiceAggregator) addAnnotations(msg *Message) {
+	if msg == nil || len(msg.Annotations) == 0 {
+		return
+	}
+	for _, annotation := range msg.Annotations {
+		if annotation.URLCitation != nil && annotation.URLCitation.URL != "" {
+			ca.annotations[annotation.URLCitation.URL] = annotation.ToLLMAnnotation()
+		}
+	}
 }
 
 type ChunkTransformFunc func(ctx context.Context, chunk *httpclient.StreamEvent) (*Response, error)
@@ -46,6 +61,8 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		systemFingerprint string
 		// Map to track choices by their index
 		choicesAggs = make(map[int]*choiceAggregator)
+		// Map to track unique citations
+		citationsMap = make(map[string]struct{})
 	)
 
 	for _, chunk := range chunks {
@@ -66,9 +83,10 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 			// Initialize choice aggregator if it doesn't exist
 			if _, ok := choicesAggs[choiceIndex]; !ok {
 				choicesAggs[choiceIndex] = &choiceAggregator{
-					index:     choiceIndex,
-					toolCalls: make(map[int]*llm.ToolCall),
-					role:      "assistant",
+					index:       choiceIndex,
+					toolCalls:   make(map[int]*llm.ToolCall),
+					annotations: make(map[string]llm.Annotation),
+					role:        "assistant",
 				}
 			}
 
@@ -131,6 +149,10 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 				}
 			}
 
+			// Handle annotations from Delta (streaming) and Message (non-streaming chunks)
+			choiceAgg.addAnnotations(choice.Delta)
+			choiceAgg.addAnnotations(choice.Message)
+
 			// Capture finish reason
 			if choice.FinishReason != nil {
 				choiceAgg.finishReason = choice.FinishReason
@@ -140,6 +162,11 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		// Extract usage information if present
 		if chunk.Usage != nil {
 			usage = chunk.Usage
+		}
+
+		// Collect citations from chunk
+		for _, citation := range chunk.Citations {
+			citationsMap[citation] = struct{}{}
 		}
 
 		// Keep the first non-empty system fingerprint
@@ -192,6 +219,14 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 			message.ToolCalls = finalToolCalls
 		}
 
+		// Set annotations if available
+		if len(choiceAgg.annotations) > 0 {
+			message.Annotations = make([]llm.Annotation, 0, len(choiceAgg.annotations))
+			for _, annotation := range choiceAgg.annotations {
+				message.Annotations = append(message.Annotations, annotation)
+			}
+		}
+
 		// Determine finish reason
 		finishReason := choiceAgg.finishReason
 		if finishReason == nil {
@@ -218,6 +253,20 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		SystemFingerprint: systemFingerprint,
 		Choices:           choices,
 		Usage:             usage.ToLLMUsage(),
+	}
+
+	// Add citations to response if any were collected
+	if len(citationsMap) > 0 {
+		citations := make([]string, 0, len(citationsMap))
+		for citation := range citationsMap {
+			citations = append(citations, citation)
+		}
+		sort.Strings(citations)
+
+		if response.TransformerMetadata == nil {
+			response.TransformerMetadata = make(map[string]any)
+		}
+		response.TransformerMetadata[TransformerMetadataKeyCitations] = citations
 	}
 
 	data, err := json.Marshal(response)

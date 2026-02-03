@@ -58,8 +58,14 @@ func (r *channelResolver) Policies(ctx context.Context, obj *ent.Channel) (*obje
 }
 
 // ProviderQuotaStatus is the resolver for the providerQuotaStatus field.
+// It returns null (not an error) when no quota status exists for the channel.
 func (r *channelResolver) ProviderQuotaStatus(ctx context.Context, obj *ent.Channel) (*ent.ProviderQuotaStatus, error) {
-	panic(fmt.Errorf("not implemented: ProviderQuotaStatus - providerQuotaStatus"))
+	pqs, err := obj.ProviderQuotaStatus(ctx)
+	if ent.IsNotFound(err) {
+		return nil, nil
+	}
+
+	return pqs, err
 }
 
 // ID is the resolver for the id field.
@@ -107,22 +113,6 @@ func (r *channelOverrideTemplateResolver) UserID(ctx context.Context, obj *ent.C
 	return &objects.GUID{
 		Type: ent.TypeUser,
 		ID:   obj.UserID,
-	}, nil
-}
-
-// ID is the resolver for the id field.
-func (r *channelPerformanceResolver) ID(ctx context.Context, obj *ent.ChannelPerformance) (*objects.GUID, error) {
-	return &objects.GUID{
-		Type: ent.TypeChannelPerformance,
-		ID:   obj.ID,
-	}, nil
-}
-
-// ChannelID is the resolver for the channelID field.
-func (r *channelPerformanceResolver) ChannelID(ctx context.Context, obj *ent.ChannelPerformance) (*objects.GUID, error) {
-	return &objects.GUID{
-		Type: ent.TypeChannel,
-		ID:   obj.ChannelID,
 	}, nil
 }
 
@@ -240,7 +230,18 @@ func (r *queryResolver) Channels(ctx context.Context, after *entgql.Cursor[int],
 
 // ChannelOverrideTemplates is the resolver for the channelOverrideTemplates field.
 func (r *queryResolver) ChannelOverrideTemplates(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOverrideTemplateOrder, where *ent.ChannelOverrideTemplateWhereInput) (*ent.ChannelOverrideTemplateConnection, error) {
-	panic(fmt.Errorf("not implemented: ChannelOverrideTemplates - channelOverrideTemplates"))
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultChannelOverrideTemplateOrder.Field
+	}
+
+	return r.client.ChannelOverrideTemplate.Query().Paginate(ctx, after, first, before, last,
+		ent.WithChannelOverrideTemplateOrder(orderBy),
+		ent.WithChannelOverrideTemplateFilter(where.Filter),
+	)
 }
 
 // DataStorages is the resolver for the dataStorages field.
@@ -789,11 +790,6 @@ func (r *Resolver) ChannelOverrideTemplate() ChannelOverrideTemplateResolver {
 	return &channelOverrideTemplateResolver{r}
 }
 
-// ChannelPerformance returns ChannelPerformanceResolver implementation.
-func (r *Resolver) ChannelPerformance() ChannelPerformanceResolver {
-	return &channelPerformanceResolver{r}
-}
-
 // ChannelProbe returns ChannelProbeResolver implementation.
 func (r *Resolver) ChannelProbe() ChannelProbeResolver { return &channelProbeResolver{r} }
 
@@ -852,7 +848,6 @@ type channelResolver struct{ *Resolver }
 type channelModelPriceResolver struct{ *Resolver }
 type channelModelPriceVersionResolver struct{ *Resolver }
 type channelOverrideTemplateResolver struct{ *Resolver }
-type channelPerformanceResolver struct{ *Resolver }
 type channelProbeResolver struct{ *Resolver }
 type dataStorageResolver struct{ *Resolver }
 type modelResolver struct{ *Resolver }

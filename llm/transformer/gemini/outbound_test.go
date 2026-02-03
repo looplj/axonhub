@@ -91,12 +91,10 @@ func TestClenupConfig(t *testing.T) {
 			name: "complete config",
 			input: Config{
 				BaseURL:    "https://custom.api.com",
-				APIKey:     "test-key",
 				APIVersion: "v1",
 			},
 			expected: Config{
 				BaseURL:    "https://custom.api.com",
-				APIKey:     "test-key",
 				APIVersion: "v1",
 			},
 		},
@@ -275,7 +273,6 @@ func TestNewOutboundTransformerWithConfig(t *testing.T) {
 			name: "valid config",
 			config: Config{
 				BaseURL:    "https://generativelanguage.googleapis.com",
-				APIKey:     "test-key",
 				APIVersion: "v1beta",
 			},
 			wantErr: false,
