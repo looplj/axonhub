@@ -171,18 +171,18 @@ type Pricing struct {
 }
 
 type OpenAIModel struct {
-	ID              string       `json:"id"`
-	Object          string       `json:"object"`
-	Created         int64        `json:"created"`
-	OwnedBy         string       `json:"owned_by"`
-	Name            string       `json:"name,omitempty"`
-	Description     string       `json:"description,omitempty"`
-	ContextLength   int          `json:"context_length,omitempty"`
-	MaxOutputTokens int          `json:"max_output_tokens,omitempty"`
-	Capabilities    Capabilities `json:"capabilities,omitempty"`
-	Pricing         Pricing      `json:"pricing,omitempty"`
-	Icon            string       `json:"icon,omitempty"`
-	Type            string       `json:"type,omitempty"`
+	ID              string        `json:"id"`
+	Object          string        `json:"object"`
+	Created         int64         `json:"created"`
+	OwnedBy         string        `json:"owned_by"`
+	Name            string        `json:"name,omitempty"`
+	Description     string        `json:"description,omitempty"`
+	ContextLength   int           `json:"context_length,omitempty"`
+	MaxOutputTokens int           `json:"max_output_tokens,omitempty"`
+	Capabilities    *Capabilities `json:"capabilities,omitempty"`
+	Pricing         *Pricing      `json:"pricing,omitempty"`
+	Icon            string        `json:"icon,omitempty"`
+	Type            string        `json:"type,omitempty"`
 }
 
 // ListModels returns all available models.
@@ -191,8 +191,6 @@ type OpenAIModel struct {
 // It safely handles nil ModelCard, Cost, and Limit fields.
 func convertModelToOpenAIExtended(m *ent.Model) OpenAIModel {
 	result := OpenAIModel{
-		// Set default pricing unit and currency
-		Pricing: Pricing{Unit: "per_1m_tokens", Currency: "USD"},
 		ID:      m.ModelID,
 		Object:  "model",
 		Created: m.CreatedAt.Unix(),
@@ -208,16 +206,17 @@ func convertModelToOpenAIExtended(m *ent.Model) OpenAIModel {
 
 	if m.ModelCard != nil {
 		// Capabilities
-		result.Capabilities = Capabilities{
+		caps := Capabilities{
 			Vision:    m.ModelCard.Vision,
 			ToolCall:  m.ModelCard.ToolCall,
 			Reasoning: m.ModelCard.Reasoning.Supported,
 		}
+		result.Capabilities = &caps
 		// Limits
 		result.ContextLength = m.ModelCard.Limit.Context
 		result.MaxOutputTokens = m.ModelCard.Limit.Output
 		// Pricing
-		result.Pricing = Pricing{
+		pricing := Pricing{
 			Input:      m.ModelCard.Cost.Input,
 			Output:     m.ModelCard.Cost.Output,
 			CacheRead:  m.ModelCard.Cost.CacheRead,
@@ -225,6 +224,7 @@ func convertModelToOpenAIExtended(m *ent.Model) OpenAIModel {
 			Unit:       "per_1m_tokens",
 			Currency:   "USD",
 		}
+		result.Pricing = &pricing
 	}
 	return result
 }

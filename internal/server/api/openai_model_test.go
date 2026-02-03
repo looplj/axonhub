@@ -32,13 +32,8 @@ func TestConvertModelToOpenAIExtended_NilModelCard(t *testing.T) {
 	assert.Equal(t, "chat", result.Type)
 	assert.Equal(t, "openai", result.Icon)
 	assert.Equal(t, int64(1686935002), result.Created)
-
-	assert.False(t, result.Capabilities.Vision)
-	assert.False(t, result.Capabilities.ToolCall)
-	assert.False(t, result.Capabilities.Reasoning)
-	assert.Equal(t, 0.0, result.Pricing.Input)
-	assert.Equal(t, "per_1m_tokens", result.Pricing.Unit)
-	assert.Equal(t, "USD", result.Pricing.Currency)
+	assert.Nil(t, result.Capabilities)
+	assert.Nil(t, result.Pricing)
 }
 
 func TestConvertModelToOpenAIExtended_CompleteData(t *testing.T) {
@@ -65,11 +60,13 @@ func TestConvertModelToOpenAIExtended_CompleteData(t *testing.T) {
 	assert.Equal(t, "gpt-4", result.ID)
 	assert.Equal(t, "GPT-4", result.Name)
 	assert.Equal(t, "GPT-4 is a large multimodal model", result.Description)
+	assert.NotNil(t, result.Capabilities)
 	assert.True(t, result.Capabilities.Vision)
 	assert.True(t, result.Capabilities.ToolCall)
 	assert.True(t, result.Capabilities.Reasoning)
 	assert.Equal(t, 8192, result.ContextLength)
 	assert.Equal(t, 4096, result.MaxOutputTokens)
+	assert.NotNil(t, result.Pricing)
 	assert.Equal(t, 0.03, result.Pricing.Input)
 	assert.Equal(t, 0.06, result.Pricing.Output)
 	assert.Equal(t, 0.015, result.Pricing.CacheRead)
@@ -92,4 +89,6 @@ func TestConvertModelToOpenAIExtended_NilRemark(t *testing.T) {
 
 	result := convertModelToOpenAIExtended(m)
 	assert.Equal(t, "", result.Description)
+	assert.Nil(t, result.Capabilities)
+	assert.Nil(t, result.Pricing)
 }
