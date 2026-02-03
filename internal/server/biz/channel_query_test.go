@@ -382,7 +382,7 @@ func createTestChannel(
 		SetType(channel.TypeOpenai).
 		SetName(name).
 		SetBaseURL("https://api.openai.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
 		SetSupportedModels(models).
 		SetDefaultTestModel(models[0]).
 		SetStatus(channel.StatusEnabled)

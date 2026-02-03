@@ -161,7 +161,7 @@ var (
 	// DefaultDeletedAt holds the default value on creation for the "deleted_at" field.
 	DefaultDeletedAt int
 	// DefaultCredentials holds the default value on creation for the "credentials" field.
-	DefaultCredentials *objects.ChannelCredentials
+	DefaultCredentials objects.ChannelCredentials
 	// DefaultAutoSyncSupportedModels holds the default value on creation for the "auto_sync_supported_models" field.
 	DefaultAutoSyncSupportedModels bool
 	// DefaultTags holds the default value on creation for the "tags" field.

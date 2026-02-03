@@ -122,7 +122,7 @@ func init() {
 	// channelDescCredentials is the schema descriptor for credentials field.
 	channelDescCredentials := channelFields[4].Descriptor()
 	// channel.DefaultCredentials holds the default value on creation for the credentials field.
-	channel.DefaultCredentials = channelDescCredentials.Default.(*objects.ChannelCredentials)
+	channel.DefaultCredentials = channelDescCredentials.Default.(objects.ChannelCredentials)
 	// channelDescAutoSyncSupportedModels is the schema descriptor for auto_sync_supported_models field.
 	channelDescAutoSyncSupportedModels := channelFields[6].Descriptor()
 	// channel.DefaultAutoSyncSupportedModels holds the default value on creation for the auto_sync_supported_models field.

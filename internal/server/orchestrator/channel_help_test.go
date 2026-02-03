@@ -111,7 +111,7 @@ func createTestChannels(t *testing.T, ctx context.Context, client *ent.Client) [
 		SetType(channel.TypeOpenai).
 		SetName("High Weight Channel").
 		SetBaseURL("https://api.openai.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key-1"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key-1"}).
 		SetSupportedModels([]string{"gpt-4", "gpt-3.5-turbo"}).
 		SetDefaultTestModel("gpt-4").
 		SetOrderingWeight(100).
@@ -126,7 +126,7 @@ func createTestChannels(t *testing.T, ctx context.Context, client *ent.Client) [
 		SetType(channel.TypeOpenai).
 		SetName("Medium Weight Channel").
 		SetBaseURL("https://api.openai.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key-2"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key-2"}).
 		SetSupportedModels([]string{"gpt-4", "gpt-3.5-turbo"}).
 		SetDefaultTestModel("gpt-4").
 		SetOrderingWeight(50).
@@ -141,7 +141,7 @@ func createTestChannels(t *testing.T, ctx context.Context, client *ent.Client) [
 		SetType(channel.TypeOpenai).
 		SetName("Low Weight Channel").
 		SetBaseURL("https://api.openai.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key-3"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key-3"}).
 		SetSupportedModels([]string{"gpt-4", "gpt-3.5-turbo"}).
 		SetDefaultTestModel("gpt-4").
 		SetOrderingWeight(25).
@@ -156,7 +156,7 @@ func createTestChannels(t *testing.T, ctx context.Context, client *ent.Client) [
 		SetType(channel.TypeOpenai).
 		SetName("Disabled Channel").
 		SetBaseURL("https://api.openai.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key-4"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key-4"}).
 		SetSupportedModels([]string{"gpt-4", "gpt-3.5-turbo"}).
 		SetDefaultTestModel("gpt-4").
 		SetOrderingWeight(75).
@@ -245,7 +245,7 @@ func createTestChannel(t *testing.T, ctx context.Context, client *ent.Client) *e
 		SetType(channel.TypeOpenai).
 		SetName("Test OpenAI Channel").
 		SetBaseURL("https://api.openai.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-api-key"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-api-key"}).
 		SetSupportedModels([]string{"gpt-4", "gpt-3.5-turbo"}).
 		SetDefaultTestModel("gpt-3.5-turbo").
 		Save(ctx)

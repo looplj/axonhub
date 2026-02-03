@@ -248,7 +248,7 @@ func TestChannelService_RecordPerformance_UnrecoverableError(t *testing.T) {
 		SetName("test-channel").
 		SetType(channel.TypeOpenai).
 		SetBaseURL("https://api.openai.com").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		SetStatus(channel.StatusEnabled).

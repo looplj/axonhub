@@ -1227,7 +1227,7 @@ type ChannelMutation struct {
 	base_url                     *string
 	name                         *string
 	status                       *channel.Status
-	credentials                  **objects.ChannelCredentials
+	credentials                  *objects.ChannelCredentials
 	supported_models             *[]string
 	appendsupported_models       []string
 	auto_sync_supported_models   *bool
@@ -1647,12 +1647,12 @@ func (m *ChannelMutation) ResetStatus() {
 }
 
 // SetCredentials sets the "credentials" field.
-func (m *ChannelMutation) SetCredentials(oc *objects.ChannelCredentials) {
+func (m *ChannelMutation) SetCredentials(oc objects.ChannelCredentials) {
 	m.credentials = &oc
 }
 
 // Credentials returns the value of the "credentials" field in the mutation.
-func (m *ChannelMutation) Credentials() (r *objects.ChannelCredentials, exists bool) {
+func (m *ChannelMutation) Credentials() (r objects.ChannelCredentials, exists bool) {
 	v := m.credentials
 	if v == nil {
 		return
@@ -1663,7 +1663,7 @@ func (m *ChannelMutation) Credentials() (r *objects.ChannelCredentials, exists b
 // OldCredentials returns the old "credentials" field's value of the Channel entity.
 // If the Channel object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ChannelMutation) OldCredentials(ctx context.Context) (v *objects.ChannelCredentials, err error) {
+func (m *ChannelMutation) OldCredentials(ctx context.Context) (v objects.ChannelCredentials, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldCredentials is only allowed on UpdateOne operations")
 	}
@@ -2661,7 +2661,7 @@ func (m *ChannelMutation) SetField(name string, value ent.Value) error {
 		m.SetStatus(v)
 		return nil
 	case channel.FieldCredentials:
-		v, ok := value.(*objects.ChannelCredentials)
+		v, ok := value.(objects.ChannelCredentials)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}

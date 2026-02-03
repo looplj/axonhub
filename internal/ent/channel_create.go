@@ -112,8 +112,16 @@ func (_c *ChannelCreate) SetNillableStatus(v *channel.Status) *ChannelCreate {
 }
 
 // SetCredentials sets the "credentials" field.
-func (_c *ChannelCreate) SetCredentials(v *objects.ChannelCredentials) *ChannelCreate {
+func (_c *ChannelCreate) SetCredentials(v objects.ChannelCredentials) *ChannelCreate {
 	_c.mutation.SetCredentials(v)
+	return _c
+}
+
+// SetNillableCredentials sets the "credentials" field if the given value is not nil.
+func (_c *ChannelCreate) SetNillableCredentials(v *objects.ChannelCredentials) *ChannelCreate {
+	if v != nil {
+		_c.SetCredentials(*v)
+	}
 	return _c
 }
 
@@ -752,7 +760,7 @@ func (u *ChannelUpsert) UpdateStatus() *ChannelUpsert {
 }
 
 // SetCredentials sets the "credentials" field.
-func (u *ChannelUpsert) SetCredentials(v *objects.ChannelCredentials) *ChannelUpsert {
+func (u *ChannelUpsert) SetCredentials(v objects.ChannelCredentials) *ChannelUpsert {
 	u.Set(channel.FieldCredentials, v)
 	return u
 }
@@ -1040,7 +1048,7 @@ func (u *ChannelUpsertOne) UpdateStatus() *ChannelUpsertOne {
 }
 
 // SetCredentials sets the "credentials" field.
-func (u *ChannelUpsertOne) SetCredentials(v *objects.ChannelCredentials) *ChannelUpsertOne {
+func (u *ChannelUpsertOne) SetCredentials(v objects.ChannelCredentials) *ChannelUpsertOne {
 	return u.Update(func(s *ChannelUpsert) {
 		s.SetCredentials(v)
 	})
@@ -1520,7 +1528,7 @@ func (u *ChannelUpsertBulk) UpdateStatus() *ChannelUpsertBulk {
 }
 
 // SetCredentials sets the "credentials" field.
-func (u *ChannelUpsertBulk) SetCredentials(v *objects.ChannelCredentials) *ChannelUpsertBulk {
+func (u *ChannelUpsertBulk) SetCredentials(v objects.ChannelCredentials) *ChannelUpsertBulk {
 	return u.Update(func(s *ChannelUpsert) {
 		s.SetCredentials(v)
 	})

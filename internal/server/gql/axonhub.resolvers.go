@@ -36,11 +36,24 @@ func (r *channelResolver) AllModelEntries(ctx context.Context, obj *ent.Channel)
 // Credentials is the resolver for the credentials field.
 func (r *channelResolver) Credentials(ctx context.Context, obj *ent.Channel) (*objects.ChannelCredentials, error) {
 	hasScope := scopes.UserHasScope(ctx, scopes.ScopeWriteChannels)
-	if hasScope {
-		return obj.Credentials, nil
+	if !hasScope {
+		return nil, nil
 	}
 
-	return nil, nil
+	creds := obj.Credentials
+
+	if obj.Type == channel.TypeAntigravity || creds.IsOAuth() {
+		// For OAuth channels (e.g., antigravity, claudecode, codex), only return single API key.
+		// Clear APIKeys as OAuth only supports single credential.
+		creds.APIKeys = nil
+		return &creds, nil
+	}
+
+	// For non-OAuth channel types, use api keys array.
+	creds.APIKeys = creds.GetAllAPIKeys()
+	creds.APIKey = ""
+
+	return &creds, nil
 }
 
 // CreateChannel is the resolver for the createChannel field.

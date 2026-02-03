@@ -120,6 +120,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const dialogContentRef = useRef<HTMLDivElement>(null);
 
   // OAuth flows using the reusable hook
+  // OAuth credentials are stored in apiKey field as JSON string, not in apiKeys array
   const codexOAuth = useOAuthFlow({
     startFn: codexOAuthStart,
     exchangeFn: codexOAuthExchange,
@@ -311,7 +312,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             tags: currentRow.tags || [],
             remark: currentRow.remark || '',
             credentials: {
-              apiKey: currentRow.credentials?.apiKey || '',
+              apiKeys: currentRow.credentials?.apiKeys || (currentRow.credentials?.apiKey ? [currentRow.credentials.apiKey] : []),
               aws: {
                 accessKeyID: currentRow.credentials?.aws?.accessKeyID || '',
                 secretAccessKey: currentRow.credentials?.aws?.secretAccessKey || '',
@@ -337,7 +338,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               remark: duplicateFromRow.remark || '',
               settings: duplicateFromRow.settings ?? undefined,
               credentials: {
-                apiKey: duplicateFromRow.credentials?.apiKey || '',
+                apiKeys: duplicateFromRow.credentials?.apiKeys || (duplicateFromRow.credentials?.apiKey ? [duplicateFromRow.credentials.apiKey] : []),
                 aws: {
                   accessKeyID: duplicateFromRow.credentials?.aws?.accessKeyID || '',
                   secretAccessKey: duplicateFromRow.credentials?.aws?.secretAccessKey || '',
@@ -356,7 +357,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               name: '',
               policies: { stream: 'unlimited' },
               credentials: {
-                apiKey: '',
+                apiKeys: [],
                 aws: {
                   accessKeyID: '',
                   secretAccessKey: '',
@@ -695,7 +696,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         };
 
         // Check if any credential fields have actual values
-        const hasApiKey = values.credentials?.apiKey && values.credentials.apiKey.trim() !== '';
+        const apiKeys = values.credentials?.apiKeys || [];
+        const hasApiKeys = apiKeys.length > 0 && apiKeys.some((k) => k.trim() !== '');
         const hasAwsCredentials =
           values.credentials?.aws?.accessKeyID &&
           values.credentials.aws.accessKeyID.trim() !== '' &&
@@ -712,7 +714,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           values.credentials.gcp.jsonData.trim() !== '';
 
         // Only include credentials if user provided new values
-        if (!hasApiKey && !hasAwsCredentials && !hasGcpCredentials) {
+        if (!hasApiKeys && !hasAwsCredentials && !hasGcpCredentials) {
           delete updateInput.credentials;
         }
 
@@ -721,40 +723,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           input: updateInput,
         });
       } else {
-        // For create mode, check if multiple API keys are provided
-        const apiKeys =
-          valuesForSubmit.credentials?.apiKey
-            ?.split('\n')
-            .map((key) => key.trim())
-            .filter((key) => key.length > 0) || [];
-
-        if (apiKeys.length > 1) {
-          if (isCodexType) {
-            toast.error(t('channels.dialogs.codex.errors.bulkCreateUnsupported'));
-            return;
-          }
-
-          const settings = values.settings ?? duplicateFromRow?.settings ?? undefined;
-          const policies = values.policies ?? duplicateFromRow?.policies ?? undefined;
-          // Bulk create: use bulk mutation
-          await bulkCreateChannels.mutateAsync({
-            type: valuesForSubmit.type as string,
-            name: valuesForSubmit.name as string,
-            baseURL: valuesForSubmit.baseURL,
-            tags: valuesForSubmit.tags,
-            apiKeys: apiKeys,
-            supportedModels: supportedModels,
-            defaultTestModel: valuesForSubmit.defaultTestModel as string,
-            settings,
-            policies,
-          });
-        } else {
-          // Single create: use existing mutation
-          await createChannel.mutateAsync({
-            ...(dataWithModels as z.infer<typeof createChannelInputSchema>),
-            settings: values.settings ?? duplicateFromRow?.settings ?? undefined,
-          });
-        }
+        // For create mode, always use createChannel mutation with apiKeys
+        // The backend will handle multiple API keys in a single channel
+        await createChannel.mutateAsync({
+          ...(dataWithModels as z.infer<typeof createChannelInputSchema>),
+          settings: values.settings ?? duplicateFromRow?.settings ?? undefined,
+        });
       }
 
       form.reset();
@@ -824,19 +798,15 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const handleFetchModels = useCallback(async () => {
     const channelType = form.getValues('type');
     const baseURL = form.getValues('baseURL');
-    const apiKey = form.getValues('credentials.apiKey');
+    const apiKeys = form.getValues('credentials.apiKeys');
 
     if (!channelType || !baseURL) {
       return;
     }
 
     try {
-      // Extract first API key from potentially multi-line input
-      const firstApiKey =
-        apiKey
-          ?.split('\n')
-          .map((key) => key.trim())
-          .filter((key) => key.length > 0)[0] || '';
+      // Extract first API key from the array
+      const firstApiKey = apiKeys?.find((key) => key.trim().length > 0) || '';
 
       const result = await fetchModels.mutateAsync({
         channelType,
@@ -866,7 +836,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
   const canFetchModels = () => {
     const baseURL = form.watch('baseURL');
-    const apiKey = form.watch('credentials.apiKey');
+    const apiKeys = form.watch('credentials.apiKeys');
+    const hasApiKey = apiKeys?.some((key) => key.trim().length > 0);
 
     if (isCodexType || isAntigravityType) {
       return !!baseURL;
@@ -876,7 +847,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       return !!baseURL;
     }
 
-    return !!baseURL && !!apiKey;
+    return !!baseURL && hasApiKey;
   };
 
   // Memoize quick models to avoid re-evaluating on every render
@@ -1310,7 +1281,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         selectedType !== 'anthropic_gcp' && (
                         <FormField
                           control={form.control}
-                          name='credentials.apiKey'
+                          name='credentials.apiKeys'
                           render={({ field, fieldState }) => (
                             <FormItem className='grid grid-cols-8 items-start gap-x-6'>
                               <FormLabel className='col-span-2 pt-2 text-right font-medium'>
@@ -1319,17 +1290,35 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               <div className='col-span-6 space-y-1'>
                                 {isEdit ? (
                                   <div className='relative'>
-                                    <Input
-                                      type={showApiKey ? 'text' : 'password'}
+                                    <Textarea
+                                      value={
+                                        showApiKey
+                                          ? field.value?.join('\n') || ''
+                                          : (field.value || []).map((k) => (k.length > 8 ? k.slice(0, 4) + '****' + k.slice(-4) : '****')).join('\n')
+                                      }
+                                      onChange={(e) => {
+                                        if (!showApiKey) return;
+                                        const keys = e.target.value.split('\n');
+                                        field.onChange(keys);
+                                      }}
+                                      onBlur={(e) => {
+                                        if (!showApiKey) return;
+                                        const keys = e.target.value
+                                          .split('\n')
+                                          .map((k) => k.trim())
+                                          .filter((k) => k.length > 0);
+                                        field.onChange(keys);
+                                        field.onBlur();
+                                      }}
+                                      readOnly={!showApiKey}
                                       placeholder={t('channels.dialogs.fields.apiKey.editPlaceholder')}
-                                      className='col-span-6 pr-20'
+                                      className='col-span-6 min-h-[80px] resize-y font-mono text-sm pr-10'
                                       autoComplete='new-password'
                                       data-form-type='other'
                                       aria-invalid={!!fieldState.error}
                                       data-testid='channel-api-key-input'
-                                      {...field}
                                     />
-                                    <div className='absolute top-1/2 right-1 flex -translate-y-1/2 gap-1'>
+                                    <div className='absolute top-2 right-2 flex flex-col gap-1'>
                                       <Button
                                         type='button'
                                         variant='ghost'
@@ -1345,8 +1334,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                         size='sm'
                                         className='h-7 w-7 p-0'
                                         onClick={() => {
-                                          if (field.value) {
-                                            navigator.clipboard.writeText(field.value);
+                                          const keys = field.value || [];
+                                          if (keys.length > 0) {
+                                            navigator.clipboard.writeText(keys.join('\n'));
                                             toast.success(t('channels.messages.credentialsCopied'));
                                           }
                                         }}
@@ -1354,17 +1344,30 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                         <Copy className='h-4 w-4' />
                                       </Button>
                                     </div>
+                                    <p className='text-muted-foreground mt-1 text-xs'>{t('channels.dialogs.fields.apiKey.multiLineHint')}</p>
                                   </div>
                                 ) : (
                                   <>
                                     <Textarea
+                                      value={field.value?.join('\n') || ''}
+                                      onChange={(e) => {
+                                        const keys = e.target.value.split('\n');
+                                        field.onChange(keys);
+                                      }}
+                                      onBlur={(e) => {
+                                        const keys = e.target.value
+                                          .split('\n')
+                                          .map((k) => k.trim())
+                                          .filter((k) => k.length > 0);
+                                        field.onChange(keys);
+                                        field.onBlur();
+                                      }}
                                       placeholder={t('channels.dialogs.fields.apiKey.placeholder')}
                                       className='col-span-6 min-h-[80px] resize-y font-mono text-sm'
                                       autoComplete='new-password'
                                       data-form-type='other'
                                       aria-invalid={!!fieldState.error}
                                       data-testid='channel-api-key-input'
-                                      {...field}
                                     />
                                     <p className='text-muted-foreground text-xs'>{t('channels.dialogs.fields.apiKey.multiLineHint')}</p>
                                   </>

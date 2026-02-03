@@ -96,7 +96,7 @@ func TestUsageLogService_CreateUsageLog_WithPriceReferenceID(t *testing.T) {
 		SetBaseURL("https://api.openai.com/v1").
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -209,7 +209,7 @@ func TestUsageLogService_CreateUsageLog_WithCachedTokens(t *testing.T) {
 		SetBaseURL("https://api.openai.com/v1").
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
 		Save(ctx)
 	require.NoError(t, err)
 
