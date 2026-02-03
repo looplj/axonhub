@@ -155,6 +155,28 @@ type OpenAIModel struct {
 	Object  string `json:"object"`
 	Created int64  `json:"created"`
 	OwnedBy string `json:"owned_by"`
+
+	Name          string `json:"name,omitempty"`
+	Description   string `json:"description,omitempty"`
+	ContextLength int    `json:"context_length,omitempty"`
+	MaxOutputTokens int  `json:"max_output_tokens,omitempty"`
+	Icon          string `json:"icon,omitempty"`
+	Type          string `json:"type,omitempty"`
+
+	Capabilities struct {
+		Vision    bool `json:"vision,omitempty"`
+		ToolCall  bool `json:"tool_call,omitempty"`
+		Reasoning bool `json:"reasoning,omitempty"`
+	} `json:"capabilities,omitempty"`
+
+	Pricing struct {
+		Input      float64 `json:"input,omitempty"`
+		Output     float64 `json:"output,omitempty"`
+		CacheRead  float64 `json:"cache_read,omitempty"`
+		CacheWrite float64 `json:"cache_write,omitempty"`
+		Unit       string  `json:"unit,omitempty"`
+		Currency   string  `json:"currency,omitempty"`
+	} `json:"pricing,omitempty"`
 }
 
 // ListModels returns all available models.
