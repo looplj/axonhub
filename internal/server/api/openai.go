@@ -7,6 +7,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm"
@@ -178,6 +179,50 @@ type OpenAIModel struct {
 	Pricing         Pricing      `json:"pricing,omitempty"`
 	Icon            string       `json:"icon,omitempty"`
 	Type            string       `json:"type,omitempty"`
+}
+
+// ListModels returns all available models.
+
+// convertModelToOpenAIExtended transforms an ent.Model to OpenAIModel with extended metadata fields.
+// It safely handles nil ModelCard, Cost, and Limit fields.
+func convertModelToOpenAIExtended(m *ent.Model) OpenAIModel {
+	result := OpenAIModel{
+		// Set default pricing unit and currency
+		Pricing: Pricing{Unit: "per_1m_tokens", Currency: "USD"},
+		ID:      m.ModelID,
+		Object:  "model",
+		Created: m.CreatedAt.Unix(),
+		OwnedBy: m.Developer,
+		Name:    m.Name,
+		Icon:    m.Icon,
+		Type:    string(m.Type),
+	}
+
+	if m.Remark != nil {
+		result.Description = *m.Remark
+	}
+
+	if m.ModelCard != nil {
+		// Capabilities
+		result.Capabilities = Capabilities{
+			Vision:    m.ModelCard.Vision,
+			ToolCall:  m.ModelCard.ToolCall,
+			Reasoning: m.ModelCard.Reasoning.Supported,
+		}
+		// Limits
+		result.ContextLength = m.ModelCard.Limit.Context
+		result.MaxOutputTokens = m.ModelCard.Limit.Output
+		// Pricing
+		result.Pricing = Pricing{
+			Input:      m.ModelCard.Cost.Input,
+			Output:     m.ModelCard.Cost.Output,
+			CacheRead:  m.ModelCard.Cost.CacheRead,
+			CacheWrite: m.ModelCard.Cost.CacheWrite,
+			Unit:       "per_1m_tokens",
+			Currency:   "USD",
+		}
+	}
+	return result
 }
 
 // ListModels returns all available models.
