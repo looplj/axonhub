@@ -30,7 +30,7 @@ func TestChannelService_SaveChannelModelPrices(t *testing.T) {
 		SetType(channel.TypeOpenai).
 		SetName("Test Channel").
 		SetBaseURL("https://api.openai.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "key1"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "key1"}).
 		SetSupportedModels([]string{"gpt-4", "gpt-3.5-turbo"}).
 		SetDefaultTestModel("gpt-4").
 		SetStatus(channel.StatusEnabled).

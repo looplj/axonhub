@@ -253,7 +253,7 @@ func (svc *ChannelService) BulkImportChannels(ctx context.Context, items []*Bulk
 		}
 
 		// Prepare credentials (API key is now required)
-		credentials := &objects.ChannelCredentials{
+		credentials := objects.ChannelCredentials{
 			APIKey: *item.APIKey,
 		}
 

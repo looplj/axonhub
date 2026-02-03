@@ -48,7 +48,7 @@ func NewCodexQuotaChecker() *CodexQuotaChecker {
 
 func (c *CodexQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (QuotaData, error) {
 	// Extract OAuth credentials
-	if ch.Credentials == nil {
+	if ch.Credentials.OAuth == nil && strings.TrimSpace(ch.Credentials.APIKey) == "" {
 		return QuotaData{}, fmt.Errorf("channel has no credentials")
 	}
 

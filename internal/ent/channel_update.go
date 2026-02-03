@@ -113,8 +113,16 @@ func (_u *ChannelUpdate) SetNillableStatus(v *channel.Status) *ChannelUpdate {
 }
 
 // SetCredentials sets the "credentials" field.
-func (_u *ChannelUpdate) SetCredentials(v *objects.ChannelCredentials) *ChannelUpdate {
+func (_u *ChannelUpdate) SetCredentials(v objects.ChannelCredentials) *ChannelUpdate {
 	_u.mutation.SetCredentials(v)
+	return _u
+}
+
+// SetNillableCredentials sets the "credentials" field if the given value is not nil.
+func (_u *ChannelUpdate) SetNillableCredentials(v *objects.ChannelCredentials) *ChannelUpdate {
+	if v != nil {
+		_u.SetCredentials(*v)
+	}
 	return _u
 }
 
@@ -980,8 +988,16 @@ func (_u *ChannelUpdateOne) SetNillableStatus(v *channel.Status) *ChannelUpdateO
 }
 
 // SetCredentials sets the "credentials" field.
-func (_u *ChannelUpdateOne) SetCredentials(v *objects.ChannelCredentials) *ChannelUpdateOne {
+func (_u *ChannelUpdateOne) SetCredentials(v objects.ChannelCredentials) *ChannelUpdateOne {
 	_u.mutation.SetCredentials(v)
+	return _u
+}
+
+// SetNillableCredentials sets the "credentials" field if the given value is not nil.
+func (_u *ChannelUpdateOne) SetNillableCredentials(v *objects.ChannelCredentials) *ChannelUpdateOne {
+	if v != nil {
+		_u.SetCredentials(*v)
+	}
 	return _u
 }
 

@@ -102,7 +102,7 @@ func (i *CreateChannelInput) Mutate(m *ChannelMutation) {
 	}
 	m.SetName(i.Name)
 	if v := i.Credentials; v != nil {
-		m.SetCredentials(v)
+		m.SetCredentials(*v)
 	}
 	if v := i.SupportedModels; v != nil {
 		m.SetSupportedModels(v)
@@ -174,7 +174,7 @@ func (i *UpdateChannelInput) Mutate(m *ChannelMutation) {
 		m.SetStatus(*v)
 	}
 	if v := i.Credentials; v != nil {
-		m.SetCredentials(v)
+		m.SetCredentials(*v)
 	}
 	if v := i.SupportedModels; v != nil {
 		m.SetSupportedModels(v)

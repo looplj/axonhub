@@ -43,7 +43,7 @@ func setupBackupTest(t *testing.T) (*ent.Client, *BackupService, context.Context
 }
 
 func createBackupTestChannel(t *testing.T, client *ent.Client, ctx context.Context, name string, chType channel.Type) *ent.Channel {
-	credentials := &objects.ChannelCredentials{
+	credentials := objects.ChannelCredentials{
 		APIKey: "test-api-key",
 	}
 

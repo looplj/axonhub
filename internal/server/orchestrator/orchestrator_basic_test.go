@@ -253,7 +253,7 @@ func TestChatCompletionOrchestrator_Process_WithOverrideParameters(t *testing.T)
 		SetType(channel.TypeOpenai).
 		SetName("Test Channel with Overrides").
 		SetBaseURL("https://api.openai.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-api-key"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-api-key"}).
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		SetSettings(&objects.ChannelSettings{

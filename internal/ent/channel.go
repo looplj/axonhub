@@ -35,7 +35,7 @@ type Channel struct {
 	// Status holds the value of the "status" field.
 	Status channel.Status `json:"status,omitempty"`
 	// Credentials holds the value of the "credentials" field.
-	Credentials *objects.ChannelCredentials `json:"-"`
+	Credentials objects.ChannelCredentials `json:"-"`
 	// SupportedModels holds the value of the "supported_models" field.
 	SupportedModels []string `json:"supported_models,omitempty"`
 	// AutoSyncSupportedModels holds the value of the "auto_sync_supported_models" field.

@@ -92,9 +92,9 @@ func (Channel) Fields() []ent.Field {
 				entgql.Skip(entgql.SkipMutationCreateInput),
 				entgql.OrderField("STATUS"),
 			),
-		field.JSON("credentials", &objects.ChannelCredentials{}).
+		field.JSON("credentials", objects.ChannelCredentials{}).
 			Sensitive().
-			Default(&objects.ChannelCredentials{}),
+			Default(objects.ChannelCredentials{}),
 		field.Strings("supported_models"),
 		field.Bool("auto_sync_supported_models").Default(false),
 		field.Strings("tags").Optional().Default([]string{}),

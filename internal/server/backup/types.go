@@ -19,7 +19,7 @@ type BackupData struct {
 type BackupChannel struct {
 	ent.Channel
 
-	Credentials *objects.ChannelCredentials `json:"credentials,omitempty"`
+	Credentials objects.ChannelCredentials `json:"credentials"`
 }
 
 type BackupModel struct {

@@ -96,7 +96,7 @@ func TestDefaultSelector_SelectModelCandidates_Cache(t *testing.T) {
 			SetType(channel.TypeAnthropic).
 			SetSupportedModels([]string{"claude-3-opus"}).
 			SetDefaultTestModel("claude-3-opus").
-			SetCredentials(&objects.ChannelCredentials{APIKey: "test-key"}).
+			SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
 			SetStatus(channel.StatusEnabled).
 			SaveX(ctx)
 
@@ -288,7 +288,7 @@ func TestDefaultSelector_SelectModelCandidates_Cache(t *testing.T) {
 			SetType(channel.TypeOpenai).
 			SetName("TTL Test Channel 1").
 			SetBaseURL("https://api.openai.com/v1").
-			SetCredentials(&objects.ChannelCredentials{APIKey: "test-key-ttl-1"}).
+			SetCredentials(objects.ChannelCredentials{APIKey: "test-key-ttl-1"}).
 			SetSupportedModels([]string{"gpt-4", "gpt-3.5-turbo"}).
 			SetDefaultTestModel("gpt-4").
 			SetOrderingWeight(100).
@@ -300,7 +300,7 @@ func TestDefaultSelector_SelectModelCandidates_Cache(t *testing.T) {
 			SetType(channel.TypeOpenai).
 			SetName("TTL Test Channel 2").
 			SetBaseURL("https://api.openai.com/v1").
-			SetCredentials(&objects.ChannelCredentials{APIKey: "test-key-ttl-2"}).
+			SetCredentials(objects.ChannelCredentials{APIKey: "test-key-ttl-2"}).
 			SetSupportedModels([]string{"gpt-4", "gpt-3.5-turbo"}).
 			SetDefaultTestModel("gpt-4").
 			SetOrderingWeight(50).

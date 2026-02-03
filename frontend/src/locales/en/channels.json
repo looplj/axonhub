@@ -289,7 +289,7 @@
   "channels.dialogs.fields.apiKey.label": "API Key",
   "channels.dialogs.fields.apiKey.placeholder": "sk-...",
   "channels.dialogs.fields.apiKey.editPlaceholder": "Leave empty to keep unchanged",
-  "channels.dialogs.fields.apiKey.multiLineHint": "One API key per line, will create multiple channels if provided multiple keys.",
+  "channels.dialogs.fields.apiKey.multiLineHint": "One API key per line. Multiple keys will be used in round-robin fashion.",
   "channels.dialogs.fields.supportedModels.label": "Models",
   "channels.dialogs.fields.supportedModels.description": "Model ID",
   "channels.dialogs.fields.supportedModels.required": "Please add at least one supported model",

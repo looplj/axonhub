@@ -292,7 +292,7 @@
   "channels.dialogs.fields.apiKey.label": "API Key",
   "channels.dialogs.fields.apiKey.placeholder": "sk-...",
   "channels.dialogs.fields.apiKey.editPlaceholder": "留空则保持不变",
-  "channels.dialogs.fields.apiKey.multiLineHint": "每行一个 API Key, 如果输入了多个 Key，系统将自动创建多个渠道。",
+  "channels.dialogs.fields.apiKey.multiLineHint": "每行一个 API Key，多个 Key 将以轮询方式使用。",
   "channels.dialogs.fields.supportedModels.label": "支持的模型",
   "channels.dialogs.fields.supportedModels.description": "模型 ID",
   "channels.dialogs.fields.supportedModels.required": "请至少添加一个支持的模型",

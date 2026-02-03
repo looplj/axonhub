@@ -232,7 +232,7 @@ func (_m *Channel) Node(ctx context.Context) (node *Node, err error) {
 		return nil, err
 	}
 	node.Fields[6] = &Field{
-		Type:  "*objects.ChannelCredentials",
+		Type:  "objects.ChannelCredentials",
 		Name:  "credentials",
 		Value: string(buf),
 	}
