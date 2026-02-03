@@ -13,6 +13,7 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
@@ -22,8 +23,8 @@ import (
 // Config holds all configuration for the OpenRouter outbound transformer.
 type Config struct {
 	// API configuration
-	BaseURL string `json:"base_url,omitempty"` // Custom base URL (optional)
-	APIKey  string `json:"api_key,omitempty"`  // API key
+	BaseURL        string              `json:"base_url,omitempty"` // Custom base URL (optional)
+	APIKeyProvider auth.APIKeyProvider `json:"-"`                  // API key provider
 }
 
 // OutboundTransformer implements transformer.Outbound for OpenRouter format.
@@ -31,15 +32,15 @@ type Config struct {
 type OutboundTransformer struct {
 	transformer.Outbound
 
-	BaseURL string
-	APIKey  string
+	BaseURL        string
+	APIKeyProvider auth.APIKeyProvider
 }
 
 // NewOutboundTransformer creates a new OpenRouter OutboundTransformer with legacy parameters.
 func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error) {
 	config := &Config{
-		BaseURL: baseURL,
-		APIKey:  apiKey,
+		BaseURL:        baseURL,
+		APIKeyProvider: auth.NewStaticKeyProvider(apiKey),
 	}
 
 	return NewOutboundTransformerWithConfig(config)
@@ -47,7 +48,13 @@ func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error
 
 // NewOutboundTransformerWithConfig creates a new OpenRouter OutboundTransformer with unified configuration.
 func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, error) {
-	t, err := openai.NewOutboundTransformer(config.BaseURL, config.APIKey)
+	oaiConfig := &openai.Config{
+		PlatformType:   openai.PlatformOpenAI,
+		BaseURL:        config.BaseURL,
+		APIKeyProvider: config.APIKeyProvider,
+	}
+
+	t, err := openai.NewOutboundTransformerWithConfig(oaiConfig)
 	if err != nil {
 		return nil, fmt.Errorf("invalid OpenRouter transformer configuration: %w", err)
 	}
@@ -55,9 +62,9 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 	baseURL := strings.TrimSuffix(config.BaseURL, "/")
 
 	return &OutboundTransformer{
-		BaseURL:  baseURL,
-		APIKey:   config.APIKey,
-		Outbound: t,
+		BaseURL:        baseURL,
+		APIKeyProvider: config.APIKeyProvider,
+		Outbound:       t,
 	}, nil
 }
 
@@ -99,9 +106,12 @@ func (t *OutboundTransformer) TransformRequest(
 	headers.Set("Content-Type", "application/json")
 	headers.Set("Accept", "application/json")
 
+	// Get API key from provider
+	apiKey := t.APIKeyProvider.Get(ctx)
+
 	auth := &httpclient.AuthConfig{
 		Type:   httpclient.AuthTypeBearer,
-		APIKey: t.APIKey,
+		APIKey: apiKey,
 	}
 
 	url := t.BaseURL + "/chat/completions"
@@ -181,9 +191,12 @@ func (t *OutboundTransformer) buildImageGenerationRequest(llmReq *llm.Request) (
 	headers.Set("Content-Type", "application/json")
 	headers.Set("Accept", "application/json")
 
+	// Get API key from provider
+	apiKey := t.APIKeyProvider.Get(context.Background())
+
 	auth := &httpclient.AuthConfig{
 		Type:   httpclient.AuthTypeBearer,
-		APIKey: t.APIKey,
+		APIKey: apiKey,
 	}
 
 	url := t.BaseURL + "/chat/completions"

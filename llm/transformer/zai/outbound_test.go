@@ -10,14 +10,15 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 )
 
 func TestOutboundTransformer_TransformRequest_URL(t *testing.T) {
 	// Helper function to create transformer
 	createTransformer := func(baseURL, apiKey string) *OutboundTransformer {
 		config := &Config{
-			BaseURL: baseURL,
-			APIKey:  apiKey,
+			BaseURL:        baseURL,
+			APIKeyProvider: auth.NewStaticKeyProvider(apiKey),
 		}
 
 		transformerInterface, err := NewOutboundTransformerWithConfig(config)
@@ -196,8 +197,8 @@ func TestOutboundTransformer_TransformRequest_URL(t *testing.T) {
 
 func TestOutboundTransformer_TransformRequest_WithMetadata(t *testing.T) {
 	config := &Config{
-		BaseURL: "https://api.zai.com/v4",
-		APIKey:  "test-api-key",
+		BaseURL:        "https://api.zai.com/v4",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
 	}
 
 	transformer, err := NewOutboundTransformerWithConfig(config)
@@ -240,8 +241,8 @@ func TestOutboundTransformer_TransformRequest_WithMetadata(t *testing.T) {
 
 func TestOutboundTransformer_TransformRequest_WithThinking(t *testing.T) {
 	config := &Config{
-		BaseURL: "https://api.zai.com",
-		APIKey:  "test-api-key",
+		BaseURL:        "https://api.zai.com",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
 	}
 
 	transformer, err := NewOutboundTransformerWithConfig(config)
@@ -280,8 +281,8 @@ func TestOutboundTransformer_TransformRequest_WithThinking(t *testing.T) {
 
 func TestOutboundTransformer_TransformRequest_ResponseFormat(t *testing.T) {
 	config := &Config{
-		BaseURL: "https://api.zai.com/v4",
-		APIKey:  "test-api-key",
+		BaseURL:        "https://api.zai.com/v4",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
 	}
 
 	transformer, err := NewOutboundTransformerWithConfig(config)

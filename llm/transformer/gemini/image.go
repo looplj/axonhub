@@ -1,6 +1,7 @@
 package gemini
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -15,7 +16,7 @@ import (
 
 // buildImageGenerationRequest builds the HTTP request for Gemini image generation/editing.
 // Gemini uses the generateContent endpoint with responseModalities: ["TEXT", "IMAGE"].
-func (t *OutboundTransformer) buildImageGenerationRequest(llmReq *llm.Request) (*httpclient.Request, error) {
+func (t *OutboundTransformer) buildImageGenerationRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
 	if llmReq.Image == nil {
 		return nil, fmt.Errorf("%w: image request is required", transformer.ErrInvalidRequest)
 	}
@@ -73,11 +74,15 @@ func (t *OutboundTransformer) buildImageGenerationRequest(llmReq *llm.Request) (
 
 	// Prepare authentication
 	var auth *httpclient.AuthConfig
-	if t.config.APIKey != "" {
-		auth = &httpclient.AuthConfig{
-			Type:      "api_key",
-			APIKey:    t.config.APIKey,
-			HeaderKey: "x-goog-api-key",
+
+	if t.config.APIKeyProvider != nil {
+		apiKey := t.config.APIKeyProvider.Get(ctx)
+		if apiKey != "" {
+			auth = &httpclient.AuthConfig{
+				Type:      "api_key",
+				APIKey:    apiKey,
+				HeaderKey: "x-goog-api-key",
+			}
 		}
 	}
 

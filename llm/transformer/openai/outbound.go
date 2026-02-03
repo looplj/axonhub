@@ -12,6 +12,7 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
@@ -39,8 +40,8 @@ type Config struct {
 	// If true, the base URL will be used as is, without appending the version.
 	RawURL bool `json:"raw_url,omitempty"`
 
-	// APIKey is the API key for authentication, required.
-	APIKey string `json:"api_key,omitempty"`
+	// APIKeyProvider provides API keys for authentication, required.
+	APIKeyProvider auth.APIKeyProvider `json:"-"`
 
 	// APIVersion is the API version for Azure platform, required for Azure.
 	APIVersion string `json:"api_version,omitempty"`
@@ -54,9 +55,9 @@ type OutboundTransformer struct {
 // NewOutboundTransformer creates a new OpenAI OutboundTransformer with legacy parameters.
 func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error) {
 	config := &Config{
-		PlatformType: PlatformOpenAI,
-		BaseURL:      baseURL,
-		APIKey:       apiKey,
+		PlatformType:   PlatformOpenAI,
+		BaseURL:        baseURL,
+		APIKeyProvider: auth.NewStaticKeyProvider(apiKey),
 	}
 
 	err := validateConfig(config)
@@ -97,8 +98,8 @@ func validateConfig(config *Config) error {
 	}
 
 	// Standard OpenAI validation
-	if config.APIKey == "" {
-		return errors.New("API key is required")
+	if config.APIKeyProvider == nil {
+		return errors.New("API key provider is required")
 	}
 
 	if config.BaseURL == "" {
@@ -147,7 +148,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 			// ok
 		}
 
-		return t.buildImageGenerationAPIRequest(llmReq)
+		return t.buildImageGenerationAPIRequest(ctx, llmReq)
 	case llm.RequestTypeRerank:
 		return nil, fmt.Errorf("%w: rerank is not supported", transformer.ErrInvalidRequest)
 	}
@@ -164,25 +165,28 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, fmt.Errorf("failed to transform request: %w", err)
 	}
 
+	// Get API key from provider
+	apiKey := t.config.APIKeyProvider.Get(ctx)
+
 	// Prepare headers
 	headers := make(http.Header)
 	headers.Set("Content-Type", "application/json")
 	headers.Set("Accept", "application/json")
 
-	var auth *httpclient.AuthConfig
+	var authConfig *httpclient.AuthConfig
 
 	//nolint:exhaustive // Chcked.
 	switch t.config.PlatformType {
 	case PlatformAzure:
-		auth = &httpclient.AuthConfig{
+		authConfig = &httpclient.AuthConfig{
 			Type:      "api_key",
-			APIKey:    t.config.APIKey,
+			APIKey:    apiKey,
 			HeaderKey: "Api-Key",
 		}
 	default:
-		auth = &httpclient.AuthConfig{
+		authConfig = &httpclient.AuthConfig{
 			Type:   "bearer",
-			APIKey: t.config.APIKey,
+			APIKey: apiKey,
 		}
 	}
 
@@ -197,7 +201,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		URL:     url,
 		Headers: headers,
 		Body:    body,
-		Auth:    auth,
+		Auth:    authConfig,
 	}, nil
 }
 
@@ -302,13 +306,7 @@ func (t *OutboundTransformer) buildFullRequestURL(_ *llm.Request) (string, error
 
 // SetAPIKey updates the API key.
 func (t *OutboundTransformer) SetAPIKey(apiKey string) {
-	t.config.APIKey = apiKey
-
-	// Validate configuration after updating API key
-	err := validateConfig(t.config)
-	if err != nil {
-		panic(fmt.Sprintf("invalid OpenAI transformer configuration after setting API key: %v", err))
-	}
+	t.config.APIKeyProvider = auth.NewStaticKeyProvider(apiKey)
 }
 
 // SetBaseURL updates the base URL.

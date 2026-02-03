@@ -10,13 +10,14 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 func TestBuildImageGenerationAPIRequest(t *testing.T) {
 	config := &Config{
-		BaseURL: "https://api.example.com/v4",
-		APIKey:  "test-key",
+		BaseURL:        "https://api.example.com/v4",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 	}
 
 	transformer, err := NewOutboundTransformerWithConfig(config)
@@ -111,7 +112,7 @@ func TestBuildImageGenerationAPIRequest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req, err := transformer.(*OutboundTransformer).buildImageGenerationAPIRequest(tt.chatReq)
+			req, err := transformer.(*OutboundTransformer).buildImageGenerationAPIRequest(t.Context(), tt.chatReq)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -217,5 +218,3 @@ func TestTransformImageGenerationResponse(t *testing.T) {
 		})
 	}
 }
-
-

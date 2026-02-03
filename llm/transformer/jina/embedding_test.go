@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -242,8 +243,8 @@ func TestEmbeddingInboundTransformer_TransformRequest(t *testing.T) {
 func TestOutboundTransformer_TransformRequest_Embedding(t *testing.T) {
 	t.Run("valid embedding request with /v1 suffix", func(t *testing.T) {
 		config := &Config{
-			BaseURL: "https://api.jina.ai/v1",
-			APIKey:  "test-key",
+			BaseURL:        "https://api.jina.ai/v1",
+			APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 		}
 		transformer, err := NewOutboundTransformerWithConfig(config)
 		require.NoError(t, err)
@@ -274,8 +275,8 @@ func TestOutboundTransformer_TransformRequest_Embedding(t *testing.T) {
 
 	t.Run("valid embedding request without /v1 suffix", func(t *testing.T) {
 		config := &Config{
-			BaseURL: "https://api.jina.ai",
-			APIKey:  "test-key",
+			BaseURL:        "https://api.jina.ai",
+			APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 		}
 		transformer, err := NewOutboundTransformerWithConfig(config)
 		require.NoError(t, err)
@@ -295,8 +296,8 @@ func TestOutboundTransformer_TransformRequest_Embedding(t *testing.T) {
 
 	t.Run("embedding request with explicit task", func(t *testing.T) {
 		config := &Config{
-			BaseURL: "https://api.jina.ai/v1",
-			APIKey:  "test-key",
+			BaseURL:        "https://api.jina.ai/v1",
+			APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 		}
 		transformer, err := NewOutboundTransformerWithConfig(config)
 		require.NoError(t, err)
@@ -322,8 +323,8 @@ func TestOutboundTransformer_TransformRequest_Embedding(t *testing.T) {
 
 	t.Run("embedding request with empty task defaults to text-matching", func(t *testing.T) {
 		config := &Config{
-			BaseURL: "https://api.jina.ai/v1",
-			APIKey:  "test-key",
+			BaseURL:        "https://api.jina.ai/v1",
+			APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 		}
 		transformer, err := NewOutboundTransformerWithConfig(config)
 		require.NoError(t, err)
@@ -349,8 +350,8 @@ func TestOutboundTransformer_TransformRequest_Embedding(t *testing.T) {
 
 	t.Run("embedding request nil llm request", func(t *testing.T) {
 		config := &Config{
-			BaseURL: "https://api.jina.ai/v1",
-			APIKey:  "test-key",
+			BaseURL:        "https://api.jina.ai/v1",
+			APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 		}
 		transformer, err := NewOutboundTransformerWithConfig(config)
 		require.NoError(t, err)
@@ -362,8 +363,8 @@ func TestOutboundTransformer_TransformRequest_Embedding(t *testing.T) {
 
 	t.Run("embedding request missing embedding in request", func(t *testing.T) {
 		config := &Config{
-			BaseURL: "https://api.jina.ai/v1",
-			APIKey:  "test-key",
+			BaseURL:        "https://api.jina.ai/v1",
+			APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 		}
 		transformer, err := NewOutboundTransformerWithConfig(config)
 		require.NoError(t, err)
@@ -380,8 +381,8 @@ func TestOutboundTransformer_TransformRequest_Embedding(t *testing.T) {
 
 	t.Run("embedding request wrong request type", func(t *testing.T) {
 		config := &Config{
-			BaseURL: "https://api.jina.ai/v1",
-			APIKey:  "test-key",
+			BaseURL:        "https://api.jina.ai/v1",
+			APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 		}
 		transformer, err := NewOutboundTransformerWithConfig(config)
 		require.NoError(t, err)
@@ -399,8 +400,8 @@ func TestOutboundTransformer_TransformRequest_Embedding(t *testing.T) {
 
 func TestOutboundTransformer_TransformResponse_Embedding(t *testing.T) {
 	config := &Config{
-		BaseURL: "https://api.jina.ai/v1",
-		APIKey:  "test-key",
+		BaseURL:        "https://api.jina.ai/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 	}
 	transformer, err := NewOutboundTransformerWithConfig(config)
 	require.NoError(t, err)
@@ -541,8 +542,8 @@ func TestEmbeddingTransformers_APIFormat(t *testing.T) {
 	require.Equal(t, llm.APIFormatJinaEmbedding, inbound.APIFormat())
 
 	config := &Config{
-		BaseURL: "https://api.jina.ai/v1",
-		APIKey:  "test-key",
+		BaseURL:        "https://api.jina.ai/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 	}
 	outbound, err := NewOutboundTransformerWithConfig(config)
 	require.NoError(t, err)
@@ -551,8 +552,8 @@ func TestEmbeddingTransformers_APIFormat(t *testing.T) {
 
 func TestOutboundTransformer_TransformError_Embedding(t *testing.T) {
 	config := &Config{
-		BaseURL: "https://api.jina.ai/v1",
-		APIKey:  "test-key",
+		BaseURL:        "https://api.jina.ai/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 	}
 	transformer, err := NewOutboundTransformerWithConfig(config)
 	require.NoError(t, err)
@@ -589,8 +590,8 @@ func TestOutboundTransformer_TransformError_Embedding(t *testing.T) {
 
 func TestOutboundTransformer_StreamNotSupported_Embedding(t *testing.T) {
 	config := &Config{
-		BaseURL: "https://api.jina.ai/v1",
-		APIKey:  "test-key",
+		BaseURL:        "https://api.jina.ai/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 	}
 	transformer, err := NewOutboundTransformerWithConfig(config)
 	require.NoError(t, err)
@@ -634,8 +635,8 @@ func TestOutboundTransformer_URLBuilding_Embedding(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			config := &Config{
-				BaseURL: tc.baseURL,
-				APIKey:  "test-key",
+				BaseURL:        tc.baseURL,
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			}
 			transformer, err := NewOutboundTransformerWithConfig(config)
 			require.NoError(t, err)

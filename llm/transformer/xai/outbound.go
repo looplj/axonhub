@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
@@ -21,7 +22,9 @@ const (
 type Config struct {
 	// API configuration
 	BaseURL string `json:"base_url,omitempty"` // Custom base URL (optional, defaults to DefaultBaseURL)
-	APIKey  string `json:"api_key"`            // API key (required)
+
+	// APIKeyProvider provides API keys for authentication.
+	APIKeyProvider auth.APIKeyProvider `json:"-"`
 }
 
 // OutboundTransformer implements transformer.Outbound for xAI format.
@@ -38,8 +41,8 @@ func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error
 	}
 
 	config := &Config{
-		BaseURL: baseURL,
-		APIKey:  apiKey,
+		BaseURL:        baseURL,
+		APIKeyProvider: auth.NewStaticKeyProvider(apiKey),
 	}
 
 	return NewOutboundTransformerWithConfig(config)
@@ -52,7 +55,13 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		return nil, fmt.Errorf("invalid xAI transformer configuration: %w", err)
 	}
 
-	outbound, err := openai.NewOutboundTransformer(config.BaseURL, config.APIKey)
+	openaiConfig := &openai.Config{
+		PlatformType:   openai.PlatformOpenAI,
+		BaseURL:        config.BaseURL,
+		APIKeyProvider: config.APIKeyProvider,
+	}
+
+	outbound, err := openai.NewOutboundTransformerWithConfig(openaiConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
 	}
@@ -69,8 +78,8 @@ func validateConfig(config *Config) error {
 		return errors.New("config cannot be nil")
 	}
 
-	if config.APIKey == "" {
-		return errors.New("API key is required")
+	if config.APIKeyProvider == nil {
+		return errors.New("API key provider is required")
 	}
 
 	if config.BaseURL == "" {

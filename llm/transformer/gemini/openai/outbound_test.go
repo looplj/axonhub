@@ -1,6 +1,7 @@
 package geminioai
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"testing"
@@ -10,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -35,11 +37,11 @@ func TestNewOutboundTransformer(t *testing.T) {
 			errString: "base URL is required",
 		},
 		{
-			name:      "empty API key",
+			name:      "empty API key provider",
 			baseURL:   "https://generativelanguage.googleapis.com",
 			apiKey:    "",
 			wantErr:   true,
-			errString: "API key is required",
+			errString: "API key provider is required",
 		},
 		{
 			name:    "base URL with trailing slash",
@@ -79,42 +81,42 @@ func TestNewOutboundTransformerWithConfig(t *testing.T) {
 		{
 			name: "valid config",
 			config: &Config{
-				BaseURL: "https://generativelanguage.googleapis.com",
-				APIKey:  "test-api-key",
+				BaseURL:        "https://generativelanguage.googleapis.com",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
 			},
 			wantErr: false,
 			validate: func(t *OutboundTransformer) bool {
-				return t.BaseURL == "https://generativelanguage.googleapis.com/v1beta/openai" && t.APIKey == "test-api-key"
+				return t.BaseURL == "https://generativelanguage.googleapis.com/v1beta/openai" && t.APIKeyProvider.Get(context.Background()) == "test-api-key"
 			},
 		},
 		{
 			name: "valid config with trailing slash",
 			config: &Config{
-				BaseURL: "https://generativelanguage.googleapis.com/",
-				APIKey:  "test-api-key",
+				BaseURL:        "https://generativelanguage.googleapis.com/",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
 			},
 			wantErr: false,
 			validate: func(t *OutboundTransformer) bool {
-				return t.BaseURL == "https://generativelanguage.googleapis.com/v1beta/openai" && t.APIKey == "test-api-key"
+				return t.BaseURL == "https://generativelanguage.googleapis.com/v1beta/openai" && t.APIKeyProvider.Get(context.Background()) == "test-api-key"
 			},
 		},
 		{
 			name: "empty base URL",
 			config: &Config{
-				BaseURL: "",
-				APIKey:  "test-api-key",
+				BaseURL:        "",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
 			},
 			wantErr:   true,
 			errString: "base URL is required",
 		},
 		{
-			name: "empty API key",
+			name: "empty API key provider",
 			config: &Config{
-				BaseURL: "https://generativelanguage.googleapis.com",
-				APIKey:  "",
+				BaseURL:        "https://generativelanguage.googleapis.com",
+				APIKeyProvider: nil,
 			},
 			wantErr:   true,
-			errString: "API key is required",
+			errString: "API key provider is required",
 		},
 	}
 
