@@ -14,6 +14,7 @@ export interface QueryModelsInput {
   statusIn?: ('enabled' | 'disabled' | 'archived')[];
   includeMapping?: boolean;
   includePrefix?: boolean;
+  includeAllChannelModels?: boolean;
 }
 
 const MODELS_QUERY = `

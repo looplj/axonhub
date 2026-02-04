@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
@@ -16,8 +17,6 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/tmaxmax/go-sse"
-
-	"github.com/looplj/axonhub/llm"
 )
 
 func main() {
@@ -77,12 +76,12 @@ func runConvert(args []string) {
 		os.Exit(1)
 	}
 
-	responses, err := readResponsesFile(*input)
+	responses, err := readJSONStreamFile(*input)
 	if err != nil {
 		log.Fatalf("Failed to read input file: %v", err)
 	}
 
-	streamEvents := convertResponsesToStreamEvents(responses)
+	streamEvents := convertJSONStreamEventsToStreamEvents(responses)
 
 	err = writeStreamEventsFile(*output, streamEvents)
 	if err != nil {
@@ -302,21 +301,21 @@ func runCapture(args []string) {
 	fmt.Printf("Successfully captured %d events to %s\n", len(events), *output)
 }
 
-func readResponsesFile(filename string) ([]llm.Response, error) {
+func readJSONStreamFile(filename string) ([]JSONStreamEvent, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file %s: %w", filename, err)
 	}
 	defer file.Close()
 
-	var responses []llm.Response
+	var events []JSONStreamEvent
 
 	decoder := json.NewDecoder(file)
-	if err := decoder.Decode(&responses); err != nil {
+	if err := decoder.Decode(&events); err != nil {
 		return nil, fmt.Errorf("failed to decode JSON from %s: %w", filename, err)
 	}
 
-	return responses, nil
+	return events, nil
 }
 
 type StreamEvent struct {
@@ -325,18 +324,26 @@ type StreamEvent struct {
 	Data        string `json:"Data"` // Data is a JSON string in the test file
 }
 
-func convertResponsesToStreamEvents(responses []llm.Response) []StreamEvent {
-	return lo.FilterMap(responses, func(response llm.Response, _ int) (StreamEvent, bool) {
-		// Convert the response to JSON
-		responseJSON, err := json.Marshal(response)
-		if err != nil {
-			log.Printf("Warning: failed to marshal response %s: %v", response.ID, err)
-			return StreamEvent{}, false
+type JSONStreamEvent struct {
+	LastEventID string          `json:"LastEventID"`
+	Type        string          `json:"Type"`
+	Data        json.RawMessage `json:"Data"` // Data is a JSON string in the test file
+}
+
+func convertJSONStreamEventsToStreamEvents(events []JSONStreamEvent) []StreamEvent {
+	return lo.Map(events, func(event JSONStreamEvent, _ int) StreamEvent {
+		var buf bytes.Buffer
+
+		data := string(event.Data)
+		if err := json.Compact(&buf, event.Data); err == nil {
+			data = buf.String()
 		}
 
 		return StreamEvent{
-			Data: string(responseJSON),
-		}, true
+			LastEventID: event.LastEventID,
+			Type:        event.Type,
+			Data:        data,
+		}
 	})
 }
 

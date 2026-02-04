@@ -353,9 +353,9 @@ func (svc *ModelService) GetModelByModelID(ctx context.Context, modelID string, 
 		First(ctx)
 }
 
-// ListConfiguredModels retrieves all models that have explicit Model entity configuration.
+// ListModels retrieves all models that have explicit Model entity configuration.
 // Returns models with their status.
-func (svc *ModelService) ListConfiguredModels(ctx context.Context, statusIn []model.Status) ([]*ModelIdentityWithStatus, error) {
+func (svc *ModelService) ListModels(ctx context.Context, statusIn []model.Status) ([]*ModelIdentityWithStatus, error) {
 	query := svc.entFromContext(ctx).Model.Query()
 
 	// Apply status filter if provided

@@ -311,9 +311,10 @@ func (svc *ChannelService) GetChannel(ctx context.Context, channelID int) (*Chan
 
 // ListModelsInput represents the input for listing models with filters.
 type ListModelsInput struct {
-	StatusIn       []channel.Status
-	IncludeMapping bool
-	IncludePrefix  bool
+	StatusIn                []channel.Status
+	IncludeAllChannelModels bool
+	IncludeMapping          bool
+	IncludePrefix           bool
 }
 
 // ModelIdentityWithStatus represents a model with its status.
@@ -359,26 +360,36 @@ func (svc *ChannelService) ListModels(ctx context.Context, input ListModelsInput
 	modelMap := make(map[string]channel.Status)
 
 	for _, ch := range channels {
-		// Add all supported models
-		for _, modelID := range ch.SupportedModels {
-			setModelStatus(modelMap, modelID, ch.Status)
-		}
+		if input.IncludeAllChannelModels {
+			// Use GetModelEntries to get all model entries (including mapping, prefix, auto_trim)
+			bizCh := &Channel{Channel: ch}
 
-		// Add model mappings if requested
-		if input.IncludeMapping && ch.Settings != nil {
-			for _, mapping := range ch.Settings.ModelMappings {
-				// Only add the mapping if the target model is supported
-				if slices.Contains(ch.SupportedModels, mapping.To) {
-					setModelStatus(modelMap, mapping.From, ch.Status)
+			entries := bizCh.GetModelEntries()
+			for requestModel := range entries {
+				setModelStatus(modelMap, requestModel, ch.Status)
+			}
+		} else {
+			// Add all supported models
+			for _, modelID := range ch.SupportedModels {
+				setModelStatus(modelMap, modelID, ch.Status)
+			}
+
+			// Add model mappings if requested
+			if input.IncludeMapping && ch.Settings != nil {
+				for _, mapping := range ch.Settings.ModelMappings {
+					// Only add the mapping if the target model is supported
+					if slices.Contains(ch.SupportedModels, mapping.To) {
+						setModelStatus(modelMap, mapping.From, ch.Status)
+					}
 				}
 			}
-		}
 
-		// Add models with extra prefix if requested
-		if input.IncludePrefix && ch.Settings != nil && ch.Settings.ExtraModelPrefix != "" {
-			for _, modelID := range ch.SupportedModels {
-				prefixedModel := ch.Settings.ExtraModelPrefix + "/" + modelID
-				setModelStatus(modelMap, prefixedModel, ch.Status)
+			// Add models with extra prefix if requested
+			if input.IncludePrefix && ch.Settings != nil && ch.Settings.ExtraModelPrefix != "" {
+				for _, modelID := range ch.SupportedModels {
+					prefixedModel := ch.Settings.ExtraModelPrefix + "/" + modelID
+					setModelStatus(modelMap, prefixedModel, ch.Status)
+				}
 			}
 		}
 	}
