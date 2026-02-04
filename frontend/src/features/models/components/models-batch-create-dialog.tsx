@@ -322,19 +322,19 @@ export function ModelsBatchCreateDialog() {
           <DialogDescription>{t('models.dialogs.batchCreate.description')}</DialogDescription>
         </DialogHeader>
 
-        <div className='min-h-0 flex-1 overflow-y-auto pr-2'>
-          <div className='space-y-2'>
+        <div className='min-h-0 flex-1 overflow-x-auto overflow-y-auto pr-2 md:overflow-x-hidden'>
+          <div className='min-w-[600px] space-y-2'>
             <div className='flex items-start gap-2 px-2 pb-2'>
-              <div className='flex-[2]'>
+              <div className='min-w-32 flex-[2]'>
                 <Label className='text-sm font-medium'>{t('models.fields.developer')}</Label>
               </div>
-              <div className='flex-[3]'>
+              <div className='min-w-40 flex-[3]'>
                 <Label className='text-sm font-medium'>{t('models.fields.modelId')}</Label>
               </div>
-              <div className='flex-[2]'>
+              <div className='min-w-24 flex-[2]'>
                 <Label className='text-sm font-medium'>{t('models.fields.name')}</Label>
               </div>
-              <div className='flex-[3]'>
+              <div className='min-w-32 flex-[3]'>
                 <Label className='text-sm font-medium'>{t('models.fields.icon')}</Label>
               </div>
               <div className='w-8 flex-shrink-0'></div>
@@ -342,7 +342,7 @@ export function ModelsBatchCreateDialog() {
             {rows.map((row) => (
               <div key={row.id} className='rounded-lg border p-2'>
                 <div className='flex items-start gap-2'>
-                  <div className='flex-[2] space-y-1'>
+                  <div className='min-w-32 flex-[2] space-y-1'>
                     <AutoComplete
                       selectedValue={row.developer}
                       onSelectedValueChange={(value) => {
@@ -361,7 +361,7 @@ export function ModelsBatchCreateDialog() {
                       <p className='text-xs text-red-600'>{t('models.dialogs.batchCreate.required')}</p>
                     )}
                   </div>
-                  <div className='flex-[3] space-y-1'>
+                  <div className='min-w-40 flex-[3] space-y-1'>
                     <AutoComplete
                       selectedValue={row.modelId}
                       onSelectedValueChange={(value) => {
@@ -381,7 +381,7 @@ export function ModelsBatchCreateDialog() {
                       <p className='text-xs text-red-600'>{t('models.dialogs.batchCreate.required')}</p>
                     )}
                   </div>
-                  <div className='flex-[2] space-y-1'>
+                  <div className='min-w-24 flex-[2] space-y-1'>
                     <Input
                       value={row.name}
                       onChange={(e) => {
@@ -392,7 +392,7 @@ export function ModelsBatchCreateDialog() {
                     />
                     {validationErrors[row.id]?.name && <p className='text-xs text-red-600'>{t('models.dialogs.batchCreate.required')}</p>}
                   </div>
-                  <div className='flex-[3] space-y-1'>
+                  <div className='min-w-32 flex-[3] space-y-1'>
                     <AutoCompleteSelect
                       selectedValue={row.icon}
                       onSelectedValueChange={(value) => {

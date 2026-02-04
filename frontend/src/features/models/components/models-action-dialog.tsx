@@ -251,9 +251,9 @@ export function ModelsActionDialog() {
 
         <Form {...form}>
           <form id='model-form' onSubmit={form.handleSubmit(onSubmit)} className='flex min-h-0 flex-1 flex-col overflow-hidden'>
-            <div className='flex min-h-0 flex-1 gap-6 overflow-hidden'>
+            <div className='flex min-h-0 flex-1 gap-6 overflow-x-auto overflow-y-hidden md:overflow-hidden'>
               {/* Left Panel - Basic Information */}
-              <div className='min-h-0 w-1/3 flex-shrink-0 overflow-y-auto pr-4'>
+              <div className='min-h-0 w-1/2 md:w-1/3 flex-shrink-0 overflow-y-auto pr-4'>
                 <div className='space-y-4'>
                   <FormField
                     control={form.control}
@@ -409,7 +409,7 @@ export function ModelsActionDialog() {
               </div>
 
               {/* Right Panel - Model Card Fields */}
-              <div className='min-h-0 flex-1 overflow-y-auto border-l pl-6'>
+              <div className='min-h-0 min-w-full md:min-w-0 flex-1 overflow-y-auto border-l pl-6'>
                 <div className='space-y-4 pb-4'>
                   <h3 className='text-lg font-semibold'>{t('models.modelCard.title')}</h3>
 

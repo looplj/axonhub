@@ -970,7 +970,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               {isEdit ? t('channels.dialogs.edit.description') : t('channels.dialogs.create.description')}
             </DialogDescription>
           </DialogHeader>
-          <div className='flex min-h-0 flex-1 gap-4 overflow-hidden'>
+          <div className='flex min-h-0 flex-1 md:gap-4 overflow-hidden'>
             {/* Main Form Section */}
             <div
               className={`flex min-h-0 flex-1 flex-col overflow-hidden py-1 transition-all duration-300 ${showFetchedModelsPanel || showSupportedModelsPanel ? 'pr-2' : 'pr-0'}`}
@@ -978,8 +978,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               <Form {...form}>
                 <form id='channel-form' onSubmit={form.handleSubmit(onSubmit)} className='flex min-h-0 flex-1 flex-col space-y-6 p-0.5'>
                   {/* Provider Selection - Left Side */}
-                  <div className='flex min-h-0 flex-1 gap-6 overflow-hidden'>
-                    <div className='flex min-h-0 w-60 flex-shrink-0 flex-col'>
+                  <div className='flex min-h-0 flex-1 flex-col gap-4 overflow-hidden md:flex-row md:gap-6'>
+                    <div className='flex max-h-48 min-h-0 w-full flex-shrink-0 flex-col md:max-h-none md:w-60'>
                       <FormItem className='flex min-h-0 flex-1 flex-col space-y-2'>
                         <FormLabel className='text-base font-semibold'>{t('channels.dialogs.fields.provider.label')}</FormLabel>
                         <div
@@ -1025,13 +1025,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                     </div>
 
                     {/* Right Side - Form Fields */}
-                    <div className='flex-1 space-y-6 overflow-y-auto pr-4'>
+                    <div className='flex-1 space-y-6 overflow-y-auto md:pr-4'>
                       {selectedProvider !== 'jina' && selectedProvider !== 'codex' && selectedProvider !== 'claudecode' && (
-                        <FormItem className='grid grid-cols-8 items-start gap-x-6'>
-                          <FormLabel className='col-span-2 pt-2 text-right font-medium'>
+                        <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                          <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
                             {t('channels.dialogs.fields.apiFormat.label')}
                           </FormLabel>
-                          <div className='col-span-6 space-y-1'>
+                          <div className='max-w-64 space-y-1 md:col-span-6 md:max-w-none'>
                             <SelectDropdown
                               defaultValue={selectedApiFormat}
                               onValueChange={(value) => handleApiFormatChange(value as ApiFormat)}
@@ -1079,11 +1079,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         </FormItem>
                       )}
                       {selectedProvider === 'codex' && (
-                        <FormItem className='grid grid-cols-8 items-start gap-x-6'>
-                          <FormLabel className='col-span-2 pt-2 text-right font-medium'>
+                        <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                          <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
                             {t('channels.dialogs.fields.apiFormat.label')}
                           </FormLabel>
-                          <div className='col-span-6 space-y-1'>
+                          <div className='md:col-span-6 space-y-1'>
                             <div className='text-sm'>{getApiFormatLabel(OPENAI_RESPONSES)}</div>
                             <p className='text-muted-foreground mt-1 text-xs'>{t('channels.dialogs.fields.apiFormat.editDisabled')}</p>
                           </div>
@@ -1091,11 +1091,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                       )}
 
                       {selectedProvider === 'claudecode' && (
-                        <FormItem className='grid grid-cols-8 items-start gap-x-6'>
-                          <FormLabel className='col-span-2 pt-2 text-right font-medium'>
+                        <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                          <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
                             {t('channels.dialogs.fields.apiFormat.label')}
                           </FormLabel>
-                          <div className='col-span-6 space-y-1'>
+                          <div className='md:col-span-6 space-y-1'>
                             <div className='text-sm'>{getApiFormatLabel(ANTHROPIC_MESSAGES)}</div>
                             <p className='text-muted-foreground mt-1 text-xs'>{t('channels.dialogs.fields.apiFormat.editDisabled')}</p>
                           </div>
@@ -1103,11 +1103,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                       )}
 
                       {selectedProvider === 'antigravity' && (
-                        <FormItem className='grid grid-cols-8 items-start gap-x-6'>
-                          <FormLabel className='col-span-2 pt-2 text-right font-medium'>
+                        <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                          <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
                             {t('channels.dialogs.fields.apiFormat.label')}
                           </FormLabel>
-                          <div className='col-span-6 space-y-1'>
+                          <div className='md:col-span-6 space-y-1'>
                             <div className='text-sm'>{getApiFormatLabel(GEMINI_CONTENTS)}</div>
                             <p className='text-muted-foreground mt-1 text-xs'>{t('channels.dialogs.fields.apiFormat.editDisabled')}</p>
 
@@ -1172,11 +1172,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         control={form.control}
                         name='name'
                         render={({ field, fieldState }) => (
-                          <FormItem className='grid grid-cols-8 items-start gap-x-6'>
-                            <FormLabel className='col-span-2 pt-2 text-right font-medium'>
+                          <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                            <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
                               {t('channels.dialogs.fields.name.label')}
                             </FormLabel>
-                            <div className='col-span-6 space-y-1'>
+                            <div className='md:col-span-6 space-y-1'>
                               <Input
                                 placeholder={t('channels.dialogs.fields.name.placeholder')}
                                 autoComplete='off'
@@ -1191,9 +1191,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                       />
 
                       {(isCodexType || isClaudeCodeType) && (
-                        <div className='grid grid-cols-8 items-start gap-x-6'>
+                        <div className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
                           <div className='col-span-2' />
-                          <div className='col-span-6 space-y-4'>
+                          <div className='md:col-span-6 space-y-4'>
                             <Tabs
                               value={authMode}
                               onValueChange={(value) => {
@@ -1234,11 +1234,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         control={form.control}
                         name='baseURL'
                         render={({ field, fieldState }) => (
-                          <FormItem className='grid grid-cols-8 items-start gap-x-6'>
-                            <FormLabel className='col-span-2 pt-2 text-right font-medium'>
+                          <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                            <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
                               {t('channels.dialogs.fields.baseURL.label')}
                             </FormLabel>
-                            <div className='col-span-6 space-y-1'>
+                            <div className='md:col-span-6 space-y-1'>
                               <Input
                                 placeholder={baseURLPlaceholder}
                                 autoComplete='new-password'
@@ -1261,11 +1261,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           control={form.control}
                           name='credentials.apiKeys'
                           render={({ field, fieldState }) => (
-                            <FormItem className='grid grid-cols-8 items-start gap-x-6'>
-                              <FormLabel className='col-span-2 pt-2 text-right font-medium'>
+                            <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                              <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
                                 {t('channels.dialogs.fields.apiKey.label')}
                               </FormLabel>
-                              <div className='col-span-6 space-y-1'>
+                              <div className='md:col-span-6 space-y-1'>
                                 {isEdit ? (
                                   <div className='relative'>
                                     <Textarea
@@ -1290,7 +1290,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                       }}
                                       readOnly={!showApiKey}
                                       placeholder={t('channels.dialogs.fields.apiKey.editPlaceholder')}
-                                      className='col-span-6 min-h-[80px] resize-y font-mono text-sm pr-10'
+                                      className='md:col-span-6 min-h-[80px] resize-y font-mono text-sm pr-10'
                                       autoComplete='new-password'
                                       data-form-type='other'
                                       aria-invalid={!!fieldState.error}
@@ -1341,7 +1341,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                         field.onBlur();
                                       }}
                                       placeholder={t('channels.dialogs.fields.apiKey.placeholder')}
-                                      className='col-span-6 min-h-[80px] resize-y font-mono text-sm'
+                                      className='md:col-span-6 min-h-[80px] resize-y font-mono text-sm'
                                       autoComplete='new-password'
                                       data-form-type='other'
                                       aria-invalid={!!fieldState.error}
@@ -1363,14 +1363,14 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             control={form.control}
                             name='credentials.gcp.region'
                             render={({ field, fieldState }) => (
-                              <FormItem className='grid grid-cols-8 items-start gap-x-6'>
-                                <FormLabel className='col-span-2 pt-2 text-right font-medium'>
+                              <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                                <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
                                   {t('channels.dialogs.fields.gcpRegion.label')}
                                 </FormLabel>
-                                <div className='col-span-6 space-y-1'>
+                                <div className='md:col-span-6 space-y-1'>
                                   <Input
                                     placeholder={t('channels.dialogs.fields.gcpRegion.placeholder')}
-                                    className='col-span-6'
+                                    className='md:col-span-6'
                                     autoComplete='off'
                                     aria-invalid={!!fieldState.error}
                                     {...field}
@@ -1385,14 +1385,14 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             control={form.control}
                             name='credentials.gcp.projectID'
                             render={({ field, fieldState }) => (
-                              <FormItem className='grid grid-cols-8 items-start gap-x-6'>
-                                <FormLabel className='col-span-2 pt-2 text-right font-medium'>
+                              <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                                <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
                                   {t('channels.dialogs.fields.gcpProjectID.label')}
                                 </FormLabel>
-                                <div className='col-span-6 space-y-1'>
+                                <div className='md:col-span-6 space-y-1'>
                                   <Input
                                     placeholder={t('channels.dialogs.fields.gcpProjectID.placeholder')}
-                                    className='col-span-6'
+                                    className='md:col-span-6'
                                     autoComplete='off'
                                     aria-invalid={!!fieldState.error}
                                     {...field}
@@ -1407,11 +1407,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             control={form.control}
                             name='credentials.gcp.jsonData'
                             render={({ field, fieldState }) => (
-                              <FormItem className='grid grid-cols-8 items-start gap-x-6'>
-                                <FormLabel className='col-span-2 pt-2 text-right font-medium'>
+                              <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                                <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
                                   {t('channels.dialogs.fields.gcpJsonData.label')}
                                 </FormLabel>
-                                <div className='col-span-6 space-y-1'>
+                                <div className='md:col-span-6 space-y-1'>
                                   <div className='relative'>
                                     <Textarea
                                       placeholder={`{
@@ -1427,7 +1427,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/xxx-compute%40developer.gserviceaccount.com",
   "universe_domain": "googleapis.com"
 }`}
-                                      className='col-span-6 min-h-[200px] resize-y pr-10 font-mono text-xs'
+                                      className='md:col-span-6 min-h-[200px] resize-y pr-10 font-mono text-xs'
                                       aria-invalid={!!fieldState.error}
                                       {...field}
                                     />
@@ -1471,11 +1471,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         control={form.control}
                         name='policies.stream'
                         render={({ field }) => (
-                          <FormItem className='grid grid-cols-8 items-start gap-x-6'>
-                            <FormLabel className='col-span-2 pt-2 text-right font-medium'>
+                          <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                            <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
                               {t('channels.dialogs.fields.streamPolicy.label')}
                             </FormLabel>
-                            <div className='col-span-6 space-y-1'>
+                            <div className='md:col-span-6 space-y-1'>
                               {wrapUnsupported(
                                 isCodexType,
                                 <SelectDropdown
@@ -1499,11 +1499,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         )}
                       />
 
-                      <div className='grid grid-cols-8 items-start gap-x-6'>
-                        <FormLabel className='col-span-2 pt-2 text-right font-medium'>
+                      <div className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                        <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
                           {t('channels.dialogs.fields.supportedModels.label')}
                         </FormLabel>
-                        <div className='col-span-6 space-y-2'>
+                        <div className='md:col-span-6 space-y-2'>
                           <div className='flex gap-2'>
                             {useFetchedModels && fetchedModels.length > 20 ? (
                               <AutoCompleteSelect
@@ -1647,17 +1647,17 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         control={form.control}
                         name='defaultTestModel'
                         render={({ field }) => (
-                          <FormItem className='grid grid-cols-8 items-start gap-x-6'>
-                            <FormLabel className='col-span-2 pt-2 text-right font-medium'>
+                          <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                            <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
                               {t('channels.dialogs.fields.defaultTestModel.label')}
                             </FormLabel>
-                            <div className='col-span-6 space-y-1'>
+                            <div className='md:col-span-6 space-y-1'>
                               <SelectDropdown
                                 defaultValue={field.value}
                                 onValueChange={field.onChange}
                                 items={supportedModels.map((model) => ({ value: model, label: model }))}
                                 placeholder={t('channels.dialogs.fields.defaultTestModel.description')}
-                                className='col-span-6'
+                                className='md:col-span-6'
                                 disabled={supportedModels.length === 0}
                                 isControlled={true}
                                 data-testid='default-test-model-select'
@@ -1672,11 +1672,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         control={form.control}
                         name='tags'
                         render={({ field }) => (
-                          <FormItem className='grid grid-cols-8 items-start gap-x-6'>
-                            <FormLabel className='col-span-2 pt-2 text-right font-medium'>
+                          <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                            <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
                               {t('channels.dialogs.fields.tags.label')}
                             </FormLabel>
-                            <div className='col-span-6 space-y-1'>
+                            <div className='md:col-span-6 space-y-1'>
                               <TagsAutocompleteInput
                                 value={field.value || []}
                                 onChange={field.onChange}
@@ -1695,11 +1695,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         control={form.control}
                         name='remark'
                         render={({ field }) => (
-                          <FormItem className='grid grid-cols-8 items-start gap-x-6'>
-                            <FormLabel className='col-span-2 pt-2 text-right font-medium'>
+                          <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                            <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
                               {t('channels.dialogs.fields.remark.label')}
                             </FormLabel>
-                            <div className='col-span-6 space-y-1'>
+                            <div className='md:col-span-6 space-y-1'>
                               <Textarea
                                 placeholder={t('channels.dialogs.fields.remark.placeholder')}
                                 className='min-h-[80px] resize-y'
