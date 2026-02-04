@@ -90,12 +90,13 @@ func (t *OutboundTransformer) buildImageGenerationRequest(ctx context.Context, l
 	url := t.buildImageRequestURL(llmReq)
 
 	rawReq := &httpclient.Request{
-		Method:      http.MethodPost,
-		URL:         url,
-		Headers:     headers,
-		Body:        body,
-		Auth:        auth,
-		RequestType: llm.RequestTypeImage.String(),
+		Method:                http.MethodPost,
+		URL:                   url,
+		Headers:               headers,
+		Body:                  body,
+		Auth:                  auth,
+		RequestType:           llm.RequestTypeImage.String(),
+		SkipInboundQueryMerge: true,
 	}
 
 	// Save model to TransformerMetadata for response transformation

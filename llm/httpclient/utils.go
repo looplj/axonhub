@@ -137,7 +137,10 @@ func MergeInboundRequest(dest, src *Request) *Request {
 	}
 
 	dest.Headers = MergeHTTPHeaders(dest.Headers, src.Headers)
-	dest.Query = MergeHTTPQuery(dest.Query, src.Query)
+
+	if !dest.SkipInboundQueryMerge {
+		dest.Query = MergeHTTPQuery(dest.Query, src.Query)
+	}
 
 	return dest
 }
