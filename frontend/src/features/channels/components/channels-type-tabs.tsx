@@ -71,7 +71,7 @@ export const ChannelsTypeTabs = memo(function ChannelsTypeTabs({ typeCounts, sel
 
   return (
     <div className='mb-6 w-full'>
-      <div className='hide-scroll flex items-center gap-2 overflow-x-auto overflow-y-hidden scroll-smooth'>
+      <div className='hide-scroll flex flex-wrap items-center gap-2 md:flex-nowrap md:overflow-x-auto md:overflow-y-hidden md:scroll-smooth'>
         {/* All tab */}
         <button
           onClick={() => onTabChange('all')}

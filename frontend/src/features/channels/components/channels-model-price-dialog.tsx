@@ -405,7 +405,77 @@ const PriceCard = memo(function PriceCard({
   return (
     <Card className='overflow-hidden'>
       <CardContent className='pt-6'>
-        <div className='grid grid-cols-[1fr_auto] gap-x-4 gap-y-3 md:grid-cols-[minmax(0,1fr)_minmax(0,3fr)_auto]'>
+        {/* Mobile: single column layout */}
+        <div className='flex flex-col gap-3 md:hidden'>
+          <div className='flex h-8 items-center justify-between'>
+            <FormLabel className='truncate pr-2'>{t('price.model')}</FormLabel>
+            <div className='flex gap-1'>
+              <Button
+                type='button'
+                variant='ghost'
+                size='icon-sm'
+                onClick={() => onDuplicatePrice(priceIndex)}
+                title={t('common.actions.duplicate')}
+              >
+                <IconCopy size={14} />
+              </Button>
+              <Button
+                type='button'
+                variant='ghost'
+                size='icon-sm'
+                className='text-destructive'
+                onClick={() => onRemovePrice(priceIndex)}
+              >
+                <IconTrash size={16} />
+              </Button>
+            </div>
+          </div>
+          <FormField
+            control={control}
+            name={`prices.${priceIndex}.modelId`}
+            render={({ field }) => (
+              <FormItem>
+                <Select
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    onModelSelected(priceIndex, value);
+                  }}
+                  value={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger size='sm' className='h-8 w-full' title={field.value || ''}>
+                      <SelectValue placeholder={t('price.model')} className='truncate' />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {availableModels.map((model) => (
+                      <SelectItem key={model} value={model} title={model}>
+                        {model}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <div className='flex h-8 items-center'>
+            <FormLabel className='truncate'>{t('price.items')}</FormLabel>
+          </div>
+          <ModelPriceEditor
+            control={control}
+            priceIndex={priceIndex}
+            currencyCode={currencyCode}
+            hideHeader
+            onAddItem={onAddItem}
+            onRemoveItem={onRemoveItem}
+            onAddVariant={onAddVariant}
+            onRemoveVariant={onRemoveVariant}
+          />
+        </div>
+
+        {/* Desktop: grid layout */}
+        <div className='hidden md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,3fr)_auto] md:gap-x-4 md:gap-y-3'>
           <div className='flex h-8 min-w-0 items-center justify-between'>
             <FormLabel className='truncate pr-2'>{t('price.model')}</FormLabel>
             <Button
@@ -467,7 +537,7 @@ const PriceCard = memo(function PriceCard({
             />
           </div>
 
-          <div className='col-span-1 min-w-0 md:col-span-1'>
+          <div className='min-w-0'>
             <ModelPriceEditor
               control={control}
               priceIndex={priceIndex}
@@ -480,7 +550,7 @@ const PriceCard = memo(function PriceCard({
             />
           </div>
 
-          <div className='hidden md:block' />
+          <div />
         </div>
       </CardContent>
     </Card>
@@ -785,8 +855,8 @@ export function ChannelsModelPriceDialog() {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className='flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden'>
-            <Card className='mb-4 shrink-0'>
-              <CardContent className='pt-4'>
+            <Card className='mb-4 max-h-[15vh] shrink-0 overflow-y-auto md:max-h-none md:overflow-visible'>
+              <CardContent className='pt-0 md:pt-4'>
                 <div className='mb-3 text-xs text-muted-foreground'>
                   {t('price.apply.usdHint')}
                 </div>
@@ -882,7 +952,7 @@ export function ChannelsModelPriceDialog() {
                 </div>
               </CardContent>
             </Card>
-            <ScrollArea className='min-h-0 min-w-0 flex-1 [&>[data-slot=scroll-area-viewport]]:!overflow-x-hidden'>
+            <ScrollArea className='min-h-40 min-w-0 w-full flex-1 md:min-h-0 [&>[data-slot=scroll-area-viewport]]:!overflow-x-hidden'>
               <div className='space-y-4 py-4 pr-4'>
                 {fields.map((field, index) => (
                   <PriceCard

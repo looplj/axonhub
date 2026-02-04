@@ -92,8 +92,8 @@ export function DataTableToolbar<TData>({
   );
 
   return (
-    <div className='flex items-center gap-4'>
-      <div className='relative flex-1'>
+    <div className='flex items-center gap-4 overflow-x-auto pb-2 md:overflow-x-visible md:pb-0'>
+      <div className='relative min-w-48 flex-1'>
         <i className='ph ph-magnifying-glass text-muted-foreground absolute top-2.5 left-3'></i>
         <Input
           placeholder={t('channels.filters.filterByName')}
