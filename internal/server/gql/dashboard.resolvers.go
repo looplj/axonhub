@@ -410,10 +410,10 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context) ([]*DailyRequestS
 	daysCount := 30
 
 	loc := r.systemService.TimeLocation(ctx)
-	nowLocal := xtime.UTCNow().In(loc)
+	nowUTC := xtime.UTCNow()
+	nowLocal := nowUTC.In(loc)
 	startDateLocal := time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, -daysCount+1)
 	startDateUTC := startDateLocal.UTC()
-	endDateUTC := startDateLocal.AddDate(0, 0, daysCount).UTC()
 	_, offsetSeconds := nowLocal.Zone()
 
 	// Use GROUP BY aggregation for efficient database-level computation
@@ -430,7 +430,7 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context) ([]*DailyRequestS
 	err := r.client.UsageLog.Query().
 		Where(
 			usagelog.CreatedAtGTE(startDateUTC),
-			usagelog.CreatedAtLT(endDateUTC),
+			usagelog.CreatedAtLT(nowUTC),
 		).
 		Modify(func(s *sql.Selector) {
 			// Build a dialect-specific date expression that returns a string 'YYYY-MM-DD'
