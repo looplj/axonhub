@@ -11,6 +11,42 @@ import (
 	"github.com/looplj/axonhub/llm"
 )
 
+func convertImageSourceToLLMImageURLPart(source *ImageSource, cacheControl *CacheControl) (llm.MessageContentPart, bool) {
+	if source == nil {
+		return llm.MessageContentPart{}, false
+	}
+
+	part := llm.MessageContentPart{
+		Type:         "image_url",
+		CacheControl: convertToLLMCacheControl(cacheControl),
+	}
+
+	if source.Type == "base64" {
+		if source.Data == "" {
+			return llm.MessageContentPart{}, false
+		}
+
+		mediaType := source.MediaType
+		if mediaType == "" {
+			mediaType = "application/octet-stream"
+		}
+
+		// Convert Anthropic image format to OpenAI format
+		imageURL := fmt.Sprintf("data:%s;base64,%s", mediaType, source.Data)
+		part.ImageURL = &llm.ImageURL{URL: imageURL}
+
+		return part, true
+	}
+
+	if source.URL == "" {
+		return llm.MessageContentPart{}, false
+	}
+
+	part.ImageURL = &llm.ImageURL{URL: source.URL}
+
+	return part, true
+}
+
 // convertToLLMRequest converts Anthropic MessageRequest to ChatCompletionRequest.
 //
 //nolint:maintidx // TODO: fix.
@@ -115,23 +151,7 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 					})
 					hasContent = true
 				case "image":
-					if block.Source != nil {
-						part := llm.MessageContentPart{
-							Type:         "image_url",
-							CacheControl: convertToLLMCacheControl(block.CacheControl),
-						}
-						if block.Source.Type == "base64" {
-							// Convert Anthropic image format to OpenAI format
-							imageURL := fmt.Sprintf("data:%s;base64,%s", block.Source.MediaType, block.Source.Data)
-							part.ImageURL = &llm.ImageURL{
-								URL: imageURL,
-							}
-						} else {
-							part.ImageURL = &llm.ImageURL{
-								URL: block.Source.URL,
-							}
-						}
-
+					if part, ok := convertImageSourceToLLMImageURLPart(block.Source, block.CacheControl); ok {
 						contentParts = append(contentParts, part)
 						hasContent = true
 					}
@@ -156,16 +176,29 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 							// Keep as MultipleContent to preserve the original format
 							toolContentParts := make([]llm.MessageContentPart, 0, len(block.Content.MultipleContent))
 							for _, contentBlock := range block.Content.MultipleContent {
-								if contentBlock.Type == "text" {
+								switch contentBlock.Type {
+								case "text":
 									toolContentParts = append(toolContentParts, llm.MessageContentPart{
-										Type: "text",
-										Text: contentBlock.Text,
+										Type:         "text",
+										Text:         contentBlock.Text,
+										CacheControl: convertToLLMCacheControl(contentBlock.CacheControl),
 									})
+								case "image":
+									if part, ok := convertImageSourceToLLMImageURLPart(contentBlock.Source, contentBlock.CacheControl); ok {
+										toolContentParts = append(toolContentParts, part)
+									}
 								}
 							}
 
-							toolMsg.Content = llm.MessageContent{
-								MultipleContent: toolContentParts,
+							if len(toolContentParts) > 0 {
+								toolMsg.Content = llm.MessageContent{
+									MultipleContent: toolContentParts,
+								}
+							} else {
+								// Ensure tool message content is not null for downstream conversions.
+								toolMsg.Content = llm.MessageContent{
+									Content: lo.ToPtr(""),
+								}
 							}
 						}
 
