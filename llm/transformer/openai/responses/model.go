@@ -395,12 +395,6 @@ type Item struct {
 func (item Item) MarshalJSON() ([]byte, error) {
 	type itemAlias Item
 
-	if item.Type != "reasoning" {
-		item.Summary = nil
-	} else if item.Summary == nil {
-		item.Summary = []ReasoningSummary{}
-	}
-
 	if item.Type == "function_call" {
 		type functionCallItem struct {
 			itemAlias
@@ -413,7 +407,23 @@ func (item Item) MarshalJSON() ([]byte, error) {
 		})
 	}
 
-	return json.Marshal(itemAlias(item))
+	data, err := json.Marshal(itemAlias(item))
+	if err != nil {
+		return nil, err
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return nil, err
+	}
+
+	if item.Type != "reasoning" {
+		delete(payload, "summary")
+	} else if _, ok := payload["summary"]; !ok {
+		payload["summary"] = []any{}
+	}
+
+	return json.Marshal(payload)
 }
 
 // isOutputMessageContent checks if Content.Items contains output message content items.
