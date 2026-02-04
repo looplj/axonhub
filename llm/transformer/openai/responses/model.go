@@ -395,12 +395,6 @@ type Item struct {
 func (item Item) MarshalJSON() ([]byte, error) {
 	type itemAlias Item
 
-	if item.Type != "reasoning" {
-		item.Summary = nil
-	} else if item.Summary == nil {
-		item.Summary = []ReasoningSummary{}
-	}
-
 	if item.Type == "function_call" {
 		type functionCallItem struct {
 			itemAlias
@@ -413,7 +407,26 @@ func (item Item) MarshalJSON() ([]byte, error) {
 		})
 	}
 
-	return json.Marshal(itemAlias(item))
+	if item.Type != "reasoning" {
+		item.Summary = nil
+		return json.Marshal(itemAlias(item))
+	}
+
+	// Ensure reasoning items always include summary, even if empty.
+	type reasoningItem struct {
+		itemAlias
+		Summary []ReasoningSummary `json:"summary"`
+	}
+
+	summary := item.Summary
+	if summary == nil {
+		summary = []ReasoningSummary{}
+	}
+
+	return json.Marshal(reasoningItem{
+		itemAlias: itemAlias(item),
+		Summary:   summary,
+	})
 }
 
 // isOutputMessageContent checks if Content.Items contains output message content items.
