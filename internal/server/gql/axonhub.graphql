@@ -337,6 +337,7 @@ input QueryModelsInput {
   statusIn: [ChannelStatus!]
   includeMapping: Boolean
   includePrefix: Boolean
+  includeAllChannelModels: Boolean
 }
 
 type ChannelTypeCount {

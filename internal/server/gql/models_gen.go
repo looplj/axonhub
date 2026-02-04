@@ -146,9 +146,10 @@ type OnboardingInfo struct {
 }
 
 type QueryModelsInput struct {
-	StatusIn       []channel.Status `json:"statusIn,omitempty"`
-	IncludeMapping *bool            `json:"includeMapping,omitempty"`
-	IncludePrefix  *bool            `json:"includePrefix,omitempty"`
+	StatusIn                []channel.Status `json:"statusIn,omitempty"`
+	IncludeMapping          *bool            `json:"includeMapping,omitempty"`
+	IncludePrefix           *bool            `json:"includePrefix,omitempty"`
+	IncludeAllChannelModels *bool            `json:"includeAllChannelModels,omitempty"`
 }
 
 type RemoveUserFromProjectInput struct {

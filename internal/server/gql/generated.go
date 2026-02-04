@@ -54088,7 +54088,7 @@ func (ec *executionContext) unmarshalInputQueryModelsInput(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"statusIn", "includeMapping", "includePrefix"}
+	fieldsInOrder := [...]string{"statusIn", "includeMapping", "includePrefix", "includeAllChannelModels"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -54116,6 +54116,13 @@ func (ec *executionContext) unmarshalInputQueryModelsInput(ctx context.Context, 
 				return it, err
 			}
 			it.IncludePrefix = data
+		case "includeAllChannelModels":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeAllChannelModels"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IncludeAllChannelModels = data
 		}
 	}
 
