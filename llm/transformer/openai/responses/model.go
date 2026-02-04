@@ -407,23 +407,26 @@ func (item Item) MarshalJSON() ([]byte, error) {
 		})
 	}
 
-	data, err := json.Marshal(itemAlias(item))
-	if err != nil {
-		return nil, err
-	}
-
-	var payload map[string]any
-	if err := json.Unmarshal(data, &payload); err != nil {
-		return nil, err
-	}
-
 	if item.Type != "reasoning" {
-		delete(payload, "summary")
-	} else if _, ok := payload["summary"]; !ok {
-		payload["summary"] = []any{}
+		item.Summary = nil
+		return json.Marshal(itemAlias(item))
 	}
 
-	return json.Marshal(payload)
+	// Ensure reasoning items always include summary, even if empty.
+	type reasoningItem struct {
+		itemAlias
+		Summary []ReasoningSummary `json:"summary"`
+	}
+
+	summary := item.Summary
+	if summary == nil {
+		summary = []ReasoningSummary{}
+	}
+
+	return json.Marshal(reasoningItem{
+		itemAlias: itemAlias(item),
+		Summary:   summary,
+	})
 }
 
 // isOutputMessageContent checks if Content.Items contains output message content items.
