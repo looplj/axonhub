@@ -338,7 +338,7 @@ AxonHub provides an enhanced `/v1/models` endpoint that lists available models w
 
 ### Response Format (Basic - Default)
 
-When called without the `include` parameter, the endpoint returns only basic fields for backward compatibility:
+When called without the `include` parameter, the endpoint returns only basic fields:
 
 ```json
 {
@@ -418,7 +418,7 @@ When using `?include=all` or selective fields, the response includes extended me
 
 ### Examples
 
-**Basic Request (Backward Compatible):**
+**Basic Request (Default):**
 ```bash
 curl -s http://localhost:8090/v1/models \
   -H "Authorization: Bearer your-api-key" | jq
