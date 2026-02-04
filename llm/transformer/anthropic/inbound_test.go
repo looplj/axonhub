@@ -353,6 +353,56 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 	}
 }
 
+func TestInboundTransformer_TransformRequest_ToolResultWithImage(t *testing.T) {
+	transformer := NewInboundTransformer()
+
+	httpReq := &httpclient.Request{
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: []byte(`{
+			"model": "claude-3-sonnet-20240229",
+			"max_tokens": 1024,
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "tool_123",
+							"content": [
+								{
+									"type": "image",
+									"source": {
+										"type": "base64",
+										"media_type": "image/png",
+										"data": "iVBORw0KGgo="
+									}
+								}
+							]
+						}
+					]
+				}
+			]
+		}`),
+	}
+
+	result, err := transformer.TransformRequest(t.Context(), httpReq)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Len(t, result.Messages, 1)
+
+	toolMsg := result.Messages[0]
+	require.Equal(t, "tool", toolMsg.Role)
+	require.NotNil(t, toolMsg.ToolCallID)
+	require.Equal(t, "tool_123", *toolMsg.ToolCallID)
+	require.Nil(t, toolMsg.Content.Content)
+	require.Len(t, toolMsg.Content.MultipleContent, 1)
+	require.Equal(t, "image_url", toolMsg.Content.MultipleContent[0].Type)
+	require.NotNil(t, toolMsg.Content.MultipleContent[0].ImageURL)
+	require.Equal(t, "data:image/png;base64,iVBORw0KGgo=", toolMsg.Content.MultipleContent[0].ImageURL.URL)
+}
+
 func TestInboundTransformer_TransformResponse(t *testing.T) {
 	transformer := NewInboundTransformer()
 

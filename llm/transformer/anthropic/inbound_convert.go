@@ -156,11 +156,30 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 							// Keep as MultipleContent to preserve the original format
 							toolContentParts := make([]llm.MessageContentPart, 0, len(block.Content.MultipleContent))
 							for _, contentBlock := range block.Content.MultipleContent {
-								if contentBlock.Type == "text" {
+								switch contentBlock.Type {
+								case "text":
 									toolContentParts = append(toolContentParts, llm.MessageContentPart{
-										Type: "text",
-										Text: contentBlock.Text,
+										Type:         "text",
+										Text:         contentBlock.Text,
+										CacheControl: convertToLLMCacheControl(contentBlock.CacheControl),
 									})
+								case "image":
+									if contentBlock.Source != nil {
+										part := llm.MessageContentPart{
+											Type:         "image_url",
+											CacheControl: convertToLLMCacheControl(contentBlock.CacheControl),
+										}
+
+										if contentBlock.Source.Type == "base64" {
+											// Convert Anthropic image format to OpenAI format
+											imageURL := fmt.Sprintf("data:%s;base64,%s", contentBlock.Source.MediaType, contentBlock.Source.Data)
+											part.ImageURL = &llm.ImageURL{URL: imageURL}
+										} else {
+											part.ImageURL = &llm.ImageURL{URL: contentBlock.Source.URL}
+										}
+
+										toolContentParts = append(toolContentParts, part)
+									}
 								}
 							}
 
