@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/privacy"
+	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/watcher"
@@ -119,7 +120,7 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 	svc.channelNotifier = notifier
 
 	svc.enabledChannelsCache = live.NewCache(live.Options[[]*Channel]{
-		Name:            "enabled_channels",
+		Name:            "axonhub:enabled_channels",
 		InitialValue:    []*Channel{},
 		RefreshInterval: time.Minute,
 		RefreshFunc:     svc.refreshEnabledChannels,
@@ -181,9 +182,10 @@ type ChannelService struct {
 func (svc *ChannelService) refreshEnabledChannels(ctx context.Context, current []*Channel, lastUpdate time.Time) ([]*Channel, time.Time, bool, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
+	// Query latest updated channel including soft-deleted ones to detect deletions
 	latestUpdatedChannel, err := svc.entFromContext(ctx).Channel.Query().
 		Order(ent.Desc(channel.FieldUpdatedAt)).
-		First(ctx)
+		First(schematype.SkipSoftDelete(ctx))
 	if err != nil && !ent.IsNotFound(err) {
 		return current, lastUpdate, false, err
 	}

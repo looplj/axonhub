@@ -171,6 +171,9 @@ func buildChannel(c *ent.Channel, httpClient *httpclient.HttpClient) *Channel {
 // getAPIKeyProvider returns an APIKeyProvider based on the channel.
 // If multiple enabled API keys are configured, it returns a TraceStickyKeyProvider for consistent hashing.
 // Otherwise, it returns a StaticKeyProvider.
+//
+// NOTE: This function panics when there is no enabled API key. This is intended as an assertion:
+// buildChannelWithTransformer should validate channel credentials before constructing transformers.
 func getAPIKeyProvider(ch *Channel) auth.APIKeyProvider {
 	enabled := ch.cachedEnabledAPIKeys
 	if len(enabled) > 1 {
@@ -180,17 +183,42 @@ func getAPIKeyProvider(ch *Channel) auth.APIKeyProvider {
 	if len(enabled) == 1 {
 		return auth.NewStaticKeyProvider(enabled[0])
 	}
-	// Fallback to first credential key
-	allKeys := ch.Credentials.GetAllAPIKeys()
-	if len(allKeys) > 0 {
-		return auth.NewStaticKeyProvider(allKeys[0])
-	}
 
-	return auth.NewStaticKeyProvider("")
+	panic(fmt.Errorf("no enabled api key configured for channel %s", ch.Name))
 }
 
 //nolint:maintidx // Checked.
 func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel, error) {
+	if c == nil {
+		return nil, errors.New("channel is nil")
+	}
+
+	// Validate credentials early so we can fail fast without constructing HTTP clients/transformers.
+	//
+	// NOTE: "enabled" keys excludes keys that were explicitly disabled for this channel.
+	enabledKeys := c.Credentials.GetEnabledAPIKeys(c.DisabledAPIKeys)
+
+	//nolint:exhaustive // Checked.
+	switch c.Type {
+	case channel.TypeCodex, channel.TypeClaudecode:
+		if !c.Credentials.IsOAuth() && len(enabledKeys) == 0 {
+			return nil, fmt.Errorf("missing credentials: oauth or api key required for channel %s", c.Name)
+		}
+	case channel.TypeAntigravity:
+		// Antigravity transformer currently consumes the single legacy APIKey field directly.
+		if strings.TrimSpace(c.Credentials.APIKey) == "" {
+			return nil, fmt.Errorf("missing api key for channel %s", c.Name)
+		}
+	case channel.TypeAnthropicGcp, channel.TypeAnthropicFake, channel.TypeOpenaiFake:
+		// These channel types don't use API keys:
+		// - anthropic_gcp uses GCP credentials JSON
+		// - *_fake are test-only
+	default:
+		if len(enabledKeys) == 0 {
+			return nil, fmt.Errorf("missing api key for channel %s", c.Name)
+		}
+	}
+
 	httpClient := httpclient.NewHttpClientWithProxy(getProxyConfig(c.Settings))
 	ch := buildChannel(c, httpClient)
 
