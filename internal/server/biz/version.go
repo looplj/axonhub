@@ -54,13 +54,18 @@ func (s *SystemService) isNewerVersion(current, latest string) bool {
 
 // GitHubRelease represents a GitHub release.
 type GitHubRelease struct {
-	TagName    string `json:"tag_name"`
-	Prerelease bool   `json:"prerelease"`
-	Draft      bool   `json:"draft"`
+	TagName     string    `json:"tag_name"`
+	Prerelease  bool      `json:"prerelease"`
+	Draft       bool      `json:"draft"`
+	PublishedAt time.Time `json:"published_at"`
 }
 
+// releaseCooldownDuration is the time to wait after a release is published before considering it available.
+// This accounts for build and upload time.
+const releaseCooldownDuration = 30 * time.Minute
+
 // FetchLatestGitHubRelease fetches the latest stable release tag from GitHub.
-// It skips beta, rc, and prerelease versions.
+// It skips beta, rc, and prerelease versions, and waits for a cooldown period after release.
 func FetchLatestGitHubRelease(ctx context.Context) (string, error) {
 	baseURL := "https://api.github.com/repos/looplj/axonhub/releases"
 
@@ -70,7 +75,7 @@ func FetchLatestGitHubRelease(ctx context.Context) (string, error) {
 	}
 
 	q := u.Query()
-	q.Set("per_page", "5")
+	q.Set("per_page", "10")
 	q.Set("page", "1")
 	u.RawQuery = q.Encode()
 	apiURL := u.String()
@@ -103,13 +108,20 @@ func FetchLatestGitHubRelease(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("failed to decode releases: %w", err)
 	}
 
-	// Find the latest stable release (not prerelease, not draft, not beta/rc)
+	now := time.Now().UTC()
+
+	// Find the latest stable release (not prerelease, not draft, not beta/rc, and past cooldown)
 	for _, release := range releases {
 		if release.Draft || release.Prerelease {
 			continue
 		}
 
 		if isPreReleaseTag(release.TagName) {
+			continue
+		}
+
+		// Check if the release has passed the cooldown period
+		if now.Sub(release.PublishedAt) < releaseCooldownDuration {
 			continue
 		}
 

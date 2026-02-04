@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -523,6 +524,12 @@ func (s *DataStorageService) SaveData(ctx context.Context, ds *ent.DataStorage, 
 				return "", fmt.Errorf("failed to create directory: %w, key: %s", err, key)
 			}
 		} else {
+			// For S3 with PathStyle enabled, remove leading slash from key
+			// to avoid InvalidArgument error from S3 compatible storage services
+			if isS3PathStyle(ds) {
+				key = strings.TrimPrefix(key, "/")
+			}
+
 			f, err := fs.Create(key)
 			if err != nil {
 				return "", fmt.Errorf("failed to create file: %w, key: %s", err, key)
@@ -558,6 +565,10 @@ func (s *DataStorageService) DeleteData(ctx context.Context, ds *ent.DataStorage
 
 		if ds.Type == datastorage.TypeFs {
 			key = filepath.FromSlash(key)
+		} else if isS3PathStyle(ds) {
+			// For S3 with PathStyle enabled, remove leading slash from key
+			// to avoid InvalidArgument error from S3 compatible storage services
+			key = strings.TrimPrefix(key, "/")
 		}
 
 		if err := fs.Remove(key); err != nil {
@@ -591,6 +602,10 @@ func (s *DataStorageService) LoadData(ctx context.Context, ds *ent.DataStorage, 
 
 		if ds.Type == datastorage.TypeFs {
 			key = filepath.FromSlash(key)
+		} else if isS3PathStyle(ds) {
+			// For S3 with PathStyle enabled, remove leading slash from key
+			// to avoid InvalidArgument error from S3 compatible storage services
+			key = strings.TrimPrefix(key, "/")
 		}
 
 		data, err := afero.ReadFile(fs, key)
@@ -612,6 +627,15 @@ func isS3Provided(s3 *objects.S3) bool {
 
 	return s3.BucketName != "" || s3.Endpoint != "" || s3.Region != "" ||
 		s3.AccessKey != "" || s3.SecretKey != ""
+}
+
+// isS3PathStyle checks if the data storage is S3 with PathStyle enabled.
+// When PathStyle is enabled, the S3 client uses path-style addressing
+// (e.g., https://s3.amazonaws.com/bucket-name/key) instead of virtual-hosted style
+// (e.g., https://bucket-name.s3.amazonaws.com/key).
+// PathStyle is required for S3-compatible storage services like MinIO or Ceph RGW.
+func isS3PathStyle(ds *ent.DataStorage) bool {
+	return ds.Type == datastorage.TypeS3 && ds.Settings != nil && ds.Settings.S3 != nil && ds.Settings.S3.PathStyle
 }
 
 // isGCSProvided checks if any GCS field is provided in the input (non-empty).
