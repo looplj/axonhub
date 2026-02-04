@@ -145,6 +145,21 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawError(ctx context.Conte
 		return
 	}
 
+	// Log error with channel information for better debugging
+	channel := m.outbound.GetCurrentChannel()
+	if channel != nil {
+		logFields := []log.Field{
+			log.Cause(err),
+			log.Int("channel_id", channel.ID),
+			log.String("channel_name", channel.Name),
+		}
+		if modelID := m.outbound.GetCurrentModelID(); modelID != "" {
+			logFields = append(logFields, log.String("model_id", modelID))
+		}
+
+		log.Warn(ctx, "request process failed", logFields...)
+	}
+
 	// Use context without cancellation to ensure persistence even if client canceled
 	persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
 	defer cancel()

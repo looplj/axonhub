@@ -269,6 +269,15 @@ func (p *PersistentOutboundTransformer) GetCurrentChannel() *biz.Channel {
 	return p.state.CurrentCandidate.Channel
 }
 
+// GetCurrentModelID returns the current model ID for logging purposes.
+func (p *PersistentOutboundTransformer) GetCurrentModelID() string {
+	if p.state.CurrentCandidate == nil || len(p.state.CurrentCandidate.Models) == 0 {
+		return ""
+	}
+
+	return p.state.CurrentCandidate.Models[p.state.CurrentModelIndex].ActualModel
+}
+
 // GetRequestedModel returns the originally requested model ID.
 func (p *PersistentOutboundTransformer) GetRequestedModel() string {
 	return p.state.OriginalModel
