@@ -157,6 +157,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	reqCopy.ServiceTier = nil
 	reqCopy.Temperature = nil
 	reqCopy.TopP = nil
+	reqCopy.Metadata = nil
 
 	// Codex upstream validates the raw `instructions` string more strictly.
 	// If incoming request is not already a Codex CLI prompt, force the Codex CLI instructions.

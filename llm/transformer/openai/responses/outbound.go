@@ -203,7 +203,8 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 			Type:   "bearer",
 			APIKey: t.config.APIKeyProvider.Get(ctx),
 		},
-		TransformerMetadata: llmReq.TransformerMetadata,
+		TransformerMetadata:   llmReq.TransformerMetadata,
+		SkipInboundQueryMerge: true,
 	}, nil
 }
 
