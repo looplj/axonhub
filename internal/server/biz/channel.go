@@ -60,6 +60,12 @@ type Channel struct {
 	// cachedModelPrices caches model prices per request model id
 	// RequestModel -> ChannelModelPrice entity (contains Price and ReferenceID)
 	cachedModelPrices map[string]*ent.ChannelModelPrice
+
+	// cachedEnabledAPIKeys caches enabled API keys (computed once when channel is loaded)
+	cachedEnabledAPIKeys []string
+
+	// cachedDisabledKeySet caches disabled key lookup set for O(1) check
+	cachedDisabledKeySet map[string]struct{}
 }
 
 type ChannelServiceParams struct {
@@ -80,6 +86,7 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 		SystemService:      params.SystemService,
 		channelPerfMetrics: make(map[int]*channelMetrics),
 		channelErrorCounts: make(map[int]map[int]int),
+		apiKeyErrorCounts:  make(map[int]map[string]map[int]int),
 		perfCh:             make(chan *PerformanceRecord, 1024),
 	}
 
@@ -162,6 +169,11 @@ type ChannelService struct {
 	channelErrorCounts     map[int]map[int]int
 	channelErrorCountsLock sync.Mutex
 
+	// apiKeyErrorCounts stores the error counts for each API key and status code
+	// channelID -> apiKey -> statusCode -> count
+	apiKeyErrorCounts     map[int]map[string]map[int]int
+	apiKeyErrorCountsLock sync.Mutex
+
 	// perfCh is the channel for performance records for async processing.
 	perfCh chan *PerformanceRecord
 }
@@ -196,7 +208,7 @@ func (svc *ChannelService) refreshEnabledChannels(ctx context.Context, current [
 	var channels []*Channel
 
 	for _, c := range entities {
-		channel, err := svc.buildChannel(c)
+		channel, err := svc.buildChannelWithTransformer(c)
 		if err != nil {
 			log.Warn(ctx, "failed to build channel",
 				log.String("channel", c.Name),
@@ -292,7 +304,7 @@ func (svc *ChannelService) GetChannel(ctx context.Context, channelID int) (*Chan
 		return nil, fmt.Errorf("channel not found: %w", err)
 	}
 
-	return svc.buildChannel(entity)
+	return svc.buildChannelWithTransformer(entity)
 }
 
 // ListModelsInput represents the input for listing models with filters.
@@ -540,24 +552,9 @@ func (svc *ChannelService) asyncReloadChannels() {
 		return
 	}
 
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Error(context.Background(), "panic in async reload channels", log.Any("panic", r))
-			}
-		}()
-
-		reloadCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		if err := svc.channelNotifier.Notify(reloadCtx, live.NewForceRefreshEvent[struct{}]()); err != nil {
-			log.Warn(reloadCtx, "channel cache watcher notify failed", log.Cause(err))
-		}
-
-		if reloadErr := svc.enabledChannelsCache.Load(reloadCtx, true); reloadErr != nil {
-			log.Error(reloadCtx, "failed to reload channels after bulk update", log.Cause(reloadErr))
-		}
-	}()
+	if err := svc.channelNotifier.Notify(context.Background(), live.NewForceRefreshEvent[struct{}]()); err != nil {
+		log.Warn(context.Background(), "channel cache watcher notify failed", log.Cause(err))
+	}
 }
 
 // DeleteChannel deletes a channel by ID.
@@ -569,4 +566,15 @@ func (svc *ChannelService) DeleteChannel(ctx context.Context, id int) error {
 	svc.asyncReloadChannels()
 
 	return nil
+}
+
+// GetEnabledAPIKeys returns cached enabled API keys.
+func (c *Channel) GetEnabledAPIKeys() []string {
+	return c.cachedEnabledAPIKeys
+}
+
+// IsAPIKeyDisabled checks if a key is disabled (O(1) lookup).
+func (c *Channel) IsAPIKeyDisabled(key string) bool {
+	_, ok := c.cachedDisabledKeySet[key]
+	return ok
 }

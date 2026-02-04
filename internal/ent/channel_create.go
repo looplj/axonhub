@@ -117,6 +117,12 @@ func (_c *ChannelCreate) SetCredentials(v objects.ChannelCredentials) *ChannelCr
 	return _c
 }
 
+// SetDisabledAPIKeys sets the "disabled_api_keys" field.
+func (_c *ChannelCreate) SetDisabledAPIKeys(v []objects.DisabledAPIKey) *ChannelCreate {
+	_c.mutation.SetDisabledAPIKeys(v)
+	return _c
+}
+
 // SetSupportedModels sets the "supported_models" field.
 func (_c *ChannelCreate) SetSupportedModels(v []string) *ChannelCreate {
 	_c.mutation.SetSupportedModels(v)
@@ -364,6 +370,10 @@ func (_c *ChannelCreate) defaults() error {
 		v := channel.DefaultStatus
 		_c.mutation.SetStatus(v)
 	}
+	if _, ok := _c.mutation.DisabledAPIKeys(); !ok {
+		v := channel.DefaultDisabledAPIKeys
+		_c.mutation.SetDisabledAPIKeys(v)
+	}
 	if _, ok := _c.mutation.AutoSyncSupportedModels(); !ok {
 		v := channel.DefaultAutoSyncSupportedModels
 		_c.mutation.SetAutoSyncSupportedModels(v)
@@ -490,6 +500,10 @@ func (_c *ChannelCreate) createSpec() (*Channel, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Credentials(); ok {
 		_spec.SetField(channel.FieldCredentials, field.TypeJSON, value)
 		_node.Credentials = value
+	}
+	if value, ok := _c.mutation.DisabledAPIKeys(); ok {
+		_spec.SetField(channel.FieldDisabledAPIKeys, field.TypeJSON, value)
+		_node.DisabledAPIKeys = value
 	}
 	if value, ok := _c.mutation.SupportedModels(); ok {
 		_spec.SetField(channel.FieldSupportedModels, field.TypeJSON, value)
@@ -756,6 +770,24 @@ func (u *ChannelUpsert) SetCredentials(v objects.ChannelCredentials) *ChannelUps
 // UpdateCredentials sets the "credentials" field to the value that was provided on create.
 func (u *ChannelUpsert) UpdateCredentials() *ChannelUpsert {
 	u.SetExcluded(channel.FieldCredentials)
+	return u
+}
+
+// SetDisabledAPIKeys sets the "disabled_api_keys" field.
+func (u *ChannelUpsert) SetDisabledAPIKeys(v []objects.DisabledAPIKey) *ChannelUpsert {
+	u.Set(channel.FieldDisabledAPIKeys, v)
+	return u
+}
+
+// UpdateDisabledAPIKeys sets the "disabled_api_keys" field to the value that was provided on create.
+func (u *ChannelUpsert) UpdateDisabledAPIKeys() *ChannelUpsert {
+	u.SetExcluded(channel.FieldDisabledAPIKeys)
+	return u
+}
+
+// ClearDisabledAPIKeys clears the value of the "disabled_api_keys" field.
+func (u *ChannelUpsert) ClearDisabledAPIKeys() *ChannelUpsert {
+	u.SetNull(channel.FieldDisabledAPIKeys)
 	return u
 }
 
@@ -1046,6 +1078,27 @@ func (u *ChannelUpsertOne) SetCredentials(v objects.ChannelCredentials) *Channel
 func (u *ChannelUpsertOne) UpdateCredentials() *ChannelUpsertOne {
 	return u.Update(func(s *ChannelUpsert) {
 		s.UpdateCredentials()
+	})
+}
+
+// SetDisabledAPIKeys sets the "disabled_api_keys" field.
+func (u *ChannelUpsertOne) SetDisabledAPIKeys(v []objects.DisabledAPIKey) *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetDisabledAPIKeys(v)
+	})
+}
+
+// UpdateDisabledAPIKeys sets the "disabled_api_keys" field to the value that was provided on create.
+func (u *ChannelUpsertOne) UpdateDisabledAPIKeys() *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateDisabledAPIKeys()
+	})
+}
+
+// ClearDisabledAPIKeys clears the value of the "disabled_api_keys" field.
+func (u *ChannelUpsertOne) ClearDisabledAPIKeys() *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.ClearDisabledAPIKeys()
 	})
 }
 
@@ -1526,6 +1579,27 @@ func (u *ChannelUpsertBulk) SetCredentials(v objects.ChannelCredentials) *Channe
 func (u *ChannelUpsertBulk) UpdateCredentials() *ChannelUpsertBulk {
 	return u.Update(func(s *ChannelUpsert) {
 		s.UpdateCredentials()
+	})
+}
+
+// SetDisabledAPIKeys sets the "disabled_api_keys" field.
+func (u *ChannelUpsertBulk) SetDisabledAPIKeys(v []objects.DisabledAPIKey) *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetDisabledAPIKeys(v)
+	})
+}
+
+// UpdateDisabledAPIKeys sets the "disabled_api_keys" field to the value that was provided on create.
+func (u *ChannelUpsertBulk) UpdateDisabledAPIKeys() *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateDisabledAPIKeys()
+	})
+}
+
+// ClearDisabledAPIKeys clears the value of the "disabled_api_keys" field.
+func (u *ChannelUpsertBulk) ClearDisabledAPIKeys() *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.ClearDisabledAPIKeys()
 	})
 }
 

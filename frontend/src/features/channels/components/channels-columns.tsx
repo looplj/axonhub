@@ -19,6 +19,7 @@ import {
   IconCopy,
   IconCoin,
   IconLoader2,
+  IconKeyOff,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -83,6 +84,7 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
   const { channelPermissions } = usePermissions();
   const testChannel = useTestChannel();
   const hasError = !!channel.errorMessage;
+  const hasDisabledAPIKeys = channelPermissions.canWrite && (channel.disabledAPIKeys?.length ?? 0) > 0;
 
   const handleDefaultTest = async () => {
     try {
@@ -179,16 +181,30 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
             <IconTransform size={16} className='mr-2' />
             {t('channels.dialogs.transformOptions.action')}
           </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => {
-              setCurrentRow(channel);
-              setOpen('errorResolved');
-            }}
-            className='text-green-500!'
-          >
-            <IconCheck size={16} className='mr-2' />
-            {t('channels.actions.errorResolved')}
-          </DropdownMenuItem>
+          {hasDisabledAPIKeys && (
+            <DropdownMenuItem
+              onClick={() => {
+                setCurrentRow(channel);
+                setOpen('disabledAPIKeys');
+              }}
+              className='text-orange-500!'
+            >
+              <IconKeyOff size={16} className='mr-2' />
+              {t('channels.actions.disabledAPIKeys', { count: channel.disabledAPIKeys?.length ?? 0 })}
+            </DropdownMenuItem>
+          )}
+          {hasError && (
+            <DropdownMenuItem
+              onClick={() => {
+                setCurrentRow(channel);
+                setOpen('errorResolved');
+              }}
+              className='text-green-600!'
+            >
+              <IconCheck size={16} className='mr-2' />
+              {t('channels.actions.markErrorResolved')}
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={() => {

@@ -64,6 +64,16 @@ type AutoDisableChannel {
   statuses: [AutoDisableChannelStatus!]!
 }
 
+type AutoDisableAPIKeyStatus {
+  status: Int!
+  times: Int!
+}
+
+type AutoDisableAPIKey {
+  enabled: Boolean!
+  statuses: [AutoDisableAPIKeyStatus!]!
+}
+
 type RetryPolicy {
   maxChannelRetries: Int!
   maxSingleChannelRetries: Int!

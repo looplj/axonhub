@@ -100,6 +100,13 @@ type ChannelCredentials {
   oauth: OAuthCredentials
 }
 
+type DisabledAPIKey {
+  key: String!
+  disabledAt: Time!
+  errorCode: Int!
+  reason: String
+}
+
 type OAuthCredentials {
   accessToken: String
   refreshToken: String
@@ -448,6 +455,11 @@ extend type Channel {
   Channel credentials, will be null if user can not access the the credentials
   """
   credentials: ChannelCredentials @goField(forceResolver: true)
+
+  """
+  Disabled API keys for this channel. Sensitive: will be null if user can not access.
+  """
+  disabledAPIKeys: [DisabledAPIKey!] @goField(forceResolver: true)
 }
 
 type Segment {
@@ -543,6 +555,11 @@ type ApplyChannelOverrideTemplatePayload {
   channels: [Channel!]!
 }
 
+type DeleteDisabledAPIKeysPayload {
+  success: Boolean!
+  message: String
+}
+
 type Mutation {
   createChannel(input: CreateChannelInput!): Channel!
   bulkCreateChannels(input: BulkCreateChannelsInput!): [Channel!]!
@@ -558,6 +575,13 @@ type Mutation {
   bulkUpdateChannelOrdering(
     input: BulkUpdateChannelOrderingInput!
   ): BulkUpdateChannelOrderingResult!
+
+  # Channel API Key Management
+  disableChannelAPIKey(channelID: ID!, key: String!): Boolean!
+  enableChannelAPIKey(channelID: ID!, key: String!): Boolean!
+  enableAllChannelAPIKeys(channelID: ID!): Boolean!
+  enableSelectedChannelAPIKeys(channelID: ID!, keys: [String!]!): Boolean!
+  deleteDisabledChannelAPIKeys(channelID: ID!, keys: [String!]!): DeleteDisabledAPIKeysPayload!
 
   createAPIKey(input: CreateAPIKeyInput!): APIKey!
   updateAPIKey(id: ID!, input: UpdateAPIKeyInput!): APIKey!

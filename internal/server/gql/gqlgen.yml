@@ -1,7 +1,9 @@
 # schema tells gqlgen where the GraphQL schema is located.
 schema:
-  - ent.graphql
+  # axonhub.graphql must be loaded before ent.graphql because it defines DisabledAPIKey
+  # which is referenced by the disabled_api_keys field in Channel schema
   - axonhub.graphql
+  - ent.graphql
   - dashboard.graphql
   - scopes.graphql
   - me.graphql
@@ -549,3 +551,9 @@ models:
   PromptActivationConditionCompositeInput:
     model:
       - github.com/looplj/axonhub/internal/objects.PromptActivationConditionComposite
+  DisabledAPIKey:
+    model:
+      - github.com/looplj/axonhub/internal/objects.DisabledAPIKey
+  DeleteDisabledAPIKeysPayload:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.DeleteDisabledAPIKeysResult

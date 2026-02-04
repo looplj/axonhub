@@ -119,24 +119,28 @@ func init() {
 	channelDescDeletedAt := channelMixinFields1[0].Descriptor()
 	// channel.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	channel.DefaultDeletedAt = channelDescDeletedAt.Default.(int)
+	// channelDescDisabledAPIKeys is the schema descriptor for disabled_api_keys field.
+	channelDescDisabledAPIKeys := channelFields[5].Descriptor()
+	// channel.DefaultDisabledAPIKeys holds the default value on creation for the disabled_api_keys field.
+	channel.DefaultDisabledAPIKeys = channelDescDisabledAPIKeys.Default.([]objects.DisabledAPIKey)
 	// channelDescAutoSyncSupportedModels is the schema descriptor for auto_sync_supported_models field.
-	channelDescAutoSyncSupportedModels := channelFields[6].Descriptor()
+	channelDescAutoSyncSupportedModels := channelFields[7].Descriptor()
 	// channel.DefaultAutoSyncSupportedModels holds the default value on creation for the auto_sync_supported_models field.
 	channel.DefaultAutoSyncSupportedModels = channelDescAutoSyncSupportedModels.Default.(bool)
 	// channelDescTags is the schema descriptor for tags field.
-	channelDescTags := channelFields[7].Descriptor()
+	channelDescTags := channelFields[8].Descriptor()
 	// channel.DefaultTags holds the default value on creation for the tags field.
 	channel.DefaultTags = channelDescTags.Default.([]string)
 	// channelDescPolicies is the schema descriptor for policies field.
-	channelDescPolicies := channelFields[9].Descriptor()
+	channelDescPolicies := channelFields[10].Descriptor()
 	// channel.DefaultPolicies holds the default value on creation for the policies field.
 	channel.DefaultPolicies = channelDescPolicies.Default.(objects.ChannelPolicies)
 	// channelDescSettings is the schema descriptor for settings field.
-	channelDescSettings := channelFields[10].Descriptor()
+	channelDescSettings := channelFields[11].Descriptor()
 	// channel.DefaultSettings holds the default value on creation for the settings field.
 	channel.DefaultSettings = channelDescSettings.Default.(*objects.ChannelSettings)
 	// channelDescOrderingWeight is the schema descriptor for ordering_weight field.
-	channelDescOrderingWeight := channelFields[11].Descriptor()
+	channelDescOrderingWeight := channelFields[12].Descriptor()
 	// channel.DefaultOrderingWeight holds the default value on creation for the ordering_weight field.
 	channel.DefaultOrderingWeight = channelDescOrderingWeight.Default.(int)
 	channelmodelpriceMixin := schema.ChannelModelPrice{}.Mixin()

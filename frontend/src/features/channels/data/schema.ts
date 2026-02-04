@@ -163,6 +163,15 @@ export const channelCredentialsSchema = z.object({
 });
 export type ChannelCredentials = z.infer<typeof channelCredentialsSchema>;
 
+// Disabled API Key
+export const disabledAPIKeySchema = z.object({
+  key: z.string(),
+  disabledAt: z.string(),
+  errorCode: z.number(),
+  reason: z.string().optional().nullable(),
+});
+export type DisabledAPIKey = z.infer<typeof disabledAPIKeySchema>;
+
 // Channel
 export const channelSchema = z.object({
   id: z.string(),
@@ -174,6 +183,7 @@ export const channelSchema = z.object({
   status: channelStatusSchema,
   policies: channelPoliciesSchema.optional().nullable(),
   credentials: channelCredentialsSchema.optional().nullable(),
+  disabledAPIKeys: z.array(disabledAPIKeySchema).optional().nullable(),
   supportedModels: z.array(z.string()),
   autoSyncSupportedModels: z.boolean().default(false),
   tags: z.array(z.string()).optional().default([]).nullable(),

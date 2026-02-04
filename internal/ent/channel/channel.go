@@ -35,6 +35,8 @@ const (
 	FieldStatus = "status"
 	// FieldCredentials holds the string denoting the credentials field in the database.
 	FieldCredentials = "credentials"
+	// FieldDisabledAPIKeys holds the string denoting the disabled_api_keys field in the database.
+	FieldDisabledAPIKeys = "disabled_api_keys"
 	// FieldSupportedModels holds the string denoting the supported_models field in the database.
 	FieldSupportedModels = "supported_models"
 	// FieldAutoSyncSupportedModels holds the string denoting the auto_sync_supported_models field in the database.
@@ -122,6 +124,7 @@ var Columns = []string{
 	FieldName,
 	FieldStatus,
 	FieldCredentials,
+	FieldDisabledAPIKeys,
 	FieldSupportedModels,
 	FieldAutoSyncSupportedModels,
 	FieldTags,
@@ -160,6 +163,8 @@ var (
 	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultDeletedAt holds the default value on creation for the "deleted_at" field.
 	DefaultDeletedAt int
+	// DefaultDisabledAPIKeys holds the default value on creation for the "disabled_api_keys" field.
+	DefaultDisabledAPIKeys []objects.DisabledAPIKey
 	// DefaultAutoSyncSupportedModels holds the default value on creation for the "auto_sync_supported_models" field.
 	DefaultAutoSyncSupportedModels bool
 	// DefaultTags holds the default value on creation for the "tags" field.

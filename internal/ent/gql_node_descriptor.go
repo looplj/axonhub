@@ -176,7 +176,7 @@ func (_m *Channel) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     _m.ID,
 		Type:   "Channel",
-		Fields: make([]*Field, 16),
+		Fields: make([]*Field, 17),
 		Edges:  make([]*Edge, 6),
 	}
 	var buf []byte
@@ -236,10 +236,18 @@ func (_m *Channel) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "credentials",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.SupportedModels); err != nil {
+	if buf, err = json.Marshal(_m.DisabledAPIKeys); err != nil {
 		return nil, err
 	}
 	node.Fields[7] = &Field{
+		Type:  "[]objects.DisabledAPIKey",
+		Name:  "disabled_api_keys",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.SupportedModels); err != nil {
+		return nil, err
+	}
+	node.Fields[8] = &Field{
 		Type:  "[]string",
 		Name:  "supported_models",
 		Value: string(buf),
@@ -247,7 +255,7 @@ func (_m *Channel) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.AutoSyncSupportedModels); err != nil {
 		return nil, err
 	}
-	node.Fields[8] = &Field{
+	node.Fields[9] = &Field{
 		Type:  "bool",
 		Name:  "auto_sync_supported_models",
 		Value: string(buf),
@@ -255,7 +263,7 @@ func (_m *Channel) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.Tags); err != nil {
 		return nil, err
 	}
-	node.Fields[9] = &Field{
+	node.Fields[10] = &Field{
 		Type:  "[]string",
 		Name:  "tags",
 		Value: string(buf),
@@ -263,7 +271,7 @@ func (_m *Channel) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.DefaultTestModel); err != nil {
 		return nil, err
 	}
-	node.Fields[10] = &Field{
+	node.Fields[11] = &Field{
 		Type:  "string",
 		Name:  "default_test_model",
 		Value: string(buf),
@@ -271,7 +279,7 @@ func (_m *Channel) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.Policies); err != nil {
 		return nil, err
 	}
-	node.Fields[11] = &Field{
+	node.Fields[12] = &Field{
 		Type:  "objects.ChannelPolicies",
 		Name:  "policies",
 		Value: string(buf),
@@ -279,7 +287,7 @@ func (_m *Channel) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.Settings); err != nil {
 		return nil, err
 	}
-	node.Fields[12] = &Field{
+	node.Fields[13] = &Field{
 		Type:  "*objects.ChannelSettings",
 		Name:  "settings",
 		Value: string(buf),
@@ -287,7 +295,7 @@ func (_m *Channel) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.OrderingWeight); err != nil {
 		return nil, err
 	}
-	node.Fields[13] = &Field{
+	node.Fields[14] = &Field{
 		Type:  "int",
 		Name:  "ordering_weight",
 		Value: string(buf),
@@ -295,7 +303,7 @@ func (_m *Channel) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.ErrorMessage); err != nil {
 		return nil, err
 	}
-	node.Fields[14] = &Field{
+	node.Fields[15] = &Field{
 		Type:  "string",
 		Name:  "error_message",
 		Value: string(buf),
@@ -303,7 +311,7 @@ func (_m *Channel) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.Remark); err != nil {
 		return nil, err
 	}
-	node.Fields[15] = &Field{
+	node.Fields[16] = &Field{
 		Type:  "string",
 		Name:  "remark",
 		Value: string(buf),
