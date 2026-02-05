@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -207,6 +208,10 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		err  error
 	)
 
+	if channelType == channel.TypeNanogpt {
+		log.Printf("[NanoGPT Debug] Fetching models from URL: %s", req.URL)
+	}
+
 	if channelType.IsAnthropic() || channelType.IsAnthropicLike() {
 		resp, err = httpClient.Do(ctx, req)
 		if err != nil || resp.StatusCode != http.StatusOK {
@@ -234,10 +239,17 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 
 	models, err := f.parseModelsResponse(resp.Body)
 	if err != nil {
+		if channelType == channel.TypeNanogpt {
+			log.Printf("[NanoGPT Debug] Failed to parse response: %v", err)
+		}
 		return &FetchModelsResult{
 			Models: []ModelIdentify{},
 			Error:  lo.ToPtr(fmt.Sprintf("failed to parse models response: %v", err)),
 		}, nil
+	}
+
+	if channelType == channel.TypeNanogpt {
+		log.Printf("[NanoGPT Debug] Response body size: %d bytes, Models count: %d", len(resp.Body), len(models))
 	}
 
 	return &FetchModelsResult{
@@ -272,19 +284,19 @@ func (f *ModelFetcher) fetchGeminiModels(ctx context.Context, httpClient *httpcl
 			return nil, err
 		}
 
-                if resp.StatusCode != http.StatusOK {
-                        return nil, fmt.Errorf("unexpected status: %s", resp.RawResponse.Status)
-                }
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("unexpected status: %s", resp.RawResponse.Status)
+		}
 
 		var page geminiListModelsResponse
-                if err := json.Unmarshal(resp.Body, &page); err != nil {
-                        models, parseErr := f.parseModelsResponse(resp.Body)
-                        if parseErr != nil {
-                                return nil, fmt.Errorf("failed to parse models response: paginated unmarshal: %w; fallback parse: %w", err, parseErr)
-                        }
-                        allModels = append(allModels, models...)
-                        return allModels, nil
-                }
+		if err := json.Unmarshal(resp.Body, &page); err != nil {
+			models, parseErr := f.parseModelsResponse(resp.Body)
+			if parseErr != nil {
+				return nil, fmt.Errorf("failed to parse models response: paginated unmarshal: %w; fallback parse: %w", err, parseErr)
+			}
+			allModels = append(allModels, models...)
+			return allModels, nil
+		}
 
 		for _, model := range page.Models {
 			allModels = append(allModels, ModelIdentify{
