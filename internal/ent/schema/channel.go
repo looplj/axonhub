@@ -77,6 +77,7 @@ func (Channel) Fields() []ent.Field {
 				"claudecode",
 				"cerebras",
 				"antigravity",
+				"nanogpt",
 			).
 			Immutable().
 			Annotations(

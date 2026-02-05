@@ -1,0 +1,202 @@
+package nanogpt
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+
+	"github.com/tidwall/gjson"
+
+	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/openai"
+)
+
+// Config holds all configuration for the NanoGPT outbound transformer.
+type Config struct {
+	BaseURL        string              `json:"base_url,omitempty"`
+	APIKeyProvider auth.APIKeyProvider `json:"-"`
+}
+
+// OutboundTransformer implements transformer.Outbound for NanoGPT format.
+// NanoGPT is compatible with OpenAI API, but handles the reasoning field differently.
+type OutboundTransformer struct {
+	transformer.Outbound
+
+	BaseURL        string
+	APIKeyProvider auth.APIKeyProvider
+}
+
+// NewOutboundTransformer creates a new NanoGPT OutboundTransformer with legacy parameters.
+func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error) {
+	config := &Config{
+		BaseURL:        baseURL,
+		APIKeyProvider: auth.NewStaticKeyProvider(apiKey),
+	}
+
+	return NewOutboundTransformerWithConfig(config)
+}
+
+// NewOutboundTransformerWithConfig creates a new NanoGPT OutboundTransformer with unified configuration.
+func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, error) {
+	oaiConfig := &openai.Config{
+		PlatformType:   openai.PlatformOpenAI,
+		BaseURL:        config.BaseURL,
+		APIKeyProvider: config.APIKeyProvider,
+	}
+
+	t, err := openai.NewOutboundTransformerWithConfig(oaiConfig)
+	if err != nil {
+		return nil, fmt.Errorf("invalid NanoGPT transformer configuration: %w", err)
+	}
+
+	baseURL := transformer.NormalizeBaseURL(config.BaseURL, "v1")
+
+	return &OutboundTransformer{
+		BaseURL:        baseURL,
+		APIKeyProvider: config.APIKeyProvider,
+		Outbound:       t,
+	}, nil
+}
+
+// TransformRequest transforms ChatCompletionRequest to Request.
+func (t *OutboundTransformer) TransformRequest(
+	ctx context.Context,
+	llmReq *llm.Request,
+) (*httpclient.Request, error) {
+	if llmReq == nil {
+		return nil, fmt.Errorf("chat completion request is nil")
+	}
+
+	if llmReq.Model == "" {
+		return nil, fmt.Errorf("%w: model is required", transformer.ErrInvalidRequest)
+	}
+
+	if len(llmReq.Messages) == 0 {
+		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
+	}
+
+	body, err := json.Marshal(openai.RequestFromLLM(llmReq))
+	if err != nil {
+		return nil, fmt.Errorf("%w: failed to transform request: %w", transformer.ErrInvalidRequest, err)
+	}
+
+	headers := make(http.Header)
+	headers.Set("Content-Type", "application/json")
+	headers.Set("Accept", "application/json")
+
+	apiKey := t.APIKeyProvider.Get(ctx)
+
+	auth := &httpclient.AuthConfig{
+		Type:   httpclient.AuthTypeBearer,
+		APIKey: apiKey,
+	}
+
+	url := t.BaseURL + "/chat/completions"
+
+	return &httpclient.Request{
+		Method:      http.MethodPost,
+		URL:         url,
+		Headers:     headers,
+		Body:        body,
+		Auth:        auth,
+		ContentType: "application/json",
+	}, nil
+}
+
+// TransformResponse transforms the HTTP response to llm.Response.
+func (t *OutboundTransformer) TransformResponse(
+	ctx context.Context,
+	httpResp *httpclient.Response,
+) (*llm.Response, error) {
+	if httpResp == nil {
+		return nil, fmt.Errorf("http response is nil")
+	}
+
+	if httpResp.StatusCode >= 400 {
+		return nil, fmt.Errorf("HTTP error %d", httpResp.StatusCode)
+	}
+
+	if len(httpResp.Body) == 0 {
+		return nil, fmt.Errorf("response body is empty")
+	}
+
+	var nanoResp Response
+
+	err := json.Unmarshal(httpResp.Body, &nanoResp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal chat completion response: %w", err)
+	}
+
+	return nanoResp.ToOpenAIResponse().ToLLMResponse(), nil
+}
+
+// TransformStream transforms a stream of HTTP events to a stream of llm.Response.
+func (t *OutboundTransformer) TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+	return streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
+		return t.TransformStreamChunk(ctx, event)
+	}), nil
+}
+
+// TransformStreamChunk transforms a single stream event to llm.Response.
+func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *httpclient.StreamEvent) (*llm.Response, error) {
+	if bytes.HasPrefix(event.Data, []byte("[DONE]")) {
+		return llm.DoneResponse, nil
+	}
+
+	ep := gjson.GetBytes(event.Data, "error")
+	if ep.Exists() {
+		return nil, &llm.ResponseError{
+			Detail: llm.ErrorDetail{
+				Message: ep.String(),
+			},
+		}
+	}
+
+	httpResp := &httpclient.Response{
+		Body: event.Data,
+	}
+
+	return t.TransformResponse(ctx, httpResp)
+}
+
+// AggregateStreamChunks aggregates stream chunks into a single response.
+func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+	return openai.AggregateStreamChunks(ctx, chunks, openai.DefaultTransformChunk)
+}
+
+// TransformError transforms the HTTP error response to the unified error response.
+func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpclient.Error) *llm.ResponseError {
+	if rawErr == nil {
+		return &llm.ResponseError{
+			StatusCode: http.StatusInternalServerError,
+			Detail: llm.ErrorDetail{
+				Message: http.StatusText(http.StatusInternalServerError),
+				Type:    "api_error",
+			},
+		}
+	}
+
+	var openaiError openai.OpenAIError
+
+	err := json.Unmarshal(rawErr.Body, &openaiError)
+	if err == nil {
+		return &llm.ResponseError{
+			StatusCode: rawErr.StatusCode,
+			Detail:     openaiError.Detail,
+		}
+	}
+
+	return &llm.ResponseError{
+		StatusCode: rawErr.StatusCode,
+		Detail: llm.ErrorDetail{
+			Message: http.StatusText(rawErr.StatusCode),
+			Type:    "api_error",
+		},
+	}
+}
