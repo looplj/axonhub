@@ -208,8 +208,13 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		err  error
 	)
 
-	if channelType == channel.TypeNanogpt {
-		log.Printf("[NanoGPT Debug] Fetching models from URL: %s", req.URL)
+	// Debug logging for model fetching - log all channels to compare
+	log.Printf("[ModelFetch Debug] ChannelType: %s, URL: %s", channelType, req.URL)
+
+	// Enhanced debug logging for OpenAI and NanoGPT comparison
+	if channelType == channel.TypeOpenai || channelType == channel.TypeNanogpt {
+		log.Printf("[%s Debug] Request URL: %s", channelType, req.URL)
+		log.Printf("[%s Debug] Request Headers: %v", channelType, req.Headers)
 	}
 
 	if channelType.IsAnthropic() || channelType.IsAnthropicLike() {
@@ -250,6 +255,35 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 
 	if channelType == channel.TypeNanogpt {
 		log.Printf("[NanoGPT Debug] Response body size: %d bytes, Models count: %d", len(resp.Body), len(models))
+	}
+
+	// Enhanced debug logging for OpenAI and NanoGPT comparison
+	if channelType == channel.TypeOpenai || channelType == channel.TypeNanogpt {
+		log.Printf("[%s Debug] Response body size: %d bytes", channelType, len(resp.Body))
+		log.Printf("[%s Debug] Parsed models count: %d", channelType, len(models))
+		if len(models) > 0 {
+			// Log first 5 model IDs
+			firstCount := 5
+			if len(models) < firstCount {
+				firstCount = len(models)
+			}
+			firstModels := make([]string, firstCount)
+			for i := 0; i < firstCount; i++ {
+				firstModels[i] = models[i].ID
+			}
+			log.Printf("[%s Debug] First %d models: %v", channelType, firstCount, firstModels)
+
+			// Log last 5 model IDs
+			lastCount := 5
+			if len(models) < lastCount {
+				lastCount = len(models)
+			}
+			lastModels := make([]string, lastCount)
+			for i := 0; i < lastCount; i++ {
+				lastModels[i] = models[len(models)-lastCount+i].ID
+			}
+			log.Printf("[%s Debug] Last %d models: %v", channelType, lastCount, lastModels)
+		}
 	}
 
 	return &FetchModelsResult{
