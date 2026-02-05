@@ -136,6 +136,7 @@ function buildRequestDetailQuery(permissions: { canViewApiKeys: boolean; canView
           responseBody
           responseChunks
           status
+          format
           usageLogs(first: 1) {
             edges {
               node {
@@ -192,6 +193,7 @@ function buildRequestExecutionsQuery(permissions: { canViewChannels: boolean }) 
                 responseChunks
                 errorMessage
                 status
+                format
                 stream
                 metricsFirstTokenLatencyMs
               }

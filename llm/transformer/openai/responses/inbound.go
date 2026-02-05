@@ -18,6 +18,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 var _ transformer.Inbound = (*InboundTransformer)(nil)
@@ -259,7 +260,6 @@ func convertToLLMRequest(req *Request) (*llm.Request, error) {
 
 	chatReq.Messages = messages
 
-	// Convert tools
 	if len(req.Tools) > 0 {
 		tools, err := convertToolsToLLM(req.Tools)
 		if err != nil {
@@ -374,7 +374,8 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 
 	reasoningItem := &items[startIdx]
 	msg := &llm.Message{
-		Role: "assistant",
+		Role:               "assistant",
+		ReasoningSignature: reasoningItem.EncryptedContent,
 	}
 
 	// Extract reasoning content
@@ -386,10 +387,6 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 
 	if reasoningText.Len() > 0 {
 		msg.ReasoningContent = lo.ToPtr(reasoningText.String())
-	}
-
-	if reasoningItem.EncryptedContent != nil && *reasoningItem.EncryptedContent != "" {
-		msg.ReasoningSignature = reasoningItem.EncryptedContent
 	}
 
 	consumed := 1
@@ -689,18 +686,21 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 		}
 
 		// Handle reasoning content
-		if message.ReasoningContent != nil && *message.ReasoningContent != "" {
+		if (message.ReasoningContent != nil && *message.ReasoningContent != "") || message.ReasoningSignature != nil {
+			summary := []ReasoningSummary{}
+			if message.ReasoningContent != nil && *message.ReasoningContent != "" {
+				summary = append(summary, ReasoningSummary{
+					Type: "summary_text",
+					Text: *message.ReasoningContent,
+				})
+			}
+
 			resp.Output = append(resp.Output, Item{
-				ID:     generateItemID(),
-				Type:   "reasoning",
-				Status: lo.ToPtr("completed"),
-				Summary: []ReasoningSummary{
-					{
-						Type: "summary_text",
-						Text: *message.ReasoningContent,
-					},
-				},
-				EncryptedContent: message.ReasoningSignature,
+				ID:               generateItemID(),
+				Type:             "reasoning",
+				Status:           lo.ToPtr("completed"),
+				Summary:          summary,
+				EncryptedContent: shared.DecodeOpenAIEncryptedContent(message.ReasoningSignature),
 			})
 		}
 

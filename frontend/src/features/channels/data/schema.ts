@@ -1,7 +1,20 @@
 import { z } from 'zod';
 import { pageInfoSchema } from '@/gql/pagination';
 
-export const apiFormatSchema = z.enum(['openai/chat_completions', 'openai/responses', 'anthropic/messages', 'gemini/contents']);
+export const apiFormatSchema = z.enum([
+  'openai/chat_completions',
+  'openai/responses',
+  'openai/image_generation',
+  'openai/image_edit',
+  'openai/image_variation',
+  'openai/embeddings',
+  'anthropic/messages',
+  'gemini/contents',
+  'aisdk/text',
+  'aisdk/datastream',
+  'jina/rerank',
+  'jina/embeddings',
+]);
 
 export type ApiFormat = z.infer<typeof apiFormatSchema>;
 

@@ -7,7 +7,8 @@
           "type": "input_text"
         }
       ],
-      "role": "user"
+      "role": "user",
+      "type": "message"
     },
     {
       "content": [
@@ -28,7 +29,8 @@
           "type": "input_text"
         }
       ],
-      "role": "user"
+      "role": "user",
+      "type": "message"
     },
     {
       "content": [
@@ -49,7 +51,8 @@
           "type": "input_text"
         }
       ],
-      "role": "user"
+      "role": "user",
+      "type": "message"
     },
     {
       "content": [
@@ -70,7 +73,8 @@
           "type": "input_text"
         }
       ],
-      "role": "user"
+      "role": "user",
+      "type": "message"
     }
   ],
   "model": "deepseek-chat"

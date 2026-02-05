@@ -319,12 +319,15 @@ type Message struct {
 	// - https://api-docs.deepseek.com/api/create-chat-completion#responses
 	ReasoningContent *string `json:"reasoning_content,omitempty"`
 
-	// Help field, will not be sent to the llm service, to adapt the anthropic think signature.
-	// https://platform.claude.com/docs/en/build-with-claude/extended-thinking
+	// Help field, will not be sent to the llm service, to adapt the
+	// 1. Anthropic think signature： https://platform.claude.com/docs/en/build-with-claude/extended-thinking
+	// 2. Gemini thought signature：  https://ai.google.dev/gemini-api/docs/thought-signatures#model-behavior
+	// 3. OpenAI Responses encrypted content： https://platform.openai.com/docs/api-reference/responses/object#responses-object-output-reasoning-encrypted_content
 	ReasoningSignature *string `json:"reasoning_signature,omitempty"`
 
 	// Help field, will not be sent to the llm service, to adapt the anthropic think signature.
 	// https://platform.claude.com/docs/en/build-with-claude/extended-thinking
+	// This field will be ignore when convert anthropic to other API format.
 	RedactedReasoningContent *string `json:"redacted_reasoning_content,omitempty"`
 
 	// CacheControl is used for provider-specific cache control (e.g., Anthropic).

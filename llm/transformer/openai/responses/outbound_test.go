@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestNewOutboundTransformer(t *testing.T) {
@@ -736,6 +737,34 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 				require.Equal(t, "image_url", result.Choices[0].Message.Content.MultipleContent[0].Type)
 				require.NotNil(t, result.Choices[0].Message.Content.MultipleContent[0].ImageURL)
 				require.Contains(t, result.Choices[0].Message.Content.MultipleContent[0].ImageURL.URL, "data:image/png;base64,")
+			},
+		},
+		{
+			name: "response with encrypted reasoning",
+			httpResp: &httpclient.Response{
+				StatusCode: http.StatusOK,
+				Body: []byte(`{
+					"id": "resp_789",
+					"object": "response",
+					"created_at": 1759161016,
+					"status": "completed",
+					"model": "gpt-4o",
+					"output": [
+						{
+							"id": "rs_123",
+							"type": "reasoning",
+							"summary": [],
+							"encrypted_content": "encrypted_data_here"
+						}
+					]
+				}`),
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *llm.Response) {
+				require.Len(t, result.Choices, 1)
+				require.NotNil(t, result.Choices[0].Message)
+				require.NotNil(t, result.Choices[0].Message.ReasoningSignature)
+				require.Equal(t, shared.OpenAIEncryptedContentPrefix+"encrypted_data_here", *result.Choices[0].Message.ReasoningSignature)
 			},
 		},
 	}

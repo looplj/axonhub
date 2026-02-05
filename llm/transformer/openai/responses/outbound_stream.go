@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // TransformStream transforms OpenAI Responses API SSE events to unified llm.Response stream.
@@ -52,15 +53,20 @@ type outboundStreamState struct {
 	toolCalls     map[string]*llm.ToolCall // callID -> tool call
 	itemToCallID  map[string]string        // item.id -> call_id mapping
 	toolCallIndex map[string]int           // callID -> index in the output
+
+	// Reasoning signature tracking
+	encryptedContentEmitted map[string]bool
+	hasEncryptedReasoning   bool
 }
 
 func newResponsesOutboundStream(stream streams.Stream[*httpclient.StreamEvent]) *responsesOutboundStream {
 	return &responsesOutboundStream{
 		stream: stream,
 		state: &outboundStreamState{
-			toolCalls:     make(map[string]*llm.ToolCall),
-			itemToCallID:  make(map[string]string),
-			toolCallIndex: make(map[string]int),
+			toolCalls:               make(map[string]*llm.ToolCall),
+			itemToCallID:            make(map[string]string),
+			toolCallIndex:           make(map[string]int),
+			encryptedContentEmitted: make(map[string]bool),
 		},
 	}
 }
@@ -173,47 +179,65 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		return nil // Intentionally skip this event
 	case StreamEventTypeOutputItemAdded:
 		// Output item added - check type to determine how to handle
-		if streamEvent.Item != nil {
-			item := streamEvent.Item
-			switch item.Type {
-			case "function_call":
-				// Initialize tool call tracking
-				toolCallIdx := len(s.state.toolCalls)
-				s.state.toolCalls[item.CallID] = &llm.ToolCall{
-					ID:   item.CallID,
-					Type: "function",
-					Function: llm.FunctionCall{
-						Name:      item.Name,
-						Arguments: "",
-					},
-				}
-				// Map item.id to call_id for later lookup
-				s.state.itemToCallID[item.ID] = item.CallID
-				s.state.toolCallIndex[item.CallID] = toolCallIdx
+		if streamEvent.Item == nil {
+			// No item data, skip
+			return nil // Intentionally skip this event
+		}
 
+		item := streamEvent.Item
+		switch item.Type {
+		case "reasoning":
+			if item.EncryptedContent == nil || *item.EncryptedContent == "" {
+				return nil // Intentionally skip this event
+			}
+
+			if !s.state.encryptedContentEmitted[item.ID] {
+				s.state.encryptedContentEmitted[item.ID] = true
+				s.state.hasEncryptedReasoning = true
 				resp.Choices = []llm.Choice{
 					{
 						Index: 0,
 						Delta: &llm.Message{
-							ToolCalls: []llm.ToolCall{
-								{
-									ID:    item.CallID,
-									Type:  "function",
-									Index: toolCallIdx,
-									Function: llm.FunctionCall{
-										Name: item.Name,
-									},
+							ReasoningSignature: shared.EncodeOpenAIEncryptedContent(item.EncryptedContent),
+						},
+					},
+				}
+			}
+
+		case "function_call":
+			// Initialize tool call tracking
+			toolCallIdx := len(s.state.toolCalls)
+			s.state.toolCalls[item.CallID] = &llm.ToolCall{
+				ID:   item.CallID,
+				Type: "function",
+				Function: llm.FunctionCall{
+					Name:      item.Name,
+					Arguments: "",
+				},
+			}
+			// Map item.id to call_id for later lookup
+			s.state.itemToCallID[item.ID] = item.CallID
+			s.state.toolCallIndex[item.CallID] = toolCallIdx
+
+			resp.Choices = []llm.Choice{
+				{
+					Index: 0,
+					Delta: &llm.Message{
+						ToolCalls: []llm.ToolCall{
+							{
+								ID:    item.CallID,
+								Type:  "function",
+								Index: toolCallIdx,
+								Function: llm.FunctionCall{
+									Name: item.Name,
 								},
 							},
 						},
 					},
-				}
-			default:
-				// For other item types (e.g., message), skip - no meaningful content to emit
-				return nil // Intentionally skip this event
+				},
 			}
-		} else {
-			// No item data, skip
+		default:
+			// For other item types (e.g., message), skip - no meaningful content to emit
 			return nil // Intentionally skip this event
 		}
 

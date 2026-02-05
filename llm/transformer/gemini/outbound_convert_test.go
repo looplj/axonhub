@@ -1475,9 +1475,9 @@ func TestConvertGeminiToLLMResponse_ThoughtSignature(t *testing.T) {
 				t.Helper()
 				require.Len(t, result.Choices, 1)
 				require.NotNil(t, result.Choices[0].Message)
-				require.NotNil(t, result.Choices[0].Message.RedactedReasoningContent)
-				require.True(t, shared.IsGeminiThoughtSignature(result.Choices[0].Message.RedactedReasoningContent))
-				decoded := shared.DecodeGeminiThoughtSignature(result.Choices[0].Message.RedactedReasoningContent)
+				require.NotNil(t, result.Choices[0].Message.ReasoningSignature)
+				require.True(t, shared.IsGeminiThoughtSignature(result.Choices[0].Message.ReasoningSignature))
+				decoded := shared.DecodeGeminiThoughtSignature(result.Choices[0].Message.ReasoningSignature)
 				require.NotNil(t, decoded)
 				require.Equal(t, "signature_A", *decoded)
 				require.Len(t, result.Choices[0].Message.ToolCalls, 1)
@@ -1522,9 +1522,9 @@ func TestConvertGeminiToLLMResponse_ThoughtSignature(t *testing.T) {
 			validate: func(t *testing.T, result *llm.Response) {
 				t.Helper()
 				require.NotNil(t, result.Choices[0].Message)
-				require.NotNil(t, result.Choices[0].Message.RedactedReasoningContent)
-				require.True(t, shared.IsGeminiThoughtSignature(result.Choices[0].Message.RedactedReasoningContent))
-				decoded := shared.DecodeGeminiThoughtSignature(result.Choices[0].Message.RedactedReasoningContent)
+				require.NotNil(t, result.Choices[0].Message.ReasoningSignature)
+				require.True(t, shared.IsGeminiThoughtSignature(result.Choices[0].Message.ReasoningSignature))
+				decoded := shared.DecodeGeminiThoughtSignature(result.Choices[0].Message.ReasoningSignature)
 				require.NotNil(t, decoded)
 				require.Equal(t, "signature_parallel", *decoded)
 				require.Len(t, result.Choices[0].Message.ToolCalls, 2)
@@ -1566,7 +1566,7 @@ func TestConvertGeminiToLLMResponse_ThoughtSignature(t *testing.T) {
 			validate: func(t *testing.T, result *llm.Response) {
 				t.Helper()
 				require.NotNil(t, result.Choices[0].Message)
-				require.Nil(t, result.Choices[0].Message.RedactedReasoningContent)
+				require.Nil(t, result.Choices[0].Message.ReasoningSignature)
 				require.Len(t, result.Choices[0].Message.ToolCalls, 1)
 				tc := result.Choices[0].Message.ToolCalls[0]
 				require.Equal(t, "call_002", tc.ID)
@@ -1592,8 +1592,8 @@ func TestConvertLLMMessageToGeminiContent_ThoughtSignature(t *testing.T) {
 		{
 			name: "tool call with thought signature",
 			input: &llm.Message{
-				Role:                     "assistant",
-				RedactedReasoningContent: shared.EncodeGeminiThoughtSignature(lo.ToPtr("signature_A")),
+				Role:               "assistant",
+				ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("signature_A")),
 				ToolCalls: []llm.ToolCall{
 					{
 						ID:   "call_001",
@@ -1618,8 +1618,8 @@ func TestConvertLLMMessageToGeminiContent_ThoughtSignature(t *testing.T) {
 		{
 			name: "multiple tool calls - only first has signature",
 			input: &llm.Message{
-				Role:                     "assistant",
-				RedactedReasoningContent: shared.EncodeGeminiThoughtSignature(lo.ToPtr("signature_A")),
+				Role:               "assistant",
+				ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("signature_A")),
 				ToolCalls: []llm.ToolCall{
 					{
 						ID:   "call_001",

@@ -12,7 +12,7 @@
     {
       "role": "assistant",
       "reasoning_content": "我需要检查暂存区的内容。首先，我将运行 `git status` 来查看当前状态，然后可能使用 `git diff --cached` 来查看暂存区的具体更改。",
-      "reasoning_signature":"encrypted_content",
+      "reasoning_signature": "encrypted_content",
       "tool_calls": [
         {
           "id": "call_00_bVbIarCdMYjXCUsTd9MEJVia",
@@ -32,7 +32,6 @@
   ],
   "stream": true,
   "store": false,
-  "parallel_tool_calls": false,
   "tool_choice": "auto",
   "prompt_cache_key": "019b2852-ee5a-7d73-bd4b-08b1fa61b97e",
   "reasoning_summary": "auto"

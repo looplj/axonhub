@@ -36,6 +36,7 @@ type aggregatedItem struct {
 	CallID    string
 	Name      string
 	Arguments *strings.Builder
+	EncryptedContent *string
 
 	// For message type
 	Content []*aggregatedContentPart
@@ -144,6 +145,7 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 			item.CallID = ev.Item.CallID
 			item.Name = ev.Item.Name
 			item.Arguments.WriteString(ev.Item.Arguments)
+			item.EncryptedContent = ev.Item.EncryptedContent
 		}
 
 		a.outputItems[ev.OutputIndex] = item
@@ -238,6 +240,10 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 					item.Arguments.Reset()
 					item.Arguments.WriteString(ev.Item.Arguments)
 				}
+
+				if ev.Item.EncryptedContent != nil {
+					item.EncryptedContent = ev.Item.EncryptedContent
+				}
 			}
 		}
 
@@ -317,6 +323,7 @@ func (a *streamAggregator) buildResponse() *Response {
 					Type:    item.Type,
 					Status:  lo.ToPtr(item.Status),
 					Summary: summary,
+					EncryptedContent: item.EncryptedContent,
 				})
 
 			default:

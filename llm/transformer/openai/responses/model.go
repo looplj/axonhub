@@ -65,7 +65,7 @@ type Request struct {
 	// Input can be a string prompt or an array of input items.
 	Input Input `json:"input"`
 	// Tools includes the function/image_generation tools.
-	Tools []Tool `json:"tools,omitempty"`
+	Tools []Tool `json:"tools,omitzero"`
 	// Parallel tool calls preference.
 	ParallelToolCalls *bool `json:"parallel_tool_calls,omitempty"`
 

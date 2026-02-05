@@ -35,16 +35,12 @@
       "output": "Exit code: 0\nWall time: 0.1 seconds\nOutput:\n/opt/homebrew/Library/Homebrew/cmd/shellenv.sh: line 18: /bin/ps: Operation not permitted\nOn branch development\nChanges not staged for commit:\n  (use \"git add <file>...\" to update what will be committed)\n  (use \"git restore <file>...\" to discard changes in working directory)\n\tmodified:   internal/llm/transformer/anthropic/inbound_convert.go\n\tmodified:   internal/llm/transformer/anthropic/outbound.go\n\tmodified:   internal/llm/transformer/anthropic/outbound_convert.go\n\tmodified:   internal/llm/transformer/anthropic/outbound_convert_test.go\n\tmodified:   internal/llm/transformer/anthropic/testdata/anthropic-thinking.request.json\n\tmodified:   internal/llm/transformer/openai/responses/inbound.go\n\nno changes added to commit (use \"git add\" and/or \"git commit -a\")\n"
     }
   ],
-  "tools": [],
   "tool_choice": "auto",
-  "parallel_tool_calls": false,
   "reasoning": {
     "summary": "auto"
   },
   "store": false,
   "stream": true,
-  "include": [
-    "reasoning.encrypted_content"
-  ],
+  "include": ["reasoning.encrypted_content"],
   "prompt_cache_key": "019b2852-ee5a-7d73-bd4b-08b1fa61b97e"
 }

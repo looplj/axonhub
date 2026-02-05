@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestNewInboundTransformer(t *testing.T) {
@@ -1227,8 +1228,9 @@ func TestInboundTransformer_TransformResponse_WithReasoning(t *testing.T) {
 					{
 						Index: 0,
 						Message: &llm.Message{
-							Role:             "assistant",
-							ReasoningContent: lo.ToPtr("I analyzed the problem step by step."),
+							Role:               "assistant",
+							ReasoningContent:   lo.ToPtr("I analyzed the problem step by step."),
+							ReasoningSignature: lo.ToPtr(shared.OpenAIEncryptedContentPrefix + "encrypted_data_here"),
 							Content: llm.MessageContent{
 								Content: lo.ToPtr("The answer is 42."),
 							},
@@ -1265,6 +1267,8 @@ func TestInboundTransformer_TransformResponse_WithReasoning(t *testing.T) {
 				require.Len(t, reasoningOutput.Summary, 1)
 				require.Equal(t, "summary_text", reasoningOutput.Summary[0].Type)
 				require.Equal(t, "I analyzed the problem step by step.", reasoningOutput.Summary[0].Text)
+				require.NotNil(t, reasoningOutput.EncryptedContent)
+				require.Equal(t, "encrypted_data_here", *reasoningOutput.EncryptedContent)
 
 				// Second output should be message
 				messageOutput := resp.Output[1]
