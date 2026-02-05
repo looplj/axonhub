@@ -201,11 +201,11 @@ func (svc *ChannelProbeService) computeAllChannelProbeStats(
 		latencyMap[latencyRes[i].ChannelID] = &latencyRes[i]
 	}
 
-	// Query 3: Get total tokens per channel from usage_log
+	// Query 3: Get completion tokens per channel from usage_log
 	// Note: usage_log is linked to request, not request_execution, so we filter by channel_id and time range
 	type tokenResult struct {
-		ChannelID   int   `json:"channel_id"`
-		TotalTokens int64 `json:"total_tokens"`
+		ChannelID        int   `json:"channel_id"`
+		CompletionTokens int64 `json:"completion_tokens"`
 	}
 
 	var tokenRes []tokenResult
@@ -219,7 +219,7 @@ func (svc *ChannelProbeService) computeAllChannelProbeStats(
 		Modify(func(s *sql.Selector) {
 			s.Select(
 				s.C(usagelog.FieldChannelID),
-				sql.As(sql.Sum(s.C(usagelog.FieldTotalTokens)), "total_tokens"),
+				sql.As(sql.Sum(s.C(usagelog.FieldCompletionTokens)), "completion_tokens"),
 			).GroupBy(s.C(usagelog.FieldChannelID))
 		}).
 		Scan(ctx, &tokenRes)
@@ -227,20 +227,20 @@ func (svc *ChannelProbeService) computeAllChannelProbeStats(
 		return nil, err
 	}
 
-	// Build token map
-	tokenMap := make(map[int]int64)
+	// Build completion token map
+	completionTokenMap := make(map[int]int64)
 	for _, r := range tokenRes {
-		tokenMap[r.ChannelID] = r.TotalTokens
+		completionTokenMap[r.ChannelID] = r.CompletionTokens
 	}
 
 	// Compute derived metrics
 	for channelID, stats := range result {
 		latency := latencyMap[channelID]
-		totalTokens := tokenMap[channelID]
+		completionTokens := completionTokenMap[channelID]
 
 		// Calculate avg tokens per second
-		if latency != nil && latency.TotalLatencyMs > 0 && totalTokens > 0 {
-			tps := float64(totalTokens) / (float64(latency.TotalLatencyMs) / 1000.0)
+		if latency != nil && latency.TotalLatencyMs > 0 && completionTokens > 0 {
+			tps := float64(completionTokens) / (float64(latency.TotalLatencyMs) / 1000.0)
 			stats.avgTokensPerSecond = &tps
 		}
 

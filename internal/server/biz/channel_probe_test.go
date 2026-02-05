@@ -69,6 +69,7 @@ func TestChannelProbeService_ComputeChannelProbeStats_UsageLogCreatedAfterWindow
 		SetChannelID(ch.ID).
 		SetModelID("gpt-4o-mini").
 		SetTotalTokens(300).
+		SetCompletionTokens(200).
 		SetCreatedAt(startTime.Add(15 * time.Second)).
 		SetUpdatedAt(startTime.Add(15 * time.Second)).
 		Save(ctx)
@@ -105,6 +106,7 @@ func TestChannelProbeService_ComputeChannelProbeStats_UsageLogCreatedAfterWindow
 		SetChannelID(ch.ID).
 		SetModelID("gpt-4o-mini").
 		SetTotalTokens(100).
+		SetCompletionTokens(100).
 		SetCreatedAt(startTime.Add(25 * time.Second)).
 		SetUpdatedAt(startTime.Add(25 * time.Second)).
 		Save(ctx)
@@ -122,7 +124,7 @@ func TestChannelProbeService_ComputeChannelProbeStats_UsageLogCreatedAfterWindow
 	require.Equal(t, 2, stats.total)
 	require.Equal(t, 2, stats.success)
 	require.NotNil(t, stats.avgTokensPerSecond)
-	require.InDelta(t, 133.333333, *stats.avgTokensPerSecond, 0.0001)
+	require.InDelta(t, 100.0, *stats.avgTokensPerSecond, 0.0001)
 	require.NotNil(t, stats.avgTimeToFirstTokenMs)
 	require.InDelta(t, 500.0, *stats.avgTimeToFirstTokenMs, 0.0001)
 }
