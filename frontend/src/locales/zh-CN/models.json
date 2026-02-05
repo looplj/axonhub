@@ -13,7 +13,7 @@
   "models.columns.contextWindow": "上下文",
   "models.columns.contextWindowFull": "上下文窗口",
   "models.columns.maxOutput": "最大输出",
-  "models.columns.maxOutputFull": "最大输出令牌数",
+  "models.columns.maxOutputFull": "最大输出词元数",
   "models.columns.associationRules": "关联规则",
   "models.columns.associatedChannels": "关联渠道",
   "models.columns.group": "分组",
