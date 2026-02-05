@@ -54,12 +54,19 @@ func (m *performanceRecording) OnOutboundRawRequest(ctx context.Context, request
 		return request, nil
 	}
 
+	// Preserve Stream flag from existing PerformanceRecord (set in OnInboundLlmRequest)
+	var streamFlag bool
+	if m.outbound.state.Perf != nil {
+		streamFlag = m.outbound.state.Perf.Stream
+	}
+
 	// Create a new PerformanceRecord instance for each request.
 	perf := biz.PerformanceRecord{}
 	perf.StartTime = time.Now()
 	perf.ChannelID = channel.ID
 	perf.Success = false
 	perf.RequestCompleted = false
+	perf.Stream = streamFlag
 
 	// Get the API key used for this request from context (set by TraceStickyKeyProvider)
 	if apiKey, ok := contexts.GetChannelAPIKey(ctx); ok {
