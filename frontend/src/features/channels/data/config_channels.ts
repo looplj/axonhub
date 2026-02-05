@@ -508,7 +508,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     baseURL: 'https://api.nano-gpt.com/v1',
     defaultModels: ['zai-org/glm-4.7:thinking', 'zai-org/glm-4.7', 'zai-org/glm-4.6'],
     apiFormat: OPENAI_CHAT_COMPLETIONS,
-    color: 'bg-gradient-to-br from-[#015a9e] to-[#11e9bb] text-white border-transparent',
+    color: 'bg-gradient-to-br from-[#015a9e] to-[#11e9bb] text-slate-900 border-transparent',
     icon: NanoGPTIcon,
   },
 };
