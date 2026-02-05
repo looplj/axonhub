@@ -952,11 +952,8 @@ func TestConvertGeminiContentToLLMMessage_ThoughtSignature(t *testing.T) {
 			validate: func(t *testing.T, result *llm.Message) {
 				t.Helper()
 				require.NotNil(t, result)
-				require.NotNil(t, result.RedactedReasoningContent)
-				require.True(t, shared.IsGeminiThoughtSignature(result.RedactedReasoningContent))
-				decoded := shared.DecodeGeminiThoughtSignature(result.RedactedReasoningContent)
-				require.NotNil(t, decoded)
-				require.Equal(t, "signature_A", *decoded)
+				require.NotNil(t, result.ReasoningSignature)
+				require.Equal(t, "signature_A", *result.ReasoningSignature)
 				require.Len(t, result.ToolCalls, 1)
 				tc := result.ToolCalls[0]
 				require.Equal(t, "call_001", tc.ID)
@@ -988,11 +985,10 @@ func TestConvertGeminiContentToLLMMessage_ThoughtSignature(t *testing.T) {
 			},
 			validate: func(t *testing.T, result *llm.Message) {
 				t.Helper()
-				require.NotNil(t, result.RedactedReasoningContent)
-				require.True(t, shared.IsGeminiThoughtSignature(result.RedactedReasoningContent))
-				decoded := shared.DecodeGeminiThoughtSignature(result.RedactedReasoningContent)
-				require.NotNil(t, decoded)
-				require.Equal(t, "signature_parallel", *decoded)
+				require.NotNil(t, result.ReasoningSignature)
+				require.False(t, shared.IsGeminiThoughtSignature(result.ReasoningSignature))
+				require.NotNil(t, result.ReasoningSignature)
+				require.Equal(t, "signature_parallel", *result.ReasoningSignature)
 				require.Len(t, result.ToolCalls, 2)
 
 				// First call should have signature
@@ -1022,7 +1018,7 @@ func TestConvertGeminiContentToLLMMessage_ThoughtSignature(t *testing.T) {
 			},
 			validate: func(t *testing.T, result *llm.Message) {
 				t.Helper()
-				require.Nil(t, result.RedactedReasoningContent)
+				require.Nil(t, result.ReasoningSignature)
 				require.Len(t, result.ToolCalls, 1)
 				tc := result.ToolCalls[0]
 				require.Equal(t, "call_002", tc.ID)
@@ -1051,8 +1047,8 @@ func TestConvertLLMChoiceToGeminiCandidate_ThoughtSignature(t *testing.T) {
 			input: &llm.Choice{
 				Index: 0,
 				Message: &llm.Message{
-					Role:                     "assistant",
-					RedactedReasoningContent: shared.EncodeGeminiThoughtSignature(lo.ToPtr("signature_A")),
+					Role:               "assistant",
+					ReasoningSignature: lo.ToPtr("signature_A"),
 					ToolCalls: []llm.ToolCall{
 						{
 							ID:   "call_001",
@@ -1080,8 +1076,8 @@ func TestConvertLLMChoiceToGeminiCandidate_ThoughtSignature(t *testing.T) {
 			input: &llm.Choice{
 				Index: 0,
 				Message: &llm.Message{
-					Role:                     "assistant",
-					RedactedReasoningContent: shared.EncodeGeminiThoughtSignature(lo.ToPtr("signature_A")),
+					Role:               "assistant",
+					ReasoningSignature: lo.ToPtr("signature_A"),
 					ToolCalls: []llm.ToolCall{
 						{
 							ID:   "call_001",

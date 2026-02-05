@@ -8,6 +8,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/pkg/xmap"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func convertToTextOptions(chatReq *llm.Request) *TextOptions {
@@ -45,7 +46,7 @@ func convertInstructionsFromMessages(msgs []llm.Message) string {
 
 	// find the last user message
 	for _, msg := range msgs {
-		if msg.Role != "system" && msg.Role != "developer" {
+		if msg.Role != "system" {
 			continue
 		}
 		// Collect text from either the simple string content or parts
@@ -94,7 +95,7 @@ func convertInputFromMessages(msgs []llm.Message, transformOptions llm.Transform
 
 	for _, msg := range msgs {
 		switch msg.Role {
-		case "user":
+		case "user", "developer":
 			items = append(items, convertUserMessage(msg))
 		case "assistant":
 			items = append(items, convertAssistantMessage(msg)...)
@@ -140,6 +141,7 @@ func convertUserMessage(msg llm.Message) Item {
 	}
 
 	return Item{
+		Type:    "message",
 		Role:    msg.Role,
 		Content: &Input{Items: contentItems},
 	}
@@ -149,6 +151,30 @@ func convertUserMessage(msg llm.Message) Item {
 // Returns multiple items if the message contains tool calls.
 func convertAssistantMessage(msg llm.Message) []Item {
 	var items []Item
+
+	// Handle reasoning content first.
+	// For Requests, reasoning is represented as an `input` item with type="reasoning".
+	// The Responses API uses the `summary` field to hold the reasoning summary text.
+	if (msg.ReasoningContent != nil && *msg.ReasoningContent != "") || msg.ReasoningSignature != nil {
+		summary := []ReasoningSummary{}
+		if msg.ReasoningContent != nil && *msg.ReasoningContent != "" {
+			summary = append(summary, ReasoningSummary{
+				Type: "summary_text",
+				Text: *msg.ReasoningContent,
+			})
+		}
+
+		var encryptedContent *string
+		if msg.ReasoningSignature != nil {
+			encryptedContent = shared.DecodeOpenAIEncryptedContent(msg.ReasoningSignature)
+		}
+
+		items = append(items, Item{
+			Type:             "reasoning",
+			EncryptedContent: encryptedContent,
+			Summary:          summary,
+		})
+	}
 
 	// Handle tool calls
 	for _, tc := range msg.ToolCalls {

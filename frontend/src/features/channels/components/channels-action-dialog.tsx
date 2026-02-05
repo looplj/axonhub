@@ -384,10 +384,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const isClaudeCodeType = (selectedType || derivedChannelType) === 'claudecode';
 
   useEffect(() => {
-    if (isCodexType) {
+    // Only force stream: 'require' for new Codex channels, not when editing existing ones
+    if (isCodexType && !isEdit) {
       form.setValue('policies.stream', 'require');
     }
-  }, [isCodexType, form]);
+  }, [isCodexType, isEdit, form]);
 
   const wrapUnsupported = useCallback(
     (enabled: boolean, children: React.ReactNode, wrapperClassName: string) => {

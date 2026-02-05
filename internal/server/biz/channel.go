@@ -424,6 +424,10 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 		createBuilder.SetTags(input.Tags)
 	}
 
+	if input.Policies != nil {
+		createBuilder.SetPolicies(*input.Policies)
+	}
+
 	channel, err := createBuilder.Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create channel: %w", err)

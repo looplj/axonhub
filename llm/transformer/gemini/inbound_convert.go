@@ -12,7 +12,6 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xurl"
 	"github.com/looplj/axonhub/llm"
 	geminioai "github.com/looplj/axonhub/llm/transformer/gemini/openai"
-	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // convertGeminiToLLMRequest converts Gemini GenerateContentRequest to unified Request.
@@ -281,8 +280,8 @@ func convertGeminiContentToLLMMessage(content *Content, previousContents []*Cont
 	)
 
 	for _, part := range content.Parts {
-		if msg.RedactedReasoningContent == nil && part.ThoughtSignature != "" {
-			msg.RedactedReasoningContent = shared.EncodeGeminiThoughtSignature(&part.ThoughtSignature)
+		if msg.ReasoningSignature == nil && part.ThoughtSignature != "" {
+			msg.ReasoningSignature = lo.ToPtr(part.ThoughtSignature)
 		}
 
 		switch {
@@ -531,7 +530,7 @@ func convertLLMChoiceToGeminiCandidate(choice *llm.Choice, isStream bool) *Candi
 			}
 		}
 
-		msgThoughtSignature := shared.DecodeGeminiThoughtSignature(msg.RedactedReasoningContent)
+		msgThoughtSignature := msg.ReasoningSignature
 		if len(msg.ToolCalls) > 0 && msgThoughtSignature == nil {
 			msgThoughtSignature = lo.ToPtr("context_engineering_is_the_way_to_go")
 		}

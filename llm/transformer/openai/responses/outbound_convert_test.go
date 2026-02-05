@@ -395,6 +395,167 @@ func TestConvertToLLMRequest_TransformerMetadata(t *testing.T) {
 	}
 }
 
+func TestConvertInstructionsFromMessages(t *testing.T) {
+	tests := []struct {
+		name     string
+		msgs     []llm.Message
+		expected string
+	}{
+		{
+			name:     "empty messages",
+			msgs:     []llm.Message{},
+			expected: "",
+		},
+		{
+			name: "system message",
+			msgs: []llm.Message{
+				{
+					Role: "system",
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("system instruction"),
+					},
+				},
+			},
+			expected: "system instruction",
+		},
+		{
+			name: "developer message should be ignored in instructions",
+			msgs: []llm.Message{
+				{
+					Role: "developer",
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("developer instruction"),
+					},
+				},
+			},
+			expected: "",
+		},
+		{
+			name: "mixed system and developer messages",
+			msgs: []llm.Message{
+				{
+					Role: "system",
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("system 1"),
+					},
+				},
+				{
+					Role: "developer",
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("developer 1"),
+					},
+				},
+				{
+					Role: "system",
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("system 2"),
+					},
+				},
+			},
+			expected: "system 1\nsystem 2",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := convertInstructionsFromMessages(tt.msgs)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestConvertInputFromMessages(t *testing.T) {
+	tests := []struct {
+		name             string
+		msgs             []llm.Message
+		transformOptions llm.TransformOptions
+		expected         Input
+	}{
+		{
+			name: "single developer message",
+			msgs: []llm.Message{
+				{
+					Role: "developer",
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("dev content"),
+					},
+				},
+			},
+			transformOptions: llm.TransformOptions{
+				ArrayInputs: lo.ToPtr(true),
+			},
+			expected: Input{
+				Items: []Item{
+					{
+						Type: "message",
+						Role: "developer",
+						Content: &Input{
+							Items: []Item{
+								{
+									Type: "input_text",
+									Text: lo.ToPtr("dev content"),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "mixed developer and user messages",
+			msgs: []llm.Message{
+				{
+					Role: "developer",
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("dev 1"),
+					},
+				},
+				{
+					Role: "user",
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("user 1"),
+					},
+				},
+			},
+			expected: Input{
+				Items: []Item{
+					{
+						Type: "message",
+						Role: "developer",
+						Content: &Input{
+							Items: []Item{
+								{
+									Type: "input_text",
+									Text: lo.ToPtr("dev 1"),
+								},
+							},
+						},
+					},
+					{
+						Type: "message",
+						Role: "user",
+						Content: &Input{
+							Items: []Item{
+								{
+									Type: "input_text",
+									Text: lo.ToPtr("user 1"),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := convertInputFromMessages(tt.msgs, tt.transformOptions)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
 func TestConvertReasoning(t *testing.T) {
 	tests := []struct {
 		name     string

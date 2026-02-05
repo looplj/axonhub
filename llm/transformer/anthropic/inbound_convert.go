@@ -332,10 +332,10 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 			var contentBlocks []MessageContentBlock
 
 			// Handle reasoning content (thinking) first if present
-			if message.ReasoningContent != nil && *message.ReasoningContent != "" {
+			if (message.ReasoningContent != nil && *message.ReasoningContent != "") || (message.ReasoningSignature != nil && *message.ReasoningSignature != "") {
 				thinkingBlock := MessageContentBlock{
 					Type:     "thinking",
-					Thinking: lo.ToPtr(*message.ReasoningContent),
+					Thinking: message.ReasoningContent,
 				}
 				if message.ReasoningSignature != nil {
 					thinkingBlock.Signature = message.ReasoningSignature

@@ -1,0 +1,68 @@
+{
+  "id": "resp_06d169f70634b19d0169836828e0708191bd2bc8e0af39db8e",
+  "object": "response",
+  "created_at": 1770219560,
+  "status": "completed",
+  "background": false,
+  "completed_at": 1770219620,
+  "error": null,
+  "frequency_penalty": 0,
+  "incomplete_details": null,
+  "instructions": "You are a coding agent running in the Codex CLI, a terminal-based coding assistant.",
+  "max_output_tokens": null,
+  "max_tool_calls": null,
+  "model": "gpt-5.2-2025-12-11",
+  "output": [
+    {
+      "id": "rs_06d169f70634b19d0169836829852c8191b98c73ba53e94c0d",
+      "type": "reasoning",
+      "encrypted_content": "gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8-QnwOjWp",
+      "summary": []
+    },
+    {
+      "id": "fc_123",
+      "type": "function_call",
+      "status": "completed",
+      "arguments": "{\"allowed_tools\":[\"Grep\",\"Read\",\"Glob\"],\"description\":\"Check GraphQL API key context\",\"max_turns\":350,\"model\":\"haiku\",\"prompt\":\"Investigate how GraphQL requests populate contexts.GetAPIKey(ctx). Search in internal/server for SetAPIKey / contexts.WithAPIKey / middleware. Determine whether GraphQL testChannel mutation runs with an API key context (from headers?) or only user JWT. Provide file:line refs and implications for model_access.go causing ErrInvalidModel: <model>.\",\"resume\":\"\",\"run_in_background\":false,\"subagent_type\":\"Explore\"}",
+      "call_id": "call_k84uHc9vdzoKKtwujCN1UM1f",
+      "name": "Task"
+    }
+  ],
+  "parallel_tool_calls": true,
+  "presence_penalty": 0,
+  "previous_response_id": null,
+  "prompt_cache_key": "30014bb3-2957-4604-b3fe-a40be6f3adb7",
+  "prompt_cache_retention": null,
+  "reasoning": {
+    "effort": "high",
+    "summary": null
+  },
+  "safety_identifier": "user-jex3jdwjZcgcH6TUysdXLW46",
+  "service_tier": "default",
+  "store": false,
+  "temperature": 1,
+  "text": {
+    "format": {
+      "type": "text"
+    },
+    "verbosity": "medium"
+  },
+  "tool_choice": "auto",
+  "tools": [],
+  "top_logprobs": 0,
+  "top_p": 0.98,
+  "truncation": "disabled",
+  "usage": {
+    "input_tokens": 36513,
+    "input_tokens_details": {
+      "cached_tokens": 34688
+    },
+    "output_tokens": 3125,
+    "output_tokens_details": {
+      "reasoning_tokens": 2992
+    },
+    "total_tokens": 39638
+  },
+  "user": null,
+  "metadata": {}
+}
