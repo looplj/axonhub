@@ -376,17 +376,6 @@ func (f *ModelFetcher) prepareModelsEndpoint(channelType channel.Type, baseURL s
 	case channelType == channel.TypeGithub:
 		// GitHub Models uses a separate catalog endpoint
 		return "https://models.github.ai/catalog/models", headers
-	case channelType == channel.TypeNanogpt:
-		// Normalize legacy api.nano-gpt.com to canonical nano-gpt.com/api
-		baseURL = strings.Replace(baseURL, "api.nano-gpt.com", "nano-gpt.com/api", 1)
-
-		if useRawURL {
-			return baseURL + "/models", headers
-		}
-		if strings.Contains(baseURL, "/v1") {
-			return baseURL + "/models", headers
-		}
-		return baseURL + "/v1/models", headers
 	default:
 		if useRawURL {
 			return baseURL + "/models", headers
