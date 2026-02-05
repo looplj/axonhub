@@ -298,8 +298,6 @@ func (svc *ChannelService) SetEnabledChannelsForTest(channels []*Channel) {
 // GetChannel retrieves a specific channel by ID for testing purposes,
 // including disabled channels. This bypasses the normal enabled-only filtering.
 func (svc *ChannelService) GetChannel(ctx context.Context, channelID int) (*Channel, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
 	// Get the channel entity from database (including disabled ones)
 	entity, err := svc.entFromContext(ctx).Channel.Get(ctx, channelID)
 	if err != nil {

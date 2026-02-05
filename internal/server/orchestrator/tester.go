@@ -3,7 +3,6 @@ package orchestrator
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -102,19 +101,12 @@ func (processor *TestChannelOrchestrator) TestChannel(
 		modelCircuitBreaker:        processor.modelCircuitBreaker,
 	}
 
-	// Create a simple test request
-	testModel := lo.FromPtr(modelID)
-
-	candidates, err := chatProcessor.channelSelector.Select(ctx, &llm.Request{})
+	channel, err := processor.channelService.GetChannel(ctx, channelID.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(candidates) == 0 {
-		return nil, fmt.Errorf("%w: no channels available", biz.ErrInvalidModel)
-	}
-
-	channel := candidates[0].Channel
+	testModel := lo.FromPtr(modelID)
 	if testModel == "" {
 		testModel = channel.DefaultTestModel
 	}
@@ -122,6 +114,7 @@ func (processor *TestChannelOrchestrator) TestChannel(
 	// Check if the channel requires streaming
 	useStream := channel != nil && channel.Policies.Stream == objects.CapabilityPolicyRequire
 
+	// Create a simple test request
 	llmRequest := &llm.Request{
 		Model: testModel,
 		Messages: []llm.Message{
