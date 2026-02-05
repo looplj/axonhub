@@ -25,6 +25,7 @@ import {
   Claude,
   Cerebras,
 } from '@lobehub/icons';
+import { NanoGPTIcon } from '../components/nanogpt-icon';
 import { BURNCLOUD_DEFAULT_MODELS } from './burncloud-models';
 import { ApiFormat, ChannelType } from './schema';
 
@@ -502,6 +503,14 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-[#F15928] text-white border-[#F15928]',
     icon: Cerebras,
   },
+  nanogpt: {
+    channelType: 'nanogpt',
+    baseURL: 'https://api.nano-gpt.com/v1',
+    defaultModels: ['zai-org/glm-4.7:thinking', 'zai-org/glm-4.7', 'zai-org/glm-4.6'],
+    apiFormat: OPENAI_CHAT_COMPLETIONS,
+    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    icon: NanoGPTIcon,
+  },
 };
 
 /**
@@ -548,7 +557,8 @@ export type Provider =
   | 'github'
   | 'cerebras'
   | 'codex'
-  | 'antigravity';
+  | 'antigravity'
+  | 'nanogpt';
 
 /**
  * Map channel type to provider
@@ -595,6 +605,7 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   claudecode: 'claudecode',
   cerebras: 'cerebras',
   antigravity: 'antigravity',
+  nanogpt: 'nanogpt',
 };
 
 /**
