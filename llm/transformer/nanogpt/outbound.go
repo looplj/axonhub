@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 
 	"github.com/tidwall/gjson"
 
@@ -25,11 +24,9 @@ type Config struct {
 
 // OutboundTransformer implements transformer.Outbound for NanoGPT format.
 // NanoGPT is compatible with OpenAI API, but handles the reasoning field differently.
+// It embeds the OpenAI transformer and overrides response handling.
 type OutboundTransformer struct {
 	transformer.Outbound
-
-	BaseURL        string
-	APIKeyProvider auth.APIKeyProvider
 }
 
 // NewOutboundTransformer creates a new NanoGPT OutboundTransformer with legacy parameters.
@@ -55,57 +52,8 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		return nil, fmt.Errorf("invalid NanoGPT transformer configuration: %w", err)
 	}
 
-	baseURL := transformer.NormalizeBaseURL(config.BaseURL, "v1")
-
 	return &OutboundTransformer{
-		BaseURL:        baseURL,
-		APIKeyProvider: config.APIKeyProvider,
-		Outbound:       t,
-	}, nil
-}
-
-// TransformRequest transforms ChatCompletionRequest to Request.
-func (t *OutboundTransformer) TransformRequest(
-	ctx context.Context,
-	llmReq *llm.Request,
-) (*httpclient.Request, error) {
-	if llmReq == nil {
-		return nil, fmt.Errorf("chat completion request is nil")
-	}
-
-	if llmReq.Model == "" {
-		return nil, fmt.Errorf("%w: model is required", transformer.ErrInvalidRequest)
-	}
-
-	if len(llmReq.Messages) == 0 {
-		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
-	}
-
-	body, err := json.Marshal(openai.RequestFromLLM(llmReq))
-	if err != nil {
-		return nil, fmt.Errorf("%w: failed to transform request: %w", transformer.ErrInvalidRequest, err)
-	}
-
-	headers := make(http.Header)
-	headers.Set("Content-Type", "application/json")
-	headers.Set("Accept", "application/json")
-
-	apiKey := t.APIKeyProvider.Get(ctx)
-
-	auth := &httpclient.AuthConfig{
-		Type:   httpclient.AuthTypeBearer,
-		APIKey: apiKey,
-	}
-
-	url := t.BaseURL + "/chat/completions"
-
-	return &httpclient.Request{
-		Method:      http.MethodPost,
-		URL:         url,
-		Headers:     headers,
-		Body:        body,
-		Auth:        auth,
-		ContentType: "application/json",
+		Outbound: t,
 	}, nil
 }
 
@@ -168,35 +116,4 @@ func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *h
 // AggregateStreamChunks aggregates stream chunks into a single response.
 func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
 	return openai.AggregateStreamChunks(ctx, chunks, openai.DefaultTransformChunk)
-}
-
-// TransformError transforms the HTTP error response to the unified error response.
-func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpclient.Error) *llm.ResponseError {
-	if rawErr == nil {
-		return &llm.ResponseError{
-			StatusCode: http.StatusInternalServerError,
-			Detail: llm.ErrorDetail{
-				Message: http.StatusText(http.StatusInternalServerError),
-				Type:    "api_error",
-			},
-		}
-	}
-
-	var openaiError openai.OpenAIError
-
-	err := json.Unmarshal(rawErr.Body, &openaiError)
-	if err == nil {
-		return &llm.ResponseError{
-			StatusCode: rawErr.StatusCode,
-			Detail:     openaiError.Detail,
-		}
-	}
-
-	return &llm.ResponseError{
-		StatusCode: rawErr.StatusCode,
-		Detail: llm.ErrorDetail{
-			Message: http.StatusText(rawErr.StatusCode),
-			Type:    "api_error",
-		},
-	}
 }

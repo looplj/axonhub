@@ -14,6 +14,7 @@ type Response struct {
 
 // ToOpenAIResponse converts the NanoGPT Response to an OpenAI Response.
 func (r *Response) ToOpenAIResponse() *openai.Response {
+	r.Response.Choices = make([]openai.Choice, 0, len(r.Choices))
 	for _, choice := range r.Choices {
 		r.Response.Choices = append(r.Response.Choices, choice.ToOpenAIChoice())
 	}
