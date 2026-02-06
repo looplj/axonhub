@@ -13,6 +13,7 @@ import { SuccessRateCard } from './components/success-rate-card';
 import { TodayRequestsCard } from './components/today-requests-card';
 import { TokenStatsCard } from './components/token-stats-card';
 import { TotalRequestsCard } from './components/total-requests-card';
+import { FastestPerformersCard } from './components/fastest-performers-card';
 import { useDashboardStats } from './data/dashboard';
 
 export default function DashboardPage() {
@@ -68,6 +69,9 @@ export default function DashboardPage() {
             <SuccessRateCard />
             <TokenStatsCard />
             <TodayRequestsCard />
+          </div>
+          <div className='grid gap-4 md:grid-cols-1'>
+            <FastestPerformersCard />
           </div>
           <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-7'>
             <Card className='hover-card col-span-4'>
