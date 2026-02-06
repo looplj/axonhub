@@ -56,39 +56,39 @@ export function DataTableToolbar<TData>({
   const canViewChannels = isOwner || userScopes.includes('*') || userScopes.includes('read_channels');
   const canViewApiKeys = isOwner || userScopes.includes('*') || userScopes.includes('read_api_keys');
 
-  const { data: channelsData } = useQueryChannels(
-    {
-      first: 100,
-      orderBy: { field: 'CREATED_AT', direction: 'DESC' },
-      where: showArchivedChannels
-        ? {
-            statusIn: ['enabled', 'disabled', 'archived'],
-          }
-        : {
-            statusIn: ['enabled', 'disabled'],
-          },
-    },
-    {
-      disableAutoFetch: !canViewChannels,
-    }
-  );
+   const { data: channelsData, isFetching: isFetchingChannels } = useQueryChannels(
+     {
+       first: 100,
+       orderBy: { field: 'CREATED_AT', direction: 'DESC' },
+       where: showArchivedChannels
+         ? {
+             statusIn: ['enabled', 'disabled', 'archived'],
+           }
+         : {
+             statusIn: ['enabled', 'disabled'],
+           },
+     },
+     {
+       disableAutoFetch: !canViewChannels,
+     }
+   );
 
-  const { data: apiKeysData } = useApiKeys(
-    {
-      first: 100,
-      orderBy: { field: 'CREATED_AT', direction: 'DESC' },
-      where: showArchivedApiKeys
-        ? {
-            statusIn: ['enabled', 'disabled', 'archived'],
-          }
-        : {
-            statusIn: ['enabled', 'disabled'],
-          },
-    },
-    {
-      disableAutoFetch: !canViewApiKeys,
-    }
-  );
+   const { data: apiKeysData, isFetching: isFetchingApiKeys } = useApiKeys(
+     {
+       first: 100,
+       orderBy: { field: 'CREATED_AT', direction: 'DESC' },
+       where: showArchivedApiKeys
+         ? {
+             statusIn: ['enabled', 'disabled', 'archived'],
+           }
+         : {
+             statusIn: ['enabled', 'disabled'],
+           },
+     },
+     {
+       disableAutoFetch: !canViewApiKeys,
+     }
+   );
 
   const channelOptions = useMemo(() => {
     if (!canViewChannels || !channelsData?.edges) return [];
@@ -161,7 +161,7 @@ export function DataTableToolbar<TData>({
             options={requestSources}
           />
         )} */}
-        {canViewChannels && table.getColumn('channel') && channelOptions.length > 0 && (
+         {canViewChannels && table.getColumn('channel') && (channelOptions.length > 0 || isFetchingChannels) && (
           <DataTableFacetedFilter
             column={table.getColumn('channel')}
             title={t('requests.filters.channel')}
@@ -186,7 +186,7 @@ export function DataTableToolbar<TData>({
             }
           />
         )}
-        {canViewApiKeys && table.getColumn('apiKey') && apiKeyOptions.length > 0 && (
+         {canViewApiKeys && table.getColumn('apiKey') && (apiKeyOptions.length > 0 || isFetchingApiKeys) && (
           <DataTableFacetedFilter
             column={table.getColumn('apiKey')}
             title={t('requests.filters.apiKey')}
