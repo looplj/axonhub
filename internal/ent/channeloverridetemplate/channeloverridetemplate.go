@@ -28,12 +28,14 @@ const (
 	FieldName = "name"
 	// FieldDescription holds the string denoting the description field in the database.
 	FieldDescription = "description"
-	// FieldChannelType holds the string denoting the channel_type field in the database.
-	FieldChannelType = "channel_type"
 	// FieldOverrideParameters holds the string denoting the override_parameters field in the database.
 	FieldOverrideParameters = "override_parameters"
 	// FieldOverrideHeaders holds the string denoting the override_headers field in the database.
 	FieldOverrideHeaders = "override_headers"
+	// FieldHeaderOverrideOperations holds the string denoting the header_override_operations field in the database.
+	FieldHeaderOverrideOperations = "header_override_operations"
+	// FieldBodyOverrideOperations holds the string denoting the body_override_operations field in the database.
+	FieldBodyOverrideOperations = "body_override_operations"
 	// EdgeUser holds the string denoting the user edge name in mutations.
 	EdgeUser = "user"
 	// Table holds the table name of the channeloverridetemplate in the database.
@@ -56,15 +58,19 @@ var Columns = []string{
 	FieldUserID,
 	FieldName,
 	FieldDescription,
-	FieldChannelType,
-	FieldOverrideParameters,
-	FieldOverrideHeaders,
+	FieldHeaderOverrideOperations,
+	FieldBodyOverrideOperations,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
 	for i := range Columns {
 		if column == Columns[i] {
+			return true
+		}
+	}
+	for _, f := range [...]string{FieldOverrideParameters, FieldOverrideHeaders} {
+		if column == f {
 			return true
 		}
 	}
@@ -93,7 +99,11 @@ var (
 	// DefaultOverrideParameters holds the default value on creation for the "override_parameters" field.
 	DefaultOverrideParameters string
 	// DefaultOverrideHeaders holds the default value on creation for the "override_headers" field.
-	DefaultOverrideHeaders []objects.OverrideOperation
+	DefaultOverrideHeaders []objects.HeaderEntry
+	// DefaultHeaderOverrideOperations holds the default value on creation for the "header_override_operations" field.
+	DefaultHeaderOverrideOperations []objects.OverrideOperation
+	// DefaultBodyOverrideOperations holds the default value on creation for the "body_override_operations" field.
+	DefaultBodyOverrideOperations []objects.OverrideOperation
 )
 
 // OrderOption defines the ordering options for the ChannelOverrideTemplate queries.
@@ -132,11 +142,6 @@ func ByName(opts ...sql.OrderTermOption) OrderOption {
 // ByDescription orders the results by the description field.
 func ByDescription(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDescription, opts...).ToFunc()
-}
-
-// ByChannelType orders the results by the channel_type field.
-func ByChannelType(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldChannelType, opts...).ToFunc()
 }
 
 // ByOverrideParameters orders the results by the override_parameters field.

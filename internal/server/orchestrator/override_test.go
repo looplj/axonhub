@@ -110,8 +110,8 @@ func TestOverrideParametersComplex(t *testing.T) {
 					"clear_me": "__AXONHUB_CLEAR__"
 				}`,
 				OverrideHeaders: []objects.HeaderEntry{
-					{Op: objects.OverrideOpDelete, Key: "X-Clear-Header"},
 					{Key: "X-Logic-Header", Value: "{{if .Metadata.env}}env-{{.Metadata.env}}{{else}}no-env{{end}}"},
+					{Key: "X-Clear-Header", Value: "__AXONHUB_CLEAR__"},
 				},
 			},
 		},

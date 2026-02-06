@@ -40,6 +40,40 @@ export function mergeOverrideHeaders(existing: OverrideOperation[], template: Ov
   return result;
 }
 
+/**
+ * Merges override body operations with template body operations.
+ * - For `set` and `delete` ops: match by `path`, template overrides existing
+ * - For `rename` and `copy` ops: always appended from template
+ * - Existing ops not matched by template are preserved
+ */
+export function mergeOverrideOperations(existing: OverrideOperation[], template: OverrideOperation[]): OverrideOperation[] {
+  const result = [...existing];
+
+  for (const templateOp of template) {
+    // For rename and copy ops, always append
+    if (templateOp.op === 'rename' || templateOp.op === 'copy') {
+      result.push(templateOp);
+      continue;
+    }
+
+    // For set and delete ops, match by path
+    if ((templateOp.op === 'set' || templateOp.op === 'delete') && templateOp.path) {
+      const index = result.findIndex(
+        (op) => (op.op === 'set' || op.op === 'delete') && op.path === templateOp.path
+      );
+      if (index >= 0) {
+        result[index] = templateOp;
+      } else {
+        result.push(templateOp);
+      }
+    } else {
+      result.push(templateOp);
+    }
+  }
+
+  return result;
+}
+
 export function mergeChannelSettingsForUpdate(
   existing: ChannelSettings | null | undefined,
   patch: Partial<ChannelSettings>

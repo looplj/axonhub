@@ -2072,21 +2072,6 @@ type ChannelOverrideTemplateWhereInput struct {
 	DescriptionEqualFold    *string  `json:"descriptionEqualFold,omitempty"`
 	DescriptionContainsFold *string  `json:"descriptionContainsFold,omitempty"`
 
-	// "channel_type" field predicates.
-	ChannelType             *string  `json:"channelType,omitempty"`
-	ChannelTypeNEQ          *string  `json:"channelTypeNEQ,omitempty"`
-	ChannelTypeIn           []string `json:"channelTypeIn,omitempty"`
-	ChannelTypeNotIn        []string `json:"channelTypeNotIn,omitempty"`
-	ChannelTypeGT           *string  `json:"channelTypeGT,omitempty"`
-	ChannelTypeGTE          *string  `json:"channelTypeGTE,omitempty"`
-	ChannelTypeLT           *string  `json:"channelTypeLT,omitempty"`
-	ChannelTypeLTE          *string  `json:"channelTypeLTE,omitempty"`
-	ChannelTypeContains     *string  `json:"channelTypeContains,omitempty"`
-	ChannelTypeHasPrefix    *string  `json:"channelTypeHasPrefix,omitempty"`
-	ChannelTypeHasSuffix    *string  `json:"channelTypeHasSuffix,omitempty"`
-	ChannelTypeEqualFold    *string  `json:"channelTypeEqualFold,omitempty"`
-	ChannelTypeContainsFold *string  `json:"channelTypeContainsFold,omitempty"`
-
 	// "override_parameters" field predicates.
 	OverrideParameters             *string  `json:"overrideParameters,omitempty"`
 	OverrideParametersNEQ          *string  `json:"overrideParametersNEQ,omitempty"`
@@ -2345,45 +2330,6 @@ func (i *ChannelOverrideTemplateWhereInput) P() (predicate.ChannelOverrideTempla
 	}
 	if i.DescriptionContainsFold != nil {
 		predicates = append(predicates, channeloverridetemplate.DescriptionContainsFold(*i.DescriptionContainsFold))
-	}
-	if i.ChannelType != nil {
-		predicates = append(predicates, channeloverridetemplate.ChannelTypeEQ(*i.ChannelType))
-	}
-	if i.ChannelTypeNEQ != nil {
-		predicates = append(predicates, channeloverridetemplate.ChannelTypeNEQ(*i.ChannelTypeNEQ))
-	}
-	if len(i.ChannelTypeIn) > 0 {
-		predicates = append(predicates, channeloverridetemplate.ChannelTypeIn(i.ChannelTypeIn...))
-	}
-	if len(i.ChannelTypeNotIn) > 0 {
-		predicates = append(predicates, channeloverridetemplate.ChannelTypeNotIn(i.ChannelTypeNotIn...))
-	}
-	if i.ChannelTypeGT != nil {
-		predicates = append(predicates, channeloverridetemplate.ChannelTypeGT(*i.ChannelTypeGT))
-	}
-	if i.ChannelTypeGTE != nil {
-		predicates = append(predicates, channeloverridetemplate.ChannelTypeGTE(*i.ChannelTypeGTE))
-	}
-	if i.ChannelTypeLT != nil {
-		predicates = append(predicates, channeloverridetemplate.ChannelTypeLT(*i.ChannelTypeLT))
-	}
-	if i.ChannelTypeLTE != nil {
-		predicates = append(predicates, channeloverridetemplate.ChannelTypeLTE(*i.ChannelTypeLTE))
-	}
-	if i.ChannelTypeContains != nil {
-		predicates = append(predicates, channeloverridetemplate.ChannelTypeContains(*i.ChannelTypeContains))
-	}
-	if i.ChannelTypeHasPrefix != nil {
-		predicates = append(predicates, channeloverridetemplate.ChannelTypeHasPrefix(*i.ChannelTypeHasPrefix))
-	}
-	if i.ChannelTypeHasSuffix != nil {
-		predicates = append(predicates, channeloverridetemplate.ChannelTypeHasSuffix(*i.ChannelTypeHasSuffix))
-	}
-	if i.ChannelTypeEqualFold != nil {
-		predicates = append(predicates, channeloverridetemplate.ChannelTypeEqualFold(*i.ChannelTypeEqualFold))
-	}
-	if i.ChannelTypeContainsFold != nil {
-		predicates = append(predicates, channeloverridetemplate.ChannelTypeContainsFold(*i.ChannelTypeContainsFold))
 	}
 	if i.OverrideParameters != nil {
 		predicates = append(predicates, channeloverridetemplate.OverrideParametersEQ(*i.OverrideParameters))

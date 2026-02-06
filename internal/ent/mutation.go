@@ -4948,25 +4948,28 @@ func (m *ChannelModelPriceVersionMutation) ResetEdge(name string) error {
 // ChannelOverrideTemplateMutation represents an operation that mutates the ChannelOverrideTemplate nodes in the graph.
 type ChannelOverrideTemplateMutation struct {
 	config
-	op                     Op
-	typ                    string
-	id                     *int
-	created_at             *time.Time
-	updated_at             *time.Time
-	deleted_at             *int
-	adddeleted_at          *int
-	name                   *string
-	description            *string
-	channel_type           *string
-	override_parameters    *string
-	override_headers       *[]objects.OverrideOperation
-	appendoverride_headers []objects.OverrideOperation
-	clearedFields          map[string]struct{}
-	user                   *int
-	cleareduser            bool
-	done                   bool
-	oldValue               func(context.Context) (*ChannelOverrideTemplate, error)
-	predicates             []predicate.ChannelOverrideTemplate
+	op                               Op
+	typ                              string
+	id                               *int
+	created_at                       *time.Time
+	updated_at                       *time.Time
+	deleted_at                       *int
+	adddeleted_at                    *int
+	name                             *string
+	description                      *string
+	override_parameters              *string
+	override_headers                 *[]objects.HeaderEntry
+	appendoverride_headers           []objects.HeaderEntry
+	header_override_operations       *[]objects.OverrideOperation
+	appendheader_override_operations []objects.OverrideOperation
+	body_override_operations         *[]objects.OverrideOperation
+	appendbody_override_operations   []objects.OverrideOperation
+	clearedFields                    map[string]struct{}
+	user                             *int
+	cleareduser                      bool
+	done                             bool
+	oldValue                         func(context.Context) (*ChannelOverrideTemplate, error)
+	predicates                       []predicate.ChannelOverrideTemplate
 }
 
 var _ ent.Mutation = (*ChannelOverrideTemplateMutation)(nil)
@@ -5316,42 +5319,6 @@ func (m *ChannelOverrideTemplateMutation) ResetDescription() {
 	delete(m.clearedFields, channeloverridetemplate.FieldDescription)
 }
 
-// SetChannelType sets the "channel_type" field.
-func (m *ChannelOverrideTemplateMutation) SetChannelType(s string) {
-	m.channel_type = &s
-}
-
-// ChannelType returns the value of the "channel_type" field in the mutation.
-func (m *ChannelOverrideTemplateMutation) ChannelType() (r string, exists bool) {
-	v := m.channel_type
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldChannelType returns the old "channel_type" field's value of the ChannelOverrideTemplate entity.
-// If the ChannelOverrideTemplate object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ChannelOverrideTemplateMutation) OldChannelType(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldChannelType is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldChannelType requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldChannelType: %w", err)
-	}
-	return oldValue.ChannelType, nil
-}
-
-// ResetChannelType resets all changes to the "channel_type" field.
-func (m *ChannelOverrideTemplateMutation) ResetChannelType() {
-	m.channel_type = nil
-}
-
 // SetOverrideParameters sets the "override_parameters" field.
 func (m *ChannelOverrideTemplateMutation) SetOverrideParameters(s string) {
 	m.override_parameters = &s
@@ -5389,13 +5356,13 @@ func (m *ChannelOverrideTemplateMutation) ResetOverrideParameters() {
 }
 
 // SetOverrideHeaders sets the "override_headers" field.
-func (m *ChannelOverrideTemplateMutation) SetOverrideHeaders(oo []objects.OverrideOperation) {
-	m.override_headers = &oo
+func (m *ChannelOverrideTemplateMutation) SetOverrideHeaders(oe []objects.HeaderEntry) {
+	m.override_headers = &oe
 	m.appendoverride_headers = nil
 }
 
 // OverrideHeaders returns the value of the "override_headers" field in the mutation.
-func (m *ChannelOverrideTemplateMutation) OverrideHeaders() (r []objects.OverrideOperation, exists bool) {
+func (m *ChannelOverrideTemplateMutation) OverrideHeaders() (r []objects.HeaderEntry, exists bool) {
 	v := m.override_headers
 	if v == nil {
 		return
@@ -5406,7 +5373,7 @@ func (m *ChannelOverrideTemplateMutation) OverrideHeaders() (r []objects.Overrid
 // OldOverrideHeaders returns the old "override_headers" field's value of the ChannelOverrideTemplate entity.
 // If the ChannelOverrideTemplate object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ChannelOverrideTemplateMutation) OldOverrideHeaders(ctx context.Context) (v []objects.OverrideOperation, err error) {
+func (m *ChannelOverrideTemplateMutation) OldOverrideHeaders(ctx context.Context) (v []objects.HeaderEntry, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldOverrideHeaders is only allowed on UpdateOne operations")
 	}
@@ -5420,13 +5387,13 @@ func (m *ChannelOverrideTemplateMutation) OldOverrideHeaders(ctx context.Context
 	return oldValue.OverrideHeaders, nil
 }
 
-// AppendOverrideHeaders adds oo to the "override_headers" field.
-func (m *ChannelOverrideTemplateMutation) AppendOverrideHeaders(oo []objects.OverrideOperation) {
-	m.appendoverride_headers = append(m.appendoverride_headers, oo...)
+// AppendOverrideHeaders adds oe to the "override_headers" field.
+func (m *ChannelOverrideTemplateMutation) AppendOverrideHeaders(oe []objects.HeaderEntry) {
+	m.appendoverride_headers = append(m.appendoverride_headers, oe...)
 }
 
 // AppendedOverrideHeaders returns the list of values that were appended to the "override_headers" field in this mutation.
-func (m *ChannelOverrideTemplateMutation) AppendedOverrideHeaders() ([]objects.OverrideOperation, bool) {
+func (m *ChannelOverrideTemplateMutation) AppendedOverrideHeaders() ([]objects.HeaderEntry, bool) {
 	if len(m.appendoverride_headers) == 0 {
 		return nil, false
 	}
@@ -5437,6 +5404,136 @@ func (m *ChannelOverrideTemplateMutation) AppendedOverrideHeaders() ([]objects.O
 func (m *ChannelOverrideTemplateMutation) ResetOverrideHeaders() {
 	m.override_headers = nil
 	m.appendoverride_headers = nil
+}
+
+// SetHeaderOverrideOperations sets the "header_override_operations" field.
+func (m *ChannelOverrideTemplateMutation) SetHeaderOverrideOperations(oo []objects.OverrideOperation) {
+	m.header_override_operations = &oo
+	m.appendheader_override_operations = nil
+}
+
+// HeaderOverrideOperations returns the value of the "header_override_operations" field in the mutation.
+func (m *ChannelOverrideTemplateMutation) HeaderOverrideOperations() (r []objects.OverrideOperation, exists bool) {
+	v := m.header_override_operations
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldHeaderOverrideOperations returns the old "header_override_operations" field's value of the ChannelOverrideTemplate entity.
+// If the ChannelOverrideTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelOverrideTemplateMutation) OldHeaderOverrideOperations(ctx context.Context) (v []objects.OverrideOperation, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldHeaderOverrideOperations is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldHeaderOverrideOperations requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldHeaderOverrideOperations: %w", err)
+	}
+	return oldValue.HeaderOverrideOperations, nil
+}
+
+// AppendHeaderOverrideOperations adds oo to the "header_override_operations" field.
+func (m *ChannelOverrideTemplateMutation) AppendHeaderOverrideOperations(oo []objects.OverrideOperation) {
+	m.appendheader_override_operations = append(m.appendheader_override_operations, oo...)
+}
+
+// AppendedHeaderOverrideOperations returns the list of values that were appended to the "header_override_operations" field in this mutation.
+func (m *ChannelOverrideTemplateMutation) AppendedHeaderOverrideOperations() ([]objects.OverrideOperation, bool) {
+	if len(m.appendheader_override_operations) == 0 {
+		return nil, false
+	}
+	return m.appendheader_override_operations, true
+}
+
+// ClearHeaderOverrideOperations clears the value of the "header_override_operations" field.
+func (m *ChannelOverrideTemplateMutation) ClearHeaderOverrideOperations() {
+	m.header_override_operations = nil
+	m.appendheader_override_operations = nil
+	m.clearedFields[channeloverridetemplate.FieldHeaderOverrideOperations] = struct{}{}
+}
+
+// HeaderOverrideOperationsCleared returns if the "header_override_operations" field was cleared in this mutation.
+func (m *ChannelOverrideTemplateMutation) HeaderOverrideOperationsCleared() bool {
+	_, ok := m.clearedFields[channeloverridetemplate.FieldHeaderOverrideOperations]
+	return ok
+}
+
+// ResetHeaderOverrideOperations resets all changes to the "header_override_operations" field.
+func (m *ChannelOverrideTemplateMutation) ResetHeaderOverrideOperations() {
+	m.header_override_operations = nil
+	m.appendheader_override_operations = nil
+	delete(m.clearedFields, channeloverridetemplate.FieldHeaderOverrideOperations)
+}
+
+// SetBodyOverrideOperations sets the "body_override_operations" field.
+func (m *ChannelOverrideTemplateMutation) SetBodyOverrideOperations(oo []objects.OverrideOperation) {
+	m.body_override_operations = &oo
+	m.appendbody_override_operations = nil
+}
+
+// BodyOverrideOperations returns the value of the "body_override_operations" field in the mutation.
+func (m *ChannelOverrideTemplateMutation) BodyOverrideOperations() (r []objects.OverrideOperation, exists bool) {
+	v := m.body_override_operations
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBodyOverrideOperations returns the old "body_override_operations" field's value of the ChannelOverrideTemplate entity.
+// If the ChannelOverrideTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelOverrideTemplateMutation) OldBodyOverrideOperations(ctx context.Context) (v []objects.OverrideOperation, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBodyOverrideOperations is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBodyOverrideOperations requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBodyOverrideOperations: %w", err)
+	}
+	return oldValue.BodyOverrideOperations, nil
+}
+
+// AppendBodyOverrideOperations adds oo to the "body_override_operations" field.
+func (m *ChannelOverrideTemplateMutation) AppendBodyOverrideOperations(oo []objects.OverrideOperation) {
+	m.appendbody_override_operations = append(m.appendbody_override_operations, oo...)
+}
+
+// AppendedBodyOverrideOperations returns the list of values that were appended to the "body_override_operations" field in this mutation.
+func (m *ChannelOverrideTemplateMutation) AppendedBodyOverrideOperations() ([]objects.OverrideOperation, bool) {
+	if len(m.appendbody_override_operations) == 0 {
+		return nil, false
+	}
+	return m.appendbody_override_operations, true
+}
+
+// ClearBodyOverrideOperations clears the value of the "body_override_operations" field.
+func (m *ChannelOverrideTemplateMutation) ClearBodyOverrideOperations() {
+	m.body_override_operations = nil
+	m.appendbody_override_operations = nil
+	m.clearedFields[channeloverridetemplate.FieldBodyOverrideOperations] = struct{}{}
+}
+
+// BodyOverrideOperationsCleared returns if the "body_override_operations" field was cleared in this mutation.
+func (m *ChannelOverrideTemplateMutation) BodyOverrideOperationsCleared() bool {
+	_, ok := m.clearedFields[channeloverridetemplate.FieldBodyOverrideOperations]
+	return ok
+}
+
+// ResetBodyOverrideOperations resets all changes to the "body_override_operations" field.
+func (m *ChannelOverrideTemplateMutation) ResetBodyOverrideOperations() {
+	m.body_override_operations = nil
+	m.appendbody_override_operations = nil
+	delete(m.clearedFields, channeloverridetemplate.FieldBodyOverrideOperations)
 }
 
 // ClearUser clears the "user" edge to the User entity.
@@ -5500,7 +5597,7 @@ func (m *ChannelOverrideTemplateMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ChannelOverrideTemplateMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 10)
 	if m.created_at != nil {
 		fields = append(fields, channeloverridetemplate.FieldCreatedAt)
 	}
@@ -5519,14 +5616,17 @@ func (m *ChannelOverrideTemplateMutation) Fields() []string {
 	if m.description != nil {
 		fields = append(fields, channeloverridetemplate.FieldDescription)
 	}
-	if m.channel_type != nil {
-		fields = append(fields, channeloverridetemplate.FieldChannelType)
-	}
 	if m.override_parameters != nil {
 		fields = append(fields, channeloverridetemplate.FieldOverrideParameters)
 	}
 	if m.override_headers != nil {
 		fields = append(fields, channeloverridetemplate.FieldOverrideHeaders)
+	}
+	if m.header_override_operations != nil {
+		fields = append(fields, channeloverridetemplate.FieldHeaderOverrideOperations)
+	}
+	if m.body_override_operations != nil {
+		fields = append(fields, channeloverridetemplate.FieldBodyOverrideOperations)
 	}
 	return fields
 }
@@ -5548,12 +5648,14 @@ func (m *ChannelOverrideTemplateMutation) Field(name string) (ent.Value, bool) {
 		return m.Name()
 	case channeloverridetemplate.FieldDescription:
 		return m.Description()
-	case channeloverridetemplate.FieldChannelType:
-		return m.ChannelType()
 	case channeloverridetemplate.FieldOverrideParameters:
 		return m.OverrideParameters()
 	case channeloverridetemplate.FieldOverrideHeaders:
 		return m.OverrideHeaders()
+	case channeloverridetemplate.FieldHeaderOverrideOperations:
+		return m.HeaderOverrideOperations()
+	case channeloverridetemplate.FieldBodyOverrideOperations:
+		return m.BodyOverrideOperations()
 	}
 	return nil, false
 }
@@ -5575,12 +5677,14 @@ func (m *ChannelOverrideTemplateMutation) OldField(ctx context.Context, name str
 		return m.OldName(ctx)
 	case channeloverridetemplate.FieldDescription:
 		return m.OldDescription(ctx)
-	case channeloverridetemplate.FieldChannelType:
-		return m.OldChannelType(ctx)
 	case channeloverridetemplate.FieldOverrideParameters:
 		return m.OldOverrideParameters(ctx)
 	case channeloverridetemplate.FieldOverrideHeaders:
 		return m.OldOverrideHeaders(ctx)
+	case channeloverridetemplate.FieldHeaderOverrideOperations:
+		return m.OldHeaderOverrideOperations(ctx)
+	case channeloverridetemplate.FieldBodyOverrideOperations:
+		return m.OldBodyOverrideOperations(ctx)
 	}
 	return nil, fmt.Errorf("unknown ChannelOverrideTemplate field %s", name)
 }
@@ -5632,13 +5736,6 @@ func (m *ChannelOverrideTemplateMutation) SetField(name string, value ent.Value)
 		}
 		m.SetDescription(v)
 		return nil
-	case channeloverridetemplate.FieldChannelType:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetChannelType(v)
-		return nil
 	case channeloverridetemplate.FieldOverrideParameters:
 		v, ok := value.(string)
 		if !ok {
@@ -5647,11 +5744,25 @@ func (m *ChannelOverrideTemplateMutation) SetField(name string, value ent.Value)
 		m.SetOverrideParameters(v)
 		return nil
 	case channeloverridetemplate.FieldOverrideHeaders:
-		v, ok := value.([]objects.OverrideOperation)
+		v, ok := value.([]objects.HeaderEntry)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetOverrideHeaders(v)
+		return nil
+	case channeloverridetemplate.FieldHeaderOverrideOperations:
+		v, ok := value.([]objects.OverrideOperation)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetHeaderOverrideOperations(v)
+		return nil
+	case channeloverridetemplate.FieldBodyOverrideOperations:
+		v, ok := value.([]objects.OverrideOperation)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBodyOverrideOperations(v)
 		return nil
 	}
 	return fmt.Errorf("unknown ChannelOverrideTemplate field %s", name)
@@ -5701,6 +5812,12 @@ func (m *ChannelOverrideTemplateMutation) ClearedFields() []string {
 	if m.FieldCleared(channeloverridetemplate.FieldDescription) {
 		fields = append(fields, channeloverridetemplate.FieldDescription)
 	}
+	if m.FieldCleared(channeloverridetemplate.FieldHeaderOverrideOperations) {
+		fields = append(fields, channeloverridetemplate.FieldHeaderOverrideOperations)
+	}
+	if m.FieldCleared(channeloverridetemplate.FieldBodyOverrideOperations) {
+		fields = append(fields, channeloverridetemplate.FieldBodyOverrideOperations)
+	}
 	return fields
 }
 
@@ -5717,6 +5834,12 @@ func (m *ChannelOverrideTemplateMutation) ClearField(name string) error {
 	switch name {
 	case channeloverridetemplate.FieldDescription:
 		m.ClearDescription()
+		return nil
+	case channeloverridetemplate.FieldHeaderOverrideOperations:
+		m.ClearHeaderOverrideOperations()
+		return nil
+	case channeloverridetemplate.FieldBodyOverrideOperations:
+		m.ClearBodyOverrideOperations()
 		return nil
 	}
 	return fmt.Errorf("unknown ChannelOverrideTemplate nullable field %s", name)
@@ -5744,14 +5867,17 @@ func (m *ChannelOverrideTemplateMutation) ResetField(name string) error {
 	case channeloverridetemplate.FieldDescription:
 		m.ResetDescription()
 		return nil
-	case channeloverridetemplate.FieldChannelType:
-		m.ResetChannelType()
-		return nil
 	case channeloverridetemplate.FieldOverrideParameters:
 		m.ResetOverrideParameters()
 		return nil
 	case channeloverridetemplate.FieldOverrideHeaders:
 		m.ResetOverrideHeaders()
+		return nil
+	case channeloverridetemplate.FieldHeaderOverrideOperations:
+		m.ResetHeaderOverrideOperations()
+		return nil
+	case channeloverridetemplate.FieldBodyOverrideOperations:
+		m.ResetBodyOverrideOperations()
 		return nil
 	}
 	return fmt.Errorf("unknown ChannelOverrideTemplate field %s", name)

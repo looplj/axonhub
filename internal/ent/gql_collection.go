@@ -1101,11 +1101,6 @@ func (_q *ChannelOverrideTemplateQuery) collectField(ctx context.Context, oneNod
 				selectedFields = append(selectedFields, channeloverridetemplate.FieldDescription)
 				fieldSeen[channeloverridetemplate.FieldDescription] = struct{}{}
 			}
-		case "channelType":
-			if _, ok := fieldSeen[channeloverridetemplate.FieldChannelType]; !ok {
-				selectedFields = append(selectedFields, channeloverridetemplate.FieldChannelType)
-				fieldSeen[channeloverridetemplate.FieldChannelType] = struct{}{}
-			}
 		case "overrideParameters":
 			if _, ok := fieldSeen[channeloverridetemplate.FieldOverrideParameters]; !ok {
 				selectedFields = append(selectedFields, channeloverridetemplate.FieldOverrideParameters)
@@ -1115,6 +1110,16 @@ func (_q *ChannelOverrideTemplateQuery) collectField(ctx context.Context, oneNod
 			if _, ok := fieldSeen[channeloverridetemplate.FieldOverrideHeaders]; !ok {
 				selectedFields = append(selectedFields, channeloverridetemplate.FieldOverrideHeaders)
 				fieldSeen[channeloverridetemplate.FieldOverrideHeaders] = struct{}{}
+			}
+		case "headerOverrideOperations":
+			if _, ok := fieldSeen[channeloverridetemplate.FieldHeaderOverrideOperations]; !ok {
+				selectedFields = append(selectedFields, channeloverridetemplate.FieldHeaderOverrideOperations)
+				fieldSeen[channeloverridetemplate.FieldHeaderOverrideOperations] = struct{}{}
+			}
+		case "bodyOverrideOperations":
+			if _, ok := fieldSeen[channeloverridetemplate.FieldBodyOverrideOperations]; !ok {
+				selectedFields = append(selectedFields, channeloverridetemplate.FieldBodyOverrideOperations)
+				fieldSeen[channeloverridetemplate.FieldBodyOverrideOperations] = struct{}{}
 			}
 		case "id":
 		case "__typename":

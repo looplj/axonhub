@@ -242,13 +242,21 @@ func init() {
 	// channeloverridetemplate.NameValidator is a validator for the "name" field. It is called by the builders before save.
 	channeloverridetemplate.NameValidator = channeloverridetemplateDescName.Validators[0].(func(string) error)
 	// channeloverridetemplateDescOverrideParameters is the schema descriptor for override_parameters field.
-	channeloverridetemplateDescOverrideParameters := channeloverridetemplateFields[4].Descriptor()
+	channeloverridetemplateDescOverrideParameters := channeloverridetemplateFields[3].Descriptor()
 	// channeloverridetemplate.DefaultOverrideParameters holds the default value on creation for the override_parameters field.
 	channeloverridetemplate.DefaultOverrideParameters = channeloverridetemplateDescOverrideParameters.Default.(string)
 	// channeloverridetemplateDescOverrideHeaders is the schema descriptor for override_headers field.
-	channeloverridetemplateDescOverrideHeaders := channeloverridetemplateFields[5].Descriptor()
+	channeloverridetemplateDescOverrideHeaders := channeloverridetemplateFields[4].Descriptor()
 	// channeloverridetemplate.DefaultOverrideHeaders holds the default value on creation for the override_headers field.
-	channeloverridetemplate.DefaultOverrideHeaders = channeloverridetemplateDescOverrideHeaders.Default.([]objects.OverrideOperation)
+	channeloverridetemplate.DefaultOverrideHeaders = channeloverridetemplateDescOverrideHeaders.Default.([]objects.HeaderEntry)
+	// channeloverridetemplateDescHeaderOverrideOperations is the schema descriptor for header_override_operations field.
+	channeloverridetemplateDescHeaderOverrideOperations := channeloverridetemplateFields[5].Descriptor()
+	// channeloverridetemplate.DefaultHeaderOverrideOperations holds the default value on creation for the header_override_operations field.
+	channeloverridetemplate.DefaultHeaderOverrideOperations = channeloverridetemplateDescHeaderOverrideOperations.Default.([]objects.OverrideOperation)
+	// channeloverridetemplateDescBodyOverrideOperations is the schema descriptor for body_override_operations field.
+	channeloverridetemplateDescBodyOverrideOperations := channeloverridetemplateFields[6].Descriptor()
+	// channeloverridetemplate.DefaultBodyOverrideOperations holds the default value on creation for the body_override_operations field.
+	channeloverridetemplate.DefaultBodyOverrideOperations = channeloverridetemplateDescBodyOverrideOperations.Default.([]objects.OverrideOperation)
 	datastorageMixin := schema.DataStorage{}.Mixin()
 	datastorage.Policy = privacy.NewPolicies(schema.DataStorage{})
 	datastorage.Hooks[0] = func(next ent.Mutator) ent.Mutator {

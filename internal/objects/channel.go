@@ -24,7 +24,6 @@ type ModelMapping struct {
 }
 
 type HeaderEntry struct {
-	Op    string `json:"op,omitempty"`
 	Key   string `json:"key"`
 	Value string `json:"value"`
 }
@@ -54,55 +53,15 @@ func HeaderEntriesToOverrideOperations(headers []HeaderEntry) []OverrideOperatio
 
 	ops := make([]OverrideOperation, 0, len(headers))
 	for _, header := range headers {
-		op := strings.TrimSpace(header.Op)
-		if op == "" {
-			op = OverrideOpSet
-		}
-
-		switch op {
-		case OverrideOpSet:
-			if header.Value == "__AXONHUB_CLEAR__" {
-				ops = append(ops, OverrideOperation{Op: OverrideOpDelete, Path: header.Key})
-				continue
-			}
-
-			ops = append(ops, OverrideOperation{Op: OverrideOpSet, Path: header.Key, Value: header.Value})
-		case OverrideOpDelete:
+		if header.Value == "__AXONHUB_CLEAR__" {
 			ops = append(ops, OverrideOperation{Op: OverrideOpDelete, Path: header.Key})
-		case OverrideOpRename:
-			ops = append(ops, OverrideOperation{Op: OverrideOpRename, From: header.Key, To: header.Value})
-		case OverrideOpCopy:
-			ops = append(ops, OverrideOperation{Op: OverrideOpCopy, From: header.Key, To: header.Value})
-		default:
-			ops = append(ops, OverrideOperation{Op: op, Path: header.Key, Value: header.Value})
+			continue
 		}
+
+		ops = append(ops, OverrideOperation{Op: OverrideOpSet, Path: header.Key, Value: header.Value})
 	}
 
 	return ops
-}
-
-func OverrideOperationsToHeaderEntries(ops []OverrideOperation) []HeaderEntry {
-	if len(ops) == 0 {
-		return nil
-	}
-
-	headers := make([]HeaderEntry, 0, len(ops))
-	for _, op := range ops {
-		switch op.Op {
-		case OverrideOpSet:
-			headers = append(headers, HeaderEntry{Op: OverrideOpSet, Key: op.Path, Value: op.Value})
-		case OverrideOpDelete:
-			headers = append(headers, HeaderEntry{Op: OverrideOpDelete, Key: op.Path, Value: ""})
-		case OverrideOpRename:
-			headers = append(headers, HeaderEntry{Op: OverrideOpRename, Key: op.From, Value: op.To})
-		case OverrideOpCopy:
-			headers = append(headers, HeaderEntry{Op: OverrideOpCopy, Key: op.From, Value: op.To})
-		default:
-			headers = append(headers, HeaderEntry{Op: op.Op, Key: op.Path, Value: op.Value})
-		}
-	}
-
-	return headers
 }
 
 type TransformOptions struct {

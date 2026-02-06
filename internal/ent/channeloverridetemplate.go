@@ -28,16 +28,22 @@ type ChannelOverrideTemplate struct {
 	DeletedAt int `json:"deleted_at,omitempty"`
 	// Owner of this template
 	UserID int `json:"user_id,omitempty"`
-	// Template name, unique per user and channel type
+	// Template name, unique per user
 	Name string `json:"name,omitempty"`
 	// Template description
 	Description string `json:"description,omitempty"`
-	// Channel type this template applies to
-	ChannelType string `json:"channel_type,omitempty"`
 	// Override request body parameters as JSON string
+	//
+	// Deprecated: Use body_override_operations instead
 	OverrideParameters string `json:"override_parameters,omitempty"`
 	// Override request headers
-	OverrideHeaders []objects.OverrideOperation `json:"override_headers,omitempty"`
+	//
+	// Deprecated: Field "override_headers" was marked as deprecated in the schema.
+	OverrideHeaders []objects.HeaderEntry `json:"override_headers,omitempty"`
+	// Override request headers
+	HeaderOverrideOperations []objects.OverrideOperation `json:"header_override_operations,omitempty"`
+	// Override request body parameters
+	BodyOverrideOperations []objects.OverrideOperation `json:"body_override_operations,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ChannelOverrideTemplateQuery when eager-loading is set.
 	Edges        ChannelOverrideTemplateEdges `json:"edges"`
@@ -71,11 +77,11 @@ func (*ChannelOverrideTemplate) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case channeloverridetemplate.FieldOverrideHeaders:
+		case channeloverridetemplate.FieldOverrideHeaders, channeloverridetemplate.FieldHeaderOverrideOperations, channeloverridetemplate.FieldBodyOverrideOperations:
 			values[i] = new([]byte)
 		case channeloverridetemplate.FieldID, channeloverridetemplate.FieldDeletedAt, channeloverridetemplate.FieldUserID:
 			values[i] = new(sql.NullInt64)
-		case channeloverridetemplate.FieldName, channeloverridetemplate.FieldDescription, channeloverridetemplate.FieldChannelType, channeloverridetemplate.FieldOverrideParameters:
+		case channeloverridetemplate.FieldName, channeloverridetemplate.FieldDescription, channeloverridetemplate.FieldOverrideParameters:
 			values[i] = new(sql.NullString)
 		case channeloverridetemplate.FieldCreatedAt, channeloverridetemplate.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -136,12 +142,6 @@ func (_m *ChannelOverrideTemplate) assignValues(columns []string, values []any) 
 			} else if value.Valid {
 				_m.Description = value.String
 			}
-		case channeloverridetemplate.FieldChannelType:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field channel_type", values[i])
-			} else if value.Valid {
-				_m.ChannelType = value.String
-			}
 		case channeloverridetemplate.FieldOverrideParameters:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field override_parameters", values[i])
@@ -154,6 +154,22 @@ func (_m *ChannelOverrideTemplate) assignValues(columns []string, values []any) 
 			} else if value != nil && len(*value) > 0 {
 				if err := json.Unmarshal(*value, &_m.OverrideHeaders); err != nil {
 					return fmt.Errorf("unmarshal field override_headers: %w", err)
+				}
+			}
+		case channeloverridetemplate.FieldHeaderOverrideOperations:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field header_override_operations", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.HeaderOverrideOperations); err != nil {
+					return fmt.Errorf("unmarshal field header_override_operations: %w", err)
+				}
+			}
+		case channeloverridetemplate.FieldBodyOverrideOperations:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field body_override_operations", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.BodyOverrideOperations); err != nil {
+					return fmt.Errorf("unmarshal field body_override_operations: %w", err)
 				}
 			}
 		default:
@@ -215,14 +231,17 @@ func (_m *ChannelOverrideTemplate) String() string {
 	builder.WriteString("description=")
 	builder.WriteString(_m.Description)
 	builder.WriteString(", ")
-	builder.WriteString("channel_type=")
-	builder.WriteString(_m.ChannelType)
-	builder.WriteString(", ")
 	builder.WriteString("override_parameters=")
 	builder.WriteString(_m.OverrideParameters)
 	builder.WriteString(", ")
 	builder.WriteString("override_headers=")
 	builder.WriteString(fmt.Sprintf("%v", _m.OverrideHeaders))
+	builder.WriteString(", ")
+	builder.WriteString("header_override_operations=")
+	builder.WriteString(fmt.Sprintf("%v", _m.HeaderOverrideOperations))
+	builder.WriteString(", ")
+	builder.WriteString("body_override_operations=")
+	builder.WriteString(fmt.Sprintf("%v", _m.BodyOverrideOperations))
 	builder.WriteByte(')')
 	return builder.String()
 }

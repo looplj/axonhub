@@ -566,7 +566,7 @@ func (_m *ChannelOverrideTemplate) Node(ctx context.Context) (node *Node, err er
 	node = &Node{
 		ID:     _m.ID,
 		Type:   "ChannelOverrideTemplate",
-		Fields: make([]*Field, 8),
+		Fields: make([]*Field, 9),
 		Edges:  make([]*Edge, 1),
 	}
 	var buf []byte
@@ -610,18 +610,10 @@ func (_m *ChannelOverrideTemplate) Node(ctx context.Context) (node *Node, err er
 		Name:  "description",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.ChannelType); err != nil {
-		return nil, err
-	}
-	node.Fields[5] = &Field{
-		Type:  "string",
-		Name:  "channel_type",
-		Value: string(buf),
-	}
 	if buf, err = json.Marshal(_m.OverrideParameters); err != nil {
 		return nil, err
 	}
-	node.Fields[6] = &Field{
+	node.Fields[5] = &Field{
 		Type:  "string",
 		Name:  "override_parameters",
 		Value: string(buf),
@@ -629,9 +621,25 @@ func (_m *ChannelOverrideTemplate) Node(ctx context.Context) (node *Node, err er
 	if buf, err = json.Marshal(_m.OverrideHeaders); err != nil {
 		return nil, err
 	}
+	node.Fields[6] = &Field{
+		Type:  "[]objects.HeaderEntry",
+		Name:  "override_headers",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.HeaderOverrideOperations); err != nil {
+		return nil, err
+	}
 	node.Fields[7] = &Field{
 		Type:  "[]objects.OverrideOperation",
-		Name:  "override_headers",
+		Name:  "header_override_operations",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.BodyOverrideOperations); err != nil {
+		return nil, err
+	}
+	node.Fields[8] = &Field{
+		Type:  "[]objects.OverrideOperation",
+		Name:  "body_override_operations",
 		Value: string(buf),
 	}
 	node.Edges[0] = &Edge{
