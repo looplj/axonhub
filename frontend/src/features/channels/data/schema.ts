@@ -395,6 +395,9 @@ export const updateChannelInputSchema = z
     remark: z.string().optional().nullable(),
     credentials: z
       .object({
+        // apiKey 用于 OAuth 凭据 (codex/claudecode/antigravity)，存储 JSON 字符串（含 access_token, refresh_token）
+        apiKey: z.string().optional(),
+        // apiKeys 用于普通 API Key（支持多 key 负载均衡），OAuth 类型不使用此字段
         apiKeys: z.array(z.string()).optional(),
         gcp: z
           .object({

@@ -312,7 +312,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             tags: currentRow.tags || [],
             remark: currentRow.remark || '',
             credentials: {
-              apiKeys: currentRow.credentials?.apiKeys || (currentRow.credentials?.apiKey ? [currentRow.credentials.apiKey] : []),
+              // OAuth 类型 (codex/claudecode/antigravity) 的凭据存储在 apiKey 字段，不放入 apiKeys
+              apiKey: currentRow.credentials?.apiKey || undefined,
+              apiKeys: currentRow.credentials?.apiKeys || [],
               gcp: {
                 region: currentRow.credentials?.gcp?.region || '',
                 projectID: currentRow.credentials?.gcp?.projectID || '',
@@ -333,7 +335,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               remark: duplicateFromRow.remark || '',
               settings: duplicateFromRow.settings ?? undefined,
               credentials: {
-                apiKeys: duplicateFromRow.credentials?.apiKeys || (duplicateFromRow.credentials?.apiKey ? [duplicateFromRow.credentials.apiKey] : []),
+                // OAuth 类型 (codex/claudecode/antigravity) 的凭据存储在 apiKey 字段，不放入 apiKeys
+                apiKey: duplicateFromRow.credentials?.apiKey || undefined,
+                apiKeys: duplicateFromRow.credentials?.apiKeys || [],
                 gcp: {
                   region: duplicateFromRow.credentials?.gcp?.region || '',
                   projectID: duplicateFromRow.credentials?.gcp?.projectID || '',
@@ -539,7 +543,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         }
       }
     },
-    [isEdit, selectedApiFormat, form]
+    [isEdit, selectedApiFormat, form, isDuplicate]
   );
 
   const handleAnthropicAwsChange = useCallback(
@@ -560,11 +564,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         }
       }
     },
-    [isEdit, selectedApiFormat, form]
+    [isEdit, selectedApiFormat, form, isDuplicate]
   );
 
   useEffect(() => {
-    if (isEdit) return;
+    if (isEdit || isDuplicate) return;
 
     if (!isCodexType) {
       codexOAuth.reset();
@@ -594,7 +598,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         }
       }
     }
-  }, [isEdit, isCodexType, selectedProvider, authMode, form, codexOAuth, claudecodeOAuth, antigravityOAuth]);
+  }, [isEdit, isDuplicate, isCodexType, selectedProvider, authMode, form, codexOAuth, claudecodeOAuth, antigravityOAuth]);
 
   const renderOAuthSection = useCallback(
     (oauth: ReturnType<typeof useOAuthFlow>, description: string) => (
@@ -665,7 +669,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         supportedModels,
       };
 
-      if ((isCodexType || isClaudeCodeType) && authMode === 'official') {
+      if ((isCodexType || isClaudeCodeType) && authMode === 'official' && !isDuplicate) {
         const currentType = selectedType || derivedChannelType;
         const baseURL = getDefaultBaseURL(currentType);
         if (baseURL) {
@@ -682,6 +686,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         };
 
         // Check if any credential fields have actual values
+        // apiKey: OAuth 凭据 (codex/claudecode/antigravity)，不会出现在 apiKeys 中
+        const apiKey = values.credentials?.apiKey || '';
+        const hasApiKey = apiKey.trim().length > 0;
         const apiKeys = values.credentials?.apiKeys || [];
         const hasApiKeys = apiKeys.length > 0 && apiKeys.some((k) => k.trim() !== '');
         const hasGcpCredentials =
@@ -693,7 +700,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           values.credentials.gcp.jsonData.trim() !== '';
 
         // Only include credentials if user provided new values
-        if (!hasApiKeys && !hasGcpCredentials) {
+        if (!hasApiKey && !hasApiKeys && !hasGcpCredentials) {
           delete updateInput.credentials;
         }
 

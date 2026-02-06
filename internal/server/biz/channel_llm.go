@@ -627,6 +627,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 		transformer, err := antigravity.NewTransformer(
 			antigravity.Config{BaseURL: c.BaseURL, APIKey: c.Credentials.APIKey},
 			antigravity.WithHTTPClient(httpClient),
+			antigravity.WithOnTokenRefreshed(svc.refreshOAuthTokenFunc(c)),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create antigravity outbound transformer: %w", err)
@@ -665,6 +666,7 @@ func (svc *ChannelService) refreshOAuthTokenFunc(ch *ent.Channel) func(ctx conte
 
 		updated := ch.Credentials
 
+		// NOTE：必须是使用 APIKey 字段，不能使用 API Keys 字段
 		updated.APIKey = credJSON
 		updated.OAuth = refreshed
 

@@ -32,6 +32,13 @@ func WithHTTPClient(client *httpclient.HttpClient) Option {
 	}
 }
 
+// WithOnTokenRefreshed sets the callback for token refresh events.
+func WithOnTokenRefreshed(onRefreshed func(ctx context.Context, refreshed *oauth.OAuthCredentials) error) Option {
+	return func(t *Transformer) {
+		t.onTokenRefreshed = onRefreshed
+	}
+}
+
 // GetTokenProvider returns the OAuth token provider.
 func (t *Transformer) GetTokenProvider() *oauth.TokenProvider {
 	return t.tokenProvider
@@ -50,6 +57,7 @@ type Transformer struct {
 	geminiTransformer transformer.Outbound
 	tokenProvider     *oauth.TokenProvider
 	httpClient        *httpclient.HttpClient
+	onTokenRefreshed  func(ctx context.Context, refreshed *oauth.OAuthCredentials) error
 }
 
 // NewTransformer creates a new Antigravity Transformer.
@@ -108,7 +116,8 @@ func (t *Transformer) initTokenProvider(apiKey string) {
 			ClientID:     ClientID,
 			Scopes:       Scopes,
 		},
-		HTTPClient: httpClient,
+		HTTPClient:  httpClient,
+		OnRefreshed: t.onTokenRefreshed,
 	})
 }
 
