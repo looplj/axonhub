@@ -395,6 +395,9 @@ export const updateChannelInputSchema = z
     remark: z.string().optional().nullable(),
     credentials: z
       .object({
+        // apiKey 用于 OAuth 凭据 (codex/claudecode/antigravity)，存储 JSON 字符串（含 access_token, refresh_token）
+        apiKey: z.string().optional(),
+        // apiKeys 用于普通 API Key（支持多 key 负载均衡），OAuth 类型不使用此字段
         apiKeys: z.array(z.string()).optional(),
         gcp: z
           .object({
@@ -408,16 +411,18 @@ export const updateChannelInputSchema = z
     orderingWeight: z.number().optional(),
   })
   .superRefine((data, ctx) => {
-    if (data.type === 'codex') {
+    const isOAuthType = data.type === 'codex' || data.type === 'claudecode' || data.type === 'antigravity';
+
+    if (isOAuthType) {
       if (!data.credentials) return;
 
-      const apiKey = data.credentials.apiKeys?.[0];
+      const apiKey = data.credentials.apiKey;
       // Only enforce JSON validation if it looks like JSON (starts with '{')
       if (apiKey && apiKey.trim().startsWith('{')) {
         const issue = {
           code: 'custom' as const,
           message: 'channels.dialogs.fields.supportedModels.codexOAuthCredentialsRequired',
-          path: ['credentials', 'apiKeys'],
+          path: ['credentials', 'apiKey'],
         };
 
         let json: unknown;
