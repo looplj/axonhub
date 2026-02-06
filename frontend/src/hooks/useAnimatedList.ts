@@ -26,7 +26,18 @@ export function useAnimatedList<T extends { id: string; createdAt: Date | string
       const currentIds = new Set(currentDisplayed.map((r) => r.id));
       const newDataMap = new Map(data.map((r) => [r.id, r]));
 
-      const hasRemovedItems = currentDisplayed.some((item) => !newDataMap.has(item.id));
+      // Compute the minimum timestamp from incoming data to establish the time window
+      const minTimestampOfNewData =
+        data.length > 0 ? Math.min(...data.map((item) => getTimestamp(item.createdAt))) : 0;
+
+      // Only flag removals when the removed item is still within the new data's time window
+      // Items pushed off by pagination (older than minTimestampOfNewData) should not trigger a reset
+      const hasRemovedItems = currentDisplayed.some((item) => {
+        const isMissingFromNewData = !newDataMap.has(item.id);
+        const itemTimestamp = getTimestamp(item.createdAt);
+        return isMissingFromNewData && itemTimestamp >= minTimestampOfNewData;
+      });
+
       const shouldResetToNewData = hasRemovedItems || data.length !== prevDataLengthRef.current;
 
       if (shouldResetToNewData) {
