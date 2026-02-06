@@ -26,6 +26,7 @@ import {
   Cerebras,
   Claude,
 } from '@lobehub/icons';
+import { NanoGPTIcon } from '../components/nanogpt-icon';
 import { CHANNEL_CONFIGS } from './config_channels';
 import { ApiFormat, ChannelType } from './schema';
 
@@ -203,6 +204,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     icon: Cerebras,
     color: 'bg-[#F15928] text-white border-[#F15928]',
     channelTypes: ['cerebras'],
+  },
+  nanogpt: {
+    provider: 'nanogpt',
+    icon: NanoGPTIcon,
+    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    channelTypes: ['nanogpt'],
   },
 };
 

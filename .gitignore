@@ -91,6 +91,7 @@ dev-debug.log
 node_modules/
 # Lock files - project uses pnpm
 package-lock.json
+bun.lock
 # Environment variables
 .env
 # Editor directories and files
@@ -146,3 +147,4 @@ tools
 
 mise.toml
 locales_backup
+.sisyphus

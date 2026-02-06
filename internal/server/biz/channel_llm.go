@@ -30,6 +30,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/longcat"
 	"github.com/looplj/axonhub/llm/transformer/modelscope"
 	"github.com/looplj/axonhub/llm/transformer/moonshot"
+	"github.com/looplj/axonhub/llm/transformer/nanogpt"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
@@ -237,6 +238,18 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 		return ch, nil
 	case channel.TypeOpenrouter, channel.TypeCerebras:
 		transformer, err := openrouter.NewOutboundTransformerWithConfig(&openrouter.Config{
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: getAPIKeyProvider(ch),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		ch.Outbound = transformer
+
+		return ch, nil
+	case channel.TypeNanogpt:
+		transformer, err := nanogpt.NewOutboundTransformerWithConfig(&nanogpt.Config{
 			BaseURL:        c.BaseURL,
 			APIKeyProvider: getAPIKeyProvider(ch),
 		})
