@@ -8,6 +8,7 @@ const ANIMATION_INTERVAL = !isNaN(parsedInterval) && parsedInterval > 0 ? parsed
 export function useAnimatedList<T extends { id: string; createdAt: Date | string }>(data: T[], autoRefresh: boolean) {
   const [displayedData, setDisplayedData] = useState<T[]>(data);
   const queueRef = useRef<T[]>([]);
+  const prevDataLengthRef = useRef<number>(data.length);
 
   const getTimestamp = (date: Date | string): number => {
     return date instanceof Date ? date.getTime() : new Date(date).getTime();
@@ -17,12 +18,22 @@ export function useAnimatedList<T extends { id: string; createdAt: Date | string
     if (!autoRefresh) {
       setDisplayedData(data);
       queueRef.current = [];
+      prevDataLengthRef.current = data.length;
       return;
     }
 
     setDisplayedData((currentDisplayed) => {
       const currentIds = new Set(currentDisplayed.map((r) => r.id));
       const newDataMap = new Map(data.map((r) => [r.id, r]));
+
+      const hasRemovedItems = currentDisplayed.some((item) => !newDataMap.has(item.id));
+      const shouldResetToNewData = hasRemovedItems || data.length !== prevDataLengthRef.current;
+
+      if (shouldResetToNewData) {
+        prevDataLengthRef.current = data.length;
+        queueRef.current = [];
+        return data;
+      }
 
       const updatedDisplayed = currentDisplayed.map((item) => {
         const newItem = newDataMap.get(item.id);
@@ -45,6 +56,7 @@ export function useAnimatedList<T extends { id: string; createdAt: Date | string
         }
       });
 
+      prevDataLengthRef.current = data.length;
       return updatedDisplayed;
     });
   }, [data, autoRefresh]);
