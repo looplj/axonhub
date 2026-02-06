@@ -48,5 +48,14 @@
   "dashboard.stats.cached": "缓存",
   "dashboard.stats.vsLastWeek": "较上周",
   "dashboard.stats.average": "平均值",
-  "dashboard.stats.todayRequests": "今日请求"
+  "dashboard.stats.todayRequests": "今日请求",
+  "dashboard.cards.fastestPerformers.title": "最快性能",
+  "dashboard.cards.fastestPerformers.channels": "顶级通道",
+  "dashboard.cards.fastestPerformers.models": "顶级模型",
+  "dashboard.cards.fastestPerformers.noData": "暂无数据",
+  "dashboard.cards.fastestPerformers.tokensPerSecond": "令牌/秒",
+  "dashboard.cards.fastestPerformers.requests": "请求",
+  "dashboard.timeWindow.1h": "1小时",
+  "dashboard.timeWindow.24h": "24小时",
+  "dashboard.timeWindow.7d": "7天"
 }

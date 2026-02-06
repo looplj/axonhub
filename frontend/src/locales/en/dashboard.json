@@ -48,5 +48,14 @@
   "dashboard.stats.cached": "Cached",
   "dashboard.stats.vsLastWeek": "vs last week",
   "dashboard.stats.average": "Average",
-  "dashboard.stats.todayRequests": "Today's Requests"
+  "dashboard.stats.todayRequests": "Today's Requests",
+  "dashboard.cards.fastestPerformers.title": "Fastest Performers",
+  "dashboard.cards.fastestPerformers.channels": "Top Channels",
+  "dashboard.cards.fastestPerformers.models": "Top Models",
+  "dashboard.cards.fastestPerformers.noData": "No data available",
+  "dashboard.cards.fastestPerformers.tokensPerSecond": "tokens/s",
+  "dashboard.cards.fastestPerformers.requests": "requests",
+  "dashboard.timeWindow.1h": "1h",
+  "dashboard.timeWindow.24h": "24h",
+  "dashboard.timeWindow.7d": "7d"
 }
