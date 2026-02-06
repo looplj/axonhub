@@ -163,9 +163,10 @@ var (
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "name", Type: field.TypeString},
 		{Name: "description", Type: field.TypeString, Nullable: true},
-		{Name: "channel_type", Type: field.TypeString},
 		{Name: "override_parameters", Type: field.TypeString, Default: "{}"},
 		{Name: "override_headers", Type: field.TypeJSON},
+		{Name: "header_override_operations", Type: field.TypeJSON, Nullable: true},
+		{Name: "body_override_operations", Type: field.TypeJSON, Nullable: true},
 		{Name: "user_id", Type: field.TypeInt},
 	}
 	// ChannelOverrideTemplatesTable holds the schema information for the "channel_override_templates" table.
@@ -176,16 +177,16 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "channel_override_templates_users_channel_override_templates",
-				Columns:    []*schema.Column{ChannelOverrideTemplatesColumns[9]},
+				Columns:    []*schema.Column{ChannelOverrideTemplatesColumns[10]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 		},
 		Indexes: []*schema.Index{
 			{
-				Name:    "channel_override_templates_by_user_type_name",
+				Name:    "channel_override_templates_by_user_name",
 				Unique:  true,
-				Columns: []*schema.Column{ChannelOverrideTemplatesColumns[9], ChannelOverrideTemplatesColumns[6], ChannelOverrideTemplatesColumns[4], ChannelOverrideTemplatesColumns[3]},
+				Columns: []*schema.Column{ChannelOverrideTemplatesColumns[10], ChannelOverrideTemplatesColumns[4], ChannelOverrideTemplatesColumns[3]},
 			},
 		},
 	}

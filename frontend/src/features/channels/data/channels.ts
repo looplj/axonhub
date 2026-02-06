@@ -85,14 +85,6 @@ const CREATE_CHANNEL_MUTATION = `
           autoTrimedModelPrefixes
           hideOriginalModels
           hideMappedModels
-          bodyOverrideOperations {
-            op
-            path
-            from
-            to
-            value
-            condition
-          }
           proxy {
             type
             url
@@ -137,14 +129,6 @@ const BULK_CREATE_CHANNELS_MUTATION = `
           autoTrimedModelPrefixes
           hideOriginalModels
           hideMappedModels
-          bodyOverrideOperations {
-            op
-            path
-            from
-            to
-            value
-            condition
-          }
           proxy {
             type
             url
@@ -189,14 +173,6 @@ const UPDATE_CHANNEL_MUTATION = `
           autoTrimedModelPrefixes
           hideOriginalModels
           hideMappedModels
-          bodyOverrideOperations {
-            op
-            path
-            from
-            to
-            value
-            condition
-          }
           proxy {
             type
             url
@@ -294,14 +270,6 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           autoTrimedModelPrefixes
           hideOriginalModels
           hideMappedModels
-          bodyOverrideOperations {
-            op
-            path
-            from
-            to
-            value
-            condition
-          }
           transformOptions {
             forceArrayInstructions
             forceArrayInputs

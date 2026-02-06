@@ -31,18 +31,19 @@ func TestChannelOverrideTemplateService_CreateTemplate(t *testing.T) {
 	})
 
 	t.Run("create template successfully", func(t *testing.T) {
-		headers := []objects.OverrideOperation{
+		headerOps := []objects.OverrideOperation{
 			{Op: objects.OverrideOpSet, Path: "Authorization", Value: "Bearer token"},
 		}
-		params := `{"temperature": 0.7}`
+		bodyOps := []objects.OverrideOperation{
+			{Op: objects.OverrideOpSet, Path: "temperature", Value: "0.7"},
+		}
 		description := "Test description"
 
 		input := ent.CreateChannelOverrideTemplateInput{
-			Name:               "Test Template",
-			Description:        &description,
-			ChannelType:        channel.TypeOpenai.String(),
-			OverrideParameters: &params,
-			OverrideHeaders:    headers,
+			Name:                     "Test Template",
+			Description:              &description,
+			HeaderOverrideOperations: headerOps,
+			BodyOverrideOperations:   bodyOps,
 		}
 
 		template, err := service.CreateTemplate(
@@ -54,21 +55,21 @@ func TestChannelOverrideTemplateService_CreateTemplate(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "Test Template", template.Name)
 		require.Equal(t, "Test description", template.Description)
-		require.Equal(t, channel.TypeOpenai.String(), template.ChannelType)
-		require.Equal(t, params, template.OverrideParameters)
-		require.Equal(t, headers, template.OverrideHeaders)
+		require.Equal(t, headerOps, template.HeaderOverrideOperations)
+		require.Equal(t, bodyOps, template.BodyOverrideOperations)
 		require.Equal(t, user.ID, template.UserID)
 	})
 
-	t.Run("reject invalid parameters", func(t *testing.T) {
-		params := `{invalid}`
+	t.Run("reject invalid body operations", func(t *testing.T) {
+		bodyOps := []objects.OverrideOperation{
+			{Op: objects.OverrideOpSet, Path: "", Value: "value"}, // empty path
+		}
 
 		input := ent.CreateChannelOverrideTemplateInput{
-			Name:               "Invalid Params Template",
-			Description:        nil,
-			ChannelType:        channel.TypeOpenai.String(),
-			OverrideParameters: &params,
-			OverrideHeaders:    nil,
+			Name:                     "Invalid BodyOps Template",
+			Description:              nil,
+			HeaderOverrideOperations: nil,
+			BodyOverrideOperations:   bodyOps,
 		}
 
 		_, err := service.CreateTemplate(
@@ -78,18 +79,19 @@ func TestChannelOverrideTemplateService_CreateTemplate(t *testing.T) {
 		)
 
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "invalid override parameters")
+		require.Contains(t, err.Error(), "invalid body override operations")
 	})
 
 	t.Run("reject stream parameter", func(t *testing.T) {
-		params := `{"stream": true}`
+		bodyOps := []objects.OverrideOperation{
+			{Op: objects.OverrideOpSet, Path: "stream", Value: "true"},
+		}
 
 		input := ent.CreateChannelOverrideTemplateInput{
-			Name:               "Stream Template",
-			Description:        nil,
-			ChannelType:        channel.TypeOpenai.String(),
-			OverrideParameters: &params,
-			OverrideHeaders:    nil,
+			Name:                     "Stream Template",
+			Description:              nil,
+			HeaderOverrideOperations: nil,
+			BodyOverrideOperations:   bodyOps,
 		}
 
 		_, err := service.CreateTemplate(
@@ -103,16 +105,15 @@ func TestChannelOverrideTemplateService_CreateTemplate(t *testing.T) {
 	})
 
 	t.Run("reject invalid headers", func(t *testing.T) {
-		headers := []objects.OverrideOperation{
+		headerOps := []objects.OverrideOperation{
 			{Op: objects.OverrideOpSet, Path: "", Value: "value"}, // empty path
 		}
 
 		input := ent.CreateChannelOverrideTemplateInput{
-			Name:               "Invalid Headers Template",
-			Description:        nil,
-			ChannelType:        channel.TypeOpenai.String(),
-			OverrideParameters: nil,
-			OverrideHeaders:    headers,
+			Name:                     "Invalid Headers Template",
+			Description:              nil,
+			HeaderOverrideOperations: headerOps,
+			BodyOverrideOperations:   nil,
 		}
 
 		_, err := service.CreateTemplate(
@@ -122,7 +123,7 @@ func TestChannelOverrideTemplateService_CreateTemplate(t *testing.T) {
 		)
 
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "invalid override headers")
+		require.Contains(t, err.Error(), "invalid header override operations")
 	})
 }
 
@@ -147,9 +148,8 @@ func TestChannelOverrideTemplateService_UpdateTemplate(t *testing.T) {
 		SetUserID(user.ID).
 		SetName("Original Name").
 		SetDescription("Original description").
-		SetChannelType(string(channel.TypeOpenai)).
-		SetOverrideParameters(`{"temperature": 0.7}`).
-		SetOverrideHeaders([]objects.OverrideOperation{{Op: objects.OverrideOpSet, Path: "X-API-Key", Value: "key1"}}).
+		SetBodyOverrideOperations([]objects.OverrideOperation{{Op: objects.OverrideOpSet, Path: "temperature", Value: "0.7"}}).
+		SetHeaderOverrideOperations([]objects.OverrideOperation{{Op: objects.OverrideOpSet, Path: "X-API-Key", Value: "key1"}}).
 		SaveX(ctx)
 
 	t.Run("update name only", func(t *testing.T) {
@@ -164,37 +164,37 @@ func TestChannelOverrideTemplateService_UpdateTemplate(t *testing.T) {
 		require.Equal(t, "Original description", updated.Description)
 	})
 
-	t.Run("update parameters", func(t *testing.T) {
-		newParams := `{"max_tokens": 1000}`
+	t.Run("update body operations", func(t *testing.T) {
+		newBodyOps := []objects.OverrideOperation{{Op: objects.OverrideOpSet, Path: "max_tokens", Value: "1000"}}
 		input := ent.UpdateChannelOverrideTemplateInput{
-			OverrideParameters: &newParams,
+			BodyOverrideOperations: newBodyOps,
 		}
 		updated, err := service.UpdateTemplate(ctx, template.ID, input)
 
 		require.NoError(t, err)
-		require.Equal(t, newParams, updated.OverrideParameters)
+		require.Equal(t, newBodyOps, updated.BodyOverrideOperations)
 	})
 
-	t.Run("update headers", func(t *testing.T) {
-		newHeaders := []objects.OverrideOperation{{Op: objects.OverrideOpSet, Path: "Authorization", Value: "Bearer token"}}
+	t.Run("update header operations", func(t *testing.T) {
+		newHeaderOps := []objects.OverrideOperation{{Op: objects.OverrideOpSet, Path: "Authorization", Value: "Bearer token"}}
 		input := ent.UpdateChannelOverrideTemplateInput{
-			OverrideHeaders: newHeaders,
+			HeaderOverrideOperations: newHeaderOps,
 		}
 		updated, err := service.UpdateTemplate(ctx, template.ID, input)
 
 		require.NoError(t, err)
-		require.Equal(t, newHeaders, updated.OverrideHeaders)
+		require.Equal(t, newHeaderOps, updated.HeaderOverrideOperations)
 	})
 
-	t.Run("reject invalid parameters on update", func(t *testing.T) {
-		invalidParams := `{invalid}`
+	t.Run("reject invalid body operations on update", func(t *testing.T) {
+		invalidBodyOps := []objects.OverrideOperation{{Op: objects.OverrideOpSet, Path: "", Value: "value"}}
 		input := ent.UpdateChannelOverrideTemplateInput{
-			OverrideParameters: &invalidParams,
+			BodyOverrideOperations: invalidBodyOps,
 		}
 		_, err := service.UpdateTemplate(ctx, template.ID, input)
 
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "invalid override parameters")
+		require.Contains(t, err.Error(), "invalid body override operations")
 	})
 }
 
@@ -214,19 +214,21 @@ func TestChannelOverrideTemplateService_ApplyTemplate(t *testing.T) {
 		ChannelService: nil,
 	})
 
-	// Create template
+	// Create template with new operations fields
 	template := client.ChannelOverrideTemplate.Create().
 		SetUserID(user.ID).
 		SetName("Test Template").
-		SetChannelType(channel.TypeOpenai.String()).
-		SetOverrideParameters(`{"temperature": 0.9, "max_tokens": 2000}`).
-		SetOverrideHeaders([]objects.OverrideOperation{
+		SetBodyOverrideOperations([]objects.OverrideOperation{
+			{Op: objects.OverrideOpSet, Path: "temperature", Value: "0.9"},
+			{Op: objects.OverrideOpSet, Path: "max_tokens", Value: "2000"},
+		}).
+		SetHeaderOverrideOperations([]objects.OverrideOperation{
 			{Op: objects.OverrideOpSet, Path: "X-Custom-Header", Value: "custom-value"},
 		}).
 		SaveX(ctx)
 
-	t.Run("apply template to channels with merge", func(t *testing.T) {
-		// Create channels with existing settings
+	t.Run("apply template to channels with new operations merge", func(t *testing.T) {
+		// Create channels with existing settings using new operations fields
 		ch1 := client.Channel.Create().
 			SetName("Channel 1").
 			SetType(channel.TypeOpenai).
@@ -235,8 +237,13 @@ func TestChannelOverrideTemplateService_ApplyTemplate(t *testing.T) {
 			SetSupportedModels([]string{"gpt-4"}).
 			SetDefaultTestModel("gpt-4").
 			SetSettings(&objects.ChannelSettings{
-				OverrideParameters: `{"temperature": 0.7, "top_p": 0.9}`,
-				OverrideHeaders:    []objects.HeaderEntry{{Key: "Authorization", Value: "Bearer token"}},
+				BodyOverrideOperations: []objects.OverrideOperation{
+					{Op: objects.OverrideOpSet, Path: "temperature", Value: "0.7"},
+					{Op: objects.OverrideOpSet, Path: "top_p", Value: "0.9"},
+				},
+				HeaderOverrideOperations: []objects.OverrideOperation{
+					{Op: objects.OverrideOpSet, Path: "Authorization", Value: "Bearer token"},
+				},
 			}).
 			SaveX(ctx)
 
@@ -247,10 +254,7 @@ func TestChannelOverrideTemplateService_ApplyTemplate(t *testing.T) {
 			SetCredentials(objects.ChannelCredentials{APIKey: "key2"}).
 			SetSupportedModels([]string{"gpt-4"}).
 			SetDefaultTestModel("gpt-4").
-			SetSettings(&objects.ChannelSettings{
-				OverrideParameters: `{}`,
-				OverrideHeaders:    []objects.HeaderEntry{},
-			}).
+			SetSettings(&objects.ChannelSettings{}).
 			SaveX(ctx)
 
 		updated, err := service.ApplyTemplate(ctx, template.ID, []int{ch1.ID, ch2.ID})
@@ -258,31 +262,71 @@ func TestChannelOverrideTemplateService_ApplyTemplate(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, updated, 2)
 
-		// Verify channel 1 merged correctly
-		require.JSONEq(t, `{"temperature": 0.9, "max_tokens": 2000, "top_p": 0.9}`, updated[0].Settings.OverrideParameters)
-		require.Len(t, updated[0].Settings.OverrideHeaders, 2)
-		require.Contains(t, objects.HeaderEntriesToOverrideOperations(updated[0].Settings.OverrideHeaders), objects.OverrideOperation{Op: objects.OverrideOpSet, Path: "Authorization", Value: "Bearer token"})
-		require.Contains(t, objects.HeaderEntriesToOverrideOperations(updated[0].Settings.OverrideHeaders), objects.OverrideOperation{Op: objects.OverrideOpSet, Path: "X-Custom-Header", Value: "custom-value"})
+		// Verify channel 1 merged correctly - template overrides existing values
+		require.Len(t, updated[0].Settings.BodyOverrideOperations, 3)
+		require.Contains(t, updated[0].Settings.BodyOverrideOperations, objects.OverrideOperation{Op: objects.OverrideOpSet, Path: "temperature", Value: "0.9"}) // overridden by template
+		require.Contains(t, updated[0].Settings.BodyOverrideOperations, objects.OverrideOperation{Op: objects.OverrideOpSet, Path: "top_p", Value: "0.9"})       // preserved from existing
+		require.Contains(t, updated[0].Settings.BodyOverrideOperations, objects.OverrideOperation{Op: objects.OverrideOpSet, Path: "max_tokens", Value: "2000"}) // from template
 
-		// Verify channel 2 merged correctly
-		require.JSONEq(t, `{"temperature": 0.9, "max_tokens": 2000}`, updated[1].Settings.OverrideParameters)
-		require.Equal(t, []objects.HeaderEntry{{Op: objects.OverrideOpSet, Key: "X-Custom-Header", Value: "custom-value"}}, updated[1].Settings.OverrideHeaders)
+		require.Len(t, updated[0].Settings.HeaderOverrideOperations, 2)
+		require.Contains(t, updated[0].Settings.HeaderOverrideOperations, objects.OverrideOperation{Op: objects.OverrideOpSet, Path: "Authorization", Value: "Bearer token"})
+		require.Contains(t, updated[0].Settings.HeaderOverrideOperations, objects.OverrideOperation{Op: objects.OverrideOpSet, Path: "X-Custom-Header", Value: "custom-value"})
+
+		// Verify legacy fields are cleared
+		require.Empty(t, updated[0].Settings.OverrideParameters)
+		require.Empty(t, updated[0].Settings.OverrideHeaders)
+
+		// Verify channel 2 has template operations
+		require.Len(t, updated[1].Settings.BodyOverrideOperations, 2)
+		require.Contains(t, updated[1].Settings.BodyOverrideOperations, objects.OverrideOperation{Op: objects.OverrideOpSet, Path: "temperature", Value: "0.9"})
+		require.Contains(t, updated[1].Settings.BodyOverrideOperations, objects.OverrideOperation{Op: objects.OverrideOpSet, Path: "max_tokens", Value: "2000"})
+
+		require.Len(t, updated[1].Settings.HeaderOverrideOperations, 1)
+		require.Contains(t, updated[1].Settings.HeaderOverrideOperations, objects.OverrideOperation{Op: objects.OverrideOpSet, Path: "X-Custom-Header", Value: "custom-value"})
 	})
 
-	t.Run("reject mismatched channel type", func(t *testing.T) {
-		ch := client.Channel.Create().
-			SetName("Anthropic Channel").
-			SetType(channel.TypeAnthropic).
-			SetBaseURL("https://api.anthropic.com").
-			SetCredentials(objects.ChannelCredentials{APIKey: "key"}).
-			SetSupportedModels([]string{"claude-3-opus-20240229"}).
-			SetDefaultTestModel("claude-3-opus-20240229").
+	t.Run("apply template to channels with legacy fields", func(t *testing.T) {
+		// Create template with new operations
+		templateNew := client.ChannelOverrideTemplate.Create().
+			SetUserID(user.ID).
+			SetName("Test Template Legacy").
+			SetBodyOverrideOperations([]objects.OverrideOperation{
+				{Op: objects.OverrideOpSet, Path: "presence_penalty", Value: "0.5"},
+			}).
+			SetHeaderOverrideOperations([]objects.OverrideOperation{
+				{Op: objects.OverrideOpSet, Path: "X-New-Header", Value: "new-value"},
+			}).
 			SaveX(ctx)
 
-		_, err := service.ApplyTemplate(ctx, template.ID, []int{ch.ID})
+		// Create channel with legacy fields
+		ch := client.Channel.Create().
+			SetName("Legacy Channel").
+			SetType(channel.TypeOpenai).
+			SetBaseURL("https://api.openai.com/v1").
+			SetCredentials(objects.ChannelCredentials{APIKey: "key"}).
+			SetSupportedModels([]string{"gpt-4"}).
+			SetDefaultTestModel("gpt-4").
+			SetSettings(&objects.ChannelSettings{
+				OverrideParameters: `{"frequency_penalty": 0.3}`,
+				OverrideHeaders:    []objects.HeaderEntry{{Key: "X-Legacy", Value: "legacy-value"}},
+			}).
+			SaveX(ctx)
 
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "does not match template type")
+		updated, err := service.ApplyTemplate(ctx, templateNew.ID, []int{ch.ID})
+
+		require.NoError(t, err)
+		require.Len(t, updated, 1)
+
+		// Verify legacy fields are converted and merged, then cleared
+		require.Len(t, updated[0].Settings.BodyOverrideOperations, 2)
+		require.Contains(t, updated[0].Settings.BodyOverrideOperations, objects.OverrideOperation{Op: objects.OverrideOpSet, Path: "frequency_penalty", Value: "0.3"})
+		require.Contains(t, updated[0].Settings.BodyOverrideOperations, objects.OverrideOperation{Op: objects.OverrideOpSet, Path: "presence_penalty", Value: "0.5"})
+		require.Empty(t, updated[0].Settings.OverrideParameters)
+
+		require.Len(t, updated[0].Settings.HeaderOverrideOperations, 2)
+		require.Contains(t, updated[0].Settings.HeaderOverrideOperations, objects.OverrideOperation{Op: objects.OverrideOpSet, Path: "X-Legacy", Value: "legacy-value"})
+		require.Contains(t, updated[0].Settings.HeaderOverrideOperations, objects.OverrideOperation{Op: objects.OverrideOpSet, Path: "X-New-Header", Value: "new-value"})
+		require.Empty(t, updated[0].Settings.OverrideHeaders)
 	})
 
 	t.Run("reject non-existent channel", func(t *testing.T) {
@@ -313,8 +357,8 @@ func TestChannelOverrideTemplateService_ApplyTemplate(t *testing.T) {
 		reloaded := client.Channel.GetX(ctx, ch.ID)
 		// Channel will have empty settings, not nil
 		if reloaded.Settings != nil {
-			require.Empty(t, reloaded.Settings.OverrideParameters)
-			require.Empty(t, reloaded.Settings.OverrideHeaders)
+			require.Empty(t, reloaded.Settings.BodyOverrideOperations)
+			require.Empty(t, reloaded.Settings.HeaderOverrideOperations)
 		}
 	})
 }
@@ -338,7 +382,6 @@ func TestChannelOverrideTemplateService_DeleteTemplate(t *testing.T) {
 	template := client.ChannelOverrideTemplate.Create().
 		SetUserID(user.ID).
 		SetName("Template to Delete").
-		SetChannelType(channel.TypeOpenai.String()).
 		SaveX(ctx)
 
 	err := service.DeleteTemplate(ctx, template.ID)
@@ -369,19 +412,16 @@ func TestChannelOverrideTemplateService_QueryTemplates(t *testing.T) {
 	client.ChannelOverrideTemplate.Create().
 		SetUserID(user.ID).
 		SetName("OpenAI Template 1").
-		SetChannelType(channel.TypeOpenai.String()).
 		SaveX(ctx)
 
 	client.ChannelOverrideTemplate.Create().
 		SetUserID(user.ID).
 		SetName("OpenAI Template 2").
-		SetChannelType(channel.TypeOpenai.String()).
 		SaveX(ctx)
 
 	client.ChannelOverrideTemplate.Create().
 		SetUserID(user.ID).
 		SetName("Anthropic Template").
-		SetChannelType(channel.TypeAnthropic.String()).
 		SaveX(ctx)
 
 	t.Run("query all templates", func(t *testing.T) {
@@ -393,19 +433,6 @@ func TestChannelOverrideTemplateService_QueryTemplates(t *testing.T) {
 		conn, err := service.QueryTemplates(ctx, input)
 		require.NoError(t, err)
 		require.Len(t, conn.Edges, 3)
-	})
-
-	t.Run("filter by channel type", func(t *testing.T) {
-		first := 10
-		channelType := channel.TypeOpenai
-		input := QueryChannelOverrideTemplatesInput{
-			First:       &first,
-			ChannelType: &channelType,
-		}
-
-		conn, err := service.QueryTemplates(ctx, input)
-		require.NoError(t, err)
-		require.Len(t, conn.Edges, 2)
 	})
 
 	t.Run("search by name", func(t *testing.T) {

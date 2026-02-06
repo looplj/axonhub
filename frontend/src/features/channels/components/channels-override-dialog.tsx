@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { z } from 'zod';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch, Control } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, Save, Download, ChevronDown, ChevronUp } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -15,70 +15,18 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { useDebounce } from '@/hooks/use-debounce';
 import { useUpdateChannel } from '../data/channels';
 import { Channel, OverrideOperation, overrideOperationSchema } from '../data/schema';
 import { useChannelOverrideTemplates, useCreateChannelOverrideTemplate } from '../data/templates';
-import { mergeChannelSettingsForUpdate, mergeOverrideHeaders, mergeOverrideParameters, normalizeOverrideParameters } from '../utils/merge';
+import { mergeChannelSettingsForUpdate, mergeOverrideHeaders, mergeOverrideOperations } from '../utils/merge';
 
 type OpType = OverrideOperation['op'];
-
-function parseOperations(raw: string): OverrideOperation[] {
-  try {
-    const parsed = JSON.parse(raw || '[]');
-    if (Array.isArray(parsed)) {
-      return parsed;
-    }
-    if (typeof parsed === 'object' && parsed !== null) {
-      return Object.entries(parsed).map(([key, value]) =>
-        value === '__AXONHUB_CLEAR__' ? { op: 'delete' as const, path: key } : { op: 'set' as const, path: key, value }
-      );
-    }
-    return [];
-  } catch {
-    return [];
-  }
-}
-
-function serializeOperations(ops: OverrideOperation[]): string {
-  const cleaned = ops
-    .filter((op) => {
-      if (op.op === 'set' || op.op === 'delete') return op.path?.trim();
-      if (op.op === 'rename' || op.op === 'copy') return op.from?.trim() && op.to?.trim();
-      return false;
-    })
-    .map((op) => {
-      const result: Record<string, any> = { op: op.op };
-      if (op.op === 'set') {
-        result.path = op.path;
-        result.value = op.value;
-      } else if (op.op === 'delete') {
-        result.path = op.path;
-      } else if (op.op === 'rename' || op.op === 'copy') {
-        result.from = op.from;
-        result.to = op.to;
-      }
-      if (op.condition?.trim()) {
-        result.condition = op.condition;
-      }
-      return result;
-    });
-  return JSON.stringify(cleaned);
-}
 
 function parseValueForDisplay(value: any): string {
   if (value === undefined || value === null) return '';
   if (typeof value === 'string') return value;
   return JSON.stringify(value);
-}
-
-function parseValueForStorage(value: string): any {
-  const trimmed = value.trim();
-  if (!trimmed) return undefined;
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    return trimmed;
-  }
 }
 
 interface Props {
@@ -186,14 +134,18 @@ const OP_LABELS: Record<OpType, string> = {
 
 interface OperationRowProps {
   index: number;
-  field: OverrideOperation;
+  control: Control<OverrideFormValues>;
+  fieldName: 'bodyOverrideOperations' | 'headerOverrideOperations';
   onUpdate: (index: number, data: Partial<OverrideOperation>) => void;
   onRemove: (index: number) => void;
 }
 
-function OperationRow({ index, field, onUpdate, onRemove }: OperationRowProps) {
+function OperationRow({ index, control, fieldName, onUpdate, onRemove }: OperationRowProps) {
   const { t } = useTranslation();
-  const [showCondition, setShowCondition] = useState(!!field.condition);
+  const field = useWatch({ control, name: `${fieldName}.${index}` }) as OverrideOperation;
+  const [showCondition, setShowCondition] = useState(!!field?.condition);
+
+  if (!field) return null;
 
   const needsPathOnly = field.op === 'set' || field.op === 'delete';
   const needsFromTo = field.op === 'rename' || field.op === 'copy';
@@ -281,7 +233,7 @@ function OperationRow({ index, field, onUpdate, onRemove }: OperationRowProps) {
             className='mt-1 font-mono'
             placeholder={t('channels.dialogs.settings.overrides.body.valuePlaceholder')}
             value={parseValueForDisplay(field.value)}
-            onChange={(e) => onUpdate(index, { value: parseValueForStorage(e.target.value) })}
+            onChange={(e) => onUpdate(index, { value: e.target.value })}
           />
         </div>
       )}
@@ -313,14 +265,17 @@ function OperationRow({ index, field, onUpdate, onRemove }: OperationRowProps) {
 
 interface HeaderOperationRowProps {
   index: number;
-  field: OverrideOperation;
+  control: Control<OverrideFormValues>;
   onUpdate: (index: number, data: Partial<OverrideOperation>) => void;
   onRemove: (index: number) => void;
 }
 
-function HeaderOperationRow({ index, field, onUpdate, onRemove }: HeaderOperationRowProps) {
+function HeaderOperationRow({ index, control, onUpdate, onRemove }: HeaderOperationRowProps) {
   const { t } = useTranslation();
-  const [showCondition, setShowCondition] = useState(!!field.condition);
+  const field = useWatch({ control, name: `headerOverrideOperations.${index}` }) as OverrideOperation;
+  const [showCondition, setShowCondition] = useState(!!field?.condition);
+
+  if (!field) return null;
 
   const opType = field.op;
   const needsPathOnly = opType === 'set' || opType === 'delete';
@@ -456,12 +411,12 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [templateSearchOpen, setTemplateSearchOpen] = useState(false);
   const [templateSearchValue, setTemplateSearchValue] = useState('');
+  const debouncedTemplateSearchValue = useDebounce(templateSearchValue, 300);
   const [isApplyingTemplate, setIsApplyingTemplate] = useState(false);
 
   const { data: templatesData } = useChannelOverrideTemplates(
     {
-      channelType: currentRow.type,
-      search: templateSearchValue,
+      search: debouncedTemplateSearchValue,
       first: 50,
     },
     {
@@ -483,7 +438,6 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
     fields: headerFields,
     append: appendHeader,
     remove: removeHeader,
-    update: updateHeader,
     replace: replaceHeaders,
   } = useFieldArray({
     control: form.control,
@@ -494,7 +448,6 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
     fields: bodyFields,
     append: appendBody,
     remove: removeBody,
-    update: updateBody,
     replace: replaceBodies,
   } = useFieldArray({
     control: form.control,
@@ -523,10 +476,11 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
 
   const updateHeaderOp = useCallback(
     (index: number, data: Partial<OverrideOperation>) => {
-      const currentField = headerFields[index];
-      updateHeader(index, { ...currentField, ...data });
+      Object.entries(data).forEach(([key, value]) => {
+        form.setValue(`headerOverrideOperations.${index}.${key}` as any, value);
+      });
     },
-    [headerFields, updateHeader]
+    [form]
   );
 
   const addBodyOperation = useCallback(() => {
@@ -542,10 +496,11 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
 
   const updateBodyOperation = useCallback(
     (index: number, data: Partial<OverrideOperation>) => {
-      const currentField = bodyFields[index];
-      updateBody(index, { ...currentField, ...data });
+      Object.entries(data).forEach(([key, value]) => {
+        form.setValue(`bodyOverrideOperations.${index}.${key}` as any, value);
+      });
     },
-    [bodyFields, updateBody]
+    [form]
   );
 
   const onSubmit = async (data: OverrideFormValues) => {
@@ -625,17 +580,17 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
 
       setIsApplyingTemplate(true);
       try {
-        const templateHeaders = template.overrideHeaders || [];
-        const templateParams = template.overrideParameters || '';
+        const templateHeaders = template.headerOverrideOperations || [];
+        const templateBodyOps = template.bodyOverrideOperations || [];
 
         const currentHeaders = form.getValues('headerOverrideOperations') || [];
         const currentBodyOps = form.getValues('bodyOverrideOperations') || [];
 
         const mergedHeaders = mergeOverrideHeaders(currentHeaders, templateHeaders);
-        const mergedParams = mergeOverrideParameters(serializeOperations(currentBodyOps), templateParams);
+        const mergedBodyOps = mergeOverrideOperations(currentBodyOps, templateBodyOps);
 
         replaceHeaders(mergedHeaders);
-        replaceBodies(parseOperations(mergedParams));
+        replaceBodies(mergedBodyOps);
 
         toast.success(t('channels.templates.messages.applied'));
       } catch (error) {
@@ -657,13 +612,17 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
         if (h.op === 'rename' || h.op === 'copy') return h.from?.trim() && h.to?.trim();
         return false;
       });
+      const validBodyOps = bodyOps.filter((b) => {
+        if (b.op === 'set' || b.op === 'delete') return b.path?.trim();
+        if (b.op === 'rename' || b.op === 'copy') return b.from?.trim() && b.to?.trim();
+        return false;
+      });
       try {
         await createTemplate.mutateAsync({
           name,
           description,
-          channelType: currentRow.type,
-          overrideParameters: normalizeOverrideParameters(serializeOperations(bodyOps)),
-          overrideHeaders: validHeaderOps,
+          headerOverrideOperations: validHeaderOps,
+          bodyOverrideOperations: validBodyOps,
         });
         setShowSaveTemplateDialog(false);
       } catch (error) {
@@ -769,7 +728,7 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
                       <HeaderOperationRow
                         key={field.id}
                         index={index}
-                        field={field}
+                        control={form.control}
                         onUpdate={updateHeaderOp}
                         onRemove={removeHeaderOp}
                       />
@@ -797,7 +756,8 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
                       <OperationRow
                         key={field.id}
                         index={index}
-                        field={field}
+                        control={form.control}
+                        fieldName='bodyOverrideOperations'
                         onUpdate={updateBodyOperation}
                         onRemove={removeBodyOperation}
                       />

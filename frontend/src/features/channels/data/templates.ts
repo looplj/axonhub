@@ -5,7 +5,7 @@ import { pageInfoSchema } from '@/gql/pagination';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useErrorHandler } from '@/hooks/use-error-handler';
-import { ChannelType, overrideOperationSchema } from './schema';
+import { overrideOperationSchema } from './schema';
 
 // Zod Schemas for Template Types
 export const channelOverrideTemplateSchema = z.object({
@@ -15,9 +15,8 @@ export const channelOverrideTemplateSchema = z.object({
   userID: z.string(),
   name: z.string(),
   description: z.string().optional().nullable(),
-  channelType: z.string() as z.ZodType<ChannelType>,
-  overrideParameters: z.string(),
-  overrideHeaders: z.array(overrideOperationSchema),
+  headerOverrideOperations: z.array(overrideOperationSchema),
+  bodyOverrideOperations: z.array(overrideOperationSchema),
 });
 export type ChannelOverrideTemplate = z.infer<typeof channelOverrideTemplateSchema>;
 
@@ -36,9 +35,8 @@ export type ChannelOverrideTemplateConnection = z.infer<typeof channelOverrideTe
 export const createChannelOverrideTemplateInputSchema = z.object({
   name: z.string().min(1, 'Template name is required'),
   description: z.string().optional(),
-  channelType: z.string() as z.ZodType<ChannelType>,
-  overrideParameters: z.string().optional(),
-  overrideHeaders: z.array(overrideOperationSchema).optional(),
+  headerOverrideOperations: z.array(overrideOperationSchema).optional(),
+  bodyOverrideOperations: z.array(overrideOperationSchema).optional(),
 });
 export type CreateChannelOverrideTemplateInput = z.infer<typeof createChannelOverrideTemplateInputSchema>;
 
@@ -46,9 +44,8 @@ export const updateChannelOverrideTemplateInputSchema = z.object({
   name: z.string().min(1, 'Template name is required').optional(),
   description: z.string().optional(),
   clearDescription: z.boolean().optional(),
-  channelType: z.string().optional() as z.ZodType<ChannelType | undefined>,
-  overrideParameters: z.string().optional(),
-  overrideHeaders: z.array(overrideOperationSchema).optional(),
+  headerOverrideOperations: z.array(overrideOperationSchema).optional(),
+  bodyOverrideOperations: z.array(overrideOperationSchema).optional(),
 });
 export type UpdateChannelOverrideTemplateInput = z.infer<typeof updateChannelOverrideTemplateInputSchema>;
 
@@ -75,9 +72,20 @@ const TEMPLATE_FRAGMENT = `
     userID
     name
     description
-    channelType
     overrideParameters
-    overrideHeaders {
+    overrideHeaders{
+      key
+      value
+    }
+    headerOverrideOperations {
+      op
+      path
+      from
+      to
+      value
+      condition
+    }
+    bodyOverrideOperations {
       op
       path
       from
@@ -163,7 +171,6 @@ const APPLY_CHANNEL_OVERRIDE_TEMPLATE = `
 
 export function useChannelOverrideTemplates(
   variables?: {
-    channelType?: ChannelType;
     search?: string;
     first?: number;
     after?: string;
@@ -177,13 +184,10 @@ export function useChannelOverrideTemplates(
 
   return useQuery({
     enabled: options?.enabled !== false,
-    queryKey: ['channelOverrideTemplates', variables?.channelType, variables?.search, variables?.after],
+    queryKey: ['channelOverrideTemplates', variables?.search, variables?.after],
     queryFn: async () => {
       try {
         const where: Record<string, unknown> = {};
-        if (variables?.channelType) {
-          where.channelType = variables.channelType;
-        }
         if (variables?.search) {
           where.nameContainsFold = variables.search;
         }

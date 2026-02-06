@@ -10,6 +10,8 @@ import (
 	"fmt"
 
 	"entgo.io/contrib/entgql"
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
@@ -114,6 +116,44 @@ func (r *channelOverrideTemplateResolver) UserID(ctx context.Context, obj *ent.C
 		Type: ent.TypeUser,
 		ID:   obj.UserID,
 	}, nil
+}
+
+// HeaderOverrideOperations is the resolver for the headerOverrideOperations field.
+// It returns the new header override operations, converting from legacy OverrideHeaders if needed.
+func (r *channelOverrideTemplateResolver) HeaderOverrideOperations(ctx context.Context, obj *ent.ChannelOverrideTemplate) ([]*objects.OverrideOperation, error) {
+	// If new field has data, use it directly
+	if len(obj.HeaderOverrideOperations) > 0 {
+		return lo.ToSlicePtr(obj.HeaderOverrideOperations), nil
+	}
+
+	// Convert from legacy OverrideHeaders field
+	if len(obj.OverrideHeaders) > 0 {
+		ops := objects.HeaderEntriesToOverrideOperations(obj.OverrideHeaders)
+		return lo.ToSlicePtr(ops), nil
+	}
+
+	return []*objects.OverrideOperation{}, nil
+}
+
+// BodyOverrideOperations is the resolver for the bodyOverrideOperations field.
+// It returns the new body override operations, converting from legacy OverrideParameters if needed.
+func (r *channelOverrideTemplateResolver) BodyOverrideOperations(ctx context.Context, obj *ent.ChannelOverrideTemplate) ([]*objects.OverrideOperation, error) {
+	// If new field has data, use it directly
+	if len(obj.BodyOverrideOperations) > 0 {
+		return lo.ToSlicePtr(obj.BodyOverrideOperations), nil
+	}
+
+	// Convert from legacy OverrideParameters field
+	if obj.OverrideParameters != "" && obj.OverrideParameters != "{}" {
+		ops, err := objects.ParseOverrideOperations(obj.OverrideParameters)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse override parameters: %w", err)
+		}
+
+		return lo.ToSlicePtr(ops), nil
+	}
+
+	return []*objects.OverrideOperation{}, nil
 }
 
 // ID is the resolver for the id field.
@@ -843,25 +883,27 @@ func (r *Resolver) UserProject() UserProjectResolver { return &userProjectResolv
 // UserRole returns UserRoleResolver implementation.
 func (r *Resolver) UserRole() UserRoleResolver { return &userRoleResolver{r} }
 
-type aPIKeyResolver struct{ *Resolver }
-type channelResolver struct{ *Resolver }
-type channelModelPriceResolver struct{ *Resolver }
-type channelModelPriceVersionResolver struct{ *Resolver }
-type channelOverrideTemplateResolver struct{ *Resolver }
-type channelProbeResolver struct{ *Resolver }
-type dataStorageResolver struct{ *Resolver }
-type modelResolver struct{ *Resolver }
-type projectResolver struct{ *Resolver }
-type promptResolver struct{ *Resolver }
-type providerQuotaStatusResolver struct{ *Resolver }
-type queryResolver struct{ *Resolver }
-type requestResolver struct{ *Resolver }
-type requestExecutionResolver struct{ *Resolver }
-type roleResolver struct{ *Resolver }
-type systemResolver struct{ *Resolver }
-type threadResolver struct{ *Resolver }
-type traceResolver struct{ *Resolver }
-type usageLogResolver struct{ *Resolver }
-type userResolver struct{ *Resolver }
-type userProjectResolver struct{ *Resolver }
-type userRoleResolver struct{ *Resolver }
+type (
+	aPIKeyResolver                   struct{ *Resolver }
+	channelResolver                  struct{ *Resolver }
+	channelModelPriceResolver        struct{ *Resolver }
+	channelModelPriceVersionResolver struct{ *Resolver }
+	channelOverrideTemplateResolver  struct{ *Resolver }
+	channelProbeResolver             struct{ *Resolver }
+	dataStorageResolver              struct{ *Resolver }
+	modelResolver                    struct{ *Resolver }
+	projectResolver                  struct{ *Resolver }
+	promptResolver                   struct{ *Resolver }
+	providerQuotaStatusResolver      struct{ *Resolver }
+	queryResolver                    struct{ *Resolver }
+	requestResolver                  struct{ *Resolver }
+	requestExecutionResolver         struct{ *Resolver }
+	roleResolver                     struct{ *Resolver }
+	systemResolver                   struct{ *Resolver }
+	threadResolver                   struct{ *Resolver }
+	traceResolver                    struct{ *Resolver }
+	usageLogResolver                 struct{ *Resolver }
+	userResolver                     struct{ *Resolver }
+	userProjectResolver              struct{ *Resolver }
+	userRoleResolver                 struct{ *Resolver }
+)

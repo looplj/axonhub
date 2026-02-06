@@ -144,15 +144,16 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 		Type: "ChannelOverrideTemplate",
 		Fields: map[string]*sqlgraph.FieldSpec{
-			channeloverridetemplate.FieldCreatedAt:          {Type: field.TypeTime, Column: channeloverridetemplate.FieldCreatedAt},
-			channeloverridetemplate.FieldUpdatedAt:          {Type: field.TypeTime, Column: channeloverridetemplate.FieldUpdatedAt},
-			channeloverridetemplate.FieldDeletedAt:          {Type: field.TypeInt, Column: channeloverridetemplate.FieldDeletedAt},
-			channeloverridetemplate.FieldUserID:             {Type: field.TypeInt, Column: channeloverridetemplate.FieldUserID},
-			channeloverridetemplate.FieldName:               {Type: field.TypeString, Column: channeloverridetemplate.FieldName},
-			channeloverridetemplate.FieldDescription:        {Type: field.TypeString, Column: channeloverridetemplate.FieldDescription},
-			channeloverridetemplate.FieldChannelType:        {Type: field.TypeString, Column: channeloverridetemplate.FieldChannelType},
-			channeloverridetemplate.FieldOverrideParameters: {Type: field.TypeString, Column: channeloverridetemplate.FieldOverrideParameters},
-			channeloverridetemplate.FieldOverrideHeaders:    {Type: field.TypeJSON, Column: channeloverridetemplate.FieldOverrideHeaders},
+			channeloverridetemplate.FieldCreatedAt:                {Type: field.TypeTime, Column: channeloverridetemplate.FieldCreatedAt},
+			channeloverridetemplate.FieldUpdatedAt:                {Type: field.TypeTime, Column: channeloverridetemplate.FieldUpdatedAt},
+			channeloverridetemplate.FieldDeletedAt:                {Type: field.TypeInt, Column: channeloverridetemplate.FieldDeletedAt},
+			channeloverridetemplate.FieldUserID:                   {Type: field.TypeInt, Column: channeloverridetemplate.FieldUserID},
+			channeloverridetemplate.FieldName:                     {Type: field.TypeString, Column: channeloverridetemplate.FieldName},
+			channeloverridetemplate.FieldDescription:              {Type: field.TypeString, Column: channeloverridetemplate.FieldDescription},
+			channeloverridetemplate.FieldOverrideParameters:       {Type: field.TypeString, Column: channeloverridetemplate.FieldOverrideParameters},
+			channeloverridetemplate.FieldOverrideHeaders:          {Type: field.TypeJSON, Column: channeloverridetemplate.FieldOverrideHeaders},
+			channeloverridetemplate.FieldHeaderOverrideOperations: {Type: field.TypeJSON, Column: channeloverridetemplate.FieldHeaderOverrideOperations},
+			channeloverridetemplate.FieldBodyOverrideOperations:   {Type: field.TypeJSON, Column: channeloverridetemplate.FieldBodyOverrideOperations},
 		},
 	}
 	graph.Nodes[5] = &sqlgraph.Node{
@@ -1855,11 +1856,6 @@ func (f *ChannelOverrideTemplateFilter) WhereDescription(p entql.StringP) {
 	f.Where(p.Field(channeloverridetemplate.FieldDescription))
 }
 
-// WhereChannelType applies the entql string predicate on the channel_type field.
-func (f *ChannelOverrideTemplateFilter) WhereChannelType(p entql.StringP) {
-	f.Where(p.Field(channeloverridetemplate.FieldChannelType))
-}
-
 // WhereOverrideParameters applies the entql string predicate on the override_parameters field.
 func (f *ChannelOverrideTemplateFilter) WhereOverrideParameters(p entql.StringP) {
 	f.Where(p.Field(channeloverridetemplate.FieldOverrideParameters))
@@ -1868,6 +1864,16 @@ func (f *ChannelOverrideTemplateFilter) WhereOverrideParameters(p entql.StringP)
 // WhereOverrideHeaders applies the entql json.RawMessage predicate on the override_headers field.
 func (f *ChannelOverrideTemplateFilter) WhereOverrideHeaders(p entql.BytesP) {
 	f.Where(p.Field(channeloverridetemplate.FieldOverrideHeaders))
+}
+
+// WhereHeaderOverrideOperations applies the entql json.RawMessage predicate on the header_override_operations field.
+func (f *ChannelOverrideTemplateFilter) WhereHeaderOverrideOperations(p entql.BytesP) {
+	f.Where(p.Field(channeloverridetemplate.FieldHeaderOverrideOperations))
+}
+
+// WhereBodyOverrideOperations applies the entql json.RawMessage predicate on the body_override_operations field.
+func (f *ChannelOverrideTemplateFilter) WhereBodyOverrideOperations(p entql.BytesP) {
+	f.Where(p.Field(channeloverridetemplate.FieldBodyOverrideOperations))
 }
 
 // WhereHasUser applies a predicate to check if query has an edge user.

@@ -85,11 +85,6 @@ func Description(v string) predicate.ChannelOverrideTemplate {
 	return predicate.ChannelOverrideTemplate(sql.FieldEQ(FieldDescription, v))
 }
 
-// ChannelType applies equality check predicate on the "channel_type" field. It's identical to ChannelTypeEQ.
-func ChannelType(v string) predicate.ChannelOverrideTemplate {
-	return predicate.ChannelOverrideTemplate(sql.FieldEQ(FieldChannelType, v))
-}
-
 // OverrideParameters applies equality check predicate on the "override_parameters" field. It's identical to OverrideParametersEQ.
 func OverrideParameters(v string) predicate.ChannelOverrideTemplate {
 	return predicate.ChannelOverrideTemplate(sql.FieldEQ(FieldOverrideParameters, v))
@@ -375,71 +370,6 @@ func DescriptionContainsFold(v string) predicate.ChannelOverrideTemplate {
 	return predicate.ChannelOverrideTemplate(sql.FieldContainsFold(FieldDescription, v))
 }
 
-// ChannelTypeEQ applies the EQ predicate on the "channel_type" field.
-func ChannelTypeEQ(v string) predicate.ChannelOverrideTemplate {
-	return predicate.ChannelOverrideTemplate(sql.FieldEQ(FieldChannelType, v))
-}
-
-// ChannelTypeNEQ applies the NEQ predicate on the "channel_type" field.
-func ChannelTypeNEQ(v string) predicate.ChannelOverrideTemplate {
-	return predicate.ChannelOverrideTemplate(sql.FieldNEQ(FieldChannelType, v))
-}
-
-// ChannelTypeIn applies the In predicate on the "channel_type" field.
-func ChannelTypeIn(vs ...string) predicate.ChannelOverrideTemplate {
-	return predicate.ChannelOverrideTemplate(sql.FieldIn(FieldChannelType, vs...))
-}
-
-// ChannelTypeNotIn applies the NotIn predicate on the "channel_type" field.
-func ChannelTypeNotIn(vs ...string) predicate.ChannelOverrideTemplate {
-	return predicate.ChannelOverrideTemplate(sql.FieldNotIn(FieldChannelType, vs...))
-}
-
-// ChannelTypeGT applies the GT predicate on the "channel_type" field.
-func ChannelTypeGT(v string) predicate.ChannelOverrideTemplate {
-	return predicate.ChannelOverrideTemplate(sql.FieldGT(FieldChannelType, v))
-}
-
-// ChannelTypeGTE applies the GTE predicate on the "channel_type" field.
-func ChannelTypeGTE(v string) predicate.ChannelOverrideTemplate {
-	return predicate.ChannelOverrideTemplate(sql.FieldGTE(FieldChannelType, v))
-}
-
-// ChannelTypeLT applies the LT predicate on the "channel_type" field.
-func ChannelTypeLT(v string) predicate.ChannelOverrideTemplate {
-	return predicate.ChannelOverrideTemplate(sql.FieldLT(FieldChannelType, v))
-}
-
-// ChannelTypeLTE applies the LTE predicate on the "channel_type" field.
-func ChannelTypeLTE(v string) predicate.ChannelOverrideTemplate {
-	return predicate.ChannelOverrideTemplate(sql.FieldLTE(FieldChannelType, v))
-}
-
-// ChannelTypeContains applies the Contains predicate on the "channel_type" field.
-func ChannelTypeContains(v string) predicate.ChannelOverrideTemplate {
-	return predicate.ChannelOverrideTemplate(sql.FieldContains(FieldChannelType, v))
-}
-
-// ChannelTypeHasPrefix applies the HasPrefix predicate on the "channel_type" field.
-func ChannelTypeHasPrefix(v string) predicate.ChannelOverrideTemplate {
-	return predicate.ChannelOverrideTemplate(sql.FieldHasPrefix(FieldChannelType, v))
-}
-
-// ChannelTypeHasSuffix applies the HasSuffix predicate on the "channel_type" field.
-func ChannelTypeHasSuffix(v string) predicate.ChannelOverrideTemplate {
-	return predicate.ChannelOverrideTemplate(sql.FieldHasSuffix(FieldChannelType, v))
-}
-
-// ChannelTypeEqualFold applies the EqualFold predicate on the "channel_type" field.
-func ChannelTypeEqualFold(v string) predicate.ChannelOverrideTemplate {
-	return predicate.ChannelOverrideTemplate(sql.FieldEqualFold(FieldChannelType, v))
-}
-
-// ChannelTypeContainsFold applies the ContainsFold predicate on the "channel_type" field.
-func ChannelTypeContainsFold(v string) predicate.ChannelOverrideTemplate {
-	return predicate.ChannelOverrideTemplate(sql.FieldContainsFold(FieldChannelType, v))
-}
-
 // OverrideParametersEQ applies the EQ predicate on the "override_parameters" field.
 func OverrideParametersEQ(v string) predicate.ChannelOverrideTemplate {
 	return predicate.ChannelOverrideTemplate(sql.FieldEQ(FieldOverrideParameters, v))
@@ -503,6 +433,26 @@ func OverrideParametersEqualFold(v string) predicate.ChannelOverrideTemplate {
 // OverrideParametersContainsFold applies the ContainsFold predicate on the "override_parameters" field.
 func OverrideParametersContainsFold(v string) predicate.ChannelOverrideTemplate {
 	return predicate.ChannelOverrideTemplate(sql.FieldContainsFold(FieldOverrideParameters, v))
+}
+
+// HeaderOverrideOperationsIsNil applies the IsNil predicate on the "header_override_operations" field.
+func HeaderOverrideOperationsIsNil() predicate.ChannelOverrideTemplate {
+	return predicate.ChannelOverrideTemplate(sql.FieldIsNull(FieldHeaderOverrideOperations))
+}
+
+// HeaderOverrideOperationsNotNil applies the NotNil predicate on the "header_override_operations" field.
+func HeaderOverrideOperationsNotNil() predicate.ChannelOverrideTemplate {
+	return predicate.ChannelOverrideTemplate(sql.FieldNotNull(FieldHeaderOverrideOperations))
+}
+
+// BodyOverrideOperationsIsNil applies the IsNil predicate on the "body_override_operations" field.
+func BodyOverrideOperationsIsNil() predicate.ChannelOverrideTemplate {
+	return predicate.ChannelOverrideTemplate(sql.FieldIsNull(FieldBodyOverrideOperations))
+}
+
+// BodyOverrideOperationsNotNil applies the NotNil predicate on the "body_override_operations" field.
+func BodyOverrideOperationsNotNil() predicate.ChannelOverrideTemplate {
+	return predicate.ChannelOverrideTemplate(sql.FieldNotNull(FieldBodyOverrideOperations))
 }
 
 // HasUser applies the HasEdge predicate on the "user" edge.

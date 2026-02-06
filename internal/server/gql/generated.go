@@ -347,16 +347,17 @@ type ComplexityRoot struct {
 	}
 
 	ChannelOverrideTemplate struct {
-		ChannelType        func(childComplexity int) int
-		CreatedAt          func(childComplexity int) int
-		Description        func(childComplexity int) int
-		ID                 func(childComplexity int) int
-		Name               func(childComplexity int) int
-		OverrideHeaders    func(childComplexity int) int
-		OverrideParameters func(childComplexity int) int
-		UpdatedAt          func(childComplexity int) int
-		User               func(childComplexity int) int
-		UserID             func(childComplexity int) int
+		BodyOverrideOperations   func(childComplexity int) int
+		CreatedAt                func(childComplexity int) int
+		Description              func(childComplexity int) int
+		HeaderOverrideOperations func(childComplexity int) int
+		ID                       func(childComplexity int) int
+		Name                     func(childComplexity int) int
+		OverrideHeaders          func(childComplexity int) int
+		OverrideParameters       func(childComplexity int) int
+		UpdatedAt                func(childComplexity int) int
+		User                     func(childComplexity int) int
+		UserID                   func(childComplexity int) int
 	}
 
 	ChannelOverrideTemplateConnection struct {
@@ -1525,6 +1526,9 @@ type ChannelOverrideTemplateResolver interface {
 	ID(ctx context.Context, obj *ent.ChannelOverrideTemplate) (*objects.GUID, error)
 
 	UserID(ctx context.Context, obj *ent.ChannelOverrideTemplate) (*objects.GUID, error)
+
+	HeaderOverrideOperations(ctx context.Context, obj *ent.ChannelOverrideTemplate) ([]*objects.OverrideOperation, error)
+	BodyOverrideOperations(ctx context.Context, obj *ent.ChannelOverrideTemplate) ([]*objects.OverrideOperation, error)
 }
 type ChannelProbeResolver interface {
 	ID(ctx context.Context, obj *ent.ChannelProbe) (*objects.GUID, error)
@@ -2757,12 +2761,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ChannelModelPriceVersionEdge.Node(childComplexity), true
 
-	case "ChannelOverrideTemplate.channelType":
-		if e.complexity.ChannelOverrideTemplate.ChannelType == nil {
+	case "ChannelOverrideTemplate.bodyOverrideOperations":
+		if e.complexity.ChannelOverrideTemplate.BodyOverrideOperations == nil {
 			break
 		}
 
-		return e.complexity.ChannelOverrideTemplate.ChannelType(childComplexity), true
+		return e.complexity.ChannelOverrideTemplate.BodyOverrideOperations(childComplexity), true
 	case "ChannelOverrideTemplate.createdAt":
 		if e.complexity.ChannelOverrideTemplate.CreatedAt == nil {
 			break
@@ -2775,6 +2779,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelOverrideTemplate.Description(childComplexity), true
+	case "ChannelOverrideTemplate.headerOverrideOperations":
+		if e.complexity.ChannelOverrideTemplate.HeaderOverrideOperations == nil {
+			break
+		}
+
+		return e.complexity.ChannelOverrideTemplate.HeaderOverrideOperations(childComplexity), true
 	case "ChannelOverrideTemplate.id":
 		if e.complexity.ChannelOverrideTemplate.ID == nil {
 			break
@@ -15990,35 +16000,6 @@ func (ec *executionContext) fieldContext_ChannelOverrideTemplate_description(_ c
 	return fc, nil
 }
 
-func (ec *executionContext) _ChannelOverrideTemplate_channelType(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelOverrideTemplate) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ChannelOverrideTemplate_channelType,
-		func(ctx context.Context) (any, error) {
-			return obj.ChannelType, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_ChannelOverrideTemplate_channelType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ChannelOverrideTemplate",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _ChannelOverrideTemplate_overrideParameters(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelOverrideTemplate) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -16058,7 +16039,7 @@ func (ec *executionContext) _ChannelOverrideTemplate_overrideHeaders(ctx context
 			return obj.OverrideHeaders, nil
 		},
 		nil,
-		ec.marshalNOverrideOperation2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperationᚄ,
+		ec.marshalNHeaderEntry2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐHeaderEntryᚄ,
 		true,
 		true,
 	)
@@ -16070,6 +16051,84 @@ func (ec *executionContext) fieldContext_ChannelOverrideTemplate_overrideHeaders
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "key":
+				return ec.fieldContext_HeaderEntry_key(ctx, field)
+			case "value":
+				return ec.fieldContext_HeaderEntry_value(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HeaderEntry", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelOverrideTemplate_headerOverrideOperations(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelOverrideTemplate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelOverrideTemplate_headerOverrideOperations,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.ChannelOverrideTemplate().HeaderOverrideOperations(ctx, obj)
+		},
+		nil,
+		ec.marshalOOverrideOperation2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperationᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelOverrideTemplate_headerOverrideOperations(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelOverrideTemplate",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "op":
+				return ec.fieldContext_OverrideOperation_op(ctx, field)
+			case "path":
+				return ec.fieldContext_OverrideOperation_path(ctx, field)
+			case "from":
+				return ec.fieldContext_OverrideOperation_from(ctx, field)
+			case "to":
+				return ec.fieldContext_OverrideOperation_to(ctx, field)
+			case "value":
+				return ec.fieldContext_OverrideOperation_value(ctx, field)
+			case "condition":
+				return ec.fieldContext_OverrideOperation_condition(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type OverrideOperation", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelOverrideTemplate_bodyOverrideOperations(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelOverrideTemplate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelOverrideTemplate_bodyOverrideOperations,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.ChannelOverrideTemplate().BodyOverrideOperations(ctx, obj)
+		},
+		nil,
+		ec.marshalOOverrideOperation2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperationᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelOverrideTemplate_bodyOverrideOperations(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelOverrideTemplate",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "op":
@@ -16295,12 +16354,14 @@ func (ec *executionContext) fieldContext_ChannelOverrideTemplateEdge_node(_ cont
 				return ec.fieldContext_ChannelOverrideTemplate_name(ctx, field)
 			case "description":
 				return ec.fieldContext_ChannelOverrideTemplate_description(ctx, field)
-			case "channelType":
-				return ec.fieldContext_ChannelOverrideTemplate_channelType(ctx, field)
 			case "overrideParameters":
 				return ec.fieldContext_ChannelOverrideTemplate_overrideParameters(ctx, field)
 			case "overrideHeaders":
 				return ec.fieldContext_ChannelOverrideTemplate_overrideHeaders(ctx, field)
+			case "headerOverrideOperations":
+				return ec.fieldContext_ChannelOverrideTemplate_headerOverrideOperations(ctx, field)
+			case "bodyOverrideOperations":
+				return ec.fieldContext_ChannelOverrideTemplate_bodyOverrideOperations(ctx, field)
 			case "user":
 				return ec.fieldContext_ChannelOverrideTemplate_user(ctx, field)
 			}
@@ -23940,12 +24001,14 @@ func (ec *executionContext) fieldContext_Mutation_createChannelOverrideTemplate(
 				return ec.fieldContext_ChannelOverrideTemplate_name(ctx, field)
 			case "description":
 				return ec.fieldContext_ChannelOverrideTemplate_description(ctx, field)
-			case "channelType":
-				return ec.fieldContext_ChannelOverrideTemplate_channelType(ctx, field)
 			case "overrideParameters":
 				return ec.fieldContext_ChannelOverrideTemplate_overrideParameters(ctx, field)
 			case "overrideHeaders":
 				return ec.fieldContext_ChannelOverrideTemplate_overrideHeaders(ctx, field)
+			case "headerOverrideOperations":
+				return ec.fieldContext_ChannelOverrideTemplate_headerOverrideOperations(ctx, field)
+			case "bodyOverrideOperations":
+				return ec.fieldContext_ChannelOverrideTemplate_bodyOverrideOperations(ctx, field)
 			case "user":
 				return ec.fieldContext_ChannelOverrideTemplate_user(ctx, field)
 			}
@@ -24003,12 +24066,14 @@ func (ec *executionContext) fieldContext_Mutation_updateChannelOverrideTemplate(
 				return ec.fieldContext_ChannelOverrideTemplate_name(ctx, field)
 			case "description":
 				return ec.fieldContext_ChannelOverrideTemplate_description(ctx, field)
-			case "channelType":
-				return ec.fieldContext_ChannelOverrideTemplate_channelType(ctx, field)
 			case "overrideParameters":
 				return ec.fieldContext_ChannelOverrideTemplate_overrideParameters(ctx, field)
 			case "overrideHeaders":
 				return ec.fieldContext_ChannelOverrideTemplate_overrideHeaders(ctx, field)
+			case "headerOverrideOperations":
+				return ec.fieldContext_ChannelOverrideTemplate_headerOverrideOperations(ctx, field)
+			case "bodyOverrideOperations":
+				return ec.fieldContext_ChannelOverrideTemplate_bodyOverrideOperations(ctx, field)
 			case "user":
 				return ec.fieldContext_ChannelOverrideTemplate_user(ctx, field)
 			}
@@ -46566,7 +46631,7 @@ func (ec *executionContext) unmarshalInputChannelOverrideTemplateWhereInput(ctx 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "description", "descriptionNEQ", "descriptionIn", "descriptionNotIn", "descriptionGT", "descriptionGTE", "descriptionLT", "descriptionLTE", "descriptionContains", "descriptionHasPrefix", "descriptionHasSuffix", "descriptionIsNil", "descriptionNotNil", "descriptionEqualFold", "descriptionContainsFold", "channelType", "channelTypeNEQ", "channelTypeIn", "channelTypeNotIn", "channelTypeGT", "channelTypeGTE", "channelTypeLT", "channelTypeLTE", "channelTypeContains", "channelTypeHasPrefix", "channelTypeHasSuffix", "channelTypeEqualFold", "channelTypeContainsFold", "overrideParameters", "overrideParametersNEQ", "overrideParametersIn", "overrideParametersNotIn", "overrideParametersGT", "overrideParametersGTE", "overrideParametersLT", "overrideParametersLTE", "overrideParametersContains", "overrideParametersHasPrefix", "overrideParametersHasSuffix", "overrideParametersEqualFold", "overrideParametersContainsFold", "hasUser", "hasUserWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "description", "descriptionNEQ", "descriptionIn", "descriptionNotIn", "descriptionGT", "descriptionGTE", "descriptionLT", "descriptionLTE", "descriptionContains", "descriptionHasPrefix", "descriptionHasSuffix", "descriptionIsNil", "descriptionNotNil", "descriptionEqualFold", "descriptionContainsFold", "overrideParameters", "overrideParametersNEQ", "overrideParametersIn", "overrideParametersNotIn", "overrideParametersGT", "overrideParametersGTE", "overrideParametersLT", "overrideParametersLTE", "overrideParametersContains", "overrideParametersHasPrefix", "overrideParametersHasSuffix", "overrideParametersEqualFold", "overrideParametersContainsFold", "hasUser", "hasUserWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -47034,97 +47099,6 @@ func (ec *executionContext) unmarshalInputChannelOverrideTemplateWhereInput(ctx 
 				return it, err
 			}
 			it.DescriptionContainsFold = data
-		case "channelType":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelType"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ChannelType = data
-		case "channelTypeNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelTypeNEQ"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ChannelTypeNEQ = data
-		case "channelTypeIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelTypeIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ChannelTypeIn = data
-		case "channelTypeNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelTypeNotIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ChannelTypeNotIn = data
-		case "channelTypeGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelTypeGT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ChannelTypeGT = data
-		case "channelTypeGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelTypeGTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ChannelTypeGTE = data
-		case "channelTypeLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelTypeLT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ChannelTypeLT = data
-		case "channelTypeLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelTypeLTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ChannelTypeLTE = data
-		case "channelTypeContains":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelTypeContains"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ChannelTypeContains = data
-		case "channelTypeHasPrefix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelTypeHasPrefix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ChannelTypeHasPrefix = data
-		case "channelTypeHasSuffix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelTypeHasSuffix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ChannelTypeHasSuffix = data
-		case "channelTypeEqualFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelTypeEqualFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ChannelTypeEqualFold = data
-		case "channelTypeContainsFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelTypeContainsFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ChannelTypeContainsFold = data
 		case "overrideParameters":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("overrideParameters"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -49224,7 +49198,7 @@ func (ec *executionContext) unmarshalInputCreateChannelOverrideTemplateInput(ctx
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "description", "channelType", "overrideParameters", "overrideHeaders"}
+	fieldsInOrder := [...]string{"name", "description", "headerOverrideOperations", "bodyOverrideOperations"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -49245,27 +49219,20 @@ func (ec *executionContext) unmarshalInputCreateChannelOverrideTemplateInput(ctx
 				return it, err
 			}
 			it.Description = data
-		case "channelType":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelType"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ChannelType = data
-		case "overrideParameters":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("overrideParameters"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.OverrideParameters = data
-		case "overrideHeaders":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("overrideHeaders"))
+		case "headerOverrideOperations":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("headerOverrideOperations"))
 			data, err := ec.unmarshalOOverrideOperationInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperationᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.OverrideHeaders = data
+			it.HeaderOverrideOperations = data
+		case "bodyOverrideOperations":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bodyOverrideOperations"))
+			data, err := ec.unmarshalOOverrideOperationInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperationᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BodyOverrideOperations = data
 		}
 	}
 
@@ -59970,7 +59937,7 @@ func (ec *executionContext) unmarshalInputUpdateChannelOverrideTemplateInput(ctx
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "description", "clearDescription", "channelType", "overrideParameters", "overrideHeaders", "appendOverrideHeaders"}
+	fieldsInOrder := [...]string{"name", "description", "clearDescription", "headerOverrideOperations", "appendHeaderOverrideOperations", "clearHeaderOverrideOperations", "bodyOverrideOperations", "appendBodyOverrideOperations", "clearBodyOverrideOperations"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -59998,34 +59965,48 @@ func (ec *executionContext) unmarshalInputUpdateChannelOverrideTemplateInput(ctx
 				return it, err
 			}
 			it.ClearDescription = data
-		case "channelType":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelType"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ChannelType = data
-		case "overrideParameters":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("overrideParameters"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.OverrideParameters = data
-		case "overrideHeaders":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("overrideHeaders"))
+		case "headerOverrideOperations":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("headerOverrideOperations"))
 			data, err := ec.unmarshalOOverrideOperationInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperationᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.OverrideHeaders = data
-		case "appendOverrideHeaders":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("appendOverrideHeaders"))
+			it.HeaderOverrideOperations = data
+		case "appendHeaderOverrideOperations":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("appendHeaderOverrideOperations"))
 			data, err := ec.unmarshalOOverrideOperationInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperationᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.AppendOverrideHeaders = data
+			it.AppendHeaderOverrideOperations = data
+		case "clearHeaderOverrideOperations":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearHeaderOverrideOperations"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClearHeaderOverrideOperations = data
+		case "bodyOverrideOperations":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bodyOverrideOperations"))
+			data, err := ec.unmarshalOOverrideOperationInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperationᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BodyOverrideOperations = data
+		case "appendBodyOverrideOperations":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("appendBodyOverrideOperations"))
+			data, err := ec.unmarshalOOverrideOperationInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperationᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AppendBodyOverrideOperations = data
+		case "clearBodyOverrideOperations":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearBodyOverrideOperations"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClearBodyOverrideOperations = data
 		}
 	}
 
@@ -67386,11 +67367,6 @@ func (ec *executionContext) _ChannelOverrideTemplate(ctx context.Context, sel as
 			}
 		case "description":
 			out.Values[i] = ec._ChannelOverrideTemplate_description(ctx, field, obj)
-		case "channelType":
-			out.Values[i] = ec._ChannelOverrideTemplate_channelType(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "overrideParameters":
 			out.Values[i] = ec._ChannelOverrideTemplate_overrideParameters(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -67401,6 +67377,72 @@ func (ec *executionContext) _ChannelOverrideTemplate(ctx context.Context, sel as
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "headerOverrideOperations":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ChannelOverrideTemplate_headerOverrideOperations(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "bodyOverrideOperations":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ChannelOverrideTemplate_bodyOverrideOperations(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "user":
 			field := field
 
@@ -81212,6 +81254,54 @@ func (ec *executionContext) unmarshalNGetChannelProbeDataInput2githubᚗcomᚋlo
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNHeaderEntry2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐHeaderEntry(ctx context.Context, sel ast.SelectionSet, v objects.HeaderEntry) graphql.Marshaler {
+	return ec._HeaderEntry(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNHeaderEntry2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐHeaderEntryᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.HeaderEntry) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNHeaderEntry2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐHeaderEntry(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx context.Context, v any) (objects.GUID, error) {
 	var res objects.GUID
 	err := res.UnmarshalGQL(v)
@@ -81881,54 +81971,6 @@ func (ec *executionContext) unmarshalNOrderDirection2entgoᚗioᚋcontribᚋentg
 
 func (ec *executionContext) marshalNOrderDirection2entgoᚗioᚋcontribᚋentgqlᚐOrderDirection(ctx context.Context, sel ast.SelectionSet, v entgql.OrderDirection) graphql.Marshaler {
 	return v
-}
-
-func (ec *executionContext) marshalNOverrideOperation2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperation(ctx context.Context, sel ast.SelectionSet, v objects.OverrideOperation) graphql.Marshaler {
-	return ec._OverrideOperation(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNOverrideOperation2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperationᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.OverrideOperation) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNOverrideOperation2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperation(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
 }
 
 func (ec *executionContext) marshalNOverrideOperation2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperationᚄ(ctx context.Context, sel ast.SelectionSet, v []*objects.OverrideOperation) graphql.Marshaler {
@@ -86648,6 +86690,53 @@ func (ec *executionContext) marshalOOverrideApplyMode2ᚖgithubᚗcomᚋlooplj�
 		return graphql.Null
 	}
 	return v
+}
+
+func (ec *executionContext) marshalOOverrideOperation2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperationᚄ(ctx context.Context, sel ast.SelectionSet, v []*objects.OverrideOperation) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNOverrideOperation2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperation(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalOOverrideOperationInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperationᚄ(ctx context.Context, v any) ([]objects.OverrideOperation, error) {

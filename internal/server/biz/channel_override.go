@@ -114,14 +114,6 @@ func MergeOverrideHeaders(existing, template []objects.OverrideOperation) []obje
 	return result
 }
 
-func MergeOverrideHeaderEntries(existing, template []objects.HeaderEntry) []objects.HeaderEntry {
-	existingOps := objects.HeaderEntriesToOverrideOperations(existing)
-	templateOps := objects.HeaderEntriesToOverrideOperations(template)
-	mergedOps := MergeOverrideHeaders(existingOps, templateOps)
-
-	return objects.OverrideOperationsToHeaderEntries(mergedOps)
-}
-
 // MergeOverrideParameters deep-merges two JSON object strings.
 // - Both inputs must be JSON objects; otherwise, an error is returned.
 // - Nested objects are merged recursively; scalars/arrays are overwritten by the template.

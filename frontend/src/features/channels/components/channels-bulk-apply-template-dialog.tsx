@@ -1,13 +1,12 @@
-import { useState, useMemo } from 'react';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Channel, ChannelType } from '../data/schema';
+import { Channel } from '../data/schema';
 import { useChannelOverrideTemplates, useApplyChannelOverrideTemplate } from '../data/templates';
 
 interface Props {
@@ -23,37 +22,20 @@ export function ChannelsBulkApplyTemplateDialog({ open, onOpenChange, selectedCh
   const [templateSearchOpen, setTemplateSearchOpen] = useState(false);
   const [templateSearchValue, setTemplateSearchValue] = useState('');
 
-  // Validate all selected channels have the same type
-  const channelTypeValidation = useMemo(() => {
-    if (selectedChannels.length === 0) {
-      return { valid: false, channelType: null, error: t('channels.templates.bulk.noChannelsSelected') };
-    }
-
-    const types = new Set(selectedChannels.map((ch) => ch.type));
-    if (types.size > 1) {
-      return { valid: false, channelType: null, error: t('channels.templates.bulk.multipleTypesError') };
-    }
-
-    const channelType = Array.from(types)[0];
-    return { valid: true, channelType, error: null };
-  }, [selectedChannels, t]);
-
-  // Fetch templates for the channel type
   const { data: templatesData, isLoading } = useChannelOverrideTemplates(
     {
-      channelType: channelTypeValidation.channelType as ChannelType,
       search: templateSearchValue,
       first: 50,
     },
     {
-      enabled: open && channelTypeValidation.valid,
+      enabled: open,
     }
   );
 
   const templates = templatesData?.edges?.map((edge) => edge.node) || [];
 
   const handleApply = async () => {
-    if (!selectedTemplateId || !channelTypeValidation.valid) return;
+    if (!selectedTemplateId) return;
 
     try {
       await applyTemplate.mutateAsync({
@@ -83,90 +65,69 @@ export function ChannelsBulkApplyTemplateDialog({ open, onOpenChange, selectedCh
         </DialogHeader>
 
         <div className='space-y-4 py-4'>
-          {/* Validation Error */}
-          {!channelTypeValidation.valid && (
-            <Alert variant='destructive'>
-              <AlertCircle className='h-4 w-4' />
-              <AlertTitle>{t('common.error')}</AlertTitle>
-              <AlertDescription>{channelTypeValidation.error}</AlertDescription>
-            </Alert>
-          )}
-
-          {/* Channel Type Info */}
-          {channelTypeValidation.valid && (
-            <div className='bg-muted/50 rounded-md border p-3'>
-              <p className='text-muted-foreground text-sm'>
-                {t('channels.templates.bulk.channelTypeInfo', {
-                  type: channelTypeValidation.channelType,
-                  count: selectedChannels.length,
-                })}
-              </p>
-            </div>
-          )}
-
           {/* Template Selector */}
-          {channelTypeValidation.valid && (
-            <div className='space-y-2'>
-              <Label>{t('channels.templates.selectTemplate')}</Label>
-              <Popover open={templateSearchOpen} onOpenChange={setTemplateSearchOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant='outline'
-                    role='combobox'
-                    aria-expanded={templateSearchOpen}
-                    className='w-full justify-between'
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                        {t('common.loading')}
-                      </>
-                    ) : selectedTemplateId ? (
-                      templates.find((t) => t.id === selectedTemplateId)?.name
-                    ) : (
-                      t('channels.templates.selectTemplate')
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className='w-[550px] p-0'>
-                  <Command>
-                    <CommandInput
-                      placeholder={t('channels.templates.searchPlaceholder')}
-                      value={templateSearchValue}
-                      onValueChange={setTemplateSearchValue}
-                    />
-                    <CommandList>
-                      <CommandEmpty>{t('channels.templates.noTemplates')}</CommandEmpty>
-                      <CommandGroup>
-                        {templates.map((template) => (
-                          <CommandItem
-                            key={template.id}
-                            value={template.id}
-                            onSelect={() => {
-                              setSelectedTemplateId(template.id);
-                              setTemplateSearchOpen(false);
-                            }}
-                          >
-                            <div className='flex flex-col'>
-                              <span className='font-medium'>{template.name}</span>
-                              {template.description && <span className='text-muted-foreground text-xs'>{template.description}</span>}
-                            </div>
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
-          )}
+          <div className='space-y-2'>
+            <Label>{t('channels.templates.selectTemplate')}</Label>
+            <Popover open={templateSearchOpen} onOpenChange={setTemplateSearchOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant='outline'
+                  role='combobox'
+                  aria-expanded={templateSearchOpen}
+                  className='w-full justify-between'
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                      {t('common.loading')}
+                    </>
+                  ) : selectedTemplateId ? (
+                    templates.find((t) => t.id === selectedTemplateId)?.name
+                  ) : (
+                    t('channels.templates.selectTemplate')
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className='w-[550px] p-0'>
+                <Command>
+                  <CommandInput
+                    placeholder={t('channels.templates.searchPlaceholder')}
+                    value={templateSearchValue}
+                    onValueChange={setTemplateSearchValue}
+                  />
+                  <CommandList>
+                    <CommandEmpty>{t('channels.templates.noTemplates')}</CommandEmpty>
+                    <CommandGroup>
+                      {templates.map((template) => (
+                        <CommandItem
+                          key={template.id}
+                          value={template.id}
+                          onSelect={() => {
+                            setSelectedTemplateId(template.id);
+                            setTemplateSearchOpen(false);
+                          }}
+                        >
+                          <div className='flex flex-col'>
+                            <span className='font-medium'>{template.name}</span>
+                            {template.description && <span className='text-muted-foreground text-xs'>{template.description}</span>}
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
 
           {/* Info Message */}
-          {channelTypeValidation.valid && selectedTemplateId && (
-            <Alert>
-              <AlertDescription className='text-sm'>{t('channels.templates.bulk.applyInfo')}</AlertDescription>
-            </Alert>
+          {selectedTemplateId && (
+            <div className='bg-muted/50 rounded-md border p-3'>
+              <p className='text-muted-foreground text-sm'>
+                {t('channels.templates.bulk.applyInfo')}
+              </p>
+            </div>
           )}
         </div>
 
@@ -174,7 +135,7 @@ export function ChannelsBulkApplyTemplateDialog({ open, onOpenChange, selectedCh
           <Button variant='outline' onClick={handleClose} disabled={applyTemplate.isPending}>
             {t('common.buttons.cancel')}
           </Button>
-          <Button onClick={handleApply} disabled={!selectedTemplateId || !channelTypeValidation.valid || applyTemplate.isPending}>
+          <Button onClick={handleApply} disabled={!selectedTemplateId || applyTemplate.isPending}>
             {applyTemplate.isPending ? (
               <>
                 <Loader2 className='mr-2 h-4 w-4 animate-spin' />
