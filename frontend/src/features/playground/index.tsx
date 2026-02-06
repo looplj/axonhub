@@ -260,16 +260,16 @@ export default function Playground() {
           enabled={true}
         />
       )} */}
-      <div className='bg-background flex h-screen w-full'>
+      <div className='bg-background flex h-screen w-full flex-col md:flex-row'>
         {/* Settings Sidebar */}
 
-        <div className='bg-card shadow-soft border-border m-4 flex w-[340px] max-w-[400px] min-w-[280px] flex-col rounded-2xl border border-r'>
+        <div className='bg-card shadow-soft border-border m-4 flex max-h-[40vh] w-auto flex-col rounded-2xl border border-r md:max-h-none md:w-[340px] md:min-w-[280px] md:max-w-[400px]'>
           <div className='border-b p-4'>
             <h1 className='text-xl font-bold tracking-tight'>{t('playground.title')}</h1>
             <p className='text-muted-foreground mt-1 text-xs leading-relaxed'>{t('playground.description')}</p>
           </div>
 
-          <ScrollArea className='flex-1 p-4'>
+          <ScrollArea className='min-h-0 flex-1 p-4'>
             <div className='space-y-6'>
               <div className='space-y-3'>
                 <Label htmlFor='model' className='text-xs font-semibold'>
@@ -375,7 +375,7 @@ export default function Playground() {
         {/* Chat Area */}
         <div className='flex flex-1 flex-col p-4'>
           <div className='shadow-soft border-border bg-card flex h-full flex-col rounded-2xl border p-6'>
-            <Conversation className='flex-1'>
+            <Conversation className='max-h-[50vh] flex-1 md:max-h-none'>
               <ConversationContent>
                 {messages.length === 0 ? (
                   <ConversationEmptyState

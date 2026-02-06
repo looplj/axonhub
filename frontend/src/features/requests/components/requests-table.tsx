@@ -118,24 +118,16 @@ export function RequestsTable({
     const apiKeyFilterValue = newFilters.find((filter: any) => filter.id === 'apiKey')?.value;
 
     const statusFilterArray = Array.isArray(statusFilterValue) ? statusFilterValue : [];
-    if (JSON.stringify(statusFilterArray.sort()) !== JSON.stringify(statusFilter.sort())) {
-      onStatusFilterChange(statusFilterArray);
-    }
+    onStatusFilterChange(statusFilterArray);
 
     const sourceFilterArray = Array.isArray(sourceFilterValue) ? sourceFilterValue : [];
-    if (JSON.stringify(sourceFilterArray.sort()) !== JSON.stringify(sourceFilter.sort())) {
-      onSourceFilterChange(sourceFilterArray);
-    }
+    onSourceFilterChange(sourceFilterArray);
 
     const channelFilterArray = Array.isArray(channelFilterValue) ? channelFilterValue : [];
-    if (JSON.stringify(channelFilterArray.sort()) !== JSON.stringify(channelFilter.sort())) {
-      onChannelFilterChange(channelFilterArray);
-    }
+    onChannelFilterChange(channelFilterArray);
 
     const apiKeyFilterArray = Array.isArray(apiKeyFilterValue) ? apiKeyFilterValue : [];
-    if (JSON.stringify(apiKeyFilterArray.sort()) !== JSON.stringify(apiKeyFilter.sort())) {
-      onApiKeyFilterChange(apiKeyFilterArray);
-    }
+    onApiKeyFilterChange(apiKeyFilterArray);
   };
 
   // Initialize filters in column filters if they exist

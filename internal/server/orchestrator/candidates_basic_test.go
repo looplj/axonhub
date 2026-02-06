@@ -18,7 +18,7 @@ func TestDefaultChannelSelector_Select_SingleChannel(t *testing.T) {
 		SetType(channel.TypeOpenai).
 		SetName("Single Channel").
 		SetBaseURL("https://api.openai.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		SetStatus(channel.StatusEnabled).
@@ -104,7 +104,7 @@ func TestDefaultChannelSelector_Select_ModelNotSupported(t *testing.T) {
 		SetType(channel.TypeOpenai).
 		SetName("Limited Channel").
 		SetBaseURL("https://api.openai.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
 		SetSupportedModels([]string{"gpt-3.5-turbo"}).
 		SetDefaultTestModel("gpt-3.5-turbo").
 		SetStatus(channel.StatusEnabled).
@@ -157,7 +157,7 @@ func TestSpecifiedChannelSelector_Select_ValidChannel(t *testing.T) {
 		SetType(channel.TypeOpenai).
 		SetName("Test Channel").
 		SetBaseURL("https://api.openai.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
 		SetSupportedModels([]string{"gpt-4", "gpt-3.5-turbo"}).
 		SetDefaultTestModel("gpt-4").
 		SetStatus(channel.StatusDisabled). // Can be disabled for SpecifiedChannelSelector
@@ -186,7 +186,7 @@ func TestSpecifiedChannelSelector_Select_ModelNotSupported(t *testing.T) {
 		SetType(channel.TypeOpenai).
 		SetName("Limited Channel").
 		SetBaseURL("https://api.openai.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "test-key"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
 		SetSupportedModels([]string{"gpt-3.5-turbo"}).
 		SetDefaultTestModel("gpt-3.5-turbo").
 		Save(ctx)

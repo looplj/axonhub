@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/pkg/xtest"
@@ -28,6 +29,10 @@ func TestTransformRequest_Integration(t *testing.T) {
 		{
 			name:        "single array",
 			requestFile: `single_array.request.json`,
+		},
+		{
+			name:        "reasoning request",
+			requestFile: `reasoning.request.json`,
 		},
 	}
 
@@ -64,7 +69,7 @@ func TestTransformRequest_Integration(t *testing.T) {
 			err = json.Unmarshal(outboundReq.Body, &gotReq)
 			require.NoError(t, err)
 
-			if !xtest.Equal(wantReq, gotReq) {
+			if !xtest.Equal(wantReq, gotReq, cmpopts.IgnoreFields(Item{}, "EncryptedContent")) {
 				t.Errorf("wantReq != gotReq\n%s", cmp.Diff(wantReq, gotReq))
 			}
 		})

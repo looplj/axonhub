@@ -50,6 +50,7 @@ export function CreateDataStorageDialog() {
       s3Region: '',
       s3AccessKey: '',
       s3SecretKey: '',
+      s3PathStyle: false,
       gcsBucketName: '',
       gcsCredential: '',
       webdavURL: '',
@@ -65,7 +66,7 @@ export function CreateDataStorageDialog() {
   // Clear errors for fields that are not relevant to the current type
   useEffect(() => {
     if (selectedType === 'fs') {
-      clearErrors(['s3BucketName', 's3Endpoint', 's3AccessKey', 's3SecretKey']);
+      clearErrors(['s3BucketName', 's3Endpoint', 's3AccessKey', 's3SecretKey', 's3PathStyle']);
       clearErrors(['gcsBucketName', 'gcsCredential']);
       clearErrors(['webdavURL', 'webdavUsername', 'webdavPassword', 'webdavPath']);
     } else if (selectedType === 's3') {
@@ -74,11 +75,11 @@ export function CreateDataStorageDialog() {
       clearErrors(['webdavURL', 'webdavUsername', 'webdavPassword', 'webdavPath']);
     } else if (selectedType === 'gcs') {
       clearErrors(['directory']);
-      clearErrors(['s3BucketName', 's3Endpoint', 's3AccessKey', 's3SecretKey']);
+      clearErrors(['s3BucketName', 's3Endpoint', 's3AccessKey', 's3SecretKey', 's3PathStyle']);
       clearErrors(['webdavURL', 'webdavUsername', 'webdavPassword', 'webdavPath']);
     } else if (selectedType === 'webdav') {
       clearErrors(['directory']);
-      clearErrors(['s3BucketName', 's3Endpoint', 's3AccessKey', 's3SecretKey']);
+      clearErrors(['s3BucketName', 's3Endpoint', 's3AccessKey', 's3SecretKey', 's3PathStyle']);
       clearErrors(['gcsBucketName', 'gcsCredential']);
     }
   }, [selectedType, clearErrors]);
@@ -95,6 +96,7 @@ export function CreateDataStorageDialog() {
         s3Endpoint: '',
         s3AccessKey: '',
         s3SecretKey: '',
+        s3PathStyle: false,
         gcsBucketName: '',
         gcsCredential: '',
         webdavURL: '',
@@ -121,6 +123,7 @@ export function CreateDataStorageDialog() {
                 region: data.s3Region,
                 accessKey: data.s3AccessKey,
                 secretKey: data.s3SecretKey,
+                pathStyle: data.s3PathStyle,
               }
             : undefined,
         gcs:
@@ -290,6 +293,17 @@ export function CreateDataStorageDialog() {
                   {errors.s3SecretKey && (
                     <span className='text-sm text-red-500'>{errors.s3SecretKey.message}</span>
                   )}
+                </div>
+                <div className='flex items-center space-x-2'>
+                  <input
+                    type='checkbox'
+                    id='create-s3-path-style'
+                    {...register('s3PathStyle')}
+                    className='h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600'
+                  />
+                  <Label htmlFor='create-s3-path-style'>
+                    {t('dataStorages.fields.s3PathStyle')}
+                  </Label>
                 </div>
               </>
             )}

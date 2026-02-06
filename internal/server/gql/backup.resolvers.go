@@ -117,7 +117,7 @@ func (r *mutationResolver) TriggerAutoBackup(ctx context.Context) (*TriggerBacku
 
 	return &TriggerBackupPayload{
 		Success: true,
-		Message: lo.ToPtr("Backup triggered successfully"),
+		Message: lo.ToPtr("Backup completed successfully"),
 	}, nil
 }
 

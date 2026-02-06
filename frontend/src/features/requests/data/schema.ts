@@ -32,6 +32,7 @@ export const requestExecutionSchema = z.object({
   responseChunks: z.array(z.any()).nullable(), // [JSONRawMessage!]
   errorMessage: z.string().nullable(),
   status: requestExecutionStatusSchema,
+  format: z.string().optional(),
   metricsLatencyMs: z.number().nullable().optional(),
   metricsFirstTokenLatencyMs: z.number().nullable().optional(),
 });
@@ -53,6 +54,7 @@ export const requestSchema = z.object({
   responseBody: z.any().nullable().optional(), // JSONRawMessage
   responseChunks: z.array(z.any()).nullable().optional(), // [JSONRawMessage!]
   status: requestStatusSchema,
+  format: z.string().optional(),
   clientIP: z.string().nullable().optional(),
   stream: z.boolean().nullable(),
   metricsLatencyMs: z.number().nullable().optional(),

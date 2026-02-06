@@ -179,7 +179,7 @@ function DetectUnassociatedButton() {
 
 function ActionButtons() {
   return (
-    <div className='flex gap-2'>
+    <div className='flex gap-2 overflow-x-auto md:overflow-x-visible'>
       <PermissionGuard requiredScope='write_channels'>
         <>
           <DetectUnassociatedButton />
@@ -212,8 +212,8 @@ export default function ModelsManagement() {
   return (
     <ModelsProvider>
       <Header fixed>
-        <div className='flex flex-1 items-center justify-between'>
-          <div>
+        <div className='flex w-full flex-1 flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-0'>
+          <div className='min-w-0'>
             <h2 className='text-xl font-bold tracking-tight'>{t('models.title')}</h2>
             <p className='text-muted-foreground text-sm'>{t('models.description')}</p>
           </div>

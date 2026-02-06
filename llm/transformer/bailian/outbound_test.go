@@ -8,13 +8,14 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
 func TestBailianTransformRequest_MergeConsecutiveToolCalls(t *testing.T) {
 	transformer, err := NewOutboundTransformerWithConfig(&Config{
-		BaseURL: "https://example.com",
-		APIKey:  "test-key",
+		BaseURL:        "https://example.com",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 	})
 	require.NoError(t, err)
 

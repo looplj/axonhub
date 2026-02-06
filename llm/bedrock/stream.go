@@ -28,6 +28,11 @@ type AWSEventStreamDecoder struct {
 	rc  io.ReadCloser
 	evt *httpclient.StreamEvent
 	err error
+
+	// NOT concurrency-safe: do not call Next/Close from multiple goroutines.
+	// Close is made idempotent (safe to call multiple times sequentially).
+	closed   bool
+	closeErr error
 }
 
 // NewAWSEventStreamDecoder creates a new AWS EventStream decoder.
@@ -39,7 +44,15 @@ func NewAWSEventStreamDecoder(ctx context.Context, rc io.ReadCloser) httpclient.
 
 // Close closes the underlying reader.
 func (d *AWSEventStreamDecoder) Close() error {
-	return d.rc.Close()
+	// NOT concurrency-safe: callers must not call Close concurrently with Next.
+	if d.closed {
+		return d.closeErr
+	}
+
+	d.closed = true
+	d.closeErr = d.rc.Close()
+
+	return d.closeErr
 }
 
 // Err returns any error that occurred during decoding.
@@ -53,6 +66,10 @@ func (d *AWSEventStreamDecoder) Next() bool {
 		return false
 	}
 
+	if d.closed {
+		return false
+	}
+
 	msg, err := d.Decoder.Decode(d.rc, nil)
 	if err != nil {
 		if errors.Is(err, io.EOF) {
@@ -61,6 +78,8 @@ func (d *AWSEventStreamDecoder) Next() bool {
 			return false
 		}
 
+		d.err = err
+		_ = d.Close()
 		return false
 	}
 

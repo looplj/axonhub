@@ -55,10 +55,7 @@ type Transformer struct {
 // NewTransformer creates a new Antigravity Transformer.
 func NewTransformer(config Config, opts ...Option) (*Transformer, error) {
 	// Initialize a Gemini transformer for internal use
-	gt, err := gemini.NewOutboundTransformerWithConfig(gemini.Config{
-		BaseURL: config.BaseURL,
-		APIKey:  config.APIKey,
-	})
+	gt, err := gemini.NewOutboundTransformer(config.BaseURL, config.APIKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create internal gemini transformer: %w", err)
 	}

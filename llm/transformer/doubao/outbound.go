@@ -11,6 +11,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
@@ -19,24 +20,32 @@ import (
 // Config holds all configuration for the Doubao outbound transformer.
 type Config struct {
 	// API configuration
-	BaseURL string `json:"base_url,omitempty"` // Custom base URL (optional)
-	APIKey  string `json:"api_key,omitempty"`  // API key
+	BaseURL        string              `json:"base_url,omitempty"` // Custom base URL (optional)
+	APIKeyProvider auth.APIKeyProvider `json:"-"`                  // API key provider
 }
 
 // OutboundTransformer implements transformer.Outbound for Doubao format.
 type OutboundTransformer struct {
 	transformer.Outbound
 
-	BaseURL string
-	APIKey  string
+	BaseURL        string
+	APIKeyProvider auth.APIKeyProvider
 }
 
 // NewOutboundTransformer creates a new Doubao OutboundTransformer with legacy parameters.
 // Deprecated: Use NewOutboundTransformerWithConfig instead.
 func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error) {
+	if baseURL == "" {
+		return nil, fmt.Errorf("base URL is required for Doubao transformer")
+	}
+
+	if apiKey == "" {
+		return nil, fmt.Errorf("API key is required for Doubao transformer")
+	}
+
 	config := &Config{
-		BaseURL: baseURL,
-		APIKey:  apiKey,
+		BaseURL:        baseURL,
+		APIKeyProvider: auth.NewStaticKeyProvider(apiKey),
 	}
 
 	return NewOutboundTransformerWithConfig(config)
@@ -48,21 +57,27 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		return nil, fmt.Errorf("base URL is required for Doubao transformer")
 	}
 
-	if config.APIKey == "" {
-		return nil, fmt.Errorf("API key is required for Doubao transformer")
+	if config.APIKeyProvider == nil {
+		return nil, fmt.Errorf("API key provider is required for Doubao transformer")
 	}
 
 	baseURL := transformer.NormalizeBaseURL(config.BaseURL, "v3")
 
-	outbound, err := openai.NewOutboundTransformer(baseURL, config.APIKey)
+	oaiConfig := &openai.Config{
+		PlatformType:   openai.PlatformOpenAI,
+		BaseURL:        baseURL,
+		APIKeyProvider: config.APIKeyProvider,
+	}
+
+	outbound, err := openai.NewOutboundTransformerWithConfig(oaiConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Doubao outbound transformer: %w", err)
 	}
 
 	return &OutboundTransformer{
-		Outbound: outbound,
-		BaseURL:  baseURL,
-		APIKey:   config.APIKey,
+		Outbound:       outbound,
+		BaseURL:        baseURL,
+		APIKeyProvider: config.APIKeyProvider,
 	}, nil
 }
 
@@ -142,9 +157,12 @@ func (t *OutboundTransformer) TransformRequest(
 	headers.Set("Content-Type", "application/json")
 	headers.Set("Accept", "application/json")
 
+	// Get API key from provider
+	apiKey := t.APIKeyProvider.Get(ctx)
+
 	auth := &httpclient.AuthConfig{
 		Type:   "bearer",
-		APIKey: t.APIKey,
+		APIKey: apiKey,
 	}
 
 	url := t.BaseURL + "/chat/completions"
@@ -231,9 +249,12 @@ func (t *OutboundTransformer) buildImageGenerationAPIRequest(llmReq *llm.Request
 
 	url := t.BaseURL + "/images/generations"
 
+	// Get API key from provider
+	apiKey := t.APIKeyProvider.Get(context.Background())
+
 	auth := &httpclient.AuthConfig{
 		Type:   "bearer",
-		APIKey: t.APIKey,
+		APIKey: apiKey,
 	}
 
 	request := &httpclient.Request{

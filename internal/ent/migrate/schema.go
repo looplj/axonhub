@@ -66,11 +66,12 @@ var (
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
-		{Name: "type", Type: field.TypeEnum, Enums: []string{"openai", "openai_responses", "codex", "vercel", "anthropic", "anthropic_aws", "anthropic_gcp", "gemini_openai", "gemini", "gemini_vertex", "deepseek", "deepseek_anthropic", "deepinfra", "doubao", "doubao_anthropic", "moonshot", "moonshot_anthropic", "zhipu", "zai", "zhipu_anthropic", "zai_anthropic", "anthropic_fake", "openai_fake", "openrouter", "xai", "ppio", "siliconflow", "volcengine", "longcat", "longcat_anthropic", "minimax", "minimax_anthropic", "aihubmix", "burncloud", "modelscope", "bailian", "jina", "github", "claudecode", "cerebras", "antigravity"}},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"openai", "openai_responses", "codex", "vercel", "anthropic", "anthropic_aws", "anthropic_gcp", "gemini_openai", "gemini", "gemini_vertex", "deepseek", "deepseek_anthropic", "deepinfra", "doubao", "doubao_anthropic", "moonshot", "moonshot_anthropic", "zhipu", "zai", "zhipu_anthropic", "zai_anthropic", "anthropic_fake", "openai_fake", "openrouter", "xai", "ppio", "siliconflow", "volcengine", "longcat", "longcat_anthropic", "minimax", "minimax_anthropic", "aihubmix", "burncloud", "modelscope", "bailian", "jina", "github", "claudecode", "cerebras", "antigravity", "nanogpt"}},
 		{Name: "base_url", Type: field.TypeString, Nullable: true},
 		{Name: "name", Type: field.TypeString},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"enabled", "disabled", "archived"}, Default: "disabled"},
 		{Name: "credentials", Type: field.TypeJSON},
+		{Name: "disabled_api_keys", Type: field.TypeJSON, Nullable: true},
 		{Name: "supported_models", Type: field.TypeJSON},
 		{Name: "auto_sync_supported_models", Type: field.TypeBool, Default: false},
 		{Name: "tags", Type: field.TypeJSON, Nullable: true},
@@ -185,53 +186,6 @@ var (
 				Name:    "channel_override_templates_by_user_type_name",
 				Unique:  true,
 				Columns: []*schema.Column{ChannelOverrideTemplatesColumns[9], ChannelOverrideTemplatesColumns[6], ChannelOverrideTemplatesColumns[4], ChannelOverrideTemplatesColumns[3]},
-			},
-		},
-	}
-	// ChannelPerformancesColumns holds the columns for the "channel_performances" table.
-	ChannelPerformancesColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
-		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
-		{Name: "success_rate", Type: field.TypeInt, Default: 0},
-		{Name: "avg_latency_ms", Type: field.TypeInt, Default: 0},
-		{Name: "avg_token_per_second", Type: field.TypeInt, Default: 0},
-		{Name: "avg_stream_first_token_latency_ms", Type: field.TypeInt, Default: 0},
-		{Name: "avg_stream_token_per_second", Type: field.TypeFloat64, Default: 0},
-		{Name: "last_success_at", Type: field.TypeTime, Nullable: true},
-		{Name: "last_failure_at", Type: field.TypeTime, Nullable: true},
-		{Name: "request_count", Type: field.TypeInt64, Default: 0},
-		{Name: "success_count", Type: field.TypeInt64, Default: 0},
-		{Name: "failure_count", Type: field.TypeInt64, Default: 0},
-		{Name: "total_token_count", Type: field.TypeInt64, Default: 0},
-		{Name: "total_request_latency_ms", Type: field.TypeInt64, Default: 0},
-		{Name: "stream_success_count", Type: field.TypeInt64, Default: 0},
-		{Name: "stream_total_request_count", Type: field.TypeInt64, Default: 0},
-		{Name: "stream_total_token_count", Type: field.TypeInt64, Default: 0},
-		{Name: "stream_total_request_latency_ms", Type: field.TypeInt64, Default: 0},
-		{Name: "stream_total_first_token_latency_ms", Type: field.TypeInt64, Default: 0},
-		{Name: "consecutive_failures", Type: field.TypeInt64, Default: 0},
-		{Name: "channel_id", Type: field.TypeInt, Unique: true},
-	}
-	// ChannelPerformancesTable holds the schema information for the "channel_performances" table.
-	ChannelPerformancesTable = &schema.Table{
-		Name:       "channel_performances",
-		Columns:    ChannelPerformancesColumns,
-		PrimaryKey: []*schema.Column{ChannelPerformancesColumns[0]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "channel_performances_channels_channel_performance",
-				Columns:    []*schema.Column{ChannelPerformancesColumns[22]},
-				RefColumns: []*schema.Column{ChannelsColumns[0]},
-				OnDelete:   schema.NoAction,
-			},
-		},
-		Indexes: []*schema.Index{
-			{
-				Name:    "channel_performances_by_channel_id",
-				Unique:  true,
-				Columns: []*schema.Column{ChannelPerformancesColumns[22], ChannelPerformancesColumns[3]},
 			},
 		},
 	}
@@ -925,7 +879,6 @@ var (
 		ChannelModelPricesTable,
 		ChannelModelPriceVersionsTable,
 		ChannelOverrideTemplatesTable,
-		ChannelPerformancesTable,
 		ChannelProbesTable,
 		DataStoragesTable,
 		ModelsTable,
@@ -952,7 +905,6 @@ func init() {
 	ChannelModelPricesTable.ForeignKeys[0].RefTable = ChannelsTable
 	ChannelModelPriceVersionsTable.ForeignKeys[0].RefTable = ChannelModelPricesTable
 	ChannelOverrideTemplatesTable.ForeignKeys[0].RefTable = UsersTable
-	ChannelPerformancesTable.ForeignKeys[0].RefTable = ChannelsTable
 	ChannelProbesTable.ForeignKeys[0].RefTable = ChannelsTable
 	ProviderQuotaStatusTable.ForeignKeys[0].RefTable = ChannelsTable
 	RequestsTable.ForeignKeys[0].RefTable = APIKeysTable

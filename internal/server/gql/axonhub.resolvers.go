@@ -36,11 +36,38 @@ func (r *channelResolver) AllModelEntries(ctx context.Context, obj *ent.Channel)
 // Credentials is the resolver for the credentials field.
 func (r *channelResolver) Credentials(ctx context.Context, obj *ent.Channel) (*objects.ChannelCredentials, error) {
 	hasScope := scopes.UserHasScope(ctx, scopes.ScopeWriteChannels)
-	if hasScope {
-		return obj.Credentials, nil
+	if !hasScope {
+		return nil, nil
 	}
 
-	return nil, nil
+	creds := obj.Credentials
+
+	if obj.Type == channel.TypeAntigravity || creds.IsOAuth() {
+		// For OAuth channels (e.g., antigravity, claudecode, codex), only return single API key.
+		// Clear APIKeys as OAuth only supports single credential.
+		creds.APIKeys = nil
+		return &creds, nil
+	}
+
+	// For non-OAuth channel types, use api keys array.
+	creds.APIKeys = creds.GetAllAPIKeys()
+	creds.APIKey = ""
+
+	return &creds, nil
+}
+
+// DisabledAPIKeys is the resolver for the disabledAPIKeys field.
+func (r *channelResolver) DisabledAPIKeys(ctx context.Context, obj *ent.Channel) ([]*objects.DisabledAPIKey, error) {
+	hasScope := scopes.UserHasScope(ctx, scopes.ScopeWriteChannels)
+	if !hasScope {
+		return nil, nil
+	}
+
+	if len(obj.DisabledAPIKeys) == 0 {
+		return []*objects.DisabledAPIKey{}, nil
+	}
+
+	return lo.ToSlicePtr(obj.DisabledAPIKeys), nil
 }
 
 // CreateChannel is the resolver for the createChannel field.
@@ -165,6 +192,52 @@ func (r *mutationResolver) BulkUpdateChannelOrdering(ctx context.Context, input 
 		Updated:  len(updatedChannels),
 		Channels: updatedChannels,
 	}, nil
+}
+
+// DisableChannelAPIKey is the resolver for the disableChannelAPIKey field.
+func (r *mutationResolver) DisableChannelAPIKey(ctx context.Context, channelID objects.GUID, key string) (bool, error) {
+	if err := r.channelService.DisableAPIKey(ctx, channelID.ID, key, 0, "Manually disabled by user"); err != nil {
+		return false, fmt.Errorf("failed to disable channel API key: %w", err)
+	}
+
+	return true, nil
+}
+
+// EnableChannelAPIKey is the resolver for the enableChannelAPIKey field.
+func (r *mutationResolver) EnableChannelAPIKey(ctx context.Context, channelID objects.GUID, key string) (bool, error) {
+	if err := r.channelService.EnableAPIKey(ctx, channelID.ID, key); err != nil {
+		return false, fmt.Errorf("failed to enable channel API key: %w", err)
+	}
+
+	return true, nil
+}
+
+// EnableAllChannelAPIKeys is the resolver for the enableAllChannelAPIKeys field.
+func (r *mutationResolver) EnableAllChannelAPIKeys(ctx context.Context, channelID objects.GUID) (bool, error) {
+	if err := r.channelService.EnableAllAPIKeys(ctx, channelID.ID); err != nil {
+		return false, fmt.Errorf("failed to enable all channel API keys: %w", err)
+	}
+
+	return true, nil
+}
+
+// EnableSelectedChannelAPIKeys is the resolver for the enableSelectedChannelAPIKeys field.
+func (r *mutationResolver) EnableSelectedChannelAPIKeys(ctx context.Context, channelID objects.GUID, keys []string) (bool, error) {
+	if err := r.channelService.EnableSelectedAPIKeys(ctx, channelID.ID, keys); err != nil {
+		return false, fmt.Errorf("failed to enable selected channel API keys: %w", err)
+	}
+
+	return true, nil
+}
+
+// DeleteDisabledChannelAPIKeys is the resolver for the deleteDisabledChannelAPIKeys field.
+func (r *mutationResolver) DeleteDisabledChannelAPIKeys(ctx context.Context, channelID objects.GUID, keys []string) (*biz.DeleteDisabledAPIKeysResult, error) {
+	result, err := r.channelService.DeleteDisabledAPIKeys(ctx, channelID.ID, keys)
+	if err != nil {
+		return nil, fmt.Errorf("failed to delete disabled channel API keys: %w", err)
+	}
+
+	return result, nil
 }
 
 // CreateAPIKey is the resolver for the createAPIKey field.

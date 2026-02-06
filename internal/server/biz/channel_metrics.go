@@ -7,24 +7,18 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
-	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/ringbuffer"
-	"github.com/looplj/axonhub/internal/pkg/xcontext"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
 )
 
 const (
 	// defaultPerformanceWindowSize is the default size of the sliding window in seconds (10 minutes).
 	defaultPerformanceWindowSize = 600
-
-	// performanceFlushInterval is the interval to flush data to database (1 minute).
-	performanceFlushInterval = 60
 )
 
 // channelMetrics holds the performance metrics for a channel in memory.
@@ -36,42 +30,6 @@ type channelMetrics struct {
 
 	// aggregatedMetrics holds accumulated metrics for the flush period
 	aggregatedMetrics *AggregatedMetrics
-}
-
-// InitializeAllChannelPerformances initializes in-memory performance metrics for all channels.
-// It loads historical data from request_execution table for the last 6 hours.
-// Note: Performance metrics are no longer persisted to database, only kept in memory.
-func (svc *ChannelService) InitializeAllChannelPerformances(ctx context.Context) error {
-	// First, load historical data from request_execution table
-	if err := svc.LoadChannelPerformances(ctx); err != nil {
-		log.Error(ctx, "Failed to load channel performances from request executions", log.Cause(err))
-		// Continue to initialize empty metrics for all channels even if loading fails
-	}
-
-	// Then, ensure all channels have at least an empty metrics structure
-	channelIDs, err := svc.entFromContext(ctx).Channel.Query().IDs(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to query channels: %w", err)
-	}
-
-	svc.channelPerfMetricsLock.Lock()
-	defer svc.channelPerfMetricsLock.Unlock()
-
-	if svc.channelPerfMetrics == nil {
-		svc.channelPerfMetrics = make(map[int]*channelMetrics)
-	}
-
-	for _, id := range channelIDs {
-		if _, exists := svc.channelPerfMetrics[id]; !exists {
-			svc.channelPerfMetrics[id] = newChannelMetrics(id)
-		}
-	}
-
-	log.Info(ctx, "Initialized in-memory channel performance metrics",
-		log.Int("count", len(channelIDs)),
-	)
-
-	return nil
 }
 
 // LoadChannelPerformances loads channel performance metrics from request_execution table.
@@ -218,63 +176,9 @@ type metricsRecord struct {
 	SuccessCount int64
 	FailureCount int64
 
-	TotalTokenCount       int64
-	TotalRequestLatencyMs int64
-
-	StreamSuccessCount             int64
-	StreamTotalRequestCount        int64
-	StreamTotalTokenCount          int64
-	StreamTotalRequestLatencyMs    int64
-	StreamTotalFirstTokenLatencyMs int64
-
 	// ConsecutiveFailures tracks the number of consecutive failures
 	// Reset to 0 on success, incremented on failure
 	ConsecutiveFailures int64
-}
-
-// CalculateSuccessRate calculates the success rate percentage.
-func (m *metricsRecord) CalculateSuccessRate() int64 {
-	if m.RequestCount > 0 {
-		return (m.SuccessCount * 100) / m.RequestCount
-	}
-
-	return 0
-}
-
-// CalculateAvgLatencyMs calculates the average latency in milliseconds.
-func (m *metricsRecord) CalculateAvgLatencyMs() int64 {
-	if m.SuccessCount > 0 {
-		return m.TotalRequestLatencyMs / m.SuccessCount
-	}
-
-	return 0
-}
-
-// CalculateAvgTokensPerSecond calculates the average tokens per second.
-func (m *metricsRecord) CalculateAvgTokensPerSecond() float64 {
-	if m.TotalRequestLatencyMs > 0 {
-		return float64(m.TotalTokenCount) / (float64(m.TotalRequestLatencyMs) / 1000)
-	}
-
-	return 0
-}
-
-// CalculateAvgFirstTokenLatencyMs calculates the average first token latency in milliseconds for stream requests.
-func (m *metricsRecord) CalculateAvgFirstTokenLatencyMs() int64 {
-	if m.StreamSuccessCount > 0 {
-		return m.StreamTotalFirstTokenLatencyMs / m.StreamSuccessCount
-	}
-
-	return 0
-}
-
-// CalculateAvgStreamTokensPerSecond calculates the average tokens per second for stream requests.
-func (m *metricsRecord) CalculateAvgStreamTokensPerSecond() float64 {
-	if m.StreamTotalRequestLatencyMs > 0 {
-		return float64(m.StreamTotalTokenCount) / (float64(m.StreamTotalRequestLatencyMs) / 1000)
-	}
-
-	return 0
 }
 
 // AggregatedMetrics holds accumulated metrics for the flush period.
@@ -307,33 +211,13 @@ func newChannelMetrics(channelID int) *channelMetrics {
 }
 
 // recordSuccess records a successful request to the channel metrics.
-func (cm *channelMetrics) recordSuccess(slot *timeSlotMetrics, perf *PerformanceRecord, firstTokenLatencyMs, requestLatencyMs int64) {
+func (cm *channelMetrics) recordSuccess(slot *timeSlotMetrics, perf *PerformanceRecord) {
 	slot.SuccessCount++
 	cm.aggregatedMetrics.SuccessCount++
 	cm.aggregatedMetrics.LastSelectedAt = &perf.EndTime
 
 	// Reset consecutive failures on success
 	cm.aggregatedMetrics.ConsecutiveFailures = 0
-
-	slot.TotalRequestLatencyMs += requestLatencyMs
-	cm.aggregatedMetrics.TotalRequestLatencyMs += requestLatencyMs
-
-	if perf.Stream {
-		slot.StreamSuccessCount++
-		slot.StreamTotalRequestCount++
-		slot.StreamTotalTokenCount += perf.TokenCount
-		slot.StreamTotalRequestLatencyMs += requestLatencyMs
-		slot.StreamTotalFirstTokenLatencyMs += firstTokenLatencyMs
-
-		cm.aggregatedMetrics.StreamSuccessCount++
-		cm.aggregatedMetrics.StreamTotalRequestCount++
-		cm.aggregatedMetrics.StreamTotalTokenCount += perf.TokenCount
-		cm.aggregatedMetrics.StreamTotalRequestLatencyMs += requestLatencyMs
-		cm.aggregatedMetrics.StreamTotalFirstTokenLatencyMs += firstTokenLatencyMs
-	}
-
-	slot.TotalTokenCount += perf.TokenCount
-	cm.aggregatedMetrics.TotalTokenCount += perf.TokenCount
 }
 
 // recordFailure records a failed request to the channel metrics.
@@ -366,62 +250,6 @@ func (cm *channelMetrics) getOrCreateTimeSlot(ts int64, endTime time.Time, windo
 	return slot
 }
 
-func (svc *ChannelService) markChannelUnavailable(ctx context.Context, channelID int, errorStatusCode int) {
-	ctx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
-	_, err := svc.db.Channel.UpdateOneID(channelID).
-		SetStatus(channel.StatusDisabled).
-		SetErrorMessage(deriveErrorMessage(errorStatusCode)).
-		Save(ctx)
-	if err != nil {
-		log.Error(ctx, "Failed to disable channel on unrecoverable error",
-			log.Int("channel_id", channelID),
-			log.Int("error_code", errorStatusCode),
-			log.Cause(err),
-		)
-
-		return
-	}
-
-	log.Warn(ctx, "Channel disabled due to unrecoverable error",
-		log.Int("channel_id", channelID),
-		log.Int("error_code", errorStatusCode),
-	)
-}
-
-// checkAndHandleChannelError checks if the channel should be disabled based on the error status code.
-func (svc *ChannelService) checkAndHandleChannelError(ctx context.Context, perf *PerformanceRecord, policy *RetryPolicy) bool {
-	for _, statusConfig := range policy.AutoDisableChannel.Statuses {
-		if statusConfig.Status != perf.ErrorStatusCode {
-			continue
-		}
-
-		svc.channelErrorCountsLock.Lock()
-
-		if svc.channelErrorCounts[perf.ChannelID] == nil {
-			svc.channelErrorCounts[perf.ChannelID] = make(map[int]int)
-		}
-
-		svc.channelErrorCounts[perf.ChannelID][perf.ErrorStatusCode]++
-		count := svc.channelErrorCounts[perf.ChannelID][perf.ErrorStatusCode]
-		svc.channelErrorCountsLock.Unlock()
-
-		if count >= statusConfig.Times {
-			svc.markChannelUnavailable(ctx, perf.ChannelID, perf.ErrorStatusCode)
-			svc.channelErrorCountsLock.Lock()
-			delete(svc.channelErrorCounts, perf.ChannelID)
-			svc.channelErrorCountsLock.Unlock()
-
-			return true
-		}
-	}
-
-	return false
-}
-
 // RecordPerformance records performance metrics to in-memory cache.
 // This function is not thread-safe.
 func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *PerformanceRecord) {
@@ -439,11 +267,30 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 		svc.channelErrorCountsLock.Lock()
 		delete(svc.channelErrorCounts, perf.ChannelID)
 		svc.channelErrorCountsLock.Unlock()
+
+		// Also clear API key error counts on success
+		if perf.APIKey != "" {
+			svc.apiKeyErrorCountsLock.Lock()
+
+			if svc.apiKeyErrorCounts[perf.ChannelID] != nil {
+				delete(svc.apiKeyErrorCounts[perf.ChannelID], perf.APIKey)
+			}
+
+			svc.apiKeyErrorCountsLock.Unlock()
+		}
 	} else if !perf.Canceled {
 		policy := svc.SystemService.RetryPolicyOrDefault(ctx)
+
 		if policy.AutoDisableChannel.Enabled {
-			if svc.checkAndHandleChannelError(ctx, perf, policy) {
-				return
+			// Check API key error first if available.
+			if perf.APIKey != "" {
+				if svc.checkAndHandleAPIKeyError(ctx, perf, policy) {
+					return
+				}
+			} else {
+				if svc.checkAndHandleChannelError(ctx, perf, policy) {
+					return
+				}
 			}
 		}
 	}
@@ -470,8 +317,6 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 	// Get or create time slot for this second
 	slot := cm.getOrCreateTimeSlot(ts, perf.EndTime, windowSize)
 
-	firstTokenLatencyMs, requestLatencyMs, tokensPerSecond := perf.Calculate()
-
 	// Update slot request count for sliding window metrics.
 	// Note: aggregatedMetrics.RequestCount is NOT incremented here because it was already
 	// incremented in IncrementChannelSelection() at selection time for immediate load balancing effect.
@@ -490,19 +335,20 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 
 	// Record success or failure
 	if perf.Success {
-		cm.recordSuccess(slot, perf, firstTokenLatencyMs, requestLatencyMs)
+		cm.recordSuccess(slot, perf)
 	} else if !perf.Canceled {
 		cm.recordFailure(slot, perf)
 	}
 
 	if log.DebugEnabled(ctx) {
+		keySuffix := ""
+		if len(perf.APIKey) >= 4 {
+			keySuffix = perf.APIKey[len(perf.APIKey)-4:]
+		}
 		log.Debug(ctx, "recorded performance metrics",
 			log.Int("channel_id", perf.ChannelID),
+			log.String("key_suffix", keySuffix), // Only log last 4 chars for security
 			log.Bool("success", perf.Success),
-			log.Int64("first_token_latency_ms", firstTokenLatencyMs),
-			log.Int64("total_duration_ms", requestLatencyMs),
-			log.Float64("tokens_per_second", tokensPerSecond),
-			log.Any("token_count", perf.TokenCount),
 			log.Any("error_code", perf.ErrorStatusCode),
 		)
 	}
@@ -535,13 +381,6 @@ func (cm *channelMetrics) cleanupExpiredSlots(cutoff time.Time) {
 		cm.aggregatedMetrics.RequestCount -= metrics.RequestCount
 		cm.aggregatedMetrics.SuccessCount -= metrics.SuccessCount
 		cm.aggregatedMetrics.FailureCount -= metrics.FailureCount
-		cm.aggregatedMetrics.TotalTokenCount -= metrics.TotalTokenCount
-		cm.aggregatedMetrics.TotalRequestLatencyMs -= metrics.TotalRequestLatencyMs
-		cm.aggregatedMetrics.StreamTotalRequestCount -= metrics.StreamTotalRequestCount
-		cm.aggregatedMetrics.StreamTotalTokenCount -= metrics.StreamTotalTokenCount
-		cm.aggregatedMetrics.StreamTotalRequestLatencyMs -= metrics.StreamTotalRequestLatencyMs
-		cm.aggregatedMetrics.StreamTotalFirstTokenLatencyMs -= metrics.StreamTotalFirstTokenLatencyMs
-		cm.aggregatedMetrics.StreamSuccessCount -= metrics.StreamSuccessCount
 	}
 
 	// Cleanup old entries from ringbuffer
@@ -616,6 +455,7 @@ func deriveErrorMessage(errorCode int) string {
 // PerformanceRecord contains performance metrics collected during request processing.
 type PerformanceRecord struct {
 	ChannelID        int
+	APIKey           string // API key used for the request (sensitive, do not log full value)
 	StartTime        time.Time
 	FirstTokenTime   *time.Time
 	EndTime          time.Time
@@ -623,9 +463,6 @@ type PerformanceRecord struct {
 	Success          bool
 	Canceled         bool
 	RequestCompleted bool
-
-	// If token count is 0, it means the provider response without token count.
-	TokenCount int64
 
 	// If error status code is 0, it means the request is successful.
 	ErrorStatusCode int
@@ -642,20 +479,22 @@ func (m *PerformanceRecord) Calculate() (firstTokenLatencyMs int64, requestLaten
 		firstTokenLatencyMs = firstTokenLatency.Milliseconds()
 	}
 
-	// Calculate tokens per second
-	if m.TokenCount > 0 && totalDuration.Seconds() > 0 {
-		tokensPerSecond = float64(m.TokenCount) / totalDuration.Seconds()
-	}
-
 	return firstTokenLatencyMs, requestLatencyMs, tokensPerSecond
 }
 
 // MarkSuccess marks the request as completed.
-func (m *PerformanceRecord) MarkSuccess(tokenCount int64) {
+func (m *PerformanceRecord) MarkSuccess() {
 	m.Success = true
-	m.TokenCount = tokenCount
 	m.RequestCompleted = true
 	m.EndTime = time.Now()
+}
+
+// MarkFirstToken marks the first token time.
+func (m *PerformanceRecord) MarkFirstToken() {
+	if m.FirstTokenTime == nil {
+		now := time.Now()
+		m.FirstTokenTime = &now
+	}
 }
 
 // MarkFailed marks the request as failed.
@@ -677,10 +516,4 @@ func (m *PerformanceRecord) MarkCanceled() {
 // IsValid checks if metrics are valid for recording.
 func (m *PerformanceRecord) IsValid() bool {
 	return m.ChannelID > 0 && m.RequestCompleted
-}
-
-func (m *PerformanceRecord) MarkFirstToken() {
-	if m.FirstTokenTime == nil {
-		m.FirstTokenTime = lo.ToPtr(time.Now())
-	}
 }

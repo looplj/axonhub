@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/privacy"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
@@ -102,6 +103,7 @@ func TestTraceAwareStrategy_Score_WithLastSuccessChannel(t *testing.T) {
 		SetType("openai").
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
+		SetCredentials(objects.ChannelCredentials{APIKeys: []string{"test-key"}}).
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -154,6 +156,7 @@ func TestTraceAwareStrategy_Score_DifferentChannel(t *testing.T) {
 		SetType("openai").
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
+		SetCredentials(objects.ChannelCredentials{APIKeys: []string{"test-key-1"}}).
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -162,6 +165,7 @@ func TestTraceAwareStrategy_Score_DifferentChannel(t *testing.T) {
 		SetType("openai").
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
+		SetCredentials(objects.ChannelCredentials{APIKeys: []string{"test-key-2"}}).
 		Save(ctx)
 	require.NoError(t, err)
 

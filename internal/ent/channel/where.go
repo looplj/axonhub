@@ -405,6 +405,16 @@ func StatusNotIn(vs ...Status) predicate.Channel {
 	return predicate.Channel(sql.FieldNotIn(FieldStatus, vs...))
 }
 
+// DisabledAPIKeysIsNil applies the IsNil predicate on the "disabled_api_keys" field.
+func DisabledAPIKeysIsNil() predicate.Channel {
+	return predicate.Channel(sql.FieldIsNull(FieldDisabledAPIKeys))
+}
+
+// DisabledAPIKeysNotNil applies the NotNil predicate on the "disabled_api_keys" field.
+func DisabledAPIKeysNotNil() predicate.Channel {
+	return predicate.Channel(sql.FieldNotNull(FieldDisabledAPIKeys))
+}
+
 // AutoSyncSupportedModelsEQ applies the EQ predicate on the "auto_sync_supported_models" field.
 func AutoSyncSupportedModelsEQ(v bool) predicate.Channel {
 	return predicate.Channel(sql.FieldEQ(FieldAutoSyncSupportedModels, v))
@@ -761,29 +771,6 @@ func HasUsageLogs() predicate.Channel {
 func HasUsageLogsWith(preds ...predicate.UsageLog) predicate.Channel {
 	return predicate.Channel(func(s *sql.Selector) {
 		step := newUsageLogsStep()
-		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
-			for _, p := range preds {
-				p(s)
-			}
-		})
-	})
-}
-
-// HasChannelPerformance applies the HasEdge predicate on the "channel_performance" edge.
-func HasChannelPerformance() predicate.Channel {
-	return predicate.Channel(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.O2O, false, ChannelPerformanceTable, ChannelPerformanceColumn),
-		)
-		sqlgraph.HasNeighbors(s, step)
-	})
-}
-
-// HasChannelPerformanceWith applies the HasEdge predicate on the "channel_performance" edge with a given conditions (other predicates).
-func HasChannelPerformanceWith(preds ...predicate.ChannelPerformance) predicate.Channel {
-	return predicate.Channel(func(s *sql.Selector) {
-		step := newChannelPerformanceStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

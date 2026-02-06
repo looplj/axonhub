@@ -106,7 +106,7 @@ export function ProjectsTable({
   return (
     <div className='flex flex-1 flex-col overflow-hidden' data-testid='projects-table'>
       <DataTableToolbar table={table} />
-      <div className='shadow-soft relative mt-4 flex-1 overflow-auto overflow-x-hidden rounded-2xl border border-[var(--table-border)]'>
+      <div className='shadow-soft relative mt-4 flex-1 overflow-auto md:overflow-x-hidden rounded-2xl border border-[var(--table-border)]'>
         <Table data-testid='projects-table' className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (

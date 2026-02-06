@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -525,8 +526,9 @@ func TestOutboundTransformer_SetAPIKey(t *testing.T) {
 	newKey := "new-api-key"
 	transformer.SetAPIKey(newKey)
 
-	if transformer.config.APIKey != newKey {
-		t.Errorf("SetAPIKey() failed, got %v, want %v", transformer.config.APIKey, newKey)
+	apiKey := transformer.config.APIKeyProvider.Get(context.Background())
+	if apiKey != newKey {
+		t.Errorf("SetAPIKey() failed, got %v, want %v", apiKey, newKey)
 	}
 }
 
@@ -591,10 +593,10 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 		{
 			name: "raw URL enabled with Config",
 			config: &Config{
-				PlatformType: PlatformOpenAI,
-				BaseURL:      "https://custom.api.com/v1",
-				APIKey:       "test-key",
-				RawURL:       true,
+				PlatformType:   PlatformOpenAI,
+				BaseURL:        "https://custom.api.com/v1",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+				RawURL:         true,
 			},
 			request: &llm.Request{
 				Model: "gpt-4",
@@ -613,9 +615,9 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 		{
 			name: "raw URL auto-enabled with # suffix",
 			config: &Config{
-				PlatformType: PlatformOpenAI,
-				BaseURL:      "https://custom.api.com/v100#",
-				APIKey:       "test-key",
+				PlatformType:   PlatformOpenAI,
+				BaseURL:        "https://custom.api.com/v100#",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			},
 			request: &llm.Request{
 				Model: "gpt-4",
@@ -634,9 +636,9 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 		{
 			name: "raw URL with full path",
 			config: &Config{
-				PlatformType: PlatformOpenAI,
-				BaseURL:      "https://custom.api.com/v1/chat/completions#",
-				APIKey:       "test-key",
+				PlatformType:   PlatformOpenAI,
+				BaseURL:        "https://custom.api.com/v1/chat/completions#",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			},
 			request: &llm.Request{
 				Model: "gpt-4",
@@ -655,10 +657,10 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 		{
 			name: "raw URL false with standard URL",
 			config: &Config{
-				PlatformType: PlatformOpenAI,
-				BaseURL:      "https://api.openai.com",
-				APIKey:       "test-key",
-				RawURL:       false,
+				PlatformType:   PlatformOpenAI,
+				BaseURL:        "https://api.openai.com",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+				RawURL:         false,
 			},
 			request: &llm.Request{
 				Model: "gpt-4",
@@ -677,10 +679,10 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 		{
 			name: "raw URL false with v1 already in URL",
 			config: &Config{
-				PlatformType: PlatformOpenAI,
-				BaseURL:      "https://api.openai.com/v1",
-				APIKey:       "test-key",
-				RawURL:       false,
+				PlatformType:   PlatformOpenAI,
+				BaseURL:        "https://api.openai.com/v1",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+				RawURL:         false,
 			},
 			request: &llm.Request{
 				Model: "gpt-4",
@@ -699,9 +701,9 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 		{
 			name: "raw URL with custom endpoint without version",
 			config: &Config{
-				PlatformType: PlatformOpenAI,
-				BaseURL:      "https://custom-endpoint.com/api/llm#",
-				APIKey:       "test-key",
+				PlatformType:   PlatformOpenAI,
+				BaseURL:        "https://custom-endpoint.com/api/llm#",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			},
 			request: &llm.Request{
 				Model: "gpt-4",

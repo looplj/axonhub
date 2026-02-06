@@ -272,19 +272,19 @@ func (f *ModelFetcher) fetchGeminiModels(ctx context.Context, httpClient *httpcl
 			return nil, err
 		}
 
-                if resp.StatusCode != http.StatusOK {
-                        return nil, fmt.Errorf("unexpected status: %s", resp.RawResponse.Status)
-                }
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("unexpected status: %s", resp.RawResponse.Status)
+		}
 
 		var page geminiListModelsResponse
-                if err := json.Unmarshal(resp.Body, &page); err != nil {
-                        models, parseErr := f.parseModelsResponse(resp.Body)
-                        if parseErr != nil {
-                                return nil, fmt.Errorf("failed to parse models response: paginated unmarshal: %w; fallback parse: %w", err, parseErr)
-                        }
-                        allModels = append(allModels, models...)
-                        return allModels, nil
-                }
+		if err := json.Unmarshal(resp.Body, &page); err != nil {
+			models, parseErr := f.parseModelsResponse(resp.Body)
+			if parseErr != nil {
+				return nil, fmt.Errorf("failed to parse models response: paginated unmarshal: %w; fallback parse: %w", err, parseErr)
+			}
+			allModels = append(allModels, models...)
+			return allModels, nil
+		}
 
 		for _, model := range page.Models {
 			allModels = append(allModels, ModelIdentify{

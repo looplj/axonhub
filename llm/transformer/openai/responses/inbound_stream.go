@@ -201,7 +201,7 @@ func (s *responsesInboundStream) Next() bool {
 			}
 		}
 
-		// Handle reasoning signature delta
+		// Handle encrypted reasoning content delta (stored in ReasoningSignature)
 		if choice.Delta != nil && choice.Delta.ReasoningSignature != nil && *choice.Delta.ReasoningSignature != "" {
 			s.accumulatedReasoningSignature.WriteString(*choice.Delta.ReasoningSignature)
 		}

@@ -55,6 +55,16 @@ type ApplyChannelOverrideTemplatePayload struct {
 	Channels []*ent.Channel `json:"channels"`
 }
 
+type AutoDisableAPIKey struct {
+	Enabled  bool                       `json:"enabled"`
+	Statuses []*AutoDisableAPIKeyStatus `json:"statuses"`
+}
+
+type AutoDisableAPIKeyStatus struct {
+	Status int `json:"status"`
+	Times  int `json:"times"`
+}
+
 type BackupPayload struct {
 	Success bool    `json:"success"`
 	Data    *string `json:"data,omitempty"`
@@ -155,9 +165,10 @@ type OnboardingInfo struct {
 }
 
 type QueryModelsInput struct {
-	StatusIn       []channel.Status `json:"statusIn,omitempty"`
-	IncludeMapping *bool            `json:"includeMapping,omitempty"`
-	IncludePrefix  *bool            `json:"includePrefix,omitempty"`
+	StatusIn                []channel.Status `json:"statusIn,omitempty"`
+	IncludeMapping          *bool            `json:"includeMapping,omitempty"`
+	IncludePrefix           *bool            `json:"includePrefix,omitempty"`
+	IncludeAllChannelModels *bool            `json:"includeAllChannelModels,omitempty"`
 }
 
 type RemoveUserFromProjectInput struct {

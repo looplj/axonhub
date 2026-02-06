@@ -27,6 +27,12 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 			expectedStreamFile:   "llm-tool-2.stream.jsonl",
 			expectedResponseFile: "llm-tool-2.response.json",
 		},
+		{
+			name:                 "stream transformation with encrypted reasoning",
+			inputStreamFile:      "encrypted_content.stream.jsonl",
+			expectedStreamFile:   "llm-encrypted_content.stream.jsonl",
+			expectedResponseFile: "llm-encrypted_content.response.json",
+		},
 	}
 
 	for _, tt := range tests {

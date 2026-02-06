@@ -15,7 +15,6 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
-	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
@@ -34,7 +33,6 @@ type ChannelQuery struct {
 	withRequests                *RequestQuery
 	withExecutions              *RequestExecutionQuery
 	withUsageLogs               *UsageLogQuery
-	withChannelPerformance      *ChannelPerformanceQuery
 	withChannelProbes           *ChannelProbeQuery
 	withChannelModelPrices      *ChannelModelPriceQuery
 	withProviderQuotaStatus     *ProviderQuotaStatusQuery
@@ -140,28 +138,6 @@ func (_q *ChannelQuery) QueryUsageLogs() *UsageLogQuery {
 			sqlgraph.From(channel.Table, channel.FieldID, selector),
 			sqlgraph.To(usagelog.Table, usagelog.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, channel.UsageLogsTable, channel.UsageLogsColumn),
-		)
-		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
-		return fromU, nil
-	}
-	return query
-}
-
-// QueryChannelPerformance chains the current query on the "channel_performance" edge.
-func (_q *ChannelQuery) QueryChannelPerformance() *ChannelPerformanceQuery {
-	query := (&ChannelPerformanceClient{config: _q.config}).Query()
-	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := _q.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		selector := _q.sqlQuery(ctx)
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
-		step := sqlgraph.NewStep(
-			sqlgraph.From(channel.Table, channel.FieldID, selector),
-			sqlgraph.To(channelperformance.Table, channelperformance.FieldID),
-			sqlgraph.Edge(sqlgraph.O2O, false, channel.ChannelPerformanceTable, channel.ChannelPerformanceColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -430,7 +406,6 @@ func (_q *ChannelQuery) Clone() *ChannelQuery {
 		withRequests:            _q.withRequests.Clone(),
 		withExecutions:          _q.withExecutions.Clone(),
 		withUsageLogs:           _q.withUsageLogs.Clone(),
-		withChannelPerformance:  _q.withChannelPerformance.Clone(),
 		withChannelProbes:       _q.withChannelProbes.Clone(),
 		withChannelModelPrices:  _q.withChannelModelPrices.Clone(),
 		withProviderQuotaStatus: _q.withProviderQuotaStatus.Clone(),
@@ -471,17 +446,6 @@ func (_q *ChannelQuery) WithUsageLogs(opts ...func(*UsageLogQuery)) *ChannelQuer
 		opt(query)
 	}
 	_q.withUsageLogs = query
-	return _q
-}
-
-// WithChannelPerformance tells the query-builder to eager-load the nodes that are connected to
-// the "channel_performance" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *ChannelQuery) WithChannelPerformance(opts ...func(*ChannelPerformanceQuery)) *ChannelQuery {
-	query := (&ChannelPerformanceClient{config: _q.config}).Query()
-	for _, opt := range opts {
-		opt(query)
-	}
-	_q.withChannelPerformance = query
 	return _q
 }
 
@@ -602,11 +566,10 @@ func (_q *ChannelQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Chan
 	var (
 		nodes       = []*Channel{}
 		_spec       = _q.querySpec()
-		loadedTypes = [7]bool{
+		loadedTypes = [6]bool{
 			_q.withRequests != nil,
 			_q.withExecutions != nil,
 			_q.withUsageLogs != nil,
-			_q.withChannelPerformance != nil,
 			_q.withChannelProbes != nil,
 			_q.withChannelModelPrices != nil,
 			_q.withProviderQuotaStatus != nil,
@@ -651,12 +614,6 @@ func (_q *ChannelQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Chan
 		if err := _q.loadUsageLogs(ctx, query, nodes,
 			func(n *Channel) { n.Edges.UsageLogs = []*UsageLog{} },
 			func(n *Channel, e *UsageLog) { n.Edges.UsageLogs = append(n.Edges.UsageLogs, e) }); err != nil {
-			return nil, err
-		}
-	}
-	if query := _q.withChannelPerformance; query != nil {
-		if err := _q.loadChannelPerformance(ctx, query, nodes, nil,
-			func(n *Channel, e *ChannelPerformance) { n.Edges.ChannelPerformance = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -800,33 +757,6 @@ func (_q *ChannelQuery) loadUsageLogs(ctx context.Context, query *UsageLogQuery,
 	}
 	query.Where(predicate.UsageLog(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(channel.UsageLogsColumn), fks...))
-	}))
-	neighbors, err := query.All(ctx)
-	if err != nil {
-		return err
-	}
-	for _, n := range neighbors {
-		fk := n.ChannelID
-		node, ok := nodeids[fk]
-		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "channel_id" returned %v for node %v`, fk, n.ID)
-		}
-		assign(node, n)
-	}
-	return nil
-}
-func (_q *ChannelQuery) loadChannelPerformance(ctx context.Context, query *ChannelPerformanceQuery, nodes []*Channel, init func(*Channel), assign func(*Channel, *ChannelPerformance)) error {
-	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[int]*Channel)
-	for i := range nodes {
-		fks = append(fks, nodes[i].ID)
-		nodeids[nodes[i].ID] = nodes[i]
-	}
-	if len(query.ctx.Fields) > 0 {
-		query.ctx.AppendFieldOnce(channelperformance.FieldChannelID)
-	}
-	query.Where(predicate.ChannelPerformance(func(s *sql.Selector) {
-		s.Where(sql.InValues(s.C(channel.ChannelPerformanceColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

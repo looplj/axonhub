@@ -157,7 +157,7 @@ func TestBackupService_Restore_NewData(t *testing.T) {
 					DefaultTestModel:        "new-model-1",
 					OrderingWeight:          10,
 				},
-				Credentials: &objects.ChannelCredentials{
+				Credentials: objects.ChannelCredentials{
 					APIKey: "test-api-key",
 				},
 			},
@@ -260,7 +260,7 @@ func TestBackupService_Restore_UpdateExisting(t *testing.T) {
 					DefaultTestModel:        "updated-model",
 					OrderingWeight:          20,
 				},
-				Credentials: &objects.ChannelCredentials{
+				Credentials: objects.ChannelCredentials{
 					APIKey: "test-api-key",
 				},
 			},

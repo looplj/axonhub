@@ -4,7 +4,7 @@
   "playground.settings.model": "模型",
   "playground.settings.selectModel": "选择模型",
   "playground.settings.temperature": "温度",
-  "playground.settings.maxTokens": "最大令牌数",
+  "playground.settings.maxTokens": "最大词元数",
   "playground.settings.systemPrompt": "系统提示",
   "playground.settings.defaultSystemPrompt": "你是一个有用的助手。",
   "playground.chat.generating": "生成中...",

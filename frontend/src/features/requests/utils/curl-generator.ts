@@ -14,8 +14,16 @@ export interface CurlGeneratorOptions {
 const API_FORMAT_PATHS: Record<ApiFormat, string> = {
   'openai/chat_completions': '/v1/chat/completions',
   'openai/responses': '/v1/responses',
+  'openai/image_generation': '/v1/images/generations',
+  'openai/image_edit': '/v1/images/edits',
+  'openai/image_variation': '/v1/images/variations',
+  'openai/embeddings': '/v1/embeddings',
   'anthropic/messages': '/v1/messages',
   'gemini/contents': '/v1beta/models/{model}:generateContent',
+  'aisdk/text': '/api/chat',
+  'aisdk/datastream': '/api/datastream',
+  'jina/rerank': '/v1/rerank',
+  'jina/embeddings': '/jina/v1/embeddings',
 };
 
 function getApiPath(apiFormat?: ApiFormat, body?: any): string {
@@ -72,26 +80,25 @@ export function generateCurlCommand(options: CurlGeneratorOptions): string {
   return curlParts.join(' \\\n');
 }
 
-export function generateRequestCurl(
-  headers: any,
-  body: any
-): string {
+export function generateRequestCurl(headers: any, body: any, apiFormat?: ApiFormat): string {
   return generateCurlCommand({
     headers,
     body,
-    apiFormat: 'openai/chat_completions',
+    apiFormat: apiFormat || 'openai/chat_completions',
   });
 }
 
 export function generateExecutionCurl(
   headers: any,
   body: any,
-  channel?: { baseURL?: string; type?: ChannelType }
+  channel?: { baseURL?: string; type?: ChannelType },
+  apiFormat?: ApiFormat
 ): string {
   return generateCurlCommand({
     headers,
     body,
     baseUrl: channel?.baseURL,
     channelType: channel?.type,
+    apiFormat,
   });
 }

@@ -1,19 +1,23 @@
 package shared
 
 import (
+	"encoding/base64"
 	"strings"
 )
 
-const (
-	GEMINI_THOUGHT_SIGNATURE_PREFIX = "<GEMINI_THOUGHT_SIGNATURE>"
-)
+// GeminiThoughtSignaturePrefix is the prefix used for Gemini thought/reasoning signatures.
+// In models like Gemini 2.0, reasoning process is a first-class citizen.
+// This signature allows AxonHub to "wrap" and preserve these reasoning blocks in the internal
+// message structure. This ensures that when switching between different providers (e.g., Gemini -> OpenAI -> Gemini),
+// the original reasoning context is maintained and can be restored, preventing model performance degradation.
+var GeminiThoughtSignaturePrefix = base64.StdEncoding.EncodeToString([]byte("<GEMINI_THOUGHT_SIGNATURE>"))
 
 func IsGeminiThoughtSignature(signature *string) bool {
 	if signature == nil {
 		return false
 	}
 
-	return strings.HasPrefix(*signature, GEMINI_THOUGHT_SIGNATURE_PREFIX)
+	return strings.HasPrefix(*signature, GeminiThoughtSignaturePrefix)
 }
 
 func DecodeGeminiThoughtSignature(signature *string) *string {
@@ -21,7 +25,7 @@ func DecodeGeminiThoughtSignature(signature *string) *string {
 		return nil
 	}
 
-	decoded := (*signature)[len(GEMINI_THOUGHT_SIGNATURE_PREFIX):]
+	decoded := (*signature)[len(GeminiThoughtSignaturePrefix):]
 
 	return &decoded
 }
@@ -31,7 +35,7 @@ func EncodeGeminiThoughtSignature(signature *string) *string {
 		return nil
 	}
 
-	encoded := GEMINI_THOUGHT_SIGNATURE_PREFIX + *signature
+	encoded := GeminiThoughtSignaturePrefix + *signature
 
 	return &encoded
 }

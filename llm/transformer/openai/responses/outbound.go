@@ -11,8 +11,10 @@ import (
 
 	"github.com/looplj/axonhub/internal/pkg/xmap"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 var _ transformer.Outbound = (*OutboundTransformer)(nil)
@@ -26,8 +28,8 @@ type Config struct {
 	// If true, the base URL will be used as is, without appending the version.
 	RawURL bool `json:"raw_url,omitempty"`
 
-	// APIKey is the API key for authentication, required.
-	APIKey string `json:"api_key,omitempty"`
+	// APIKeyProvider provides API keys for authentication, required.
+	APIKeyProvider auth.APIKeyProvider `json:"-"`
 }
 
 func NewOutboundTransformer(baseURL, apiKey string) (*OutboundTransformer, error) {
@@ -36,8 +38,8 @@ func NewOutboundTransformer(baseURL, apiKey string) (*OutboundTransformer, error
 	}
 
 	config := &Config{
-		BaseURL: baseURL,
-		APIKey:  apiKey,
+		BaseURL:        baseURL,
+		APIKeyProvider: auth.NewStaticKeyProvider(apiKey),
 	}
 
 	return NewOutboundTransformerWithConfig(config)
@@ -46,6 +48,10 @@ func NewOutboundTransformer(baseURL, apiKey string) (*OutboundTransformer, error
 func NewOutboundTransformerWithConfig(config *Config) (*OutboundTransformer, error) {
 	if config == nil {
 		return nil, fmt.Errorf("config is nil")
+	}
+
+	if config.APIKeyProvider == nil {
+		return nil, fmt.Errorf("API key provider is required")
 	}
 
 	if strings.HasSuffix(config.BaseURL, "#") {
@@ -115,13 +121,12 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, fmt.Errorf("%w: %s is not supported", transformer.ErrInvalidRequest, llmReq.RequestType)
 	}
 
-	var tools []Tool
-
 	// Initialize TransformerMetadata if nil
 	if llmReq.TransformerMetadata == nil {
 		llmReq.TransformerMetadata = map[string]any{}
 	}
 
+	var tools []Tool
 	// Convert tools to Responses API format
 	for _, item := range llmReq.Tools {
 		switch item.Type {
@@ -165,7 +170,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		Truncation:           xmap.GetStringPtr(llmReq.TransformerMetadata, "truncation"),
 	}
 
-	// Set ParallelToolCalls to nil if no tools are specified
+	// Clear `parallel_tool_calls` when no tools are sent (Responses API compatibility).
 	if len(payload.Tools) == 0 {
 		payload.ParallelToolCalls = nil
 	}
@@ -196,9 +201,10 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		Body:    body,
 		Auth: &httpclient.AuthConfig{
 			Type:   "bearer",
-			APIKey: t.config.APIKey,
+			APIKey: t.config.APIKeyProvider.Get(ctx),
 		},
-		TransformerMetadata: llmReq.TransformerMetadata,
+		TransformerMetadata:   llmReq.TransformerMetadata,
+		SkipInboundQueryMerge: true,
 	}, nil
 }
 
@@ -248,10 +254,11 @@ func (t *OutboundTransformer) TransformResponse(
 
 	// Process output items - aggregate all into a single choice (Chat Completions format)
 	var (
-		contentParts     []llm.MessageContentPart
-		textContent      strings.Builder
-		reasoningContent strings.Builder
-		toolCalls        []llm.ToolCall
+		contentParts       []llm.MessageContentPart
+		textContent        strings.Builder
+		reasoningContent   strings.Builder
+		reasoningSignature *string
+		toolCalls          []llm.ToolCall
 	)
 
 	for _, outputItem := range resp.Output {
@@ -282,6 +289,10 @@ func (t *OutboundTransformer) TransformResponse(
 			// Handle reasoning output - convert to ReasoningContent
 			for _, summary := range outputItem.Summary {
 				reasoningContent.WriteString(summary.Text)
+			}
+			// Preserve encrypted reasoning content in ReasoningSignature.
+			if outputItem.EncryptedContent != nil && *outputItem.EncryptedContent != "" {
+				reasoningSignature = shared.EncodeOpenAIEncryptedContent(outputItem.EncryptedContent)
 			}
 		case "image_generation_call":
 			imageOutputFormat := "png"
@@ -331,6 +342,10 @@ func (t *OutboundTransformer) TransformResponse(
 	// Set reasoning content if present
 	if reasoningContent.Len() > 0 {
 		choice.Message.ReasoningContent = lo.ToPtr(reasoningContent.String())
+	}
+
+	if reasoningSignature != nil {
+		choice.Message.ReasoningSignature = reasoningSignature
 	}
 
 	// Set message content

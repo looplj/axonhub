@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
@@ -39,8 +40,8 @@ func TestReasoningEffortToThinking(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a ZAI transformer to test the transformation
 			config := &Config{
-				BaseURL: "https://api.example.com",
-				APIKey:  "test-key",
+				BaseURL:        "https://api.example.com",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			}
 
 			transformer, err := NewOutboundTransformerWithConfig(config)

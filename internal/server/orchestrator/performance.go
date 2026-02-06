@@ -5,8 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/samber/lo"
-
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
@@ -55,15 +54,26 @@ func (m *performanceRecording) OnOutboundRawRequest(ctx context.Context, request
 		return request, nil
 	}
 
-	if m.outbound.state.Perf == nil {
-		m.outbound.state.Perf = &biz.PerformanceRecord{}
+	// Preserve Stream flag from existing PerformanceRecord (set in OnInboundLlmRequest)
+	var streamFlag bool
+	if m.outbound.state.Perf != nil {
+		streamFlag = m.outbound.state.Perf.Stream
 	}
 
-	perf := m.outbound.state.Perf
+	// Create a new PerformanceRecord instance for each request.
+	perf := biz.PerformanceRecord{}
 	perf.StartTime = time.Now()
 	perf.ChannelID = channel.ID
 	perf.Success = false
 	perf.RequestCompleted = false
+	perf.Stream = streamFlag
+
+	// Get the API key used for this request from context (set by TraceStickyKeyProvider)
+	if apiKey, ok := contexts.GetChannelAPIKey(ctx); ok {
+		perf.APIKey = apiKey
+	}
+
+	m.outbound.state.Perf = &perf
 
 	log.Debug(ctx, "Started performance tracking",
 		log.Int("channel_id", channel.ID),
@@ -82,7 +92,7 @@ func (m *performanceRecording) OnOutboundLlmResponse(ctx context.Context, respon
 		return response, nil
 	}
 
-	m.outbound.state.Perf.MarkSuccess(lo.FromPtr(response.Usage.GetCompletionTokens()))
+	m.outbound.state.Perf.MarkSuccess()
 	m.outbound.state.ChannelService.AsyncRecordPerformance(ctx, m.outbound.state.Perf)
 
 	return response, nil
@@ -140,7 +150,7 @@ func (s *recordPerformanceStream) Current() *llm.Response {
 	}
 
 	if tokenCount := event.Usage.GetCompletionTokens(); tokenCount != nil && *tokenCount > 0 {
-		s.state.Perf.MarkSuccess(*tokenCount)
+		s.state.Perf.MarkSuccess()
 		s.state.ChannelService.AsyncRecordPerformance(s.ctx, s.state.Perf)
 	}
 

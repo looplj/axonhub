@@ -84,8 +84,7 @@ function RequestsContent() {
       setStatusFilter(filters);
       resetCursor();
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [resetCursor]
   );
 
   const handleSourceFilterChange = useCallback(
@@ -93,8 +92,7 @@ function RequestsContent() {
       setSourceFilter(filters);
       resetCursor();
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [resetCursor]
   );
 
   const handleChannelFilterChange = useCallback(
@@ -102,8 +100,7 @@ function RequestsContent() {
       setChannelFilter(filters);
       resetCursor();
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [resetCursor]
   );
 
   const handleApiKeyFilterChange = useCallback(
@@ -111,8 +108,7 @@ function RequestsContent() {
       setApiKeyFilter(filters);
       resetCursor();
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [resetCursor]
   );
 
   const handleDateRangeChange = useCallback(
@@ -120,8 +116,7 @@ function RequestsContent() {
       setDateRange(range);
       resetCursor();
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [resetCursor]
   );
 
   return (

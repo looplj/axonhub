@@ -158,7 +158,9 @@ type RetryPolicy struct {
 	// Supported values: "adaptive", "failover", "circuit-breaker".
 	LoadBalancerStrategy string `json:"load_balancer_strategy"`
 
-	// AutoDisableChannel controls whether to auto-disable a channel when it exceeds the maximum number of retries.
+	// AutoDisableChannel controls whether to auto-disable a channel or API key when it exceeds the maximum number of retries.
+	// For compatibility with legacy setting, the name is AutoDisableChannel.
+	// If the channel has more than one key, the API key will be disabled instead of the channel.
 	AutoDisableChannel AutoDisableChannel `json:"auto_disable_channel"`
 }
 
@@ -1109,45 +1111,6 @@ func (s *SystemService) CompleteSystemModelSettingOnboarding(ctx context.Context
 	}
 
 	return s.SetOnboardingInfo(ctx, info)
-}
-
-// VersionCheckResult contains the result of a version check.
-type VersionCheckResult struct {
-	CurrentVersion string `json:"current_version"`
-	LatestVersion  string `json:"latest_version"`
-	HasUpdate      bool   `json:"has_update"`
-	ReleaseURL     string `json:"release_url"`
-}
-
-// CheckForUpdate checks if there is a newer version available on GitHub.
-func (s *SystemService) CheckForUpdate(ctx context.Context) (*VersionCheckResult, error) {
-	currentVersion := build.Version
-
-	latestVersion, err := s.fetchLatestGitHubRelease(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch latest release: %w", err)
-	}
-
-	hasUpdate := s.isNewerVersion(currentVersion, latestVersion)
-	releaseURL := fmt.Sprintf("https://github.com/looplj/axonhub/releases/tag/%s", latestVersion)
-
-	return &VersionCheckResult{
-		CurrentVersion: currentVersion,
-		LatestVersion:  latestVersion,
-		HasUpdate:      hasUpdate,
-		ReleaseURL:     releaseURL,
-	}, nil
-}
-
-// fetchLatestGitHubRelease fetches the latest stable release tag from GitHub.
-// It skips beta and rc versions.
-func (s *SystemService) fetchLatestGitHubRelease(ctx context.Context) (string, error) {
-	return FetchLatestGitHubRelease(ctx)
-}
-
-// isNewerVersion compares two semantic versions and returns true if latest is newer than current.
-func (s *SystemService) isNewerVersion(current, latest string) bool {
-	return IsNewerVersion(current, latest)
 }
 
 // AutoBackupSettings retrieves the auto backup settings configuration.

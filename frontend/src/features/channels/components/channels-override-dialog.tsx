@@ -389,8 +389,8 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
                 <CardDescription>{t('channels.templates.section.description')}</CardDescription>
               </CardHeader>
               <CardContent className='space-y-3'>
-                <div className='flex gap-2'>
-                  <div className='flex-1'>
+                <div className='flex flex-wrap gap-2'>
+                  <div className='min-w-48 flex-1'>
                     <Popover open={templateSearchOpen} onOpenChange={setTemplateSearchOpen}>
                       <PopoverTrigger asChild>
                         <Button

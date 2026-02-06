@@ -1,6 +1,7 @@
 package doubao
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -79,30 +81,30 @@ func TestNewOutboundTransformerWithConfig(t *testing.T) {
 		{
 			name: "valid config",
 			config: &Config{
-				BaseURL: "https://ark.cn-beijing.volces.com/api/v3",
-				APIKey:  "test-api-key",
+				BaseURL:        "https://ark.cn-beijing.volces.com/api/v3",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
 			},
 			wantErr: false,
 			validate: func(t *OutboundTransformer) bool {
-				return t.BaseURL == "https://ark.cn-beijing.volces.com/api/v3" && t.APIKey == "test-api-key"
+				return t.BaseURL == "https://ark.cn-beijing.volces.com/api/v3" && t.APIKeyProvider.Get(context.Background()) == "test-api-key"
 			},
 		},
 		{
 			name: "valid config with trailing slash",
 			config: &Config{
-				BaseURL: "https://ark.cn-beijing.volces.com/api/v3/",
-				APIKey:  "test-api-key",
+				BaseURL:        "https://ark.cn-beijing.volces.com/api/v3/",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
 			},
 			wantErr: false,
 			validate: func(t *OutboundTransformer) bool {
-				return t.BaseURL == "https://ark.cn-beijing.volces.com/api/v3" && t.APIKey == "test-api-key"
+				return t.BaseURL == "https://ark.cn-beijing.volces.com/api/v3" && t.APIKeyProvider.Get(context.Background()) == "test-api-key"
 			},
 		},
 		{
 			name: "nil config",
 			config: &Config{
-				BaseURL: "",
-				APIKey:  "",
+				BaseURL:        "",
+				APIKeyProvider: nil,
 			},
 			wantErr:   true,
 			errString: "base URL is required",
@@ -110,20 +112,20 @@ func TestNewOutboundTransformerWithConfig(t *testing.T) {
 		{
 			name: "empty base URL",
 			config: &Config{
-				BaseURL: "",
-				APIKey:  "test-api-key",
+				BaseURL:        "",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
 			},
 			wantErr:   true,
 			errString: "base URL is required",
 		},
 		{
-			name: "empty API key",
+			name: "empty API key provider",
 			config: &Config{
-				BaseURL: "https://ark.cn-beijing.volces.com/api/v3",
-				APIKey:  "",
+				BaseURL:        "https://ark.cn-beijing.volces.com/api/v3",
+				APIKeyProvider: nil,
 			},
 			wantErr:   true,
-			errString: "API key is required",
+			errString: "API key provider is required",
 		},
 	}
 

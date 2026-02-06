@@ -113,9 +113,9 @@ func (svc *BackupService) shouldRunBackup(now time.Time, settings *biz.AutoBacku
 }
 
 func (svc *BackupService) performBackup(ctx context.Context, settings *biz.AutoBackupSettings) error {
-	fs, err := svc.dataStorageService.GetFileSystemByID(ctx, settings.DataStorageID)
+	ds, err := svc.dataStorageService.GetDataStorageByID(ctx, settings.DataStorageID)
 	if err != nil {
-		return fmt.Errorf("failed to get data storage filesystem: %w", err)
+		return fmt.Errorf("failed to get data storage: %w", err)
 	}
 
 	opts := BackupOptions{
@@ -133,7 +133,7 @@ func (svc *BackupService) performBackup(ctx context.Context, settings *biz.AutoB
 	timestamp := time.Now().Format("2006-01-02_15-04-05")
 	filename := fmt.Sprintf("axonhub-backup-%s.json", timestamp)
 
-	if err := afero.WriteFile(fs, filename, data, 0o644); err != nil {
+	if _, err := svc.dataStorageService.SaveData(ctx, ds, filename, data); err != nil {
 		return fmt.Errorf("failed to write backup file: %w", err)
 	}
 
@@ -143,7 +143,7 @@ func (svc *BackupService) performBackup(ctx context.Context, settings *biz.AutoB
 	)
 
 	if settings.RetentionDays > 0 {
-		if err := svc.cleanupOldBackups(ctx, fs, settings.RetentionDays); err != nil {
+		if err := svc.cleanupOldBackups(ctx, ds, settings.RetentionDays); err != nil {
 			log.Warn(ctx, "Failed to cleanup old backups", log.Cause(err))
 		}
 	}
@@ -151,7 +151,12 @@ func (svc *BackupService) performBackup(ctx context.Context, settings *biz.AutoB
 	return nil
 }
 
-func (svc *BackupService) cleanupOldBackups(ctx context.Context, fs afero.Fs, retentionDays int) error {
+func (svc *BackupService) cleanupOldBackups(ctx context.Context, ds *ent.DataStorage, retentionDays int) error {
+	fs, err := svc.dataStorageService.GetFileSystem(ctx, ds)
+	if err != nil {
+		return fmt.Errorf("failed to get data storage filesystem: %w", err)
+	}
+
 	files, err := afero.ReadDir(fs, "/")
 	if err != nil {
 		return fmt.Errorf("failed to list backups: %w", err)

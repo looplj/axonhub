@@ -7,6 +7,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
@@ -20,10 +21,22 @@ type OutboundTransformer struct {
 
 // NewOutboundTransformer creates a new Longcat OutboundTransformer.
 func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error) {
+	return NewOutboundTransformerWithConfig(&Config{
+		BaseURL:        baseURL,
+		APIKeyProvider: auth.NewStaticKeyProvider(apiKey),
+	})
+}
+
+type Config struct {
+	BaseURL        string
+	APIKeyProvider auth.APIKeyProvider
+}
+
+func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, error) {
 	oaiTransformer, err := openai.NewOutboundTransformerWithConfig(&openai.Config{
-		PlatformType: openai.PlatformOpenAI,
-		BaseURL:      baseURL,
-		APIKey:       apiKey,
+		PlatformType:   openai.PlatformOpenAI,
+		BaseURL:        config.BaseURL,
+		APIKeyProvider: config.APIKeyProvider,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create longcat outbound transformer: %w", err)

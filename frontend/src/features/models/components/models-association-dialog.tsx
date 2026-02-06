@@ -102,8 +102,7 @@ export function ModelsAssociationDialog() {
     if (isOpen) {
       fetchModels({
         statusIn: ['enabled'],
-        includeMapping: true,
-        includePrefix: true,
+        includeAllChannelModels: true,
       });
     }
   }, [isOpen, fetchModels]);

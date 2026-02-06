@@ -35,6 +35,7 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 		SetType("openai").
 		SetName("OpenAI Channel").
 		SetStatus("enabled").
+		SetCredentials(objects.ChannelCredentials{APIKeys: []string{"test-key-1"}}).
 		SetSupportedModels([]string{"gpt-4", "gpt-3.5-turbo", "gpt-4-turbo"}).
 		SetDefaultTestModel("gpt-4").
 		Save(ctx)
@@ -44,6 +45,7 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 		SetType("anthropic").
 		SetName("Anthropic Channel").
 		SetStatus("enabled").
+		SetCredentials(objects.ChannelCredentials{APIKeys: []string{"test-key-2"}}).
 		SetSupportedModels([]string{"claude-3-opus", "claude-3-sonnet", "claude-3-haiku"}).
 		SetDefaultTestModel("claude-3-opus").
 		Save(ctx)
@@ -53,6 +55,7 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 		SetType("gemini").
 		SetName("Gemini Channel").
 		SetStatus("enabled").
+		SetCredentials(objects.ChannelCredentials{APIKeys: []string{"test-key-3"}}).
 		SetSupportedModels([]string{"gemini-pro", "gemini-1.5-pro", "gemini-1.5-flash"}).
 		SetDefaultTestModel("gemini-pro").
 		Save(ctx)
@@ -231,6 +234,7 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 		disabledChannel, err := client.Channel.Create().
 			SetType("openai").
 			SetName("Disabled Channel").
+			SetCredentials(objects.ChannelCredentials{APIKey: "test-key-disabled"}).
 			SetSupportedModels([]string{"gpt-4-disabled"}).
 			SetDefaultTestModel("gpt-4-disabled").
 			SetStatus("disabled").
@@ -447,7 +451,7 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 		SetType(channel.TypeOpenai).
 		SetName("OpenAI Channel").
 		SetBaseURL("https://api.openai.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "key1"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "key1"}).
 		SetSupportedModels([]string{"gpt-4", "gpt-3.5-turbo"}).
 		SetDefaultTestModel("gpt-4").
 		SetStatus(channel.StatusEnabled).
@@ -458,7 +462,7 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 		SetType(channel.TypeAnthropic).
 		SetName("Anthropic Channel").
 		SetBaseURL("https://api.anthropic.com").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "key2"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "key2"}).
 		SetSupportedModels([]string{"claude-3-opus-20240229"}).
 		SetDefaultTestModel("claude-3-opus-20240229").
 		SetStatus(channel.StatusEnabled).
@@ -475,7 +479,7 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 		SetType(channel.TypeOpenai).
 		SetName("Prefix Channel").
 		SetBaseURL("https://api.deepseek.com").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "key3"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "key3"}).
 		SetSupportedModels([]string{"deepseek-chat", "deepseek-reasoner"}).
 		SetDefaultTestModel("deepseek-chat").
 		SetStatus(channel.StatusEnabled).
@@ -490,7 +494,7 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 		SetType(channel.TypeOpenai).
 		SetName("Disabled Channel").
 		SetBaseURL("https://api.disabled.com/v1").
-		SetCredentials(&objects.ChannelCredentials{APIKey: "key4"}).
+		SetCredentials(objects.ChannelCredentials{APIKey: "key4"}).
 		SetSupportedModels([]string{"gpt-4-disabled"}).
 		SetDefaultTestModel("gpt-4-disabled").
 		SetStatus(channel.StatusDisabled).
@@ -506,7 +510,7 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 
 	enabledChannels := make([]*Channel, 0, len(enabledEntities))
 	for _, e := range enabledEntities {
-		built, buildErr := channelSvc.buildChannel(e)
+		built, buildErr := channelSvc.buildChannelWithTransformer(e)
 		require.NoError(t, buildErr)
 
 		enabledChannels = append(enabledChannels, built)
@@ -603,7 +607,7 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 			SetType(channel.TypeOpenai).
 			SetName("Invalid Mapping Channel").
 			SetBaseURL("https://api.example.com/v1").
-			SetCredentials(&objects.ChannelCredentials{APIKey: "key5"}).
+			SetCredentials(objects.ChannelCredentials{APIKey: "key5"}).
 			SetSupportedModels([]string{"gpt-4"}).
 			SetDefaultTestModel("gpt-4").
 			SetStatus(channel.StatusEnabled).
@@ -623,7 +627,7 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 
 		enabledChannels := make([]*Channel, 0, len(enabledEntities))
 		for _, e := range enabledEntities {
-			built, buildErr := channelSvc.buildChannel(e)
+			built, buildErr := channelSvc.buildChannelWithTransformer(e)
 			require.NoError(t, buildErr)
 
 			enabledChannels = append(enabledChannels, built)
@@ -650,7 +654,7 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 			SetType(channel.TypeOpenai).
 			SetName("Auto Trim Channel").
 			SetBaseURL("https://api.example.com/v1").
-			SetCredentials(&objects.ChannelCredentials{APIKey: "key6"}).
+			SetCredentials(objects.ChannelCredentials{APIKey: "key6"}).
 			SetSupportedModels([]string{"provider/gpt-4", "provider/gpt-3.5-turbo"}).
 			SetDefaultTestModel("provider/gpt-4").
 			SetStatus(channel.StatusEnabled).
@@ -667,7 +671,7 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 
 		enabledChannels := make([]*Channel, 0, len(enabledEntities))
 		for _, e := range enabledEntities {
-			built, buildErr := channelSvc.buildChannel(e)
+			built, buildErr := channelSvc.buildChannelWithTransformer(e)
 			require.NoError(t, buildErr)
 
 			enabledChannels = append(enabledChannels, built)
@@ -1141,7 +1145,7 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 			SetType(channel.TypeOpenai).
 			SetName("Tagged Channel").
 			SetBaseURL("https://api.tagged.com/v1").
-			SetCredentials(&objects.ChannelCredentials{APIKey: "key-tagged"}).
+			SetCredentials(objects.ChannelCredentials{APIKey: "key-tagged"}).
 			SetSupportedModels([]string{"tagged-model-1", "tagged-model-2"}).
 			SetDefaultTestModel("tagged-model-1").
 			SetStatus(channel.StatusEnabled).
@@ -1156,7 +1160,7 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 
 		enabledChannels := make([]*Channel, 0, len(enabledEntities))
 		for _, e := range enabledEntities {
-			built, buildErr := channelSvc.buildChannel(e)
+			built, buildErr := channelSvc.buildChannelWithTransformer(e)
 			require.NoError(t, buildErr)
 
 			enabledChannels = append(enabledChannels, built)

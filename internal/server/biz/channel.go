@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/privacy"
+	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/watcher"
@@ -60,6 +61,12 @@ type Channel struct {
 	// cachedModelPrices caches model prices per request model id
 	// RequestModel -> ChannelModelPrice entity (contains Price and ReferenceID)
 	cachedModelPrices map[string]*ent.ChannelModelPrice
+
+	// cachedEnabledAPIKeys caches enabled API keys (computed once when channel is loaded)
+	cachedEnabledAPIKeys []string
+
+	// cachedDisabledKeySet caches disabled key lookup set for O(1) check
+	cachedDisabledKeySet map[string]struct{}
 }
 
 type ChannelServiceParams struct {
@@ -80,6 +87,7 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 		SystemService:      params.SystemService,
 		channelPerfMetrics: make(map[int]*channelMetrics),
 		channelErrorCounts: make(map[int]map[int]int),
+		apiKeyErrorCounts:  make(map[int]map[string]map[int]int),
 		perfCh:             make(chan *PerformanceRecord, 1024),
 	}
 
@@ -112,7 +120,7 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 	svc.channelNotifier = notifier
 
 	svc.enabledChannelsCache = live.NewCache(live.Options[[]*Channel]{
-		Name:            "enabled_channels",
+		Name:            "axonhub:enabled_channels",
 		InitialValue:    []*Channel{},
 		RefreshInterval: time.Minute,
 		RefreshFunc:     svc.refreshEnabledChannels,
@@ -162,6 +170,11 @@ type ChannelService struct {
 	channelErrorCounts     map[int]map[int]int
 	channelErrorCountsLock sync.Mutex
 
+	// apiKeyErrorCounts stores the error counts for each API key and status code
+	// channelID -> apiKey -> statusCode -> count
+	apiKeyErrorCounts     map[int]map[string]map[int]int
+	apiKeyErrorCountsLock sync.Mutex
+
 	// perfCh is the channel for performance records for async processing.
 	perfCh chan *PerformanceRecord
 }
@@ -169,9 +182,10 @@ type ChannelService struct {
 func (svc *ChannelService) refreshEnabledChannels(ctx context.Context, current []*Channel, lastUpdate time.Time) ([]*Channel, time.Time, bool, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
+	// Query latest updated channel including soft-deleted ones to detect deletions
 	latestUpdatedChannel, err := svc.entFromContext(ctx).Channel.Query().
 		Order(ent.Desc(channel.FieldUpdatedAt)).
-		First(ctx)
+		First(schematype.SkipSoftDelete(ctx))
 	if err != nil && !ent.IsNotFound(err) {
 		return current, lastUpdate, false, err
 	}
@@ -196,7 +210,7 @@ func (svc *ChannelService) refreshEnabledChannels(ctx context.Context, current [
 	var channels []*Channel
 
 	for _, c := range entities {
-		channel, err := svc.buildChannel(c)
+		channel, err := svc.buildChannelWithTransformer(c)
 		if err != nil {
 			log.Warn(ctx, "failed to build channel",
 				log.String("channel", c.Name),
@@ -284,22 +298,21 @@ func (svc *ChannelService) SetEnabledChannelsForTest(channels []*Channel) {
 // GetChannel retrieves a specific channel by ID for testing purposes,
 // including disabled channels. This bypasses the normal enabled-only filtering.
 func (svc *ChannelService) GetChannel(ctx context.Context, channelID int) (*Channel, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
 	// Get the channel entity from database (including disabled ones)
 	entity, err := svc.entFromContext(ctx).Channel.Get(ctx, channelID)
 	if err != nil {
 		return nil, fmt.Errorf("channel not found: %w", err)
 	}
 
-	return svc.buildChannel(entity)
+	return svc.buildChannelWithTransformer(entity)
 }
 
 // ListModelsInput represents the input for listing models with filters.
 type ListModelsInput struct {
-	StatusIn       []channel.Status
-	IncludeMapping bool
-	IncludePrefix  bool
+	StatusIn                []channel.Status
+	IncludeAllChannelModels bool
+	IncludeMapping          bool
+	IncludePrefix           bool
 }
 
 // ModelIdentityWithStatus represents a model with its status.
@@ -345,26 +358,36 @@ func (svc *ChannelService) ListModels(ctx context.Context, input ListModelsInput
 	modelMap := make(map[string]channel.Status)
 
 	for _, ch := range channels {
-		// Add all supported models
-		for _, modelID := range ch.SupportedModels {
-			setModelStatus(modelMap, modelID, ch.Status)
-		}
+		if input.IncludeAllChannelModels {
+			// Use GetModelEntries to get all model entries (including mapping, prefix, auto_trim)
+			bizCh := &Channel{Channel: ch}
 
-		// Add model mappings if requested
-		if input.IncludeMapping && ch.Settings != nil {
-			for _, mapping := range ch.Settings.ModelMappings {
-				// Only add the mapping if the target model is supported
-				if slices.Contains(ch.SupportedModels, mapping.To) {
-					setModelStatus(modelMap, mapping.From, ch.Status)
+			entries := bizCh.GetModelEntries()
+			for requestModel := range entries {
+				setModelStatus(modelMap, requestModel, ch.Status)
+			}
+		} else {
+			// Add all supported models
+			for _, modelID := range ch.SupportedModels {
+				setModelStatus(modelMap, modelID, ch.Status)
+			}
+
+			// Add model mappings if requested
+			if input.IncludeMapping && ch.Settings != nil {
+				for _, mapping := range ch.Settings.ModelMappings {
+					// Only add the mapping if the target model is supported
+					if slices.Contains(ch.SupportedModels, mapping.To) {
+						setModelStatus(modelMap, mapping.From, ch.Status)
+					}
 				}
 			}
-		}
 
-		// Add models with extra prefix if requested
-		if input.IncludePrefix && ch.Settings != nil && ch.Settings.ExtraModelPrefix != "" {
-			for _, modelID := range ch.SupportedModels {
-				prefixedModel := ch.Settings.ExtraModelPrefix + "/" + modelID
-				setModelStatus(modelMap, prefixedModel, ch.Status)
+			// Add models with extra prefix if requested
+			if input.IncludePrefix && ch.Settings != nil && ch.Settings.ExtraModelPrefix != "" {
+				for _, modelID := range ch.SupportedModels {
+					prefixedModel := ch.Settings.ExtraModelPrefix + "/" + modelID
+					setModelStatus(modelMap, prefixedModel, ch.Status)
+				}
 			}
 		}
 	}
@@ -397,6 +420,10 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 
 	if input.Tags != nil {
 		createBuilder.SetTags(input.Tags)
+	}
+
+	if input.Policies != nil {
+		createBuilder.SetPolicies(*input.Policies)
 	}
 
 	channel, err := createBuilder.Save(ctx)
@@ -493,7 +520,7 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	}
 
 	if input.Credentials != nil {
-		mut.SetCredentials(input.Credentials)
+		mut.SetCredentials(*input.Credentials)
 	}
 
 	if input.Remark != nil {
@@ -540,24 +567,9 @@ func (svc *ChannelService) asyncReloadChannels() {
 		return
 	}
 
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Error(context.Background(), "panic in async reload channels", log.Any("panic", r))
-			}
-		}()
-
-		reloadCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		if err := svc.channelNotifier.Notify(reloadCtx, live.NewForceRefreshEvent[struct{}]()); err != nil {
-			log.Warn(reloadCtx, "channel cache watcher notify failed", log.Cause(err))
-		}
-
-		if reloadErr := svc.enabledChannelsCache.Load(reloadCtx, true); reloadErr != nil {
-			log.Error(reloadCtx, "failed to reload channels after bulk update", log.Cause(reloadErr))
-		}
-	}()
+	if err := svc.channelNotifier.Notify(context.Background(), live.NewForceRefreshEvent[struct{}]()); err != nil {
+		log.Warn(context.Background(), "channel cache watcher notify failed", log.Cause(err))
+	}
 }
 
 // DeleteChannel deletes a channel by ID.
@@ -569,4 +581,15 @@ func (svc *ChannelService) DeleteChannel(ctx context.Context, id int) error {
 	svc.asyncReloadChannels()
 
 	return nil
+}
+
+// GetEnabledAPIKeys returns cached enabled API keys.
+func (c *Channel) GetEnabledAPIKeys() []string {
+	return c.cachedEnabledAPIKeys
+}
+
+// IsAPIKeyDisabled checks if a key is disabled (O(1) lookup).
+func (c *Channel) IsAPIKeyDisabled(key string) bool {
+	_, ok := c.cachedDisabledKeySet[key]
+	return ok
 }

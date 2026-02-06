@@ -30,7 +30,6 @@ const transformOptionsFormSchema = z.object({
 export function ChannelsTransformOptionsDialog({ open, onOpenChange, currentRow }: Props) {
   const { t } = useTranslation();
   const updateChannel = useUpdateChannel();
-  const showDeveloperRoleOption = currentRow.type === 'bailian';
 
   const form = useForm<TransformOptions>({
     resolver: zodResolver(transformOptionsFormSchema),
@@ -137,28 +136,26 @@ export function ChannelsTransformOptionsDialog({ open, onOpenChange, currentRow 
                     )}
                   />
 
-                  {showDeveloperRoleOption ? (
-                    <FormField
-                      control={form.control}
-                      name='replaceDeveloperRoleWithSystem'
-                      render={({ field }) => (
-                        <FormItem className='flex items-center gap-2'>
-                          <FormControl>
-                            <Checkbox checked={field.value || false} onCheckedChange={field.onChange} />
-                          </FormControl>
-                          <div className='space-y-0.5'>
-                            <FormLabel className='cursor-pointer text-sm font-normal'>
-                              {t('channels.dialogs.fields.transformOptions.replaceDeveloperRoleWithSystem.label')}
-                            </FormLabel>
-                            <p className='text-muted-foreground text-xs'>
-                              {t('channels.dialogs.fields.transformOptions.replaceDeveloperRoleWithSystem.description')}
-                            </p>
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  ) : null}
+                  <FormField
+                    control={form.control}
+                    name='replaceDeveloperRoleWithSystem'
+                    render={({ field }) => (
+                      <FormItem className='flex items-center gap-2'>
+                        <FormControl>
+                          <Checkbox checked={field.value || false} onCheckedChange={field.onChange} />
+                        </FormControl>
+                        <div className='space-y-0.5'>
+                          <FormLabel className='cursor-pointer text-sm font-normal'>
+                            {t('channels.dialogs.fields.transformOptions.replaceDeveloperRoleWithSystem.label')}
+                          </FormLabel>
+                          <p className='text-muted-foreground text-xs'>
+                            {t('channels.dialogs.fields.transformOptions.replaceDeveloperRoleWithSystem.description')}
+                          </p>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </form>
               </Form>
             </CardContent>

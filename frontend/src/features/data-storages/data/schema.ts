@@ -8,6 +8,7 @@ export const s3SettingsSchema = z.object({
   region: z.string(),
   accessKey: z.string().optional(),
   secretKey: z.string().optional(),
+  pathStyle: z.boolean().optional(),
 });
 export type S3Settings = z.infer<typeof s3SettingsSchema>;
 

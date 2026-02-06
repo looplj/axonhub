@@ -51,6 +51,10 @@ type Request struct {
 	// TransformerMetadata stores transformer-specific metadata for preserving format during transformations.
 	// This supports any type of value for flexibility.
 	TransformerMetadata map[string]any `json:"-"`
+
+	// SkipInboundQueryMerge when set to true, prevents query parameters from the original
+	// inbound request from being merged into this request during MergeInboundRequest.
+	SkipInboundQueryMerge bool `json:"-"`
 }
 
 // AuthConfig represents authentication configuration.

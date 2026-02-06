@@ -95,7 +95,7 @@ func TestBuildImageGenerateRequest_BasicPrompt(t *testing.T) {
 		},
 	}
 
-	httpReq, err := ot.buildImageGenerateRequest(req)
+	httpReq, err := ot.buildImageGenerateRequest(req, "test-key")
 	require.NoError(t, err)
 	require.NotNil(t, httpReq)
 
@@ -134,7 +134,7 @@ func TestBuildImageGenerateRequest_WithParameters(t *testing.T) {
 		},
 	}
 
-	httpReq, err := ot.buildImageGenerateRequest(req)
+	httpReq, err := ot.buildImageGenerateRequest(req, "test-key")
 	require.NoError(t, err)
 
 	// Verify body
@@ -162,7 +162,7 @@ func TestBuildImageGenerateRequest_NoPrompt(t *testing.T) {
 		},
 	}
 
-	_, err = ot.buildImageGenerateRequest(req)
+	_, err = ot.buildImageGenerateRequest(req, "test-key")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "prompt is required")
 }
@@ -186,7 +186,7 @@ func TestBuildImageEditRequest_WithImage(t *testing.T) {
 		},
 	}
 
-	httpReq, err := ot.buildImageEditRequest(req)
+	httpReq, err := ot.buildImageEditRequest(req, "test-key")
 	require.NoError(t, err)
 	require.NotNil(t, httpReq)
 
@@ -212,7 +212,7 @@ func TestBuildImageEditRequest_NoImage(t *testing.T) {
 		},
 	}
 
-	_, err = ot.buildImageEditRequest(req)
+	_, err = ot.buildImageEditRequest(req, "test-key")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "at least one image is required")
 }
@@ -233,7 +233,7 @@ func TestBuildImageEditRequest_NoPrompt(t *testing.T) {
 		},
 	}
 
-	_, err = ot.buildImageEditRequest(req)
+	_, err = ot.buildImageEditRequest(req, "test-key")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "prompt is required")
 }
@@ -252,7 +252,7 @@ func TestBuildImageGenerationAPIRequest_RoutesToGenerate(t *testing.T) {
 		},
 	}
 
-	httpReq, err := ot.buildImageGenerationAPIRequest(req)
+	httpReq, err := ot.buildImageGenerationAPIRequest(context.Background(), req)
 	require.NoError(t, err)
 	assert.Equal(t, "https://api.openai.com/v1/images/generations", httpReq.URL)
 	assert.Equal(t, string(llm.APIFormatOpenAIImageGeneration), httpReq.APIFormat)
@@ -272,7 +272,7 @@ func TestBuildImageGenerationAPIRequest_RoutesToGeneration(t *testing.T) {
 		},
 	}
 
-	httpReq, err := ot.buildImageGenerationAPIRequest(req)
+	httpReq, err := ot.buildImageGenerationAPIRequest(context.Background(), req)
 	require.NoError(t, err)
 	assert.Equal(t, "https://api.openai.com/v1/images/generations", httpReq.URL)
 	assert.Equal(t, string(llm.APIFormatOpenAIImageGeneration), httpReq.APIFormat)

@@ -95,9 +95,16 @@ input ChannelSettingsInput {
 
 type ChannelCredentials {
   apiKey: String
-  aws: AWSCredential
+  apiKeys: [String!]
   gcp: GCPCredential
   oauth: OAuthCredentials
+}
+
+type DisabledAPIKey {
+  key: String!
+  disabledAt: Time!
+  errorCode: Int!
+  reason: String
 }
 
 type OAuthCredentials {
@@ -115,15 +122,9 @@ type GCPCredential {
   jsonData: String!
 }
 
-type AWSCredential {
-  accessKeyID: String!
-  secretAccessKey: String!
-  region: String!
-}
-
 input ChannelCredentialsInput {
   apiKey: String
-  aws: AWSCredentialInput
+  apiKeys: [String!]
   gcp: GCPCredentialInput
   oauth: OAuthCredentialsInput
 }
@@ -135,12 +136,6 @@ input OAuthCredentialsInput {
   expiresAt: Time
   tokenType: String
   scopes: [String!]
-}
-
-input AWSCredentialInput {
-  accessKeyID: String!
-  secretAccessKey: String!
-  region: String!
 }
 
 input GCPCredentialInput {
@@ -361,6 +356,7 @@ input QueryModelsInput {
   statusIn: [ChannelStatus!]
   includeMapping: Boolean
   includePrefix: Boolean
+  includeAllChannelModels: Boolean
 }
 
 type ChannelTypeCount {
@@ -412,6 +408,7 @@ input S3Input {
   region: String
   accessKey: String
   secretKey: String
+  pathStyle: Boolean
 }
 
 input GCSInput {
@@ -439,6 +436,7 @@ type S3 {
   bucketName: String!
   endpoint: String!
   region: String!
+  pathStyle: Boolean!
 }
 
 type GCS {
@@ -477,6 +475,11 @@ extend type Channel {
   Channel credentials, will be null if user can not access the the credentials
   """
   credentials: ChannelCredentials @goField(forceResolver: true)
+
+  """
+  Disabled API keys for this channel. Sensitive: will be null if user can not access.
+  """
+  disabledAPIKeys: [DisabledAPIKey!] @goField(forceResolver: true)
 }
 
 type Segment {
@@ -572,6 +575,11 @@ type ApplyChannelOverrideTemplatePayload {
   channels: [Channel!]!
 }
 
+type DeleteDisabledAPIKeysPayload {
+  success: Boolean!
+  message: String
+}
+
 type Mutation {
   createChannel(input: CreateChannelInput!): Channel!
   bulkCreateChannels(input: BulkCreateChannelsInput!): [Channel!]!
@@ -587,6 +595,13 @@ type Mutation {
   bulkUpdateChannelOrdering(
     input: BulkUpdateChannelOrderingInput!
   ): BulkUpdateChannelOrderingResult!
+
+  # Channel API Key Management
+  disableChannelAPIKey(channelID: ID!, key: String!): Boolean!
+  enableChannelAPIKey(channelID: ID!, key: String!): Boolean!
+  enableAllChannelAPIKeys(channelID: ID!): Boolean!
+  enableSelectedChannelAPIKeys(channelID: ID!, keys: [String!]!): Boolean!
+  deleteDisabledChannelAPIKeys(channelID: ID!, keys: [String!]!): DeleteDisabledAPIKeysPayload!
 
   createAPIKey(input: CreateAPIKeyInput!): APIKey!
   updateAPIKey(id: ID!, input: UpdateAPIKeyInput!): APIKey!

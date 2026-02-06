@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
@@ -19,8 +20,8 @@ import (
 // Config holds all configuration for the Gemini OpenAI outbound transformer.
 type Config struct {
 	// API configuration
-	BaseURL string `json:"base_url,omitempty"` // Custom base URL (optional)
-	APIKey  string `json:"api_key,omitempty"`  // API key
+	BaseURL        string              `json:"base_url,omitempty"` // Custom base URL (optional)
+	APIKeyProvider auth.APIKeyProvider `json:"-"`                  // API key provider
 }
 
 // OutboundTransformer implements transformer.Outbound for Gemini OpenAI format.
@@ -29,8 +30,8 @@ type Config struct {
 type OutboundTransformer struct {
 	transformer.Outbound
 
-	BaseURL string
-	APIKey  string
+	BaseURL        string
+	APIKeyProvider auth.APIKeyProvider
 }
 
 // ThinkingBudget represents a thinking budget that can be either an int or a string.
@@ -107,9 +108,17 @@ type Request struct {
 // NewOutboundTransformer creates a new Gemini OpenAI OutboundTransformer with legacy parameters.
 // Deprecated: Use NewOutboundTransformerWithConfig instead.
 func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error) {
+	if baseURL == "" {
+		return nil, fmt.Errorf("base URL is required for Gemini OpenAI transformer")
+	}
+
+	if apiKey == "" {
+		return nil, fmt.Errorf("API key provider is required for Gemini OpenAI transformer")
+	}
+
 	config := &Config{
-		BaseURL: baseURL,
-		APIKey:  apiKey,
+		BaseURL:        baseURL,
+		APIKeyProvider: auth.NewStaticKeyProvider(apiKey),
 	}
 
 	return NewOutboundTransformerWithConfig(config)
@@ -121,21 +130,27 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		return nil, fmt.Errorf("base URL is required for Gemini OpenAI transformer")
 	}
 
-	if config.APIKey == "" {
-		return nil, fmt.Errorf("API key is required for Gemini OpenAI transformer")
+	if config.APIKeyProvider == nil {
+		return nil, fmt.Errorf("API key provider is required for Gemini OpenAI transformer")
 	}
 
 	baseURL := transformer.NormalizeBaseURL(config.BaseURL, "v1beta/openai")
 
-	outbound, err := openai.NewOutboundTransformer(baseURL, config.APIKey)
+	oaiConfig := &openai.Config{
+		PlatformType:   openai.PlatformOpenAI,
+		BaseURL:        baseURL,
+		APIKeyProvider: config.APIKeyProvider,
+	}
+
+	outbound, err := openai.NewOutboundTransformerWithConfig(oaiConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Gemini OpenAI outbound transformer: %w", err)
 	}
 
 	return &OutboundTransformer{
-		Outbound: outbound,
-		BaseURL:  baseURL,
-		APIKey:   config.APIKey,
+		Outbound:       outbound,
+		BaseURL:        baseURL,
+		APIKeyProvider: config.APIKeyProvider,
 	}, nil
 }
 
@@ -330,9 +345,12 @@ func (t *OutboundTransformer) TransformRequest(
 	headers.Set("Content-Type", "application/json")
 	headers.Set("Accept", "application/json")
 
+	// Get API key from provider
+	apiKey := t.APIKeyProvider.Get(ctx)
+
 	auth := &httpclient.AuthConfig{
 		Type:   "bearer",
-		APIKey: t.APIKey,
+		APIKey: apiKey,
 	}
 
 	url := t.BaseURL + "/chat/completions"

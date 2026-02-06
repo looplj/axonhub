@@ -308,6 +308,182 @@ for i, data in enumerate(response.data):
     print(f"Text {i}: {data.embedding[:3]}...")
 ```
 
+## Models API
+
+AxonHub provides an enhanced `/v1/models` endpoint that lists available models with optional extended metadata.
+
+### Supported Endpoints
+
+**Endpoints:**
+- `GET /v1/models` - List available models
+
+### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `include` | string | ❌ | Comma-separated list of fields to include, or "all" for all extended fields |
+
+### Available Fields for Include
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | Display name of the model |
+| `description` | string | Model description |
+| `context_length` | integer | Maximum context length in tokens |
+| `max_output_tokens` | integer | Maximum output tokens |
+| `capabilities` | object | Model capabilities (vision, tool_call, reasoning) |
+| `pricing` | object | Pricing information (input, output, cache_read, cache_write) |
+| `icon` | string | Model icon URL |
+| `type` | string | Model type (chat, embedding, image, rerank, moderation, tts, stt) |
+
+### Response Format (Basic - Default)
+
+When called without the `include` parameter, the endpoint returns only basic fields:
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "gpt-4",
+      "object": "model",
+      "created": 1686935002,
+      "owned_by": "openai"
+    }
+  ]
+}
+```
+
+**Fields:**
+- `id` - Model identifier
+- `object` - Always "model"
+- `created` - Unix timestamp of model creation
+- `owned_by` - Organization that owns the model
+
+### Response Format (Extended)
+
+When using `?include=all` or selective fields, the response includes extended metadata:
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "gpt-4",
+      "object": "model",
+      "created": 1686935002,
+      "owned_by": "openai",
+      "name": "GPT-4",
+      "description": "GPT-4 model with advanced reasoning capabilities",
+      "context_length": 8192,
+      "max_output_tokens": 4096,
+      "capabilities": {
+        "vision": false,
+        "tool_call": true,
+        "reasoning": true
+      },
+      "pricing": {
+        "input": 30.0,
+        "output": 60.0,
+        "cache_read": 15.0,
+        "cache_write": 30.0,
+        "unit": "per_1m_tokens",
+        "currency": "USD"
+      },
+      "icon": "https://example.com/icon.png",
+      "type": "chat"
+    }
+  ]
+}
+```
+
+**Extended Fields:**
+- `name` - Human-readable model name
+- `description` - Detailed model description
+- `context_length` - Maximum tokens in context window
+- `max_output_tokens` - Maximum tokens in response
+- `capabilities` - Object with boolean flags:
+  - `vision` - Supports image inputs
+  - `tool_call` - Supports function calling
+  - `reasoning` - Supports advanced reasoning
+- `pricing` - Object with pricing details:
+  - `input` - Input token price per 1M tokens
+  - `output` - Output token price per 1M tokens
+  - `cache_read` - Cache read price per 1M tokens
+  - `cache_write` - Cache write price per 1M tokens
+  - `unit` - Always "per_1m_tokens"
+  - `currency` - Always "USD"
+- `icon` - URL to model icon image
+- `type` - Model category (chat, embedding, image, rerank, moderation, tts, stt)
+
+### Examples
+
+**Basic Request (Default):**
+```bash
+curl -s http://localhost:8090/v1/models \
+  -H "Authorization: Bearer your-api-key" | jq
+```
+
+**Include All Extended Fields:**
+```bash
+curl -s "http://localhost:8090/v1/models?include=all" \
+  -H "Authorization: Bearer your-api-key" | jq
+```
+
+**Selective Fields Only:**
+```bash
+curl -s "http://localhost:8090/v1/models?include=name,pricing" \
+  -H "Authorization: Bearer your-api-key" | jq
+```
+
+**OpenAI SDK (Python):**
+```python
+import openai
+
+client = openai.OpenAI(
+    api_key="your-axonhub-api-key",
+    base_url="http://localhost:8090/v1"
+)
+
+# Get models with extended metadata
+models = client.models.list()
+for model in models.data:
+    print(f"Model: {model.id}")
+    # Access extended fields if available
+    if hasattr(model, 'name'):
+        print(f"  Name: {model.name}")
+    if hasattr(model, 'pricing'):
+        print(f"  Input price: ${model.pricing.input}/1M tokens")
+```
+
+### Error Responses
+
+**401 Unauthorized - Invalid API Key:**
+```json
+{
+  "error": {
+    "message": "Invalid API key",
+    "type": "invalid_request_error",
+    "code": "invalid_api_key"
+  }
+}
+```
+
+**500 Internal Server Error:**
+```json
+{
+  "error": {
+    "message": "Internal server error",
+    "type": "internal_error",
+    "code": "internal_error"
+  }
+}
+```
+
+### Field Availability Note
+
+> **Note:** Extended fields are only populated if the model has ModelCard data configured in the database. Models without ModelCard data will return `null` for extended fields.
+
 ## Authentication
 
 The OpenAI API format uses Bearer token authentication:

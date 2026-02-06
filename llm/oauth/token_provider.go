@@ -43,12 +43,12 @@ type TokenProvider struct {
 }
 
 type TokenProviderParams struct {
-	Credentials      *OAuthCredentials
+	Credentials *OAuthCredentials
 	// HTTPClient should be pre-configured with proxy settings if needed
-	HTTPClient       *httpclient.HttpClient
-	OAuthUrls        OAuthUrls
-	UserAgent        string
-	OnRefreshed      func(ctx context.Context, refreshed *OAuthCredentials) error
+	HTTPClient  *httpclient.HttpClient
+	OAuthUrls   OAuthUrls
+	UserAgent   string
+	OnRefreshed func(ctx context.Context, refreshed *OAuthCredentials) error
 	// ExchangeStrategy defines how to format token requests (form-encoded or JSON)
 	// If not provided, defaults to FormEncodedStrategy
 	ExchangeStrategy ExchangeStrategy
@@ -269,9 +269,7 @@ func (p *TokenProvider) EnsureFresh(ctx context.Context, refreshBefore time.Dura
 }
 
 func (p *TokenProvider) StartAutoRefresh(ctx context.Context, opts AutoRefreshOptions) {
-	if ctx == nil {
-		ctx = context.Background()
-	}
+	log.Debug(ctx, "start auto refresh token provider")
 
 	fallbackInterval := opts.Interval
 	if fallbackInterval <= 0 {
@@ -300,6 +298,8 @@ func (p *TokenProvider) StartAutoRefresh(ctx context.Context, opts AutoRefreshOp
 }
 
 func (p *TokenProvider) StopAutoRefresh() {
+	log.Debug(context.Background(), "stop auto refresh token provider")
+
 	p.autoMu.Lock()
 	cancel := p.autoCancel
 	exec := p.autoExecutor
@@ -428,6 +428,36 @@ func NewStaticTokenProvider(creds *OAuthCredentials) *StaticTokenProvider {
 
 func (p *StaticTokenProvider) Get(ctx context.Context) (*OAuthCredentials, error) {
 	return p.creds, nil
+}
+
+// APIKeyProviderFunc is a function type that implements auth.APIKeyProvider interface.
+type APIKeyProviderFunc func(ctx context.Context) string
+
+func (f APIKeyProviderFunc) Get(ctx context.Context) string {
+	return f(ctx)
+}
+
+// APIKeyTokenProvider adapts an APIKeyProvider to a TokenGetter.
+// This allows transformers that expect OAuth tokens to work with regular API keys.
+type APIKeyTokenProvider struct {
+	provider APIKeyProviderFunc
+}
+
+// NewAPIKeyTokenProvider creates a new APIKeyTokenProvider from an APIKeyProvider function.
+func NewAPIKeyTokenProvider(provider APIKeyProviderFunc) *APIKeyTokenProvider {
+	return &APIKeyTokenProvider{provider: provider}
+}
+
+// Get implements TokenGetter by returning the API key as an OAuthCredentials.
+func (p *APIKeyTokenProvider) Get(ctx context.Context) (*OAuthCredentials, error) {
+	apiKey := p.provider(ctx)
+	if apiKey == "" {
+		return nil, errors.New("api key is empty")
+	}
+
+	return &OAuthCredentials{
+		AccessToken: apiKey,
+	}, nil
 }
 
 // refresh performs the OAuth2 token refresh flow.

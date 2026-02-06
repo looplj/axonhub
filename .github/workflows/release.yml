@@ -41,6 +41,7 @@ jobs:
           cache: true
 
       - name: Update VERSION file
+        if: ${{ !contains(github.ref_name, 'beta') && !contains(github.ref_name, 'rc') }}
         run: |
           VERSION="${GITHUB_REF#refs/tags/}"
           echo "Updating VERSION file to: $VERSION"
@@ -48,6 +49,7 @@ jobs:
           git add internal/build/VERSION
 
       - name: Commit VERSION file
+        if: ${{ !contains(github.ref_name, 'beta') && !contains(github.ref_name, 'rc') }}
         continue-on-error: true
         run: |
           # Configure git

@@ -160,6 +160,7 @@
   "common.buttons.activate": "激活",
   "common.buttons.remove": "移除",
   "common.buttons.openMenu": "打开菜单",
+  "common.buttons.close": "关闭",
   "common.actions.openMenu": "打开菜单",
   "common.actions.edit": "编辑",
   "common.actions.duplicate": "复制",

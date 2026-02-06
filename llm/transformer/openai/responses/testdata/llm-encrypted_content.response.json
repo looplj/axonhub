@@ -1,0 +1,38 @@
+{
+  "id": "resp_06d169f70634b19d0169836828e0708191bd2bc8e0af39db8e",
+  "object": "chat.completion",
+  "created": 1770219560,
+  "model": "gpt-5.2-2025-12-11",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "id": "call_k84uHc9vdzoKKtwujCN1UM1f",
+            "type": "function",
+            "function": {
+              "name": "Task",
+              "arguments": "{\"allowed_tools\":[\"Grep\",\"Read\",\"Glob\"],\"description\":\"Check GraphQL API key context\",\"max_turns\":350,\"model\":\"haiku\",\"prompt\":\"Investigate how GraphQL requests populate contexts.GetAPIKey(ctx). Search in internal/server for SetAPIKey / contexts.WithAPIKey / middleware. Determine whether GraphQL testChannel mutation runs with an API key context (from headers?) or only user JWT. Provide file:line refs and implications for model_access.go causing ErrInvalidModel: <model>.\",\"resume\":\"\",\"run_in_background\":false,\"subagent_type\":\"Explore\"}"
+            }
+          }
+        ],
+        "reasoning_signature": "PE9QRU5BSV9FTkNSWVBURURfQ09OVEVOVD4=gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8-QnwOjWp"
+      },
+      "finish_reason": "tool_calls"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 36513,
+    "completion_tokens": 3125,
+    "total_tokens": 39638,
+    "prompt_tokens_details": {
+      "cached_tokens": 34688
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 2992
+    }
+  }
+}

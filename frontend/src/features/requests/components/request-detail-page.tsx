@@ -91,17 +91,23 @@ export default function RequestDetailPage() {
     }
   };
 
-  const showRequestCurlPreview = useCallback((headers: any, body: any) => {
-    const curl = generateRequestCurl(headers, body);
-    setCurlCommand(curl);
-    setShowCurlPreview(true);
-  }, []);
+  const showRequestCurlPreview = useCallback(
+    (headers: any, body: any, apiFormat?: string) => {
+      const curl = generateRequestCurl(headers, body, apiFormat as any);
+      setCurlCommand(curl);
+      setShowCurlPreview(true);
+    },
+    []
+  );
 
-  const showExecutionCurlPreview = useCallback((headers: any, body: any, channel?: { baseURL?: string; type?: string }) => {
-    const curl = generateExecutionCurl(headers, body, channel as any);
-    setCurlCommand(curl);
-    setShowCurlPreview(true);
-  }, []);
+  const showExecutionCurlPreview = useCallback(
+    (headers: any, body: any, channel?: { baseURL?: string; type?: string }, apiFormat?: string) => {
+      const curl = generateExecutionCurl(headers, body, channel as any, apiFormat as any);
+      setCurlCommand(curl);
+      setShowCurlPreview(true);
+    },
+    []
+  );
 
   const calculateLatency = (createdAt: string | Date, updatedAt: string | Date) => {
     if (!createdAt || !updatedAt) return null;
@@ -370,7 +376,7 @@ export default function RequestDetailPage() {
                     <Button
                       variant='outline'
                       size='sm'
-                      onClick={() => showRequestCurlPreview(request.requestHeaders, request.requestBody)}
+                      onClick={() => showRequestCurlPreview(request.requestHeaders, request.requestBody, request.format)}
                       className='hover:bg-primary hover:text-primary-foreground'
                     >
                       <Terminal className='mr-2 h-4 w-4' />
@@ -592,7 +598,7 @@ export default function RequestDetailPage() {
                                   <Button
                                     variant='outline'
                                     size='sm'
-                                    onClick={() => showExecutionCurlPreview(execution.requestHeaders, execution.requestBody, execution.channel)}
+                                    onClick={() => showExecutionCurlPreview(execution.requestHeaders, execution.requestBody, execution.channel, execution.format)}
                                     className='hover:bg-primary hover:text-primary-foreground'
                                   >
                                     <Terminal className='mr-2 h-4 w-4' />

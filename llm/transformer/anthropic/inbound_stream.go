@@ -220,6 +220,90 @@ func (s *anthropicInboundStream) Next() bool {
 			}
 		}
 
+		// Handle redacted reasoning content (redacted_thinking)
+		if choice.Delta != nil && choice.Delta.RedactedReasoningContent != nil && *choice.Delta.RedactedReasoningContent != "" {
+			// If the thinking content has started before the redacted thinking content, we need to stop it
+			if s.hasThinkingContentStarted {
+				s.hasThinkingContentStarted = false
+
+				stopEvent := StreamEvent{
+					Type:  "content_block_stop",
+					Index: &s.contentIndex,
+				}
+
+				err := s.enqueEvent(&stopEvent)
+				if err != nil {
+					s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
+					return false
+				}
+
+				s.contentIndex += 1
+			}
+
+			// If the tool content has started before the redacted thinking content, we need to stop it
+			if s.hasToolContentStarted {
+				s.hasToolContentStarted = false
+
+				streamEvent := StreamEvent{
+					Type:  "content_block_stop",
+					Index: &s.contentIndex,
+				}
+
+				err := s.enqueEvent(&streamEvent)
+				if err != nil {
+					s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
+					return false
+				}
+
+				s.contentIndex += 1
+			}
+
+			// If the text content has started before the redacted thinking content, we need to stop it
+			if s.hasTextContentStarted {
+				s.hasTextContentStarted = false
+
+				streamEvent := StreamEvent{
+					Type:  "content_block_stop",
+					Index: &s.contentIndex,
+				}
+
+				err := s.enqueEvent(&streamEvent)
+				if err != nil {
+					s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
+					return false
+				}
+
+				s.contentIndex += 1
+			}
+
+			// Generate content_block_start for redacted_thinking
+			// Redacted thinking blocks come complete in content_block_start with their Data field already populated
+			err := s.enqueEvent(&StreamEvent{
+				Type:  "content_block_start",
+				Index: &s.contentIndex,
+				ContentBlock: &MessageContentBlock{
+					Type: "redacted_thinking",
+					Data: *choice.Delta.RedactedReasoningContent,
+				},
+			})
+			if err != nil {
+				s.err = fmt.Errorf("failed to enqueue redacted_thinking content_block_start event: %w", err)
+				return false
+			}
+
+			// Generate content_block_stop for redacted_thinking immediately
+			err = s.enqueEvent(&StreamEvent{
+				Type:  "content_block_stop",
+				Index: &s.contentIndex,
+			})
+			if err != nil {
+				s.err = fmt.Errorf("failed to enqueue redacted_thinking content_block_stop event: %w", err)
+				return false
+			}
+
+			s.contentIndex += 1
+		}
+
 		// Handle content delta
 		if choice.Delta != nil && choice.Delta.Content.Content != nil && *choice.Delta.Content.Content != "" {
 			// If the thinking content has started before the text content, we need to stop it

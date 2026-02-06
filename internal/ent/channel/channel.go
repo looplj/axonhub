@@ -35,6 +35,8 @@ const (
 	FieldStatus = "status"
 	// FieldCredentials holds the string denoting the credentials field in the database.
 	FieldCredentials = "credentials"
+	// FieldDisabledAPIKeys holds the string denoting the disabled_api_keys field in the database.
+	FieldDisabledAPIKeys = "disabled_api_keys"
 	// FieldSupportedModels holds the string denoting the supported_models field in the database.
 	FieldSupportedModels = "supported_models"
 	// FieldAutoSyncSupportedModels holds the string denoting the auto_sync_supported_models field in the database.
@@ -59,8 +61,6 @@ const (
 	EdgeExecutions = "executions"
 	// EdgeUsageLogs holds the string denoting the usage_logs edge name in mutations.
 	EdgeUsageLogs = "usage_logs"
-	// EdgeChannelPerformance holds the string denoting the channel_performance edge name in mutations.
-	EdgeChannelPerformance = "channel_performance"
 	// EdgeChannelProbes holds the string denoting the channel_probes edge name in mutations.
 	EdgeChannelProbes = "channel_probes"
 	// EdgeChannelModelPrices holds the string denoting the channel_model_prices edge name in mutations.
@@ -90,13 +90,6 @@ const (
 	UsageLogsInverseTable = "usage_logs"
 	// UsageLogsColumn is the table column denoting the usage_logs relation/edge.
 	UsageLogsColumn = "channel_id"
-	// ChannelPerformanceTable is the table that holds the channel_performance relation/edge.
-	ChannelPerformanceTable = "channel_performances"
-	// ChannelPerformanceInverseTable is the table name for the ChannelPerformance entity.
-	// It exists in this package in order to avoid circular dependency with the "channelperformance" package.
-	ChannelPerformanceInverseTable = "channel_performances"
-	// ChannelPerformanceColumn is the table column denoting the channel_performance relation/edge.
-	ChannelPerformanceColumn = "channel_id"
 	// ChannelProbesTable is the table that holds the channel_probes relation/edge.
 	ChannelProbesTable = "channel_probes"
 	// ChannelProbesInverseTable is the table name for the ChannelProbe entity.
@@ -131,6 +124,7 @@ var Columns = []string{
 	FieldName,
 	FieldStatus,
 	FieldCredentials,
+	FieldDisabledAPIKeys,
 	FieldSupportedModels,
 	FieldAutoSyncSupportedModels,
 	FieldTags,
@@ -169,8 +163,8 @@ var (
 	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultDeletedAt holds the default value on creation for the "deleted_at" field.
 	DefaultDeletedAt int
-	// DefaultCredentials holds the default value on creation for the "credentials" field.
-	DefaultCredentials *objects.ChannelCredentials
+	// DefaultDisabledAPIKeys holds the default value on creation for the "disabled_api_keys" field.
+	DefaultDisabledAPIKeys []objects.DisabledAPIKey
 	// DefaultAutoSyncSupportedModels holds the default value on creation for the "auto_sync_supported_models" field.
 	DefaultAutoSyncSupportedModels bool
 	// DefaultTags holds the default value on creation for the "tags" field.
@@ -229,6 +223,7 @@ const (
 	TypeClaudecode        Type = "claudecode"
 	TypeCerebras          Type = "cerebras"
 	TypeAntigravity       Type = "antigravity"
+	TypeNanogpt           Type = "nanogpt"
 )
 
 func (_type Type) String() string {
@@ -238,7 +233,7 @@ func (_type Type) String() string {
 // TypeValidator is a validator for the "type" field enum values. It is called by the builders before save.
 func TypeValidator(_type Type) error {
 	switch _type {
-	case TypeOpenai, TypeOpenaiResponses, TypeCodex, TypeVercel, TypeAnthropic, TypeAnthropicAWS, TypeAnthropicGcp, TypeGeminiOpenai, TypeGemini, TypeGeminiVertex, TypeDeepseek, TypeDeepseekAnthropic, TypeDeepinfra, TypeDoubao, TypeDoubaoAnthropic, TypeMoonshot, TypeMoonshotAnthropic, TypeZhipu, TypeZai, TypeZhipuAnthropic, TypeZaiAnthropic, TypeAnthropicFake, TypeOpenaiFake, TypeOpenrouter, TypeXai, TypePpio, TypeSiliconflow, TypeVolcengine, TypeLongcat, TypeLongcatAnthropic, TypeMinimax, TypeMinimaxAnthropic, TypeAihubmix, TypeBurncloud, TypeModelscope, TypeBailian, TypeJina, TypeGithub, TypeClaudecode, TypeCerebras, TypeAntigravity:
+	case TypeOpenai, TypeOpenaiResponses, TypeCodex, TypeVercel, TypeAnthropic, TypeAnthropicAWS, TypeAnthropicGcp, TypeGeminiOpenai, TypeGemini, TypeGeminiVertex, TypeDeepseek, TypeDeepseekAnthropic, TypeDeepinfra, TypeDoubao, TypeDoubaoAnthropic, TypeMoonshot, TypeMoonshotAnthropic, TypeZhipu, TypeZai, TypeZhipuAnthropic, TypeZaiAnthropic, TypeAnthropicFake, TypeOpenaiFake, TypeOpenrouter, TypeXai, TypePpio, TypeSiliconflow, TypeVolcengine, TypeLongcat, TypeLongcatAnthropic, TypeMinimax, TypeMinimaxAnthropic, TypeAihubmix, TypeBurncloud, TypeModelscope, TypeBailian, TypeJina, TypeGithub, TypeClaudecode, TypeCerebras, TypeAntigravity, TypeNanogpt:
 		return nil
 	default:
 		return fmt.Errorf("channel: invalid enum value for type field: %q", _type)
@@ -382,13 +377,6 @@ func ByUsageLogs(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
-// ByChannelPerformanceField orders the results by channel_performance field.
-func ByChannelPerformanceField(field string, opts ...sql.OrderTermOption) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newChannelPerformanceStep(), sql.OrderByField(field, opts...))
-	}
-}
-
 // ByChannelProbesCount orders the results by channel_probes count.
 func ByChannelProbesCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -442,13 +430,6 @@ func newUsageLogsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(UsageLogsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, UsageLogsTable, UsageLogsColumn),
-	)
-}
-func newChannelPerformanceStep() *sqlgraph.Step {
-	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(ChannelPerformanceInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.O2O, false, ChannelPerformanceTable, ChannelPerformanceColumn),
 	)
 }
 func newChannelProbesStep() *sqlgraph.Step {

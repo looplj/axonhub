@@ -308,6 +308,182 @@ for i, data in enumerate(response.data):
     print(f"文本 {i}: {data.embedding[:3]}...")
 ```
 
+## 模型 API
+
+AxonHub 提供增强的 `/v1/models` 端点，可列出可用模型并选择性地显示扩展元数据。
+
+### 支持的端点
+
+**端点：**
+- `GET /v1/models` - 列出可用模型
+
+### 查询参数
+
+| 参数 | 类型 | 必填 | 描述 |
+|-----------|------|----------|-------------|
+| `include` | 字符串 | ❌ | 要包含的字段列表，以逗号分隔，或使用 "all" 包含所有扩展字段 |
+
+### 可用字段
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `name` | 字符串 | 模型的显示名称 |
+| `description` | 字符串 | 模型描述 |
+| `context_length` | 整数 | 最大上下文长度（以令牌计） |
+| `max_output_tokens` | 整数 | 最大输出令牌数 |
+| `capabilities` | 对象 | 模型能力（vision, tool_call, reasoning） |
+| `pricing` | 对象 | 定价信息（input, output, cache_read, cache_write） |
+| `icon` | 字符串 | 模型图标 URL |
+| `type` | 字符串 | 模型类型（chat, embedding, image, rerank, moderation, tts, stt） |
+
+### 响应格式（基础 - 默认）
+
+调用时不带 `include` 参数，端点仅返回基础字段：
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "gpt-4",
+      "object": "model",
+      "created": 1686935002,
+      "owned_by": "openai"
+    }
+  ]
+}
+```
+
+**字段：**
+- `id` - 模型标识符
+- `object` - 始终为 "model"
+- `created` - 模型创建的 Unix 时间戳
+- `owned_by` - 拥有该模型的组织
+
+### 响应格式（扩展）
+
+使用 `?include=all` 或选择字段时，响应包含扩展元数据：
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "gpt-4",
+      "object": "model",
+      "created": 1686935002,
+      "owned_by": "openai",
+      "name": "GPT-4",
+      "description": "GPT-4 model with advanced reasoning capabilities",
+      "context_length": 8192,
+      "max_output_tokens": 4096,
+      "capabilities": {
+        "vision": false,
+        "tool_call": true,
+        "reasoning": true
+      },
+      "pricing": {
+        "input": 30.0,
+        "output": 60.0,
+        "cache_read": 15.0,
+        "cache_write": 30.0,
+        "unit": "per_1m_tokens",
+        "currency": "USD"
+      },
+      "icon": "https://example.com/icon.png",
+      "type": "chat"
+    }
+  ]
+}
+```
+
+**扩展字段：**
+- `name` - 人类可读的模型名称
+- `description` - 详细的模型描述
+- `context_length` - 上下文窗口的最大令牌数
+- `max_output_tokens` - 响应中的最大令牌数
+- `capabilities` - 包含布尔标志的对象：
+  - `vision` - 支持图像输入
+  - `tool_call` - 支持函数调用
+  - `reasoning` - 支持高级推理
+- `pricing` - 包含定价详情的对象：
+  - `input` - 每 100 万令牌的输入价格
+  - `output` - 每 100 万令牌的输出价格
+  - `cache_read` - 每 100 万令牌的缓存读取价格
+  - `cache_write` - 每 100 万令牌的缓存写入价格
+  - `unit` - 始终为 "per_1m_tokens"
+  - `currency` - 始终为 "USD"
+- `icon` - 模型图标图像的 URL
+- `type` - 模型类别（chat, embedding, image, rerank, moderation, tts, stt）
+
+### 示例
+
+**基础请求（默认）：**
+```bash
+curl -s http://localhost:8090/v1/models \
+  -H "Authorization: Bearer your-api-key" | jq
+```
+
+**包含所有扩展字段：**
+```bash
+curl -s "http://localhost:8090/v1/models?include=all" \
+  -H "Authorization: Bearer your-api-key" | jq
+```
+
+**仅选择字段：**
+```bash
+curl -s "http://localhost:8090/v1/models?include=name,pricing" \
+  -H "Authorization: Bearer your-api-key" | jq
+```
+
+**OpenAI SDK（Python）：**
+```python
+import openai
+
+client = openai.OpenAI(
+    api_key="your-axonhub-api-key",
+    base_url="http://localhost:8090/v1"
+)
+
+# 获取带扩展元数据的模型
+models = client.models.list()
+for model in models.data:
+    print(f"Model: {model.id}")
+    # 如果可用，访问扩展字段
+    if hasattr(model, 'name'):
+        print(f"  Name: {model.name}")
+    if hasattr(model, 'pricing'):
+        print(f"  Input price: ${model.pricing.input}/1M tokens")
+```
+
+### 错误响应
+
+**401 未授权 - API 密钥无效：**
+```json
+{
+  "error": {
+    "message": "Invalid API key",
+    "type": "invalid_request_error",
+    "code": "invalid_api_key"
+  }
+}
+```
+
+**500 内部服务器错误：**
+```json
+{
+  "error": {
+    "message": "Internal server error",
+    "type": "internal_error",
+    "code": "internal_error"
+  }
+}
+```
+
+### 字段可用性说明
+
+> **注意：** 扩展字段仅在模型配置了 ModelCard 数据时才会填充。没有 ModelCard 数据的模型将为扩展字段返回 `null`。
+
 ## 认证
 
 OpenAI API 格式使用 Bearer 令牌认证：

@@ -115,6 +115,7 @@
   "common.buttons.activate": "Activate",
   "common.buttons.remove": "Remove",
   "common.buttons.openMenu": "Open menu",
+  "common.buttons.close": "Close",
   "common.actions.openMenu": "Open menu",
   "common.actions.edit": "Edit",
   "common.actions.duplicate": "Duplicate",

@@ -23,7 +23,7 @@ func NewClaudeCodeQuotaChecker() *ClaudeCodeQuotaChecker {
 
 func (c *ClaudeCodeQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (QuotaData, error) {
 	// Verify credentials
-	if ch.Credentials == nil {
+	if ch.Credentials.OAuth == nil && strings.TrimSpace(ch.Credentials.APIKey) == "" {
 		return QuotaData{}, fmt.Errorf("channel has no credentials")
 	}
 

@@ -25,7 +25,8 @@ type ChannelsDialogType =
   | 'errorResolved'
   | 'viewModels'
   | 'price'
-  | 'transformOptions';
+  | 'transformOptions'
+  | 'disabledAPIKeys';
 
 interface ChannelsContextType {
   open: ChannelsDialogType | null;
