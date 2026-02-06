@@ -47,6 +47,42 @@ export function DataTableToolbar<TData>({
   const hasDateRange = !!dateRange?.from || !!dateRange?.to;
   const isFiltered = table.getState().columnFilters.length > 0 || hasDateRange;
 
+  // Handler to toggle show archived API keys and prune hidden IDs from filters
+  const handleToggleShowArchivedApiKeys = (checked: boolean) => {
+    setShowArchivedApiKeys(checked === true);
+
+    if (checked === false) {
+      // When turning off show archived, prune any archived IDs from the filter
+      const currentFilter = table.getColumn('apiKey')?.getFilterValue() as string[] | undefined;
+      if (currentFilter && currentFilter.length > 0) {
+        // Keep only IDs that are still in the current options (non-archived)
+        const visibleIds = new Set(apiKeyOptions.map((opt) => opt.value));
+        const prunedFilter = currentFilter.filter((id) => visibleIds.has(id));
+        table
+          .getColumn('apiKey')
+          ?.setFilterValue(prunedFilter.length > 0 ? prunedFilter : undefined);
+      }
+    }
+  };
+
+  // Handler to toggle show archived channels and prune hidden IDs from filters
+  const handleToggleShowArchivedChannels = (checked: boolean) => {
+    setShowArchivedChannels(checked === true);
+
+    if (checked === false) {
+      // When turning off show archived, prune any archived IDs from the filter
+      const currentFilter = table.getColumn('channel')?.getFilterValue() as string[] | undefined;
+      if (currentFilter && currentFilter.length > 0) {
+        // Keep only IDs that are still in the current options (non-archived)
+        const visibleIds = new Set(channelOptions.map((opt) => opt.value));
+        const prunedFilter = currentFilter.filter((id) => visibleIds.has(id));
+        table
+          .getColumn('channel')
+          ?.setFilterValue(prunedFilter.length > 0 ? prunedFilter : undefined);
+      }
+    }
+  };
+
   const { user: authUser } = useAuthStore((state) => state.auth);
   const { data: meData } = useMe();
   const user = meData || authUser;
@@ -175,7 +211,7 @@ export function DataTableToolbar<TData>({
                 <Checkbox
                   id='show-archived-channels'
                   checked={showArchivedChannels}
-                  onCheckedChange={(checked) => setShowArchivedChannels(checked === true)}
+                  onCheckedChange={(checked) => handleToggleShowArchivedChannels(checked === true)}
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => e.stopPropagation()}
                 />
@@ -200,7 +236,7 @@ export function DataTableToolbar<TData>({
                 <Checkbox
                   id='show-archived-api-keys'
                   checked={showArchivedApiKeys}
-                  onCheckedChange={(checked) => setShowArchivedApiKeys(checked === true)}
+                  onCheckedChange={(checked) => handleToggleShowArchivedApiKeys(checked === true)}
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => e.stopPropagation()}
                 />
