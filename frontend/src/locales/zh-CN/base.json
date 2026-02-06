@@ -115,6 +115,7 @@
   "common.close": "关闭",
   "common.refresh": "刷新",
   "common.autoRefresh": "自动刷新",
+  "common.showArchived": "显示已归档",
   "common.selected": "已选择",
   "common.selectedItems": "已选择 {{count}} 项",
   "common.noResultsFound": "未找到结果",

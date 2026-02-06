@@ -70,6 +70,7 @@
   "common.close": "Close",
   "common.refresh": "Refresh",
   "common.autoRefresh": "Auto Refresh",
+  "common.showArchived": "Show archived",
   "common.selected": "selected",
   "common.selectedItems": "{{count}} selected",
   "common.noResultsFound": "No results found",

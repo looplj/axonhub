@@ -1,10 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Cross2Icon } from '@radix-ui/react-icons';
 import { Table } from '@tanstack/react-table';
 import { RefreshCw, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter';
@@ -41,6 +42,8 @@ export function DataTableToolbar<TData>({
   onAutoRefreshChange,
 }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation();
+  const [showArchivedApiKeys, setShowArchivedApiKeys] = useState(false);
+  const [showArchivedChannels, setShowArchivedChannels] = useState(false);
   const hasDateRange = !!dateRange?.from || !!dateRange?.to;
   const isFiltered = table.getState().columnFilters.length > 0 || hasDateRange;
 
@@ -57,6 +60,13 @@ export function DataTableToolbar<TData>({
     {
       first: 100,
       orderBy: { field: 'CREATED_AT', direction: 'DESC' },
+      where: showArchivedChannels
+        ? {
+            statusIn: ['enabled', 'disabled', 'archived'],
+          }
+        : {
+            statusIn: ['enabled', 'disabled'],
+          },
     },
     {
       disableAutoFetch: !canViewChannels,
@@ -67,6 +77,13 @@ export function DataTableToolbar<TData>({
     {
       first: 100,
       orderBy: { field: 'CREATED_AT', direction: 'DESC' },
+      where: showArchivedApiKeys
+        ? {
+            statusIn: ['enabled', 'disabled', 'archived'],
+          }
+        : {
+            statusIn: ['enabled', 'disabled'],
+          },
     },
     {
       disableAutoFetch: !canViewApiKeys,
@@ -145,10 +162,54 @@ export function DataTableToolbar<TData>({
           />
         )} */}
         {canViewChannels && table.getColumn('channel') && channelOptions.length > 0 && (
-          <DataTableFacetedFilter column={table.getColumn('channel')} title={t('requests.filters.channel')} options={channelOptions} />
+          <DataTableFacetedFilter
+            column={table.getColumn('channel')}
+            title={t('requests.filters.channel')}
+            options={channelOptions}
+            footer={
+              <div
+                className='flex items-center space-x-2 px-2 py-1.5'
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Checkbox
+                  id='show-archived-channels'
+                  checked={showArchivedChannels}
+                  onCheckedChange={(checked) => setShowArchivedChannels(checked === true)}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <label htmlFor='show-archived-channels' className='cursor-pointer text-sm' onClick={(e) => e.stopPropagation()}>
+                  {t('common.showArchived')}
+                </label>
+              </div>
+            }
+          />
         )}
         {canViewApiKeys && table.getColumn('apiKey') && apiKeyOptions.length > 0 && (
-          <DataTableFacetedFilter column={table.getColumn('apiKey')} title={t('requests.filters.apiKey')} options={apiKeyOptions} />
+          <DataTableFacetedFilter
+            column={table.getColumn('apiKey')}
+            title={t('requests.filters.apiKey')}
+            options={apiKeyOptions}
+            footer={
+              <div
+                className='flex items-center space-x-2 px-2 py-1.5'
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Checkbox
+                  id='show-archived-api-keys'
+                  checked={showArchivedApiKeys}
+                  onCheckedChange={(checked) => setShowArchivedApiKeys(checked === true)}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <label htmlFor='show-archived-api-keys' className='cursor-pointer text-sm' onClick={(e) => e.stopPropagation()}>
+                  {t('common.showArchived')}
+                </label>
+              </div>
+            }
+          />
         )}
         <DateRangePicker value={dateRange} onChange={onDateRangeChange} />
         {hasDateRange && (
