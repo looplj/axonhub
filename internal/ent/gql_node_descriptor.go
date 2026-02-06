@@ -630,7 +630,7 @@ func (_m *ChannelOverrideTemplate) Node(ctx context.Context) (node *Node, err er
 		return nil, err
 	}
 	node.Fields[7] = &Field{
-		Type:  "[]objects.HeaderEntry",
+		Type:  "[]objects.OverrideOperation",
 		Name:  "override_headers",
 		Value: string(buf),
 	}

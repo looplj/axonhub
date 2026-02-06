@@ -5,7 +5,7 @@ import { pageInfoSchema } from '@/gql/pagination';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useErrorHandler } from '@/hooks/use-error-handler';
-import { ChannelType, HeaderEntry } from './schema';
+import { ChannelType, overrideOperationSchema } from './schema';
 
 // Zod Schemas for Template Types
 export const channelOverrideTemplateSchema = z.object({
@@ -17,12 +17,7 @@ export const channelOverrideTemplateSchema = z.object({
   description: z.string().optional().nullable(),
   channelType: z.string() as z.ZodType<ChannelType>,
   overrideParameters: z.string(),
-  overrideHeaders: z.array(
-    z.object({
-      key: z.string(),
-      value: z.string(),
-    })
-  ),
+  overrideHeaders: z.array(overrideOperationSchema),
 });
 export type ChannelOverrideTemplate = z.infer<typeof channelOverrideTemplateSchema>;
 
@@ -43,14 +38,7 @@ export const createChannelOverrideTemplateInputSchema = z.object({
   description: z.string().optional(),
   channelType: z.string() as z.ZodType<ChannelType>,
   overrideParameters: z.string().optional(),
-  overrideHeaders: z
-    .array(
-      z.object({
-        key: z.string(),
-        value: z.string(),
-      })
-    )
-    .optional(),
+  overrideHeaders: z.array(overrideOperationSchema).optional(),
 });
 export type CreateChannelOverrideTemplateInput = z.infer<typeof createChannelOverrideTemplateInputSchema>;
 
@@ -60,14 +48,7 @@ export const updateChannelOverrideTemplateInputSchema = z.object({
   clearDescription: z.boolean().optional(),
   channelType: z.string().optional() as z.ZodType<ChannelType | undefined>,
   overrideParameters: z.string().optional(),
-  overrideHeaders: z
-    .array(
-      z.object({
-        key: z.string(),
-        value: z.string(),
-      })
-    )
-    .optional(),
+  overrideHeaders: z.array(overrideOperationSchema).optional(),
 });
 export type UpdateChannelOverrideTemplateInput = z.infer<typeof updateChannelOverrideTemplateInputSchema>;
 
@@ -97,8 +78,12 @@ const TEMPLATE_FRAGMENT = `
     channelType
     overrideParameters
     overrideHeaders {
-      key
+      op
+      path
+      from
+      to
       value
+      condition
     }
   }
 `;

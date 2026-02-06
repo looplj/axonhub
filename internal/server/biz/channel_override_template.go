@@ -187,7 +187,12 @@ func (svc *ChannelOverrideTemplateService) ApplyTemplate(
 				settings = *ch.Settings
 			}
 
-			settings.OverrideHeaders = MergeOverrideHeaders(settings.OverrideHeaders, template.OverrideHeaders)
+			settings.OverrideHeaders = objects.OverrideOperationsToHeaderEntries(
+				MergeOverrideHeaders(
+					objects.HeaderEntriesToOverrideOperations(settings.OverrideHeaders),
+					template.OverrideHeaders,
+				),
+			)
 
 			mergedParams, err := MergeOverrideParameters(settings.OverrideParameters, template.OverrideParameters)
 			if err != nil {

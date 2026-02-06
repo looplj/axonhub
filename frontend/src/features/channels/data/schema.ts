@@ -91,6 +91,17 @@ export const headerEntrySchema = z.object({
 });
 export type HeaderEntry = z.infer<typeof headerEntrySchema>;
 
+// Override Operation
+export const overrideOperationSchema = z.object({
+  op: z.enum(['set', 'delete', 'rename', 'copy']),
+  path: z.string().optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+  value: z.any().optional(),
+  condition: z.string().optional(),
+})
+export type OverrideOperation = z.infer<typeof overrideOperationSchema>
+
 // Proxy Type
 export const proxyTypeSchema = z.enum(['disabled', 'environment', 'url']);
 export type ProxyType = z.infer<typeof proxyTypeSchema>;
@@ -135,8 +146,8 @@ export const channelSettingsSchema = z.object({
   autoTrimedModelPrefixes: z.array(z.string()).optional().nullable(),
   hideOriginalModels: z.boolean().optional(),
   hideMappedModels: z.boolean().optional(),
-  overrideParameters: z.string().optional(),
-  overrideHeaders: z.array(headerEntrySchema).optional().nullable(),
+  bodyOverrideOperations: z.array(overrideOperationSchema).optional(),
+  headerOverrideOperations: z.array(overrideOperationSchema).optional(),
   proxy: proxyConfigSchema.optional().nullable(),
   transformOptions: transformOptionsSchema.optional(),
 });

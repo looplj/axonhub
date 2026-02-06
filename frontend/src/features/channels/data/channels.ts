@@ -76,28 +76,35 @@ const CREATE_CHANNEL_MUTATION = `
       autoSyncSupportedModels
       tags
       defaultTestModel
-      settings {
-        extraModelPrefix
-        modelMappings {
-          from
-          to
+        settings {
+          extraModelPrefix
+          modelMappings {
+            from
+            to
+          }
+          autoTrimedModelPrefixes
+          hideOriginalModels
+          hideMappedModels
+          bodyOverrideOperations {
+            op
+            path
+            from
+            to
+            value
+            condition
+          }
+          proxy {
+            type
+            url
+            username
+            password
+          }
+          transformOptions {
+            forceArrayInstructions
+            forceArrayInputs
+            replaceDeveloperRoleWithSystem
+          }
         }
-        autoTrimedModelPrefixes
-        hideOriginalModels
-        hideMappedModels
-        overrideParameters
-        proxy {
-          type
-          url
-          username
-          password
-        }
-        transformOptions {
-          forceArrayInstructions
-          forceArrayInputs
-          replaceDeveloperRoleWithSystem
-        }
-      }
       orderingWeight
       remark
     }
@@ -121,28 +128,35 @@ const BULK_CREATE_CHANNELS_MUTATION = `
       autoSyncSupportedModels
       tags
       defaultTestModel
-      settings {
-        extraModelPrefix
-        modelMappings {
-          from
-          to
+        settings {
+          extraModelPrefix
+          modelMappings {
+            from
+            to
+          }
+          autoTrimedModelPrefixes
+          hideOriginalModels
+          hideMappedModels
+          bodyOverrideOperations {
+            op
+            path
+            from
+            to
+            value
+            condition
+          }
+          proxy {
+            type
+            url
+            username
+            password
+          }
+          transformOptions {
+            forceArrayInstructions
+            forceArrayInputs
+            replaceDeveloperRoleWithSystem
+          }
         }
-        autoTrimedModelPrefixes
-        hideOriginalModels
-        hideMappedModels
-        overrideParameters
-        proxy {
-          type
-          url
-          username
-          password
-        }
-        transformOptions {
-          forceArrayInstructions
-          forceArrayInputs
-          replaceDeveloperRoleWithSystem
-        }
-      }
       orderingWeight
       remark
     }
@@ -166,28 +180,35 @@ const UPDATE_CHANNEL_MUTATION = `
       autoSyncSupportedModels
       tags
       defaultTestModel
-      settings {
-        extraModelPrefix
-        modelMappings {
-          from
-          to
+        settings {
+          extraModelPrefix
+          modelMappings {
+            from
+            to
+          }
+          autoTrimedModelPrefixes
+          hideOriginalModels
+          hideMappedModels
+          bodyOverrideOperations {
+            op
+            path
+            from
+            to
+            value
+            condition
+          }
+          proxy {
+            type
+            url
+            username
+            password
+          }
+          transformOptions {
+            forceArrayInstructions
+            forceArrayInputs
+            replaceDeveloperRoleWithSystem
+          }
         }
-        autoTrimedModelPrefixes
-        hideOriginalModels
-        hideMappedModels
-        overrideParameters
-        proxy {
-          type
-          url
-          username
-          password
-        }
-        transformOptions {
-          forceArrayInstructions
-          forceArrayInputs
-          replaceDeveloperRoleWithSystem
-        }
-      }
       orderingWeight
       errorMessage
       remark
@@ -273,7 +294,14 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           autoTrimedModelPrefixes
           hideOriginalModels
           hideMappedModels
-          overrideParameters
+          bodyOverrideOperations {
+            op
+            path
+            from
+            to
+            value
+            condition
+          }
           transformOptions {
             forceArrayInstructions
             forceArrayInputs
@@ -545,10 +573,21 @@ const QUERY_CHANNELS_QUERY = `
             autoTrimedModelPrefixes
             hideOriginalModels
             hideMappedModels
-            overrideParameters
-            overrideHeaders{
-              key
+            bodyOverrideOperations {
+              op
+              path
+              from
+              to
               value
+              condition
+            }
+            headerOverrideOperations {
+              op
+              path
+              from
+              to
+              value
+              condition
             }
             proxy {
               type

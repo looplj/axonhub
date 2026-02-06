@@ -93,7 +93,7 @@ var (
 	// DefaultOverrideParameters holds the default value on creation for the "override_parameters" field.
 	DefaultOverrideParameters string
 	// DefaultOverrideHeaders holds the default value on creation for the "override_headers" field.
-	DefaultOverrideHeaders []objects.HeaderEntry
+	DefaultOverrideHeaders []objects.OverrideOperation
 )
 
 // OrderOption defines the ordering options for the ChannelOverrideTemplate queries.

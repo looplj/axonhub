@@ -54,8 +54,8 @@ func (ChannelOverrideTemplate) Fields() []ent.Field {
 		field.String("override_parameters").
 			Default("{}").
 			Comment("Override request body parameters as JSON string"),
-		field.JSON("override_headers", []objects.HeaderEntry{}).
-			Default([]objects.HeaderEntry{}).
+		field.JSON("override_headers", []objects.OverrideOperation{}).
+			Default([]objects.OverrideOperation{}).
 			Comment("Override request headers"),
 	}
 }

@@ -31,8 +31,8 @@ func TestChannelOverrideTemplateService_CreateTemplate(t *testing.T) {
 	})
 
 	t.Run("create template successfully", func(t *testing.T) {
-		headers := []objects.HeaderEntry{
-			{Key: "Authorization", Value: "Bearer token"},
+		headers := []objects.OverrideOperation{
+			{Op: objects.OverrideOpSet, Path: "Authorization", Value: "Bearer token"},
 		}
 		params := `{"temperature": 0.7}`
 		description := "Test description"
@@ -103,13 +103,12 @@ func TestChannelOverrideTemplateService_CreateTemplate(t *testing.T) {
 	})
 
 	t.Run("reject invalid headers", func(t *testing.T) {
-		headers := []objects.HeaderEntry{
-			{Key: "Authorization", Value: "Bearer token"},
-			{Key: "authorization", Value: "Bearer token2"}, // duplicate
+		headers := []objects.OverrideOperation{
+			{Op: objects.OverrideOpSet, Path: "", Value: "value"}, // empty path
 		}
 
 		input := ent.CreateChannelOverrideTemplateInput{
-			Name:               "Duplicate Headers Template",
+			Name:               "Invalid Headers Template",
 			Description:        nil,
 			ChannelType:        channel.TypeOpenai.String(),
 			OverrideParameters: nil,
@@ -150,7 +149,7 @@ func TestChannelOverrideTemplateService_UpdateTemplate(t *testing.T) {
 		SetDescription("Original description").
 		SetChannelType(string(channel.TypeOpenai)).
 		SetOverrideParameters(`{"temperature": 0.7}`).
-		SetOverrideHeaders([]objects.HeaderEntry{{Key: "X-API-Key", Value: "key1"}}).
+		SetOverrideHeaders([]objects.OverrideOperation{{Op: objects.OverrideOpSet, Path: "X-API-Key", Value: "key1"}}).
 		SaveX(ctx)
 
 	t.Run("update name only", func(t *testing.T) {
@@ -177,7 +176,7 @@ func TestChannelOverrideTemplateService_UpdateTemplate(t *testing.T) {
 	})
 
 	t.Run("update headers", func(t *testing.T) {
-		newHeaders := []objects.HeaderEntry{{Key: "Authorization", Value: "Bearer token"}}
+		newHeaders := []objects.OverrideOperation{{Op: objects.OverrideOpSet, Path: "Authorization", Value: "Bearer token"}}
 		input := ent.UpdateChannelOverrideTemplateInput{
 			OverrideHeaders: newHeaders,
 		}
@@ -221,8 +220,8 @@ func TestChannelOverrideTemplateService_ApplyTemplate(t *testing.T) {
 		SetName("Test Template").
 		SetChannelType(channel.TypeOpenai.String()).
 		SetOverrideParameters(`{"temperature": 0.9, "max_tokens": 2000}`).
-		SetOverrideHeaders([]objects.HeaderEntry{
-			{Key: "X-Custom-Header", Value: "custom-value"},
+		SetOverrideHeaders([]objects.OverrideOperation{
+			{Op: objects.OverrideOpSet, Path: "X-Custom-Header", Value: "custom-value"},
 		}).
 		SaveX(ctx)
 
@@ -237,9 +236,7 @@ func TestChannelOverrideTemplateService_ApplyTemplate(t *testing.T) {
 			SetDefaultTestModel("gpt-4").
 			SetSettings(&objects.ChannelSettings{
 				OverrideParameters: `{"temperature": 0.7, "top_p": 0.9}`,
-				OverrideHeaders: []objects.HeaderEntry{
-					{Key: "Authorization", Value: "Bearer token"},
-				},
+				OverrideHeaders:    []objects.HeaderEntry{{Key: "Authorization", Value: "Bearer token"}},
 			}).
 			SaveX(ctx)
 
@@ -264,12 +261,12 @@ func TestChannelOverrideTemplateService_ApplyTemplate(t *testing.T) {
 		// Verify channel 1 merged correctly
 		require.JSONEq(t, `{"temperature": 0.9, "max_tokens": 2000, "top_p": 0.9}`, updated[0].Settings.OverrideParameters)
 		require.Len(t, updated[0].Settings.OverrideHeaders, 2)
-		require.Contains(t, updated[0].Settings.OverrideHeaders, objects.HeaderEntry{Key: "Authorization", Value: "Bearer token"})
-		require.Contains(t, updated[0].Settings.OverrideHeaders, objects.HeaderEntry{Key: "X-Custom-Header", Value: "custom-value"})
+		require.Contains(t, objects.HeaderEntriesToOverrideOperations(updated[0].Settings.OverrideHeaders), objects.OverrideOperation{Op: objects.OverrideOpSet, Path: "Authorization", Value: "Bearer token"})
+		require.Contains(t, objects.HeaderEntriesToOverrideOperations(updated[0].Settings.OverrideHeaders), objects.OverrideOperation{Op: objects.OverrideOpSet, Path: "X-Custom-Header", Value: "custom-value"})
 
 		// Verify channel 2 merged correctly
 		require.JSONEq(t, `{"temperature": 0.9, "max_tokens": 2000}`, updated[1].Settings.OverrideParameters)
-		require.Equal(t, []objects.HeaderEntry{{Key: "X-Custom-Header", Value: "custom-value"}}, updated[1].Settings.OverrideHeaders)
+		require.Equal(t, []objects.HeaderEntry{{Op: objects.OverrideOpSet, Key: "X-Custom-Header", Value: "custom-value"}}, updated[1].Settings.OverrideHeaders)
 	})
 
 	t.Run("reject mismatched channel type", func(t *testing.T) {

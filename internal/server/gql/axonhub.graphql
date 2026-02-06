@@ -18,6 +18,24 @@ input HeaderEntryInput {
   value: String!
 }
 
+type OverrideOperation {
+  op: String!
+  path: String
+  from: String
+  to: String
+  value: String
+  condition: String
+}
+
+input OverrideOperationInput {
+  op: String!
+  path: String
+  from: String
+  to: String
+  value: String
+  condition: String
+}
+
 type TransformOptions {
   forceArrayInstructions: Boolean!
   forceArrayInputs: Boolean!
@@ -56,10 +74,10 @@ type ChannelSettings {
   autoTrimedModelPrefixes: [String!]
   hideOriginalModels: Boolean
   hideMappedModels: Boolean
-  overrideParameters: String
-  overrideHeaders: [HeaderEntry!]
   proxy: ProxyConfig
   transformOptions: TransformOptions
+  headerOverrideOperations: [OverrideOperation!]! @goField(forceResolver: true)
+  bodyOverrideOperations: [OverrideOperation!]! @goField(forceResolver: true)
 }
 
 enum CapabilityPolicy {
@@ -87,10 +105,10 @@ input ChannelSettingsInput {
   autoTrimedModelPrefixes: [String!]
   hideOriginalModels: Boolean
   hideMappedModels: Boolean
-  overrideParameters: String
-  overrideHeaders: [HeaderEntryInput!]
   proxy: ProxyConfigInput
   transformOptions: TransformOptionsInput
+  headerOverrideOperations: [OverrideOperationInput!]
+  bodyOverrideOperations: [OverrideOperationInput!]
 }
 
 type ChannelCredentials {
@@ -444,12 +462,12 @@ type GCS {
 }
 
 type UsageMetadata {
-  totalInputTokens: Int! 
-  totalOutputTokens: Int! 
-  totalTokens: Int! 
-  totalCachedTokens: Int! 
-  totalCachedWriteTokens: Int! 
-  totalCost: Decimal! 
+  totalInputTokens: Int!
+  totalOutputTokens: Int!
+  totalTokens: Int!
+  totalCachedTokens: Int!
+  totalCachedWriteTokens: Int!
+  totalCost: Decimal!
 }
 
 extend type Trace {
@@ -601,7 +619,10 @@ type Mutation {
   enableChannelAPIKey(channelID: ID!, key: String!): Boolean!
   enableAllChannelAPIKeys(channelID: ID!): Boolean!
   enableSelectedChannelAPIKeys(channelID: ID!, keys: [String!]!): Boolean!
-  deleteDisabledChannelAPIKeys(channelID: ID!, keys: [String!]!): DeleteDisabledAPIKeysPayload!
+  deleteDisabledChannelAPIKeys(
+    channelID: ID!
+    keys: [String!]!
+  ): DeleteDisabledAPIKeysPayload!
 
   createAPIKey(input: CreateAPIKeyInput!): APIKey!
   updateAPIKey(id: ID!, input: UpdateAPIKeyInput!): APIKey!

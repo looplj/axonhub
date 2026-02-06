@@ -48,11 +48,11 @@ type Channel struct {
 	startTokenProvider func()
 	stopTokenProvider  func()
 
-	// cachedOverrideParams stores the parsed override parameters to avoid repeated JSON parsing
-	cachedOverrideParams map[string]any
+	// cachedOverrideOps stores the parsed override operations to avoid repeated JSON parsing
+	cachedOverrideOps []objects.OverrideOperation
 
 	// cachedOverrideHeaders stores the parsed override headers to avoid repeated JSON parsing
-	cachedOverrideHeaders []objects.HeaderEntry
+	cachedOverrideHeaders []objects.OverrideOperation
 
 	// cachedModelEntries caches GetModelEntries results
 	// RequestModel -> Entry
@@ -222,7 +222,7 @@ func (svc *ChannelService) refreshEnabledChannels(ctx context.Context, current [
 		}
 
 		// Preload override parameters
-		overrideParams := channel.GetOverrideParameters()
+		overrideParams := channel.GetBodyOverrideOperations()
 		if log.DebugEnabled(ctx) {
 			log.Debug(ctx, "created outbound transformer",
 				log.String("channel", c.Name),
@@ -407,6 +407,20 @@ func (svc *ChannelService) ListModels(ctx context.Context, input ListModelsInput
 // createChannel creates a new channel without triggering a reload.
 // This is useful for batch operations where reload should happen once at the end.
 func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error) {
+	if input.Settings != nil {
+		if input.Settings.BodyOverrideOperations != nil {
+			if err := ValidateBodyOverrideOperations(input.Settings.BodyOverrideOperations); err != nil {
+				return nil, fmt.Errorf("invalid body override operations: %w", err)
+			}
+		}
+
+		if input.Settings.HeaderOverrideOperations != nil {
+			if err := ValidateOverrideHeaders(input.Settings.HeaderOverrideOperations); err != nil {
+				return nil, fmt.Errorf("invalid header override operations: %w", err)
+			}
+		}
+	}
+
 	createBuilder := svc.entFromContext(ctx).Channel.Create().
 		SetType(input.Type).
 		SetNillableBaseURL(input.BaseURL).
@@ -500,15 +514,16 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	}
 
 	if input.Settings != nil {
-		// Always normalize and validate override parameters
-		input.Settings.OverrideParameters = NormalizeOverrideParameters(input.Settings.OverrideParameters)
-		if err := ValidateOverrideParameters(input.Settings.OverrideParameters); err != nil {
-			return nil, fmt.Errorf("invalid override parameters: %w", err)
+		// Always normalize and validate override settings.
+		if input.Settings.BodyOverrideOperations != nil {
+			if err := ValidateBodyOverrideOperations(input.Settings.BodyOverrideOperations); err != nil {
+				return nil, fmt.Errorf("invalid body override operations: %w", err)
+			}
 		}
-		// Validate override headers
-		if len(input.Settings.OverrideHeaders) > 0 {
-			if err := ValidateOverrideHeaders(input.Settings.OverrideHeaders); err != nil {
-				return nil, fmt.Errorf("invalid override headers: %w", err)
+
+		if input.Settings.HeaderOverrideOperations != nil {
+			if err := ValidateOverrideHeaders(input.Settings.HeaderOverrideOperations); err != nil {
+				return nil, fmt.Errorf("invalid header override operations: %w", err)
 			}
 		}
 

@@ -68,6 +68,7 @@ type ResolverRoot interface {
 	ChannelOverrideTemplate() ChannelOverrideTemplateResolver
 	ChannelProbe() ChannelProbeResolver
 	ChannelProbeData() ChannelProbeDataResolver
+	ChannelSettings() ChannelSettingsResolver
 	DataStorage() DataStorageResolver
 	Model() ModelResolver
 	Mutation() MutationResolver
@@ -408,15 +409,15 @@ type ComplexityRoot struct {
 	}
 
 	ChannelSettings struct {
-		AutoTrimedModelPrefixes func(childComplexity int) int
-		ExtraModelPrefix        func(childComplexity int) int
-		HideMappedModels        func(childComplexity int) int
-		HideOriginalModels      func(childComplexity int) int
-		ModelMappings           func(childComplexity int) int
-		OverrideHeaders         func(childComplexity int) int
-		OverrideParameters      func(childComplexity int) int
-		Proxy                   func(childComplexity int) int
-		TransformOptions        func(childComplexity int) int
+		AutoTrimedModelPrefixes  func(childComplexity int) int
+		BodyOverrideOperations   func(childComplexity int) int
+		ExtraModelPrefix         func(childComplexity int) int
+		HeaderOverrideOperations func(childComplexity int) int
+		HideMappedModels         func(childComplexity int) int
+		HideOriginalModels       func(childComplexity int) int
+		ModelMappings            func(childComplexity int) int
+		Proxy                    func(childComplexity int) int
+		TransformOptions         func(childComplexity int) int
 	}
 
 	ChannelSuccessRate struct {
@@ -759,6 +760,15 @@ type ComplexityRoot struct {
 		Onboarded          func(childComplexity int) int
 		SystemModelSetting func(childComplexity int) int
 		Version            func(childComplexity int) int
+	}
+
+	OverrideOperation struct {
+		Condition func(childComplexity int) int
+		From      func(childComplexity int) int
+		Op        func(childComplexity int) int
+		Path      func(childComplexity int) int
+		To        func(childComplexity int) int
+		Value     func(childComplexity int) int
 	}
 
 	PageInfo struct {
@@ -1522,6 +1532,10 @@ type ChannelProbeResolver interface {
 }
 type ChannelProbeDataResolver interface {
 	ChannelID(ctx context.Context, obj *biz.ChannelProbeData) (*objects.GUID, error)
+}
+type ChannelSettingsResolver interface {
+	HeaderOverrideOperations(ctx context.Context, obj *objects.ChannelSettings) ([]*objects.OverrideOperation, error)
+	BodyOverrideOperations(ctx context.Context, obj *objects.ChannelSettings) ([]*objects.OverrideOperation, error)
 }
 type DataStorageResolver interface {
 	ID(ctx context.Context, obj *ent.DataStorage) (*objects.GUID, error)
@@ -2968,12 +2982,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSettings.AutoTrimedModelPrefixes(childComplexity), true
+	case "ChannelSettings.bodyOverrideOperations":
+		if e.complexity.ChannelSettings.BodyOverrideOperations == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.BodyOverrideOperations(childComplexity), true
 	case "ChannelSettings.extraModelPrefix":
 		if e.complexity.ChannelSettings.ExtraModelPrefix == nil {
 			break
 		}
 
 		return e.complexity.ChannelSettings.ExtraModelPrefix(childComplexity), true
+	case "ChannelSettings.headerOverrideOperations":
+		if e.complexity.ChannelSettings.HeaderOverrideOperations == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.HeaderOverrideOperations(childComplexity), true
 	case "ChannelSettings.hideMappedModels":
 		if e.complexity.ChannelSettings.HideMappedModels == nil {
 			break
@@ -2992,18 +3018,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSettings.ModelMappings(childComplexity), true
-	case "ChannelSettings.overrideHeaders":
-		if e.complexity.ChannelSettings.OverrideHeaders == nil {
-			break
-		}
-
-		return e.complexity.ChannelSettings.OverrideHeaders(childComplexity), true
-	case "ChannelSettings.overrideParameters":
-		if e.complexity.ChannelSettings.OverrideParameters == nil {
-			break
-		}
-
-		return e.complexity.ChannelSettings.OverrideParameters(childComplexity), true
 	case "ChannelSettings.proxy":
 		if e.complexity.ChannelSettings.Proxy == nil {
 			break
@@ -4746,6 +4760,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.OnboardingInfo.Version(childComplexity), true
+
+	case "OverrideOperation.condition":
+		if e.complexity.OverrideOperation.Condition == nil {
+			break
+		}
+
+		return e.complexity.OverrideOperation.Condition(childComplexity), true
+	case "OverrideOperation.from":
+		if e.complexity.OverrideOperation.From == nil {
+			break
+		}
+
+		return e.complexity.OverrideOperation.From(childComplexity), true
+	case "OverrideOperation.op":
+		if e.complexity.OverrideOperation.Op == nil {
+			break
+		}
+
+		return e.complexity.OverrideOperation.Op(childComplexity), true
+	case "OverrideOperation.path":
+		if e.complexity.OverrideOperation.Path == nil {
+			break
+		}
+
+		return e.complexity.OverrideOperation.Path(childComplexity), true
+	case "OverrideOperation.to":
+		if e.complexity.OverrideOperation.To == nil {
+			break
+		}
+
+		return e.complexity.OverrideOperation.To(childComplexity), true
+	case "OverrideOperation.value":
+		if e.complexity.OverrideOperation.Value == nil {
+			break
+		}
+
+		return e.complexity.OverrideOperation.Value(childComplexity), true
 
 	case "PageInfo.endCursor":
 		if e.complexity.PageInfo.EndCursor == nil {
@@ -7900,6 +7951,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputModelSettingsInput,
 		ec.unmarshalInputModelWhereInput,
 		ec.unmarshalInputOAuthCredentialsInput,
+		ec.unmarshalInputOverrideOperationInput,
 		ec.unmarshalInputPriceTierInput,
 		ec.unmarshalInputPricingInput,
 		ec.unmarshalInputProjectOrder,
@@ -13672,14 +13724,14 @@ func (ec *executionContext) fieldContext_Channel_settings(_ context.Context, fie
 				return ec.fieldContext_ChannelSettings_hideOriginalModels(ctx, field)
 			case "hideMappedModels":
 				return ec.fieldContext_ChannelSettings_hideMappedModels(ctx, field)
-			case "overrideParameters":
-				return ec.fieldContext_ChannelSettings_overrideParameters(ctx, field)
-			case "overrideHeaders":
-				return ec.fieldContext_ChannelSettings_overrideHeaders(ctx, field)
 			case "proxy":
 				return ec.fieldContext_ChannelSettings_proxy(ctx, field)
 			case "transformOptions":
 				return ec.fieldContext_ChannelSettings_transformOptions(ctx, field)
+			case "headerOverrideOperations":
+				return ec.fieldContext_ChannelSettings_headerOverrideOperations(ctx, field)
+			case "bodyOverrideOperations":
+				return ec.fieldContext_ChannelSettings_bodyOverrideOperations(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelSettings", field.Name)
 		},
@@ -16006,7 +16058,7 @@ func (ec *executionContext) _ChannelOverrideTemplate_overrideHeaders(ctx context
 			return obj.OverrideHeaders, nil
 		},
 		nil,
-		ec.marshalNHeaderEntry2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐHeaderEntryᚄ,
+		ec.marshalNOverrideOperation2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperationᚄ,
 		true,
 		true,
 	)
@@ -16020,12 +16072,20 @@ func (ec *executionContext) fieldContext_ChannelOverrideTemplate_overrideHeaders
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "key":
-				return ec.fieldContext_HeaderEntry_key(ctx, field)
+			case "op":
+				return ec.fieldContext_OverrideOperation_op(ctx, field)
+			case "path":
+				return ec.fieldContext_OverrideOperation_path(ctx, field)
+			case "from":
+				return ec.fieldContext_OverrideOperation_from(ctx, field)
+			case "to":
+				return ec.fieldContext_OverrideOperation_to(ctx, field)
 			case "value":
-				return ec.fieldContext_HeaderEntry_value(ctx, field)
+				return ec.fieldContext_OverrideOperation_value(ctx, field)
+			case "condition":
+				return ec.fieldContext_OverrideOperation_condition(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type HeaderEntry", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type OverrideOperation", field.Name)
 		},
 	}
 	return fc, nil
@@ -17074,70 +17134,6 @@ func (ec *executionContext) fieldContext_ChannelSettings_hideMappedModels(_ cont
 	return fc, nil
 }
 
-func (ec *executionContext) _ChannelSettings_overrideParameters(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ChannelSettings_overrideParameters,
-		func(ctx context.Context) (any, error) {
-			return obj.OverrideParameters, nil
-		},
-		nil,
-		ec.marshalOString2string,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ChannelSettings_overrideParameters(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ChannelSettings",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelSettings_overrideHeaders(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ChannelSettings_overrideHeaders,
-		func(ctx context.Context) (any, error) {
-			return obj.OverrideHeaders, nil
-		},
-		nil,
-		ec.marshalOHeaderEntry2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐHeaderEntryᚄ,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ChannelSettings_overrideHeaders(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ChannelSettings",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "key":
-				return ec.fieldContext_HeaderEntry_key(ctx, field)
-			case "value":
-				return ec.fieldContext_HeaderEntry_value(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type HeaderEntry", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _ChannelSettings_proxy(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -17209,6 +17205,92 @@ func (ec *executionContext) fieldContext_ChannelSettings_transformOptions(_ cont
 				return ec.fieldContext_TransformOptions_replaceDeveloperRoleWithSystem(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TransformOptions", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSettings_headerOverrideOperations(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelSettings_headerOverrideOperations,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.ChannelSettings().HeaderOverrideOperations(ctx, obj)
+		},
+		nil,
+		ec.marshalNOverrideOperation2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperationᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_headerOverrideOperations(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "op":
+				return ec.fieldContext_OverrideOperation_op(ctx, field)
+			case "path":
+				return ec.fieldContext_OverrideOperation_path(ctx, field)
+			case "from":
+				return ec.fieldContext_OverrideOperation_from(ctx, field)
+			case "to":
+				return ec.fieldContext_OverrideOperation_to(ctx, field)
+			case "value":
+				return ec.fieldContext_OverrideOperation_value(ctx, field)
+			case "condition":
+				return ec.fieldContext_OverrideOperation_condition(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type OverrideOperation", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSettings_bodyOverrideOperations(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelSettings_bodyOverrideOperations,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.ChannelSettings().BodyOverrideOperations(ctx, obj)
+		},
+		nil,
+		ec.marshalNOverrideOperation2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperationᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_bodyOverrideOperations(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "op":
+				return ec.fieldContext_OverrideOperation_op(ctx, field)
+			case "path":
+				return ec.fieldContext_OverrideOperation_path(ctx, field)
+			case "from":
+				return ec.fieldContext_OverrideOperation_from(ctx, field)
+			case "to":
+				return ec.fieldContext_OverrideOperation_to(ctx, field)
+			case "value":
+				return ec.fieldContext_OverrideOperation_value(ctx, field)
+			case "condition":
+				return ec.fieldContext_OverrideOperation_condition(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type OverrideOperation", field.Name)
 		},
 	}
 	return fc, nil
@@ -25830,6 +25912,180 @@ func (ec *executionContext) fieldContext_OnboardingInfo_systemModelSetting(_ con
 				return ec.fieldContext_SystemModelSettingOnboarding_completedAt(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SystemModelSettingOnboarding", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OverrideOperation_op(ctx context.Context, field graphql.CollectedField, obj *objects.OverrideOperation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OverrideOperation_op,
+		func(ctx context.Context) (any, error) {
+			return obj.Op, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_OverrideOperation_op(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OverrideOperation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OverrideOperation_path(ctx context.Context, field graphql.CollectedField, obj *objects.OverrideOperation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OverrideOperation_path,
+		func(ctx context.Context) (any, error) {
+			return obj.Path, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OverrideOperation_path(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OverrideOperation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OverrideOperation_from(ctx context.Context, field graphql.CollectedField, obj *objects.OverrideOperation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OverrideOperation_from,
+		func(ctx context.Context) (any, error) {
+			return obj.From, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OverrideOperation_from(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OverrideOperation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OverrideOperation_to(ctx context.Context, field graphql.CollectedField, obj *objects.OverrideOperation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OverrideOperation_to,
+		func(ctx context.Context) (any, error) {
+			return obj.To, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OverrideOperation_to(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OverrideOperation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OverrideOperation_value(ctx context.Context, field graphql.CollectedField, obj *objects.OverrideOperation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OverrideOperation_value,
+		func(ctx context.Context) (any, error) {
+			return obj.Value, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OverrideOperation_value(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OverrideOperation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OverrideOperation_condition(ctx context.Context, field graphql.CollectedField, obj *objects.OverrideOperation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OverrideOperation_condition,
+		func(ctx context.Context) (any, error) {
+			return obj.Condition, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OverrideOperation_condition(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OverrideOperation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -47543,7 +47799,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "overrideParameters", "overrideHeaders", "proxy", "transformOptions"}
+	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -47585,20 +47841,6 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.HideMappedModels = data
-		case "overrideParameters":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("overrideParameters"))
-			data, err := ec.unmarshalOString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.OverrideParameters = data
-		case "overrideHeaders":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("overrideHeaders"))
-			data, err := ec.unmarshalOHeaderEntryInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐHeaderEntryᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.OverrideHeaders = data
 		case "proxy":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("proxy"))
 			data, err := ec.unmarshalOProxyConfigInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋllmᚋhttpclientᚐProxyConfig(ctx, v)
@@ -47613,6 +47855,20 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.TransformOptions = data
+		case "headerOverrideOperations":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("headerOverrideOperations"))
+			data, err := ec.unmarshalOOverrideOperationInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperationᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HeaderOverrideOperations = data
+		case "bodyOverrideOperations":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bodyOverrideOperations"))
+			data, err := ec.unmarshalOOverrideOperationInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperationᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BodyOverrideOperations = data
 		}
 	}
 
@@ -49005,7 +49261,7 @@ func (ec *executionContext) unmarshalInputCreateChannelOverrideTemplateInput(ctx
 			it.OverrideParameters = data
 		case "overrideHeaders":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("overrideHeaders"))
-			data, err := ec.unmarshalOHeaderEntryInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐHeaderEntryᚄ(ctx, v)
+			data, err := ec.unmarshalOOverrideOperationInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperationᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -52252,6 +52508,68 @@ func (ec *executionContext) unmarshalInputOAuthCredentialsInput(ctx context.Cont
 				return it, err
 			}
 			it.Scopes = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputOverrideOperationInput(ctx context.Context, obj any) (objects.OverrideOperation, error) {
+	var it objects.OverrideOperation
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"op", "path", "from", "to", "value", "condition"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "op":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("op"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Op = data
+		case "path":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("path"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Path = data
+		case "from":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("from"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.From = data
+		case "to":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("to"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.To = data
+		case "value":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("value"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Value = data
+		case "condition":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("condition"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Condition = data
 		}
 	}
 
@@ -59696,14 +60014,14 @@ func (ec *executionContext) unmarshalInputUpdateChannelOverrideTemplateInput(ctx
 			it.OverrideParameters = data
 		case "overrideHeaders":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("overrideHeaders"))
-			data, err := ec.unmarshalOHeaderEntryInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐHeaderEntryᚄ(ctx, v)
+			data, err := ec.unmarshalOOverrideOperationInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperationᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.OverrideHeaders = data
 		case "appendOverrideHeaders":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("appendOverrideHeaders"))
-			data, err := ec.unmarshalOHeaderEntryInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐHeaderEntryᚄ(ctx, v)
+			data, err := ec.unmarshalOOverrideOperationInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperationᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -67663,14 +67981,82 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelSettings_hideOriginalModels(ctx, field, obj)
 		case "hideMappedModels":
 			out.Values[i] = ec._ChannelSettings_hideMappedModels(ctx, field, obj)
-		case "overrideParameters":
-			out.Values[i] = ec._ChannelSettings_overrideParameters(ctx, field, obj)
-		case "overrideHeaders":
-			out.Values[i] = ec._ChannelSettings_overrideHeaders(ctx, field, obj)
 		case "proxy":
 			out.Values[i] = ec._ChannelSettings_proxy(ctx, field, obj)
 		case "transformOptions":
 			out.Values[i] = ec._ChannelSettings_transformOptions(ctx, field, obj)
+		case "headerOverrideOperations":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ChannelSettings_headerOverrideOperations(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "bodyOverrideOperations":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ChannelSettings_bodyOverrideOperations(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -70353,6 +70739,55 @@ func (ec *executionContext) _OnboardingInfo(ctx context.Context, sel ast.Selecti
 			out.Values[i] = ec._OnboardingInfo_completedAt(ctx, field, obj)
 		case "systemModelSetting":
 			out.Values[i] = ec._OnboardingInfo_systemModelSetting(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var overrideOperationImplementors = []string{"OverrideOperation"}
+
+func (ec *executionContext) _OverrideOperation(ctx context.Context, sel ast.SelectionSet, obj *objects.OverrideOperation) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, overrideOperationImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("OverrideOperation")
+		case "op":
+			out.Values[i] = ec._OverrideOperation_op(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "path":
+			out.Values[i] = ec._OverrideOperation_path(ctx, field, obj)
+		case "from":
+			out.Values[i] = ec._OverrideOperation_from(ctx, field, obj)
+		case "to":
+			out.Values[i] = ec._OverrideOperation_to(ctx, field, obj)
+		case "value":
+			out.Values[i] = ec._OverrideOperation_value(ctx, field, obj)
+		case "condition":
+			out.Values[i] = ec._OverrideOperation_condition(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -80777,59 +81212,6 @@ func (ec *executionContext) unmarshalNGetChannelProbeDataInput2githubᚗcomᚋlo
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNHeaderEntry2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐHeaderEntry(ctx context.Context, sel ast.SelectionSet, v objects.HeaderEntry) graphql.Marshaler {
-	return ec._HeaderEntry(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNHeaderEntry2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐHeaderEntryᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.HeaderEntry) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNHeaderEntry2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐHeaderEntry(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) unmarshalNHeaderEntryInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐHeaderEntry(ctx context.Context, v any) (objects.HeaderEntry, error) {
-	res, err := ec.unmarshalInputHeaderEntryInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
 func (ec *executionContext) unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx context.Context, v any) (objects.GUID, error) {
 	var res objects.GUID
 	err := res.UnmarshalGQL(v)
@@ -81499,6 +81881,113 @@ func (ec *executionContext) unmarshalNOrderDirection2entgoᚗioᚋcontribᚋentg
 
 func (ec *executionContext) marshalNOrderDirection2entgoᚗioᚋcontribᚋentgqlᚐOrderDirection(ctx context.Context, sel ast.SelectionSet, v entgql.OrderDirection) graphql.Marshaler {
 	return v
+}
+
+func (ec *executionContext) marshalNOverrideOperation2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperation(ctx context.Context, sel ast.SelectionSet, v objects.OverrideOperation) graphql.Marshaler {
+	return ec._OverrideOperation(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNOverrideOperation2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperationᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.OverrideOperation) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNOverrideOperation2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperation(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNOverrideOperation2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperationᚄ(ctx context.Context, sel ast.SelectionSet, v []*objects.OverrideOperation) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNOverrideOperation2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperation(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNOverrideOperation2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperation(ctx context.Context, sel ast.SelectionSet, v *objects.OverrideOperation) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._OverrideOperation(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNOverrideOperationInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperation(ctx context.Context, v any) (objects.OverrideOperation, error) {
+	res, err := ec.unmarshalInputOverrideOperationInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNPageInfo2entgoᚗioᚋcontribᚋentgqlᚐPageInfo(ctx context.Context, sel ast.SelectionSet, v entgql.PageInfo[int]) graphql.Marshaler {
@@ -85461,71 +85950,6 @@ func (ec *executionContext) unmarshalOGCSInput2ᚖgithubᚗcomᚋloopljᚋaxonhu
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOHeaderEntry2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐHeaderEntryᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.HeaderEntry) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNHeaderEntry2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐHeaderEntry(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) unmarshalOHeaderEntryInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐHeaderEntryᚄ(ctx context.Context, v any) ([]objects.HeaderEntry, error) {
-	if v == nil {
-		return nil, nil
-	}
-	var vSlice []any
-	vSlice = graphql.CoerceList(v)
-	var err error
-	res := make([]objects.HeaderEntry, len(vSlice))
-	for i := range vSlice {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNHeaderEntryInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐHeaderEntry(ctx, vSlice[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return res, nil
-}
-
 func (ec *executionContext) unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx context.Context, v any) ([]*objects.GUID, error) {
 	if v == nil {
 		return nil, nil
@@ -86224,6 +86648,24 @@ func (ec *executionContext) marshalOOverrideApplyMode2ᚖgithubᚗcomᚋlooplj�
 		return graphql.Null
 	}
 	return v
+}
+
+func (ec *executionContext) unmarshalOOverrideOperationInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperationᚄ(ctx context.Context, v any) ([]objects.OverrideOperation, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]objects.OverrideOperation, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNOverrideOperationInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperation(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalOProject2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐProject(ctx context.Context, sel ast.SelectionSet, v *ent.Project) graphql.Marshaler {
