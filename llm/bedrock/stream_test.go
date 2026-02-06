@@ -331,3 +331,17 @@ func TestAWSEventStreamDecoder_MultipleEvents(t *testing.T) {
 	hasNext = decoder.Next()
 	require.False(t, hasNext)
 }
+
+func TestAWSEventStreamDecoder_NextAfterClose(t *testing.T) {
+	ctx := context.Background()
+	rc := newMockReadCloser([]byte{})
+	decoder := NewAWSEventStreamDecoder(ctx, rc)
+
+	err := decoder.Close()
+	require.NoError(t, err)
+	require.True(t, rc.closed)
+
+	hasNext := decoder.Next()
+	require.False(t, hasNext)
+	require.NoError(t, decoder.Err())
+}

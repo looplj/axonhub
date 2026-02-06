@@ -163,6 +163,23 @@ func TestDefaultSSEDecoder_EmptyStream(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestDefaultSSEDecoder_NextAfterClose(t *testing.T) {
+	// Create a simple SSE stream
+	sseData := "data: {\"type\": \"test\", \"message\": \"hello\"}\n\n"
+	rc := newMockReadCloser([]byte(sseData))
+
+	ctx := context.Background()
+	decoder := NewDefaultSSEDecoder(ctx, rc)
+
+	err := decoder.Close()
+	require.NoError(t, err)
+	require.True(t, rc.closed)
+
+	hasNext := decoder.Next()
+	require.False(t, hasNext)
+	require.NoError(t, decoder.Err())
+}
+
 func TestStreamDecoderInterface(t *testing.T) {
 	ctx := context.Background()
 	// Test that our mock decoder implements the interface correctly
