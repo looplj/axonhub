@@ -277,6 +277,7 @@ input APIKeyQuotaPastDurationInput {
 }
 
 enum APIKeyQuotaPastDurationUnit {
+  minute
   hour
   day
 }
@@ -310,6 +311,24 @@ type APIKeyQuotaPastDuration {
 
 type APIKeyQuotaCalendarDuration {
   unit: APIKeyQuotaCalendarDurationUnit!
+}
+
+type APIKeyQuotaUsage {
+  requestCount: Int!
+  totalTokens: Int!
+  totalCost: Decimal!
+}
+
+type APIKeyQuotaWindow {
+  start: Time
+  end: Time
+}
+
+type APIKeyProfileQuotaUsage {
+  profileName: String!
+  quota: APIKeyQuota!
+  window: APIKeyQuotaWindow!
+  usage: APIKeyQuotaUsage!
 }
 
 input FetchModelsInput {
@@ -683,4 +702,9 @@ extend type Query {
   hasTag: String
   """
   queryChannels(input: QueryChannelInput!): ChannelConnection!
+
+  """
+  Returns quota usage for profiles that have quota enabled for an API key.
+  """
+  apiKeyQuotaUsages(apiKeyId: ID!): [APIKeyProfileQuotaUsage!]!
 }

@@ -495,6 +495,48 @@ func (r *queryResolver) QueryChannels(ctx context.Context, input biz.QueryChanne
 	return r.channelService.QueryChannels(ctx, input)
 }
 
+// APIKeyQuotaUsages is the resolver for the apiKeyQuotaUsages field.
+func (r *queryResolver) APIKeyQuotaUsages(ctx context.Context, apiKeyID objects.GUID) ([]*APIKeyProfileQuotaUsage, error) {
+	apiKey, err := r.client.APIKey.Get(ctx, apiKeyID.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get api key: %w", err)
+	}
+
+	if apiKey.Profiles == nil || len(apiKey.Profiles.Profiles) == 0 {
+		return []*APIKeyProfileQuotaUsage{}, nil
+	}
+
+	quotaService := biz.NewQuotaService(r.client, r.systemService)
+
+	result := make([]*APIKeyProfileQuotaUsage, 0, len(apiKey.Profiles.Profiles))
+	for _, profile := range apiKey.Profiles.Profiles {
+		if profile.Quota == nil {
+			continue
+		}
+
+		quotaRes, err := quotaService.GetQuota(ctx, apiKey.ID, profile.Quota)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get api key quota usage: %w", err)
+		}
+
+		result = append(result, &APIKeyProfileQuotaUsage{
+			ProfileName: profile.Name,
+			Quota:       profile.Quota,
+			Window: &APIKeyQuotaWindow{
+				Start: quotaRes.Window.Start,
+				End:   quotaRes.Window.End,
+			},
+			Usage: &APIKeyQuotaUsage{
+				RequestCount: int(quotaRes.Usage.RequestCount),
+				TotalTokens:  int(quotaRes.Usage.TotalTokens),
+				TotalCost:    quotaRes.Usage.TotalCost,
+			},
+		})
+	}
+
+	return result, nil
+}
+
 // ID is the resolver for the id field.
 func (r *segmentResolver) ID(ctx context.Context, obj *biz.Segment) (*objects.GUID, error) {
 	return &objects.GUID{Type: ent.TypeRequest, ID: obj.ID}, nil

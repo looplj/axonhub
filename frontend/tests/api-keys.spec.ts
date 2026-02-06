@@ -297,4 +297,95 @@ test.describe('Admin API Keys Management', () => {
     await page.keyboard.press('Escape')
     await expect(profilesDialog).not.toBeVisible()
   })
+
+  test('can configure per-minute quota in profiles', async ({ page }) => {
+    const uniqueName = `pw-test-quota-minute-${Date.now().toString().slice(-6)}`
+
+    const addApiKeyButton = page.getByRole('button', { name: /创建 API Key|Create API Key|新建/i })
+    await addApiKeyButton.click()
+
+    const createDialog = page.getByRole('dialog')
+    await createDialog.getByLabel(/名称|Name/i).fill(uniqueName)
+
+    const userSelect = createDialog.locator('[data-testid="user-select"], [role="combobox"]').first()
+    if (await userSelect.isVisible()) {
+      await userSelect.click()
+      const firstOption = page.locator('[role="option"]:not([aria-disabled="true"])').first()
+      if (await firstOption.isVisible()) {
+        await firstOption.click()
+      }
+    }
+
+    await createDialog.getByRole('button', { name: /创建|Create|保存|Save/i }).click()
+    await expect(createDialog).not.toBeVisible({ timeout: 10000 })
+
+    const viewDialog = page.locator('[role="dialog"]').filter({ hasText: /查看 API 密钥|View API Key|API Key/i })
+    if (await viewDialog.count()) {
+      const namedClose = viewDialog.getByRole('button', { name: /Close|关闭|确定|OK|Done/i })
+      if (await namedClose.count()) {
+        await namedClose.click()
+      } else {
+        await viewDialog.locator('button').last().click()
+      }
+      await expect(viewDialog).not.toBeVisible({ timeout: 10000 })
+    }
+
+    const table = page.locator('[data-testid="api-keys-table"], table:has(th), table').first()
+    const row = table.locator('tbody tr').filter({ hasText: uniqueName })
+    await expect(row).toBeVisible()
+
+    const actionsTrigger = row.locator('td:last-child button, button:has-text("Open menu")').first()
+    await actionsTrigger.click()
+
+    const menu = page.getByRole('menu')
+    await expect(menu).toBeVisible()
+    await menu.getByRole('menuitem', { name: /配置|Profiles|Settings/i }).click()
+
+    const profilesDialog = page.getByRole('dialog').filter({ hasText: /配置|Profiles/i })
+    await expect(profilesDialog).toBeVisible()
+
+    const addProfileButton = profilesDialog.getByRole('button', { name: /新增配置|Add Profile/i })
+    await addProfileButton.click()
+
+    const profileInputSelector = 'input[placeholder*="配置名称"], input[placeholder*="Profile Name"]'
+    const profileInputs = profilesDialog.locator(profileInputSelector)
+    const firstProfileInput = profileInputs.first()
+    await expect(firstProfileInput).toBeVisible()
+    await firstProfileInput.clear()
+    await firstProfileInput.fill('default')
+
+    const activeProfileSelect = profilesDialog
+      .getByText(/活跃配置|Active Profile/i)
+      .locator('xpath=ancestor::*[@data-slot="form-item"]')
+      .getByRole('combobox')
+    await activeProfileSelect.click()
+    await page.getByRole('option', { name: /default/i }).first().click()
+
+    const quotaSwitch = profilesDialog.getByRole('switch').first()
+    await quotaSwitch.click()
+
+    await profilesDialog.getByLabel(/请求次数|Request Count/i).fill('1')
+
+    const periodSelect = profilesDialog
+      .getByText(/周期|Period/i)
+      .locator('xpath=ancestor::*[@data-slot="form-item"]')
+      .getByRole('combobox')
+      .first()
+    await periodSelect.click()
+    await page.getByRole('option', { name: /过去一段时间|Past duration/i }).first().click()
+
+    const unitSelect = profilesDialog
+      .getByText(/单位|Unit/i)
+      .locator('xpath=ancestor::*[@data-slot="form-item"]')
+      .getByRole('combobox')
+      .first()
+    await unitSelect.click()
+    await page.getByRole('option', { name: /分钟|Minute/i }).first().click()
+
+    const saveButton = profilesDialog.getByRole('button', { name: /保存|Save/i })
+    await expect(saveButton).toBeEnabled()
+
+    await Promise.all([waitForGraphQLOperation(page, 'UpdateAPIKeyProfiles'), saveButton.click()])
+    await expect(profilesDialog).not.toBeVisible({ timeout: 10000 })
+  })
 })

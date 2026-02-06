@@ -49,7 +49,7 @@ export const apiKeySchema = z.object({
                   pastDuration: z
                     .object({
                       value: z.number(),
-                      unit: z.enum(['hour', 'day']),
+                      unit: z.enum(['minute', 'hour', 'day']),
                     })
                     .optional()
                     .nullable(),
@@ -142,7 +142,7 @@ export const apiKeyProfileSchema = z.object({
         pastDuration: z
           .object({
             value: z.number().int().positive(),
-            unit: z.enum(['hour', 'day']),
+            unit: z.enum(['minute', 'hour', 'day']),
           })
           .optional()
           .nullable(),
@@ -195,7 +195,7 @@ export const updateApiKeyProfilesInputSchemaFactory = (t: (key: string) => strin
                   pastDuration: z
                     .object({
                       value: z.number().int().positive(),
-                      unit: z.enum(['hour', 'day']),
+                      unit: z.enum(['minute', 'hour', 'day']),
                     })
                     .optional()
                     .nullable(),
@@ -294,7 +294,7 @@ export const updateApiKeyProfilesInputSchema = z.object({
             pastDuration: z
               .object({
                 value: z.number(),
-                unit: z.enum(['hour', 'day']),
+                unit: z.enum(['minute', 'hour', 'day']),
               })
               .optional()
               .nullable(),
@@ -312,3 +312,24 @@ export const updateApiKeyProfilesInputSchema = z.object({
   ),
 });
 export type UpdateApiKeyProfilesInput = z.infer<typeof updateApiKeyProfilesInputSchema>;
+
+export const apiKeyQuotaWindowSchema = z.object({
+  start: z.coerce.date().optional().nullable(),
+  end: z.coerce.date().optional().nullable(),
+});
+export type ApiKeyQuotaWindow = z.infer<typeof apiKeyQuotaWindowSchema>;
+
+export const apiKeyQuotaUsageSchema = z.object({
+  requestCount: z.number(),
+  totalTokens: z.number(),
+  totalCost: z.coerce.number(),
+});
+export type ApiKeyQuotaUsage = z.infer<typeof apiKeyQuotaUsageSchema>;
+
+export const apiKeyProfileQuotaUsageSchema = z.object({
+  profileName: z.string(),
+  quota: apiKeyProfileSchema.shape.quota,
+  window: apiKeyQuotaWindowSchema,
+  usage: apiKeyQuotaUsageSchema,
+});
+export type ApiKeyProfileQuotaUsage = z.infer<typeof apiKeyProfileQuotaUsageSchema>;

@@ -46,8 +46,9 @@ type APIKeyQuotaPastDuration struct {
 type APIKeyQuotaPastDurationUnit string
 
 const (
-	APIKeyQuotaPastDurationUnitHour APIKeyQuotaPastDurationUnit = "hour"
-	APIKeyQuotaPastDurationUnitDay  APIKeyQuotaPastDurationUnit = "day"
+	APIKeyQuotaPastDurationUnitMinute APIKeyQuotaPastDurationUnit = "minute"
+	APIKeyQuotaPastDurationUnitHour   APIKeyQuotaPastDurationUnit = "hour"
+	APIKeyQuotaPastDurationUnitDay    APIKeyQuotaPastDurationUnit = "day"
 )
 
 type APIKeyQuotaCalendarDuration struct {

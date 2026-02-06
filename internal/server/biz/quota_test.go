@@ -183,6 +183,90 @@ func TestQuotaService_PastDuration_TotalTokensExceeded(t *testing.T) {
 	require.Contains(t, res.Message, "total_tokens quota exceeded")
 }
 
+func TestQuotaService_PastDurationMinute_RequestCountExceeded(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	p, err := client.Project.Create().
+		SetName("p").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	now := time.Now().UTC()
+	apiKeyID := 10
+
+	req, err := client.Request.Create().
+		SetProjectID(p.ID).
+		SetAPIKeyID(apiKeyID).
+		SetModelID("m").
+		SetFormat("openai/chat_completions").
+		SetStatus(request.StatusCompleted).
+		SetRequestBody(objects.JSONRawMessage([]byte(`{}`))).
+		SetCreatedAt(now.Add(-10 * time.Second)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	_, err = client.UsageLog.Create().
+		SetRequestID(req.ID).
+		SetAPIKeyID(apiKeyID).
+		SetProjectID(p.ID).
+		SetChannelID(1).
+		SetModelID("m").
+		SetCreatedAt(now.Add(-10 * time.Second)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	systemService := NewSystemService(SystemServiceParams{Ent: client})
+	svc := NewQuotaService(client, systemService)
+	quota := &objects.APIKeyQuota{
+		Requests: lo.ToPtr(int64(1)),
+		Period: objects.APIKeyQuotaPeriod{
+			Type: objects.APIKeyQuotaPeriodTypePastDuration,
+			PastDuration: &objects.APIKeyQuotaPastDuration{
+				Value: 1,
+				Unit:  objects.APIKeyQuotaPastDurationUnitMinute,
+			},
+		},
+	}
+
+	res, err := svc.CheckAPIKeyQuota(ctx, apiKeyID, quota)
+	require.NoError(t, err)
+	require.False(t, res.Allowed)
+	require.Contains(t, res.Message, "requests quota exceeded")
+}
+
+func TestQuotaWindow_PastDurationMinute(t *testing.T) {
+	now := time.Date(2026, 1, 20, 1, 2, 3, 0, time.UTC)
+	window, err := quotaWindow(now, objects.APIKeyQuotaPeriod{
+		Type: objects.APIKeyQuotaPeriodTypePastDuration,
+		PastDuration: &objects.APIKeyQuotaPastDuration{
+			Value: 5,
+			Unit:  objects.APIKeyQuotaPastDurationUnitMinute,
+		},
+	}, time.UTC)
+	require.NoError(t, err)
+	require.NotNil(t, window.Start)
+	require.NotNil(t, window.End)
+	require.Equal(t, now.Add(-5*time.Minute), *window.Start)
+	require.Equal(t, now, *window.End)
+}
+
+func TestQuotaWindow_AllTime(t *testing.T) {
+	now := time.Date(2026, 1, 20, 1, 2, 3, 0, time.UTC)
+	window, err := quotaWindow(now, objects.APIKeyQuotaPeriod{
+		Type: objects.APIKeyQuotaPeriodTypeAllTime,
+	}, time.UTC)
+	require.NoError(t, err)
+	require.Nil(t, window.Start)
+	require.NotNil(t, window.End)
+	require.Equal(t, now, *window.End)
+}
+
 func TestQuotaWindow_CalendarDay_Timezone(t *testing.T) {
 	loc, err := time.LoadLocation("Asia/Shanghai")
 	require.NoError(t, err)
