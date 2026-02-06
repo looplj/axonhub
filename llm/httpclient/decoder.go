@@ -63,11 +63,20 @@ type defaultSSEDecoder struct {
 	sseStream *sse.Stream
 	current   *StreamEvent
 	err       error
+
+	// NOT concurrency-safe: do not call Next/Close from multiple goroutines.
+	// Close is made idempotent (safe to call multiple times sequentially).
+	closed   bool
+	closeErr error
 }
 
 // Next advances to the next event in the stream.
 func (s *defaultSSEDecoder) Next() bool {
 	if s.err != nil {
+		return false
+	}
+
+	if s.closed {
 		return false
 	}
 
@@ -123,14 +132,18 @@ func (s *defaultSSEDecoder) Err() error {
 
 // Close closes the stream and releases resources.
 func (s *defaultSSEDecoder) Close() error {
-	if s.sseStream != nil {
-		err := s.sseStream.Close()
-		log.Debug(s.ctx, "SSE stream closed")
-
-		return err
+	// NOT concurrency-safe: callers must not call Close concurrently with Next.
+	if s.closed {
+		return s.closeErr
 	}
 
-	return nil
+	s.closed = true
+	if s.sseStream != nil {
+		s.closeErr = s.sseStream.Close()
+		log.Debug(s.ctx, "SSE stream closed")
+	}
+
+	return s.closeErr
 }
 
 // init registers the default SSE decoder.

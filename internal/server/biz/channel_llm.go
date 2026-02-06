@@ -190,10 +190,6 @@ func getAPIKeyProvider(ch *Channel) auth.APIKeyProvider {
 
 //nolint:maintidx // Checked.
 func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel, error) {
-	if c == nil {
-		return nil, errors.New("channel is nil")
-	}
-
 	// Validate credentials early so we can fail fast without constructing HTTP clients/transformers.
 	//
 	// NOTE: "enabled" keys excludes keys that were explicitly disabled for this channel.
