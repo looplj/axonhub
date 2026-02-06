@@ -150,7 +150,8 @@ func quotaWindow(now time.Time, period objects.APIKeyQuotaPeriod, loc *time.Loca
 
 	switch period.Type {
 	case objects.APIKeyQuotaPeriodTypeAllTime:
-		return QuotaWindow{}, nil
+		end := now
+		return QuotaWindow{End: &end}, nil
 	case objects.APIKeyQuotaPeriodTypePastDuration:
 		if period.PastDuration == nil {
 			return QuotaWindow{}, fmt.Errorf("pastDuration is required")
@@ -174,8 +175,9 @@ func quotaWindow(now time.Time, period objects.APIKeyQuotaPeriod, loc *time.Loca
 		}
 
 		start := now.Add(-d)
+		end := now
 
-		return QuotaWindow{Start: &start}, nil
+		return QuotaWindow{Start: &start, End: &end}, nil
 	case objects.APIKeyQuotaPeriodTypeCalendarDuration:
 		if period.CalendarDuration == nil {
 			return QuotaWindow{}, fmt.Errorf("calendarDuration is required")

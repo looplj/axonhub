@@ -251,8 +251,20 @@ func TestQuotaWindow_PastDurationMinute(t *testing.T) {
 	}, time.UTC)
 	require.NoError(t, err)
 	require.NotNil(t, window.Start)
-	require.Nil(t, window.End)
+	require.NotNil(t, window.End)
 	require.Equal(t, now.Add(-5*time.Minute), *window.Start)
+	require.Equal(t, now, *window.End)
+}
+
+func TestQuotaWindow_AllTime(t *testing.T) {
+	now := time.Date(2026, 1, 20, 1, 2, 3, 0, time.UTC)
+	window, err := quotaWindow(now, objects.APIKeyQuotaPeriod{
+		Type: objects.APIKeyQuotaPeriodTypeAllTime,
+	}, time.UTC)
+	require.NoError(t, err)
+	require.Nil(t, window.Start)
+	require.NotNil(t, window.End)
+	require.Equal(t, now, *window.End)
 }
 
 func TestQuotaWindow_CalendarDay_Timezone(t *testing.T) {

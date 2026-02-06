@@ -22,6 +22,45 @@ import { useApiKeysContext } from '../context/apikeys-context';
 import { useApiKeyQuotaUsages } from '../data/apikeys';
 import { updateApiKeyProfilesInputSchemaFactory, type ApiKeyProfile, type ApiKeyProfileQuotaUsage, type UpdateApiKeyProfilesInput } from '../data/schema';
 
+type ApiKeyQuotaPeriod = NonNullable<NonNullable<ApiKeyProfile['quota']>['period']>;
+
+function quotaPeriodLabel(period: ApiKeyQuotaPeriod | null | undefined, t: (key: string) => string) {
+  if (!period) return '-';
+
+  const unitLabel = (unit: string) => {
+    switch (unit) {
+      case 'minute':
+        return t('apikeys.profiles.quotaUnitMinute');
+      case 'hour':
+        return t('apikeys.profiles.quotaUnitHour');
+      case 'day':
+        return t('apikeys.profiles.quotaUnitDay');
+      case 'month':
+        return t('apikeys.profiles.quotaUnitMonth');
+      default:
+        return unit;
+    }
+  };
+
+  switch (period.type) {
+    case 'all_time':
+      return t('apikeys.profiles.quotaPeriodAllTime');
+    case 'past_duration': {
+      const value = period.pastDuration?.value;
+      const unit = period.pastDuration?.unit;
+      const suffix = value && unit ? ` (${value} ${unitLabel(unit)})` : '';
+      return `${t('apikeys.profiles.quotaPeriodPastDuration')}${suffix}`;
+    }
+    case 'calendar_duration': {
+      const unit = period.calendarDuration?.unit;
+      const suffix = unit ? ` (${unitLabel(unit)})` : '';
+      return `${t('apikeys.profiles.quotaPeriodCalendarDuration')}${suffix}`;
+    }
+    default:
+      return period.type;
+  }
+}
+
 interface ApiKeyProfilesDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -407,6 +446,8 @@ function ProfileCard({
   const profileName = form.watch(`profiles.${profileIndex}.name`);
   const quotaUsage = profileName ? quotaUsageByProfileName.get(profileName) : undefined;
   const currentQuota = form.watch(`profiles.${profileIndex}.quota`);
+  const quotaUsagePeriod = (currentQuota?.period ?? quotaUsage?.quota?.period) as ApiKeyQuotaPeriod | null | undefined;
+  const quotaUsageEnd = quotaUsage?.window.end ?? (quotaUsagePeriod?.type !== 'calendar_duration' ? new Date() : null);
 
   // Initialize local state from form value
   useEffect(() => {
@@ -717,6 +758,9 @@ function ProfileCard({
                 {quotaUsage && (
                   <div className='space-y-2 rounded-md border p-3'>
                     <div className='text-xs font-medium'>{t('apikeys.profiles.quotaUsageTitle')}</div>
+                    <div className='text-muted-foreground text-xs'>
+                      {t('apikeys.profiles.quotaPeriodType')}: {quotaPeriodLabel(quotaUsagePeriod, t)}
+                    </div>
                     <div className='grid gap-3 md:grid-cols-3'>
                       <div>
                         <div className='text-muted-foreground text-xs'>{t('apikeys.profiles.quotaRequests')}</div>
@@ -744,7 +788,7 @@ function ProfileCard({
                       </div>
                       <div>
                         {t('common.filters.endTime')}{' '}
-                        {quotaUsage.window.end ? format(quotaUsage.window.end, 'PPpp', { locale }) : '-'}
+                        {quotaUsageEnd ? format(quotaUsageEnd, 'PPpp', { locale }) : '-'}
                       </div>
                     </div>
                   </div>
