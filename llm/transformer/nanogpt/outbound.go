@@ -67,6 +67,18 @@ func (t *OutboundTransformer) TransformResponse(
 	}
 
 	if httpResp.StatusCode >= 400 {
+		// Read response body for diagnostic details
+		body := string(httpResp.Body)
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.Unmarshal(httpResp.Body, &errResp); err == nil && errResp.Error != "" {
+			return nil, fmt.Errorf("HTTP error %d: %s", httpResp.StatusCode, errResp.Error)
+		}
+		// Fallback to raw body if JSON parse fails or no error field
+		if len(body) > 0 {
+			return nil, fmt.Errorf("HTTP error %d: %s", httpResp.StatusCode, body)
+		}
 		return nil, fmt.Errorf("HTTP error %d", httpResp.StatusCode)
 	}
 
@@ -113,7 +125,18 @@ func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *h
 	return t.TransformResponse(ctx, httpResp)
 }
 
+// nanoGPTChunkTransform is a NanoGPT-specific chunk transformer that preserves
+// the reasoning field by unmarshaling into nanogpt.Response first.
+func nanoGPTChunkTransform(ctx context.Context, chunk *httpclient.StreamEvent) (*openai.Response, error) {
+	var nanoResp Response
+	if err := json.Unmarshal(chunk.Data, &nanoResp); err != nil {
+		return nil, err
+	}
+
+	return nanoResp.ToOpenAIResponse(), nil
+}
+
 // AggregateStreamChunks aggregates stream chunks into a single response.
 func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
-	return openai.AggregateStreamChunks(ctx, chunks, openai.DefaultTransformChunk)
+	return openai.AggregateStreamChunks(ctx, chunks, nanoGPTChunkTransform)
 }
