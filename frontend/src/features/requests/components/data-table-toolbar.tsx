@@ -55,8 +55,12 @@ export function DataTableToolbar<TData>({
       // When turning off show archived, prune any archived IDs from the filter
       const currentFilter = table.getColumn('apiKey')?.getFilterValue() as string[] | undefined;
       if (currentFilter && currentFilter.length > 0) {
-        // Keep only IDs that are still in the current options (non-archived)
-        const visibleIds = new Set(apiKeyOptions.map((opt) => opt.value));
+        // Compute visible IDs from raw data (filtering for non-archived status)
+        const visibleIds = new Set(
+          apiKeysData?.edges
+            ?.filter((edge) => edge.node.status !== 'archived')
+            ?.map((edge) => edge.node.id) ?? []
+        );
         const prunedFilter = currentFilter.filter((id) => visibleIds.has(id));
         table
           .getColumn('apiKey')
@@ -73,8 +77,12 @@ export function DataTableToolbar<TData>({
       // When turning off show archived, prune any archived IDs from the filter
       const currentFilter = table.getColumn('channel')?.getFilterValue() as string[] | undefined;
       if (currentFilter && currentFilter.length > 0) {
-        // Keep only IDs that are still in the current options (non-archived)
-        const visibleIds = new Set(channelOptions.map((opt) => opt.value));
+        // Compute visible IDs from raw data (filtering for non-archived status)
+        const visibleIds = new Set(
+          channelsData?.edges
+            ?.filter((edge) => edge.node.status !== 'archived')
+            ?.map((edge) => edge.node.id) ?? []
+        );
         const prunedFilter = currentFilter.filter((id) => visibleIds.has(id));
         table
           .getColumn('channel')
