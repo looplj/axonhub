@@ -248,7 +248,7 @@ func init() {
 	// channeloverridetemplateDescOverrideHeaders is the schema descriptor for override_headers field.
 	channeloverridetemplateDescOverrideHeaders := channeloverridetemplateFields[5].Descriptor()
 	// channeloverridetemplate.DefaultOverrideHeaders holds the default value on creation for the override_headers field.
-	channeloverridetemplate.DefaultOverrideHeaders = channeloverridetemplateDescOverrideHeaders.Default.([]objects.HeaderEntry)
+	channeloverridetemplate.DefaultOverrideHeaders = channeloverridetemplateDescOverrideHeaders.Default.([]objects.OverrideOperation)
 	datastorageMixin := schema.DataStorage{}.Mixin()
 	datastorage.Policy = privacy.NewPolicies(schema.DataStorage{})
 	datastorage.Hooks[0] = func(next ent.Mutator) ent.Mutator {

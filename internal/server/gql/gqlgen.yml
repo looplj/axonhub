@@ -464,6 +464,12 @@ models:
   HeaderEntryInput:
     model:
       - github.com/looplj/axonhub/internal/objects.HeaderEntry
+  OverrideOperation:
+    model:
+      - github.com/looplj/axonhub/internal/objects.OverrideOperation
+  OverrideOperationInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.OverrideOperation
   TierCost:
     model:
       - github.com/looplj/axonhub/internal/objects.TierCost

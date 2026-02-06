@@ -37,7 +37,7 @@ type ChannelOverrideTemplate struct {
 	// Override request body parameters as JSON string
 	OverrideParameters string `json:"override_parameters,omitempty"`
 	// Override request headers
-	OverrideHeaders []objects.HeaderEntry `json:"override_headers,omitempty"`
+	OverrideHeaders []objects.OverrideOperation `json:"override_headers,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ChannelOverrideTemplateQuery when eager-loading is set.
 	Edges        ChannelOverrideTemplateEdges `json:"edges"`

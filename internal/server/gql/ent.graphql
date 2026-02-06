@@ -810,7 +810,7 @@ type ChannelOverrideTemplate implements Node {
   """
   Override request headers
   """
-  overrideHeaders: [HeaderEntry!]!
+  overrideHeaders: [OverrideOperation!]!
   user: User!
 }
 """
@@ -1391,7 +1391,7 @@ input CreateChannelOverrideTemplateInput {
   """
   Override request headers
   """
-  overrideHeaders: [HeaderEntryInput!]
+  overrideHeaders: [OverrideOperationInput!]
 }
 """
 CreateDataStorageInput is used for create DataStorage object.
@@ -5023,8 +5023,8 @@ input UpdateChannelOverrideTemplateInput {
   """
   Override request headers
   """
-  overrideHeaders: [HeaderEntryInput!]
-  appendOverrideHeaders: [HeaderEntryInput!]
+  overrideHeaders: [OverrideOperationInput!]
+  appendOverrideHeaders: [OverrideOperationInput!]
 }
 """
 UpdateDataStorageInput is used for update DataStorage object.

@@ -2,7 +2,6 @@ package biz
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -68,60 +67,6 @@ func (c *Channel) ChooseModel(model string) (string, error) {
 	return entry.ActualModel, nil
 }
 
-// GetOverrideParameters returns the cached override parameters for the channel.
-// If the parameters haven't been parsed yet, it parses and caches them.
-//
-// WARNING: The returned map is internal cached state.
-// DO NOT modify the returned map or its contents.
-// Modifications will not persist and may cause data inconsistency.
-func (c *Channel) GetOverrideParameters() map[string]any {
-	if c.cachedOverrideParams != nil {
-		return c.cachedOverrideParams
-	}
-
-	if c.Settings == nil || c.Settings.OverrideParameters == "" {
-		c.cachedOverrideParams = make(map[string]any)
-		return c.cachedOverrideParams
-	}
-
-	var overrideParams map[string]any
-	if err := json.Unmarshal([]byte(c.Settings.OverrideParameters), &overrideParams); err != nil {
-		// If parsing fails, return empty map and log the error
-		log.Warn(context.Background(), "failed to parse override parameters",
-			log.String("channel", c.Name),
-			log.Cause(err),
-		)
-		c.cachedOverrideParams = make(map[string]any)
-
-		return c.cachedOverrideParams
-	}
-
-	c.cachedOverrideParams = overrideParams
-
-	return c.cachedOverrideParams
-}
-
-// GetOverrideHeaders returns the cached override headers for the channel.
-// If the headers haven't been loaded yet, it loads and caches them.
-//
-// WARNING: The returned slice is internal cached state.
-// DO NOT modify the returned slice or its elements.
-// Modifications will not persist and may cause data inconsistency.
-func (c *Channel) GetOverrideHeaders() []objects.HeaderEntry {
-	if c.cachedOverrideHeaders != nil {
-		return c.cachedOverrideHeaders
-	}
-
-	if c.Settings == nil || len(c.Settings.OverrideHeaders) == 0 {
-		c.cachedOverrideHeaders = make([]objects.HeaderEntry, 0)
-		return c.cachedOverrideHeaders
-	}
-
-	c.cachedOverrideHeaders = c.Settings.OverrideHeaders
-
-	return c.cachedOverrideHeaders
-}
-
 // getProxyConfig extracts proxy configuration from channel settings
 // Returns nil if no proxy configuration is set (backward compatibility).
 func getProxyConfig(channelSettings *objects.ChannelSettings) *httpclient.ProxyConfig {
@@ -154,8 +99,8 @@ func buildChannel(c *ent.Channel, httpClient *httpclient.HttpClient) *Channel {
 
 	// Precompute other caches
 	entries := ch.GetModelEntries()
-	headers := ch.GetOverrideHeaders()
-	params := ch.GetOverrideParameters()
+	headers := ch.GetHeaderOverrideOperations()
+	params := ch.GetBodyOverrideOperations()
 
 	if log.DebugEnabled(context.Background()) {
 		log.Debug(context.Background(), "pre cached settings",

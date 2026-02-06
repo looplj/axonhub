@@ -242,7 +242,7 @@ type CreateChannelOverrideTemplateInput struct {
 	Description        *string
 	ChannelType        string
 	OverrideParameters *string
-	OverrideHeaders    []objects.HeaderEntry
+	OverrideHeaders    []objects.OverrideOperation
 }
 
 // Mutate applies the CreateChannelOverrideTemplateInput on the ChannelOverrideTemplateMutation builder.
@@ -273,8 +273,8 @@ type UpdateChannelOverrideTemplateInput struct {
 	Description           *string
 	ChannelType           *string
 	OverrideParameters    *string
-	OverrideHeaders       []objects.HeaderEntry
-	AppendOverrideHeaders []objects.HeaderEntry
+	OverrideHeaders       []objects.OverrideOperation
+	AppendOverrideHeaders []objects.OverrideOperation
 }
 
 // Mutate applies the UpdateChannelOverrideTemplateInput on the ChannelOverrideTemplateMutation builder.

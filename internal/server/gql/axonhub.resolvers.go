@@ -70,6 +70,42 @@ func (r *channelResolver) DisabledAPIKeys(ctx context.Context, obj *ent.Channel)
 	return lo.ToSlicePtr(obj.DisabledAPIKeys), nil
 }
 
+// HeaderOverrideOperations is the resolver for the headerOverrideOperations field.
+func (r *channelSettingsResolver) HeaderOverrideOperations(ctx context.Context, obj *objects.ChannelSettings) ([]*objects.OverrideOperation, error) {
+	if obj == nil {
+		return []*objects.OverrideOperation{}, nil
+	}
+
+	if obj.HeaderOverrideOperations != nil {
+		return lo.ToSlicePtr(obj.HeaderOverrideOperations), nil
+	}
+
+	// Backward compatibility.
+	ops := objects.HeaderEntriesToOverrideOperations(obj.OverrideHeaders)
+
+	return lo.ToSlicePtr(ops), nil
+}
+
+// BodyOverrideOperations is the resolver for the bodyOverrideOperations field.
+func (r *channelSettingsResolver) BodyOverrideOperations(ctx context.Context, obj *objects.ChannelSettings) ([]*objects.OverrideOperation, error) {
+	if obj == nil {
+		return []*objects.OverrideOperation{}, nil
+	}
+
+	if obj.BodyOverrideOperations != nil {
+		return lo.ToSlicePtr(obj.BodyOverrideOperations), nil
+	}
+
+	// Backward compatibility.
+	ops, err := objects.ParseOverrideOperations(obj.OverrideParameters)
+	if err != nil {
+		//nolint:nilerr // Checked.
+		return []*objects.OverrideOperation{}, nil
+	}
+
+	return lo.ToSlicePtr(ops), nil
+}
+
 // CreateChannel is the resolver for the createChannel field.
 func (r *mutationResolver) CreateChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error) {
 	return r.channelService.CreateChannel(ctx, input)
@@ -596,11 +632,15 @@ func (r *traceResolver) UsageMetadata(ctx context.Context, obj *ent.Trace) (*biz
 	return r.traceService.UsageMetadata(ctx, obj.ID)
 }
 
+// ChannelSettings returns ChannelSettingsResolver implementation.
+func (r *Resolver) ChannelSettings() ChannelSettingsResolver { return &channelSettingsResolver{r} }
+
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
 // Segment returns SegmentResolver implementation.
 func (r *Resolver) Segment() SegmentResolver { return &segmentResolver{r} }
 
+type channelSettingsResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type segmentResolver struct{ *Resolver }

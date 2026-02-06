@@ -113,7 +113,7 @@ func (_c *ChannelOverrideTemplateCreate) SetNillableOverrideParameters(v *string
 }
 
 // SetOverrideHeaders sets the "override_headers" field.
-func (_c *ChannelOverrideTemplateCreate) SetOverrideHeaders(v []objects.HeaderEntry) *ChannelOverrideTemplateCreate {
+func (_c *ChannelOverrideTemplateCreate) SetOverrideHeaders(v []objects.OverrideOperation) *ChannelOverrideTemplateCreate {
 	_c.mutation.SetOverrideHeaders(v)
 	return _c
 }
@@ -436,7 +436,7 @@ func (u *ChannelOverrideTemplateUpsert) UpdateOverrideParameters() *ChannelOverr
 }
 
 // SetOverrideHeaders sets the "override_headers" field.
-func (u *ChannelOverrideTemplateUpsert) SetOverrideHeaders(v []objects.HeaderEntry) *ChannelOverrideTemplateUpsert {
+func (u *ChannelOverrideTemplateUpsert) SetOverrideHeaders(v []objects.OverrideOperation) *ChannelOverrideTemplateUpsert {
 	u.Set(channeloverridetemplate.FieldOverrideHeaders, v)
 	return u
 }
@@ -594,7 +594,7 @@ func (u *ChannelOverrideTemplateUpsertOne) UpdateOverrideParameters() *ChannelOv
 }
 
 // SetOverrideHeaders sets the "override_headers" field.
-func (u *ChannelOverrideTemplateUpsertOne) SetOverrideHeaders(v []objects.HeaderEntry) *ChannelOverrideTemplateUpsertOne {
+func (u *ChannelOverrideTemplateUpsertOne) SetOverrideHeaders(v []objects.OverrideOperation) *ChannelOverrideTemplateUpsertOne {
 	return u.Update(func(s *ChannelOverrideTemplateUpsert) {
 		s.SetOverrideHeaders(v)
 	})
@@ -920,7 +920,7 @@ func (u *ChannelOverrideTemplateUpsertBulk) UpdateOverrideParameters() *ChannelO
 }
 
 // SetOverrideHeaders sets the "override_headers" field.
-func (u *ChannelOverrideTemplateUpsertBulk) SetOverrideHeaders(v []objects.HeaderEntry) *ChannelOverrideTemplateUpsertBulk {
+func (u *ChannelOverrideTemplateUpsertBulk) SetOverrideHeaders(v []objects.OverrideOperation) *ChannelOverrideTemplateUpsertBulk {
 	return u.Update(func(s *ChannelOverrideTemplateUpsert) {
 		s.SetOverrideHeaders(v)
 	})
