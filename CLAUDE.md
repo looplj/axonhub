@@ -60,10 +60,14 @@ pnpm format
 # Check for unused dependencies
 pnpm knip
 
-# Run tests
-pnpm test
-pnpm test:ui      # UI mode
-pnpm test:headed  # Headed mode
+# Tests (Playwright)
+pnpm test:e2e            # run E2E suite via scripts/e2e
+pnpm test:e2e:headed     # headed browser mode
+pnpm test:e2e:ui         # Playwright UI runner
+pnpm test:e2e:debug      # debug mode
+pnpm test:e2e:report     # open last HTML report
+pnpm test:ui             # Playwright UI (direct)
+pnpm test:ui:headed      # Playwright headed (direct)
 ```
 
 ### Make Commands
@@ -185,6 +189,11 @@ make filter-logs                # Filter and analyze load balance logs
    - Air watches `.go` and `.yml` files
    - Excludes directories: `frontend`, `integration_test`, `scripts`, `tools`, `examples`
    - Builds to `./tmp/axonhub`
+
+   **Dev vs prod builds**
+   - Dev hot-reload uses Air (`.air.toml`) and builds to `./tmp/axonhub`.
+   - Production build uses `make build-backend` and outputs `./axonhub`.
+
 5. **Building**: Use `make build-backend` to build the server for production deployment
 6. **Testing**: Run `go test ./...` for unit tests
 7. **Linting**: Run `golangci-lint run` before committing
@@ -307,6 +316,15 @@ When adding new types or inputs to the GraphQL schema, you need to:
 3. **Run `make generate`** to regenerate the code
 4. **Implement the resolver** in the appropriate `*_resolvers.go` file
 
+## Quality gates (match CI / pre-commit)
+
+Backend:
+- `go test -v --short ./...`
+- `golangci-lint run`
+
+Pre-commit hooks (see `.pre-commit-config.yaml`) also run:
+- `go mod tidy`
+
 ## Testing
 
 ### Backend Testing
@@ -388,7 +406,7 @@ When adding new types or inputs to the GraphQL schema, you need to:
 go test -v -run TestFunctionName ./path/to/package
 
 # Frontend: Run specific test file
-pnpm test path/to/test.spec.ts
+pnpm test:e2e -- path/to/test.spec.ts
 ```
 
 ### Database Migration
