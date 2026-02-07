@@ -15,6 +15,7 @@ func DefaultModels() []string {
 		"gpt-5.1-codex-max",
 		"gpt-5.2",
 		"gpt-5.2-codex",
+		"gpt-5.3-codex",
 	}
 }
 
@@ -26,7 +27,7 @@ const (
 	RedirectURI = "http://localhost:1455/auth/callback"
 	Scopes      = "openid profile email offline_access"
 	// UserAgent keep consistent with Codex CLI.
-	UserAgent           = "codex_cli_rs/0.89.0 (Mac OS 15.6.1; arm64) iTerm.app/3.6.6"
+	UserAgent           = "codex_cli_rs/0.98.0 (Mac OS 15.6.1; arm64) iTerm.app/3.6.6"
 	codexDefaultVersion = "0.21.0"
 )
 
