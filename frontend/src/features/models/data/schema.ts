@@ -93,6 +93,7 @@ export type ChannelTagsRegexAssociation = z.infer<typeof channelTagsRegexAssocia
 export const modelAssociationSchema = z.object({
   type: z.enum(['channel_model', 'channel_regex', 'model', 'regex', 'channel_tags_model', 'channel_tags_regex']),
   priority: z.number().min(0).max(100).optional().default(0),
+  disabled: z.boolean().optional().default(false),
   channelModel: channelModelAssociationSchema.optional().nullable(),
   channelRegex: channelRegexAssociationSchema.optional().nullable(),
   regex: regexAssociationSchema.optional().nullable(),

@@ -42,6 +42,7 @@ type ModelSettings {
 type ModelAssociation {
   type: String!
   priority: Int!
+  disabled: Boolean!
   channelModel: ChannelModelAssociation
   channelRegex: ChannelRegexAssociation
   regex: RegexAssociation
@@ -129,6 +130,7 @@ input ModelSettingsInput {
 input ModelAssociationInput {
   type: String!
   priority: Int
+  disabled: Boolean
   channelModel: ChannelModelAssociationInput
   channelRegex: ChannelRegexAssociationInput
   regex: RegexAssociationInput

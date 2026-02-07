@@ -55,6 +55,7 @@ const MODELS_QUERY = `
             associations {
               type
               priority
+              disabled
               channelModel {
                 channelId
                 modelId
@@ -148,6 +149,7 @@ const CREATE_MODEL_MUTATION = `
         associations {
           type
           priority
+          disabled
           channelModel {
             channelId
             modelId
@@ -223,6 +225,7 @@ const BULK_CREATE_MODELS_MUTATION = `
         associations {
           type
           priority
+          disabled
           channelModel {
             channelId
             modelId
@@ -298,6 +301,7 @@ const UPDATE_MODEL_MUTATION = `
         associations {
           type
           priority
+          disabled
           channelModel {
             channelId
             modelId
@@ -511,6 +515,7 @@ export interface UnassociatedChannel {
 export interface ModelAssociationInput {
   type: 'channel_model' | 'channel_regex' | 'regex' | 'model' | 'channel_tags_model' | 'channel_tags_regex';
   priority?: number;
+  disabled?: boolean;
   channelModel?: {
     channelId: number;
     modelId: string;
