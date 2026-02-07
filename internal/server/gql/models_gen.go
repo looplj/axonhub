@@ -65,6 +65,11 @@ type AutoDisableAPIKeyStatus struct {
 	Times  int `json:"times"`
 }
 
+type AutoDisableChannelOnboarding struct {
+	Onboarded   bool       `json:"onboarded"`
+	CompletedAt *time.Time `json:"completedAt,omitempty"`
+}
+
 type BackupPayload struct {
 	Success bool    `json:"success"`
 	Data    *string `json:"data,omitempty"`
@@ -103,6 +108,10 @@ type ChannelSuccessRate struct {
 type ChannelTypeCount struct {
 	Type  string `json:"type"`
 	Count int    `json:"count"`
+}
+
+type CompleteAutoDisableChannelOnboardingInput struct {
+	Dummy *string `json:"dummy,omitempty"`
 }
 
 type CompleteOnboardingInput struct {
@@ -159,9 +168,9 @@ type InitializeSystemPayload struct {
 
 type OnboardingInfo struct {
 	Onboarded          bool                          `json:"onboarded"`
-	Version            string                        `json:"version"`
 	CompletedAt        *time.Time                    `json:"completedAt,omitempty"`
 	SystemModelSetting *SystemModelSettingOnboarding `json:"systemModelSetting,omitempty"`
+	AutoDisableChannel *AutoDisableChannelOnboarding `json:"autoDisableChannel,omitempty"`
 }
 
 type QueryModelsInput struct {

@@ -210,6 +210,11 @@ type ComplexityRoot struct {
 		Statuses func(childComplexity int) int
 	}
 
+	AutoDisableChannelOnboarding struct {
+		CompletedAt func(childComplexity int) int
+		Onboarded   func(childComplexity int) int
+	}
+
 	AutoDisableChannelStatus struct {
 		Status func(childComplexity int) int
 		Times  func(childComplexity int) int
@@ -693,6 +698,7 @@ type ComplexityRoot struct {
 		BulkImportChannels                   func(childComplexity int, input BulkImportChannelsInput) int
 		BulkUpdateChannelOrdering            func(childComplexity int, input BulkUpdateChannelOrderingInput) int
 		CheckProviderQuotas                  func(childComplexity int) int
+		CompleteAutoDisableChannelOnboarding func(childComplexity int, input CompleteAutoDisableChannelOnboardingInput) int
 		CompleteOnboarding                   func(childComplexity int, input CompleteOnboardingInput) int
 		CompleteSystemModelSettingOnboarding func(childComplexity int, input CompleteSystemModelSettingOnboardingInput) int
 		CreateAPIKey                         func(childComplexity int, input ent.CreateAPIKeyInput) int
@@ -757,10 +763,10 @@ type ComplexityRoot struct {
 	}
 
 	OnboardingInfo struct {
+		AutoDisableChannel func(childComplexity int) int
 		CompletedAt        func(childComplexity int) int
 		Onboarded          func(childComplexity int) int
 		SystemModelSetting func(childComplexity int) int
-		Version            func(childComplexity int) int
 	}
 
 	OverrideOperation struct {
@@ -1601,6 +1607,7 @@ type MutationResolver interface {
 	UpdateDefaultDataStorage(ctx context.Context, input UpdateDefaultDataStorageInput) (bool, error)
 	CompleteOnboarding(ctx context.Context, input CompleteOnboardingInput) (bool, error)
 	CompleteSystemModelSettingOnboarding(ctx context.Context, input CompleteSystemModelSettingOnboardingInput) (bool, error)
+	CompleteAutoDisableChannelOnboarding(ctx context.Context, input CompleteAutoDisableChannelOnboardingInput) (bool, error)
 	UpdateSystemChannelSettings(ctx context.Context, input biz.SystemChannelSettings) (bool, error)
 	UpdateSystemGeneralSettings(ctx context.Context, input biz.SystemGeneralSettings) (bool, error)
 	CheckProviderQuotas(ctx context.Context) (bool, error)
@@ -2218,6 +2225,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AutoDisableChannel.Statuses(childComplexity), true
+
+	case "AutoDisableChannelOnboarding.completedAt":
+		if e.complexity.AutoDisableChannelOnboarding.CompletedAt == nil {
+			break
+		}
+
+		return e.complexity.AutoDisableChannelOnboarding.CompletedAt(childComplexity), true
+	case "AutoDisableChannelOnboarding.onboarded":
+		if e.complexity.AutoDisableChannelOnboarding.Onboarded == nil {
+			break
+		}
+
+		return e.complexity.AutoDisableChannelOnboarding.Onboarded(childComplexity), true
 
 	case "AutoDisableChannelStatus.status":
 		if e.complexity.AutoDisableChannelStatus.Status == nil {
@@ -4141,6 +4161,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.CheckProviderQuotas(childComplexity), true
+	case "Mutation.completeAutoDisableChannelOnboarding":
+		if e.complexity.Mutation.CompleteAutoDisableChannelOnboarding == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_completeAutoDisableChannelOnboarding_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CompleteAutoDisableChannelOnboarding(childComplexity, args["input"].(CompleteAutoDisableChannelOnboardingInput)), true
 	case "Mutation.completeOnboarding":
 		if e.complexity.Mutation.CompleteOnboarding == nil {
 			break
@@ -4746,6 +4777,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.OAuthCredentials.TokenType(childComplexity), true
 
+	case "OnboardingInfo.autoDisableChannel":
+		if e.complexity.OnboardingInfo.AutoDisableChannel == nil {
+			break
+		}
+
+		return e.complexity.OnboardingInfo.AutoDisableChannel(childComplexity), true
 	case "OnboardingInfo.completedAt":
 		if e.complexity.OnboardingInfo.CompletedAt == nil {
 			break
@@ -4764,12 +4801,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.OnboardingInfo.SystemModelSetting(childComplexity), true
-	case "OnboardingInfo.version":
-		if e.complexity.OnboardingInfo.Version == nil {
-			break
-		}
-
-		return e.complexity.OnboardingInfo.Version(childComplexity), true
 
 	case "OverrideOperation.condition":
 		if e.complexity.OverrideOperation.Condition == nil {
@@ -7919,6 +7950,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputChannelTagsRegexAssociationInput,
 		ec.unmarshalInputChannelWhereInput,
 		ec.unmarshalInputCleanupOptionInput,
+		ec.unmarshalInputCompleteAutoDisableChannelOnboardingInput,
 		ec.unmarshalInputCompleteOnboardingInput,
 		ec.unmarshalInputCompleteSystemModelSettingOnboardingInput,
 		ec.unmarshalInputCostItemInput,
@@ -8614,6 +8646,17 @@ func (ec *executionContext) field_Mutation_bulkUpdateChannelOrdering_args(ctx co
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNBulkUpdateChannelOrderingInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBulkUpdateChannelOrderingInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_completeAutoDisableChannelOnboarding_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCompleteAutoDisableChannelOnboardingInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐCompleteAutoDisableChannelOnboardingInput)
 	if err != nil {
 		return nil, err
 	}
@@ -12804,6 +12847,64 @@ func (ec *executionContext) fieldContext_AutoDisableChannel_statuses(_ context.C
 				return ec.fieldContext_AutoDisableChannelStatus_times(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AutoDisableChannelStatus", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AutoDisableChannelOnboarding_onboarded(ctx context.Context, field graphql.CollectedField, obj *AutoDisableChannelOnboarding) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AutoDisableChannelOnboarding_onboarded,
+		func(ctx context.Context) (any, error) {
+			return obj.Onboarded, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AutoDisableChannelOnboarding_onboarded(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AutoDisableChannelOnboarding",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AutoDisableChannelOnboarding_completedAt(ctx context.Context, field graphql.CollectedField, obj *AutoDisableChannelOnboarding) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AutoDisableChannelOnboarding_completedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.CompletedAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AutoDisableChannelOnboarding_completedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AutoDisableChannelOnboarding",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -24548,6 +24649,47 @@ func (ec *executionContext) fieldContext_Mutation_completeSystemModelSettingOnbo
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_completeAutoDisableChannelOnboarding(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_completeAutoDisableChannelOnboarding,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().CompleteAutoDisableChannelOnboarding(ctx, fc.Args["input"].(CompleteAutoDisableChannelOnboardingInput))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_completeAutoDisableChannelOnboarding(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_completeAutoDisableChannelOnboarding_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_updateSystemChannelSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -25889,35 +26031,6 @@ func (ec *executionContext) fieldContext_OnboardingInfo_onboarded(_ context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _OnboardingInfo_version(ctx context.Context, field graphql.CollectedField, obj *OnboardingInfo) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_OnboardingInfo_version,
-		func(ctx context.Context) (any, error) {
-			return obj.Version, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_OnboardingInfo_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "OnboardingInfo",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _OnboardingInfo_completedAt(ctx context.Context, field graphql.CollectedField, obj *OnboardingInfo) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -25977,6 +26090,41 @@ func (ec *executionContext) fieldContext_OnboardingInfo_systemModelSetting(_ con
 				return ec.fieldContext_SystemModelSettingOnboarding_completedAt(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SystemModelSettingOnboarding", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OnboardingInfo_autoDisableChannel(ctx context.Context, field graphql.CollectedField, obj *OnboardingInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OnboardingInfo_autoDisableChannel,
+		func(ctx context.Context) (any, error) {
+			return obj.AutoDisableChannel, nil
+		},
+		nil,
+		ec.marshalOAutoDisableChannelOnboarding2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐAutoDisableChannelOnboarding,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OnboardingInfo_autoDisableChannel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OnboardingInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "onboarded":
+				return ec.fieldContext_AutoDisableChannelOnboarding_onboarded(ctx, field)
+			case "completedAt":
+				return ec.fieldContext_AutoDisableChannelOnboarding_completedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AutoDisableChannelOnboarding", field.Name)
 		},
 	}
 	return fc, nil
@@ -30309,12 +30457,12 @@ func (ec *executionContext) fieldContext_Query_onboardingInfo(_ context.Context,
 			switch field.Name {
 			case "onboarded":
 				return ec.fieldContext_OnboardingInfo_onboarded(ctx, field)
-			case "version":
-				return ec.fieldContext_OnboardingInfo_version(ctx, field)
 			case "completedAt":
 				return ec.fieldContext_OnboardingInfo_completedAt(ctx, field)
 			case "systemModelSetting":
 				return ec.fieldContext_OnboardingInfo_systemModelSetting(ctx, field)
+			case "autoDisableChannel":
+				return ec.fieldContext_OnboardingInfo_autoDisableChannel(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type OnboardingInfo", field.Name)
 		},
@@ -48906,6 +49054,33 @@ func (ec *executionContext) unmarshalInputCleanupOptionInput(ctx context.Context
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputCompleteAutoDisableChannelOnboardingInput(ctx context.Context, obj any) (CompleteAutoDisableChannelOnboardingInput, error) {
+	var it CompleteAutoDisableChannelOnboardingInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"dummy"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "dummy":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dummy"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Dummy = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputCompleteOnboardingInput(ctx context.Context, obj any) (CompleteOnboardingInput, error) {
 	var it CompleteOnboardingInput
 	asMap := map[string]any{}
@@ -65790,6 +65965,47 @@ func (ec *executionContext) _AutoDisableChannel(ctx context.Context, sel ast.Sel
 	return out
 }
 
+var autoDisableChannelOnboardingImplementors = []string{"AutoDisableChannelOnboarding"}
+
+func (ec *executionContext) _AutoDisableChannelOnboarding(ctx context.Context, sel ast.SelectionSet, obj *AutoDisableChannelOnboarding) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, autoDisableChannelOnboardingImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AutoDisableChannelOnboarding")
+		case "onboarded":
+			out.Values[i] = ec._AutoDisableChannelOnboarding_onboarded(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "completedAt":
+			out.Values[i] = ec._AutoDisableChannelOnboarding_completedAt(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var autoDisableChannelStatusImplementors = []string{"AutoDisableChannelStatus"}
 
 func (ec *executionContext) _AutoDisableChannelStatus(ctx context.Context, sel ast.SelectionSet, obj *biz.AutoDisableChannelStatus) graphql.Marshaler {
@@ -70519,6 +70735,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "completeAutoDisableChannelOnboarding":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_completeAutoDisableChannelOnboarding(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "updateSystemChannelSettings":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateSystemChannelSettings(ctx, field)
@@ -70772,15 +70995,12 @@ func (ec *executionContext) _OnboardingInfo(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "version":
-			out.Values[i] = ec._OnboardingInfo_version(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "completedAt":
 			out.Values[i] = ec._OnboardingInfo_completedAt(ctx, field, obj)
 		case "systemModelSetting":
 			out.Values[i] = ec._OnboardingInfo_systemModelSetting(ctx, field, obj)
+		case "autoDisableChannel":
+			out.Values[i] = ec._OnboardingInfo_autoDisableChannel(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -80902,6 +81122,11 @@ func (ec *executionContext) unmarshalNCleanupOptionInput2githubᚗcomᚋlooplj�
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNCompleteAutoDisableChannelOnboardingInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐCompleteAutoDisableChannelOnboardingInput(ctx context.Context, v any) (CompleteAutoDisableChannelOnboardingInput, error) {
+	res, err := ec.unmarshalInputCompleteAutoDisableChannelOnboardingInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNCompleteOnboardingInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐCompleteOnboardingInput(ctx context.Context, v any) (CompleteOnboardingInput, error) {
 	res, err := ec.unmarshalInputCompleteOnboardingInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -84453,6 +84678,13 @@ func (ec *executionContext) unmarshalOAPIKeyWhereInput2ᚖgithubᚗcomᚋlooplj�
 func (ec *executionContext) unmarshalOAutoDisableChannelInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐAutoDisableChannel(ctx context.Context, v any) (biz.AutoDisableChannel, error) {
 	res, err := ec.unmarshalInputAutoDisableChannelInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOAutoDisableChannelOnboarding2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐAutoDisableChannelOnboarding(ctx context.Context, sel ast.SelectionSet, v *AutoDisableChannelOnboarding) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._AutoDisableChannelOnboarding(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOAutoDisableChannelStatusInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐAutoDisableChannelStatusᚄ(ctx context.Context, v any) ([]biz.AutoDisableChannelStatus, error) {
