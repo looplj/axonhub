@@ -869,6 +869,191 @@ func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChanne
 	}), nil
 }
 
+// FastestChannelsExpanded is the resolver for the fastestChannelsExpanded field.
+// Returns top 5 fastest channels with per-model breakdown.
+func (r *queryResolver) FastestChannelsExpanded(ctx context.Context, input FastestChannelsInput) ([]*FastestChannelExpanded, error) {
+	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	// Parse time window
+	since := time.Now().UTC()
+	switch input.TimeWindow {
+	case "1h":
+		since = since.Add(-1 * time.Hour)
+	case "24h":
+		since = since.Add(-24 * time.Hour)
+	case "7d":
+		since = since.Add(-7 * 24 * time.Hour)
+	default:
+		since = since.Add(-24 * time.Hour)
+	}
+
+	// First, get top 5 channels
+	type channelStats struct {
+		ChannelID    int64   `json:"channel_id"`
+		ChannelName  string  `json:"channel_name"`
+		ChannelType  string  `json:"channel_type"`
+		TokensCount  int64   `json:"tokens_count"`
+		LatencyMs    int64   `json:"latency_ms"`
+		RequestCount int64   `json:"request_count"`
+		Throughput   float64 `json:"throughput"`
+	}
+
+	var topChannels []channelStats
+
+	err := r.client.UsageLog.Query().
+		Where(usagelog.CreatedAtGTE(since)).
+		Modify(func(s *sql.Selector) {
+			requestTable := sql.Table(request.Table)
+			s.Join(requestTable).On(
+				s.C(usagelog.FieldRequestID),
+				requestTable.C(request.FieldID),
+			)
+
+			requestExecTable := sql.Table(requestexecution.Table)
+			s.Join(requestExecTable).On(
+				requestTable.C(request.FieldID),
+				requestExecTable.C(requestexecution.FieldRequestID),
+			)
+
+			channelTable := sql.Table(channel.Table)
+			s.Join(channelTable).On(
+				requestExecTable.C(requestexecution.FieldChannelID),
+				channelTable.C(channel.FieldID),
+			)
+
+			s.Where(sql.And(
+				sql.EQ(requestExecTable.C(requestexecution.FieldStatus), "completed"),
+				sql.GT(requestExecTable.C(requestexecution.FieldMetricsLatencyMs), 0),
+			))
+
+			s.GroupBy(requestExecTable.C(requestexecution.FieldChannelID), channelTable.C(channel.FieldName), channelTable.C(channel.FieldType))
+
+			latencySumExpr := fmt.Sprintf("SUM(%s)", requestExecTable.C(requestexecution.FieldMetricsLatencyMs))
+			tokensSumExpr := fmt.Sprintf("SUM(%s)", s.C(usagelog.FieldCompletionTokens))
+			throughputExpr := fmt.Sprintf(
+				"CASE WHEN %s > 0 THEN (%s * 1000.0 / %s) ELSE 0 END",
+				latencySumExpr, tokensSumExpr, latencySumExpr,
+			)
+
+			s.Select(
+				sql.As(requestExecTable.C(requestexecution.FieldChannelID), "channel_id"),
+				sql.As(channelTable.C(channel.FieldName), "channel_name"),
+				sql.As(channelTable.C(channel.FieldType), "channel_type"),
+				sql.As(tokensSumExpr, "tokens_count"),
+				sql.As(latencySumExpr, "latency_ms"),
+				sql.As(sql.Count(sql.Distinct(s.C(usagelog.FieldRequestID))), "request_count"),
+				sql.As(throughputExpr, "throughput"),
+			)
+
+			s.OrderBy(sql.Desc("throughput")).Limit(5)
+		}).
+		Scan(ctx, &topChannels)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get top channels: %w", err)
+	}
+
+	if len(topChannels) == 0 {
+		return []*FastestChannelExpanded{}, nil
+	}
+
+	// For each channel, get per-model breakdown
+	result := make([]*FastestChannelExpanded, len(topChannels))
+
+	for i, ch := range topChannels {
+		type modelStats struct {
+			ModelID      string  `json:"model_id"`
+			ModelName    string  `json:"model_name"`
+			TokensCount  int64   `json:"tokens_count"`
+			LatencyMs    int64   `json:"latency_ms"`
+			RequestCount int64   `json:"request_count"`
+			Throughput   float64 `json:"throughput"`
+		}
+
+		var modelResults []modelStats
+
+		err := r.client.UsageLog.Query().
+			Where(
+				usagelog.CreatedAtGTE(since),
+			).
+			Modify(func(s *sql.Selector) {
+				requestTable := sql.Table(request.Table)
+				s.Join(requestTable).On(
+					s.C(usagelog.FieldRequestID),
+					requestTable.C(request.FieldID),
+				)
+
+				requestExecTable := sql.Table(requestexecution.Table)
+				s.Join(requestExecTable).On(
+					requestTable.C(request.FieldID),
+					requestExecTable.C(requestexecution.FieldRequestID),
+				)
+
+				modelsTable := sql.Table(model.Table)
+				s.Join(modelsTable).On(
+					requestTable.C(request.FieldModelID),
+					modelsTable.C(model.FieldModelID),
+				)
+
+				s.Where(sql.And(
+					sql.EQ(requestExecTable.C(requestexecution.FieldStatus), "completed"),
+					sql.GT(requestExecTable.C(requestexecution.FieldMetricsLatencyMs), 0),
+					sql.EQ(requestExecTable.C(requestexecution.FieldChannelID), ch.ChannelID),
+				))
+
+				s.GroupBy(requestTable.C(request.FieldModelID), modelsTable.C(model.FieldName))
+
+				latencySumExpr := fmt.Sprintf("SUM(%s)", requestExecTable.C(requestexecution.FieldMetricsLatencyMs))
+				tokensSumExpr := fmt.Sprintf("SUM(%s)", s.C(usagelog.FieldCompletionTokens))
+				throughputExpr := fmt.Sprintf(
+					"CASE WHEN %s > 0 THEN (%s * 1000.0 / %s) ELSE 0 END",
+					latencySumExpr, tokensSumExpr, latencySumExpr,
+				)
+
+				s.Select(
+					sql.As(requestTable.C(request.FieldModelID), "model_id"),
+					sql.As(modelsTable.C(model.FieldName), "model_name"),
+					sql.As(tokensSumExpr, "tokens_count"),
+					sql.As(latencySumExpr, "latency_ms"),
+					sql.As(sql.Count(sql.Distinct(s.C(usagelog.FieldRequestID))), "request_count"),
+					sql.As(throughputExpr, "throughput"),
+				)
+
+				s.OrderBy(sql.Desc("throughput"))
+			}).
+			Scan(ctx, &modelResults)
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to get models for channel %d: %w", ch.ChannelID, err)
+		}
+
+		models := make([]*FastestModelInChannel, len(modelResults))
+		for j, m := range modelResults {
+			models[j] = &FastestModelInChannel{
+				ModelID:      m.ModelID,
+				ModelName:    m.ModelName,
+				Throughput:   m.Throughput,
+				TokensCount:  int(m.TokensCount),
+				LatencyMs:    int(m.LatencyMs),
+				RequestCount: int(m.RequestCount),
+			}
+		}
+
+		result[i] = &FastestChannelExpanded{
+			ChannelID:    objects.GUID{Type: "Channel", ID: int(ch.ChannelID)},
+			ChannelName:  ch.ChannelName,
+			ChannelType:  ch.ChannelType,
+			Throughput:   ch.Throughput,
+			TokensCount:  int(ch.TokensCount),
+			LatencyMs:    int(ch.LatencyMs),
+			RequestCount: int(ch.RequestCount),
+			Models:       models,
+		}
+	}
+
+	return result, nil
+}
+
 // FastestModels is the resolver for the fastestModels field.
 // Returns the fastest models by throughput (tokens per second) based on completed request executions.
 // Groups by request.model_id (AxonHub model) and calculates throughput from usage_log.completion_tokens and request_execution.metrics_latency_ms.
@@ -980,4 +1165,189 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 			RequestCount: int(item.RequestCount),
 		}
 	}), nil
+}
+
+// FastestModelsExpanded is the resolver for the fastestModelsExpanded field.
+// Returns top 5 fastest models with per-channel breakdown.
+func (r *queryResolver) FastestModelsExpanded(ctx context.Context, input FastestChannelsInput) ([]*FastestModelExpanded, error) {
+	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	// Parse time window
+	since := time.Now().UTC()
+	switch input.TimeWindow {
+	case "1h":
+		since = since.Add(-1 * time.Hour)
+	case "24h":
+		since = since.Add(-24 * time.Hour)
+	case "7d":
+		since = since.Add(-7 * 24 * time.Hour)
+	default:
+		since = since.Add(-24 * time.Hour)
+	}
+
+	// First, get top 5 models
+	type modelStats struct {
+		ModelID      string  `json:"model_id"`
+		ModelName    string  `json:"model_name"`
+		TokensCount  int64   `json:"tokens_count"`
+		LatencyMs    int64   `json:"latency_ms"`
+		RequestCount int64   `json:"request_count"`
+		Throughput   float64 `json:"throughput"`
+	}
+
+	var topModels []modelStats
+
+	err := r.client.UsageLog.Query().
+		Where(usagelog.CreatedAtGTE(since)).
+		Modify(func(s *sql.Selector) {
+			requestTable := sql.Table(request.Table)
+			s.Join(requestTable).On(
+				s.C(usagelog.FieldRequestID),
+				requestTable.C(request.FieldID),
+			)
+
+			requestExecTable := sql.Table(requestexecution.Table)
+			s.Join(requestExecTable).On(
+				requestTable.C(request.FieldID),
+				requestExecTable.C(requestexecution.FieldRequestID),
+			)
+
+			modelsTable := sql.Table(model.Table)
+			s.Join(modelsTable).On(
+				requestTable.C(request.FieldModelID),
+				modelsTable.C(model.FieldModelID),
+			)
+
+			s.Where(sql.And(
+				sql.EQ(requestExecTable.C(requestexecution.FieldStatus), "completed"),
+				sql.GT(requestExecTable.C(requestexecution.FieldMetricsLatencyMs), 0),
+			))
+
+			s.GroupBy(requestTable.C(request.FieldModelID), modelsTable.C(model.FieldName))
+
+			latencySumExpr := fmt.Sprintf("SUM(%s)", requestExecTable.C(requestexecution.FieldMetricsLatencyMs))
+			tokensSumExpr := fmt.Sprintf("SUM(%s)", s.C(usagelog.FieldCompletionTokens))
+			throughputExpr := fmt.Sprintf(
+				"CASE WHEN %s > 0 THEN (%s * 1000.0 / %s) ELSE 0 END",
+				latencySumExpr, tokensSumExpr, latencySumExpr,
+			)
+
+			s.Select(
+				sql.As(requestTable.C(request.FieldModelID), "model_id"),
+				sql.As(modelsTable.C(model.FieldName), "model_name"),
+				sql.As(tokensSumExpr, "tokens_count"),
+				sql.As(latencySumExpr, "latency_ms"),
+				sql.As(sql.Count(sql.Distinct(s.C(usagelog.FieldRequestID))), "request_count"),
+				sql.As(throughputExpr, "throughput"),
+			)
+
+			s.OrderBy(sql.Desc("throughput")).Limit(5)
+		}).
+		Scan(ctx, &topModels)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get top models: %w", err)
+	}
+
+	if len(topModels) == 0 {
+		return []*FastestModelExpanded{}, nil
+	}
+
+	// For each model, get per-channel breakdown
+	result := make([]*FastestModelExpanded, len(topModels))
+
+	for i, m := range topModels {
+		type channelStats struct {
+			ChannelID    int64   `json:"channel_id"`
+			ChannelName  string  `json:"channel_name"`
+			ChannelType  string  `json:"channel_type"`
+			TokensCount  int64   `json:"tokens_count"`
+			LatencyMs    int64   `json:"latency_ms"`
+			RequestCount int64   `json:"request_count"`
+			Throughput   float64 `json:"throughput"`
+		}
+
+		var channelResults []channelStats
+
+		err := r.client.UsageLog.Query().
+			Where(
+				usagelog.CreatedAtGTE(since),
+			).
+			Modify(func(s *sql.Selector) {
+				requestTable := sql.Table(request.Table)
+				s.Join(requestTable).On(
+					s.C(usagelog.FieldRequestID),
+					requestTable.C(request.FieldID),
+				)
+
+				requestExecTable := sql.Table(requestexecution.Table)
+				s.Join(requestExecTable).On(
+					requestTable.C(request.FieldID),
+					requestExecTable.C(requestexecution.FieldRequestID),
+				)
+
+				channelTable := sql.Table(channel.Table)
+				s.Join(channelTable).On(
+					requestExecTable.C(requestexecution.FieldChannelID),
+					channelTable.C(channel.FieldID),
+				)
+
+				s.Where(sql.And(
+					sql.EQ(requestExecTable.C(requestexecution.FieldStatus), "completed"),
+					sql.GT(requestExecTable.C(requestexecution.FieldMetricsLatencyMs), 0),
+					sql.EQ(requestTable.C(request.FieldModelID), m.ModelID),
+				))
+
+				s.GroupBy(requestExecTable.C(requestexecution.FieldChannelID), channelTable.C(channel.FieldName), channelTable.C(channel.FieldType))
+
+				latencySumExpr := fmt.Sprintf("SUM(%s)", requestExecTable.C(requestexecution.FieldMetricsLatencyMs))
+				tokensSumExpr := fmt.Sprintf("SUM(%s)", s.C(usagelog.FieldCompletionTokens))
+				throughputExpr := fmt.Sprintf(
+					"CASE WHEN %s > 0 THEN (%s * 1000.0 / %s) ELSE 0 END",
+					latencySumExpr, tokensSumExpr, latencySumExpr,
+				)
+
+				s.Select(
+					sql.As(requestExecTable.C(requestexecution.FieldChannelID), "channel_id"),
+					sql.As(channelTable.C(channel.FieldName), "channel_name"),
+					sql.As(channelTable.C(channel.FieldType), "channel_type"),
+					sql.As(tokensSumExpr, "tokens_count"),
+					sql.As(latencySumExpr, "latency_ms"),
+					sql.As(sql.Count(sql.Distinct(s.C(usagelog.FieldRequestID))), "request_count"),
+					sql.As(throughputExpr, "throughput"),
+				)
+
+				s.OrderBy(sql.Desc("throughput"))
+			}).
+			Scan(ctx, &channelResults)
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to get channels for model %s: %w", m.ModelID, err)
+		}
+
+		channels := make([]*FastestChannelForModel, len(channelResults))
+		for j, ch := range channelResults {
+			channels[j] = &FastestChannelForModel{
+				ChannelID:    objects.GUID{Type: "Channel", ID: int(ch.ChannelID)},
+				ChannelName:  ch.ChannelName,
+				ChannelType:  ch.ChannelType,
+				Throughput:   ch.Throughput,
+				TokensCount:  int(ch.TokensCount),
+				LatencyMs:    int(ch.LatencyMs),
+				RequestCount: int(ch.RequestCount),
+			}
+		}
+
+		result[i] = &FastestModelExpanded{
+			ModelID:      m.ModelID,
+			ModelName:    m.ModelName,
+			Throughput:   m.Throughput,
+			TokensCount:  int(m.TokensCount),
+			LatencyMs:    int(m.LatencyMs),
+			RequestCount: int(m.RequestCount),
+			Channels:     channels,
+		}
+	}
+
+	return result, nil
 }

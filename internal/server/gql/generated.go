@@ -534,7 +534,47 @@ type ComplexityRoot struct {
 		TokensCount  func(childComplexity int) int
 	}
 
+	FastestChannelExpanded struct {
+		ChannelID    func(childComplexity int) int
+		ChannelName  func(childComplexity int) int
+		ChannelType  func(childComplexity int) int
+		LatencyMs    func(childComplexity int) int
+		Models       func(childComplexity int) int
+		RequestCount func(childComplexity int) int
+		Throughput   func(childComplexity int) int
+		TokensCount  func(childComplexity int) int
+	}
+
+	FastestChannelForModel struct {
+		ChannelID    func(childComplexity int) int
+		ChannelName  func(childComplexity int) int
+		ChannelType  func(childComplexity int) int
+		LatencyMs    func(childComplexity int) int
+		RequestCount func(childComplexity int) int
+		Throughput   func(childComplexity int) int
+		TokensCount  func(childComplexity int) int
+	}
+
 	FastestModel struct {
+		LatencyMs    func(childComplexity int) int
+		ModelID      func(childComplexity int) int
+		ModelName    func(childComplexity int) int
+		RequestCount func(childComplexity int) int
+		Throughput   func(childComplexity int) int
+		TokensCount  func(childComplexity int) int
+	}
+
+	FastestModelExpanded struct {
+		Channels     func(childComplexity int) int
+		LatencyMs    func(childComplexity int) int
+		ModelID      func(childComplexity int) int
+		ModelName    func(childComplexity int) int
+		RequestCount func(childComplexity int) int
+		Throughput   func(childComplexity int) int
+		TokensCount  func(childComplexity int) int
+	}
+
+	FastestModelInChannel struct {
 		LatencyMs    func(childComplexity int) int
 		ModelID      func(childComplexity int) int
 		ModelName    func(childComplexity int) int
@@ -927,7 +967,9 @@ type ComplexityRoot struct {
 		DataStorages                 func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.DataStorageOrder, where *ent.DataStorageWhereInput) int
 		DefaultDataStorageID         func(childComplexity int) int
 		FastestChannels              func(childComplexity int, input FastestChannelsInput) int
+		FastestChannelsExpanded      func(childComplexity int, input FastestChannelsInput) int
 		FastestModels                func(childComplexity int, input FastestChannelsInput) int
+		FastestModelsExpanded        func(childComplexity int, input FastestChannelsInput) int
 		FetchModels                  func(childComplexity int, input biz.FetchModelsInput) int
 		Me                           func(childComplexity int) int
 		Models                       func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ModelOrder, where *ent.ModelWhereInput) int
@@ -1692,7 +1734,9 @@ type QueryResolver interface {
 	TokenStats(ctx context.Context) (*TokenStats, error)
 	ChannelSuccessRates(ctx context.Context) ([]*ChannelSuccessRate, error)
 	FastestChannels(ctx context.Context, input FastestChannelsInput) ([]*FastestChannel, error)
+	FastestChannelsExpanded(ctx context.Context, input FastestChannelsInput) ([]*FastestChannelExpanded, error)
 	FastestModels(ctx context.Context, input FastestChannelsInput) ([]*FastestModel, error)
+	FastestModelsExpanded(ctx context.Context, input FastestChannelsInput) ([]*FastestModelExpanded, error)
 	AllScopes(ctx context.Context, level *string) ([]*ScopeInfo, error)
 	Me(ctx context.Context) (*objects.UserInfo, error)
 	MyProjects(ctx context.Context) ([]*ent.Project, error)
@@ -3480,6 +3524,98 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.FastestChannel.TokensCount(childComplexity), true
 
+	case "FastestChannelExpanded.channelId":
+		if e.complexity.FastestChannelExpanded.ChannelID == nil {
+			break
+		}
+
+		return e.complexity.FastestChannelExpanded.ChannelID(childComplexity), true
+	case "FastestChannelExpanded.channelName":
+		if e.complexity.FastestChannelExpanded.ChannelName == nil {
+			break
+		}
+
+		return e.complexity.FastestChannelExpanded.ChannelName(childComplexity), true
+	case "FastestChannelExpanded.channelType":
+		if e.complexity.FastestChannelExpanded.ChannelType == nil {
+			break
+		}
+
+		return e.complexity.FastestChannelExpanded.ChannelType(childComplexity), true
+	case "FastestChannelExpanded.latencyMs":
+		if e.complexity.FastestChannelExpanded.LatencyMs == nil {
+			break
+		}
+
+		return e.complexity.FastestChannelExpanded.LatencyMs(childComplexity), true
+	case "FastestChannelExpanded.models":
+		if e.complexity.FastestChannelExpanded.Models == nil {
+			break
+		}
+
+		return e.complexity.FastestChannelExpanded.Models(childComplexity), true
+	case "FastestChannelExpanded.requestCount":
+		if e.complexity.FastestChannelExpanded.RequestCount == nil {
+			break
+		}
+
+		return e.complexity.FastestChannelExpanded.RequestCount(childComplexity), true
+	case "FastestChannelExpanded.throughput":
+		if e.complexity.FastestChannelExpanded.Throughput == nil {
+			break
+		}
+
+		return e.complexity.FastestChannelExpanded.Throughput(childComplexity), true
+	case "FastestChannelExpanded.tokensCount":
+		if e.complexity.FastestChannelExpanded.TokensCount == nil {
+			break
+		}
+
+		return e.complexity.FastestChannelExpanded.TokensCount(childComplexity), true
+
+	case "FastestChannelForModel.channelId":
+		if e.complexity.FastestChannelForModel.ChannelID == nil {
+			break
+		}
+
+		return e.complexity.FastestChannelForModel.ChannelID(childComplexity), true
+	case "FastestChannelForModel.channelName":
+		if e.complexity.FastestChannelForModel.ChannelName == nil {
+			break
+		}
+
+		return e.complexity.FastestChannelForModel.ChannelName(childComplexity), true
+	case "FastestChannelForModel.channelType":
+		if e.complexity.FastestChannelForModel.ChannelType == nil {
+			break
+		}
+
+		return e.complexity.FastestChannelForModel.ChannelType(childComplexity), true
+	case "FastestChannelForModel.latencyMs":
+		if e.complexity.FastestChannelForModel.LatencyMs == nil {
+			break
+		}
+
+		return e.complexity.FastestChannelForModel.LatencyMs(childComplexity), true
+	case "FastestChannelForModel.requestCount":
+		if e.complexity.FastestChannelForModel.RequestCount == nil {
+			break
+		}
+
+		return e.complexity.FastestChannelForModel.RequestCount(childComplexity), true
+	case "FastestChannelForModel.throughput":
+		if e.complexity.FastestChannelForModel.Throughput == nil {
+			break
+		}
+
+		return e.complexity.FastestChannelForModel.Throughput(childComplexity), true
+	case "FastestChannelForModel.tokensCount":
+		if e.complexity.FastestChannelForModel.TokensCount == nil {
+			break
+		}
+
+		return e.complexity.FastestChannelForModel.TokensCount(childComplexity), true
+
 	case "FastestModel.latencyMs":
 		if e.complexity.FastestModel.LatencyMs == nil {
 			break
@@ -3516,6 +3652,86 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.FastestModel.TokensCount(childComplexity), true
+
+	case "FastestModelExpanded.channels":
+		if e.complexity.FastestModelExpanded.Channels == nil {
+			break
+		}
+
+		return e.complexity.FastestModelExpanded.Channels(childComplexity), true
+	case "FastestModelExpanded.latencyMs":
+		if e.complexity.FastestModelExpanded.LatencyMs == nil {
+			break
+		}
+
+		return e.complexity.FastestModelExpanded.LatencyMs(childComplexity), true
+	case "FastestModelExpanded.modelId":
+		if e.complexity.FastestModelExpanded.ModelID == nil {
+			break
+		}
+
+		return e.complexity.FastestModelExpanded.ModelID(childComplexity), true
+	case "FastestModelExpanded.modelName":
+		if e.complexity.FastestModelExpanded.ModelName == nil {
+			break
+		}
+
+		return e.complexity.FastestModelExpanded.ModelName(childComplexity), true
+	case "FastestModelExpanded.requestCount":
+		if e.complexity.FastestModelExpanded.RequestCount == nil {
+			break
+		}
+
+		return e.complexity.FastestModelExpanded.RequestCount(childComplexity), true
+	case "FastestModelExpanded.throughput":
+		if e.complexity.FastestModelExpanded.Throughput == nil {
+			break
+		}
+
+		return e.complexity.FastestModelExpanded.Throughput(childComplexity), true
+	case "FastestModelExpanded.tokensCount":
+		if e.complexity.FastestModelExpanded.TokensCount == nil {
+			break
+		}
+
+		return e.complexity.FastestModelExpanded.TokensCount(childComplexity), true
+
+	case "FastestModelInChannel.latencyMs":
+		if e.complexity.FastestModelInChannel.LatencyMs == nil {
+			break
+		}
+
+		return e.complexity.FastestModelInChannel.LatencyMs(childComplexity), true
+	case "FastestModelInChannel.modelId":
+		if e.complexity.FastestModelInChannel.ModelID == nil {
+			break
+		}
+
+		return e.complexity.FastestModelInChannel.ModelID(childComplexity), true
+	case "FastestModelInChannel.modelName":
+		if e.complexity.FastestModelInChannel.ModelName == nil {
+			break
+		}
+
+		return e.complexity.FastestModelInChannel.ModelName(childComplexity), true
+	case "FastestModelInChannel.requestCount":
+		if e.complexity.FastestModelInChannel.RequestCount == nil {
+			break
+		}
+
+		return e.complexity.FastestModelInChannel.RequestCount(childComplexity), true
+	case "FastestModelInChannel.throughput":
+		if e.complexity.FastestModelInChannel.Throughput == nil {
+			break
+		}
+
+		return e.complexity.FastestModelInChannel.Throughput(childComplexity), true
+	case "FastestModelInChannel.tokensCount":
+		if e.complexity.FastestModelInChannel.TokensCount == nil {
+			break
+		}
+
+		return e.complexity.FastestModelInChannel.TokensCount(childComplexity), true
 
 	case "FetchModelsPayload.error":
 		if e.complexity.FetchModelsPayload.Error == nil {
@@ -5539,6 +5755,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.FastestChannels(childComplexity, args["input"].(FastestChannelsInput)), true
+	case "Query.fastestChannelsExpanded":
+		if e.complexity.Query.FastestChannelsExpanded == nil {
+			break
+		}
+
+		args, err := ec.field_Query_fastestChannelsExpanded_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.FastestChannelsExpanded(childComplexity, args["input"].(FastestChannelsInput)), true
 	case "Query.fastestModels":
 		if e.complexity.Query.FastestModels == nil {
 			break
@@ -5550,6 +5777,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.FastestModels(childComplexity, args["input"].(FastestChannelsInput)), true
+	case "Query.fastestModelsExpanded":
+		if e.complexity.Query.FastestModelsExpanded == nil {
+			break
+		}
+
+		args, err := ec.field_Query_fastestModelsExpanded_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.FastestModelsExpanded(childComplexity, args["input"].(FastestChannelsInput)), true
 	case "Query.fetchModels":
 		if e.complexity.Query.FetchModels == nil {
 			break
@@ -9941,7 +10179,29 @@ func (ec *executionContext) field_Query_dataStorages_args(ctx context.Context, r
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_fastestChannelsExpanded_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNFastestChannelsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFastestChannelsInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_fastestChannels_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNFastestChannelsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFastestChannelsInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_fastestModelsExpanded_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNFastestChannelsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFastestChannelsInput)
@@ -19526,6 +19786,455 @@ func (ec *executionContext) fieldContext_FastestChannel_requestCount(_ context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _FastestChannelExpanded_channelId(ctx context.Context, field graphql.CollectedField, obj *FastestChannelExpanded) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestChannelExpanded_channelId,
+		func(ctx context.Context) (any, error) {
+			return obj.ChannelID, nil
+		},
+		nil,
+		ec.marshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestChannelExpanded_channelId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestChannelExpanded",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestChannelExpanded_channelName(ctx context.Context, field graphql.CollectedField, obj *FastestChannelExpanded) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestChannelExpanded_channelName,
+		func(ctx context.Context) (any, error) {
+			return obj.ChannelName, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestChannelExpanded_channelName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestChannelExpanded",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestChannelExpanded_channelType(ctx context.Context, field graphql.CollectedField, obj *FastestChannelExpanded) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestChannelExpanded_channelType,
+		func(ctx context.Context) (any, error) {
+			return obj.ChannelType, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestChannelExpanded_channelType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestChannelExpanded",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestChannelExpanded_throughput(ctx context.Context, field graphql.CollectedField, obj *FastestChannelExpanded) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestChannelExpanded_throughput,
+		func(ctx context.Context) (any, error) {
+			return obj.Throughput, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestChannelExpanded_throughput(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestChannelExpanded",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestChannelExpanded_tokensCount(ctx context.Context, field graphql.CollectedField, obj *FastestChannelExpanded) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestChannelExpanded_tokensCount,
+		func(ctx context.Context) (any, error) {
+			return obj.TokensCount, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestChannelExpanded_tokensCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestChannelExpanded",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestChannelExpanded_latencyMs(ctx context.Context, field graphql.CollectedField, obj *FastestChannelExpanded) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestChannelExpanded_latencyMs,
+		func(ctx context.Context) (any, error) {
+			return obj.LatencyMs, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestChannelExpanded_latencyMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestChannelExpanded",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestChannelExpanded_requestCount(ctx context.Context, field graphql.CollectedField, obj *FastestChannelExpanded) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestChannelExpanded_requestCount,
+		func(ctx context.Context) (any, error) {
+			return obj.RequestCount, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestChannelExpanded_requestCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestChannelExpanded",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestChannelExpanded_models(ctx context.Context, field graphql.CollectedField, obj *FastestChannelExpanded) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestChannelExpanded_models,
+		func(ctx context.Context) (any, error) {
+			return obj.Models, nil
+		},
+		nil,
+		ec.marshalNFastestModelInChannel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFastestModelInChannelᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestChannelExpanded_models(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestChannelExpanded",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "modelId":
+				return ec.fieldContext_FastestModelInChannel_modelId(ctx, field)
+			case "modelName":
+				return ec.fieldContext_FastestModelInChannel_modelName(ctx, field)
+			case "throughput":
+				return ec.fieldContext_FastestModelInChannel_throughput(ctx, field)
+			case "tokensCount":
+				return ec.fieldContext_FastestModelInChannel_tokensCount(ctx, field)
+			case "latencyMs":
+				return ec.fieldContext_FastestModelInChannel_latencyMs(ctx, field)
+			case "requestCount":
+				return ec.fieldContext_FastestModelInChannel_requestCount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type FastestModelInChannel", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestChannelForModel_channelId(ctx context.Context, field graphql.CollectedField, obj *FastestChannelForModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestChannelForModel_channelId,
+		func(ctx context.Context) (any, error) {
+			return obj.ChannelID, nil
+		},
+		nil,
+		ec.marshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestChannelForModel_channelId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestChannelForModel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestChannelForModel_channelName(ctx context.Context, field graphql.CollectedField, obj *FastestChannelForModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestChannelForModel_channelName,
+		func(ctx context.Context) (any, error) {
+			return obj.ChannelName, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestChannelForModel_channelName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestChannelForModel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestChannelForModel_channelType(ctx context.Context, field graphql.CollectedField, obj *FastestChannelForModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestChannelForModel_channelType,
+		func(ctx context.Context) (any, error) {
+			return obj.ChannelType, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestChannelForModel_channelType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestChannelForModel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestChannelForModel_throughput(ctx context.Context, field graphql.CollectedField, obj *FastestChannelForModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestChannelForModel_throughput,
+		func(ctx context.Context) (any, error) {
+			return obj.Throughput, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestChannelForModel_throughput(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestChannelForModel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestChannelForModel_tokensCount(ctx context.Context, field graphql.CollectedField, obj *FastestChannelForModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestChannelForModel_tokensCount,
+		func(ctx context.Context) (any, error) {
+			return obj.TokensCount, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestChannelForModel_tokensCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestChannelForModel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestChannelForModel_latencyMs(ctx context.Context, field graphql.CollectedField, obj *FastestChannelForModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestChannelForModel_latencyMs,
+		func(ctx context.Context) (any, error) {
+			return obj.LatencyMs, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestChannelForModel_latencyMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestChannelForModel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestChannelForModel_requestCount(ctx context.Context, field graphql.CollectedField, obj *FastestChannelForModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestChannelForModel_requestCount,
+		func(ctx context.Context) (any, error) {
+			return obj.RequestCount, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestChannelForModel_requestCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestChannelForModel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _FastestModel_modelId(ctx context.Context, field graphql.CollectedField, obj *FastestModel) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -19690,6 +20399,399 @@ func (ec *executionContext) _FastestModel_requestCount(ctx context.Context, fiel
 func (ec *executionContext) fieldContext_FastestModel_requestCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "FastestModel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestModelExpanded_modelId(ctx context.Context, field graphql.CollectedField, obj *FastestModelExpanded) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestModelExpanded_modelId,
+		func(ctx context.Context) (any, error) {
+			return obj.ModelID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestModelExpanded_modelId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestModelExpanded",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestModelExpanded_modelName(ctx context.Context, field graphql.CollectedField, obj *FastestModelExpanded) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestModelExpanded_modelName,
+		func(ctx context.Context) (any, error) {
+			return obj.ModelName, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestModelExpanded_modelName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestModelExpanded",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestModelExpanded_throughput(ctx context.Context, field graphql.CollectedField, obj *FastestModelExpanded) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestModelExpanded_throughput,
+		func(ctx context.Context) (any, error) {
+			return obj.Throughput, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestModelExpanded_throughput(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestModelExpanded",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestModelExpanded_tokensCount(ctx context.Context, field graphql.CollectedField, obj *FastestModelExpanded) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestModelExpanded_tokensCount,
+		func(ctx context.Context) (any, error) {
+			return obj.TokensCount, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestModelExpanded_tokensCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestModelExpanded",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestModelExpanded_latencyMs(ctx context.Context, field graphql.CollectedField, obj *FastestModelExpanded) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestModelExpanded_latencyMs,
+		func(ctx context.Context) (any, error) {
+			return obj.LatencyMs, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestModelExpanded_latencyMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestModelExpanded",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestModelExpanded_requestCount(ctx context.Context, field graphql.CollectedField, obj *FastestModelExpanded) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestModelExpanded_requestCount,
+		func(ctx context.Context) (any, error) {
+			return obj.RequestCount, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestModelExpanded_requestCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestModelExpanded",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestModelExpanded_channels(ctx context.Context, field graphql.CollectedField, obj *FastestModelExpanded) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestModelExpanded_channels,
+		func(ctx context.Context) (any, error) {
+			return obj.Channels, nil
+		},
+		nil,
+		ec.marshalNFastestChannelForModel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFastestChannelForModelᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestModelExpanded_channels(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestModelExpanded",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "channelId":
+				return ec.fieldContext_FastestChannelForModel_channelId(ctx, field)
+			case "channelName":
+				return ec.fieldContext_FastestChannelForModel_channelName(ctx, field)
+			case "channelType":
+				return ec.fieldContext_FastestChannelForModel_channelType(ctx, field)
+			case "throughput":
+				return ec.fieldContext_FastestChannelForModel_throughput(ctx, field)
+			case "tokensCount":
+				return ec.fieldContext_FastestChannelForModel_tokensCount(ctx, field)
+			case "latencyMs":
+				return ec.fieldContext_FastestChannelForModel_latencyMs(ctx, field)
+			case "requestCount":
+				return ec.fieldContext_FastestChannelForModel_requestCount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type FastestChannelForModel", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestModelInChannel_modelId(ctx context.Context, field graphql.CollectedField, obj *FastestModelInChannel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestModelInChannel_modelId,
+		func(ctx context.Context) (any, error) {
+			return obj.ModelID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestModelInChannel_modelId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestModelInChannel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestModelInChannel_modelName(ctx context.Context, field graphql.CollectedField, obj *FastestModelInChannel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestModelInChannel_modelName,
+		func(ctx context.Context) (any, error) {
+			return obj.ModelName, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestModelInChannel_modelName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestModelInChannel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestModelInChannel_throughput(ctx context.Context, field graphql.CollectedField, obj *FastestModelInChannel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestModelInChannel_throughput,
+		func(ctx context.Context) (any, error) {
+			return obj.Throughput, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestModelInChannel_throughput(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestModelInChannel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestModelInChannel_tokensCount(ctx context.Context, field graphql.CollectedField, obj *FastestModelInChannel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestModelInChannel_tokensCount,
+		func(ctx context.Context) (any, error) {
+			return obj.TokensCount, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestModelInChannel_tokensCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestModelInChannel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestModelInChannel_latencyMs(ctx context.Context, field graphql.CollectedField, obj *FastestModelInChannel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestModelInChannel_latencyMs,
+		func(ctx context.Context) (any, error) {
+			return obj.LatencyMs, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestModelInChannel_latencyMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestModelInChannel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestModelInChannel_requestCount(ctx context.Context, field graphql.CollectedField, obj *FastestModelInChannel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestModelInChannel_requestCount,
+		func(ctx context.Context) (any, error) {
+			return obj.RequestCount, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestModelInChannel_requestCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestModelInChannel",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -30490,6 +31592,65 @@ func (ec *executionContext) fieldContext_Query_fastestChannels(ctx context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_fastestChannelsExpanded(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_fastestChannelsExpanded,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().FastestChannelsExpanded(ctx, fc.Args["input"].(FastestChannelsInput))
+		},
+		nil,
+		ec.marshalNFastestChannelExpanded2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFastestChannelExpandedᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_fastestChannelsExpanded(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "channelId":
+				return ec.fieldContext_FastestChannelExpanded_channelId(ctx, field)
+			case "channelName":
+				return ec.fieldContext_FastestChannelExpanded_channelName(ctx, field)
+			case "channelType":
+				return ec.fieldContext_FastestChannelExpanded_channelType(ctx, field)
+			case "throughput":
+				return ec.fieldContext_FastestChannelExpanded_throughput(ctx, field)
+			case "tokensCount":
+				return ec.fieldContext_FastestChannelExpanded_tokensCount(ctx, field)
+			case "latencyMs":
+				return ec.fieldContext_FastestChannelExpanded_latencyMs(ctx, field)
+			case "requestCount":
+				return ec.fieldContext_FastestChannelExpanded_requestCount(ctx, field)
+			case "models":
+				return ec.fieldContext_FastestChannelExpanded_models(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type FastestChannelExpanded", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_fastestChannelsExpanded_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_fastestModels(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -30539,6 +31700,63 @@ func (ec *executionContext) fieldContext_Query_fastestModels(ctx context.Context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_fastestModels_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_fastestModelsExpanded(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_fastestModelsExpanded,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().FastestModelsExpanded(ctx, fc.Args["input"].(FastestChannelsInput))
+		},
+		nil,
+		ec.marshalNFastestModelExpanded2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFastestModelExpandedᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_fastestModelsExpanded(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "modelId":
+				return ec.fieldContext_FastestModelExpanded_modelId(ctx, field)
+			case "modelName":
+				return ec.fieldContext_FastestModelExpanded_modelName(ctx, field)
+			case "throughput":
+				return ec.fieldContext_FastestModelExpanded_throughput(ctx, field)
+			case "tokensCount":
+				return ec.fieldContext_FastestModelExpanded_tokensCount(ctx, field)
+			case "latencyMs":
+				return ec.fieldContext_FastestModelExpanded_latencyMs(ctx, field)
+			case "requestCount":
+				return ec.fieldContext_FastestModelExpanded_requestCount(ctx, field)
+			case "channels":
+				return ec.fieldContext_FastestModelExpanded_channels(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type FastestModelExpanded", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_fastestModelsExpanded_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -69706,6 +70924,149 @@ func (ec *executionContext) _FastestChannel(ctx context.Context, sel ast.Selecti
 	return out
 }
 
+var fastestChannelExpandedImplementors = []string{"FastestChannelExpanded"}
+
+func (ec *executionContext) _FastestChannelExpanded(ctx context.Context, sel ast.SelectionSet, obj *FastestChannelExpanded) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, fastestChannelExpandedImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FastestChannelExpanded")
+		case "channelId":
+			out.Values[i] = ec._FastestChannelExpanded_channelId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "channelName":
+			out.Values[i] = ec._FastestChannelExpanded_channelName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "channelType":
+			out.Values[i] = ec._FastestChannelExpanded_channelType(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "throughput":
+			out.Values[i] = ec._FastestChannelExpanded_throughput(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "tokensCount":
+			out.Values[i] = ec._FastestChannelExpanded_tokensCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "latencyMs":
+			out.Values[i] = ec._FastestChannelExpanded_latencyMs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "requestCount":
+			out.Values[i] = ec._FastestChannelExpanded_requestCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "models":
+			out.Values[i] = ec._FastestChannelExpanded_models(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var fastestChannelForModelImplementors = []string{"FastestChannelForModel"}
+
+func (ec *executionContext) _FastestChannelForModel(ctx context.Context, sel ast.SelectionSet, obj *FastestChannelForModel) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, fastestChannelForModelImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FastestChannelForModel")
+		case "channelId":
+			out.Values[i] = ec._FastestChannelForModel_channelId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "channelName":
+			out.Values[i] = ec._FastestChannelForModel_channelName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "channelType":
+			out.Values[i] = ec._FastestChannelForModel_channelType(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "throughput":
+			out.Values[i] = ec._FastestChannelForModel_throughput(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "tokensCount":
+			out.Values[i] = ec._FastestChannelForModel_tokensCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "latencyMs":
+			out.Values[i] = ec._FastestChannelForModel_latencyMs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "requestCount":
+			out.Values[i] = ec._FastestChannelForModel_requestCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var fastestModelImplementors = []string{"FastestModel"}
 
 func (ec *executionContext) _FastestModel(ctx context.Context, sel ast.SelectionSet, obj *FastestModel) graphql.Marshaler {
@@ -69744,6 +71105,139 @@ func (ec *executionContext) _FastestModel(ctx context.Context, sel ast.Selection
 			}
 		case "requestCount":
 			out.Values[i] = ec._FastestModel_requestCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var fastestModelExpandedImplementors = []string{"FastestModelExpanded"}
+
+func (ec *executionContext) _FastestModelExpanded(ctx context.Context, sel ast.SelectionSet, obj *FastestModelExpanded) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, fastestModelExpandedImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FastestModelExpanded")
+		case "modelId":
+			out.Values[i] = ec._FastestModelExpanded_modelId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "modelName":
+			out.Values[i] = ec._FastestModelExpanded_modelName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "throughput":
+			out.Values[i] = ec._FastestModelExpanded_throughput(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "tokensCount":
+			out.Values[i] = ec._FastestModelExpanded_tokensCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "latencyMs":
+			out.Values[i] = ec._FastestModelExpanded_latencyMs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "requestCount":
+			out.Values[i] = ec._FastestModelExpanded_requestCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "channels":
+			out.Values[i] = ec._FastestModelExpanded_channels(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var fastestModelInChannelImplementors = []string{"FastestModelInChannel"}
+
+func (ec *executionContext) _FastestModelInChannel(ctx context.Context, sel ast.SelectionSet, obj *FastestModelInChannel) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, fastestModelInChannelImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FastestModelInChannel")
+		case "modelId":
+			out.Values[i] = ec._FastestModelInChannel_modelId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "modelName":
+			out.Values[i] = ec._FastestModelInChannel_modelName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "throughput":
+			out.Values[i] = ec._FastestModelInChannel_throughput(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "tokensCount":
+			out.Values[i] = ec._FastestModelInChannel_tokensCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "latencyMs":
+			out.Values[i] = ec._FastestModelInChannel_latencyMs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "requestCount":
+			out.Values[i] = ec._FastestModelInChannel_requestCount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -73650,6 +75144,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "fastestChannelsExpanded":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_fastestChannelsExpanded(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "fastestModels":
 			field := field
 
@@ -73660,6 +75176,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_fastestModels(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "fastestModelsExpanded":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_fastestModelsExpanded(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -82109,6 +83647,114 @@ func (ec *executionContext) marshalNFastestChannel2ᚖgithubᚗcomᚋloopljᚋax
 	return ec._FastestChannel(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNFastestChannelExpanded2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFastestChannelExpandedᚄ(ctx context.Context, sel ast.SelectionSet, v []*FastestChannelExpanded) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNFastestChannelExpanded2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFastestChannelExpanded(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNFastestChannelExpanded2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFastestChannelExpanded(ctx context.Context, sel ast.SelectionSet, v *FastestChannelExpanded) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._FastestChannelExpanded(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNFastestChannelForModel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFastestChannelForModelᚄ(ctx context.Context, sel ast.SelectionSet, v []*FastestChannelForModel) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNFastestChannelForModel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFastestChannelForModel(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNFastestChannelForModel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFastestChannelForModel(ctx context.Context, sel ast.SelectionSet, v *FastestChannelForModel) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._FastestChannelForModel(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNFastestChannelsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFastestChannelsInput(ctx context.Context, v any) (FastestChannelsInput, error) {
 	res, err := ec.unmarshalInputFastestChannelsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -82166,6 +83812,114 @@ func (ec *executionContext) marshalNFastestModel2ᚖgithubᚗcomᚋloopljᚋaxon
 		return graphql.Null
 	}
 	return ec._FastestModel(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNFastestModelExpanded2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFastestModelExpandedᚄ(ctx context.Context, sel ast.SelectionSet, v []*FastestModelExpanded) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNFastestModelExpanded2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFastestModelExpanded(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNFastestModelExpanded2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFastestModelExpanded(ctx context.Context, sel ast.SelectionSet, v *FastestModelExpanded) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._FastestModelExpanded(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNFastestModelInChannel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFastestModelInChannelᚄ(ctx context.Context, sel ast.SelectionSet, v []*FastestModelInChannel) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNFastestModelInChannel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFastestModelInChannel(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNFastestModelInChannel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFastestModelInChannel(ctx context.Context, sel ast.SelectionSet, v *FastestModelInChannel) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._FastestModelInChannel(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNFetchModelsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐFetchModelsInput(ctx context.Context, v any) (biz.FetchModelsInput, error) {

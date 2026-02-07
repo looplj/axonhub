@@ -93,9 +93,49 @@ type FastestChannel {
   requestCount: Int!
 }
 
+type FastestChannelExpanded {
+  channelId: ID!
+  channelName: String!
+  channelType: String!
+  throughput: Float!
+  tokensCount: Int!
+  latencyMs: Int!
+  requestCount: Int!
+  models: [FastestModelInChannel!]!
+}
+
+type FastestModelInChannel {
+  modelId: String!
+  modelName: String!
+  throughput: Float!
+  tokensCount: Int!
+  latencyMs: Int!
+  requestCount: Int!
+}
+
 type FastestModel {
   modelId: String!
   modelName: String!
+  throughput: Float!
+  tokensCount: Int!
+  latencyMs: Int!
+  requestCount: Int!
+}
+
+type FastestModelExpanded {
+  modelId: String!
+  modelName: String!
+  throughput: Float!
+  tokensCount: Int!
+  latencyMs: Int!
+  requestCount: Int!
+  channels: [FastestChannelForModel!]!
+}
+
+type FastestChannelForModel {
+  channelId: ID!
+  channelName: String!
+  channelType: String!
   throughput: Float!
   tokensCount: Int!
   latencyMs: Int!
@@ -118,5 +158,7 @@ extend type Query {
   tokenStats: TokenStats!
   channelSuccessRates: [ChannelSuccessRate!]!
   fastestChannels(input: FastestChannelsInput!): [FastestChannel!]!
+  fastestChannelsExpanded(input: FastestChannelsInput!): [FastestChannelExpanded!]!
   fastestModels(input: FastestChannelsInput!): [FastestModel!]!
+  fastestModelsExpanded(input: FastestChannelsInput!): [FastestModelExpanded!]!
 }
