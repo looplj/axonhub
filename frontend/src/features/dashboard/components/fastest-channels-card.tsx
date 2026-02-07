@@ -88,7 +88,8 @@ function ChartLegend({ items }: { items: Array<{ name: string; throughput: numbe
 
 function ExpandedChannelItem({ 
   channel, 
-  index 
+  index,
+  defaultExpanded = false
 }: { 
   channel: { 
     channelName: string; 
@@ -101,8 +102,9 @@ function ExpandedChannelItem({
     }>;
   };
   index: number;
+  defaultExpanded?: boolean;
 }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const color = COLORS[index % COLORS.length];
 
   const modelData = channel.models
@@ -251,17 +253,11 @@ export function FastestChannelsCard() {
       </CardHeader>
       <CardContent>
         {!isExpanded ? (
-          // Aggregate view
-          channelData.length > 0 ? (
-            <div className='space-y-4'>
-              <HorizontalBarChart data={channelData} total={channelTotal} />
-              <ChartLegend items={channelLegendItems} />
-            </div>
-          ) : (
-            <div className='text-muted-foreground text-sm'>{t('dashboard.cards.fastestPerformers.noData')}</div>
-          )
+          <div className='space-y-4'>
+            <HorizontalBarChart data={channelData} total={channelTotal} />
+            <ChartLegend items={channelLegendItems} />
+          </div>
         ) : (
-          // Expanded view
           expandedLoading ? (
             <div className='flex h-[250px] items-center justify-center'>
               <Skeleton className='h-[200px] w-full' />
@@ -273,6 +269,7 @@ export function FastestChannelsCard() {
                   key={channel.channelId}
                   channel={channel}
                   index={index}
+                  defaultExpanded={true}
                 />
               ))}
             </div>

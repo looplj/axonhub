@@ -88,7 +88,8 @@ function ChartLegend({ items }: { items: Array<{ name: string; throughput: numbe
 
 function ExpandedModelItem({ 
   model, 
-  index 
+  index,
+  defaultExpanded = false
 }: { 
   model: { 
     modelName: string; 
@@ -101,8 +102,9 @@ function ExpandedModelItem({
     }>;
   };
   index: number;
+  defaultExpanded?: boolean;
 }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const color = COLORS[index % COLORS.length];
 
   const channelData = model.channels
@@ -251,17 +253,11 @@ export function FastestModelsCard() {
       </CardHeader>
       <CardContent>
         {!isExpanded ? (
-          // Aggregate view
-          modelData.length > 0 ? (
-            <div className='space-y-4'>
-              <HorizontalBarChart data={modelData} total={modelTotal} />
-              <ChartLegend items={modelLegendItems} />
-            </div>
-          ) : (
-            <div className='text-muted-foreground text-sm'>{t('dashboard.cards.fastestPerformers.noData')}</div>
-          )
+          <div className='space-y-4'>
+            <HorizontalBarChart data={modelData} total={modelTotal} />
+            <ChartLegend items={modelLegendItems} />
+          </div>
         ) : (
-          // Expanded view
           expandedLoading ? (
             <div className='flex h-[250px] items-center justify-center'>
               <Skeleton className='h-[200px] w-full' />
@@ -273,6 +269,7 @@ export function FastestModelsCard() {
                   key={model.modelId}
                   model={model}
                   index={index}
+                  defaultExpanded={true}
                 />
               ))}
             </div>
