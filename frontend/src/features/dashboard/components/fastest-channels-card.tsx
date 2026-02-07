@@ -42,15 +42,15 @@ function HorizontalBarChart({ data, total }: { data: ChartData[]; total: number 
   };
 
   return (
-    <ResponsiveContainer width='100%' height={250}>
-      <BarChart data={data} layout='vertical' barSize={28} margin={{ left: 100, right: 20, top: 10, bottom: 10 }}>
+    <ResponsiveContainer width='100%' height={280}>
+      <BarChart data={data} layout='vertical' barSize={32} margin={{ left: 110, right: 20, top: 10, bottom: 10 }}>
         <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' horizontal={false} />
         <XAxis type='number' hide />
-        <YAxis
+          <YAxis
           type='category'
           dataKey='name'
-          width={90}
-          tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+          width={100}
+          tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
           tickLine={false}
           axisLine={false}
         />
@@ -67,17 +67,17 @@ function HorizontalBarChart({ data, total }: { data: ChartData[]; total: number 
 
 function ChartLegend({ items, total }: { items: Array<{ name: string; throughput: number; requestCount: number; color: string; index: number }>; total: number }) {
   return (
-    <div className='grid gap-2'>
+    <div className='grid gap-3'>
       {items.map((item) => (
-        <div key={item.name} className='grid w-full grid-cols-[auto_auto_1fr_auto] items-center gap-2'>
-          <span className='text-muted-foreground w-6 text-right text-xs font-semibold tabular-nums'>
+        <div key={item.name} className='grid w-full grid-cols-[auto_auto_1fr_auto] items-center gap-3'>
+          <span className='text-muted-foreground w-8 text-right text-sm font-semibold tabular-nums'>
             {item.index.toString().padStart(2, '0')}.
           </span>
-          <span className='h-2 w-2 rounded-full' style={{ backgroundColor: item.color }} />
-          <span className='text-foreground min-w-0 text-xs font-medium break-words truncate'>{item.name}</span>
+          <span className='h-2.5 w-2.5 rounded-full' style={{ backgroundColor: item.color }} />
+          <span className='text-foreground min-w-0 text-sm font-medium break-words'>{item.name}</span>
           <div className='text-right leading-tight'>
-            <div className='text-foreground text-xs font-medium tabular-nums'>{item.throughput.toFixed(1)} tok/s</div>
-            <div className='text-muted-foreground text-[10px] tabular-nums'>{formatNumber(item.requestCount)} req</div>
+            <div className='text-foreground text-sm font-medium tabular-nums'>{item.throughput.toFixed(1)} tok/s</div>
+            <div className='text-muted-foreground text-xs tabular-nums'>{formatNumber(item.requestCount)} req</div>
           </div>
         </div>
       ))}
