@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -15,28 +15,50 @@ const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--cha
 
 type TimeWindow = '1h' | '24h' | '7d';
 
+/**
+ * Safely format a number to fixed decimal places.
+ * Returns '0.0' for undefined, null, NaN, or non-finite values.
+ */
+function safeToFixed(value: unknown, decimals: number = 1): string {
+  const num = Number(value);
+  return Number.isFinite(num) ? num.toFixed(decimals) : '0.0';
+}
+
 interface ChartData {
   name: string;
   throughput: number;
   requestCount: number;
 }
 
+function sanitizeChartData(items: ChartData[]): ChartData[] {
+  return items
+    .map((item) => ({
+      name: String(item.name ?? 'Unknown'),
+      throughput: Number(item.throughput) || 0,
+      requestCount: Number(item.requestCount) || 0,
+    }))
+    .filter((item) => Number.isFinite(item.throughput));
+}
+
 function HorizontalBarChart({ data, total, height = 280 }: { data: ChartData[]; total: number; height?: number }) {
-  const tooltipContent = (props: TooltipProps<number, string>) => {
+  const safeData = sanitizeChartData(data);
+
+  const tooltipContent = (props: any) => {
     const { active, payload } = props;
     if (!active || !payload?.length) return null;
 
     const item = payload[0].payload as ChartData;
-    const percent = total ? (item.throughput / total) * 100 : 0;
+    const safeThroughput = Number(item.throughput) || 0;
+    const percent = total && Number.isFinite(safeThroughput) ? (safeThroughput / total) * 100 : 0;
 
     return (
       <div className='bg-background/90 rounded-md border px-3 py-2 text-xs shadow-sm backdrop-blur'>
         <div className='text-foreground text-sm font-medium'>{item.name}</div>
         <div className='text-muted-foreground'>
-          {item.throughput.toFixed(1)} tokens/s ({percent.toFixed(0)}%)
+          {safeToFixed(safeThroughput)} tokens/s ({Number.isFinite(percent) ? percent.toFixed(0) : '0'}%)
         </div>
         <div className='text-muted-foreground text-xs'>
-          {item.requestCount} requests
+          {Number(item.requestCount) || 0} requests
         </div>
       </div>
     );
@@ -44,7 +66,7 @@ function HorizontalBarChart({ data, total, height = 280 }: { data: ChartData[]; 
 
   return (
     <ResponsiveContainer width='100%' height={height}>
-      <BarChart data={data} layout='vertical' barSize={32} margin={{ left: 20, right: 20, top: 10, bottom: 10 }}>
+      <BarChart data={safeData} layout='vertical' barSize={32} margin={{ left: 20, right: 20, top: 10, bottom: 10 }}>
         <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' horizontal={false} />
         <XAxis type='number' hide />
         <YAxis
@@ -77,7 +99,7 @@ function ChartLegend({ items }: { items: Array<{ name: string; throughput: numbe
           <span className='h-2.5 w-2.5 rounded-full' style={{ backgroundColor: item.color }} />
           <span className='text-foreground min-w-0 text-sm font-medium break-words'>{item.name}</span>
           <div className='text-right leading-tight'>
-            <div className='text-foreground text-sm font-medium tabular-nums'>{item.throughput.toFixed(1)} tok/s</div>
+            <div className='text-foreground text-sm font-medium tabular-nums'>{safeToFixed(item.throughput)} tok/s</div>
             <div className='text-muted-foreground text-xs tabular-nums'>{formatNumber(item.requestCount)} req</div>
           </div>
         </div>
@@ -107,17 +129,18 @@ function ExpandedModelItem({
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const color = COLORS[index % COLORS.length];
 
-  const throughput = model.throughput || 0;
-  const requestCount = model.requestCount || 0;
+  const throughput = Number(model.throughput) || 0;
+  const requestCount = Number(model.requestCount) || 0;
 
-  const channelData = (model.channels || [])
-    .filter((c) => c != null)
-    .map((c) => ({
-      name: c.channelName ?? 'Unknown',
-      throughput: c.throughput ?? 0,
-      requestCount: c.requestCount ?? 0,
-    }))
-    .sort((a, b) => b.throughput - a.throughput);
+  const channelData = sanitizeChartData(
+    (model.channels || [])
+      .filter((c) => c != null)
+      .map((c) => ({
+        name: c.channelName ?? 'Unknown',
+        throughput: c.throughput ?? 0,
+        requestCount: c.requestCount ?? 0,
+      }))
+  ).sort((a, b) => b.throughput - a.throughput);
 
   const channelTotal = channelData.reduce((sum, item) => sum + item.throughput, 0);
 
@@ -136,7 +159,7 @@ function ExpandedModelItem({
         </div>
         <div className='flex items-center gap-4'>
           <div className='text-right leading-tight'>
-            <div className='text-foreground text-sm font-medium tabular-nums'>{throughput.toFixed(1)} tok/s</div>
+            <div className='text-foreground text-sm font-medium tabular-nums'>{safeToFixed(throughput)} tok/s</div>
             <div className='text-muted-foreground text-xs tabular-nums'>{formatNumber(requestCount)} req</div>
           </div>
           {isExpanded ? (
@@ -155,18 +178,18 @@ function ExpandedModelItem({
                 <HorizontalBarChart data={channelData.slice(0, 5)} total={channelTotal} height={150} />
               </div>
               <div className='grid gap-2'>
-                {channelData.slice(0, 5).map((channel, channelIndex) => (
-                  <div key={channel.name} className='grid w-full grid-cols-[auto_1fr_auto] items-center gap-2 text-xs'>
-                    <span className='text-muted-foreground w-6 text-right font-semibold tabular-nums'>
-                      {channelIndex + 1}.
-                    </span>
-                    <span className='text-foreground min-w-0 font-medium break-words'>{channel.name}</span>
-                    <div className='text-right leading-tight'>
-                      <div className='text-foreground font-medium tabular-nums'>{channel.throughput.toFixed(1)} tok/s</div>
-                      <div className='text-muted-foreground tabular-nums'>{formatNumber(channel.requestCount)} req</div>
+                  {channelData.slice(0, 5).map((channel, channelIndex) => (
+                    <div key={channel.name} className='grid w-full grid-cols-[auto_1fr_auto] items-center gap-2 text-xs'>
+                      <span className='text-muted-foreground w-6 text-right font-semibold tabular-nums'>
+                        {channelIndex + 1}.
+                      </span>
+                      <span className='text-foreground min-w-0 font-medium break-words'>{channel.name}</span>
+                      <div className='text-right leading-tight'>
+                        <div className='text-foreground font-medium tabular-nums'>{safeToFixed(channel.throughput)} tok/s</div>
+                        <div className='text-muted-foreground tabular-nums'>{formatNumber(channel.requestCount)} req</div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </>
           ) : (
@@ -215,15 +238,16 @@ export function FastestModelsCard() {
     );
   }
 
-  const modelData: ChartData[] = (models || [])
-    .slice(0, 5)
-    .filter((m) => m != null)
-    .map((m) => ({
-      name: m.modelName ?? 'Unknown',
-      throughput: m.throughput ?? 0,
-      requestCount: m.requestCount ?? 0,
-    }))
-    .sort((a, b) => b.throughput - a.throughput);
+  const modelData: ChartData[] = sanitizeChartData(
+    (models || [])
+      .slice(0, 5)
+      .filter((m) => m != null)
+      .map((m) => ({
+        name: m.modelName ?? 'Unknown',
+        throughput: m.throughput ?? 0,
+        requestCount: m.requestCount ?? 0,
+      }))
+  ).sort((a, b) => b.throughput - a.throughput);
 
   const modelTotal = modelData.reduce((sum, item) => sum + item.throughput, 0);
 
@@ -284,7 +308,11 @@ export function FastestModelsCard() {
                     modelName: model.modelName ?? 'Unknown',
                     throughput: model.throughput ?? 0,
                     requestCount: model.requestCount ?? 0,
-                    channels: model.channels ?? [],
+                    channels: (model.channels ?? []).map((channel) => ({
+                      channelName: channel.channelName ?? 'Unknown',
+                      throughput: channel.throughput ?? 0,
+                      requestCount: channel.requestCount ?? 0,
+                    })),
                   }}
                   index={index}
                   defaultExpanded={true}
