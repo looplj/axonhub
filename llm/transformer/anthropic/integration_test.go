@@ -207,10 +207,6 @@ func TestTransformRequest_Integration(t *testing.T) {
 			requestFile: `anthropic-claude-code2.request.json`,
 		},
 		{
-			name:        "claude cache control",
-			requestFile: `anthropic-cache-control-inbound.request.json`,
-		},
-		{
 			name:        "claude thinking",
 			requestFile: `anthropic-thinking.request.json`,
 		},
@@ -265,11 +261,45 @@ func TestTransformRequest_Integration(t *testing.T) {
 			err = json.Unmarshal(outboundReq.Body, &gotReq)
 			require.NoError(t, err)
 
-			if !xtest.Equal(wantReq, gotReq) {
-				t.Errorf("wantReq != gotReq\n%s", cmp.Diff(wantReq, gotReq))
+			// 忽略 cache_control 差异：ensureCacheControl 会在 outbound 路径中自动注入断点，
+			// 可能导致 CacheControl 字段和 Content→MultipleContent 结构变化。
+			// 这些行为的正确性已在 ensure_cache_control_test.go 中覆盖。
+			if !xtest.Equal(wantReq, gotReq, ignoreCacheControlWithNormalize...) {
+				t.Errorf("wantReq != gotReq\n%s", cmp.Diff(wantReq, gotReq, ignoreCacheControlWithNormalize...))
 			}
 		})
 	}
+
+	// 单独测试 cache_control 超限的 fixture：该文件包含 6 个 cache_control 断点。
+	// outbound 阶段应自动裁剪，仅保留最近 4 个断点。
+	t.Run("cache control exceeds limit", func(t *testing.T) {
+		var wantReq MessageRequest
+
+		err := xtest.LoadTestData(t, "anthropic-cache-control-inbound.request.json", &wantReq)
+		require.NoError(t, err)
+
+		var buf bytes.Buffer
+
+		encoder := json.NewEncoder(&buf)
+		encoder.SetEscapeHTML(false)
+		require.NoError(t, encoder.Encode(wantReq))
+
+		chatReq, err := inboundTransformer.TransformRequest(t.Context(), &httpclient.Request{
+			Headers: http.Header{
+				"Content-Type": []string{"application/json"},
+			},
+			Body: buf.Bytes(),
+		})
+		require.NoError(t, err)
+
+		outboundReq, err := outboundTransformer.TransformRequest(t.Context(), chatReq)
+		require.NoError(t, err)
+
+		var gotReq MessageRequest
+		err = json.Unmarshal(outboundReq.Body, &gotReq)
+		require.NoError(t, err)
+		require.Equal(t, 4, countCacheControls(&gotReq))
+	})
 }
 
 func TestAnthropicTransformers_StreamingIntegration(t *testing.T) {
