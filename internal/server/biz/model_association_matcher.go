@@ -69,6 +69,9 @@ func MatchAssociations(
 	tracker := NewDuplicateKeyTracker()
 
 	for _, assoc := range associations {
+		if assoc.Disabled {
+			continue
+		}
 		connections := matchSingleAssociation(assoc, channels, tracker)
 		result = append(result, connections...)
 	}

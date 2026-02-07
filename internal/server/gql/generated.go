@@ -583,6 +583,7 @@ type ComplexityRoot struct {
 		ChannelRegex     func(childComplexity int) int
 		ChannelTagsModel func(childComplexity int) int
 		ChannelTagsRegex func(childComplexity int) int
+		Disabled         func(childComplexity int) int
 		ModelID          func(childComplexity int) int
 		Priority         func(childComplexity int) int
 		Regex            func(childComplexity int) int
@@ -3633,6 +3634,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ModelAssociation.ChannelTagsRegex(childComplexity), true
+	case "ModelAssociation.disabled":
+		if e.complexity.ModelAssociation.Disabled == nil {
+			break
+		}
+
+		return e.complexity.ModelAssociation.Disabled(childComplexity), true
 	case "ModelAssociation.modelId":
 		if e.complexity.ModelAssociation.ModelID == nil {
 			break
@@ -20212,6 +20219,35 @@ func (ec *executionContext) fieldContext_ModelAssociation_priority(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _ModelAssociation_disabled(ctx context.Context, field graphql.CollectedField, obj *objects.ModelAssociation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelAssociation_disabled,
+		func(ctx context.Context) (any, error) {
+			return obj.Disabled, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelAssociation_disabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelAssociation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ModelAssociation_channelModel(ctx context.Context, field graphql.CollectedField, obj *objects.ModelAssociation) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -21747,6 +21783,8 @@ func (ec *executionContext) fieldContext_ModelSettings_associations(_ context.Co
 				return ec.fieldContext_ModelAssociation_type(ctx, field)
 			case "priority":
 				return ec.fieldContext_ModelAssociation_priority(ctx, field)
+			case "disabled":
+				return ec.fieldContext_ModelAssociation_disabled(ctx, field)
 			case "channelModel":
 				return ec.fieldContext_ModelAssociation_channelModel(ctx, field)
 			case "channelRegex":
@@ -51227,7 +51265,7 @@ func (ec *executionContext) unmarshalInputModelAssociationInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"type", "priority", "channelModel", "channelRegex", "regex", "modelId", "channelTagsModel", "channelTagsRegex"}
+	fieldsInOrder := [...]string{"type", "priority", "disabled", "channelModel", "channelRegex", "regex", "modelId", "channelTagsModel", "channelTagsRegex"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -51248,6 +51286,13 @@ func (ec *executionContext) unmarshalInputModelAssociationInput(ctx context.Cont
 				return it, err
 			}
 			it.Priority = data
+		case "disabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("disabled"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Disabled = data
 		case "channelModel":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelModel"))
 			data, err := ec.unmarshalOChannelModelAssociationInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelModelAssociation(ctx, v)
@@ -69635,6 +69680,11 @@ func (ec *executionContext) _ModelAssociation(ctx context.Context, sel ast.Selec
 			}
 		case "priority":
 			out.Values[i] = ec._ModelAssociation_priority(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "disabled":
+			out.Values[i] = ec._ModelAssociation_disabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
