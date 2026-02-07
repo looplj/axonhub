@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/objects"
 )
 
 func (svc *BackupService) Restore(ctx context.Context, data []byte, opts RestoreOptions) error {
@@ -77,6 +78,11 @@ func (svc *BackupService) restore(ctx context.Context, db *ent.Client, backupDat
 		}
 	}
 
+	channelIDMap, err := svc.buildChannelIDMap(ctx, db, backupData.Channels)
+	if err != nil {
+		return err
+	}
+
 	if opts.IncludeModelPrices {
 		if err := svc.restoreChannelModelPrices(ctx, db, backupData.ChannelModelPrices, opts); err != nil {
 			return err
@@ -84,18 +90,130 @@ func (svc *BackupService) restore(ctx context.Context, db *ent.Client, backupDat
 	}
 
 	if opts.IncludeModels {
-		if err := svc.restoreModels(ctx, db, backupData.Models, opts); err != nil {
+		if err := svc.restoreModels(ctx, db, backupData.Models, opts, channelIDMap); err != nil {
 			return err
 		}
 	}
 
 	if opts.IncludeAPIKeys {
-		if err := svc.restoreAPIKeys(ctx, db, backupData.APIKeys, opts); err != nil {
+		if err := svc.restoreAPIKeys(ctx, db, backupData.APIKeys, opts, channelIDMap); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (svc *BackupService) buildChannelIDMap(ctx context.Context, db *ent.Client, channels []*BackupChannel) (map[int]int, error) {
+	idMap := map[int]int{}
+	if len(channels) == 0 {
+		return idMap, nil
+	}
+
+	// Collect all channel names and create a map from name to old ID
+	nameToOldID := make(map[string]int)
+	names := make([]string, 0, len(channels))
+
+	for _, chData := range channels {
+		if chData == nil {
+			continue
+		}
+
+		oldID := chData.ID
+		if oldID == 0 || chData.Name == "" {
+			continue
+		}
+
+		nameToOldID[chData.Name] = oldID
+		names = append(names, chData.Name)
+	}
+
+	if len(names) == 0 {
+		return idMap, nil
+	}
+
+	// Batch query all channels by names, only select needed fields (id, name)
+	existingChannels, err := db.Channel.Query().
+		Where(channel.NameIn(names...)).
+		Select(channel.FieldID, channel.FieldName).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build the ID mapping
+	for _, ch := range existingChannels {
+		if oldID, ok := nameToOldID[ch.Name]; ok {
+			idMap[oldID] = ch.ID
+		}
+	}
+
+	return idMap, nil
+}
+
+func remapModelSettingsChannelIDs(settings *objects.ModelSettings, channelIDMap map[int]int) {
+	if settings == nil || len(channelIDMap) == 0 {
+		return
+	}
+
+	for _, assoc := range settings.Associations {
+		if assoc == nil {
+			continue
+		}
+
+		if assoc.ChannelModel != nil {
+			if newID, ok := channelIDMap[assoc.ChannelModel.ChannelID]; ok {
+				assoc.ChannelModel.ChannelID = newID
+			}
+		}
+
+		if assoc.ChannelRegex != nil {
+			if newID, ok := channelIDMap[assoc.ChannelRegex.ChannelID]; ok {
+				assoc.ChannelRegex.ChannelID = newID
+			}
+		}
+
+		if assoc.Regex != nil {
+			remapExcludeAssociationChannelIDs(assoc.Regex.Exclude, channelIDMap)
+		}
+
+		if assoc.ModelID != nil {
+			remapExcludeAssociationChannelIDs(assoc.ModelID.Exclude, channelIDMap)
+		}
+	}
+}
+
+func remapExcludeAssociationChannelIDs(exclude []*objects.ExcludeAssociation, channelIDMap map[int]int) {
+	for _, ex := range exclude {
+		if ex == nil || len(ex.ChannelIds) == 0 {
+			continue
+		}
+
+		for i, oldID := range ex.ChannelIds {
+			if newID, ok := channelIDMap[oldID]; ok {
+				ex.ChannelIds[i] = newID
+			}
+		}
+	}
+}
+
+func remapAPIKeyProfilesChannelIDs(profiles *objects.APIKeyProfiles, channelIDMap map[int]int) {
+	if profiles == nil || len(channelIDMap) == 0 {
+		return
+	}
+
+	for i := range profiles.Profiles {
+		profile := &profiles.Profiles[i]
+		if len(profile.ChannelIDs) == 0 {
+			continue
+		}
+
+		for j, oldID := range profile.ChannelIDs {
+			if newID, ok := channelIDMap[oldID]; ok {
+				profile.ChannelIDs[j] = newID
+			}
+		}
+	}
 }
 
 func (svc *BackupService) restoreChannelModelPrices(
@@ -349,8 +467,14 @@ func (svc *BackupService) restoreChannels(ctx context.Context, db *ent.Client, c
 	return nil
 }
 
-func (svc *BackupService) restoreModels(ctx context.Context, db *ent.Client, models []*BackupModel, opts RestoreOptions) error {
+func (svc *BackupService) restoreModels(ctx context.Context, db *ent.Client, models []*BackupModel, opts RestoreOptions, channelIDMap map[int]int) error {
 	for _, modelData := range models {
+		if modelData == nil {
+			continue
+		}
+
+		remapModelSettingsChannelIDs(modelData.Settings, channelIDMap)
+
 		existing, err := db.Model.Query().
 			Where(
 				model.Developer(modelData.Developer),
@@ -423,13 +547,19 @@ func (svc *BackupService) restoreModels(ctx context.Context, db *ent.Client, mod
 	return nil
 }
 
-func (svc *BackupService) restoreAPIKeys(ctx context.Context, db *ent.Client, apiKeys []*BackupAPIKey, opts RestoreOptions) error {
+func (svc *BackupService) restoreAPIKeys(ctx context.Context, db *ent.Client, apiKeys []*BackupAPIKey, opts RestoreOptions, channelIDMap map[int]int) error {
 	user, ok := contexts.GetUser(ctx)
 	if !ok || user == nil {
 		return fmt.Errorf("user not found in context for restoring API keys")
 	}
 
 	for _, akData := range apiKeys {
+		if akData == nil {
+			continue
+		}
+
+		remapAPIKeyProfilesChannelIDs(akData.Profiles, channelIDMap)
+
 		existing, err := db.APIKey.Query().
 			Where(apikey.Key(akData.Key)).
 			First(ctx)
