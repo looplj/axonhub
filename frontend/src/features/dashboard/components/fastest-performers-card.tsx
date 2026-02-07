@@ -1,12 +1,89 @@
+'use client';
+
 import { useState } from 'react';
 import { Zap } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
+import { formatNumber } from '@/utils/format-number';
 import { useFastestChannels, useFastestModels } from '../data/fastest-performers';
 
+const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
+
 type TimeWindow = '1h' | '24h' | '7d';
+
+interface ChartData {
+  name: string;
+  throughput: number;
+  requestCount: number;
+}
+
+function HorizontalBarChart({ data, total }: { data: ChartData[]; total: number }) {
+  const tooltipContent = (props: TooltipProps<number, string>) => {
+    const { active, payload } = props;
+    if (!active || !payload?.length) return null;
+
+    const item = payload[0].payload as ChartData;
+    const percent = total ? (item.throughput / total) * 100 : 0;
+
+    return (
+      <div className='bg-background/90 rounded-md border px-3 py-2 text-xs shadow-sm backdrop-blur'>
+        <div className='text-foreground text-sm font-medium'>{item.name}</div>
+        <div className='text-muted-foreground'>
+          {item.throughput.toFixed(1)} tokens/s ({percent.toFixed(0)}%)
+        </div>
+        <div className='text-muted-foreground text-xs'>
+          {item.requestCount} requests
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <ResponsiveContainer width='100%' height={200}>
+      <BarChart data={data} layout='vertical' barSize={24} margin={{ left: 100, right: 20, top: 10, bottom: 10 }}>
+        <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' horizontal={false} />
+        <XAxis type='number' hide />
+        <YAxis
+          type='category'
+          dataKey='name'
+          width={90}
+          tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+          tickLine={false}
+          axisLine={false}
+        />
+        <Tooltip content={tooltipContent} cursor={{ fill: 'var(--muted)' }} />
+        <Bar dataKey='throughput' radius={[0, 4, 4, 0]}>
+          {data.map((_, index) => (
+            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+          ))}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+function ChartLegend({ items, total }: { items: Array<{ name: string; throughput: number; requestCount: number; color: string; index: number }>; total: number }) {
+  return (
+    <div className='grid gap-2'>
+      {items.map((item) => (
+        <div key={item.name} className='grid w-full grid-cols-[auto_auto_1fr_auto] items-center gap-2'>
+          <span className='text-muted-foreground w-6 text-right text-xs font-semibold tabular-nums'>
+            {item.index.toString().padStart(2, '0')}.
+          </span>
+          <span className='h-2 w-2 rounded-full' style={{ backgroundColor: item.color }} />
+          <span className='text-foreground min-w-0 text-xs font-medium break-words truncate'>{item.name}</span>
+          <div className='text-right leading-tight'>
+            <div className='text-foreground text-xs font-medium tabular-nums'>{item.throughput.toFixed(1)} tok/s</div>
+            <div className='text-muted-foreground text-[10px] tabular-nums'>{formatNumber(item.requestCount)} req</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function FastestPerformersCard() {
   const { t } = useTranslation();
@@ -50,7 +127,7 @@ export function FastestPerformersCard() {
             <div className='bg-primary/10 text-primary dark:bg-primary/20 rounded-lg p-1.5'>
               <Zap className='h-4 w-4' />
             </div>
-          <CardTitle className='text-sm font-medium'>{t('dashboard.cards.fastestPerformers.title')}</CardTitle>
+            <CardTitle className='text-sm font-medium'>{t('dashboard.cards.fastestPerformers.title')}</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
@@ -59,6 +136,31 @@ export function FastestPerformersCard() {
       </Card>
     );
   }
+
+  const channelData: ChartData[] = (channels || [])
+    .slice(0, 5)
+    .map((c) => ({ name: c.channelName, throughput: c.throughput, requestCount: c.requestCount }))
+    .sort((a, b) => b.throughput - a.throughput);
+
+  const modelData: ChartData[] = (models || [])
+    .slice(0, 5)
+    .map((m) => ({ name: m.modelName, throughput: m.throughput, requestCount: m.requestCount }))
+    .sort((a, b) => b.throughput - a.throughput);
+
+  const channelTotal = channelData.reduce((sum, item) => sum + item.throughput, 0);
+  const modelTotal = modelData.reduce((sum, item) => sum + item.throughput, 0);
+
+  const channelLegendItems = channelData.map((item, index) => ({
+    ...item,
+    index: index + 1,
+    color: COLORS[index % COLORS.length],
+  }));
+
+  const modelLegendItems = modelData.map((item, index) => ({
+    ...item,
+    index: index + 1,
+    color: COLORS[index % COLORS.length],
+  }));
 
   return (
     <Card className='hover-card'>
@@ -86,40 +188,24 @@ export function FastestPerformersCard() {
       <CardContent>
         <Tabs value={timeWindow} onValueChange={(v) => setTimeWindow(v as TimeWindow)}>
           <TabsContent value='1h'>
-            <div className='space-y-4'>
+            <div className='grid gap-6 md:grid-cols-2'>
               <div>
-                <h4 className='mb-2 text-sm font-medium'>{t('dashboard.cards.fastestPerformers.channels')}</h4>
-                {channels && channels.length > 0 ? (
-                  <div className='space-y-2'>
-                    {channels.slice(0, 5).map((channel, index) => (
-                      <div key={channel.channelId} className='flex items-center justify-between text-sm'>
-                        <span className='text-muted-foreground'>
-                          {index + 1}. {channel.channelName}
-                        </span>
-                        <span className='font-medium'>
-                          {channel.throughput.toFixed(1)} tokens/s ({channel.requestCount})
-                        </span>
-                      </div>
-                    ))}
+                <h4 className='mb-3 text-sm font-medium'>{t('dashboard.cards.fastestPerformers.channels')}</h4>
+                {channelData.length > 0 ? (
+                  <div className='space-y-4'>
+                    <HorizontalBarChart data={channelData} total={channelTotal} />
+                    <ChartLegend items={channelLegendItems} total={channelTotal} />
                   </div>
                 ) : (
                   <div className='text-muted-foreground text-sm'>{t('dashboard.cards.fastestPerformers.noData')}</div>
                 )}
               </div>
               <div>
-                <h4 className='mb-2 text-sm font-medium'>{t('dashboard.cards.fastestPerformers.models')}</h4>
-                {models && models.length > 0 ? (
-                  <div className='space-y-2'>
-                    {models.slice(0, 5).map((model, index) => (
-                      <div key={model.modelId} className='flex items-center justify-between text-sm'>
-                        <span className='text-muted-foreground'>
-                          {index + 1}. {model.modelName}
-                        </span>
-                        <span className='font-medium'>
-                          {model.throughput.toFixed(1)} tokens/s ({model.requestCount})
-                        </span>
-                      </div>
-                    ))}
+                <h4 className='mb-3 text-sm font-medium'>{t('dashboard.cards.fastestPerformers.models')}</h4>
+                {modelData.length > 0 ? (
+                  <div className='space-y-4'>
+                    <HorizontalBarChart data={modelData} total={modelTotal} />
+                    <ChartLegend items={modelLegendItems} total={modelTotal} />
                   </div>
                 ) : (
                   <div className='text-muted-foreground text-sm'>{t('dashboard.cards.fastestPerformers.noData')}</div>
@@ -128,40 +214,24 @@ export function FastestPerformersCard() {
             </div>
           </TabsContent>
           <TabsContent value='24h'>
-            <div className='space-y-4'>
+            <div className='grid gap-6 md:grid-cols-2'>
               <div>
-                <h4 className='mb-2 text-sm font-medium'>{t('dashboard.cards.fastestPerformers.channels')}</h4>
-                {channels && channels.length > 0 ? (
-                  <div className='space-y-2'>
-                    {channels.slice(0, 5).map((channel, index) => (
-                      <div key={channel.channelId} className='flex items-center justify-between text-sm'>
-                        <span className='text-muted-foreground'>
-                          {index + 1}. {channel.channelName}
-                        </span>
-                        <span className='font-medium'>
-                          {channel.throughput.toFixed(1)} tokens/s ({channel.requestCount})
-                        </span>
-                      </div>
-                    ))}
+                <h4 className='mb-3 text-sm font-medium'>{t('dashboard.cards.fastestPerformers.channels')}</h4>
+                {channelData.length > 0 ? (
+                  <div className='space-y-4'>
+                    <HorizontalBarChart data={channelData} total={channelTotal} />
+                    <ChartLegend items={channelLegendItems} total={channelTotal} />
                   </div>
                 ) : (
                   <div className='text-muted-foreground text-sm'>{t('dashboard.cards.fastestPerformers.noData')}</div>
                 )}
               </div>
               <div>
-                <h4 className='mb-2 text-sm font-medium'>{t('dashboard.cards.fastestPerformers.models')}</h4>
-                {models && models.length > 0 ? (
-                  <div className='space-y-2'>
-                    {models.slice(0, 5).map((model, index) => (
-                      <div key={model.modelId} className='flex items-center justify-between text-sm'>
-                        <span className='text-muted-foreground'>
-                          {index + 1}. {model.modelName}
-                        </span>
-                        <span className='font-medium'>
-                          {model.throughput.toFixed(1)} tokens/s ({model.requestCount})
-                        </span>
-                      </div>
-                    ))}
+                <h4 className='mb-3 text-sm font-medium'>{t('dashboard.cards.fastestPerformers.models')}</h4>
+                {modelData.length > 0 ? (
+                  <div className='space-y-4'>
+                    <HorizontalBarChart data={modelData} total={modelTotal} />
+                    <ChartLegend items={modelLegendItems} total={modelTotal} />
                   </div>
                 ) : (
                   <div className='text-muted-foreground text-sm'>{t('dashboard.cards.fastestPerformers.noData')}</div>
@@ -170,40 +240,24 @@ export function FastestPerformersCard() {
             </div>
           </TabsContent>
           <TabsContent value='7d'>
-            <div className='space-y-4'>
+            <div className='grid gap-6 md:grid-cols-2'>
               <div>
-                <h4 className='mb-2 text-sm font-medium'>{t('dashboard.cards.fastestPerformers.channels')}</h4>
-                {channels && channels.length > 0 ? (
-                  <div className='space-y-2'>
-                    {channels.slice(0, 5).map((channel, index) => (
-                      <div key={channel.channelId} className='flex items-center justify-between text-sm'>
-                        <span className='text-muted-foreground'>
-                          {index + 1}. {channel.channelName}
-                        </span>
-                        <span className='font-medium'>
-                          {channel.throughput.toFixed(1)} tokens/s ({channel.requestCount})
-                        </span>
-                      </div>
-                    ))}
+                <h4 className='mb-3 text-sm font-medium'>{t('dashboard.cards.fastestPerformers.channels')}</h4>
+                {channelData.length > 0 ? (
+                  <div className='space-y-4'>
+                    <HorizontalBarChart data={channelData} total={channelTotal} />
+                    <ChartLegend items={channelLegendItems} total={channelTotal} />
                   </div>
                 ) : (
                   <div className='text-muted-foreground text-sm'>{t('dashboard.cards.fastestPerformers.noData')}</div>
                 )}
               </div>
               <div>
-                <h4 className='mb-2 text-sm font-medium'>{t('dashboard.cards.fastestPerformers.models')}</h4>
-                {models && models.length > 0 ? (
-                  <div className='space-y-2'>
-                    {models.slice(0, 5).map((model, index) => (
-                      <div key={model.modelId} className='flex items-center justify-between text-sm'>
-                        <span className='text-muted-foreground'>
-                          {index + 1}. {model.modelName}
-                        </span>
-                        <span className='font-medium'>
-                          {model.throughput.toFixed(1)} tokens/s ({model.requestCount})
-                        </span>
-                      </div>
-                    ))}
+                <h4 className='mb-3 text-sm font-medium'>{t('dashboard.cards.fastestPerformers.models')}</h4>
+                {modelData.length > 0 ? (
+                  <div className='space-y-4'>
+                    <HorizontalBarChart data={modelData} total={modelTotal} />
+                    <ChartLegend items={modelLegendItems} total={modelTotal} />
                   </div>
                 ) : (
                   <div className='text-muted-foreground text-sm'>{t('dashboard.cards.fastestPerformers.noData')}</div>
