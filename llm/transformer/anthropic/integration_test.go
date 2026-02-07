@@ -257,7 +257,6 @@ func TestTransformRequest_Integration(t *testing.T) {
 			require.NoError(t, err)
 
 			var gotReq MessageRequest
-
 			err = json.Unmarshal(outboundReq.Body, &gotReq)
 			require.NoError(t, err)
 
@@ -271,7 +270,7 @@ func TestTransformRequest_Integration(t *testing.T) {
 	}
 
 	// 单独测试 cache_control 超限的 fixture：该文件包含 6 个 cache_control 断点。
-	// outbound 阶段应自动裁剪，仅保留最近 4 个断点。
+	// strict mode 下会重建为结构锚点 + 受预算约束的消息锚点（此场景为 3 个）。
 	t.Run("cache control exceeds limit", func(t *testing.T) {
 		var wantReq MessageRequest
 
@@ -296,9 +295,10 @@ func TestTransformRequest_Integration(t *testing.T) {
 		require.NoError(t, err)
 
 		var gotReq MessageRequest
+
 		err = json.Unmarshal(outboundReq.Body, &gotReq)
 		require.NoError(t, err)
-		require.Equal(t, 4, countCacheControls(&gotReq))
+		require.Equal(t, 3, countCacheControls(&gotReq))
 	})
 }
 

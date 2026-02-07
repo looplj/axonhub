@@ -14,8 +14,9 @@ var ignoreCacheControlOpts = []cmp.Option{
 }
 
 // ignoreCacheControlWithNormalize 在忽略 cache_control 的基础上，
-// 还将单个 text block 的 MultipleContent 归一化为 Content 字符串形式。
-// 仅在 ensureCacheControl 可能转换 Content→MultipleContent 的测试场景中使用。
+// 还将 ensureCacheControl 可能产生的结构变化归一化：
+// 1. 单个 text block 的 MultipleContent → Content 字符串形式（MessageContent 归一化）
+// 2. System.MultiplePrompts 单条文本 → System.Prompt 字符串形式（SystemPrompt 归一化）.
 var ignoreCacheControlWithNormalize = append(
 	ignoreCacheControlOpts,
 	cmp.Transformer("normalizeMessageContent", func(mc MessageContent) MessageContent {
@@ -24,5 +25,17 @@ var ignoreCacheControlWithNormalize = append(
 			return MessageContent{Content: mc.MultipleContent[0].Text}
 		}
 		return mc
+	}),
+	cmp.Transformer("normalizeSystemPrompt", func(sp *SystemPrompt) *SystemPrompt {
+		if sp == nil {
+			return nil
+		}
+		// ensureStructuralCacheControls 会把 System.Prompt 归一化为 MultiplePrompts，
+		// 这里反向还原：如果 MultiplePrompts 只有一条 text 且 Prompt 为空，还原回 Prompt 形式。
+		if sp.Prompt == nil && len(sp.MultiplePrompts) == 1 && sp.MultiplePrompts[0].Type == "text" {
+			text := sp.MultiplePrompts[0].Text
+			return &SystemPrompt{Prompt: &text}
+		}
+		return sp
 	}),
 )
