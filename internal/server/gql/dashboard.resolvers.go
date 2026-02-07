@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -870,7 +871,7 @@ func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChanne
 
 // FastestModels is the resolver for the fastestModels field.
 // Returns the fastest models by throughput (tokens per second) based on completed request executions.
-// Groups by model_id and calculates throughput from usage_log.completion_tokens and request_execution.metrics_latency_ms.
+// Groups by request.model_id (AxonHub model) and calculates throughput from usage_log.completion_tokens and request_execution.metrics_latency_ms.
 func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannelsInput) ([]*FastestModel, error) {
 	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
 
@@ -890,6 +891,7 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 	// Query structure for aggregation
 	type modelStats struct {
 		ModelID      string  `json:"model_id"`
+		ModelName    string  `json:"model_name"`
 		TokensCount  int64   `json:"tokens_count"`
 		LatencyMs    int64   `json:"latency_ms"`
 		RequestCount int64   `json:"request_count"`
@@ -898,8 +900,8 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 
 	var results []modelStats
 
-	// Join usage_log → request → request_execution
-	// Group by model_id, filter by status='completed' and metrics_latency_ms > 0
+	// Join usage_log → request → request_execution → models
+	// Group by request.model_id (AxonHub model), filter by status='completed' and metrics_latency_ms > 0
 	err := r.client.UsageLog.Query().
 		Where(usagelog.CreatedAtGTE(since)).
 		Modify(func(s *sql.Selector) {
@@ -917,14 +919,21 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 				requestExecTable.C(requestexecution.FieldRequestID),
 			)
 
+			// Join with models table to get display name
+			modelsTable := sql.Table(model.Table)
+			s.Join(modelsTable).On(
+				requestTable.C(request.FieldModelID),
+				modelsTable.C(model.FieldModelID),
+			)
+
 			// Filter: status='completed' and metrics_latency_ms > 0
 			s.Where(sql.And(
 				sql.EQ(requestExecTable.C(requestexecution.FieldStatus), "completed"),
 				sql.GT(requestExecTable.C(requestexecution.FieldMetricsLatencyMs), 0),
 			))
 
-			// Group by model_id
-			s.GroupBy(s.C(usagelog.FieldModelID))
+			// Group by request.model_id (AxonHub model ID)
+			s.GroupBy(requestTable.C(request.FieldModelID))
 
 			// Calculate throughput: SUM(completion_tokens) / (SUM(metrics_latency_ms) / 1000)
 			// Using SQL expression for throughput calculation
@@ -939,7 +948,8 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 			)
 
 			s.Select(
-				sql.As(s.C(usagelog.FieldModelID), "model_id"),
+				sql.As(requestTable.C(request.FieldModelID), "model_id"),
+				sql.As(modelsTable.C(model.FieldName), "model_name"),
 				sql.As(tokensSumExpr, "tokens_count"),
 				sql.As(latencySumExpr, "latency_ms"),
 				sql.As(sql.Count(sql.Distinct(s.C(usagelog.FieldRequestID))), "request_count"),
@@ -963,7 +973,7 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 	return lo.Map(results, func(item modelStats, _ int) *FastestModel {
 		return &FastestModel{
 			ModelID:      item.ModelID,
-			ModelName:    item.ModelID, // Use model_id as model_name (similar to channel pattern)
+			ModelName:    item.ModelName,
 			Throughput:   item.Throughput,
 			TokensCount:  int(item.TokensCount),
 			LatencyMs:    int(item.LatencyMs),
