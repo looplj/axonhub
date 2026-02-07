@@ -1108,6 +1108,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           </FormLabel>
                           <div className='max-w-64 space-y-1 md:col-span-6 md:max-w-none'>
                             <SelectDropdown
+                              key={selectedProvider}
                               defaultValue={selectedApiFormat}
                               onValueChange={(value) => handleApiFormatChange(value as ApiFormat)}
                               disabled={isEdit}
