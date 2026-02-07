@@ -133,7 +133,7 @@ func (svc *ProviderQuotaService) Start(ctx context.Context) error {
 	cronExpr := svc.intervalToCronExpr(svc.getCheckInterval())
 
 	_, err := svc.Executor.ScheduleFuncAtCronRate(
-		svc.runQuotaCheck,
+		svc.runQuotaCheckScheduled,
 		executors.CRONRule{Expr: cronExpr},
 	)
 
@@ -190,62 +190,52 @@ func (svc *ProviderQuotaService) Stop(ctx context.Context) error {
 
 // ManualCheck forces an immediate quota check for all relevant channels.
 func (svc *ProviderQuotaService) ManualCheck(ctx context.Context) {
-	svc.runQuotaCheck(ctx)
+	svc.runQuotaCheckForce(ctx)
 }
 
-func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context) {
+func (svc *ProviderQuotaService) runQuotaCheckScheduled(ctx context.Context) {
+	svc.mu.Lock()
+	defer svc.mu.Unlock()
+
+	svc.runQuotaCheck(ctx, false)
+}
+
+func (svc *ProviderQuotaService) runQuotaCheckForce(ctx context.Context) {
+	svc.mu.Lock()
+	defer svc.mu.Unlock()
+
+	svc.runQuotaCheck(ctx, true)
+}
+
+func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context, force bool) {
 	ctx = ent.NewContext(ctx, svc.db)
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	now := time.Now()
 	log.Debug(ctx, "Checking for channels to poll",
 		log.Time("now", now),
-		log.String("now_formatted", now.Format(time.RFC3339)))
+		log.String("now_formatted", now.Format(time.RFC3339)),
+		log.Bool("force", force),
+	)
 
-	// Find all enabled channels of supported types first
-	allEnabledChannels, err := svc.db.Channel.Query().
+	q := svc.db.Channel.Query().
 		Where(
 			channel.StatusEQ(channel.StatusEnabled),
 			channel.TypeIn(channel.TypeClaudecode, channel.TypeCodex),
-		).
-		WithProviderQuotaStatus().
-		All(ctx)
-	if err != nil {
-		log.Error(ctx, "Failed to query enabled channels", log.Cause(err))
-		return
-	}
+		)
 
-	log.Debug(ctx, "Found enabled channels",
-		log.Int("total", len(allEnabledChannels)))
-
-	for _, ch := range allEnabledChannels {
-		if ch.Edges.ProviderQuotaStatus != nil {
-			log.Debug(ctx, "Channel has quota status",
-				log.Int("channel_id", ch.ID),
-				log.String("channel_name", ch.Name),
-				log.Time("next_check_at", ch.Edges.ProviderQuotaStatus.NextCheckAt),
-				log.Bool("should_check", ch.Edges.ProviderQuotaStatus.NextCheckAt.Before(now) || ch.Edges.ProviderQuotaStatus.NextCheckAt.Equal(now)))
-		} else {
-			log.Debug(ctx, "Channel has no quota status",
-				log.Int("channel_id", ch.ID),
-				log.String("channel_name", ch.Name))
-		}
-	}
-
-	// Find channels needing quota check:
-	// 1. Enabled channels with supported types
-	// 2. No quota status OR next_check_at <= now
-	channelsToCheck, err := svc.db.Channel.Query().
-		Where(
-			channel.StatusEQ(channel.StatusEnabled),
-			channel.TypeIn(channel.TypeClaudecode, channel.TypeCodex),
+	if !force {
+		q = q.Where(
 			channel.Or(
 				channel.Not(channel.HasProviderQuotaStatus()),
 				channel.HasProviderQuotaStatusWith(
 					providerquotastatus.NextCheckAtLTE(now),
 				),
 			),
-		).
+		)
+	}
+
+	channelsToCheck, err := q.
 		WithProviderQuotaStatus().
 		All(ctx)
 	if err != nil {
@@ -258,7 +248,10 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context) {
 		return
 	}
 
-	log.Info(ctx, "Running quota check", log.Int("channels", len(channelsToCheck)))
+	log.Info(ctx, "Running quota check",
+		log.Int("channels", len(channelsToCheck)),
+		log.Bool("force", force),
+	)
 
 	for _, ch := range channelsToCheck {
 		svc.checkChannelQuota(ctx, ch, now)
@@ -294,15 +287,7 @@ func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, ch *ent.
 			log.String("provider", providerType),
 			log.Cause(err))
 
-		// Store error status
-		svc.saveQuotaStatus(ctx, ch.ID, providerType, provider_quota.QuotaData{
-			Status: "exhausted",
-			RawData: map[string]any{
-				"error": err.Error(),
-			},
-			Ready: false,
-		}, now)
-
+		svc.saveQuotaError(ctx, ch, providerType, err, now)
 		return
 	}
 
@@ -350,6 +335,57 @@ func (svc *ProviderQuotaService) saveQuotaStatus(
 	if err != nil {
 		log.Error(ctx, "Failed to save quota status",
 			log.Int("channel_id", channelID),
+			log.Cause(err))
+	}
+}
+
+func (svc *ProviderQuotaService) saveQuotaError(
+	ctx context.Context,
+	ch *ent.Channel,
+	providerType string,
+	quotaErr error,
+	now time.Time,
+) {
+	pt := providerquotastatus.ProviderType(providerType)
+
+	if ch.Edges.ProviderQuotaStatus != nil {
+		existing := ch.Edges.ProviderQuotaStatus
+
+		existingData := existing.QuotaData
+		if existingData == nil {
+			existingData = map[string]any{}
+		}
+
+		merged := lo.Assign(existingData, map[string]any{
+			"error": quotaErr.Error(),
+		})
+
+		err := svc.db.ProviderQuotaStatus.UpdateOne(existing).
+			SetQuotaData(merged).
+			SetNextCheckAt(now).
+			Exec(ctx)
+		if err != nil {
+			log.Error(ctx, "Failed to save quota error",
+				log.Int("channel_id", ch.ID),
+				log.Cause(err))
+		}
+
+		return
+	}
+
+	err := svc.db.ProviderQuotaStatus.Create().
+		SetChannelID(ch.ID).
+		SetProviderType(pt).
+		SetStatus(providerquotastatus.StatusUnknown).
+		SetReady(false).
+		SetQuotaData(map[string]any{
+			"error": quotaErr.Error(),
+		}).
+		SetNextCheckAt(now).
+		Exec(ctx)
+	if err != nil {
+		log.Error(ctx, "Failed to save quota error",
+			log.Int("channel_id", ch.ID),
 			log.Cause(err))
 	}
 }
