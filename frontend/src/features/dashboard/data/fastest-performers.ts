@@ -7,39 +7,39 @@ export const fastestChannelSchema = z.object({
   channelId: z.string(),
   channelName: z.string(),
   channelType: z.string(),
-  throughput: z.number(),
-  tokensCount: z.number(),
-  latencyMs: z.number(),
-  requestCount: z.number(),
+  throughput: z.number().nullable().default(0),
+  tokensCount: z.number().nullable().default(0),
+  latencyMs: z.number().nullable().default(0),
+  requestCount: z.number().nullable().default(0),
 });
 
 export const fastestModelSchema = z.object({
   modelId: z.string(),
   modelName: z.string(),
-  throughput: z.number(),
-  tokensCount: z.number(),
-  latencyMs: z.number(),
-  requestCount: z.number(),
+  throughput: z.number().nullable().default(0),
+  tokensCount: z.number().nullable().default(0),
+  latencyMs: z.number().nullable().default(0),
+  requestCount: z.number().nullable().default(0),
 });
 
 // Schema definitions for expanded queries
 export const fastestModelInChannelSchema = z.object({
   modelId: z.string(),
   modelName: z.string(),
-  throughput: z.number(),
-  tokensCount: z.number(),
-  latencyMs: z.number(),
-  requestCount: z.number(),
+  throughput: z.number().nullable().default(0),
+  tokensCount: z.number().nullable().default(0),
+  latencyMs: z.number().nullable().default(0),
+  requestCount: z.number().nullable().default(0),
 });
 
 export const fastestChannelExpandedSchema = z.object({
   channelId: z.string(),
   channelName: z.string(),
   channelType: z.string(),
-  throughput: z.number(),
-  tokensCount: z.number(),
-  latencyMs: z.number(),
-  requestCount: z.number(),
+  throughput: z.number().nullable().default(0),
+  tokensCount: z.number().nullable().default(0),
+  latencyMs: z.number().nullable().default(0),
+  requestCount: z.number().nullable().default(0),
   models: z.array(fastestModelInChannelSchema),
 });
 
@@ -47,19 +47,19 @@ export const fastestChannelForModelSchema = z.object({
   channelId: z.string(),
   channelName: z.string(),
   channelType: z.string(),
-  throughput: z.number(),
-  tokensCount: z.number(),
-  latencyMs: z.number(),
-  requestCount: z.number(),
+  throughput: z.number().nullable().default(0),
+  tokensCount: z.number().nullable().default(0),
+  latencyMs: z.number().nullable().default(0),
+  requestCount: z.number().nullable().default(0),
 });
 
 export const fastestModelExpandedSchema = z.object({
   modelId: z.string(),
   modelName: z.string(),
-  throughput: z.number(),
-  tokensCount: z.number(),
-  latencyMs: z.number(),
-  requestCount: z.number(),
+  throughput: z.number().nullable().default(0),
+  tokensCount: z.number().nullable().default(0),
+  latencyMs: z.number().nullable().default(0),
+  requestCount: z.number().nullable().default(0),
   channels: z.array(fastestChannelForModelSchema),
 });
 
