@@ -42,5 +42,5 @@ func TestCodexExecutor_SetsConversationIDInDo(t *testing.T) {
 	require.Equal(t, UserAgent, inner.seen.Get("User-Agent"))
 	require.Equal(t, "responses=experimental", inner.seen.Get("Openai-Beta"))
 	require.Equal(t, "codex_cli_rs", inner.seen.Get("Originator"))
-	require.Equal(t, "0.21.0", inner.seen.Get("Version"))
+	require.Equal(t, codexDefaultVersion, inner.seen.Get("Version"))
 }
