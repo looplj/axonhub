@@ -53,7 +53,7 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     provider: 'deepseek',
     icon: DeepSeek,
     color: 'bg-blue-100 text-blue-800 border-blue-200',
-    channelTypes: ['deepseek', 'deepseek_anthropic'],
+    channelTypes: ['deepseek_anthropic', 'deepseek'],
   },
   gemini: {
     provider: 'gemini',
@@ -71,19 +71,19 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     provider: 'moonshot',
     icon: Moonshot,
     color: 'bg-black-100 text-black-800 border-black-200',
-    channelTypes: ['moonshot', 'moonshot_anthropic'],
+    channelTypes: ['moonshot_anthropic', 'moonshot'],
   },
   zhipu: {
     provider: 'zhipu',
     icon: Zhipu,
     color: 'bg-purple-100 text-purple-800 border-purple-200',
-    channelTypes: ['zhipu', 'zhipu_anthropic'],
+    channelTypes: ['zhipu_anthropic', 'zhipu'],
   },
   minimax: {
     provider: 'minimax',
     icon: Minimax,
     color: 'bg-red-100 text-red-800 border-red-200',
-    channelTypes: ['minimax', 'minimax_anthropic'],
+    channelTypes: ['minimax_anthropic', 'minimax'],
   },
   claudecode: {
     provider: 'claudecode',
@@ -113,7 +113,7 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     provider: 'doubao',
     icon: Doubao,
     color: 'bg-blue-100 text-blue-800 border-blue-200',
-    channelTypes: ['doubao', 'doubao_anthropic'],
+    channelTypes: ['doubao_anthropic', 'doubao'],
   },
   longcat: {
     provider: 'longcat',
