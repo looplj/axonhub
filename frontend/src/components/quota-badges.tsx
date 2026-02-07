@@ -31,6 +31,7 @@ type QuotaData = {
     primary_window?: { used_percent?: number; reset_at?: number; limit_window_seconds?: number };
     secondary_window?: { used_percent?: number; reset_at?: number; limit_window_seconds?: number };
   };
+  error?: string;
 };
 
 type BatteryLevel = 'full' | 'medium' | 'low' | 'empty' | 'warning';
@@ -117,6 +118,12 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
         <span className={`text-xs px-2 py-0.5 rounded ${colorClass}`}>{statusLabel}</span>
       </div>
 
+      {quotaData.error && (
+        <div className="ml-6 text-xs text-red-500 break-words">
+          <span className="font-medium">{t('quota.label.error')}:</span> {quotaData.error}
+        </div>
+      )}
+
       {channel.type === 'claudecode' && (
         <div className="ml-6 mt-2">
           <div className="space-y-1.5 text-xs">
@@ -176,12 +183,12 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
             {quotaData.rate_limit?.secondary_window?.used_percent !== undefined && (
               <>
                 <div className="flex justify-between items-center text-muted-foreground">
-                  <span>Secondary window</span>
+                  <span>{t('quota.label.secondary_window')}</span>
                   <span className="font-medium">{Math.round(quotaData.rate_limit.secondary_window.used_percent)}%</span>
                 </div>
                 {quotaData.rate_limit?.secondary_window?.limit_window_seconds && (
                   <div className="flex justify-between items-center text-muted-foreground">
-                    <span>Secondary duration</span>
+                    <span>{t('quota.label.secondary_duration')}</span>
                     <span>{formatWindowDuration(quotaData.rate_limit.secondary_window.limit_window_seconds)}</span>
                   </div>
                 )}

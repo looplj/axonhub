@@ -88,7 +88,7 @@ func (c *ClaudeCodeQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel
 func (c *ClaudeCodeQuotaChecker) parseResponse(headers http.Header) (QuotaData, error) {
 	// Guard clause - early return if no quota headers
 	if headers.Get("Anthropic-Ratelimit-Unified-Status") == "" {
-		return QuotaData{}, nil
+		return QuotaData{}, fmt.Errorf("missing quota headers")
 	}
 
 	unifiedStatus := headers.Get("Anthropic-Ratelimit-Unified-Status")

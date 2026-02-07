@@ -27,7 +27,7 @@ export function AppHeader() {
       return checkProviderQuotas();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['provider-quotas'] });
+      void queryClient.refetchQueries({ queryKey: ['provider-quotas'] });
       toast.success(t('system.providerQuota.refresh.success'));
     },
     onError: (error: any) => {
