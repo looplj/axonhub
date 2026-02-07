@@ -30,10 +30,12 @@ spec:
       serviceAccountName: {{ include "axonhub.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.axonhub.podSecurityContext | nindent 8 }}
+      {{- if .Values.postgresql.enabled }}
       initContainers:
         - name: wait-for-postgres
           image: busybox:1.36
           command: ['sh', '-c', 'until nc -z {{ include "axonhub.postgresql.serviceName" . }} 5432; do echo waiting for postgresql; sleep 2; done;']
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
@@ -45,8 +47,6 @@ spec:
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
-            - name: DB_PASSWORD
-              value: {{ .Values.axonhub.dbPassword | quote }}
           ports:
             - name: http
               containerPort: {{ .Values.axonhub.service.port }}

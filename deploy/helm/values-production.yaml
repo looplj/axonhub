@@ -16,13 +16,15 @@ axonhub:
     tag: "latest"  # Consider using specific version in production
     pullPolicy: IfNotPresent
   
-  # Security - CHANGE THESE VALUES IN PRODUCTION
-  dbPassword: "CHANGE_ME_IN_PRODUCTION_123456"
-  
-  # Environment variables
+  # Environment variables - customize the database connection string for your environment
   env:
     AXONHUB_DB_DIALECT: postgres
-    AXONHUB_DB_DSN: postgres://axonhub:$(DB_PASSWORD)@axonhub-postgresql:5432/axonhub?sslmode=disable
+    # For external database - modify this connection string
+    AXONHUB_DB_DSN: postgres://axonhub:your_db_password@your-db-host:5432/axonhub?sslmode=require
+    # For internal PostgreSQL - uncomment below and comment above
+    # AXONHUB_DB_DSN: postgres://axonhub:CHANGE_ME_POSTGRES_USER_123456@axonhub-postgresql:5432/axonhub?sslmode=disable
+  
+  # Environment variables are defined above in the axonhub.env section
   
   # Service configuration
   service:
@@ -74,7 +76,7 @@ axonhub:
     accessModes:
       - ReadWriteOnce
 
-# PostgreSQL configuration
+# PostgreSQL configuration - set to false if using external database
 postgresql:
   enabled: true
   replicaCount: 1

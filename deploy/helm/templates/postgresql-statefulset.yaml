@@ -1,3 +1,4 @@
+{{- if .Values.postgresql.enabled -}}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -75,3 +76,4 @@ spec:
         {{- if .Values.postgresql.primary.persistence.storageClass }}
         storageClassName: {{ .Values.postgresql.primary.persistence.storageClass }}
         {{- end }}
+{{- end }}

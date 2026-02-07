@@ -68,6 +68,33 @@ The following table lists the configurable parameters of the AxonHub chart and t
 | `ingress.hosts` | Ingress hostnames | `[{host: axonhub.local, paths: [{path: /, pathType: Prefix}]}]` |
 | `ingress.tls` | Ingress TLS configuration | `[]` |
 
+## Database Configuration Options
+
+### Using Internal PostgreSQL (Default)
+
+The chart includes PostgreSQL by default. This is suitable for:
+- Development environments
+- Small production deployments
+- When you want managed database within Kubernetes
+
+```yaml
+postgresql:
+  enabled: true  # Default setting
+```
+
+### Using External Database
+
+Disable internal PostgreSQL and configure external database connection:
+
+```yaml
+postgresql:
+  enabled: false
+
+axonhub:
+  env:
+    AXONHUB_DB_DSN: "postgres://username:password@external-db-host:5432/database?sslmode=require"
+```
+
 ## Production Deployment
 
 For production deployments, you should:

@@ -18,10 +18,8 @@ axonhub:
   # Environment variables for AxonHub
   env:
     AXONHUB_DB_DIALECT: postgres
-    AXONHUB_DB_DSN: postgres://axonhub:$(DB_PASSWORD)@postgres:5432/axonhub?sslmode=disable
-  
-  # Database password (should be overridden in production)
-  dbPassword: "axonhub_password"
+    # Full database connection string - customize this for your environment
+    AXONHUB_DB_DSN: postgres://axonhub:axonhub_password@axonhub-postgresql:5432/axonhub?sslmode=disable
   
   # Service configuration
   service:
@@ -143,7 +141,7 @@ postgresql:
 
 # Ingress configuration
 ingress:
-  enabled: false
+  enabled: true
   className: ""
   annotations: {}
   hosts:
