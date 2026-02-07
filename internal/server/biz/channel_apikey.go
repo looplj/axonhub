@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
+	"math/rand/v2"
 	"slices"
 	"time"
 
@@ -14,7 +15,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
-	"github.com/looplj/axonhub/llm/auth"
 )
 
 // DisableAPIKey 禁用指定 key；若所有 key 都不可用则禁用 channel.
@@ -344,13 +344,16 @@ type TraceStickyKeyProvider struct {
 }
 
 func NewTraceStickyKeyProvider(channel *Channel) *TraceStickyKeyProvider {
-	return &TraceStickyKeyProvider{channel: channel}
+	return &TraceStickyKeyProvider{
+		channel: channel,
+	}
 }
 
 func (p *TraceStickyKeyProvider) Get(ctx context.Context) string {
 	enabled := p.channel.cachedEnabledAPIKeys
 	if len(enabled) == 0 {
 		// Fallback: return the first key if no enabled keys.
+		// The caller ensured that at least one key is available.
 		return p.channel.Credentials.APIKeys[0]
 	}
 
@@ -365,15 +368,16 @@ func (p *TraceStickyKeyProvider) Get(ctx context.Context) string {
 		if log.DebugEnabled(ctx) {
 			log.Debug(ctx, "Trace sticky key selected",
 				log.String("trace_id", trace.TraceID),
-				log.String("key_prefix", safeKeyPrefix(selectedKey)),
+				log.String("key_prefix", safeAPIKeyPrefix(selectedKey)),
 			)
 		}
 	} else {
 		// Fallback: keep existing behavior when no traceID hint.
-		selectedKey = auth.NewRandomKeyProvider(enabled).Get(ctx)
+		//nolint:gosec // not a security issue, just a random selection.
+		selectedKey = enabled[rand.IntN(len(enabled))]
 		if log.DebugEnabled(ctx) {
 			log.Debug(ctx, "Random key selected",
-				log.String("key_prefix", safeKeyPrefix(selectedKey)),
+				log.String("key_prefix", safeAPIKeyPrefix(selectedKey)),
 			)
 		}
 	}
@@ -388,12 +392,12 @@ func (p *TraceStickyKeyProvider) Get(ctx context.Context) string {
 // This is stable when the key set changes (minimal remapping compared to modulo).
 func rendezvousSelect(keys []string, seed string) string {
 	bestKey := keys[0]
-	bestScore := hash64(seed + "|" + bestKey)
+	bestScore := hashAPIKey(seed + "|" + bestKey)
 
 	for i := 1; i < len(keys); i++ {
 		k := keys[i]
 
-		s := hash64(seed + "|" + k)
+		s := hashAPIKey(seed + "|" + k)
 		if s > bestScore {
 			bestScore = s
 			bestKey = k
@@ -403,14 +407,14 @@ func rendezvousSelect(keys []string, seed string) string {
 	return bestKey
 }
 
-func hash64(s string) uint64 {
+func hashAPIKey(s string) uint64 {
 	h := fnv.New64a()
 	_, _ = h.Write([]byte(s))
 
 	return h.Sum64()
 }
 
-func safeKeyPrefix(key string) string {
+func safeAPIKeyPrefix(key string) string {
 	if len(key) >= 2 {
 		return key[:2]
 	}

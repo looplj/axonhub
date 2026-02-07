@@ -411,18 +411,18 @@ func TestRendezvousSelect_OnlyAffectedKeysRemap(t *testing.T) {
 func TestHash64_Deterministic(t *testing.T) {
 	input := "test-input-string"
 
-	h1 := hash64(input)
-	h2 := hash64(input)
-	h3 := hash64(input)
+	h1 := hashAPIKey(input)
+	h2 := hashAPIKey(input)
+	h3 := hashAPIKey(input)
 
 	require.Equal(t, h1, h2)
 	require.Equal(t, h2, h3)
 }
 
 func TestHash64_DifferentInputs(t *testing.T) {
-	h1 := hash64("input-1")
-	h2 := hash64("input-2")
-	h3 := hash64("input-3")
+	h1 := hashAPIKey("input-1")
+	h2 := hashAPIKey("input-2")
+	h3 := hashAPIKey("input-3")
 
 	require.NotEqual(t, h1, h2)
 	require.NotEqual(t, h2, h3)
