@@ -316,7 +316,7 @@ function buildItemsFromProviderModel(model: ProviderModel, multiplier: number = 
       itemCode,
       pricing: {
         mode: 'usage_per_unit',
-        usagePerUnit: (value * multiplier).toFixed(2),
+        usagePerUnit: (value * multiplier).toFixed(4),
       },
     });
   };
@@ -353,7 +353,7 @@ function mergeItemsWithProviderCost(
         ...existing,
         pricing: {
           mode: 'usage_per_unit',
-          usagePerUnit: (value * multiplier).toFixed(2),
+          usagePerUnit: (value * multiplier).toFixed(4),
           flatFee: '',
           usageTiered: null,
         },
@@ -362,7 +362,7 @@ function mergeItemsWithProviderCost(
     }
     byCode.set(itemCode, {
       itemCode,
-      pricing: { mode: 'usage_per_unit', usagePerUnit: (value * multiplier).toFixed(2) },
+      pricing: { mode: 'usage_per_unit', usagePerUnit: (value * multiplier).toFixed(4) },
     });
   };
 
