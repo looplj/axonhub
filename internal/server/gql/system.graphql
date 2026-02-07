@@ -121,11 +121,16 @@ type SystemModelSettingOnboarding {
   completedAt: Time
 }
 
+type AutoDisableChannelOnboarding {
+  onboarded: Boolean!
+  completedAt: Time
+}
+
 type OnboardingInfo {
   onboarded: Boolean!
-  version: String!
   completedAt: Time
   systemModelSetting: SystemModelSettingOnboarding
+  autoDisableChannel: AutoDisableChannelOnboarding
 }
 
 input CompleteOnboardingInput {
@@ -133,6 +138,10 @@ input CompleteOnboardingInput {
 }
 
 input CompleteSystemModelSettingOnboardingInput {
+  dummy: String
+}
+
+input CompleteAutoDisableChannelOnboardingInput {
   dummy: String
 }
 
@@ -179,6 +188,7 @@ extend type Mutation {
   updateDefaultDataStorage(input: UpdateDefaultDataStorageInput!): Boolean!
   completeOnboarding(input: CompleteOnboardingInput!): Boolean!
   completeSystemModelSettingOnboarding(input: CompleteSystemModelSettingOnboardingInput!): Boolean!
+  completeAutoDisableChannelOnboarding(input: CompleteAutoDisableChannelOnboardingInput!): Boolean!
   updateSystemChannelSettings(input: UpdateSystemChannelSettingsInput!): Boolean!
   updateSystemGeneralSettings(input: UpdateSystemGeneralSettingsInput!): Boolean!
   checkProviderQuotas: Boolean!
