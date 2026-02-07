@@ -10,6 +10,8 @@ import (
 
 	"github.com/samber/lo"
 
+	lru "github.com/hashicorp/golang-lru/v2"
+
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/privacy"
@@ -333,27 +335,35 @@ func (svc *ChannelService) IsAPIKeyDisabled(ctx context.Context, channelID int, 
 	return disabled, nil
 }
 
+// traceStickyLRUSize is the default LRU cache size for trace-to-key mappings.
+const traceStickyLRUSize = 1024
+
 // TraceStickyKeyProvider selects an API key deterministically per traceID (if present),
 // using cached enabled keys from the channel snapshot.
 //
-// It can not guarantee the stability of the selected key when the enabled keys change.
+// An LRU cache remembers previous traceID→key selections so that, as long as
+// the previously chosen key is still enabled, the same key is returned even when
+// the enabled-key set changes (e.g. a new key is added). This improves sticky
+// stability compared to pure rendezvous hashing alone.
 //
 //nolint:revive // exported for use in transformers via interface.
 type TraceStickyKeyProvider struct {
 	channel *Channel
+	cache   *lru.Cache[string, string]
 }
 
 func NewTraceStickyKeyProvider(channel *Channel) *TraceStickyKeyProvider {
+	cache, _ := lru.New[string, string](traceStickyLRUSize)
+
 	return &TraceStickyKeyProvider{
 		channel: channel,
+		cache:   cache,
 	}
 }
 
 func (p *TraceStickyKeyProvider) Get(ctx context.Context) string {
 	enabled := p.channel.cachedEnabledAPIKeys
 	if len(enabled) == 0 {
-		// Fallback: return the first key if no enabled keys.
-		// The caller ensured that at least one key is available.
 		return p.channel.Credentials.APIKeys[0]
 	}
 
@@ -361,10 +371,14 @@ func (p *TraceStickyKeyProvider) Get(ctx context.Context) string {
 		return enabled[0]
 	}
 
-	// Trace 粘性：使用 traceID 做一致性选择。
 	var selectedKey string
 	if trace, ok := contexts.GetTrace(ctx); ok && trace != nil {
-		selectedKey = rendezvousSelect(enabled, trace.TraceID)
+		if cached, ok := p.cache.Get(trace.TraceID); ok {
+			selectedKey = cached
+		} else {
+			selectedKey = rendezvousSelect(enabled, trace.TraceID)
+			p.cache.Add(trace.TraceID, selectedKey)
+		}
 		if log.DebugEnabled(ctx) {
 			log.Debug(ctx, "Trace sticky key selected",
 				log.String("trace_id", trace.TraceID),
@@ -372,7 +386,6 @@ func (p *TraceStickyKeyProvider) Get(ctx context.Context) string {
 			)
 		}
 	} else {
-		// Fallback: keep existing behavior when no traceID hint.
 		//nolint:gosec // not a security issue, just a random selection.
 		selectedKey = enabled[rand.IntN(len(enabled))]
 		if log.DebugEnabled(ctx) {
@@ -382,7 +395,6 @@ func (p *TraceStickyKeyProvider) Get(ctx context.Context) string {
 		}
 	}
 
-	// Store the selected key in context for performance tracking
 	contexts.WithChannelAPIKey(ctx, selectedKey)
 
 	return selectedKey
