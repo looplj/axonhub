@@ -107,8 +107,15 @@ function ExpandedChannelItem({
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const color = COLORS[index % COLORS.length];
 
-  const modelData = channel.models
-    .map((m) => ({ name: m.modelName, throughput: m.throughput, requestCount: m.requestCount }))
+  const throughput = channel.throughput || 0;
+  const requestCount = channel.requestCount || 0;
+
+  const modelData = (channel.models || [])
+    .map((m) => ({ 
+      name: m.modelName || 'Unknown', 
+      throughput: m.throughput || 0, 
+      requestCount: m.requestCount || 0 
+    }))
     .sort((a, b) => b.throughput - a.throughput);
 
   const modelTotal = modelData.reduce((sum, item) => sum + item.throughput, 0);
@@ -124,12 +131,12 @@ function ExpandedChannelItem({
             {index + 1}.
           </span>
           <span className='h-3 w-3 rounded-full' style={{ backgroundColor: color }} />
-          <span className='text-foreground text-sm font-medium'>{channel.channelName}</span>
+          <span className='text-foreground text-sm font-medium'>{channel.channelName || 'Unknown'}</span>
         </div>
         <div className='flex items-center gap-4'>
           <div className='text-right leading-tight'>
-            <div className='text-foreground text-sm font-medium tabular-nums'>{channel.throughput.toFixed(1)} tok/s</div>
-            <div className='text-muted-foreground text-xs tabular-nums'>{formatNumber(channel.requestCount)} req</div>
+            <div className='text-foreground text-sm font-medium tabular-nums'>{throughput.toFixed(1)} tok/s</div>
+            <div className='text-muted-foreground text-xs tabular-nums'>{formatNumber(requestCount)} req</div>
           </div>
           {isExpanded ? (
             <ChevronDown className='h-4 w-4 text-muted-foreground' />
@@ -209,7 +216,11 @@ export function FastestChannelsCard() {
 
   const channelData: ChartData[] = (channels || [])
     .slice(0, 5)
-    .map((c) => ({ name: c.channelName, throughput: c.throughput, requestCount: c.requestCount }))
+    .map((c) => ({ 
+      name: c.channelName || 'Unknown', 
+      throughput: c.throughput || 0, 
+      requestCount: c.requestCount || 0 
+    }))
     .sort((a, b) => b.throughput - a.throughput);
 
   const channelTotal = channelData.reduce((sum, item) => sum + item.throughput, 0);
@@ -266,8 +277,13 @@ export function FastestChannelsCard() {
             <div>
               {(expandedChannels || []).slice(0, 5).map((channel, index) => (
                 <ExpandedChannelItem
-                  key={channel.channelId}
-                  channel={channel}
+                  key={channel.channelId || index}
+                  channel={{
+                    channelName: channel.channelName || 'Unknown',
+                    throughput: channel.throughput || 0,
+                    requestCount: channel.requestCount || 0,
+                    models: channel.models || []
+                  }}
                   index={index}
                   defaultExpanded={true}
                 />

@@ -107,8 +107,15 @@ function ExpandedModelItem({
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const color = COLORS[index % COLORS.length];
 
-  const channelData = model.channels
-    .map((c) => ({ name: c.channelName, throughput: c.throughput, requestCount: c.requestCount }))
+  const throughput = model.throughput || 0;
+  const requestCount = model.requestCount || 0;
+
+  const channelData = (model.channels || [])
+    .map((c) => ({ 
+      name: c.channelName || 'Unknown', 
+      throughput: c.throughput || 0, 
+      requestCount: c.requestCount || 0 
+    }))
     .sort((a, b) => b.throughput - a.throughput);
 
   const channelTotal = channelData.reduce((sum, item) => sum + item.throughput, 0);
@@ -124,12 +131,12 @@ function ExpandedModelItem({
             {index + 1}.
           </span>
           <span className='h-3 w-3 rounded-full' style={{ backgroundColor: color }} />
-          <span className='text-foreground text-sm font-medium'>{model.modelName}</span>
+          <span className='text-foreground text-sm font-medium'>{model.modelName || 'Unknown'}</span>
         </div>
         <div className='flex items-center gap-4'>
           <div className='text-right leading-tight'>
-            <div className='text-foreground text-sm font-medium tabular-nums'>{model.throughput.toFixed(1)} tok/s</div>
-            <div className='text-muted-foreground text-xs tabular-nums'>{formatNumber(model.requestCount)} req</div>
+            <div className='text-foreground text-sm font-medium tabular-nums'>{throughput.toFixed(1)} tok/s</div>
+            <div className='text-muted-foreground text-xs tabular-nums'>{formatNumber(requestCount)} req</div>
           </div>
           {isExpanded ? (
             <ChevronDown className='h-4 w-4 text-muted-foreground' />
@@ -209,7 +216,11 @@ export function FastestModelsCard() {
 
   const modelData: ChartData[] = (models || [])
     .slice(0, 5)
-    .map((m) => ({ name: m.modelName, throughput: m.throughput, requestCount: m.requestCount }))
+    .map((m) => ({ 
+      name: m.modelName || 'Unknown', 
+      throughput: m.throughput || 0, 
+      requestCount: m.requestCount || 0 
+    }))
     .sort((a, b) => b.throughput - a.throughput);
 
   const modelTotal = modelData.reduce((sum, item) => sum + item.throughput, 0);
@@ -266,8 +277,13 @@ export function FastestModelsCard() {
             <div>
               {(expandedModels || []).slice(0, 5).map((model, index) => (
                 <ExpandedModelItem
-                  key={model.modelId}
-                  model={model}
+                  key={model.modelId || index}
+                  model={{
+                    modelName: model.modelName || 'Unknown',
+                    throughput: model.throughput || 0,
+                    requestCount: model.requestCount || 0,
+                    channels: model.channels || []
+                  }}
                   index={index}
                   defaultExpanded={true}
                 />
