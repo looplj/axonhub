@@ -160,6 +160,7 @@ export function useFastestChannels(timeWindow: string = '24h') {
       return data.fastestChannels.map((item) => fastestChannelSchema.parse(item));
     },
     refetchInterval: 30000, // Refetch every 30 seconds
+    placeholderData: (previousData) => previousData, // Keep previous data while fetching to prevent flash
   });
 }
 
@@ -174,6 +175,7 @@ export function useFastestModels(timeWindow: string = '24h') {
       return data.fastestModels.map((item) => fastestModelSchema.parse(item));
     },
     refetchInterval: 30000, // Refetch every 30 seconds
+    placeholderData: (previousData) => previousData, // Keep previous data while fetching to prevent flash
   });
 }
 
