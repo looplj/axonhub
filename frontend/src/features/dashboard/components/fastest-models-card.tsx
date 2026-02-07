@@ -42,14 +42,14 @@ function HorizontalBarChart({ data, total }: { data: ChartData[]; total: number 
 
   return (
     <ResponsiveContainer width='100%' height={280}>
-      <BarChart data={data} layout='vertical' barSize={32} margin={{ left: 130, right: 20, top: 10, bottom: 10 }}>
+      <BarChart data={data} layout='vertical' barSize={32} margin={{ left: 20, right: 20, top: 10, bottom: 10 }}>
         <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' horizontal={false} />
         <XAxis type='number' hide />
         <YAxis
           type='category'
           dataKey='name'
-          width={120}
-          tick={{ fontSize: 13, fill: 'var(--muted-foreground)' }}
+          width={10}
+          tick={false}
           tickLine={false}
           axisLine={false}
         />
