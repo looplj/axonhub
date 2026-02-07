@@ -70,9 +70,6 @@ export default function DashboardPage() {
             <TokenStatsCard />
             <TodayRequestsCard />
           </div>
-          <div className='grid gap-4 md:grid-cols-1'>
-            <FastestPerformersCard />
-          </div>
           <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-7'>
             <Card className='hover-card col-span-4'>
               <CardHeader>
@@ -131,6 +128,9 @@ export default function DashboardPage() {
                 <TokensByAPIKeyChart />
               </CardContent>
             </Card>
+          </div>
+          <div className='grid gap-4 md:grid-cols-1'>
+            <FastestPerformersCard />
           </div>
         </TabsContent>
       </Tabs>

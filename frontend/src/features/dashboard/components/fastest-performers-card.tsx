@@ -50,7 +50,7 @@ export function FastestPerformersCard() {
             <div className='bg-primary/10 text-primary dark:bg-primary/20 rounded-lg p-1.5'>
               <Zap className='h-4 w-4' />
             </div>
-            <CardTitle className='text-sm font-medium'>{t('cards.fastestPerformers.title')}</CardTitle>
+          <CardTitle className='text-sm font-medium'>{t('dashboard.cards.fastestPerformers.title')}</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
@@ -67,7 +67,7 @@ export function FastestPerformersCard() {
           <div className='bg-primary/10 text-primary dark:bg-primary/20 rounded-lg p-1.5'>
             <Zap className='h-4 w-4' />
           </div>
-          <CardTitle className='text-sm font-medium'>{t('cards.fastestPerformers.title')}</CardTitle>
+          <CardTitle className='text-sm font-medium'>{t('dashboard.cards.fastestPerformers.title')}</CardTitle>
         </div>
         <Tabs value={timeWindow} onValueChange={(v) => setTimeWindow(v as TimeWindow)}>
           <TabsList className='h-6 p-0.5'>
@@ -88,7 +88,7 @@ export function FastestPerformersCard() {
           <TabsContent value='1h'>
             <div className='space-y-4'>
               <div>
-                <h4 className='mb-2 text-sm font-medium'>{t('cards.fastestPerformers.channels')}</h4>
+                <h4 className='mb-2 text-sm font-medium'>{t('dashboard.cards.fastestPerformers.channels')}</h4>
                 {channels && channels.length > 0 ? (
                   <div className='space-y-2'>
                     {channels.slice(0, 5).map((channel, index) => (
@@ -103,11 +103,11 @@ export function FastestPerformersCard() {
                     ))}
                   </div>
                 ) : (
-                  <div className='text-muted-foreground text-sm'>{t('cards.fastestPerformers.noData')}</div>
+                  <div className='text-muted-foreground text-sm'>{t('dashboard.cards.fastestPerformers.noData')}</div>
                 )}
               </div>
               <div>
-                <h4 className='mb-2 text-sm font-medium'>{t('cards.fastestPerformers.models')}</h4>
+                <h4 className='mb-2 text-sm font-medium'>{t('dashboard.cards.fastestPerformers.models')}</h4>
                 {models && models.length > 0 ? (
                   <div className='space-y-2'>
                     {models.slice(0, 5).map((model, index) => (
@@ -122,7 +122,7 @@ export function FastestPerformersCard() {
                     ))}
                   </div>
                 ) : (
-                  <div className='text-muted-foreground text-sm'>{t('cards.fastestPerformers.noData')}</div>
+                  <div className='text-muted-foreground text-sm'>{t('dashboard.cards.fastestPerformers.noData')}</div>
                 )}
               </div>
             </div>
@@ -130,7 +130,7 @@ export function FastestPerformersCard() {
           <TabsContent value='24h'>
             <div className='space-y-4'>
               <div>
-                <h4 className='mb-2 text-sm font-medium'>{t('cards.fastestPerformers.channels')}</h4>
+                <h4 className='mb-2 text-sm font-medium'>{t('dashboard.cards.fastestPerformers.channels')}</h4>
                 {channels && channels.length > 0 ? (
                   <div className='space-y-2'>
                     {channels.slice(0, 5).map((channel, index) => (
@@ -145,11 +145,11 @@ export function FastestPerformersCard() {
                     ))}
                   </div>
                 ) : (
-                  <div className='text-muted-foreground text-sm'>{t('cards.fastestPerformers.noData')}</div>
+                  <div className='text-muted-foreground text-sm'>{t('dashboard.cards.fastestPerformers.noData')}</div>
                 )}
               </div>
               <div>
-                <h4 className='mb-2 text-sm font-medium'>{t('cards.fastestPerformers.models')}</h4>
+                <h4 className='mb-2 text-sm font-medium'>{t('dashboard.cards.fastestPerformers.models')}</h4>
                 {models && models.length > 0 ? (
                   <div className='space-y-2'>
                     {models.slice(0, 5).map((model, index) => (
@@ -164,7 +164,7 @@ export function FastestPerformersCard() {
                     ))}
                   </div>
                 ) : (
-                  <div className='text-muted-foreground text-sm'>{t('cards.fastestPerformers.noData')}</div>
+                  <div className='text-muted-foreground text-sm'>{t('dashboard.cards.fastestPerformers.noData')}</div>
                 )}
               </div>
             </div>
@@ -172,7 +172,7 @@ export function FastestPerformersCard() {
           <TabsContent value='7d'>
             <div className='space-y-4'>
               <div>
-                <h4 className='mb-2 text-sm font-medium'>{t('cards.fastestPerformers.channels')}</h4>
+                <h4 className='mb-2 text-sm font-medium'>{t('dashboard.cards.fastestPerformers.channels')}</h4>
                 {channels && channels.length > 0 ? (
                   <div className='space-y-2'>
                     {channels.slice(0, 5).map((channel, index) => (
@@ -187,11 +187,11 @@ export function FastestPerformersCard() {
                     ))}
                   </div>
                 ) : (
-                  <div className='text-muted-foreground text-sm'>{t('cards.fastestPerformers.noData')}</div>
+                  <div className='text-muted-foreground text-sm'>{t('dashboard.cards.fastestPerformers.noData')}</div>
                 )}
               </div>
               <div>
-                <h4 className='mb-2 text-sm font-medium'>{t('cards.fastestPerformers.models')}</h4>
+                <h4 className='mb-2 text-sm font-medium'>{t('dashboard.cards.fastestPerformers.models')}</h4>
                 {models && models.length > 0 ? (
                   <div className='space-y-2'>
                     {models.slice(0, 5).map((model, index) => (
@@ -206,7 +206,7 @@ export function FastestPerformersCard() {
                     ))}
                   </div>
                 ) : (
-                  <div className='text-muted-foreground text-sm'>{t('cards.fastestPerformers.noData')}</div>
+                  <div className='text-muted-foreground text-sm'>{t('dashboard.cards.fastestPerformers.noData')}</div>
                 )}
               </div>
             </div>
