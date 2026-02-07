@@ -932,8 +932,8 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 				sql.GT(requestExecTable.C(requestexecution.FieldMetricsLatencyMs), 0),
 			))
 
-			// Group by request.model_id (AxonHub model ID)
-			s.GroupBy(requestTable.C(request.FieldModelID))
+			// Group by request.model_id (AxonHub model ID) and models.name
+			s.GroupBy(requestTable.C(request.FieldModelID), modelsTable.C(model.FieldName))
 
 			// Calculate throughput: SUM(completion_tokens) / (SUM(metrics_latency_ms) / 1000)
 			// Using SQL expression for throughput calculation
