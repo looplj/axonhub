@@ -111,10 +111,11 @@ function ExpandedChannelItem({
   const requestCount = channel.requestCount || 0;
 
   const modelData = (channel.models || [])
-    .map((m) => ({ 
-      name: m.modelName || 'Unknown', 
-      throughput: m.throughput || 0, 
-      requestCount: m.requestCount || 0 
+    .filter((m) => m != null)
+    .map((m) => ({
+      name: m.modelName ?? 'Unknown',
+      throughput: m.throughput ?? 0,
+      requestCount: m.requestCount ?? 0,
     }))
     .sort((a, b) => b.throughput - a.throughput);
 
@@ -216,10 +217,11 @@ export function FastestChannelsCard() {
 
   const channelData: ChartData[] = (channels || [])
     .slice(0, 5)
-    .map((c) => ({ 
-      name: c.channelName || 'Unknown', 
-      throughput: c.throughput || 0, 
-      requestCount: c.requestCount || 0 
+    .filter((c) => c != null)
+    .map((c) => ({
+      name: c.channelName ?? 'Unknown',
+      throughput: c.throughput ?? 0,
+      requestCount: c.requestCount ?? 0,
     }))
     .sort((a, b) => b.throughput - a.throughput);
 
@@ -277,12 +279,12 @@ export function FastestChannelsCard() {
             <div>
               {(expandedChannels || []).slice(0, 5).map((channel, index) => (
                 <ExpandedChannelItem
-                  key={channel.channelId || index}
+                  key={channel.channelId ?? index}
                   channel={{
-                    channelName: channel.channelName || 'Unknown',
-                    throughput: channel.throughput || 0,
-                    requestCount: channel.requestCount || 0,
-                    models: channel.models || []
+                    channelName: channel.channelName ?? 'Unknown',
+                    throughput: channel.throughput ?? 0,
+                    requestCount: channel.requestCount ?? 0,
+                    models: channel.models ?? [],
                   }}
                   index={index}
                   defaultExpanded={true}
