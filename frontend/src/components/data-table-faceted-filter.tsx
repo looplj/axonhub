@@ -18,6 +18,7 @@ interface DataTableFacetedFilterProps<TData, TValue> {
     icon?: React.ComponentType<{ className?: string }>;
   }[];
   singleSelect?: boolean;
+  footer?: React.ReactNode;
 }
 
 export function DataTableFacetedFilter<TData, TValue>({
@@ -25,6 +26,7 @@ export function DataTableFacetedFilter<TData, TValue>({
   title,
   options = [],
   singleSelect = false,
+  footer,
 }: DataTableFacetedFilterProps<TData, TValue>) {
   const { t } = useTranslation();
 
@@ -107,6 +109,12 @@ export function DataTableFacetedFilter<TData, TValue>({
                 );
               })}
             </CommandGroup>
+            {footer && (
+              <>
+                <CommandSeparator />
+                <CommandGroup>{footer}</CommandGroup>
+              </>
+            )}
             {selectedValues.size > 0 && (
               <>
                 <CommandSeparator />
