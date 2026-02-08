@@ -209,6 +209,7 @@ AxonHub 的 LLM Pipeline 采用**转换器链（Transformer Chain）**模式，�
 - `zai` - Zai
 - `xai` - xAI (Grok)
 - `openrouter` - OpenRouter
+- `xiaomi` - Xiaomi MIMO (OpenAI 兼容格式)
 - `longcat` - Longcat
 - `modelscope` - ModelScope
 - `bailian` - 阿里百炼

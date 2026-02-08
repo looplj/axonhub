@@ -25,6 +25,7 @@ import {
   AiHubMix,
   Cerebras,
   Claude,
+  XiaomiMiMo
 } from '@lobehub/icons';
 import { NanoGPTIcon } from '../components/nanogpt-icon';
 import { CHANNEL_CONFIGS } from './config_channels';
@@ -186,6 +187,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     icon: OpenRouter,
     color: 'bg-gray-100 text-gray-800 border-gray-200',
     channelTypes: ['openrouter'],
+  },
+  xiaomi: {
+    provider: 'xiaomi',
+    icon: XiaomiMiMo,
+    color: 'bg-orange-100 text-orange-800 border-orange-200',
+    channelTypes: ['xiaomi'],
   },
   vercel: {
     provider: 'vercel',

@@ -559,7 +559,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 		ch.Outbound = transformer
 
 		return ch, nil
-	case channel.TypeOpenai, channel.TypeDeepinfra, channel.TypeMinimax,
+	case channel.TypeOpenai, channel.TypeDeepinfra, channel.TypeMinimax, channel.TypeXiaomi,
 		channel.TypePpio, channel.TypeSiliconflow,
 		channel.TypeVercel, channel.TypeAihubmix, channel.TypeBurncloud, channel.TypeGithub:
 		transformer, err := openai.NewOutboundTransformerWithConfig(&openai.Config{
