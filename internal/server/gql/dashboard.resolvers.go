@@ -802,12 +802,17 @@ func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChanne
 	useDollarPlaceholders := dialectName == dialect.Postgres
 
 	// Build query using shared helper function
+	// Fetch more items than needed to allow confidence-based filtering
+	sqlLimit := *input.Limit * 4
+	if sqlLimit < 20 {
+		sqlLimit = 20
+	}
 	query := buildThroughputQuery(
 		useDollarPlaceholders,
 		"se.channel_id,\n    c.name as channel_name,\n    c.type as channel_type,",
 		"JOIN channels c ON se.channel_id = c.id",
 		"se.channel_id, c.name, c.type",
-		*input.Limit,
+		sqlLimit,
 	)
 
 	rows, err := db.DB().QueryContext(ctx, query, since.UTC())
@@ -841,57 +846,84 @@ func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChanne
 		return []*FastestChannel{}, nil
 	}
 
-	// Calculate statistics for dynamic threshold
-	totalRequests := 0
-	for _, item := range results {
-		totalRequests += int(item.RequestCount)
+	// Calculate confidence for ALL results using global median
+	requestCounts := lo.Map(results, func(item channelStats, _ int) int {
+		return int(item.RequestCount)
+	})
+	sort.Ints(requestCounts)
+
+	var median float64
+	mid := len(requestCounts) / 2
+	if len(requestCounts)%2 == 0 {
+		median = float64(requestCounts[mid-1]+requestCounts[mid]) / 2
+	} else {
+		median = float64(requestCounts[mid])
 	}
-	avgRequests := float64(totalRequests) / float64(len(results))
 
-	// Calculate dynamic minimum threshold
-	minThreshold := calculateMinRequests(len(results), avgRequests)
+	// Assign confidence levels to all results
+	type scoredChannelItem struct {
+		stats      channelStats
+		confidence string
+		score      int
+	}
 
-	// Filter results by minimum request count
-	filteredResults := lo.Filter(results, func(item channelStats, _ int) bool {
-		return int(item.RequestCount) >= minThreshold
+	scoredResults := lo.Map(results, func(item channelStats, _ int) scoredChannelItem {
+		conf := calculateConfidenceLevel(int(item.RequestCount), median)
+		score := 0
+		switch conf {
+		case "high":
+			score = 3
+		case "medium":
+			score = 2
+		case "low":
+			score = 1
+		}
+		return scoredChannelItem{
+			stats:      item,
+			confidence: conf,
+			score:      score,
+		}
 	})
 
-	// If filtering removed too many results, keep at least the top items
-	if len(filteredResults) == 0 && len(results) > 0 {
-		filteredResults = results[:min(len(results), int(*input.Limit))]
+	// Filter: show only high/medium confidence items when possible
+	filtered := lo.Filter(scoredResults, func(item scoredChannelItem, _ int) bool {
+		return item.confidence == "high" || item.confidence == "medium"
+	})
+
+	// If we have enough high/medium confidence items, use only those
+	// Otherwise fall back to include low confidence to maintain item count
+	resultsToShow := scoredResults
+	if len(filtered) >= int(*input.Limit) {
+		resultsToShow = filtered
 	}
 
-	// Calculate median for confidence level
-	if len(filteredResults) > 0 {
-		requestCounts := lo.Map(filteredResults, func(item channelStats, _ int) int {
-			return int(item.RequestCount)
-		})
-		sort.Ints(requestCounts)
-
-		var median float64
-		mid := len(requestCounts) / 2
-		if len(requestCounts)%2 == 0 {
-			median = float64(requestCounts[mid-1]+requestCounts[mid]) / 2
-		} else {
-			median = float64(requestCounts[mid])
+	// Sort by confidence score first (high > medium > low), then by throughput
+	sort.Slice(resultsToShow, func(i, j int) bool {
+		if resultsToShow[i].score != resultsToShow[j].score {
+			return resultsToShow[i].score > resultsToShow[j].score
 		}
+		return resultsToShow[i].stats.Throughput > resultsToShow[j].stats.Throughput
+	})
 
-		// Build response with confidence level
-		return lo.Map(filteredResults, func(item channelStats, _ int) *FastestChannel {
-			return &FastestChannel{
-				ChannelID:       objects.GUID{Type: "Channel", ID: item.ChannelID},
-				ChannelName:     item.ChannelName,
-				ChannelType:     item.ChannelType,
-				Throughput:      item.Throughput,
-				TokensCount:     int(item.TokensCount),
-				LatencyMs:       int(item.LatencyMs),
-				RequestCount:    int(item.RequestCount),
-				ConfidenceLevel: calculateConfidenceLevel(int(item.RequestCount), median),
-			}
-		}), nil
+	// Take top N based on limit
+	limit := int(*input.Limit)
+	if len(resultsToShow) > limit {
+		resultsToShow = resultsToShow[:limit]
 	}
 
-	return []*FastestChannel{}, nil
+	// Build response with confidence levels
+	return lo.Map(resultsToShow, func(item scoredChannelItem, _ int) *FastestChannel {
+		return &FastestChannel{
+			ChannelID:       objects.GUID{Type: "Channel", ID: item.stats.ChannelID},
+			ChannelName:     item.stats.ChannelName,
+			ChannelType:     item.stats.ChannelType,
+			Throughput:      item.stats.Throughput,
+			TokensCount:     int(item.stats.TokensCount),
+			LatencyMs:       int(item.stats.LatencyMs),
+			RequestCount:    int(item.stats.RequestCount),
+			ConfidenceLevel: item.confidence,
+		}
+	}), nil
 }
 
 // FastestModels is the resolver for the fastestModels field.
@@ -948,12 +980,17 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 	useDollarPlaceholders := dialectName == dialect.Postgres
 
 	// Build query with dialect-aware timestamp placeholder
+	// Fetch more items than needed to allow confidence-based filtering
+	sqlLimit := *input.Limit * 4
+	if sqlLimit < 20 {
+		sqlLimit = 20
+	}
 	query := buildThroughputQuery(
 		useDollarPlaceholders,
 		"r.model_id,\n    m.name as model_name,",
 		"JOIN requests r ON se.request_id = r.id\nJOIN models m ON r.model_id = m.model_id",
 		"r.model_id, m.name",
-		*input.Limit,
+		sqlLimit,
 	)
 
 	rows, err := db.DB().QueryContext(ctx, query, since.UTC())
@@ -986,63 +1023,91 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 		return []*FastestModel{}, nil
 	}
 
-	// Calculate statistics for dynamic threshold
-	totalRequests := 0
-	for _, item := range results {
-		totalRequests += int(item.RequestCount)
+	// Calculate confidence for ALL results using global median
+	requestCounts := lo.Map(results, func(item modelStats, _ int) int {
+		return int(item.RequestCount)
+	})
+	sort.Ints(requestCounts)
+
+	var median float64
+	mid := len(requestCounts) / 2
+	if len(requestCounts)%2 == 0 {
+		median = float64(requestCounts[mid-1]+requestCounts[mid]) / 2
+	} else {
+		median = float64(requestCounts[mid])
 	}
-	avgRequests := float64(totalRequests) / float64(len(results))
 
-	// Calculate dynamic minimum threshold
-	minThreshold := calculateMinRequests(len(results), avgRequests)
+	// Assign confidence levels to all results
+	type scoredModelItem struct {
+		stats      modelStats
+		confidence string
+		score      int
+	}
 
-	// Filter results by minimum request count
-	filteredResults := lo.Filter(results, func(item modelStats, _ int) bool {
-		return int(item.RequestCount) >= minThreshold
+	scoredResults := lo.Map(results, func(item modelStats, _ int) scoredModelItem {
+		conf := calculateConfidenceLevel(int(item.RequestCount), median)
+		score := 0
+		switch conf {
+		case "high":
+			score = 3
+		case "medium":
+			score = 2
+		case "low":
+			score = 1
+		}
+		return scoredModelItem{
+			stats:      item,
+			confidence: conf,
+			score:      score,
+		}
 	})
 
-	// If filtering removed too many results, keep at least the top items
-	if len(filteredResults) == 0 && len(results) > 0 {
-		filteredResults = results[:min(len(results), int(*input.Limit))]
+	// Filter: show only high/medium confidence items when possible
+	filtered := lo.Filter(scoredResults, func(item scoredModelItem, _ int) bool {
+		return item.confidence == "high" || item.confidence == "medium"
+	})
+
+	// If we have enough high/medium confidence items, use only those
+	// Otherwise fall back to include low confidence to maintain item count
+	resultsToShow := scoredResults
+	if len(filtered) >= int(*input.Limit) {
+		resultsToShow = filtered
 	}
 
-	// Calculate median for confidence level
-	if len(filteredResults) > 0 {
-		requestCounts := lo.Map(filteredResults, func(item modelStats, _ int) int {
-			return int(item.RequestCount)
-		})
-		sort.Ints(requestCounts)
-		var median float64
-		mid := len(requestCounts) / 2
-		if len(requestCounts)%2 == 0 {
-			median = float64(requestCounts[mid-1]+requestCounts[mid]) / 2
-		} else {
-			median = float64(requestCounts[mid])
+	// Sort by confidence score first (high > medium > low), then by throughput
+	sort.Slice(resultsToShow, func(i, j int) bool {
+		if resultsToShow[i].score != resultsToShow[j].score {
+			return resultsToShow[i].score > resultsToShow[j].score
 		}
+		return resultsToShow[i].stats.Throughput > resultsToShow[j].stats.Throughput
+	})
 
-		// Build response with confidence level
-		return lo.Map(filteredResults, func(item modelStats, _ int) *FastestModel {
-			return &FastestModel{
-				ModelID:         item.ModelID,
-				ModelName:       item.ModelName,
-				Throughput:      item.Throughput,
-				TokensCount:     int(item.TokensCount),
-				LatencyMs:       int(item.LatencyMs),
-				RequestCount:    int(item.RequestCount),
-				ConfidenceLevel: calculateConfidenceLevel(int(item.RequestCount), median),
-			}
-		}), nil
+	// Take top N based on limit
+	limit := int(*input.Limit)
+	if len(resultsToShow) > limit {
+		resultsToShow = resultsToShow[:limit]
 	}
 
-	return []*FastestModel{}, nil
+	// Build response with confidence levels
+	return lo.Map(resultsToShow, func(item scoredModelItem, _ int) *FastestModel {
+		return &FastestModel{
+			ModelID:         item.stats.ModelID,
+			ModelName:       item.stats.ModelName,
+			Throughput:      item.stats.Throughput,
+			TokensCount:     int(item.stats.TokensCount),
+			LatencyMs:       int(item.stats.LatencyMs),
+			RequestCount:    int(item.stats.RequestCount),
+			ConfidenceLevel: item.confidence,
+		}
+	}), nil
 }
 
 // !!! WARNING !!!
 // The code below was going to be deleted when updating resolvers. It has been copied here so you have
 // one last chance to move it out of harms way if you want. There are two reasons this happens:
-//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//    it when you're done.
-//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+//   - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//     it when you're done.
+//   - You have helper methods in this file. Move them out to keep these resolver files clean.
 func buildThroughputQuery(useDollarPlaceholders bool, selectColumns, joinClause, groupBy string, limit int) string {
 	placeholder := "$1"
 	if !useDollarPlaceholders {
@@ -1084,30 +1149,24 @@ GROUP BY ` + groupBy + `
 ORDER BY throughput DESC
 LIMIT ` + fmt.Sprintf("%d", limit)
 }
-func calculateMinRequests(totalItems int, avgRequests float64) int {
-	if totalItems <= 5 {
-		return 1 // Show everything for small datasets
-	}
-	if totalItems <= 10 {
-		return 5 // Minimum 5 requests
-	}
-	minReq := int(avgRequests * 0.10) // 10% of average
-	if minReq < 10 {
-		return 10
-	}
-	if minReq > 100 {
-		return 100
-	}
-	return minReq
-}
 func calculateConfidenceLevel(requestCount int, median float64) string {
 	// When median is 0, we cannot calculate a meaningful ratio (requestCount/median),
 	// so we default to low confidence since we lack sufficient data for reliable inference.
 	if median == 0 {
 		return "low"
 	}
+
+	// Absolute minimum request thresholds for confidence levels
+	// These ensure items with very few requests are always low confidence
+	const minRequestsForMedium = 100
+	const minRequestsForHigh = 500
+
+	if requestCount < minRequestsForMedium {
+		return "low"
+	}
+
 	ratio := float64(requestCount) / median
-	if ratio >= 2.0 {
+	if ratio >= 1.5 && requestCount >= minRequestsForHigh {
 		return "high"
 	}
 	if ratio >= 0.5 {

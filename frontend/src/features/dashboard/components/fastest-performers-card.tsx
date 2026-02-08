@@ -8,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Loader2, Activity } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { formatNumber } from '@/utils/format-number';
 import { safeNumber, safeToFixed, sanitizeChartData, type ChartData } from '../utils/chart-helpers';
 import type { UseQueryResult } from '@tanstack/react-query';
@@ -91,39 +91,10 @@ function HorizontalBarChart({ data, total, height = 280, noDataLabel }: Horizont
 }
 
 function ChartLegend({ items }: { items: LegendItem[] }) {
-  const getConfidenceColor = (level?: string) => {
-    switch (level) {
-      case 'high':
-        return 'text-green-500';
-      case 'medium':
-        return 'text-yellow-500';
-      case 'low':
-        return 'text-red-500';
-      default:
-        return 'text-muted-foreground';
-    }
-  };
-
-  const getConfidenceTooltip = (level?: string) => {
-    switch (level) {
-      case 'high':
-        return 'High confidence';
-      case 'medium':
-        return 'Medium confidence';
-      case 'low':
-        return 'Low confidence';
-      default:
-        return 'Confidence';
-    }
-  };
-
   return (
     <TooltipProvider>
       <div className='grid gap-3'>
         {items.map((item, index) => {
-          const colorClass = getConfidenceColor(item.confidenceLevel);
-          const tooltip = getConfidenceTooltip(item.confidenceLevel);
-
           return (
             <div key={`${item.name}-${index}`} className='grid w-full grid-cols-[auto_auto_1fr_auto] items-center gap-3'>
               <span className='text-muted-foreground w-8 text-right text-sm font-semibold tabular-nums'>
@@ -131,21 +102,9 @@ function ChartLegend({ items }: { items: LegendItem[] }) {
               </span>
               <span className='h-2.5 w-2.5 rounded-full' style={{ backgroundColor: item.color }} />
               <span className='text-foreground min-w-0 text-sm font-medium break-words'>{item.name}</span>
-              <div className='flex items-center gap-2'>
-                {item.confidenceLevel === 'low' || item.confidenceLevel === 'medium' ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Activity className={`h-4 w-4 ${colorClass}`} />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{tooltip}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                ) : null}
-                <div className='text-right leading-tight'>
-                  <div className='text-foreground text-sm font-medium tabular-nums'>{safeToFixed(item.throughput)} tok/s</div>
-                  <div className='text-muted-foreground text-xs tabular-nums'>{formatNumber(safeNumber(item.requestCount))} req</div>
-                </div>
+              <div className='text-right leading-tight'>
+                <div className='text-foreground text-sm font-medium tabular-nums'>{safeToFixed(item.throughput)} tok/s</div>
+                <div className='text-muted-foreground text-xs tabular-nums'>{formatNumber(safeNumber(item.requestCount))} req</div>
               </div>
             </div>
           );
@@ -167,6 +126,7 @@ interface FastestPerformersCardProps<T extends ThroughputData> {
   noDataLabel: string;
   useData: (timeWindow: TimeWindow) => UseQueryResult<T[], Error>;
   getName: (item: T) => string | null;
+  titleIcon?: React.ReactNode;
 }
 
 export function FastestPerformersCard<T>({
@@ -175,6 +135,7 @@ export function FastestPerformersCard<T>({
   noDataLabel,
   useData,
   getName,
+  titleIcon,
 }: FastestPerformersCardProps<T>) {
   const { t } = useTranslation();
   const [timeWindow, setTimeWindow] = useState<TimeWindow>('day');
@@ -235,7 +196,14 @@ export function FastestPerformersCard<T>({
     <Card className='hover-card'>
       <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
         <div>
-          <CardTitle className='text-base font-medium'>{title}</CardTitle>
+          <div className='flex items-center gap-2'>
+            {titleIcon && (
+              <div className='bg-primary/10 text-primary dark:bg-primary/20 rounded-lg p-1.5'>
+                {titleIcon}
+              </div>
+            )}
+            <CardTitle className='text-base font-medium'>{title}</CardTitle>
+          </div>
           <CardDescription>{description(totalRequests)}</CardDescription>
         </div>
         <div className='flex items-center gap-2'>
