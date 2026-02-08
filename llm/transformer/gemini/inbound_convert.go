@@ -229,6 +229,24 @@ func convertGeminiToLLMRequest(geminiReq *GenerateContentRequest) (*llm.Request,
 		chatReq.ToolChoice = convertGeminiFunctionCallingConfigToToolChoice(fcc)
 	}
 
+	// Convert safety settings to TransformerMetadata
+	if len(geminiReq.SafetySettings) > 0 {
+		if chatReq.TransformerMetadata == nil {
+			chatReq.TransformerMetadata = make(map[string]any)
+		}
+
+		chatReq.TransformerMetadata[TransformerMetadataKeySafetySettings] = geminiReq.SafetySettings
+	}
+
+	// Convert image config to TransformerMetadata
+	if geminiReq.GenerationConfig != nil && geminiReq.GenerationConfig.ImageConfig != nil {
+		if chatReq.TransformerMetadata == nil {
+			chatReq.TransformerMetadata = make(map[string]any)
+		}
+
+		chatReq.TransformerMetadata[TransformerMetadataKeyImageConfig] = geminiReq.GenerationConfig.ImageConfig
+	}
+
 	return chatReq, nil
 }
 

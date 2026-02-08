@@ -72,7 +72,66 @@ func TestSimulator_OpenAIToAnthropic(t *testing.T) {
 	assert.Len(t, messages, 1)
 	msg := messages[0].(map[string]any)
 	assert.Equal(t, "user", msg["role"])
-	assert.Equal(t, "Hello, how are you?", msg["content"])
+
+	content, ok := msg["content"].([]any)
+	require.True(t, ok, "anthropic outbound content 应为 content block 数组")
+	require.NotEmpty(t, content)
+
+	block, ok := content[0].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "text", block["type"])
+	assert.Equal(t, "Hello, how are you?", block["text"])
+}
+
+func TestSimulator_OpenAIToAnthropic_ContentTextSemantic(t *testing.T) {
+	// 1. Setup Transformers
+	inbound := openai.NewInboundTransformer()
+	outbound, err := anthropic.NewOutboundTransformer("https://api.anthropic.com/v1", "sk-ant-test")
+	require.NoError(t, err)
+
+	// 2. Create Simulator
+	sim := NewSimulator(inbound, outbound)
+
+	// 3. Create a raw OpenAI request (what the client sends)
+	openAIReqBody := map[string]any{
+		"model": "gpt-4",
+		"messages": []map[string]any{
+			{
+				"role":    "user",
+				"content": "Hello, how are you?",
+			},
+		},
+	}
+	bodyBytes, _ := json.Marshal(openAIReqBody)
+	req, err := http.NewRequest(http.MethodPost, "http://localhost:8090/v1/chat/completions", bytes.NewReader(bodyBytes))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+
+	// 4. Run Simulation
+	ctx := context.Background()
+	finalReq, err := sim.Simulate(ctx, req)
+	require.NoError(t, err)
+
+	// 5. Verify semantic text remains unchanged
+	finalBodyBytes, err := io.ReadAll(finalReq.Body)
+	require.NoError(t, err)
+
+	var anthropicReqBody map[string]any
+	err = json.Unmarshal(finalBodyBytes, &anthropicReqBody)
+	require.NoError(t, err)
+
+	messages, ok := anthropicReqBody["messages"].([]any)
+	require.True(t, ok, "anthropic messages 应为数组")
+	require.Len(t, messages, 1)
+	msg, ok := messages[0].(map[string]any)
+	require.True(t, ok, "anthropic message 元素应为对象")
+
+	content, ok := msg["content"].([]any)
+	require.True(t, ok, "anthropic content 应为数组")
+	require.NotEmpty(t, content)
+	block, ok := content[0].(map[string]any)
+	require.True(t, ok, "anthropic content block 应为对象")
+	assert.Equal(t, "Hello, how are you?", block["text"])
 }
 
 func TestSimulator_GeminiToOpenAI(t *testing.T) {
