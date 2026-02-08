@@ -815,6 +815,8 @@ func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChanne
 		sqlLimit,
 	)
 
+	// Use UTC for the time parameter to match the timezone of the created_at column.
+	// This assumes created_at is stored in UTC, which is consistent with the application's timezone handling.
 	rows, err := db.DB().QueryContext(ctx, query, since.UTC())
 	if err != nil {
 		return nil, fmt.Errorf("failed to query fastest channels: %w", err)
@@ -822,6 +824,10 @@ func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChanne
 	defer rows.Close()
 
 	for rows.Next() {
+		// Check for context cancellation to allow early exit
+		if err := ctx.Err(); err != nil {
+			return nil, fmt.Errorf("context cancelled: %w", err)
+		}
 
 		var stat channelStats
 		if err := rows.Scan(
@@ -1108,7 +1114,21 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 //   - When renaming or deleting a resolver the old code will be put in here. You can safely delete
 //     it when you're done.
 //   - You have helper methods in this file. Move them out to keep these resolver files clean.
+
+// buildThroughputQuery constructs a SQL query for throughput statistics.
+// SECURITY WARNING: The selectColumns, joinClause, and groupBy parameters are
+// concatenated directly into the SQL query. These MUST only come from trusted
+// internal code and NEVER from user input. Always use hardcoded column/table
+// identifiers. Failure to follow this rule may result in SQL injection.
+//
+// COMPATIBILITY NOTE: This query uses ROW_NUMBER() window function which requires
+// SQLite 3.25+ (released 2018-09-15). All supported database dialects (PostgreSQL,
+// MySQL 8.0+, TiDB, SQLite 3.25+) support this function.
 func buildThroughputQuery(useDollarPlaceholders bool, selectColumns, joinClause, groupBy string, limit int) string {
+	// Validate that limit is positive to prevent malformed queries
+	if limit <= 0 {
+		limit = 20 // Default fallback
+	}
 	placeholder := "$1"
 	if !useDollarPlaceholders {
 		placeholder = "?"

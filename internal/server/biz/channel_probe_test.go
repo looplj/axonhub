@@ -416,15 +416,20 @@ func TestTPSCalculation_EmptyResults(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	// Query without any data - should return empty
-	execs, err := client.RequestExecution.Query().
-		Where(
-			requestexecution.ChannelID(ch.ID),
-			requestexecution.StatusEQ(requestexecution.StatusCompleted),
-		).
-		All(ctx)
+	endTime := time.Date(2026, 1, 1, 1, 0, 0, 0, time.UTC)
+	startTime := endTime.Add(-time.Minute)
+
+	// Create the ChannelProbeService with the test client
+	svc := &ChannelProbeService{
+		AbstractService: &AbstractService{
+			db: client,
+		},
+	}
+
+	// Call computeAllChannelProbeStats with a channel that has no execution data
+	stats, err := svc.computeAllChannelProbeStats(ctx, []int{ch.ID}, startTime, endTime)
 	require.NoError(t, err)
-	assert.Empty(t, execs)
+	assert.Empty(t, stats, "stats should be empty for channel with no execution data")
 }
 
 // TestComputeAllChannelProbeStats_Integration tests the actual computeAllChannelProbeStats function

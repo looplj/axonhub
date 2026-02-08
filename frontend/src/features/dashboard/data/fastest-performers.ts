@@ -2,6 +2,9 @@ import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
 
+// Refetch interval constant (30 seconds)
+const REFETCH_INTERVAL_MS = 30000;
+
 // Schema definitions for regular queries
 export const fastestChannelSchema = z.object({
   channelId: z.string(),
@@ -69,13 +72,19 @@ export function useFastestChannels(timeWindow: string = 'day', limit: number = 5
   return useQuery({
     queryKey: ['fastestChannels', timeWindow, limit],
     queryFn: async () => {
-      const data = await graphqlRequest<{ fastestChannels: FastestChannel[] }>(
-        FASTEST_CHANNELS_QUERY,
-        { input: { timeWindow, limit } }
-      );
-      return data.fastestChannels.map((item) => fastestChannelSchema.parse(item));
+      try {
+        const data = await graphqlRequest<{ fastestChannels: FastestChannel[] }>(
+          FASTEST_CHANNELS_QUERY,
+          { input: { timeWindow, limit } }
+        );
+        return data.fastestChannels.map((item) => fastestChannelSchema.parse(item));
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to fetch fastest channels:', error);
+        throw new Error('Unable to load fastest channels. Please try again later.');
+      }
     },
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: REFETCH_INTERVAL_MS,
     placeholderData: (previousData) => previousData, // Keep previous data while fetching to prevent flash
   });
 }
@@ -84,13 +93,19 @@ export function useFastestModels(timeWindow: string = 'day', limit: number = 5) 
   return useQuery({
     queryKey: ['fastestModels', timeWindow, limit],
     queryFn: async () => {
-      const data = await graphqlRequest<{ fastestModels: FastestModel[] }>(
-        FASTEST_MODELS_QUERY,
-        { input: { timeWindow, limit } }
-      );
-      return data.fastestModels.map((item) => fastestModelSchema.parse(item));
+      try {
+        const data = await graphqlRequest<{ fastestModels: FastestModel[] }>(
+          FASTEST_MODELS_QUERY,
+          { input: { timeWindow, limit } }
+        );
+        return data.fastestModels.map((item) => fastestModelSchema.parse(item));
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to fetch fastest models:', error);
+        throw new Error('Unable to load fastest models. Please try again later.');
+      }
     },
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: REFETCH_INTERVAL_MS,
     placeholderData: (previousData) => previousData, // Keep previous data while fetching to prevent flash
   });
 }

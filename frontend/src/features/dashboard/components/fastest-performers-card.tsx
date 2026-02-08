@@ -2,12 +2,11 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, RechartsTooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { Loader2 } from 'lucide-react';
 import { formatNumber } from '@/utils/format-number';
 import { safeNumber, safeToFixed, sanitizeChartData, type ChartData } from '../utils/chart-helpers';
@@ -79,7 +78,7 @@ function HorizontalBarChart({ data, total, height = 280, noDataLabel }: Horizont
           tickLine={false}
           axisLine={false}
         />
-        <Tooltip content={tooltipContent} cursor={{ fill: 'var(--muted)' }} />
+        <RechartsTooltip content={tooltipContent} cursor={{ fill: 'var(--muted)' }} />
         <Bar dataKey='throughput' radius={[0, 4, 4, 0]}>
           {safeData.map((_, index) => (
             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
