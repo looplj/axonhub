@@ -8,9 +8,10 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect"
-	entsql "entgo.io/ent/dialect/sql"
 	"github.com/zhenzou/executors"
 	"go.uber.org/fx"
+
+	entsql "entgo.io/ent/dialect/sql"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -230,7 +231,8 @@ ORDER BY se.channel_id`, channelIDFilter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query channel probe stats: %w", err)
 	}
-	defer rows.Close()
+
+	defer func() { _ = rows.Close() }()
 
 	result := make(map[int]*channelProbeStats)
 	for rows.Next() {
