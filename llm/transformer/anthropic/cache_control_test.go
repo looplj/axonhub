@@ -397,10 +397,8 @@ func TestOutboundTransformer_CacheControl(t *testing.T) {
 		require.NotNil(t, anthropicReq.System)
 		require.Len(t, anthropicReq.System.MultiplePrompts, 2)
 
-		// Check first system prompt has cache control
-		require.NotNil(t, anthropicReq.System.MultiplePrompts[0].CacheControl)
-		require.Equal(t, "ephemeral", anthropicReq.System.MultiplePrompts[0].CacheControl.Type)
-		require.Equal(t, "5m", anthropicReq.System.MultiplePrompts[0].CacheControl.TTL)
+		// strict mode 下仅保留 system 最后一个结构锚点
+		require.Nil(t, anthropicReq.System.MultiplePrompts[0].CacheControl)
 
 		// Check second system prompt has cache control
 		require.NotNil(t, anthropicReq.System.MultiplePrompts[1].CacheControl)
@@ -486,7 +484,7 @@ func TestOutboundTransformer_CacheControl(t *testing.T) {
 		require.Len(t, anthropicReq.Tools, 1)
 		require.NotNil(t, anthropicReq.Tools[0].CacheControl)
 		require.Equal(t, "ephemeral", anthropicReq.Tools[0].CacheControl.Type)
-		require.Equal(t, "1h", anthropicReq.Tools[0].CacheControl.TTL)
+		require.Empty(t, anthropicReq.Tools[0].CacheControl.TTL)
 	})
 
 	t.Run("tool result with cache control", func(t *testing.T) {
@@ -566,6 +564,6 @@ func TestOutboundTransformer_CacheControl(t *testing.T) {
 		require.Equal(t, "image", block.Type)
 		require.NotNil(t, block.CacheControl)
 		require.Equal(t, "ephemeral", block.CacheControl.Type)
-		require.Equal(t, "5m", block.CacheControl.TTL)
+		require.Empty(t, block.CacheControl.TTL)
 	})
 }

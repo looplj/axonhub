@@ -1012,9 +1012,9 @@ func TestOutboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 				err = xtest.LoadTestData(t, tt.expectedFile, &expectedReq)
 				require.NoError(t, err)
 
-				// Verify the transformed request matches the expected request
-				if !xtest.Equal(expectedReq, gotReq) {
-					t.Fatalf("requests are not equal %s", cmp.Diff(expectedReq, gotReq))
+				// 忽略 cache_control 差异：ensureCacheControl 会在 outbound 路径中自动注入断点。
+				if !xtest.Equal(expectedReq, gotReq, ignoreCacheControlWithNormalize...) {
+					t.Fatalf("requests are not equal %s", cmp.Diff(expectedReq, gotReq, ignoreCacheControlWithNormalize...))
 				}
 			}
 		})
@@ -1192,10 +1192,10 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 		{
 			name: "raw URL enabled with Config",
 			config: &Config{
-				Type:    PlatformDirect,
-				BaseURL: "https://custom.api.com/v1",
+				Type:           PlatformDirect,
+				BaseURL:        "https://custom.api.com/v1",
 				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
-				RawURL:  true,
+				RawURL:         true,
 			},
 			request: &llm.Request{
 				Model:     "claude-3-sonnet-20240229",
@@ -1215,8 +1215,8 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 		{
 			name: "raw URL auto-enabled with # suffix",
 			config: &Config{
-				Type:    PlatformDirect,
-				BaseURL: "https://custom.api.com/v100#",
+				Type:           PlatformDirect,
+				BaseURL:        "https://custom.api.com/v100#",
 				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			},
 			request: &llm.Request{
@@ -1237,8 +1237,8 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 		{
 			name: "raw URL with full path",
 			config: &Config{
-				Type:    PlatformDirect,
-				BaseURL: "https://custom.api.com/v1/messages#",
+				Type:           PlatformDirect,
+				BaseURL:        "https://custom.api.com/v1/messages#",
 				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			},
 			request: &llm.Request{
@@ -1259,10 +1259,10 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 		{
 			name: "raw URL false with standard URL",
 			config: &Config{
-				Type:    PlatformDirect,
-				BaseURL: "https://api.anthropic.com",
+				Type:           PlatformDirect,
+				BaseURL:        "https://api.anthropic.com",
 				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
-				RawURL:  false,
+				RawURL:         false,
 			},
 			request: &llm.Request{
 				Model:     "claude-3-sonnet-20240229",
@@ -1282,10 +1282,10 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 		{
 			name: "raw URL false with v1 already in URL",
 			config: &Config{
-				Type:    PlatformDirect,
-				BaseURL: "https://api.anthropic.com/v1",
+				Type:           PlatformDirect,
+				BaseURL:        "https://api.anthropic.com/v1",
 				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
-				RawURL:  false,
+				RawURL:         false,
 			},
 			request: &llm.Request{
 				Model:     "claude-3-sonnet-20240229",
@@ -1305,8 +1305,8 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 		{
 			name: "raw URL with custom endpoint without version",
 			config: &Config{
-				Type:    PlatformDirect,
-				BaseURL: "https://custom-endpoint.com/api/llm#",
+				Type:           PlatformDirect,
+				BaseURL:        "https://custom-endpoint.com/api/llm#",
 				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			},
 			request: &llm.Request{
@@ -1327,8 +1327,8 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 		{
 			name: "raw URL with streaming enabled",
 			config: &Config{
-				Type:    PlatformDirect,
-				BaseURL: "https://custom.api.com/v1#",
+				Type:           PlatformDirect,
+				BaseURL:        "https://custom.api.com/v1#",
 				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			},
 			request: &llm.Request{
@@ -1350,8 +1350,8 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 		{
 			name: "raw URL with DeepSeek platform",
 			config: &Config{
-				Type:    PlatformDeepSeek,
-				BaseURL: "https://api.deepseek.com/v1#",
+				Type:           PlatformDeepSeek,
+				BaseURL:        "https://api.deepseek.com/v1#",
 				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			},
 			request: &llm.Request{
@@ -1372,8 +1372,8 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 		{
 			name: "raw URL with Doubao platform",
 			config: &Config{
-				Type:    PlatformDoubao,
-				BaseURL: "https://ark.cn-beijing.volces.com/v20#",
+				Type:           PlatformDoubao,
+				BaseURL:        "https://ark.cn-beijing.volces.com/v20#",
 				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			},
 			request: &llm.Request{

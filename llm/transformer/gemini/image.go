@@ -140,6 +140,11 @@ func buildImageConfig(img *llm.ImageRequest) *ImageConfig {
 		config.AspectRatio = mapSizeToAspectRatio(img.Size)
 	}
 
+	// Map size to imageSize if provided (e.g., "1024x1024" -> "1K", "2048x2048" -> "2K")
+	if img.Size != "" {
+		config.ImageSize = mapSizeToImageSize(img.Size)
+	}
+
 	return config
 }
 
@@ -167,6 +172,36 @@ func mapSizeToAspectRatio(size string) string {
 		}
 
 		return "1:1" // default
+	}
+}
+
+// mapSizeToImageSize maps OpenAI-style size to Gemini imageSize ("1K", "2K", "4K").
+func mapSizeToImageSize(size string) string {
+	switch size {
+	case "256x256", "512x512", "1024x1024",
+		"1024x1536", "1024x1792", "1024x768",
+		"1536x1024", "768x1024", "1792x1024":
+		return "1K"
+	case "2048x2048", "2048x1536", "2048x1152", "1536x2048", "1152x2048":
+		return "2K"
+	case "4096x4096", "4096x3072", "4096x2304", "3072x4096", "2304x4096":
+		return "4K"
+	default:
+		// Check if size contains dimensions and calculate approximate pixel count
+		var width, height int
+		if _, err := fmt.Sscanf(size, "%dx%d", &width, &height); err == nil {
+			pixels := width * height
+			switch {
+			case pixels <= 1024*1024:
+				return "1K"
+			case pixels <= 2048*2048:
+				return "2K"
+			default:
+				return "4K"
+			}
+		}
+
+		return "1K" // default
 	}
 }
 
