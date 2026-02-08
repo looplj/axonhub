@@ -118,9 +118,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [showApiKey, setShowApiKey] = useState(false);
   const [showApiKeysPanel, setShowApiKeysPanel] = useState(false);
   const [apiKeysSearch, setApiKeysSearch] = useState('');
-  const [selectedKeysToRemove, setSelectedKeysToRemove] = useState<Set<string>>(new Set());
+  const [selectedKeysToRemove, setSelectedKeysToRemove] = useState<Set<number>>(new Set());
   const [confirmRemoveSelectedOpen, setConfirmRemoveSelectedOpen] = useState(false);
-  const [confirmRemoveKey, setConfirmRemoveKey] = useState<string | null>(null);
+  const [confirmRemoveKey, setConfirmRemoveKey] = useState<number | null>(null);
   const [showGcpJsonData, setShowGcpJsonData] = useState(false);
   const [authMode, setAuthMode] = useState<'official' | 'third-party'>('official');
   const dialogContentRef = useRef<HTMLDivElement>(null);
@@ -614,7 +614,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       antigravity: 'antigravity',
     };
 
-    let channelTypeForURL: ChannelType | undefined = providerToChannelType[selectedProvider];
+    const channelTypeForURL: ChannelType | undefined = providerToChannelType[selectedProvider];
 
     if (channelTypeForURL) {
       const baseURL = getDefaultBaseURL(channelTypeForURL);
@@ -1885,135 +1885,138 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                     {(() => {
                       const validKeys = (apiKeys || []).map((k) => k.trim()).filter((k) => k.length > 0);
                       const isLastKey = validKeys.length <= 1;
-                      return validKeys
-                      .filter((k) => {
-                        if (!apiKeysSearch.trim()) return true;
-                        const search = apiKeysSearch.trim().toLowerCase();
-                        return k.toLowerCase().includes(search) || k.slice(-4).toLowerCase().includes(search);
-                      })
-                      .map((key, index) => {
-                        const isSelected = selectedKeysToRemove.has(key);
-                        const isDisabled = disabledKeySet.has(key);
-                        const masked = key.length > 8 ? `${key.slice(0, 4)}****${key.slice(-4)}` : `****${key.slice(-4)}`;
+                      return (
+                        <>
+                          {validKeys
+                            .filter((k) => {
+                              if (!apiKeysSearch.trim()) return true;
+                              const search = apiKeysSearch.trim().toLowerCase();
+                              return k.toLowerCase().includes(search) || k.slice(-4).toLowerCase().includes(search);
+                            })
+                            .map((key, index) => {
+                              const isSelected = selectedKeysToRemove.has(index);
+                              const isDisabled = disabledKeySet.has(key);
+                              const masked = key.length > 8 ? `${key.slice(0, 4)}****${key.slice(-4)}` : `****${key.slice(-4)}`;
 
-                        return (
-                          <div key={`${key}-${index}`} className='hover:bg-accent flex items-center justify-between gap-2 rounded-md p-2 text-sm'>
-                            <div className='flex min-w-0 items-center gap-2'>
-                              <Checkbox
-                                checked={isSelected}
-                                disabled={isLastKey}
-                                onCheckedChange={(checked) => {
-                                  setSelectedKeysToRemove((prev) => {
-                                    const next = new Set(prev);
-                                    if (checked) {
-                                      next.add(key);
-                                    } else {
-                                      next.delete(key);
-                                    }
-                                    return next;
-                                  });
-                                }}
-                                aria-label={t('common.columns.selectRow')}
-                              />
+                              return (
+                                <div key={`${key}-${index}`} className='hover:bg-accent flex items-center justify-between gap-2 rounded-md p-2 text-sm'>
+                                  <div className='flex min-w-0 items-center gap-2'>
+                                    <Checkbox
+                                      checked={isSelected}
+                                      disabled={isLastKey}
+                                      onCheckedChange={(checked) => {
+                                        setSelectedKeysToRemove((prev) => {
+                                          const next = new Set(prev);
+                                          if (checked) {
+                                            next.add(index);
+                                          } else {
+                                            next.delete(index);
+                                          }
+                                          return next;
+                                        });
+                                      }}
+                                      aria-label={t('common.columns.selectRow')}
+                                    />
 
-                              <div className='min-w-0'>
-                                <div className='flex min-w-0 items-center gap-2'>
-                                  <code className='bg-muted shrink-0 rounded px-2 py-0.5 font-mono text-xs'>{masked}</code>
-                                  {isDisabled && (
-                                    <Badge variant='destructive' className='h-5 px-2 text-[10px]'>
-                                      {t('channels.dialogs.fields.apiKey.disabled')}
-                                    </Badge>
-                                  )}
-                                </div>
-                                {isDisabled && (
-                                  <p className='text-muted-foreground mt-1 text-xs'>{t('channels.dialogs.fields.apiKey.disabledHint')}</p>
-                                )}
-                              </div>
-                            </div>
-
-                            {isLastKey ? (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className='inline-flex'>
-                                    <Button type='button' variant='ghost' size='sm' className='text-muted-foreground h-7 w-7 p-0' disabled>
-                                      <Trash2 className='h-4 w-4' />
-                                    </Button>
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>{t('channels.dialogs.fields.apiKey.mustKeepOne')}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            ) : (
-                              <Popover open={confirmRemoveKey === key} onOpenChange={(isOpen) => setConfirmRemoveKey(isOpen ? key : null)}>
-                                <PopoverTrigger asChild>
-                                  <Button type='button' variant='ghost' size='sm' className='text-destructive h-7 w-7 p-0'>
-                                    <Trash2 className='h-4 w-4' />
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className='w-72'>
-                                  <div className='flex flex-col gap-3'>
-                                    <p className='text-sm'>{t('channels.dialogs.fields.apiKey.confirmRemoveSingle')}</p>
-                                    <div className='flex justify-end gap-2'>
-                                      <Button size='sm' variant='outline' onClick={() => setConfirmRemoveKey(null)}>
-                                        {t('common.buttons.cancel')}
-                                      </Button>
-                                      <Button size='sm' variant='destructive' onClick={() => removeApiKeys([key])}>
-                                        {t('common.buttons.confirm')}
-                                      </Button>
+                                    <div className='min-w-0'>
+                                      <div className='flex min-w-0 items-center gap-2'>
+                                        <code className='bg-muted shrink-0 rounded px-2 py-0.5 font-mono text-xs'>{masked}</code>
+                                        {isDisabled && (
+                                          <Badge variant='destructive' className='h-5 px-2 text-[10px]'>
+                                            {t('channels.dialogs.fields.apiKey.disabled')}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      {isDisabled && (
+                                        <p className='text-muted-foreground mt-1 text-xs'>{t('channels.dialogs.fields.apiKey.disabledHint')}</p>
+                                      )}
                                     </div>
                                   </div>
-                                </PopoverContent>
-                              </Popover>
-                            )}
+
+                                  {isLastKey ? (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className='inline-flex'>
+                                          <Button type='button' variant='ghost' size='sm' className='text-muted-foreground h-7 w-7 p-0' disabled>
+                                            <Trash2 className='h-4 w-4' />
+                                          </Button>
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>{t('channels.dialogs.fields.apiKey.mustKeepOne')}</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  ) : (
+                                    <Popover open={confirmRemoveKey === index} onOpenChange={(isOpen) => setConfirmRemoveKey(isOpen ? index : null)}>
+                                      <PopoverTrigger asChild>
+                                        <Button type='button' variant='ghost' size='sm' className='text-destructive h-7 w-7 p-0'>
+                                          <Trash2 className='h-4 w-4' />
+                                        </Button>
+                                      </PopoverTrigger>
+                                      <PopoverContent className='w-72'>
+                                        <div className='flex flex-col gap-3'>
+                                          <p className='text-sm'>{t('channels.dialogs.fields.apiKey.confirmRemoveSingle')}</p>
+                                          <div className='flex justify-end gap-2'>
+                                            <Button size='sm' variant='outline' onClick={() => setConfirmRemoveKey(null)}>
+                                              {t('common.buttons.cancel')}
+                                            </Button>
+                                            <Button size='sm' variant='destructive' onClick={() => removeApiKeys([validKeys[index]])}>
+                                              {t('common.buttons.confirm')}
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      </PopoverContent>
+                                    </Popover>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          {/* Action Buttons */}
+                          <div className='mt-2 flex gap-2 border-t pt-2'>
+                            <Popover open={confirmRemoveSelectedOpen} onOpenChange={setConfirmRemoveSelectedOpen}>
+                              <PopoverTrigger asChild>
+                                <Button type='button' variant='destructive' size='sm' className='flex-1' disabled={selectedKeysToRemove.size === 0}>
+                                  <Trash2 className='mr-1 h-4 w-4' />
+                                  {t('channels.dialogs.fields.apiKey.removeSelected', { count: selectedKeysToRemove.size })}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className='w-80' align='end'>
+                                <div className='flex flex-col gap-3'>
+                                  <p className='text-sm'>
+                                    {t('channels.dialogs.fields.apiKey.confirmRemoveSelected', { count: selectedKeysToRemove.size })}
+                                  </p>
+                                  <div className='flex justify-end gap-2'>
+                                    <Button size='sm' variant='outline' onClick={() => setConfirmRemoveSelectedOpen(false)}>
+                                      {t('common.buttons.cancel')}
+                                    </Button>
+                                    <Button size='sm' variant='destructive' onClick={() => removeApiKeys(Array.from(selectedKeysToRemove).map((i) => validKeys[i]))}>
+                                      {t('common.buttons.confirm')}
+                                    </Button>
+                                  </div>
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+
+                            <Button
+                              type='button'
+                              variant='outline'
+                              size='sm'
+                              className='flex-1'
+                              onClick={() => {
+                                setSelectedKeysToRemove(new Set());
+                                setConfirmRemoveSelectedOpen(false);
+                                setConfirmRemoveKey(null);
+                              }}
+                              disabled={selectedKeysToRemove.size === 0}
+                            >
+                              {t('channels.dialogs.fields.apiKey.clearSelection')}
+                            </Button>
                           </div>
-                        );
-                      });
+                        </>
+                      );
                     })()}
                   </div>
                 </ScrollArea>
-
-                {/* Action Buttons */}
-                <div className='mt-2 flex gap-2 border-t pt-2'>
-                  <Popover open={confirmRemoveSelectedOpen} onOpenChange={setConfirmRemoveSelectedOpen}>
-                    <PopoverTrigger asChild>
-                      <Button type='button' variant='destructive' size='sm' className='flex-1' disabled={selectedKeysToRemove.size === 0}>
-                        <Trash2 className='mr-1 h-4 w-4' />
-                        {t('channels.dialogs.fields.apiKey.removeSelected', { count: selectedKeysToRemove.size })}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className='w-80' align='end'>
-                      <div className='flex flex-col gap-3'>
-                        <p className='text-sm'>
-                          {t('channels.dialogs.fields.apiKey.confirmRemoveSelected', { count: selectedKeysToRemove.size })}
-                        </p>
-                        <div className='flex justify-end gap-2'>
-                          <Button size='sm' variant='outline' onClick={() => setConfirmRemoveSelectedOpen(false)}>
-                            {t('common.buttons.cancel')}
-                          </Button>
-                          <Button size='sm' variant='destructive' onClick={() => removeApiKeys(Array.from(selectedKeysToRemove))}>
-                            {t('common.buttons.confirm')}
-                          </Button>
-                        </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-
-                  <Button
-                    type='button'
-                    variant='outline'
-                    size='sm'
-                    className='flex-1'
-                    onClick={() => {
-                      setSelectedKeysToRemove(new Set());
-                      setConfirmRemoveSelectedOpen(false);
-                      setConfirmRemoveKey(null);
-                    }}
-                    disabled={selectedKeysToRemove.size === 0}
-                  >
-                    {t('channels.dialogs.fields.apiKey.clearSelection')}
-                  </Button>
-                </div>
               </div>
 
               {/* Supported Models Panel Content */}
