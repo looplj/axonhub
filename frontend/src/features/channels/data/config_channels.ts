@@ -272,6 +272,14 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-gray-100 text-gray-800 border-gray-200',
     icon: OpenRouter,
   },
+  xiaomi: {
+    channelType: 'xiaomi',
+    baseURL: 'https://api.xiaomimimo.com/v1',
+    defaultModels: ['mimo-v2-flash'],
+    apiFormat: OPENAI_CHAT_COMPLETIONS,
+    color: 'bg-orange-100 text-orange-800 border-orange-200',
+    icon: OpenAI,
+  },
   xai: {
     channelType: 'xai',
     baseURL: 'https://api.x.ai/v1',
@@ -543,6 +551,7 @@ export type Provider =
   | 'doubao'
   | 'minimax'
   | 'longcat'
+  | 'xiaomi'
   | 'xai'
   | 'openrouter'
   | 'vercel'
@@ -589,6 +598,7 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   minimax_anthropic: 'minimax',
   longcat: 'longcat',
   longcat_anthropic: 'longcat',
+  xiaomi: 'xiaomi',
   xai: 'xai',
   openrouter: 'openrouter',
   vercel: 'vercel',

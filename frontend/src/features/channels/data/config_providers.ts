@@ -187,6 +187,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     color: 'bg-gray-100 text-gray-800 border-gray-200',
     channelTypes: ['openrouter'],
   },
+  xiaomi: {
+    provider: 'xiaomi',
+    icon: OpenAI,
+    color: 'bg-orange-100 text-orange-800 border-orange-200',
+    channelTypes: ['xiaomi'],
+  },
   vercel: {
     provider: 'vercel',
     icon: Vercel,

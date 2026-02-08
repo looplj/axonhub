@@ -84,6 +84,10 @@ func TestType_SupportsGoogleNativeTools(t *testing.T) {
 			want: false,
 		},
 		{
+			name: "xiaomi",
+			want: false,
+		},
+		{
 			name: "anthropic",
 			want: false,
 		},
