@@ -120,13 +120,17 @@ func TestSimulator_OpenAIToAnthropic_ContentTextSemantic(t *testing.T) {
 	err = json.Unmarshal(finalBodyBytes, &anthropicReqBody)
 	require.NoError(t, err)
 
-	messages := anthropicReqBody["messages"].([]any)
+	messages, ok := anthropicReqBody["messages"].([]any)
+	require.True(t, ok, "anthropic messages 应为数组")
 	require.Len(t, messages, 1)
-	msg := messages[0].(map[string]any)
+	msg, ok := messages[0].(map[string]any)
+	require.True(t, ok, "anthropic message 元素应为对象")
 
-	content := msg["content"].([]any)
+	content, ok := msg["content"].([]any)
+	require.True(t, ok, "anthropic content 应为数组")
 	require.NotEmpty(t, content)
-	block := content[0].(map[string]any)
+	block, ok := content[0].(map[string]any)
+	require.True(t, ok, "anthropic content block 应为对象")
 	assert.Equal(t, "Hello, how are you?", block["text"])
 }
 
