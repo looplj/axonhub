@@ -812,6 +812,8 @@ func calculateMinRequests(totalItems int, avgRequests float64) int {
 	return minReq
 }
 func calculateConfidenceLevel(requestCount int, median float64) string {
+	// When median is 0, we cannot calculate a meaningful ratio (requestCount/median),
+	// so we default to low confidence since we lack sufficient data for reliable inference.
 	if median == 0 {
 		return "low"
 	}

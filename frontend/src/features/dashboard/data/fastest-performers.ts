@@ -35,12 +35,6 @@ export type FastestModel = z.infer<typeof fastestModelSchema>;
 export type FastestChannelsInput = z.infer<typeof fastestChannelsInputSchema>;
 export type ConfidenceLevel = 'high' | 'medium' | 'low';
 
-export function getConfidenceLevel(requestCount: number, medianCount: number): ConfidenceLevel {
-  if (requestCount >= medianCount * 2) return 'high';
-  if (requestCount >= medianCount * 0.5) return 'medium';
-  return 'low';
-}
-
 // GraphQL queries
 const FASTEST_CHANNELS_QUERY = `
   query GetFastestChannels($input: FastestChannelsInput!) {
