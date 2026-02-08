@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TooltipProvider } from '@/components/ui/tooltip';
+
 import { Loader2 } from 'lucide-react';
 import { formatNumber } from '@/utils/format-number';
 import { safeNumber, safeToFixed, sanitizeChartData, type ChartData } from '../utils/chart-helpers';
@@ -22,7 +22,6 @@ export interface LegendItem {
   requestCount: number;
   color: string;
   index: number;
-  confidenceLevel?: 'high' | 'medium' | 'low';
 }
 
 interface HorizontalBarChartProps {
@@ -91,32 +90,29 @@ function HorizontalBarChart({ data, total, height = 280, noDataLabel }: Horizont
 
 function ChartLegend({ items }: { items: LegendItem[] }) {
   return (
-    <TooltipProvider>
-      <div className='grid gap-3'>
-        {items.map((item, index) => {
-          return (
-            <div key={`${item.name}-${index}`} className='grid w-full grid-cols-[auto_auto_1fr_auto] items-center gap-3'>
-              <span className='text-muted-foreground w-8 text-right text-sm font-semibold tabular-nums'>
-                {item.index.toString().padStart(2, '0')}.
-              </span>
-              <span className='h-2.5 w-2.5 rounded-full' style={{ backgroundColor: item.color }} />
-              <span className='text-foreground min-w-0 text-sm font-medium break-words'>{item.name}</span>
-              <div className='text-right leading-tight'>
-                <div className='text-foreground text-sm font-medium tabular-nums'>{safeToFixed(item.throughput)} tok/s</div>
-                <div className='text-muted-foreground text-xs tabular-nums'>{formatNumber(safeNumber(item.requestCount))} req</div>
-              </div>
+    <div className='grid gap-3'>
+      {items.map((item, index) => {
+        return (
+          <div key={`${item.name}-${index}`} className='grid w-full grid-cols-[auto_auto_1fr_auto] items-center gap-3'>
+            <span className='text-muted-foreground w-8 text-right text-sm font-semibold tabular-nums'>
+              {item.index.toString().padStart(2, '0')}.
+            </span>
+            <span className='h-2.5 w-2.5 rounded-full' style={{ backgroundColor: item.color }} />
+            <span className='text-foreground min-w-0 text-sm font-medium break-words'>{item.name}</span>
+            <div className='text-right leading-tight'>
+              <div className='text-foreground text-sm font-medium tabular-nums'>{safeToFixed(item.throughput)} tok/s</div>
+              <div className='text-muted-foreground text-xs tabular-nums'>{formatNumber(safeNumber(item.requestCount))} req</div>
             </div>
-          );
-        })}
-      </div>
-    </TooltipProvider>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
 interface ThroughputData {
   throughput?: number;
   requestCount?: number;
-  confidenceLevel?: 'high' | 'medium' | 'low';
 }
 
 interface FastestPerformersCardProps<T extends ThroughputData> {
@@ -128,7 +124,7 @@ interface FastestPerformersCardProps<T extends ThroughputData> {
   titleIcon?: React.ReactNode;
 }
 
-export function FastestPerformersCard<T>({
+export function FastestPerformersCard<T extends ThroughputData>({
   title,
   description,
   noDataLabel,
@@ -178,7 +174,6 @@ export function FastestPerformersCard<T>({
         name: getName(item) ?? 'Unknown',
         throughput: safeNumber(item.throughput ?? 0),
         requestCount: safeNumber(item.requestCount ?? 0),
-        confidenceLevel: item.confidenceLevel,
       }))
   ).sort((a, b) => b.throughput - a.throughput);
 

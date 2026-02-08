@@ -2,7 +2,6 @@ export interface ChartData {
   name: string;
   throughput: number;
   requestCount: number;
-  confidenceLevel?: 'high' | 'medium' | 'low';
 }
 
 export function safeNumber(value: unknown): number {
@@ -20,7 +19,6 @@ export function sanitizeChartData(items: ChartData[]): ChartData[] {
       name: String(item.name ?? 'Unknown'),
       throughput: safeNumber(item.throughput),
       requestCount: safeNumber(item.requestCount),
-      confidenceLevel: item.confidenceLevel,
     }))
     .filter((item) => Number.isFinite(item.throughput));
 }
