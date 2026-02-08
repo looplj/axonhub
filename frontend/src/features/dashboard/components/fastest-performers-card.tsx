@@ -78,7 +78,7 @@ function HorizontalBarChart({ data, total, height = 280, noDataLabel }: Horizont
           tickLine={false}
           axisLine={false}
         />
-        <RechartsTooltip content={tooltipContent} cursor={{ fill: 'var(--muted)' }} />
+        <Tooltip content={tooltipContent} cursor={{ fill: 'var(--muted)' }} />
         <Bar dataKey='throughput' radius={[0, 4, 4, 0]}>
           {safeData.map((_, index) => (
             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
