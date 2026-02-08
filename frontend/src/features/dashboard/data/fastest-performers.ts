@@ -22,47 +22,6 @@ export const fastestModelSchema = z.object({
   requestCount: z.number().nullable().default(0),
 });
 
-// Schema definitions for expanded queries
-export const fastestModelInChannelSchema = z.object({
-  modelId: z.string(),
-  modelName: z.string(),
-  throughput: z.number().nullable().default(0),
-  tokensCount: z.number().nullable().default(0),
-  latencyMs: z.number().nullable().default(0),
-  requestCount: z.number().nullable().default(0),
-});
-
-export const fastestChannelExpandedSchema = z.object({
-  channelId: z.string(),
-  channelName: z.string(),
-  channelType: z.string(),
-  throughput: z.number().nullable().default(0),
-  tokensCount: z.number().nullable().default(0),
-  latencyMs: z.number().nullable().default(0),
-  requestCount: z.number().nullable().default(0),
-  models: z.array(fastestModelInChannelSchema),
-});
-
-export const fastestChannelForModelSchema = z.object({
-  channelId: z.string(),
-  channelName: z.string(),
-  channelType: z.string(),
-  throughput: z.number().nullable().default(0),
-  tokensCount: z.number().nullable().default(0),
-  latencyMs: z.number().nullable().default(0),
-  requestCount: z.number().nullable().default(0),
-});
-
-export const fastestModelExpandedSchema = z.object({
-  modelId: z.string(),
-  modelName: z.string(),
-  throughput: z.number().nullable().default(0),
-  tokensCount: z.number().nullable().default(0),
-  latencyMs: z.number().nullable().default(0),
-  requestCount: z.number().nullable().default(0),
-  channels: z.array(fastestChannelForModelSchema),
-});
-
 export const fastestChannelsInputSchema = z.object({
   timeWindow: z.string(),
 });
@@ -70,10 +29,6 @@ export const fastestChannelsInputSchema = z.object({
 // Type exports
 export type FastestChannel = z.infer<typeof fastestChannelSchema>;
 export type FastestModel = z.infer<typeof fastestModelSchema>;
-export type FastestModelInChannel = z.infer<typeof fastestModelInChannelSchema>;
-export type FastestChannelExpanded = z.infer<typeof fastestChannelExpandedSchema>;
-export type FastestChannelForModel = z.infer<typeof fastestChannelForModelSchema>;
-export type FastestModelExpanded = z.infer<typeof fastestModelExpandedSchema>;
 export type FastestChannelsInput = z.infer<typeof fastestChannelsInputSchema>;
 
 // GraphQL queries
@@ -100,50 +55,6 @@ const FASTEST_MODELS_QUERY = `
       tokensCount
       latencyMs
       requestCount
-    }
-  }
-`;
-
-const FASTEST_CHANNELS_EXPANDED_QUERY = `
-  query GetFastestChannelsExpanded($input: FastestChannelsInput!) {
-    fastestChannelsExpanded(input: $input) {
-      channelId
-      channelName
-      channelType
-      throughput
-      tokensCount
-      latencyMs
-      requestCount
-      models {
-        modelId
-        modelName
-        throughput
-        tokensCount
-        latencyMs
-        requestCount
-      }
-    }
-  }
-`;
-
-const FASTEST_MODELS_EXPANDED_QUERY = `
-  query GetFastestModelsExpanded($input: FastestChannelsInput!) {
-    fastestModelsExpanded(input: $input) {
-      modelId
-      modelName
-      throughput
-      tokensCount
-      latencyMs
-      requestCount
-      channels {
-        channelId
-        channelName
-        channelType
-        throughput
-        tokensCount
-        latencyMs
-        requestCount
-      }
     }
   }
 `;
@@ -179,33 +90,4 @@ export function useFastestModels(timeWindow: string = '24h') {
   });
 }
 
-// Expanded query hooks (only run when enabled)
-export function useFastestChannelsExpanded(timeWindow: string = '24h', enabled: boolean = false) {
-  return useQuery({
-    queryKey: ['fastestChannelsExpanded', timeWindow],
-    queryFn: async () => {
-      const data = await graphqlRequest<{ fastestChannelsExpanded: FastestChannelExpanded[] }>(
-        FASTEST_CHANNELS_EXPANDED_QUERY,
-        { input: { timeWindow } }
-      );
-      return data.fastestChannelsExpanded.map((item) => fastestChannelExpandedSchema.parse(item));
-    },
-    enabled,
-    refetchInterval: 30000,
-  });
-}
 
-export function useFastestModelsExpanded(timeWindow: string = '24h', enabled: boolean = false) {
-  return useQuery({
-    queryKey: ['fastestModelsExpanded', timeWindow],
-    queryFn: async () => {
-      const data = await graphqlRequest<{ fastestModelsExpanded: FastestModelExpanded[] }>(
-        FASTEST_MODELS_EXPANDED_QUERY,
-        { input: { timeWindow } }
-      );
-      return data.fastestModelsExpanded.map((item) => fastestModelExpandedSchema.parse(item));
-    },
-    enabled,
-    refetchInterval: 30000,
-  });
-}
