@@ -26,23 +26,19 @@ export function MobileHeaderControls() {
 
       <SidebarMenu>
         <SidebarMenuItem>
-          <SidebarMenuButton asChild>
-            <div className='flex items-center gap-2' data-testid='mobile-language-switch'>
-              <LanguageSwitch />
-              <span>{t('language.toggle')}</span>
-            </div>
-          </SidebarMenuButton>
+          <div className='flex items-center justify-between px-2 py-1.5' data-testid='mobile-language-switch'>
+            <span className='text-sm'>{t('language.toggle')}</span>
+            <LanguageSwitch />
+          </div>
         </SidebarMenuItem>
       </SidebarMenu>
 
       <SidebarMenu>
         <SidebarMenuItem>
-          <SidebarMenuButton asChild>
-            <div className='flex items-center gap-2' data-testid='mobile-theme-switch'>
-              <ThemeSwitch />
-              <span>{t('theme.toggle')}</span>
-            </div>
-          </SidebarMenuButton>
+          <div className='flex items-center justify-between px-2 py-1.5' data-testid='mobile-theme-switch'>
+            <span className='text-sm'>{t('theme.toggle')}</span>
+            <ThemeSwitch />
+          </div>
         </SidebarMenuItem>
       </SidebarMenu>
     </>
