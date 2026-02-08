@@ -25,9 +25,9 @@ import {
   AiHubMix,
   Cerebras,
   Claude,
+  XiaomiMiMo
 } from '@lobehub/icons';
 import { NanoGPTIcon } from '../components/nanogpt-icon';
-import { MimoIcon } from '../components/mimo-icon';
 import { CHANNEL_CONFIGS } from './config_channels';
 import { ApiFormat, ChannelType } from './schema';
 
@@ -190,7 +190,7 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
   },
   xiaomi: {
     provider: 'xiaomi',
-    icon: MimoIcon,
+    icon: XiaomiMiMo,
     color: 'bg-orange-100 text-orange-800 border-orange-200',
     channelTypes: ['xiaomi'],
   },
