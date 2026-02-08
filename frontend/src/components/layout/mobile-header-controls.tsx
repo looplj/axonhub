@@ -15,7 +15,7 @@ export function MobileHeaderControls() {
         <SidebarMenuItem>
           <PermissionGuard requiredSystemScope='read_system'>
             <SidebarMenuButton asChild>
-              <Link to='/system'>
+              <Link to='/system' data-testid='mobile-profile-button'>
                 <IconSettings className='h-4 w-4' />
                 <span>{t('sidebar.settings')}</span>
               </Link>
@@ -27,7 +27,7 @@ export function MobileHeaderControls() {
       <SidebarMenu>
         <SidebarMenuItem>
           <SidebarMenuButton asChild>
-            <div className='flex items-center gap-2'>
+            <div className='flex items-center gap-2' data-testid='mobile-language-switch'>
               <LanguageSwitch />
               <span>{t('language.toggle')}</span>
             </div>
@@ -38,7 +38,7 @@ export function MobileHeaderControls() {
       <SidebarMenu>
         <SidebarMenuItem>
           <SidebarMenuButton asChild>
-            <div className='flex items-center gap-2'>
+            <div className='flex items-center gap-2' data-testid='mobile-theme-switch'>
               <ThemeSwitch />
               <span>{t('theme.toggle')}</span>
             </div>
