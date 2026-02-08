@@ -525,13 +525,14 @@ type ComplexityRoot struct {
 	}
 
 	FastestChannel struct {
-		ChannelID    func(childComplexity int) int
-		ChannelName  func(childComplexity int) int
-		ChannelType  func(childComplexity int) int
-		LatencyMs    func(childComplexity int) int
-		RequestCount func(childComplexity int) int
-		Throughput   func(childComplexity int) int
-		TokensCount  func(childComplexity int) int
+		ChannelID       func(childComplexity int) int
+		ChannelName     func(childComplexity int) int
+		ChannelType     func(childComplexity int) int
+		ConfidenceLevel func(childComplexity int) int
+		LatencyMs       func(childComplexity int) int
+		RequestCount    func(childComplexity int) int
+		Throughput      func(childComplexity int) int
+		TokensCount     func(childComplexity int) int
 	}
 
 	FastestChannelForModel struct {
@@ -545,12 +546,13 @@ type ComplexityRoot struct {
 	}
 
 	FastestModel struct {
-		LatencyMs    func(childComplexity int) int
-		ModelID      func(childComplexity int) int
-		ModelName    func(childComplexity int) int
-		RequestCount func(childComplexity int) int
-		Throughput   func(childComplexity int) int
-		TokensCount  func(childComplexity int) int
+		ConfidenceLevel func(childComplexity int) int
+		LatencyMs       func(childComplexity int) int
+		ModelID         func(childComplexity int) int
+		ModelName       func(childComplexity int) int
+		RequestCount    func(childComplexity int) int
+		Throughput      func(childComplexity int) int
+		TokensCount     func(childComplexity int) int
 	}
 
 	FastestModelInChannel struct {
@@ -3474,6 +3476,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.FastestChannel.ChannelType(childComplexity), true
+	case "FastestChannel.confidenceLevel":
+		if e.complexity.FastestChannel.ConfidenceLevel == nil {
+			break
+		}
+
+		return e.complexity.FastestChannel.ConfidenceLevel(childComplexity), true
 	case "FastestChannel.latencyMs":
 		if e.complexity.FastestChannel.LatencyMs == nil {
 			break
@@ -3542,6 +3550,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.FastestChannelForModel.TokensCount(childComplexity), true
 
+	case "FastestModel.confidenceLevel":
+		if e.complexity.FastestModel.ConfidenceLevel == nil {
+			break
+		}
+
+		return e.complexity.FastestModel.ConfidenceLevel(childComplexity), true
 	case "FastestModel.latencyMs":
 		if e.complexity.FastestModel.LatencyMs == nil {
 			break
@@ -19625,6 +19639,35 @@ func (ec *executionContext) fieldContext_FastestChannel_requestCount(_ context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _FastestChannel_confidenceLevel(ctx context.Context, field graphql.CollectedField, obj *FastestChannel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestChannel_confidenceLevel,
+		func(ctx context.Context) (any, error) {
+			return obj.ConfidenceLevel, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestChannel_confidenceLevel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestChannel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _FastestChannelForModel_channelId(ctx context.Context, field graphql.CollectedField, obj *FastestChannelForModel) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -19997,6 +20040,35 @@ func (ec *executionContext) fieldContext_FastestModel_requestCount(_ context.Con
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FastestModel_confidenceLevel(ctx context.Context, field graphql.CollectedField, obj *FastestModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FastestModel_confidenceLevel,
+		func(ctx context.Context) (any, error) {
+			return obj.ConfidenceLevel, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FastestModel_confidenceLevel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FastestModel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -30948,6 +31020,8 @@ func (ec *executionContext) fieldContext_Query_fastestChannels(ctx context.Conte
 				return ec.fieldContext_FastestChannel_latencyMs(ctx, field)
 			case "requestCount":
 				return ec.fieldContext_FastestChannel_requestCount(ctx, field)
+			case "confidenceLevel":
+				return ec.fieldContext_FastestChannel_confidenceLevel(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type FastestChannel", field.Name)
 		},
@@ -31003,6 +31077,8 @@ func (ec *executionContext) fieldContext_Query_fastestModels(ctx context.Context
 				return ec.fieldContext_FastestModel_latencyMs(ctx, field)
 			case "requestCount":
 				return ec.fieldContext_FastestModel_requestCount(ctx, field)
+			case "confidenceLevel":
+				return ec.fieldContext_FastestModel_confidenceLevel(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type FastestModel", field.Name)
 		},
@@ -70170,6 +70246,11 @@ func (ec *executionContext) _FastestChannel(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "confidenceLevel":
+			out.Values[i] = ec._FastestChannel_confidenceLevel(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -70300,6 +70381,11 @@ func (ec *executionContext) _FastestModel(ctx context.Context, sel ast.Selection
 			}
 		case "requestCount":
 			out.Values[i] = ec._FastestModel_requestCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "confidenceLevel":
+			out.Values[i] = ec._FastestModel_confidenceLevel(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

@@ -747,220 +747,6 @@ func (r *queryResolver) ChannelSuccessRates(ctx context.Context) ([]*ChannelSucc
 	return response, nil
 }
 
-// FastestChannels is the resolver for the fastestChannels field.
-// Returns the fastest channels by throughput (tokens per second) based on completed request executions.
-// Groups by channel_id and calculates throughput from usage_log.completion_tokens and request_execution.metrics_latency_ms.
-func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChannelsInput) ([]*FastestChannel, error) {
-	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
-
-	// Validate and set default limit
-	if input.Limit == nil || *input.Limit <= 0 {
-		input.Limit = new(int)
-		*input.Limit = 5
-	}
-	if *input.Limit > 100 {
-		*input.Limit = 100
-	}
-
-	// Parse time window using calendar periods (like Token Statistics)
-	loc := r.systemService.TimeLocation(ctx)
-	period := xtime.GetCalendarPeriods(loc)
-
-	var since time.Time
-	switch input.TimeWindow {
-	case "day":
-		since = period.Today.Start
-	case "week":
-		since = period.ThisWeek.Start
-	case "month":
-		since = period.ThisMonth.Start
-	default:
-		since = period.Today.Start // Default to day
-	}
-
-	// Query structure for aggregation
-	type channelStats struct {
-		ChannelID    int     `json:"channel_id"`
-		ChannelName  string  `json:"channel_name"`
-		ChannelType  string  `json:"channel_type"`
-		TokensCount  int64   `json:"tokens_count"`
-		LatencyMs    int64   `json:"latency_ms"`
-		RequestCount int64   `json:"request_count"`
-		Throughput   float64 `json:"throughput"`
-	}
-
-	var results []channelStats
-
-	dbDriver := r.client.Driver()
-	db, ok := dbDriver.(*sql.Driver)
-	if !ok {
-		return nil, fmt.Errorf("failed to get underlying SQL driver")
-	}
-
-	// Detect dialect to use appropriate placeholder syntax
-	// PostgreSQL uses $1, $2, etc. while SQLite uses ? placeholders
-	dialectName := db.Dialect()
-	useDollarPlaceholders := dialectName == dialect.Postgres
-
-	// Build query using shared helper function
-	query := buildThroughputQuery(
-		useDollarPlaceholders,
-		"se.channel_id,\n    c.name as channel_name,\n    c.type as channel_type,",
-		"JOIN channels c ON se.channel_id = c.id",
-		"se.channel_id, c.name, c.type",
-		*input.Limit,
-	)
-
-	rows, err := db.DB().QueryContext(ctx, query, since.UTC())
-	if err != nil {
-		return nil, fmt.Errorf("failed to query fastest channels: %w", err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var stat channelStats
-		if err := rows.Scan(
-			&stat.ChannelID,
-			&stat.ChannelName,
-			&stat.ChannelType,
-			&stat.TokensCount,
-			&stat.LatencyMs,
-			&stat.RequestCount,
-			&stat.Throughput,
-		); err != nil {
-			return nil, fmt.Errorf("failed to scan channel stats: %w", err)
-		}
-		results = append(results, stat)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating rows: %w", err)
-	}
-
-	if len(results) == 0 {
-		return []*FastestChannel{}, nil
-	}
-
-	// Build response
-	return lo.Map(results, func(item channelStats, _ int) *FastestChannel {
-		return &FastestChannel{
-			ChannelID:    objects.GUID{Type: "Channel", ID: item.ChannelID},
-			ChannelName:  item.ChannelName,
-			ChannelType:  item.ChannelType,
-			Throughput:   item.Throughput,
-			TokensCount:  int(item.TokensCount),
-			LatencyMs:    int(item.LatencyMs),
-			RequestCount: int(item.RequestCount),
-		}
-	}), nil
-}
-
-// FastestModels is the resolver for the fastestModels field.
-// Returns the fastest models by throughput (tokens per second) based on completed request executions.
-// Groups by request.model_id (AxonHub model) and calculates throughput from usage_log.completion_tokens and request_execution.metrics_latency_ms.
-func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannelsInput) ([]*FastestModel, error) {
-	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
-
-	// Validate and set default limit
-	if input.Limit == nil || *input.Limit <= 0 {
-		input.Limit = new(int)
-		*input.Limit = 5
-	}
-	if *input.Limit > 100 {
-		*input.Limit = 100
-	}
-
-	// Parse time window using calendar periods (like Token Statistics)
-	loc := r.systemService.TimeLocation(ctx)
-	period := xtime.GetCalendarPeriods(loc)
-
-	var since time.Time
-	switch input.TimeWindow {
-	case "day":
-		since = period.Today.Start
-	case "week":
-		since = period.ThisWeek.Start
-	case "month":
-		since = period.ThisMonth.Start
-	default:
-		since = period.Today.Start // Default to day
-	}
-
-	// Query structure for aggregation
-	type modelStats struct {
-		ModelID      string  `json:"model_id"`
-		ModelName    string  `json:"model_name"`
-		TokensCount  int64   `json:"tokens_count"`
-		LatencyMs    int64   `json:"latency_ms"`
-		RequestCount int64   `json:"request_count"`
-		Throughput   float64 `json:"throughput"`
-	}
-
-	var results []modelStats
-
-	// Use raw SQL with CTE and window function to select only successful execution per request
-	dbDriver := r.client.Driver()
-	db, ok := dbDriver.(*sql.Driver)
-	if !ok {
-		return nil, fmt.Errorf("failed to get underlying SQL driver")
-	}
-
-	// Detect dialect to use appropriate placeholder syntax
-	// PostgreSQL uses $1, $2, etc. while SQLite uses ? placeholders
-	dialectName := db.Dialect()
-	useDollarPlaceholders := dialectName == dialect.Postgres
-
-	// Build query with dialect-aware timestamp placeholder
-	query := buildThroughputQuery(
-		useDollarPlaceholders,
-		"r.model_id,\n    m.name as model_name,",
-		"JOIN requests r ON se.request_id = r.id\nJOIN models m ON r.model_id = m.model_id",
-		"r.model_id, m.name",
-		*input.Limit,
-	)
-
-	rows, err := db.DB().QueryContext(ctx, query, since.UTC())
-	if err != nil {
-		return nil, fmt.Errorf("failed to query fastest models: %w", err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var stat modelStats
-		if err := rows.Scan(
-			&stat.ModelID,
-			&stat.ModelName,
-			&stat.TokensCount,
-			&stat.LatencyMs,
-			&stat.RequestCount,
-			&stat.Throughput,
-		); err != nil {
-			return nil, fmt.Errorf("failed to scan model stats: %w", err)
-		}
-		results = append(results, stat)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating rows: %w", err)
-	}
-
-	if len(results) == 0 {
-		return []*FastestModel{}, nil
-	}
-
-	// Build response
-	return lo.Map(results, func(item modelStats, _ int) *FastestModel {
-		return &FastestModel{
-			ModelID:      item.ModelID,
-			ModelName:    item.ModelName,
-			Throughput:   item.Throughput,
-			TokensCount:  int(item.TokensCount),
-			LatencyMs:    int(item.LatencyMs),
-			RequestCount: int(item.RequestCount),
-		}
-	}), nil
-}
-
 // !!! WARNING !!!
 // The code below was going to be deleted when updating resolvers. It has been copied here so you have
 // one last chance to move it out of harms way if you want. There are two reasons this happens:
@@ -968,8 +754,6 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 //    it when you're done.
 //  - You have helper methods in this file. Move them out to keep these resolver files clean.
 
-// buildThroughputQuery creates a SQL query for calculating throughput statistics.
-// This helper reduces duplication between FastestChannels and FastestModels queries.
 func buildThroughputQuery(useDollarPlaceholders bool, selectColumns, joinClause, groupBy string, limit int) string {
 	placeholder := "$1"
 	if !useDollarPlaceholders {
@@ -1010,4 +794,323 @@ WHERE se.rn = 1
 GROUP BY ` + groupBy + `
 ORDER BY throughput DESC
 LIMIT ` + fmt.Sprintf("%d", limit)
+}
+func calculateMinRequests(totalItems int, avgRequests float64) int {
+	if totalItems <= 5 {
+		return 1 // Show everything for small datasets
+	}
+	if totalItems <= 10 {
+		return 5 // Minimum 5 requests
+	}
+	minReq := int(avgRequests * 0.10) // 10% of average
+	if minReq < 10 {
+		return 10
+	}
+	if minReq > 100 {
+		return 100
+	}
+	return minReq
+}
+func calculateConfidenceLevel(requestCount int, median float64) string {
+	if median == 0 {
+		return "low"
+	}
+	ratio := float64(requestCount) / median
+	if ratio >= 2.0 {
+		return "high"
+	}
+	if ratio >= 0.5 {
+		return "medium"
+	}
+	return "low"
+}
+
+// FastestChannels is the resolver for the fastestChannels field.
+// Returns the fastest channels by throughput (tokens per second) based on completed request executions.
+// Groups by channel_id and calculates throughput from usage_log.completion_tokens and request_execution.metrics_latency_ms.
+func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChannelsInput) ([]*FastestChannel, error) {
+	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	// Validate and set default limit
+	if input.Limit == nil || *input.Limit <= 0 {
+		input.Limit = new(int)
+		*input.Limit = 5
+	}
+	if *input.Limit > 100 {
+		*input.Limit = 100
+	}
+
+	// Parse time window using calendar periods (like Token Statistics)
+	loc := r.systemService.TimeLocation(ctx)
+	period := xtime.GetCalendarPeriods(loc)
+
+	var since time.Time
+	switch input.TimeWindow {
+	case "day":
+		since = period.Today.Start
+	case "week":
+		since = period.ThisWeek.Start
+	case "month":
+		since = period.ThisMonth.Start
+	default:
+		since = period.Today.Start // Default to day
+	}
+
+	// Query structure for aggregation
+
+	type channelStats struct {
+		ChannelID    int     `json:"channel_id"`
+		ChannelName  string  `json:"channel_name"`
+		ChannelType  string  `json:"channel_type"`
+		TokensCount  int64   `json:"tokens_count"`
+		LatencyMs    int64   `json:"latency_ms"`
+		RequestCount int64   `json:"request_count"`
+		Throughput   float64 `json:"throughput"`
+	}
+	var results []channelStats
+	dbDriver := r.client.Driver()
+	db, ok := dbDriver.(*sql.Driver)
+	if !ok {
+		return nil, fmt.Errorf("failed to get underlying SQL driver")
+	}
+
+	// Detect dialect to use appropriate placeholder syntax
+	// PostgreSQL uses $1, $2, etc. while SQLite uses ? placeholders
+	dialectName := db.Dialect()
+	useDollarPlaceholders := dialectName == dialect.Postgres
+
+	// Build query using shared helper function
+	query := buildThroughputQuery(
+		useDollarPlaceholders,
+		"se.channel_id,\n    c.name as channel_name,\n    c.type as channel_type,",
+		"JOIN channels c ON se.channel_id = c.id",
+		"se.channel_id, c.name, c.type",
+		*input.Limit,
+	)
+
+	rows, err := db.DB().QueryContext(ctx, query, since.UTC())
+	if err != nil {
+		return nil, fmt.Errorf("failed to query fastest channels: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+
+		var stat channelStats
+		if err := rows.Scan(
+			&stat.ChannelID,
+			&stat.ChannelName,
+			&stat.ChannelType,
+			&stat.TokensCount,
+			&stat.LatencyMs,
+			&stat.RequestCount,
+			&stat.Throughput,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan channel stats: %w", err)
+		}
+		results = append(results, stat)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating rows: %w", err)
+	}
+
+	if len(results) == 0 {
+		return []*FastestChannel{}, nil
+	}
+
+	// Calculate statistics for dynamic threshold
+	totalRequests := 0
+	for _, item := range results {
+		totalRequests += int(item.RequestCount)
+	}
+	avgRequests := float64(totalRequests) / float64(len(results))
+
+	// Calculate dynamic minimum threshold
+	minThreshold := calculateMinRequests(len(results), avgRequests)
+
+	// Filter results by minimum request count
+	filteredResults := lo.Filter(results, func(item channelStats, _ int) bool {
+		return int(item.RequestCount) >= minThreshold
+	})
+
+	// If filtering removed too many results, keep at least the top items
+	if len(filteredResults) == 0 && len(results) > 0 {
+		filteredResults = results[:min(len(results), int(*input.Limit))]
+	}
+
+	// Calculate median for confidence level
+	if len(filteredResults) > 0 {
+		requestCounts := lo.Map(filteredResults, func(item channelStats, _ int) int {
+			return int(item.RequestCount)
+		})
+		sort.Ints(requestCounts)
+
+		var median float64
+		mid := len(requestCounts) / 2
+		if len(requestCounts)%2 == 0 {
+			median = float64(requestCounts[mid-1]+requestCounts[mid]) / 2
+		} else {
+			median = float64(requestCounts[mid])
+		}
+
+		// Build response with confidence level
+		return lo.Map(filteredResults, func(item channelStats, _ int) *FastestChannel {
+			return &FastestChannel{
+				ChannelID:       objects.GUID{Type: "Channel", ID: item.ChannelID},
+				ChannelName:     item.ChannelName,
+				ChannelType:     item.ChannelType,
+				Throughput:      item.Throughput,
+				TokensCount:     int(item.TokensCount),
+				LatencyMs:       int(item.LatencyMs),
+				RequestCount:    int(item.RequestCount),
+				ConfidenceLevel: calculateConfidenceLevel(int(item.RequestCount), median),
+			}
+		}), nil
+	}
+
+	return []*FastestChannel{}, nil
+}
+
+// FastestModels is the resolver for the fastestModels field.
+// Returns the fastest models by throughput (tokens per second) based on completed request executions.
+// Groups by request.model_id (AxonHub model) and calculates throughput from usage_log.completion_tokens and request_execution.metrics_latency_ms.
+func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannelsInput) ([]*FastestModel, error) {
+	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	// Validate and set default limit
+	if input.Limit == nil || *input.Limit <= 0 {
+		input.Limit = new(int)
+		*input.Limit = 5
+	}
+	if *input.Limit > 100 {
+		*input.Limit = 100
+	}
+
+	// Parse time window using calendar periods (like Token Statistics)
+	loc := r.systemService.TimeLocation(ctx)
+	period := xtime.GetCalendarPeriods(loc)
+
+	var since time.Time
+	switch input.TimeWindow {
+	case "day":
+		since = period.Today.Start
+	case "week":
+		since = period.ThisWeek.Start
+	case "month":
+		since = period.ThisMonth.Start
+	default:
+		since = period.Today.Start // Default to day
+	}
+
+	// Query structure for aggregation
+
+	type modelStats struct {
+		ModelID      string  `json:"model_id"`
+		ModelName    string  `json:"model_name"`
+		TokensCount  int64   `json:"tokens_count"`
+		LatencyMs    int64   `json:"latency_ms"`
+		RequestCount int64   `json:"request_count"`
+		Throughput   float64 `json:"throughput"`
+	}
+	var results []modelStats
+	dbDriver := r.client.Driver()
+	db, ok := dbDriver.(*sql.Driver)
+	if !ok {
+		return nil, fmt.Errorf("failed to get underlying SQL driver")
+	}
+
+	// Detect dialect to use appropriate placeholder syntax
+	// PostgreSQL uses $1, $2, etc. while SQLite uses ? placeholders
+	dialectName := db.Dialect()
+	useDollarPlaceholders := dialectName == dialect.Postgres
+
+	// Build query with dialect-aware timestamp placeholder
+	query := buildThroughputQuery(
+		useDollarPlaceholders,
+		"r.model_id,\n    m.name as model_name,",
+		"JOIN requests r ON se.request_id = r.id\nJOIN models m ON r.model_id = m.model_id",
+		"r.model_id, m.name",
+		*input.Limit,
+	)
+
+	rows, err := db.DB().QueryContext(ctx, query, since.UTC())
+	if err != nil {
+		return nil, fmt.Errorf("failed to query fastest models: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+
+		var stat modelStats
+		if err := rows.Scan(
+			&stat.ModelID,
+			&stat.ModelName,
+			&stat.TokensCount,
+			&stat.LatencyMs,
+			&stat.RequestCount,
+			&stat.Throughput,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan model stats: %w", err)
+		}
+		results = append(results, stat)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating rows: %w", err)
+	}
+
+	if len(results) == 0 {
+		return []*FastestModel{}, nil
+	}
+
+	// Calculate statistics for dynamic threshold
+	totalRequests := 0
+	for _, item := range results {
+		totalRequests += int(item.RequestCount)
+	}
+	avgRequests := float64(totalRequests) / float64(len(results))
+
+	// Calculate dynamic minimum threshold
+	minThreshold := calculateMinRequests(len(results), avgRequests)
+
+	// Filter results by minimum request count
+	filteredResults := lo.Filter(results, func(item modelStats, _ int) bool {
+		return int(item.RequestCount) >= minThreshold
+	})
+
+	// If filtering removed too many results, keep at least the top items
+	if len(filteredResults) == 0 && len(results) > 0 {
+		filteredResults = results[:min(len(results), int(*input.Limit))]
+	}
+
+	// Calculate median for confidence level
+	if len(filteredResults) > 0 {
+		requestCounts := lo.Map(filteredResults, func(item modelStats, _ int) int {
+			return int(item.RequestCount)
+		})
+		sort.Ints(requestCounts)
+		var median float64
+		mid := len(requestCounts) / 2
+		if len(requestCounts)%2 == 0 {
+			median = float64(requestCounts[mid-1]+requestCounts[mid]) / 2
+		} else {
+			median = float64(requestCounts[mid])
+		}
+
+		// Build response with confidence level
+		return lo.Map(filteredResults, func(item modelStats, _ int) *FastestModel {
+			return &FastestModel{
+				ModelID:         item.ModelID,
+				ModelName:       item.ModelName,
+				Throughput:      item.Throughput,
+				TokensCount:     int(item.TokensCount),
+				LatencyMs:       int(item.LatencyMs),
+				RequestCount:    int(item.RequestCount),
+				ConfidenceLevel: calculateConfidenceLevel(int(item.RequestCount), median),
+			}
+		}), nil
+	}
+
+	return []*FastestModel{}, nil
 }

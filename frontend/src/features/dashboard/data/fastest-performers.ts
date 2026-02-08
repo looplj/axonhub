@@ -11,6 +11,7 @@ export const fastestChannelSchema = z.object({
   tokensCount: z.number().nullable().default(0),
   latencyMs: z.number().nullable().default(0),
   requestCount: z.number().nullable().default(0),
+  confidenceLevel: z.enum(['high', 'medium', 'low']).nullable().default('medium'),
 });
 
 export const fastestModelSchema = z.object({
@@ -20,6 +21,7 @@ export const fastestModelSchema = z.object({
   tokensCount: z.number().nullable().default(0),
   latencyMs: z.number().nullable().default(0),
   requestCount: z.number().nullable().default(0),
+  confidenceLevel: z.enum(['high', 'medium', 'low']).nullable().default('medium'),
 });
 
 export const fastestChannelsInputSchema = z.object({
@@ -31,6 +33,13 @@ export const fastestChannelsInputSchema = z.object({
 export type FastestChannel = z.infer<typeof fastestChannelSchema>;
 export type FastestModel = z.infer<typeof fastestModelSchema>;
 export type FastestChannelsInput = z.infer<typeof fastestChannelsInputSchema>;
+export type ConfidenceLevel = 'high' | 'medium' | 'low';
+
+export function getConfidenceLevel(requestCount: number, medianCount: number): ConfidenceLevel {
+  if (requestCount >= medianCount * 2) return 'high';
+  if (requestCount >= medianCount * 0.5) return 'medium';
+  return 'low';
+}
 
 // GraphQL queries
 const FASTEST_CHANNELS_QUERY = `
@@ -43,6 +52,7 @@ const FASTEST_CHANNELS_QUERY = `
       tokensCount
       latencyMs
       requestCount
+      confidenceLevel
     }
   }
 `;
@@ -56,6 +66,7 @@ const FASTEST_MODELS_QUERY = `
       tokensCount
       latencyMs
       requestCount
+      confidenceLevel
     }
   }
 `;

@@ -91,6 +91,7 @@ type FastestChannel {
   tokensCount: Int!
   latencyMs: Int!
   requestCount: Int!
+  confidenceLevel: String!
 }
 
 type FastestModelInChannel {
@@ -109,6 +110,7 @@ type FastestModel {
   tokensCount: Int!
   latencyMs: Int!
   requestCount: Int!
+  confidenceLevel: String!
 }
 
 type FastestChannelForModel {
