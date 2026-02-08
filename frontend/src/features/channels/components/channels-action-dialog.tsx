@@ -1855,8 +1855,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 </div>
               </div>
 
-              {showFetchedModelsPanel && showSupportedModelsPanel && <div className='border-border my-2 border-t' />}
-
               {/* API Keys Panel Content */}
               <div
                 className={`flex h-full min-h-0 flex-col transition-opacity duration-200 ${showApiKeysPanel ? 'opacity-100' : 'pointer-events-none absolute opacity-0'}`}
@@ -1893,13 +1891,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         const search = apiKeysSearch.trim().toLowerCase();
                         return k.toLowerCase().includes(search) || k.slice(-4).toLowerCase().includes(search);
                       })
-                      .map((key) => {
+                      .map((key, index) => {
                         const isSelected = selectedKeysToRemove.has(key);
                         const isDisabled = disabledKeySet.has(key);
                         const masked = key.length > 8 ? `${key.slice(0, 4)}****${key.slice(-4)}` : `****${key.slice(-4)}`;
 
                         return (
-                          <div key={key} className='hover:bg-accent flex items-center justify-between gap-2 rounded-md p-2 text-sm'>
+                          <div key={`${key}-${index}`} className='hover:bg-accent flex items-center justify-between gap-2 rounded-md p-2 text-sm'>
                             <div className='flex min-w-0 items-center gap-2'>
                               <Checkbox
                                 checked={isSelected}

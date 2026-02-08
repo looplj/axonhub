@@ -56,10 +56,10 @@ function HorizontalBarChart({ data, total, height = 280, noDataLabel }: Horizont
       <div className='bg-background/90 rounded-md border px-3 py-2 text-xs shadow-sm backdrop-blur'>
         <div className='text-foreground text-sm font-medium'>{item.name}</div>
         <div className='text-muted-foreground'>
-          {safeToFixed(safeThroughput)} tokens/s ({safeToFixed(percent, 0)}%)
+          {safeToFixed(safeThroughput)} {t('dashboard.cards.fastestPerformers.tokensPerSecond')} ({safeToFixed(percent, 0)}%)
         </div>
         <div className='text-muted-foreground text-xs'>
-          {safeNumber(item.requestCount)} requests
+          {safeNumber(item.requestCount)} {t('dashboard.cards.fastestPerformers.requests')}
         </div>
       </div>
     );
@@ -144,8 +144,8 @@ function ChartLegend({ items }: { items: LegendItem[] }) {
                   </Tooltip>
                 ) : null}
                 <div className='text-right leading-tight'>
-                  <div className='text-foreground text-sm font-medium tabular-nums'>{safeToFixed(item.throughput)} tok/s</div>
-                  <div className='text-muted-foreground text-xs tabular-nums'>{formatNumber(safeNumber(item.requestCount))} req</div>
+                  <div className='text-foreground text-sm font-medium tabular-nums'>{safeToFixed(item.throughput)} {t('dashboard.cards.fastestPerformers.tokensPerSecond')}</div>
+                  <div className='text-muted-foreground text-xs tabular-nums'>{formatNumber(safeNumber(item.requestCount))} {t('dashboard.cards.fastestPerformers.requests')}</div>
                 </div>
               </div>
             </div>
@@ -170,7 +170,7 @@ interface FastestPerformersCardProps<T extends ThroughputData> {
   getName: (item: T) => string | null;
 }
 
-export function FastestPerformersCard<T>({
+export function FastestPerformersCard<T extends ThroughputData>({
   title,
   description,
   noDataLabel,
