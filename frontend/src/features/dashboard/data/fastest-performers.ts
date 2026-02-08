@@ -95,5 +95,3 @@ export function useFastestModels(timeWindow: string = 'day', limit: number = 5) 
     placeholderData: (previousData) => previousData, // Keep previous data while fetching to prevent flash
   });
 }
-
-

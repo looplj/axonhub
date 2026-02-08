@@ -2,188 +2,74 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Loader2, Activity } from 'lucide-react';
-import { formatNumber } from '@/utils/format-number';
-import { safeNumber, safeToFixed, sanitizeChartData, type ChartData } from '../utils/chart-helpers';
-import type { UseQueryResult } from '@tanstack/react-query';
+import { useFastestChannels, useFastestModels } from '../data/fastest-performers';
+import type { FastestChannel, FastestModel } from '../data/fastest-performers';
 
-const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
-
-export type TimeWindow = 'day' | 'week' | 'month';
-
-export interface LegendItem {
-  name: string;
-  throughput: number;
-  requestCount: number;
-  color: string;
-  index: number;
-  confidenceLevel?: 'high' | 'medium' | 'low';
+interface PerformersListProps {
+  channels: FastestChannel[] | undefined;
+  models: FastestModel[] | undefined;
 }
 
-interface HorizontalBarChartProps {
-  data: ChartData[];
-  total: number;
-  height?: number;
-  noDataLabel: string;
-}
-
-function HorizontalBarChart({ data, total, height = 280, noDataLabel }: HorizontalBarChartProps) {
-  const { t } = useTranslation();
-  const safeData = sanitizeChartData(data);
-  const safeTotal = safeNumber(total);
-
-  if (safeData.length === 0) {
-    return (
-      <div className='flex h-[250px] items-center justify-center text-muted-foreground text-sm'>
-        {noDataLabel}
-      </div>
-    );
-  }
-
-  const tooltipContent = (props: TooltipProps<number, string>) => {
-    const { active, payload } = props;
-    if (!active || !payload?.length) return null;
-
-    const item = payload[0].payload as ChartData;
-    const safeThroughput = safeNumber(item.throughput);
-    const percent = safeTotal > 0 ? (safeThroughput / safeTotal) * 100 : 0;
-
-    return (
-      <div className='bg-background/90 rounded-md border px-3 py-2 text-xs shadow-sm backdrop-blur'>
-        <div className='text-foreground text-sm font-medium'>{item.name}</div>
-        <div className='text-muted-foreground'>
-          {safeToFixed(safeThroughput)} {t('dashboard.cards.fastestPerformers.tokensPerSecond')} ({safeToFixed(percent, 0)}%)
-        </div>
-        <div className='text-muted-foreground text-xs'>
-          {safeNumber(item.requestCount)} {t('dashboard.cards.fastestPerformers.requests')}
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <ResponsiveContainer width='100%' height={height}>
-      <BarChart data={safeData} layout='vertical' barSize={32} margin={{ left: 20, right: 20, top: 10, bottom: 10 }}>
-        <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' horizontal={false} />
-        <XAxis type='number' hide />
-        <YAxis
-          type='category'
-          dataKey='name'
-          width={10}
-          tick={false}
-          tickLine={false}
-          axisLine={false}
-        />
-        <RechartsTooltip content={tooltipContent} cursor={{ fill: 'var(--muted)' }} />
-        <Bar dataKey='throughput' radius={[0, 4, 4, 0]}>
-          {safeData.map((_, index) => (
-            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-          ))}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
-  );
-}
-
-function ChartLegend({ items }: { items: LegendItem[] }) {
+function PerformersList({ channels, models }: PerformersListProps) {
   const { t } = useTranslation();
 
-  const getConfidenceColor = (level?: string) => {
-    switch (level) {
-      case 'high':
-        return 'text-green-500';
-      case 'medium':
-        return 'text-yellow-500';
-      case 'low':
-        return 'text-red-500';
-      default:
-        return 'text-muted-foreground';
-    }
-  };
-
-  const getConfidenceTooltip = (level?: string) => {
-    switch (level) {
-      case 'high':
-        return t('dashboard.confidence.high');
-      case 'medium':
-        return t('dashboard.confidence.medium');
-      case 'low':
-        return t('dashboard.confidence.low');
-      default:
-        return t('dashboard.confidence.default');
-    }
-  };
-
   return (
-    <TooltipProvider>
-      <div className='grid gap-3'>
-        {items.map((item, index) => {
-          const colorClass = getConfidenceColor(item.confidenceLevel);
-          const tooltip = getConfidenceTooltip(item.confidenceLevel);
-
-          return (
-            <div key={`${item.name}-${index}`} className='grid w-full grid-cols-[auto_auto_1fr_auto] items-center gap-3'>
-              <span className='text-muted-foreground w-8 text-right text-sm font-semibold tabular-nums'>
-                {item.index.toString().padStart(2, '0')}.
-              </span>
-              <span className='h-2.5 w-2.5 rounded-full' style={{ backgroundColor: item.color }} />
-              <span className='text-foreground min-w-0 text-sm font-medium break-words'>{item.name}</span>
-              <div className='flex items-center gap-2'>
-                {item.confidenceLevel === 'low' || item.confidenceLevel === 'medium' ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Activity className={`h-4 w-4 ${colorClass}`} />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{tooltip}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                ) : null}
-                <div className='text-right leading-tight'>
-                  <div className='text-foreground text-sm font-medium tabular-nums'>{safeToFixed(item.throughput)} {t('dashboard.cards.fastestPerformers.tokensPerSecond')}</div>
-                  <div className='text-muted-foreground text-xs tabular-nums'>{formatNumber(safeNumber(item.requestCount))} {t('dashboard.cards.fastestPerformers.requests')}</div>
-                </div>
+    <div className='space-y-4'>
+      <div>
+        <h4 className='mb-2 text-sm font-medium'>{t('cards.fastestPerformers.channels')}</h4>
+        {channels && channels.length > 0 ? (
+          <div className='space-y-2'>
+            {channels.slice(0, 5).map((channel, index) => (
+              <div key={channel.channelId} className='flex items-center justify-between text-sm'>
+                <span className='text-muted-foreground'>
+                  {index + 1}. {channel.channelName}
+                </span>
+                <span className='font-medium'>
+                  {channel.throughput.toFixed(1)} {t('dashboard.cards.fastestPerformers.tokensPerSecond')} ({channel.requestCount} {t('dashboard.cards.fastestPerformers.requests')})
+                </span>
               </div>
-            </div>
-          );
-        })}
+            ))}
+          </div>
+        ) : (
+          <div className='text-muted-foreground text-sm'>{t('cards.fastestPerformers.noData')}</div>
+        )}
       </div>
-    </TooltipProvider>
+      <div>
+        <h4 className='mb-2 text-sm font-medium'>{t('cards.fastestPerformers.models')}</h4>
+        {models && models.length > 0 ? (
+          <div className='space-y-2'>
+            {models.slice(0, 5).map((model, index) => (
+              <div key={model.modelId} className='flex items-center justify-between text-sm'>
+                <span className='text-muted-foreground'>
+                  {index + 1}. {model.modelName}
+                </span>
+                <span className='font-medium'>
+                  {model.throughput.toFixed(1)} {t('dashboard.cards.fastestPerformers.tokensPerSecond')} ({model.requestCount} {t('dashboard.cards.fastestPerformers.requests')})
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className='text-muted-foreground text-sm'>{t('cards.fastestPerformers.noData')}</div>
+        )}
+      </div>
+    </div>
   );
 }
 
-interface ThroughputData {
-  throughput?: number;
-  requestCount?: number;
-  confidenceLevel?: 'high' | 'medium' | 'low';
-}
-
-interface FastestPerformersCardProps<T extends ThroughputData> {
-  title: string;
-  description: (totalRequests: number) => string;
-  noDataLabel: string;
-  useData: (timeWindow: TimeWindow) => UseQueryResult<T[], Error>;
-  getName: (item: T) => string | null;
-}
-
-export function FastestPerformersCard<T extends ThroughputData>({
-  title,
-  description,
-  noDataLabel,
-  useData,
-  getName,
-}: FastestPerformersCardProps<T>) {
+export function FastestPerformersCard() {
   const { t } = useTranslation();
-  const [timeWindow, setTimeWindow] = useState<TimeWindow>('day');
+  const [timeWindow, setTimeWindow] = useState<'1h' | '24h' | '7d'>('24h');
 
-  const { data: items, isLoading, isFetching, error } = useData(timeWindow);
+  const { data: channels, isLoading: isLoadingChannels } = useFastestChannels(timeWindow);
+  const { data: models, isLoading: isLoadingModels } = useFastestModels(timeWindow);
 
-  if (isLoading && !items) {
+  const isLoading = isLoadingChannels || isLoadingModels;
+
+  if (isLoading) {
     return (
       <Card className='hover-card'>
         <CardHeader>
@@ -199,73 +85,39 @@ export function FastestPerformersCard<T extends ThroughputData>({
     );
   }
 
-  if (error) {
-    return (
-      <Card className='hover-card'>
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className='text-sm text-red-500'>{t('common.loadError')}</div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const chartData: ChartData[] = sanitizeChartData(
-    (items || [])
-      .slice(0, 5)
-      .filter((item) => item != null)
-      .map((item) => ({
-        name: getName(item) ?? 'Unknown',
-        throughput: safeNumber(item.throughput ?? 0),
-        requestCount: safeNumber(item.requestCount ?? 0),
-        confidenceLevel: item.confidenceLevel,
-      }))
-  ).sort((a, b) => b.throughput - a.throughput);
-
-  const total = chartData.reduce((sum, item) => sum + safeNumber(item.throughput), 0);
-  const totalRequests = chartData.reduce((sum, item) => sum + item.requestCount, 0);
-
-  const legendItems: LegendItem[] = chartData.map((item, index) => ({
-    ...item,
-    index: index + 1,
-    color: COLORS[index % COLORS.length],
-  }));
-
   return (
     <Card className='hover-card'>
       <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
         <div>
-          <CardTitle className='text-base font-medium'>{title}</CardTitle>
-          <CardDescription>{description(totalRequests)}</CardDescription>
+          <CardTitle className='text-base font-medium'>{t('cards.fastestPerformers.title')}</CardTitle>
+          <CardDescription>{t('cards.fastestPerformers.description')}</CardDescription>
         </div>
-        <div className='flex items-center gap-2'>
-          <Tabs value={timeWindow} onValueChange={(v) => setTimeWindow(v as TimeWindow)}>
-            <TabsList className='h-7 p-0.5'>
-              <TabsTrigger value='month' className='h-6 px-2 text-[10px]'>
-                {t('dashboard.stats.month')}
-              </TabsTrigger>
-              <TabsTrigger value='week' className='h-6 px-2 text-[10px]'>
-                {t('dashboard.stats.week')}
-              </TabsTrigger>
-              <TabsTrigger value='day' className='h-6 px-2 text-[10px]'>
-                {t('dashboard.stats.day')}
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
+        <Tabs value={timeWindow} onValueChange={(v) => setTimeWindow(v as '1h' | '24h' | '7d')}>
+          <TabsList className='h-6 p-0.5'>
+            <TabsTrigger value='1h' className='h-5 px-2 text-[10px]'>
+              {t('dashboard.timeWindow.1h')}
+            </TabsTrigger>
+            <TabsTrigger value='24h' className='h-5 px-2 text-[10px]'>
+              {t('dashboard.timeWindow.24h')}
+            </TabsTrigger>
+            <TabsTrigger value='7d' className='h-5 px-2 text-[10px]'>
+              {t('dashboard.timeWindow.7d')}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </CardHeader>
-      <CardContent className='relative'>
-        <div className='space-y-4'>
-          <HorizontalBarChart data={chartData} total={total} noDataLabel={noDataLabel} />
-          <ChartLegend items={legendItems} />
-        </div>
-        {isFetching && (
-          <div className='absolute inset-0 flex items-center justify-center bg-background/50'>
-            <Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
-          </div>
-        )}
+      <CardContent>
+        <Tabs value={timeWindow} onValueChange={(v) => setTimeWindow(v as '1h' | '24h' | '7d')}>
+          <TabsContent value='1h'>
+            <PerformersList channels={channels} models={models} />
+          </TabsContent>
+          <TabsContent value='24h'>
+            <PerformersList channels={channels} models={models} />
+          </TabsContent>
+          <TabsContent value='7d'>
+            <PerformersList channels={channels} models={models} />
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );

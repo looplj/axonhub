@@ -95,6 +95,16 @@ func (r *mutationResolver) CompleteSystemModelSettingOnboarding(ctx context.Cont
 	return true, nil
 }
 
+// CompleteAutoDisableChannelOnboarding is the resolver for the completeAutoDisableChannelOnboarding field.
+func (r *mutationResolver) CompleteAutoDisableChannelOnboarding(ctx context.Context, input CompleteAutoDisableChannelOnboardingInput) (bool, error) {
+	err := r.systemService.CompleteAutoDisableChannelOnboarding(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to complete auto disable channel onboarding: %w", err)
+	}
+
+	return true, nil
+}
+
 // UpdateSystemChannelSettings is the resolver for the updateSystemChannelSettings field.
 func (r *mutationResolver) UpdateSystemChannelSettings(ctx context.Context, input biz.SystemChannelSettings) (bool, error) {
 	err := r.systemService.SetChannelSetting(ctx, input)
@@ -209,7 +219,6 @@ func (r *queryResolver) OnboardingInfo(ctx context.Context) (*OnboardingInfo, er
 
 	result := &OnboardingInfo{
 		Onboarded:   info.Onboarded,
-		Version:     info.Version,
 		CompletedAt: info.CompletedAt,
 	}
 
@@ -217,6 +226,13 @@ func (r *queryResolver) OnboardingInfo(ctx context.Context) (*OnboardingInfo, er
 		result.SystemModelSetting = &SystemModelSettingOnboarding{
 			Onboarded:   info.SystemModelSetting.Onboarded,
 			CompletedAt: info.SystemModelSetting.CompletedAt,
+		}
+	}
+
+	if info.AutoDisableChannel != nil {
+		result.AutoDisableChannel = &AutoDisableChannelOnboarding{
+			Onboarded:   info.AutoDisableChannel.Onboarded,
+			CompletedAt: info.AutoDisableChannel.CompletedAt,
 		}
 	}
 

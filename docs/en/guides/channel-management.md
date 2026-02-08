@@ -7,9 +7,10 @@ This guide explains how to configure AI provider channels in AxonHub. Channels a
 Each channel represents a connection to an AI provider (OpenAI, Anthropic, Gemini, etc.). Through channels, you can:
 
 - Connect to multiple AI providers simultaneously
-- Configure model mappings and request overrides
+- Configure model mappings and request parameter overrides
 - Enable/disable channels dynamically
 - Test connections before enabling
+- Configure multiple API Keys for load balancing
 
 ## Channel Configuration
 
@@ -23,7 +24,10 @@ name: "openai"
 type: "openai"
 base_url: "https://api.openai.com/v1"
 credentials:
-  api_key: "your-openai-key"
+  api_keys:
+    - "sk-your-openai-key-1"
+    - "sk-your-openai-key-2"
+    - "sk-your-openai-key-3"
 supported_models: ["gpt-5", "gpt-4o"]
 ```
 
@@ -34,15 +38,78 @@ supported_models: ["gpt-5", "gpt-4o"]
 | `name` | string | Yes | Unique channel identifier |
 | `type` | string | Yes | Provider type (openai, anthropic, gemini, etc.) |
 | `base_url` | string | Yes | API endpoint URL |
-| `credentials` | object | Yes | Authentication credentials |
+| `credentials` | object | Yes | Authentication credentials (supports multiple API Keys) |
 | `supported_models` | array | Yes | List of models this channel supports |
-| `settings` | object | No | Advanced settings (mappings, overrides) |
+| `settings` | object | No | Advanced settings (mappings, overrides, etc.) |
+
+## Multiple API Key Configuration
+
+AxonHub supports configuring multiple API Keys for a single channel to achieve automatic load balancing and failover.
+
+### Configuration Method
+
+```yaml
+# Multiple API Key configuration example
+credentials:
+  api_keys:
+    - "sk-your-key-1"
+    - "sk-your-key-2"
+    - "sk-your-key-3"
+```
+
+### Load Balancing Strategy
+
+When multiple API Keys are configured, AxonHub uses the following strategies:
+
+| Scenario | Strategy | Description |
+| :--- | :--- | :--- |
+| With Trace ID | Consistent Hashing | Requests with the same Trace ID always use the same Key |
+| Without Trace ID | Random Selection | Randomly select from available Keys |
+
+### API Key Management
+
+#### Disabling API Key
+
+When an API Key encounters an error (such as quota exhausted, banned), the system will automatically or manually disable it:
+
+- Disabled Keys will no longer be used for new requests
+- The system will automatically switch to other available Keys
+- Disable information includes error code and reason
+
+#### Enabling API Key
+
+You can manually re-enable a previously disabled API Key:
+
+- Remove the Key from the disabled list
+- The Key will rejoin load balancing
+
+#### Deleting API Key
+
+You can completely delete an API Key that is no longer in use:
+
+- Delete from both the disabled list and credentials
+- At least one available API Key must be retained
+
+### Backward Compatibility
+
+AxonHub still supports single API Key configuration (legacy format), and the system will automatically handle compatibility:
+
+```yaml
+# Single API Key (legacy format, still supported)
+credentials:
+  api_key: "sk-your-single-key"
+
+# Equivalent to
+credentials:
+  api_keys:
+    - "sk-your-single-key"
+```
 
 ## Testing Connection
 
 Before enabling a channel, test the connection to ensure credentials are correct:
 
-1. Navigate to **Channels** in the management interface
+1. Navigate to **Channel Management** in the management interface
 2. Click the **Test** button next to your channel
 3. Wait for the test result
 4. If successful, proceed to enable the channel
@@ -57,12 +124,12 @@ After successful testing, enable the channel:
 
 ## Model Mappings
 
-Use model mappings when the requested model name differs from the upstream provider's supported names. AxonHub transparently rewrites the request model before it leaves the gateway.
+When the requested model name differs from the upstream provider's supported names, you can use model mapping to automatically rewrite the model at the gateway side.
 
 ### Use Cases
 
-- Map unsupported or legacy model IDs to the closest available alternative
-- Implement failover by configuring multiple channels with different providers
+- Map unsupported or legacy model IDs to available alternative models
+- Set fallback logic for multi-channel scenarios (different channels for different providers)
 - Simplify model names for your applications
 
 ### Configuration
@@ -79,70 +146,65 @@ settings:
 
 ### Rules
 
-- AxonHub only accepts mappings where the `to` model is already declared in `supported_models`
+- AxonHub only accepts mappings to models already declared in `supported_models`
 - Mappings are applied in order; the first matching mapping is used
 - If no mapping matches, the original model name is used
 
 ## Request Override
 
-Request Override lets you enforce channel-specific defaults or dynamically modify requests using templates. You can provide a JSON object for body parameters and configure custom HTTP headers.
+Request Override allows you to enforce channel-specific default parameters or dynamically modify requests using templates. The following operation types are supported:
 
-For detailed information on how to use templates, dynamic JSON, and field removal, see the [Request Override Guide](request-override.md).
+| Operation Type | Description |
+| :--- | :--- |
+| `set` | Set field value |
+| `delete` | Delete field |
+| `rename` | Rename field |
+| `copy` | Copy field |
 
-## Channel Types
+### Request Body Override Example
 
-### OpenAI
-
-```yaml
-type: "openai"
-base_url: "https://api.openai.com/v1"
-credentials:
-  api_key: "sk-..."
+```json
+[
+  {
+    "op": "set",
+    "path": "temperature",
+    "value": "0.7"
+  },
+  {
+    "op": "set",
+    "path": "max_tokens",
+    "value": "2000"
+  },
+  {
+    "op": "delete",
+    "path": "frequency_penalty"
+  }
+]
 ```
 
-### Anthropic
+### Request Header Override Example
 
-```yaml
-type: "anthropic"
-base_url: "https://api.anthropic.com/v1"
-credentials:
-  api_key: "sk-ant-..."
+```json
+[
+  {
+    "op": "set",
+    "path": "X-Custom-Header",
+    "value": "{{.Model}}"
+  }
+]
 ```
 
-### Gemini
-
-```yaml
-type: "gemini"
-base_url: "https://generativelanguage.googleapis.com/v1beta"
-credentials:
-  api_key: "..."
-```
-
-### OpenRouter
-
-```yaml
-type: "openrouter"
-base_url: "https://openrouter.ai/api/v1"
-credentials:
-  api_key: "sk-or-..."
-```
-
-### Zhipu
-
-```yaml
-type: "zhipu"
-base_url: "https://open.bigmodel.cn/api/paas/v4"
-credentials:
-  api_key: "..."
-```
+For detailed information on how to use templates, conditional logic, and more advanced features, see the [Request Override Guide](request-override.md).
 
 ## Best Practices
 
 1. **Test before enabling**: Always test connections before enabling channels
 2. **Use meaningful names**: Use descriptive channel names for easy identification
-3. **Document mappings**: Keep track of model mappings for maintenance
-4. **Monitor usage**: Regularly review channel usage and performance
-5. **Backup credentials**: Store credentials securely and have backup plans
+3. **Configure multiple API Keys**: Configure multiple API Keys for production channels to improve availability
+4. **Monitor Key status**: Regularly check API Key usage and disabled status
+5. **Document mappings**: Keep track of model mappings for maintenance
+6. **Monitor usage**: Regularly review channel usage and performance
+7. **Backup credentials**: Store credentials securely and have backup plans
 
 ## Troubleshooting
 
@@ -163,6 +225,12 @@ credentials:
 - Ensure JSON is valid (use a JSON validator)
 - Check that field names match the provider's API specification
 - Verify nested fields use correct dot notation
+
+### API Key Frequently Disabled
+
+- Check if the API Key has sufficient quota
+- View the disable reason and error code
+- Consider increasing the number of API Keys to distribute load
 
 ## Related Documentation
 

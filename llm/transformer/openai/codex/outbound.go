@@ -149,6 +149,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		reqCopy.TransformerMetadata["include"] = []string{"reasoning.encrypted_content"}
 	}
 
+	if reqCopy.ReasoningSummary == nil || *reqCopy.ReasoningSummary == "" {
+		// Enable reasoning summary for Codex CLI requests.
+		reqCopy.ReasoningSummary = lo.ToPtr("auto")
+	}
+
 	// Codex Responses rejects token limit fields, so strip them out.
 	reqCopy.MaxCompletionTokens = nil
 	reqCopy.MaxTokens = nil

@@ -107,9 +107,12 @@ const ONBOARDING_INFO_QUERY = `
   query OnboardingInfo {
     onboardingInfo {
       onboarded
-      version
       completedAt
       systemModelSetting {
+        onboarded
+        completedAt
+      }
+      autoDisableChannel {
         onboarded
         completedAt
       }
@@ -126,6 +129,12 @@ const COMPLETE_ONBOARDING_MUTATION = `
 const COMPLETE_SYSTEM_MODEL_SETTING_ONBOARDING_MUTATION = `
   mutation CompleteSystemModelSettingOnboarding($input: CompleteSystemModelSettingOnboardingInput!) {
     completeSystemModelSettingOnboarding(input: $input)
+  }
+`;
+
+const COMPLETE_AUTO_DISABLE_CHANNEL_ONBOARDING_MUTATION = `
+  mutation CompleteAutoDisableChannelOnboarding($input: CompleteAutoDisableChannelOnboardingInput!) {
+    completeAutoDisableChannelOnboarding(input: $input)
   }
 `;
 
@@ -223,11 +232,16 @@ export interface SystemModelSettingOnboarding {
   completedAt?: string;
 }
 
+export interface AutoDisableChannelOnboarding {
+  onboarded: boolean;
+  completedAt?: string;
+}
+
 export interface OnboardingInfo {
   onboarded: boolean;
-  version: string;
   completedAt?: string;
   systemModelSetting?: SystemModelSettingOnboarding;
+  autoDisableChannel?: AutoDisableChannelOnboarding;
 }
 
 export interface CompleteOnboardingInput {
@@ -235,6 +249,10 @@ export interface CompleteOnboardingInput {
 }
 
 export interface CompleteSystemModelSettingOnboardingInput {
+  dummy?: string;
+}
+
+export interface CompleteAutoDisableChannelOnboardingInput {
   dummy?: string;
 }
 
@@ -405,7 +423,6 @@ export function useOnboardingInfo() {
       } catch (error) {
         return {
           onboarded: true,
-          version: '',
           completedAt: new Date().toISOString(),
         };
       }
@@ -440,6 +457,26 @@ export function useCompleteSystemModelSettingOnboarding() {
         { input: input || {} }
       );
       return data.completeSystemModelSettingOnboarding;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['onboardingInfo'] });
+    },
+    onError: () => {
+      toast.error(i18n.t('common.errors.onboardingFailed'));
+    },
+  });
+}
+
+export function useCompleteAutoDisableChannelOnboarding() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input?: CompleteAutoDisableChannelOnboardingInput) => {
+      const data = await graphqlRequest<{ completeAutoDisableChannelOnboarding: boolean }>(
+        COMPLETE_AUTO_DISABLE_CHANNEL_ONBOARDING_MUTATION,
+        { input: input || {} }
+      );
+      return data.completeAutoDisableChannelOnboarding;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['onboardingInfo'] });

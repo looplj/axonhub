@@ -236,8 +236,6 @@ func TestTraceStickyKeyProvider_RemoveKey_Stable(t *testing.T) {
 }
 
 func TestTraceStickyKeyProvider_AddKey_Stable(t *testing.T) {
-	t.Skipf("Add key can not be stable, skip this test")
-
 	originalKeys := []string{"key-1", "key-2", "key-3"}
 	ch := &Channel{
 		Channel: &ent.Channel{
@@ -255,7 +253,6 @@ func TestTraceStickyKeyProvider_AddKey_Stable(t *testing.T) {
 
 	selectedKey1 := provider.Get(ctx)
 
-	// Adding a new key should either keep the selection or change it to the NEW key.
 	newKey := "key-new"
 	newKeys := append(originalKeys, newKey)
 	ch.cachedEnabledAPIKeys = newKeys
@@ -263,7 +260,7 @@ func TestTraceStickyKeyProvider_AddKey_Stable(t *testing.T) {
 
 	selectedKey2 := provider.Get(ctx)
 
-	require.Equal(t, selectedKey1, selectedKey2, "removing a non-selected key should not change the selection")
+	require.Equal(t, selectedKey1, selectedKey2, "LRU cache should keep selection stable when a new key is added")
 }
 
 func TestTraceStickyKeyProvider_DisableKey_SimulatedByRemoval(t *testing.T) {
@@ -285,15 +282,23 @@ func TestTraceStickyKeyProvider_DisableKey_SimulatedByRemoval(t *testing.T) {
 	initialKey := provider.Get(ctx)
 	require.Contains(t, allKeys, initialKey)
 
-	ch.cachedEnabledAPIKeys = []string{"key-1", "key-3"}
+	ch2 := &Channel{
+		Channel: &ent.Channel{
+			Credentials: objects.ChannelCredentials{
+				APIKeys: allKeys,
+			},
+		},
+		cachedEnabledAPIKeys: []string{"key-1", "key-3"},
+	}
+	provider2 := NewTraceStickyKeyProvider(ch2)
 
-	keyAfterDisable := provider.Get(ctx)
+	keyAfterDisable := provider2.Get(ctx)
 	require.Contains(t, []string{"key-1", "key-3"}, keyAfterDisable)
 	require.NotEqual(t, "key-2", keyAfterDisable, "disabled key should not be selected")
 
 	if initialKey != "key-2" {
 		require.Equal(t, initialKey, keyAfterDisable,
-			"if original key was not disabled, selection should remain stable")
+			"if original key was not disabled, selection should remain stable (rendezvous property)")
 	}
 }
 
@@ -411,18 +416,18 @@ func TestRendezvousSelect_OnlyAffectedKeysRemap(t *testing.T) {
 func TestHash64_Deterministic(t *testing.T) {
 	input := "test-input-string"
 
-	h1 := hash64(input)
-	h2 := hash64(input)
-	h3 := hash64(input)
+	h1 := hashAPIKey(input)
+	h2 := hashAPIKey(input)
+	h3 := hashAPIKey(input)
 
 	require.Equal(t, h1, h2)
 	require.Equal(t, h2, h3)
 }
 
 func TestHash64_DifferentInputs(t *testing.T) {
-	h1 := hash64("input-1")
-	h2 := hash64("input-2")
-	h3 := hash64("input-3")
+	h1 := hashAPIKey("input-1")
+	h2 := hashAPIKey("input-2")
+	h3 := hashAPIKey("input-3")
 
 	require.NotEqual(t, h1, h2)
 	require.NotEqual(t, h2, h3)

@@ -310,22 +310,6 @@ func (p *ProbeFrequency) UnmarshalGQL(v any) error {
 	return nil
 }
 
-// OnboardingRecord represents the onboarding status and version information.
-type OnboardingRecord struct {
-	// Onboarded indicates whether the user has completed onboarding for the system.
-	Onboarded bool `json:"onboarded"`
-	// Version is the system version when onboarding was completed
-	Version string `json:"version"`
-	// CompletedAt is the timestamp when onboarding was completed
-	CompletedAt *time.Time `json:"completed_at,omitempty"`
-
-	// SystemModelSetting tracks the onboarding status for system model configuration
-	SystemModelSetting *struct {
-		Onboarded   bool       `json:"onboarded"`
-		CompletedAt *time.Time `json:"completed_at,omitempty"`
-	} `json:"system_model_setting"`
-}
-
 type SystemServiceParams struct {
 	fx.In
 
@@ -1008,109 +992,6 @@ func (s *SystemService) Version(ctx context.Context) (string, error) {
 // SetVersion sets the system version.
 func (s *SystemService) SetVersion(ctx context.Context, version string) error {
 	return s.setSystemValue(ctx, SystemKeyVersion, version)
-}
-
-// OnboardingInfo retrieves the onboarding information from system settings.
-// Returns nil if not set.
-func (s *SystemService) OnboardingInfo(ctx context.Context) (*OnboardingRecord, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
-	value, err := s.getSystemValue(ctx, SystemKeyOnboarded)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return nil, nil
-		}
-
-		return nil, fmt.Errorf("failed to get onboarding info: %w", err)
-	}
-
-	var info OnboardingRecord
-	if err := json.Unmarshal([]byte(value), &info); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal onboarding info: %w", err)
-	}
-
-	return &info, nil
-}
-
-// SetOnboardingInfo sets the onboarding information.
-func (s *SystemService) SetOnboardingInfo(ctx context.Context, info *OnboardingRecord) error {
-	jsonBytes, err := json.Marshal(info)
-	if err != nil {
-		return fmt.Errorf("failed to marshal onboarding info: %w", err)
-	}
-
-	return s.setSystemValue(ctx, SystemKeyOnboarded, string(jsonBytes))
-}
-
-// IsOnboardingCompleted checks if onboarding has been completed for the current version.
-func (s *SystemService) IsOnboardingCompleted(ctx context.Context) (bool, error) {
-	info, err := s.OnboardingInfo(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	if info == nil || !info.Onboarded {
-		return false, nil
-	}
-
-	currentVersion, err := s.Version(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	// If onboarding was completed for a different version, it needs to be redone
-	return info.Version == currentVersion, nil
-}
-
-// CompleteOnboarding marks onboarding as completed for the current version.
-func (s *SystemService) CompleteOnboarding(ctx context.Context) error {
-	currentVersion, err := s.Version(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get current version: %w", err)
-	}
-
-	existingInfo, err := s.OnboardingInfo(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get existing onboarding info: %w", err)
-	}
-
-	info := &OnboardingRecord{
-		Onboarded:   true,
-		Version:     currentVersion,
-		CompletedAt: lo.ToPtr(time.Now()),
-	}
-
-	if existingInfo != nil && existingInfo.SystemModelSetting != nil {
-		info.SystemModelSetting = existingInfo.SystemModelSetting
-	}
-
-	return s.SetOnboardingInfo(ctx, info)
-}
-
-// CompleteSystemModelSettingOnboarding marks system model setting onboarding as completed.
-func (s *SystemService) CompleteSystemModelSettingOnboarding(ctx context.Context) error {
-	existingInfo, err := s.OnboardingInfo(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get existing onboarding info: %w", err)
-	}
-
-	info := &OnboardingRecord{}
-	if existingInfo != nil {
-		info.Onboarded = existingInfo.Onboarded
-		info.Version = existingInfo.Version
-		info.CompletedAt = existingInfo.CompletedAt
-	}
-
-	now := time.Now()
-	info.SystemModelSetting = &struct {
-		Onboarded   bool       `json:"onboarded"`
-		CompletedAt *time.Time `json:"completed_at,omitempty"`
-	}{
-		Onboarded:   true,
-		CompletedAt: &now,
-	}
-
-	return s.SetOnboardingInfo(ctx, info)
 }
 
 // AutoBackupSettings retrieves the auto backup settings configuration.
