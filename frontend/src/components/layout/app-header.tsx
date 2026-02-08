@@ -4,7 +4,7 @@ import { IconSettings } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
-import { SidebarTrigger } from '@/components/ui/sidebar';
+import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
 import { LanguageSwitch } from '@/components/language-switch';
 import { PermissionGuard } from '@/components/permission-guard';
 import { ProfileDropdown } from '@/components/profile-dropdown';
@@ -20,6 +20,7 @@ export function AppHeader() {
   const { t } = useTranslation();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const queryClient = useQueryClient();
+  const { isMobile } = useSidebar();
   const displayName = brandSettings?.brandName || 'AxonHub';
 
   const refreshMutation = useMutation({
@@ -27,7 +28,7 @@ export function AppHeader() {
       return checkProviderQuotas();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['provider-quotas'] });
+      void queryClient.refetchQueries({ queryKey: ['provider-quotas'] });
       toast.success(t('system.providerQuota.refresh.success'));
     },
     onError: (error: any) => {
@@ -46,62 +47,58 @@ export function AppHeader() {
     <header className='bg-background/95 supports-[backdrop-filter]:bg-background/60 fixed top-0 z-50 w-full backdrop-blur'>
       <div className='flex h-14 items-center justify-between'>
         {/* Logo + Project Switcher - 左侧对齐 */}
-        <div className='flex items-center gap-1 sm:gap-2 pl-2 sm:pl-6'>
+        <div className='flex items-center gap-2 pl-6'>
           {/* Sidebar Toggle - 与侧边栏图标垂直对齐 */}
-          <SidebarTrigger className='-ml-2 size-8' />
+          <SidebarTrigger className='-ml-4 size-8' />
 
           {/* Logo */}
-          <div className='flex items-center gap-1 sm:gap-2'>
-            <div className='flex size-6 sm:size-8 shrink-0 items-center justify-center overflow-hidden rounded'>
+          <div className='flex items-center gap-2'>
+            <div className='flex size-8 shrink-0 items-center justify-center overflow-hidden rounded'>
               {brandSettings?.brandLogo ? (
                 <img
                   src={brandSettings.brandLogo}
                   alt='Brand Logo'
-                  className='size-6 sm:size-8 object-cover'
+                  width={24}
+                  height={24}
+                  className='size-8 object-cover'
                   onError={(e) => {
                     e.currentTarget.src = '/logo.jpg';
                   }}
                 />
               ) : (
-                <img src='/logo.jpg' alt='Default Logo' className='size-6 sm:size-8 object-cover' />
+                <img src='/logo.jpg' alt='Default Logo' width={24} height={24} className='size-8 object-cover' />
               )}
             </div>
-            {/* Hide brand name on mobile */}
-            <span className='text-sm leading-none font-semibold hidden sm:block'>{displayName}</span>
+            <span className='text-sm leading-none font-semibold'>{displayName}</span>
           </div>
 
-          {/* Separator - hide on mobile */}
-          <div className='bg-border mx-0.5 h-3.5 w-px hidden sm:block' />
+          {/* Separator */}
+          <div className='bg-border mx-0.5 h-3.5 w-px' />
 
-          {/* Project Switcher - show only icon on mobile */}
-          <div className='hidden sm:block'>
-            <ProjectSwitcher />
-          </div>
+          {/* Project Switcher */}
+          <ProjectSwitcher />
         </div>
 
         {/* 右侧控件 */}
-        <div className='flex items-center gap-0.5 sm:gap-2 pr-2 sm:pr-6'>
-          {/* Quota Badges - hide on mobile, show only icon */}
-          <div className='hidden sm:block'>
-            <QuotaBadges onRefresh={handleRefresh} isRefreshing={isRefreshing} />
-          </div>
+        <div className='flex items-center gap-2 pr-6'>
+          {/* Quota Badges - always visible */}
+          <QuotaBadges onRefresh={handleRefresh} isRefreshing={isRefreshing} />
 
-          <PermissionGuard requiredSystemScope='read_system'>
-            <Link to='/system'>
-              <Button variant='ghost' size='icon' className='size-8'>
-                <IconSettings className='h-4 w-4' />
-              </Button>
-            </Link>
-          </PermissionGuard>
-
-          {/* Hide language/theme on mobile */}
-          <div className='hidden sm:block'>
-            <LanguageSwitch />
-          </div>
-          <div className='hidden sm:block'>
-            <ThemeSwitch />
-          </div>
-          <ProfileDropdown />
+          {/* Desktop-only controls - hidden on mobile */}
+          {!isMobile && (
+            <>
+              <PermissionGuard requiredSystemScope='read_system'>
+                <Link to='/system'>
+                  <Button variant='ghost' size='icon' className='size-8'>
+                    <IconSettings className='h-4 w-4' />
+                  </Button>
+                </Link>
+              </PermissionGuard>
+              <LanguageSwitch />
+              <ThemeSwitch />
+              <ProfileDropdown />
+            </>
+          )}
         </div>
       </div>
     </header>
