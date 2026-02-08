@@ -434,3 +434,39 @@ func convertToGeminiUsage(chatUsage *llm.Usage) *UsageMetadata {
 
 	return usage
 }
+
+// TransformerMetadataKeySafetySettings is the key for storing SafetySettings in TransformerMetadata.
+const TransformerMetadataKeySafetySettings = "gemini_safety_settings"
+
+// extractSafetySettingsFromMetadata extracts SafetySettings from TransformerMetadata.
+func extractSafetySettingsFromMetadata(metadata map[string]any) []*SafetySetting {
+	if metadata == nil {
+		return nil
+	}
+
+	if rawSettings, ok := metadata[TransformerMetadataKeySafetySettings]; ok {
+		if settings, ok := rawSettings.([]*SafetySetting); ok && len(settings) > 0 {
+			return settings
+		}
+	}
+
+	return nil
+}
+
+// TransformerMetadataKeyImageConfig is the key for storing ImageConfig in TransformerMetadata.
+const TransformerMetadataKeyImageConfig = "gemini_image_config"
+
+// extractImageConfigFromMetadata extracts ImageConfig from TransformerMetadata.
+func extractImageConfigFromMetadata(metadata map[string]any) *ImageConfig {
+	if metadata == nil {
+		return nil
+	}
+
+	if rawConfig, ok := metadata[TransformerMetadataKeyImageConfig]; ok {
+		if config, ok := rawConfig.(*ImageConfig); ok {
+			return config
+		}
+	}
+
+	return nil
+}

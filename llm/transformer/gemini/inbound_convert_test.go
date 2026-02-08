@@ -2080,6 +2080,386 @@ func TestConvertLLMToGeminiResponse_GroundingMetadata(t *testing.T) {
 	}
 }
 
+// =============================================================================
+// SafetySettings Tests
+// =============================================================================
+
+func TestConvertGeminiToLLMRequest_SafetySettings(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    *GenerateContentRequest
+		validate func(t *testing.T, result *llm.Request)
+	}{
+		{
+			name: "request with safety settings",
+			input: &GenerateContentRequest{
+				Contents: []*Content{
+					{
+						Role: "user",
+						Parts: []*Part{
+							{Text: "Hello, Gemini!"},
+						},
+					},
+				},
+				SafetySettings: []*SafetySetting{
+					{
+						Category:  "HARM_CATEGORY_HARASSMENT",
+						Threshold: "BLOCK_LOW_AND_ABOVE",
+					},
+					{
+						Category:  "HARM_CATEGORY_HATE_SPEECH",
+						Threshold: "BLOCK_MEDIUM_AND_ABOVE",
+					},
+				},
+			},
+			validate: func(t *testing.T, result *llm.Request) {
+				t.Helper()
+				require.NotNil(t, result)
+				require.NotNil(t, result.TransformerMetadata)
+				safetySettings := result.TransformerMetadata[TransformerMetadataKeySafetySettings].([]*SafetySetting)
+				require.Len(t, safetySettings, 2)
+				require.Equal(t, "HARM_CATEGORY_HARASSMENT", safetySettings[0].Category)
+				require.Equal(t, "BLOCK_LOW_AND_ABOVE", safetySettings[0].Threshold)
+				require.Equal(t, "HARM_CATEGORY_HATE_SPEECH", safetySettings[1].Category)
+				require.Equal(t, "BLOCK_MEDIUM_AND_ABOVE", safetySettings[1].Threshold)
+			},
+		},
+		{
+			name: "request without safety settings",
+			input: &GenerateContentRequest{
+				Contents: []*Content{
+					{
+						Role: "user",
+						Parts: []*Part{
+							{Text: "Hello, Gemini!"},
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *llm.Request) {
+				t.Helper()
+				require.NotNil(t, result)
+				require.Nil(t, result.TransformerMetadata)
+			},
+		},
+		{
+			name: "request with empty safety settings",
+			input: &GenerateContentRequest{
+				Contents: []*Content{
+					{
+						Role: "user",
+						Parts: []*Part{
+							{Text: "Hello, Gemini!"},
+						},
+					},
+				},
+				SafetySettings: []*SafetySetting{},
+			},
+			validate: func(t *testing.T, result *llm.Request) {
+				t.Helper()
+				require.NotNil(t, result)
+				require.Nil(t, result.TransformerMetadata)
+			},
+		},
+		{
+			name: "request with all safety categories",
+			input: &GenerateContentRequest{
+				Contents: []*Content{
+					{
+						Role: "user",
+						Parts: []*Part{
+							{Text: "Hello, Gemini!"},
+						},
+					},
+				},
+				SafetySettings: []*SafetySetting{
+					{
+						Category:  "HARM_CATEGORY_HARASSMENT",
+						Threshold: "BLOCK_NONE",
+					},
+					{
+						Category:  "HARM_CATEGORY_HATE_SPEECH",
+						Threshold: "BLOCK_LOW_AND_ABOVE",
+					},
+					{
+						Category:  "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+						Threshold: "BLOCK_MEDIUM_AND_ABOVE",
+					},
+					{
+						Category:  "HARM_CATEGORY_DANGEROUS_CONTENT",
+						Threshold: "BLOCK_HIGH_AND_ABOVE",
+					},
+				},
+			},
+			validate: func(t *testing.T, result *llm.Request) {
+				t.Helper()
+				require.NotNil(t, result)
+				require.NotNil(t, result.TransformerMetadata)
+				safetySettings := result.TransformerMetadata[TransformerMetadataKeySafetySettings].([]*SafetySetting)
+				require.Len(t, safetySettings, 4)
+				require.Equal(t, "HARM_CATEGORY_HARASSMENT", safetySettings[0].Category)
+				require.Equal(t, "BLOCK_NONE", safetySettings[0].Threshold)
+				require.Equal(t, "HARM_CATEGORY_HATE_SPEECH", safetySettings[1].Category)
+				require.Equal(t, "BLOCK_LOW_AND_ABOVE", safetySettings[1].Threshold)
+				require.Equal(t, "HARM_CATEGORY_SEXUALLY_EXPLICIT", safetySettings[2].Category)
+				require.Equal(t, "BLOCK_MEDIUM_AND_ABOVE", safetySettings[2].Threshold)
+				require.Equal(t, "HARM_CATEGORY_DANGEROUS_CONTENT", safetySettings[3].Category)
+				require.Equal(t, "BLOCK_HIGH_AND_ABOVE", safetySettings[3].Threshold)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := convertGeminiToLLMRequest(tt.input)
+			require.NoError(t, err)
+			tt.validate(t, result)
+		})
+	}
+}
+
+func TestSafetySettingsStoredInMetadata(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    []*SafetySetting
+		validate func(t *testing.T, result []*SafetySetting)
+	}{
+		{
+			name: "store multiple safety settings in metadata",
+			input: []*SafetySetting{
+				{
+					Category:  "HARM_CATEGORY_HARASSMENT",
+					Threshold: "BLOCK_LOW_AND_ABOVE",
+				},
+				{
+					Category:  "HARM_CATEGORY_HATE_SPEECH",
+					Threshold: "BLOCK_MEDIUM_AND_ABOVE",
+				},
+			},
+			validate: func(t *testing.T, result []*SafetySetting) {
+				t.Helper()
+				require.NotNil(t, result)
+				require.Len(t, result, 2)
+				require.Equal(t, "HARM_CATEGORY_HARASSMENT", result[0].Category)
+				require.Equal(t, "BLOCK_LOW_AND_ABOVE", result[0].Threshold)
+				require.Equal(t, "HARM_CATEGORY_HATE_SPEECH", result[1].Category)
+				require.Equal(t, "BLOCK_MEDIUM_AND_ABOVE", result[1].Threshold)
+			},
+		},
+		{
+			name:  "store nil safety settings",
+			input: nil,
+			validate: func(t *testing.T, result []*SafetySetting) {
+				t.Helper()
+				require.Nil(t, result)
+			},
+		},
+		{
+			name:  "store empty safety settings",
+			input: []*SafetySetting{},
+			validate: func(t *testing.T, result []*SafetySetting) {
+				t.Helper()
+				require.Nil(t, result)
+			},
+		},
+		{
+			name: "store single safety setting",
+			input: []*SafetySetting{
+				{
+					Category:  "HARM_CATEGORY_DANGEROUS_CONTENT",
+					Threshold: "BLOCK_NONE",
+				},
+			},
+			validate: func(t *testing.T, result []*SafetySetting) {
+				t.Helper()
+				require.NotNil(t, result)
+				require.Len(t, result, 1)
+				require.Equal(t, "HARM_CATEGORY_DANGEROUS_CONTENT", result[0].Category)
+				require.Equal(t, "BLOCK_NONE", result[0].Threshold)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Simulate what inbound_convert.go does
+			var metadata map[string]any
+			if len(tt.input) > 0 {
+				metadata = map[string]any{
+					TransformerMetadataKeySafetySettings: tt.input,
+				}
+			}
+
+			result := extractSafetySettingsFromMetadata(metadata)
+			tt.validate(t, result)
+		})
+	}
+}
+
+// =============================================================================
+// ImageConfig Tests
+// =============================================================================
+
+func TestConvertGeminiToLLMRequest_ImageConfig(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    *GenerateContentRequest
+		validate func(t *testing.T, result *llm.Request)
+	}{
+		{
+			name: "request with image config",
+			input: &GenerateContentRequest{
+				Contents: []*Content{
+					{
+						Role: "user",
+						Parts: []*Part{
+							{Text: "Generate an image"},
+						},
+					},
+				},
+				GenerationConfig: &GenerationConfig{
+					ImageConfig: &ImageConfig{
+						AspectRatio: "16:9",
+						ImageSize:   "2K",
+					},
+				},
+			},
+			validate: func(t *testing.T, result *llm.Request) {
+				t.Helper()
+				require.NotNil(t, result)
+				require.NotNil(t, result.TransformerMetadata)
+				imageConfig := result.TransformerMetadata[TransformerMetadataKeyImageConfig].(*ImageConfig)
+				require.NotNil(t, imageConfig)
+				require.Equal(t, "16:9", imageConfig.AspectRatio)
+				require.Equal(t, "2K", imageConfig.ImageSize)
+			},
+		},
+		{
+			name: "request without image config",
+			input: &GenerateContentRequest{
+				Contents: []*Content{
+					{
+						Role: "user",
+						Parts: []*Part{
+							{Text: "Hello, Gemini!"},
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *llm.Request) {
+				t.Helper()
+				require.NotNil(t, result)
+				require.Nil(t, result.TransformerMetadata)
+			},
+		},
+		{
+			name: "request with nil image config",
+			input: &GenerateContentRequest{
+				Contents: []*Content{
+					{
+						Role: "user",
+						Parts: []*Part{
+							{Text: "Hello, Gemini!"},
+						},
+					},
+				},
+				GenerationConfig: &GenerationConfig{
+					Temperature: lo.ToPtr(0.7),
+				},
+			},
+			validate: func(t *testing.T, result *llm.Request) {
+				t.Helper()
+				require.NotNil(t, result)
+				// TransformerMetadata should be nil since ImageConfig is nil
+				require.Nil(t, result.TransformerMetadata)
+			},
+		},
+		{
+			name: "request with only aspect ratio",
+			input: &GenerateContentRequest{
+				Contents: []*Content{
+					{
+						Role: "user",
+						Parts: []*Part{
+							{Text: "Generate an image"},
+						},
+					},
+				},
+				GenerationConfig: &GenerationConfig{
+					ImageConfig: &ImageConfig{
+						AspectRatio: "1:1",
+					},
+				},
+			},
+			validate: func(t *testing.T, result *llm.Request) {
+				t.Helper()
+				require.NotNil(t, result)
+				require.NotNil(t, result.TransformerMetadata)
+				imageConfig := result.TransformerMetadata[TransformerMetadataKeyImageConfig].(*ImageConfig)
+				require.NotNil(t, imageConfig)
+				require.Equal(t, "1:1", imageConfig.AspectRatio)
+				require.Empty(t, imageConfig.ImageSize)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := convertGeminiToLLMRequest(tt.input)
+			require.NoError(t, err)
+			tt.validate(t, result)
+		})
+	}
+}
+
+func TestExtractImageConfigFromMetadata(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    map[string]any
+		validate func(t *testing.T, result *ImageConfig)
+	}{
+		{
+			name: "extract image config from metadata",
+			input: map[string]any{
+				TransformerMetadataKeyImageConfig: &ImageConfig{
+					AspectRatio: "16:9",
+					ImageSize:   "4K",
+				},
+			},
+			validate: func(t *testing.T, result *ImageConfig) {
+				t.Helper()
+				require.NotNil(t, result)
+				require.Equal(t, "16:9", result.AspectRatio)
+				require.Equal(t, "4K", result.ImageSize)
+			},
+		},
+		{
+			name:     "extract from nil metadata",
+			input:    nil,
+			validate: func(t *testing.T, result *ImageConfig) { t.Helper(); require.Nil(t, result) },
+		},
+		{
+			name:     "extract from empty metadata",
+			input:    map[string]any{},
+			validate: func(t *testing.T, result *ImageConfig) { t.Helper(); require.Nil(t, result) },
+		},
+		{
+			name: "extract with wrong type",
+			input: map[string]any{
+				TransformerMetadataKeyImageConfig: "invalid",
+			},
+			validate: func(t *testing.T, result *ImageConfig) { t.Helper(); require.Nil(t, result) },
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := extractImageConfigFromMetadata(tt.input)
+			tt.validate(t, result)
+		})
+	}
+}
+
 func TestConvertLLMToGeminiResponse_GroundingMetadata_Additional(t *testing.T) {
 	tests := []struct {
 		name     string

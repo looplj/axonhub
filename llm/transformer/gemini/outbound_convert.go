@@ -288,6 +288,20 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 		req.ToolConfig = convertLLMToolChoiceToGeminiToolConfig(chatReq.ToolChoice)
 	}
 
+	// Convert safety settings from TransformerMetadata
+	if safetySettings := extractSafetySettingsFromMetadata(chatReq.TransformerMetadata); len(safetySettings) > 0 {
+		req.SafetySettings = safetySettings
+	}
+
+	// Convert image config from TransformerMetadata
+	if imageConfig := extractImageConfigFromMetadata(chatReq.TransformerMetadata); imageConfig != nil {
+		if req.GenerationConfig == nil {
+			req.GenerationConfig = &GenerationConfig{}
+		}
+
+		req.GenerationConfig.ImageConfig = imageConfig
+	}
+
 	return req
 }
 
