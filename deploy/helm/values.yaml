@@ -1,0 +1,165 @@
+# Default values for axonhub.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+global:
+  # Global image pull secrets
+  imagePullSecrets: []
+
+# AxonHub application configuration
+axonhub:
+  replicaCount: 1
+  
+  image:
+    repository: looplj/axonhub
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  
+  # Environment variables for AxonHub
+  env:
+    AXONHUB_DB_DIALECT: postgres
+    # Full database connection string - customize this for your environment
+    AXONHUB_DB_DSN: postgres://axonhub:axonhub_password@axonhub-postgresql:5432/axonhub?sslmode=disable
+  
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 8090
+    
+  # Resource limits and requests
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  
+  # Health checks
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8090
+    initialDelaySeconds: 60
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+  
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 8090
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  
+  # Security context
+  podSecurityContext:
+    fsGroup: 1000
+  
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+  
+  # Node selection
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  
+  # Persistent volume for data storage (optional)
+  persistence:
+    enabled: false
+    size: 10Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+
+# PostgreSQL database configuration
+postgresql:
+  enabled: true
+  replicaCount: 1
+  
+  image:
+    repository: postgres
+    tag: "16-alpine"
+    pullPolicy: IfNotPresent
+  
+  # Database credentials
+  auth:
+    postgresPassword: "axonhub_password"  # Should be overridden in production
+    username: "axonhub"
+    password: "axonhub_password"  # Should be overridden in production
+    database: "axonhub"
+  
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 5432
+  
+  # Resource limits
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  
+  # Persistence
+  primary:
+    persistence:
+      enabled: true
+      size: 8Gi
+      storageClass: ""
+      accessModes:
+        - ReadWriteOnce
+  
+  # Health check
+  livenessProbe:
+    exec:
+      command:
+        - pg_isready
+        - -U
+        - axonhub
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6
+  
+  readinessProbe:
+    exec:
+      command:
+        - pg_isready
+        - -U
+        - axonhub
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: ""
+  annotations: {}
+  hosts:
+    - host: axonhub.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# Autoscaling configuration
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+# Service account configuration
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""

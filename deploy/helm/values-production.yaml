@@ -1,0 +1,171 @@
+# Production values for AxonHub Helm chart
+# Copy this file and modify according to your production requirements
+
+# Global configuration
+global:
+  imagePullSecrets: []
+  # Add your image pull secrets here if using private registry
+  # - name: my-registry-secret
+
+# AxonHub application configuration
+axonhub:
+  replicaCount: 2
+  
+  image:
+    repository: looplj/axonhub
+    tag: "latest"  # Consider using specific version in production
+    pullPolicy: IfNotPresent
+  
+  # Environment variables - customize the database connection string for your environment
+  env:
+    AXONHUB_DB_DIALECT: postgres
+    # For external database - modify this connection string
+    AXONHUB_DB_DSN: postgres://axonhub:your_db_password@your-db-host:5432/axonhub?sslmode=require
+    # For internal PostgreSQL - uncomment below and comment above
+    # AXONHUB_DB_DSN: postgres://axonhub:CHANGE_ME_POSTGRES_USER_123456@axonhub-postgresql:5432/axonhub?sslmode=disable
+  
+  # Environment variables are defined above in the axonhub.env section
+  
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 8090
+  
+  # Resources - adjust based on your workload
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+    requests:
+      cpu: 1000m
+      memory: 1Gi
+  
+  # Health checks
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8090
+    initialDelaySeconds: 60
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+  
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 8090
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  
+  # Security context
+  podSecurityContext:
+    fsGroup: 1000
+  
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+  
+  # Persistence - enable for production
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClass: ""  # Specify your storage class
+    accessModes:
+      - ReadWriteOnce
+
+# PostgreSQL configuration - set to false if using external database
+postgresql:
+  enabled: true
+  replicaCount: 1
+  
+  image:
+    repository: postgres
+    tag: "16-alpine"
+    pullPolicy: IfNotPresent
+  
+  # Security - CHANGE THESE VALUES IN PRODUCTION
+  auth:
+    postgresPassword: "CHANGE_ME_POSTGRES_ADMIN_123456"
+    username: "axonhub"
+    password: "CHANGE_ME_POSTGRES_USER_123456"
+    database: "axonhub"
+  
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 5432
+  
+  # Resources
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  
+  # Persistence
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi
+      storageClass: ""  # Specify your storage class
+      accessModes:
+        - ReadWriteOnce
+  
+  # Health checks
+  livenessProbe:
+    exec:
+      command:
+        - pg_isready
+        - -U
+        - axonhub
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6
+  
+  readinessProbe:
+    exec:
+      command:
+        - pg_isready
+        - -U
+        - axonhub
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6
+
+# Ingress configuration - enable for external access
+ingress:
+  enabled: true
+  className: "nginx"  # Adjust based on your ingress controller
+  annotations:
+    # Add your ingress annotations here
+    # nginx.ingress.kubernetes.io/rewrite-target: /
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"  # For SSL certificates
+  hosts:
+    - host: axonhub.yourdomain.com  # Change to your domain
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: axonhub-tls
+      hosts:
+        - axonhub.yourdomain.com  # Change to your domain
+
+# Autoscaling - enable for production workloads
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+# Service account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""

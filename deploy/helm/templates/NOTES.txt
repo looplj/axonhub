@@ -1,0 +1,43 @@
+Thank you for installing AxonHub!
+
+1. Get the application URL by running these commands:
+{{- if .Values.ingress.enabled }}
+{{- range $host := .Values.ingress.hosts }}
+  {{- range .paths }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
+  {{- end }}
+{{- end }}
+{{- else if contains "NodePort" .Values.axonhub.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "axonhub.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- else if contains "LoadBalancer" .Values.axonhub.service.type }}
+     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+           You can watch the status of by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "axonhub.fullname" . }}'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "axonhub.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo http://$SERVICE_IP:{{ .Values.axonhub.service.port }}
+{{- else if contains "ClusterIP" .Values.axonhub.service.type }}
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "axonhub.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+  echo "Visit http://127.0.0.1:8090 to use your application"
+  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8090:8090
+{{- end }}
+
+2. Check the status of your deployment:
+   kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "axonhub.name" . }}"
+
+3. View logs:
+   kubectl logs --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "axonhub.name" . }}" -c axonhub
+
+4. Access the application health endpoint:
+   kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "axonhub.fullname" . }} 8090:8090
+   # Then visit http://localhost:8090/health
+
+{{- if .Values.postgresql.enabled }}
+5. PostgreSQL database is available at:
+   Host: {{ include "axonhub.postgresql.serviceName" . }}.{{ .Release.Namespace }}.svc.cluster.local
+   Port: {{ .Values.postgresql.service.port }}
+   Database: {{ .Values.postgresql.auth.database }}
+   Username: {{ .Values.postgresql.auth.username }}
+{{- end }}
+
+WARNING: Default passwords are used. Please change them in production environments!
