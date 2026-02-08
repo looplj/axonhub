@@ -51,5 +51,8 @@
   "dashboard.stats.todayRequests": "Today's Requests",
   "dashboard.cards.fastestPerformers.channels": "Fastest Channels",
   "dashboard.cards.fastestPerformers.models": "Fastest Models",
-  "dashboard.cards.fastestPerformers.noData": "No data available"
+  "dashboard.cards.fastestPerformers.noData": "No data available",
+  "dashboard.cards.fastestPerformers.description": "Fastest {{type}} by tokens/second · {{count}} requests across top performers",
+  "dashboard.cards.fastestPerformers.channelType": "channels",
+  "dashboard.cards.fastestPerformers.modelType": "models"
 }

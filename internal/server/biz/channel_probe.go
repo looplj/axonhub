@@ -179,16 +179,18 @@ SELECT
     COUNT(*) as total_count,
     COUNT(*) as success_count,
     SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as total_tokens,
-    SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL 
-         THEN se.metrics_latency_ms - se.metrics_first_token_latency_ms 
+    SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
+         THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms
+              THEN 0
+              ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END
          ELSE se.metrics_latency_ms END) as effective_latency_ms,
     SUM(se.metrics_first_token_latency_ms) as total_first_token_latency,
     COUNT(DISTINCT se.request_id) as request_count
 FROM request_executions se
 JOIN usage_logs ul ON se.request_id = ul.request_id
-WHERE se.status = 'completed' 
+WHERE se.status = 'completed'
     AND se.metrics_latency_ms > 0
-    AND se.created_at >= $1 
+    AND se.created_at >= $1
     AND se.created_at < $2
     AND se.id = (
         SELECT MAX(re2.id)
@@ -205,16 +207,18 @@ SELECT
     COUNT(*) as total_count,
     COUNT(*) as success_count,
     SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as total_tokens,
-    SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL 
-         THEN se.metrics_latency_ms - se.metrics_first_token_latency_ms 
+    SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
+         THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms
+              THEN 0
+              ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END
          ELSE se.metrics_latency_ms END) as effective_latency_ms,
     SUM(se.metrics_first_token_latency_ms) as total_first_token_latency,
     COUNT(DISTINCT se.request_id) as request_count
 FROM request_executions se
 JOIN usage_logs ul ON se.request_id = ul.request_id
-WHERE se.status = 'completed' 
+WHERE se.status = 'completed'
     AND se.metrics_latency_ms > 0
-    AND se.created_at >= ? 
+    AND se.created_at >= ?
     AND se.created_at < ?
     AND se.id = (
         SELECT MAX(re2.id)

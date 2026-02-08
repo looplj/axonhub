@@ -14,7 +14,7 @@ export function FastestModelsCard() {
     <FastestPerformersCard<FastestModel>
       title={t('dashboard.cards.fastestPerformers.models')}
       titleIcon={<Zap className="h-4 w-4" />}
-      description={(totalRequests) => `Fastest models by tokens/second · ${formatNumber(totalRequests)} requests across top performers`}
+      description={(totalRequests) => t('dashboard.cards.fastestPerformers.description', { type: t('dashboard.cards.fastestPerformers.modelType'), count: formatNumber(totalRequests) })}
       noDataLabel={t('dashboard.cards.fastestPerformers.noData')}
       useData={useFastestModels}
       getName={(item) => item.modelName}

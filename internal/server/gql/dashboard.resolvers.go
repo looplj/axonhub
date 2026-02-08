@@ -809,9 +809,7 @@ func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChanne
 	}
 	query := buildThroughputQuery(
 		useDollarPlaceholders,
-		"se.channel_id,\n    c.name as channel_name,\n    c.type as channel_type,",
-		"JOIN channels c ON se.channel_id = c.id",
-		"se.channel_id, c.name, c.type",
+		ThroughputQueryByChannel,
 		sqlLimit,
 	)
 
@@ -993,9 +991,7 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 	}
 	query := buildThroughputQuery(
 		useDollarPlaceholders,
-		"r.model_id,\n    m.name as model_name,",
-		"JOIN requests r ON se.request_id = r.id\nJOIN models m ON r.model_id = m.model_id",
-		"r.model_id, m.name",
+		ThroughputQueryByModel,
 		sqlLimit,
 	)
 
@@ -1115,20 +1111,65 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 //     it when you're done.
 //   - You have helper methods in this file. Move them out to keep these resolver files clean.
 
+// ThroughputQueryType identifies the type of throughput query to build.
+// This enum ensures only predefined, validated query patterns can be used.
+type ThroughputQueryType int
+
+const (
+	// ThroughputQueryByChannel groups throughput statistics by channel.
+	// Uses channels table for channel metadata.
+	ThroughputQueryByChannel ThroughputQueryType = iota
+	// ThroughputQueryByModel groups throughput statistics by model.
+	// Uses requests and models tables for model metadata.
+	ThroughputQueryByModel
+)
+
+// queryFragmentConfig holds the SQL fragments for a specific query type.
+// These fragments are predefined constants and never accept user input.
+type queryFragmentConfig struct {
+	selectColumns string
+	joinClause    string
+	groupBy       string
+}
+
+// allowedQueryConfigs maps each ThroughputQueryType to its validated SQL fragments.
+// This allowlist ensures only safe, pre-approved SQL patterns can be executed.
+var allowedQueryConfigs = map[ThroughputQueryType]queryFragmentConfig{
+	ThroughputQueryByChannel: {
+		selectColumns: "se.channel_id,\n    c.name as channel_name,\n    c.type as channel_type,",
+		joinClause:    "JOIN channels c ON se.channel_id = c.id",
+		groupBy:       "se.channel_id, c.name, c.type",
+	},
+	ThroughputQueryByModel: {
+		selectColumns: "r.model_id,\n    m.name as model_name,",
+		joinClause:    "JOIN requests r ON se.request_id = r.id\nJOIN models m ON r.model_id = m.model_id",
+		groupBy:       "r.model_id, m.name",
+	},
+}
+
 // buildThroughputQuery constructs a SQL query for throughput statistics.
-// SECURITY WARNING: The selectColumns, joinClause, and groupBy parameters are
-// concatenated directly into the SQL query. These MUST only come from trusted
-// internal code and NEVER from user input. Always use hardcoded column/table
-// identifiers. Failure to follow this rule may result in SQL injection.
+// SECURITY NOTE: This function now uses ThroughputQueryType enum instead of raw SQL strings.
+// The SQL fragments are retrieved from a predefined allowlist (allowedQueryConfigs),
+// eliminating the risk of SQL injection from user input. Only the queryType parameter
+// determines which SQL pattern is used, and limit is validated as a positive integer.
 //
 // COMPATIBILITY NOTE: This query uses ROW_NUMBER() window function which requires
 // SQLite 3.25+ (released 2018-09-15). All supported database dialects (PostgreSQL,
 // MySQL 8.0+, TiDB, SQLite 3.25+) support this function.
-func buildThroughputQuery(useDollarPlaceholders bool, selectColumns, joinClause, groupBy string, limit int) string {
+func buildThroughputQuery(useDollarPlaceholders bool, queryType ThroughputQueryType, limit int) string {
 	// Validate that limit is positive to prevent malformed queries
 	if limit <= 0 {
 		limit = 20 // Default fallback
 	}
+
+	// Retrieve the validated query configuration from the allowlist
+	config, ok := allowedQueryConfigs[queryType]
+	if !ok {
+		// This should never happen with proper enum usage, but return a safe default
+		// that will result in an empty result set rather than a malformed query
+		config = allowedQueryConfigs[ThroughputQueryByChannel]
+	}
+
 	placeholder := "$1"
 	if !useDollarPlaceholders {
 		placeholder = "?"
@@ -1147,7 +1188,7 @@ WITH successful_execs AS (
     WHERE status = 'completed' AND metrics_latency_ms > 0 AND created_at >= ` + placeholder + `
 )
 SELECT
-    ` + selectColumns + `
+    ` + config.selectColumns + `
     SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,
     SUM(se.metrics_latency_ms) as latency_ms,
     COUNT(DISTINCT se.request_id) as request_count,
@@ -1163,9 +1204,9 @@ SELECT
     END as throughput
 FROM successful_execs se
 JOIN usage_logs ul ON se.request_id = ul.request_id
-` + joinClause + `
+` + config.joinClause + `
 WHERE se.rn = 1
-GROUP BY ` + groupBy + `
+GROUP BY ` + config.groupBy + `
 ORDER BY throughput DESC
 LIMIT ` + fmt.Sprintf("%d", limit)
 }
